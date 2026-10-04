@@ -2,7 +2,7 @@
 // every statement) so a tenant boundary can't be crossed even on a logic bug. Repos take
 // the `Db` abstraction, so they unit-test against in-memory SQLite and run unchanged on D1.
 
-import type { Db, DbStatement } from "./db/types.js";
+import type { Db, DbParam, DbStatement } from "./db/types.js";
 
 // ── Row types (mirror migrations/0001_init.sql) ──────────────────────────────
 export interface ProductRow {
@@ -37,6 +37,9 @@ export interface ProductRow {
   // manifest's `web.origins`. Manifest-owned with no `_source` column — link writes it, every
   // resync rewrites it. NULL reads back as "no origin allowed". Parsed by `core/cors.ts`.
   web_origins_json?: string | null;
+  /** 1 for the platform's own product (`SYSTEM_PRODUCT_SLUG`, migrations/0058_a), set only by
+   *  the package-feeds bootstrap; delete and rename refuse it. */
+  system?: number;
   // The device-trust policy (migrations/0053_d/e, P6-02): operator-owned, never written by an
   // ingest. NULL reads back as the default policy (`core/deviceTrust.ts`).
   trust_policy_json?: string | null;
@@ -1756,26 +1759,68 @@ export async function pruneAudit(
   );
 }
 
+/**
+ * The activity feed's filters (A-2). Every one narrows; none widens. `action` is a PREFIX
+ * (`license.` matches `license.create` and `license.tier.change`), compared with `substr` so a
+ * `%` or `_` in it is literal. `actor` matches the subject or the email exactly; the reserved
+ * value `system` matches the rows the runtime writes with no session behind them. `since` and
+ * `until` are epoch seconds, inclusive.
+ */
+export interface AuditFilters {
+  action?: string;
+  actor?: string;
+  targetKind?: string;
+  targetId?: string;
+  since?: number;
+  until?: number;
+}
+
 export async function listAudit(
   db: Db,
   product: string,
-  opts: { beforeAt?: number; beforeId?: string; limit?: number } = {},
+  opts: {
+    beforeAt?: number;
+    beforeId?: string;
+    limit?: number;
+  } & AuditFilters = {},
 ): Promise<AuditRow[]> {
   const limit = Math.min(opts.limit ?? 50, 200);
+  const where: string[] = ["product = ?"];
+  const params: DbParam[] = [product];
   if (opts.beforeAt !== undefined && opts.beforeId !== undefined) {
-    return db.all<AuditRow>(
-      `SELECT * FROM audit WHERE product = ? AND (at < ? OR (at = ? AND id < ?))
-       ORDER BY at DESC, id DESC LIMIT ?`,
-      product,
-      opts.beforeAt,
-      opts.beforeAt,
-      opts.beforeId,
-      limit,
-    );
+    where.push("(at < ? OR (at = ? AND id < ?))");
+    params.push(opts.beforeAt, opts.beforeAt, opts.beforeId);
+  }
+  if (opts.action) {
+    where.push("substr(action, 1, ?) = ?");
+    params.push(opts.action.length, opts.action);
+  }
+  if (opts.actor === "system") {
+    where.push("(actor_sub IS NULL OR actor_sub = '')");
+  } else if (opts.actor) {
+    where.push("(actor_sub = ? OR actor_email = ?)");
+    params.push(opts.actor, opts.actor);
+  }
+  if (opts.targetKind) {
+    where.push("target_kind = ?");
+    params.push(opts.targetKind);
+  }
+  if (opts.targetId) {
+    where.push("target_id = ?");
+    params.push(opts.targetId);
+  }
+  if (opts.since !== undefined) {
+    where.push("at >= ?");
+    params.push(opts.since);
+  }
+  if (opts.until !== undefined) {
+    where.push("at <= ?");
+    params.push(opts.until);
   }
   return db.all<AuditRow>(
-    "SELECT * FROM audit WHERE product = ? ORDER BY at DESC, id DESC LIMIT ?",
-    product,
+    `SELECT * FROM audit WHERE ${where.join(" AND ")}
+     ORDER BY at DESC, id DESC LIMIT ?`,
+    ...params,
     limit,
   );
 }

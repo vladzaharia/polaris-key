@@ -41,6 +41,16 @@ import {
   type ValidationMessage,
 } from "./index.js";
 import {
+  MAX_PACKAGE_METADATA_BYTES,
+  PACKAGE_ECOSYSTEMS,
+  PACKAGE_FILE_TYPES,
+  PACKAGE_METADATA_KEYS,
+  isPackageEcosystem,
+  isPackageName,
+  maxPackageFiles,
+  type PackageEcosystem,
+} from "./packages.js";
+import {
   BUILD_ID_PATTERN,
   type ReleaseRecordBuild,
   type ReleaseRecordDoc,
@@ -310,6 +320,59 @@ export interface ReleaseDescriptor {
   builds: DescriptorBuild[];
 }
 
+/**
+ * A package release's descriptor (F-03, plans/F-01.md §3.2): one version of one `kind: package`
+ * deliverable. It has no builds, no tag (its release id is always `<deliverable>@<version>`) and
+ * no content; its files and the CLI-extracted metadata are its `package` block. It is never signed:
+ * a submit that carries a release record with it is refused (`release_record_rejected`, reason
+ * `package-unsigned`), and nothing device-facing ever reads it.
+ */
+export interface PackageReleaseDescriptor {
+  descriptorVersion: 1;
+  product: string;
+  deliverable: string;
+  kind: "package";
+  version: string;
+  seq?: number;
+  channel?: string;
+  title?: string;
+  notes?: string;
+  publishedAt?: string;
+  provenance?: { commit?: string; workflowRun?: string };
+  package: PackageDescriptorBlock;
+}
+
+/** The `package` block: the declaration it agrees with, the files, the extractor's metadata. */
+export interface PackageDescriptorBlock {
+  ecosystem: PackageEcosystem;
+  name: string;
+  files: PackageDescriptorFile[];
+  /** What the CLI's extractor read out of the packed files (`name`, `version` and the
+   *  ecosystem's keys, `PACKAGE_METADATA_KEYS`), at most `MAX_PACKAGE_METADATA_BYTES`. */
+  metadata: Record<string, unknown>;
+}
+
+/** One file of a package release: a {@link DescriptorArtifact} with r2 locations only, role
+ *  `payload`, and a type from its ecosystem's vocabulary (`PACKAGE_FILE_TYPES`). */
+export interface PackageDescriptorFile {
+  name: string;
+  role: "payload";
+  type: string;
+  sha256: string;
+  size: number;
+  contentType?: string;
+  /** Maven only: the file's classifier (`sources`, `javadoc`), when it has one. */
+  classifier?: string;
+  /** Maven only: the file's extension (`jar`, `pom`, `module`, `aar`). */
+  extension?: string;
+  /** OCI only: the object's media type. */
+  mediaType?: string;
+  locations: { provider: "r2"; key: string }[];
+}
+
+/** Either descriptor shape, told apart by `kind`. */
+export type AnyReleaseDescriptor = ReleaseDescriptor | PackageReleaseDescriptor;
+
 /** A hold (P4-12): moved to `@polaris-key/protocol/packs` by P4-13 (plans/P4-13.md §2.4) so the
  *  clients and the Worker share one type; re-exported here under the same name. */
 export type { ContentHold } from "@polaris-key/protocol/packs";
@@ -337,18 +400,24 @@ export interface DescriptorManifest {
     manualChannels?: readonly { name: string }[];
     /** The declared pack ids (P4-02); absent reads as none. */
     packs?: readonly string[];
+    /** The declared package deliverables (F-03); absent reads as none. */
+    packages?: readonly {
+      id: string;
+      ecosystem: PackageEcosystem;
+      name: string;
+    }[];
   };
 }
 
 export type DescriptorError = Omit<ValidationMessage, "file">;
 
 export type DescriptorValidation =
-  | { ok: true; descriptor: ReleaseDescriptor; releaseId: string }
+  | { ok: true; descriptor: AnyReleaseDescriptor; releaseId: string }
   | { ok: false; errors: DescriptorError[] };
 
 /** The release id a descriptor names: its tag, else `<deliverable>@<version>` (P2-03). */
 export function descriptorReleaseId(
-  d: Pick<ReleaseDescriptor, "tag" | "deliverable" | "version">,
+  d: Pick<ReleaseDescriptor, "deliverable" | "version"> & { tag?: string },
 ): string {
   return d.tag ?? `${d.deliverable}@${d.version}`;
 }
@@ -713,10 +782,18 @@ export function validateReleaseDescriptor(
     err(
       "/kind",
       "unsupported_deliverable_kind",
-      "a pack release is submitted as a signed record, never a descriptor; kind must be app.",
+      "a pack release is submitted as a signed record, never a descriptor; kind must be app or package.",
     );
+  else if (d.kind === "package")
+    return validatePackageDescriptor(d, manifest, errors);
   else if (d.kind !== "app")
-    err("/kind", "invalid_descriptor", "kind must be app.");
+    err("/kind", "invalid_descriptor", "kind must be app or package.");
+  if (d.package !== undefined)
+    err(
+      "/package",
+      "invalid_descriptor",
+      "package is a package release's block; an app release carries builds.",
+    );
   if (typeof d.version !== "string" || !VERSION_RE.test(d.version))
     err(
       "/version",
@@ -1070,10 +1147,15 @@ export function validateReleaseDescriptor(
     return { ok: false, errors };
   }
   if (desc.deliverable !== APP_DELIVERABLE_ID) {
+    const isPackage = (manifest.release?.packages ?? []).some(
+      (p) => p.id === desc.deliverable,
+    );
     err(
       "/deliverable",
-      "unknown_deliverable",
-      `${desc.deliverable} is not a deliverable this product declares.`,
+      isPackage ? "unsupported_deliverable_kind" : "unknown_deliverable",
+      isPackage
+        ? `${desc.deliverable} is a package deliverable; its releases are descriptors of kind package.`
+        : `${desc.deliverable} is not a deliverable this product declares.`,
     );
     return { ok: false, errors };
   }
@@ -1197,4 +1279,459 @@ export function validateReleaseDescriptor(
   }
   if (errors.length > 0) return { ok: false, errors };
   return { ok: true, descriptor: desc, releaseId: descriptorReleaseId(desc) };
+}
+
+// ── Package releases (F-03, plans/F-01.md §3.2) ──────────────────────────────
+
+/** The fields a package descriptor may carry at its top level. */
+const PACKAGE_DESCRIPTOR_FIELDS: ReadonlySet<string> = new Set([
+  "descriptorVersion",
+  "product",
+  "deliverable",
+  "kind",
+  "version",
+  "seq",
+  "channel",
+  "title",
+  "notes",
+  "publishedAt",
+  "provenance",
+  "package",
+]);
+const PACKAGE_FILE_FIELDS: ReadonlySet<string> = new Set([
+  "name",
+  "role",
+  "type",
+  "sha256",
+  "size",
+  "contentType",
+  "classifier",
+  "extension",
+  "mediaType",
+  "locations",
+]);
+const MAVEN_CLASSIFIER_RE = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
+const MAVEN_EXTENSION_RE = /^[a-z0-9][a-z0-9.]{0,15}$/;
+const MEDIA_TYPE_RE = /^[a-z0-9][a-z0-9.+-]*\/[a-z0-9][a-z0-9.+-]*$/;
+/** An OCI tag: the release version doubles as one, so `+` (build metadata) is refused. */
+const OCI_TAG_RE = /^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$/;
+
+/**
+ * The package branch of {@link validateReleaseDescriptor}: shape, bounds and agreement with the
+ * declaration. The Worker never unzips (the P2b-05 rule): the metadata is what the CLI extracted,
+ * and this checks only that it is shaped and agrees (`name` the declared name, `version` the
+ * descriptor's). The feed-level checks (namespace, size ceiling, Maven snapshots, Swift
+ * signatures) are the Worker's ingest reasons, because they read operator-owned settings.
+ */
+function validatePackageDescriptor(
+  d: Record<string, unknown>,
+  manifest: DescriptorManifest,
+  errors: DescriptorError[],
+): DescriptorValidation {
+  const err = (path: string, code: string, message: string) =>
+    errors.push({ path, code, message });
+
+  for (const key of Object.keys(d))
+    if (!PACKAGE_DESCRIPTOR_FIELDS.has(key))
+      err(
+        `/${key}`,
+        "invalid_descriptor",
+        key === "builds" || key === "tag" || key === "content"
+          ? `${key} is an app release's; a package release carries its files in package, and its release id is always <deliverable>@<version>.`
+          : `${key} is not a field of a package release descriptor.`,
+      );
+  if (typeof d.version !== "string" || !VERSION_RE.test(d.version))
+    err(
+      "/version",
+      "invalid_descriptor",
+      "version must be 1-64 characters of letters, digits, '.', '+' and '-'.",
+    );
+  if (
+    d.seq !== undefined &&
+    !(Number.isSafeInteger(d.seq) && (d.seq as number) > 0)
+  )
+    err("/seq", "invalid_descriptor_field", "seq must be a positive integer.");
+  if (d.channel !== undefined && !isCanonicalChannelName(d.channel))
+    err(
+      "/channel",
+      "invalid_descriptor_field",
+      "channel must be a canonical channel name (lower-case, digits and '-'; not an alias).",
+    );
+  if (
+    d.title !== undefined &&
+    (typeof d.title !== "string" ||
+      codePoints(d.title) > MAX_TITLE ||
+      CONTROL_RE.test(d.title))
+  )
+    err(
+      "/title",
+      "invalid_descriptor_field",
+      `title must be at most ${MAX_TITLE} characters with no control characters.`,
+    );
+  if (
+    d.notes !== undefined &&
+    (typeof d.notes !== "string" ||
+      codePoints(d.notes) > MAX_NOTES ||
+      d.notes.includes("\u0000"))
+  )
+    err(
+      "/notes",
+      "invalid_descriptor_field",
+      `notes must be at most ${MAX_NOTES} characters.`,
+    );
+  if (
+    d.publishedAt !== undefined &&
+    (typeof d.publishedAt !== "string" ||
+      !RFC3339_RE.test(d.publishedAt) ||
+      !Number.isFinite(Date.parse(d.publishedAt)))
+  )
+    err(
+      "/publishedAt",
+      "invalid_descriptor_field",
+      "publishedAt must be an RFC 3339 timestamp.",
+    );
+  if (d.provenance !== undefined) {
+    const p = d.provenance;
+    if (
+      !isRecord(p) ||
+      (p.commit !== undefined &&
+        (typeof p.commit !== "string" || !COMMIT_RE.test(p.commit))) ||
+      (p.workflowRun !== undefined && !isHttpsUrl(p.workflowRun))
+    )
+      err(
+        "/provenance",
+        "invalid_descriptor_field",
+        "provenance is { commit?: a 40- or 64-hex commit, workflowRun?: an https URL }.",
+      );
+  }
+
+  // ── The package block (shape) ──
+  const pkg = d.package;
+  if (!isRecord(pkg)) {
+    err(
+      "/package",
+      "invalid_descriptor",
+      "a package release carries package: { ecosystem, name, files, metadata }.",
+    );
+    return { ok: false, errors };
+  }
+  for (const key of Object.keys(pkg))
+    if (!["ecosystem", "name", "files", "metadata"].includes(key))
+      err(
+        `/package/${key}`,
+        "invalid_descriptor",
+        `${key} is not a field of package.`,
+      );
+  const eco = pkg.ecosystem;
+  if (!isPackageEcosystem(eco)) {
+    err(
+      "/package/ecosystem",
+      "invalid_descriptor",
+      `package.ecosystem must be one of ${PACKAGE_ECOSYSTEMS.join(", ")}.`,
+    );
+    return { ok: false, errors };
+  }
+  if (!isPackageName(eco, pkg.name))
+    err(
+      "/package/name",
+      "invalid_descriptor",
+      `package.name must be a ${eco} package name.`,
+    );
+  if (typeof d.version === "string") {
+    if ((eco === "npm" || eco === "swift") && !SEMVER_RE.test(d.version))
+      err(
+        "/version",
+        "invalid_descriptor",
+        `a ${eco} package version is a semantic version.`,
+      );
+    if (eco === "oci" && !OCI_TAG_RE.test(d.version))
+      err(
+        "/version",
+        "invalid_descriptor",
+        "an OCI package version is also its tag, so it has no '+'.",
+      );
+  }
+  const files = pkg.files;
+  const maxFiles = maxPackageFiles(eco);
+  const types: string[] = [];
+  if (!Array.isArray(files) || files.length === 0 || files.length > maxFiles)
+    err(
+      "/package/files",
+      "invalid_descriptor",
+      `package.files must be an array of 1 to ${maxFiles} files.`,
+    );
+  else {
+    const names = new Set<string>();
+    const vocab = PACKAGE_FILE_TYPES[eco];
+    for (const [i, f] of files.entries()) {
+      const at = `/package/files/${i}`;
+      if (!isRecord(f)) {
+        err(at, "invalid_descriptor", "each file must be an object.");
+        continue;
+      }
+      const extra = Object.keys(f).find((k) => !PACKAGE_FILE_FIELDS.has(k));
+      if (extra)
+        err(
+          `${at}/${extra}`,
+          "invalid_descriptor",
+          `${extra} is not a field of a package file.`,
+        );
+      if (typeof f.name !== "string" || !NAME_RE.test(f.name))
+        err(
+          `${at}/name`,
+          "invalid_descriptor",
+          "name must be a file name of 1-255 characters with no '/', '\\' or control characters.",
+        );
+      else if (names.has(f.name))
+        err(
+          `${at}/name`,
+          "duplicate_artifact_name",
+          `${f.name} appears twice; names are unique within a release.`,
+        );
+      else names.add(f.name);
+      if (f.role !== "payload")
+        err(
+          `${at}/role`,
+          "invalid_descriptor",
+          "a package file's role is payload.",
+        );
+      if (typeof f.type !== "string" || !vocab.includes(f.type))
+        err(
+          `${at}/type`,
+          "invalid_descriptor",
+          `a ${eco} package file's type is one of ${vocab.join(", ")}.`,
+        );
+      else types.push(f.type);
+      const sha =
+        typeof f.sha256 === "string" && SHA256_RE.test(f.sha256)
+          ? f.sha256
+          : null;
+      if (!sha)
+        err(
+          `${at}/sha256`,
+          "invalid_descriptor",
+          "sha256 must be 64 lower-case hex characters.",
+        );
+      if (!(Number.isSafeInteger(f.size) && (f.size as number) >= 0))
+        err(
+          `${at}/size`,
+          "invalid_descriptor",
+          "size must be a non-negative integer.",
+        );
+      if (
+        f.contentType !== undefined &&
+        (typeof f.contentType !== "string" ||
+          f.contentType.length > 127 ||
+          !CONTENT_TYPE_RE.test(f.contentType))
+      )
+        err(
+          `${at}/contentType`,
+          "invalid_descriptor",
+          "contentType must be a lower-case type/subtype.",
+        );
+      if (eco === "maven") {
+        if (
+          typeof f.extension !== "string" ||
+          !MAVEN_EXTENSION_RE.test(f.extension)
+        )
+          err(
+            `${at}/extension`,
+            "invalid_descriptor",
+            "a Maven file names its extension (jar, pom, module, aar, …).",
+          );
+        if (
+          f.classifier !== undefined &&
+          (typeof f.classifier !== "string" ||
+            !MAVEN_CLASSIFIER_RE.test(f.classifier))
+        )
+          err(
+            `${at}/classifier`,
+            "invalid_descriptor",
+            "a Maven classifier is 1-64 letters, digits, '_', '.' and '-'.",
+          );
+      } else if (f.extension !== undefined || f.classifier !== undefined)
+        err(
+          `${at}`,
+          "invalid_descriptor",
+          "extension and classifier are a Maven file's.",
+        );
+      if (eco === "oci") {
+        if (
+          typeof f.mediaType !== "string" ||
+          f.mediaType.length > 127 ||
+          !MEDIA_TYPE_RE.test(f.mediaType)
+        )
+          err(
+            `${at}/mediaType`,
+            "invalid_descriptor",
+            "an OCI object names its media type.",
+          );
+      } else if (f.mediaType !== undefined)
+        err(
+          `${at}/mediaType`,
+          "invalid_descriptor",
+          "mediaType is an OCI object's.",
+        );
+      // Locations are r2 only: a package's bytes are always ours to serve under its feed.
+      if (
+        !Array.isArray(f.locations) ||
+        f.locations.length === 0 ||
+        f.locations.length > MAX_ARTIFACT_LOCATIONS
+      ) {
+        err(
+          `${at}/locations`,
+          "invalid_descriptor",
+          `locations must be an array of 1 to ${MAX_ARTIFACT_LOCATIONS} r2 locations.`,
+        );
+        continue;
+      }
+      for (const [li, loc] of f.locations.entries()) {
+        if (
+          !isRecord(loc) ||
+          loc.provider !== "r2" ||
+          Object.keys(loc).some((k) => k !== "provider" && k !== "key")
+        )
+          err(
+            `${at}/locations/${li}`,
+            "invalid_descriptor",
+            "a package file's locations are r2 only: { provider: r2, key }.",
+          );
+        else if (
+          typeof loc.key !== "string" ||
+          !KEY_SHAPE_RE.test(loc.key) ||
+          (sha !== null && !isContentAddressedKey(loc.key, sha))
+        )
+          err(
+            `${at}/locations/${li}/key`,
+            "r2_key_not_content_addressed",
+            "an r2 key must be blobs/sha256/<this file's sha256> (or under gated/).",
+          );
+      }
+    }
+    const count = (t: string) => types.filter((x) => x === t).length;
+    const composition =
+      eco === "npm"
+        ? count("npm-tarball") === 1 || "exactly one npm-tarball"
+        : eco === "pypi"
+          ? count("wheel") + count("sdist") >= 1 ||
+            "at least one wheel or sdist"
+          : eco === "swift"
+            ? (count("source-archive") === 1 &&
+                count("source-archive-signature") <= 1) ||
+              "exactly one source-archive and at most one source-archive-signature"
+            : eco === "maven"
+              ? count("maven-file") >= 1 || "at least one maven-file"
+              : eco === "oci"
+                ? count("oci-manifest") + count("oci-index") >= 1 ||
+                  "at least one oci-manifest or oci-index"
+                : (count("godot-zip") === 1 && count("godot-icon") <= 1) ||
+                  "exactly one godot-zip and at most one godot-icon";
+    if (composition !== true && types.length === files.length)
+      err(
+        "/package/files",
+        "invalid_descriptor",
+        `a ${eco} package release carries ${composition}.`,
+      );
+  }
+
+  // ── The metadata: shaped, bounded and agreeing ──
+  const meta = pkg.metadata;
+  if (!isRecord(meta))
+    err(
+      "/package/metadata",
+      "invalid_descriptor",
+      "package.metadata must be the extractor's object.",
+    );
+  else {
+    const allowed = new Set(["name", "version", ...PACKAGE_METADATA_KEYS[eco]]);
+    const extra = Object.keys(meta).find((k) => !allowed.has(k));
+    if (extra)
+      err(
+        `/package/metadata/${extra}`,
+        "invalid_descriptor",
+        `${extra} is not a ${eco} metadata field.`,
+      );
+    if (jsonBytes(meta) > MAX_PACKAGE_METADATA_BYTES)
+      err(
+        "/package/metadata",
+        "invalid_descriptor",
+        `package.metadata serialises to at most ${MAX_PACKAGE_METADATA_BYTES} bytes.`,
+      );
+    if (meta.name !== pkg.name)
+      err(
+        "/package/metadata/name",
+        "invalid_descriptor",
+        "package.metadata.name must equal package.name: the packed files name another package.",
+      );
+    if (meta.version !== d.version)
+      err(
+        "/package/metadata/version",
+        "invalid_descriptor",
+        "package.metadata.version must equal the descriptor's version: the packed files are another version.",
+      );
+    if (
+      eco === "maven" &&
+      (meta.groupId !== undefined || meta.artifactId !== undefined) &&
+      `${String(meta.groupId)}:${String(meta.artifactId)}` !== pkg.name
+    )
+      err(
+        "/package/metadata",
+        "invalid_descriptor",
+        "package.metadata's groupId:artifactId must equal package.name.",
+      );
+  }
+  if (errors.length > 0) return { ok: false, errors };
+
+  // ── Cross-checks against the manifest (validator-only) ──
+  const desc = d as unknown as PackageReleaseDescriptor;
+  const slug = manifest.product?.slug;
+  if (slug !== undefined && desc.product !== slug)
+    err(
+      "/product",
+      "product_mismatch",
+      `this descriptor is for ${desc.product}, not ${slug}.`,
+    );
+  const declared = (manifest.release?.packages ?? []).find(
+    (p) => p.id === desc.deliverable,
+  );
+  if (!declared) {
+    const app = desc.deliverable === APP_DELIVERABLE_ID;
+    const pack = (manifest.release?.packs ?? []).includes(desc.deliverable);
+    err(
+      "/deliverable",
+      app || pack ? "unsupported_deliverable_kind" : "unknown_deliverable",
+      app || pack
+        ? `${desc.deliverable} is ${app ? "the app" : "a pack"}, not a package deliverable; kind package names a package declared in .pkey/release.`
+        : `${desc.deliverable} is not a package deliverable this product declares.`,
+    );
+    return { ok: false, errors };
+  }
+  if (
+    declared.ecosystem !== desc.package.ecosystem ||
+    declared.name !== desc.package.name
+  )
+    err(
+      "/package",
+      "invalid_descriptor",
+      `${desc.deliverable} is declared as the ${declared.ecosystem} package ${declared.name}; this descriptor names the ${desc.package.ecosystem} package ${desc.package.name}.`,
+    );
+  if (desc.channel !== undefined) {
+    const known = new Set<string>([
+      ...BUILT_IN_CHANNELS,
+      ...(manifest.release?.manualChannels ?? []).map((c) => c.name),
+      ...Object.keys(manifest.release?.app?.channels ?? {}),
+    ]);
+    if (!known.has(desc.channel))
+      err(
+        "/channel",
+        "unknown_channel",
+        `channel ${desc.channel} is not declared for this product.`,
+      );
+  }
+  if (errors.length > 0) return { ok: false, errors };
+  return {
+    ok: true,
+    descriptor: desc,
+    releaseId: `${desc.deliverable}@${desc.version}`,
+  };
 }

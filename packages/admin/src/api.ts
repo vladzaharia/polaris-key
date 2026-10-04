@@ -151,6 +151,366 @@ export interface PlatformActivityPage {
   nextCursor: PlatformCursor | null;
 }
 
+// ── platform settings (A-13, notes/S-13 §5, §6.4) ─────────────────────────────────
+
+/** ADMIN.md §5.2 destructive levels, as the settings registry declares them per direction. */
+export type PlatformConfirmLevel = "L0" | "L1" | "L2" | "L3";
+
+/**
+ * Where an effective value came from. `failsafe`: the store could not be read, so a kill switch
+ * resolved to off.
+ */
+export type PlatformSettingSource =
+  | "runtime"
+  | "deploy"
+  | "default"
+  | "failsafe";
+
+interface PlatformSettingBase {
+  key: string;
+  area: string;
+  label: string;
+  description: string;
+  /** The Worker scripts that read it (`main`, `deltas`). */
+  scripts: string[];
+  /** `ceiling`: a deploy-time `off` is a hard off no runtime value can override. */
+  precedence: "runtime" | "ceiling";
+  /** The raw `[vars]` string, `null` when unset. */
+  deployValue: string | null;
+  source: PlatformSettingSource;
+  /** A `ceiling` setting whose `[vars]` value is `off`. */
+  forcedOff: boolean;
+  /** The runtime row, if any: its value, whether it applies, who set it and when (epoch s). */
+  stored: {
+    value: unknown;
+    valid: boolean;
+    updatedAt: number;
+    updatedBy: string;
+  } | null;
+  /** The `expectedVersion` the next write must send (0: no runtime value). */
+  version: number;
+}
+
+export interface PlatformSwitchSetting extends PlatformSettingBase {
+  kind: "switch";
+  default: "on" | "off";
+  value: "on" | "off";
+  confirm: { on: PlatformConfirmLevel; off: PlatformConfirmLevel };
+}
+
+export interface PlatformIntegerSetting extends PlatformSettingBase {
+  kind: "integer";
+  unit: "bytes" | "days";
+  /** Inclusive bounds on a runtime value. */
+  min: number;
+  max: number;
+  default: number;
+  value: number;
+  confirm: { raise: PlatformConfirmLevel; lower: PlatformConfirmLevel };
+}
+
+export type PlatformSetting = PlatformSwitchSetting | PlatformIntegerSetting;
+
+/** A deploy-time value that is not a credential (a list for the parsed issuer allowlist). */
+export interface PlatformDeployValue {
+  name: string;
+  area: string;
+  value: string | string[] | null;
+  /** When a legacy name supplied the value, that name. */
+  legacyName?: string;
+}
+
+/** `GET /manage/api/platform/settings` (worker `admin/handlers/platformSettings.ts`). */
+export interface PlatformSettingsView {
+  settings: PlatformSetting[];
+  /** False when the settings table could not be read. */
+  storeAvailable: boolean;
+  /** How long a change takes to reach every isolate. */
+  propagationSeconds: number;
+  deployTime: PlatformDeployValue[];
+  /** Presence only: never a value, a length or a hash. */
+  secrets: { name: string; set: boolean }[];
+  /** Code constants that act as policy. */
+  constants: { name: string; area: string; value: number; unit: string }[];
+  warnings: { code: string; message: string; names: string[] }[];
+}
+
+/** `PATCH /manage/api/platform/settings/<key>`. `confirm` echoes the key for an L2+ change. */
+export interface PlatformSettingWrite {
+  value: string | number;
+  expectedVersion: number;
+  confirm?: string;
+}
+
+/** `GET /manage/api/products/kek`: the keyring (kid names and per-kid counts, never key material). */
+export interface PlatformKekStatus {
+  ok: true;
+  active: string;
+  kids: string[];
+  /** Sealed-value group → kid → count. */
+  counts: Record<string, Record<string, number>>;
+  /** Values not yet sealed under `active`. */
+  remaining: number;
+  /** Values under a kid that is no longer in the ring. */
+  unopenable: number;
+}
+
+// ── platform operations (A-14) ─────────────────────────────────────────────────
+
+/** One probe of a binding: presence, then whether it answered in time. */
+export interface OperationsProbe {
+  bound: boolean;
+  /** `null`: not bound, so not probed. */
+  ok: boolean | null;
+  latencyMs: number | null;
+  error?: string;
+}
+
+/** A queue's own backlog report; `ok: false` when its `metrics()` failed. */
+export interface OperationsQueue extends OperationsProbe {
+  backlogCount: number | null;
+  backlogBytes: number | null;
+  /** Epoch seconds of the oldest waiting message. */
+  oldestMessageAt: number | null;
+}
+
+/** One cron step of a run (a family of per-product steps is folded into `name:*`). */
+export interface OperationsStepRun {
+  step: string;
+  /** Epoch milliseconds. */
+  startedAt: number;
+  durationMs: number | null;
+  outcome: "ok" | "failed" | (string & {});
+  items: number;
+  rowsAffected: number | null;
+  error: string | null;
+}
+
+/** The newest run of a job, with its steps. */
+export interface OperationsJobRun {
+  runId: string;
+  job: string;
+  cron: string | null;
+  /** Epoch milliseconds. */
+  startedAt: number;
+  durationMs: number | null;
+  outcome: "ok" | "failed" | (string & {});
+  steps: OperationsStepRun[];
+}
+
+/** A script's heartbeat row (`main`: every cron tick; `deltas`: every consumer batch). */
+export interface OperationsHeartbeat {
+  script: string;
+  /** Epoch seconds. */
+  at: number;
+  versionTag: string | null;
+  cloudflareVersionId: string | null;
+  outcome: string | null;
+  backlogCount: number | null;
+  backlogBytes: number | null;
+  oldestMessageAt: number | null;
+}
+
+export interface OperationsConnector {
+  connector: string;
+  productsConfigured: number;
+  objectsTracked: number;
+  /** Epoch seconds. */
+  lastPolledAt: number | null;
+  lastEventAt: number | null;
+  failedEvents24h: number;
+}
+
+/** `GET /manage/api/platform/operations` (worker `core/operations.ts`). A section is `null` when it could not be read. */
+export interface PlatformOperations {
+  /** Epoch seconds. */
+  generatedAt: number;
+  probes: {
+    d1: OperationsProbe;
+    kv: OperationsProbe;
+    r2: OperationsProbe;
+    updateHealth: { bound: boolean };
+    email: { bound: boolean };
+  };
+  queues: {
+    deltas: OperationsQueue;
+    deadLetter: OperationsQueue;
+    consumer: {
+      maxBatchSize: number;
+      maxBatchTimeoutSeconds: number;
+      maxRetries: number;
+      maxConcurrency: number;
+    };
+  };
+  heartbeats: OperationsHeartbeat[] | null;
+  jobs: {
+    latest: {
+      maintenance: OperationsJobRun | null;
+      connectorPoll: OperationsJobRun | null;
+    };
+    recent: {
+      runId: string;
+      job: string;
+      cron: string | null;
+      startedAt: number;
+      durationMs: number | null;
+      outcome: "ok" | "failed" | (string & {});
+      steps: number;
+    }[];
+    failures: {
+      runId: string;
+      job: string;
+      step: string;
+      startedAt: number;
+      error: string | null;
+    }[];
+  } | null;
+  storage: {
+    d1: { sizeBytes: number | null };
+    r2: {
+      committedBytes: number;
+      objects: number;
+      byKind: {
+        kind: string;
+        gated: boolean;
+        bytes: number;
+        objects: number;
+      }[];
+    } | null;
+  };
+  indexes: { missing: string[] | null };
+  connectors: {
+    items: OperationsConnector[];
+    lastPollFailure: {
+      step: string;
+      /** Epoch milliseconds. */
+      at: number;
+      error: string | null;
+    } | null;
+    commerce: { available: boolean };
+  } | null;
+  recentErrors: {
+    jobFailures: unknown;
+    lazyDeltaRefusals:
+      | { reason: string; count: number; lastAt: number }[]
+      | null;
+  };
+}
+
+// ── platform store connections (A-16; worker `admin/handlers/platformStoreConnections.ts`) ──
+
+/** A store the platform holds one team-level connection for. */
+export type PlatformStore =
+  | "app-store"
+  | "google-play"
+  | "microsoft-store"
+  | "steam";
+
+/** One credential slot of a store connection: presence and metadata, never a key. */
+export interface PlatformStoreCredential {
+  /** `<store>.<slot>`: `app-store.api-key`, `app-store.in-app-purchase-key`, … */
+  id: string;
+  store: PlatformStore;
+  slot: string;
+  kind: string;
+  label: string;
+  configured: boolean;
+  /** The source a connector would use now. */
+  source: "console" | "secret" | null;
+  /** Key id, issuer id, client email, tenant, client and seller ids. Never the key. */
+  meta: Record<string, string> | null;
+  console: {
+    present: boolean;
+    status: string | null;
+    meta: Record<string, string> | null;
+    createdAt: number | null;
+    createdBy: string | null;
+    rotatedAt: number | null;
+    lastUsedAt: number | null;
+    lastOkAt: number | null;
+    /** A status line the Worker composed (`HTTP 401`), never a store response body. */
+    lastError: string | null;
+  };
+  secret: { name: string; present: boolean; valid: boolean };
+  /** What a product's pin on this credential names (`appleId`, `packageName`, …). */
+  pinField: string;
+  pins: number;
+}
+
+/** A non-secret store setting shared by every product (the Apple Team ID, …). */
+export interface PlatformStoreSetting {
+  key: string;
+  label: string;
+  usedBy: string;
+  value: string | null;
+  source: "console" | "env" | null;
+  envName: string | null;
+  updatedAt: number | null;
+  updatedBy: string | null;
+}
+
+/** One store's connection, as `GET /manage/api/platform/store-connections` lists it. */
+export interface PlatformStoreConnection {
+  store: PlatformStore;
+  label: string;
+  configured: boolean;
+  /** The primary slot's id: the one the apps listing uses and an assignment pins. */
+  primary: string;
+  credentials: PlatformStoreCredential[];
+  settings: PlatformStoreSetting[];
+  appsListing: boolean;
+  /** Which product holds which app: credential id → pin. */
+  assignments: { product: string; pins: Record<string, string> }[];
+}
+
+/** One app the team credential can see, joined with the product holding it. */
+export interface PlatformStoreApp {
+  /** The value an assignment pins (Apple ID, package name, Store ID, Steam app id). */
+  appId: string;
+  name: string | null;
+  /** Pins on the store's other credentials an assignment sets too (the bundle id). */
+  pins: Record<string, string>;
+  identifiers: Record<string, string | null>;
+  /** The store's distribution status, in its own vocabulary. */
+  status: Record<string, unknown>;
+  assignedProduct: string | null;
+  assignedVia: "platform" | "own-credential" | null;
+}
+
+/** `GET /manage/api/platform/store-connections/<store>/apps`. */
+export interface PlatformStoreApps {
+  store: PlatformStore;
+  source: "console" | "secret";
+  /** Epoch seconds. */
+  fetchedAt: number;
+  cached: boolean;
+  truncated: boolean;
+  /** `false`: the store could not list its apps; only operator-entered ones are shown (Steam). */
+  listed?: boolean;
+  apps: PlatformStoreApp[];
+}
+
+/** `PUT …/apps/<appId>/product`. */
+export interface PlatformStoreAssignResult {
+  store: PlatformStore;
+  appId: string;
+  product: string;
+  pins: { credential: string; pin: string; changed: boolean }[];
+  released: { credential: string; pin: string }[];
+  /** The product's own keys re-pinned to the same app (same store account as the team key). */
+  ownCredentialsRepinned: string[];
+  /** Own keys left alone because their store account cannot be told from their metadata. */
+  ownCredentialsSkipped: { id: string; reason: string }[];
+}
+
+/** `DELETE …/apps/<appId>/product`. */
+export interface PlatformStoreReleaseResult {
+  store: PlatformStore;
+  appId: string;
+  product: string;
+  cleared: { credential: string; pin: string }[];
+}
+
 // ── products (platform registry) ──────────────────────────────────────────────
 type ProductReleaseSource = "manual" | "github" | (string & {});
 
@@ -234,6 +594,8 @@ export interface PutOutletCredentialBody {
   pin?: string;
   outletId?: string | null;
   expiresAt?: number | null;
+  /** `asc-webhook-secret` only: the Worker generates the secret and never returns it. */
+  generate?: boolean;
 }
 
 /** The security-relevant recipe fields, exactly as the approve call must echo them. */
@@ -426,6 +788,9 @@ export interface ProductOnboarding {
 export interface ProductDetail {
   slug: string;
   name: string;
+  /** The platform's own product (F-03: the package-feeds owner of our SDKs); kept out of the
+   *  product switcher and the Products registry. */
+  system?: boolean;
   signingKid: string;
   releaseSource?: ProductReleaseSource;
   signing?: ProductSigningBundle | null;
@@ -516,7 +881,8 @@ export interface UpdateProductBody {
   name?: string;
   defaultMaxOfflineDays?: number;
   defaultDeviceLimit?: number;
-  adminGroup?: string;
+  /** `null` (or blank) clears the group (A-3). */
+  adminGroup?: string | null;
 }
 
 export interface RotateKeyResult {
@@ -527,10 +893,142 @@ export interface RotateKeyResult {
   activateAfter?: number;
 }
 
+/** `POST …/release/resync` (worker `release/admin.ts`): what the resync re-applied. */
 export interface ResyncResult {
   ok: true;
   slug: string;
-  updated?: unknown;
+  /** What the resync re-applied ("services", "catalog", "channels"…). */
+  updated?: string[];
+  /** Parts of the manifest it refused while applying the rest (P3-03). */
+  refused?: { code: string; path: string; message: string }[];
+  /** The pack-set re-resolution, when it stored sets or failed (P4-12). */
+  packSets?:
+    | { ok: true; sets: number }
+    | { ok: false; reason: string; message: string };
+}
+
+// ── Core inventories (chunk 5 · A-4, A-5) and CI publishing (P2-02) ─────────────
+export type SigningKeyState = "active" | "staged" | "retired" | "revoked";
+
+/** One signing key (`GET …/keys`, A-4). Public material only. */
+export interface SigningKeyDto {
+  kid: string;
+  status: SigningKeyState | (string & {});
+  alg: string;
+  publicKey: string;
+  createdAt: number;
+  activateAfter: number | null;
+  activatedAt: number | null;
+  retiredAt: number | null;
+  revokedAt: number | null;
+}
+
+export interface SigningKeysResponse {
+  keys: SigningKeyDto[];
+  /** The server's clock, epoch seconds: the staged countdown is measured against it. */
+  now: number;
+}
+
+/** One secret of the inventory (`GET …/secrets`, A-5). Never a value. */
+export interface ProductSecretDto {
+  name: string;
+  configured: boolean;
+  usage: SecretUsage | null;
+  createdAt: number | null;
+  updatedAt: number | null;
+  requiredBy: string[];
+}
+
+export interface PublisherPolicyDto {
+  product: string;
+  provider: "github";
+  repositoryId: number;
+  repositoryOwnerId: number;
+  repository: string;
+  workflow: string;
+  environment: string;
+  scopes: string[];
+  source: "manifest" | "admin";
+  createdAt: number;
+  modifiedAt: number;
+  modifiedBy: string | null;
+}
+
+export interface PublisherClaimBody {
+  workflow?: string;
+  environment?: string;
+  scopes?: string[];
+  repository?: string;
+  repositoryId?: number;
+  repositoryOwnerId?: number;
+}
+
+export interface CiTokenDto {
+  tokenId: string;
+  kind: "oidc" | "static";
+  scopes: string[];
+  subject: string;
+  label: string | null;
+  issuedAt: number;
+  expiresAt: number;
+  revokedAt: number | null;
+  createdBy: string;
+}
+
+export interface IssueCiTokenBody {
+  scopes: string[];
+  expiresInDays: number;
+  label?: string;
+}
+
+export interface IssuedCiToken {
+  ok: true;
+  token: string;
+  tokenId: string;
+  expiresAt: number;
+  scopes: string[];
+}
+
+/** The CI scopes a publisher policy or a static token can hold (worker `core/ciVocabulary.ts`). */
+export const CI_SCOPES = [
+  "release:publish",
+  "release:promote",
+  "release:yank",
+  "distribution:report",
+  "distribution:rollout",
+  "distribution:feeds",
+] as const;
+
+/** The blob collector's dry run for one product (`GET …/blob-gc`, P4-14). */
+export interface BlobGcDryRun {
+  enabled: boolean;
+  graceSeconds: number;
+  lockAgeSeconds: number;
+  skipped?: string | null;
+  complete?: boolean;
+  incomplete?: unknown;
+  liveReleases?: number;
+  drops: {
+    packObject: number;
+    packUpload: number;
+    truncated: boolean;
+    listed: unknown[];
+  };
+  restores: { count: number; listed: unknown[] };
+  earliestDeletion: number | null;
+}
+
+/** The activity feed's server-side filters (A-2). */
+export interface ActivityFilters {
+  /** A prefix: `license.` matches every license action. */
+  action?: string;
+  /** A subject or email; `system` for rows the runtime wrote. */
+  actor?: string;
+  targetKind?: string;
+  targetId?: string;
+  /** Epoch seconds, inclusive. */
+  since?: number;
+  until?: number;
 }
 
 // ── services (per-product enablement) ─────────────────────────────────────────
@@ -718,17 +1216,24 @@ export interface MatrixCellDto {
 
 /** The fields of `OutletReadiness` the console renders. */
 export interface MatrixReadinessDto {
+  /** `pending`, `blocked`, `ready` or `overridden` (an operator released the hold). */
   state: string;
+  /** The computed state, whatever the override (absent from an older worker). */
+  computed?: string;
   holds: boolean;
   holdable: boolean;
   warning: string | null;
   blockers: {
     pack: string;
+    /** The pack release that blocks, when one exists (`null` for `unsatisfied`). */
+    packReleaseId?: string | null;
     version: string | null;
     reason: string;
     detail: string;
   }[];
   pendingReason: string | null;
+  /** The operator's override, when one is in force. */
+  override?: { by: string; at: number; reason: string | null } | null;
 }
 
 /** `GET …/distribution/matrix` (worker `services/distribution/matrix.ts`). */
@@ -752,6 +1257,123 @@ export interface DistributionMatrix {
   }>;
   cells: MatrixCellDto[];
   states: { availability: string[]; submission: string[]; rollout: string[] };
+}
+
+// ── distribution: outlets, keys, readiness and connectors (admin chunk 9) ─────
+/** The capability keys an outlet carries (worker `services/distribution/capabilities.ts`). */
+export type CapabilityKey =
+  | "binaryUpdates"
+  | "codeUpdates"
+  | "dataUpdates"
+  | "channelSwitch"
+  | "commerce"
+  | "downloadedScripts";
+
+/** What an outlet permits: `binaryUpdates` self > store > none; `commerce` own, store-iap or none. */
+export interface OutletCapabilitiesDto {
+  binaryUpdates: string;
+  codeUpdates: boolean;
+  dataUpdates: boolean;
+  channelSwitch: boolean;
+  commerce: string;
+  downloadedScripts: boolean;
+}
+
+/** One outlet as the admin API lists it (worker `distribution/admin.ts` `outletView`). */
+export interface OutletDto {
+  outletId: string;
+  kind: string;
+  identity: Record<string, unknown>;
+  listing: unknown;
+  /** The capabilities in force; `null` for a kind this build has no defaults for. */
+  capabilities: OutletCapabilitiesDto | null;
+  defaultCapabilities: OutletCapabilitiesDto | null;
+  /** `manifest`, or `admin` once an operator narrowed it. */
+  capabilitiesSource: string;
+  capabilityOverride: Partial<OutletCapabilitiesDto> | null;
+  transports: Array<{
+    deliverableId: string;
+    transport: string;
+    supported: boolean;
+  }>;
+  removedAt: number | null;
+  createdAt: number;
+  modifiedAt: number;
+}
+
+export interface OutletsResponse {
+  capabilityKeys: CapabilityKey[];
+  outlets: OutletDto[];
+}
+
+/** One distribution signing-key inventory entry (worker `availability.ts` `keyRecord`). */
+export interface DistributionKeyDto {
+  purpose: string;
+  sha256: string;
+  outletId: string | null;
+  notes: string | null;
+  registered: boolean;
+  registeredAt: number | null;
+  observed: Record<string, unknown> | null;
+  /** CI observed a key of this purpose that matches no entry. */
+  flagged: boolean;
+}
+
+/** A key CI observed that matches no inventory entry. */
+export interface DistributionKeyObservationDto {
+  purpose: string;
+  sha256: string;
+  outletId: string | null;
+  observed: Record<string, unknown> | null;
+  firstSeenAt: number;
+}
+
+export interface DistributionKeysResponse {
+  purposes: string[];
+  keys: DistributionKeyDto[];
+  observations: DistributionKeyObservationDto[];
+}
+
+export interface PutDistributionKeyBody {
+  purpose: string;
+  sha256: string;
+  outlet?: string | null;
+  notes?: string | null;
+  registered?: boolean;
+}
+
+/** A store connector's status (worker `distribution/connectors/*` `status`). */
+export interface ConnectorStatusDto {
+  /** `asc`, `play` or `ms-store`. */
+  kind: string;
+  label: string;
+  outletKinds: string[];
+  configured: boolean;
+  /** Why it does not run, when it does not. */
+  inert?: { reason: string; message: string } | null;
+  setup?: Record<string, unknown> | null;
+  /** The control paths it answers (`phased-release/pause`, `rollout/fraction`, …). */
+  controls: string[];
+  notes?: string[];
+  /** Google Play: the operator's settings. */
+  settings?: {
+    priority?: { default?: number };
+    vitals?: Record<string, unknown>;
+  };
+  /**
+   * Where its key comes from, `product` or `platform` (A-16). The App Store Connect connector
+   * reports it inside `setup` (with `platformSource`); this top-level field is the fallback.
+   */
+  credentialSource?: string;
+}
+
+export interface ConnectorsResponse {
+  connectors: ConnectorStatusDto[];
+}
+
+/** A readiness refresh: how many rows it recomputed. */
+export interface ReadinessRefreshResult {
+  refreshed: number;
 }
 
 // ── distribution: update health (P6-03) ───────────────────────────────────────
@@ -898,6 +1520,12 @@ export interface ReleaseDto {
   contentApi?: number | null;
   /** P4-09: the exact pack release each pack is pinned to (a mirror of the signed `content`). */
   pins?: AppPinDto[];
+  /**
+   * Who signed the release record: the CI release key (AGENTS rule 2), with the record's hash.
+   * `null` for a release no signed record describes (a legacy GitHub-synced release); absent from
+   * a Worker that predates the field.
+   */
+  signer?: { kind: "release"; kid: string; recordSha256: string } | null;
 }
 
 /** One pin of an app release (worker `release_pins`, P4-02). */
@@ -919,9 +1547,9 @@ export interface AppPinDto {
 /** One row of `GET …/release/deliverables`: the app or a pack. */
 export interface DeliverableDto {
   id: string;
-  /** `app` or `pack`. */
+  /** `app`, `pack` or (F-03) `package`. */
   kind: string;
-  /** The pack type; `null` for the app. */
+  /** The pack type, or a package's ecosystem; `null` for the app. */
   type: string | null;
   /** False for a pack whose stored declaration does not read back (a resync rewrites it). */
   declared: boolean;
@@ -1157,6 +1785,8 @@ export interface SimulateParams {
   device?: string;
   /** A device's reported packSetId, to compare. */
   packSetId?: string;
+  /** The binary update methods the device supports (`BINARY_METHODS`, `,`-separated). */
+  methods?: string;
 }
 
 export interface SimulatedReleaseDto {
@@ -1288,6 +1918,13 @@ export interface ChannelPolicyDto {
   resolved: string | null;
   /** Platform → the release the channel resolves to there (`null`: nothing qualifies). */
   byPlatform: Record<string, string | null>;
+  /** A pack's floors per contentApi line on this channel (P4-12); absent for the app. */
+  packFloors?: {
+    contentApi: number;
+    minSupported: string;
+    modifiedAt: number;
+    modifiedBy: string | null;
+  }[];
 }
 
 export interface ReleaseChannelsResponse {
@@ -1307,6 +1944,11 @@ export interface ChannelPolicyBody {
   pinned?: boolean;
   minSupported?: string | null;
   critical?: boolean;
+  /**
+   * A pack's floor for one contentApi line (P4-12): with `minSupported` (a version, or `null` to
+   * clear) and `deliverable`, and nothing else.
+   */
+  contentApi?: number;
 }
 
 /** `POST …/release/channels/<channel>/floor`: lower to a version, or clear. Never raises. */
@@ -1541,7 +2183,8 @@ export interface LicenseDetail extends LicenseSummary {
 export interface CreateLicenseBody {
   name: string;
   email: string;
-  expiresAt?: number;
+  /** Omitted: the tier's term (`policyExpiryDays` from now). `null`: no expiry. */
+  expiresAt?: number | null;
   profile?: string;
   profiles?: string[];
   tier?: string;
@@ -1555,7 +2198,8 @@ export interface PatchLicenseBody {
   name?: string;
   email?: string;
   expiresAt?: number | null;
-  maxOfflineDays?: number;
+  /** `null` clears it, so the product default applies (A-3). */
+  maxOfflineDays?: number | null;
   profile?: string | null;
   profiles?: string[];
   tier?: string | null;
@@ -1599,9 +2243,35 @@ export interface ProfileSummary {
   description?: string;
   modifiedBy?: string;
   modifiedAt?: number;
+  /** How many tiers (baseline) and licenses (profile stack) point at it. */
+  usedBy?: { tiers: number; licenses: number };
 }
-export interface ProfileDetail extends ProfileSummary {
+export interface ProfileDetail extends Omit<ProfileSummary, "usedBy"> {
   payload: RedactedPayload;
+  /** The tiers and licenses that point at it; Delete is refused while either is non-empty. */
+  usedBy?: {
+    tiers: { id: string; label: string }[];
+    licenses: { id: string; name?: string; email?: string }[];
+  };
+}
+
+// ── catalog history and usage (A-6, A-7b) ─────────────────────────────────────
+export interface CatalogVersionSummary {
+  version: number;
+  active: boolean;
+  createdAt: number;
+  entryCount: number;
+  /** `admin`: published in the console; `manifest`: written by the product's `.pkey/schema`. */
+  source: "admin" | "manifest";
+  publishedBy: string | null;
+}
+
+/** What sets one catalog key: ids and names, never a value. */
+export interface CatalogKeyUsage {
+  profiles: { id: string; name: string }[];
+  /** Tiers that inherit one of those profiles as their baseline. */
+  tiers: { id: string; label: string; profile: string }[];
+  licenses: { id: string; name: string | null; email: string | null }[];
 }
 
 // ── tiers ─────────────────────────────────────────────────────────────────────
@@ -1616,12 +2286,13 @@ export interface TierSummary {
   maxVersion: string | null;
 }
 
+/** A tier create or patch. On a patch, `null` clears a nullable field (A-3). */
 export interface TierBody {
   id?: string;
   label?: string;
-  profile?: string;
-  policyExpiryDays?: number;
-  policyDeviceLimit?: number;
+  profile?: string | null;
+  policyExpiryDays?: number | null;
+  policyDeviceLimit?: number | null;
   channels?: string[];
   minVersion?: string | null;
   maxVersion?: string | null;
@@ -1782,11 +2453,78 @@ const rawApi = {
     call<PlatformDeployment>(
       `/manage/api/platform/deployment${cursorQuery(cursor)}`,
     ),
+  /** The self-reported Operations snapshot (A-14): probes, queues, cron runs, storage, connectors. */
+  platformOperations: () =>
+    call<PlatformOperations>("/manage/api/platform/operations"),
   /** `platform_audit`, newest first (keyset `cursor`). */
   platformActivity: (cursor?: PlatformCursor | null) =>
     call<PlatformActivityPage>(
       `/manage/api/platform/activity${cursorQuery(cursor)}`,
     ),
+  /** The runtime settings, the read-only inventory, secrets presence and the warnings (A-13). */
+  platformSettings: () =>
+    call<PlatformSettingsView>("/manage/api/platform/settings"),
+  /** Store a runtime value; 409 `version_conflict` when the row moved past `expectedVersion`. */
+  patchPlatformSetting: (key: string, body: PlatformSettingWrite) =>
+    call<PlatformSetting>(`/manage/api/platform/settings/${enc(key)}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  /** Drop the runtime value: back to the deploy var or the code default (version-guarded). */
+  revertPlatformSetting: (key: string, expectedVersion: number) =>
+    call<PlatformSetting>(
+      `/manage/api/platform/settings/${enc(key)}?expectedVersion=${expectedVersion}`,
+      { method: "DELETE" },
+    ),
+  /** The KEK keyring: active kid, the ring, per-kid counts. 503 when the ring does not parse. */
+  platformKek: () => call<PlatformKekStatus>("/manage/api/products/kek"),
+  /** Every store's team credential (presence and metadata only), settings and assignments. */
+  platformStoreConnections: () =>
+    call<{ stores: PlatformStoreConnection[] }>(
+      "/manage/api/platform/store-connections",
+    ),
+  /**
+   * The apps a store's team credential can see. `refresh` reads the store again instead of the
+   * minute-long cache; `tracks` adds Play's track status (it opens and deletes an edit per app,
+   * so only on an explicit opt-in).
+   */
+  platformStoreApps: (
+    store: PlatformStore,
+    opts: { refresh?: boolean; tracks?: boolean } = {},
+  ) => {
+    const q = new URLSearchParams();
+    if (opts.refresh === true) q.set("refresh", "1");
+    if (opts.tracks === true) q.set("tracks", "1");
+    const qs = q.toString();
+    return call<PlatformStoreApps>(
+      `/manage/api/platform/store-connections/${enc(store)}/apps${qs ? `?${qs}` : ""}`,
+    );
+  },
+  /** Assign a store app to a product: its pin on the team credential (and its own keys' re-pin). */
+  assignPlatformStoreApp: (
+    store: PlatformStore,
+    appId: string,
+    product: string,
+  ) =>
+    call<PlatformStoreAssignResult>(
+      `/manage/api/platform/store-connections/${enc(store)}/apps/${enc(appId)}/product`,
+      { method: "PUT", body: JSON.stringify({ product }) },
+    ),
+  /**
+   * Release a store app from the product holding it. `heldBy` is not sent (the Worker finds the
+   * holder itself): it names the product whose connector state the release makes stale.
+   */
+  releasePlatformStoreApp: (
+    store: PlatformStore,
+    appId: string,
+    heldBy: string,
+  ) => {
+    void heldBy;
+    return call<PlatformStoreReleaseResult>(
+      `/manage/api/platform/store-connections/${enc(store)}/apps/${enc(appId)}/product`,
+      { method: "DELETE" },
+    );
+  },
 
   // ── products (platform registry) ──────────────────────────────────────────────
   products: () => call<{ products: ProductDetail[] }>("/manage/api/products"),
@@ -1949,6 +2687,56 @@ const rawApi = {
     }),
   rotateProductKey: (slug: string) =>
     call<RotateKeyResult>(`${p(slug)}/keys/rotate`, { method: "POST" }),
+  // ── Keys & secrets (chunk 5): inventories and the signing-key lifecycle ─────
+  /** A-4: every signing key with its lifecycle state. */
+  productKeys: (slug: string) => call<SigningKeysResponse>(`${p(slug)}/keys`),
+  /** Promote a staged key. `breakGlass` skips the trust-cache window. */
+  activateProductKey: (slug: string, kid: string, breakGlass = false) =>
+    call<{ ok: true; kid: string; status: "active" }>(
+      `${p(slug)}/keys/activate`,
+      {
+        method: "POST",
+        body: JSON.stringify(breakGlass ? { kid, breakGlass } : { kid }),
+      },
+    ),
+  retireProductKey: (slug: string, kid: string) =>
+    call<{ ok: true; kid: string; status: "retired" }>(
+      `${p(slug)}/keys/retire`,
+      { method: "POST", body: JSON.stringify({ kid }) },
+    ),
+  revokeProductKey: (slug: string, kid: string) =>
+    call<{ ok: true; kid: string; status: "revoked" }>(
+      `${p(slug)}/keys/revoke`,
+      { method: "POST", body: JSON.stringify({ kid }) },
+    ),
+  /** A-5: secret names, usage and what requires each. Never a value. */
+  productSecrets: (slug: string) =>
+    call<{ secrets: ProductSecretDto[] }>(`${p(slug)}/secrets`),
+  ciPublisher: (slug: string) =>
+    call<{ ok: true; policy: PublisherPolicyDto | null }>(
+      `${p(slug)}/ci-publisher`,
+    ),
+  /** Claims the policy from the manifest (`source` becomes `admin`). */
+  putCiPublisher: (slug: string, body: PublisherClaimBody) =>
+    call<{ ok: true; policy: PublisherPolicyDto }>(`${p(slug)}/ci-publisher`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  ciTokens: (slug: string) =>
+    call<{ ok: true; tokens: CiTokenDto[] }>(`${p(slug)}/ci-tokens`),
+  /** The token is in this response once and never again. */
+  issueCiToken: (slug: string, body: IssueCiTokenBody) =>
+    call<IssuedCiToken>(`${p(slug)}/ci-tokens`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  revokeCiToken: (slug: string, tokenId: string) =>
+    call<{ ok: true; tokenId: string; revokedAt: number }>(
+      `${p(slug)}/ci-tokens/${enc(tokenId)}`,
+      { method: "DELETE" },
+    ),
+  /** The blob collector's dry run: what would be dropped, and when. Read-only. */
+  blobGc: (slug: string) => call<BlobGcDryRun>(`${p(slug)}/blob-gc`),
 
   // ── services (per-product enablement) ───────────────────────────────────────
   services: (slug: string) => call<ServicesResponse>(`${p(slug)}/services`),
@@ -1983,7 +2771,12 @@ const rawApi = {
     call<DeliveryAccess>(`${p(slug)}/distribution/access`),
   saveDeliveryAccess: (
     slug: string,
-    body: { mode: ReleaseAccess; deliverable?: string },
+    body: {
+      mode: ReleaseAccess;
+      deliverable?: string;
+      /** A pack's delivery gate, for `entitled`: the catalog flag a license must grant (`null` clears it). */
+      entitlement?: string | null;
+    },
   ) =>
     call<DeliveryAccess>(`${p(slug)}/distribution/access`, {
       method: "PUT",
@@ -2024,6 +2817,100 @@ const rawApi = {
       { method: "POST", body: JSON.stringify(body) },
     ),
 
+  /** Start a rollout, or set its percentage (`bp`, 0–10 000) — the admin rollout route. */
+  setRollout: (
+    slug: string,
+    outlet: string,
+    channel: string,
+    body: { deliverable: string; releaseId: string; bp: number },
+  ) =>
+    call<{ rollout: Rollout }>(
+      `${p(slug)}/distribution/rollouts/${encodeURIComponent(outlet)}/${encodeURIComponent(channel)}`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  // ── distribution: readiness (P4-14) ─────────────────────────────────────────
+  /** Recompute every app release's readiness on every outlet. */
+  refreshReadiness: (slug: string) =>
+    call<ReadinessRefreshResult>(`${p(slug)}/distribution/readiness/refresh`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    }),
+  /** Release a readiness hold on one outlet, with the reason (audited). */
+  overrideReadiness: (
+    slug: string,
+    appReleaseId: string,
+    outletId: string,
+    reason: string,
+  ) =>
+    call<{ appReleaseId: string; readiness: MatrixReadinessDto | null }>(
+      `${p(slug)}/distribution/readiness/${enc(appReleaseId)}/${enc(outletId)}/override`,
+      { method: "POST", body: JSON.stringify({ reason }) },
+    ),
+  /** Clear an override: the hold is computed again. */
+  clearReadinessOverride: (
+    slug: string,
+    appReleaseId: string,
+    outletId: string,
+  ) =>
+    call<{ appReleaseId: string; readiness: MatrixReadinessDto | null }>(
+      `${p(slug)}/distribution/readiness/${enc(appReleaseId)}/${enc(outletId)}/clear`,
+      { method: "POST", body: JSON.stringify({}) },
+    ),
+
+  // ── distribution: outlets and capabilities (P2b-02) ─────────────────────────
+  distributionOutlets: (slug: string) =>
+    call<OutletsResponse>(`${p(slug)}/distribution/outlets`),
+  /** Narrow an outlet's capabilities below its kind's default (never wider). */
+  narrowOutletCapabilities: (
+    slug: string,
+    outletId: string,
+    capabilities: Partial<OutletCapabilitiesDto>,
+  ) =>
+    call<{ outlet: OutletDto }>(
+      `${p(slug)}/distribution/outlets/${enc(outletId)}/capabilities`,
+      { method: "PUT", body: JSON.stringify({ capabilities }) },
+    ),
+  /** Return an outlet's capabilities to its kind's default. */
+  revertOutletCapabilities: (slug: string, outletId: string) =>
+    call<{ outlet: OutletDto }>(
+      `${p(slug)}/distribution/outlets/${enc(outletId)}/capabilities/revert`,
+      { method: "POST", body: JSON.stringify({}) },
+    ),
+
+  // ── distribution: the signing-key inventory (P2b-03) ────────────────────────
+  distributionKeys: (slug: string) =>
+    call<DistributionKeysResponse>(`${p(slug)}/distribution/keys`),
+  putDistributionKey: (slug: string, body: PutDistributionKeyBody) =>
+    call<DistributionKeysResponse & { key: DistributionKeyDto }>(
+      `${p(slug)}/distribution/keys`,
+      { method: "PUT", body: JSON.stringify(body) },
+    ),
+  /** Remove an inventory entry, or dismiss a CI observation. */
+  deleteDistributionKey: (slug: string, purpose: string, sha256: string) =>
+    call<DistributionKeysResponse>(
+      `${p(slug)}/distribution/keys/${enc(purpose)}/${enc(sha256)}`,
+      { method: "DELETE" },
+    ),
+
+  // ── distribution: store connectors (P5-02 to P5-04) ─────────────────────────
+  connectors: (slug: string) =>
+    call<ConnectorsResponse>(`${p(slug)}/distribution/connectors`),
+  /** One connector control (`phased-release/pause`, `rollout/fraction`, `settings`, …). */
+  connectorControl: (
+    slug: string,
+    connector: string,
+    control: string,
+    body: Record<string, unknown>,
+  ) =>
+    call<Record<string, unknown> & { ok: true }>(
+      `${p(slug)}/distribution/connectors/${enc(connector)}/${control
+        .split("/")
+        .map(enc)
+        .join("/")}`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
   // ── distribution: update health (P6-03) ─────────────────────────────────────
   updateHealth: (slug: string, windowHours?: number) =>
     call<UpdateHealthResponse>(
@@ -2050,11 +2937,40 @@ const rawApi = {
 
   // ── config: catalog ───────────────────────────────────────────────────────────
   schema: (slug: string) => call<ProductCatalog>(`${p(slug)}/config/catalog`),
-  publishSchema: (slug: string, catalog: ProductCatalog) =>
+  /**
+   * Publish a new catalog version. `expectedVersion` is the version the draft started from (`0`
+   * for a first publish): when another publish landed since, the server answers 409
+   * `catalog_version_conflict` instead of overwriting it (ADMIN.md A-6).
+   */
+  publishSchema: (
+    slug: string,
+    catalog: ProductCatalog,
+    expectedVersion?: number,
+  ) =>
     call<{ ok: true; schemaVersion: number }>(`${p(slug)}/config/catalog`, {
       method: "PUT",
-      body: JSON.stringify({ catalog }),
+      body: JSON.stringify(
+        expectedVersion === undefined
+          ? { catalog }
+          : { catalog, expectedVersion },
+      ),
     }),
+  /** Every published catalog version, newest first (A-6). */
+  catalogVersions: (slug: string) =>
+    call<{ versions: CatalogVersionSummary[] }>(
+      `${p(slug)}/config/catalog/versions`,
+    ),
+  /** One catalog version, active or not (A-6). */
+  catalogVersion: (slug: string, version: number) =>
+    call<ProductCatalog>(`${p(slug)}/config/catalog/versions/${version}`),
+  /** The profiles, tiers and licenses that set each key (A-7b). */
+  catalogUsage: (slug: string, keys: readonly string[]) =>
+    call<{ keys: Record<string, CatalogKeyUsage> }>(
+      `${p(slug)}/config/catalog/usage?${([] as string[])
+        .concat(keys)
+        .map((k) => `key=${enc(k)}`)
+        .join("&")}`,
+    ),
 
   // ── config: edge-mint recipe approval (P0-12) ───────────────────────────────
   edgeMintRecipes: (slug: string) =>
@@ -2242,6 +3158,16 @@ const rawApi = {
       method: "PUT",
       body: JSON.stringify({ updates }),
     }),
+  /** Edit a profile's name and description (A-7); `description: null` clears it. */
+  patchProfile: (
+    slug: string,
+    id: string,
+    body: { name?: string; description?: string | null },
+  ) =>
+    call<{ ok: true; id: string }>(`${p(slug)}/config/profiles/${enc(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
   deleteProfile: (slug: string, id: string) =>
     call<{ ok: true; id: string }>(`${p(slug)}/config/profiles/${enc(id)}`, {
       method: "DELETE",
@@ -2266,11 +3192,19 @@ const rawApi = {
     }),
 
   // ── activity (keyset) ─────────────────────────────────────────────────────────
-  activity: (slug: string, cursor?: ActivityCursor | null, limit = 50) => {
+  activity: (
+    slug: string,
+    cursor?: ActivityCursor | null,
+    limit = 50,
+    filters: ActivityFilters = {},
+  ) => {
     const search = new URLSearchParams({ limit: String(limit) });
     if (cursor) {
       search.set("beforeAt", String(cursor.beforeAt));
       search.set("beforeId", cursor.beforeId);
+    }
+    for (const [k, v] of Object.entries(filters)) {
+      if (v !== undefined && v !== null && v !== "") search.set(k, String(v));
     }
     return call<ActivityPage>(`${p(slug)}/activity?${search.toString()}`);
   },

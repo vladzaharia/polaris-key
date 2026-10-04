@@ -2,7 +2,8 @@
 
 /**
  * Config's admin surface — `/manage/api/products/<slug>/config/{catalog,profiles,mint}` (§R1;
- * `mint` is the edge-mint recipe approval surface, P0-12).
+ * `mint` is the edge-mint recipe approval surface, P0-12). `catalog` also answers
+ * `catalog/versions[/<n>]` and `catalog/usage` (ADMIN.md A-6, A-7b).
  *
  * The catalog is the declaration of what a product's settings ARE; a profile is a named bundle
  * of values for them. Both used to hang off the admin dispatcher as top-level `schema` and
@@ -28,7 +29,8 @@ export async function handleConfigAdmin(
 ): Promise<Response | null> {
   const [resource, ...rest] = ctx.rest;
 
-  if (resource === "catalog" && rest.length === 0) return handleCatalog(ctx);
+  if (resource === "catalog" && rest.length <= 2)
+    return handleCatalog(ctx, rest);
   if (resource === "profiles" && rest.length <= 1)
     return handleProfiles(ctx, rest[0]);
   if (resource === "mint") return handleMintAdmin(ctx, rest);

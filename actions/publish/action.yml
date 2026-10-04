@@ -19,7 +19,7 @@ inputs:
     description: The product slug (must equal .pkey/product's slug).
     required: true
   deliverable:
-    description: The deliverable to publish. `app`, or a pack id .pkey/release declares (a pack release, signed with release-key; needs zstd >= 1.5.5, which GitHub's hosted runners carry).
+    description: The deliverable to publish. `app`, a pack id .pkey/release declares (a pack release, signed with release-key; needs zstd >= 1.5.5, which GitHub's hosted runners carry), or a package id (a package release for a package feed, extracted from dir and never signed).
     required: false
     default: app
   version:

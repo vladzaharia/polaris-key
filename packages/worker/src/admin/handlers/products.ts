@@ -21,7 +21,10 @@
  */
 
 import { Catalog } from "@polaris-key/catalog";
-import { RESERVED_PRODUCT_SLUGS } from "@polaris-key/manifest";
+import {
+  RESERVED_PRODUCT_SLUGS,
+  SYSTEM_PRODUCT_SLUG,
+} from "@polaris-key/manifest";
 import { parse as parseYaml } from "yaml";
 import type { Env } from "../../env.js";
 import type { Db } from "../../db/types.js";
@@ -71,7 +74,7 @@ import {
   notFound,
   readBody,
 } from "../lib/respond.js";
-import { productView } from "../lib/shape.js";
+import { listProductSecretsView, productView } from "../lib/shape.js";
 import {
   catalogRepresentabilityResponse,
   WriteChecks,
@@ -214,6 +217,15 @@ export async function handleProducts(
     return adminJson({ product: await productView(env, db, row) });
   if (req.method === "PATCH") {
     const body = await readBody(req);
+    // F-03: the system product keeps its name (it is the platform's, and the feeds and the
+    // console name it).
+    if (row.system === 1 && body.name !== undefined && body.name !== row.name)
+      return err(
+        409,
+        ErrorCode.BadRequest,
+        "the system product cannot be renamed",
+        { fields: ["name"], reason: "system_product" },
+      );
     // plans/P3-01.md §2.2: the default offline-day count becomes `graceUntil`, so it takes the
     // bundle mint's rule, an integer from 1 to 365.
     const refused = new WriteChecks()
@@ -233,11 +245,31 @@ export async function handleProducts(
         { fields: ["defaultDeviceLimit"] },
       );
     }
+    // A-3: a display name is required (`products.name` is NOT NULL), so a blank one is refused
+    // rather than silently ignored (PRD-6). The admin group is metadata that can be cleared:
+    // `null` (or a blank string) clears it, a non-string anything else is refused.
+    if (typeof body.name === "string" && body.name.trim() === "") {
+      return err(422, ErrorCode.BadRequest, "name must not be blank", {
+        fields: ["name"],
+      });
+    }
+    if (
+      body.adminGroup !== undefined &&
+      body.adminGroup !== null &&
+      typeof body.adminGroup !== "string"
+    ) {
+      return err(
+        422,
+        ErrorCode.BadRequest,
+        "adminGroup must be a string or null",
+        { fields: ["adminGroup"] },
+      );
+    }
     await updateProduct(
       db,
       slug,
       {
-        name: typeof body.name === "string" ? body.name : undefined,
+        name: typeof body.name === "string" ? body.name.trim() : undefined,
         // `compatMin`/`compatMax` are NOT accepted here any more. The compatibility window is a
         // statement about which BUILDS this product supports, so spec §8 relocates it to
         // `PATCH …/update/settings`. Dropped rather than ignored: an endpoint that quietly
@@ -252,7 +284,11 @@ export async function handleProducts(
             ? body.defaultDeviceLimit
             : undefined,
         admin_group:
-          typeof body.adminGroup === "string" ? body.adminGroup : undefined,
+          body.adminGroup === null
+            ? null
+            : typeof body.adminGroup === "string"
+              ? body.adminGroup.trim() || null
+              : undefined,
       },
       now,
     );
@@ -268,6 +304,14 @@ export async function handleProducts(
     return adminJson({ ok: true, slug });
   }
   if (req.method === "DELETE") {
+    // F-03: the system product owns the platform packages, whose versions are unique forever.
+    if (row.system === 1)
+      return err(
+        409,
+        ErrorCode.BadRequest,
+        "the system product cannot be deleted",
+        { reason: "system_product" },
+      );
     const body = await readBody(req);
     if (body.confirmSlug !== slug) {
       return err(422, ErrorCode.BadRequest, "confirmSlug must match product", {
@@ -317,6 +361,13 @@ async function manualCreate(
   if (RESERVED_PRODUCT_SLUGS.includes(slug))
     return err(422, ErrorCode.BadRequest, "reserved slug", {
       fields: ["slug"],
+    });
+  // F-03: the system product is created only by the package-feeds bootstrap
+  // (`ensureSystemProduct`), never by hand.
+  if (slug === SYSTEM_PRODUCT_SLUG)
+    return err(422, ErrorCode.BadRequest, "reserved slug", {
+      fields: ["slug"],
+      reason: "reserved_slug",
     });
   if (await getProduct(db, slug))
     return err(409, ErrorCode.BadRequest, "product exists", {
@@ -1000,7 +1051,13 @@ async function handleSecrets(
   name: string | undefined,
   now: number,
 ): Promise<Response> {
-  if (!name) return notFound();
+  // A-5: `GET …/secrets` is the inventory — names, usage, timestamps and what requires each.
+  // Never a value: the sealed column is not read.
+  if (!name) {
+    if (req.method !== "GET")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
+    return adminJson({ secrets: await listProductSecretsView(db, slug) });
+  }
   if (req.method !== "PUT")
     return err(405, ErrorCode.BadRequest, "method not allowed");
   const body = await readBody(req);
@@ -1061,6 +1118,71 @@ async function handleSecrets(
 
 const TRUST_CACHE_SECONDS = 300;
 
+/** Lifecycle order for the key list: active first, then staged, retired, revoked. */
+const KEY_STATUS_ORDER: Record<string, number> = {
+  active: 0,
+  staged: 1,
+  retired: 2,
+  revoked: 3,
+};
+
+/** One signing key as `GET …/keys` lists it (A-4). */
+interface SigningKeyListing {
+  kid: string;
+  status: string;
+  alg: string;
+  publicKey: string;
+  createdAt: number;
+  /** Staged keys: when Activate stops needing break-glass (the trust-cache window). */
+  activateAfter: number | null;
+  /** Active keys: when the key became active (its creation, for a product's first key). */
+  activatedAt: number | null;
+  /** Retired or revoked keys: when they left service. */
+  retiredAt: number | null;
+  revokedAt: number | null;
+}
+
+async function listSigningKeys(
+  db: Db,
+  slug: string,
+): Promise<SigningKeyListing[]> {
+  const rows = await db.all<{
+    kid: string;
+    alg: string;
+    public_b64url: string;
+    status: string;
+    created_at: number;
+    rotated_at: number | null;
+    revoked_at: number | null;
+  }>(
+    `SELECT kid, alg, public_b64url, status, created_at, rotated_at, revoked_at
+       FROM product_keys WHERE product = ?`,
+    slug,
+  );
+  return rows
+    .map((r) => ({
+      kid: r.kid,
+      status: r.status,
+      alg: r.alg,
+      publicKey: r.public_b64url,
+      createdAt: r.created_at,
+      activateAfter:
+        r.status === "staged" ? r.created_at + TRUST_CACHE_SECONDS : null,
+      activatedAt:
+        r.status === "active" ? (r.rotated_at ?? r.created_at) : null,
+      retiredAt:
+        r.status === "retired" || r.status === "revoked"
+          ? (r.rotated_at ?? null)
+          : null,
+      revokedAt: r.status === "revoked" ? (r.revoked_at ?? null) : null,
+    }))
+    .sort(
+      (a, b) =>
+        (KEY_STATUS_ORDER[a.status] ?? 9) - (KEY_STATUS_ORDER[b.status] ?? 9) ||
+        b.createdAt - a.createdAt,
+    );
+}
+
 /** POST /api/products/<slug>/keys/{prepare|activate|retire|revoke}. */
 async function handleKeys(
   req: Request,
@@ -1071,7 +1193,13 @@ async function handleKeys(
   action: string | undefined,
   now: number,
 ): Promise<Response> {
-  if (!action) return notFound();
+  // A-4: `GET …/keys` lists the product's signing keys with their lifecycle state. Public
+  // material only: the sealed private key is not selected.
+  if (!action) {
+    if (req.method !== "GET")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
+    return adminJson({ keys: await listSigningKeys(db, slug), now });
+  }
   if (req.method !== "POST")
     return err(405, ErrorCode.BadRequest, "method not allowed");
 

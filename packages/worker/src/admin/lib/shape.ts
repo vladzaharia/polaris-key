@@ -197,6 +197,9 @@ export async function productView(
   return {
     slug: p.slug,
     name: p.name,
+    // F-03: the platform's own product (the package-feeds owner of our SDKs). The console keeps it
+    // out of the product switcher and the Products registry; it is reached from Platform.
+    system: p.system === 1,
     releaseSource: p.release_source ?? "manual",
     signingKid,
     jwksUrl,
@@ -229,6 +232,96 @@ export async function productView(
     createdAt: p.created_at,
     modifiedAt: p.modified_at,
   };
+}
+
+/**
+ * Which product secrets the product's configuration names, and what names each (a custom OIDC
+ * provider's client secret, each edge-mint recipe's signing key). Shared by the setup projection
+ * and the secrets inventory (A-5), so both say the same thing.
+ */
+function collectRequiredSecrets(
+  oidc: Pick<OidcSetupRow, "provider" | "client_secret_secret"> | null,
+  edgeMint: Pick<EdgeMintSetupRow, "id" | "signing_key_secret">[],
+): Map<string, Set<string>> {
+  const secretSources = new Map<string, Set<string>>();
+  const requireSecret = (name: string | null | undefined, source: string) => {
+    if (!name) return;
+    const sources = secretSources.get(name) ?? new Set<string>();
+    sources.add(source);
+    secretSources.set(name, sources);
+  };
+  if ((oidc?.provider ?? "platform") === "custom") {
+    requireSecret(oidc?.client_secret_secret, "OIDC client secret");
+  }
+  for (const row of edgeMint) {
+    requireSecret(row.signing_key_secret, `Edge mint ${row.id}`);
+  }
+  return secretSources;
+}
+
+/** One row of the secrets inventory (A-5): metadata only, never a value. */
+export interface ProductSecretListing {
+  name: string;
+  /** Stored at all. A required secret that was never set is listed with `false`. */
+  configured: boolean;
+  /** `null` for a secret that is not stored. */
+  usage: "general" | "edge-mint" | null;
+  createdAt: number | null;
+  updatedAt: number | null;
+  /** What in the product's configuration names it ("OIDC client secret", "Edge mint studio"). */
+  requiredBy: string[];
+}
+
+/**
+ * The product's secrets inventory (A-5): every stored secret's name, usage and timestamps, plus
+ * every secret the configuration requires but nobody has set. Values are never read here: the
+ * sealed column is not even selected.
+ */
+export async function listProductSecretsView(
+  db: Db,
+  product: string,
+): Promise<ProductSecretListing[]> {
+  const oidc = await db.first<OidcSetupRow>(
+    "SELECT provider, issuer, client_id, client_secret_secret FROM oidc_config WHERE product = ?",
+    product,
+  );
+  const recipes = (await listEdgeMintRecipesWithApprovals(db, product)).map(
+    ({ recipe }) => ({
+      id: recipe.id,
+      signing_key_secret: recipe.signing_key_secret,
+    }),
+  );
+  const required = collectRequiredSecrets(oidc, recipes);
+  const stored = await db.all<{
+    name: string;
+    usage: string | null;
+    created_at: number;
+    modified_at: number;
+  }>(
+    "SELECT name, usage, created_at, modified_at FROM product_secrets WHERE product = ? ORDER BY name",
+    product,
+  );
+  const out: ProductSecretListing[] = stored.map((row) => ({
+    name: row.name,
+    configured: true,
+    usage: row.usage === "edge-mint" ? "edge-mint" : "general",
+    createdAt: row.created_at,
+    updatedAt: row.modified_at,
+    requiredBy: [...(required.get(row.name) ?? [])],
+  }));
+  const storedNames = new Set(stored.map((row) => row.name));
+  for (const [name, sources] of required) {
+    if (storedNames.has(name)) continue;
+    out.push({
+      name,
+      configured: false,
+      usage: null,
+      createdAt: null,
+      updatedAt: null,
+      requiredBy: [...sources],
+    });
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 async function productSetupView(
@@ -277,19 +370,7 @@ async function productSetupView(
       .map((row) => row.name),
   );
 
-  const secretSources = new Map<string, Set<string>>();
-  const requireSecret = (name: string | null | undefined, source: string) => {
-    if (!name) return;
-    const sources = secretSources.get(name) ?? new Set<string>();
-    sources.add(source);
-    secretSources.set(name, sources);
-  };
-  if ((oidc?.provider ?? "platform") === "custom") {
-    requireSecret(oidc?.client_secret_secret, "OIDC client secret");
-  }
-  for (const row of edgeMint) {
-    requireSecret(row.signing_key_secret, `Edge mint ${row.id}`);
-  }
+  const secretSources = collectRequiredSecrets(oidc, edgeMint);
 
   const secrets: RequiredSecretStatus[] = [...secretSources.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
@@ -475,7 +556,7 @@ async function productSetupView(
     ...missingSecrets.map((name) => ({
       id: `secret:${name}`,
       label: `Set required secret ${name}`,
-      route: `#/p/${product}/settings`,
+      route: `#/p/${product}/keys`,
     })),
     ...(signingConfigured
       ? []
@@ -483,25 +564,25 @@ async function productSetupView(
           {
             id: "signing-key",
             label: "Rotate or recreate the product signing key",
-            route: `#/p/${product}/settings`,
+            route: `#/p/${product}/keys`,
           },
         ]),
     ...edgeWrongUsage.map((name) => ({
       id: `secret-usage:${name}`,
       label: `Mark secret ${name} for edge-minting`,
-      route: `#/p/${product}/secrets`,
+      route: `#/p/${product}/keys`,
     })),
     ...edgeUnapproved.map((id) => ({
       id: `edge-mint:${id}`,
       label: `Review and approve edge-mint recipe ${id}`,
-      route: `#/p/${product}/secrets`,
+      route: `#/p/${product}/config/edge-mint`,
     })),
     ...(release && releaseMissing.length > 0
       ? [
           {
             id: "release",
             label: "Review release setup",
-            route: `#/p/${product}/releases`,
+            route: `#/p/${product}/release/releases`,
           },
         ]
       : []),

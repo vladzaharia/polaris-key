@@ -19,6 +19,7 @@
   "dependencies": {
     "@astrojs/starlight": "^0.42.5",
     "@astrojs/starlight-tailwind": "^5.0.0",
+    "@polaris-key/brand": "workspace:*",
     "@tailwindcss/vite": "^4.1.4",
     "astro": "^7.3.5",
     "tailwindcss": "^4.1.4",

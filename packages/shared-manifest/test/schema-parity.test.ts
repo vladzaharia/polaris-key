@@ -47,6 +47,12 @@ import {
   CUSTOM_PACK_TYPE_PATTERN,
   MANIFEST_PACK_TYPES,
   MAX_PACK_FORMAT_VERSION,
+  MAX_PACKAGE_DELIVERABLES,
+  PACKAGE_ECOSYSTEMS,
+  PACKAGE_FILE_TYPES,
+  PACKAGE_NAME_MAX_LENGTH,
+  PACKAGE_NAME_PATTERNS,
+  PACKAGE_REFUSED_FIELDS,
   type DescriptorManifest,
   type ParsedManifest,
 } from "../src/index.js";
@@ -337,6 +343,13 @@ function base(): Docs {
             type: "custom.dialogue",
             formatVersion: 3,
           },
+          // F-03: a package deliverable (plans/F-01.md §3.1).
+          "acme.sdk": {
+            kind: "package",
+            ecosystem: "npm",
+            name: "@acme/sdk",
+            artifacts: { tarball: { match: "acme-sdk-*.tgz" } },
+          },
         },
       },
       // NOTE: at the release-document ROOT, not inside the `release` wrapper — the validator
@@ -479,6 +492,7 @@ const l10n = (d: Docs) => rel(d).deliverables["acme.l10n"];
 const strings = (d: Docs) => rel(d).deliverables["acme.strings"];
 const balance = (d: Docs) => rel(d).deliverables["acme.balance"];
 const mods = (d: Docs) => rel(d).deliverables["acme.mods"];
+const sdk = (d: Docs) => rel(d).deliverables["acme.sdk"];
 const entry = (d: Docs) => app(d).artifacts[0];
 const dist = (d: Docs) => d.distribution as Record<string, any>;
 const outlet = (d: Docs, id: string) => dist(d).outlets[id];
@@ -1120,14 +1134,118 @@ const MUTATIONS: Mutation[] = [
     // ...and no other id may be kind app.
     mutate: (d) => (rel(d).deliverables["acme.tools"] = { kind: "app" }),
   },
+  // ── package deliverables (F-03, plans/F-01.md §3.1) ──
+  {
+    code: "invalid_package_ecosystem",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (sdk(d).ecosystem = "cpan"),
+  },
+  {
+    code: "invalid_package_name",
+    file: "release",
+    schema: "rejects",
+    // npm names are scoped: the scope is the feed's namespace.
+    mutate: (d) => (sdk(d).name = "acme-sdk"),
+  },
+  {
+    code: "invalid_package_name",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => {
+      sdk(d).ecosystem = "swift";
+      sdk(d).name = "acme";
+    },
+  },
+  {
+    code: "invalid_package_name",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => {
+      sdk(d).ecosystem = "maven";
+      sdk(d).name = "gg.acme";
+    },
+  },
+  {
+    // PEP 503: Acme_SDK and acme-sdk are one PyPI project.
+    code: "package_name_collision",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => {
+      sdk(d).ecosystem = "pypi";
+      sdk(d).name = "Acme_SDK";
+      rel(d).deliverables["acme.sdk2"] = {
+        kind: "package",
+        ecosystem: "pypi",
+        name: "acme-sdk",
+        artifacts: { wheel: { match: "*.whl" } },
+      };
+    },
+  },
+  {
+    // npm compares case-insensitively.
+    code: "package_name_collision",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) =>
+      (rel(d).deliverables["acme.sdk2"] = {
+        kind: "package",
+        ecosystem: "npm",
+        name: "@acme/sdk",
+        artifacts: { tarball: { match: "other-*.tgz" } },
+      }),
+  },
+  {
+    code: "invalid_package_field",
+    file: "release",
+    schema: "rejects",
+    // A package has no platform: its ecosystem says what it is.
+    mutate: (d) => (sdk(d).platform = "macos"),
+  },
+  {
+    code: "invalid_package_field",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (sdk(d).type = "godot.zip"),
+  },
+  {
+    code: "invalid_package_field",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => (sdk(d).artifacts = { tarball: { glob: "*.tgz" } }),
+  },
+  {
+    code: "invalid_package_field",
+    file: "release",
+    schema: "rejects",
+    mutate: (d) => delete sdk(d).artifacts,
+  },
+  {
+    // Counted first, like packs: one error for the whole map. The schema's maxProperties bounds
+    // the map as a whole (app + 64 + 64), not packages alone.
+    code: "too_many_package_deliverables",
+    file: "release",
+    schema: "accepts",
+    mutate: (d) => {
+      for (let i = 0; i < 64; i++)
+        rel(d).deliverables[`acme.npm${i}`] = {
+          kind: "package",
+          ecosystem: "npm",
+          name: `@acme/p${i}`,
+          artifacts: { tarball: { match: `p${i}-*.tgz` } },
+        };
+    },
+  },
   // ── pack deliverables (P4-02, plans/P4-01.md §3) ──
   {
-    // Counted before any pack is validated: one error for the whole map.
+    // Counted before any pack is validated: one error for the whole map. The schema's
+    // maxProperties bounds the whole map (app + 64 packs + 64 packages since F-03), so it rejects
+    // only a map past that: 128 more packs here.
     code: "too_many_pack_deliverables",
     file: "release",
     schema: "rejects",
     mutate: (d) => {
-      for (let i = 0; i < 64; i++)
+      for (let i = 0; i < 128; i++)
         rel(d).deliverables[`acme.extra${i}`] = {
           kind: "pack",
           type: "files.tree",
@@ -2124,6 +2242,14 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (outlet(d, "ms-store").flights.canary = "Canary ring"),
   },
   {
+    // F-03 (plans/F-01.md §3.3): a package is served only by its feed, never by a transport.
+    code: "invalid_transport_deliverable",
+    file: "distribution",
+    schema: "accepts",
+    mutate: (d) =>
+      (dist(d).transports.deliverables["acme.sdk"] = { steam: "embedded" }),
+  },
+  {
     code: "unknown_deliverable_ref",
     file: "distribution",
     schema: "accepts",
@@ -2503,8 +2629,9 @@ describe("the pack schema's vocabularies are the validator's constants (P4-02)",
     expect(pack.patch.properties.strategies.items.enum).toEqual([
       ...PACK_PATCH_STRATEGIES,
     ]);
+    // app + the packs + (F-03) the packages, each counted by the validator.
     expect(schema.$defs.deliverables.maxProperties).toBe(
-      MAX_PACK_DELIVERABLES + 1,
+      MAX_PACK_DELIVERABLES + MAX_PACKAGE_DELIVERABLES + 1,
     );
     for (const field of PACK_FIELDS_NOT_SUPPORTED)
       expect(pack[field]).toBe(false);
@@ -2597,8 +2724,52 @@ function descriptorManifest(): DescriptorManifest {
       app: m.release?.app ?? null,
       manualChannels: m.release?.manualChannels ?? [],
       packs: (m.release?.packDeliverables ?? []).map((p) => p.id),
+      packages: m.release?.packageDeliverables ?? [],
     },
   };
+}
+
+/** A fully-valid package release descriptor for the base manifest's `acme.sdk` (F-03). */
+function basePackageDescriptor(): Record<string, any> {
+  return {
+    descriptorVersion: 1,
+    product: "acme",
+    deliverable: "acme.sdk",
+    kind: "package",
+    version: "1.4.0",
+    channel: "stable",
+    seq: 3,
+    package: {
+      ecosystem: "npm",
+      name: "@acme/sdk",
+      files: [
+        {
+          name: "acme-sdk-1.4.0.tgz",
+          role: "payload",
+          type: "npm-tarball",
+          sha256: SHA_A,
+          size: 48213,
+          locations: [{ provider: "r2", key: `blobs/sha256/${SHA_A}` }],
+        },
+      ],
+      metadata: {
+        name: "@acme/sdk",
+        version: "1.4.0",
+        dependencies: { "@acme/core": "^1.0.0" },
+        engines: { node: ">=22" },
+      },
+    },
+  };
+}
+
+/** Turn a mutation's descriptor (the app base) into the package base, then edit it. */
+function asPackage(
+  d: Record<string, any>,
+  edit: (p: Record<string, any>) => void = () => {},
+): void {
+  for (const k of Object.keys(d)) delete d[k];
+  Object.assign(d, basePackageDescriptor());
+  edit(d);
 }
 
 /** A well-formed `content` for the base manifest (P4-02). */
@@ -2721,6 +2892,124 @@ const dmg = (d: Record<string, any>) => d.builds[0].artifacts[0];
 
 /** One entry per descriptor validator code (asserted complete against the source below). */
 const DESCRIPTOR_MUTATIONS: DescriptorMutation[] = [
+  // ── package releases (F-03, plans/F-01.md §3.2) ──
+  {
+    // A package release carries package, never builds.
+    code: "invalid_descriptor",
+    schema: "rejects",
+    mutate: (d) => asPackage(d, (p) => (p.builds = d.builds ?? [])),
+  },
+  {
+    code: "invalid_descriptor",
+    schema: "rejects",
+    mutate: (d) => asPackage(d, (p) => delete p.package),
+  },
+  {
+    // ...and an app release never carries package.
+    code: "invalid_descriptor",
+    schema: "rejects",
+    mutate: (d) => (d.package = basePackageDescriptor().package),
+  },
+  {
+    // A package's release id is always <deliverable>@<version>: no tag.
+    code: "invalid_descriptor",
+    schema: "rejects",
+    mutate: (d) => asPackage(d, (p) => (p.tag = "v1.4.0")),
+  },
+  {
+    // Locations are r2 only.
+    code: "invalid_descriptor",
+    schema: "rejects",
+    mutate: (d) =>
+      asPackage(d, (p) => {
+        p.package.files[0].locations = [
+          { provider: "external", url: "https://cdn.acme.example/x.tgz" },
+        ];
+      }),
+  },
+  {
+    code: "invalid_descriptor",
+    schema: "rejects",
+    mutate: (d) => asPackage(d, (p) => (p.package.files[0].type = "tarball")),
+  },
+  {
+    // A type from another ecosystem's vocabulary: the schema's enum is the union.
+    code: "invalid_descriptor",
+    schema: "accepts",
+    mutate: (d) => asPackage(d, (p) => (p.package.files[0].type = "wheel")),
+  },
+  {
+    code: "invalid_descriptor",
+    schema: "rejects",
+    mutate: (d) => asPackage(d, (p) => (p.package.files[0].role = "signature")),
+  },
+  {
+    // The metadata must agree with the descriptor: another version was packed.
+    code: "invalid_descriptor",
+    schema: "accepts",
+    mutate: (d) => asPackage(d, (p) => (p.package.metadata.version = "1.3.9")),
+  },
+  {
+    code: "invalid_descriptor",
+    schema: "accepts",
+    mutate: (d) =>
+      asPackage(d, (p) => (p.package.metadata.postinstall = "curl | sh")),
+  },
+  {
+    // npm versions are semver.
+    code: "invalid_descriptor",
+    schema: "accepts",
+    mutate: (d) =>
+      asPackage(d, (p) => {
+        p.version = "1.4";
+        p.package.metadata.version = "1.4";
+      }),
+  },
+  {
+    // The block must name the declared package.
+    code: "invalid_descriptor",
+    schema: "accepts",
+    mutate: (d) =>
+      asPackage(d, (p) => {
+        p.package.name = "@acme/other";
+        p.package.metadata.name = "@acme/other";
+      }),
+  },
+  {
+    code: "duplicate_artifact_name",
+    schema: "accepts",
+    mutate: (d) =>
+      asPackage(d, (p) =>
+        p.package.files.push({ ...p.package.files[0], sha256: SHA_B }),
+      ),
+  },
+  {
+    code: "r2_key_not_content_addressed",
+    schema: "accepts",
+    mutate: (d) =>
+      asPackage(d, (p) => {
+        p.package.files[0].locations = [
+          { provider: "r2", key: `blobs/sha256/${SHA_B}` },
+        ];
+      }),
+  },
+  {
+    // kind package naming the app deliverable.
+    code: "unsupported_deliverable_kind",
+    schema: "accepts",
+    mutate: (d) => asPackage(d, (p) => (p.deliverable = "app")),
+  },
+  {
+    // kind app naming a package deliverable.
+    code: "unsupported_deliverable_kind",
+    schema: "accepts",
+    mutate: (d) => (d.deliverable = "acme.sdk"),
+  },
+  {
+    code: "unknown_deliverable",
+    schema: "accepts",
+    mutate: (d) => asPackage(d, (p) => (p.deliverable = "acme.nothing")),
+  },
   {
     code: "invalid_descriptor",
     schema: "rejects",
@@ -3205,6 +3494,182 @@ describe("release descriptor: valid stays valid", () => {
     expect(
       schema.$defs.location.oneOf.map((b: any) => b.properties.provider.const),
     ).toEqual([...LOCATION_PROVIDERS]);
+  });
+});
+
+describe("package release descriptors (F-03)", () => {
+  it("the base package descriptor passes both the validator and the schema", () => {
+    const res = validateReleaseDescriptor(
+      basePackageDescriptor(),
+      descriptorManifest(),
+    );
+    expect(res.ok ? [] : res.errors).toEqual([]);
+    expect(res.ok && res.releaseId).toBe("acme.sdk@1.4.0");
+    expect(res.ok && res.descriptor.kind).toBe("package");
+    expect(
+      validateDescriptorSchema(basePackageDescriptor()),
+      JSON.stringify(validateDescriptorSchema.errors),
+    ).toBe(true);
+  });
+
+  it("the schemas' package vocabularies are exactly the validator's constants", () => {
+    const desc = JSON.parse(
+      readFileSync(join(schemasDir, "release-descriptor.schema.json"), "utf8"),
+    );
+    expect(desc.$defs.packageBlock.properties.ecosystem.enum).toEqual([
+      ...PACKAGE_ECOSYSTEMS,
+    ]);
+    expect(desc.$defs.packageFile.properties.type.enum).toEqual(
+      PACKAGE_ECOSYSTEMS.flatMap((e) => PACKAGE_FILE_TYPES[e]),
+    );
+    const release = JSON.parse(
+      readFileSync(join(schemasDir, "release.schema.json"), "utf8"),
+    );
+    const pkg = release.$defs.packageDeliverable;
+    expect(pkg.properties.ecosystem.enum).toEqual([...PACKAGE_ECOSYSTEMS]);
+    expect(pkg.not.anyOf.map((r: any) => r.required[0])).toEqual([
+      ...PACKAGE_REFUSED_FIELDS,
+    ]);
+    expect(
+      pkg.allOf.map((b: any) => [
+        b.if.properties.ecosystem.const,
+        b.then.properties.name.pattern,
+        b.then.properties.name.maxLength,
+      ]),
+    ).toEqual(
+      PACKAGE_ECOSYSTEMS.map((e) => [
+        e,
+        PACKAGE_NAME_PATTERNS[e].source.replace(/\\\//g, "/"),
+        PACKAGE_NAME_MAX_LENGTH[e],
+      ]),
+    );
+    expect(release.$defs.deliverables.maxProperties).toBe(
+      1 + MAX_PACK_DELIVERABLES + MAX_PACKAGE_DELIVERABLES,
+    );
+  });
+
+  it("a valid descriptor of every ecosystem passes both validators", () => {
+    const cases: Array<[string, string, Record<string, any>[], string]> = [
+      [
+        "pypi",
+        "acme-sdk",
+        [
+          { type: "wheel", name: "acme_sdk-1.4.0-py3-none-any.whl" },
+          {
+            type: "core-metadata",
+            name: "acme_sdk-1.4.0-py3-none-any.whl.metadata",
+          },
+        ],
+        "1.4.0",
+      ],
+      [
+        "swift",
+        "acme.AcmeKit",
+        [
+          { type: "source-archive", name: "AcmeKit-1.4.0.zip" },
+          { type: "source-archive-signature", name: "AcmeKit-1.4.0.sig" },
+          { type: "manifest", name: "Package.swift" },
+        ],
+        "1.4.0",
+      ],
+      [
+        "maven",
+        "gg.acme:acme-sdk",
+        [
+          { type: "maven-file", name: "acme-sdk-1.4.0.jar", extension: "jar" },
+          {
+            type: "maven-file",
+            name: "acme-sdk-1.4.0-sources.jar",
+            extension: "jar",
+            classifier: "sources",
+          },
+        ],
+        "1.4.0",
+      ],
+      [
+        "oci",
+        "pkey",
+        [
+          {
+            type: "oci-index",
+            name: "index.json",
+            mediaType: "application/vnd.oci.image.index.v1+json",
+          },
+        ],
+        "1.4.0",
+      ],
+      [
+        "godot",
+        "acme_sdk",
+        [
+          { type: "godot-zip", name: "acme_sdk-1.4.0.zip" },
+          { type: "godot-icon", name: "icon.png" },
+        ],
+        "1.4.0",
+      ],
+    ];
+    for (const [ecosystem, name, files, version] of cases) {
+      const manifest = descriptorManifest();
+      manifest.release!.packages = [
+        { id: "acme.sdk", ecosystem: ecosystem as any, name },
+      ];
+      const d = basePackageDescriptor();
+      d.version = version;
+      d.package = {
+        ecosystem,
+        name,
+        files: files.map((f, i) => {
+          const sha = String(i)
+            .repeat(64)
+            .slice(0, 64)
+            .replace(/[^0-9]/g, "0");
+          return {
+            role: "payload",
+            sha256: sha,
+            size: 10,
+            locations: [{ provider: "r2", key: `blobs/sha256/${sha}` }],
+            ...f,
+          };
+        }),
+        metadata: { name, version },
+      };
+      const res = validateReleaseDescriptor(d, manifest);
+      expect(res.ok ? [] : res.errors, ecosystem).toEqual([]);
+      expect(
+        validateDescriptorSchema(d),
+        `${ecosystem}: ${JSON.stringify(validateDescriptorSchema.errors)}`,
+      ).toBe(true);
+    }
+  });
+
+  it("an OCI version carries no '+', and a non-Maven file no classifier", () => {
+    const manifest = descriptorManifest();
+    manifest.release!.packages = [
+      { id: "acme.sdk", ecosystem: "oci", name: "pkey" },
+    ];
+    const d = basePackageDescriptor();
+    d.version = "1.4.0+build.7";
+    d.package = {
+      ecosystem: "oci",
+      name: "pkey",
+      files: [
+        {
+          name: "index.json",
+          role: "payload",
+          type: "oci-index",
+          mediaType: "application/vnd.oci.image.index.v1+json",
+          sha256: SHA_A,
+          size: 1,
+          classifier: "x",
+          locations: [{ provider: "r2", key: `blobs/sha256/${SHA_A}` }],
+        },
+      ],
+      metadata: { name: "pkey", version: "1.4.0+build.7" },
+    };
+    const res = validateReleaseDescriptor(d, manifest);
+    const paths = res.ok ? [] : res.errors.map((e) => e.path);
+    expect(paths).toContain("/version");
+    expect(paths).toContain("/package/files/0");
   });
 });
 

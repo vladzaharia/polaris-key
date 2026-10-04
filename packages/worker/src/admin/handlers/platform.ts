@@ -1,6 +1,6 @@
 /**
  * The Platform section's admin API (notes/S-13 §9.2): instance-wide, product-less, read-only so
- * far except the settings store. Platform-admin gated here (403 otherwise), on top of the dispatcher's session gate,
+ * far except the settings store and the package-feeds bootstrap. Platform-admin gated here (403 otherwise), on top of the dispatcher's session gate,
  * limiter and CSRF check.
  *
  *   GET /api/platform/version     — build identity (A-11). Cheap: the SPA's skew check calls it.
@@ -16,6 +16,9 @@
  *                                   `core/operations.ts`): binding probes, queue and DLQ
  *                                   backlog, cron runs, heartbeats, storage, indexes,
  *                                   connectors, recent errors.
+ *   POST /api/platform/feeds/bootstrap — create (or re-assert) the system product that owns the
+ *                                   platform packages (F-03, `../systemProduct.ts`); idempotent,
+ *                                   audited `feed.bootstrap` in `platform_audit`.
  *
  * Admin routes are narrative-only under AGENTS.md rule 10 (`adminApi` in routeCoverage's
  * NARRATIVE_ONLY): no OpenAPI entry. Nothing here is secret (THREAT-MODEL "Platform settings and
@@ -42,6 +45,8 @@ import {
 import { consoleEnvironment } from "./me.js";
 import { missingRequiredIndexes } from "../../scheduled.js";
 import { listPlatformAudit, listPlatformDeploys } from "../../repo.js";
+import { ensureSystemProduct } from "../systemProduct.js";
+import { platformAudit } from "../audit.js";
 import { operationsSnapshot } from "../../core/operations.js";
 
 /** The bindings the Deployment page lists. Presence only. */
@@ -178,6 +183,12 @@ export async function handlePlatform(
 ): Promise<Response> {
   if (!isPlatformAdmin(env, session))
     return forbidden("platform admin required");
+  // F-03: the package-feeds bootstrap (the system product), the one platform write here so far.
+  if (rest.length === 2 && rest[0] === "feeds" && rest[1] === "bootstrap") {
+    if (req.method !== "POST")
+      return err(405, "method_not_allowed", "method not allowed");
+    return bootstrapFeeds(env, db, session, now);
+  }
   if (rest[0] === "settings") {
     try {
       return await handlePlatformSettings(
@@ -214,4 +225,28 @@ export async function handlePlatform(
       }),
     );
   return activity(req, db);
+}
+
+/** `POST /api/platform/feeds/bootstrap` (F-03). */
+async function bootstrapFeeds(
+  env: Env,
+  db: Db,
+  session: AdminSession,
+  now: number,
+): Promise<Response> {
+  const result = await ensureSystemProduct(env, db, session.sub, now);
+  if (!result.ok)
+    return err(409, "bad_request", result.message, { reason: result.reason });
+  await platformAudit(
+    db,
+    session,
+    now,
+    "feed.bootstrap",
+    { kind: "product", id: result.slug },
+    result.created
+      ? `Created the system product ${result.slug} and turned its package feeds on`
+      : `Re-asserted the system product ${result.slug} and its package feeds`,
+    { after: { slug: result.slug, created: result.created } },
+  );
+  return adminJson({ ok: true, slug: result.slug, created: result.created });
 }

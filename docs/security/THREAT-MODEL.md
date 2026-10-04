@@ -953,6 +953,95 @@ writer can push.
   page through a stale link sees a release up to five minutes old. QR codes carry the same URLs
   the links do; one too long for the encoder (an Obtainium app config) is simply not drawn.
 
+### The registry host and package feeds (F-02/F-03)
+
+**What it is.** `pkg.plrs.im` (with `pkg-staging` and `pkg-dev`) is the same Worker on a third
+custom domain, beside the console (`key.plrs.im`) and the bytes host (`dl.plrs.im`). It serves
+package feeds to registry clients: npm, PyPI, SwiftPM, Maven and Gradle, OCI and Godot (plans/F-01.md
+§6). `PKG_ORIGIN` names it, and `core/registryHost.ts` confines it to `mount.ts`
+`REGISTRY_ROUTES`, a static landing page at `/` and OCI's fixed `/v2/` root. F-02 ships the host
+and the framework with no ecosystem route; F-03 adds the tables and ingest, and F-04 to F-09 the
+routes. Tests: `test/registryHost.test.ts`, `test/registryFeeds.test.ts`,
+`test-workerd/registry.test.ts`, and the curl client of `registry-clients.yml`.
+
+**Same-site exposure.** The host is a `*.plrs.im` sibling of the console, so `SameSite` does not
+separate them, exactly as for the bytes host. Its compensations, against `dl.plrs.im`'s:
+
+| Compensation                                  | `dl.plrs.im`                                           | `pkg.plrs.im`                                                                       |
+| --------------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| Only an allowlist of routes answers           | `BYTE_ROUTES`                                          | `REGISTRY_ROUTES`, `/` and `/v2/`; console paths are the not-found                  |
+| No cookie read; `Set-Cookie` stripped         | yes                                                    | yes                                                                                 |
+| `nosniff`, `Referrer-Policy: no-referrer`     | yes                                                    | yes                                                                                 |
+| `sandbox` CSP with no sources on every answer | `BLOB_CSP`                                             | `REGISTRY_CSP` (the same value)                                                     |
+| `Cross-Origin-Resource-Policy: same-origin`   | no                                                     | yes                                                                                 |
+| CORS                                          | the product's `web.origins`, via `core/cors.ts`        | **none**: route headers dropped, `OPTIONS` is 405                                   |
+| Methods                                       | per route                                              | `GET` and `HEAD` only (405 otherwise)                                               |
+| Errors and throws                             | flat JSON; JSON 500                                    | flat JSON, `problem+json` (Swift) or OCI error JSON; JSON 500                       |
+| Service off for the owner                     | the not-found                                          | the not-found, and the feed ladder below answers it too                             |
+| The one HTML answer                           | `/` and the download page, under `inertDocumentPolicy` | `/`, and the PyPI simple page on its one flagged route, under `inertDocumentPolicy` |
+
+The console's session cookies are host-only (`__Host-`, no `Domain`), so a browser never sends
+them to `pkg.plrs.im`; `test/registryHost.test.ts` re-asserts that for this host.
+
+**The one deliberate widening: the type allowlist.** `REGISTRY_HOST_TYPES` admits registry JSON
+(`application/json`, the npm, PyPI, Swift and OCI/Docker manifest types), `text/x-swift`, PNG,
+JPEG and the archive types. Reviewed once, here:
+
+- JSON is not a document a browser runs. With `nosniff` and the sandbox, a JSON body that
+  someone opens in a tab is inert text with an opaque origin.
+- `text/x-swift` is the only `text/*` type, and it always leaves as `attachment`. PNG and JPEG
+  cannot carry script; SVG is never served.
+- XML is **not** on the list, at any status. POMs, `.module` files and `maven-metadata.xml` go
+  out as `application/octet-stream` attachments. F-07's client matrix proves Gradle and Maven
+  ignore the type; if one does not, F-07 stops and asks rather than add `xml`.
+- HTML is not on the list. The PyPI simple page (`application/vnd.pypi.simple.v1+html`) is
+  admitted only on a route flagged `inertDocument`, at 200, without `Content-Disposition`, and
+  only under a policy `inertDocumentPolicy` accepts (`sandbox` with no script token,
+  `default-src 'none'`, no forms, no base, no framing). It is rendered from the same data as the
+  JSON with every value escaped, and has no `<script>`, `<form>`, `<style>` or `on*`
+  attribute. The feed setting `htmlFallback` turns it off.
+- Any other type, or a body without one, becomes the not-found.
+
+**Tenant-supplied text.** Package names, descriptions, `package.json`-derived fields, POMs and
+Godot descriptions are tenant input. They are served only inside JSON, as octet-stream
+attachments, or escaped inside the inert PyPI page; none is ever rendered as an HTML document.
+
+**The access ladder runs before the cache.** `authorizeFeedRead` checks, in order, the platform
+kill switch, the owner's Distribution and `packageFeeds`, the feed's `enabled` and then the mode
+(`stricter(feed, deliverable)`). Any "off" answers the same not-found as an unknown owner, so
+enablement is not an oracle. The check runs before the Cache API lookup, from a 30-second
+per-isolate settings cache, so turning a feed off or tightening a mode stops even an immutable
+answer cached at the edge for a year within 30 seconds. Client-side caches (a browser, a package
+manager's local store, a proxy the client runs) that already hold an immutable object are outside
+the kill switch's reach: the server cannot recall bytes it has already served. A missing settings
+table or row fails closed. Tier 1 admits only `public`; every other mode answers the client's native 401
+(`Basic`, or OCI's `Bearer` challenge naming a token endpoint that 404s until F-21). The
+credential extractor parses every `Authorization` shape and never logs, stores or echoes it.
+
+**Cache poisoning.** Only a `public` decision reaches the Cache API, and only a 200 with a public
+`Cache-Control` answering a GET is stored; a HEAD may read the GET entry but never writes it. The key is the normalised path, the query names the route reads and,
+for npm and PyPI, `Accept`; any other parameter or header is ignored. Non-public answers are
+`private, no-store` and never stored; not-founds and refusals are `no-store`.
+
+**Rendered index documents.** Index documents are rendered from D1 into R2 under `registry/`,
+a prefix with no bucket lock and no lifecycle rule, kept apart from the locked `blobs/`,
+`bundles/`, `deltas/` and `gated/`. A renderer's object key is checked segment by segment (no
+empty, `.` or `..` segment), so it cannot leave its `registry/<ecosystem>/<owner>/` prefix. A
+lost object is re-rendered on read; the self-check re-renders a package whose stored stamp
+differs from D1.
+
+**Ingest abuse, dependency confusion, the supply chain of our own SDKs** (F-03, F-10): size
+ceilings, the per-feed namespace rule, unique-forever versions and no Worker-side unzip; no
+upstream proxying; strict-router setup snippets. The owner publishes nothing to public registries
+and claims the public names at account level only (open question Q2): the residual risk is a
+misconfigured adopter resolving an attacker's same-named package from a public registry, which
+the setup page warns about. Our SDKs reach the feeds only through trusted publishing, Swift
+releases are signed, and the SDKs' own update path still verifies signed records. Godot 4.7+
+and PyPI fragment hashes give integrity, not authenticity.
+
+**Kill switches.** Per ecosystem, `dist_registry_policy.enabled`; per owner, `packageFeeds`;
+per feed, `enabled`. Each takes effect within the settings window.
+
 ### App-updater feeds (P3-09)
 
 **What arrived.** Update renders the native updaters' feeds from the CI-signed release records and
@@ -2576,6 +2665,51 @@ P4-15 adds two read-only routes to the console's admin API: `GET …/release/com
 - **No cross-tenant read.** Both routes read only the session's product; a device id passed for the
   rollout buckets is hashed in memory and echoed back, never stored.
 
+### The registry host and package feeds (F-02/F-03)
+
+Package feeds serve versions of `kind: package` deliverables (npm, PyPI, Swift, Maven, OCI and
+Godot) on a third sibling host, `pkg.plrs.im`. F-02 owns the host's isolation dispatcher and its
+compensations against `dl.plrs.im`'s (its section lands with it); this part is F-03's: how a
+package version gets in, and what keeps it out of everything else.
+
+- **Ingest abuse.** A package release enters only through the trusted-publishing submit
+  (`requireCiScope`, the product's own token or OIDC publisher, an upload ticket, staged bytes
+  verified by SHA-256 and size before anything is promoted) — never the GitHub sync, which refuses
+  a package descriptor. The descriptor is bounded by the 64 KiB cap, at most 64 files (4,096 for
+  OCI), metadata at most 16 KiB of a fixed per-ecosystem key set, `r2` locations only. The Worker
+  never unzips: the CLI extracts the metadata, and the Worker checks its shape and that it agrees
+  with the declaration (name, ecosystem, version). The only bytes it reads are each npm tarball's
+  and Maven file's, once, streamed through `createHash` after promotion, for the digests those
+  clients verify. A size ceiling per feed, never above the platform's per-ecosystem ceiling
+  (`dist_registry_policy`), refuses an oversized release (`package-too-large`).
+- **Unique forever.** `(product, ecosystem, normalised name, version)` is the primary key of
+  `release_packages`, nothing deletes a row, and a yanked or deprecated version is a tombstone: it
+  is never published again (`package-version-taken`), even byte-identical. That is what makes the
+  protocol-fixed names (npm tarballs, Swift archives, Maven files) immutable for clients that
+  cache by name, and Swift's trust-on-first-use safe.
+- **Dependency confusion.** A feed takes only names in its operator-set namespace (npm and Swift
+  scope, Maven group prefixes, PyPI names and prefixes, the Godot publisher), enforced at ingest
+  (`package-namespace`); an ecosystem with no configured feed takes nothing. Names collide after
+  each ecosystem's normalisation (PEP 503; case-insensitive npm, Swift, Maven), in the manifest
+  (`package_name_collision`) and in the key. `upstream` is pinned to `none` by a CHECK, so no feed
+  proxies a public registry. The residual risk is that no public name is claimed on npmjs or Maven
+  Central (owner decision Q2: account-level claims only), which the setup docs warn about.
+- **No signed record, no device surface.** A package release is never signed: a submit carrying
+  a record with one is refused (`package-unsigned`), so no `pkey-release+jws` ever names a package
+  and no SDK verifier sees one. Every device-facing read excludes packages: `releaseCatalog`'s
+  `deliverables`, `release` and file/blob resolution, the channel feed and the update decision
+  (both app-scoped and record-gated), the appcast, the records route (a forged `package` row is
+  never served), the download page and the storefront feeds — each pinned by a test.
+- **Supply chain of our own SDKs.** The platform packages belong to the system product
+  (`polaris-key`), which only the audited platform bootstrap creates (manual create and link-repo
+  refuse the slug; delete and rename refuse the row), published by trusted publishing only. Its
+  Swift feed requires signed releases (`swift-unsigned`, never relaxed for the system product);
+  the Worker checks presence and the `cms-1.0.0` format, SwiftPM verifies the chain.
+- **Kill switches.** The platform policy per ecosystem, the owner's `packageFeeds` switch
+  (operator-owned, optimistic-versioned, audited) and each feed's `enabled`. The render queue
+  (`registry_render_queue`) is Core's, written in the same batch as the change it follows, and
+  carries ids only.
+
 ### Packs on the wire (packs v1, P4-21)
 
 Packs v1 (`plans/P4-01.md`; WIRE-CONTRACT-V4 §2.5.1–§2.7, §3.7) adds no `typ`, no feed field and
@@ -3577,7 +3711,10 @@ control, calls a host other than its store's API, writes from a store object wit
 routes writes a `dist_keys` entry (P2b-03); a service gains a `manifestIngestAlways` hook, or Distribution's writes more
 than the `app` delivery-access row (it runs whatever the service's enablement); turning a
 service on starts running an ingest; a byte route is added to `BYTE_ROUTES`, a type to
-`BYTES_HOST_TYPES`, or anything else is hosted on a `plrs.im` sibling; the bucket-lock duration
+`BYTES_HOST_TYPES`, or anything else is hosted on a `plrs.im` sibling; a type is added to
+`REGISTRY_HOST_TYPES`, the PyPI HTML fallback is admitted anywhere but its one flagged route or
+under a looser policy, a registry route answers CORS or a method other than GET and HEAD, or
+`authorizeFeedRead` moves after the cache lookup (F-02); the bucket-lock duration
 changes; the admin authorization model changes; the wire contract
 version increments; any new field is added to `AdminSession` or `PortalSession` (see the
 domain-separation note in the audit report — the two realms share HMAC key material by default);
@@ -3609,6 +3746,10 @@ file outside its allowlists; the device trust level starts being carried in a si
 operator-issued key is added, or a check on one is made conditional on product state (it must be
 folded into `mintIsPublic` or into the edge-mint approval's recorded state — `productWidening` in
 `core/edgeMintApproval.ts`, which the ingest sweep and the `0025_b` backfill follow); or, for
+package feeds (F-03), a package version becomes deletable or republishable, a feed takes a name
+outside its namespace or proxies an upstream, a package release gains a signed record or reaches a
+device-facing route, the Worker starts unpacking a package, or anything but the platform bootstrap
+creates the system product; or, for
 content-key delegation (P4-19), `DELEGABLE_PACK_TYPES` or `DATA_ONLY_EXTENSIONS` grows, a delegation
 gains a scope dimension, the delegated path is allowed on a surface beyond a compatible or
 standalone pack's feed target and the reload of a stored delegated install, any SDK or handler

@@ -1,356 +1,403 @@
 /**
- * P2b-06 — the Distribution section's Matrix tab: releases × outlets with availability,
- * submission and rollout per cell. The view renders the worker's matrix as it is (which verbs a
- * rollout allows is the server's `controls`), a mirrored rollout has every control disabled, and
- * each control confirms its effect and then calls P2b-04's admin rollout route exactly once.
+ * Distribution → Matrix (admin chunk 9, ADMIN.md §6.4): the T5 grid, its views and URL state, the
+ * cell drawer with only the server-allowed verbs, the store's own controls for a mirrored
+ * rollout, readiness overrides, Set percentage and Start rollout. Closes MTX-1 to MTX-10.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  cleanup,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type {
-  DistributionMatrix,
-  MatrixRolloutDto,
-  ReleaseStoreResponse,
-  RolloutVerb,
-} from "../src/api.js";
-import { ApiError } from "../src/api.js";
-import { resetCache } from "../src/context.js";
-import { Toaster } from "../src/components/ui/index.js";
-import { SLUG, STORE } from "./releaseFixture.js";
+import { configureAxe } from "vitest-axe";
+import { resetConsole } from "./consoleHarness.js";
+import {
+  apiError,
+  bootWith,
+  MATRIX,
+  P,
+  writes,
+} from "./distributionFixture.js";
 
-const distributionMatrix =
-  vi.fn<(slug: string) => Promise<DistributionMatrix>>();
-const releases = vi.fn<(slug: string) => Promise<ReleaseStoreResponse>>();
-const rolloutAction =
-  vi.fn<
-    (
-      slug: string,
-      outlet: string,
-      channel: string,
-      verb: RolloutVerb,
-      body: { deliverable: string; releaseId: string },
-    ) => Promise<unknown>
-  >();
+const axe = configureAxe({
+  rules: { "color-contrast": { enabled: false }, region: { enabled: false } },
+});
 
-vi.mock("../src/api.js", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../src/api.js")>()),
-  api: {
-    distributionMatrix: (slug: string) => distributionMatrix(slug),
-    releases: (slug: string) => releases(slug),
-    rolloutAction: (
-      s: string,
-      o: string,
-      c: string,
-      v: RolloutVerb,
-      b: { deliverable: string; releaseId: string },
-    ) => rolloutAction(s, o, c, v, b),
-  },
-}));
+const MATRIX_HASH = "#/p/djdl/distribution/matrix";
 
-const { DistributionMatrixView } =
-  await import("../src/views/distribution/Matrix.js");
+beforeEach(() => {
+  resetConsole();
+});
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
-function rollout(
-  outletId: string,
-  state: MatrixRolloutDto["state"],
-  controls: RolloutVerb[],
-  extra: Partial<MatrixRolloutDto> = {},
-): MatrixRolloutDto {
-  return {
-    deliverableId: "app",
-    outletId,
-    channel: "stable",
-    releaseId: "v0.4.2",
-    rolloutBp: 2500,
-    state,
-    mirrored: false,
-    source: "admin",
-    startedAt: 1,
-    updatedAt: 2,
-    updatedBy: "admin:u1",
-    controls,
-    ...extra,
-  };
+async function grid(): Promise<HTMLElement> {
+  return screen.findByRole("grid", { name: /Distribution matrix of the app/ });
 }
 
-const MATRIX: DistributionMatrix = {
-  deliverableId: "app",
-  limit: 20,
-  outlets: [
-    {
-      outletId: "direct",
-      kind: "direct",
-      transport: "pkey-cdn",
-      derives: true,
-      supported: true,
-    },
-    {
-      outletId: "app-store",
-      kind: "app-store",
-      transport: "apple-ba",
-      derives: false,
-      supported: false,
-    },
-    {
-      outletId: "play",
-      kind: "play",
-      transport: "pkey-cdn",
-      derives: false,
-      supported: true,
-    },
-  ],
-  releases: [
-    {
-      releaseId: "v0.4.2",
-      version: "0.4.2",
-      channel: "stable",
-      publishedAt: 1,
-      yanked: false,
-    },
-    {
-      releaseId: "v0.4.0",
-      version: "0.4.0",
-      channel: "stable",
-      publishedAt: 0,
-      yanked: true,
-    },
-  ],
-  cells: [
-    {
-      releaseId: "v0.4.2",
-      outletId: "direct",
-      availability: "live",
-      records: [
-        {
-          releaseId: "v0.4.2",
-          buildId: "macos-universal",
-          outletId: "direct",
-          transport: "pkey-cdn",
-          state: "live",
-          since: 1,
-          source: "derived",
-          derived: true,
-          updatedAt: null,
-        },
-      ],
-      submission: null,
-      rollouts: [rollout("direct", "active", ["pause", "halt", "complete"])],
-    },
-    {
-      releaseId: "v0.4.2",
-      outletId: "app-store",
-      availability: "in-review",
-      records: [
-        {
-          releaseId: "v0.4.2",
-          buildId: "",
-          outletId: "app-store",
-          transport: "pkey-cdn",
-          state: "in-review",
-          since: 1,
-          source: "asc",
-          derived: false,
-          updatedAt: 2,
-        },
-      ],
-      submission: {
-        releaseId: "v0.4.2",
-        outletId: "app-store",
-        state: "submitted",
-        submittedAt: 1,
-        reviewedAt: null,
-        source: "asc",
-        updatedAt: 2,
-      },
-      rollouts: [],
-    },
-    {
-      releaseId: "v0.4.2",
-      outletId: "play",
-      availability: "live",
-      records: [],
-      submission: null,
-      rollouts: [
-        rollout("play", "active", [], { mirrored: true, source: "play" }),
-      ],
-    },
-    ...["direct", "app-store", "play"].map((outletId) => ({
-      releaseId: "v0.4.0",
-      outletId,
-      availability: null,
-      records: [],
-      submission: null,
-      rollouts: [],
-    })),
-  ],
-  states: {
-    availability: ["pending", "live"],
-    submission: ["submitted"],
-    rollout: ["active", "paused", "halted", "complete"],
-  },
-};
-
-function renderView() {
-  return render(
-    <Toaster>
-      <DistributionMatrixView slug={SLUG} />
-    </Toaster>,
-  );
-}
-
-function cellOf(release: string, outlet: string): HTMLElement {
-  const row = document.querySelector(`tr[data-release="${release}"]`)!;
-  return row.querySelector(`td[data-outlet="${outlet}"]`) as HTMLElement;
-}
-
-describe("Distribution — matrix", () => {
-  beforeEach(() => {
-    resetCache();
-    distributionMatrix.mockReset();
-    releases.mockReset();
-    rolloutAction.mockReset();
-    distributionMatrix.mockResolvedValue(MATRIX);
-    releases.mockResolvedValue(STORE);
-    rolloutAction.mockResolvedValue({ rollout: {} });
-  });
-  afterEach(cleanup);
-
-  it("shows availability, submission and rollout per (release, outlet), with no status caveat", async () => {
-    renderView();
-    await screen.findByRole("table", { name: "Distribution matrix" });
-    expect(screen.queryByRole("note")).toBeNull();
-    const direct = cellOf("v0.4.2", "direct");
-    expect(within(direct).getByText("live (derived)")).toBeTruthy();
-    expect(within(direct).getByText("active")).toBeTruthy();
-    expect(within(direct).getByText("25%")).toBeTruthy();
-    const store = cellOf("v0.4.2", "app-store");
-    expect(within(store).getByText("in-review")).toBeTruthy();
-    // A transport v1 does not act on is named in its column header (P4-05).
+describe("Distribution → Matrix", () => {
+  it("renders releases × outlets as a grid of summaries, with a legend and no status caveat", async () => {
+    bootWith(MATRIX_HASH);
+    const g = await grid();
     expect(
-      screen.getByText("apple-ba: not delivered by Polaris Key"),
+      screen.getByRole("heading", { level: 1, name: "Matrix" }),
     ).toBeTruthy();
-    expect(screen.queryAllByText(/not delivered by Polaris Key/)).toHaveLength(
-      1,
-    );
-    expect(screen.queryByText(/not supported yet/)).toBeNull();
-    expect(within(store).getByText("submitted")).toBeTruthy();
+    for (const o of ["direct", "app-store", "play", "altstore"])
+      expect(
+        within(g).getByRole("columnheader", { name: new RegExp(o) }),
+      ).toBeTruthy();
+    const cell = within(g).getByRole("gridcell", {
+      name: /^2\.4\.0 on direct: Live, Rolling out · 25 %/,
+    });
+    expect(within(cell).getByText("Live")).toBeTruthy();
     expect(
-      within(cellOf("v0.4.0", "direct")).getByText("not available"),
-    ).toBeTruthy();
-    // The row header reuses P2-07's components: the yanked badge and payload SHA-256s.
-    const yankedRow = document.querySelector('tr[data-release="v0.4.0"]')!;
-    expect(within(yankedRow as HTMLElement).getByText("yanked")).toBeTruthy();
-    const payloads = STORE.releases[0]!.artifacts.filter(
-      (a) => a.role === "payload",
-    );
-    expect(payloads.length).toBeGreaterThan(0);
-    const header = document.querySelector('tr[data-release="v0.4.2"] th')!;
-    await waitFor(() =>
-      expect(
-        header.querySelector(`code[title="${payloads[0]!.sha256}"]`),
-      ).toBeTruthy(),
-    );
-  });
-
-  it("enables exactly the controls the server allows; a mirrored rollout has none", async () => {
-    renderView();
-    await screen.findByRole("table", { name: "Distribution matrix" });
-    const direct = cellOf("v0.4.2", "direct");
-    const enabled = (name: string) =>
-      !(
-        within(direct).getByRole("button", {
-          name: `${name} direct/stable`,
-        }) as HTMLButtonElement
-      ).disabled;
-    expect([
-      enabled("Pause"),
-      enabled("Resume"),
-      enabled("Halt"),
-      enabled("Complete"),
-    ]).toEqual([true, false, true, true]);
-    const play = cellOf("v0.4.2", "play");
-    expect(within(play).getByText(/Mirrored from play/)).toBeTruthy();
-    for (const verb of ["Pause", "Resume", "Halt", "Complete"])
-      expect(
-        (
-          within(play).getByRole("button", {
-            name: `${verb} play/stable`,
-          }) as HTMLButtonElement
-        ).disabled,
-        verb,
-      ).toBe(true);
-  });
-
-  it("a control confirms its effect, then calls P2b-04's rollout route once and refreshes", async () => {
-    renderView();
-    await screen.findByRole("table", { name: "Distribution matrix" });
-    await userEvent.click(
-      within(cellOf("v0.4.2", "direct")).getByRole("button", {
-        name: "Halt direct/stable",
+      within(g).getByRole("gridcell", {
+        name: /^2\.4\.0 on altstore: Pending, Held for packs/,
       }),
-    );
-    const dialog = await screen.findByRole("alertdialog");
-    expect(
-      within(dialog).getByText(/Halt the rollout of 0.4.2 on direct\/stable/),
     ).toBeTruthy();
-    expect(
-      within(dialog).getByText(/download page stop offering it there/),
-    ).toBeTruthy();
-    expect(within(dialog).queryByText(/legacy feeds|yank it/)).toBeNull();
-    expect(rolloutAction).not.toHaveBeenCalled();
-    await userEvent.click(within(dialog).getByRole("button", { name: "Halt" }));
-    await waitFor(() => expect(rolloutAction).toHaveBeenCalledTimes(1));
-    expect(rolloutAction).toHaveBeenCalledWith(
-      SLUG,
-      "direct",
-      "stable",
-      "halt",
-      {
-        deliverable: "app",
-        releaseId: "v0.4.2",
-      },
-    );
-    await waitFor(() => expect(distributionMatrix).toHaveBeenCalledTimes(2));
+    // MTX-1: no action buttons in cells.
+    expect(within(g).queryAllByRole("button")).toHaveLength(0);
+    expect(screen.getByRole("list", { name: "Legend" })).toBeTruthy();
+    expect(screen.queryByText(/does not stop devices yet/)).toBeNull();
   });
 
-  it("a refused control keeps the dialog's toast honest and changes nothing", async () => {
-    rolloutAction.mockRejectedValue(
-      new ApiError(
-        409,
-        undefined,
-        "bad_request",
-        undefined,
-        "invalid_transition",
+  it("round-trips the view, channel and limit through the URL", async () => {
+    const { calls } = bootWith(
+      `${MATRIX_HASH}?view=readiness&channel=beta&limit=50`,
+    );
+    const g = await grid();
+    // Only the beta release, readiness summaries.
+    expect(within(g).getAllByRole("row")).toHaveLength(2);
+    expect(
+      within(g).getByRole("gridcell", {
+        name: /^2\.4\.0-rc\.2 on direct: readiness not tracked/,
+      }),
+    ).toBeTruthy();
+    expect(
+      calls.some(
+        (c) =>
+          c.path === P("/distribution/matrix") && c.query.includes("limit=50"),
+      ),
+    ).toBe(true);
+    await userEvent.click(screen.getByRole("radio", { name: "Availability" }));
+    await waitFor(() => expect(window.location.hash).not.toContain("view="));
+    expect(window.location.hash).toContain("channel=beta");
+  });
+
+  it("opens the cell drawer from the grid and offers only the server's verbs", async () => {
+    bootWith(MATRIX_HASH);
+    const g = await grid();
+    await userEvent.click(
+      within(g).getByRole("gridcell", { name: /^2\.4\.0 on direct/ }),
+    );
+    await waitFor(() =>
+      expect(window.location.hash).toContain("cell=rel_240%3Adirect"),
+    );
+    const drawer = await screen.findByRole("dialog", {
+      name: "2.4.0 on direct",
+    });
+    expect(
+      within(drawer).getByRole("heading", { name: "Availability" }),
+    ).toBeTruthy();
+    expect(
+      within(drawer).getByText("Derived: Polaris Key serves these bytes", {
+        exact: false,
+      }),
+    ).toBeTruthy();
+    expect(
+      within(drawer).getByRole("button", { name: "Pause direct / stable" }),
+    ).toBeTruthy();
+    expect(
+      within(drawer).getByRole("button", { name: "Halt direct / stable" }),
+    ).toBeTruthy();
+    expect(
+      within(drawer).queryByRole("button", { name: "Resume direct / stable" }),
+    ).toBeNull();
+    expect(
+      within(drawer).getByRole("meter", {
+        name: /Rollout of 2\.4\.0 on stable/,
+      }),
+    ).toBeTruthy();
+  });
+
+  it("halts at L2 and refreshes the matrix after the server confirms", async () => {
+    const { calls } = bootWith(`${MATRIX_HASH}?cell=rel_240:direct`, {
+      [`POST ${P("/distribution/rollouts/direct/stable/halt")}`]: {
+        rollout: {},
+      },
+    });
+    const drawer = await screen.findByRole("dialog", {
+      name: "2.4.0 on direct",
+    });
+    const before = calls.filter(
+      (c) => c.path === P("/distribution/matrix"),
+    ).length;
+    await userEvent.click(
+      within(drawer).getByRole("button", { name: "Halt direct / stable" }),
+    );
+    const confirm = await screen.findByRole("alertdialog");
+    expect(
+      within(confirm).getByText(/Only an explicit resume lifts a halt/),
+    ).toBeTruthy();
+    await userEvent.click(
+      within(confirm).getByRole("button", { name: "Halt 2.4.0" }),
+    );
+    await waitFor(() =>
+      expect(writes(calls)).toContainEqual(
+        expect.objectContaining({
+          path: P("/distribution/rollouts/direct/stable/halt"),
+          method: "POST",
+          body: { deliverable: "app", releaseId: "rel_240" },
+        }),
       ),
     );
-    renderView();
-    await screen.findByRole("table", { name: "Distribution matrix" });
-    await userEvent.click(
-      within(cellOf("v0.4.2", "direct")).getByRole("button", {
-        name: "Complete direct/stable",
-      }),
+    await waitFor(() =>
+      expect(
+        calls.filter((c) => c.path === P("/distribution/matrix")).length,
+      ).toBeGreaterThan(before),
     );
-    const dialog = await screen.findByRole("alertdialog");
-    await userEvent.click(
-      within(dialog).getByRole("button", { name: "Complete" }),
-    );
-    await waitFor(() => expect(rolloutAction).toHaveBeenCalledTimes(1));
-    expect(
-      await screen.findByText(/Couldn’t complete the rollout/),
-    ).toBeTruthy();
-    expect(distributionMatrix).toHaveBeenCalledTimes(1);
   });
 
-  it("says so when there are no releases or no outlets", async () => {
-    distributionMatrix.mockResolvedValue({ ...MATRIX, outlets: [], cells: [] });
-    renderView();
-    expect(await screen.findByText("No outlets declared")).toBeTruthy();
+  it("keeps the confirmation open with the worded refusal when the server refuses", async () => {
+    bootWith(`${MATRIX_HASH}?cell=rel_240:direct`, {
+      [`POST ${P("/distribution/rollouts/direct/stable/pause")}`]: () =>
+        apiError(409, "bad_request", { reason: "stale_release" }),
+    });
+    const drawer = await screen.findByRole("dialog", {
+      name: "2.4.0 on direct",
+    });
+    await userEvent.click(
+      within(drawer).getByRole("button", { name: "Pause direct / stable" }),
+    );
+    const confirm = await screen.findByRole("alertdialog");
+    await userEvent.click(
+      within(confirm).getByRole("button", { name: "Pause 2.4.0" }),
+    );
+    expect(
+      await within(confirm).findByText(/Someone changed this rollout/),
+    ).toBeTruthy();
+    expect(screen.getByRole("alertdialog")).toBeTruthy();
+  });
+
+  it("sets a percentage with a preset (MTX-5)", async () => {
+    const { calls } = bootWith(`${MATRIX_HASH}?cell=rel_240:direct`, {
+      [`POST ${P("/distribution/rollouts/direct/stable")}`]: { rollout: {} },
+    });
+    const drawer = await screen.findByRole("dialog", {
+      name: "2.4.0 on direct",
+    });
+    await userEvent.click(
+      within(drawer).getByRole("button", { name: "Set percentage…" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Set the percentage of 2.4.0",
+    });
+    await userEvent.click(within(dialog).getByRole("button", { name: "50 %" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Set to 50 %" }),
+    );
+    await waitFor(() =>
+      expect(writes(calls)).toContainEqual(
+        expect.objectContaining({
+          path: P("/distribution/rollouts/direct/stable"),
+          body: { deliverable: "app", releaseId: "rel_240", bp: 5000 },
+        }),
+      ),
+    );
+  });
+
+  it("shows a mirrored rollout read-only, with the store's own controls", async () => {
+    const { calls } = bootWith(`${MATRIX_HASH}?cell=rel_240:play`, {
+      [`POST ${P("/distribution/connectors/play/rollout/halt")}`]: { ok: true },
+    });
+    const drawer = await screen.findByRole("dialog", { name: "2.4.0 on play" });
+    expect(
+      within(drawer).getByText(/Google Play owns this rollout/),
+    ).toBeTruthy();
+    expect(
+      within(drawer).queryByRole("button", { name: /^Pause play/ }),
+    ).toBeNull();
+    await userEvent.click(
+      await within(drawer).findByRole("button", { name: "Halt on Play…" }),
+    );
+    const confirm = await screen.findByRole("alertdialog");
+    await userEvent.click(
+      within(confirm).getByRole("button", { name: "Halt 2.4.0" }),
+    );
+    await waitFor(() =>
+      expect(writes(calls)).toContainEqual(
+        expect.objectContaining({
+          path: P("/distribution/connectors/play/rollout/halt"),
+          body: { track: "production", releaseId: "rel_240" },
+        }),
+      ),
+    );
+  });
+
+  it("overrides a readiness hold only with a reason (MTX-2)", async () => {
+    const { calls } = bootWith(`${MATRIX_HASH}?cell=rel_240:altstore`, {
+      [`POST ${P("/distribution/readiness/rel_240/altstore/override")}`]: {
+        appReleaseId: "rel_240",
+        readiness: null,
+      },
+    });
+    const drawer = await screen.findByRole("dialog", {
+      name: "2.4.0 on altstore",
+    });
+    expect(
+      within(drawer).getByRole("link", { name: "textures 3.0.0" }),
+    ).toBeTruthy();
+    await userEvent.click(
+      within(drawer).getByRole("button", { name: "Override…" }),
+    );
+    const confirm = await screen.findByRole("alertdialog");
+    const go = within(confirm).getByRole("button", { name: "Override 2.4.0" });
+    expect((go as HTMLButtonElement).disabled).toBe(true);
+    await userEvent.type(
+      within(confirm).getByLabelText(/Reason/),
+      "packs ship in the build",
+    );
+    await userEvent.click(go);
+    await waitFor(() =>
+      expect(writes(calls)).toContainEqual(
+        expect.objectContaining({
+          path: P("/distribution/readiness/rel_240/altstore/override"),
+          body: { reason: "packs ship in the build" },
+        }),
+      ),
+    );
+  });
+
+  it("refreshes readiness and shows what changed", async () => {
+    bootWith(MATRIX_HASH, {
+      [`POST ${P("/distribution/readiness/refresh")}`]: {
+        refreshed: 3,
+        rows: [],
+      },
+    });
+    await grid();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Refresh readiness" }),
+    );
+    expect(
+      await screen.findByText(/3 release × outlet pairs were recomputed/),
+    ).toBeTruthy();
+  });
+
+  it("starts a rollout from the header", async () => {
+    const { calls } = bootWith(MATRIX_HASH, {
+      [`POST ${P("/distribution/rollouts/altstore/beta")}`]: { rollout: {} },
+    });
+    await grid();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Start rollout…" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Start a rollout",
+    });
+    await userEvent.click(
+      within(dialog).getByRole("combobox", { name: /Outlet/ }),
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: /altstore/ }),
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /^Release/ }),
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: /2\.4\.0-rc\.2/ }),
+    );
+    await userEvent.click(within(dialog).getByRole("button", { name: "10 %" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Start rollout" }),
+    );
+    await waitFor(() =>
+      expect(writes(calls)).toContainEqual(
+        expect.objectContaining({
+          path: P("/distribution/rollouts/altstore/beta"),
+          body: { deliverable: "app", releaseId: "rel_rc2", bp: 1000 },
+        }),
+      ),
+    );
+  });
+
+  it("asks for the matrix of another deliverable through the URL (MTX-6)", async () => {
+    const { calls } = bootWith(MATRIX_HASH);
+    await grid();
+    await userEvent.click(
+      screen.getByRole("combobox", { name: "Deliverable" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: /textures/ }),
+    );
+    await waitFor(() =>
+      expect(window.location.hash).toContain("deliverable=textures"),
+    );
+    await waitFor(() =>
+      expect(
+        calls.some(
+          (c) =>
+            c.path === P("/distribution/matrix") &&
+            c.query.includes("deliverable=textures"),
+        ),
+      ).toBe(true),
+    );
+  });
+
+  it("splits the empty state by cause (MTX-9)", async () => {
+    bootWith(MATRIX_HASH, {
+      [P("/distribution/matrix")]: { ...MATRIX, releases: [], cells: [] },
+    });
+    expect(
+      await screen.findByRole("heading", {
+        name: "No releases of the app yet",
+      }),
+    ).toBeTruthy();
+    cleanup();
+    resetConsole();
+    bootWith(MATRIX_HASH, {
+      [P("/distribution/matrix")]: { ...MATRIX, outlets: [], cells: [] },
+    });
+    expect(
+      await screen.findByRole("heading", { name: "No outlets declared" }),
+    ).toBeTruthy();
+  });
+
+  it("shows a loading state, then an error with Retry", async () => {
+    let fail = true;
+    bootWith(MATRIX_HASH, {
+      [P("/distribution/matrix")]: () =>
+        fail ? apiError(500, "internal") : MATRIX,
+    });
+    expect(await screen.findByLabelText("Loading the matrix")).toBeTruthy();
+    const retry = await screen.findByRole("button", { name: "Retry" });
+    fail = false;
+    await userEvent.click(retry);
+    expect(await grid()).toBeTruthy();
+  });
+
+  it("filters to no results and clears the filter", async () => {
+    bootWith(`${MATRIX_HASH}?channel=nightly`);
+    expect(
+      await screen.findByRole("heading", {
+        name: /^No releases on this channel/,
+      }),
+    ).toBeTruthy();
+    await userEvent.click(
+      screen.getByRole("button", { name: /Clear filters/ }),
+    );
+    expect(await grid()).toBeTruthy();
+  });
+
+  it("passes axe", async () => {
+    const { container } = { container: document.body };
+    bootWith(MATRIX_HASH);
+    await grid();
+    const results = await axe(container);
+    expect(
+      results.violations.map(
+        (v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`,
+      ),
+    ).toEqual([]);
   });
 });

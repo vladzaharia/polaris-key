@@ -81,6 +81,8 @@ import { parseManifestPackDeliverable } from "@polaris-key/manifest";
 
 export { knownChannels };
 import type { ReleaseMetadataRow } from "./store.js";
+import { stmtEnqueuePackageRender } from "../../core/registryQueue.js";
+import { packageReleaseOf, packageStateStatements } from "./packages/state.js";
 
 // ── Actors and results ───────────────────────────────────────────────────────────────────────
 
@@ -135,6 +137,9 @@ async function writeAndInvalidate(
   product: string,
   now: number,
   write: DbStatement,
+  /** Statements that ride in the same batch, after the invalidation (F-03: a package's state
+   *  and its render enqueue). */
+  extra: readonly DbStatement[] = [],
 ): Promise<number> {
   if (db.batchChanges) {
     // The invalidation is guarded on the write having changed a row (`changes()`, the
@@ -143,6 +148,7 @@ async function writeAndInvalidate(
     const statements = [
       write,
       ...invalidateSetsStatements(product, now, { onlyAfterAChange: true }),
+      ...extra,
     ];
     return (await db.batchChanges(statements))[0] ?? 0;
   }
@@ -150,7 +156,25 @@ async function writeAndInvalidate(
   // invalidation only when it changed something.
   const changed = await db.runChanges(write.sql, ...write.params);
   if (changed > 0) await db.batch(invalidateSetsStatements(product, now));
+  if (extra.length > 0) await db.batch([...extra]);
   return changed;
+}
+
+/** A channel move of a package deliverable re-renders its feeds (F-03, plans/F-01.md §6.5). */
+function channelRender(
+  deliverable: ReleaseDeliverableRow,
+  now: number,
+): DbStatement[] {
+  return deliverable.kind === "package"
+    ? [
+        stmtEnqueuePackageRender(
+          deliverable.product,
+          deliverable.deliverable_id,
+          "channel",
+          now,
+        ),
+      ]
+    : [];
 }
 
 /** Append one audit row for a policy change, attributed to its actor. */
@@ -447,6 +471,7 @@ export async function applyPointerOp(
       by: actorId(actor),
       now,
     }),
+    channelRender(d.deliverable, now),
   );
   await auditChange(
     db,
@@ -591,6 +616,7 @@ export async function updateChannelPolicy(
       by: actorId(actor),
       now,
     }),
+    channelRender(d.deliverable, now),
   );
   await auditChange(
     db,
@@ -735,18 +761,24 @@ export async function revertChannelPolicy(
   const deliverable = d.deliverable.deliverable_id;
   const key = { product, deliverableId: deliverable, channel: ch.channel };
   if (
-    (await writeAndInvalidate(db, product, now, {
-      sql: `UPDATE release_channel_policy
+    (await writeAndInvalidate(
+      db,
+      product,
+      now,
+      {
+        sql: `UPDATE release_channel_policy
                SET source = 'manifest', modified_at = ?, modified_by = ?
              WHERE product = ? AND deliverable_id = ? AND channel = ?`,
-      params: [
-        now,
-        actorId(actor),
-        key.product,
-        key.deliverableId,
-        key.channel,
-      ],
-    })) === 0
+        params: [
+          now,
+          actorId(actor),
+          key.product,
+          key.deliverableId,
+          key.channel,
+        ],
+      },
+      channelRender(d.deliverable, now),
+    )) === 0
   )
     return refuse(404, "no_policy", "this channel has no policy to revert");
   await auditChange(
@@ -807,6 +839,15 @@ export async function yank(
     product,
     now,
     stmtYankRelease(product, releaseId, reason.trim(), by, now),
+    // A package version's yank is its feed state too (PEP 592 reason, npm and others hide it).
+    await packageStateStatements(
+      db,
+      product,
+      releaseId,
+      "yank",
+      reason.trim(),
+      now,
+    ),
   );
   await auditChange(
     db,
@@ -848,6 +889,7 @@ export async function unyank(
       product,
       now,
       stmtUnyankRelease(product, releaseId),
+      await packageStateStatements(db, product, releaseId, "unyank", null, now),
     )) === 0
   )
     return refuse(404, "not_yanked", "this release is not yanked");
@@ -866,5 +908,93 @@ export async function unyank(
     ok: true,
     packSets,
     yank: { releaseId, yanked: false, reason: null, at: null, by: null },
+  };
+}
+
+// ── Package deprecation (F-03) ───────────────────────────────────────────────────────────────
+
+/** A deprecation message is npm's `deprecated` text; bounded like a yank reason. */
+export const MAX_DEPRECATION_MESSAGE = MAX_YANK_REASON;
+
+export interface DeprecationView {
+  releaseId: string;
+  state: "live" | "yanked" | "deprecated";
+  message: string | null;
+}
+
+/**
+ * `POST …/releases/{releaseId}/deprecate` `{message}` and `DELETE …/deprecate` (admin): mark a
+ * package version deprecated (npm's `deprecated`, a warning other ecosystems show) or lift it.
+ * Package versions only — an app or pack release has no such state — and never a yanked one
+ * (unyank it first). The state moves and the feeds' render is enqueued in one batch, audited.
+ */
+export async function setPackageDeprecation(
+  env: Env,
+  db: Db,
+  product: string,
+  releaseId: string,
+  message: unknown,
+  actor: PolicyActor,
+  now: number,
+): Promise<PolicyResult<{ deprecation: DeprecationView }>> {
+  const pkg = await packageReleaseOf(db, product, releaseId);
+  if (!pkg)
+    return refuse(
+      404,
+      "not_a_package_release",
+      "deprecation applies to a package version only",
+    );
+  const lifting = message === null;
+  if (!lifting) {
+    if (typeof message !== "string" || !message.trim())
+      return refuse(422, "bad_message", "a deprecation needs a message", [
+        "message",
+      ]);
+    if (message.length > MAX_DEPRECATION_MESSAGE)
+      return refuse(
+        422,
+        "bad_message",
+        `message is limited to ${MAX_DEPRECATION_MESSAGE} characters`,
+        ["message"],
+      );
+  }
+  if (pkg.state === "yanked")
+    return refuse(
+      409,
+      "release_yanked",
+      "a yanked version cannot be deprecated or undeprecated; unyank it first",
+    );
+  if (lifting && pkg.state !== "deprecated")
+    return refuse(404, "not_deprecated", "this version is not deprecated");
+  const text = lifting ? null : (message as string).trim();
+  await db.batch(
+    await packageStateStatements(
+      db,
+      product,
+      releaseId,
+      lifting ? "undeprecate" : "deprecate",
+      text,
+      now,
+    ),
+  );
+  await auditChange(
+    db,
+    product,
+    actor,
+    now,
+    lifting ? "release.package.undeprecate" : "release.package.deprecate",
+    { kind: "release", id: releaseId },
+    lifting
+      ? `Lifted the deprecation of ${releaseId}`
+      : `Deprecated ${releaseId}: ${text}`,
+  );
+  await bumpReleaseGeneration(env, product, now);
+  return {
+    ok: true,
+    deprecation: {
+      releaseId,
+      state: lifting ? "live" : "deprecated",
+      message: text,
+    },
   };
 }

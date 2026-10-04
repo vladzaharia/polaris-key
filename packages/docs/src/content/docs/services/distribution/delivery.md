@@ -129,8 +129,11 @@ it is handed back — the same rule as every other operator-owned setting, and t
 `entitled` mode, which no manifest can express, survives a push. A pack's row has no manifest
 spelling; it is operator-owned from the start.
 
-The console's **Update settings** page edits the app's delivery access as **Artifact access**,
-with its own owner badge and revert. The admin API (narrative-only, not in the wire spec):
+The console's **Distribution → Access** page edits the app's delivery access and each pack's,
+each in its own section with its own Save: a mode for each, and for a pack in `entitled` mode its
+gate (a catalog flag). The app's section carries its owner badge, with **Revert to manifest**
+while the console owns it; a pack has no manifest spelling. The admin API (narrative-only, not in
+the wire spec):
 
 | Method | Path                                                     | Does                                                        |
 | ------ | -------------------------------------------------------- | ----------------------------------------------------------- |
@@ -286,3 +289,18 @@ whose chunk index cannot be read keeps every `pack-upload` ref that night.
 - [Artifacts, changelog & install](/docs/services/release/artifacts/) — what each byte route
   resolves and serves.
 - [Public route table](/docs/reference/routes/) — every canonical route and alias.
+
+## Package feeds switch
+
+Each product has an operator-owned **package feeds** switch (F-03): on, its
+[package feeds](/docs/start/concepts/#packages) answer on `pkg.plrs.im`; off, every feed read
+for that product stops at once and looks like an unknown owner. A manifest never sets it.
+
+```http
+GET /manage/api/products/<product>/distribution/package-feeds
+PUT /manage/api/products/<product>/distribution/package-feeds   {"enabled": true, "expectedVersion": 0}
+```
+
+`expectedVersion` is the version the operator read (0 before it was ever set); a stale one is a
+409 (`version_conflict`) carrying the current state. Turning it on queues a full render of the
+product's feeds. Each change is audited as `distribution.package_feeds.update`.

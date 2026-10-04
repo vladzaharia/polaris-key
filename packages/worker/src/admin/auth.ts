@@ -19,7 +19,8 @@ import type { Db } from "../db/types.js";
 import { hashKey } from "../crypto.js";
 import { clientIp, rateLimitOk } from "../core/rateLimit.js";
 import { platformOidcConfig } from "../platformOidc.js";
-import { staticHtmlSecurityHeaders } from "../securityHeaders.js";
+import { brandedHtmlSecurityHeaders } from "../securityHeaders.js";
+import { escapeHtml, renderBrandPage } from "../core/brandHtml.js";
 import { hasAnyAdminGrant } from "./authz.js";
 import {
   buildSessionCookie,
@@ -182,14 +183,24 @@ const joseIdTokenVerifier: IdTokenVerifier = {
 
 // ── handlers ──────────────────────────────────────────────────────────────────
 /** A sign-in error page. HTML on the admin origin, so it carries the strict script-free CSP
- *  (R1-09): every message here is a hard-coded literal today, but this page must never be a
- *  script-execution primitive if that changes. */
+ *  (R1-09): every message here is a hard-coded literal today, and it is escaped anyway, so this
+ *  page can never become a script-execution primitive if that changes. */
 function htmlError(status: number, message: string): Response {
+  // A retry can help with an expired, unverified or rate-limited attempt; it cannot fix a
+  // missing configuration (500) or a missing admin grant (403).
+  const retry = status === 400 || status === 401 || status === 429;
   return new Response(
-    `<!doctype html><meta charset=utf-8><title>Sign-in</title><body style="font-family:system-ui;padding:3rem;text-align:center"><h1>${message}</h1>`,
+    renderBrandPage({
+      title: "Console sign-in",
+      eyebrow: "Polaris Key console",
+      heading: message,
+      body: retry
+        ? `<p class="actions"><a class="button" href="${escapeHtml("/manage/login")}">Sign in again</a></p>`
+        : "",
+    }),
     {
       status,
-      headers: staticHtmlSecurityHeaders(
+      headers: brandedHtmlSecurityHeaders(
         new Headers({
           "content-type": "text/html; charset=utf-8",
           "cache-control": "no-store",

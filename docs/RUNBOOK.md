@@ -363,6 +363,39 @@ curl -fsS https://key.plrs.im/djdl/appcast.xml >/dev/null
 Use the Releases view to inspect GitHub sync status, changed `.pkey/` paths, manifest
 validation errors, and release health. Use manual resync there when a webhook was missed.
 
+### Package feeds (F-02)
+
+The feeds answer on the registry host, `pkg.plrs.im` (`pkg-staging`, `pkg-dev`), the same
+Worker on a third custom domain (DEPLOYMENT §3, "Registry host and feeds"). Check the host after
+a deploy:
+
+```sh
+curl -sI https://pkg.plrs.im/v2/ | grep -i docker-distribution-api-version   # registry/2.0
+curl -sI https://pkg.plrs.im/manage | head -1                                 # 404
+```
+
+**Kill switches**, loosest scope last; each answers the plain not-found (the same as a feed that
+does not exist) and takes effect within the 30-second per-isolate settings window, even for
+bytes the edge has cached for a year, because the access check runs before the cache:
+
+1. the platform policy per ecosystem (`dist_registry_policy.enabled`);
+2. the owner's `packageFeeds` (Core → Services, under Distribution);
+3. the feed's `enabled`;
+4. Distribution itself for the owner.
+
+Tightening a feed's or a deliverable's access mode away from `public` answers clients `401`
+with their native challenge within the same window; tier 1 has no registry credentials, so
+such a feed is closed to everyone until F-21.
+
+**A missing or stale index object** heals itself: a read that misses renders the package from
+D1, writes it back under `registry/` and counts `registry.render_miss`. The cron's self-check
+re-renders up to 50 packages per run whose stored render stamp differs from D1. Never put an R2
+lock or lifecycle rule on `registry/`.
+
+Bootstrapping the system product, turning an owner's feeds on, yanks and deprecations, feed
+rebuilds, the Swift signing-certificate rotation and the forward-only migration note follow with
+F-03, F-06 and F-11.
+
 ### Recovering the update feeds after a signer compromise
 
 The signed update feed (`pkey-feed+jws`, `GET /<p>/update/<channel>/feed.jws`) carries a `seq`
@@ -438,6 +471,36 @@ target out of an old Worker's sets: never delete those rows (reason `revoked`) d
 and never roll back the migration. Devices that already learned a revocation keep refusing the
 target. Every SDK release note must state that SDKs older than P4-13 keep using revoked content
 until upgraded.
+
+### Package feeds (F-03)
+
+Package feeds serve versions of `kind: package` deliverables (our SDKs among them) on
+`pkg.plrs.im`. F-03 ships the data side; the registry host (F-02), the ecosystem renderers (F-04
+to F-09) and the console pages (F-11) follow.
+
+- **Bootstrap the system product** after deploying F-03, in each environment (dev, staging,
+  production), as a platform admin:
+  `POST /manage/api/platform/feeds/bootstrap` (idempotent; audited `feed.bootstrap` in the
+  platform trail). It creates `polaris-key`, turns Release, Distribution and its package feeds on
+  and seeds one feed per ecosystem with the platform namespaces. Registering the monorepo's
+  trusted publisher for it is F-10's step.
+- **Turn a product's feeds on or off:** `PUT /manage/api/products/<slug>/distribution/package-feeds
+{"enabled": true|false, "expectedVersion": <n>}`. Off stops every read for the owner at once.
+- **Yank or deprecate a version:** the release's yank (`…/release/releases/<id>/yank`) is its feed
+  state; deprecate is `POST|DELETE …/release/releases/<id>/deprecate {"message"}`. Neither frees
+  the version: a package version is never published again.
+- **Publish:** CI runs `pkey release publish --deliverable <package id>`, which always dry-runs
+  first; a Worker older than F-03 is reported as such and nothing is uploaded.
+
+### Do not roll back past 0058_b with package rows
+
+`0058_b_release_deliverables_kind.sql` rebuilds `release_deliverables` to admit `kind = 'package'`
+(forward-only, like 0016). An older Worker reads and writes the table unchanged, so rolling the
+CODE back is safe. Rolling the SCHEMA back past it (recreating the old `CHECK (kind IN ('app',
+'pack'))`) needs the package rows gone first: `release_packages`, then the `release_metadata`,
+`release_artifacts` and `blob_refs` rows of package releases, then the `release_deliverables` rows
+of kind `package`. Package versions are meant to be unique forever, so do this only for an
+environment that is being abandoned.
 
 ### Content keys (delegation, P4-19)
 
@@ -602,6 +665,13 @@ polaris-key-deltas-<env>`).
 
 A red conformance job means the wire contract changed without regenerating and committing
 the corpus.
+
+`.github/workflows/registry-clients.yml` runs on PRs that touch the registry host, the
+Distribution registry module, the harness, `wrangler.toml` or the CLI's package publishing,
+and on demand. Each job stands up a seeded local Worker (`wrangler dev --env test`) and runs one
+real client against the registry host; run the same locally with
+`pnpm --filter @polaris-key/worker registry:clients -- --client curl`. Make it a required check
+for those paths in branch protection.
 
 ## Troubleshooting
 

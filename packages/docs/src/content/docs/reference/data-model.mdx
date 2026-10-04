@@ -15,7 +15,7 @@ this page or fails the freshness gate.
 
 | Table | Since | Columns (ALTERs annotated with their migration) |
 | --- | --- | --- |
-| `products` | 0001_init.sql | `slug`, `name`, `signing_kid`, `signing_pub`, `compat_min`, `compat_max`, `default_max_offline_days`, `default_device_limit`, `admin_group`, `branding_json`, `created_at`, `modified_at`, `release_source (0003)`, `status (0006)`, `deleted_at (0006)`, `fingerprint_policy_json (0010)`, `fingerprint_policy_source (0010)`, `auto_issue_json (0011)`, `auto_issue_source (0011)`, `services_json (0019)`, `services_source (0020)`, `compat_source (0022)`, `web_origins_json (0024)`, `trust_policy_json (0053)`, `trust_policy_source (0053)` |
+| `products` | 0001_init.sql | `slug`, `name`, `signing_kid`, `signing_pub`, `compat_min`, `compat_max`, `default_max_offline_days`, `default_device_limit`, `admin_group`, `branding_json`, `created_at`, `modified_at`, `release_source (0003)`, `status (0006)`, `deleted_at (0006)`, `fingerprint_policy_json (0010)`, `fingerprint_policy_source (0010)`, `auto_issue_json (0011)`, `auto_issue_source (0011)`, `services_json (0019)`, `services_source (0020)`, `compat_source (0022)`, `web_origins_json (0024)`, `trust_policy_json (0053)`, `trust_policy_source (0053)`, `system (0058)` |
 | `product_keys` | 0003_keyvault.sql | `product`, `kid`, `alg`, `public_b64url`, `enc_private_json`, `status`, `created_at`, `rotated_at`, `revoked_at (0021)` |
 | `product_secrets` | 0003_keyvault.sql | `product`, `name`, `enc_value_json`, `created_at`, `modified_at`, `usage (0025)` |
 | `outlet_credentials` | 0034_outlet_credentials.sql | `product`, `credential_id`, `kind`, `outlet_id`, `enc_value_json`, `meta_json`, `status`, `created_at`, `created_by`, `rotated_at`, `expires_at`, `last_used_at`, `last_ok_at`, `last_error` |
@@ -39,6 +39,7 @@ this page or fails the freshness gate.
 | `platform_credential_pins` | 0055_platform_store_connections.sql | `credential_id`, `product`, `pin`, `pinned_at`, `pinned_by` |
 | `platform_store_settings` | 0055_platform_store_connections.sql | `store`, `key`, `value`, `updated_at`, `updated_by` |
 | `platform_audit` | 0054_b_platform_audit.sql | `id`, `at`, `actor_sub`, `actor_name`, `actor_email`, `action`, `target_kind`, `target_id`, `summary`, `before_json`, `after_json` |
+| `registry_render_queue` | 0058_d_registry.sql | `product`, `deliverable_id`, `reason`, `enqueued_at`, `generation` |
 | `platform_settings` | 0056_platform_settings.sql | `key`, `value_json`, `version`, `updated_at`, `updated_by` |
 | `platform_job_runs` | 0057_platform_operations.sql | `id`, `run_id`, `job`, `cron`, `step`, `started_at`, `duration_ms`, `outcome`, `items`, `rows_affected`, `error_summary` |
 | `platform_heartbeats` | 0057_platform_operations.sql | `script`, `at`, `version_tag`, `cf_version_id`, `outcome`, `backlog_count`, `backlog_bytes`, `oldest_at` |
@@ -73,7 +74,7 @@ this page or fails the freshness gate.
 | `release_channel_floors` | 0023_release_resolution.sql | `product`, `channel`, `version`, `release_id`, `raised_at`, `lowered_by`, `lowered_at` |
 | `release_health` | 0007_backend_contracts.sql | `product`, `subject_kind`, `subject_id`, `status`, `details_json` |
 | `release_download_tokens` | 0016_drop_dead_pii.sql (rebuilt 0016) | `product`, `token_hash`, `release_id`, `artifact_id`, `device_id`, `scope_json`, `expires_at`, `used_at`, `created_at`, `REFERENCES` |
-| `release_deliverables` | 0027_a_release_model.sql | `product`, `deliverable_id`, `kind`, `pack_type`, `def_json`, `def_source`, `created_at`, `modified_at` |
+| `release_deliverables` | 0058_b_release_deliverables_kind.sql (rebuilt 0058) | `product`, `deliverable_id`, `kind`, `pack_type`, `def_json`, `def_source`, `created_at`, `modified_at`, `ecosystem`, `package_name` |
 | `release_builds` | 0027_a_release_model.sql | `product`, `release_id`, `build_id`, `platform`, `arch`, `format`, `build_number`, `variant_json`, `requires_json`, `min_os`, `created_at`, `modified_at`, `metadata_json (0043)`, `embeds_json (0045)`, `conflicts_json (0046)` |
 | `release_channel_policy` | 0027_a_release_model.sql | `product`, `deliverable_id`, `channel`, `pointer_release_id`, `pinned`, `includes_json`, `min_supported`, `critical`, `source`, `created_at`, `modified_at`, `modified_by` |
 | `release_yanks` | 0027_a_release_model.sql | `product`, `release_id`, `reason`, `at`, `by` |
@@ -87,6 +88,7 @@ this page or fails the freshness gate.
 | `release_delegations` | 0049_release_delegations.sql | `product`, `record_sha256`, `deliverable_id`, `seq`, `version`, `kid`, `jws`, `public_key`, `types_json`, `issued_at`, `expires_at`, `ingested_at`, `origin`, `revocation_sha256`, `revocation_jws`, `revocation_kid`, `revocation_reason`, `revocation_issued_at` |
 | `release_delegated_records` | 0049_release_delegations.sql | `product`, `record_sha256`, `delegation_sha256` |
 | `release_lazy_deltas` | 0051_lazy_deltas.sql | `product`, `deliverable_id`, `build_id`, `from_sha256`, `to_sha256`, `method`, `state`, `reason`, `storage_key`, `artifact_sha256`, `artifact_bytes`, `descriptor_json`, `created_at`, `updated_at` |
+| `release_packages` | 0058_c_release_packages.sql | `product`, `ecosystem`, `name_norm`, `version`, `deliverable_id`, `release_id`, `name`, `state`, `state_message`, `files_json`, `metadata_json`, `source_json`, `published_at` |
 
 ## distribution
 
@@ -107,6 +109,9 @@ this page or fails the freshness gate.
 | `dist_store_products` | 0052_commerce.sql | `product`, `store`, `store_product_id`, `deliverable_id`, `flag`, `source`, `modified_at`, `modified_by` |
 | `dist_purchase_bindings` | 0052_commerce.sql | `product`, `binding_id`, `license_id`, `created_at` |
 | `dist_purchases` | 0052_commerce.sql | `product`, `store`, `purchase_key_hash`, `store_product_id`, `license_id`, `state`, `environment`, `first_seen`, `last_verified`, `detail_json` |
+| `dist_registry_owners` | 0058_d_registry.sql | `product`, `enabled`, `version`, `updated_at`, `updated_by` |
+| `dist_registry_feeds` | 0058_d_registry.sql | `product`, `ecosystem`, `enabled`, `access_mode`, `namespace_json`, `max_package_bytes`, `upstream`, `claims_json`, `ext_json`, `version`, `updated_at`, `updated_by` |
+| `dist_registry_policy` | 0058_d_registry.sql | `ecosystem`, `enabled`, `max_package_bytes_ceiling`, `version`, `updated_at`, `updated_by` |
 
 ## update
 

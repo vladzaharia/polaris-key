@@ -32,7 +32,9 @@ export function useMe(): UseQueryResult<Me> {
  * (`{ products }`) under the same key broke the shell's switcher and the Products page in turn.
  */
 export function fetchProducts(): Promise<ProductDetail[]> {
-  return api.products().then((r) => r.products);
+  // The system product (F-03) is the platform's own (the package-feeds owner of our SDKs): it is
+  // reached from Platform, never listed beside registered products or offered by the switcher.
+  return api.products().then((r) => r.products.filter((p) => !p.system));
 }
 
 export function useProducts(): UseQueryResult<ProductDetail[]> {

@@ -882,6 +882,18 @@ function validateTransports(
     return;
   }
   for (const [deliverableId, map] of Object.entries(deliverables)) {
+    // A package (F-03, plans/F-01.md §3.3) is served only by its package feed: no outlet carries
+    // it, so no transport can name it.
+    if (ctx.deliverables.get(deliverableId) === "package") {
+      add(
+        errors,
+        "distribution",
+        `/transports/deliverables/${deliverableId}`,
+        "invalid_transport_deliverable",
+        `${deliverableId} is a package deliverable; packages are served only by package feeds, never through an outlet's transport.`,
+      );
+      continue;
+    }
     if (!ctx.deliverables.has(deliverableId)) {
       add(
         errors,
@@ -957,7 +969,8 @@ export interface ManifestDistribution {
   routes: ManifestTransportRoute[];
 }
 
-/** A deliverable the routes are computed for: its id and kind (`app` | `pack`). */
+/** A deliverable the routes are computed for: its id and kind (`app` | `pack`; a `package` is
+ *  skipped, F-03). */
 export interface DistributionDeliverable {
   id: string;
   kind: string;
@@ -1022,13 +1035,16 @@ export function normalizeDistribution(
   const known = new Map(deliverables.map((d) => [d.id, d.kind]));
   if (isRecord(rawTransports.deliverables)) {
     for (const [id, map] of Object.entries(rawTransports.deliverables)) {
-      if (known.has(id)) transports.deliverables[id] = transportMap(map);
+      if (known.has(id) && known.get(id) !== "package")
+        transports.deliverables[id] = transportMap(map);
     }
   }
 
   const routes: ManifestTransportRoute[] = [];
   for (const d of [...known].sort(([a], [b]) => compare(a, b))) {
     const [deliverableId, kind] = d;
+    // A package never has a transport (F-03): feeds serve it, not outlets.
+    if (kind === "package") continue;
     for (const o of outlets) {
       routes.push({
         deliverableId,

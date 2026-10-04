@@ -10,6 +10,8 @@
  *     POST   …/release/channels/<channel>/revert        hand the row back to the manifest
  *     POST   …/release/releases/<releaseId>/yank        { "reason": "…" }
  *     DELETE …/release/releases/<releaseId>/yank
+ *     POST   …/release/releases/<releaseId>/deprecate   { "message": "…" } (F-03, a package version)
+ *     DELETE …/release/releases/<releaseId>/deprecate
  *
  * and the pack read model (P4-09, `packs/adminView.ts`):
  *
@@ -30,7 +32,8 @@
  * `health` and `resync` were already service-shaped under the old admin handler; they move here
  * verbatim (§R1) so the service owns its own console API. `releases` is new: the truth store now
  * has a writer (P2.T2), so an operator can see what Polaris Key believes GitHub publishes without
- * spending a GitHub subrequest to find out.
+ * spending a GitHub subrequest to find out. Each app release carries its signed record's `signer`
+ * (the CI release key's `kid` and the record hash; `null` for a legacy release with no record).
  *
  * The session, CSRF, rate-limit and platform-admin gates all run in `admin/api.ts` before this
  * is reached — see `core/adminApi.ts` for why they stay there.
@@ -67,6 +70,7 @@ import {
   knownChannels,
   policyView,
   revertChannelPolicy,
+  setPackageDeprecation,
   unyank,
   updateChannelPolicy,
   yank,
@@ -157,6 +161,21 @@ export async function handleReleaseAdmin(
       releases.map((r) => r.release_id),
       yanks,
     );
+    // Who signed each app release record (the CI release key, AGENTS rule 2): one read for the
+    // product. A legacy GitHub-synced release has no record and reads `signer: null`.
+    const signers = new Map(
+      (
+        await db.all<{
+          release_id: string;
+          kid: string;
+          record_sha256: string;
+        }>(
+          `SELECT release_id, kid, record_sha256 FROM release_records
+            WHERE product = ? AND kind = 'app'`,
+          slug,
+        )
+      ).map((r) => [r.release_id, r]),
+    );
     return adminJson({
       releases: await Promise.all(
         releases.map(async (row) => {
@@ -180,6 +199,13 @@ export async function handleReleaseAdmin(
               : null,
             contentApi: row.content_api ?? null,
             pins: pins.get(row.release_id) ?? [],
+            signer: signers.has(row.release_id)
+              ? {
+                  kind: "release" as const,
+                  kid: signers.get(row.release_id)!.kid,
+                  recordSha256: signers.get(row.release_id)!.record_sha256,
+                }
+              : null,
             // P2-05: the builds a descriptor declared (P2-04); empty for a legacy release.
             builds: builds.map((b) => ({
               buildId: b.build_id,
@@ -652,6 +678,28 @@ async function handlePolicyRoutes(
         : policyRefusal(result);
     }
     return err(405, ErrorCode.BadRequest, "method not allowed");
+  }
+
+  // F-03: a package version's deprecation (npm `deprecated`), package versions only.
+  if (rest.length === 3 && rest[0] === "releases" && rest[2] === "deprecate") {
+    const releaseId = segment(rest[1] as string);
+    if (releaseId === null) return adminNotFound();
+    if (req.method !== "POST" && req.method !== "DELETE")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
+    const message =
+      req.method === "POST" ? (await readBody(req)).message : null;
+    const result = await setPackageDeprecation(
+      env,
+      db,
+      slug,
+      releaseId,
+      req.method === "POST" ? (message ?? "") : null,
+      actor,
+      now,
+    );
+    return result.ok
+      ? adminJson({ ok: true, deprecation: result.deprecation })
+      : policyRefusal(result);
   }
 
   return null;

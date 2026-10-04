@@ -39,7 +39,8 @@ From left to right:
 
 **Home** and **Products** always come first, then the **Platform** section: pages about this
 instance as a whole rather than any product, such as **Deployment** (the build it runs, its deploy
-history, database migrations, bindings and the platform activity log). On Home, Products and the
+history, database migrations, bindings and the platform activity log) and **Operations** (cron runs,
+queue backlog, storage and store connectors; see [Operations](/docs/admin/operations/)). On Home, Products and the
 Platform pages no product is in scope, so nothing else is shown. Inside a product, one section
 follows per service:
 
@@ -74,14 +75,14 @@ holds that capability today, so every link keeps working. Those pages are noted 
 
 ### Core
 
-| Page               | URL        | What it's for                                                                                                                                                                                                         |
-| ------------------ | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Overview**       | (root)     | Setup health at a glance: a "needs attention" strip, a guided checklist, the SDK trust key and trust set, and a starter snippet. See [Products](/docs/admin/products/#setup-health).                                  |
-| **Services**       | `services` | Which services the product runs, and its device-registration policy. See [Services & enablement](/docs/admin/services-enablement/).                                                                                   |
-| **Devices**        | `devices`  | Every device of the product, including those that hold no license. See [Licenses & devices](/docs/admin/licenses-and-devices/#devices-product-wide).                                                                  |
-| **Keys & secrets** | `keys`     | Write-only product secrets and the required-secrets checklist. Edge-mint recipes and outlet credentials are here too until they move to Config and Distribution. See [Secrets & keys](/docs/admin/secrets-and-keys/). |
-| **Activity**       | `activity` | The product's audit log. See [Activity](/docs/admin/activity/).                                                                                                                                                       |
-| **Settings**       | `settings` | Registry fields, per-license defaults, signing-key preparation, and deleting the product. See [Products](/docs/admin/products/).                                                                                      |
+| Page               | URL        | What it's for                                                                                                                                                                        |
+| ------------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Overview**       | (root)     | Setup health at a glance: a "needs attention" strip, a guided checklist, the SDK trust key and trust set, and a starter snippet. See [Products](/docs/admin/products/#setup-health). |
+| **Services**       | `services` | Which services the product runs, and its device-registration policy. See [Services & enablement](/docs/admin/services-enablement/).                                                  |
+| **Devices**        | `devices`  | Every device of the product, including those that hold no license. See [Licenses & devices](/docs/admin/licenses-and-devices/#devices-product-wide).                                 |
+| **Keys & secrets** | `keys`     | Write-only product secrets and the required-secrets checklist. Outlet credentials are here too until they move to Distribution. See [Secrets & keys](/docs/admin/secrets-and-keys/). |
+| **Activity**       | `activity` | The product's audit log. See [Activity](/docs/admin/activity/).                                                                                                                      |
+| **Settings**       | `settings` | Registry fields, per-license defaults, signing-key preparation, and deleting the product. See [Products](/docs/admin/products/).                                                     |
 
 ### License
 
@@ -90,30 +91,30 @@ Shown when the product runs **License**.
 | Page           | URL                                   | What it's for                                                                                                                                                                                                                            |
 | -------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Licenses**   | `license/licenses`, `…/licenses/<id>` | License holders, each with a record page for policy, keys, devices and overrides. See [Licenses & devices](/docs/admin/licenses-and-devices/).                                                                                           |
-| **Tiers**      | `license/tiers`                       | Reusable templates a license can be assigned. A tier cannot be deleted while a license uses it.                                                                                                                                          |
+| **Tiers**      | `license/tiers`, `…/tiers/<id>`       | Reusable templates a license can be assigned, each with a record page for its policy and the licenses using it. A tier cannot be deleted while a license uses it.                                                                        |
 | **Enrollment** | `license/enrollment`                  | The device-registration policy (read-only here; it is set in Services) and the fingerprint policy. See [Licenses & devices](/docs/admin/licenses-and-devices/#fingerprint-policy) and [Fingerprints](/docs/services/core/fingerprints/). |
 
 ### Config
 
 Shown when the product runs **Config**.
 
-| Page          | URL                                  | What it's for                                                                   |
-| ------------- | ------------------------------------ | ------------------------------------------------------------------------------- |
-| **Catalog**   | `config/catalog`                     | The product's config schema, and publishing a new version.                      |
-| **Profiles**  | `config/profiles`, `…/profiles/<id>` | Named managed payloads a tier or license inherits, each edited on its own page. |
-| **Edge mint** | `config/edge-mint`                   | Edge-mint recipe approval. Until it moves here, this URL opens Keys & secrets.  |
+| Page          | URL                                     | What it's for                                                                                                                                            |
+| ------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Catalog**   | `config/catalog`, `config/catalog/edit` | The product's config keys, their history, and the editor that publishes a new version. See [The catalog](/docs/services/config/catalog/#in-the-console). |
+| **Profiles**  | `config/profiles`, `…/profiles/<id>`    | Named managed payloads a tier or license inherits, each edited on its own page. See [Profiles](/docs/services/config/profiles/#in-the-console).          |
+| **Edge mint** | `config/edge-mint`                      | Edge-mint recipe approval. See [Edge mint](/docs/services/config/edge-mint/#approving-a-recipe).                                                         |
 
 ### Release
 
 Shown when the product runs **Release**.
 
-| Page              | URL                                           | What it's for                                                                                                                                                                                                             |
-| ----------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Releases**      | `release/releases`                            | The release truth store, release health, and the channels panel: promote, pin, unpin, minimum supported, critical, rollback floor, revert to manifest, yank and unyank. See [Channels](/docs/services/release/channels/). |
-| **Channels**      | `release/channels`                            | Until it becomes its own page, this URL opens Releases, where the channels panel is.                                                                                                                                      |
-| **Deliverables**  | `release/deliverables`, `…/deliverables/<id>` | Packs and their releases, pins and files, plus content keys for now.                                                                                                                                                      |
-| **Compatibility** | `release/compatibility`                       | Which releases each version window admits, and the update simulator.                                                                                                                                                      |
-| **Content keys**  | `release/content-keys`                        | Until it moves here, this URL opens Deliverables.                                                                                                                                                                         |
+| Page              | URL                                                                                 | What it's for                                                                                                                                                                                                                                                                |
+| ----------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Releases**      | `release/releases`, `…/releases/<id>/[builds\|packs\|channels\|distribution]`       | The app's releases, with promote, pin, yank and unyank in each row's menu. **Repo sync** opens release health, the last sync and **Resync from repo**. A release's record shows its builds and files, the packs it pins, where each channel serves it, and its distribution. |
+| **Channels**      | `release/channels?deliverable=<id>`                                                 | One lane per channel, for the app or a pack: pointer, what it serves per platform, minimum supported, critical, the rollback floor and pack floors, revert to manifest. See [Channels](/docs/services/release/channels/).                                                    |
+| **Deliverables**  | `release/deliverables`, `…/deliverables/<id>/[releases\|channels\|delivery\|files]` | The app and its packs. A pack's record has its releases (yank and unyank), channels, delivery gate and files. See [Packs](/docs/services/release/packs/#in-the-console).                                                                                                     |
+| **Compatibility** | `release/compatibility`, `…/compatibility/simulator`                                | Which pack release each app release runs with, and the update simulator. See [Compatibility](/docs/services/release/compatibility/).                                                                                                                                         |
+| **Content keys**  | `release/content-keys`                                                              | The keys CI delegated to publish data-only packs, read-only.                                                                                                                                                                                                                 |
 
 ### Distribution
 
@@ -141,10 +142,10 @@ Shown when the product runs **Update**, which requires Distribution.
 
 Shown when the product runs **Identity**.
 
-| Page        | URL                | What it's for                                                                                          |
-| ----------- | ------------------ | ------------------------------------------------------------------------------------------------------ |
-| **Portal**  | `identity/portal`  | The customer portal's module toggles and automatic license linking, plus the read-only OIDC explainer. |
-| **Sign-in** | `identity/sign-in` | Until it becomes its own page, this URL opens Portal.                                                  |
+| Page        | URL                | What it's for                                                                                                                                              |
+| ----------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Portal**  | `identity/portal`  | What the customer portal offers: the portal switch, the sign-in methods, automatic license linking, release downloads, and the branding read-out.          |
+| **Sign-in** | `identity/sign-in` | The OIDC provider, issuer and client this product trusts, and its group → tier map, read from `.pkey/product`. Resync from repo applies a manifest change. |
 
 ## Old URLs
 

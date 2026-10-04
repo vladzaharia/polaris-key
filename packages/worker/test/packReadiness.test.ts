@@ -310,6 +310,31 @@ describe("readiness per transport (CONTENT §6.4)", () => {
       (await w.admin("POST", `/distribution/readiness/${id}/web/clear`)).status,
     ).toBe(409);
   });
+
+  it("keeps the reason on an override's 404 (A-9)", async () => {
+    const { w } = await world();
+    const id = await appReleaseId(w);
+    const unknownRelease = await w.admin(
+      "POST",
+      "/distribution/readiness/rel_nope/web/override",
+      { reason: "x" },
+    );
+    expect(unknownRelease.status).toBe(404);
+    expect(await unknownRelease.json()).toMatchObject({
+      code: "not_found",
+      reason: "unknown_release",
+    });
+    const unknownOutlet = await w.admin(
+      "POST",
+      `/distribution/readiness/${id}/nowhere/override`,
+      { reason: "x" },
+    );
+    expect(unknownOutlet.status).toBe(404);
+    expect(await unknownOutlet.json()).toMatchObject({
+      code: "not_found",
+      reason: "unknown_outlet",
+    });
+  });
 });
 
 describe("the hold (README §3.8)", () => {

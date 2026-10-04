@@ -59,7 +59,7 @@ Deep page: [The config catalog](/docs/services/config/catalog/) · Skill: `addin
 | 3   | Pick enforcement          | `managementDefault` on config kinds: `default` overridable · `enforced` server wins · `hidden` enforced and withheld from enumeration                                                                       |
 | 4   | Pick delivery             | `delivery` on secret kinds: `serverOnly` · `clientScoped` · `edgeMint`. Setting it on a non-secret entry is an error                                                                                        |
 | 5   | Decide on `schemaVersion` | Bump **only** on an incompatible shape change — adding a key is not one                                                                                                                                     |
-| 6   | Publish                   | Push `.pkey/schema` (webhook resync, keeps the repo authoritative) or **Catalog → Publish new version** in the console                                                                                      |
+| 6   | Publish                   | Push `.pkey/schema` (webhook resync, keeps the repo authoritative) or **Catalog → Edit catalog → Review changes → Publish** in the console                                                                  |
 
 ```sh
 pnpm --filter @polaris-key/manifest test

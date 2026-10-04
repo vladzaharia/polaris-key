@@ -8,9 +8,9 @@ sidebar:
 Which of the six opt-in services a product runs is the single most consequential switch in the
 console: everything else in [the tour](/docs/admin/console-tour/) — which nav sections exist,
 which routes the worker mounts, what a product's discovery document advertises, what the portal
-offers — is a **projection** of this one setting. It lives on the Platform section's **Services**
-tab rather than inside any one service, for the reason the card's own description gives: a
-service that owned its own off switch would have to be running to be turned off.
+offers — is a **projection** of this one setting. It lives on **Core → Services**
+(`#/p/<slug>/services`) rather than inside any one service: a service that owned its own off
+switch would have to be running to be turned off.
 
 ## The endpoint
 
@@ -50,14 +50,25 @@ The response, and the shape a `PATCH` body partially updates:
 
 ## Why the whole set saves at once
 
-The Services card collects every toggle and the registration select into one form behind a
-single **Save services** button, rather than writing on each flip. That's a direct consequence
+The Services page collects every toggle and the registration policy into one draft, saved from
+the sticky save bar with **Save services**, rather than writing on each flip. Each changed row is
+marked _Changed_ until you save or discard. That's a direct consequence
 of how the server validates: it checks the **set**, not each flag in isolation (see _Coherence
 errors_ below). Turning Distribution off while Update is also on is a coherent two-step change,
-and a card that PATCHed on every flip would reject the first step and never let you reach the
+and a page that PATCHed on every flip would reject the first step and never let you reach the
 second. Release, Distribution and Update form a chain — **Release ← Distribution ← Update** — so
 turning the feed on for a product means turning all three on, and turning Release off means
 turning the other two off with it.
+
+The page shows those dependencies before you save: each row says what it requires and what
+requires it, a **Delivery chain** row draws Release → Distribution → Update with each one's state
+in words, and a draft that breaks an edge shows the coherence message beside the row at once,
+with a one-click fix ("Turn on Release", "Turn off Update too").
+
+Turning any service **off** asks first. The confirmation lists what stops working (for example
+"The update feed answers not-configured: clients see no updates") and that the section leaves the
+navigation; the service's settings are kept and come back when you turn it on again. Cancelling
+saves nothing.
 
 ## Manifest vs admin ownership
 
@@ -74,8 +85,9 @@ policies do:
   says this in as many words, because "revert" reads like an instant undo and this one is a
   hand-back, not a rollback.
 
-The **Revert to manifest** button is disabled once a product is already `manifest`-owned — there
-is nothing to hand back.
+The **Revert to manifest** button sits in the section header beside the owner badge (_From
+manifest_ or _Set in console_). It is disabled, with the reason shown, once a product is already
+`manifest`-owned: there is nothing to hand back.
 
 ## Coherence errors
 
@@ -94,8 +106,9 @@ produce the same incoherent state:
 
 Leaving `registration` **derived** rather than explicitly declared sidesteps the last two of
 these by construction: a derived value is read off the very enablement set being validated,
-so it can never itself be incoherent. That's also why the Services card's help text calls the
-derived option "recommended."
+so it can never itself be incoherent. That's why _Derived from services_ is the first choice on
+the page, and why the page shows the policy enforced now, and the one a save would enforce, in
+words (_License required_, _Identity required_, _Open_).
 
 A code this build doesn't have a control mapping for (a newer worker rule than the console
 knows about) is still shown, just without a specific field to sit next to — better to explain a

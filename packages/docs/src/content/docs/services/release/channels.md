@@ -93,6 +93,26 @@ release instead of answering not-found. That release then holds the channel up l
 floor: if it is later deleted upstream, the channel answers not-found rather than falling
 further. A floor with no unyanked release below it holds nothing up.
 
+### Package versions
+
+A [package](/docs/build/manifest/authoring/#package-deliverables) version's yank is also its
+feed state: the version is marked yanked (with the reason, which PyPI shows as its PEP 592 yank
+reason) and its feeds re-render. Unyank returns it to live. A package version can also be
+**deprecated**, a warning the feeds show (npm's `deprecated`) while the version stays
+installable:
+
+```http
+POST   /manage/api/products/<product>/release/releases/<releaseId>/deprecate   {"message": "use 2.x"}
+DELETE /manage/api/products/<product>/release/releases/<releaseId>/deprecate
+```
+
+Deprecation applies to package versions only (404 otherwise) and never to a yanked one (409:
+unyank it first); it is audited as `release.package.deprecate` / `release.package.undeprecate`.
+A yank overrides a deprecation, and an unyank leaves the version live. None of this frees the
+version: a package version is never published again, whatever its state. Moving a channel's
+pointer for a package deliverable re-renders its feeds too (`stable` is the feeds' `latest`
+tag; every other channel is a tag of its own name).
+
 ## Who can change it
 
 **CI**, with a `pkeyci_` token issued for the product:
@@ -114,11 +134,11 @@ routes and answer no CORS.
 | Method and path                                                  | Does                                                                                                                           |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `GET channels`                                                   | Every deliverable's channels, policies, sources, and what each resolves to now, overall and per platform.                      |
-| `PUT channels/<channel>`                                         | Set `pointer`, `pinned`, `minSupported`, `critical`.                                                                           |
+| `PUT channels/<channel>`                                         | Set `pointer`, `pinned`, `minSupported`, `critical`; for a pack, a floor per line with `contentApi`.                           |
 | `POST channels/<channel>/revert`                                 | Hand the row back to the manifest.                                                                                             |
-| `POST releases/<releaseId>/yank`                                 | Yank, with `reason`.                                                                                                           |
+| `POST releases/<releaseId>/yank`                                 | Yank an app or pack release, with `reason`.                                                                                    |
 | `DELETE releases/<releaseId>/yank`                               | Lift the yank.                                                                                                                 |
-| `GET releases`                                                   | App releases with their builds, artifact roles, SHA-256s, locations and yank, plus their pack pins.                            |
+| `GET releases`                                                   | App releases with their builds, artifact roles, SHA-256s, locations, yank, pack pins and record `signer` (the release key).    |
 | `GET deliverables`                                               | The app and every pack, with the declaration, gate and latest release ([Packs](/docs/services/release/packs/#in-the-console)). |
 | `GET deliverables/<id>/releases`                                 | A pack's releases and the app releases that pin each.                                                                          |
 | `GET deliverables/<id>/releases/<releaseId>/files?variant=<key>` | One variant's files, read from its files index ([Packs](/docs/services/release/packs/#in-the-console)).                        |

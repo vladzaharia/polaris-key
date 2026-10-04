@@ -65,7 +65,11 @@ These steps are browser/provider tasks. Complete them before deploying.
 ### Cloudflare zone, domain, and email
 
 1. Confirm the `plrs.im` zone is active in the `Polaris` Cloudflare account.
-2. Confirm `key.plrs.im` is available for a Worker custom domain.
+2. Confirm `key.plrs.im` is available for a Worker custom domain, and so are the bytes hosts
+   (`dl.plrs.im`, `dl-staging.plrs.im`, `dl-dev.plrs.im`) and the registry hosts
+   (`pkg.plrs.im`, `pkg-staging.plrs.im`, `pkg-dev.plrs.im`, F-02). `wrangler deploy` attaches
+   each `custom_domain = true` route in `wrangler.toml` and creates its DNS record and
+   certificate; a name that already has a DNS record outside the Worker must be cleared first.
 3. Onboard `plrs.im` to Cloudflare Email Service for outbound sending.
 4. Verify or allow the sender address `noreply@plrs.im`.
 5. The Worker binds Email Service as `EMAIL` in prod and restricts senders to
@@ -333,6 +337,51 @@ curl -sI https://dl.plrs.im/<slug>/release/dl/latest/<binary>-arm64 | head -1
 # Discovery (on the console) advertises the bytes host:
 curl -s https://key.plrs.im/<slug>/.well-known/polaris.json | grep -o '"builds":"[^"]*"'
 # "builds":"https://dl.plrs.im/<slug>/release/builds/{selector}/{buildId}"
+```
+
+### Registry host and feeds (F-02)
+
+The package feeds (plans/F-01.md §6) answer on a THIRD custom domain of the same Worker, the
+**registry host**, confined by `packages/worker/src/core/registryHost.ts` to the package-feed
+routes, a static landing page at `/` and OCI's `/v2/` root. It keeps every bytes-host
+compensation (no cookies, `nosniff`, a `sandbox` CSP, JSON errors), adds
+`Cross-Origin-Resource-Policy: same-origin`, answers no CORS and only `GET`/`HEAD`. Declared in
+`wrangler.toml`, beside `dl…`:
+
+| Env     | Route (`custom_domain = true`) | `PKG_ORIGIN` in `[env.<env>.vars]` |
+| ------- | ------------------------------ | ---------------------------------- |
+| prod    | `pkg.plrs.im`                  | `https://pkg.plrs.im`              |
+| staging | `pkg-staging.plrs.im`          | `https://pkg-staging.plrs.im`      |
+| dev     | `pkg-dev.plrs.im`              | `https://pkg-dev.plrs.im`          |
+
+- `vars` is not inheritable, so each environment carries its own `PKG_ORIGIN`. A `pkg` route
+  without it would hand the whole console to the sibling; `test/registryHost.test.ts` refuses
+  that, and a `PKG_ORIGIN` equal to `BLOB_ORIGIN`, for every committed environment.
+- Rendered index documents live in the same `BLOBS` bucket under `registry/`. **That prefix gets
+  no age lock and no lifecycle rule**: it is rewritten on every publish, yank and channel move,
+  and an object lost there is re-rendered on read. Never add `registry/` to the lock rules
+  above.
+- Optional: a WAF rate-limiting rule for the host (for example, per IP on `pkg.plrs.im/*`).
+  Registry clients fetch many small documents, so set the threshold well above a cold
+  `npm install`.
+- `[env.test]` in `wrangler.toml` is the local registry-client harness only (`wrangler dev --env
+test`, `registry-clients.yml`). It has no routes and must never be deployed.
+- Until the feeds' tables exist (F-03) every feed path answers the not-found: the settings read
+  fails closed.
+
+After the next deploy, check the host from outside:
+
+```sh
+curl -sI https://pkg.plrs.im/v2/ | grep -iE '^(HTTP|docker-distribution-api-version|content-security-policy)'
+# HTTP/2 200, docker-distribution-api-version: registry/2.0, content-security-policy: sandbox; ...
+curl -sI https://pkg.plrs.im/manage | grep -iE '^(HTTP|set-cookie|x-content-type-options)'
+# HTTP/2 404, x-content-type-options: nosniff, and no set-cookie line
+curl -sI https://pkg.plrs.im./manage | head -1
+# HTTP/2 404 (the fully-qualified form is the registry host too)
+curl -sI https://pkg.plrs.im/ | grep -iE '^(HTTP|content-type|set-cookie)'
+# HTTP/2 200, content-type: text/html; charset=utf-8, and no set-cookie line
+curl -s -o /dev/null -w '%{http_code}\n' -X OPTIONS https://pkg.plrs.im/npm/x/y
+# 405 (no preflight is ever answered)
 ```
 
 ### Trusted publishing: the R2 parent token (P2-02)
@@ -773,6 +822,11 @@ Validate portal email:
   `bundles/`, `deltas/` and `gated/`, a 1-day expiry on `staging/`, and `r2.dev` disabled.
 - `https://dl.plrs.im/manage` and `https://dl.plrs.im./manage` (trailing dot) answer 404 with
   `content-security-policy: sandbox; …`.
+- `https://pkg.plrs.im/v2/` answers 200 with `docker-distribution-api-version: registry/2.0`;
+  `https://pkg.plrs.im/manage` and `https://pkg.plrs.im./manage` answer 404 with
+  `content-security-policy: sandbox; …` and no `set-cookie`; `OPTIONS` on any path answers 405.
+- `PKG_ORIGIN` is set in every deployed environment's `[env.<env>.vars]`, and no R2 lock or
+  lifecycle rule covers `registry/`.
 - Email Service binding `EMAIL` is present in prod and can send as `noreply@plrs.im`.
 - GitHub App webhooks validate with `GITHUB_WEBHOOK_SECRET`.
 - DJDL is linked through `.pkey/`, not seeded.

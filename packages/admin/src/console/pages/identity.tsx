@@ -1,10 +1,18 @@
 import * as React from "react";
-import { Identity } from "../../views/Identity.js";
+import { PortalPage } from "./identity/Portal.js";
+import { SignInPage } from "./identity/SignIn.js";
 import type { SectionPageProps } from "./types.js";
 
-/** Identity: Portal mounts today's Sign-in & portal view, until chunk 10 splits it. */
+/** Identity: Portal (T4) and Sign-in (T3, read-only). */
 export default function IdentityPages({
   route,
 }: SectionPageProps): React.ReactElement | null {
-  return route.page === "portal" ? <Identity slug={route.slug} /> : null;
+  switch (route.page) {
+    case "portal":
+      return <PortalPage slug={route.slug} />;
+    case "sign-in":
+      return <SignInPage slug={route.slug} />;
+    default:
+      return null;
+  }
 }

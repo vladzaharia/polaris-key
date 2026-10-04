@@ -105,7 +105,9 @@ GET  /manage/api/products/<slug>/distribution/rollouts
 POST /manage/api/products/<slug>/distribution/rollouts/<outlet>/<channel>[/<verb>]
 ```
 
-The Distribution console section lists the rollouts, and its Matrix tab carries the controls.
+**Distribution → Rollouts** in the console lists every rollout, halted ones first, with the same
+moves in each row's menu; the [matrix](/docs/admin/distribution-matrix/) cell drawer carries them
+too, with **Set percentage…** and **Start rollout…**.
 
 Every change, from either door, is audited as `distribution.rollout.<verb>` (`set`, `pause`,
 `resume`, `halt`, `complete`), with the session's subject or `ci:<subject>`.

@@ -101,6 +101,12 @@ crons = ["17 3 * * *", "*/15 * * * *"]
 # deviates from the separate-registrable-domain rule — see docs/security/THREAT-MODEL.md §3);
 # the compensating headers and the cookie rules are test-pinned in test/bytesHost.test.ts.
 # `vars` is NOT inheritable, so each environment carries its own BLOB_ORIGIN.
+#
+# The registry host (F-02; docs/DEPLOYMENT.md "Registry host and feeds") is the same Worker on a
+# THIRD custom domain, pkg*.plrs.im, with PKG_ORIGIN naming it so src/core/registryHost.ts can
+# confine that host to the package-feed routes, its landing page and OCI's /v2/ root. It keeps
+# every bytes-host compensation (test/registryHost.test.ts). Its rendered index documents live
+# under registry/ in the same bucket, a prefix that gets NO age lock and NO lifecycle rule.
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
@@ -130,6 +136,9 @@ pattern = "key.plrs.im"
 custom_domain = true
 [[env.prod.routes]]
 pattern = "dl.plrs.im"
+custom_domain = true
+[[env.prod.routes]]
+pattern = "pkg.plrs.im"
 custom_domain = true
 [[env.prod.durable_objects.bindings]]
 name = "RL"
@@ -167,6 +176,8 @@ binding = "CF_VERSION_METADATA"
 # ADMIN.md A-1: names the deployment to the console (/manage/api/me `environment`).
 PKEY_ENVIRONMENT = "prod"
 BLOB_ORIGIN = "https://dl.plrs.im"
+# F-02: the registry host (core/registryHost.ts); it answers only the package-feed routes.
+PKG_ORIGIN = "https://pkg.plrs.im"
 # P2b-06: the console host, where the download page on dl.plrs.im links the storefront feeds.
 CONSOLE_ORIGIN = "https://key.plrs.im"
 # P2-02: the bucket name the upload tickets' R2 temporary credentials are scoped to (the
@@ -185,6 +196,9 @@ pattern = "key-staging.plrs.im"
 custom_domain = true
 [[env.staging.routes]]
 pattern = "dl-staging.plrs.im"
+custom_domain = true
+[[env.staging.routes]]
+pattern = "pkg-staging.plrs.im"
 custom_domain = true
 [[env.staging.durable_objects.bindings]]
 name = "RL"
@@ -222,6 +236,8 @@ binding = "CF_VERSION_METADATA"
 # ADMIN.md A-1: names the deployment to the console (/manage/api/me `environment`).
 PKEY_ENVIRONMENT = "staging"
 BLOB_ORIGIN = "https://dl-staging.plrs.im"
+# F-02: the registry host (core/registryHost.ts); it answers only the package-feed routes.
+PKG_ORIGIN = "https://pkg-staging.plrs.im"
 # P2b-06: the console host, where the download page on dl-staging.plrs.im links the storefront feeds.
 CONSOLE_ORIGIN = "https://key-staging.plrs.im"
 # P2-02: the bucket name the upload tickets' R2 temporary credentials are scoped to (the
@@ -237,6 +253,9 @@ pattern = "key-dev.plrs.im"
 custom_domain = true
 [[env.dev.routes]]
 pattern = "dl-dev.plrs.im"
+custom_domain = true
+[[env.dev.routes]]
+pattern = "pkg-dev.plrs.im"
 custom_domain = true
 [[env.dev.durable_objects.bindings]]
 name = "RL"
@@ -274,6 +293,8 @@ binding = "CF_VERSION_METADATA"
 # ADMIN.md A-1: names the deployment to the console (/manage/api/me `environment`).
 PKEY_ENVIRONMENT = "dev"
 BLOB_ORIGIN = "https://dl-dev.plrs.im"
+# F-02: the registry host (core/registryHost.ts); it answers only the package-feed routes.
+PKG_ORIGIN = "https://pkg-dev.plrs.im"
 # P2b-06: the console host, where the download page on dl-dev.plrs.im links the storefront feeds.
 CONSOLE_ORIGIN = "https://key-dev.plrs.im"
 # P2-02: the bucket name the upload tickets' R2 temporary credentials are scoped to (the
@@ -282,6 +303,31 @@ BLOBS_BUCKET_NAME = "polaris-key-blobs-dev"
 # P4-17: lazy hot-pair deltas' kill switch. A-13: "runtime" = the console's platform settings
 # store decides (default off); "off" = a hard off no console value can override.
 LAZY_DELTAS = "runtime"
+
+# F-02: the LOCAL registry-client harness only (`wrangler dev --env test`, run by
+# scripts/registry-clients/run.mjs and .github/workflows/registry-clients.yml). It is never
+# deployed: no routes, no workers.dev subdomain, and local-only placeholder ids. The harness
+# passes PKG_ORIGIN with --var, because it names the port it listens on.
+[env.test]
+workers_dev = false
+[[env.test.durable_objects.bindings]]
+name = "RL"
+class_name = "RateLimitDO"
+[[env.test.durable_objects.bindings]]
+name = "UPDATE_HEALTH"
+class_name = "UpdateHealthDO"
+[[env.test.kv_namespaces]]
+binding = "HOT"
+id = "local-registry-clients-kv"
+[[env.test.d1_databases]]
+binding = "DB"
+database_name = "polaris_key_registry_clients"
+database_id = "00000000-0000-4000-8000-000000000000"
+[[env.test.r2_buckets]]
+binding = "BLOBS"
+bucket_name = "polaris-key-blobs-registry-clients"
+[env.test.vars]
+PKEY_ENVIRONMENT = "test"
 
 # Trusted publishing (P2-02; optional — without them /release/publish/uploads answers 404):
 #   R2_ACCOUNT_ID, R2_PARENT_ACCESS_KEY_ID, R2_PARENT_SECRET_ACCESS_KEY (docs/DEPLOYMENT.md).

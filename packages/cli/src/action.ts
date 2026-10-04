@@ -15,6 +15,7 @@ import type { Out } from "./ci.js";
 import type { CiEnv } from "./oidc.js";
 import { publishRelease, type PublishSource } from "./publish.js";
 import { publishPack } from "./packPublish.js";
+import { isPackageDeliverable, publishPackage } from "./package/publish.js";
 import { MIN_ZSTD_VERSION, versionAtLeast } from "./packArtifacts.js";
 import type { TransportCommon } from "./transport.js";
 import { baPackage, baUpload } from "./transportAppleBa.js";
@@ -220,6 +221,47 @@ export async function runAction(io: ActionIo): Promise<number> {
         : undefined;
     const given = (names: readonly (typeof ACTION_INPUTS)[number][]) =>
       names.filter((n) => input(n) !== undefined);
+    // F-03: a package release: extracted from dir, never signed, no app or pack inputs.
+    if (
+      deliverable &&
+      deliverable !== "app" &&
+      (await isPackageDeliverable(io.cwd, deliverable))
+    ) {
+      const wrong = given([
+        "tag",
+        "source",
+        "meta",
+        "content-stamp",
+        "embedded",
+        "pins",
+        "out",
+        "bases",
+        "script-extensions",
+        "script-types",
+        "min-supported-seq",
+      ]);
+      if (wrong.length || releaseKeyPem || contentKeyPem || delegation)
+        throw new Error(
+          `${[...wrong, ...(releaseKeyPem ? ["release-key"] : []), ...(contentKeyPem ? ["content-key"] : []), ...(delegation ? ["delegation"] : [])].join(", ")} do not apply to a package deliverable (${deliverable}): a package's files are extracted from dir, and it is never signed.`,
+        );
+      const result = await publishPackage({
+        cwd: io.cwd,
+        product,
+        dir,
+        deliverable,
+        version: input("version"),
+        channel: input("channel"),
+        baseUrl: input("base-url"),
+        dryRun: dryRun === "true",
+        env: io.env,
+        stdout: io.stdout,
+        stderr: io.stderr,
+        fetchImpl: io.fetchImpl,
+        sleep: io.sleep,
+      });
+      await writeOutputs(io, result.releaseId, result.server);
+      return 0;
+    }
     if (deliverable && deliverable !== "app") {
       // P4-03: a pack release. Inputs that only stamp an app release are refused, not ignored.
       const wrong = given(["content-stamp", "embedded", "pins"]);
