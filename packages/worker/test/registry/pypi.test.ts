@@ -637,7 +637,7 @@ describe("the PyPI routes (F-05)", () => {
     expect(refused.status).toBe(406);
     expectHardened(refused);
     expect(refused.headers.get("cache-control")).toBe("no-store");
-    expect(await refused.json()).toMatchObject({ error: "not_acceptable" });
+    expect(await refused.json()).toMatchObject({ error: "bad_request" });
     const any = await get(PAGE, { accept: "*/*" });
     expect(any.status).toBe(200);
     expect(any.headers.get("content-type")).toBe(

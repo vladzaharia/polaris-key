@@ -81,6 +81,9 @@ gh workflow run registry-clients.yml -f ecosystem=pypi
 - **Negotiation.** JSON whenever `Accept` lists `…simple.v1+json` or `…simple.latest+json` with a
   non-zero q; otherwise HTML. With `htmlFallback` off, a client that admits JSON only through a
   wildcard (or sends no `Accept`) still gets JSON, and only a client that cannot take JSON gets 406.
+  Its body uses the existing `bad_request` code: a new wire code needs an entry in
+  `conformance/parity/errors.json` and regenerated constants in every SDK, and no device SDK reads
+  the registry host.
 - **Deprecate and channels have no PyPI form.** A deprecated version is listed as live (PEP 592
   has only yank; PEP 792 markers are per project), and the page maps no channel tag: pre-releases
   are chosen by PEP 440 version. `RegistryPackage.tags` is `{}` for PyPI, so the read path never

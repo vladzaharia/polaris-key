@@ -33,7 +33,7 @@ import type {
 } from "../../../../core/registryHost.js";
 import { registryNotFound } from "../../../../core/registryHost.js";
 import { blobKey, blobResponse, hasRef } from "../../../../core/blobs.js";
-import { errorResponse } from "../../../../core/errors.js";
+import { ErrorCode, errorResponse } from "../../../../core/errors.js";
 import { authorizeFeedRead, feedPrincipal } from "../authorize.js";
 import { registryCacheHeaders } from "../cache.js";
 import { serveFeedRead } from "../serve.js";
@@ -128,10 +128,12 @@ async function chosenForm(
   return negotiateSimple(accept, await htmlFallback(ctx));
 }
 
+/** 406 with the existing `bad_request` code: a new wire code would be an every-SDK change
+ *  (`conformance/parity/errors.json`), and no device SDK ever reads the registry host. */
 function notAcceptable(): Response {
   return errorResponse(
     406,
-    "not_acceptable",
+    ErrorCode.BadRequest,
     `This index answers ${PYPI_JSON_TYPE}.`,
   );
 }
