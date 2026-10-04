@@ -32,6 +32,7 @@ import {
   Blocks,
   Box,
   Boxes,
+  CircleArrowUp,
   CloudUpload,
   FilePen,
   FileStack,
@@ -180,8 +181,8 @@ export interface NavSection {
   /** The `data-service` value: the section accent and the header mark's bit. */
   accent: ServiceAccent;
   /**
-   * The section glyph (ADMIN.md §2.4): a lucide icon, or the Star Cut for the delivery family
-   * (Distribution and Update), drawn by the brand package.
+   * The section glyph (ADMIN.md §2.4): a lucide icon, or the Star Cut for Distribution, drawn
+   * by the brand package. Update uses lucide `CircleArrowUp`.
    */
   glyph: LucideIcon | "star-cut";
   /** Section-level docs, the fallback for anything in the section. */
@@ -502,7 +503,7 @@ export const SECTIONS: NavSection[] = [
     label: "Update",
     service: "update",
     accent: "update",
-    glyph: "star-cut",
+    glyph: CircleArrowUp,
     docs: "/docs/services/update/",
     items: [
       {

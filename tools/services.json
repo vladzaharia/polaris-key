@@ -48,7 +48,7 @@
       "defaultEnabled": false,
       "requires": ["distribution"],
       "legacyModules": ["releases"],
-      "console": { "accent": "update", "icon": "RefreshCw" },
+      "console": { "accent": "update", "icon": "CircleArrowUp" },
       "docs": "/docs/services/update/"
     },
     {

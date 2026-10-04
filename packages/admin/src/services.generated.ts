@@ -65,7 +65,7 @@ export type ServiceIconName =
   | "Settings2"
   | "Package"
   | "Truck"
-  | "RefreshCw"
+  | "CircleArrowUp"
   | "UserRound";
 
 export interface ServiceTableRow {
@@ -133,7 +133,7 @@ export const SERVICE_TABLE: readonly ServiceTableRow[] = [
     summary:
       "The feed over Release’s truth store — appcasts, /version, and eligibility.",
     accent: "update",
-    icon: "RefreshCw",
+    icon: "CircleArrowUp",
     docs: "/docs/services/update/",
     defaultEnabled: false,
     requires: ["distribution"],
