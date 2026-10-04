@@ -1,7 +1,7 @@
 /**
  * A-17a — nothing reaches App Store Connect around the write gate.
  *
- * The deny-by-default gate (`core/asc/writeGate.ts`) runs inside `AscClient.send`, before a token
+ * The deny-by-default gate (`core/storefront/rules/appStore.ts`) runs inside `AscClient.send`, before a token
  * is minted. It is the ONLY barrier between the Worker's Admin ASC key and Apple, so this suite
  * makes "every request goes through `AscClient`" a CI fact rather than a convention, in three
  * directions:

@@ -38,7 +38,7 @@ import {
   type AscResource,
 } from "./asc/client.js";
 import { performAscWrite, type AscWriteResult } from "./asc/ledger.js";
-import { GATE_CAPABILITY_TYPES } from "./asc/writeGate.js";
+import { GATE_CAPABILITY_TYPES } from "./storefront/rules/appStore.js";
 
 // ── The wizard's capability list ─────────────────────────────────────────────────────────────
 

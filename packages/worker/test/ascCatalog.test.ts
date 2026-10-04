@@ -14,7 +14,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AscResource } from "../src/core/asc/client.js";
-import { checkAscRequest } from "../src/core/asc/writeGate.js";
+import { checkAscRequest } from "../src/core/storefront/rules/appStore.js";
 import { runConnectorPolls } from "../src/scheduled.js";
 import { upsertStoreProduct } from "../src/services/distribution/commerce/state.js";
 import { DistributeFake } from "./ascDistributeFake.js";

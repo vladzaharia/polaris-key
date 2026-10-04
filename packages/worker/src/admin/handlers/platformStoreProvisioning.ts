@@ -179,7 +179,7 @@ async function withClient(
 
 /** Apple's or the gate's refusal as an admin response (a status line and Apple's code only). */
 function ascFailure(e: unknown, extra: Record<string, unknown> = {}) {
-  // The write gate refused before anything was minted or sent (core/asc/writeGate.ts).
+  // The write gate refused before anything was minted or sent (core/storefront/rules/appStore.ts).
   if (e instanceof AscWriteDenied)
     return err(409, "write_denied", e.message, { reason: e.reason, ...extra });
   if (e instanceof AscError) {

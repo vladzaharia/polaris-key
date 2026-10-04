@@ -27,7 +27,7 @@
  * same way.
  *
  * **The write gate (A-17a).** Every request goes through Core's client, whose deny-by-default gate
- * (`core/asc/writeGate.ts`) admits exactly these writes and refuses the release request unless the
+ * (`core/storefront/rules/appStore.ts`) admits exactly these writes and refuses the release request unless the
  * control asserts the typed confirmation it checked (`confirm` = the app's name).
  *
  * Every control sends exactly the documented request, writes ONE audit row with the session's
@@ -156,7 +156,7 @@ export async function withRun(
     return await fn(run, setup);
   } catch (e) {
     error = e;
-    // The write gate refused before anything was minted or sent (core/asc/writeGate.ts).
+    // The write gate refused before anything was minted or sent (core/storefront/rules/appStore.ts).
     if (e instanceof AscWriteDenied)
       return refuse(409, "write_denied", e.message);
     if (e instanceof AscError) {

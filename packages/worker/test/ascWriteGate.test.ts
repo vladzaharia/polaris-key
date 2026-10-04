@@ -24,11 +24,11 @@ import {
   checkAscRequest,
   GATE_CAPABILITY_TYPES,
   type AscGateContext,
-} from "../src/core/asc/writeGate.js";
+} from "../src/core/storefront/rules/appStore.js";
 import {
   ASC_DENY_REASONS,
   ASC_WRITE_DENIED,
-} from "../src/core/asc/writeGateDenied.js";
+} from "../src/core/storefront/rules/appStoreDenied.js";
 import {
   AscClient,
   AscError,
