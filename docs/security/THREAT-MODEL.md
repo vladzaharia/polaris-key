@@ -1361,6 +1361,19 @@ the same origin and `/v1/` or `/v2/`), and A-17c adds test-notification calls to
   at 20 % left and the poller at 5 %, while an operator's control is never refused, so one
   product's flow cannot starve every other product's poller.
 
+**Team provisioning (A-17b).** `core/ascProvisioning.ts` and
+`admin/handlers/platformStoreProvisioning.ts` (`/manage/api/platform/store-connections/app-store/…`,
+platform admins only) are the New-app wizard's team-scope operations: register a bundle id, enable
+the wizard's capability types (a subset of the gate's), look an app up by bundle id, and read
+certificate and profile expiry. Each write is one ledger step through the gated team client and one
+`platform.asc.<op>` row. The handler file imports neither the platform credential module nor a
+token minter (the reach scans stay unchanged). Two controls are specific to it: **(d′)** enabling
+a capability on a bundle id whose app (or In-App Purchase key bundle-id pin) another product holds
+needs that app's name typed in `confirm` (a handler check: the gate cannot know who holds a bundle
+id); and the signing read names its fields, so a certificate's content and serial number and a
+profile's content are never requested, stored or answered. The wizard's 10-second app detection
+(`apps/lookup?poll=1`) is `background` spending and pauses below 20 % of the team budget.
+
 **Attack tree: stolen admin session → Apple account.** With the gate in place a stolen session
 stays inside A-17's surface: it CAN register bundle ids and enable the gate's capability types,
 create TestFlight groups and add testers, create non-consumable IAPs, submit and release (typing the

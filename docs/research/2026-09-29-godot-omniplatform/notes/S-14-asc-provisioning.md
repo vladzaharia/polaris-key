@@ -890,3 +890,51 @@ A-17a landed the substrate in `packages/worker/src/core/asc/`. Where the build d
 - **The gate's capability types** (`GATE_CAPABILITY_TYPES`) are a superset for A-17b's wizard:
   `IN_APP_PURCHASE`, `PUSH_NOTIFICATIONS`, `GAME_CENTER`, `ICLOUD`, `APP_GROUPS`,
   `ASSOCIATED_DOMAINS`, `APPLE_ID_AUTH`, `DATA_PROTECTION`. There is no `APP_ATTEST` (A-17h).
+
+## Corrections (A-17b as built, 2026-10-04)
+
+A-17b landed the team provisioning API. Where it departs from §6, §7 and §8.1, the code is the
+fact:
+
+- **Where it lives.** `core/ascProvisioning.ts` holds the logic and takes an `AscClient` as an
+  argument. Core cannot import A-16's team client builder (`connectors/asc/platform.ts`, a
+  Distribution file), so the admin handler builds the client and passes it in. The handler is
+  `admin/handlers/platformStoreProvisioning.ts` (not `platformStore*.ts` files per route), and
+  `platformStoreConnections.ts` routes `app-store/…` to it. The handler gets "who holds this app or
+  bundle id" from the dispatcher as a function (`holderOf`). It does not import
+  `core/platformCredentials`, so the custody allowlists in `outletCredentialReach.test.ts` and
+  `ascWriteReach.test.ts` stay as they were.
+- **Routes** (under `/manage/api/platform/store-connections/app-store`):
+  - `capability-types`;
+  - `bundle-ids` (`GET` list, `GET ?identifier=` lookup with capabilities, app and holder, `POST`
+    register);
+  - `bundle-ids/<id>/capabilities` (`GET`, `POST`);
+  - `apps/lookup?bundleId=[&poll=1]`;
+  - `signing`;
+  - `operations` (the team ledger).
+
+  §6 named only `{bundle-ids,apps/lookup}`.
+
+- **The wizard's list has seven capability types** (`WIZARD_CAPABILITIES`): In-App Purchase, Push,
+  Sign in with Apple, Game Center, Associated Domains, App Groups and iCloud. The list also has an
+  `APP_ATTEST` row of kind `entitlement` ("entitlement in the export preset; no portal step"). A
+  request to enable `APP_ATTEST` is answered 422 `entitlement_only`. `DATA_PROTECTION` is in the
+  gate's superset but not offered. Capabilities are created without `settings`, so Apple's defaults
+  apply. A module-load check fails if the wizard offers a type the gate would refuse.
+- **Shared-bundle confirmation** (§7.1, §7.2 item 4) is a handler check. A bundle id is held when
+  its app is held (by a platform pin or a product's own key pin), or when the In-App Purchase key's
+  bundle-id pin names it. In that case, a request naming no product or another `product` must
+  carry `confirm`:
+  - normally, the app's name as Apple reports it;
+  - the bundle identifier when no app exists yet.
+
+  The check runs only when at least one requested type is missing.
+
+- **Exact matching.** `filter[identifier]` and `filter[bundleId]` are treated as hints. The handler
+  keeps only exact matches, so `gg.acme.game` never matches `gg.acme.game.extra`.
+- **Signing expiry reads** name their fields. A certificate's content and serial number, and a
+  profile's content, are never requested. An item is `expiring` below 30 days.
+- **A write without `Idempotency-Key` is 428** `idempotency_key_required`. The same key with
+  another body is 409 `idempotency_conflict`.
+- **Background polling.** `apps/lookup?poll=1` is `background` spending, refused 429
+  `asc_budget_low` below 20 % of the team budget. An operator's lookup without `poll` always runs.

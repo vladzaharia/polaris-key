@@ -178,12 +178,61 @@ with the same reasons as for its own keys, and the connector status says `creden
 
 An own credential that is unpinned or pinned elsewhere never falls through to the team key.
 
+## Provisioning a new App Store app
+
+Before an app record exists there is nothing to assign, so the App Store connection also carries
+the team-level steps of a new app: registering its bundle ID, switching on its capabilities, and
+noticing when the app record appears. The console's **New app** flow is built on these routes;
+until it ships they are the admin API under
+`/manage/api/platform/store-connections/app-store`, platform admins only. They use the team App
+Store Connect key, and every write passes the App Store Connect write gate first (see
+[App Store Connect](/docs/services/distribution/app-store-connect/)): nothing outside the approved
+surface can be sent, and bundle IDs and capabilities are never renamed, disabled or deleted here.
+
+- `GET …/capability-types` — the capabilities the flow offers: In-App Purchase, Push
+  Notifications, Sign in with Apple, Game Center, Associated Domains, App Groups and iCloud. App
+  Attest is listed as an entitlement only: it goes in the export preset, and there is no portal
+  step (App Store Connect has no App Attest capability). App Groups and iCloud switch on here, but
+  their group and container identifiers are assigned in the Apple Developer portal: there is no API
+  for them.
+- `GET …/bundle-ids` lists the team's bundle IDs. `GET …/bundle-ids?identifier=gg.acme.game`
+  looks one up by its exact identifier and answers its capabilities, the app that uses it, and the
+  product holding that app.
+- `POST …/bundle-ids` with `{"identifier": "gg.acme.game", "platform": "IOS"}` (`MAC_OS` or
+  `UNIVERSAL` also work; `name` is optional) registers it. An identifier the team already has is
+  answered as `existing`, with nothing sent.
+- `GET …/bundle-ids/<id>/capabilities` and `POST …/bundle-ids/<id>/capabilities` with
+  `{"types": ["IN_APP_PURCHASE", "PUSH_NOTIFICATIONS"]}` switch on the missing types and leave the
+  others alone. If another product's app uses the bundle ID, name your product in `product` and
+  type that app's name in `confirm`: the first attempt answers `confirmation_required` and names
+  the product that holds it.
+- `GET …/apps/lookup?bundleId=gg.acme.game` answers the app record with that bundle ID, or
+  `found: false`. App Store Connect cannot create app records through its API, so create the record
+  at appstoreconnect.apple.com (choose the registered bundle ID in **New App**) and the lookup finds
+  it. With `&poll=1` (automatic detection) it pauses with `asc_budget_low` when the team key's
+  hourly App Store Connect budget runs low, because every product's poller shares that budget. A
+  lookup without `poll` always runs.
+- `GET …/signing` lists the team's certificates and provisioning profiles with their expiry
+  (`expiring` under 30 days, `expired`). It only reads: nothing here creates, revokes or deletes
+  a certificate or profile, and it never fetches their contents.
+- `GET …/operations` lists the team's recent provisioning steps and their state.
+
+Every write needs an `Idempotency-Key` header, a new UUID for each thing you set out to do (a
+missing key is `428`). Sending the same request again with the same key answers the stored result
+(`replayed`) without calling Apple. The same key with a different request is
+`idempotency_conflict`. When App Store Connect fails after a write may have landed, the step is
+kept as ambiguous, and retrying with the same key checks Apple before sending anything again.
+Apple's refusals come back as `store_refused` (or `store_unavailable`) with Apple's status and
+error code, never its message text.
+
 ## Audit
 
 Every key a product's connector opens is a `platform_credential.use` row in that product's
 [activity](/docs/admin/activity/); an assignment is an `outlet_credential.pin` row there too.
 Credential and setting changes, assignments and the team-wide opens behind the apps list are
-recorded in the platform audit trail with the admin who made them.
+recorded in the platform audit trail with the admin who made them. So is every provisioning
+write (`platform.asc.bundle_id.register`, `platform.asc.capability.enable`), with App Store
+Connect's own view of the object before and after.
 
 See also [Secrets & keys](/docs/admin/secrets-and-keys/) for a product's own outlet credentials
 and their pins, and [the KEK keyring](/docs/admin/kek/): the re-seal sweep includes the console
