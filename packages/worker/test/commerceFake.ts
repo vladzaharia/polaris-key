@@ -301,7 +301,15 @@ export class SteamFake {
   /** `<steamid>:<appid>` → ownership. */
   owns = new Map<
     string,
-    { ownsapp: boolean; ownersteamid: string; timedtrial?: boolean }
+    {
+      ownsapp: boolean;
+      ownersteamid: string;
+      timedtrial?: boolean;
+      /** Default: true when `ownsapp` (a purchase). */
+      permanent?: boolean;
+      sitelicense?: boolean;
+      usercanceled?: boolean;
+    }
   >();
   requests: FakeRequest[] = [];
 
@@ -337,12 +345,12 @@ export class SteamFake {
       return json(200, {
         appownership: {
           ownsapp: o?.ownsapp ?? false,
-          permanent: false,
+          permanent: o?.permanent ?? o?.ownsapp ?? false,
           timestamp: "2023-11-14T22:13:20Z",
           ownersteamid: o?.ownersteamid ?? "0",
-          sitelicense: false,
+          sitelicense: o?.sitelicense ?? false,
           timedtrial: o?.timedtrial ?? false,
-          usercanceled: false,
+          usercanceled: o?.usercanceled ?? false,
           result: "OK",
         },
       });

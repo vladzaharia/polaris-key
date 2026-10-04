@@ -9,9 +9,10 @@
  *      binding) — the ticket is genuine, fresh and was made for THIS licence, and names the
  *      player's `steamid`. A ticket captured from another player's session fails here, because
  *      its identity is that player's binding.
- *   2. `ISteamUser/CheckAppOwnership/v4` for (`steamid`, DLC app id) — the player owns the DLC,
- *      themselves (`ownersteamid` equals `steamid`: a Family Sharing borrower does not get a
- *      licence flag) and not as a timed trial.
+ *   2. `ISteamUser/CheckAppOwnership/v4` for (`steamid`, DLC app id) — the player owns the DLC
+ *      outright: `permanent` (not Family Sharing, a free weekend or the PC Café programme), not a
+ *      `sitelicense`, not `usercanceled`, owned by the account itself (`ownersteamid` equals
+ *      `steamid`) and not a timed trial.
  *
  * Both calls go to `partner.steam-api.com` (the publisher host, which a publisher key requires),
  * redirect-free and capped (`http.ts`); the key rides in the query string, so no error ever
@@ -163,10 +164,18 @@ export async function checkOwnership(
     throw new StoreUnavailable("steam CheckAppOwnership", 502);
   const owner = typeof o.ownersteamid === "string" ? o.ownersteamid : null;
   return {
+    // Owned outright (Steamworks ISteamUser/CheckAppOwnership v4,
+    // partner.steamgames.com/doc/webapi/ISteamUser#CheckAppOwnership): an active licence
+    // (`ownsapp`) that is `permanent` ("not true for ownership via Family Sharing, free weekends or
+    // PC Café program"), not a PC Café `sitelicense`, not self-cancelled (`usercanceled`), held by
+    // this account itself (`ownersteamid`), and not a timed trial (an undocumented field some
+    // answers carry; refused when true).
     owns:
       o.ownsapp === true &&
+      o.permanent === true &&
+      o.sitelicense !== true &&
+      o.usercanceled !== true &&
       o.timedtrial !== true &&
-      // Owned by this account itself, not borrowed through Family Sharing.
       owner === steamId,
     ownerSteamId: owner,
   };

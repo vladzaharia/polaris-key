@@ -165,8 +165,7 @@ polls the **Voided Purchases** API once a day.
 `Steam.getAuthTicketForWebApi(bindingId)` (GodotSteam) and claims with
 `{ticket, dlcAppId}`. The Worker calls `ISteamUserAuth/AuthenticateUserTicket` with your
 publisher key and the binding as the ticket's identity — so a ticket made for another licence
-fails — then `ISteamUser/CheckAppOwnership` for the DLC. The account must own the DLC itself (a
-Family Sharing borrower gets nothing) and not as a timed trial. Steam does not push refunds, so
+fails — then `ISteamUser/CheckAppOwnership` for the DLC. The account must own the DLC outright: a permanent licence (not Family Sharing, a free weekend or the PC Café programme), held by the account itself, not self-cancelled and not a timed trial. Steam does not push refunds, so
 every active Steam grant is re-checked **weekly** on the connector tick (and on every claim): a
 refunded DLC loses its flag within a week.
 

@@ -986,6 +986,31 @@ describe("commerce: Steam", () => {
     expect(rows!.n).toBe(1);
   });
 
+  it("only outright ownership grants: not a non-permanent licence, a PC Café site licence, a self-cancelled one or a timed trial", async () => {
+    const cw = await world();
+    const ticket = await ticketFor(cw, cw.tokenA);
+    for (const over of [
+      { permanent: false },
+      { sitelicense: true },
+      { usercanceled: true },
+      { timedtrial: true },
+    ]) {
+      cw.fakes.steam.owns.set(`${STEAMID}:${STEAM_DLC}`, {
+        ownsapp: true,
+        ownersteamid: STEAMID,
+        ...over,
+      });
+      const res = await claim(cw, cw.tokenA, {
+        store: "steam",
+        ticket,
+        dlcAppId: STEAM_DLC,
+      });
+      expect(res.status, JSON.stringify(over)).toBe(403);
+      expect(await reasonOf(res)).toBe("not_owned");
+    }
+    expect(await grants(cw, cw.licenseA)).toEqual([]);
+  });
+
   it("a ticket made for another licence's binding is refused (invalid_ticket)", async () => {
     const cw = await world();
     const ticket = await ticketFor(cw, cw.tokenA);
