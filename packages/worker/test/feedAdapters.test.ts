@@ -56,8 +56,11 @@ import {
   FEED_ADAPTERS,
   RENDERERS,
   feedAdapter,
+  feedCapabilityView,
   type FeedAdapter,
 } from "../src/services/distribution/registry/index.js";
+import { FEED_OPS } from "../src/services/distribution/registry/adapter.js";
+import { supports } from "../src/core/adapters/contract.js";
 import { challengeFor } from "../src/services/distribution/registry/authorize.js";
 import {
   isRenderKey,
@@ -573,8 +576,35 @@ describe.each(FEED_ADAPTERS.map((a) => [a.ecosystem, a] as const))(
       });
     });
 
+    it("extends the shared adapter base: id, one Support per operation, rate and limits", () => {
+      expect(a.id).toBe(eco);
+      const ops = a.capabilities.ops;
+      expect(Object.keys(ops).sort()).toEqual([...FEED_OPS].sort());
+      for (const op of FEED_OPS) {
+        const s = ops[op];
+        if (s.mode === "unsupported")
+          expect(s.reason.length, `${op} needs a reason`).toBeGreaterThan(0);
+        else expect(s.mode, op).toBe("api");
+      }
+      // Serving is the access ladder, and its rules are exactly the feed's routes.
+      expect(ops.serve).toEqual({
+        mode: "api",
+        plane: "worker",
+        rules: a.routes.map((r) => r.name),
+      });
+      expect(supports(a.capabilities, "render")).toBe(true);
+      expect(ops.unyank).toEqual(ops.yank);
+      // Tier 1 has no registry tokens (F-21).
+      expect(ops.auth.mode).toBe("unsupported");
+      expect(a.capabilities.rate).toEqual({ kind: "none" });
+      expect(a.capabilities.limits).toEqual({
+        maxFiles: a.ingest.maxFiles,
+        maxNameLength: a.ingest.name.maxLength,
+      });
+    });
+
     it("declares every capability, consistently with its routes, settings and the ladder", () => {
-      const c = a.capabilities;
+      const c = feedCapabilityView(a);
       for (const key of [
         "yank",
         "deprecate",
@@ -602,12 +632,14 @@ describe.each(FEED_ADAPTERS.map((a) => [a.ecosystem, a] as const))(
 
     it("is what the admin API and the console's model expose", () => {
       const e = eco as PackageEcosystem;
-      expect(FEED_CAPABILITIES[e]).toBe(a.capabilities);
+      expect(FEED_CAPABILITIES[e]).toEqual(feedCapabilityView(a));
       expect(ECOSYSTEM_LABELS[e]).toBe(a.label);
       expect(feedBaseUrl(PKG, e, OWNER)).toBe(`${PKG}${a.feedPath(OWNER)}`);
       expect(feedBaseUrl(null, e, OWNER)).toBeNull();
-      expect(verbSupported(e, "yank")).toBe(a.capabilities.yank);
-      expect(verbSupported(e, "deprecate")).toBe(a.capabilities.deprecate);
+      expect(verbSupported(e, "yank")).toBe(supports(a.capabilities, "yank"));
+      expect(verbSupported(e, "deprecate")).toBe(
+        supports(a.capabilities, "deprecate"),
+      );
       // Settings validation reads the adapter: its own ext keys pass, any other is refused.
       for (const key of Object.keys(a.settings.ext))
         expect(parseExtPatch(e, { [key]: null })).toEqual({

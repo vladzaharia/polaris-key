@@ -8,7 +8,7 @@ sidebar:
 The registry host (`pkg.plrs.im`) serves six package feeds today: npm, PyPI, Swift, Maven, OCI and
 Godot. Each one is a **feed adapter**: one directory under
 `packages/worker/src/services/distribution/registry/<ecosystem>/` whose `index.ts` exports one
-`FeedAdapter` (`registry/adapter.ts`). The protocol's complexity stays inside that directory. The
+`FeedAdapter` (`registry/adapter.ts`), built with `defineFeedAdapter`. The protocol's complexity stays inside that directory. The
 contract around it stays the same for every feed, and a test suite checks it.
 
 The operator side of the feeds is on [Package feeds](/docs/services/distribution/package-feeds/)
@@ -19,18 +19,18 @@ feed.
 
 An adapter declares:
 
-| Member         | What it is                                                                                                                                                                                        |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ecosystem`    | The ecosystem id, one of `@polaris-key/manifest` `PACKAGE_ECOSYSTEMS`.                                                                                                                            |
-| `hostPrefix`   | Where every path of the feed starts: `/<ecosystem>/`, or `/v2/` for OCI. `feedPath(owner)` is the feed's base under it.                                                                           |
-| `routes`       | Every route, each built by `feedRoute` (`registry/serve.ts`).                                                                                                                                     |
-| `renderer`     | A pure `render(pkg, ctx)` producing the index documents, and `stamp`: whether the render stamp covers the package's rows alone (`package`) or the feed settings too (`package+feed`).             |
-| `ingest`       | The ecosystem's one declaration in `@polaris-key/manifest` (`PACKAGE_ECOSYSTEM_RULES`): name grammar, normalisation, file types, metadata keys and namespace rules.                               |
-| `settings.ext` | The per-ecosystem extension settings an operator may set, each with its value check.                                                                                                              |
-| `capabilities` | What the protocol can express: yank, deprecate, `yankPolicy`, `channels`, `signing`, `immutableVersions`, `delete`, `search`, `authChallenge`. The admin API exposes it and the console reads it. |
-| `setup`        | The clients the docs name, and the inputs the setup snippet needs (`baseUrl`, `registryHost`, `owner`, `namespace.<key>`, `package.name`, `package.version`).                                     |
-| `openapi`      | The feed's OpenAPI paths, as `[path, methods, owner]` rows. `routeCoverage` reads them as its registry table.                                                                                     |
-| `harness`      | The `registry-clients` client scripts that exercise the feed with real tools.                                                                                                                     |
+| Member         | What it is                                                                                                                                                                                                                                                                                                               |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ecosystem`    | The ecosystem id, one of `@polaris-key/manifest` `PACKAGE_ECOSYSTEMS`.                                                                                                                                                                                                                                                   |
+| `hostPrefix`   | Where every path of the feed starts: `/<ecosystem>/`, or `/v2/` for OCI. `feedPath(owner)` is the feed's base under it.                                                                                                                                                                                                  |
+| `routes`       | Every route, each built by `feedRoute` (`registry/serve.ts`).                                                                                                                                                                                                                                                            |
+| `renderer`     | A pure `render(pkg, ctx)` producing the index documents, and `stamp`: whether the render stamp covers the package's rows alone (`package`) or the feed settings too (`package+feed`).                                                                                                                                    |
+| `ingest`       | The ecosystem's one declaration in `@polaris-key/manifest` (`PACKAGE_ECOSYSTEM_RULES`): name grammar, normalisation, file types, metadata keys and namespace rules.                                                                                                                                                      |
+| `settings.ext` | The per-ecosystem extension settings an operator may set, each with its value check.                                                                                                                                                                                                                                     |
+| `capabilities` | Whether the protocol can yank and deprecate (with the reason when it cannot), and its protocol facts: `yankPolicy`, `channels`, `signing`, `immutableVersions`, `delete`, `search`, `authChallenge`. `defineFeedAdapter` turns them into the shared base's `ops`. The admin API exposes them and the console reads them. |
+| `setup`        | The clients the docs name, and the inputs the setup snippet needs (`baseUrl`, `registryHost`, `owner`, `namespace.<key>`, `package.name`, `package.version`).                                                                                                                                                            |
+| `openapi`      | The feed's OpenAPI paths, as `[path, methods, owner]` rows. `routeCoverage` reads them as its registry table.                                                                                                                                                                                                            |
+| `harness`      | The `registry-clients` client scripts that exercise the feed with real tools.                                                                                                                                                                                                                                            |
 
 An adapter never re-implements the shared pieces:
 
@@ -52,18 +52,24 @@ An adapter never re-implements the shared pieces:
 
 ## One integration pattern
 
-The shape is deliberately the same as the planned storefront adapters (the store connectors):
+`FeedAdapter` extends `Adapter<Id, Op>` from `packages/worker/src/core/adapters/contract.ts`, the
+base the storefront adapters extend too (A-18a, from the S-15 storefront spike). Both families
+have the same four pieces:
 
-| Piece                    | Package feeds                                                 | Storefronts (planned)                    |
-| ------------------------ | ------------------------------------------------------------- | ---------------------------------------- |
-| The adapter interface    | `FeedAdapter`, one directory per ecosystem                    | a storefront adapter, one per store      |
-| A capability declaration | `FeedAdapter.capabilities`, exposed by the admin API          | what the store can express, the same way |
-| A shared gate            | the access ladder (`feedRoute` and `authorizeFeedRead`)       | the shared gate in front of every store  |
-| A shared ledger          | the render queue and its stamps (`registry_render_queue`, R2) | the shared run ledger                    |
-| A conformance suite      | `test/feedAdapters.test.ts`                                   | its own suite, on the same model         |
+| Piece                    | Package feeds                                                            | Storefronts (A-18a, planned)                   |
+| ------------------------ | ------------------------------------------------------------------------ | ---------------------------------------------- |
+| The adapter interface    | `FeedAdapter`, one directory per ecosystem                               | `StorefrontAdapter`, one per store             |
+| A capability declaration | `capabilities.ops`: one `Support` per operation, plus the protocol facts | `capabilities.ops`: one `Support` per store op |
+| A shared gate            | the access ladder (`feedRoute` and `authorizeFeedRead`)                  | the store-agnostic write gate                  |
+| A shared ledger          | the render queue and its stamps (`registry_render_queue`, R2)            | `store_operations`                             |
+| A conformance suite      | `test/feedAdapters.test.ts`                                              | the same model, over every storefront adapter  |
 
-When you build the storefront side, mirror this one so the codebase has one recognisable way to
-integrate an external ecosystem.
+A feed's operations are `render`, `serve`, `auth`, `yank`, `unyank`, `deprecate` and `setup`. A
+feed writes a `FeedAdapterSpec`, and `defineFeedAdapter` derives the base's parts from it: `serve`
+is an `api` operation whose rules are the feed's route names, `auth` is unsupported until registry
+tokens arrive (F-21), and `yank` and `deprecate` are `true` or `{ unsupported: "<reason>" }`. The
+admin API exposes the result (`feedCapabilityView`), so the console renders a feed tile and a
+storefront tile the same way.
 
 ## The checklist
 

@@ -26,15 +26,22 @@
  * matrix. A new adapter that skips a piece fails CI. The checklist is
  * `/docs/contribute/package-feeds/`.
  *
- * The shape is deliberately parallel to the planned storefront adapters (store connectors): an
- * adapter interface, a capability declaration the console reads, and a shared gate (here the
- * access ladder) and ledger (here the render queue and its stamps) the adapter cannot bypass.
+ * ONE INTEGRATION PATTERN. `FeedAdapter` extends `Adapter<Id, Op>` from `core/adapters/contract.ts`,
+ * the base the storefront adapters (A-18a, notes/S-15 §6.1) extend too: an adapter interface, a
+ * capability declaration (one `Support` per operation) the console reads, and a shared gate (here
+ * the access ladder) and ledger (here the render queue and its stamps) the adapter cannot bypass.
+ * Each feed writes a `FeedAdapterSpec` and `defineFeedAdapter` derives the base's parts.
  */
 
 import type {
   PackageEcosystem,
   PackageEcosystemRules,
 } from "@polaris-key/manifest";
+import type {
+  Adapter,
+  Capabilities,
+  Support,
+} from "../../../core/adapters/contract.js";
 import type { RegistryRoute } from "../../../core/registryHost.js";
 import type { ChallengeKind } from "./authorize.js";
 import type {
@@ -51,15 +58,20 @@ import type {
  */
 export type FeedChannels = "dist-tags" | "tags" | "latest" | "none";
 
-/**
- * What one ecosystem's protocol can express. The admin API exposes it on every feed and package
- * (`capabilities`), and the console reads it instead of switching on the ecosystem's name.
- */
-export interface FeedCapabilities {
-  /** A yank (and so an unyank) exists in the protocol. */
-  readonly yank: boolean;
-  /** A deprecation message (and so an undeprecate) exists in the protocol. */
-  readonly deprecate: boolean;
+/** The operations a feed declares support for (notes/S-15 §6.1). */
+export const FEED_OPS = [
+  "render",
+  "serve",
+  "auth",
+  "yank",
+  "unyank",
+  "deprecate",
+  "setup",
+] as const;
+export type FeedOp = (typeof FEED_OPS)[number];
+
+/** What one ecosystem's protocol is, beyond which operations it supports. */
+export interface FeedProtocol {
   /** The feed's `yankHidesFromIndex` setting applies (the protocol has a list to leave). */
   readonly yankPolicy: boolean;
   readonly channels: FeedChannels;
@@ -73,6 +85,22 @@ export interface FeedCapabilities {
   readonly search: boolean;
   /** The challenge a non-public feed answers an anonymous client with (§6.6 step 5). */
   readonly authChallenge: Exclude<ChallengeKind, "not-found">;
+}
+
+/** A feed's capability declaration: the shared base's `ops`, `rate` and `limits`, and its protocol. */
+export interface FeedCapabilities extends Capabilities<FeedOp>, FeedProtocol {}
+
+/**
+ * The capabilities as the admin API exposes them (`capabilities` on every feed and package) and
+ * the console reads them instead of switching on the ecosystem's name: the declaration, with
+ * `yank` and `deprecate` answered from `ops`.
+ */
+export interface FeedCapabilityView extends FeedProtocol {
+  /** A yank (and so an unyank) exists in the protocol. */
+  readonly yank: boolean;
+  /** A deprecation message (and so an undeprecate) exists in the protocol. */
+  readonly deprecate: boolean;
+  readonly ops: Readonly<Record<FeedOp, Support>>;
 }
 
 /** One per-ecosystem extension setting (`dist_registry_feeds.ext_json`): its value check. */
@@ -113,7 +141,10 @@ export interface FeedRenderer {
 }
 
 /** One package feed. See the file comment for what is the adapter's and what is shared. */
-export interface FeedAdapter<E extends PackageEcosystem = PackageEcosystem> {
+export interface FeedAdapter<
+  E extends PackageEcosystem = PackageEcosystem,
+> extends Adapter<E, FeedOp> {
+  /** The same value as `id`: the ecosystem, one of `@polaris-key/manifest` `PACKAGE_ECOSYSTEMS`. */
   readonly ecosystem: E;
   /** The name audit summaries and the console use (`PyPI`, `OCI`). */
   readonly label: string;
@@ -138,6 +169,90 @@ export interface FeedAdapter<E extends PackageEcosystem = PackageEcosystem> {
   readonly openapi: readonly FeedOpenApiRow[];
   /** The registry-clients harness: each `clients/<name>.sh` is a matrix row of this ecosystem. */
   readonly harness: { readonly clients: readonly string[] };
+}
+
+/** A version-state operation the protocol has, or why it has none. */
+export type FeedVerb = true | { readonly unsupported: string };
+
+/**
+ * What a feed writes (`registry/<ecosystem>/index.ts`); `defineFeedAdapter` derives the rest. The
+ * capabilities are the protocol facts plus `yank` and `deprecate`: `true`, or the reason the
+ * protocol has no such state.
+ */
+export interface FeedAdapterSpec<E extends PackageEcosystem> extends Omit<
+  FeedAdapter<E>,
+  "id" | "capabilities"
+> {
+  readonly capabilities: FeedProtocol & {
+    readonly yank: FeedVerb;
+    readonly deprecate: FeedVerb;
+  };
+}
+
+/** Tier 1 serves anonymous reads only; registry tokens are F-21's. */
+const TIER1_AUTH: Support = {
+  mode: "unsupported",
+  reason: "registry tokens arrive with F-21; tier 1 serves public feeds only",
+};
+
+function verbSupport(verb: FeedVerb): Support {
+  return verb === true
+    ? { mode: "api", plane: "worker", rules: [] }
+    : { mode: "unsupported", reason: verb.unsupported };
+}
+
+/**
+ * A feed adapter from its spec: `id` is the ecosystem; `ops` declares `serve` behind the access
+ * ladder with the feed's route names as its rules, `render` and `setup` in the Worker, `auth` as
+ * tier 1 leaves it, and the version verbs as the spec says; `limits` are the ingest rules' file
+ * and name ceilings. Feeds have no upstream to rate-limit them.
+ */
+export function defineFeedAdapter<E extends PackageEcosystem>(
+  spec: FeedAdapterSpec<E>,
+): FeedAdapter<E> {
+  const { yank, deprecate, ...protocol } = spec.capabilities;
+  const worker = (rules: readonly string[]): Support => ({
+    mode: "api",
+    plane: "worker",
+    rules,
+  });
+  return {
+    ...spec,
+    id: spec.ecosystem,
+    capabilities: {
+      ...protocol,
+      ops: {
+        render: worker([]),
+        serve: worker(spec.routes.map((r) => r.name)),
+        auth: TIER1_AUTH,
+        yank: verbSupport(yank),
+        unyank: verbSupport(yank),
+        deprecate: verbSupport(deprecate),
+        setup: worker([]),
+      },
+      rate: { kind: "none" },
+      limits: {
+        maxFiles: spec.ingest.maxFiles,
+        maxNameLength: spec.ingest.name.maxLength,
+      },
+    },
+  };
+}
+
+/** The admin API's view of an adapter's capabilities. */
+export function feedCapabilityView(adapter: FeedAdapter): FeedCapabilityView {
+  const {
+    ops,
+    rate: _rate,
+    limits: _limits,
+    ...protocol
+  } = adapter.capabilities;
+  return {
+    ...protocol,
+    yank: ops.yank.mode !== "unsupported",
+    deprecate: ops.deprecate.mode !== "unsupported",
+    ops,
+  };
 }
 
 /** The materialiser's view of an adapter (`RENDERERS`). */

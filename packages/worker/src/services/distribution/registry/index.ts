@@ -60,9 +60,12 @@ export const RENDERERS: ReadonlyMap<RegistryEcosystem, RegistryRenderer> =
 export const DISTRIBUTION_REGISTRY_ROUTES: readonly RegistryRoute[] =
   FEED_ADAPTERS.flatMap((a) => a.routes);
 
+export { feedCapabilityView } from "./adapter.js";
 export type {
   FeedAdapter,
   FeedCapabilities,
+  FeedCapabilityView,
+  FeedOp,
   FeedChannels,
   FeedOpenApiRow,
   FeedSetupInput,

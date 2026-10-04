@@ -5,12 +5,17 @@
  */
 
 import { PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
-import { extBoolean, rendererOf, type FeedAdapter } from "../adapter.js";
+import {
+  extBoolean,
+  rendererOf,
+  defineFeedAdapter,
+  type FeedAdapter,
+} from "../adapter.js";
 import type { RegistryRenderer } from "../materialise.js";
 import { renderSwift } from "./render.js";
 import { SWIFT_ROUTES } from "./routes.js";
 
-export const SWIFT_ADAPTER: FeedAdapter<"swift"> = {
+export const SWIFT_ADAPTER: FeedAdapter<"swift"> = defineFeedAdapter({
   ecosystem: "swift",
   label: "Swift",
   hostPrefix: "/swift/",
@@ -22,7 +27,7 @@ export const SWIFT_ADAPTER: FeedAdapter<"swift"> = {
   capabilities: {
     // A yanked version leaves the release list and stays fetchable for existing pins.
     yank: true,
-    deprecate: false,
+    deprecate: { unsupported: "Swift has no deprecation state" },
     yankPolicy: false,
     channels: "latest",
     signing: true,
@@ -57,7 +62,7 @@ export const SWIFT_ADAPTER: FeedAdapter<"swift"> = {
     ["/swift/{owner}/login", ["post"], "host"],
   ],
   harness: { clients: ["swift", "swift-compat", "swift-linux"] },
-};
+});
 
 /** The materialiser's view of the adapter. */
 export const SWIFT_RENDERER: RegistryRenderer = rendererOf(SWIFT_ADAPTER);

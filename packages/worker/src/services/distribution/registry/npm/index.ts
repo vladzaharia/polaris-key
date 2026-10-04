@@ -5,12 +5,12 @@
  */
 
 import { PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
-import { rendererOf, type FeedAdapter } from "../adapter.js";
+import { rendererOf, defineFeedAdapter, type FeedAdapter } from "../adapter.js";
 import type { RegistryRenderer } from "../materialise.js";
 import { renderNpm } from "./render.js";
 import { npmRoutes } from "./routes.js";
 
-export const NPM_ADAPTER: FeedAdapter<"npm"> = {
+export const NPM_ADAPTER: FeedAdapter<"npm"> = defineFeedAdapter({
   ecosystem: "npm",
   label: "npm",
   hostPrefix: "/npm/",
@@ -21,7 +21,10 @@ export const NPM_ADAPTER: FeedAdapter<"npm"> = {
   settings: { ext: {} },
   capabilities: {
     // npm has no yank that keeps lockfiles working; its `deprecated` message stands in.
-    yank: false,
+    yank: {
+      unsupported:
+        "npm has no yank that keeps lockfiles working; deprecate the version instead",
+    },
     deprecate: true,
     yankPolicy: false,
     channels: "dist-tags",
@@ -43,7 +46,7 @@ export const NPM_ADAPTER: FeedAdapter<"npm"> = {
     ["/npm/{owner}/{scope}/{name}/-/{tarball}", ["get", "head"], "npm.tarball"],
   ],
   harness: { clients: ["npm", "pnpm", "yarn", "bun"] },
-};
+});
 
 /** The materialiser's view of the adapter. */
 export const NPM_RENDERER: RegistryRenderer = rendererOf(NPM_ADAPTER);

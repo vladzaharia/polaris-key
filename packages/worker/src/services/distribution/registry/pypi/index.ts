@@ -5,12 +5,17 @@
  */
 
 import { PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
-import { extBoolean, rendererOf, type FeedAdapter } from "../adapter.js";
+import {
+  extBoolean,
+  rendererOf,
+  defineFeedAdapter,
+  type FeedAdapter,
+} from "../adapter.js";
 import type { RegistryRenderer } from "../materialise.js";
 import { renderPypi } from "./render.js";
 import { PYPI_ROUTES } from "./routes.js";
 
-export const PYPI_ADAPTER: FeedAdapter<"pypi"> = {
+export const PYPI_ADAPTER: FeedAdapter<"pypi"> = defineFeedAdapter({
   ecosystem: "pypi",
   label: "PyPI",
   hostPrefix: "/pypi/",
@@ -22,7 +27,7 @@ export const PYPI_ADAPTER: FeedAdapter<"pypi"> = {
   capabilities: {
     // PEP 592: a yanked version stays installable when pinned exactly.
     yank: true,
-    deprecate: false,
+    deprecate: { unsupported: "PyPI has no deprecation state" },
     yankPolicy: false,
     channels: "none",
     signing: false,
@@ -41,7 +46,7 @@ export const PYPI_ADAPTER: FeedAdapter<"pypi"> = {
     ["/pypi/{owner}/files/{sha256}/{filename}", ["get", "head"], "pypi.files"],
   ],
   harness: { clients: ["pip", "uv", "poetry"] },
-};
+});
 
 /** The materialiser's view of the adapter. */
 export const PYPI_RENDERER: RegistryRenderer = rendererOf(PYPI_ADAPTER);

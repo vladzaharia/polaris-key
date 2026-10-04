@@ -20,11 +20,15 @@ import {
   type PackageEcosystem,
 } from "@polaris-key/manifest";
 import {
+  feedCapabilityView,
   requireFeedAdapter,
-  type FeedCapabilities,
+  type FeedCapabilityView,
 } from "../../services/distribution/registry/index.js";
 
-export { PACKAGE_ECOSYSTEMS, type PackageEcosystem, type FeedCapabilities };
+/** What one ecosystem's protocol can express, as the admin API exposes it. */
+export type FeedCapabilities = FeedCapabilityView;
+
+export { PACKAGE_ECOSYSTEMS, type PackageEcosystem };
 
 function perEcosystem<T>(
   pick: (ecosystem: PackageEcosystem) => T,
@@ -37,7 +41,7 @@ function perEcosystem<T>(
 /** Every ecosystem's capabilities, from its adapter (what the admin API exposes). */
 export const FEED_CAPABILITIES: Readonly<
   Record<PackageEcosystem, FeedCapabilities>
-> = perEcosystem((e) => requireFeedAdapter(e).capabilities);
+> = perEcosystem((e) => feedCapabilityView(requireFeedAdapter(e)));
 
 /** The version verbs the Feeds console offers. */
 export const VERSION_VERBS = [

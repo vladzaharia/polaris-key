@@ -6,12 +6,17 @@
  */
 
 import { PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
-import { extInteger, rendererOf, type FeedAdapter } from "../adapter.js";
+import {
+  extInteger,
+  rendererOf,
+  defineFeedAdapter,
+  type FeedAdapter,
+} from "../adapter.js";
 import type { RegistryRenderer } from "../materialise.js";
 import { renderOci } from "./render.js";
 import { OCI_ROUTES } from "./routes.js";
 
-export const OCI_ADAPTER: FeedAdapter<"oci"> = {
+export const OCI_ADAPTER: FeedAdapter<"oci"> = defineFeedAdapter({
   ecosystem: "oci",
   label: "OCI",
   // The protocol fixes the root at `/v2/`; the repository sits under the owner.
@@ -24,7 +29,7 @@ export const OCI_ADAPTER: FeedAdapter<"oci"> = {
   capabilities: {
     // A yank removes the version tag; the image stays pullable by digest.
     yank: true,
-    deprecate: false,
+    deprecate: { unsupported: "OCI has no deprecation state" },
     yankPolicy: false,
     channels: "tags",
     signing: false,
@@ -57,7 +62,7 @@ export const OCI_ADAPTER: FeedAdapter<"oci"> = {
       "oci-podman",
     ],
   },
-};
+});
 
 /** The materialiser's view of the adapter. */
 export const OCI_RENDERER: RegistryRenderer = rendererOf(OCI_ADAPTER);

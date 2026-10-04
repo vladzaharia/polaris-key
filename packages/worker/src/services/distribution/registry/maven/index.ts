@@ -5,12 +5,17 @@
  */
 
 import { PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
-import { extBoolean, rendererOf, type FeedAdapter } from "../adapter.js";
+import {
+  extBoolean,
+  rendererOf,
+  defineFeedAdapter,
+  type FeedAdapter,
+} from "../adapter.js";
 import type { RegistryRenderer } from "../materialise.js";
 import { renderMaven } from "./render.js";
 import { mavenRoutes } from "./routes.js";
 
-export const MAVEN_ADAPTER: FeedAdapter<"maven"> = {
+export const MAVEN_ADAPTER: FeedAdapter<"maven"> = defineFeedAdapter({
   ecosystem: "maven",
   label: "Maven",
   hostPrefix: "/maven/",
@@ -23,7 +28,7 @@ export const MAVEN_ADAPTER: FeedAdapter<"maven"> = {
     // Maven has no yank in the protocol; the console's yank leaves maven-metadata.xml only with
     // `yankHidesFromIndex` on.
     yank: true,
-    deprecate: false,
+    deprecate: { unsupported: "Maven has no deprecation state" },
     yankPolicy: true,
     channels: "latest",
     signing: false,
@@ -59,7 +64,7 @@ export const MAVEN_ADAPTER: FeedAdapter<"maven"> = {
     ],
   ],
   harness: { clients: ["gradle8", "gradle9", "maven"] },
-};
+});
 
 /** The materialiser's view of the adapter. */
 export const MAVEN_RENDERER: RegistryRenderer = rendererOf(MAVEN_ADAPTER);

@@ -2409,6 +2409,11 @@ export interface FeedCapabilities {
   search: boolean;
   /** The challenge a non-public feed answers an anonymous client with. */
   authChallenge: "basic" | "oci-bearer";
+  /**
+   * One entry per operation (`render`, `serve`, `auth`, `yank`, `unyank`, `deprecate`, `setup`),
+   * in the shared adapter base's shape: `{mode: "api", …}` or `{mode: "unsupported", reason}`.
+   */
+  ops?: Record<string, { mode: string; reason?: string }>;
 }
 
 export interface FeedDetailDto extends FeedsHead {

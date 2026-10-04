@@ -5,12 +5,17 @@
  */
 
 import { PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
-import { extInteger, rendererOf, type FeedAdapter } from "../adapter.js";
+import {
+  extInteger,
+  rendererOf,
+  defineFeedAdapter,
+  type FeedAdapter,
+} from "../adapter.js";
 import type { RegistryRenderer } from "../materialise.js";
 import { renderGodot } from "./render.js";
 import { GODOT_ROUTES } from "./routes.js";
 
-export const GODOT_ADAPTER: FeedAdapter<"godot"> = {
+export const GODOT_ADAPTER: FeedAdapter<"godot"> = defineFeedAdapter({
   ecosystem: "godot",
   label: "Godot",
   hostPrefix: "/godot/",
@@ -29,7 +34,7 @@ export const GODOT_ADAPTER: FeedAdapter<"godot"> = {
   capabilities: {
     // A yanked version leaves the asset listings.
     yank: true,
-    deprecate: false,
+    deprecate: { unsupported: "Godot has no deprecation state" },
     yankPolicy: false,
     channels: "tags",
     signing: false,
@@ -85,7 +90,7 @@ export const GODOT_ADAPTER: FeedAdapter<"godot"> = {
     ["/godot/{owner}/icons/{sha256}.png", ["get", "head"], "godotIcon"],
   ],
   harness: { clients: ["godot"] },
-};
+});
 
 /** The materialiser's view of the adapter. */
 export const GODOT_RENDERER: RegistryRenderer = rendererOf(GODOT_ADAPTER);
