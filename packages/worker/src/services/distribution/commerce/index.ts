@@ -34,7 +34,8 @@ import type { ServiceContext } from "../../../core/registry.js";
 import { errorResponse, json, wireError } from "../../../core/errors.js";
 import { bearer } from "../../../core/platform.js";
 import { licenseUsable, validateDeviceToken } from "../../../core/devices.js";
-import { rateLimitOk } from "../../../core/rateLimit.js";
+import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
+import { readCappedText } from "../../../core/readCapped.js";
 import { isStore, type Store } from "../../../core/storeGrants.js";
 import {
   eventSeen,
@@ -98,8 +99,12 @@ export const MAX_CLAIM_BODY = 32 * 1024;
 export const MAX_HOOK_BODY = 64 * 1024;
 /** Claims per licence per minute. */
 export const CLAIM_RATE = { limit: 20, windowSec: 60 } as const;
-/** Deliveries per product per minute, per store. */
+/** VERIFIED deliveries per product per minute, per store. Counted only after the store's
+ *  signature or token checked out, so no unauthenticated caller can drain it. */
 export const HOOK_RATE = { limit: 120, windowSec: 60 } as const;
+/** Deliveries per client IP per minute, per store, BEFORE verification: bounds the CPU an
+ *  unauthenticated sender can spend on signature checks without touching the product bucket. */
+export const HOOK_IP_RATE = { limit: 60, windowSec: 60 } as const;
 
 export const APP_STORE_EVENTS = "app-store-notifications";
 export const PLAY_EVENTS = "play-rtdn";
@@ -135,11 +140,19 @@ export async function handleCommerceRoutes(
 
 // ── helpers ──────────────────────────────────────────────────────────────────────────────────
 
+/** The body as text, at most `max` bytes, read through the shared streaming reader so a chunked
+ *  (or lying `Content-Length`) unauthenticated body is cut off while it streams. `null` = too
+ *  large or unreadable. */
 async function readBody(req: Request, max: number): Promise<string | null> {
-  const declared = Number(req.headers.get("content-length") ?? "");
-  if (Number.isFinite(declared) && declared > max) return null;
-  const buf = new Uint8Array(await req.arrayBuffer());
-  return buf.byteLength > max ? null : new TextDecoder().decode(buf);
+  try {
+    return await readCappedText(
+      new Response(req.body, { headers: req.headers }),
+      max,
+      () => new Error("too large"),
+    );
+  } catch {
+    return null;
+  }
 }
 
 const bad = (reason: string, message: string) =>
@@ -500,18 +513,20 @@ async function handleAppStoreHook(
   const settings = await readCommerceSettings(db, product.slug);
   const actx = await appleContext(ctx, settings);
   if (!actx) return null;
-  const raw = await readBody(ctx.req, MAX_HOOK_BODY);
-  if (raw === null)
-    return errorResponse(413, "body_too_large", "notification too large");
+  // Unverified traffic is limited per client IP only; the product-wide bucket below counts only
+  // deliveries Apple signed, so junk cannot crowd out a real refund notification.
   if (
     !(await rateLimitOk(
       env,
       product.slug,
-      { bucket: "appStoreHook", id: "app-store", ...HOOK_RATE },
+      { bucket: "appStoreHookIp", id: clientIp(ctx.req), ...HOOK_IP_RATE },
       now,
     ))
   )
     return errorResponse(429, "rate_limited", "too many notifications");
+  const raw = await readBody(ctx.req, MAX_HOOK_BODY);
+  if (raw === null)
+    return errorResponse(413, "body_too_large", "notification too large");
   const body = jsonObject(raw);
   if (!body || typeof body.signedPayload !== "string")
     return bad("bad_body", "body must be {signedPayload}");
@@ -524,6 +539,15 @@ async function handleAppStoreHook(
       return wireError(401, "unauthorized", { reason: e.reason });
     throw e;
   }
+  if (
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      { bucket: "appStoreHook", id: "app-store", ...HOOK_RATE },
+      now,
+    ))
+  )
+    return errorResponse(429, "rate_limited", "too many notifications");
   const write = { db, product: product.slug, now };
   const seen = await eventSeen(
     db,
@@ -612,6 +636,16 @@ async function handlePlayHook(ctx: ServiceContext): Promise<Response | null> {
   const settings = await readCommerceSettings(db, product.slug);
   const pctx = await playContext(ctx, settings);
   if (!pctx) return null;
+  // Unverified traffic is limited per client IP; the product bucket counts verified pushes only.
+  if (
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      { bucket: "playRtdnHookIp", id: clientIp(ctx.req), ...HOOK_IP_RATE },
+      now,
+    ))
+  )
+    return errorResponse(429, "rate_limited", "too many notifications");
   // Authenticate the push BEFORE reading or believing the body.
   const auth = await verifyPushJwt(
     env,

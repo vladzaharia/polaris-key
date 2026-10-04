@@ -8,7 +8,8 @@
  */
 
 import { afterEach, describe, expect, it } from "vitest";
-import { SLUG } from "./releaseRoutesFixture.js";
+import { CONSOLE, SLUG } from "./releaseRoutesFixture.js";
+import { dispatchWith } from "../src/dispatch.js";
 import { NOW } from "./seed.js";
 import { setServices } from "../src/repo.js";
 import { serializeServices } from "../src/core/services.js";
@@ -29,6 +30,7 @@ import {
   grants,
   route,
   tick,
+  withFetch,
   type CommerceWorld,
 } from "./commerceWorld.js";
 
@@ -632,6 +634,62 @@ describe("commerce: App Store", () => {
         "ignored",
         "stored",
       ]);
+    });
+
+    it("a flood of unsigned junk cannot drain the product bucket: Apple's notification still lands", async () => {
+      const cw = await world();
+      const { tx } = await bought(cw);
+      let limited = 0;
+      for (let i = 0; i < 150; i++) {
+        const junk = await route(cw, "POST", "/distribution/hooks/app-store", {
+          body: { signedPayload: `junk.${i}.x` },
+          headers: { "cf-connecting-ip": "203.0.113.9" },
+        });
+        expect([401, 429]).toContain(junk.status);
+        if (junk.status === 429) limited++;
+      }
+      expect(limited).toBeGreaterThan(0); // the junk sender's own IP bucket ran out
+      const n = await cw.fakes.apple.signNotification(
+        {
+          uuid: "1b6e2f6a-0000-4000-8000-000000000050",
+          type: "ONE_TIME_CHARGE",
+          tx,
+        },
+        NOW,
+      );
+      const real = await route(cw, "POST", "/distribution/hooks/app-store", {
+        body: { signedPayload: n },
+        headers: { "cf-connecting-ip": "17.58.0.1" },
+      });
+      expect(real.status).toBe(200);
+      expect(await grants(cw, cw.licenseA)).toEqual([`app-store:${FLAG}`]);
+    });
+
+    it("a chunked body over the cap is refused while streaming (413)", async () => {
+      const cw = await world();
+      const chunk = new TextEncoder().encode("x".repeat(16 * 1024));
+      let sent = 0;
+      const stream = new ReadableStream<Uint8Array>({
+        pull(c) {
+          if (sent++ < 16) c.enqueue(chunk);
+          else c.close();
+        },
+      });
+      const res = await withFetch(cw, () =>
+        dispatchWith(
+          new Request(`${CONSOLE}/${SLUG}/distribution/hooks/app-store`, {
+            method: "POST",
+            body: stream,
+            headers: { "content-type": "application/json" },
+            duplex: "half",
+          } as RequestInit),
+          cw.env,
+          cw.db,
+          NOW,
+        ),
+      );
+      expect(res.status).toBe(413);
+      expect(sent).toBeLessThan(17);
     });
 
     it("a Server API outage answers 503 (Apple redelivers) and the redelivery applies", async () => {

@@ -1698,9 +1698,13 @@ Steam grants are re-checked weekly and on every claim. Residual: a Steam refund 
 up to a week; an App Store refund whose notifications all fail keeps its flag until a later
 notification or claim re-reads the transaction (no App Store poll exists).
 
-**Abuse.** Claims are rate-limited per licence (`commerceClaim`) and the hooks per product
-(`appStoreHook`, `playRtdnHook`), all failing closed: a claim can open a credential (an audit row)
-and spend a store's API quota. Bodies are capped (32 KiB claims, 64 KiB hooks). Purchase keys are
+**Abuse.** Claims are rate-limited per licence (`commerceClaim`). Each hook has two limiters,
+both failing closed: a per-client-IP bucket BEFORE verification (`appStoreHookIp`,
+`playRtdnHookIp`), which bounds the signature-checking CPU an unauthenticated sender can spend,
+and a per-product bucket AFTER it (`appStoreHook`, `playRtdnHook`), which counts only deliveries
+the store signed — so junk traffic can never drain the bucket a real refund notification needs
+(a test floods unsigned payloads, then delivers a signed one). Bodies are read through the shared
+streaming reader and cut off at the cap while streaming, chunked or not. Bodies are capped (32 KiB claims, 64 KiB hooks). Purchase keys are
 stored only as SHA-256; `detail_json` keeps the store ids a re-check needs (a Play purchase token,
 an order id, a Steam ID) and is never shown in full on the console.
 

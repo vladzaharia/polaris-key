@@ -113,6 +113,10 @@ const FAIL_MODE: Record<string, FailMode> = {
   commerceClaim: "closed",
   appStoreHook: "closed",
   playRtdnHook: "closed",
+  // …and the per-client-IP buckets that bound UNVERIFIED hook traffic before any signature
+  // check; the product buckets above count verified deliveries only.
+  appStoreHookIp: "closed",
+  playRtdnHookIp: "closed",
 
   // ── authenticated, non-credential surfaces — fail open ─────────────────────
   adminApi: "open",

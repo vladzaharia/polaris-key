@@ -3595,7 +3595,7 @@ paths:
         grants or revokes — and every other type (TEST included) is stored raw. A notification
         for another bundle id or Apple ID, or from an environment the product refuses (a sandbox
         delivery to a production product), answers 200 with `ignored` and changes nothing. A
-        Server API outage answers 503 so Apple redelivers. Rate-limited per product. Without App
+        Server API outage answers 503 so Apple redelivers. Rate-limited per client IP before verification and per product after it (only verified deliveries count against the product). Without App
         Store settings and a pinned `app-store-server-key`, or with License off, the service
         not-found. No CORS.
       parameters:
@@ -3664,7 +3664,7 @@ paths:
         purchase is acknowledged once); a `voidedPurchaseNotification` revokes; a test
         notification is stored. A body that is not an RTDN for the configured package answers
         200 (`ignored`) so Pub/Sub does not redeliver it. A Play API outage answers 503 so
-        Pub/Sub redelivers. Rate-limited per product. Without Play settings and a pinned
+        Pub/Sub redelivers. Rate-limited per client IP before verification and per product after it (only verified deliveries count against the product). Without Play settings and a pinned
         `google-service-account`, or with License off, the service not-found. No CORS.
       parameters:
         - { $ref: "#/components/parameters/Product" }
