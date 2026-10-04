@@ -16,7 +16,11 @@ every product's public routes are dark. Read the rotation procedure below before
 and if products are 404ing at once with nothing else broken, start at _Troubleshooting_ at the
 bottom of this page.
 
-In the console, **Platform → Deployment** (`#/platform/deployment`) shows the build this instance
+In the console, **Platform → Settings → Keyring** (`#/platform/settings`) shows the keyring
+read-only: which KEK secrets are set, the active kid, every kid in the ring with how many values it
+seals, and how many values are still on an older key or under a key that has left the ring (those
+cannot be opened). It also says when the ring does not parse. **Platform → Deployment**
+(`#/platform/deployment`) shows the build this instance
 runs, the D1 migrations it has applied against the build's newest, the required indexes, which
 bindings are present, and the **Platform activity** log, where every re-seal sweep is recorded with
 who ran it and how many values it re-sealed. Check it first when every product goes dark after a

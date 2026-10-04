@@ -2,12 +2,12 @@
 sidebar:
   order: 7
 title: "Compatibility and the device simulator"
-description: "The console's Compatibility tab: the matrix of app releases against pack releases with each cell's state, the live contentApi levels and per-outlet liveness, and the simulator that shows what a device running one app release on one outlet gets."
+description: "The console's Compatibility page: the matrix of app releases against pack releases with each cell's state, the live contentApi levels and per-outlet liveness, and the simulator that shows what a device running one app release on one outlet gets."
 ---
 
 Floors, holds, pack channels, store lag and transports interact. Without a view of them an
-operator learns what a device gets only when the device gets it. The **Compatibility** tab in the
-Release section answers it before then, in two read-only views. Nothing here edits a floor, a
+operator learns what a device gets only when the device gets it. The **Compatibility** page in the
+Release section answers it before then, in two read-only views: **Matrix** and **Simulator**. Nothing here edits a floor, a
 hold, a pin or a yank: floors and yanks are set under
 [Channels](/docs/services/release/channels/), pins and holds in `.pkey/release`
 ([Packs](/docs/services/release/packs/#app-releases-content-pins-and-embeds)).
@@ -27,13 +27,16 @@ that applies:
 
 Two markers ride on top of the state:
 
-- **Current** (a ring): this pack release is the member of the stored pack set that serves the
-  app release, the one the signed feed lists for it. A compatible release that is not current was
+- **Current** (a ring and the word): this pack release is the member of the stored pack set that
+  serves the app release, the one the signed feed lists for it. A compatible release that is not current was
   passed over: an older one, one below a floor, or one a dependency or conflict ruled out.
-- **Yanked** (struck through): yanked is a modifier, never a state. Revoking a release also yanks
-  it.
+- **Yanked** (struck through, and labelled in the headers): yanked is a modifier, never a state.
+  Revoking a release also yanks it.
 
-Each cell's reason is its tooltip, for example "contentApi >=3 <4 excludes level 4".
+The matrix is a keyboard grid with sticky headers: arrow keys move between cells and Enter opens
+the cell's drawer. The drawer holds the cell's reason (for example "contentApi >=3 <4 excludes
+level 4"), the pack release's requirements, any unsatisfied requirement of that pack for the app
+release, and links to the pack release, the app release and **Simulate this device**.
 
 The **live levels** are the contentApi levels of the app releases each channel serves at or above
 its floor. They are the levels resolution stores sets for and the feed carries, so they never
@@ -42,24 +45,30 @@ channels it is live on, and a warning with the count of **unsatisfied** packs: t
 satisfies at one of its selectors, each with its reason (`no-release`, `content-api`, `engine`,
 `variant`, `content-floor`, `dependency` or `conflict`).
 
-The **Outlets** column is the per-outlet liveness overlay. It comes from Distribution's own matrix
+Each app release's row header carries the per-outlet liveness overlay. It comes from Distribution's own matrix
 ([Distribution matrix](/docs/admin/distribution-matrix/)), fetched separately, so Release's answer
 never reads Distribution. An outlet is listed when the app release is live there, marked **held**
 when outlet readiness holds the release because a pack it needs is not live on that outlet yet, and
 **not ready** on a store outlet Polaris Key cannot hold
-([Outlet readiness](/docs/services/distribution/availability/#outlet-readiness)). When
-Distribution is off, the overlay says so and the matrix still renders.
+([Outlet readiness](/docs/services/distribution/availability/#outlet-readiness)). Distribution
+tracks its newest 50 releases; an older row says it is not tracked there rather than unserved. When
+Distribution is off or does not answer, the overlay is left out and the matrix still renders.
 
 The matrix is paged. A page shows every live app release plus 10 releases of each channel, and
-every pack release that is a set member plus 10 releases of each pack, newest first. **Older
-releases** and **Newer releases** move that window by 10. One page carries at most 200 app releases
-(live ones first); a page cut by that cap says so.
+every pack release that is a set member plus 10 releases of each pack, newest first. **Older** and
+**Newer** move that window by 10, and **Jump to a version** opens the page that holds a given app
+release. The pack, channel and **Live only** filters narrow the page; they, the page and the open
+cell are all in the URL. One page carries at most 200 app releases (live ones first); a page cut by
+that cap says so.
 
 ## What does this device get?
 
-Pick an app release, a platform, an outlet and, optionally, a variant (`texture=etc2;tier=hd`, a
-value can be a preference list such as `texture=astc,etc2`), a device id and a device's reported
-`packSetId`. The simulator answers with:
+Pick an app release (any in the store), a platform (from that release's builds), an outlet, the
+channel the device follows and, optionally, a variant (one choice per axis the packs declare, or
+`texture=etc2;tier=hd` when they declare none; a value can be a preference list such as
+`texture=astc,etc2`), a device id, a device's reported `packSetId` and the binary update methods
+it supports. The inputs are kept in the URL, so a simulation can be shared; changing an input
+clears the previous answer until you simulate again. The simulator answers with:
 
 - the **decision** a fresh device running that app release reaches (`packs`, `binary`, `store`,
   `blocked` with its reason, `none`), and its boot value;

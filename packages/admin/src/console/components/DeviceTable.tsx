@@ -40,6 +40,13 @@ export interface DeviceTableProps {
   id?: string;
   /** "Now" for stable relative times (stories, tests). */
   now?: number;
+  /**
+   * The platform facet's choices. Default: the platforms in `devices`. A server-paged caller
+   * passes the product's full list (its summary), since a filtered page holds only one.
+   */
+  platforms?: string[];
+  /** The search box's placeholder, when the server searches differently. */
+  searchPlaceholder?: string;
 }
 
 const STATUS_FACET: Facet<DeviceRow> = {
@@ -71,6 +78,8 @@ export function DeviceTable({
   pagination,
   id = "devices",
   now,
+  platforms: platformList,
+  searchPlaceholder = "Search device, id or version",
 }: DeviceTableProps): React.ReactElement {
   const columns = React.useMemo<DataColumn<DeviceRow>[]>(() => {
     const cols: DataColumn<DeviceRow>[] = [
@@ -191,12 +200,13 @@ export function DeviceTable({
     () =>
       [
         ...new Set(
-          devices.map((d) => d.platform).filter((p): p is string => !!p),
+          platformList ??
+            devices.map((d) => d.platform).filter((p): p is string => !!p),
         ),
       ]
         .sort()
         .map((p) => ({ value: p, label: p })),
-    [devices],
+    [devices, platformList],
   );
   const facets: Facet<DeviceRow>[] = [
     STATUS_FACET,
@@ -227,7 +237,7 @@ export function DeviceTable({
       rowActions={rowActions}
       facets={facets}
       search={{
-        placeholder: "Search device, id or version",
+        placeholder: searchPlaceholder,
         columns: ["device", "app", "license"],
       }}
       state={state}

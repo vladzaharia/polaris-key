@@ -1,26 +1,40 @@
 import * as React from "react";
-import { Releases } from "../../views/Releases.js";
-import { Deliverables } from "../../views/releases/Deliverables.js";
-import { DeliverableDetail } from "../../views/releases/DeliverableDetail.js";
-import { Compatibility } from "../../views/releases/Compatibility.js";
 import type { SectionPageProps } from "./types.js";
+import { ChannelsPage } from "./release/ChannelsPage.js";
+import { CompatibilityPage } from "./release/CompatibilityPage.js";
+import { ContentKeysPage } from "./release/ContentKeysPage.js";
+import { DeliverablesPage } from "./release/DeliverablesPage.js";
+import { PackRecord } from "./release/PackRecord.js";
+import { ReleaseRecord } from "./release/ReleaseRecord.js";
+import { ReleasesPage } from "./release/ReleasesPage.js";
+import { SimulatorPage } from "./release/SimulatorPage.js";
 
-/** Release: the legacy views at their new URLs, unchanged until chunk 8. */
+/** Release (ADMIN.md §6.3): releases, channels, deliverables, compatibility, content keys. */
 export default function ReleasePages({
   route,
 }: SectionPageProps): React.ReactElement | null {
   const { slug } = route;
   switch (route.page) {
     case "releases":
-      return <Releases slug={slug} />;
+      return route.id !== undefined ? (
+        <ReleaseRecord slug={slug} id={route.id} tab={route.tab} />
+      ) : (
+        <ReleasesPage slug={slug} />
+      );
+    case "channels":
+      return <ChannelsPage slug={slug} />;
     case "deliverables":
       return route.id !== undefined ? (
-        <DeliverableDetail slug={slug} id={route.id} />
+        <PackRecord slug={slug} id={route.id} tab={route.tab} />
       ) : (
-        <Deliverables slug={slug} />
+        <DeliverablesPage slug={slug} />
       );
     case "compatibility":
-      return <Compatibility slug={slug} />;
+      return <CompatibilityPage slug={slug} />;
+    case "simulator":
+      return <SimulatorPage slug={slug} />;
+    case "content-keys":
+      return <ContentKeysPage slug={slug} />;
     default:
       return null;
   }

@@ -118,8 +118,8 @@ describe("ManagedPayloadEditor — catalog-driven structure", () => {
         screen.getByRole("button", { name: new RegExp(category) }),
       ).toBeTruthy();
     }
-    // `ui.advanced` entries sink into their own trailing group rather than padding a category.
-    expect(screen.getByRole("button", { name: /Advanced/ })).toBeTruthy();
+    // `ui.advanced` entries sink into their own trailing group, "More settings" (MPE-4).
+    expect(screen.getByRole("button", { name: /More settings/ })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /network/ })).toBeNull();
     // appearance: one entry, and it is the one that is set.
     expect(
@@ -158,7 +158,10 @@ describe("ManagedPayloadEditor — catalog-driven structure", () => {
 describe("ManagedPayloadEditor — filtering at catalog scale", () => {
   it("filters across key, label, and category", async () => {
     renderEditor();
-    await userEvent.type(screen.getByLabelText("Filter keys"), "audio");
+    await userEvent.type(
+      screen.getByLabelText("Search keys and values"),
+      "audio",
+    );
     expect(await screen.findByText("2 of 5 entries")).toBeTruthy();
     expect(screen.getByText("Buffer size")).toBeTruthy();
     expect(screen.queryByText("Theme")).toBeNull();
@@ -166,18 +169,26 @@ describe("ManagedPayloadEditor — filtering at catalog scale", () => {
 
   it("matches on the dotted key even when the label does not contain it", async () => {
     renderEditor();
-    await userEvent.type(screen.getByLabelText("Filter keys"), "net.hosts");
+    await userEvent.type(
+      screen.getByLabelText("Search keys and values"),
+      "net.hosts",
+    );
     expect(await screen.findByText("1 of 5 entries")).toBeTruthy();
     expect(screen.getByText("Allowed hosts")).toBeTruthy();
   });
 
   it("offers a clear-filter affordance when nothing matches", async () => {
     renderEditor();
-    await userEvent.type(screen.getByLabelText("Filter keys"), "zzzz");
+    await userEvent.type(
+      screen.getByLabelText("Search keys and values"),
+      "zzzz",
+    );
     expect(
-      await screen.findByText("No entries match this filter"),
+      await screen.findByText(/No entries match this search/),
     ).toBeTruthy();
-    await userEvent.click(screen.getByRole("button", { name: "Clear filter" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Clear filters" }),
+    );
     expect(screen.getByText("Theme")).toBeTruthy();
   });
 
@@ -189,9 +200,12 @@ describe("ManagedPayloadEditor — filtering at catalog scale", () => {
     await userEvent.click(header);
     expect(body().hasAttribute("hidden")).toBe(true);
     // A filter is a request to see the matches, so it outranks a folded section.
-    await userEvent.type(screen.getByLabelText("Filter keys"), "theme");
+    await userEvent.type(
+      screen.getByLabelText("Search keys and values"),
+      "theme",
+    );
     await waitFor(() => expect(body().hasAttribute("hidden")).toBe(false));
-    expect(screen.getByLabelText("Theme")).toBeTruthy();
+    expect(screen.getByLabelText(/^Theme/)).toBeTruthy();
   });
 });
 
@@ -199,20 +213,18 @@ describe("ManagedPayloadEditor — set vs unset", () => {
   it("shows absent keys as 'Not set' with no editor at all", () => {
     renderEditor();
     // `audio.buffer` is not in the payload.
-    expect(screen.queryByLabelText("Buffer size")).toBeNull();
+    expect(screen.queryByLabelText(/^Buffer size/)).toBeNull();
     expect(screen.getAllByText("Not set").length).toBeGreaterThan(0);
     expect(screen.getByText(/clients fall back to 512/)).toBeTruthy();
   });
 
   it("materialises an editor seeded from the catalog default, and counts it as a change", async () => {
     renderEditor();
-    const row = screen.getByText("audio.buffer").closest("div")!.parentElement!
-      .parentElement!;
     await userEvent.click(
-      within(row).getByRole("button", { name: "Set value" }),
+      screen.getByRole("button", { name: "Set a value for Buffer size" }),
     );
     const input = (await screen.findByLabelText(
-      "Buffer size",
+      /^Buffer size/,
     )) as HTMLInputElement;
     expect(input.value).toBe("512");
     expect(await screen.findByText(/1 unsaved change/)).toBeTruthy();
@@ -220,7 +232,9 @@ describe("ManagedPayloadEditor — set vs unset", () => {
 
   it("clearing a set key sends the worker's delete shape, never an empty string", async () => {
     const { onSubmit } = renderEditor();
-    await userEvent.click(screen.getByRole("button", { name: "Clear Theme" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove Theme from the payload" }),
+    );
     await userEvent.click(screen.getByRole("button", { name: /Save changes/ }));
     await waitFor(() => expect(onSubmit).toHaveBeenCalled());
     // No value + state `default` is exactly what `applyOverrides` deletes on.
@@ -264,25 +278,21 @@ describe("ManagedPayloadEditor — dirty state and saving", () => {
     ]);
   });
 
-  it("blocks Save while any row has an inline validation error", async () => {
-    renderEditor();
+  it("blocks Save while a changed row has an inline validation error", async () => {
+    const { onSubmit } = renderEditor();
     // Materialise the bounded integer, then push it out of range.
     await userEvent.click(
-      within(
-        screen.getByText("audio.buffer").closest("div")!.parentElement!
-          .parentElement!,
-      ).getByRole("button", { name: "Set value" }),
+      screen.getByRole("button", { name: "Set a value for Buffer size" }),
     );
-    const input = await screen.findByLabelText("Buffer size");
+    const input = await screen.findByLabelText(/^Buffer size/);
     await userEvent.clear(input);
     await userEvent.type(input, "9999");
     // The message is the catalog validator's — the same one a 422 would carry.
     expect(await screen.findByText(/must be <= 2048/)).toBeTruthy();
-    const save = screen.getByRole("button", {
-      name: /Save changes/,
-    }) as HTMLButtonElement;
-    expect(save.disabled).toBe(true);
+    // Save is refused while a CHANGED row is invalid: it jumps to the error instead.
     expect(screen.getByText(/fix 1 error to save/)).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: /Save changes/ }));
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });
 
@@ -321,7 +331,7 @@ describe("ManagedPayloadEditor — empty and edge states", () => {
     expect(screen.getByText("This product has no config catalog")).toBeTruthy();
     expect(
       screen
-        .getByRole("link", { name: /Go to Config → Catalog/ })
+        .getByRole("link", { name: /Open the catalog/ })
         .getAttribute("href"),
     ).toBe("#/p/djdl/config/catalog");
   });
@@ -458,5 +468,247 @@ describe("mapServerFields", () => {
       ENTRIES,
     );
     expect(byKey["net.hosts"]).toBe("/0 must be string, got integer");
+  });
+});
+
+// ── the rebuild (ADMIN.md §6.6.3: MPE-1 to MPE-4) ─────────────────────────────────────────────
+
+describe("ManagedPayloadEditor — a refetch never wipes the draft (MPE-1)", () => {
+  it("keeps an edit across a background refetch of the same payload", async () => {
+    const onSubmit = vi.fn();
+    const { rerender } = render(
+      <ManagedPayloadEditor
+        slug="djdl"
+        catalog={CATALOG}
+        payload={PAYLOAD}
+        onSubmit={onSubmit}
+      />,
+    );
+    await userEvent.click(screen.getByRole("radio", { name: "Hidden" }));
+    await screen.findByText(/1 unsaved change/);
+    // A focus refetch: a new object, the same content.
+    rerender(
+      <ManagedPayloadEditor
+        slug="djdl"
+        catalog={CATALOG}
+        payload={structuredClone(PAYLOAD)}
+        onSubmit={onSubmit}
+      />,
+    );
+    expect(
+      screen
+        .getByRole("radio", { name: "Hidden" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(screen.getByText(/1 unsaved change/)).toBeTruthy();
+  });
+
+  it("says so when the server moved under a dirty draft, and keeps the draft until asked", async () => {
+    const onSubmit = vi.fn();
+    const { rerender } = render(
+      <ManagedPayloadEditor
+        slug="djdl"
+        catalog={CATALOG}
+        payload={PAYLOAD}
+        onSubmit={onSubmit}
+      />,
+    );
+    await userEvent.click(screen.getByRole("radio", { name: "Hidden" }));
+    const moved: RedactedPayload = {
+      ...PAYLOAD,
+      config: {
+        "ui.theme": {
+          state: "default",
+          value: "dark",
+          updatedAt: 1_700_000_500,
+        },
+      },
+    };
+    rerender(
+      <ManagedPayloadEditor
+        slug="djdl"
+        catalog={CATALOG}
+        payload={moved}
+        onSubmit={onSubmit}
+      />,
+    );
+    expect(
+      await screen.findByText(/changed on the server while you were editing/),
+    ).toBeTruthy();
+    expect(
+      screen
+        .getByRole("radio", { name: "Hidden" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    await userEvent.click(screen.getByRole("button", { name: "Take theirs" }));
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("radio", { name: "Default" })
+          .getAttribute("aria-checked"),
+      ).toBe("true"),
+    );
+  });
+
+  it("takes the refetch that holds a saved draft silently", async () => {
+    const onSubmit = vi.fn();
+    const { rerender } = render(
+      <ManagedPayloadEditor
+        slug="djdl"
+        catalog={CATALOG}
+        payload={PAYLOAD}
+        onSubmit={onSubmit}
+      />,
+    );
+    await userEvent.click(screen.getByRole("radio", { name: "Hidden" }));
+    await userEvent.click(screen.getByRole("button", { name: /Save changes/ }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    // Until the refetch lands, the draft stays (a failed save must never lose it).
+    expect(screen.getByText(/1 unsaved change/)).toBeTruthy();
+    rerender(
+      <ManagedPayloadEditor
+        slug="djdl"
+        catalog={CATALOG}
+        payload={{
+          ...PAYLOAD,
+          config: {
+            "ui.theme": {
+              state: "hidden",
+              value: "light",
+              updatedAt: 1_700_000_900,
+            },
+          },
+        }}
+        onSubmit={onSubmit}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.queryByText(/unsaved change/)).toBeNull(),
+    );
+    expect(screen.queryByText(/changed on the server/)).toBeNull();
+  });
+});
+
+describe("ManagedPayloadEditor — only changed rows block a save (MPE-2)", () => {
+  /** A stored value the catalog no longer accepts (the schema tightened since). */
+  const STALE: RedactedPayload = {
+    config: {
+      "ui.theme": { state: "enforced", value: "light", updatedAt: 1 },
+      "audio.buffer": { state: "default", value: 4, updatedAt: 1 },
+    },
+    secrets: {},
+    entitlements: {},
+  };
+
+  it("shows a stale invalid value without letting it block an unrelated save", async () => {
+    const { onSubmit } = renderEditor({ payload: STALE });
+    expect(screen.getByText(/must be >= 64/)).toBeTruthy();
+    // The group that holds it says how many errors it has.
+    expect(screen.getByRole("button", { name: /^audio/ }).textContent).toMatch(
+      /1 error/,
+    );
+    await userEvent.click(
+      within(
+        screen.getByRole("radiogroup", { name: "Management state for Theme" }),
+      ).getByRole("radio", { name: "Hidden" }),
+    );
+    expect(screen.queryByText(/to save/)).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: /Save changes/ }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls.at(-1)![0]).toEqual([
+      { key: "ui.theme", state: "hidden", value: "light" },
+    ]);
+  });
+
+  it("jumps to the first error, opening its collapsed group", async () => {
+    renderEditor();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Set a value for Buffer size" }),
+    );
+    const input = await screen.findByLabelText(/^Buffer size/);
+    await userEvent.clear(input);
+    await userEvent.type(input, "1");
+    const header = screen.getByRole("button", { name: /^audio/ });
+    await userEvent.click(header);
+    expect(header.getAttribute("aria-expanded")).toBe("false");
+    await userEvent.click(
+      screen.getByRole("button", { name: /Jump to first error/ }),
+    );
+    await waitFor(() =>
+      expect(header.getAttribute("aria-expanded")).toBe("true"),
+    );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByLabelText(/^Buffer size/),
+      ),
+    );
+  });
+});
+
+describe("ManagedPayloadEditor — review before saving (MPE-3)", () => {
+  it("lists every change with before, after and the effective value", async () => {
+    const { onSubmit } = renderEditor({
+      inherited: {
+        "ui.theme": {
+          source: "profile “base”",
+          value: "dark",
+          state: "default",
+        },
+      },
+    });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove Theme from the payload" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Review changes" }),
+    );
+    const drawer = await screen.findByRole("dialog", {
+      name: "Review changes",
+    });
+    const item = within(drawer).getByText("ui.theme").closest("li")!;
+    expect(item.textContent).toMatch(/Beforelight · Enforced/);
+    expect(item.textContent).toMatch(/AfterNot set/);
+    expect(item.textContent).toMatch(/Effectivedark \(from profile “base”\)/);
+    await userEvent.click(
+      within(drawer).getByRole("button", { name: "Save changes" }),
+    );
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+  });
+});
+
+describe("ManagedPayloadEditor — search and grouping (MPE-4)", () => {
+  it("matches the current value, not only the key and label", async () => {
+    renderEditor();
+    await userEvent.type(
+      screen.getByLabelText("Search keys and values"),
+      "light",
+    );
+    expect(await screen.findByText("1 of 5 entries")).toBeTruthy();
+    expect(screen.getByText("ui.theme")).toBeTruthy();
+  });
+
+  it("keeps a real Advanced category apart from the synthetic group", () => {
+    renderEditor({
+      catalog: {
+        schemaVersion: 4,
+        entries: [
+          ...ENTRIES,
+          {
+            key: "dsp.oversample",
+            kind: "config",
+            category: "Advanced",
+            label: "Oversampling",
+            description: "",
+            schema: { type: "integer" },
+          },
+        ],
+      },
+    });
+    expect(screen.getByRole("button", { name: /^Advanced/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^More settings/ })).toBeTruthy();
+    const ids = screen
+      .getAllByRole("button", { expanded: true })
+      .map((b) => b.getAttribute("aria-controls"));
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });

@@ -213,33 +213,38 @@ server is what wins, and the caller sees a `403` instead of a silent download. N
 client-side is ever trusted to gate what a caller can install; only what a caller is
 _offered_ in the first place.
 
-## The console: Update settings
+## The console: Feed
 
-`GET|PATCH /manage/api/products/<product>/update/settings`, plus Distribution's delivery
-access, edited together because every one of them decides which builds a product offers, and
-to whom:
+**Update → Feed** edits `GET|PATCH /manage/api/products/<product>/update/settings` in three
+sections, each saved on its own with only its own fields:
 
 - **Metadata access** — governs the version check (and, on Release's side, the changelog
   and install script).
-- **Artifact access** — governs the appcast, the downloads and the customer portal's download
-  mint. Since P2b-04 this is Distribution's
-  [delivery access](/docs/services/distribution/delivery/#delivery-access), saved to
-  `PUT /manage/api/products/<product>/distribution/access` with its own owner and revert;
-  `update/settings` refuses `artifactsAccess` by name.
-- **Compat min / Compat max** — the product-wide version window every license's own
-  `entitled` window is intersected against, regardless of what any individual license
-  grants.
-- **Minimum macOS version** (`minimumSystemVersion`, `^\d+(\.\d+){0,2}$` or `null` to clear)
-  — rendered as `sparkle:minimumSystemVersion` on every appcast item.
-- **Require Sparkle signatures** (`requireSparkleSignature`, boolean, default `true`) — see
-  [Appcast](/docs/services/update/appcast/#the-signature-gate).
+- **Compatibility window** (lowest and highest supported) — the product-wide version window
+  every license's own `entitled` window is intersected against, regardless of what any
+  individual license grants. Both are checked as versions, and the highest must not be below the
+  lowest, before anything is sent.
+- **Artifact policy**:
+  - **Minimum macOS version** (`minimumSystemVersion`, `^\d+(\.\d+){0,2}$` or empty to clear) —
+    rendered as `sparkle:minimumSystemVersion` on every appcast item.
+  - **Require Sparkle signatures** (`requireSparkleSignature`, boolean, default `true`) — see
+    [Appcast](/docs/services/update/appcast/#the-signature-gate).
+
+A fourth section, **Endpoints**, lists the public URLs updaters read (discovery, the version
+check, the appcasts, WinSparkle and the signed feed per channel), each with a copy button.
+
+**Artifact access** — who may read the appcast, the downloads and the customer portal's download
+mint — is Distribution's [delivery access](/docs/services/distribution/delivery/#delivery-access).
+The Feed page shows it read-only and links to **Distribution → Access**, where it is set, saved to
+`PUT /manage/api/products/<product>/distribution/access` with its own owner and revert;
+`update/settings` refuses `artifactsAccess` by name.
 
 A product with no release configuration yet has nowhere to store an access mode or an
-artifact policy, so the form disables those fields and the API answers `422` rather than
-accepting a value the next read wouldn't return — the compatibility window, living on the
-product row itself, stays editable regardless. Saving is a partial patch: an unset field
-keeps its current value, so changing the compat window never requires re-submitting an
-access mode the form never touched.
+artifact policy, so the page shows those fields read-only and says why, and the API answers
+`422` rather than accepting a value the next read wouldn't return — the compatibility window,
+living on the product row itself, stays editable regardless. Saving is a partial patch: an
+unset field keeps its current value, so changing the compat window never re-submits an access
+mode.
 
 ### Who owns each field
 
@@ -264,8 +269,10 @@ settings object as `GET`; the event is audited as `update.settings.revert`.
 The two artifact-policy fields carry no owner because they have no second writer — no manifest
 shape spells them, and they live in a column resync never names. A push can neither set nor
 erase them. Changing either is audited as its own `release.policy.update` event (turning the
-signature requirement off is named explicitly), and the console asks for confirmation before
-switching signatures off.
+signature requirement off is named explicitly), and the console asks for confirmation, marked as a
+strong action, before switching signatures off. On the Feed page, **Revert to manifest** sits in
+the source badge of a block the console owns (`Set in console`); a block the manifest owns has
+nothing to revert.
 
 ## See also
 

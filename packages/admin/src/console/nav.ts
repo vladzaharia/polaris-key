@@ -16,7 +16,7 @@
  * ── Pages that are not built yet ──────────────────────────────────────────────────────────────
  * The table declares the whole §2.3 page set so URLs and typed builders exist from chunk 2 on. A
  * page whose redesign lands in a later area chunk carries `ready: false` and a `host`: the page
- * that holds the capability today (Edge mint still lives inside Keys & secrets until chunk 7, for
+ * that holds the capability today (the Platform section's Settings opens Deployment, for
  * example). The router redirects a not-ready page to its host, and the sidebar and palette list
  * only ready pages, so every capability stays reachable and no URL is a dead end. An area chunk
  * flips `ready` and deletes `host` when it builds the page.
@@ -225,8 +225,8 @@ export const SECTIONS: NavSection[] = [
         docs: "/docs/admin/licenses-and-devices/",
         inNav: true,
         ready: true,
-        // The routed device drawer arrives with the Devices rebuild (chunk 5).
-        record: { noun: "Device", ready: false },
+        // The routed device drawer (`devices/:deviceId`).
+        record: { noun: "Device", ready: true },
       },
       {
         page: "keys",
@@ -278,7 +278,7 @@ export const SECTIONS: NavSection[] = [
         shortcut: "l",
         record: {
           noun: "License",
-          tabs: ["overview", "keys", "devices", "config", "history"],
+          tabs: ["overview", "keys", "devices", "config"],
           ready: true,
         },
       },
@@ -290,7 +290,7 @@ export const SECTIONS: NavSection[] = [
         docs: "/docs/services/license/model/",
         inNav: true,
         ready: true,
-        record: { noun: "Tier", ready: false },
+        record: { noun: "Tier", tabs: ["overview", "used-by"], ready: true },
       },
       {
         page: "enrollment",
@@ -328,8 +328,7 @@ export const SECTIONS: NavSection[] = [
         icon: FilePen,
         docs: "/docs/services/config/catalog/",
         inNav: false,
-        ready: false,
-        host: "catalog",
+        ready: true,
       },
       {
         page: "profiles",
@@ -341,7 +340,8 @@ export const SECTIONS: NavSection[] = [
         ready: true,
         record: {
           noun: "Profile",
-          tabs: ["payload", "used-by", "history"],
+          // A History tab joins these once the activity log filters by target (ADMIN.md A-2).
+          tabs: ["payload", "used-by"],
           ready: true,
         },
       },
@@ -352,9 +352,7 @@ export const SECTIONS: NavSection[] = [
         icon: Stamp,
         docs: "/docs/services/config/edge-mint/",
         inNav: true,
-        // Mounted inside Keys & secrets until the Config chunk (7) moves it.
-        ready: false,
-        host: "keys",
+        ready: true,
       },
     ],
   },
@@ -375,10 +373,11 @@ export const SECTIONS: NavSection[] = [
         inNav: true,
         ready: true,
         shortcut: "r",
+        // The History tab joins when activity filters (A-2) can scope it to one release.
         record: {
           noun: "Release",
-          tabs: ["builds", "packs", "channels", "history"],
-          ready: false,
+          tabs: ["builds", "packs", "channels", "distribution"],
+          ready: true,
         },
       },
       {
@@ -388,9 +387,7 @@ export const SECTIONS: NavSection[] = [
         icon: Waypoints,
         docs: "/docs/services/release/channels/",
         inNav: true,
-        // The channels panel is part of Releases until the Release chunk (8) promotes it.
-        ready: false,
-        host: "releases",
+        ready: true,
       },
       {
         page: "deliverables",
@@ -422,8 +419,7 @@ export const SECTIONS: NavSection[] = [
         icon: FlaskConical,
         docs: "/docs/services/release/compatibility/",
         inNav: false,
-        ready: false,
-        host: "compatibility",
+        ready: true,
       },
       {
         page: "content-keys",
@@ -432,9 +428,7 @@ export const SECTIONS: NavSection[] = [
         icon: KeySquare,
         docs: "/docs/services/release/packs/",
         inNav: true,
-        // Part of Deliverables until the Release chunk (8) moves it (DLV-5).
-        ready: false,
-        host: "deliverables",
+        ready: true,
       },
     ],
   },
@@ -463,7 +457,6 @@ export const SECTIONS: NavSection[] = [
         icon: TrendingUp,
         docs: "/docs/services/distribution/rollouts/",
         inNav: true,
-        // Today's Distribution overview (chain, rollouts, hooks) until chunk 9 rebuilds it.
         ready: true,
       },
       {
@@ -473,9 +466,7 @@ export const SECTIONS: NavSection[] = [
         icon: Store,
         docs: "/docs/services/distribution/feeds/",
         inNav: true,
-        // A capability with no console UI yet (chunk 9).
-        ready: false,
-        host: "matrix",
+        ready: true,
       },
       {
         page: "access",
@@ -484,9 +475,7 @@ export const SECTIONS: NavSection[] = [
         icon: ShieldCheck,
         docs: "/docs/services/distribution/delivery/",
         inNav: true,
-        // Delivery access lives in Update → Feed until chunk 9 moves it.
-        ready: false,
-        host: "feed",
+        ready: true,
       },
       {
         page: "health",
@@ -504,9 +493,7 @@ export const SECTIONS: NavSection[] = [
         icon: Plug,
         docs: "/docs/admin/secrets-and-keys/",
         inNav: true,
-        // Mounted inside Keys & secrets until chunk 9 moves it.
-        ready: false,
-        host: "keys",
+        ready: true,
       },
     ],
   },
@@ -553,9 +540,7 @@ export const SECTIONS: NavSection[] = [
         icon: LogIn,
         docs: "/docs/services/identity/oidc/",
         inNav: true,
-        // The OIDC card is part of Portal until the Identity chunk (10) splits it.
-        ready: false,
-        host: "portal",
+        ready: true,
       },
     ],
   },
@@ -574,11 +559,9 @@ const PLATFORM_PAGES: NavPage[] = [
     label: "Settings",
     path: "platform/settings",
     icon: ServerCog,
-    docs: "/docs/admin/kek/",
+    docs: "/docs/admin/platform-settings/",
     inNav: true,
-    // The settings store API (A-13) has landed; its page (4P-1) has not. Until then, Deployment.
-    ready: false,
-    host: "platform-deployment",
+    ready: true,
     group: "platform",
   },
   {
@@ -596,11 +579,9 @@ const PLATFORM_PAGES: NavPage[] = [
     label: "Operations",
     path: "platform/operations",
     icon: Gauge,
-    docs: "/docs/admin/deploy/",
+    docs: "/docs/admin/operations/",
     inNav: true,
-    // The operations API (A-14) has landed; its page (4P-3) has not. Until then, Deployment.
-    ready: false,
-    host: "platform-deployment",
+    ready: true,
     group: "platform",
   },
   {
@@ -608,11 +589,9 @@ const PLATFORM_PAGES: NavPage[] = [
     label: "Store connections",
     path: "platform/store-connections",
     icon: PlugZap,
-    docs: "/docs/services/distribution/",
+    docs: "/docs/admin/store-connections/",
     inNav: true,
-    // The store connections API (A-16) has landed; its page has not. Until then, Deployment.
-    ready: false,
-    host: "platform-deployment",
+    ready: true,
     group: "platform",
   },
   {

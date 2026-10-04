@@ -331,7 +331,8 @@ export const r = {
   license: (slug: string, id: string, tab?: string) =>
     productPage(slug, "licenses", { id, tab }),
   tiers: (slug: string) => productPage(slug, "tiers"),
-  tier: (slug: string, id: string) => productPage(slug, "tiers", { id }),
+  tier: (slug: string, id: string, tab?: string) =>
+    productPage(slug, "tiers", { id, tab }),
   enrollment: (slug: string) => productPage(slug, "enrollment"),
   catalog: (slug: string) => productPage(slug, "catalog"),
   catalogEdit: (slug: string) => productPage(slug, "catalog-edit"),
@@ -448,6 +449,8 @@ export const QUERY_KEYS = {
   sort: "sort (`-` prefix for descending)",
   status: "facet",
   tier: "facet",
+  channel: "facet",
+  signin: "facet",
   platform: "facet",
   cursor: "pagination",
   offset: "pagination",

@@ -25,13 +25,7 @@
 import { ErrorCode } from "../../core/errors.js";
 import type { ServiceContext } from "../../core/registry.js";
 import type { AdminSession } from "../../core/adminApi.js";
-import {
-  adminJson,
-  adminNotFound,
-  audit,
-  err,
-  readBody,
-} from "../../core/adminApi.js";
+import { adminJson, audit, err, readBody } from "../../core/adminApi.js";
 import {
   countsFor,
   readUpdateHealth,
@@ -95,13 +89,17 @@ export async function handleUpdateHealthAdmin(
       rest[3],
       ctx.session,
     );
-    if (!result.ok) {
-      if (result.status === 404) return adminNotFound();
-      return err(result.status, ErrorCode.BadRequest, result.message, {
-        reason: result.reason,
-        ...(result.fields ? { fields: result.fields } : {}),
-      });
-    }
+    // A-9: a 404 keeps its `reason` (`unknown_candidate`).
+    if (!result.ok)
+      return err(
+        result.status,
+        result.status === 404 ? ErrorCode.NotFound : ErrorCode.BadRequest,
+        result.message,
+        {
+          reason: result.reason,
+          ...(result.fields ? { fields: result.fields } : {}),
+        },
+      );
     return adminJson({ candidate: result.candidate });
   }
   return null;
