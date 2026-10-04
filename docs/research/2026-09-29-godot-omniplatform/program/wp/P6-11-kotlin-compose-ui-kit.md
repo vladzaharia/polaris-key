@@ -113,16 +113,17 @@ logo = null)`. With `None` every colour, shape and text style reads from the hos
 
 ## Acceptance criteria
 
-- [ ] With a stock Material 3 theme and defaults, no screen renders a Polaris Key colour, font,
+- [x] With a stock Material 3 theme and defaults, no screen renders a Polaris Key colour, font,
       logo or the badge (a snapshot and a test prove it).
-- [ ] Setting `PolarisBranding.PolarisKey` is the only change needed to get the branded variant;
+- [x] Setting `PolarisBranding.PolarisKey` is the only change needed to get the branded variant;
       `showPoweredBy = true` adds the badge and is independent of branding.
-- [ ] Every screen listed has snapshots (light, dark, large font, phone, tablet; neutral and
+- [x] Every screen listed has snapshots (light, dark, large font, phone, tablet; neutral and
       branded) and passes the accessibility tests.
-- [ ] Every string is in `PolarisCopy` or string resources; the state-to-copy mapping has unit tests.
-- [ ] `pnpm gen:brand -- --check` covers the Kotlin token file; `ui.kit` is `implemented` and
+- [x] Every string is in `PolarisCopy` or string resources; the state-to-copy mapping has unit tests.
+- [x] `pnpm gen:brand -- --check` covers the Kotlin token file; `ui.kit` is `implemented` and
       `parity:check` is green.
-- [ ] The green gate passes (`AGENTS.md`) and the CI jobs are green.
+- [x] The green gate passes (`AGENTS.md`) and the CI jobs are green (locally: the gate, and the
+      `android` job's `:ui` tasks with `checkModuleBoundaries`; the hosted CI run follows the push).
 
 ## Verify
 

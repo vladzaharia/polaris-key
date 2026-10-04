@@ -2223,7 +2223,7 @@
       "optional": false,
       "refs": ["PARITY §5.7", "README §5.8"],
       "brief": "wp/P6-11-kotlin-compose-ui-kit.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "P6-12",
