@@ -22,6 +22,10 @@ var config: PKeyConfig = null
 
 var rows: Array = []
 
+var _frame: VBoxContainer
+var _scroll: ScrollContainer
+var _inset: MarginContainer
+var _powered_by: TextureRect
 var _title: Label
 var _empty: Label
 var _advanced: CheckButton
@@ -35,7 +39,25 @@ var _writing := false
 func _build() -> void:
 	name = "PKeySettingsPanel"
 	max_content_width = 640.0
-	var box := vbox(self, "Body", 12)
+	# A long catalog (or the advanced rows) scrolls instead of running off the screen; a gamepad
+	# focusing a row below the fold scrolls it into view. The Powered-by badge sits below the
+	# scroll area, never scrolled away.
+	_frame = vbox(self, "Frame", 12)
+	_scroll = ScrollContainer.new()
+	_scroll.name = "Scroll"
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.follow_focus = true
+	_frame.add_child(_scroll)
+	# Room for the scroll bar while it shows, so it never sits on the rows' controls.
+	_inset = MarginContainer.new()
+	_inset.name = "Inset"
+	_inset.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_inset.size_flags_vertical = Control.SIZE_EXPAND | Control.SIZE_SHRINK_CENTER
+	_inset.minimum_size_changed.connect(layout_content)
+	_scroll.add_child(_inset)
+	_scroll.get_v_scroll_bar().visibility_changed.connect(func():
+		_inset.add_theme_constant_override("margin_right", 12 if _scroll.get_v_scroll_bar().visible else 0))
+	var box := vbox(_inset, "Body", 12)
 	_title = label(box, "Title", "PKeyTitle")
 	_empty = label(box, "Empty", "PKeyMuted")
 	_list = vbox(box, "Rows", 14)
@@ -47,7 +69,29 @@ func _build() -> void:
 		show_advanced = on
 		refresh_view())
 	box.add_child(_advanced)
-	brand_node(box, "PoweredBy", BRAND_POWERED_BY)
+	_powered_by = brand_node(_frame, "PoweredBy", BRAND_POWERED_BY)
+
+
+func _content() -> Control:
+	return _frame
+
+
+## The scroll area is as tall as the rows, up to the room the viewport leaves (less the gutters,
+## this view's padding and the badge below), then scrolls; it fills whatever height a parent
+## gives it.
+func _apply_width(width: float) -> void:
+	super(width)
+	var room := INF
+	if is_inside_tree():
+		var box := get_theme_stylebox("panel")
+		var pad := box.get_margin(SIDE_TOP) + box.get_margin(SIDE_BOTTOM) if box != null else 0.0
+		if _powered_by.visible:
+			pad += _powered_by.get_combined_minimum_size().y + _frame.get_theme_constant("separation")
+		room = maxf(0.0, get_viewport_rect().size.y - pad - 2.0 * GUTTER)
+	var want := minf(_inset.get_combined_minimum_size().y, room)
+	if not is_equal_approx(_scroll.custom_minimum_size.y, want):
+		_scroll.custom_minimum_size.y = want
+	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL if width <= 0.0 else Control.SIZE_FILL
 
 
 func _config() -> PKeyConfig:
@@ -114,9 +158,14 @@ func _rebuild(shown: Array) -> void:
 func _row_nodes(r: Dictionary) -> Dictionary:
 	var key: String = r["key"]
 	var row := vbox(_list, "Row_%s" % _safe(key), 4)
-	var line := hbox(row, "Line")
+	# A flow line: on a narrow screen the badge and Reset wrap below instead of squeezing the name.
+	var line := HFlowContainer.new()
+	line.name = "Line"
+	line.add_theme_constant_override("v_separation", 6)
+	row.add_child(line)
 	var name_label := label(line, "Label", "", true)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	var input := _make_input(line, r)
 	var badge := label(line, "Badge", "PKeyBadge")
 	badge.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -183,7 +232,10 @@ func _update_values(shown: Array) -> void:
 		var n: Dictionary = _controls.get(r["key"], {})
 		if n.is_empty():
 			continue
-		(n["label"] as Label).text = tr(r["label"])
+		var name_label: Label = n["label"]
+		name_label.text = tr(r["label"])
+		# About 8 em, so a long name ("Message of the day") wraps by words, never a syllable a line.
+		name_label.custom_minimum_size.x = 8.0 * name_label.get_theme_font_size("font_size")
 		var input: Control = n["input"]
 		var v = r["value"]
 		if input is CheckButton:

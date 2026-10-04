@@ -88,6 +88,11 @@ func _theme(t: PKeyTestContext) -> void:
 	t.check("neutral: sizes scale with the project's font size", big.get_font_size("font_size", "PKeyTitle") == 36)
 	var card := n.get_stylebox("panel", "PKeyCard")
 	t.check("neutral: cards are padded", card != null and card.get_margin(SIDE_LEFT) >= base)
+	# Errors stay readable (WCAG AA, 4.5:1) on the ground the text colour implies.
+	var on_light := PKeyUiTheme.neutral_with(16, Color.BLACK, null, null).get_color("font_color", "PKeyError")
+	var on_dark := PKeyUiTheme.neutral_with(16, Color.WHITE, null, null).get_color("font_color", "PKeyError")
+	t.check("neutral: error text is 4.5:1 on a light ground", _contrast(on_light, Color.WHITE) >= 4.5, "%.2f:1" % _contrast(on_light, Color.WHITE))
+	t.check("neutral: error text is 4.5:1 on a dark ground", _contrast(on_dark, Color("#121212")) >= 4.5, "%.2f:1" % _contrast(on_dark, Color("#121212")))
 
 	var regular := load(PKeyUiTheme.REGULAR_PATH) as FontFile
 	var bold := load(PKeyUiTheme.BOLD_PATH) as FontFile
@@ -242,12 +247,47 @@ func _overrides(t: PKeyTestContext) -> void:
 	t.check("override: a scene given its own Theme keeps it", v.theme == mine)
 	unmount.call(v)
 
+	# PolarisKey.boot() mounts its view first and configures from polaris_key.tres after: the
+	# options must still re-theme the mounted view (and its nested gate), not just add the mark.
+	PKeyUiTheme.reset()
+	var boot: Control = (load("res://addons/polaris_key/ui/boot/pkey_boot.tscn") as PackedScene).instantiate()
+	boot.set("auto_sdk", false)
+	tree.root.add_child(boot)
+	t.check("boot flow: the view starts neutral", PKeyUiTheme.is_stock(boot.theme) and boot.theme.resource_path != PKeyUiTheme.DARK_PATH)
+	var late := PKeyOptions.new()
+	late.ui_branding = "polaris-key"
+	PKeyUiTheme.apply_options(late)
+	await tree.process_frame
+	t.check("boot flow: apply_options re-themes a mounted view", boot.theme != null and boot.theme.resource_path == PKeyUiTheme.DARK_PATH, str(boot.theme.resource_path if boot.theme else "null"))
+	boot.call("refresh_view")
+	var bgate: Control = boot.get("gate")
+	bgate.call("show_state", {"status": "needs-activation"})
+	var title := bgate.find_child("Title", true, false) as Label
+	t.check("boot flow: the gate title is in the brand face", title != null and title.get_theme_font("font") == load(PKeyUiTheme.BOLD_PATH))
+	t.check("boot flow: the Pinned K on the brand theme", shown.call(bgate, "Mark"))
+	PKeyUiTheme.apply_options(PKeyOptions.new())
+	await tree.process_frame
+	t.check("boot flow: back to neutral when the options say so", PKeyUiTheme.is_stock(boot.theme) and not boot.theme.has_default_font_size() and not shown.call(bgate, "Mark"))
+	unmount.call(boot)
+
 	opts.ui_branding = "nonsense"
 	opts.ui_theme = null
 	PKeyUiTheme.apply_options(opts)
 	t.check("options: an unknown branding is neutral", not PKeyUiTheme.branded())
 	PKeyUiTheme.reset()
 	t.check("reset: neutral, no badge", not PKeyUiTheme.branded() and not PKeyUiTheme.powered_by and PKeyUiTheme.override == null)
+
+
+## The WCAG contrast ratio of two opaque colours.
+static func _contrast(a: Color, b: Color) -> float:
+	var la := _rel_luminance(a)
+	var lb := _rel_luminance(b)
+	return (maxf(la, lb) + 0.05) / (minf(la, lb) + 0.05)
+
+
+static func _rel_luminance(c: Color) -> float:
+	var ch := func(v: float) -> float: return v / 12.92 if v <= 0.04045 else pow((v + 0.055) / 1.055, 2.4)
+	return 0.2126 * ch.call(c.r) + 0.7152 * ch.call(c.g) + 0.0722 * ch.call(c.b)
 
 
 ## Every brand colour a theme may use, for one theme (plus the QR's black and white).

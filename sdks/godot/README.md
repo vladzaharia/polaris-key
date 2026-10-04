@@ -396,8 +396,11 @@ gamepad or a TV remote.
 
   The same switches exist on `PKeyUiTheme` (`branding`, `scheme`, `accent`, `override`,
   `powered_by`) for a game that shows the scenes without `configure()`; `configure()` applies the
-  options' values, so set the statics after it. Set either before a scene enters the tree. With
-  branding on, the gate card and the boot screen show the Pinned K (the display cut, never the
+  options' values (resetting every static the options leave unset), so set the statics after it.
+  Kit scenes already on screen re-theme when `configure()` applies the options. A game that only
+  calls `PolarisKey.boot()` gets its UI options from `res://polaris_key.tres`, which boot
+  configures from once its view is showing: put `ui_branding`, `ui_powered_by` and the rest in
+  that resource (the setup dock's file), not in statics set before `boot()`. With branding on, the gate card and the boot screen show the Pinned K (the display cut, never the
   terminal bit) and the kit uses the design system's dark or light palette, the platform violet
   (or your accent), Rubik, and a 2 px violet focus ring on every control. With `ui_powered_by`,
   the gate, boot and settings scenes end with the compact "Powered by Polaris Key" badge, at its
@@ -412,7 +415,9 @@ gamepad or a TV remote.
 bold_font)` makes the Polaris Key theme with your accent or fonts if you want a starting point.
 - **Font.** With branding on, Rubik (Regular for text, Bold for titles and codes) ships in
   `ui/theme/fonts/` under the SIL Open Font License 1.1: keep `fonts/OFL.txt` with your game's
-  licences or credits. Rubik falls back to the system font for scripts it lacks. The neutral look
+  licences or credits. A `.txt` file is not exported by default; to ship the licence inside the
+  game, add `addons/polaris_key/ui/theme/fonts/OFL.txt` to the export preset's "Filters to export
+  non-resource files/folders" (`include_filter`). Rubik falls back to the system font for scripts it lacks. The neutral look
   uses your font and never loads Rubik.
 - **Copy.** Every string goes through `PKeyUiCopy` and `tr()`: translate the English defaults with
   an ordinary Translation, or rename anything with `overrides`

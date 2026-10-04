@@ -100,17 +100,29 @@ static func _first_diff(want: String, got: String) -> String:
 # ── Layout ───────────────────────────────────────────────────────────────────────────────
 
 ## Owner requirement (2026-10-04): every panel is centred, at a comfortable width, from a phone in
-## portrait to 4K. Each scene's first state is laid out full-screen at each size; its centred
-## node must sit in the middle of the view (horizontally, and vertically when it fits), no wider
-## than its max width, and inside the viewport with the gutter.
+## portrait to 4K, in the neutral look and in both Polaris Key looks (whose page panel pads the
+## view). Each scene's first state, plus the states in LAYOUT_EXTRA, is laid out full-screen at
+## each size; its centred node must sit in the middle of the view (horizontally, and vertically
+## when it fits), no wider than its max width, and inside the viewport with the gutter.
 const LAYOUT_SIZES := [Vector2i(1280, 720), Vector2i(1920, 1080), Vector2i(3840, 2160), Vector2i(720, 1280), Vector2i(480, 854)]
+const LAYOUT_LOOKS := ["neutral", "brand-dark", "brand-light"]
+## [scene, state]: boot's embedded gate, the tallest settings state, the gate after an error.
+const LAYOUT_EXTRA := [["boot", "waiting needs-activation"], ["settings", "advanced shown"], ["gate", "needs-activation after an error"]]
+
+
+static func _apply_look(look: String) -> void:
+	PKeyUiTheme.reset()
+	if look.begins_with("brand"):
+		PKeyUiTheme.branding = PKeyUiTheme.BRANDING_POLARIS_KEY
+		PKeyUiTheme.scheme = "light" if look == "brand-light" else "dark"
+		PKeyUiTheme.powered_by = true
 
 
 func _layout(t: PKeyTestContext, all: Array) -> void:
 	var root := _tree().root
 	var before := root.size
+	var cases: Array = []
 	var seen := {}
-	var checked := 0
 	for c in all:
 		if seen.has(c[0]) or c[0] in ["badge", "banner"]:
 			continue
@@ -120,24 +132,35 @@ func _layout(t: PKeyTestContext, all: Array) -> void:
 		if not visible:
 			continue
 		seen[c[0]] = true
-		for sz in LAYOUT_SIZES:
-			root.size = sz
-			var v: PKeyUiView = await _build(c)
-			v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-			v.refresh_view()
-			for i in 3:
-				await _tree().process_frame
-			var node := _centred(v)
-			var r := node.get_global_rect()
-			var vr := v.get_global_rect()
-			var dx := absf(r.get_center().x - vr.get_center().x)
-			var fits_v := r.size.y <= vr.size.y
-			var dy := absf(r.get_center().y - vr.get_center().y) if fits_v else 0.0
-			var maxw: float = maxf(v.max_content_width, 480.0)
-			var ok: bool = dx <= 1.5 and dy <= 1.5 and r.size.x <= maxw + 1.0 and r.position.x >= PKeyUiView.GUTTER - 1.0 and r.end.x <= sz.x - PKeyUiView.GUTTER + 1.0
-			if t.check("layout: %s centred at %dx%d" % [c[0], sz.x, sz.y], ok, "rect %s in %s" % [r, vr]):
-				checked += 1
-			_free(v)
+		cases.append(c)
+	for c in all:
+		if LAYOUT_EXTRA.any(func(x): return x[0] == c[0] and x[1] == c[1]) and not cases.has(c):
+			cases.append(c)
+	var checked := 0
+	for look in LAYOUT_LOOKS:
+		for c in cases:
+			for sz in LAYOUT_SIZES:
+				root.size = sz
+				var v: PKeyUiView = await _build(c)
+				# A scenario configures a fake SDK (which applies its default ui_* options).
+				_apply_look(look)
+				v.refresh_view()
+				v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+				v.refresh_view()
+				for i in 3:
+					await _tree().process_frame
+				var node := _centred(v)
+				var r := node.get_global_rect()
+				var vr := v.get_global_rect()
+				var dx := absf(r.get_center().x - vr.get_center().x)
+				var fits_v := r.size.y <= vr.size.y
+				var dy := absf(r.get_center().y - vr.get_center().y) if fits_v else 0.0
+				var maxw: float = maxf(v.max_content_width, 480.0)
+				var ok: bool = dx <= 1.5 and dy <= 1.5 and r.size.x <= maxw + 1.0 and r.position.x >= PKeyUiView.GUTTER - 1.0 and r.end.x <= sz.x - PKeyUiView.GUTTER + 1.0
+				if t.check("layout: %s / %s centred at %dx%d (%s)" % [c[0], c[1], sz.x, sz.y, look], ok, "rect %s in %s" % [r, vr]):
+					checked += 1
+				_free(v)
+	PKeyUiTheme.reset()
 	root.size = before
 	# The strips: the badge's chips and the banner's lines are centred across the given width.
 	for c in all:
@@ -151,7 +174,7 @@ func _layout(t: PKeyTestContext, all: Array) -> void:
 			var line := b.find_child("Line0", true, false) as Label
 			t.check("layout: banner lines centred", line != null and line.horizontal_alignment == HORIZONTAL_ALIGNMENT_CENTER)
 			_free(b)
-	t.check("layout: coverage", seen.size() >= 8 and checked == seen.size() * LAYOUT_SIZES.size(), "%d checks over %s" % [checked, seen.keys()])
+	t.check("layout: coverage", seen.size() >= 8 and cases.size() == seen.size() + LAYOUT_EXTRA.size() and checked == cases.size() * LAYOUT_SIZES.size() * LAYOUT_LOOKS.size(), "%d checks over %s" % [checked, cases.map(func(x): return "%s / %s" % [x[0], x[1]])])
 
 
 ## The node a scene centres: the card of a full-screen scene, else its `_content()`.
@@ -159,6 +182,8 @@ static func _centred(v: PKeyUiView) -> Control:
 	if v is PKeyGateView:
 		return v.find_child("Card", true, false) as Control
 	if v is PKeyBoot:
+		if (v as PKeyBoot).gate.is_visible_in_tree():
+			return (v as PKeyBoot).gate.find_child("Card", true, false) as Control
 		var shell := v.find_child("Shell", true, false) as Control
 		if shell != null and shell.is_visible_in_tree():
 			return shell

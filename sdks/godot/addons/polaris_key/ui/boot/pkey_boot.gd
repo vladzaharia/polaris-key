@@ -181,6 +181,8 @@ func _build() -> void:
 	gate.embedded = true
 	gate.managed_retry = true
 	gate.retry_requested.connect(retry)
+	# This view already draws the ground and its padding; the embedded gate adds neither.
+	gate.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	add_child(gate)
 	# PKeyBoot is a Container, which ignores a child's anchors: the prompt lives on a plain
 	# full-rect Control that takes no input, so its top-wide anchors hold and a locked answer is

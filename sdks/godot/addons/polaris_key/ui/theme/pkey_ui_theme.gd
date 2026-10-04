@@ -52,8 +52,10 @@ const RING_WIDTH := 2
 const RING_OFFSET := 2
 ## The Pinned K's displayed size above a card: the display cut, never the bit (BRAND.md §1.3).
 const MARK_SIZE := 48
-## The neutral error colour: readable on dark and light grounds alike.
+## The neutral error colour on a dark ground (light text): 5.7:1 on black.
 const NEUTRAL_ERROR := Color("#e5534b")
+## The neutral error colour on a light ground (dark text): 5.6:1 on white (#e5534b is ~3.7:1).
+const NEUTRAL_ERROR_ON_LIGHT := Color("#c62828")
 
 ## The type variations every scene uses; a replacement Theme should style them.
 const VARIATIONS := {
@@ -102,6 +104,15 @@ static func apply_options(opts: Resource) -> void:
 	accent = opts.get("ui_accent") if opts.get("ui_accent") is Color else Color(0, 0, 0, 0)
 	override = opts.get("ui_theme") as Theme
 	powered_by = opts.get("ui_powered_by") == true
+	refresh_views()
+
+
+## Re-render every kit view in the tree (deferred), so options applied after a scene was mounted
+## take effect: PolarisKey.boot() shows its view before configuring from polaris_key.tres.
+static func refresh_views() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree != null:
+		tree.call_group_flags(SceneTree.GROUP_CALL_DEFERRED, &"pkey_ui_views", &"refresh_view")
 
 
 ## Back to the defaults: neutral, no override, no badge.
@@ -207,7 +218,8 @@ static func neutral_with(base_size: int, text: Color, bold: Font, panel: StyleBo
 	var muted := text
 	muted.a *= 0.72
 	t.set_color("font_color", "PKeyMuted", muted)
-	t.set_color("font_color", "PKeyError", NEUTRAL_ERROR)
+	# Dark text means a light ground, which needs the darker red for 4.5:1.
+	t.set_color("font_color", "PKeyError", NEUTRAL_ERROR if text.get_luminance() > 0.5 else NEUTRAL_ERROR_ON_LIGHT)
 	t.set_color("font_color", "PKeyBadge", text)
 	var tint := text
 	tint.a = 0.1

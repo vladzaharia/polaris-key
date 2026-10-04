@@ -2,7 +2,7 @@ class_name PKeyUiView
 extends PanelContainer
 ## The base of every UI kit scene: built-in controls only, every visible string from `copy`
 ## (PKeyUiCopy, through `tr()`), a Theme taken from the scene file (theme/pkey_theme.tres, the
-## kit's stock theme, which becomes `PKeyUiTheme.current()` in `_ready`: neutral over the game's
+## kit's stock theme, which follows `PKeyUiTheme` in `_ready` and on every refresh: neutral over the game's
 ## project theme by default, the Polaris Key theme when branding is on) or from an ancestor, and a focus chain wired after every render so ui_up / ui_down (and Tab) walk every
 ## interactive control in order, wrapping at the ends, on a keyboard, a gamepad or a TV remote.
 ##
@@ -27,6 +27,8 @@ extends PanelContainer
 const DATA_META := &"pkey_data"
 ## Meta set on a control whose ui_accept reveals more controls (the focus test presses it).
 const DISCLOSURE_META := &"pkey_disclosure"
+## The group every kit view joins, so `PKeyUiTheme.apply_options()` can re-theme mounted views.
+const GROUP := &"pkey_ui_views"
 
 ## The strings every visible node shows.
 var copy: PKeyUiCopy = null:
@@ -53,6 +55,7 @@ var _built := false
 
 func _init() -> void:
 	focus_mode = Control.FOCUS_NONE
+	add_to_group(GROUP)
 	_build()
 	_built = true
 
@@ -60,10 +63,6 @@ func _init() -> void:
 func _ready() -> void:
 	if sdk == null and auto_sdk:
 		sdk = default_sdk()
-	if PKeyUiTheme.is_stock(theme):
-		var t := PKeyUiTheme.for_view(self)
-		if t != theme:
-			theme = t
 	var vp := get_viewport()
 	if vp != null and not vp.size_changed.is_connected(layout_content):
 		vp.size_changed.connect(layout_content)
@@ -92,10 +91,35 @@ func c() -> PKeyUiCopy:
 func refresh_view() -> void:
 	if not _built:
 		return
+	# A deferred refresh (PKeyUiTheme.refresh_views()) can outlive the SDK node it was given.
+	if not is_instance_valid(sdk):
+		sdk = null
+	_resolve_theme()
 	_render_brand()
 	_render()
 	wire_focus()
 	layout_content()
+
+
+## Follow the UI options (`PKeyUiTheme`) while the scene is still on a kit stock theme: the brand
+## theme when branding is on, else the neutral theme derived from the scene's place in the tree.
+## A scene given a Theme of its own (no `pkey_stock` meta) keeps it. Runs on every refresh, so
+## options applied after the scene entered the tree (PolarisKey.boot() configures from
+## polaris_key.tres once its view is already shown) still take effect.
+func _resolve_theme() -> void:
+	if not is_inside_tree() or not PKeyUiTheme.is_stock(theme):
+		return
+	if not PKeyUiTheme.branded() and PKeyUiTheme.override == null and _is_brand_theme(theme):
+		# Back to neutral: derive it from the tree, not from the brand theme still applied here.
+		theme = null
+	var t := PKeyUiTheme.for_view(self)
+	if t != theme:
+		theme = t
+
+
+## The brand theme sets a default font size and the Label colour; the neutral ones never do.
+static func _is_brand_theme(t: Theme) -> bool:
+	return t != null and (t.has_default_font_size() or t.has_color("font_color", "Label"))
 
 
 ## The interactive controls, in focus order, that are visible and enabled now.
@@ -200,9 +224,7 @@ func content_width() -> float:
 	var room := get_viewport_rect().size.x
 	if parent != null and anchored and parent.size.x > 0.0:
 		room = minf(room, parent.size.x)
-	var box := get_theme_stylebox("panel")
-	var pad := box.get_margin(SIDE_LEFT) + box.get_margin(SIDE_RIGHT) if box != null else 0.0
-	return maxf(0.0, minf(max_content_width, room - pad - 2.0 * GUTTER))
+	return maxf(0.0, minf(max_content_width, room - side_padding(self) - 2.0 * GUTTER))
 
 
 ## Centre the content at `content_width()`. Safe at any time; called on every render and when
@@ -230,11 +252,30 @@ func _apply_width(width: float) -> void:
 
 
 ## `wanted` logical pixels, or less on a viewport too narrow for it (keeping the gutters): the
-## width of a card a full-screen scene centres in a CenterContainer.
+## width of a card a full-screen scene centres in a CenterContainer. The room is the viewport's
+## width (or that of the first non-Container ancestor that has one), less the panel padding of
+## this view and of every panel it is nested in (the brand page panel pads 24 px a side).
 func card_width(wanted: float) -> float:
 	if not is_inside_tree():
 		return wanted
-	return maxf(0.0, minf(wanted, get_viewport_rect().size.x - 2.0 * GUTTER))
+	var room := get_viewport_rect().size.x
+	var pad := 0.0
+	var n: Control = self
+	while n != null:
+		if n is PanelContainer:
+			pad += side_padding(n)
+		var parent := n.get_parent() as Control
+		if parent != null and not (parent is Container) and parent.size.x > 0.0:
+			room = minf(room, parent.size.x)
+			break
+		n = parent
+	return maxf(0.0, minf(wanted, room - pad - 2.0 * GUTTER))
+
+
+## The left plus right content margins of `panel`'s "panel" stylebox.
+static func side_padding(panel: Control) -> float:
+	var box := panel.get_theme_stylebox("panel")
+	return box.get_margin(SIDE_LEFT) + box.get_margin(SIDE_RIGHT) if box != null else 0.0
 
 
 ## The node `_apply_width()` centres: the first child Control by default.

@@ -88,6 +88,7 @@ func _build() -> void:
 	activation.activated.connect(_on_activated)
 	box.add_child(activation)
 	var actions := hbox(box, "Actions")
+	actions.alignment = BoxContainer.ALIGNMENT_CENTER
 	_update = button(actions, "UpdateAction", _on_update, "PKeyPrimary")
 	_retry = button(actions, "Retry", _on_retry)
 	brand_node(box, "PoweredBy", BRAND_POWERED_BY)
@@ -164,6 +165,8 @@ func _render() -> void:
 	show_text(_detail, t.text(detail[0], detail[1]) if detail is Array else "")
 	show_text(_error, error if screen == "error" else "")
 	activation.visible = ctl["activation"]
+	# One title per card: the activation panel's own only when the gate shows none above it.
+	activation.show_title = not _title.visible
 	show_text(_update, t.text("update_action") if ctl["update_action"] else "")
 	show_text(_retry, t.text("retry") if ctl["retry"] else "")
 	if is_usable and not _was_usable:
