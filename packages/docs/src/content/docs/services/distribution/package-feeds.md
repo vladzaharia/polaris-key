@@ -180,6 +180,55 @@ Each snippet uses a strict router, so the feed is the only index asked for its n
 | pip           | `--index-url` (or `pip.conf` `index-url`); never `--extra-index-url`, which has no routing and lets a public package of the same name win |
 | Credentials   | none while feeds are public; tokens come with registry credentials (F-21)                                                                 |
 
+## Swift (SwiftPM)
+
+The Swift feed speaks SwiftPM's registry protocol (SE-0292) under
+`https://pkg.plrs.im/swift/<owner>/`. A package's identity is `<scope>.<Name>`, where the scope is
+the feed's namespace (`polaris-key` for the platform's own packages); scope and name are
+case-insensitive.
+
+| Endpoint                                       | Answer                                                                                       |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `GET …/<scope>/<name>`                         | The release list. A yanked version carries a `problem` (410 Gone), so SwiftPM never picks it |
+| `GET …/<scope>/<name>/<version>`               | The release metadata: the archive's SHA-256 `checksum` and its signature                     |
+| `GET …/<scope>/<name>/<version>/Package.swift` | The signed manifest, with an `alternate` link per `Package@swift-*.swift`                    |
+| `GET …/<scope>/<name>/<version>.zip`           | The source archive, with `X-Swift-Package-Signature` and `-Format`                           |
+| `GET …/identifiers?url=`                       | The packages the feed maps a repository URL to (the feed's `repositoryUrls` setting)         |
+
+Every answer carries `Content-Version: 1`, and every error is `application/problem+json`. An
+`Accept` header naming an invalid registry version is 400 and an unsupported one 415.
+`swift package-registry login` answers 501 until registry credentials exist, and publishing with
+`swift package-registry publish` is not accepted: releases arrive through
+`pkey release publish`.
+
+**Set up a project.** Route only your scope to the feed, so no other dependency is ever looked up
+here:
+
+```sh
+swift package-registry set --scope <scope> https://pkg.plrs.im/swift/<owner>
+```
+
+```swift
+.package(id: "<scope>.<Name>", from: "1.0.0")
+```
+
+**Signed releases.** Releases are signed with SwiftPM's own `cms-1.0.0` format and the feed
+refuses an unsigned one (the feed setting `requireSigned`, always on for the platform's
+packages). The registry serves the signature; SwiftPM verifies it. To make verification
+mandatory, set `onUnsigned` and `onUntrustedCertificate` to `error` under `security` in
+`.swiftpm/configuration/registries.json`, and trust the signing certificate's root.
+
+**Versions and channels.** A version never changes after it is published: its archive and
+manifests stay downloadable even after a yank, because SwiftPM pins the checksum the first time
+it sees a version. The `latest-version` link names the stable channel's newest version. A
+prerelease published to another channel (`2.0.0-beta.1` on `beta`) resolves only for a
+requirement that names a prerelease. The protocol has no deprecation, so a deprecated version is
+listed as available.
+
+**Setup snippet inputs** (what the console and `pkey feeds setup` render): the feed URL
+`<origin>/swift/<owner>`, the feed's `scope`, and one example package identity
+`<scope>.<Name>` with its newest stable version.
+
 ## Local testing
 
 `pnpm --filter @polaris-key/worker registry:clients` stands up a seeded local Worker on the

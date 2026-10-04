@@ -394,8 +394,9 @@ describe("registry host: isolation", () => {
       expect(await res.json(), path).toEqual({ error: "not_found" });
       expectHardened(res, path);
     }
+    // A path no Swift route matches (F-06's routes read D1, which this env does not seed).
     const swift = await worker.fetch(
-      new Request(`${PKG}/swift/djdl/acme/sdk`),
+      new Request(`${PKG}/swift/djdl/acme`),
       env(PKG),
     );
     expect(swift.status).toBe(404);

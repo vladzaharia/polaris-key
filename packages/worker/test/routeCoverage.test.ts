@@ -201,6 +201,21 @@ const REGISTRY_PATHS: Array<[string, string[], string]> = [
   ["/pypi/{owner}/simple/", ["get", "head"], "pypi.simple.index"],
   ["/pypi/{owner}/simple/{project}/", ["get", "head"], "pypi.simple.project"],
   ["/pypi/{owner}/files/{sha256}/{filename}", ["get", "head"], "pypi.files"],
+  // F-06: the Swift registry (SwiftPM Registry.md §4); login is the host dispatcher's 501.
+  ["/swift/{owner}/{scope}/{name}", ["get", "head"], "swift.releases"],
+  ["/swift/{owner}/{scope}/{name}/{version}", ["get", "head"], "swift.release"],
+  [
+    "/swift/{owner}/{scope}/{name}/{version}/Package.swift",
+    ["get", "head"],
+    "swift.manifest",
+  ],
+  [
+    "/swift/{owner}/{scope}/{name}/{version}.zip",
+    ["get", "head"],
+    "swift.archive",
+  ],
+  ["/swift/{owner}/identifiers", ["get", "head"], "swift.identifiers"],
+  ["/swift/{owner}/login", ["post"], "host"],
 ];
 
 function specMethods(path: string): string[] {

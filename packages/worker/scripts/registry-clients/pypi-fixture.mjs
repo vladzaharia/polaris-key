@@ -21,7 +21,14 @@
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { WORKER } from "./lib.mjs";
@@ -46,18 +53,20 @@ const VERSIONS = [
   { version: "1.1.0b1", channel: "beta", state: "live", message: null },
 ];
 
-const seeded = new Set();
-
 function typeOf(name) {
   if (name.endsWith(".whl.metadata")) return "core-metadata";
   if (name.endsWith(".whl")) return "wheel";
   return "sdist";
 }
 
-/** Seed the PyPI fixture into the local state under `persistTo` (once per process). */
+/**
+ * Seed the PyPI fixture into the local state under `persistTo`, once per state directory: each
+ * client's seed runs in its own process, so a marker file in the state directory is the guard.
+ */
 export async function seedPypi(persistTo) {
-  if (seeded.has(persistTo)) return;
-  seeded.add(persistTo);
+  if (!persistTo) throw new Error("seedPypi: no state directory (STATE)");
+  const marker = join(persistTo, ".pypi-fixture-seeded");
+  if (existsSync(marker)) return;
   const dir = mkdtempSync(join(tmpdir(), "pkey-pypi-fixture-"));
   try {
     execFileSync("python3", [
@@ -200,6 +209,7 @@ export async function seedPypi(persistTo) {
           );
       });
       await DB.batch(stmts);
+      writeFileSync(marker, "");
     } finally {
       await proxy.dispose();
     }

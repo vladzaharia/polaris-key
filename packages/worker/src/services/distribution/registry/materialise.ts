@@ -88,6 +88,9 @@ export interface RenderedObject {
 export interface RenderContext {
   /** `PKG_ORIGIN`'s origin, for absolute URLs (npm `dist.tarball`). */
   readonly origin: string;
+  /** The blob bucket, read-only, for a renderer that embeds a small blob it cannot get from D1
+   *  (F-06: a Swift release's CMS signature, a signed manifest's tools version). */
+  readonly bucket?: R2Bucket;
 }
 
 /** One ecosystem's renderer and routes (F-04 to F-09). */
@@ -200,7 +203,10 @@ export async function materialise(
   const renderer = deps.renderers.get(pkg.ecosystem);
   if (!renderer) return { status: "no-renderer" };
   const stamp = await renderStamp(pkg);
-  const objects = await renderer.render(pkg, { origin: deps.origin });
+  const objects = await renderer.render(pkg, {
+    origin: deps.origin,
+    bucket: deps.bucket,
+  });
   const keys: string[] = [];
   for (const obj of objects) {
     const key = registryObjectKey(pkg.ecosystem, product, obj.key);

@@ -47,7 +47,7 @@ export async function seed(persistTo) {
   };
   const now = Math.floor(Date.now() / 1000);
   // `loadProductPublic` needs the product row AND an active `product_keys` row (without one the
-  // owner reads as unknown, so every feed route answered the not-found; found by F-05's clients).
+  // owner reads as unknown, so every feed route answered the not-found; found by F-04 to F-09's clients).
   // No registry route signs anything, so both carry inert placeholders and nothing is sealed.
   const sql = [
     `INSERT OR IGNORE INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
