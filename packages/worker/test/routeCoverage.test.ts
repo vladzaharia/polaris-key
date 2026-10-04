@@ -192,6 +192,10 @@ const REGISTRY_SERVER = "https://pkg.plrs.im";
 const REGISTRY_PATHS: Array<[string, string[], string]> = [
   ["/", ["get", "head"], "host"],
   ["/v2/", ["get", "head"], "host"],
+  // F-05 (PyPI)
+  ["/pypi/{owner}/simple/", ["get", "head"], "pypi.simple.index"],
+  ["/pypi/{owner}/simple/{project}/", ["get", "head"], "pypi.simple.project"],
+  ["/pypi/{owner}/files/{sha256}/{filename}", ["get", "head"], "pypi.files"],
 ];
 
 function specMethods(path: string): string[] {

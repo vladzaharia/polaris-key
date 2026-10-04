@@ -1,0 +1,73 @@
+{
+  "meta": {
+    "api-version": "1.1"
+  },
+  "name": "acme-sdk",
+  "versions": [
+    "0.8.0",
+    "0.9.0",
+    "1.0.0",
+    "1.1.0b1"
+  ],
+  "files": [
+    {
+      "filename": "acme_sdk-0.8.0.tar.gz",
+      "url": "../../files/017ab2be765e416c4b23256f6291c4397c66417e74fa775b2cb3ab9e308f7659/acme_sdk-0.8.0.tar.gz",
+      "hashes": {
+        "sha256": "017ab2be765e416c4b23256f6291c4397c66417e74fa775b2cb3ab9e308f7659"
+      },
+      "yanked": false,
+      "size": 800,
+      "upload-time": "2023-11-14T22:13:20.000000Z"
+    },
+    {
+      "filename": "acme_sdk-0.9.0-py3-none-any.whl",
+      "url": "../../files/331eb87f93d49e269dd35c596a9c01cf57410d220d7100431fee684a9469737c/acme_sdk-0.9.0-py3-none-any.whl",
+      "hashes": {
+        "sha256": "331eb87f93d49e269dd35c596a9c01cf57410d220d7100431fee684a9469737c"
+      },
+      "requires-python": ">=3.8",
+      "core-metadata": {
+        "sha256": "53f82ddb3dae78b3f0a9f294aa0915420ecffdac93e2965febc1b4a561d44ae7"
+      },
+      "yanked": "broken <build> & \"quotes\"",
+      "size": 900,
+      "upload-time": "2023-11-14T22:14:20.000000Z"
+    },
+    {
+      "filename": "acme_sdk-1.0.0-py3-none-any.whl",
+      "url": "../../files/074e2c2d6655a5b173f2938785026450f44325d0d76bef42b5b1405714702ff0/acme_sdk-1.0.0-py3-none-any.whl",
+      "hashes": {
+        "sha256": "074e2c2d6655a5b173f2938785026450f44325d0d76bef42b5b1405714702ff0"
+      },
+      "requires-python": ">=3.9,<4",
+      "core-metadata": {
+        "sha256": "2bf2829f0d188114a80839b4404bea14bf151cd1dfb0a883c5a84607901367c5"
+      },
+      "yanked": false,
+      "size": 1100,
+      "upload-time": "2023-11-14T22:15:20.000000Z"
+    },
+    {
+      "filename": "acme_sdk-1.0.0.tar.gz",
+      "url": "../../files/aa0da3a0bb6a4f9ffbeeaae0ea0db110abe934b00267f4d2181a37b824e885f3/acme_sdk-1.0.0.tar.gz",
+      "hashes": {
+        "sha256": "aa0da3a0bb6a4f9ffbeeaae0ea0db110abe934b00267f4d2181a37b824e885f3"
+      },
+      "requires-python": ">=3.9,<4",
+      "yanked": false,
+      "size": 1000,
+      "upload-time": "2023-11-14T22:15:20.000000Z"
+    },
+    {
+      "filename": "acme_sdk-1.1.0b1-py3-none-any.whl",
+      "url": "../../files/35f60bc56d5048b71be9d91f85df36641b1e0666496a6af1c5366a6d4f5ccded/acme_sdk-1.1.0b1-py3-none-any.whl",
+      "hashes": {
+        "sha256": "35f60bc56d5048b71be9d91f85df36641b1e0666496a6af1c5366a6d4f5ccded"
+      },
+      "yanked": false,
+      "size": 1200,
+      "upload-time": "2023-11-14T22:16:20.000000Z"
+    }
+  ]
+}

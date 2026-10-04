@@ -7409,6 +7409,164 @@ paths:
       responses:
         "200":
           description: "`text/html; charset=utf-8`, `cache-control: public, max-age=3600`."
+  # ── PyPI (F-05) ───────────────────────────────────────────────────────────────
+  /pypi/{owner}/simple/:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - { name: owner, in: path, required: true, description: "The owner (product slug).", schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" } }
+    get:
+      operationId: pypiSimpleIndex
+      tags: [registry]
+      summary: PyPI project list (registry host only)
+      description: >
+        F-05. The owner's project list in the Simple Repository API
+        (https://packaging.python.org/en/latest/specifications/simple-repository-api/), API
+        version 1.1. PEP 691 JSON (`application/vnd.pypi.simple.v1+json`, the exact type pip and
+        uv require) whenever `Accept` lists the JSON type; otherwise the inert PEP 503 HTML form
+        (`application/vnd.pypi.simple.v1+html`, the registry host's one HTML answer: every value
+        escaped, no script, form or style, served under `sandbox; default-src 'none';
+        frame-ancestors 'none'; base-uri 'none'; form-action 'none'`). With the feed's
+        `htmlFallback` off, a client that cannot take JSON gets 406. A project whose delivery
+        access is stricter than the feed's is omitted. `/pypi/{owner}/simple` answers 301 here.
+        The feed's access check runs first: a feed that is off (or an unknown owner) is the
+        not-found, a non-public feed the `Basic` challenge.
+      responses:
+        "200":
+          description: >
+            The project list. `Vary: Accept`; `cache-control: public, max-age=60,
+            stale-while-revalidate=60` and a strong ETag (the body's SHA-256) on a public feed.
+          content:
+            application/vnd.pypi.simple.v1+json:
+              schema:
+                type: object
+                required: [meta, projects]
+                properties:
+                  meta: { type: object, properties: { api-version: { type: string, const: "1.1" } } }
+                  projects:
+                    type: array
+                    items: { type: object, required: [name], properties: { name: { type: string } } }
+            application/vnd.pypi.simple.v1+html:
+              schema: { type: string }
+        "304": { description: "Not modified (`If-None-Match`)." }
+        "401": { description: "A non-public feed (`WWW-Authenticate: Basic`)." }
+        "404": { description: "The not-found (`no-store`)." }
+        "406": { description: "The feed's `htmlFallback` is off and `Accept` admits no JSON type." }
+    head:
+      operationId: pypiSimpleIndexHead
+      tags: [registry]
+      summary: PyPI project list, headers only (registry host only)
+      description: F-05. As `GET /pypi/{owner}/simple/`, with no body.
+      responses:
+        "200": { description: "The project list's headers." }
+        "404": { description: "The not-found." }
+  /pypi/{owner}/simple/{project}/:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - { name: owner, in: path, required: true, description: "The owner (product slug).", schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" } }
+      - { name: project, in: path, required: true, description: "The PEP 503 normalised project name.", schema: { type: string } }
+    get:
+      operationId: pypiSimpleProject
+      tags: [registry]
+      summary: PyPI project page (registry host only)
+      description: >
+        F-05. One project's page in the Simple Repository API, API version 1.1 (PEP 691, PEP 700),
+        negotiated as the project list is. Each wheel and sdist of every version is listed with
+        `hashes.sha256` (the `#sha256=` fragment in HTML; corruption protection only),
+        `requires-python`, `size`, `upload-time` and, for a wheel published with its
+        `*.dist-info/METADATA`, `core-metadata: {sha256}` (PEP 714; `data-core-metadata` in
+        HTML). A yanked version's files carry PEP 592's `yanked` with the reason and stay
+        fetchable; PyPI has no deprecation or channel tags, so a deprecated version is listed
+        as live and pre-releases are chosen by their PEP 440 version. File URLs are relative to
+        the page (`../../files/{sha256}/{filename}`). Any non-normalised name, and a name without
+        its trailing slash, answers 301 to this URL (PEP 503). Rendered when a package changes
+        and kept under `registry/` in the blob bucket.
+      responses:
+        "200":
+          description: >
+            The project page. `Vary: Accept`; `cache-control: public, max-age=60,
+            stale-while-revalidate=60` and a strong ETag (the body's SHA-256) on a public feed.
+          content:
+            application/vnd.pypi.simple.v1+json:
+              schema:
+                type: object
+                required: [meta, name, versions, files]
+                properties:
+                  meta: { type: object, properties: { api-version: { type: string, const: "1.1" } } }
+                  name: { type: string }
+                  versions: { type: array, items: { type: string } }
+                  files:
+                    type: array
+                    items:
+                      type: object
+                      required: [filename, url, hashes, yanked, size]
+                      properties:
+                        filename: { type: string }
+                        url: { type: string }
+                        hashes: { type: object, properties: { sha256: { type: string } } }
+                        requires-python: { type: string }
+                        core-metadata: { type: object, properties: { sha256: { type: string } } }
+                        yanked: { oneOf: [{ type: boolean }, { type: string }] }
+                        size: { type: integer }
+                        upload-time: { type: string }
+            application/vnd.pypi.simple.v1+html:
+              schema: { type: string }
+        "301": { description: "To the PEP 503 normalised name with its trailing slash." }
+        "304": { description: "Not modified (`If-None-Match`)." }
+        "401": { description: "A non-public feed or project (`WWW-Authenticate: Basic`)." }
+        "404": { description: "The not-found (`no-store`), whether the project or the feed is absent." }
+        "406": { description: "The feed's `htmlFallback` is off and `Accept` admits no JSON type." }
+    head:
+      operationId: pypiSimpleProjectHead
+      tags: [registry]
+      summary: PyPI project page, headers only (registry host only)
+      description: F-05. As `GET /pypi/{owner}/simple/{project}/`, with no body.
+      responses:
+        "200": { description: "The project page's headers." }
+        "301": { description: "To the normalised name." }
+        "404": { description: "The not-found." }
+  /pypi/{owner}/files/{sha256}/{filename}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - { name: owner, in: path, required: true, description: "The owner (product slug).", schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" } }
+      - { name: sha256, in: path, required: true, description: "The file's SHA-256 (lower-case hex).", schema: { type: string, pattern: "^[0-9a-f]{64}$" } }
+      - { name: filename, in: path, required: true, description: "The file's name, or a wheel's name plus `.metadata`.", schema: { type: string } }
+    get:
+      operationId: pypiFile
+      tags: [registry]
+      summary: PyPI file or PEP 658 metadata (registry host only)
+      description: >
+        F-05. A wheel or sdist a project page lists, named by its SHA-256, so the URL is
+        immutable. `{wheel}.metadata` answers that wheel's core metadata (PEP 658, advertised as
+        `core-metadata`). The name and the hash must both match a file of the owner's package,
+        and the owner must hold the blob's reference; anything else is the not-found. Served
+        as `application/octet-stream` with `attachment`, `ETag: "<sha256>"`, `Repr-Digest`,
+        `Accept-Ranges: bytes` and, on a public feed, `cache-control: public, max-age=31536000,
+        immutable, no-transform`.
+      responses:
+        "200":
+          description: The bytes.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "206": { description: "A satisfiable `Range`." }
+        "304": { description: "Not modified (`If-None-Match`)." }
+        "401": { description: "A non-public feed or project (`WWW-Authenticate: Basic`)." }
+        "404": { description: "The not-found (`no-store`)." }
+        "416": { description: "An unsatisfiable `Range`." }
+    head:
+      operationId: pypiFileHead
+      tags: [registry]
+      summary: PyPI file or PEP 658 metadata, headers only (registry host only)
+      description: F-05. As `GET /pypi/{owner}/files/{sha256}/{filename}`, with no body.
+      responses:
+        "200": { description: "The file's headers." }
+        "404": { description: "The not-found." }
   /v2/:
     servers:
       - url: https://pkg.plrs.im
