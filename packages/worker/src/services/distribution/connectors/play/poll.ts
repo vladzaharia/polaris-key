@@ -384,7 +384,7 @@ export async function syncPlay(
  */
 export async function pollPlay(ctx: ConnectorContext): Promise<PollOutcome> {
   const product = ctx.product.slug;
-  const { setup, inert } = await resolvePlaySetup(ctx.db, product);
+  const { setup, inert } = await resolvePlaySetup(ctx.env, ctx.db, product);
   // An unpinned or mismatched credential is skipped like a missing one (no call, no open, no
   // mirror write, no vitals read), but says so.
   if (!setup)

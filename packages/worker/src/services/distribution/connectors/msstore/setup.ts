@@ -24,12 +24,16 @@
  * metadata is read here — listing never selects the sealed column — so resolving opens nothing.
  */
 
-import type { Db } from "../../../../core/platform.js";
+import type { Db, Env } from "../../../../core/platform.js";
 import {
   checkOutletCredentialPin,
   listOutletCredentials,
 } from "../../../../core/outletCredentials.js";
 import { listOutlets, parseJsonColumn } from "../../outlets.js";
+import {
+  platformFallback,
+  platformFallbackMessage,
+} from "../platformFallback.js";
 
 export const MSSTORE_CONNECTOR = "ms-store";
 export const MSSTORE_LABEL = "Microsoft Store";
@@ -75,6 +79,8 @@ export interface MsStoreInert {
   manifestProductId: string | null;
   credential: string | null;
   pinnedProductId: string | null;
+  /** Whose credential the setup chose: the product's, the platform's (A-16), or none. */
+  credentialSource: "product" | "platform" | null;
 }
 
 export type MsStoreSetupResolution =
@@ -99,6 +105,7 @@ const inert = (
     manifestProductId: rest.manifestProductId ?? null,
     credential: rest.credential ?? null,
     pinnedProductId: rest.pinnedProductId ?? null,
+    credentialSource: rest.credentialSource ?? null,
   },
 });
 
@@ -145,6 +152,7 @@ export function flightRoutes(
 
 /** The product's Microsoft Store setup, or why the connector does not run for it. */
 export async function resolveMsStoreSetup(
+  env: Env,
   db: Db,
   product: string,
 ): Promise<MsStoreSetupResolution> {
@@ -186,6 +194,57 @@ export async function resolveMsStoreSetup(
   const credential =
     creds.find((c) => c.outletId !== null && ids.has(c.outletId)) ??
     creds.find((c) => c.outletId === null);
+  const setupWith = (credentialId: string): MsStoreSetupResolution => {
+    const flightRefs = new Map<string, MsStoreRoute[]>();
+    for (const o of outlets)
+      for (const [channel, ref] of Object.entries(o.flights)) {
+        const list = flightRefs.get(ref) ?? [];
+        list.push({ outletId: o.outletId, channel });
+        flightRefs.set(ref, list);
+      }
+    return {
+      setup: {
+        product,
+        productId,
+        outlets,
+        mainRoutes: outlets.map((o) => ({
+          outletId: o.outletId,
+          channel: MAIN_CHANNEL,
+        })),
+        flightRefs,
+        credentialId,
+      },
+      inert: null,
+    };
+  };
+  if (creds.length === 0) {
+    // A-16: no credential of the product's own — the platform Partner Center app, pin required.
+    const f = await platformFallback(
+      env,
+      db,
+      product,
+      "microsoft-store.partner-center",
+      productId,
+    );
+    if (!f.ok)
+      return inert(
+        f.reason,
+        platformFallbackMessage(
+          "Microsoft Store",
+          "microsoft-store",
+          "Store ID",
+          productId,
+          product,
+          f,
+        ),
+        {
+          manifestProductId: productId,
+          pinnedProductId: f.pinned,
+          credentialSource: f.reason === "no_credential" ? null : "platform",
+        },
+      );
+    return setupWith(f.handle);
+  }
   if (!credential)
     return inert(
       "no_credential",
@@ -203,28 +262,8 @@ export async function resolveMsStoreSetup(
         manifestProductId: productId,
         credential: credential.id,
         pinnedProductId: pin.pinned,
+        credentialSource: "product",
       },
     );
-
-  const flightRefs = new Map<string, MsStoreRoute[]>();
-  for (const o of outlets)
-    for (const [channel, ref] of Object.entries(o.flights)) {
-      const list = flightRefs.get(ref) ?? [];
-      list.push({ outletId: o.outletId, channel });
-      flightRefs.set(ref, list);
-    }
-  return {
-    setup: {
-      product,
-      productId,
-      outlets,
-      mainRoutes: outlets.map((o) => ({
-        outletId: o.outletId,
-        channel: MAIN_CHANNEL,
-      })),
-      flightRefs,
-      credentialId: credential.id,
-    },
-    inert: null,
-  };
+  return setupWith(credential.id);
 }

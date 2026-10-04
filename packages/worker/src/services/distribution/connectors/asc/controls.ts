@@ -106,7 +106,7 @@ async function withRun(
   c: ControlContext,
   fn: (run: AscRun, setup: AscSetup) => Promise<ControlResult>,
 ): Promise<ControlResult> {
-  const { setup, inert } = await resolveAscSetup(c.db, c.product);
+  const { setup, inert } = await resolveAscSetup(c.env, c.db, c.product);
   if (!setup) {
     // The operator's pin and the manifest disagree (or there is no pin): refuse with the reason,
     // before any token is minted or any request is sent. Nothing a control does is reversible

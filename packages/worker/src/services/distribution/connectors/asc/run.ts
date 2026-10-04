@@ -7,11 +7,16 @@
 import type { Db, Env } from "../../../../core/platform.js";
 import { kvKey } from "../../../../core/platform.js";
 import type { ServiceHooks } from "../../../../core/hooks.js";
-import { ascToken } from "../../../../core/outletTokens.js";
+import { ascToken, platformAscToken } from "../../../../core/outletTokens.js";
 import { recordOutletCredentialResult } from "../../../../core/outletCredentials.js";
+import { recordPlatformCredentialResult } from "../../../../core/platformCredentials.js";
 import { AscClient, AscError, type AscRate, type FetchImpl } from "./client.js";
 import type { AscRun } from "./apply.js";
-import type { AscSetup } from "./setup.js";
+import {
+  ASC_PLATFORM_CREDENTIAL,
+  type AscCredentialRef,
+  type AscSetup,
+} from "./setup.js";
 
 export interface AscRunOptions {
   env: Env;
@@ -27,9 +32,20 @@ export interface AscRunOptions {
 }
 
 export function ascRun(o: AscRunOptions): AscRun {
+  const cred = o.setup.credential;
   const client = new AscClient({
+    // A-16: the platform team key is minted only for the app this product's platform pin names
+    // (`platformAscToken` checks it before its memo; the open checks it again).
     token: () =>
-      ascToken(o.env, o.db, o.product, o.setup.apiKeyId, o.use, o.now),
+      cred.source === "product"
+        ? ascToken(o.env, o.db, o.product, cred.credentialId, o.use, o.now)
+        : platformAscToken(
+            o.env,
+            o.db,
+            { product: o.product, pin: o.setup.appleId },
+            o.use,
+            o.now,
+          ),
     ...(o.fetchImpl ? { fetchImpl: o.fetchImpl } : {}),
     ...(o.sleep ? { sleep: o.sleep } : {}),
   });
@@ -54,18 +70,23 @@ export interface StoredRate extends AscRate {
 /** The limit is a rolling hour; an observation older than that says nothing. */
 const RATE_WINDOW = 3600;
 
-function rateKey(product: string, credentialId: string): string {
-  return kvKey(product, "asc-rate", credentialId);
+/** Apple's budget is per KEY: a product key's budget is the product's, while the platform team
+ *  key's is shared by every product that falls back to it, so it has one platform-wide slot
+ *  (outside the `p:` product namespace, which no slug can reach). */
+function rateKey(product: string, cred: AscCredentialRef): string {
+  return cred.source === "product"
+    ? kvKey(product, "asc-rate", cred.credentialId)
+    : `plat:asc-rate:${ASC_PLATFORM_CREDENTIAL}`;
 }
 
 export async function readRate(
   env: Env,
   product: string,
-  credentialId: string,
+  cred: AscCredentialRef,
   now: number,
 ): Promise<StoredRate | null> {
   try {
-    const raw = await env.HOT.get(rateKey(product, credentialId));
+    const raw = await env.HOT.get(rateKey(product, cred));
     if (!raw) return null;
     const v = JSON.parse(raw) as StoredRate;
     if (
@@ -84,14 +105,14 @@ export async function readRate(
 export async function writeRate(
   env: Env,
   product: string,
-  credentialId: string,
+  cred: AscCredentialRef,
   rate: AscRate | null,
   now: number,
 ): Promise<void> {
   if (!rate) return;
   try {
     await env.HOT.put(
-      rateKey(product, credentialId),
+      rateKey(product, cred),
       JSON.stringify({ ...rate, at: now }),
       { expirationTtl: RATE_WINDOW },
     );
@@ -120,27 +141,31 @@ export function pollBudget(rate: AscRate | null): PollBudget {
 
 /** Record a run's outcome on the credential's health columns and keep its rate budget. */
 export async function finishRun(run: AscRun, error: unknown): Promise<void> {
-  await writeRate(
-    run.env,
-    run.product,
-    run.setup.apiKeyId,
-    run.client.lastRate,
-    run.now,
-  );
+  const cred = run.setup.credential;
+  await writeRate(run.env, run.product, cred, run.client.lastRate, run.now);
   if (run.client.calls === 0 && !error) return;
-  await recordOutletCredentialResult(
-    run.db,
-    run.product,
-    run.setup.apiKeyId,
-    error
-      ? {
-          ok: false,
-          error:
-            error instanceof AscError
-              ? error.message
-              : "App Store Connect run failed",
-        }
-      : { ok: true },
-    run.now,
-  );
+  const result = error
+    ? {
+        ok: false as const,
+        error:
+          error instanceof AscError
+            ? error.message
+            : "App Store Connect run failed",
+      }
+    : { ok: true as const };
+  if (cred.source === "product")
+    await recordOutletCredentialResult(
+      run.db,
+      run.product,
+      cred.credentialId,
+      result,
+      run.now,
+    );
+  else
+    await recordPlatformCredentialResult(
+      run.db,
+      ASC_PLATFORM_CREDENTIAL,
+      result,
+      run.now,
+    );
 }

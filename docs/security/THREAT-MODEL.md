@@ -1121,6 +1121,87 @@ attack (next section, Residual). Least privilege per store (App Manager team key
 Center Manager role) is documented for operators in `admin/secrets-and-keys.md` but cannot be
 verified by the Worker.
 
+### Platform store connections: team-level credentials (A-16)
+
+**What they are.** One credential per store held by the PLATFORM, not by a product (owner
+decision 2026-10-04): the App Store Connect team API key (`app-store.api-key`), the team In-App
+Purchase key (`app-store.in-app-purchase-key`), the Google Play developer account's service
+account (`google-play.service-account`), the seller's Partner Center app
+(`microsoft-store.partner-center`) and the Steam group's publisher key (`steam.publisher-key`).
+Each reaches **every app of the team, account, seller or group** — so its loss is the union of
+every product's outlet credential (A11, ranked with the release channel A3), and the Apple ones
+also every app's transaction history. Beside them, non-secret settings shared by every product:
+the Apple Team ID (App Attest's default), Google Play's RTDN push identity and the Play Integrity
+cloud project number.
+
+**What they are for.** Listing every app the team credential can see (with its release status),
+assigning an app to a product from that list, and a product's connector or commerce context
+falling back to the team credential when the product has no credential of the kind of its own.
+
+**The boundary**, each line enforced by a test (`test/platformStore*.test.ts`,
+`test/outletCredentialReach.test.ts`):
+
+- **Two sources, console first.** (a) `platform_credentials`, sealed under PLATFORM_KEK with the
+  AAD `pkey:v2:_platform:platform-credential:<id>` — `_platform` cannot be a product slug and the
+  kind is its own, so a blob copied into `outlet_credentials` or `product_secrets` opens nowhere;
+  (b) a Worker secret (`PLATFORM_ASC_API_KEY`, `PLATFORM_APP_STORE_SERVER_KEY`,
+  `PLATFORM_GOOGLE_SERVICE_ACCOUNT`, `PLATFORM_MS_PARTNER_CENTER`, `PLATFORM_STEAM_PUBLISHER_KEY`)
+  read only when no active console row exists. Both are validated by the kind's own
+  outlet-credential validator (the Google key must name Google's one token endpoint) on write and
+  again on every open. The KEK sweep counts and re-seals the table.
+- **The pin is the boundary.** A product may use a team credential ONLY for the one app a
+  platform admin assigned to it: its row in `platform_credential_pins` (the `appleId`, bundle id,
+  package name, Store ID or Steam app id) must equal the app the product is about to act on.
+  It is checked three times: by the connector's setup (no pin or a different pin → inert, the same
+  `pin_missing` / `pin_mismatch` reasons and 409s as P5-02f, nothing sent, nothing opened), by the
+  token helper BEFORE its memo or sealed cache (a cached team token is the same bearer for every
+  product, so a cache hit must never stand in for the pin), and by `openPlatformCredential`
+  itself, which refuses a product purpose whose pin does not match and audits the refusal.
+  `UNIQUE (credential_id, pin)` makes "one product per app" a table constraint, the assignment
+  route also refuses an app another product's OWN credential is pinned to, and the
+  outlet-credentials PUT refuses to pin a product's own key to an app the platform serves to
+  another product (409 `app_assigned_elsewhere`). Deleting a product deletes its pins.
+- **Own credentials first, never a fall-through.** A product holding any active credential of the
+  kind uses its own; an own credential that is unpinned or mis-pinned is inert on its own terms
+  and never silently switches to the team key.
+- **Platform-admin writes, metadata out.** `/manage/api/platform/store-connections/…` is
+  platform-admin only (403 otherwise, checked in the handler). Responses carry presence, source
+  (`console` / `secret`) and display metadata (key id, issuer id, client email, tenant, client and
+  seller ids) — never a key; a 422 names the field, never the value. Only the owner and that
+  handler name the writers (`putPlatformCredential`, `deletePlatformCredential`, `setPlatformPin`,
+  `clearPlatformPin`); only the owner, the KEK sweep and `deleteProduct` name the tables; only the
+  owner, `core/outletTokens.ts` and two reviewed Distribution files (the Microsoft Store token, the
+  Steam commerce key, both re-checked by the open) name `openPlatformCredential`.
+- **Every use and write audited.** A product open is a `platform_credential.use` row in that
+  product's trail; a team-wide open (the apps listing), every credential and setting write and
+  every assignment are rows of `platform_audit` (A-12's table, through `appendPlatformAudit`; read
+  by `GET /manage/api/platform/activity`, pruned with it after 180 days); an assignment is also
+  `outlet_credential.pin` in the product's trail. Audit payloads carry metadata and pins, never
+  key material. By design a token served from the per-isolate memo (App Store) or the sealed KV
+  cache (Google, Microsoft) is **not** audited — only the open that minted it is — exactly as for
+  product outlet credentials; the pin is checked before every such hit.
+- **Bounded, redirect-free reads.** The listings use each store's fixed host with
+  `redirect: "manual"` and capped bodies: App Store Connect `GET /v1/apps` (at most 5 pages of 200,
+  versions and TestFlight versions as includes, at most 20 phased-release reads); Play Reporting
+  `apps:search` (at most 3 pages) plus, only on an explicit `?tracks=1` and never from the
+  assignment path, at most 10 short edits that are deleted, never committed;
+  Partner Center `GET /v1.0/my/applications` (at most 5 pages of 100) plus at most 10 submission
+  reads; Steam `GetPartnerAppListForWebAPIKey` on the publisher host (the key in the query string,
+  as every Steam call). Results are cached 60 s in KV, keyed by the credential's version marker;
+  assignments are joined fresh from D1.
+
+**Residual risk.** A team credential is the widest key the platform holds: a `PLATFORM_KEK`
+compromise (A1) or a Worker-secret leak hands an attacker every app of the team, not one product.
+The admin plane (A4) can assign any visible app to any product, which is the intended power of a
+platform admin; the audit trail is the detection. A Worker secret sits in Cloudflare's secret
+store, outside the KEK and the console's rotation; prefer the console credential and keep the
+secret for bootstrap. The Play listing's opt-in track read (`?tracks=1`) opens short edits that share the service account's one-open-edit
+slot with that account's product connectors: a listing can invalidate an edit a poll holds at that
+moment (the poll fails and retries next tick). The Steam publisher key travels in query strings to
+Steam's publisher host by Steam's design. Least privilege per store (App Manager team key, the
+narrowest Play permissions, the Partner Center Manager role, a dedicated Steam publisher key) is
+the operator's to configure and cannot be verified by the Worker.
+
 ### Store connectors: App Store Connect (P5-02)
 
 **What it is.** `services/distribution/connectors/asc/` keeps a product's App Store and TestFlight
@@ -3437,7 +3518,10 @@ record naming the caller's binding, or a sandbox path open by default;
 a new product-secret usage or sealed kind is introduced (it must say which paths may open it,
 and that no manifest can grant it); an outlet-credential kind is added, or a file is added to an
 allowlist in `test/outletCredentialReach.test.ts` (it must say why that file needs a store
-credential, and the open must stay audited); the device trust level starts being carried in a signed document or token, an operation trusts `attested` without going through `trustRefusal`, the trust policy becomes writable by anything but the platform-admin `trust-policy` resource, the App Attest root stops being the pinned constant, or a path other than a token rotation keeps the level across a new device token (P6-02); or a new way to obtain a device token or licence without an
+credential, and the open must stay audited); a platform store credential (A-16) is added, used
+without the product's platform pin matching at setup, token and open, cached in a way a hit can
+skip the pin, allowed to fall through from a mis-pinned own credential, or written or opened by a
+file outside its allowlists; the device trust level starts being carried in a signed document or token, an operation trusts `attested` without going through `trustRefusal`, the trust policy becomes writable by anything but the platform-admin `trust-policy` resource, the App Attest root stops being the pinned constant, or a path other than a token rotation keeps the level across a new device token (P6-02); or a new way to obtain a device token or licence without an
 operator-issued key is added, or a check on one is made conditional on product state (it must be
 folded into `mintIsPublic` or into the edge-mint approval's recorded state — `productWidening` in
 `core/edgeMintApproval.ts`, which the ingest sweep and the `0025_b` backfill follow); or, for

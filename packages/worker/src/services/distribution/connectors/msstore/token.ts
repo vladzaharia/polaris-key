@@ -19,6 +19,11 @@
  * **No redirects, bounded body.** `redirect: "manual"` and any 3xx is a failure, so the client
  * secret is never re-posted elsewhere; the response is read through `readCappedText`.
  *
+ * **The platform Partner Center app (A-16).** `platformMsStoreToken` mints the same token from the
+ * platform's team credential for a product whose platform pin is its Store ID (checked before the
+ * cache and inside the open) or for the platform apps listing. This file is one of the two
+ * reviewed callers of `openPlatformCredential` outside Core (`outletCredentialReach.test.ts`).
+ *
  * **Fixed host.** The token request goes only to `login.microsoftonline.com`; the tenant id from
  * the credential becomes one percent-encoded path segment after a format check (a GUID or a
  * domain name), and the final URL is re-checked, so a credential cannot make the Worker post its
@@ -38,6 +43,17 @@ import {
   type FetchImpl,
 } from "../../../../core/outletTokens.js";
 import { isRedirect, readCappedText } from "../../../../core/readCapped.js";
+import {
+  openPlatformCredential,
+  PLATFORM_SEAL_PRODUCT,
+  platformPin,
+  resolvePlatformCredential,
+  type PlatformOpenPurpose,
+} from "../../../../core/platformCredentials.js";
+
+/** The platform credential the fallback uses (A-16). */
+export const MSSTORE_PLATFORM_CREDENTIAL =
+  "microsoft-store.partner-center" as const;
 
 export const ENTRA_ORIGIN = "https://login.microsoftonline.com";
 /** The `resource` of every Store submission API token. */
@@ -113,7 +129,28 @@ export async function msStoreToken(
     now,
   });
   if (!cred) return null;
-  const { tenantId, clientId, clientSecret } = cred.value;
+  const { token, ttl } = await entraExchange(cred.value, fetchImpl);
+  await writeSealedToken(
+    env,
+    outletTokenSlot(
+      product,
+      credentialId,
+      await outletTokenSlotHash(STORE_API_RESOURCE, cred.version),
+    ),
+    token,
+    ttl,
+    now,
+  );
+  return token;
+}
+
+/** The client-credentials exchange (see the header): the token and how long it may be cached.
+ *  THROWS with a status line only. */
+async function entraExchange(
+  value: { tenantId: string; clientId: string; clientSecret: string },
+  fetchImpl: FetchImpl,
+): Promise<{ token: string; ttl: number }> {
+  const { tenantId, clientId, clientSecret } = value;
   const url = entraTokenUrl(tenantId);
   if (!url)
     throw new Error("entra token: the credential's tenantId is invalid");
@@ -153,17 +190,43 @@ export async function msStoreToken(
     expiresIn === null
   )
     throw new Error("entra token exchange returned no token");
+  return { token: body.access_token, ttl: expiresIn - ENTRA_CACHE_MARGIN };
+}
 
-  await writeSealedToken(
-    env,
+/**
+ * The Store API token minted from the PLATFORM Partner Center app
+ * (`microsoft-store.partner-center`, A-16), for a product acting on its pinned Store ID
+ * (`{product, pin: productId}`) or a team-wide read (`{team}`). The pin is checked BEFORE the
+ * sealed cache (slot under `_platform`), and again inside the open. `null` when unusable; THROWS
+ * on a failed exchange (status only).
+ */
+export async function platformMsStoreToken(
+  env: Env,
+  db: Db,
+  purpose: PlatformOpenPurpose,
+  use: string,
+  now: number,
+  fetchImpl: FetchImpl,
+): Promise<string | null> {
+  const id = MSSTORE_PLATFORM_CREDENTIAL;
+  if (
+    "product" in purpose &&
+    (await platformPin(db, id, purpose.product)) !== purpose.pin
+  )
+    return null;
+  const ref = await resolvePlatformCredential(env, db, id);
+  if (!ref) return null;
+  const slotFor = async (version: string) =>
     outletTokenSlot(
-      product,
-      credentialId,
-      await outletTokenSlotHash(STORE_API_RESOURCE, cred.version),
-    ),
-    body.access_token,
-    expiresIn - ENTRA_CACHE_MARGIN,
-    now,
-  );
-  return body.access_token;
+      PLATFORM_SEAL_PRODUCT,
+      id,
+      await outletTokenSlotHash(STORE_API_RESOURCE, version),
+    );
+  const cached = await readSealedToken(env, await slotFor(ref.version), now);
+  if (cached) return cached.token;
+  const cred = await openPlatformCredential(env, db, id, use, purpose, now);
+  if (!cred) return null;
+  const { token, ttl } = await entraExchange(cred.value, fetchImpl);
+  await writeSealedToken(env, await slotFor(cred.version), token, ttl, now);
+  return token;
 }

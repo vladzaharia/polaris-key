@@ -7,6 +7,10 @@
  *   GET   /v1/apps/<id>/appStoreVersions          the app's versions (newest first)
  *   GET   /v1/apps/<id>/reviewSubmissions         filtered by `filter[state]`
  *   GET   /v1/builds?filter[app]=<id>             the app's builds (newest first)
+ *   GET   /v1/apps[?include=appStoreVersions,preReleaseVersions]
+ *                                                 every app (A-16's team listing), each with its
+ *                                                 versions as relationships (`limit[<rel>]`)
+ *   GET   /v1/<type>/<id>/<to-one relationship>   the related resource, or `data: null`
  *   PATCH /v1/appStoreVersionPhasedReleases/<id>  `phasedReleaseState`
  *   PATCH /v1/betaGroups/<id>                     `publicLinkEnabled`
  *   POST  /v1/appStoreVersionReleaseRequests      the version → READY_FOR_DISTRIBUTION
@@ -244,9 +248,49 @@ export class AscFake {
           ),
         };
       }
+      if (parts.length === 2 && parts[1] === "apps") {
+        const per = (rel: string) =>
+          Number(url.searchParams.get(`limit[${rel}]`) ?? "50");
+        const apps = this.list("apps", () => true)
+          .sort((a, b) => a.id.localeCompare(b.id))
+          .slice(0, limit)
+          .map((app) => ({
+            ...app,
+            relationships: {
+              ...app.relationships,
+              appStoreVersions: {
+                data: this.list(
+                  "appStoreVersions",
+                  (r) => this.appOf(r) === app.id,
+                )
+                  .slice(0, per("appStoreVersions"))
+                  .map((r) => ({ type: r.type, id: r.id })),
+              },
+              preReleaseVersions: {
+                data: this.list(
+                  "preReleaseVersions",
+                  (r) => this.appOf(r) === app.id,
+                )
+                  .slice(0, per("preReleaseVersions"))
+                  .map((r) => ({ type: r.type, id: r.id })),
+              },
+            },
+          }));
+        return { status: 200, body: doc(apps) };
+      }
       if (parts.length === 3) {
         const r = this.store.get(`${parts[1]}/${parts[2]}`);
         return r ? { status: 200, body: doc(r) } : notFound;
+      }
+      if (parts.length === 4) {
+        const r = this.store.get(`${parts[1]}/${parts[2]}`);
+        const d = r?.relationships?.[parts[3]!]?.data;
+        if (!r || d === undefined || Array.isArray(d)) return notFound;
+        const target = d ? this.store.get(`${d.type}/${d.id}`) : undefined;
+        return {
+          status: 200,
+          body: { data: target ?? null, links: { self: url.toString() } },
+        };
       }
       return notFound;
     }

@@ -44,6 +44,15 @@ import {
   openOutletCredential,
   outletCredentialVersion,
 } from "./outletCredentials.js";
+import {
+  openPlatformCredential,
+  parsePlatformCredentialHandle,
+  PLATFORM_SEAL_PRODUCT,
+  platformPin,
+  resolvePlatformCredential,
+  type PlatformCredentialId,
+  type PlatformOpenPurpose,
+} from "./platformCredentials.js";
 
 /** A fetch with the platform `fetch` shape, injectable for tests. */
 export type FetchImpl = (
@@ -318,16 +327,47 @@ export async function googleAccessToken(
     now,
   });
   if (!cred) return null;
-  const { client_email, private_key } = cred.value;
+  const { token, ttl } = await googleTokenExchange(
+    cred.value,
+    scope,
+    now,
+    fetchImpl,
+  );
+  await writeSealedToken(
+    env,
+    outletTokenSlot(
+      product,
+      credentialId,
+      await outletTokenSlotHash(scope, cred.version),
+    ),
+    token,
+    ttl,
+    now,
+  );
+  return token;
+}
+
+/**
+ * The JWT-bearer exchange itself: an RS256 assertion for `scope`, posted to Google's one token
+ * endpoint with `redirect: "manual"`, the answer read through `readCappedText`. Answers the
+ * access token and how long it may be cached. THROWS on a failed exchange with a status line
+ * only — never the response body or anything from the key.
+ */
+async function googleTokenExchange(
+  value: { client_email: string; private_key: string },
+  scope: string,
+  now: number,
+  fetchImpl: FetchImpl,
+): Promise<{ token: string; ttl: number }> {
   const assertion = await signJwtRs256(
     {
-      iss: client_email,
+      iss: value.client_email,
       scope,
       aud: GOOGLE_TOKEN_URI,
       iat: now,
       exp: now + GOOGLE_ASSERTION_LIFETIME,
     },
-    private_key,
+    value.private_key,
   );
   const res = await fetchImpl(GOOGLE_TOKEN_URI, {
     method: "POST",
@@ -364,17 +404,177 @@ export async function googleAccessToken(
     !(body.expires_in > 0)
   )
     throw new Error("google token exchange returned no token");
+  return {
+    token: body.access_token,
+    ttl: body.expires_in - GOOGLE_CACHE_MARGIN,
+  };
+}
 
-  await writeSealedToken(
-    env,
-    outletTokenSlot(
-      product,
-      credentialId,
-      await outletTokenSlotHash(scope, cred.version),
-    ),
-    body.access_token,
-    body.expires_in - GOOGLE_CACHE_MARGIN,
-    now,
+// ── platform (team-level) credentials (A-16) ────────────────────────────────────────────────
+
+/**
+ * Whether `purpose` may use platform credential `id` at all, checked BEFORE any memo or cache: a
+ * cached team token is the same bearer for every product, so the per-product pin must gate the
+ * lookup itself — a memo hit must never stand in for the pin. A team purpose (no product) has no
+ * pin; the caller is the platform admin surface.
+ */
+async function platformPurposeAllowed(
+  db: Db,
+  id: PlatformCredentialId,
+  purpose: PlatformOpenPurpose,
+): Promise<boolean> {
+  if (!("product" in purpose)) return true;
+  return (await platformPin(db, id, purpose.product)) === purpose.pin;
+}
+
+/**
+ * The App Store Connect API token minted from the PLATFORM team key (`app-store.api-key`), for a
+ * product acting on its pinned app (`{product, pin: appleId}`) or a team-wide read (`{team}`).
+ * `null` when no platform key is usable or the product's pin is not `appleId`. Memoised per
+ * isolate by source and version like `ascToken`; only a miss opens (and audits) the key.
+ */
+export async function platformAscToken(
+  env: Env,
+  db: Db,
+  purpose: PlatformOpenPurpose,
+  use: string,
+  now: number,
+): Promise<string | null> {
+  const id = "app-store.api-key";
+  if (!(await platformPurposeAllowed(db, id, purpose))) return null;
+  const ref = await resolvePlatformCredential(env, db, id);
+  if (!ref) return null;
+  const hit = ascMemo.get(`platform:${id}:${ref.version}`);
+  if (hit && hit.exp - ASC_REUSE_MARGIN > now) return hit.token;
+  const cred = await openPlatformCredential(env, db, id, use, purpose, now);
+  if (!cred) return null;
+  const { keyId, issuerId, p8 } = cred.value;
+  const exp = now + ASC_TOKEN_LIFETIME;
+  const token = await signJwtEs256(
+    { iss: issuerId, iat: now, exp, aud: ASC_AUDIENCE },
+    p8,
+    keyId,
   );
-  return body.access_token;
+  if (ascMemo.size >= ASC_MEMO_MAX) ascMemo.clear();
+  ascMemo.set(`platform:${id}:${cred.version}`, { token, exp });
+  return token;
+}
+
+/**
+ * The App Store Server API token minted from the PLATFORM In-App Purchase key
+ * (`app-store.in-app-purchase-key`) for `product`, whose platform pin must be `bundleId` (the
+ * token's `bid`). `null` otherwise, or when no platform key is usable.
+ */
+export async function platformAppStoreServerToken(
+  env: Env,
+  db: Db,
+  product: string,
+  bundleId: string,
+  use: string,
+  now: number,
+): Promise<string | null> {
+  const id = "app-store.in-app-purchase-key";
+  const purpose = { product, pin: bundleId };
+  if (!(await platformPurposeAllowed(db, id, purpose))) return null;
+  const ref = await resolvePlatformCredential(env, db, id);
+  if (!ref) return null;
+  const memoKey = `platform:${id}:${ref.version}:${bundleId}`;
+  const hit = appStoreMemo.get(memoKey);
+  if (hit && hit.exp - ASC_REUSE_MARGIN > now) return hit.token;
+  const cred = await openPlatformCredential(env, db, id, use, purpose, now);
+  if (!cred) return null;
+  const { keyId, issuerId, p8 } = cred.value;
+  const exp = now + APP_STORE_SERVER_TOKEN_LIFETIME;
+  const token = await signJwtEs256(
+    { iss: issuerId, iat: now, exp, aud: ASC_AUDIENCE, bid: bundleId },
+    p8,
+    keyId,
+  );
+  if (appStoreMemo.size >= ASC_MEMO_MAX) appStoreMemo.clear();
+  appStoreMemo.set(`platform:${id}:${cred.version}:${bundleId}`, {
+    token,
+    exp,
+  });
+  return token;
+}
+
+/**
+ * A Google OAuth access token minted from the PLATFORM service account
+ * (`google-play.service-account`) at `scopes`, for a product acting on its pinned package
+ * (`{product, pin: packageName}`) or a team-wide read (`{team}`). The pin is checked before the
+ * sealed KV cache (slot under `_platform`, keyed by scope and credential version); only a miss
+ * opens (and audits) the key. `null` when unusable; THROWS on a failed exchange (status only).
+ */
+export async function platformGoogleAccessToken(
+  env: Env,
+  db: Db,
+  purpose: PlatformOpenPurpose,
+  scopes: readonly string[],
+  use: string,
+  now: number,
+  fetchImpl: FetchImpl = fetch,
+): Promise<string | null> {
+  const id = "google-play.service-account";
+  const scope = [...new Set(scopes)].sort().join(" ");
+  if (scope.length === 0) throw new Error("google token: no scopes requested");
+  if (!(await platformPurposeAllowed(db, id, purpose))) return null;
+  const ref = await resolvePlatformCredential(env, db, id);
+  if (!ref) return null;
+  const slotFor = async (version: string) =>
+    outletTokenSlot(
+      PLATFORM_SEAL_PRODUCT,
+      id,
+      await outletTokenSlotHash(scope, version),
+    );
+  const cached = await readSealedToken(env, await slotFor(ref.version), now);
+  if (cached) return cached.token;
+  const cred = await openPlatformCredential(env, db, id, use, purpose, now);
+  if (!cred) return null;
+  const { token, ttl } = await googleTokenExchange(
+    cred.value,
+    scope,
+    now,
+    fetchImpl,
+  );
+  await writeSealedToken(env, await slotFor(cred.version), token, ttl, now);
+  return token;
+}
+
+/**
+ * A Google access token for a credential id OR a platform handle (`platform:<id>`, A-16): the
+ * product's own `google-service-account` through `googleAccessToken`, the platform service account
+ * through `platformGoogleAccessToken` with `pin` (the package acted on) as the product's required
+ * pin. One entry point for callers that hold a setup's `credentialId`.
+ */
+export async function googleAccessTokenFor(
+  env: Env,
+  db: Db,
+  product: string,
+  credentialId: string,
+  pin: string,
+  scopes: readonly string[],
+  use: string,
+  now: number,
+  fetchImpl: FetchImpl = fetch,
+): Promise<string | null> {
+  return parsePlatformCredentialHandle(credentialId)
+    ? platformGoogleAccessToken(
+        env,
+        db,
+        { product, pin },
+        scopes,
+        use,
+        now,
+        fetchImpl,
+      )
+    : googleAccessToken(
+        env,
+        db,
+        product,
+        credentialId,
+        scopes,
+        use,
+        now,
+        fetchImpl,
+      );
 }

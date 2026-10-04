@@ -410,6 +410,65 @@ a wrapper element, so two providers can carry different brands without leaking i
 and on `:root`, so anything React portals (a dialog, a toast) still inherits them. You can also
 override any `--pk-*` var from your own stylesheet.
 
+The neutral default sets `font-family: inherit`, so the SDK uses your app's font. A bare webview
+that never sets a body font shows the browser's serif default; pass
+`theme={{ tokens: { fontFamily: "system-ui, sans-serif" } }}` there.
+
+**Two brandings.** Polaris Key branding is optional:
+
+- **Neutral (the default).** A quiet greyscale theme that inherits your app's font
+  (`font-family: inherit`) and shows no Polaris Key mark, name or badge. Point any token at your
+  own colours (`tokens: { accent: "var(--app-primary)" }`) to blend in completely.
+- **Polaris Key.** One option switches to the Polaris Key design system (`@polaris-key/brand`, see
+  `docs/design/BRAND.md`): its surfaces and text, the violet accent and focus ring, Rubik when the
+  page loads it, and the Polaris Key marks. You do not need to load the brand's `tokens.css`; the
+  Provider sets every value itself.
+
+```tsx
+// Neutral, nothing to configure:
+<PolarisKeyProvider productSlug="acme">…</PolarisKeyProvider>
+
+// The Polaris Key brand, one option (or theme={polarisKeyTheme}, or theme={{ branding: "polaris-key" }}):
+<PolarisKeyProvider productSlug="acme" branding="polaris-key">…</PolarisKeyProvider>
+
+// Everything else is optional and works under either branding:
+<PolarisKeyProvider
+  productSlug="acme"
+  colorScheme="system" // "system" (default) | "dark" | "light"
+  theme={{
+    tokens: { accent: "#ff5c00", accentText: "#000000" }, // both schemes
+    lightTokens: { background: "#fbfaf7" }, // one scheme only
+    logo: <AcmeLogo />, // your logo atop the screens; null for none
+    poweredBy: true, // "Powered by Polaris Key" on the sign-in card and device list (off by default)
+  }}
+>
+```
+
+- **Scheme.** "system" follows `prefers-color-scheme` live and is dark when the OS states no
+  preference. The wrapper carries `data-theme="dark|light"` and the matching `color-scheme`, so
+  form controls follow. Persisting a user's choice is yours: store it and pass it back.
+- **Tokens.** `neutralDarkTokens`, `neutralLightTokens`, `polarisKeyDarkTokens`,
+  `polarisKeyLightTokens`, `defaultTheme` (neutral dark), `lightTheme` (neutral light),
+  `polarisKeyTheme` and `highContrastTheme` (AAA text) are exported. Every token maps to one `--pk-*` variable
+  (`themeVars`). If you change a colour, keep text at 4.5:1 and control borders and the focus
+  ring at 3:1 against the surfaces.
+- **Marks.** Neutral screens show only your `logo`, if you give one. Under the Polaris Key branding
+  with no `logo`, the gate, activation and sign-in screens show the Polaris Key mark (the Pinned
+  K, without the terminal bit) and update dialogs show the Polaris Key Delivery mark, picked for a
+  dark or light ground from your `background` token.
+- **Layout.** Every blocking screen (loading, sign-in, expired, error, update dialog) is a
+  max-width card centred horizontally and vertically; a card taller than a small screen scrolls
+  from its top. Banners (offline grace, update available) centre their content. Everything
+  works from 320 px wide.
+- **"Powered by Polaris Key".** Off by default under both brandings. `poweredBy: true` (or `"horizontal"` /
+  `"stacked"`) adds it to the sign-in card and the device list; `<PoweredByPolarisKey>` places it
+  on your about or credits screen. It never renders below its minimum size (compact 232 × 88,
+  horizontal 376 × 144, stacked 288 × 336).
+- **Focus and CSP.** Keyboard focus draws a 2 px `--pk-ring` outline on `:focus-visible`. The
+  components style through React's `style` prop, which the browser applies through the CSSOM, and
+  render no `<style>` or `<script>` element, so they need no `'unsafe-inline'` in your
+  Content-Security-Policy.
+
 ## Develop
 
 ```sh

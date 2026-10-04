@@ -60,6 +60,11 @@ public enum PolarisBrand {
     public static let clearSpaceRatio: Double = 0.25
     public static let poweredByPhrase = "Powered by Polaris Key"
 
+    /// "Powered by" badge minimum sizes in points (CSS-pixel equivalents): never render smaller.
+    public static let badgeMinHorizontal: (width: Double, height: Double) = (376, 144)
+    public static let badgeMinCompact: (width: Double, height: Double) = (232, 88)
+    public static let badgeMinStacked: (width: Double, height: Double) = (288, 336)
+
     /// Section ids: core plus every service slug.
     public static let serviceIds: [String] = ["core", "license", "config", "release", "distribution", "update", "identity"]
 
