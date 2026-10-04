@@ -1036,11 +1036,27 @@ upstream proxying; strict-router setup snippets. The owner publishes nothing to 
 and claims the public names at account level only (open question Q2): the residual risk is a
 misconfigured adopter resolving an attacker's same-named package from a public registry, which
 the setup page warns about. Our SDKs reach the feeds only through trusted publishing, Swift
-releases are signed, and the SDKs' own update path still verifies signed records. Godot 4.7+
-and PyPI fragment hashes give integrity, not authenticity.
+releases are signed, and the SDKs' own update path still verifies signed records. Godot ≤ 4.6's
+`download_hash` and PyPI fragment hashes give integrity, not authenticity, and Godot 4.7+ verifies
+no hash at all (below).
 
 **Kill switches.** Per ecosystem, `dist_registry_policy.enabled`; per owner, `packageFeeds`;
 per feed, `enabled`. Each takes effect within the settings window.
+
+**The Godot feed (F-09).** Both editor API shapes are served. Godot ≤ 4.6 compares the zip it
+downloads with `download_hash`, the SHA-256 the feed always sends; **Godot 4.7+ verifies no hash
+(the editor hands an empty one to its installer), so a 4.7+ editor install relies on TLS alone**.
+The bytes are still content-addressed (`files/<sha256>/…`, `icons/<sha256>.png`), `hasRef`-checked
+for the owner and served as `application/zip` or `image/png` attachments with the host's
+headers. The Polaris Key SDK's own update path verifies signed records, never the store download.
+`plugin.cfg`'s name, author and description leave only as JSON strings; the 4.7 `body_bbcode` and
+`body_html` copies are escaped, so the editor renders them as text. The two searches filter the
+owner's short list in memory and page their output (at most 500 rows, 100 for 4.7); every
+document goes through the same ladder and cache key rules (the repeated `licenses` parameter and
+the valueless `reverse` flag are normalised into the key, so variants cannot share an entry). A
+package stricter than its feed is left out of every list. The per-package documents are read
+fresh: a stored render whose stamp (package rows plus feed settings) differs from D1 is rendered
+again before it is served, so a yank is never hidden behind a stale document.
 
 ### App-updater feeds (P3-09)
 
