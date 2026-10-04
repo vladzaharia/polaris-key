@@ -48,6 +48,10 @@
       "title": "Admin: store provisioning (App Store Connect and every storefront)"
     },
     {
+      "id": "I",
+      "title": "Identity service (S-16)"
+    },
+    {
       "id": "X",
       "title": "Optional SDKs"
     },
@@ -2246,6 +2250,598 @@
       "optional": false,
       "refs": ["PARITY §2.2", "notes/E2 §A2 §A3"],
       "brief": "wp/P6-12-kotlin-android-glue.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-01",
+      "title": "Identity hygiene: OIDC licence `origin`, portal identities keyed by issuer, threat-model rows, portal-gating docs, drop `authPoll`",
+      "phase": "I",
+      "stage": "phase-0, MVI",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.2, 0.3],
+      "deps": [],
+      "planMode": false,
+      "gates": [
+        "migration",
+        "table-owners",
+        "threat-model",
+        "drift-gate",
+        "docs-links"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-16 §3.2 G10 G14",
+        "notes/S-16 §5.4 item 11",
+        "notes/S-16 §8 I-01",
+        "notes/S-16 §10 D7 D10"
+      ],
+      "brief": "wp/I-01-identity-hygiene.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-02",
+      "title": "Atomic single-use store (Durable Object), sharded portal and admin rate limits, email send limits",
+      "phase": "I",
+      "stage": "phase-0, MVI",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 0.85],
+      "deps": [],
+      "planMode": false,
+      "gates": ["workerd", "wrangler", "threat-model"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-16 §3.2 G15",
+        "notes/S-16 §5.1 (single-use store)",
+        "notes/S-16 §5.4 items 4 and 8",
+        "notes/S-16 §8 I-02"
+      ],
+      "brief": "wp/I-02-single-use-store.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-03",
+      "title": "Console gets its own Pocket ID client (operators only on id.plrs.im)",
+      "phase": "I",
+      "stage": "phase-0, MVI",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.2, 0.3],
+      "deps": [],
+      "planMode": false,
+      "gates": ["threat-model", "docs-links"],
+      "humanInputs": [
+        "owner creates a second OIDC client for the console in Pocket ID (id.plrs.im) and sets the `ADMIN_OIDC_*` secrets per environment"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-16 owner decisions (Pocket ID facts)",
+        "notes/S-16 §3.1",
+        "notes/S-16 §5.4 item 1",
+        "notes/S-16 §8 I-03"
+      ],
+      "brief": "wp/I-03-console-oidc-client.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-04",
+      "title": "Plan the Identity service: decision record replacing D-14, glossary, data model, WIRE-CONTRACT-V4 identity section, error codes, parity ids, manifest schema, threat-model deltas",
+      "phase": "I",
+      "stage": "phase-0, MVI",
+      "lane": "worker",
+      "role": "pkey-wire-planner",
+      "estimateWeeks": [0.6, 0.85],
+      "deps": [],
+      "planMode": true,
+      "gates": ["plan-mode", "human-approval"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-16 §5",
+        "notes/S-16 §5.3",
+        "notes/S-16 §5.4",
+        "notes/S-16 §5.5",
+        "notes/S-16 §8 I-04",
+        "notes/S-16 §10"
+      ],
+      "brief": "wp/I-04-identity-plan.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-05",
+      "title": "Identity broker fix: OIDC discovery behind SSRF and allowlist gates, configurable scopes and groups claim, RFC 9207 iss, many oidc methods per product",
+      "phase": "I",
+      "stage": "phase-1, MVI",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 0.85],
+      "deps": ["I-04"],
+      "planMode": false,
+      "gates": ["rule-9", "threat-model", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-16 §3.2 G4 G13",
+        "notes/S-16 §5.2",
+        "notes/S-16 §5.4 item 2",
+        "notes/S-16 §8 I-05"
+      ],
+      "brief": "wp/I-05-broker-discovery.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-06",
+      "title": "Users and identity links: tables, `licenses.user_id` migration, `signIn(verifiedIdentity)`, linking and licence-claim rules, Identity without License",
+      "phase": "I",
+      "stage": "phase-1, MVI",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.2, 1.7],
+      "deps": ["I-04"],
+      "planMode": false,
+      "gates": ["migration", "table-owners", "threat-model", "rule-9"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-16 §5.1",
+        "notes/S-16 §5.4 items 3 and 5",
+        "notes/S-16 §5.6",
+        "notes/S-16 §8 I-06",
+        "notes/S-16 §10 D2 D4 D6 D14"
+      ],
+      "brief": "wp/I-06-users-and-links.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-07",
+      "title": "Console Identity Users and Sign-in methods pages: per-user audit and export, disable, delete, audited relink and reassign under step-up",
+      "phase": "I",
+      "stage": "phase-1, MVI",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.0, 1.4],
+      "deps": ["I-06"],
+      "planMode": false,
+      "gates": [
+        "console-csp-parity",
+        "threat-model",
+        "rule-10",
+        "docs-links",
+        "docs:privacy"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-16 §5.2 (Console)",
+        "notes/S-16 §5.4 item 9",
+        "notes/S-16 §5.5",
+        "notes/S-16 §8 I-07",
+        "notes/S-16 §10 D15"
+      ],
+      "brief": "wp/I-07-console-users.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-08",
+      "title": "Email login method: flow-bound email codes and magic links, hosted page with Turnstile, revocable product sessions, device-code confirm screen and callback binding",
+      "phase": "I",
+      "stage": "phase-1, MVI",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.0, 1.4],
+      "deps": ["I-02", "I-04", "I-06", "I-21"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "drift-gate",
+        "rule-10",
+        "threat-model",
+        "migration",
+        "table-owners",
+        "workerd"
+      ],
+      "humanInputs": [
+        "a Turnstile site key and secret per environment (Cloudflare)"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-16 §5.3",
+        "notes/S-16 §5.4 items 4, 6 and 7",
+        "notes/S-16 §8 I-08",
+        "notes/S-16 §10 D16"
+      ],
+      "brief": "wp/I-08-email-login.md",
+      "status": "todo",
+      "planRef": "I-04"
+    },
+    {
+      "id": "I-09",
+      "title": "Move `provider: platform` end users off Pocket ID onto the Polaris login; Pocket ID becomes operator-only",
+      "phase": "I",
+      "stage": "phase-1",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 0.85],
+      "deps": ["I-03", "I-08"],
+      "planMode": false,
+      "gates": ["migration", "threat-model", "docs-links"],
+      "humanInputs": [
+        "owner sign-off on the rollout and the sunset date (after the email-less count)",
+        "optional: a Pocket ID admin API key, only if a bulk export is wanted"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-16 owner decisions (Pocket ID facts)",
+        "notes/S-16 §3.1",
+        "notes/S-16 §6",
+        "notes/S-16 §8 I-09",
+        "notes/S-16 §9 risk 10"
+      ],
+      "brief": "wp/I-09-pocket-id-migration.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-10",
+      "title": "Identity exchange endpoint `POST /<p>/identity/token` with `oidc` (JWKS) and `firebase` (x509) verifiers, returning the activation response",
+      "phase": "I",
+      "stage": "phase-2, MVI",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.2, 1.7],
+      "deps": ["I-04", "I-06"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "drift-gate",
+        "rule-10",
+        "threat-model",
+        "workerd"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-16 §1 item 3",
+        "notes/S-16 §5.3",
+        "notes/S-16 §5.4 item 2",
+        "notes/S-16 §8 I-10"
+      ],
+      "brief": "wp/I-10-exchange-endpoint.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-11",
+      "title": "SDK identity v2 part 1 in all six SDKs: email sign-in with hosted-page fallback, `user`, `signOut`, `deleteUser`, P1-07 attach everywhere",
+      "phase": "I",
+      "stage": "phase-1, MVI",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.2, 1.7],
+      "deps": ["I-08"],
+      "planMode": true,
+      "gates": ["plan-mode", "all-sdks", "drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-16 §5.2 (SDK API)",
+        "notes/S-16 §5.3",
+        "notes/S-16 §5.4 item 4",
+        "notes/S-16 §8 I-11"
+      ],
+      "brief": "wp/I-11-sdk-identity-v2-email.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-12",
+      "title": "Game-platform verifiers: Steam ticket, Game Center, Play Games, EOS, with Godot shims and Swift and Kotlin helpers",
+      "phase": "I",
+      "stage": "phase-2",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.6, 2.25],
+      "deps": ["I-10", "I-22"],
+      "planMode": false,
+      "gates": [
+        "threat-model",
+        "drift-gate",
+        "all-sdks",
+        "rule-9",
+        "ci:android",
+        "ci:macos"
+      ],
+      "humanInputs": [
+        "Steamworks Web API publisher key; a Game Center-enabled app; a Play Games project linked in Play Console; an EOS deployment (live checks only; fixtures otherwise)"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-16 §2 J4",
+        "notes/S-16 §5.2",
+        "notes/S-16 §5.6",
+        "notes/S-16 §8 I-12",
+        "notes/S-16 §9 risks 4 and 5"
+      ],
+      "brief": "wp/I-12-game-verifiers.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-13",
+      "title": "Native redirect sign-in: PKCE public-client token route, retire `/auth/poll`, `signIn({redirect})` in all six SDKs",
+      "phase": "I",
+      "stage": "phase-2",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.8, 1.15],
+      "deps": ["I-10"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "drift-gate",
+        "rule-10",
+        "all-sdks",
+        "threat-model"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-16 §2 J9",
+        "notes/S-16 §3.2 G3",
+        "notes/S-16 §5.2 (SDK API)",
+        "notes/S-16 §8 I-13"
+      ],
+      "brief": "wp/I-13-native-redirect.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-14",
+      "title": "Passkeys on key.plrs.im: registration after email verification, per-product user handles",
+      "phase": "I",
+      "stage": "phase-2",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 0.85],
+      "deps": ["I-08"],
+      "planMode": false,
+      "gates": [
+        "workerd",
+        "migration",
+        "table-owners",
+        "threat-model",
+        "rule-10"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-16 owner decisions (passkeys on key.plrs.im only)",
+        "notes/S-16 §5.1",
+        "notes/S-16 §5.4 item 7",
+        "notes/S-16 §8 I-14",
+        "notes/S-16 §10 D8"
+      ],
+      "brief": "wp/I-14-passkeys.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-15",
+      "title": "Portal convergence: links to product users, server-side sessions with logout, `GET /api/me/export`, one Core revocation hook with F-21",
+      "phase": "I",
+      "stage": "phase-2",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 0.85],
+      "deps": ["I-06", "F-21"],
+      "planMode": false,
+      "gates": [
+        "migration",
+        "table-owners",
+        "rule-10",
+        "threat-model",
+        "docs:privacy"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-16 §3.2 G10 G11",
+        "notes/S-16 §5.2 (Portal)",
+        "notes/S-16 §5.5",
+        "notes/S-16 §5.6",
+        "notes/S-16 §8 I-15",
+        "plans/F-20.md"
+      ],
+      "brief": "wp/I-15-portal-convergence.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-16",
+      "title": "`Sign in with <Product>`: per-product OIDC issuer with a separate RS256 keyring, static clients, pairwise subjects and entitlement claims",
+      "phase": "I",
+      "stage": "phase-3",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [2.0, 2.8],
+      "deps": ["I-06", "I-08"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "migration",
+        "table-owners",
+        "rule-9",
+        "rule-10",
+        "threat-model",
+        "docs-links"
+      ],
+      "humanInputs": [
+        "staging deploy for the OIDF Basic OP and Config OP conformance runs"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-16 owner decisions (issuer in-house on jose, decided here)",
+        "notes/S-16 §2 J8",
+        "notes/S-16 §4 Option F",
+        "notes/S-16 §5.2",
+        "notes/S-16 §5.4 item 10",
+        "notes/S-16 §8 I-16",
+        "notes/S-16 §10 D8 D12"
+      ],
+      "brief": "wp/I-16-product-issuer.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-17",
+      "title": "Identity docs: concepts, recovery, email sign-in and bring-your-own-auth quickstarts",
+      "phase": "I",
+      "stage": "phase-1–2",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 0.85],
+      "deps": ["I-07", "I-22"],
+      "planMode": false,
+      "gates": ["docs-links", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-16 §5.1 (recovery)",
+        "notes/S-16 §7.1",
+        "notes/S-16 §8 I-17"
+      ],
+      "brief": "wp/I-17-identity-docs.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-18",
+      "title": "Named-user seats: user claim in the licence `profile`, device holders, per-user caps",
+      "phase": "I",
+      "stage": "later",
+      "lane": "corpus",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1, 2],
+      "deps": ["I-06"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "corpus",
+        "all-sdks",
+        "migration",
+        "table-owners",
+        "docs-generated"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "notes/S-16 §2 J10",
+        "notes/S-16 §5.3",
+        "notes/S-16 §8 I-18",
+        "notes/S-16 §10 D9"
+      ],
+      "brief": "wp/I-18-named-user-seats.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-19",
+      "title": "RFC 7523 product-backend assertion (console platforms) with jti replay cache and console key management",
+      "phase": "I",
+      "stage": "later",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.8],
+      "deps": ["I-10"],
+      "planMode": true,
+      "gates": ["plan-mode", "drift-gate", "rule-10", "threat-model"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": ["notes/S-16 §2 J12", "notes/S-16 §8 I-19"],
+      "brief": "wp/I-19-backend-assertion.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-20",
+      "title": "Provider kinds that are not generic OIDC: apple and discord",
+      "phase": "I",
+      "stage": "phase-1",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 0.85],
+      "deps": ["I-05", "I-06"],
+      "planMode": false,
+      "gates": ["rule-9", "threat-model", "rule-10"],
+      "humanInputs": [
+        "an Apple Services ID, .p8 key and registered return URL; a Discord application (live checks only; fixtures otherwise)"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-16 §5.2 (Not every social provider is generic OIDC; App Review 4.8)",
+        "notes/S-16 §8 I-20"
+      ],
+      "brief": "wp/I-20-apple-discord-kinds.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-21",
+      "title": "Email delivery operations for sign-in mail: dedicated auth sending subdomain, suppression, per-product caps, `email_unavailable` fallback",
+      "phase": "I",
+      "stage": "phase-1, MVI",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 0.85],
+      "deps": ["I-02"],
+      "planMode": false,
+      "gates": ["wrangler", "threat-model", "migration", "table-owners"],
+      "humanInputs": [
+        "owner DNS: SPF, DKIM and DMARC for the auth sending subdomain of plrs.im, and its Cloudflare Email Service onboarding",
+        "Apple private-relay sender registration in the Apple developer account"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-16 §4 Option B (ops cost)",
+        "notes/S-16 §5.4 item 4",
+        "notes/S-16 §8 I-21",
+        "notes/S-16 §9 risk 7"
+      ],
+      "brief": "wp/I-21-email-delivery.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-22",
+      "title": "SDK identity v2 part 2 in all six SDKs: `exchange`, `link` and `unlink`",
+      "phase": "I",
+      "stage": "phase-2, MVI",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.8, 1.15],
+      "deps": ["I-10", "I-11"],
+      "planMode": true,
+      "gates": ["plan-mode", "all-sdks", "drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-16 §5.2 (SDK API)",
+        "notes/S-16 §5.3",
+        "notes/S-16 §8 I-22"
+      ],
+      "brief": "wp/I-22-sdk-identity-v2-exchange.md",
       "status": "todo"
     },
     {
