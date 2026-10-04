@@ -141,6 +141,59 @@ gates to keep in step. Generalising it once leaves one.
 - `boundaries.test.ts`: `core/adapters` and `core/storefront` import no service; services import
   them.
 
+## Corrections (as built, 2026-10-04)
+
+The code was the fact where it and this brief disagreed; each departure is recorded here.
+
+- **The ledger rename had already happened.** A-17a merged with `store_operations` (owner decision
+  3, migration `0061`), so A-18a adds only `plane` (`0062_store_operations_plane.sql`, one bare
+  `ALTER`, default `worker`). `TABLE_OWNERS` already lists `store_operations` under Core; no entry
+  changes. The generated data-model page was regenerated.
+- **`op_id` gains the store.** `sha256(JSON [store, scope, product, op, natural_key,
+idempotency_key])`. Rows written before keep their ids; a replay of such an intent re-reads its
+  natural key before sending, so nothing is written twice.
+- **Where the CLI reads the declaration (the choice S-15 §6.1 left here): a generated JSON**,
+  emitted when the CLI first needs it (A-18h, the first CI-plane adapter). The declaration modules
+  of `core/storefront/` are dependency-free data (`boundaries.test.ts` enforces it, and the
+  conformance suite round-trips the shared parts through JSON), so the generator is a serialise. No
+  new package, nothing in `shared-protocol`.
+- **File layout.** The Apple adapter's declaration is `core/storefront/stores/appStore.ts` (Core, so
+  the registry in `adapter.ts` can list it without a service import); the deny classification
+  moved beside its table as `rules/appStoreDenied.ts` (`git mv` of `writeGateDenied.ts`, like
+  `writeGate.ts` → `rules/appStore.ts`, so the move is reviewable as a rename). `core/asc/` keeps
+  only Apple's wire client. The listing-profile slot is `core/storefront/listing.ts`, re-exported
+  from `adapter.ts`. The runtime half (`connect`, `listApps`, `readListing`, `plan`, `runStep`,
+  `status`) is declared as `StorefrontRuntime`; its first implementations are A-18c's and A-18j's.
+- **`StorefrontOp` gains `identifiers`** (Apple's bundle ids and capabilities), because one
+  `Support` per op cannot say "API for the identifier, a deep link for the app record". `createApp`
+  is the deep link (`app-store.new-app`, verified by reading `/v1/apps`).
+- **`credential` is a plain string**, checked against `PLATFORM_CREDENTIALS` by the conformance
+  suite: a type import of `core/platformCredentials.ts` counts as reaching the credential custody
+  module (`outletCredentialReach.test.ts`), and widening that allowlist is a custody review.
+- **Typed-confirmation follow-ups from A-17's review (lead's instruction).** The rule table is
+  moved unchanged in its own commit; a separate commit then changes two rules: creating an
+  `appStoreVersionPhasedReleases` `ACTIVE` is typed, and a `PATCH appStoreVersions` that sets an
+  auto-releasing release type (anything but `MANUAL`) or a release date on a version in or after
+  review is typed. The gate reads the version's state from the handler's pre-read
+  (`GateContext.resourceState`, new); a missing state counts as in review. A-17d's release-type
+  control passes it and never targets a version past review, so its behaviour is unchanged.
+- **A missing `Idempotency-Key` is 428 on every A-17 write** (lead's instruction): A-17b already
+  answered 428; A-17c, A-17d and A-17e answered 422 and now answer 428. Four existing assertions
+  changed from 422 to 428 and the App Store Connect docs page follows.
+- **`Object.hasOwn` for connector reads and controls** (lead's instruction): a path such as
+  `constructor` reached `Object.prototype` and answered 200; it is now 404 (new test). The
+  JSON:API matcher's relationship lookup uses `Object.hasOwn` too (an inherited name was already
+  refused, with `wrong_type`; it is now `relationship_not_allowed`).
+- **"Existing tests pass unchanged" holds for assertions, not for every line.** Test files changed
+  their imports (the modules moved), `ascLedger.test.ts` adds `store: "app-store"` to its keys and
+  binds the store-generic budget and projection functions to the App Store in four one-line
+  helpers, and the four 422 assertions above became 428. No assertion was weakened.
+- **The budget's spend classes and tiers are A-17a's**, plus one state: `stopped` (a 403 under
+  `stopOn403`, or a `Retry-After` still running) holds every class, operator included, because it is
+  the store's own hard limit like a 429.
+- **"Required check".** The conformance suite and the App Store spec classification run in
+  `pnpm test` and as a named step of the required `JS/TS` job in `ci.yml`.
+
 ## Steps
 
 1. Contract and registry, with types only, and the `FeedAdapter` declarations over today's
@@ -153,19 +206,22 @@ gates to keep in step. Generalising it once leaves one.
 
 ## Acceptance criteria
 
-- [ ] `core/adapters/contract.ts` exists; `StorefrontAdapter` and `FeedAdapter` both extend its
+- [x] `core/adapters/contract.ts` exists; `StorefrontAdapter` and `FeedAdapter` both extend its
       `Adapter`. Every feed ecosystem declares its capabilities; the admin feeds API answers as
       before (worker tests unchanged).
-- [ ] A-17a's rule table and its tests are moved into `core/storefront/rules/appStore.ts`, with
-      no change to their contents; there is one gate engine in the tree.
-- [ ] The ledger is `store_operations` with `store`, `plane`, `vendor_status` and `vendor_code`;
+- [x] A-17a's rule table and its tests are moved into `core/storefront/rules/appStore.ts`, with
+      no change to their contents; there is one gate engine in the tree. (Then two rules changed
+      in a separate commit, per the lead: see Corrections.)
+- [x] The ledger is `store_operations` with `store`, `plane`, `vendor_status` and `vendor_code`;
       `TABLE_OWNERS` updated; the migration takes its number in merge order.
-- [ ] The conformance suite runs over the Apple adapter and every feed adapter, and is a required
+- [x] The conformance suite runs over the Apple adapter and every feed adapter, and is a required
       check. It fails if a rule allows a `DELETE` or a never-list path, if an `api` op has no rule
       or a rule no op, or if a typed step passes without confirmation.
-- [ ] THREAT-MODEL carries the S-15 §9 additions; README decision 7 carries decision 2.
-- [ ] No ASC behaviour changes: every existing A-17 and P5-02 test passes unchanged.
-- [ ] The green gate passes (`AGENTS.md`), including `gen:transcripts -- --check`.
+- [x] THREAT-MODEL carries the S-15 §9 additions; README decision 7 carries decision 2.
+- [x] No ASC behaviour changes: every existing A-17 and P5-02 test passes unchanged, except the
+      three changes the lead asked for (two typed release paths, 428, `Object.hasOwn`); see
+      Corrections.
+- [x] The green gate passes (`AGENTS.md`), including `gen:transcripts -- --check`.
 
 ## Verify
 

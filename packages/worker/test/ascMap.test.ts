@@ -34,7 +34,7 @@ import {
   backoffMillis,
   parseRateLimit,
 } from "../src/core/asc/client.js";
-import { pollBudget } from "../src/core/asc/budget.js";
+import { pollBudget } from "../src/core/storefront/budget.js";
 
 describe("app version states", () => {
   it("READY_FOR_SALE (legacy) and READY_FOR_DISTRIBUTION both yield live", () => {

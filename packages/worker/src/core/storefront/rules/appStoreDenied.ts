@@ -1,6 +1,6 @@
 /**
  * Every App Store Connect write operation the gate REFUSES, with the reason (A-17a; notes/S-14
- * §7.5). The gate itself is deny-by-default (`writeGate.ts`): this table changes nothing at run
+ * §7.5). The gate itself is deny-by-default (`appStore.ts`, on the engine `../gate.ts`): this table changes nothing at run
  * time. It exists so that every write operation of the pinned OpenAPI document is classified on
  * purpose, and `test/ascWriteGate.test.ts` requires each operation in
  * `test/fixtures/asc/openapi-writes.json` to appear EITHER in `ASC_WRITE_ALLOW` OR here, exactly

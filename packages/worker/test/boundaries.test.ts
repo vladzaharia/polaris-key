@@ -390,3 +390,69 @@ describe("service boundaries", () => {
     expect(violations).toEqual([]);
   });
 });
+
+/**
+ * A-18a (notes/S-15 §6.1): the adapter layer is Core, consumed by services, never the reverse.
+ *
+ *   - `core/adapters/` (the shared base) imports nothing at all: it is types and one pure helper.
+ *   - `core/storefront/` imports no service (Core's shared helpers, `crypto.ts` included, are fine).
+ *   - Its DECLARATION modules (the contract and registry, the store declarations, the rule
+ *     tables, the gate engine and matchers, the deep-link table, the CI allow-list, the listing
+ *     slot, typed confirmation) import only each other, `core/adapters/`, and type-only from
+ *     `@polaris-key/manifest`. That keeps them dependency-free, so the CLI's copy is a straight
+ *     serialise (the generated JSON A-18h emits).
+ */
+describe("the adapter layer (A-18a)", () => {
+  const CORE = join(WORKER_ROOT, "src", "core");
+  const resolveFrom = (file: string, specifier: string) =>
+    relative(join(WORKER_ROOT, "src"), join(dirname(file), specifier)).split(
+      /[\\/]/,
+    );
+  const RUNTIME = new Set(["ledger.ts", "audit.ts", "budget.ts"]);
+
+  it("core/adapters imports nothing", () => {
+    for (const file of walkTs(join(CORE, "adapters")))
+      expect(importsOf(readFileSync(file, "utf8")), file).toEqual([]);
+  });
+
+  it("core/storefront imports no service", () => {
+    const bad: string[] = [];
+    for (const file of walkTs(join(CORE, "storefront")))
+      for (const s of importsOf(readFileSync(file, "utf8"))) {
+        if (!s.startsWith(".")) continue;
+        const seg = resolveFrom(file, s);
+        if (seg[0] === "services" || seg[0] === "admin")
+          bad.push(`${relative(WORKER_ROOT, file)}: ${s}`);
+      }
+    expect(bad).toEqual([]);
+  });
+
+  it("the declaration modules import only the adapter layer (and manifest types)", () => {
+    const bad: string[] = [];
+    for (const file of walkTs(join(CORE, "storefront"))) {
+      const name = relative(join(CORE, "storefront"), file);
+      if (RUNTIME.has(name)) continue;
+      const source = readFileSync(file, "utf8");
+      for (const s of importsOf(source)) {
+        if (!s.startsWith(".")) {
+          const typeOnly = new RegExp(
+            `import\\s+type\\s[^;]*from\\s+["']${s.replace(/[/.]/g, "\\$&")}["']`,
+          ).test(source);
+          if (s === "@polaris-key/manifest" && typeOnly) continue;
+          bad.push(`${name}: ${s}`);
+          continue;
+        }
+        const seg = resolveFrom(file, s);
+        if (
+          seg[0] === "core" &&
+          (seg[1] === "adapters" ||
+            (seg[1] === "storefront" &&
+              !RUNTIME.has(seg.slice(2).join("/").replace(/\.js$/, ".ts"))))
+        )
+          continue;
+        bad.push(`${name}: ${s}`);
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+});

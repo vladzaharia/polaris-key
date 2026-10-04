@@ -233,7 +233,7 @@ notifications, TestFlight groups and testers, and the free price and availabilit
 **New app** wizard in Platform → Store connections drives them; they work on their own too. Each one
 that writes needs an `Idempotency-Key` header, a UUID per intent: retrying with the same key
 answers the stored result (`outcome: "replayed"`) instead of writing twice, and a different body
-under a used key is 409 `idempotency_conflict`. Without the header the answer is 422
+under a used key is 409 `idempotency_conflict`. Without the header the answer is 428
 `idempotency_key_required`, and nothing is sent.
 
 | `POST`                            | Body                                             | What it does                                                                                                |
@@ -307,7 +307,7 @@ Uploading the build stays in CI; everything after the upload is here.
 | `distribute/submission/cancel`      | `{ submissionId }`                                                             | `PATCH /v1/reviewSubmissions/{id}` `canceled: true`                                              |
 
 **Each write needs an `Idempotency-Key` header**, a fresh UUID per thing you mean to do; without
-one the answer is 422 `idempotency_key_required`. Sending the same request again with the same key
+one the answer is 428 `idempotency_key_required`. Sending the same request again with the same key
 answers what happened the first time without calling Apple (`outcome: "replayed"`); the same key
 with a different body is 409 `idempotency_conflict`. Before any write the handler looks the object
 up the way Apple allows (the version by its string, the build in the group, the open submission),
