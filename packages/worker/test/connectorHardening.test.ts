@@ -155,7 +155,7 @@ describe("App Store Connect client", () => {
     const seen: RequestInit[] = [];
     const c = asc(loopback(seen));
     await c.get(ascPath("apps", "a1"));
-    // Writes the gate admits (core/asc/writeGate.ts); a refused one never reaches fetch.
+    // Writes the gate admits (core/storefront/rules/appStore.ts); a refused one never reaches fetch.
     await c.patch(ascPath("betaGroups", "g1"), {
       data: { type: "betaGroups", id: "g1", attributes: { name: "QA" } },
     });

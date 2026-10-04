@@ -53,16 +53,16 @@ An adapter never re-implements the shared pieces:
 ## One integration pattern
 
 `FeedAdapter` extends `Adapter<Id, Op>` from `packages/worker/src/core/adapters/contract.ts`, the
-base the storefront adapters extend too (A-18a, from the S-15 storefront spike). Both families
-have the same four pieces:
+base the storefront adapters extend too (`packages/worker/src/core/storefront/adapter.ts`, A-18a).
+Both families have the same pieces:
 
-| Piece                    | Package feeds                                                            | Storefronts (A-18a, planned)                   |
-| ------------------------ | ------------------------------------------------------------------------ | ---------------------------------------------- |
-| The adapter interface    | `FeedAdapter`, one directory per ecosystem                               | `StorefrontAdapter`, one per store             |
-| A capability declaration | `capabilities.ops`: one `Support` per operation, plus the protocol facts | `capabilities.ops`: one `Support` per store op |
-| A shared gate            | the access ladder (`feedRoute` and `authorizeFeedRead`)                  | the store-agnostic write gate                  |
-| A shared ledger          | the render queue and its stamps (`registry_render_queue`, R2)            | `store_operations`                             |
-| A conformance suite      | `test/feedAdapters.test.ts`                                              | the same model, over every storefront adapter  |
+| Piece                    | Package feeds                                                                            | Storefronts (A-18a)                                                                           |
+| ------------------------ | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| The adapter interface    | `FeedAdapter`, one directory per ecosystem                                               | `StorefrontAdapter`, one declaration per store (`core/storefront/stores/`), one registry line |
+| A capability declaration | `capabilities.ops`: one `Support` per operation, plus the protocol facts                 | `capabilities.ops`: one `Support` per store op                                                |
+| A shared gate            | the access ladder (`feedRoute` and `authorizeFeedRead`)                                  | the store-agnostic write gate (`core/storefront/gate.ts`) and a rule table per store          |
+| A shared ledger          | the render queue and its stamps (`registry_render_queue`, R2)                            | `store_operations`                                                                            |
+| A conformance suite      | `test/feedAdapters.test.ts` (and items 3 and 7 of `test/storefront/conformance.test.ts`) | `test/storefront/conformance.test.ts`, over every storefront adapter                          |
 
 A feed's operations are `render`, `serve`, `auth`, `yank`, `unyank`, `deprecate` and `setup`. A
 feed writes a `FeedAdapterSpec`, and `defineFeedAdapter` derives the base's parts from it: `serve`

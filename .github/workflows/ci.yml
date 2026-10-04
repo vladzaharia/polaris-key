@@ -28,6 +28,12 @@ jobs:
       - run: pnpm build
       - run: pnpm typecheck
       - run: pnpm test
+      # Adapter conformance (A-18a, notes/S-15 §6.6): every storefront and feed adapter against the
+      # shared contract, and every write of each store's pinned vendor spec classified (allowed or
+      # denied with a reason). `pnpm test` runs these too; this step names them, so a failing
+      # adapter is legible at a glance and the check is part of this required job.
+      - name: Adapter conformance and spec classification
+        run: pnpm --filter @polaris-key/worker exec vitest run test/storefront/ test/ascWriteGate.test.ts test/feedAdapters.test.ts
       # Parity gate: every SDK's parity.json lists every feature in
       # conformance/parity/features.json, each implemented entry has a test tagged
       # `@pkey-feature <id>`, each N/A is one the registry allows, and each planned entry names an

@@ -365,7 +365,7 @@ describe("setup/notifications-url", () => {
   it("needs an Idempotency-Key, and sends nothing without one", async () => {
     const w = await world();
     const r = await call(w, "/setup/notifications-url", {}, null);
-    expect(r.status).toBe(422);
+    expect(r.status).toBe(428);
     expect(r.json.reason).toBe("idempotency_key_required");
     expect(w.setup.log).toEqual([]);
   });

@@ -15,7 +15,7 @@ import {
   ASC_CATALOG_READS,
 } from "../../commerce/appleCatalog.js";
 import { pollAsc } from "./poll.js";
-import { readRate } from "../../../../core/asc/budget.js";
+import { readRate } from "../../../../core/storefront/budget.js";
 import { platformPin } from "../../../../core/platformCredentials.js";
 import {
   ASC_CONNECTOR,
@@ -76,7 +76,9 @@ export const ascConnector: DistributionConnector = {
             webhookSecretCredential: setup.webhookSecretId,
           }
         : null,
-      rate: setup ? await readRate(env, product, setup.credential, now) : null,
+      rate: setup
+        ? await readRate(env, "app-store", product, setup.credential, now)
+        : null,
       objects: objects.map(objectView),
       unresolved: objects.filter((o) => o.release_id === null).length,
       events: (await listEvents(db, product, ASC_CONNECTOR)).map(eventView),

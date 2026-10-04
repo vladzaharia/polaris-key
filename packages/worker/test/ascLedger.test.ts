@@ -9,30 +9,51 @@ import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import type { AdminSession } from "../src/admin/session.js";
+import type { Env } from "../src/env.js";
 import {
-  ascOpId,
+  storeOpId as ascOpId,
   beginStoreOperation,
   getStoreOperation,
   isAmbiguousFailure,
   listStoreOperations,
-  performAscWrite,
-  type AscOpKey,
-  type AscWriteStep,
-} from "../src/core/asc/ledger.js";
-import { projectAscResource } from "../src/core/asc/audit.js";
+  performStoreWrite as performAscWrite,
+  type StoreOpKey as AscOpKey,
+  type StoreWriteStep as AscWriteStep,
+} from "../src/core/storefront/ledger.js";
+import {
+  projectStoreResource,
+  type StoreResource,
+} from "../src/core/storefront/audit.js";
 import {
   budgetAllows,
   pollBudget,
-  readRate,
-  recordTeamRate,
+  readRate as readStoreRate,
+  recordTeamRate as recordStoreTeamRate,
   TEAM_RATE_KEY,
-  writeRate,
-} from "../src/core/asc/budget.js";
+  writeRate as writeStoreRate,
+  type BudgetKey,
+  type StoreRate,
+} from "../src/core/storefront/budget.js";
 import {
   AscError,
   AscWriteDenied,
   type AscResource,
 } from "../src/core/asc/client.js";
+
+// A-18a: the ledger, projection and budget are store-agnostic; these are the App Store's.
+const projectAscResource = (r: StoreResource | null) =>
+  projectStoreResource("app-store", r);
+const readRate = (env: Env, product: string, key: BudgetKey, now: number) =>
+  readStoreRate(env, "app-store", product, key, now);
+const writeRate = (
+  env: Env,
+  product: string,
+  key: BudgetKey,
+  rate: StoreRate | null,
+  now: number,
+) => writeStoreRate(env, "app-store", product, key, rate, now);
+const recordTeamRate = (env: Env, rate: StoreRate | null, now: number) =>
+  recordStoreTeamRate(env, "app-store", rate, now);
 
 const SESSION: AdminSession = {
   sub: "u1",
@@ -44,6 +65,7 @@ const SESSION: AdminSession = {
 };
 
 const TEAM_KEY: AscOpKey = {
+  store: "app-store",
   scope: "team",
   product: null,
   op: "bundle_id.register",
@@ -273,6 +295,7 @@ describe("performAscWrite", () => {
     const db = makeTestDb();
     await seedProduct(db, "djdl");
     const key: AscOpKey = {
+      store: "app-store",
       scope: "product",
       product: "djdl",
       op: "beta_group.create",
