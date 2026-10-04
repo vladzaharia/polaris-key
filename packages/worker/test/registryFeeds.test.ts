@@ -374,26 +374,17 @@ describe("feedRefusal", () => {
 
 // ── D1 ───────────────────────────────────────────────────────────────────────────────────────
 
-/** F-03's tables as plans/F-01.md §6.4 writes them (F-03 owns the migration). */
-const PLAN_DDL = [
-  `CREATE TABLE dist_registry_owners (product TEXT PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 0,
-     version INTEGER NOT NULL DEFAULT 1, updated_at INTEGER NOT NULL, updated_by TEXT)`,
-  `CREATE TABLE dist_registry_feeds (product TEXT NOT NULL, ecosystem TEXT NOT NULL,
-     enabled INTEGER NOT NULL DEFAULT 0,
-     access_mode TEXT NOT NULL DEFAULT 'public' CHECK (access_mode IN ('public','authenticated','licensed','entitled')),
-     namespace_json TEXT NOT NULL, max_package_bytes INTEGER NOT NULL,
-     upstream TEXT NOT NULL DEFAULT 'none' CHECK (upstream = 'none'),
-     claims_json TEXT NOT NULL DEFAULT '[]', ext_json TEXT NOT NULL DEFAULT '{}',
-     version INTEGER NOT NULL DEFAULT 1, updated_at INTEGER NOT NULL, updated_by TEXT,
-     PRIMARY KEY (product, ecosystem))`,
-  `CREATE TABLE dist_registry_policy (ecosystem TEXT PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 1,
-     max_package_bytes_ceiling INTEGER NOT NULL, version INTEGER NOT NULL DEFAULT 1,
-     updated_at INTEGER NOT NULL, updated_by TEXT)`,
+/** F-03's tables (migration 0058_d_registry.sql), dropped to model a database without them. */
+const REGISTRY_TABLES = [
+  "dist_registry_feeds",
+  "dist_registry_owners",
+  "dist_registry_policy",
 ];
 
 describe("d1RegistrySettings", () => {
-  it("reads missing tables (before F-03) as no rows, so every feed is off", async () => {
+  it("reads missing tables as no rows, so every feed is off", async () => {
     const db = makeTestDb();
+    for (const t of REGISTRY_TABLES) await db.run(`DROP TABLE ${t}`);
     const s = await d1RegistrySettings(db).settings("djdl", "npm");
     expect(s).toEqual({ policy: null, owner: null, feed: null });
     expect(
@@ -407,11 +398,34 @@ describe("d1RegistrySettings", () => {
     ).toEqual({ ok: false, challenge: "not-found" });
   });
 
-  it("reads the plan's columns once the tables exist", async () => {
+  it("an unconfigured owner on the migrated schema has the seeded policy and no owner or feed row", async () => {
     const db = makeTestDb();
-    for (const sql of PLAN_DDL) await db.run(sql);
+    expect(await d1RegistrySettings(db).settings("djdl", "npm")).toEqual({
+      policy: {
+        ecosystem: "npm",
+        enabled: true,
+        maxPackageBytesCeiling: 52428800,
+      },
+      owner: null,
+      feed: null,
+    });
+    expect(
+      await authorizeFeedRead(
+        { db, services: ON },
+        { kind: "anonymous" },
+        "djdl",
+        "npm",
+        null,
+      ),
+    ).toEqual({ ok: false, challenge: "not-found" });
+  });
+
+  it("reads the plan's columns from F-03's migrated tables", async () => {
+    const db = makeTestDb();
     await db.run(
-      "INSERT INTO dist_registry_policy (ecosystem, enabled, max_package_bytes_ceiling, updated_at) VALUES ('npm', 1, 52428800, 0)",
+      `INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
+         default_max_offline_days, default_device_limit, created_at, modified_at)
+       VALUES ('djdl', 'DJDL', 'djdl-2026', 'pub', '0.0.0', '99.0.0', 30, 5, 1, 1)`,
     );
     await db.run(
       "INSERT INTO dist_registry_owners (product, enabled, updated_at) VALUES ('djdl', 1, 0)",
@@ -439,8 +453,11 @@ describe("d1RegistrySettings", () => {
       },
     });
     expect(await d1RegistrySettings(db).settings("djdl", "pypi")).toMatchObject(
-      { policy: null, feed: null },
+      { policy: { ecosystem: "pypi", enabled: true }, feed: null },
     );
+    expect(
+      await d1RegistrySettings(db).settings("djdl", "cargo"),
+    ).toMatchObject({ policy: null, feed: null });
   });
 
   it("propagates any error other than a missing table", async () => {

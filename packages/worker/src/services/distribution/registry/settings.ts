@@ -8,9 +8,9 @@
  *   - `dist_registry_feeds` (per product and ecosystem): the feed's `enabled`, `access_mode`,
  *     namespace and per-ecosystem extensions.
  *
- * F-03 owns those tables and their migration (§6.4). Until it lands they do not exist, and
- * `d1RegistrySettings` reads a missing table as "no row": every check fails closed, so the host
- * answers the not-found for every feed. Nothing here writes them.
+ * F-03 owns those tables and their migration (§6.4, `0058_d_registry.sql`). A database without
+ * them (an unapplied migration) still reads each missing table as "no row": every check fails
+ * closed, so the host answers the not-found for every feed. Nothing here writes them.
  *
  * THE CACHE (§6.7): settings are held per isolate for `REGISTRY_SETTINGS_TTL_SECONDS`, so a
  * read costs no D1 query in the steady state, and a disabled feed, a turned-off `packageFeeds`
