@@ -127,8 +127,63 @@ public struct PolarisLoginView<Content: View>: View {
     }
 
     public var body: some View {
+        PolarisGateSurface(
+            status: model.state.status,
+            allowedRange: model.state.allowedRange,
+            isWorking: model.isWorking,
+            lastError: model.lastError,
+            licenseKey: $licenseKey,
+            theme: theme,
+            onSignIn: onSignIn,
+            onActivate: { key in Task { await model.activate(key: key) } },
+            onRefresh: { Task { await model.refresh() } },
+            content: content
+        )
+        .task { await model.reload() }
+    }
+}
+
+/// The gate's presentation for one snapshot of the model: which surface shows for a status, and how
+/// it is drawn. Split from `PolarisLoginView` so previews can render every state without a live
+/// `LicenseClient`; the routing is exactly the view's.
+///
+/// Layout: every full-screen state centres its card horizontally and vertically, at a comfortable
+/// maximum width (`PolarisGateLayout.cardMaxWidth`) rather than edge to edge on iPad and macOS, and
+/// scrolls instead of clipping when Dynamic Type makes it taller than the screen.
+struct PolarisGateSurface<Content: View>: View {
+    let status: LicenseStatus
+    let allowedRange: AllowedRange?
+    let isWorking: Bool
+    let lastError: String?
+    @Binding var licenseKey: String
+    let theme: PolarisTheme
+    let onSignIn: () -> Void
+    let onActivate: (String) -> Void
+    let onRefresh: () -> Void
+    let content: () -> Content
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.polarisKeyBranding) private var environmentBranding
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .body) private var scaledCardPadding: CGFloat = 28
+
+    private var branding: PolarisBranding { theme.resolvedBranding(environmentBranding) }
+    private var palette: PolarisPalette {
+        theme.resolvedPalette(for: colorScheme, branding: environmentBranding)
+    }
+    /// The tint the gate imposes, or nil to inherit the host app's.
+    private var tint: Color? {
+        theme.setsTint(branding: environmentBranding) ? palette.accent : nil
+    }
+    private var accentTextTint: Color? { tint == nil ? nil : palette.accentText }
+    private var cardPadding: CGFloat { min(scaledCardPadding, PolarisGateLayout.cardPaddingMax) }
+    private func font(_ role: PolarisTypography.Role) -> Font {
+        theme.resolvedTypography(branding: environmentBranding).font(role)
+    }
+
+    var body: some View {
         Group {
-            switch model.state.status {
+            switch status {
             case .ok, .notApplicable:
                 // §5 / D-08 — a product that does not run the license service has no gate to
                 // show. Rendering the activation form there would demand a licence that does not
@@ -141,87 +196,128 @@ public struct PolarisLoginView<Content: View>: View {
             case .revoked, .expired, .versionTooOld, .versionTooNew, .channelNotEntitled:
                 // One shared mapping for every terminal "message" surface — see
                 // `PolarisCopy.message(for:allowedRange:)`.
-                if let copy = theme.copy.message(
-                    for: model.state.status, allowedRange: model.state.allowedRange)
-                {
+                if let copy = theme.copy.message(for: status, allowedRange: allowedRange) {
                     messageScreen(
-                        title: copy.title, subtitle: copy.subtitle, symbol: copy.symbol)
+                        title: copy.title, subtitle: copy.subtitle, symbol: copy.symbol,
+                        tone: status == .revoked ? palette.danger : palette.warning)
                 }
             }
         }
-        .task { await model.reload() }
     }
 
     // ── needs-activation: OIDC button + license-key card ──
     private var activationScreen: some View {
-        cardShell {
-            theme.logo()
-                .accessibilityHidden(true)
-            Text(theme.copy.welcomeTitle)
-                .font(.title2).bold()
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityAddTraits(.isHeader)
-            Text(theme.copy.welcomeSubtitle)
-                .font(.subheadline).foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Button(action: onSignIn) {
-                Text(theme.copy.signInButton)
-                    .frame(maxWidth: .infinity)
+        centredCard(badge: theme.poweredBy) {
+            VStack(spacing: 10) {
+                logo
+                    .padding(.bottom, 6)
+                Text(theme.copy.welcomeTitle)
+                    .font(font(.title)).foregroundStyle(palette.textStrong)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
+                Text(theme.copy.welcomeSubtitle)
+                    .font(font(.subtitle)).foregroundStyle(palette.textMuted)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(theme.accent)
-            .disabled(model.isWorking)
-            .accessibilityLabel(theme.copy.signInButton)
-            .accessibilityHint("Opens single sign-on to license \(theme.copy.productName).")
 
-            HStack {
-                divider
-                Text(theme.copy.orDividerLabel).font(.caption).foregroundStyle(.secondary)
-                divider
-            }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(theme.copy.orDividerLabel)
-
-            VStack(spacing: 8) {
-                #if os(iOS)
-                TextField(theme.copy.licenseKeyPlaceholder, text: $licenseKey)
-                    .textFieldStyle(.roundedBorder)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                    .accessibilityLabel(theme.copy.licenseKeyPlaceholder)
-                    .accessibilityHint("Enter a license key to activate without signing in.")
-                #else
-                TextField(theme.copy.licenseKeyPlaceholder, text: $licenseKey)
-                    .textFieldStyle(.roundedBorder)
-                    .autocorrectionDisabled()
-                    .accessibilityLabel(theme.copy.licenseKeyPlaceholder)
-                    .accessibilityHint("Enter a license key to activate without signing in.")
-                #endif
-                Button(theme.copy.activateButton) {
-                    let key = licenseKey
-                    Task { await model.activate(key: key) }
+            VStack(spacing: 14) {
+                Button(action: onSignIn) {
+                    Text(theme.copy.signInButton)
+                        .font(font(.body))
+                        .foregroundStyle(palette.onAccent)
+                        .frame(maxWidth: .infinity)
                 }
-                .frame(maxWidth: .infinity)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .buttonBorderShape(.roundedRectangle(radius: PolarisGateLayout.controlRadius))
+                .modifier(OptionalTint(color: tint))
+                .disabled(isWorking)
+                .accessibilityLabel(theme.copy.signInButton)
+                .accessibilityHint("Opens single sign-on to license \(theme.copy.productName).")
+
+                HStack(spacing: 12) {
+                    divider
+                    Text(theme.copy.orDividerLabel)
+                        .font(font(.caption)).foregroundStyle(palette.textMuted)
+                        .layoutPriority(1)
+                    divider
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(theme.copy.orDividerLabel)
+
+                licenseKeyField
+
+                Button {
+                    onActivate(licenseKey)
+                } label: {
+                    Text(theme.copy.activateButton)
+                        .font(font(.body))
+                        .frame(maxWidth: .infinity)
+                }
                 .buttonStyle(.bordered)
-                .disabled(model.isWorking || licenseKey.isEmpty)
+                .controlSize(.large)
+                .buttonBorderShape(.roundedRectangle(radius: PolarisGateLayout.controlRadius))
+                .modifier(OptionalTint(color: accentTextTint))
+                .disabled(isWorking || licenseKey.isEmpty)
                 .accessibilityLabel(theme.copy.activateButton)
                 .accessibilityHint("Activates the license key you entered above.")
             }
 
-            if let err = model.lastError {
-                Text(err)
-                    .font(.caption).foregroundStyle(.red)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityAddTraits(.isStaticText)
+            if let err = lastError {
+                Label {
+                    Text(err)
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .accessibilityHidden(true)
+                }
+                .font(font(.caption)).foregroundStyle(palette.danger)
+                .multilineTextAlignment(.center)
+                .accessibilityAddTraits(.isStaticText)
             }
-            if model.isWorking {
+            if isWorking {
                 ProgressView()
                     .accessibilityLabel("Working")
             }
+        }
+    }
+
+    private var licenseKeyField: some View {
+        let shape = RoundedRectangle(
+            cornerRadius: PolarisGateLayout.controlRadius, style: .continuous)
+        return TextField(theme.copy.licenseKeyPlaceholder, text: $licenseKey)
+            .textFieldStyle(.plain)
+            .font(font(.body))
+            .foregroundStyle(palette.textDefault)
+            .multilineTextAlignment(.center)
+            .autocorrectionDisabled()
+            #if os(iOS)
+                .textInputAutocapitalization(.never)
+            #endif
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .background(shape.fill(palette.page))
+            .overlay(shape.strokeBorder(palette.borderStrong, lineWidth: 1))
+            .modifier(OptionalTint(color: tint == nil ? nil : palette.focus))
+            .accessibilityLabel(theme.copy.licenseKeyPlaceholder)
+            .accessibilityHint("Enter a license key to activate without signing in.")
+    }
+
+    /// The product's logo, else the branding's default: a neutral key glyph in the tint natively,
+    /// the bit-less Pinned K under `.polarisKey`.
+    @ViewBuilder private var logo: some View {
+        if let custom = theme.logoOverride {
+            custom()
+                .accessibilityHidden(true)
+        } else if branding == .polarisKey {
+            PolarisMark(accessibilityLabel: nil)
+        } else {
+            Image(systemName: "key.fill")
+                .font(.largeTitle).imageScale(.large)
+                .foregroundStyle(.tint)
+                .accessibilityHidden(true)
         }
     }
 
@@ -230,85 +326,261 @@ public struct PolarisLoginView<Content: View>: View {
         VStack(spacing: 0) {
             banner(
                 title: theme.copy.graceTitle, subtitle: theme.copy.graceSubtitle,
-                symbol: "wifi.exclamationmark", tint: .orange)
+                symbol: "wifi.exclamationmark")
             content()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
     // ── shared building blocks ──
-    private func messageScreen(title: String, subtitle: String, symbol: String) -> some View {
-        cardShell {
+    private func messageScreen(title: String, subtitle: String, symbol: String, tone: Color)
+        -> some View
+    {
+        centredCard(badge: nil) {
             // Group the glyph + title + body so VoiceOver reads them as one status card
             // ("<title>. <subtitle>.") instead of three disjoint swipes; the glyph carries no
             // independent meaning, so it folds into the combined label.
-            VStack(spacing: 12) {
+            VStack(spacing: 10) {
                 Image(systemName: symbol)
-                    .font(.system(size: 40)).foregroundStyle(theme.accent)
+                    .font(.largeTitle).imageScale(.large)
+                    .foregroundStyle(tone)
+                    .padding(.bottom, 6)
                     .accessibilityHidden(true)
                 Text(title)
-                    .font(.title2).bold()
+                    .font(font(.title)).foregroundStyle(palette.textStrong)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
                 Text(subtitle)
-                    .font(.subheadline).foregroundStyle(.secondary)
+                    .font(font(.subtitle)).foregroundStyle(palette.textMuted)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityElement(children: .combine)
 
-            Button(theme.copy.retryButton) { Task { await model.refresh() } }
-                .buttonStyle(.bordered)
-                .disabled(model.isWorking)
-                .accessibilityLabel(theme.copy.retryButton)
-                .accessibilityHint("Re-checks your license with the server.")
-        }
-    }
-
-    private func cardShell<C: View>(@ViewBuilder _ inner: () -> C) -> some View {
-        VStack(spacing: 16) { inner() }
-            .padding(28)
-            .frame(maxWidth: 360)
-            .background(.background)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(.quaternary, lineWidth: 1)
-            )
-            .padding()
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private func banner(title: String, subtitle: String, symbol: String, tint: Color)
-        -> some View
-    {
-        HStack(spacing: 10) {
-            Image(systemName: symbol).foregroundStyle(tint)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.subheadline).bold()
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(subtitle)
-                    .font(.caption).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+            Button {
+                onRefresh()
+            } label: {
+                Text(theme.copy.retryButton)
+                    .font(font(.body))
+                    .frame(maxWidth: .infinity)
             }
-            // Combine the title + body into a single announced label; flag it as static text so
-            // VoiceOver reads the grace state when the banner appears.
-            .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(.isStaticText)
-            Spacer()
-            Button(theme.copy.reconnectButton) { Task { await model.refresh() } }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .disabled(model.isWorking)
-                .accessibilityLabel(theme.copy.reconnectButton)
-                .accessibilityHint("Re-checks your license to leave the offline grace period.")
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .buttonBorderShape(.roundedRectangle(radius: PolarisGateLayout.controlRadius))
+            .modifier(OptionalTint(color: accentTextTint))
+            .disabled(isWorking)
+            .accessibilityLabel(theme.copy.retryButton)
+            .accessibilityHint("Re-checks your license with the server.")
         }
-        .padding(10)
-        .background(tint.opacity(0.12))
+    }
+
+    /// A card centred on the page, horizontally and vertically, at the comfortable maximum width;
+    /// it scrolls (still centred when it fits) once Dynamic Type makes it taller than the screen.
+    private func centredCard<C: View>(
+        badge: PolarisPoweredBy?, @ViewBuilder _ inner: () -> C
+    ) -> some View {
+        let shape = RoundedRectangle(cornerRadius: PolarisGateLayout.cardRadius, style: .continuous)
+        let stack = VStack(spacing: 24) {
+            VStack(spacing: 24) { inner() }
+                .padding(cardPadding)
+                .frame(maxWidth: PolarisGateLayout.cardMaxWidth)
+                .background(shape.fill(palette.raised))
+                .overlay(shape.strokeBorder(palette.borderSubtle, lineWidth: 1))
+            if let badge {
+                PolarisPoweredByBadge(layout: badge.layout, treatment: badge.treatment)
+            }
+        }
+        .padding(.horizontal, PolarisGateLayout.pagePadding)
+        .padding(.vertical, 32)
+        return GeometryReader { proxy in
+            ScrollView(.vertical) {
+                stack
+                    .frame(maxWidth: .infinity, minHeight: proxy.size.height)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+        }
+        .background(palette.page.ignoresSafeArea())
+    }
+
+    private func banner(title: String, subtitle: String, symbol: String) -> some View {
+        let glyph = Image(systemName: symbol)
+            .font(font(.body))
+            .foregroundStyle(palette.warning)
+            .accessibilityHidden(true)
+        let text = VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(font(.bannerTitle)).foregroundStyle(palette.textStrong)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(subtitle)
+                .font(font(.caption)).foregroundStyle(palette.textMuted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        // Combine the title + body into a single announced label; flag it as static text so
+        // VoiceOver reads the grace state when the banner appears.
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isStaticText)
+        let button = Button(theme.copy.reconnectButton) { onRefresh() }
+            .font(font(.body))
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.roundedRectangle(radius: PolarisGateLayout.controlRadius))
+            .modifier(OptionalTint(color: accentTextTint))
+            .controlSize(.small)
+            .disabled(isWorking)
+            .accessibilityLabel(theme.copy.reconnectButton)
+            .accessibilityHint("Re-checks your license to leave the offline grace period.")
+
+        return Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                // At accessibility sizes a single row squeezes the copy into a sliver: stack it.
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .firstTextBaseline, spacing: 10) { glyph; text }
+                    button
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                HStack(spacing: 12) {
+                    glyph
+                    text
+                    Spacer(minLength: 12)
+                    button
+                }
+            }
+        }
+        .frame(maxWidth: PolarisGateLayout.bannerMaxWidth)
+        .padding(.horizontal, PolarisGateLayout.pagePadding)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity)
+        .background(bannerGround.ignoresSafeArea(edges: .top))
+        .overlay(alignment: .bottom) { divider }
         .accessibilityElement(children: .contain)
     }
 
-    private var divider: some View { Rectangle().fill(.quaternary).frame(height: 1) }
+    @ViewBuilder private var bannerGround: some View {
+        if palette.prefersMaterials {
+            Rectangle().fill(.bar)
+        } else {
+            Rectangle().fill(palette.warningSubtle)
+        }
+    }
+
+    private var divider: some View { Rectangle().fill(palette.borderSubtle).frame(height: 1) }
 }
+
+/// The gate's layout constants: one corner radius per element kind and the comfortable widths.
+enum PolarisGateLayout {
+    /// The card's maximum width: comfortable on iPad and macOS, full width (minus the page
+    /// padding) on iPhone.
+    static let cardMaxWidth: CGFloat = 420
+    /// The grace banner's content width: centred, never edge to edge on a wide window.
+    static let bannerMaxWidth: CGFloat = 680
+    static let cardRadius: CGFloat = 20
+    static let controlRadius: CGFloat = 10
+    static let pagePadding: CGFloat = 20
+    /// The card padding scales with Dynamic Type up to this, so large text keeps its width.
+    static let cardPaddingMax: CGFloat = 36
+}
+
+/// `.tint(color)` when a colour is given; otherwise the view inherits the environment's tint, so
+/// a native gate takes the host app's accent.
+private struct OptionalTint: ViewModifier {
+    let color: Color?
+
+    func body(content: Content) -> some View {
+        if let color {
+            content.tint(color)
+        } else {
+            content
+        }
+    }
+}
+
+#if DEBUG
+    /// Every gate surface, native (the default) and with the Polaris Key branding, in dark and
+    /// light, at iPhone, iPad and Mac sizes and at a large accessibility Dynamic Type size. Xcode
+    /// renders these from the package; they need no `LicenseClient`.
+    struct PolarisGateSurface_Previews: PreviewProvider {
+        static func surface(
+            _ status: LicenseStatus, theme: PolarisTheme = PolarisTheme(),
+            lastError: String? = nil, allowedRange: AllowedRange? = nil
+        ) -> some View {
+            PolarisGateSurface(
+                status: status, allowedRange: allowedRange, isWorking: false,
+                lastError: lastError, licenseKey: .constant(""), theme: theme,
+                onSignIn: {}, onActivate: { _ in }, onRefresh: {},
+                content: {
+                    Text("Product UI").font(.title).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                })
+        }
+
+        static let aurora = PolarisTheme(copy: PolarisCopy(productName: "Aurora"))
+        static let sizes: [(String, CGSize)] = [
+            ("iPhone", CGSize(width: 393, height: 852)),
+            ("iPad", CGSize(width: 820, height: 1180)),
+            ("Mac", CGSize(width: 900, height: 640)),
+        ]
+
+        static var previews: some View {
+            ForEach(PolarisBranding.allCases, id: \.self) { branding in
+                ForEach([ColorScheme.dark, .light], id: \.self) { scheme in
+                    let suffix = "\(branding.rawValue), \(scheme == .dark ? "dark" : "light")"
+                    surface(.needsActivation, theme: aurora)
+                        .polarisKeyBranding(branding)
+                        .environment(\.colorScheme, scheme)
+                        .previewLayout(.fixed(width: 393, height: 852))
+                        .previewDisplayName("Activation (\(suffix))")
+                    surface(.grace)
+                        .polarisKeyBranding(branding)
+                        .environment(\.colorScheme, scheme)
+                        .previewLayout(.fixed(width: 393, height: 852))
+                        .previewDisplayName("Grace (\(suffix))")
+                    surface(.revoked)
+                        .polarisKeyBranding(branding)
+                        .environment(\.colorScheme, scheme)
+                        .previewLayout(.fixed(width: 393, height: 852))
+                        .previewDisplayName("Revoked (\(suffix))")
+                    surface(.versionTooOld, allowedRange: AllowedRange(min: "2.0.0"))
+                        .polarisKeyBranding(branding)
+                        .environment(\.colorScheme, scheme)
+                        .previewLayout(.fixed(width: 393, height: 852))
+                        .previewDisplayName("Version block (\(suffix))")
+                }
+            }
+
+            ForEach(sizes, id: \.0) { name, size in
+                surface(.needsActivation, theme: aurora)
+                    .previewLayout(.fixed(width: size.width, height: size.height))
+                    .previewDisplayName("Activation on \(name)")
+            }
+
+            surface(.needsActivation, theme: aurora, lastError: "That license key wasn't accepted.")
+                .environment(\.dynamicTypeSize, .accessibility3)
+                .previewLayout(.fixed(width: 393, height: 852))
+                .previewDisplayName("Activation, accessibility type")
+            surface(.grace)
+                .environment(\.dynamicTypeSize, .accessibility3)
+                .previewLayout(.fixed(width: 393, height: 852))
+                .previewDisplayName("Grace, accessibility type")
+
+            surface(
+                .needsActivation,
+                theme: PolarisTheme(
+                    branding: .polarisKey,
+                    copy: PolarisCopy(productName: "Aurora"), poweredBy: PolarisPoweredBy())
+            )
+            .previewLayout(.fixed(width: 393, height: 852))
+            .previewDisplayName("Branded with Powered-by badge")
+
+            surface(
+                .needsActivation,
+                theme: PolarisTheme(
+                    accent: .teal, copy: PolarisCopy(productName: "Aurora"),
+                    logo: { AnyView(Image(systemName: "leaf.fill").font(.system(size: 44))) }),
+                lastError: "That license key wasn't accepted."
+            )
+            .previewLayout(.fixed(width: 393, height: 852))
+            .previewDisplayName("Integrator accent and logo")
+        }
+    }
+#endif

@@ -1121,6 +1121,87 @@ attack (next section, Residual). Least privilege per store (App Manager team key
 Center Manager role) is documented for operators in `admin/secrets-and-keys.md` but cannot be
 verified by the Worker.
 
+### Platform store connections: team-level credentials (A-16)
+
+**What they are.** One credential per store held by the PLATFORM, not by a product (owner
+decision 2026-10-04): the App Store Connect team API key (`app-store.api-key`), the team In-App
+Purchase key (`app-store.in-app-purchase-key`), the Google Play developer account's service
+account (`google-play.service-account`), the seller's Partner Center app
+(`microsoft-store.partner-center`) and the Steam group's publisher key (`steam.publisher-key`).
+Each reaches **every app of the team, account, seller or group** — so its loss is the union of
+every product's outlet credential (A11, ranked with the release channel A3), and the Apple ones
+also every app's transaction history. Beside them, non-secret settings shared by every product:
+the Apple Team ID (App Attest's default), Google Play's RTDN push identity and the Play Integrity
+cloud project number.
+
+**What they are for.** Listing every app the team credential can see (with its release status),
+assigning an app to a product from that list, and a product's connector or commerce context
+falling back to the team credential when the product has no credential of the kind of its own.
+
+**The boundary**, each line enforced by a test (`test/platformStore*.test.ts`,
+`test/outletCredentialReach.test.ts`):
+
+- **Two sources, console first.** (a) `platform_credentials`, sealed under PLATFORM_KEK with the
+  AAD `pkey:v2:_platform:platform-credential:<id>` — `_platform` cannot be a product slug and the
+  kind is its own, so a blob copied into `outlet_credentials` or `product_secrets` opens nowhere;
+  (b) a Worker secret (`PLATFORM_ASC_API_KEY`, `PLATFORM_APP_STORE_SERVER_KEY`,
+  `PLATFORM_GOOGLE_SERVICE_ACCOUNT`, `PLATFORM_MS_PARTNER_CENTER`, `PLATFORM_STEAM_PUBLISHER_KEY`)
+  read only when no active console row exists. Both are validated by the kind's own
+  outlet-credential validator (the Google key must name Google's one token endpoint) on write and
+  again on every open. The KEK sweep counts and re-seals the table.
+- **The pin is the boundary.** A product may use a team credential ONLY for the one app a
+  platform admin assigned to it: its row in `platform_credential_pins` (the `appleId`, bundle id,
+  package name, Store ID or Steam app id) must equal the app the product is about to act on.
+  It is checked three times: by the connector's setup (no pin or a different pin → inert, the same
+  `pin_missing` / `pin_mismatch` reasons and 409s as P5-02f, nothing sent, nothing opened), by the
+  token helper BEFORE its memo or sealed cache (a cached team token is the same bearer for every
+  product, so a cache hit must never stand in for the pin), and by `openPlatformCredential`
+  itself, which refuses a product purpose whose pin does not match and audits the refusal.
+  `UNIQUE (credential_id, pin)` makes "one product per app" a table constraint, the assignment
+  route also refuses an app another product's OWN credential is pinned to, and the
+  outlet-credentials PUT refuses to pin a product's own key to an app the platform serves to
+  another product (409 `app_assigned_elsewhere`). Deleting a product deletes its pins.
+- **Own credentials first, never a fall-through.** A product holding any active credential of the
+  kind uses its own; an own credential that is unpinned or mis-pinned is inert on its own terms
+  and never silently switches to the team key.
+- **Platform-admin writes, metadata out.** `/manage/api/platform/store-connections/…` is
+  platform-admin only (403 otherwise, checked in the handler). Responses carry presence, source
+  (`console` / `secret`) and display metadata (key id, issuer id, client email, tenant, client and
+  seller ids) — never a key; a 422 names the field, never the value. Only the owner and that
+  handler name the writers (`putPlatformCredential`, `deletePlatformCredential`, `setPlatformPin`,
+  `clearPlatformPin`); only the owner, the KEK sweep and `deleteProduct` name the tables; only the
+  owner, `core/outletTokens.ts` and two reviewed Distribution files (the Microsoft Store token, the
+  Steam commerce key, both re-checked by the open) name `openPlatformCredential`.
+- **Every use and write audited.** A product open is a `platform_credential.use` row in that
+  product's trail; a team-wide open (the apps listing), every credential and setting write and
+  every assignment are rows of `platform_audit` (A-12's table, through `appendPlatformAudit`; read
+  by `GET /manage/api/platform/activity`, pruned with it after 180 days); an assignment is also
+  `outlet_credential.pin` in the product's trail. Audit payloads carry metadata and pins, never
+  key material. By design a token served from the per-isolate memo (App Store) or the sealed KV
+  cache (Google, Microsoft) is **not** audited — only the open that minted it is — exactly as for
+  product outlet credentials; the pin is checked before every such hit.
+- **Bounded, redirect-free reads.** The listings use each store's fixed host with
+  `redirect: "manual"` and capped bodies: App Store Connect `GET /v1/apps` (at most 5 pages of 200,
+  versions and TestFlight versions as includes, at most 20 phased-release reads); Play Reporting
+  `apps:search` (at most 3 pages) plus, only on an explicit `?tracks=1` and never from the
+  assignment path, at most 10 short edits that are deleted, never committed;
+  Partner Center `GET /v1.0/my/applications` (at most 5 pages of 100) plus at most 10 submission
+  reads; Steam `GetPartnerAppListForWebAPIKey` on the publisher host (the key in the query string,
+  as every Steam call). Results are cached 60 s in KV, keyed by the credential's version marker;
+  assignments are joined fresh from D1.
+
+**Residual risk.** A team credential is the widest key the platform holds: a `PLATFORM_KEK`
+compromise (A1) or a Worker-secret leak hands an attacker every app of the team, not one product.
+The admin plane (A4) can assign any visible app to any product, which is the intended power of a
+platform admin; the audit trail is the detection. A Worker secret sits in Cloudflare's secret
+store, outside the KEK and the console's rotation; prefer the console credential and keep the
+secret for bootstrap. The Play listing's opt-in track read (`?tracks=1`) opens short edits that share the service account's one-open-edit
+slot with that account's product connectors: a listing can invalidate an edit a poll holds at that
+moment (the poll fails and retries next tick). The Steam publisher key travels in query strings to
+Steam's publisher host by Steam's design. Least privilege per store (App Manager team key, the
+narrowest Play permissions, the Partner Center Manager role, a dedicated Steam publisher key) is
+the operator's to configure and cannot be verified by the Worker.
+
 ### Store connectors: App Store Connect (P5-02)
 
 **What it is.** `services/distribution/connectors/asc/` keeps a product's App Store and TestFlight
@@ -3016,6 +3097,79 @@ The Godot SDK reaches Android through `polaris-key-platform` (sdks/kotlin) and t
   (notes/S-06 §7): it gates In-App Updates (a forged Play claim only reaches Play's own API, which
   then refuses) and never authorises anything on the server.
 
+### Device trust levels: App Attest and Play Integrity (P6-02)
+
+A device is `basic` or `attested` (`devices.trust_level`). `attested` means the device passed Apple
+App Attest or Google Play Integrity against a challenge the Worker issued to it
+(`core/attestation.ts`); an operator's trust policy can require it for edge-mint, gated delivery
+and the commerce claim (`core/deviceTrust.ts`). What it buys: under open registration a script can
+mint any number of device tokens, but it cannot cheaply produce a Secure-Enclave-backed attestation
+for the product's App ID or a Play verdict for its package on a device meeting device integrity.
+What it does not buy: protection of the client itself (report §12), or anything on web, desktop or
+sideloaded builds, which cannot attest and stay `basic` by design.
+
+- **Fail closed on verification, fail open on policy.** Only a verdict that passed every check
+  raises a device; a refused one is recorded (`attestation_json`) and changes nothing, so a bad
+  attestation can neither raise nor lower a level. Policy defaults to `basic` everywhere, a corrupt
+  policy reads as the default, and a policy requiring `attested` only audits
+  (`device.trust.would_refuse`, deduplicated per device and operation per hour through a KV marker)
+  until the operator sets `enforce: true`. An outage of Google's decode endpoint is `503`, never
+  a rejection and never an attestation.
+- **Who chooses what is verified.** The App Attest RP ID is `<TeamID>.<bundleId>`: the Team ID is
+  operator-owned (the trust policy, written only by the platform-admin `trust-policy` resource, never
+  by a manifest), the bundle ids come from the live `app-store`/`testflight` outlets' identities
+  (manifest-owned). A repo writer can therefore name another bundle id, but an attestation for it
+  still needs a genuine install of an app of the operator's own team. The Play package and the
+  credential come from Distribution's own pin check (`resolvePlaySetup` through
+  `Delivery.attestationTargets`): an unpinned or mispinned `google-service-account` credential is
+  never used, and nothing is sent to Google. The root of trust for App Attest is the pinned Apple
+  App Attestation Root CA in source (fingerprint pinned by a test); test roots enter only through a
+  handler argument production dispatch never passes.
+- **Binding.** The client feeds the platform API
+  `requestHash = base64url(SHA-256("pkey-attest/1:<product>:<deviceId>:<challenge>"))`, recomputed by
+  the Worker from the stored binding, so a challenge or a verdict obtained for one device or product
+  cannot be redeemed for another. The challenge is consumed before verification (pass or fail) and
+  expires after five minutes (checked in code, not only by the KV TTL).
+- **A new token is a new install.** The device id is client-chosen. A keyless re-registration or a
+  licence (re)bind of an existing id mints a token without the old one, so it resets the level to
+  `basic` (`resetDeviceTrust`); otherwise anyone who learned an attested, licence-free device's id
+  could re-register it and inherit `attested`. A token rotation, which presents the old token,
+  keeps the level.
+- **Custody.** `core/attestation.ts` is the one Core file on the token-helper allowlist
+  (`test/outletCredentialReach.test.ts`, `TOKENS_IMPORT_ALLOW_FILES`): it calls `googleAccessToken`
+  at the Play Integrity scope for the pinned credential, never `openOutletCredential`, and only after
+  the device token and the per-device limit (`attest`, 4/hour, fail-closed) have passed, so an
+  unauthenticated caller cannot make it open (and audit) a credential. Raw attestation objects and
+  integrity tokens are never stored or logged; `attestation_json` keeps a verdict summary and the App
+  Attest public key (for future assertions).
+- **Parser surface.** The attestation object is attacker-supplied CBOR wrapping DER certificates.
+  `core/cbor.ts` (definite lengths, bounded depth, item count and sizes) and the Worker's one X.509 verifier, P6-01's `core/x509.ts` (strict DER, ECDSA P-256/P-384 only, the root pinned by bytes, an unknown critical extension fails the chain beyond the App Attest nonce OID, validity checked at the request time, the leaf's keyUsage allowing digitalSignature when present) are strict subsets, run identically in workerd
+  (`test-workerd/attest.test.ts`), and evaluate no code.
+- **Residuals.** (1) KV has no compare-and-delete, so two simultaneous redemptions of one challenge
+  can both read it; both still need a genuine attestation bound to the same device and challenge,
+  so the effect is a duplicated verdict, not a forged one. (2) There is no revocation for Apple's
+  attestation chain and no re-attestation schedule: a device attested once stays `attested` until a
+  new token resets it, even if it is later rooted or jailbroken. Assertions on sensitive requests
+  (`generateAssertion`, counter checks) are the planned answer and are out of this package. (3) Play
+  Integrity's default quota (10,000 decodes a day per app) is shared by every device of the product;
+  the per-device budget bounds one device, not a botnet of registered devices, whose exhaustion of
+  the quota degrades attestation to `503` (devices stay `basic`; log-only policies are unaffected).
+  (4) `basic` is not suspicious: enforcing `attested` for an operation removes it from every web,
+  desktop and sideloaded install.
+  (5) `attested` rides on a bearer token. The level is bound to the device row, which is reached
+  with the `pkeyt_` token; anyone who lifts an attested device's token (from its store, a backup
+  of a rooted device, or a debugger) presents an attested device from anywhere, until the token is
+  rotated away or the device re-registered. Per-request App Attest assertions (and a Play request
+  per sensitive call) are the fix; they are out of this package. (6) One handset can attest many
+  device ids. The id is client-chosen and the `attest` budget (4/hour) is per device id, so a
+  genuine handset can register and attest any number of ids in turn; attestation proves "a
+  genuine install exists", not "one device per id". Bounding attestations per App Attest key or per
+  Play device would need state this package does not keep.
+- **Play testing responses.** A verdict Google marks `testingDetails.isTestingResponse` is a license
+  tester's configured answer, not a check of the device, and is refused (`testing_response`)
+  unless the operator sets `playIntegrity.allowTestingResponses: true` for internal testing; the
+  flag is recorded in the verdict summary either way.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The
@@ -3318,7 +3472,10 @@ record naming the caller's binding, or a sandbox path open by default;
 a new product-secret usage or sealed kind is introduced (it must say which paths may open it,
 and that no manifest can grant it); an outlet-credential kind is added, or a file is added to an
 allowlist in `test/outletCredentialReach.test.ts` (it must say why that file needs a store
-credential, and the open must stay audited); or a new way to obtain a device token or licence without an
+credential, and the open must stay audited); a platform store credential (A-16) is added, used
+without the product's platform pin matching at setup, token and open, cached in a way a hit can
+skip the pin, allowed to fall through from a mis-pinned own credential, or written or opened by a
+file outside its allowlists; the device trust level starts being carried in a signed document or token, an operation trusts `attested` without going through `trustRefusal`, the trust policy becomes writable by anything but the platform-admin `trust-policy` resource, the App Attest root stops being the pinned constant, or a path other than a token rotation keeps the level across a new device token (P6-02); or a new way to obtain a device token or licence without an
 operator-issued key is added, or a check on one is made conditional on product state (it must be
 folded into `mintIsPublic` or into the edge-mint approval's recorded state — `productWidening` in
 `core/edgeMintApproval.ts`, which the ingest sweep and the `0025_b` backfill follow); or, for

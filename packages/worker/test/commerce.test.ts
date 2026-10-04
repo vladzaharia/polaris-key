@@ -11,7 +11,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { CONSOLE, SLUG } from "./releaseRoutesFixture.js";
 import { dispatchWith } from "../src/dispatch.js";
 import { NOW } from "./seed.js";
-import { setServices } from "../src/repo.js";
+import { setServices, setTrustPolicy } from "../src/repo.js";
 import { serializeServices } from "../src/core/services.js";
 import {
   APPLE_PRODUCT,
@@ -1177,5 +1177,57 @@ describe("commerce: the seams", () => {
     };
     walk(root);
     expect(offenders).toEqual([]);
+  });
+});
+
+// ── P6-02: the device-trust gate on the claim ────────────────────────────────────────────────
+
+describe("commerce: the device-trust policy on POST …/commerce/claim (P6-02)", () => {
+  // A body naming no store: past the trust gate it is a 400, so the status shows which side of
+  // the gate the request ended on without involving any store.
+  const NO_STORE = { store: "nope" };
+
+  it("log-only by default: a basic device's claim proceeds and one audit row records the would-be refusal", async () => {
+    const cw = await world();
+    await setTrustPolicy(
+      cw.db,
+      SLUG,
+      JSON.stringify({ commerceClaim: "attested" }),
+      NOW,
+    );
+    for (let i = 0; i < 2; i++)
+      expect((await claim(cw, cw.tokenA, NO_STORE)).status).toBe(400);
+    expect(await audits(cw, "device.trust.would_refuse")).toBe(1);
+    expect(await audits(cw, "device.trust.refused")).toBe(0);
+  });
+
+  it("enforced: a basic device gets 403 attestation_required; an attested one proceeds", async () => {
+    const cw = await world();
+    await setTrustPolicy(
+      cw.db,
+      SLUG,
+      JSON.stringify({ commerceClaim: "attested", enforce: true }),
+      NOW,
+    );
+    const refused = await claim(cw, cw.tokenA, NO_STORE);
+    expect(refused.status).toBe(403);
+    expect(await bodyOf(refused)).toEqual({
+      error: { code: "attestation_required" },
+      message: "this operation requires an attested device",
+    });
+    expect(await audits(cw, "device.trust.refused")).toBe(1);
+    await cw.db.run(
+      "UPDATE devices SET trust_level = 'attested', attested_at = ? WHERE product = ? AND device_id = ?",
+      NOW,
+      SLUG,
+      "dev-a",
+    );
+    expect((await claim(cw, cw.tokenA, NO_STORE)).status).toBe(400);
+  });
+
+  it("the default policy asks nothing", async () => {
+    const cw = await world();
+    expect((await claim(cw, cw.tokenA, NO_STORE)).status).toBe(400);
+    expect(await audits(cw, "device.trust.would_refuse")).toBe(0);
   });
 });

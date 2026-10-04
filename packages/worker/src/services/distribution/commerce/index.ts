@@ -34,6 +34,8 @@ import type { ServiceContext } from "../../../core/registry.js";
 import { errorResponse, json, wireError } from "../../../core/errors.js";
 import { bearer } from "../../../core/platform.js";
 import { licenseUsable, validateDeviceToken } from "../../../core/devices.js";
+import { trustRefusal } from "../../../core/deviceTrust.js";
+import type { DeviceRow } from "../../../core/data.js";
 import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
 import { readCappedText } from "../../../core/readCapped.js";
 import { isStore, type Store } from "../../../core/storeGrants.js";
@@ -63,6 +65,7 @@ import {
   getProductPurchase,
   isPlaySku,
   isPurchaseToken,
+  effectivePlaySettings,
   playCredential,
   playPurchase,
   playPurchasesClient,
@@ -81,6 +84,7 @@ import { readCommerceSettings, type CommerceSettings } from "./settings.js";
 import {
   bindingFor,
   getPurchase,
+  getStoreProduct,
   isStoreProductId,
   listStoreProducts,
   parseDetail,
@@ -218,6 +222,8 @@ function claimed(
 
 interface DeviceLicence {
   licenseId: string;
+  /** The calling device, for the trust policy's `commerceClaim` gate (P6-02). */
+  device: DeviceRow;
 }
 
 /** The caller's usable licence, or the refusal: 401 for a bad token or an unusable licence,
@@ -236,7 +242,7 @@ async function callerLicence(
   if (valid.license === null) return refusal("no_license");
   if (!licenseUsable(valid.license, ctx.now))
     return wireError(401, "unauthorized");
-  return { licenseId: valid.license.id };
+  return { licenseId: valid.license.id, device: valid.device };
 }
 
 // ── binding ──────────────────────────────────────────────────────────────────────────────────
@@ -289,6 +295,7 @@ async function appleContext(
 ): Promise<AppleContext | null> {
   if (!settings.appStore) return null;
   const credentialId = await appStoreCredential(
+    ctx.env,
     ctx.db,
     ctx.product.slug,
     settings.appStore.bundleId,
@@ -312,6 +319,7 @@ export async function playContext(
 ): Promise<PlayContext | null> {
   if (!settings.play) return null;
   const credentialId = await playCredential(
+    ctx.env,
     ctx.db,
     ctx.product.slug,
     settings.play.packageName,
@@ -322,7 +330,8 @@ export async function playContext(
     db: ctx.db,
     product: ctx.product.slug,
     now: ctx.now,
-    settings: settings.play,
+    // A-16: the platform's RTDN push identity where the product leaves it unset.
+    settings: await effectivePlaySettings(ctx.env, ctx.db, settings.play),
     credentialId,
   };
 }
@@ -335,6 +344,7 @@ export async function steamContext(
 ): Promise<SteamContext | null> {
   if (!settings.steam) return null;
   const credentialId = await steamCredential(
+    ctx.env,
     ctx.db,
     ctx.product.slug,
     settings.steam.appId,
@@ -374,6 +384,18 @@ async function handleClaim(ctx: ServiceContext): Promise<Response | null> {
     ))
   )
     return errorResponse(429, "rate_limited", "too many claims");
+  // P6-02 — the operator's device-trust policy. Log-only unless enforced: a basic device the
+  // policy would refuse is audited and its claim proceeds (`core/deviceTrust.ts`).
+  const untrusted = await trustRefusal(
+    env,
+    db,
+    product,
+    who.device,
+    "commerceClaim",
+    now,
+    "wire",
+  );
+  if (untrusted) return untrusted;
   const body = jsonObject(raw);
   if (!body || !isStore(body.store))
     return bad(
@@ -433,6 +455,11 @@ async function handleClaim(ctx: ServiceContext): Promise<Response | null> {
         return bad("bad_body", "ticket (hex) and dlcAppId are required");
       if (!isStoreProductId("steam", body.dlcAppId))
         return bad("bad_body", "dlcAppId must be a Steam app id");
+      // A-16: only an app this product mapped is ever asked about. Without this a device could
+      // use the product's (or the platform group's) publisher key as an ownership oracle for any
+      // app the key may query. The refusal is the same as a non-owner's, so it says nothing.
+      if (!(await getStoreProduct(db, product.slug, "steam", body.dlcAppId)))
+        return refusal("not_owned");
       purchase = await verifySteamClaim(
         storeCtx as SteamContext,
         body.ticket,

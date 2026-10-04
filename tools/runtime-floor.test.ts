@@ -2,7 +2,7 @@
 // plan §2.4, "Runtimes"). That bundle runs in Safari and every iOS browser, Chromium, Firefox
 // and the system webviews of Tauri apps (WKWebView, WebKitGTK), whose WebKit is the operating
 // system's and can be years behind the current Safari. No floor is documented, so the source of
-// the four packages in that bundle uses nothing newer than they ship today:
+// the packages in that bundle uses nothing newer than they ship today:
 //
 //   - a regular-expression lookbehind is an early SyntaxError before Safari 16.4, so the WHOLE
 //     bundle (the app's own code included) would fail to parse;
@@ -24,6 +24,8 @@ const PACKAGES = [
   "packages/shared-protocol",
   "packages/shared-jws",
   "packages/sdk-react",
+  // The SDK's UI renders the brand's marks and tokens (`@polaris-key/brand`).
+  "packages/brand",
 ];
 
 /** Built from parts so that this file never reads as using them. */

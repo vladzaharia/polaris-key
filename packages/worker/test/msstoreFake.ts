@@ -7,6 +7,8 @@
  *        client_credentials for the one (tenant, client id, client secret) the test stored, with
  *        resource=https://manage.devcenter.microsoft.com; answers `expires_in` as a string, as
  *        the v1 endpoint does
+ *   GET  https://manage.devcenter.microsoft.com/v1.0/my/applications?top=&skip=   (A-16) every
+ *        app of the seller: the one app plus `extraApps`
  *   GET  https://manage.devcenter.microsoft.com/v1.0/my/applications/<id>
  *   GET  …/applications/<id>/submissions/<submissionId>
  *   GET  …/applications/<id>/listflights?top=&skip=
@@ -68,6 +70,8 @@ export class MsStoreFake {
   flights: Json[];
   readonly flightSubmissions = new Map<string, Map<string, Json>>();
   notReadable = false;
+  /** More apps the seller has (A-16's team listing); only `STORE_ID` is readable. */
+  extraApps: Json[] = [];
   /** What the token endpoint answers (the fixture's, with a fresh `access_token`). */
   tokenResponse: Json;
   private readonly tokens = new Set<string>();
@@ -149,6 +153,15 @@ export class MsStoreFake {
       : null;
     if (!token || !this.tokens.has(token))
       return json(401, { code: "Unauthorized" });
+    if (url.pathname === "/v1.0/my/applications") {
+      const all = [this.application, ...this.extraApps];
+      const top = Number(url.searchParams.get("top") ?? "10");
+      const skip = Number(url.searchParams.get("skip") ?? "0");
+      return json(200, {
+        value: structuredClone(all.slice(skip, skip + top)),
+        totalCount: all.length,
+      });
+    }
     if (app !== STORE_ID) return json(404, { code: "ResourceNotFound" });
     if (this.pending429 > 0) {
       this.pending429--;

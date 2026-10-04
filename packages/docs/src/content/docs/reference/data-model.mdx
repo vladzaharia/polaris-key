@@ -15,11 +15,11 @@ this page or fails the freshness gate.
 
 | Table | Since | Columns (ALTERs annotated with their migration) |
 | --- | --- | --- |
-| `products` | 0001_init.sql | `slug`, `name`, `signing_kid`, `signing_pub`, `compat_min`, `compat_max`, `default_max_offline_days`, `default_device_limit`, `admin_group`, `branding_json`, `created_at`, `modified_at`, `release_source (0003)`, `status (0006)`, `deleted_at (0006)`, `fingerprint_policy_json (0010)`, `fingerprint_policy_source (0010)`, `auto_issue_json (0011)`, `auto_issue_source (0011)`, `services_json (0019)`, `services_source (0020)`, `compat_source (0022)`, `web_origins_json (0024)` |
+| `products` | 0001_init.sql | `slug`, `name`, `signing_kid`, `signing_pub`, `compat_min`, `compat_max`, `default_max_offline_days`, `default_device_limit`, `admin_group`, `branding_json`, `created_at`, `modified_at`, `release_source (0003)`, `status (0006)`, `deleted_at (0006)`, `fingerprint_policy_json (0010)`, `fingerprint_policy_source (0010)`, `auto_issue_json (0011)`, `auto_issue_source (0011)`, `services_json (0019)`, `services_source (0020)`, `compat_source (0022)`, `web_origins_json (0024)`, `trust_policy_json (0053)`, `trust_policy_source (0053)` |
 | `product_keys` | 0003_keyvault.sql | `product`, `kid`, `alg`, `public_b64url`, `enc_private_json`, `status`, `created_at`, `rotated_at`, `revoked_at (0021)` |
 | `product_secrets` | 0003_keyvault.sql | `product`, `name`, `enc_value_json`, `created_at`, `modified_at`, `usage (0025)` |
 | `outlet_credentials` | 0034_outlet_credentials.sql | `product`, `credential_id`, `kind`, `outlet_id`, `enc_value_json`, `meta_json`, `status`, `created_at`, `created_by`, `rotated_at`, `expires_at`, `last_used_at`, `last_ok_at`, `last_error` |
-| `devices` | 0001_init.sql | `product`, `device_id`, `customer_id`, `license_id`, `status`, `first_seen`, `last_seen`, `ua`, `label`, `platform`, `arch`, `app_version`, `sdk_name`, `sdk_version`, `overrides_json`, `reported_json`, `token_hash`, `seat_no (0014)` |
+| `devices` | 0001_init.sql | `product`, `device_id`, `customer_id`, `license_id`, `status`, `first_seen`, `last_seen`, `ua`, `label`, `platform`, `arch`, `app_version`, `sdk_name`, `sdk_version`, `overrides_json`, `reported_json`, `token_hash`, `seat_no (0014)`, `trust_level (0053)`, `attested_at (0053)`, `attestation_json (0053)` |
 | `device_fingerprints` | 0010_fingerprint.sql | `product`, `device_id`, `hwid`, `components_json`, `anchor_hash`, `status`, `first_seen`, `last_seen`, `last_drift_at`, `last_drift_count` |
 | `device_facts` | 0010_fingerprint.sql | `product`, `device_id`, `os_name`, `os_version`, `os_build`, `kernel`, `cpu_model`, `cpu_cores`, `ram_mb`, `machine_model`, `locale`, `timezone`, `runtime_name`, `runtime_version`, `probes_json`, `updated_at` |
 | `audit` | 0001_init.sql | `product`, `id`, `at`, `actor_sub`, `actor_name`, `actor_email`, `action`, `target_kind`, `target_id`, `parent_id`, `summary` |
@@ -35,6 +35,9 @@ this page or fails the freshness gate.
 | `delta_demand_devices` | 0051_lazy_deltas.sql | `product`, `deliverable_id`, `from_sha256`, `to_sha256`, `device_id`, `strategy`, `seen_at` |
 | `delta_demand` | 0051_lazy_deltas.sql | `product`, `deliverable_id`, `from_sha256`, `to_sha256`, `devices`, `window_start`, `last_seen` |
 | `platform_deploys` | 0054_a_platform_deploys.sql | `id`, `at`, `environment`, `tag`, `git_sha`, `run_url`, `scripts`, `latest_migration`, `cf_version_id`, `deltas_version_id`, `smoke` |
+| `platform_credentials` | 0055_platform_store_connections.sql | `credential_id`, `store`, `slot`, `kind`, `enc_value_json`, `meta_json`, `status`, `created_at`, `created_by`, `rotated_at`, `last_used_at`, `last_ok_at`, `last_error` |
+| `platform_credential_pins` | 0055_platform_store_connections.sql | `credential_id`, `product`, `pin`, `pinned_at`, `pinned_by` |
+| `platform_store_settings` | 0055_platform_store_connections.sql | `store`, `key`, `value`, `updated_at`, `updated_by` |
 | `platform_audit` | 0054_b_platform_audit.sql | `id`, `at`, `actor_sub`, `actor_name`, `actor_email`, `action`, `target_kind`, `target_id`, `summary`, `before_json`, `after_json` |
 
 ## license

@@ -104,6 +104,12 @@ export async function deleteProduct(
       sql: "DELETE FROM outlet_credentials WHERE product = ?",
       params: [slug],
     },
+    // A-16: a deleted product holds no platform store app: its pins on the team credentials go,
+    // which frees the app for another product.
+    {
+      sql: "DELETE FROM platform_credential_pins WHERE product = ?",
+      params: [slug],
+    },
     // P2-02: no CI credential outlives its product (`lookupCiToken` also refuses a deleted
     // product's tokens; this makes the revocation visible in the token list too).
     stmtRevokeProductCiTokens(slug, now),

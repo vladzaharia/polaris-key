@@ -72,6 +72,7 @@ import {
   upsertDevice,
   upsertDeviceFacts,
   upsertFingerprint,
+  resetDeviceTrust,
   type DeviceFactsRow,
   type DeviceRow,
   type FingerprintRow,
@@ -418,6 +419,8 @@ export async function bindDevice(
     sdk_version: meta.sdkVersion ?? existing?.sdk_version ?? null,
   };
   await upsertDevice(db, device);
+  // P6-02: a new credential minted without the old one is not the attested install.
+  if (existing) await resetDeviceTrust(db, product.slug, deviceId);
 
   if (presented) {
     // The client's own hwid is never trusted — recomputing it here is what stops a forged
@@ -544,6 +547,8 @@ export async function registerDeviceBinding(
     sdk_version: meta.sdkVersion ?? existing?.sdk_version ?? null,
   };
   await upsertDevice(db, device);
+  // P6-02: a new credential minted without the old one is not the attested install.
+  if (existing) await resetDeviceTrust(db, product.slug, deviceId);
 
   if (presented) {
     const priorRow = await getFingerprint(db, product.slug, deviceId);

@@ -36,10 +36,12 @@ export interface AppStoreSettings {
 
 export interface PlaySettings {
   packageName: string;
-  /** The push subscription's OIDC audience. */
-  pushAudience: string;
-  /** The push subscription's service-account email (the JWT's `email`). */
-  pushServiceAccount: string;
+  /** The push subscription's OIDC audience. `null`: the platform's Google Play connection
+   *  setting `pushAudience` applies (A-16); with neither, RTDN is off. */
+  pushAudience: string | null;
+  /** The push subscription's service-account email (the JWT's `email`). `null`: the platform's
+   *  `pushServiceAccount` applies (A-16); with neither, RTDN is off. */
+  pushServiceAccount: string | null;
   acceptTestPurchases: boolean;
 }
 
@@ -117,18 +119,22 @@ function parsePlay(
       field: "play.packageName",
       message: "packageName must be the app's package name",
     };
+  // A-16: both push fields may be omitted (or null) to use the platform's Google Play settings.
+  const pushAudience = o.pushAudience ?? null;
+  const pushServiceAccount = o.pushServiceAccount ?? null;
   if (
-    typeof o.pushAudience !== "string" ||
-    o.pushAudience.length === 0 ||
-    o.pushAudience.length > 500
+    pushAudience !== null &&
+    (typeof pushAudience !== "string" ||
+      pushAudience.length === 0 ||
+      pushAudience.length > 500)
   )
     return {
       field: "play.pushAudience",
       message: "pushAudience must be the push subscription's audience",
     };
   if (
-    typeof o.pushServiceAccount !== "string" ||
-    !EMAIL.test(o.pushServiceAccount)
+    pushServiceAccount !== null &&
+    (typeof pushServiceAccount !== "string" || !EMAIL.test(pushServiceAccount))
   )
     return {
       field: "play.pushServiceAccount",
@@ -146,8 +152,8 @@ function parsePlay(
   return {
     value: {
       packageName: o.packageName,
-      pushAudience: o.pushAudience,
-      pushServiceAccount: o.pushServiceAccount,
+      pushAudience,
+      pushServiceAccount,
       acceptTestPurchases: o.acceptTestPurchases === true,
     },
   };

@@ -26,7 +26,7 @@ a product with no license service does not carry the gate.
 | `PolarisKeyPacks`    | packs: the planner, appliers, install state and pipeline, and the `update.packs` facet (macOS **and** iOS)                                           | Core, libzstd 1.5.7                       |
 | `PolarisKeyUpdate`   | wire v4's `UpdateClient` and its `packs` facet (macOS **and** iOS), and the Sparkle wiring (**macOS only**)                                          | Core, Packs, Sparkle ≥ 2.9.6 (macOS only) |
 | `PolarisKeyUI`       | the brandable SwiftUI drop-in gate                                                                                                                   | Core, License, Config                     |
-| `PolarisKeyPlatform` | the Apple platform edges behind a C surface: AppDistributor, AppTransaction, StoreKit 2, Keychain, Background Assets (P5-05)                         | — (standalone)                            |
+| `PolarisKeyPlatform` | the Apple platform edges behind a C surface: AppDistributor, AppTransaction, StoreKit 2, Keychain, Background Assets (P5-05), App Attest (P6-02)     | — (standalone)                            |
 
 Platforms: macOS 14+, iOS 17+. Swift 6 (strict concurrency, everything `Sendable`).
 
@@ -338,7 +338,7 @@ var body: some View {
     PolarisLoginView(
         model: gate,
         theme: PolarisTheme(
-            accent: .indigo,
+            accent: .teal,                       // optional: your app's tint otherwise
             copy: PolarisCopy(productName: "DJDL"),
             logo: { AnyView(Image("BrandLogo").resizable().scaledToFit().frame(width: 56)) }
         ),
@@ -348,6 +348,40 @@ var body: some View {
     }
 }
 ```
+
+**Native by default.** Out of the box the gate looks like your app: system fonts with Dynamic Type,
+your app's tint (`.tint(_:)` / the asset catalog accent), system colours that follow dark and
+light, a neutral key glyph, and no Polaris Key branding. Every state is centred horizontally and,
+full screen, vertically, in a card of comfortable width (420 pt) rather than edge to edge on iPad
+and macOS; it scrolls instead of clipping at the largest accessibility sizes, and the grace
+banner sits on the native bar material.
+
+**Polaris Key branding is an opt-in**, with one modifier on the gate or any ancestor:
+
+```swift
+PolarisLoginView(model: gate) { MyAppRootView() }
+    .polarisKeyBranding(.polarisKey)
+```
+
+(or `PolarisTheme(branding: .polarisKey)` for one gate). That switches to the Polaris Key design
+system (`docs/design/BRAND.md`), read from the generated `PolarisBrand` tokens in
+`BrandTokens.generated.swift`: the brand's dark or light palette from the `colorScheme`
+environment with the core violet accent; Rubik (Bold for headings, Regular for body), bundled
+unchanged with its SIL Open Font License (`Resources/Brand/fonts/OFL.txt`) and registered for your
+process only the first time a branded gate draws, falling back to the system font if it cannot
+register; and the Pinned K (`PolarisMark`, display cut, no section bit) as the logo.
+
+Overrides apply in either mode and win over the branding: `accent:` / `accentOn:` re-point the
+primary button in both schemes, `palette:` replaces every colour per scheme, `typography:` picks
+`.system`, `.brand` or `.custom(regular:bold:)`, and `logo:` replaces the glyph or mark.
+
+**"Powered by Polaris Key" is optional and off by default** in both modes. Opt in with
+`poweredBy: PolarisPoweredBy()` to show the kit's compact badge centred under the activation card,
+or place `PolarisPoweredByBadge` on your about or credits screen. It renders the kit artwork at no
+less than the kit minimum (compact 232 × 88, horizontal 376 × 144, stacked 288 × 336 points).
+
+Xcode previews in `PolarisLoginView.swift` cover every gate state, native and branded, in dark and
+light, at iPhone, iPad and Mac sizes and at an accessibility Dynamic Type size.
 
 ## Updates (macOS, D-24)
 
@@ -557,6 +591,13 @@ try await update.packs.confirm()                             // this boot is hea
   tighter memory limits than a foreground app, so pass a lower budget there, for example
   `PacksOptions(memBudget: 32 * 1024 * 1024)`. A delta over the budget is never chosen: the
   planner falls back to the `file` or `full` strategy, which costs more bytes but less memory.
+- **Feed-offered deltas** (P4-29). The committed channel feed can list lazy deltas (`deltas`, the
+  Worker's delta menu). The client keeps the menu of the last feed `decide()` or `channelFeed()`
+  used, fresh or stale, and reads the committed feed from the cache when the pack engine starts,
+  so an offline launch still has it. The engine (`feedDeltas`) adds the entries for a container's
+  payload beside the record's own deltas (`withFeedDeltas`); every byte is still checked against
+  the CI-signed record, any failure (a 404 included) falls back, and at most one feed-offered
+  delta is tried per install. Nothing to configure.
 - **Boot.** `bootOptions()` gives `BootOptions`' `requiredPacks` and `essentialPacks`;
   `bootFetch(send:consent:metered:answer:install:)` drives the stage machine's FETCH stage
   (`fetch.consent`, `fetch.progress`, `fetch.done`). Given a `packs` answer's `install`, it
@@ -652,17 +693,20 @@ A synchronous op answers its result; an asynchronous one answers `{"ok":true,"re
 emits `{"ev":"<op>","req":N,…}` through the callback. Failures are `{"ok":false,"error":…}`; an
 API this OS or build lacks is `{"ok":false,"unsupported":true,"reason":…,"detail":…}`.
 
-| Op                                                                                                                             | Kind  | Result                                                                                                                                                                                                                                                                      |
-| ------------------------------------------------------------------------------------------------------------------------------ | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ping`, `capabilities`                                                                                                         | sync  | `{protocol, platform, appDistributor, appDistributorWeb, managedAssetPacks, backgroundAssetsConfigured, storeKit, keychain, entitlementsForID}`                                                                                                                             |
-| `distributor {deadline?}`                                                                                                      | async | `{signal, reason?, ms, provisioned, altBundleIdentifier, bundleIdentifier}`: `AppDistributor.current` (iOS 17.4, `web` from 17.5) raced against 2 s at every call, never cached; `unavailable` = no evidence; the bundle evidence can veto a store outlet, never select one |
-| `app_transaction {refresh?}`                                                                                                   | async | `{jws, verified, environment, originalAppVersion, appVersion, bundleID, appTransactionID, …}`, for commerce only                                                                                                                                                            |
-| `products {ids}`                                                                                                               | async | `{products: [{id, type, displayName, displayPrice, price}]}`                                                                                                                                                                                                                |
-| `purchase {product, appAccountToken?}`                                                                                         | async | `{result: success\|pending\|userCancelled, confirmIn, transaction?}`; main-actor isolated, `purchase(confirmIn:)` with the foreground scene                                                                                                                                 |
-| `entitlements {product?}`, `finish {id}`                                                                                       | async | `finish` only after the server recorded the purchase                                                                                                                                                                                                                        |
-| `listen`                                                                                                                       | async | starts the `Transaction.updates` listener; each new transaction state is emitted once as `transaction_updated`                                                                                                                                                              |
-| `kc_get` / `kc_set` / `kc_delete {product, account, value?}`                                                                   | sync  | service `pkey:<product>`, data-protection keychain, `AfterFirstUnlockThisDeviceOnly`, no access group                                                                                                                                                                       |
-| `packs_status`, `packs_ensure {packs:[{id,path}], latest?}`, `packs_check_updates`, `packs_remove`, `packs_url`, `packs_watch` | async | `AssetPackManager`, iOS / macOS 26.4 (`version` below), and only where the `BA*` Info.plist keys exist (`outlet` otherwise); events `pack_progress`, `pack_ready`, `pack_failed`                                                                                            |
+| Op                                                                                                                             | Kind  | Result                                                                                                                                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------ | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ping`, `capabilities`                                                                                                         | sync  | `{protocol, platform, appDistributor, appDistributorWeb, managedAssetPacks, backgroundAssetsConfigured, storeKit, keychain, entitlementsForID}`                                                                                                                                                         |
+| `distributor {deadline?}`                                                                                                      | async | `{signal, reason?, ms, provisioned, altBundleIdentifier, bundleIdentifier}`: `AppDistributor.current` (iOS 17.4, `web` from 17.5) raced against 2 s at every call, never cached; `unavailable` = no evidence; the bundle evidence can veto a store outlet, never select one                             |
+| `app_transaction {refresh?}`                                                                                                   | async | `{jws, verified, environment, originalAppVersion, appVersion, bundleID, appTransactionID, …}`, for commerce only                                                                                                                                                                                        |
+| `products {ids}`                                                                                                               | async | `{products: [{id, type, displayName, displayPrice, price}]}`                                                                                                                                                                                                                                            |
+| `purchase {product, appAccountToken?}`                                                                                         | async | `{result: success\|pending\|userCancelled, confirmIn, transaction?}`; main-actor isolated, `purchase(confirmIn:)` with the foreground scene                                                                                                                                                             |
+| `entitlements {product?}`, `finish {id}`                                                                                       | async | `finish` only after the server recorded the purchase                                                                                                                                                                                                                                                    |
+| `listen`                                                                                                                       | async | starts the `Transaction.updates` listener; each new transaction state is emitted once as `transaction_updated`                                                                                                                                                                                          |
+| `kc_get` / `kc_set` / `kc_delete {product, account, value?}`                                                                   | sync  | service `pkey:<product>`, data-protection keychain, `AfterFirstUnlockThisDeviceOnly`, no access group                                                                                                                                                                                                   |
+| `packs_status`, `packs_ensure {packs:[{id,path}], latest?}`, `packs_check_updates`, `packs_remove`, `packs_url`, `packs_watch` | async | `AssetPackManager`, iOS / macOS 26.4 (`version` below), and only where the `BA*` Info.plist keys exist (`outlet` otherwise); events `pack_progress`, `pack_ready`, `pack_failed`                                                                                                                        |
+| `app_attest_supported`                                                                                                         | sync  | `{supported}`: `DCAppAttestService.isSupported`; unsupported `runtime` on macOS, the simulator and app extensions (P6-02)                                                                                                                                                                               |
+| `app_attest_attest {requestHash, keyId?}`                                                                                      | async | `{keyId, attestation, generated, ms}`: generates a key when none is given, then `attestKey` with `clientDataHash = SHA-256(UTF-8(requestHash))`; errors `invalid_key` (regenerate: keys die on reinstall), `server_unavailable` (retry with the same key), `invalid_input`, `system_failure`, `timeout` |
+| `app_attest_assert {keyId, clientData}`                                                                                        | async | `{keyId, assertion}`: `generateAssertion` over `SHA-256(clientData)`, for later per-request assertions                                                                                                                                                                                                  |
 
 Transaction ids are strings, and every transaction carries its signed JWS. Under StoreKit Testing
 the JWS is signed by a per-session self-signed certificate (`kid Apple_Xcode_Key`), fit for

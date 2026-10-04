@@ -338,6 +338,36 @@ static func chunk_pack(pack_id: String, version: String, seq: int, chunks: Array
 		"bundles": bundle_shas}
 
 
+## A container pack release (`custom.blob`, hot) whose payload is `payload`: a raw `full`, a
+## container files index of one entry covering it (gaps empty) and, with `opts.delta` ({from: base
+## bytes, frame}), one record `payload` delta (plans/P4-29.md's engine tests; client-core
+## packsFeedDelta.test.ts `release`). The objects: the payload, the files index, the gaps and the frame.
+static func blob_pack(pack_id: String, version: String, seq: int, payload: PackedByteArray, opts: Dictionary = {}) -> Dictionary:
+	var files := JSON.stringify({"format": "pkey-files/1", "layout": "container", "payload": {"size": payload.size(), "sha256": sha(payload)},
+		"files": [{"path": "blob.bin", "offset": 0, "size": payload.size(), "sha256": sha(payload), "blob": {"sha256": sha(payload), "bytes": payload.size(), "codec": "none"}}]}).to_utf8_buffer()
+	var gaps := PackedByteArray()
+	var objects := {sha(payload): payload, sha(files): files, sha(gaps): gaps}
+	var variant := {
+		"variant": {}, "payload": {"size": payload.size(), "sha256": sha(payload)},
+		"full": {"sha256": sha(payload), "bytes": payload.size(), "size": payload.size(), "codec": "none"},
+		"files": {"format": "pkey-files/1", "layout": "container", "sha256": sha(files), "bytes": files.size(), "size": files.size(), "codec": "none",
+			"gaps": {"sha256": sha(gaps), "bytes": 0, "size": 0, "codec": "none"}},
+	}
+	if opts.get("delta") is Dictionary:
+		var base: PackedByteArray = opts["delta"]["from"]
+		var frame: PackedByteArray = opts["delta"]["frame"]
+		objects[sha(frame)] = frame
+		variant["deltas"] = [{"method": "zstd-patch-from", "scope": "payload", "from": sha(base), "memBytes": base.size() + payload.size(), "artifact": {"sha256": sha(frame), "bytes": frame.size()}}]
+	var record := {
+		"schemaVersion": 1, "aud": PRODUCT, "deliverable": pack_id, "kind": "pack", "version": version, "seq": seq,
+		"issuedAt": 1759300000 + seq, "type": "custom.blob", "formatVersion": 1,
+		"handler": {"activation": "hot"}, "variants": [variant],
+	}
+	var s := sign_record(record)
+	return {"packId": pack_id, "version": version, "seq": seq, "jws": s["jws"], "recordSha256": s["sha256"], "record": record,
+		"objects": objects, "payload": payload, "payloadSha256": sha(payload), "fullSha256": sha(payload)}
+
+
 ## A container handler for chunk packs (`custom.blob`): any format version, hot, no check.
 class BlobHandler extends PKeyPackHandler:
 	func _init(p_type := "custom.blob") -> void:

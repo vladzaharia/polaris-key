@@ -24,10 +24,30 @@
  *      only by a platform admin" is enforced here, and so is "the pin is the operator's" (P5-02f).
  *   5. **The token helpers.** `core/outletTokens.ts` hands out a cached store bearer token on a
  *      cache hit WITHOUT an audited open, so it is a custody boundary of its own: only the
- *      Distribution service (`src/services/distribution/**`) may import it.
+ *      Distribution service (`src/services/distribution/**`) and Core's device attestation
+ *      (`src/core/attestation.ts`, P6-02) may import it.
+ *
+ * A-16 adds the platform's TEAM-level store credentials (`core/platformCredentials.ts`, tables
+ * `platform_credentials` and `platform_credential_pins`, seal kind `"platform-credential"`) and
+ * guards them the same way, in five more directions:
+ *
+ *   6. **Importers.** Only the Distribution service, the token helpers and the two Core admin
+ *      handlers that write or check pins (`platformStoreConnections.ts`, `outletCredentials.ts`)
+ *      may import `core/platformCredentials`. It imports `core/outletCredentials` itself (reviewed:
+ *      it reuses the kinds' validators and pin specs, and neither writes nor opens a product
+ *      credential), and so does the store-connections handler (to read who holds an app).
+ *   7. **The tables.** Only the owner, the KEK re-seal sweep and `deleteProduct` name them.
+ *   8. **The AAD kind.** Only the vault, the owner and the sweep spell `"platform-credential"`.
+ *   9. **The writers.** Only the owner and the store-connections handler name
+ *      `putPlatformCredential`, `deletePlatformCredential`, `setPlatformPin` or `clearPlatformPin`.
+ *  10. **The opener.** Only the owner, the token helpers and two reviewed Distribution files (the
+ *      Microsoft Store token, the Steam commerce key) name `openPlatformCredential`; every other
+ *      path gets a token, minted after the product's pin is checked — and the open itself refuses
+ *      a product whose pin does not match.
  *
  * Adding an entry to any allowlist is a custody decision: it needs a review that says why, and
- * the threat model's review trigger (§9) applies. P6-02 is expected to add one reviewed entry.
+ * the threat model's review trigger (§9) applies. P6-02 added one reviewed entry: see
+ * `TOKENS_IMPORT_ALLOW_FILES`.
  *
  * Like `boundaries.test.ts`, this is a regex over source and errs toward false positives: a
  * match inside a string or comment fails the test rather than slipping through.
@@ -49,6 +69,9 @@ const IMPORT_ALLOW_PREFIXES = ["src/services/distribution/"];
 const IMPORT_ALLOW_FILES = [
   "src/core/outletTokens.ts",
   "src/admin/handlers/outletCredentials.ts",
+  // A-16 (reviewed): validators and pin specs only; neither file writes or opens a product key.
+  "src/core/platformCredentials.ts",
+  "src/admin/handlers/platformStoreConnections.ts",
 ];
 const TABLE_ALLOW_FILES = [
   "src/core/outletCredentials.ts",
@@ -60,11 +83,62 @@ const WRITER_ALLOW_FILES = [
   "src/admin/handlers/outletCredentials.ts",
 ];
 const TOKENS_IMPORT_ALLOW_PREFIXES = ["src/services/distribution/"];
+/**
+ * P6-02 (reviewed): Core's attest route decodes a device's Play Integrity token with Google's
+ * `decodeIntegrityToken`, which needs an OAuth token for the product's `google-service-account`
+ * credential at the Play Integrity scope. It calls `googleAccessToken` ONLY — never
+ * `openOutletCredential` (it is not in `IMPORT_ALLOW_FILES`), so it never sees the key — and only
+ * for the credential Distribution's own pin check chose (`Delivery.attestationTargets`). The
+ * attest route is device-authenticated and rate-limited per device BEFORE the token is asked for,
+ * so an unauthenticated caller cannot make it open (and audit) the credential.
+ */
+const TOKENS_IMPORT_ALLOW_FILES = ["src/core/attestation.ts"];
 const KIND_ALLOW_FILES = [
   "src/keyvault.ts",
   "src/core/outletCredentials.ts",
   "src/core/outletTokens.ts",
   "src/admin/handlers/products.ts",
+];
+
+// ── A-16: the platform's team-level store credentials ─────────────────────────────────────────
+const PLATFORM_TARGET = "src/core/platformCredentials";
+const PLATFORM_IMPORT_ALLOW_PREFIXES = ["src/services/distribution/"];
+const PLATFORM_IMPORT_ALLOW_FILES = [
+  "src/core/outletTokens.ts",
+  "src/admin/handlers/platformStoreConnections.ts",
+  "src/admin/handlers/outletCredentials.ts",
+];
+const PLATFORM_TABLE_ALLOW_FILES = [
+  "src/core/platformCredentials.ts",
+  "src/admin/handlers/products.ts",
+  "src/admin/repo.ts",
+];
+const PLATFORM_KIND_ALLOW_FILES = [
+  "src/keyvault.ts",
+  "src/core/platformCredentials.ts",
+  "src/admin/handlers/products.ts",
+];
+const PLATFORM_WRITER_ALLOW_FILES = [
+  "src/core/platformCredentials.ts",
+  "src/admin/handlers/platformStoreConnections.ts",
+];
+/** Where a TEAM-WIDE purpose (`{ team: actor }`, no product, no pin) may be built: the platform
+ *  apps listers only. Everywhere else a platform credential is used for a product and its pin. */
+const PLATFORM_TEAM_PURPOSE_ALLOW_FILES = [
+  "src/core/platformCredentials.ts", // the type itself
+  "src/services/distribution/connectors/asc/platform.ts",
+  "src/services/distribution/connectors/play/platform.ts",
+  "src/services/distribution/connectors/msstore/platform.ts",
+  "src/services/distribution/commerce/steam.ts", // inside fetchSteamApps only (checked below)
+];
+const PLATFORM_OPENER_ALLOW_FILES = [
+  "src/core/platformCredentials.ts",
+  "src/core/outletTokens.ts",
+  // Reviewed (A-16): the Entra exchange lives beside P5-04's own token code; it checks the
+  // product's pin before its cache, and the open checks it again.
+  "src/services/distribution/connectors/msstore/token.ts",
+  // Reviewed (A-16): Steam uses the raw key per call (no token); the open checks the pin.
+  "src/services/distribution/commerce/steam.ts",
 ];
 
 interface Source {
@@ -138,16 +212,62 @@ function reachViolations(sources: Source[]): string[] {
       out.push(`${src.file} spells the "outlet-credential" seal kind`);
     if (
       !WRITER_ALLOW_FILES.includes(src.file) &&
-      /\b(?:putOutletCredential|pinOutletCredential|deleteOutletCredential)\b/.test(
+      /\b(?:putOutletCredential|pinOutletCredential|deleteOutletCredential|planOutletCredentialRepin)\b/.test(
         body,
       )
     )
       out.push(`${src.file} names an outlet-credential writer`);
     const tokensOk =
       TOKENS_IMPORT_ALLOW_PREFIXES.some((p) => src.file.startsWith(p)) ||
+      TOKENS_IMPORT_ALLOW_FILES.includes(src.file) ||
       src.file === `${TOKENS_TARGET}.ts`;
     if (!tokensOk && resolvedImports(src).includes(TOKENS_TARGET))
       out.push(`${src.file} imports core/outletTokens`);
+
+    const platformImportOk =
+      PLATFORM_IMPORT_ALLOW_FILES.includes(src.file) ||
+      PLATFORM_IMPORT_ALLOW_PREFIXES.some((p) => src.file.startsWith(p)) ||
+      src.file === `${PLATFORM_TARGET}.ts`;
+    if (!platformImportOk && resolvedImports(src).includes(PLATFORM_TARGET))
+      out.push(`${src.file} imports core/platformCredentials`);
+    if (
+      !PLATFORM_TABLE_ALLOW_FILES.includes(src.file) &&
+      /\bplatform_credential(?:s|_pins)\b/.test(body)
+    )
+      out.push(`${src.file} names a platform credential table`);
+    if (
+      !PLATFORM_KIND_ALLOW_FILES.includes(src.file) &&
+      /["'`]platform-credential["'`]/.test(body)
+    )
+      out.push(`${src.file} spells the "platform-credential" seal kind`);
+    if (
+      !PLATFORM_WRITER_ALLOW_FILES.includes(src.file) &&
+      /\b(?:putPlatformCredential|deletePlatformCredential|setPlatformPin|clearPlatformPin|platformPinWrites)\b/.test(
+        body,
+      )
+    )
+      out.push(`${src.file} names a platform-credential writer`);
+    if (
+      !PLATFORM_OPENER_ALLOW_FILES.includes(src.file) &&
+      /\bopenPlatformCredential\b/.test(body)
+    )
+      out.push(`${src.file} names the platform-credential opener`);
+    const team = /\{\s*team\s*:/;
+    if (
+      !PLATFORM_TEAM_PURPOSE_ALLOW_FILES.includes(src.file) &&
+      team.test(body)
+    )
+      out.push(`${src.file} builds a team-wide platform purpose`);
+    if (src.file === "src/services/distribution/commerce/steam.ts") {
+      const start = body.indexOf("async function fetchSteamApps(");
+      const end = start < 0 ? -1 : body.indexOf("\n}\n", start);
+      const outside =
+        start < 0 ? body : body.slice(0, start) + body.slice(end + 3);
+      if (team.test(outside))
+        out.push(
+          `${src.file} builds a team-wide platform purpose outside fetchSteamApps`,
+        );
+    }
   }
   return out;
 }
@@ -163,6 +283,12 @@ describe("outlet-credential reach", () => {
       ...TABLE_ALLOW_FILES,
       ...KIND_ALLOW_FILES,
       ...WRITER_ALLOW_FILES,
+      ...PLATFORM_IMPORT_ALLOW_FILES,
+      ...PLATFORM_TABLE_ALLOW_FILES,
+      ...PLATFORM_KIND_ALLOW_FILES,
+      ...PLATFORM_WRITER_ALLOW_FILES,
+      ...PLATFORM_OPENER_ALLOW_FILES,
+      ...TOKENS_IMPORT_ALLOW_FILES,
     ])
       expect(existsSync(join(WORKER_ROOT, f)), f).toBe(true);
   });
@@ -188,6 +314,29 @@ describe("outlet-credential reach", () => {
         },
       ]),
     ).toHaveLength(2);
+  });
+
+  it("the P6-02 entry is narrow: the attestation module may take a token but not open a credential, and its neighbours may do neither", () => {
+    expect(
+      reachViolations([
+        {
+          file: "src/core/attestation.ts",
+          text: 'import { openOutletCredential } from "./outletCredentials.js";\n',
+        },
+        {
+          file: "src/core/deviceTrust.ts",
+          text: 'import { googleAccessToken } from "./outletTokens.js";\n',
+        },
+        {
+          file: "src/services/config/mint.ts",
+          text: 'import { googleAccessToken } from "../../core/outletTokens.js";\n',
+        },
+      ]),
+    ).toEqual([
+      "src/core/attestation.ts imports core/outletCredentials",
+      "src/core/deviceTrust.ts imports core/outletTokens",
+      "src/services/config/mint.ts imports core/outletTokens",
+    ]);
   });
 
   it("the guard fires on a manifest path naming the table or opening with the AAD kind", () => {
@@ -262,5 +411,56 @@ describe("outlet-credential reach", () => {
         },
       ]),
     ).toEqual([]);
+  });
+
+  it("A-16: the guard fires on the platform credentials' tables, kind, writers, opener and importers", () => {
+    expect(
+      reachViolations([
+        {
+          file: "src/services/config/mint.ts",
+          text: 'import { resolvePlatformCredential } from "../../core/platformCredentials.js";',
+        },
+        {
+          file: "src/services/release/sync.ts",
+          text: 'await db.run("UPDATE platform_credential_pins SET pin = ?", x);',
+        },
+        {
+          file: "src/core/ingest.ts",
+          text: 'await open(env, blob, { product: "_platform", kind: "platform-credential", id });',
+        },
+        {
+          file: "src/services/distribution/connectors/asc/setup.ts",
+          text: 'import { setPlatformPin } from "../../../../core/platformCredentials.js";\nawait setPlatformPin(db, input);',
+        },
+        {
+          file: "src/services/distribution/commerce/apple.ts",
+          text: 'import { openPlatformCredential } from "../../../core/platformCredentials.js";\nawait openPlatformCredential(env, db, id, use, p, now);',
+        },
+      ]),
+    ).toEqual([
+      "src/services/config/mint.ts imports core/platformCredentials",
+      "src/services/release/sync.ts names a platform credential table",
+      'src/core/ingest.ts spells the "platform-credential" seal kind',
+      "src/services/distribution/connectors/asc/setup.ts names a platform-credential writer",
+      "src/services/distribution/commerce/apple.ts names the platform-credential opener",
+    ]);
+  });
+
+  it("A-16: a team-wide purpose is built only by the apps listers", () => {
+    expect(
+      reachViolations([
+        {
+          file: "src/services/distribution/connectors/play/run.ts",
+          text: "platformGoogleAccessToken(env, db, { team: actor }, scopes, use, now);",
+        },
+        {
+          file: "src/services/distribution/commerce/steam.ts",
+          text: "async function publisherKey() {\n  return open({ team: x });\n}\nasync function fetchSteamApps(o) {\n  return open({ team: o.actor });\n}\n",
+        },
+      ]),
+    ).toEqual([
+      "src/services/distribution/connectors/play/run.ts builds a team-wide platform purpose",
+      "src/services/distribution/commerce/steam.ts builds a team-wide platform purpose outside fetchSteamApps",
+    ]);
   });
 });

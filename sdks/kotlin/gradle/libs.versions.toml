@@ -7,6 +7,7 @@ kotlin = "2.1.21"
 godot = "4.7.2.stable"
 playAppUpdate = "2.1.0"
 playAssetDelivery = "2.3.0"
+playIntegrity = "1.6.0"
 junit = "4.13.2"
 robolectric = "4.14.1"
 androidxTestCore = "1.6.1"
@@ -15,6 +16,7 @@ androidxTestCore = "1.6.1"
 godot = { module = "org.godotengine:godot", version.ref = "godot" }
 play-app-update = { module = "com.google.android.play:app-update", version.ref = "playAppUpdate" }
 play-asset-delivery = { module = "com.google.android.play:asset-delivery", version.ref = "playAssetDelivery" }
+play-integrity = { module = "com.google.android.play:integrity", version.ref = "playIntegrity" }
 junit = { module = "junit:junit", version.ref = "junit" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTestCore" }

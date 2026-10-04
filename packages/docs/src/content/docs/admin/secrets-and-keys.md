@@ -79,6 +79,10 @@ token mint for your App Store Connect account. Outlet credentials live in their 
 their own encryption binding: a value copied into the product-secret table does not even decrypt
 there, and no edge-mint recipe can name one.
 
+A product with no outlet credential of a kind can instead use the platform's team-level
+credential for that store, for the one app assigned to it — see [Store
+connections](/docs/admin/store-connections/).
+
 Seven kinds exist today:
 
 | Kind                             | Value                                                     | Least privilege                                                                                                                                                                              |

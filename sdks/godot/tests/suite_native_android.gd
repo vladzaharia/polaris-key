@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature update.driver outlet.detect core.store packs.transport.play
+# @pkey-feature update.driver outlet.detect core.store packs.transport.play devices.attest
 # The Android platform plugin's GDScript side (P5-06), headless on every OS:
 #
 #   stubs     PKeyAndroid without the plugin: every call answers Unsupported, reason `runtime` off
@@ -160,6 +160,22 @@ func _outlet(t: PKeyTestContext) -> void:
 	var forced := _android("android", raw)
 	var reply := forced._wrap(PKeyConstants.Feature.UPDATE_DRIVER, forced.call_sync({"op": "iau_check"}))
 	t.check("outlet: a native outlet refusal becomes Unsupported (outlet)", reply.code == &"unsupported" and reply.detail.get("reason") == "outlet")
+
+	# P6-02: Play Integrity is the play build on a Play install only.
+	var side_pi: PKeyResult = await _android("android", sideloaded).integrity_token("1", "h")
+	t.check("outlet: Play Integrity on an install Play did not make is Unsupported (outlet), devices.attest", side_pi.code == &"unsupported" and side_pi.detail.get("reason") == "outlet" \
+			and side_pi.detail.get("feature") == PKeyConstants.Feature.DEVICES_ATTEST and sideloaded.ops_called("integrity_token") == 0)
+	t.check("outlet: Play Integrity on a direct build is Unsupported (outlet)", (await _android("android", direct).integrity_token("1", "h")).detail.get("reason") == "outlet" \
+			and _android("android", direct).integrity_availability().detail.get("reason") == "outlet")
+	var play := _fake("play")
+	var pa := _android("android", play)
+	var prep: PKeyResult = await pa.integrity_prepare("123456789012")
+	var tok: PKeyResult = await pa.integrity_token("123456789012", "q8Jm3rJ0b1x2Vd4n6Q9sT0uW1yZ2aB3cD4eF5gH6iJ7")
+	t.check("play integrity: prepare and token resolve through their req", prep.ok and prep.detail.get("prepared") == true and tok.ok \
+			and tok.detail.get("token") == "token:123456789012:q8Jm3rJ0b1x2Vd4n6Q9sT0uW1yZ2aB3cD4eF5gH6iJ7", str(tok))
+	play.integrity_error = -19
+	var bad_pi: PKeyResult = await pa.integrity_token("123456789012", "h")
+	t.check("play integrity: a Play failure is platform-error with its errorCode", not bad_pi.ok and bad_pi.code == PKeyErrors.PLATFORM_ERROR and int(bad_pi.detail.get("errorCode", 0)) == -19)
 
 
 func _facade(t: PKeyTestContext) -> void:
