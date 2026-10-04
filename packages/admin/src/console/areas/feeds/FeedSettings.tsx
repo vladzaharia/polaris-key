@@ -98,10 +98,7 @@ export function FeedSettingsTab({
       <NamespaceSection eco={eco} detail={detail} save={save} />
       <LimitsSection detail={detail} save={save} />
       <YankSection eco={eco} detail={detail} save={save} />
-      <SettingsSection
-        id="feed-upstream"
-        title="Upstream"
-      >
+      <SettingsSection id="feed-upstream" title="Upstream">
         <SettingsRow
           label="Upstream registry"
           help="The feed never proxies or mirrors another registry: a name it does not hold answers not-found, so a public package can never stand in for one of yours."
