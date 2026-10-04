@@ -18,6 +18,10 @@ import type { Support } from "../../adapters/contract.js";
 import type { StorefrontAdapter, StorefrontOp } from "../adapter.js";
 import { APP_STORE_COMPILED_GATE, ASC_SPEC_PIN } from "../rules/appStore.js";
 import { ASC_WRITE_DENIED } from "../rules/appStoreDenied.js";
+import {
+  adapterListingProfile,
+  STORE_LISTING_COLUMNS,
+} from "../listingProfiles.js";
 
 const api = (...rules: string[]): Support => ({
   mode: "api",
@@ -213,18 +217,9 @@ export const APP_STORE_ADAPTER: StorefrontAdapter = {
     ciTokens: ["delete", "users", "invite", "certificates", "refund"],
   },
   ci: null,
-  // Apple's documented limits for the fields A-17 and A-18m touch (A-18b extends the profile).
-  listing: {
-    fields: {
-      name: { maxChars: 30, perLocale: true, required: true },
-      subtitle: { maxChars: 30, perLocale: true },
-      promotionalText: { maxChars: 170, perLocale: true },
-      description: { maxChars: 4000, perLocale: true, required: true },
-      keywords: { maxChars: 100, perLocale: true },
-      whatsNew: { maxChars: 4000, perLocale: true },
-    },
-    images: {},
-  },
+  // Apple's column of the shared listing model (A-18b; `../listingProfiles.ts`): the limits A-17d
+  // and A-18m write to, the same numbers the fit report grades.
+  listing: adapterListingProfile(STORE_LISTING_COLUMNS["app-store"]),
   confirmation: { phrase: "app-name", label: "App Store Connect" },
   audit: { action: "asc", projection: PROJECTION },
 };
