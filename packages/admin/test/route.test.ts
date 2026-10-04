@@ -671,11 +671,18 @@ describe("global pages", () => {
     expect(groupOf("home")).toBeNull();
     expect(groupOf("tiers")).toBe("license");
     expect(platformLinks().map((p) => p.page)).toEqual(["home", "products"]);
-    expect(platformItems().map((p) => p.page)).toEqual(["platform-deployment"]);
+    expect(platformItems().map((p) => p.page)).toEqual([
+      "platform-settings",
+      "platform-deployment",
+    ]);
   });
 
-  it("#/platform follows the chain to Deployment in one redirect", () => {
-    expect(parseLocation("#/platform").redirect).toBe("#/platform/deployment");
+  it("#/platform redirects to Settings; a page still to come follows on to Deployment", () => {
+    expect(parseLocation("#/platform").redirect).toBe("#/platform/settings");
+    expect(parseLocation("#/platform/settings").redirect).toBeUndefined();
+    expect(parseLocation("#/platform/operations").redirect).toBe(
+      "#/platform/deployment",
+    );
     expect(r.platform()).toBe("#/platform");
     expect(r.platformDeployment()).toBe("#/platform/deployment");
     expect(r.productNew({ via: "github" })).toBe("#/products/new?via=github");
