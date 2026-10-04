@@ -32,7 +32,8 @@ import {
   single,
   type AscResource,
   type FetchImpl,
-} from "./client.js";
+} from "../../../../core/asc/client.js";
+import { recordTeamRate } from "../../../../core/asc/budget.js";
 import { ASC_PLATFORM_CREDENTIAL } from "./setup.js";
 import {
   cachedPlatformApps,
@@ -244,6 +245,9 @@ export async function listPlatformAscApps(
           o.now,
         );
         throw new PlatformStoreUnavailable("app-store", status, message);
+      } finally {
+        // The team key's budget is shared with every product's poller (core/asc/budget.ts).
+        await recordTeamRate(o.env, client.lastRate, o.now);
       }
     },
   );

@@ -43,6 +43,7 @@ this page or fails the freshness gate.
 | `platform_settings` | 0056_platform_settings.sql | `key`, `value_json`, `version`, `updated_at`, `updated_by` |
 | `platform_job_runs` | 0057_platform_operations.sql | `id`, `run_id`, `job`, `cron`, `step`, `started_at`, `duration_ms`, `outcome`, `items`, `rows_affected`, `error_summary` |
 | `platform_heartbeats` | 0057_platform_operations.sql | `script`, `at`, `version_tag`, `cf_version_id`, `outcome`, `backlog_count`, `backlog_bytes`, `oldest_at` |
+| `asc_operations` | 0059_asc_operations.sql | `op_id`, `scope`, `product`, `op`, `natural_key`, `state`, `request_hash`, `result_ids_json`, `before_json`, `after_json`, `apple_status`, `apple_code`, `actor`, `created_at`, `finished_at` |
 
 ## license
 

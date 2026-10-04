@@ -93,6 +93,11 @@ export const DISTRIBUTION_ERROR_MESSAGES: Record<string, string> = {
     "That TestFlight group doesn't exist in App Store Connect.",
   no_webhook_secret: "No webhook secret is set for this connector.",
   unknown_track: "Google Play doesn't have that track.",
+  // A-17a: typed confirmation on an App Store release (and Play's halt-with-rollback tick).
+  confirmation_required:
+    "This action needs its confirmation. Fill in what the dialog asks for and try again.",
+  confirmation_mismatch:
+    "The name you typed doesn't match the app's name in App Store Connect. Type it exactly as App Store Connect shows it.",
   // A-9: the 404s keep their reason.
   unknown_outlet:
     "That outlet isn't declared any more. The page has been refreshed.",

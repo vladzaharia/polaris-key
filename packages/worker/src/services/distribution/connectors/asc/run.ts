@@ -1,22 +1,24 @@
 /**
  * Building one App Store Connect connector run (P5-02): the setup, a client whose bearer token
  * comes from P5-01's `ascToken` (memoised per isolate, the credential opened — and audited under
- * `use` — only on a miss), and the per-key rate budget kept in KV between runs.
+ * `use` — only on a miss), and the per-key rate budget kept in KV between runs (Core's meter,
+ * `core/asc/budget.ts`).
  */
 
 import type { Db, Env } from "../../../../core/platform.js";
-import { kvKey } from "../../../../core/platform.js";
 import type { ServiceHooks } from "../../../../core/hooks.js";
 import { ascToken, platformAscToken } from "../../../../core/outletTokens.js";
 import { recordOutletCredentialResult } from "../../../../core/outletCredentials.js";
 import { recordPlatformCredentialResult } from "../../../../core/platformCredentials.js";
-import { AscClient, AscError, type AscRate, type FetchImpl } from "./client.js";
-import type { AscRun } from "./apply.js";
 import {
-  ASC_PLATFORM_CREDENTIAL,
-  type AscCredentialRef,
-  type AscSetup,
-} from "./setup.js";
+  AscClient,
+  AscError,
+  AscWriteDenied,
+  type FetchImpl,
+} from "../../../../core/asc/client.js";
+import { writeRate } from "../../../../core/asc/budget.js";
+import type { AscRun } from "./apply.js";
+import { ASC_PLATFORM_CREDENTIAL, type AscSetup } from "./setup.js";
 
 export interface AscRunOptions {
   env: Env;
@@ -61,89 +63,17 @@ export function ascRun(o: AscRunOptions): AscRun {
 }
 
 // ── The rate budget ──────────────────────────────────────────────────────────────────────────
-
-/** The last `X-Rate-Limit` seen for a key, and when. */
-export interface StoredRate extends AscRate {
-  at: number;
-}
-
-/** The limit is a rolling hour; an observation older than that says nothing. */
-const RATE_WINDOW = 3600;
-
-/** Apple's budget is per KEY: a product key's budget is the product's, while the platform team
- *  key's is shared by every product that falls back to it, so it has one platform-wide slot
- *  (outside the `p:` product namespace, which no slug can reach). */
-function rateKey(product: string, cred: AscCredentialRef): string {
-  return cred.source === "product"
-    ? kvKey(product, "asc-rate", cred.credentialId)
-    : `plat:asc-rate:${ASC_PLATFORM_CREDENTIAL}`;
-}
-
-export async function readRate(
-  env: Env,
-  product: string,
-  cred: AscCredentialRef,
-  now: number,
-): Promise<StoredRate | null> {
-  try {
-    const raw = await env.HOT.get(rateKey(product, cred));
-    if (!raw) return null;
-    const v = JSON.parse(raw) as StoredRate;
-    if (
-      typeof v.limit !== "number" ||
-      typeof v.remaining !== "number" ||
-      typeof v.at !== "number" ||
-      now - v.at > RATE_WINDOW
-    )
-      return null;
-    return v;
-  } catch {
-    return null;
-  }
-}
-
-export async function writeRate(
-  env: Env,
-  product: string,
-  cred: AscCredentialRef,
-  rate: AscRate | null,
-  now: number,
-): Promise<void> {
-  if (!rate) return;
-  try {
-    await env.HOT.put(
-      rateKey(product, cred),
-      JSON.stringify({ ...rate, at: now }),
-      { expirationTtl: RATE_WINDOW },
-    );
-  } catch {
-    /* the budget is advisory */
-  }
-}
-
-/**
- * How much the poller may spend, from the remaining share of the hourly limit:
- *
- *   - `full`    ≥ 20 % left (or nothing known): every step;
- *   - `reduced` 5–20 % left: the phased-release step only (nothing else has an operator waiting
- *               on it minute by minute; webhooks still arrive);
- *   - `skip`    < 5 % left: nothing this tick. Controls an operator presses are never skipped.
- */
-export type PollBudget = "full" | "reduced" | "skip";
-
-export function pollBudget(rate: AscRate | null): PollBudget {
-  if (!rate || rate.limit <= 0) return "full";
-  const share = rate.remaining / rate.limit;
-  if (share < 0.05) return "skip";
-  if (share < 0.2) return "reduced";
-  return "full";
-}
+// The meter itself is Core's (`core/asc/budget.ts`, A-17a), shared with the platform team key's
+// listing and A-17's provisioning flows; a product key's slot and the team key's one slot are
+// chosen there from the setup's credential reference.
 
 /** Record a run's outcome on the credential's health columns and keep its rate budget. */
 export async function finishRun(run: AscRun, error: unknown): Promise<void> {
   const cred = run.setup.credential;
   await writeRate(run.env, run.product, cred, run.client.lastRate, run.now);
-  if (run.client.calls === 0 && !error) return;
+  // A write-gate refusal is the Worker's own decision, not the credential's health.
+  if (run.client.calls === 0 && (!error || error instanceof AscWriteDenied))
+    return;
   const result = error
     ? {
         ok: false as const,

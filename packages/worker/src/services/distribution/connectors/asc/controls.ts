@@ -8,7 +8,8 @@
  *     phased-release/resume    PATCH …                                       ACTIVE
  *     phased-release/complete  PATCH …                                       COMPLETE
  *     release                  POST  /v1/appStoreVersionReleaseRequests  (a version held in
- *                                                                         PENDING_DEVELOPER_RELEASE)
+ *                                                                         PENDING_DEVELOPER_RELEASE;
+ *                                                                         typed confirmation, A-17a)
  *     testflight/public-link   PATCH /v1/betaGroups/{id}  publicLinkEnabled
  *     webhook                  POST  /v1/webhooks (all 12 event types), then POST /v1/webhookPings
  *
@@ -24,6 +25,10 @@
  * nothing is sent — the team-scoped key could otherwise release or complete another app's
  * version, which no later re-read can undo. The public-link control proves its beta group the
  * same way.
+ *
+ * **The write gate (A-17a).** Every request goes through Core's client, whose deny-by-default gate
+ * (`core/asc/writeGate.ts`) admits exactly these writes and refuses the release request unless the
+ * control asserts the typed confirmation it checked (`confirm` = the app's name).
  *
  * Every control sends exactly the documented request, writes ONE audit row with the session's
  * subject (`distribution.asc.<control>`), and then RE-READS the object from the API, so what the
@@ -50,12 +55,13 @@ import {
 } from "./apply.js";
 import {
   AscError,
+  AscWriteDenied,
   ascPath,
   attr,
   relId,
   single,
   type FetchImpl,
-} from "./client.js";
+} from "../../../../core/asc/client.js";
 import { ASC_WEBHOOK_EVENT_TYPES } from "./map.js";
 import { ascRun, finishRun } from "./run.js";
 import { ASC_CONNECTOR, resolveAscSetup, type AscSetup } from "./setup.js";
@@ -135,6 +141,9 @@ async function withRun(
     return await fn(run, setup);
   } catch (e) {
     error = e;
+    // The write gate refused before anything was minted or sent (core/asc/writeGate.ts).
+    if (e instanceof AscWriteDenied)
+      return refuse(409, "write_denied", e.message);
     if (e instanceof AscError)
       return refuse(
         e.status === 404
@@ -275,6 +284,40 @@ function phasedControl(verb: keyof typeof PHASED_TARGET): ConnectorControl {
 
 // ── Release a held version ───────────────────────────────────────────────────────────────────
 
+/**
+ * A-17a: releasing is irreversible, so it takes a TYPED confirmation (owner decision,
+ * 2026-10-04; ADMIN.md §5.2): the body's `confirm` must equal the app's name as App Store Connect
+ * reports it now. Only after that comparison does the control assert `typedConfirmation` to the
+ * write gate, which refuses the release request without it.
+ */
+async function checkTypedConfirmation(
+  run: AscRun,
+  setup: AscSetup,
+  typed: unknown,
+): Promise<ControlResult | null> {
+  if (typeof typed !== "string" || typed.trim() === "")
+    return refuse(
+      422,
+      "confirmation_required",
+      "type the app's name in confirm to release",
+      ["confirm"],
+    );
+  const app = single(
+    await run.client.get(ascPath("apps", setup.appleId), {
+      "fields[apps]": "name",
+    }),
+  );
+  const name = attr(app, "name");
+  if (!name || typed.trim() !== name.trim())
+    return refuse(
+      422,
+      "confirmation_mismatch",
+      "confirm does not match the app's name in App Store Connect",
+      ["confirm"],
+    );
+  return null;
+}
+
 const releaseHeld: ConnectorControl = (c, body) =>
   withRun(c, async (run, setup) => {
     const releaseId = releaseIdOf(body);
@@ -282,6 +325,13 @@ const releaseHeld: ConnectorControl = (c, body) =>
       return refuse(422, "invalid_body", "releaseId is required", [
         "releaseId",
       ]);
+    if (typeof body.confirm !== "string" || body.confirm.trim() === "")
+      return refuse(
+        422,
+        "confirmation_required",
+        "type the app's name in confirm to release",
+        ["confirm"],
+      );
     // Apple's answer, not the stored one, decides whether the version is held.
     const known = await proveVersion(run, setup, releaseId);
     if (!known)
@@ -296,16 +346,22 @@ const releaseHeld: ConnectorControl = (c, body) =>
         "not_held",
         `the App Store version of ${releaseId} is ${known.storeState ?? "in an unknown state"}, not PENDING_DEVELOPER_RELEASE`,
       );
-    await run.client.post(ascPath("appStoreVersionReleaseRequests"), {
-      data: {
-        type: "appStoreVersionReleaseRequests",
-        relationships: {
-          appStoreVersion: {
-            data: { type: "appStoreVersions", id: known.versionId },
+    const unconfirmed = await checkTypedConfirmation(run, setup, body.confirm);
+    if (unconfirmed) return unconfirmed;
+    await run.client.post(
+      ascPath("appStoreVersionReleaseRequests"),
+      {
+        data: {
+          type: "appStoreVersionReleaseRequests",
+          relationships: {
+            appStoreVersion: {
+              data: { type: "appStoreVersions", id: known.versionId },
+            },
           },
         },
       },
-    });
+      { typedConfirmation: true },
+    );
     await auditControl(
       c,
       "release",
@@ -425,21 +481,26 @@ const registerWebhook: ConnectorControl = (c) =>
       );
     const url = webhookUrl(c.origin, c.product);
     const created = single(
-      await run.client.post(ascPath("webhooks"), {
-        data: {
-          type: "webhooks",
-          attributes: {
-            enabled: true,
-            eventTypes: [...ASC_WEBHOOK_EVENT_TYPES],
-            name: `Polaris Key (${c.product})`,
-            secret: secret.value.secret,
-            url,
-          },
-          relationships: {
-            app: { data: { type: "apps", id: setup.appleId } },
+      await run.client.post(
+        ascPath("webhooks"),
+        {
+          data: {
+            type: "webhooks",
+            attributes: {
+              enabled: true,
+              eventTypes: [...ASC_WEBHOOK_EVENT_TYPES],
+              name: `Polaris Key (${c.product})`,
+              secret: secret.value.secret,
+              url,
+            },
+            relationships: {
+              app: { data: { type: "apps", id: setup.appleId } },
+            },
           },
         },
-      }),
+        // The gate admits the callback URL only on the origin this request arrived at.
+        { hookOrigin: c.origin },
+      ),
     );
     if (!created)
       return refuse(
