@@ -145,6 +145,15 @@ push with `update_requires_distribution` until the manifest adds `distribution: 
 the stored set keeps serving in the meantime. The **Distribution** nav section appears only while
 Distribution is on.
 
+## Package feeds
+
+Below the services, **Package feeds** is Distribution's one sub-capability: whether the product's
+packages are served on the registry host. It is operator-owned (a manifest never writes it) and
+saves on its own, through `PUT /manage/api/products/<slug>/distribution/package-feeds` with
+`{enabled, expectedVersion}`; a stale version is a 409 and nothing changes. Turning it off asks
+first, because every feed of the product answers not-found within 30 seconds. While it is on,
+**Distribution → Package feeds** is in the sidebar: see [Package feeds](/docs/admin/feeds/).
+
 ## Reference
 
 - [D1 data model](/docs/reference/data-model/) — `products.services_json` and

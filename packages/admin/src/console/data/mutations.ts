@@ -18,7 +18,8 @@
  */
 
 import type { QueryKey } from "@tanstack/react-query";
-import { api, type AdminApi } from "../../api.js";
+import { api, type AdminApi, type FeedScope } from "../../api.js";
+import { SYSTEM_PRODUCT_SLUG } from "../areas/feeds/model.js";
 import { qk } from "./queries.js";
 import { queryClient } from "./queryClient.js";
 
@@ -99,7 +100,13 @@ export type WriteMethod =
   | "patchTier"
   | "deleteTier"
   | "assignPlatformStoreApp"
-  | "releasePlatformStoreApp";
+  | "releasePlatformStoreApp"
+  | "saveFeedSettings"
+  | "saveFeedPolicy"
+  | "feedVersionAction"
+  | "rebuildFeed"
+  | "bootstrapPlatformFeeds"
+  | "savePackageFeeds";
 
 export interface MutationSpec<A extends unknown[]> {
   /** What the write does, for the table's readers (and the test's failure messages). */
@@ -164,6 +171,20 @@ const licenseKey = (slug: string, id: string): Target[] => [
   exact(qk.licenses(slug)),
   prefix(qk.license(slug, id)),
 ];
+
+/**
+ * F-11: a Feeds write. The scope's whole Feeds area, the platform's (it lists every owner's
+ * packages) and the owning product's (the same feed seen from its product scope).
+ */
+const feeds = (scope: FeedScope, owner?: string): Target[] => {
+  const targets = [prefix(qk.pkgFeeds({ kind: "platform" }))];
+  if (scope.kind === "product") targets.push(prefix(qk.pkgFeeds(scope)));
+  const ownerSlug =
+    owner ?? (scope.kind === "platform" ? SYSTEM_PRODUCT_SLUG : undefined);
+  if (ownerSlug && !(scope.kind === "product" && scope.slug === ownerSlug))
+    targets.push(prefix(qk.pkgFeeds({ kind: "product", slug: ownerSlug })));
+  return targets;
+};
 
 export const MUTATIONS: MutationTable = {
   logout: {
@@ -508,6 +529,53 @@ export const MUTATIONS: MutationTable = {
       prefix(qk.platformStores()),
       prefix(qk.credentials(heldBy)),
       prefix(qk.health(heldBy)),
+    ],
+  },
+  saveFeedSettings: {
+    label: "feed settings save",
+    invalidates: (scope) => feeds(scope),
+  },
+  saveFeedPolicy: {
+    label: "platform feed policy save",
+    // The kill switch and the ceiling decide every owner's feed status: every product's Feeds
+    // view goes stale (only the visible ones refetch), and the platform trail gains a row.
+    invalidates: () => [
+      prefix(qk.pkgFeeds({ kind: "platform" })),
+      prefix(qk.allProducts()),
+      prefix(qk.platformActivity()),
+    ],
+  },
+  feedVersionAction: {
+    label: "package version yank / unyank / deprecate",
+    // The version's state shows in the Feeds views and, as a yank, in the owner's release views.
+    invalidates: (scope, _eco, owner) => [
+      ...feeds(scope, owner),
+      ...releasePolicy(owner),
+    ],
+  },
+  rebuildFeed: {
+    label: "feed rebuild",
+    // Nothing the console shows changes but the feed's activity trail.
+    invalidates: (scope) => feeds(scope),
+  },
+  bootstrapPlatformFeeds: {
+    label: "platform feeds bootstrap",
+    // It creates (or re-asserts) the system product, which the session's product list carries.
+    invalidates: () => [
+      prefix(qk.pkgFeeds({ kind: "platform" })),
+      exact(qk.me()),
+      exact(qk.products()),
+      prefix(qk.platformActivity()),
+    ],
+  },
+  savePackageFeeds: {
+    label: "package feeds switch",
+    // The product row carries the switch the sidebar gates Package feeds on.
+    invalidates: (slug) => [
+      exact(qk.product(slug)),
+      exact(qk.products()),
+      exact(qk.packageFeedsSwitch(slug)),
+      ...feeds({ kind: "product", slug }),
     ],
   },
 };

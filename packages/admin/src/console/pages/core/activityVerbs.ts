@@ -70,6 +70,15 @@ const VERBS: Record<string, string> = {
   "config.mint.approve": "approved edge-mint recipe",
   "config.mint.revoke": "revoked the approval of edge-mint recipe",
   "config.mint.invalidate": "invalidated the approval of edge-mint recipe",
+  "distribution.package_feeds.update": "switched package feeds",
+  "feed.settings.update": "changed the settings of feed",
+  "feed.rebuild": "rebuilt feed",
+  "feed.policy.update": "changed the platform policy of feed",
+  "feed.bootstrap": "set up the platform's package feeds",
+  "package.version.yank": "yanked package version",
+  "package.version.unyank": "unyanked package version",
+  "package.version.deprecate": "deprecated package version",
+  "package.version.undeprecate": "lifted the deprecation of package version",
 };
 
 export function verbFor(action: string): string {
@@ -96,6 +105,8 @@ export const ACTION_GROUPS: { value: string; label: string }[] = [
   { value: "product.", label: "Product and services" },
   { value: "bundle.", label: "Offline bundles" },
   { value: "access.", label: "Access" },
+  { value: "feed.", label: "Package feeds" },
+  { value: "package.", label: "Package versions" },
 ];
 
 /** The target kinds the filter offers (the audit's own `target_kind` values). */
@@ -108,4 +119,6 @@ export const TARGET_KINDS: { value: string; label: string }[] = [
   { value: "tier", label: "Tier" },
   { value: "product", label: "Product" },
   { value: "ci_token", label: "CI token" },
+  { value: "feed", label: "Package feed" },
+  { value: "package", label: "Package version" },
 ];

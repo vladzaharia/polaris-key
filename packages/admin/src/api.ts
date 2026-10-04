@@ -791,6 +791,9 @@ export interface ProductDetail {
   /** The platform's own product (F-03: the package-feeds owner of our SDKs); kept out of the
    *  product switcher and the Products registry. */
   system?: boolean;
+  /** The operator-owned `packageFeeds` sub-capability (F-11): Distribution → Package feeds shows
+   *  only while it is on. */
+  packageFeeds?: boolean;
   signingKid: string;
   releaseSource?: ProductReleaseSource;
   signing?: ProductSigningBundle | null;
@@ -2298,6 +2301,194 @@ export interface TierBody {
   maxVersion?: string | null;
 }
 
+// ── package feeds (F-11; worker `admin/handlers/feeds.ts`) ───────────────────────────
+
+/** The six tier-1 ecosystems a package feed serves (`@polaris-key/manifest` PACKAGE_ECOSYSTEMS). */
+export type FeedEcosystem =
+  | "npm"
+  | "pypi"
+  | "swift"
+  | "maven"
+  | "oci"
+  | "godot";
+
+/** Why a feed does not answer, in the order the registry's access ladder checks it. */
+export type FeedOffReason =
+  | "platform-off"
+  | "no-owner"
+  | "distribution-off"
+  | "package-feeds-off"
+  | "not-set-up"
+  | "feed-off";
+
+export interface FeedSummary {
+  ecosystem: FeedEcosystem;
+  label: string;
+  configured: boolean;
+  enabled: boolean;
+  accessMode: string;
+  status: "enabled" | "off" | "unavailable";
+  reason: FeedOffReason | null;
+  packages: number;
+  versions: number;
+  lastPublishedAt: number | null;
+  /** On the registry host; `null` when this deployment has no registry host configured. */
+  baseUrl: string | null;
+}
+
+export interface PackageFeedsSwitch {
+  enabled: boolean;
+  /** 0 = never written. */
+  version: number;
+  updatedAt: number | null;
+}
+
+interface FeedsHead {
+  scope: "platform" | "product";
+  /** The owning product (the system product in platform scope); `null` before the bootstrap. */
+  owner: string | null;
+  ownerName: string | null;
+  distributionEnabled: boolean;
+  packageFeeds: PackageFeedsSwitch | null;
+  registryOrigin: string | null;
+}
+
+export interface FeedsOverviewDto extends FeedsHead {
+  feeds: FeedSummary[];
+  summary: {
+    feedsEnabled: number;
+    packages: number;
+    versions: number;
+    lastPublishedAt: number | null;
+  };
+  /** Platform scope: every owner with a packageFeeds row. */
+  owners?: {
+    slug: string;
+    name: string;
+    system: boolean;
+    packageFeeds: boolean;
+  }[];
+}
+
+export interface FeedSettings {
+  enabled: boolean;
+  accessMode: string;
+  namespace: Record<string, unknown>;
+  maxPackageBytes: number;
+  upstream: "none";
+  ext: Record<string, unknown>;
+  /** 0 = no row yet: the first save creates it. */
+  version: number;
+  updatedAt: number | null;
+  updatedBy: string | null;
+}
+
+export interface FeedPolicy {
+  enabled: boolean;
+  maxPackageBytesCeiling: number;
+  version: number;
+  updatedAt: number;
+  updatedBy: string | null;
+}
+
+export interface FeedCapabilities {
+  yank: boolean;
+  deprecate: boolean;
+  yankPolicy: boolean;
+}
+
+export interface FeedDetailDto extends FeedsHead {
+  feed: FeedSummary;
+  settings: FeedSettings;
+  policy: FeedPolicy | null;
+  capabilities: FeedCapabilities;
+  accessModes: { mode: string; available: boolean }[];
+}
+
+export interface FeedSettingsWrite {
+  expectedVersion: number;
+  enabled?: boolean;
+  accessMode?: string;
+  namespace?: Record<string, unknown>;
+  maxPackageBytes?: number;
+  ext?: Record<string, unknown>;
+}
+
+export interface FeedPolicyWrite {
+  expectedVersion: number;
+  enabled?: boolean;
+  maxPackageBytesCeiling?: number;
+}
+
+export interface FeedTag {
+  tag: string;
+  channel: string;
+  version: string;
+}
+
+export interface FeedPackageRow {
+  owner: string;
+  deliverableId: string;
+  name: string;
+  versions: number;
+  liveVersions: number;
+  latestVersion: string | null;
+  lastPublishedAt: number | null;
+  tags: FeedTag[];
+}
+
+export interface FeedPackagesPage {
+  items: FeedPackageRow[];
+  nextCursor: string | null;
+}
+
+export interface FeedPackageFile {
+  name: string;
+  type: string;
+  size: number;
+  sha256: string;
+  sha512?: string;
+  sha1?: string;
+  md5?: string;
+}
+
+export interface FeedPackageVersion {
+  version: string;
+  releaseId: string;
+  channel: string | null;
+  tags: string[];
+  state: "live" | "yanked" | "deprecated";
+  stateMessage: string | null;
+  publishedAt: number;
+  source: {
+    kind: "oidc" | "static" | "console" | "unknown";
+    publisher: string | null;
+    runUrl: string | null;
+    tokenId: string | null;
+  };
+  size: number;
+  files: FeedPackageFile[];
+}
+
+export interface FeedPackageDto {
+  owner: string;
+  ownerName: string;
+  ecosystem: FeedEcosystem;
+  deliverableId: string;
+  name: string;
+  baseUrl: string | null;
+  capabilities: FeedCapabilities;
+  tags: FeedTag[];
+  versions: FeedPackageVersion[];
+}
+
+export type FeedVersionVerb = "yank" | "unyank" | "deprecate" | "undeprecate";
+
+/** Which console scope a Feeds call is in: the platform's feeds, or one product's. */
+export type FeedScope =
+  | { kind: "platform" }
+  | { kind: "product"; slug: string };
+
 // ── activity ──────────────────────────────────────────────────────────────────
 export interface ActivityItem {
   id: string;
@@ -2439,6 +2630,23 @@ function cursorQuery(cursor?: PlatformCursor | null): string {
 }
 /** Build a per-product API base. */
 const p = (slug: string): string => `/manage/api/products/${enc(slug)}`;
+
+/** The Feeds API base of a scope (F-11). */
+const feedsBase = (scope: FeedScope): string =>
+  scope.kind === "platform"
+    ? "/manage/api/platform/feeds"
+    : `${p(scope.slug)}/distribution/feeds`;
+
+/** One package: `:owner/:name` in platform scope, `:name` in product scope. */
+const feedPackagePath = (
+  scope: FeedScope,
+  eco: FeedEcosystem,
+  owner: string,
+  name: string,
+): string =>
+  scope.kind === "platform"
+    ? `${feedsBase(scope)}/${eco}/packages/${enc(owner)}/${enc(name)}`
+    : `${feedsBase(scope)}/${eco}/packages/${enc(name)}`;
 
 const rawApi = {
   // ── identity ────────────────────────────────────────────────────────────────
@@ -3190,6 +3398,85 @@ const rawApi = {
     call<{ ok: true; id: string }>(`${p(slug)}/license/tiers/${enc(id)}`, {
       method: "DELETE",
     }),
+
+  // ── package feeds (F-11), both scopes ───────────────────────────────────────────
+  feedsOverview: (scope: FeedScope) => call<FeedsOverviewDto>(feedsBase(scope)),
+  feedDetail: (scope: FeedScope, eco: FeedEcosystem) =>
+    call<FeedDetailDto>(`${feedsBase(scope)}/${eco}`),
+  /** 409 `version_conflict` when the feed moved past `expectedVersion` (0 creates the row). */
+  saveFeedSettings: (
+    scope: FeedScope,
+    eco: FeedEcosystem,
+    body: FeedSettingsWrite,
+  ) =>
+    call<{ ok: true; settings: FeedSettings }>(
+      `${feedsBase(scope)}/${eco}/settings`,
+      { method: "PUT", body: JSON.stringify(body) },
+    ),
+  /** Platform scope only: the ecosystem's kill switch and size ceiling. */
+  saveFeedPolicy: (eco: FeedEcosystem, body: FeedPolicyWrite) =>
+    call<{ ok: true; policy: FeedPolicy }>(
+      `/manage/api/platform/feeds/${eco}/policy`,
+      { method: "PUT", body: JSON.stringify(body) },
+    ),
+  feedPackages: (
+    scope: FeedScope,
+    eco: FeedEcosystem,
+    query: { q?: string; owner?: string; cursor?: string | null } = {},
+  ) => {
+    const search = new URLSearchParams();
+    if (query.q) search.set("q", query.q);
+    if (query.owner) search.set("owner", query.owner);
+    if (query.cursor) search.set("cursor", query.cursor);
+    const qs = search.toString();
+    return call<FeedPackagesPage>(
+      `${feedsBase(scope)}/${eco}/packages${qs ? `?${qs}` : ""}`,
+    );
+  },
+  feedPackage: (
+    scope: FeedScope,
+    eco: FeedEcosystem,
+    owner: string,
+    name: string,
+  ) => call<FeedPackageDto>(feedPackagePath(scope, eco, owner, name)),
+  feedVersionAction: (
+    scope: FeedScope,
+    eco: FeedEcosystem,
+    owner: string,
+    name: string,
+    version: string,
+    verb: FeedVersionVerb,
+    body: { reason?: string; message?: string } = {},
+  ) =>
+    call<{ ok: true; state: FeedPackageVersion["state"] }>(
+      `${feedPackagePath(scope, eco, owner, name)}/versions/${enc(version)}/${verb}`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  rebuildFeed: (scope: FeedScope, eco: FeedEcosystem) =>
+    call<{ ok: true; queued: number }>(`${feedsBase(scope)}/${eco}/rebuild`, {
+      method: "POST",
+    }),
+  feedActivity: (scope: FeedScope, eco: FeedEcosystem) =>
+    call<{ items: ActivityItem[] }>(`${feedsBase(scope)}/${eco}/activity`),
+  /** Create (or re-assert) the system product that owns the platform's feeds (F-03). */
+  bootstrapPlatformFeeds: () =>
+    call<{ ok: true; slug: string; created: boolean }>(
+      "/manage/api/platform/feeds/bootstrap",
+      { method: "POST" },
+    ),
+  packageFeeds: (slug: string) =>
+    call<{ packageFeeds: PackageFeedsSwitch }>(
+      `${p(slug)}/distribution/package-feeds`,
+    ),
+  /** 409 `version_conflict` when the switch moved past `expectedVersion` (0 = never written). */
+  savePackageFeeds: (
+    slug: string,
+    body: { enabled: boolean; expectedVersion: number },
+  ) =>
+    call<{ ok: true; packageFeeds: PackageFeedsSwitch }>(
+      `${p(slug)}/distribution/package-feeds`,
+      { method: "PUT", body: JSON.stringify(body) },
+    ),
 
   // ── activity (keyset) ─────────────────────────────────────────────────────────
   activity: (

@@ -2787,6 +2787,22 @@ package version gets in, and what keeps it out of everything else.
   (operator-owned, optimistic-versioned, audited) and each feed's `enabled`. The render queue
   (`registry_render_queue`) is Core's, written in the same batch as the change it follows, and
   carries ids only.
+- **The Feeds console and its admin API (F-11).** `/manage/api/platform/feeds/*` and
+  `/manage/api/products/<slug>/distribution/feeds/*` (`admin/handlers/feeds.ts`) sit behind the
+  same session, CSRF, limiter and platform-admin gates as every admin route (403 otherwise; there
+  is no per-product admin). Every write is audited with the verified actor: `feed.settings.update`,
+  `feed.rebuild` and `package.version.{yank,unyank,deprecate,undeprecate}` under the owning
+  product, `feed.policy.update` and `feed.bootstrap` in `platform_audit`. Settings and policy
+  writes are optimistic (`expectedVersion`, 409 on a stale version) and validated per ecosystem:
+  unknown fields, a malformed namespace or extension key, a size above the platform ceiling and
+  any upstream but `none` are refused, a feed cannot be enabled with an empty namespace, and only
+  `public` access can be set until registry credentials exist (`access_mode_unavailable`), so no
+  console save can turn a feed into one that refuses every client. A version verb the protocol
+  has no state for is refused (`unsupported_by_ecosystem`) rather than recorded as a console-only
+  fiction; the verbs that apply run Release's own yank, unyank and deprecation (the same batch,
+  render enqueue and pack-set invalidation as Release's routes). There is no delete. A write drops
+  its isolate's cached registry settings; other isolates follow within the 30-second TTL. Tests:
+  `test/adminFeeds.test.ts`.
 
 ### Packs on the wire (packs v1, P4-21)
 

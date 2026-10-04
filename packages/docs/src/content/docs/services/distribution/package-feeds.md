@@ -402,3 +402,9 @@ Add the URL with no trailing slash: the editor appends its own paths. Each packa
 `pnpm --filter @polaris-key/worker registry:clients` stands up a seeded local Worker on the
 registry host (`wrangler dev --env test`, local D1 and R2) and runs real clients against it. The
 same harness runs in CI as `registry-clients.yml`.
+
+## Managing feeds
+
+Feed settings, the platform policy, and yanking or deprecating a version are in the console:
+**Platform → Package feeds** for the platform's own packages and **Distribution → Package feeds**
+for a product's. See [Package feeds in the console](/docs/admin/feeds/).

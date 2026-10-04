@@ -164,7 +164,10 @@ describe("items and headers (owner, 2026-10-03)", () => {
     // Exactly the nav model's items: the platform links, then every section's.
     expect(links.map((a) => a.textContent)).toEqual([
       ...platformLinks().map((p) => p.label),
-      ...SECTIONS.flatMap((s) => navItems(s).map((p) => p.label)),
+      // The product row says nothing of package feeds, so Distribution → Package feeds is absent.
+      ...SECTIONS.flatMap((s) =>
+        navItems(s, { packageFeeds: false }).map((p) => p.label),
+      ),
     ]);
     for (const link of links) {
       expect(
@@ -707,12 +710,13 @@ describe("old URLs and history", () => {
     ).toBe("page");
   });
 
-  it("sends a page that is not built yet to the page that holds it today", async () => {
-    // Every product page is built (chunks 5 to 10); the Platform section still has some.
-    boot("#/platform/feeds", { services: ALL_ON });
+  it("sends a page that holds nothing itself to the page that does", async () => {
+    // Every page is built (F-11 built the last, Package feeds); the Platform section's root is
+    // not a page and still redirects to its host.
+    boot("#/platform", { services: ALL_ON });
     await screen.findByRole("navigation", { name: "Console" });
     await waitFor(() =>
-      expect(window.location.hash).toBe("#/platform/deployment"),
+      expect(window.location.hash).toBe("#/platform/settings"),
     );
   });
 });
