@@ -45,6 +45,15 @@
  *
  * A key no holder of this product holds is the plain not-found, after the app mode's request
  * level check (unchanged from P2b-04), so the route is no oracle for what other tenants store.
+ *
+ * ── LAZY DELTAS (P4-29) ─────────────────────────────────────────────────────────────────────
+ *
+ * A generated lazy delta (P4-17) is stored at `deltas/<from>/<to>.<method>` (or under `gated/`),
+ * never at a `blobs/` key, yet the feed's delta menu names it by its own SHA-256. When neither
+ * blob key is held, the hash's `deltas/` keys this product holds a `lazy-delta` ref to are the
+ * candidates (`lazyDeltaKeys`), the ref naming its pack, so the pack rules above apply unchanged:
+ * a `gated/deltas/…` key needs the pack's current gate. Only while P4-17's `LAZY_DELTAS` and the
+ * product's opt-in are on. A cold delta (its ref dropped) is the plain not-found.
  */
 
 import { APP_DELIVERABLE_ID, isDeliverableId } from "@polaris-key/manifest";
@@ -52,7 +61,15 @@ import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { ReleaseCatalog } from "../../core/hooks.js";
 import { bearer } from "../../core/platform.js";
 import { notFound, wireError } from "../../core/errors.js";
-import { blobKey, refHolders, type RefHolder } from "../../core/blobs.js";
+import {
+  blobKey,
+  LAZY_DELTA_REF,
+  lazyDeltaKeys,
+  parseKey,
+  refHolders,
+  type RefHolder,
+} from "../../core/blobs.js";
+import { lazyDeltasEnabled } from "../../core/deltaDemand.js";
 import {
   accessRefusal,
   entitlementFlagRefusal,
@@ -82,6 +99,8 @@ type Requirement =
 const PACK_REF_KINDS: ReadonlySet<string> = new Set([
   "pack-upload",
   "pack-object",
+  // P4-29: a generated lazy delta, held by its pack deliverable (plans/P4-29.md §6.3).
+  LAZY_DELTA_REF,
 ]);
 
 /** The holders of one key, classified. */
@@ -299,6 +318,25 @@ export async function decideBlob(
     classify(publicKey, false, rows),
     classify(gatedKey, true, rows),
   ].filter((h) => h.packs.length > 0 || (h.appSide && !h.gated));
+
+  // P4-29 (plans/P4-29.md §6.3): neither blob key is held, so the hash may name a lazy delta
+  // (`deltas/<from>/<to>.<method>`, under `gated/` for a gated pack) this product holds a
+  // `lazy-delta` ref to, served under the holding pack's rules exactly as its other objects. Only
+  // while P4-17's two switches are on, so either withdraws serving with the menu.
+  if (!candidates.length && (await lazyDeltasEnabled(env, db, product.slug))) {
+    const keys = await lazyDeltaKeys(db, product.slug, sha256);
+    if (keys.length) {
+      const held = await refHolders(db, product.slug, keys);
+      if (held === null) return { kind: "refused", response: notFound() };
+      for (const key of keys) {
+        const parsed = parseKey(key);
+        if (!parsed || parsed.area !== "locked" || parsed.kind !== "delta")
+          continue;
+        const h = classify(key, parsed.gated, held);
+        if (h.packs.length > 0) candidates.push(h);
+      }
+    }
+  }
 
   if (!candidates.length) {
     // Neither key is ours: the request-level check under the app mode first (unchanged), then

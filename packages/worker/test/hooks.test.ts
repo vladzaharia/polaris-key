@@ -537,7 +537,7 @@ describe("releaseCatalog (Release)", () => {
     // bytes (Release's GitHub-located ones) rather than records, and writes nothing either.
     // P2b-05 added `channelReleases`, the feeds' history read. P4-02 added the six pack reads.
     // P6-03 added `knownChannels`, P4-12 the five pack-set reads, P4-13 `revocations`, P4-18
-    // `packPayload` (the payload URL's read).
+    // `packPayload` (the payload URL's read), P4-29 `lazyDeltas` (the feed's delta menu).
     expect(Object.keys(catalog).sort()).toEqual([
       "accessSelector",
       "artifacts",
@@ -551,6 +551,7 @@ describe("releaseCatalog (Release)", () => {
       "holdsFor",
       "installScript",
       "knownChannels",
+      "lazyDeltas",
       "liveLevels",
       "metadataAccess",
       "openSource",
