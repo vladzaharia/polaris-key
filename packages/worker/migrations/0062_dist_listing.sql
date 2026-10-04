@@ -13,7 +13,7 @@
 --                  the row is deleted when the document declares no listing
 --   modified_at    the ingest that last CHANGED it (an identical resync touches nothing)
 CREATE TABLE IF NOT EXISTS dist_listing (
-  product      TEXT PRIMARY KEY REFERENCES products(slug) ON DELETE CASCADE,
+  product      TEXT PRIMARY KEY REFERENCES products(slug),
   listing_json TEXT NOT NULL,
   modified_at  INTEGER NOT NULL
 );
