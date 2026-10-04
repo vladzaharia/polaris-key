@@ -566,7 +566,7 @@ If a tag is malformed, the workflow exits before applying migrations or deployin
 
 **Deploy identity (A-11).** Both `wrangler deploy` calls carry the release tag and commit:
 `--var PKEY_RELEASE_TAG:<tag>`, `--var PKEY_GIT_SHA:<sha>`, and the same values on the
-Cloudflare version (`--tag <tag>`, cut to 25 characters, and `--message "<tag> <short sha>"`).
+Cloudflare version (`--tag <tag>`, cut to 25 characters, and `--message "<tag> <short sha>"`, the tag cut to 80).
 Both wrangler configs bind `CF_VERSION_METADATA` (`[env.<env>.version_metadata]`, one per
 environment, because a binding is not inherited from the top level). Platform admins read the
 result at `GET /manage/api/platform/version` and `/manage/api/platform/deployment`; the second

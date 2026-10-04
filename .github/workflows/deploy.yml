@@ -119,8 +119,9 @@ jobs:
       # A-11 deploy identity, on BOTH deploys: the release tag and commit as vars
       # (PKEY_RELEASE_TAG, PKEY_GIT_SHA → GET /manage/api/platform/version), and the same tag and
       # commit on the Cloudflare version itself (--tag, --message; the tag is cut to 25 characters
-      # and the message stays short, so neither can exceed a version-field limit). wrangler writes
-      # its result, including the new version id, to WRANGLER_OUTPUT_FILE_PATH for "Record deploy".
+      # and the message to 80 plus the short commit, so neither can exceed a version-field
+      # limit). wrangler writes its result, including the new version id, to
+      # WRANGLER_OUTPUT_FILE_PATH for "Record deploy".
       - name: Deploy lazy-delta consumer
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -131,7 +132,7 @@ jobs:
           cd packages/worker
           npx wrangler deploy -c wrangler.deltas.toml --env "$ENV" \
             --var "PKEY_RELEASE_TAG:$TAG" --var "PKEY_GIT_SHA:$GITHUB_SHA" \
-            --tag "${TAG:0:25}" --message "$TAG ${GITHUB_SHA:0:12}"
+            --tag "${TAG:0:25}" --message "${TAG:0:80} ${GITHUB_SHA:0:12}"
       - name: Assemble static assets (admin SPA + docs site)
         run: pnpm --filter @polaris-key/worker assemble
       - name: Deploy worker + admin assets
@@ -145,7 +146,7 @@ jobs:
           cd packages/worker
           npx wrangler deploy --env "$ENV" \
             --var "PKEY_RELEASE_TAG:$TAG" --var "PKEY_GIT_SHA:$GITHUB_SHA" \
-            --tag "${TAG:0:25}" --message "$TAG ${GITHUB_SHA:0:12}"
+            --tag "${TAG:0:25}" --message "${TAG:0:80} ${GITHUB_SHA:0:12}"
       - name: Smoke check
         id: smoke
         env:
