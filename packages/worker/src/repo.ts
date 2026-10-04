@@ -37,7 +37,7 @@ export interface ProductRow {
   // manifest's `web.origins`. Manifest-owned with no `_source` column — link writes it, every
   // resync rewrites it. NULL reads back as "no origin allowed". Parsed by `core/cors.ts`.
   web_origins_json?: string | null;
-  /** 1 for the platform's own product (`SYSTEM_PRODUCT_SLUG`, migrations/0055_a), set only by
+  /** 1 for the platform's own product (`SYSTEM_PRODUCT_SLUG`, migrations/0056_a), set only by
    *  the package-feeds bootstrap; delete and rename refuse it. */
   system?: number;
   // The device-trust policy (migrations/0053_d/e, P6-02): operator-owned, never written by an
@@ -1690,6 +1690,28 @@ export async function getTier(
 }
 
 // ── Audit (keyset pagination on (at DESC, id DESC)) ──────────────────────────
+/** `appendAudit` as a statement, for a caller that must write the row in the same atomic batch
+ *  as the change it records (A-16's app assignment). */
+export function auditStatement(row: AuditRow): DbStatement {
+  return {
+    sql: `INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    params: [
+      row.product,
+      row.id,
+      row.at,
+      row.actor_sub,
+      row.actor_name,
+      row.actor_email,
+      row.action,
+      row.target_kind,
+      row.target_id,
+      row.parent_id,
+      row.summary,
+    ],
+  };
+}
+
 export async function appendAudit(db: Db, row: AuditRow): Promise<void> {
   await db.run(
     `INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary)
@@ -1774,6 +1796,27 @@ export interface PlatformAuditRow {
   summary: string | null;
   before_json: string | null;
   after_json: string | null;
+}
+
+/** `appendPlatformAudit` as a statement, for an atomic batch (A-16). */
+export function platformAuditStatement(row: PlatformAuditRow): DbStatement {
+  return {
+    sql: `INSERT INTO platform_audit (id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, summary, before_json, after_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    params: [
+      row.id,
+      row.at,
+      row.actor_sub,
+      row.actor_name,
+      row.actor_email,
+      row.action,
+      row.target_kind,
+      row.target_id,
+      row.summary,
+      row.before_json,
+      row.after_json,
+    ],
+  };
 }
 
 export async function appendPlatformAudit(

@@ -99,15 +99,32 @@ export {
   type DeviceManagerSlots,
 } from "./components/DeviceManager.js";
 export {
+  baseTokens,
   defaultTheme,
   highContrastTheme,
+  lightTheme,
   mergeTheme,
+  neutralDarkTokens,
+  neutralLightTokens,
+  polarisKeyDarkTokens,
+  polarisKeyLightTokens,
+  polarisKeyTheme,
   themeVars,
+  type PolarisBranding,
+  type PolarisColorScheme,
+  type PolarisResolvedScheme,
   type PolarisTheme,
   type PolarisThemeTokens,
   type PolarisThemeCopy,
   type PartialTheme,
+  type PoweredByLayout,
 } from "./components/theme.js";
+// The "Powered by Polaris Key" badge for an integrator's about/credits/account screen
+// (docs/design/BRAND.md §7.2).
+export {
+  PoweredByPolarisKey,
+  type PoweredByPolarisKeyProps,
+} from "./components/brand.js";
 
 // ── Primitives (build a custom screen with the same a11y contract) ───────────
 export {
@@ -115,6 +132,7 @@ export {
   Button,
   Panel,
   TextField,
+  useFocusRing,
   type MessageScreenProps,
   type ButtonProps,
   type ButtonVariant,

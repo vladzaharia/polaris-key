@@ -10,21 +10,23 @@
 // shows one error for the whole form, not one per input.
 
 import type { CSSProperties } from "react";
+import { useFocusRing } from "./focus.js";
 
 export const inputStyle: CSSProperties = {
   padding: "10px 12px",
-  borderRadius: "var(--pk-radius)",
-  border: "1px solid var(--pk-border)",
-  background: "transparent",
+  boxSizing: "border-box",
+  // A control's boundary needs 3:1 (WCAG 1.4.11; BRAND.md §4.3 `border-strong`); an input on a
+  // card sits in the sunken surface.
+  borderRadius: "var(--pk-control-radius, var(--pk-radius))",
+  border: "1px solid var(--pk-border-strong, var(--pk-border))",
+  background: "var(--pk-surface-sunken, transparent)",
   color: "var(--pk-text)",
   fontSize: "14px",
   fontFamily: "var(--pk-font-family)",
-  outlineColor: "var(--pk-ring)",
-  outlineOffset: "2px",
 };
 
 export const labelStyle: CSSProperties = {
-  fontSize: "13px",
+  fontSize: "14px",
   color: "var(--pk-text-muted)",
 };
 
@@ -59,6 +61,7 @@ export function TextField(props: TextFieldProps): JSX.Element {
     style,
     ...rest
   } = props;
+  const ring = useFocusRing();
   return (
     <>
       <label htmlFor={id} style={labelStyle}>
@@ -66,7 +69,9 @@ export function TextField(props: TextFieldProps): JSX.Element {
       </label>
       <input
         id={id}
-        style={{ ...inputStyle, ...style }}
+        style={{ ...inputStyle, ...style, ...ring.style }}
+        onFocus={ring.onFocus}
+        onBlur={ring.onBlur}
         value={value}
         placeholder={placeholder}
         disabled={disabled}

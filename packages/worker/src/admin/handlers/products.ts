@@ -628,6 +628,14 @@ async function kekCounts(db: Db): Promise<KekCounts> {
     }
   }
   counts.managed = managed;
+  // A-16: the platform's team store credentials — product-less, so outside SEALED_TABLES.
+  const platform: Record<string, number> = {};
+  for (const row of await db.all<{ kek_id: string | null; n: number }>(
+    `SELECT ${kekIdOf("enc_value_json")} AS kek_id, COUNT(*) AS n
+       FROM platform_credentials GROUP BY 1`,
+  ))
+    platform[row.kek_id ?? UNREADABLE_KEK] = Number(row.n);
+  counts.platformCredentials = platform;
   return counts;
 }
 
@@ -801,6 +809,52 @@ async function resealSweep(
       } else {
         skipped += rewritten;
       }
+    }
+  }
+  // Pass 3 (A-16): the platform's team store credentials. Same CAS and verification; the AAD is
+  // `pkey:v2:_platform:platform-credential:<id>`, rebuilt exactly as `core/platformCredentials.ts`
+  // seals it. No product: a failure is reported under the `_platform` slot.
+  if (budget > 0) {
+    const rows = await db.all<{ id: string; blob: string }>(
+      `SELECT credential_id AS id, enc_value_json AS blob
+         FROM platform_credentials
+        WHERE ${kekIdOf("enc_value_json")} IS NOT ?
+        ORDER BY credential_id
+        LIMIT ?`,
+      active,
+      budget,
+    );
+    for (const row of rows) {
+      budget--;
+      const ctx = {
+        product: "_platform",
+        kind: "platform-credential",
+        id: row.id,
+      } as const;
+      let next: string;
+      try {
+        const plaintext = await open(env, row.blob, ctx);
+        next = await seal(env, plaintext, ctx);
+        if ((await open(env, next, ctx)) !== plaintext)
+          throw new Error("re-sealed value did not round-trip");
+      } catch (e) {
+        failures.push({
+          table: "platform_credentials",
+          product: "_platform",
+          id: row.id,
+          message: e instanceof Error ? e.message : "re-seal failed",
+        });
+        continue;
+      }
+      const changed = await db.runChanges(
+        `UPDATE platform_credentials SET enc_value_json = ?
+          WHERE credential_id = ? AND enc_value_json = ?`,
+        next,
+        row.id,
+        row.blob,
+      );
+      if (changed > 0) resealed++;
+      else skipped++;
     }
   }
   return { resealed, skipped, failures, perProduct };

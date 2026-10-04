@@ -338,7 +338,7 @@ var body: some View {
     PolarisLoginView(
         model: gate,
         theme: PolarisTheme(
-            accent: .indigo,
+            accent: .teal,                       // optional: your app's tint otherwise
             copy: PolarisCopy(productName: "DJDL"),
             logo: { AnyView(Image("BrandLogo").resizable().scaledToFit().frame(width: 56)) }
         ),
@@ -348,6 +348,40 @@ var body: some View {
     }
 }
 ```
+
+**Native by default.** Out of the box the gate looks like your app: system fonts with Dynamic Type,
+your app's tint (`.tint(_:)` / the asset catalog accent), system colours that follow dark and
+light, a neutral key glyph, and no Polaris Key branding. Every state is centred horizontally and,
+full screen, vertically, in a card of comfortable width (420 pt) rather than edge to edge on iPad
+and macOS; it scrolls instead of clipping at the largest accessibility sizes, and the grace
+banner sits on the native bar material.
+
+**Polaris Key branding is an opt-in**, with one modifier on the gate or any ancestor:
+
+```swift
+PolarisLoginView(model: gate) { MyAppRootView() }
+    .polarisKeyBranding(.polarisKey)
+```
+
+(or `PolarisTheme(branding: .polarisKey)` for one gate). That switches to the Polaris Key design
+system (`docs/design/BRAND.md`), read from the generated `PolarisBrand` tokens in
+`BrandTokens.generated.swift`: the brand's dark or light palette from the `colorScheme`
+environment with the core violet accent; Rubik (Bold for headings, Regular for body), bundled
+unchanged with its SIL Open Font License (`Resources/Brand/fonts/OFL.txt`) and registered for your
+process only the first time a branded gate draws, falling back to the system font if it cannot
+register; and the Pinned K (`PolarisMark`, display cut, no section bit) as the logo.
+
+Overrides apply in either mode and win over the branding: `accent:` / `accentOn:` re-point the
+primary button in both schemes, `palette:` replaces every colour per scheme, `typography:` picks
+`.system`, `.brand` or `.custom(regular:bold:)`, and `logo:` replaces the glyph or mark.
+
+**"Powered by Polaris Key" is optional and off by default** in both modes. Opt in with
+`poweredBy: PolarisPoweredBy()` to show the kit's compact badge centred under the activation card,
+or place `PolarisPoweredByBadge` on your about or credits screen. It renders the kit artwork at no
+less than the kit minimum (compact 232 × 88, horizontal 376 × 144, stacked 288 × 336 points).
+
+Xcode previews in `PolarisLoginView.swift` cover every gate state, native and branded, in dark and
+light, at iPhone, iPad and Mac sizes and at an accessibility Dynamic Type size.
 
 ## Updates (macOS, D-24)
 

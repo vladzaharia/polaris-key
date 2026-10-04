@@ -52,15 +52,19 @@ export interface TrustPolicy {
   commerceClaim: TrustLevel;
   /** false (default): a would-be refusal is audited and the request proceeds. */
   enforce: boolean;
-  /** App Attest: the Apple Developer Team ID and which aaguid the product's builds carry. */
+  /** App Attest: the Apple Developer Team ID and which aaguid the product's builds carry.
+   *  `teamId: null` (omitted in the PUT) uses the platform's Apple Team ID (A-16,
+   *  `platformAppleTeamId`); an explicit one wins. */
   appAttest: {
-    teamId: string;
+    teamId: string | null;
     environment: "production" | "development";
   } | null;
   /** Play Integrity: the Google Cloud project number the app's standard requests use. Handed to
    *  the client with the challenge; the verifier itself needs only the pinned Play credential. */
   playIntegrity: {
-    cloudProjectNumber: string;
+    /** `null` (omitted in the PUT): the platform's Play Integrity cloud project number (A-16,
+     *  `platformPlayIntegrityProjectNumber`); an explicit one wins. */
+    cloudProjectNumber: string | null;
     /** Accept a verdict Google marks `testingDetails.isTestingResponse` (a license tester's
      *  configured response, not a real device check). Off unless set: for internal testing only. */
     allowTestingResponses?: true;
@@ -135,7 +139,11 @@ export function validateTrustPolicy(input: unknown): Validation {
           message: `unknown member appAttest.${k}`,
           field: "appAttest",
         };
-    if (typeof a.teamId !== "string" || !TEAM_ID_RE.test(a.teamId))
+    const teamId = a.teamId ?? null;
+    if (
+      teamId !== null &&
+      (typeof teamId !== "string" || !TEAM_ID_RE.test(teamId))
+    )
       return {
         ok: false,
         message:
@@ -149,7 +157,7 @@ export function validateTrustPolicy(input: unknown): Validation {
         message: 'appAttest.environment must be "production" or "development"',
         field: "appAttest.environment",
       };
-    policy.appAttest = { teamId: a.teamId, environment: env };
+    policy.appAttest = { teamId, environment: env };
   }
   if (o.playIntegrity !== undefined && o.playIntegrity !== null) {
     const p = o.playIntegrity as Record<string, unknown>;
@@ -166,9 +174,11 @@ export function validateTrustPolicy(input: unknown): Validation {
           message: `unknown member playIntegrity.${k}`,
           field: "playIntegrity",
         };
+    const cloudProjectNumber = p.cloudProjectNumber ?? null;
     if (
-      typeof p.cloudProjectNumber !== "string" ||
-      !CLOUD_PROJECT_NUMBER_RE.test(p.cloudProjectNumber)
+      cloudProjectNumber !== null &&
+      (typeof cloudProjectNumber !== "string" ||
+        !CLOUD_PROJECT_NUMBER_RE.test(cloudProjectNumber))
     )
       return {
         ok: false,
@@ -186,7 +196,7 @@ export function validateTrustPolicy(input: unknown): Validation {
         field: "playIntegrity.allowTestingResponses",
       };
     policy.playIntegrity = {
-      cloudProjectNumber: p.cloudProjectNumber,
+      cloudProjectNumber,
       ...(p.allowTestingResponses === true
         ? { allowTestingResponses: true as const }
         : {}),

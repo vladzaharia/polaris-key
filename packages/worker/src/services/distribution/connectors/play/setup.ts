@@ -26,6 +26,13 @@
  * tie for which package the manifest names, then the lowest outlet id; the pin is then checked
  * against that package — another outlet's matching package never stands in for it.
  *
+ * **The platform fallback (A-16).** A product with NO active `google-service-account` of its own
+ * falls back to the platform's developer-account service account (`google-play.service-account`:
+ * the console credential, else `PLATFORM_GOOGLE_SERVICE_ACCOUNT`), only for the package a platform
+ * admin assigned to the product (its platform pin); `credentialId` is then the handle
+ * `platform:google-play.service-account` and the token comes from `platformGoogleAccessToken`,
+ * which re-checks the pin. An own credential always wins and never falls through.
+ *
  * **Track ids are data.** The map comes from the manifest and the track list from Play's own
  * `edits.tracks.list`; nothing here knows that the internal-testing track is `internal` or `qa`
  * (notes/E2 §A1 "Tracks"), and a track Play lists that no outlet maps is shown, never written.
@@ -36,12 +43,19 @@
  * never selects the sealed column — so resolving the setup opens nothing.
  */
 
-import type { Db } from "../../../../core/platform.js";
+import type { Db, Env } from "../../../../core/platform.js";
 import {
   checkOutletCredentialPin,
   listOutletCredentials,
 } from "../../../../core/outletCredentials.js";
 import { listOutlets, parseJsonColumn } from "../../outlets.js";
+import {
+  platformFallback,
+  platformFallbackMessage,
+} from "../platformFallback.js";
+
+/** The platform credential the fallback uses (A-16). */
+export const PLAY_PLATFORM_CREDENTIAL = "google-play.service-account" as const;
 
 export const PLAY_CONNECTOR = "play";
 export const PLAY_LABEL = "Google Play";
@@ -75,7 +89,8 @@ export interface PlaySetup {
   }>;
   /** Play track id → every (outlet, channel) that declares it. */
   routes: Map<string, PlayOutletRoute[]>;
-  /** The `google-service-account` credential id. */
+  /** The `google-service-account` credential id, or the platform handle
+   *  `platform:google-play.service-account` (A-16). */
   credentialId: string;
 }
 
@@ -96,6 +111,8 @@ export interface PlayInert {
   credential: string | null;
   /** The package that credential is pinned to (`null`: not pinned). */
   pinnedPackageName: string | null;
+  /** Whose credential the setup chose: the product's, the platform's (A-16), or none. */
+  credentialSource: "product" | "platform" | null;
 }
 
 export type PlaySetupResolution =
@@ -121,6 +138,7 @@ const inert = (
     manifestPackageName: rest.manifestPackageName ?? null,
     credential: rest.credential ?? null,
     pinnedPackageName: rest.pinnedPackageName ?? null,
+    credentialSource: rest.credentialSource ?? null,
   },
 });
 
@@ -146,14 +164,16 @@ function tracksOf(v: unknown): Record<string, string> {
 
 /** The product's Play setup, or `null` when the connector does not run for it. */
 export async function playSetup(
+  env: Env,
   db: Db,
   product: string,
 ): Promise<PlaySetup | null> {
-  return (await resolvePlaySetup(db, product)).setup;
+  return (await resolvePlaySetup(env, db, product)).setup;
 }
 
 /** The product's Play setup, or why the connector does not run for it. */
 export async function resolvePlaySetup(
+  env: Env,
   db: Db,
   product: string,
 ): Promise<PlaySetupResolution> {
@@ -199,6 +219,53 @@ export async function resolvePlaySetup(
   const credential =
     creds.find((c) => c.outletId !== null && playOutlets.has(c.outletId)) ??
     creds.find((c) => c.outletId === null);
+  const routesOf = () => {
+    const routes = new Map<string, PlayOutletRoute[]>();
+    for (const o of outlets)
+      for (const [channel, track] of Object.entries(o.tracks)) {
+        const list = routes.get(track) ?? [];
+        list.push({ outletId: o.outletId, channel });
+        routes.set(track, list);
+      }
+    return routes;
+  };
+  if (creds.length === 0) {
+    // A-16: no credential of the product's own — the platform service account, pin required.
+    const f = await platformFallback(
+      env,
+      db,
+      product,
+      PLAY_PLATFORM_CREDENTIAL,
+      packageName,
+    );
+    if (!f.ok)
+      return inert(
+        f.reason,
+        platformFallbackMessage(
+          "Google Play",
+          "google-play",
+          "package",
+          packageName,
+          product,
+          f,
+        ),
+        {
+          manifestPackageName: packageName,
+          pinnedPackageName: f.pinned,
+          credentialSource: f.reason === "no_credential" ? null : "platform",
+        },
+      );
+    return {
+      setup: {
+        product,
+        packageName,
+        outlets,
+        routes: routesOf(),
+        credentialId: f.handle,
+      },
+      inert: null,
+    };
+  }
   if (!credential)
     return inert(
       "no_credential",
@@ -216,22 +283,16 @@ export async function resolvePlaySetup(
         manifestPackageName: packageName,
         credential: credential.id,
         pinnedPackageName: pin.pinned,
+        credentialSource: "product",
       },
     );
 
-  const routes = new Map<string, PlayOutletRoute[]>();
-  for (const o of outlets)
-    for (const [channel, track] of Object.entries(o.tracks)) {
-      const list = routes.get(track) ?? [];
-      list.push({ outletId: o.outletId, channel });
-      routes.set(track, list);
-    }
   return {
     setup: {
       product,
       packageName,
       outlets,
-      routes,
+      routes: routesOf(),
       credentialId: credential.id,
     },
     inert: null,

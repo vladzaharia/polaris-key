@@ -1,9 +1,9 @@
 /**
  * F-03's migrations (plans/F-01.md §6.4), replayed on a POPULATED fixture: the database as it
- * stands before 0055, holding an app and a pack deliverable with channel policy and a pack floor
- * (the two tables with foreign keys into `release_deliverables`), then 0055_a..d.
+ * stands before 0056, holding an app and a pack deliverable with channel policy and a pack floor
+ * (the two tables with foreign keys into `release_deliverables`), then 0056_a..d.
  *
- *   - 0055_b's rebuild keeps every row of every table it touches, and every foreign key holds;
+ *   - 0056_b's rebuild keeps every row of every table it touches, and every foreign key holds;
  *   - it runs both inside a transaction (D1 runs a migration in an implicit one) and statement by
  *     statement (the harness and a D1 that does not), with foreign keys enforced;
  *   - it converges from the window between its DROP and its RENAME (the 0017 discipline);
@@ -21,10 +21,10 @@ const DIR = join(HERE, "..", "migrations");
 const FILES = readdirSync(DIR)
   .filter((f) => f.endsWith(".sql"))
   .sort();
-const BEFORE = FILES.filter((f) => f < "0055");
-const F03 = FILES.filter((f) => f.startsWith("0055_"));
-const AFTER = FILES.filter((f) => f > "0055_z");
-const REBUILD = "0055_b_release_deliverables_kind.sql";
+const BEFORE = FILES.filter((f) => f < "0056");
+const F03 = FILES.filter((f) => f.startsWith("0056_"));
+const AFTER = FILES.filter((f) => f > "0056_z");
+const REBUILD = "0056_b_release_deliverables_kind.sql";
 const sql = (f: string) => readFileSync(join(DIR, f), "utf8");
 
 const NOW = 1_700_000_000;
@@ -130,12 +130,12 @@ function expectHealthy(
   expect(strays).toEqual([]);
 }
 
-describe("0055 migrations on a populated database (F-03)", () => {
+describe("0056 migrations on a populated database (F-03)", () => {
   it("the rebuild keeps every row and foreign key, run as one transaction (D1)", () => {
     const raw = populated();
     const before = snapshot(raw);
     expect(before.policy).toHaveLength(6);
-    raw.exec(sql("0055_a_products_system.sql"));
+    raw.exec(sql("0056_a_products_system.sql"));
     raw.exec("BEGIN");
     raw.exec(sql(REBUILD));
     raw.exec("COMMIT");
@@ -158,7 +158,7 @@ describe("0055 migrations on a populated database (F-03)", () => {
   it("converges when a run dies between the DROP and the RENAME", () => {
     const raw = populated();
     const before = snapshot(raw);
-    raw.exec(sql("0055_a_products_system.sql"));
+    raw.exec(sql("0056_a_products_system.sql"));
     const text = sql(REBUILD);
     const cut = text.indexOf("ALTER TABLE release_deliverables_v2 RENAME");
     expect(cut).toBeGreaterThan(0);
@@ -228,8 +228,8 @@ describe("0055 migrations on a populated database (F-03)", () => {
         .run(NOW),
     ).toThrow(/CHECK/);
     // The idempotent files replay as no-ops.
-    raw.exec(sql("0055_c_release_packages.sql"));
-    raw.exec(sql("0055_d_registry.sql"));
+    raw.exec(sql("0056_c_release_packages.sql"));
+    raw.exec(sql("0056_d_registry.sql"));
     expect(count(raw, "dist_registry_policy")).toBe(6);
   });
 });

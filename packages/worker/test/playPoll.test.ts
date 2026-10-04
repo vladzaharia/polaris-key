@@ -374,10 +374,12 @@ describe("the poll", () => {
       expect(src, name).not.toMatch(/\boutlet_credentials\b/);
       expect(src, name).not.toMatch(/readSealedToken|writeSealedToken/);
     }
-    // The one way in: googleAccessToken (core/outletTokens.ts), which opens through
-    // openOutletCredential on a cache miss.
+    // The ways in: googleAccessToken (core/outletTokens.ts), which opens through
+    // openOutletCredential on a cache miss — and, for a product on the platform's team key
+    // (A-16), platformGoogleAccessToken from the same module, which checks the product's pin
+    // before its cache and opens through openPlatformCredential.
     expect(readFileSync(join(dir, "run.ts"), "utf8")).toMatch(
-      /import \{ googleAccessToken \} from "..\/..\/..\/..\/core\/outletTokens.js"/,
+      /import \{\s*googleAccessToken,\s*platformGoogleAccessToken,\s*\} from "..\/..\/..\/..\/core\/outletTokens.js"/,
     );
   });
 

@@ -151,6 +151,27 @@ export interface Env {
    * Set with: `wrangler secret put OIDC_ISSUER_ALLOWLIST --env prod`
    */
   OIDC_ISSUER_ALLOWLIST?: string;
+  /**
+   * A-16 — the platform's TEAM-level store credentials, for ops bootstrap. Each is JSON of the
+   * same shape as the outlet-credential kind it stands in for, and is consulted only when no
+   * console-managed credential is stored (Platform → Store connections). The API and console show
+   * presence and metadata only. A product uses one only for the app a platform admin assigned to
+   * it (`core/platformCredentials.ts`). Set with `wrangler secret put <NAME> --env prod`.
+   *
+   *   PLATFORM_ASC_API_KEY            {"keyId","issuerId","p8"}            (asc-api-key)
+   *   PLATFORM_APP_STORE_SERVER_KEY   {"keyId","issuerId","p8"}            (app-store-server-key)
+   *   PLATFORM_GOOGLE_SERVICE_ACCOUNT the service account's JSON key file  (google-service-account)
+   *   PLATFORM_MS_PARTNER_CENTER      {"tenantId","clientId","clientSecret","sellerId"}
+   *   PLATFORM_STEAM_PUBLISHER_KEY    {"key"}                              (steam-publisher-key)
+   */
+  PLATFORM_ASC_API_KEY?: string;
+  PLATFORM_APP_STORE_SERVER_KEY?: string;
+  PLATFORM_GOOGLE_SERVICE_ACCOUNT?: string;
+  PLATFORM_MS_PARTNER_CENTER?: string;
+  PLATFORM_STEAM_PUBLISHER_KEY?: string;
+  /** A-16 — the Apple Developer Team ID (10 characters), App Attest's platform default. Not
+   *  secret: a var or a secret. A console value (Platform → Store connections) wins over it. */
+  PLATFORM_APPLE_TEAM_ID?: string;
   EMAIL?: SendEmail;
 
   // additional platform secrets/vars resolved by name

@@ -15,6 +15,9 @@ export {
   Panel,
   actionGrid,
   actionPanel,
+  bannerStyle,
+  chipStyle,
+  titleText,
   dangerText,
   fullWindow,
   messageCard,
@@ -22,6 +25,7 @@ export {
   panelCard,
   type PanelProps,
 } from "./card.js";
+export { focusRing, useFocusRing, type FocusRing } from "./focus.js";
 export {
   TextField,
   inputStyle,

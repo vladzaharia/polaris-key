@@ -482,6 +482,59 @@ Paste the complete GitHub App private key PEM for `GITHUB_APP_PRIVATE_KEY`, incl
 `PORTAL_EMAIL_FROM` does not need to be set when using the default sender
 `Polaris Key <noreply@plrs.im>`.
 
+### Platform store connections (A-16, optional)
+
+The platform holds ONE team-level credential per store (Platform → Store connections in the
+console; `/manage/api/platform/store-connections`). A product with no store credential of its own
+falls back to it, but only for the one app a platform admin assigned to that product. Each
+credential can be stored in the console (sealed under `PLATFORM_KEK`; preferred: it can be rotated
+and cleared there) or bootstrapped as a Worker secret, which is read only while no console
+credential is stored. Every secret is one JSON object of exactly the shape the console accepts;
+the console and API show only its presence and metadata (key id, issuer id, client email, …).
+
+| Worker secret                     | JSON shape                                                                                                          | What it is                                                                                                 |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `PLATFORM_ASC_API_KEY`            | `{"keyId":"ABC123DEFG","issuerId":"69a6de7f-…","p8":"-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----\n"}` | App Store Connect team API key (Users and Access → Integrations → App Store Connect API; App Manager role) |
+| `PLATFORM_APP_STORE_SERVER_KEY`   | `{"keyId":"…","issuerId":"…","p8":"-----BEGIN PRIVATE KEY-----\n…"}`                                                | the team's In-App Purchase key (Users and Access → Integrations → In-App Purchase)                         |
+| `PLATFORM_GOOGLE_SERVICE_ACCOUNT` | the service account's JSON key file as downloaded (`type`, `client_email`, `private_key`, `token_uri`, …)           | a service account invited into Play Console (the narrowest permissions the products need)                  |
+| `PLATFORM_MS_PARTNER_CENTER`      | `{"tenantId":"…","clientId":"…","clientSecret":"…","sellerId":"…"}`                                                 | the Entra app associated with the Partner Center account (Manager role)                                    |
+| `PLATFORM_STEAM_PUBLISHER_KEY`    | `{"key":"0123456789ABCDEF0123456789ABCDEF"}`                                                                        | a Steamworks Web API publisher key of the group                                                            |
+
+`p8` keeps the PEM's line breaks as `\n` inside the JSON string. One non-secret value can also be
+set as a var or a secret:
+
+```text
+PLATFORM_APPLE_TEAM_ID=48H7CLBV8Y   # the Apple Developer Team ID; App Attest's platform default
+```
+
+```sh
+cd packages/worker
+npx wrangler secret put PLATFORM_ASC_API_KEY --env prod   # paste the one-line JSON
+npx wrangler secret put PLATFORM_APPLE_TEAM_ID --env prod
+```
+
+**Preferred: through the `Sync Worker secrets` workflow**, so a private key never passes through
+a shell history, a terminal scrollback or an agent transcript. Store each value as a secret of
+the GitHub `production` environment straight from the local file, then dispatch the workflow:
+
+```sh
+gh secret set PLATFORM_ASC_API_KEY --env production < asc-api-key.json   # one-line JSON file
+gh secret set PLATFORM_APPLE_TEAM_ID --env production --body 48H7CLBV8Y
+gh workflow run sync-worker-secrets.yml -f target=prod                    # or target=staging
+```
+
+`.github/workflows/sync-worker-secrets.yml` (manual dispatch only, `environment: production`,
+read-only `GITHUB_TOKEN`, the environment's `CLOUDFLARE_API_TOKEN`) pushes every one of the six
+names that is set, with `wrangler secret put <NAME> --env <target>` reading the value from stdin,
+and logs only which names it synced or skipped. A static test
+(`packages/worker/test/syncWorkerSecretsWorkflow.test.ts`) keeps values out of argv and the log.
+The `wrangler secret put` lines above are the manual fallback.
+
+None of these is required; a store without one simply has no platform connection. After
+setting one, `GET /manage/api/platform/store-connections` should show that store's credential
+with `"source": "secret"` and `"secret": {"present": true, "valid": true}`; `valid: false` means
+the JSON did not pass the kind's validator (a wrong field name, a PEM without its line breaks).
+
 ## 5. Verify before deploy
 
 Run local verification from the repo root:
