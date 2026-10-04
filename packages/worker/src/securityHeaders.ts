@@ -11,16 +11,21 @@
  *   - `appSecurityHeaders` — the SPA shells and the JSON APIs. `script-src 'self'` because
  *     the SPA loads its own bundle, plus the SHA-256 of the shells' one inline script (the
  *     pre-paint theme script, `adminCsp.ts`); never `'unsafe-inline'`.
- *   - `staticHtmlSecurityHeaders` — every server-rendered interstitial (sign-in errors, the
- *     device-authorization page, the "you're signed in" page, the edge-mint auth page).
+ *   - `brandedHtmlSecurityHeaders` — the Worker's own branded interstitials (sign-in errors,
+ *     the device-authorization pages, the "you're signed in" page; `core/brandHtml.ts`).
  *     These pages have no scripts at all, so `default-src 'none'` is achievable: an injected
- *     `<script>` cannot execute and an injected `fetch()` cannot reach `/manage/api/*`.
- *     Inline *styles* are allowed because these pages are styled with `style=` attributes;
+ *     `<script>` cannot execute and an injected `fetch()` cannot reach `/manage/api/*`. Their
+ *     one stylesheet is allowed by its SHA-256 and the brand font by `font-src 'self'`; no
+ *     `'unsafe-inline'`, so an injected `<style>` or `style=` does not apply either.
+ *   - `staticHtmlSecurityHeaders` — any other script-free HTML: the operator-supplied edge-mint
+ *     auth page, and the dispatcher's backstop for an HTML response that set no policy.
+ *     Inline *styles* are allowed because such pages may be styled with `style=` attributes;
  *     with `default-src 'none'` the worst a CSS injection can do is load an image from
  *     `'self'`.
  */
 
 import { ADMIN_SCRIPT_HASHES } from "./adminCsp.js";
+import { brandPageStyleSource } from "./core/brandHtml.js";
 
 /**
  * SPA + JSON policy: the admin/portal bundles execute their own scripts, plus the shells' one
@@ -53,6 +58,23 @@ const STATIC_HTML_CSP = [
 ].join("; ");
 
 /**
+ * Branded-page policy: the static-page policy with the inline-style allowance replaced by the
+ * one stylesheet's hash, plus the brand font from this origin. `form-action 'self'` stays a
+ * literal token: the device pages widen it by one IdP origin (`oidc.ts`).
+ */
+function brandedHtmlCsp(): string {
+  return [
+    "default-src 'none'",
+    "base-uri 'none'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    "img-src 'self' data:",
+    `style-src ${brandPageStyleSource()}`,
+    "font-src 'self'",
+  ].join("; ");
+}
+
+/**
  * One year, subdomains included. The worker is HTTPS-only behind Cloudflare; without HSTS a
  * `Secure` cookie is still protected but the *first* navigation can be downgraded, and the
  * `__Host-` cookie prefix's guarantees assume the origin is never reachable over http.
@@ -80,18 +102,24 @@ export function appSecurityHeaders(headers = new Headers()): Headers {
 }
 
 /**
- * Headers for server-rendered, script-free HTML (sign-in errors, device-authorization page,
- * "you're signed in" page, the edge-mint auth page).
- *
- * NOTE for `services/identity/oidc.ts`: both HTML responses there —
- * `handleAuthDeviceVerify`'s confirmation page and `handleAuthCallback`'s "You're signed in"
- * page — should build their headers with this helper, e.g.
- *   `headers: staticHtmlSecurityHeaders(new Headers({ "content-type": "text/html; charset=utf-8", "cache-control": "no-store" }))`
- * Until they do, `secureResponse` in `index.ts` backstops them at dispatch time.
+ * Headers for server-rendered, script-free HTML that is not one of the branded pages: the
+ * operator-supplied edge-mint auth page (`services/config/mint.ts`) and the dispatcher's
+ * backstop (`secureResponse`). The Worker's own pages use `brandedHtmlSecurityHeaders`.
  */
 export function staticHtmlSecurityHeaders(headers = new Headers()): Headers {
   commonHeaders(headers);
   headers.set("content-security-policy", STATIC_HTML_CSP);
+  return headers;
+}
+
+/**
+ * Headers for the Worker's branded, script-free pages (`core/brandHtml.ts`): sign-in errors,
+ * the device-authorization pages and the "you're signed in" page. Same hardening as
+ * `staticHtmlSecurityHeaders`, with a policy that allows only the brand stylesheet and font.
+ */
+export function brandedHtmlSecurityHeaders(headers = new Headers()): Headers {
+  commonHeaders(headers);
+  headers.set("content-security-policy", brandedHtmlCsp());
   return headers;
 }
 

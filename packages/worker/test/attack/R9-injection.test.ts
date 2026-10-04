@@ -1663,8 +1663,26 @@ describe("R9-12 escapeHtml coverage", () => {
       ),
       "utf8",
     );
-    expect(src).toContain('<a href="${escapeHtml(link)}">');
-    expect(src).toContain('<p>${escapeHtml(text).replace(/\\n/g, "<br>")}</p>');
+    // Both sinks escape: the action URL into a double-quoted href (and its visible copy), and
+    // every paragraph into a text node.
+    expect(src).toContain('href="${escapeHtml(c.action.url)}"');
+    expect(src).toContain('${escapeHtml(text).replace(/\\n/g, "<br>")}</p>');
+  });
+
+  it("REFUTED: the rendered portal email escapes a hostile link, subject and paragraph", async () => {
+    const { renderEmail } =
+      await import("../../src/services/identity/portal/email.js");
+    const html = renderEmail({
+      subject: '<img src=x onerror="alert(1)">',
+      heading: "</h1><script>alert(1)</script>",
+      paragraphs: ['a"b<c>\nd'],
+      action: { label: "<b>Go</b>", url: 'https://x.test/?a="><script>' },
+      footer: "<i>f</i>",
+      origin: null,
+    });
+    expect(html).not.toMatch(/<script|<img|<b>|<i>|onerror="/i);
+    expect(html).toContain('href="https://x.test/?a=&quot;&gt;&lt;script&gt;"');
+    expect(html).toContain("a&quot;b&lt;c&gt;<br>d");
   });
 
   it("the device-verify HTML page ships with no headers of its own — the dispatcher backstop adds them", async () => {

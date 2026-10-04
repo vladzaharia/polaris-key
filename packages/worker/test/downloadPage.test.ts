@@ -706,7 +706,9 @@ describe("the page on the bytes host", () => {
         .map((a) => a.kind)
         .sort(),
     ).toEqual(["altstore", "altstore-pal", "fdroid", "sidestore"]);
-    expect((html.match(/<svg /g) ?? []).length).toBe(4);
+    // Four QR codes, plus the footer's Polaris Key Delivery mark (the one other inline SVG).
+    expect((html.match(/<svg [^>]*class="qr"/g) ?? []).length).toBe(4);
+    expect((html.match(/<svg /g) ?? []).length).toBe(5);
     for (const needle of [
       "altstore://source?url=",
       "sidestore://source?url=",
