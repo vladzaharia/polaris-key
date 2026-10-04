@@ -203,14 +203,26 @@ public actor PacksClient {
     private nonisolated let listeners = Locked<[UUID: @Sendable (PackProgress) -> Void]>([:])
     private var zstdInfo: PackZstdInfo?
     private var refused: [(location: String, step: String)] = []
+    /// plans/P4-29.md §2.4 step 1: the delta menu of the most recently committed feed, fresh or
+    /// stale (the outer nil until a check ran or the cache was read), and the read of it from the
+    /// cache before the engine first plans.
+    private nonisolated let feedMenu = Locked<FeedDeltas??>(nil)
+    private let loadFeedDeltas: (@Sendable () async -> FeedDeltas??)?
 
     /// The facet over `core`, verifying pack records against `releaseKeys` (the update client's
     /// `pinnedReleaseKeys`, never the product trust set). Registers itself as the source of the
     /// device report's `content.packSetId`.
-    public init(core: CoreContext, releaseKeys: TrustSet, options: PacksOptions = PacksOptions()) {
+    ///
+    /// `loadFeedDeltas` (the update client's) reads the committed feed's delta menu from the cache
+    /// when the engine starts before any check ran: nil for no committed feed.
+    public init(
+        core: CoreContext, releaseKeys: TrustSet, options: PacksOptions = PacksOptions(),
+        loadFeedDeltas: (@Sendable () async -> FeedDeltas??)? = nil
+    ) {
         self.core = core
         self.releaseKeys = releaseKeys
         self.opts = options
+        self.loadFeedDeltas = loadFeedDeltas
         // Only a facet with a stamp has packs to report.
         if options.contentStamp != nil {
             core.setPackSetIdSource { [weak self] in await self?.packSetId() }
@@ -219,6 +231,13 @@ public actor PacksClient {
 
     /// Whether the host configured a content stamp (and so may have packs).
     public nonisolated var configured: Bool { opts.contentStamp != nil }
+
+    /// plans/P4-29.md §2.4 step 1: the update client hands over the delta menu of the feed each
+    /// check committed or fell back to (`feedContent`'s `deltas`, nil for none). The engine adds
+    /// its entries for a container's payload beside the record's own deltas.
+    public nonisolated func noteFeedDeltas(_ deltas: FeedDeltas?) {
+        feedMenu.with { $0 = .some(deltas) }
+    }
 
     /// Install the pinned release of each pack (CONTENT §10): already-current packs return at
     /// once; others are fetched, verified, committed and (for `hot` types) activated. Throws a
@@ -423,7 +442,11 @@ public actor PacksClient {
                 // plans/P4-19.md §2.4: a hold's release never takes the delegated path. Unusable
                 // stamp holds (`stampHolds` gives nil) are treated as no holds: the record hash a
                 // decision names still binds the bytes.
-                holds: ((try? readStampBytes()) ?? nil).flatMap { stampHolds($0) } ?? []))
+                holds: ((try? readStampBytes()) ?? nil).flatMap { stampHolds($0) } ?? [],
+                feedDeltas: { [feedMenu] in feedMenu.with { $0 ?? nil } }))
+        if feedMenu.with({ $0 == nil }), let load = loadFeedDeltas, let loaded = await load() {
+            feedMenu.with { if $0 == nil { $0 = .some(loaded) } }
+        }
         let listeners = self.listeners
         engine.on { e in for l in listeners.with({ Array($0.values) }) { l(e) } }
         // A handler registered while the engine loads goes straight to it.

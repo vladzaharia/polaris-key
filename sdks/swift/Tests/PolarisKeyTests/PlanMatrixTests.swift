@@ -1,4 +1,4 @@
-// @pkey-feature packs.plan
+// @pkey-feature packs.plan packs.delta.feed
 //
 // `plan-matrix.json` (planMatrixVersion 2, plans/P4-01.md §4.5, plans/P4-10.md §4.4) through
 // PolarisKeyPacks:
@@ -6,6 +6,8 @@
 //   rows          the planner                → plan
 //   variantCases  variant selection          → selectVariant
 //   targetCases   a variant onto the planner → planTarget
+//   feedDeltaCases the feed's delta menu merged (plans/P4-29.md §4.3) → withFeedDeltas, then
+//                 planTarget and plan
 //
 // Read from the generator-owned `Resources/v2` mirror through `Bundle.module`.
 
@@ -27,6 +29,7 @@ final class PlanMatrixTests: XCTestCase {
         XCTAssertEqual(m["rows"]?.arrayValue?.count, 28)
         XCTAssertEqual(m["variantCases"]?.arrayValue?.count, 11)
         XCTAssertEqual(m["targetCases"]?.arrayValue?.count, 22)
+        XCTAssertEqual(m["feedDeltaCases"]?.arrayValue?.count, 13)
     }
 
     func testRows() throws {
@@ -71,6 +74,31 @@ final class PlanMatrixTests: XCTestCase {
                     chunkIndex: chunkIndex
                 ).json,
                 normalisedJSON(o["expect"]!), "target \(o["id"]!): \(o["description"]!)")
+        }
+    }
+
+    func testFeedDeltaCases() throws {
+        for c in try XCTUnwrap(matrix()["feedDeltaCases"]?.arrayValue) {
+            let o = try XCTUnwrap(c.objectValue)
+            let id = "\(o["id"]!)"
+            let variant = try XCTUnwrap(PackVariant(json: o["variant"]!), id)
+            let index: FilesIndexDoc? = o["filesIndex"] == .null ? nil : FilesIndexDoc(json: o["filesIndex"]!)
+            var chunkIndex: PlanChunkIndex?
+            if let ci = o["chunkIndex"], ci != .null {
+                chunkIndex = try XCTUnwrap(PlanChunkIndex(json: ci), id)
+            }
+            let merged = withFeedDeltas(variant, rawFeedDeltas(o["deltas"]))
+            let target = planTarget(
+                merged.variant, recordSha256: try XCTUnwrap(o["recordSha256"]?.stringValue), filesIndex: index,
+                chunkIndex: chunkIndex)
+            let installed = try (o["installed"]?.arrayValue ?? []).map { try XCTUnwrap(PlanInstalled(json: $0), id) }
+            let caps = try XCTUnwrap(PlanCaps(json: o["caps"]!), id)
+            let got: JSONValue = .object([
+                "feedIds": .array(merged.feedIds.map(JSONValue.string)),
+                "target": target.json,
+                "plan": plan(target: target, installed: installed, caps: caps).json,
+            ])
+            XCTAssertEqual(got, normalisedJSON(o["expect"]!), "feed delta \(id): \(o["description"]!)")
         }
     }
 }

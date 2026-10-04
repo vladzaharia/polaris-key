@@ -557,6 +557,13 @@ try await update.packs.confirm()                             // this boot is hea
   tighter memory limits than a foreground app, so pass a lower budget there, for example
   `PacksOptions(memBudget: 32 * 1024 * 1024)`. A delta over the budget is never chosen: the
   planner falls back to the `file` or `full` strategy, which costs more bytes but less memory.
+- **Feed-offered deltas** (P4-29). The committed channel feed can list lazy deltas (`deltas`, the
+  Worker's delta menu). The client keeps the menu of the last feed `decide()` or `channelFeed()`
+  used, fresh or stale, and reads the committed feed from the cache when the pack engine starts,
+  so an offline launch still has it. The engine (`feedDeltas`) adds the entries for a container's
+  payload beside the record's own deltas (`withFeedDeltas`); every byte is still checked against
+  the CI-signed record, any failure (a 404 included) falls back, and at most one feed-offered
+  delta is tried per install. Nothing to configure.
 - **Boot.** `bootOptions()` gives `BootOptions`' `requiredPacks` and `essentialPacks`;
   `bootFetch(send:consent:metered:answer:install:)` drives the stage machine's FETCH stage
   (`fetch.consent`, `fetch.progress`, `fetch.done`). Given a `packs` answer's `install`, it
