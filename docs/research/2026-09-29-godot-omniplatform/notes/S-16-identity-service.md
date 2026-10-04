@@ -1,4 +1,54 @@
 > Research note for [Godot on Polaris Key](../README.md), 2026-10-04. Spike S-16, commissioned
+> by the lead on the owner's direction of 2026-10-04: define what a proper Identity service is,
+> whether a proxy to a platform or product IdP, a Polaris-run OIDC/OAuth2 provider, or both. It
+> has no program brief yet; §8 proposes an `I-` work-package namespace. Research and design only:
+> no product code changed, nothing was deployed, and no account or credential was used. The only
+> live calls were two anonymous `GET`s of the platform IdP's public discovery and JWKS documents
+> (§3.1). File references are to the tree at `0c35758e` (`W/` = `packages/worker/src/`,
+> `M/` = `packages/worker/migrations/`). Restructured the same day around the owner's two-layer
+> decision below; the earlier product-scoped design survives only where this revision says so.
+
+> **Owner decision (2026-10-04): Identity is two layers. This decision governs the note; where an
+> older header below says otherwise, this one wins.**
+>
+> 1. **Now: one Polaris Key account across all products** (Steam-like). One login, one
+>    **Library** holding licences from every developer's products.
+>    - _Sign-in methods are links on the account:_ email code or magic link, passkeys, Apple,
+>      Google, Steam; no Discord; Game Center, Play Games and EOS native identities as links;
+>      Microsoft/Xbox only if that storefront becomes real. Connect and disconnect at any time,
+>      under step-up, with a last-method guard, audited and emailed.
+>    - _Sign-in UX:_ identifier-first email; an "add another way to sign in" nudge;
+>      link-existing-account (merge only with proof of both identities, never by email match);
+>      sign in on another device by QR or code.
+>    - _First provider sign-in:_ the required interstitial confirming the email, and profile
+>      import, as in the two headers below (a provider-verified email needs no code).
+>    - _Licences attach to the account._ **Floating licences** (no account) keep working but
+>      prompt sign-up. The legacy key flow is the bounded on-ramp in the header below.
+>    - _Portal (proto-Steam):_ Library (default), Discover (eligible auto-issue products; Add to
+>      library mints a licence), an Activate License modal, Cloud Sync only on the product pages
+>      of products with that service. App passthrough login is the same login card with a
+>      persistent "<App> wants you to sign in" header, for web, native and device code.
+>    - _Safety defaults stay:_ the licence claim rules, no recovery desk (the developer's relink
+>      tool with step-up, reason, notice and 72-hour undo), custom auth domains deferred, passkeys
+>      on `key.plrs.im`. Operators stay on Pocket ID.
+> 2. **Developer privacy with a shared account.** Developers only ever see data for their own
+>    products. Each product gets a **pairwise (per-product) subject** for a user instead of the
+>    global account id. No cross-product visibility. GDPR deletion removes the account and all
+>    links; per-product data deletion and export exist.
+> 3. **Later: the per-app identity layer.** App-specific profiles, apps signing users in beyond
+>    licence attach, and the per-product issuer ("Sign in with <Product>", leaning in-house on
+>    jose). Full scope stays approved, but layer 1 is the focus and ships first.
+> 4. **Cloud Sync (S-17)** is its own service, "Cloud Sync" (slug e.g. `sync`), with its own
+>    toggle, depending on Config and Identity layer 1. The licence-level config override layer is
+>    removed everywhere, replaced by user-level managed config attached to the **account per
+>    product**. Floating licences have no such layer. Overrides on licences with no owner are
+>    dropped at migration with an operator-visible report. No Cloud Sync without signing in, ever.
+>    Web apps use a device token from the product's `web.origins` allowlist (depends on the
+>    redirect WP).
+>
+> **How the older headers read now:** "Option C approved" stands, but its principal is the global
+> account, not a product-scoped user. "Scope: everything, phases 0–3" stands as layers 1 and 2.
+> "The owning user" in the config-override header means the owning account.
 
 > **No Discord (owner, 2026-10-04).** Providers follow where a product ships: Apple (required for iOS social sign-in under App Review 4.8), Google (Play/Android and general), Steam, and the native platform identities (Game Center, Play Games, EOS). Microsoft/Xbox only if Microsoft Store/Xbox becomes a real storefront for a product.
 >
@@ -26,13 +76,6 @@
 > This changes device-facing behaviour (a new refusal on activation-by-key, carrying the portal URL), so it goes through the I-04 contract plan: contract → errors.json → transcripts → all six SDKs, plus the SDK UI kits' activation screens.
 >
 > **Owner decision (2026-10-04): the licence-level config override layer is removed in favour of user-level managed config (S-17).** Licences without a user simply don't get that layer. Existing licence overrides need a migration path, designed in S-17: onto the owning user where one exists, otherwise dropped with operator visibility.
-> by the lead on the owner's direction of 2026-10-04: define what a proper Identity service is,
-> whether a proxy to a platform or product IdP, a Polaris-run OIDC/OAuth2 provider, or both. It
-> has no program brief yet; §8 proposes an `I-` work-package namespace. Research and design only:
-> no product code changed, nothing was deployed, and no account or credential was used. The only
-> live calls were two anonymous `GET`s of the platform IdP's public discovery and JWKS documents
-> (§3.1). File references are to the tree at `0c35758e` (`W/` = `packages/worker/src/`,
-> `M/` = `packages/worker/migrations/`).
 
 # S-16: the Identity service, defined
 
@@ -61,116 +104,120 @@ code. Only one IdP shape works, and that shape is our own platform IdP's. §3 li
 **What the platform IdP is.** `id.plrs.im` is a self-hosted **Pocket ID** instance [M]. It is a
 passkey-first OIDC provider: RS256 only, `subject_types_supported: ["public"]`, and the
 non-standard `/api/oidc/token` path that our code hard-codes. Platform operators, the portal and
-every `provider: platform` product's end users all share it, through one client (§3.1). So "run
-our own OP" partly exists already, but as a third-party server outside the Worker. It cannot
+every `provider: platform` product's end users all share it, through one client (§3.1). It cannot
 issue per-product (pairwise) subjects or carry licence claims, and it holds operator and customer
 identities in one directory.
 
-**Recommendation: Option C, "broker in, own accounts, thin issuer out" [I].** Identity becomes
-the service that knows **who a person is to one product**. Everything else in the suite hangs off
-that answer.
+**Decision (owner, 2026-10-04): two layers.** Option C ("broker in, own accounts, thin issuer
+out", §4) stands, with one change to its centre: the principal is **one global Polaris Key
+account**, not a product-scoped user.
 
-1. **A product-scoped `user`** is the principal. Licences, store bindings, devices (later as seat
-   holders) and portal links attach to it. It replaces "the licence is the person".
-2. **Many login methods per user**, all ending in one internal `signIn(verifiedIdentity)` step:
-   - Polaris-run credentials: email one-time code or magic link, then passkeys;
-   - federated upstream OIDC: the product's own IdP (Auth0, Clerk, Firebase, Supabase, Cognito,
-     Keycloak, Entra), plus Google and Apple;
-   - platform game identities verified natively: a Steam ticket, a Game Center signature, a Play
-     Games code, an EOS ID token;
-   - a licence key, as a low-assurance principal.
-3. **One RFC 8693-shaped exchange endpoint** for apps that already hold a credential, which is
-   every native and game case, plus a small **email-code API** for in-app email sign-in. The
-   existing redirect broker and RFC 8628 device code (TV, console, Godot) stay as the
-   browser-based front doors.
-4. **The device keeps the signed licence document as its only gate.** Phases 1 and 2 return the
-   existing activation response, so `PROTOCOL_VERSION` stays 4. They do add device-facing routes
-   (email code in phase 1, exchange and native redirect in phase 2), so each goes through plan
-   mode: contract, `errors.json`, transcripts, then all six SDKs (§5.3).
-5. **Later, a thin per-product OIDC issuer**: "Sign in with <Product>", with ID and access tokens
-   carrying entitlement claims, for the developer's web services and backend. It is signed by a
-   separate RS256 keyring and never consumed by device SDKs.
-6. **Operators stay on Pocket ID.** End users of `provider: platform` products move off it onto
-   the Polaris-run login. That ends the shared-directory risk.
+- **Layer 1, now: the account.** A person has one account on `key.plrs.im` and one **Library**
+  holding licences from every developer's products, as on Steam. Every way of signing in is a
+  **link** on that account. Licences attach to it. Each product sees the person only through a
+  **pairwise subject** that means nothing to any other product. Layer 1 is a customer account
+  and a Library. It does not yet give a developer's app its own user profiles or tokens.
+- **Layer 2, later: per-app identity.** App-specific profiles, apps signing users in beyond
+  licence attach, bring-your-own-auth with the product's own IdP, and the per-product OIDC
+  issuer ("Sign in with <Product>"). Approved in full, planned separately after layer 1 ships.
 
-Option A (a pure broker) leaves developers with no IdP of their own, which is most indie and Godot
-studios, with nothing to sign in with, and it still issues nothing. Option B (a full OP that owns
-credentials) would still have to federate to reach Steam or Game Center, and it carries the most
-liability. Option F (run a separate open-source IdP such as Zitadel, Keycloak or Ory, §4) buys a
-certified OP but adds a second account store, a non-Workers host, and still no game-platform
-verification. C is A's verifiers plus a deliberately small B, sequenced so each phase ships value
-on its own.
+**Layer 1, concretely [I] unless stated as the owner's decision.**
 
-**Cost, for a small team [I].** Phases 0 to 2 are about **72 agent-days** (about 9–11 calendar
-weeks with three parallel lanes and review); phase 3 (the issuer) is about **14 more**. The
-**minimum viable Identity** cut (I-01 to I-08, I-10, I-11, I-21 and I-22, with only the `oidc`
-and `firebase` verifiers) is about **46 agent-days**, roughly what Option A costs (about 41) while also
-giving developers with no IdP an email login. Figures and the cut line are in §7.1.
+1. **One account, many links** (§5.1). Email code or magic link, passkeys, Apple, Google and
+   Steam on the web; Game Center, Play Games and EOS through native verification. A link is a
+   verified `(issuer, subject)`. Links are added and removed under step-up, never orphaning the
+   account, and accounts merge only with proof of both. Some native identities are scoped per
+   developer team, so those links only recognise the person inside that developer's products
+   (§5.1, "Tenant-scoped links").
+2. **One login card** at `key.plrs.im` for the portal and for every app. Web redirect, native
+   redirect and device code all land on it, with the persistent header "<App> wants you to sign
+   in". A first provider sign-in passes the email-confirmation interstitial once. **Apps never
+   host account credential entry themselves**, so the in-app email-code API that the earlier
+   revision planned is dropped from layer 1 (§5.4 item 13; D17).
+3. **Licences belong to accounts.** The claim rules carry over unchanged. Floating licences (no
+   account) keep working and prompt sign-up. Key entry becomes a bounded on-ramp: past the
+   product's entry limit, apps refuse the key and deep-link to the portal's `/activate` (§5.3).
+4. **The portal becomes the Library** (§5.7): Library, Discover, Activate License, account
+   settings (sign-in methods, profile, devices, privacy), and Cloud Sync on product pages.
+5. **Developers see only their own products** (§5.2). The console's Users page lists pairwise
+   subjects of accounts that hold or used the product's licences. It never shows the global
+   account id, other products, or the rest of the Library.
+6. **The device keeps the signed licence document as its only gate.** Layer 1 adds a refusal on
+   key entry, an attach step and sign-in routes. All are additive, so `PROTOCOL_VERSION` stays 4.
+   They are still device wire, so they go through plan mode: contract, then `errors.json`, then
+   transcripts, then all six SDKs, plus the UI kits' activation screens (§5.3).
+7. **Operators stay on Pocket ID** through a separate console client (I-03). End users leave it.
+
+**Cost, for a small team [I].** The **layer 1 core** (accounts, links, the login card, email,
+web providers, key-entry limits, the Library portal, console users and SDKs) is about **62
+agent-days**, roughly 8–9 calendar weeks. Native platform links, native redirect, passkeys and the
+Pocket ID migration complete layer 1 for about **23 more** (85 in total). **Layer 2** is about
+**28** (113 overall). The earlier product-scoped plan was 86 for phases 0–3. The difference is the
+Library portal, the key-entry wire, account merge and the pairwise subjects. Figures are in §7.1.
 
 ```mermaid
 flowchart LR
-  subgraph In["Login methods (per product, data in .pkey/product)"]
+  subgraph Methods["Sign-in methods = links on the account"]
     E["Email code / magic link"]
-    PK["Passkey (phase 2)"]
-    UP["Upstream OIDC<br/>product IdP, Google, Apple"]
-    GM["Game platforms<br/>Steam ticket, Game Center,<br/>Play Games, EOS"]
-    LK["Licence key<br/>(low assurance)"]
-    AS["Product backend assertion<br/>RFC 7523 (later: consoles)"]
+    PK["Passkey (key.plrs.im)"]
+    WEB["Apple, Google, Steam (web)"]
+    NAT["Game Center, Play Games, EOS,<br/>native Apple / Google"]
   end
-  subgraph Doors["Front doors"]
-    RD["Redirect broker<br/>/identity/auth/*"]
-    DC["Device code RFC 8628<br/>TV, console, Godot"]
-    TX["Exchange<br/>POST /identity/token"]
-    EC["Email-code API<br/>(in-app, gated, §5.4)"]
+  subgraph Doors["Front doors (one login card)"]
+    PORTAL["Portal sign-in"]
+    RD["App passthrough: web redirect"]
+    NR["App passthrough: native redirect"]
+    DC["App passthrough: device code / QR"]
+    TX["Native exchange<br/>(platform tickets)"]
   end
-  subgraph Id["Identity service"]
+  subgraph L1["Layer 1: Identity"]
     SI["signIn(verifiedIdentity)"]
-    U[("users + identity_links<br/>product-scoped")]
+    A[("account + links<br/>global")]
+    PS[("pairwise subject<br/>per product")]
   end
   subgraph Out["What a sign-in yields"]
     DT["Device token + signed licence doc<br/>(unchanged wire, v4)"]
-    BS["Browser session"]
-    OT["OIDC ID / access tokens<br/>'Sign in with Product' (phase 3)"]
+    BS["Account session (key.plrs.im)"]
   end
-  E & PK & UP & LK --> RD
-  UP & E --> DC
-  E --> EC
-  UP & GM & AS --> TX
-  RD & DC & TX & EC --> SI --> U
-  U --> L["License: licences, seats"]
-  U --> C["Commerce: store bindings"]
-  U --> P["Portal account (global) links"]
-  SI --> DT & BS & OT
-  OPS["Console operators"] -.->|"stay on Pocket ID<br/>id.plrs.im"| CON["Console"]
+  E & PK & WEB --> PORTAL & RD & NR & DC
+  NAT --> TX
+  PORTAL & RD & NR & DC & TX --> SI --> A
+  A --> LIB["Library: licences from every product"]
+  A --> PS
+  PS --> DEV["Console: only its own product's subjects"]
+  A --> CS["Cloud Sync and managed config<br/>per account × product (S-17)"]
+  SI --> DT & BS
+  L2["Layer 2 (later): per-app profiles,<br/>bring-your-own-auth, 'Sign in with Product'"] -.-> PS
+  OPS["Console operators"] -.->|"stay on Pocket ID"| CON["Console"]
 ```
 
-The decisions this needs from the owner are in §10, each with a recommended default.
+The decisions already taken are in §10 with the few that remain, each with a recommended default.
 
 ## 2. What Identity is for: the jobs
 
 Each job is drawn from the landscape survey (licensing peers Keygen, Cryptlex, LicenseSpring,
 Lemon Squeezy, Paddle and Gumroad; game backends EOS, PlayFab, Unity Authentication, Nakama, Talo
-and Xsolla; Firebase, Supabase and RevenueCat; sources in §11). **Now** means phases 0 to 2 of
-§7, **later** means phase 3 or beyond, and **never** means out of the service's charter.
+and Xsolla; Firebase, Supabase and RevenueCat; sources in §11). **Layer 1** ships first, **layer
+2** follows (§7), **later** means beyond both, and **never** means out of the service's charter.
 
-| #   | Job                                                                                                                                                          | Scope                      | Why                                                                                                                                                                                                                                                                                               |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| J1  | A person signs in from an app or game and their licences and entitlements follow them to every device                                                        | **now**                    | Table stakes: every licensing peer with users (Keygen, Cryptlex, LicenseSpring) and every game backend has it [V]. Polaris half-has it: product OIDC mints a licence [V] (`W/services/identity/oidc.ts:697-845`)                                                                                  |
-| J2  | **Hosted accounts for developers with no IdP**: email code or magic link, later passkeys                                                                     | **now**                    | Most indie and Godot studios have no IdP. Talo, Unity Authentication and Keygen all ship a built-in account [V]. Polaris already sends magic links, but only for the Polaris-branded portal [V] (`W/services/identity/portal/email.ts:21-27`)                                                     |
-| J3  | **Bring your own auth**: an app that already signs users in (Clerk, Firebase, Auth0, Supabase, Cognito) exchanges that token                                 | **now**                    | No user migration for the product. One generic JWKS verifier covers about 11 of 17 surveyed providers [I]. Today no mainstream IdP works as `custom` at all (§3.2)                                                                                                                                |
-| J4  | **Silent sign-in with the platform identity**: Steam, Game Center, Play Games, EOS                                                                           | **now** (phase 2)          | The game-program differentiator. It avoids an extra-account wall (Steam labels third-party-account games on the store page [U]). Steam ticket verification and x509 chain verification already exist for commerce [V] (`W/services/distribution/commerce/steam.ts`, `apple.ts`, `W/core/x509.ts`) |
-| J5  | Sign in on a TV, console, kiosk or headless Godot build with a phone                                                                                         | **now** (exists, keep)     | RFC 8628 is implemented and hardened, with QR codes in Godot and Kotlin [V]. Only Godot sends the P1-07 confirm-and-attach step [V] (`packages/sdk-node/src/identity/client.ts:16-19`)                                                                                                            |
-| J6  | Link identities and merge accounts (bought on Steam, play on mobile; anonymous first, sign in later)                                                         | **now** (policy)           | Every game backend has link, unlink and merge with explicit rules (Nakama never removes the last identifier; RevenueCat's Transfer-or-Block restore policy) [V]. Polaris verifies store purchases but hangs them on licences, not people [V] (`M/0052_commerce.sql:13-27`)                        |
-| J7  | The customer portal: find my licences, devices and downloads                                                                                                 | **now** (exists, converge) | Lemon Squeezy's My Orders and Paddle's portal set the bar; ours is already global with magic links [V]. The gaps are the relation to product users, server-side sessions, GDPR export and a signed auto-login link API                                                                            |
-| J8  | **"Sign in with <Product>"**: ID and access tokens with entitlement claims for the developer's forum, community bot, web companion, cloud saves or MCP tools | **later** (phase 3)        | No licensing peer offers it, so it is a real differentiator [V]. It is useless without J1's principal, and it makes Polaris a token issuer with ongoing key, consent and conformance duties                                                                                                       |
-| J9  | Native redirect sign-in (loopback or claimed-HTTPS redirect) so desktop and mobile apps are not limited to device code                                       | **now** (phase 2)          | Swift's `PolarisLoginView(onSignIn:)` defaults to a no-op and four native SDK rows are planned and unowned [V] (`sdks/swift/Sources/PolarisKeyUI/PolarisLoginView.swift:107-125`). Device code is a poor fit on a phone                                                                           |
-| J10 | Named-user seats: N users per licence, M devices each                                                                                                        | **later**                  | Keygen `maxUsers` and Cryptlex named-user licences [V]. It needs the user principal first and probably a user claim in the signed licence document, which is a corpus and all-SDK event                                                                                                           |
-| J11 | B2B organisations with per-customer SSO and admin seat assignment                                                                                            | **later** (enterprise)     | Enterprise-tier everywhere (LicenseSpring, Cryptlex SAML, Keygen) [V]. Only worth building once J1 and J10 exist                                                                                                                                                                                  |
-| J12 | Console platforms (PSN, Xbox, Nintendo) through the product's backend or EOS                                                                                 | **later**                  | Verification is under NDA and cannot ship in an open-source Worker or SDK [I]. An RFC 7523 assertion from the product's backend, or EOS Connect, covers it without NDA code                                                                                                                       |
-| J13 | The console's own operator sign-in                                                                                                                           | **never** in Identity      | Every peer separates "your team signs in" from "your customers' identity" [V]. Operators stay on the platform IdP (`W/admin/authz.ts:1-13`). Folding them into the end-user principal would put console authority one OP bug away from any customer                                               |
-| J14 | Passwords                                                                                                                                                    | **never**                  | Credential stuffing, breach monitoring and reset flows for no gain over email codes plus passkeys [I]                                                                                                                                                                                             |
-| J15 | Dynamic client registration and an open third-party app ecosystem                                                                                            | **never** (for now)        | Clients belong to a product's developer, so they are registered in the console or manifest. DCR is a spam and abuse surface [I]                                                                                                                                                                   |
-| J16 | Social features: friends, presence, leaderboards                                                                                                             | **never**                  | That is a game backend (Nakama, PlayFab, EOS), not identity [I]                                                                                                                                                                                                                                   |
+| #   | Job                                                                                                                                                          | Scope                  | Why                                                                                                                                                                                                                                                                        |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| J1  | A person signs in from an app or game and their licences and entitlements follow them to every device                                                        | **layer 1**            | Table stakes: every licensing peer with users (Keygen, Cryptlex, LicenseSpring) and every game backend has it [V]. Polaris half-has it: product OIDC mints a licence [V] (`W/services/identity/oidc.ts:697-845`)                                                           |
+| J2  | **A hosted account for everyone**: email code or magic link, passkeys, Apple, Google, Steam. Developers with no IdP get it for free                          | **layer 1**            | Most indie and Godot studios have no IdP. Talo, Unity Authentication and Keygen all ship a built-in account [V]. Polaris already sends magic links, but only for the Polaris-branded portal [V] (`W/services/identity/portal/email.ts:21-27`)                              |
+| J3  | **Bring your own auth**: an app that already signs users in (Clerk, Firebase, Auth0, Supabase, Cognito) exchanges that token                                 | **layer 2**            | No user migration for the product. One generic JWKS verifier covers about 11 of 17 surveyed providers [I]. A product's own IdP is a per-app identity, so it waits for layer 2 (§5.1)                                                                                       |
+| J4  | **Sign-in with the platform identity**: Steam, Game Center, Play Games, EOS                                                                                  | **layer 1** (phase 1b) | The game-program differentiator. Steam ticket verification and x509 chain verification already exist for commerce [V] (`W/services/distribution/commerce/steam.ts`, `apple.ts`, `W/core/x509.ts`). As links on the account, after one interstitial (§5.3)                  |
+| J5  | Sign in on a TV, console, kiosk or headless Godot build with a phone                                                                                         | **layer 1** (exists)   | RFC 8628 is implemented and hardened, with QR codes in Godot and Kotlin [V]. Only Godot sends the P1-07 confirm-and-attach step [V] (`packages/sdk-node/src/identity/client.ts:16-19`)                                                                                     |
+| J6  | Link identities and merge accounts (bought on Steam, play on mobile; floating licence first, sign in later)                                                  | **layer 1**            | Every game backend has link, unlink and merge with explicit rules (Nakama never removes the last identifier; RevenueCat's Transfer-or-Block restore policy) [V]. Polaris verifies store purchases but hangs them on licences, not people [V] (`M/0052_commerce.sql:13-27`) |
+| J7  | **The Library**: every licence from every developer in one place, plus devices, downloads and activation                                                     | **layer 1**            | Steam's library is the model the owner chose. Lemon Squeezy's My Orders and Paddle's portal set a lower bar; ours is already global with magic links [V]                                                                                                                   |
+| J8  | **"Sign in with <Product>"**: ID and access tokens with entitlement claims for the developer's forum, community bot, web companion, cloud saves or MCP tools | **layer 2**            | No licensing peer offers it, so it is a real differentiator [V]. It makes Polaris a token issuer with ongoing key, consent and conformance duties                                                                                                                          |
+| J9  | Native redirect sign-in (loopback or claimed-HTTPS redirect) so desktop and mobile apps are not limited to device code                                       | **layer 1** (phase 1b) | Swift's `PolarisLoginView(onSignIn:)` defaults to a no-op and four native SDK rows are planned and unowned [V] (`sdks/swift/Sources/PolarisKeyUI/PolarisLoginView.swift:107-125`). Device code is a poor fit on a phone                                                    |
+| J10 | Named-user seats: N users per licence, M devices each                                                                                                        | **later**              | Keygen `maxUsers` and Cryptlex named-user licences [V]. It needs a user claim in the signed licence document, which is a corpus and all-SDK event                                                                                                                          |
+| J11 | B2B organisations with per-customer SSO and admin seat assignment                                                                                            | **later** (enterprise) | Enterprise-tier everywhere (LicenseSpring, Cryptlex SAML, Keygen) [V]. Only worth building once J1 and J10 exist                                                                                                                                                           |
+| J12 | Console platforms (PSN, Xbox, Nintendo) through the product's backend or EOS                                                                                 | **later**              | Verification is under NDA and cannot ship in an open-source Worker or SDK [I]. An RFC 7523 assertion from the product's backend, or EOS Connect, covers it without NDA code                                                                                                |
+| J13 | The console's own operator sign-in                                                                                                                           | **never** in Identity  | Every peer separates "your team signs in" from "your customers' identity" [V]. Operators stay on the platform IdP (`W/admin/authz.ts:1-13`)                                                                                                                                |
+| J14 | Passwords                                                                                                                                                    | **never**              | Credential stuffing, breach monitoring and reset flows for no gain over email codes plus passkeys [I]                                                                                                                                                                      |
+| J15 | Dynamic client registration and an open third-party app ecosystem                                                                                            | **never** (for now)    | Clients belong to a product's developer, so they are registered in the console or manifest. DCR is a spam and abuse surface [I]                                                                                                                                            |
+| J16 | Social features: friends, presence, leaderboards                                                                                                             | **never**              | That is a game backend (Nakama, PlayFab, EOS), not identity [I]. A cross-developer account makes this temptation stronger; the charter holds                                                                                                                               |
 
 ## 3. Current state and gaps
 
@@ -229,6 +276,11 @@ replace them one-for-one [V].
 
 Every option keeps RFC 8628 device code. It is the only browser-less path for Godot on a TV or
 console, and it already exists.
+
+**Read with the two-layer decision.** The options below were compared on 2026-10-04, before the
+owner chose one global account. Option C won and stands. Its "product-scoped `users`" principal
+is now the global account with pairwise subjects (§5.1), and its effort figures are superseded by
+§7.1. The other options are kept as the record of what was weighed.
 
 ### Option A: broker only
 
@@ -403,536 +455,701 @@ Cheap and worth doing under any option, but it answers none of J1–J9.
 
 **Glossary (AGENTS rule 4).** The concepts page already uses "license" for "an account that holds
 entitlements", "profile" for a managed-payload baseline, and "account" for the portal
-(`packages/docs/src/content/docs/start/concepts.md:173-218`) [V]. Proposed new nouns [I]:
+(`packages/docs/src/content/docs/start/concepts.md:173-218`) [V]. The two-layer decision makes
+"account" the person, which fits the portal's existing use. Proposed nouns [I]:
 
-- **user**: a person known to one product. Product-scoped, and the principal Identity owns.
-- **identity link** (or **login**): one verified `(issuer, subject)` attached to a user. Examples:
-  `email:<hash>`, `oidc:<iss>`, `steam`, `gamecenter:<teamId>`, `pgs:<appId>`, `eos:<deploymentId>`,
-  `assertion:<keyId>`.
-- **login method**: a product's enabled way to create links (a provider instance in the manifest).
-- **portal account**: unchanged; the platform-global customer record that links to users and
-  licences across products.
-- **client**: an application registered to a product's issuer (phase 3 only).
+- **account** (Polaris Key account): one person, global across products. It replaces both the
+  portal account and the earlier draft's product-scoped "user".
+- **sign-in method** or **link**: one verified `(issuer, subject)` attached to an account. Examples:
+  `email:<hash>`, `google`, `apple`, `steam`, `passkey:<credentialId>`, `gamecenter:<teamId>`,
+  `pgs:<appId>`, `eos:<deploymentId>`.
+- **Library**: the set of licences attached to an account, across products.
+- **floating licence**: a licence with no account. It works on devices exactly as today.
+- **key entry**: one activation by typing or pasting a licence key, in the portal or an app.
+- **pairwise subject**: the opaque id one product sees for one account. Different for every
+  product, and never the account id.
+- **account × product data**: what an account holds for one product: managed config overrides
+  and Cloud Sync data (S-17), and later the layer 2 app profile.
+- **client**: an application registered to a product's issuer (layer 2 only).
 
-Proposed D1 tables [I] (names are placeholders for the plan WP):
+To avoid a second meaning, "profile" stays the managed-payload baseline. The person's name,
+picture and locale are the account's **personal details** (the portal's "Profile" section label is
+UI copy, not a domain noun) [I].
 
-| Table                    | Key                                     | Holds                                                                                                         |
-| ------------------------ | --------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `identity_users`         | `(product, id)`                         | status (`active`, `disabled`), display name, primary verified email, created and last-sign-in times           |
-| `identity_links`         | UNIQUE `(product, issuer_key, subject)` | `user_id`, verified email (if the issuer is email-authoritative), first and last use, `amr`                   |
-| `licenses.user_id`       | nullable FK                             | Replaces `licenses.sub` as the person pointer. Migration: each `sub` becomes a user plus an `oidc:<iss>` link |
-| `dist_purchase_bindings` | unchanged                               | Still licence-keyed; reached through the licence's user (§5.6)                                                |
-| `identity_sessions`      | `(product, id hash)` under the pepper   | Browser and OP sessions, revocable, listable ("sign out everywhere"); every lookup is by product and hash     |
-| `identity_passkeys`      | credential id                           | COSE public key, sign count, transports, `rp_id`, per-product random user handle (phase 2)                    |
-| `identity_clients`       | `(product, client_id)`                  | Type (web, SPA, native, device), exact redirect URIs, hashed secret (phase 3)                                 |
-| `identity_grants`        | grant id                                | Consented scopes and refresh-token family (phase 3)                                                           |
-| Single-use store         | Durable Object, sharded by hash         | Email codes, magic links, auth codes, device codes, WebAuthn challenges: atomic consume                       |
+**Proposed D1 tables [I]** (names are placeholders for I-04's plan):
 
-Rules [I], following the landscape:
+| Table                      | Key                                                            | Holds                                                                                                                                                                                     |
+| -------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `accounts`                 | `id` (random, never shown to developers)                       | status (`active`, `disabled`, `deleted`), primary verified email, personal details and their chosen source, Terms acceptances, created and last-sign-in times. Replaces `portal_accounts` |
+| `account_links`            | UNIQUE `(issuer_key, subject)`                                 | `account_id`, kind, `tenant_scope` (null, or the developer/team the subject is scoped to), provider email and whether it was verified, first and last use, `amr`                          |
+| `account_product_subjects` | UNIQUE `(product, subject)` and UNIQUE `(account_id, product)` | The pairwise subject: random, stored, created on first contact between that account and that product; `aliases` after a merge                                                             |
+| `licenses.account_id`      | nullable FK                                                    | Replaces `licenses.sub` and `portal_license_links` as the owner pointer. Null means floating. Migration in I-05                                                                           |
+| `license_key_entries`      | `(license_id, id)`                                             | One row per counted key entry: surface (portal or app), device id if any, time. The count is compared with the product's `keyEntryLimit`                                                  |
+| `account_sessions`         | id hash under the pepper                                       | Browser sessions on `key.plrs.im` (portal and login card): revocable, listable, "sign out everywhere"                                                                                     |
+| `account_product_grants`   | `(account_id, product)`                                        | The account's first "continue to <App>" confirmation and the profile claims it consented to; the record behind SSO without silent grants (§5.4 item 13)                                   |
+| `account_passkeys`         | credential id                                                  | COSE public key, sign count, transports, `rp_id = key.plrs.im`, a random per-account WebAuthn user handle (never the account id)                                                          |
+| `dist_purchase_bindings`   | unchanged                                                      | Still licence-keyed; reached through the licence's account (§5.6)                                                                                                                         |
+| Account × product data     | `(account_id, product)`                                        | Managed config overrides and Cloud Sync, owned by S-17; listed here because deletion and merge must reach it                                                                              |
+| Single-use store           | Durable Object, sharded by hash (I-02)                         | Email codes, magic links, auth codes, device codes, WebAuthn challenges, interstitial flows: atomic consume                                                                               |
+| Layer 2 only               | `identity_clients`, `identity_grants`, app profiles            | Per-product issuer clients and grants; app-specific profiles. Shapes deferred to the layer 2 plan                                                                                         |
 
-- **A user is product-scoped.** That is the tenant-isolation boundary and matches rule 5. The
-  portal account stays the only cross-product record.
-- **One link belongs to exactly one user.** A link already attached elsewhere is refused
-  (`link_conflict`) unless the product opts into Transfer, RevenueCat-style.
-- **Never orphan.** Unlinking the last link is refused, as in Nakama.
-- **Explicit linking** needs proof of both identities in one session.
-- **Automatic linking by email** happens only when both sides are `email_verified` from issuers
-  marked email-authoritative (the Polaris email method, Google for gmail.com). Never for Entra
-  `email`, and off by default for custom IdPs, mirroring today's portal rule.
-- **Anonymous first, sign in later**: today's enrolled licence plus claim and migrate is that
-  bootstrap. It is generalised to "attach this device's licence to the signed-in user", and keeps
-  the P1-07 show-then-confirm step.
-- **Licence claim is first-attach only, never a silent transfer.** A licence whose `user_id` is
-  null can be attached, by its key or by the device's enrolled licence, after a confirm screen.
-  A licence that already has a `user_id` is refused (`license_owned`), whoever presents the key;
-  it never moves away from its owner by key. It moves only when (a) its current owner detaches it
-  from their own session, or (b) an operator reassigns it in the console under step-up and audit
-  (§5.4 item 9), which is reversible because the previous owner is recorded. **A licence that
-  carries an email** (operator-issued or bought) attaches only to a user with that verified
-  email, not by key, unless the product sets `claimByKey: true`. That closes the "leaked key,
-  attacker claims first" race for every licence sold to a known buyer. Each attach notifies the
-  licence's email, if any.
-- **Licence-key sign-in** yields a low-assurance principal (`amr: ["pkey_license"]`). It never
-  creates an SSO session, never auto-links, and for an owned licence reaches only that licence,
-  never the owner's other licences, links or profile.
-- **Shared credentials are bounded, not prevented.** One email or Steam account used by many
-  people is one user. What limits it is unchanged: the licence's device seats and dormant-seat
-  reclaim. Per-user concurrent-session caps are optional; named-user seats (J10) are the real
-  control and come later.
-- **Recovery is through any remaining link, and beyond that it is the developer's job.** The
-  service enforces two things and provides one tool:
-  1. Passkeys can be registered only after an email is verified, so a lost passkey always falls
-     back to email.
-  2. A user whose only link is a platform identity (Steam, Game Center, Play Games) recovers by
-     signing in on that platform again: the platform account is the recovery. The SDKs prompt
-     such users to add an email after first sign-in (a product setting, on by default).
-  3. A user with no working link (dead email and nothing else) has no self-service path. The
-     developer's support decides, on their own evidence (licence key, receipt, purchase email),
-     and uses the console's audited, step-up relink tool. Polaris supplies the tool and the audit
-     trail, not the judgement. The docs say so plainly.
-- **Identity no longer requires a licence.** An Identity-only product gets users and device tokens
-  under `requires-identity` without minting licences. That fixes G7 and matches the registration
-  policy docs.
+**Pairwise subjects [I].** A stored random value per `(account, product)` pair, not an HMAC of the
+account id. A stored value can be deleted, which gives per-product deletion its meaning: after "remove
+my data from <Product>", the next contact gets a fresh subject the developer cannot connect to the
+old one. Every device token, licence view, console page, webhook and (in layer 2) issued token
+carries the pairwise subject. The global account id never leaves the Identity service and the
+portal.
+
+**Tenant-scoped links [I; U: provider docs not re-read here].** Some native identities are not
+global:
+
+- Apple's user identifier is stable per developer team. A web Sign in with Apple through Polaris's
+  own Services ID and a native Sign in with Apple inside a developer's iOS app yield different
+  subjects for the same person.
+- Game Center's `teamPlayerID` is per team, and Play Games and EOS product user ids are scoped per
+  game or deployment.
+
+So such a link records its `tenant_scope` and only recognises the person inside products of that
+scope. Signing in to a second developer's game with Game Center the first time finds no link and
+goes through the login card, where the person signs in another way and the new link joins their
+account. Steam IDs, Google subjects and email are global. The SDK docs say this plainly.
+
+**Rules [I],** following the landscape and the owner's decisions:
+
+- **One link belongs to exactly one account.** A link already attached elsewhere is refused
+  (`link_conflict`), with the offer to sign in to that account instead or merge.
+- **Never orphan.** Removing the last sign-in method is refused (owner: last-method guard).
+- **Connect and disconnect under step-up** (owner): a fresh sign-in no older than 5 minutes,
+  audited, and an email to the primary address for every change.
+- **Merge only with proof of both** (owner): link-existing-account requires a live sign-in to each
+  account in one flow. Never by email match. On merge:
+  - links, licences, sessions and personal details move to the surviving account (the user picks
+    personal-detail sources);
+  - for each product both accounts touched, the surviving pairwise subject wins and the other is
+    kept as an alias, so the developer's records still resolve (the console shows "merged from");
+  - account × product data that collides (both hold Cloud Sync saves for one product) is never
+    silently overwritten; S-17 owns the conflict UI;
+  - the absorbed account becomes a tombstone that redirects sign-ins for 30 days.
+- **Automatic linking by email: never across accounts.** A provider-verified email that matches
+  an existing account's primary email does not attach the provider to that account. The login card
+  says "an account already uses this email: sign in to it to connect <Provider>".
+- **Licence claim is first-attach only, never a silent transfer** (owner, unchanged):
+  - a floating licence attaches by its key or by the device's enrolled licence, after a confirm
+    screen;
+  - an owned licence is refused (`license_owned`) whoever presents the key, and moves only when
+    its owner detaches it or a developer reassigns it with the relink tool (§5.4 item 9);
+  - **a licence that carries an email** attaches only to an account whose verified email matches,
+    unless the product sets `claimByKey: true`;
+  - each attach notifies the licence's email, if any.
+- **Floating licences work and prompt sign-up** (owner). Nothing on the device changes; the portal
+  and UI kits offer "add to your Library". Floating licences have no account × product data.
+- **Key entries are bounded** (owner): see §5.3 for the counting rules.
+- **Shared credentials are bounded, not prevented.** One account used by many people is limited by
+  each licence's device seats and dormant-seat reclaim, unchanged.
+- **Recovery is through any remaining link; beyond that, the developer's licence tool.** Passkeys
+  enrol only after an email is verified. A platform-only account recovers by signing in on that
+  platform again. An account with no working link cannot be recovered by Polaris (no recovery
+  desk). The person creates a new account, and each developer's support reattaches that developer's
+  licences to it with the relink tool, on their own evidence.
+- **Identity no longer requires a licence.** Signing in gives a product a pairwise subject and a
+  device token without minting a licence, under `requires-identity`. That fixes G7.
+- **Bring-your-own-auth is layer 2** [I; D18]. A product's own IdP (Clerk, Firebase) is a
+  per-app identity: linking it to the global account would hang a tenant-controlled login on a
+  shared account. A tenant could then sign in as anyone it can mint tokens for (§5.4 item 14). In
+  layer 2 such a sign-in yields a product-only principal unless the person links it from the
+  portal under step-up.
 
 ### 5.2 Developer-facing surface
 
-**Manifest (`.pkey/product`).** Provider kinds are code; instances are data [I]:
+**Manifest (`.pkey/product`) [I].** In layer 1 a product does not choose the account's sign-in
+methods (they are platform-wide). It declares only what is product-specific:
 
 ```yaml
 identity:
-  methods:
-    - { id: email, kind: email } # code + magic link, Polaris-sent
-    - {
-        id: google,
-        kind: oidc,
-        issuer: https://accounts.google.com,
-        clientId: "…",
-        emailTrust: true,
-      }
-    - {
-        id: clerk,
-        kind: oidc,
-        issuer: https://clerk.example.com,
-        audience: ["…"],
-        azp: ["…"],
-      }
-    - { id: steam, kind: steam, appId: 480, ticketIdentity: "pkey:diceroll" } # publisher key sealed
-    - {
-        id: gc,
-        kind: gamecenter,
-        teamId: ABCDE12345,
-        bundleIds: ["com.example.game"],
-      }
-  linking: { emailAutoLink: false, conflict: block }
+  keyEntryLimit: 10 # owner: product-configurable, e.g. 5, 10 or 25
+  claimByKey: false # email-bound licences attach only by verified email
+  native:
+    steam: { appId: 480, ticketIdentity: "pkey:diceroll" } # publisher key sealed
+    gamecenter: { teamId: ABCDE12345, bundleIds: ["com.example.game"] }
+    apple: { teamId: ABCDE12345, bundleIds: ["com.example.game"] } # native Sign in with Apple audience
+  requireTerms: { url: "https://example.com/terms", version: "2026-10" } # shown in the interstitial
 ```
 
-Every new field gets a validator rule and a mutation-table entry (rule 9). The issuer allowlist
-applies to every discovered URL and becomes mandatory once a product declares any `oidc` method.
+Every new field gets a validator rule and a mutation-table entry (rule 9). Layer 2 adds
+`identity.methods[]` for the product's own IdPs and `identity.clients[]` for the issuer.
 
-**Not every social provider is generic OIDC.** Google, Auth0, Clerk, Cognito, Keycloak and Entra
-work through discovery under `kind: oidc`. One common one needs its own kind and code (I-20):
+**Sign in with Apple and Google are Polaris's own clients [I].** For the login card they are
+platform clients registered once by Polaris (Apple Services ID, Google OAuth client). They are
+not per-product, so a developer configures nothing for web sign-in. Native Sign in with Apple
+and Google inside a developer's app use the developer's bundle id or client id as the token's
+audience. That is why `identity.native` lists them, and why those links are tenant-scoped (§5.1).
 
-- **`kind: apple` (Sign in with Apple)** [V: research angle "proxy", from Apple's docs; U: not
-  re-read here]:
-  - The `client_secret` is an ES256-signed JWT the Worker mints from the product's sealed `.p8`
-    key (team id, key id, Services ID as `sub`, at most 6 months' lifetime), so mint it per
-    request or cache it briefly; the `.p8` is a sealed product secret.
-  - Requesting `name` or `email` forces `response_mode=form_post`: the callback is a cross-site
-    `POST` from `appleid.apple.com`, which does not carry `SameSite=Lax` cookies. Flow state must
-    be found by the `state` parameter server-side (today's flow records already are), never by a
-    Lax cookie, or that one cookie must be `SameSite=None; Secure`.
-  - The user's name arrives only on the first authorisation, so it is stored then or lost.
-  - Hidden "private relay" emails only receive mail from sender domains registered with Apple,
-    which ties into I-21.
-  - Apple's server-to-server notifications (consent revoked, account deleted) need an endpoint
-    that unlinks or flags the user.
+The Apple specifics stay as researched [V: research angle "proxy", from Apple's docs; U: not
+re-read here]:
 
-**App Review 4.8 is a constraint, not an open question.** An iOS app that offers a third-party or
-social login (Google, a Clerk-backed social button) to set up the user's primary account
-must also offer an equivalent privacy-preserving option; Sign in with Apple satisfies it [V:
-guidelines page, revised January 2024]. So the validator warns, and the console's Sign-in methods
-page flags, any product with an iOS release target that enables a social method without
-`kind: apple`. Whether Polaris email sign-in counts as the developer's own account (exempt) is
-still unsettled (§9), so the safe default is to enable Apple alongside any social method on iOS.
+- the `client_secret` is an ES256 JWT minted from a sealed `.p8` key (now Polaris's for the
+  login card);
+- `response_mode=form_post` arrives as a cross-site `POST`, so flow state is found by `state`
+  server-side, never by a Lax cookie;
+- the name arrives only on first consent, so the interstitial captures it;
+- private-relay addresses receive mail only from registered sender domains (I-18);
+- server-to-server notifications (consent revoked, account deleted) unlink or flag the link.
 
-**Console (Identity section).** Pages [I]:
+**App Review 4.8** still applies to an iOS app that offers social login for its primary account
+[V: guidelines page, revised January 2024]. With one Polaris account the login card always offers
+Sign in with Apple, so the card itself satisfies the equivalent-option rule. The remaining
+question is whether an app that lets users sign in to a third-party account (Polaris) at all must
+offer Apple natively; the validator warns for iOS targets without `identity.native.apple` [U].
 
-- **Users**: list, search, profile, links, licences, devices, sessions, audit; disable, sign out
-  everywhere, delete.
-- **Sign-in methods**: replaces today's read-only Sign-in page, with a per-kind setup checklist
-  (redirect URIs to register, secrets to seal) and a "test sign-in" dry run that mints nothing.
-- **Branding**: the hosted login page and email, reusing `portal_product_settings.branding_json`.
-- **Clients** (phase 3): register web, SPA, native and device clients; secrets shown once.
+**Console (Identity section): developers see only their own products** (owner). Pages [I]:
 
-**Portal.** It keeps its global account. It gains "connected products" (its links to product
-users), server-side sessions with sign-out, a GDPR export, and in phase 3 "connected apps" with
-revoke [I].
+- **Users**: one row per pairwise subject that has touched the product: a licence of the product
+  attached to the account, a sign-in through the product, or account × product data. Each row shows
+  that product's licences, devices and sessions, its account × product data size, and that
+  product's audit trail.
+  - The account's sign-in methods appear only as kinds ("email, Steam"), never their subjects,
+    except tenant-scoped links of the developer's own team.
+  - Contact email: the licence's buyer email where the licence carries one (the developer's own
+    commerce record). The account's primary email is shown only if the person consented to share it
+    with that product (D19).
+  - Never shown: the global account id, other products' licences, the rest of the Library, other
+    products' sessions or data, personal details beyond consented claims.
+- **Actions** on a row: export that product's data for the subject (JSON); delete that product's
+  data for the subject; detach the product's licence from the account; **relink** (reassign a
+  licence of this product to another account) under step-up, with a reason, a notice and a 72-hour
+  undo. A developer cannot disable, sign out, merge or delete the account, or touch its links.
+- **Sign-in settings**: key-entry limit, `claimByKey`, Terms version, native platform config with
+  a per-kind setup checklist and a "test sign-in" dry run that mints nothing.
+- **Branding**: the passthrough header's app name and icon, reusing
+  `portal_product_settings.branding_json`. The login card itself stays Polaris-branded.
+- **Clients** (layer 2): register web, SPA, native and device clients; secrets shown once.
 
-**SDK API, all six languages** [I]. Names are illustrative; each language follows its idiom:
+**SDK API, all six languages [I].** Names are illustrative; each language follows its idiom:
 
-| Call                                                   | Node           | React          | Python         | Swift                            | Kotlin            | Godot                                                               | Notes                                                                                                        |
-| ------------------------------------------------------ | -------------- | -------------- | -------------- | -------------------------------- | ----------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `identity.startDeviceCode()` / `poll()` (exists)       | yes            | yes            | yes            | yes                              | yes               | yes                                                                 | Add P1-07 confirm-and-attach everywhere, not only Godot                                                      |
-| `identity.signInWithEmail(email)` + `verifyCode(code)` | yes            | yes            | yes            | yes                              | yes               | yes                                                                 | One-time code; magic link only on web. Gated: needs a device token, else opens the hosted page (§5.4 item 4) |
-| `identity.exchange({kind, token, provider})`           | yes            | yes            | yes            | yes                              | yes               | yes                                                                 | Bring your own auth                                                                                          |
-| `identity.signInWithSteam()`                           | —              | —              | —              | —                                | —                 | yes                                                                 | GodotSteam `getAuthTicketForWebApi("pkey:<product>")`; others pass the ticket to `exchange`                  |
-| `identity.signInWithGameCenter()`                      | —              | —              | —              | yes                              | —                 | yes (iOS shim)                                                      |                                                                                                              |
-| `identity.signInWithPlayGames()`                       | —              | —              | —              | —                                | yes               | yes (Android shim)                                                  |                                                                                                              |
-| `identity.signIn({redirect})` (native PKCE)            | yes (loopback) | yes (redirect) | yes (loopback) | yes (ASWebAuthenticationSession) | yes (Custom Tabs) | desktop: OS browser + loopback [U]; mobile and console: device code | Closes G3; all six follow I-13                                                                               |
-| `identity.link(...)` / `unlink(id)`                    | yes            | yes            | yes            | yes                              | yes               | yes                                                                 | Needs the current session                                                                                    |
-| `identity.user()` / `signOut()` / `deleteUser()`       | yes            | yes            | yes            | yes                              | yes               | yes                                                                 | `deleteUser` meets App Store 5.1.1(v) in-app deletion [U]                                                    |
+| Call                                                    | Node           | React          | Python         | Swift                            | Kotlin            | Godot                                                | Notes                                                                                    |
+| ------------------------------------------------------- | -------------- | -------------- | -------------- | -------------------------------- | ----------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `activate(key)` (exists): handles `key_entry_limit`     | yes            | yes            | yes            | yes                              | yes               | yes                                                  | Surfaces the portal deep link; UI kits show it with a QR code (§5.3)                     |
+| `identity.startDeviceCode()` / `poll()` (exists)        | yes            | yes            | yes            | yes                              | yes               | yes                                                  | Lands on the login card with the passthrough header; P1-07 confirm-and-attach everywhere |
+| `identity.signIn({redirect})` (native PKCE)             | yes (loopback) | yes (redirect) | yes (loopback) | yes (ASWebAuthenticationSession) | yes (Custom Tabs) | desktop: OS browser + loopback [U]; else device code | System browser only, never an embedded web view (§5.4 item 14)                           |
+| `identity.attach()`                                     | yes            | yes            | yes            | yes                              | yes               | yes                                                  | Attach this device's floating licence to the signed-in account, after confirmation       |
+| `identity.signInWithSteam()`                            | —              | —              | —              | —                                | —                 | yes                                                  | GodotSteam `getAuthTicketForWebApi("pkey:<product>")`; others call `exchange`            |
+| `identity.signInWithGameCenter()` / `signInWithApple()` | —              | —              | —              | yes                              | —                 | yes (iOS shim)                                       | Phase 1b; first time through the login card (§5.3)                                       |
+| `identity.signInWithPlayGames()` / `signInWithGoogle()` | —              | —              | —              | —                                | yes               | yes (Android shim)                                   | Phase 1b                                                                                 |
+| `identity.exchange({kind, token})`                      | yes            | yes            | yes            | yes                              | yes               | yes                                                  | Phase 1b: platform kinds only; product IdP kinds in layer 2                              |
+| `identity.subject()` / `signOut()` / `openAccount()`    | yes            | yes            | yes            | yes                              | yes               | yes                                                  | The pairwise subject; `openAccount` deep-links to the portal (methods, deletion)         |
 
-**"Sign in with <Product>" (phase 3).** A per-product issuer at `https://key.plrs.im/<p>/identity`,
-with discovery, JWKS, authorize, token, userinfo, revocation and end-session. Scopes are `openid`,
-`email`, `profile`, `offline_access`, `pkey:licenses` and `pkey:entitlements`. Subjects are
-pairwise per product; that matters once a portal account links one person to several products.
-Claims are namespaced (`https://key.plrs.im/claims/entitlements`) and carry entitlements, not
-licence state, with access tokens living 5–15 minutes; this respects D-20's "state is never
-carried" rule. A custom domain (`auth.<product>.com`, through Cloudflare for SaaS) would be a
-separate issuer and is deferred.
+There is no `link`, `unlink` or `deleteAccount` in the SDKs. Those are account actions and live
+only in the portal under step-up (§5.4 item 13). `openAccount()` deep-links to them. That should
+meet App Store 5.1.1(v), which accepts a direct link to a web deletion flow [U].
+
+**"Sign in with <Product>" (layer 2).** As researched: a per-product issuer at
+`https://key.plrs.im/<p>/identity` with discovery, JWKS, authorize, token, userinfo, revocation and
+end-session; scopes `openid`, `email`, `profile`, `offline_access`, `pkey:licenses` and
+`pkey:entitlements`. The `sub` is the product's pairwise subject, so layer 1 already fixes it.
+Claims carry entitlements, not licence state; access tokens live 5–15 minutes; custom domains
+deferred. I-20's plan weighs in-house on `jose` against Ory Hydra (§4, Option F).
 
 ### 5.3 Wire impact
 
-| Change                                                                                         | Device wire?                                                                                               | `PROTOCOL_VERSION` / corpus                                                                                                                                            | Who follows                                                                                                                                                                                                        |
-| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase 0 hygiene; removing dead `authPoll` from the discovery fragment                          | Discovery response only                                                                                    | Neither; `gen:transcripts` re-records `discovery-capabilities.json`                                                                                                    | No SDK reads `authPoll` [U: grep each SDK in the WP]                                                                                                                                                               |
-| Users and links tables, console pages, manifest `identity.methods`                             | No                                                                                                         | Neither                                                                                                                                                                | Worker, admin, `shared-manifest` (rule 9)                                                                                                                                                                          |
-| **Phase 1 (I-08 ⚑):** email-code routes `POST /<p>/identity/email/start` and `/verify`         | **Yes**: SDKs call them (`signInWithEmail`, `verifyCode`); new request and response shapes and error codes | No bump: additive, feature-detected from discovery, `verify` returns the activation response; **transcripts and parity, not signed corpus**                            | **Plan mode.** Contract (WIRE-CONTRACT-V4 identity section; first identity types in `shared-protocol`, written by I-04) → `errors.json` (rule 3) → transcripts → I-11 in Node, React, Python, Swift, Kotlin, Godot |
-| **Phase 2 (I-10 ⚑, I-13 ⚑):** `POST /<p>/identity/token` exchange; native redirect token route | **Yes**: new device-facing routes, request and response shapes, error codes                                | Same: no bump, transcripts and parity                                                                                                                                  | **Plan mode**, same chain; all six SDKs                                                                                                                                                                            |
-| Identity discovery fragment gains `methods[]` and `exchange` metadata                          | Yes (discovery)                                                                                            | No bump; transcripts                                                                                                                                                   | Same six SDKs, feature detection                                                                                                                                                                                   |
-| Phase 3 OIDC issuer tokens                                                                     | No: web and backend relying parties only; no device SDK consumes them                                      | No bump; a new signed artefact outside the corpus, with OIDF conformance as its gate                                                                                   | Plan mode anyway (new signed artefact and keyring). SDKs add nothing; docs give stock-library recipes                                                                                                              |
-| J10: a user claim in the licence document's `profile` (named-user seats)                       | **Yes**: signed shape                                                                                      | Additive optional member; P4-19 shows such additions can keep `PROTOCOL_VERSION` 4 [V] (`docs/security/WIRE-CONTRACT-V4.md:875`); corpus regeneration and all six SDKs | Deferred; its own plan                                                                                                                                                                                             |
+Layer 1 touches the device wire in three places: a refusal on key entry, account attach, and the
+sign-in routes. All three are additive and feature-detected from discovery, so
+`PROTOCOL_VERSION` stays 4 and the signed corpus does not change. Each is still a **plan-mode
+change**: contract (WIRE-CONTRACT-V4's identity section and the first identity types in
+`shared-protocol`, written by I-04), then `errors.json` (rule 3), then transcripts and parity
+(rule 1), then OpenAPI and `routeCoverage` (rule 10), then **all six SDKs (Node, React, Python,
+Swift, Kotlin, Godot)** and the **UI kits' activation screens**: Swift `PolarisKeyUI`, Godot
+`addons/polaris_key/ui`, and the React and Kotlin activation components.
 
-Today's `DocProfile` has no subject (`packages/shared-protocol/src/license.ts:7-13`) [V]. Phases 0
-to 3 leave it alone.
+**Key-entry limits, the counting rules [I].** These are I-04's to fix; the defaults proposed here:
 
-So **phase 1 is not wire-free.** Its tables, console pages, manifest block and the hosted email
-page are HTTP-and-manifest work; its in-app email sign-in is device wire. The ordering is
-therefore I-04 (contract) → I-08 (routes, `errors.json`, transcripts) → I-11 (SDKs). A product
-that wants email sign-in before I-11 ships can use the hosted page through device code or the
-browser, which needs no SDK change.
+- A counted entry is a successful activation by key that enrols a **new** device, or a portal
+  Activate License submission. Re-entering the key on a device already enrolled on that licence
+  is not counted, so a reinstall does not burn entries.
+- Refused or failed attempts are not counted (they are rate-limited instead).
+- Device-token refresh, offline grace, the licence document, store-binding activation and
+  sign-in-based activation never count. **Existing installs are never affected** (owner).
+- An owned licence's key entry is refused as today (`license_owned`) before any count.
+- The limit counts per licence over its lifetime. Attaching the licence to an account ends key
+  entry for it; from then on it reaches new devices through sign-in.
+
+| Change                                                                                                                                     | Device wire?                                                                | `PROTOCOL_VERSION` / corpus                                                                              | Who follows                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase 0 hygiene; removing dead `authPoll` from the discovery fragment                                                                      | Discovery response only                                                     | Neither; `gen:transcripts` re-records `discovery-capabilities.json`                                      | No SDK reads `authPoll` [U: grep each SDK in the WP]                                                                                              |
+| Accounts, links, pairwise subjects, console pages, manifest `identity.*`                                                                   | No                                                                          | Neither                                                                                                  | Worker, admin, `shared-manifest` (rule 9)                                                                                                         |
+| **Layer 1 (I-09 ⚑): key-entry refusal.** Activation by key past the limit returns a new error `key_entry_limit` (403) carrying `portalUrl` | **Yes**: a new error code and an extra error field on an existing route     | No bump: additive; transcripts and parity, not signed corpus                                             | **Plan mode.** `errors.json` → transcripts → I-10 in all six SDKs: surface the deep link, never retry; UI kits show the URL and a QR code for TVs |
+| **Layer 1 (I-09 ⚑):** optional `keyEntries: { used, limit }` in the activation-by-key response                                             | **Yes**: an optional response member                                        | No bump; transcripts                                                                                     | Same; UI kits may show "N activations left" with an "add to your Library" link                                                                    |
+| **Layer 1 (I-09 ⚑): account attach.** `POST /<p>/identity/attach` with the device token after a sign-in; returns the activation response   | **Yes**: a new route, request and response shapes, error codes              | No bump: the licence document's shape is unchanged (it carries no account)                               | Same chain; P1-07's show-then-confirm step in every SDK                                                                                           |
+| **Layer 1 (I-08 ⚑): passthrough sign-in.** Device code lands on the login card; its poll result can carry `subject` and `attachable`       | **Yes**: additive members on an existing response                           | No bump; transcripts                                                                                     | Same chain                                                                                                                                        |
+| **Layer 1, phase 1b (I-15 ⚑):** native redirect PKCE token route                                                                           | **Yes**: a new route                                                        | No bump; transcripts                                                                                     | Same chain; all six SDKs                                                                                                                          |
+| **Layer 1, phase 1b (I-13 ⚑):** `POST /<p>/identity/token` exchange for platform kinds; can answer `interstitial_required` with a URL      | **Yes**: a new route and error codes                                        | No bump; transcripts                                                                                     | Same chain; all six SDKs                                                                                                                          |
+| Identity discovery fragment gains `account: true`, `keyEntryLimit`, `exchange.kinds[]`                                                     | Yes (discovery)                                                             | No bump; transcripts                                                                                     | Same six SDKs, feature detection                                                                                                                  |
+| **Layer 2:** product-IdP exchange kinds; per-app profiles; issuer tokens                                                                   | Exchange kinds yes; issuer tokens no (web and backend relying parties only) | No bump expected; issuer tokens are a new signed artefact outside the corpus                             | Its own plan (I-20); OIDF conformance gates the issuer                                                                                            |
+| Later: a user claim in the licence document's `profile` (named-user seats)                                                                 | **Yes**: signed shape                                                       | Additive optional member (P4-19 precedent, `docs/security/WIRE-CONTRACT-V4.md:875`); corpus regeneration | Deferred; its own plan                                                                                                                            |
+
+Notes [I]:
+
+- **`portalUrl` is built by the Worker**, never by the SDK:
+  `https://key.plrs.im/portal/activate?product=<slug>`. It never carries the key, so the key does
+  not land in browser history or referrers. The portal's Activate License modal asks for the key
+  again after sign-in.
+- **The refusal is not an auth failure.** SDKs must not treat it as a revoked licence or wipe
+  stored state. A device that already holds a token for the licence never sees it.
+- **First native sign-in needs the interstitial.** The owner made the first-provider-sign-in
+  interstitial required. A Steam ticket or Game Center signature for a link not seen before
+  therefore cannot finish silently in-game. The exchange answers `interstitial_required` with a
+  login-card URL (system browser or device code). After that one visit, the link exists and later
+  sign-ins on that platform are silent.
+- **No in-app email-code routes in layer 1.** The earlier revision's `email/start` and
+  `email/verify` device routes are dropped (D17). Email sign-in happens only on the login card.
+  That removes a device-wire surface and the Turnstile gap in native SDKs.
+- Today's `DocProfile` has no subject (`packages/shared-protocol/src/license.ts:7-13`) [V].
+  Layers 1 and 2 leave it alone.
+
+The ordering is I-04 (contract) → I-09 and I-08 (routes, `errors.json`, transcripts) → I-10
+(SDKs and UI kits). A product can use the portal's Library and Activate License before I-10 ships,
+because those need no SDK change.
 
 ### 5.4 Threat-model deltas
 
-New or changed sections for `docs/security/THREAT-MODEL.md` [I] unless marked.
+New or changed sections for `docs/security/THREAT-MODEL.md` [I] unless marked. Items 1–11 carry
+over from the product-scoped design, adjusted; items 12–17 are new with the shared account.
 
 1. **Operator and customer split (G5).** Once end users leave Pocket ID, a customer can no longer
    be placed in `admins` by mistake, and the console no longer shares a client with customers.
-   Until then, give the console its own Pocket ID client (I-03).
-2. **Broker confusion.** Per-provider audience enforcement (`aud`, `azp`, `token_use`, bundle id,
-   Steam `identity`), fail closed when unset; RFC 9207 mix-up defence; SSRF checks on every
-   discovered URL; the issuer allowlist made mandatory once `oidc` methods exist.
-3. **Account takeover through linking.** Email trust per issuer; Entra `email` never links; no
-   linking of email-less platform identities except explicitly; Block on conflict.
-4. **Email sign-in abuse, send side and verify side.**
-   - _Send side._ Per-recipient (hashed) limits of 5 an hour and 20 a day, per-IP and per-network
-     limits, a per-product daily cap so one tenant cannot drain the shared sender quota, identical
-     responses for known and unknown emails, and a landing-page `POST` so link prefetchers cannot
-     burn magic links. On the hosted page, Turnstile.
-   - _Verify side._ Codes are 6 digits, live 10 minutes, and die after 5 wrong attempts. A new code
-     for the same recipient and flow invalidates the old one. After 10 wrong attempts across
-     codes in an hour the recipient is locked out of new codes for 15 minutes, with the same
-     response as success. With these numbers an attacker gets at most 5 guesses in a million per
-     code and about 10 codes a day, about 5 in 100,000 a day per victim.
-   - _Binding._ `start` returns an opaque `flow_id` bound to product, login method, and the
-     requester (the device token's device, or a hash of the browser's flow cookie). `verify` needs
-     `flow_id` plus code, and checks the same product, method and requester. A code issued for
-     product B's flow, or for another device's flow, cannot be redeemed at A.
-   - _Relay phishing (residual)._ An attacker who starts a flow with the victim's email and talks
-     the victim into reading out the code still wins, because the attacker holds the flow. The
-     email names the product and the requesting device and says "never share this code". New
-     sign-ins by email do not link new identities to an existing user without that user's session.
-     Passkeys (phase 2) are the phishing-resistant answer.
-   - _Magic link opened on another device._ The link completes the flow that requested it, not the
-     browser that opens it. The opening browser shows "Confirm sign-in to <Product> on <device>,
-     requested at <time>" and a Confirm button (`POST`). It gets a session of its own only when it
-     carries the requesting flow's cookie (same browser). Otherwise the requesting device's poll
-     receives the result.
-   - _No Turnstile in native or Godot SDKs._ Turnstile is a browser widget, so the in-SDK
-     `signInWithEmail` path loses the main bot control exactly where §5.2 adds it. Replacements:
-     `email/start` from an SDK requires a **registered device token** (so it costs a registration
-     and is limited per device, 3 starts an hour, on top of per-recipient and per-network
-     limits), and uses platform attestation (App Attest, Play Integrity) where the SDK has it [U:
-     no attestation work package is assumed here]. A product can turn in-SDK email start off;
-     then, and in any SDK without a device token, the SDK opens the hosted page in the system
-     browser (Turnstile runs there) and completes through device code or loopback.
-5. **Licence claim and transfer (new).** Threats: a leaked or shared key is claimed by an
-   attacker's user; a claimed licence is pulled away from its owner; an operator is talked into
-   moving it. Controls (§5.1): first attach only; an owned licence is never moved by key
-   (`license_owned`); licences with an email attach only by verified email unless `claimByKey`;
-   attach notifies the licence's email; operator reassign is step-up, audited and reversible.
-   Residual: a key licence with no email, leaked before its buyer claims it, goes to whoever
-   claims first; the buyer's remedy is support and an operator reassign. Credential sharing (one
-   email or Steam account across many people) stays bounded by device seats, not prevented.
-6. **Device-code phishing (RFC 8628 §5.4).** Today's residual is open: R1-07, rooted in R8-03.
-   The flow's starter can forward the IdP sign-in to a victim and receive a device token on the
-   victim's licence, and the victim never sees the confirmation page [V]
-   (`docs/security/THREAT-MODEL.md:2148-2154`). This spike makes device code the front door for
-   email and upstream sign-in on TVs and Godot, so the residual grows. Required with I-08:
-   - bind the IdP or email callback to the browser that confirmed the user code (the fix the
-     threat model already names);
-   - the confirm screen names the product, the login method and the requesting device (its
-     reported name and platform, labelled "reported by the device"), and requires an explicit
-     Confirm `POST` after sign-in, never auto-completing;
-   - the code lives at most 10 minutes (today `FLOW_TTL_SECONDS = 600`, `W/services/identity/oidc.ts:80`
+   Until then, the console has its own Pocket ID client (I-03).
+2. **Broker confusion.** Per-provider audience enforcement (`aud`, `azp`, bundle id, Steam
+   `identity`), failing closed when unset. Also RFC 9207 mix-up defence and SSRF checks on every
+   discovered URL. With platform-owned Apple and Google clients, a token minted for a developer's
+   bundle id must never be accepted as a login-card sign-in, and the reverse.
+3. **Account takeover through linking.** No email auto-linking across accounts; merge needs proof
+   of both; Block on conflict; link changes need step-up and are emailed.
+4. **Email sign-in abuse, send side and verify side.** As designed earlier, now on the login card
+   only:
+   - per-recipient (hashed) limits of 5 an hour and 20 a day, per-IP and per-network limits, and
+     Turnstile on the card;
+   - a per-product daily cap on sign-ins started through a product's passthrough, so one tenant
+     cannot drain the shared sender quota;
+   - identical responses for known and unknown emails, and a landing-page `POST` so link
+     prefetchers cannot burn magic links;
+   - 6-digit codes that live 10 minutes and die after 5 wrong attempts, with recipient lockout
+     after 10 in an hour;
+   - flows bound to the requesting browser. A magic link opened on another device shows "Confirm
+     sign-in, requested at <time> from <place>" and completes the requesting flow.
+
+   The in-SDK email start, and its Turnstile gap, are gone in layer 1 (§5.3).
+
+5. **Licence claim and transfer.** Unchanged controls: first attach only, `license_owned`,
+   email-bound licences only by verified email unless `claimByKey`, attach notices, relink with
+   step-up and undo. **New with key-entry limits:** an attacker holding a leaked key can burn its
+   entries. That only forces the rightful buyer onto the account path, where email-bound licences
+   attach to the buyer's verified email. It is a nuisance, not a takeover. The entry count is
+   shown on the licence in the console.
+6. **Device-code phishing (RFC 8628 §5.4), now against a shared account.** R1-07 is open today
+   [V] (`docs/security/THREAT-MODEL.md:2148-2154`). Device code becomes a main passthrough front
+   door, and what a victim approves now reaches an account holding every developer's licences.
+   What a device code yields stays narrow: a device token for the one product shown and that
+   product's pairwise subject, never an account session. Required with I-08:
+   - bind the sign-in callback to the browser that confirmed the user code;
+   - the card names the app and the requesting device ("reported by the device") and requires an
+     explicit Continue `POST`, never auto-completing even when an account session exists;
+   - codes live at most 10 minutes (`FLOW_TTL_SECONDS = 600`, `W/services/identity/oidc.ts:80`
      [V]);
-   - a warning when the approving browser's network or country differs from the requester's, and
-     the text "only continue if this code is on your own screen".
-
-   P1-07's confirm-and-attach covers only licence attach; it does not close R1-07.
-
-7. **Tenant isolation on the shared origin (rule 5).** Every product's hosted login, session
-   cookie and passkeys live on `key.plrs.im`.
-   - _Sessions._ Cookie `Path` is not a security boundary on one origin. Today the browser session
-     cookie is `pkey_<slug>_session`, `Path=/<slug>`, and its KV record is keyed
-     `p:<slug>:browser-session:<hash>` (`W/services/identity/browserSession.ts:76-99`) [V], so the
-     product check is server-side already. `identity_sessions` keeps that: every lookup is
-     `(product, hash)`, the cookie name carries the slug, and a test asserts that product A's
-     cookie and OP session are rejected at product B. OP sessions are per product; there is no
-     cross-product SSO.
-   - _Branding._ `branding_json` (`M/0008_portal.sql:57`) is data, never markup: a display name,
-     colours, a logo asset, rendered into Polaris templates under the existing strict CSP
-     (`renderBrandPage`, `W/core/brandHtml.ts`). A fixed, non-customisable line on every hosted
-     page reads "Sign-in for <Product>, operated by Polaris Key", with the product slug. The
-     validator reserves names (Polaris, Polaris Key, plrs, portal, console, admin) and the
-     portal and console use templates a tenant cannot select. Residual: a tenant can upload a
-     logo that imitates another brand; operator removal is the remedy.
-   - _Passkeys._ `rp_id = key.plrs.im` puts every product's passkeys in one browser picker and
-     ties them to that host. Each product gets its own random WebAuthn `user.id` handle per user
-     (never a global or cross-product id), and `user.name` shows "<email> · <Product>" so the
-     picker is legible. Deferred custom auth domains (`auth.<product>.com`) cannot use these
-     passkeys without WebAuthn Related Origin Requests (`/.well-known/webauthn` on
-     `key.plrs.im`, with a small per-RP origin-label limit and uneven browser support [U]); in
-     practice a custom domain means re-enrolment. Decide the domain story before passkeys ship
-     (§10, D8).
-8. **Single-use atomicity (G15).** Codes, links and device codes move to an atomic Durable Object
-   consume. The same fix applies to today's portal magic links.
-9. **Support-driven takeover (new).** The console's relink, reassign, disable and delete powers
-   are the easiest takeover path: social-engineer the developer's support. Controls in I-07:
-   - step-up before any of them: a fresh operator re-authentication (OIDC `max_age`, passkey) no
-     older than 5 minutes;
-   - a mandatory reason, and an `audit` row with before and after (old and new user, link and
-     licence ids);
-   - a notification to every verified email on the affected user(s), sent before the change takes
-     effect for relinks, with a 72-hour undo for reassign and relink;
-   - operator deletes are soft for 14 days (restorable), then hard;
+   - a warning when the approving browser's network or country differs from the requester's.
+7. **Tenant isolation on the shared origin (rule 5), now with cross-product SSO.** One account
+   session on `key.plrs.im` signs a person in to every app's passthrough.
+   - _Sessions._ The account session cookie is host-only on `key.plrs.im`, `SameSite=Lax`,
+     `HttpOnly`, and never readable or settable by product routes. Product browser sessions (web
+     apps) stay product-scoped, `(product, hash)`, as today. A test asserts that product A's
+     session is rejected at product B and that no product route ever receives the account cookie.
+   - _No silent grants._ An existing account session does not sign the person in to a new app
+     without the "Continue to <App>" step, recorded in `account_product_grants`. Later sign-ins
+     to the same app may skip it on the web redirect, never on device code (item 6).
+   - _Branding._ The login card is Polaris-branded. The passthrough header shows the product's
+     display name and icon from `branding_json` as data, never markup, under the strict CSP
+     (`W/core/brandHtml.ts`), with the product slug in fixed text. The validator reserves names
+     (Polaris, Polaris Key, plrs, portal, console, admin).
+   - _Passkeys._ One passkey per device for the account, `rp_id = key.plrs.im`, with a random
+     account-level WebAuthn user handle. This is simpler than the earlier per-product handles. It
+     is also legible: one "Polaris Key" entry in the picker.
+8. **Single-use atomicity (G15).** Codes, links, device codes and interstitial flows move to an
+   atomic Durable Object consume (I-02). The same fix applies to today's portal magic links.
+9. **Support-driven takeover, now scoped to a developer's licences.** A developer's support can
+   be social-engineered, but the relink tool reaches only that developer's licences and account
+   × product data, never the account, its links or other products. Controls:
+   - step-up: an operator re-authentication no older than 5 minutes;
+   - a mandatory reason, and an audit row with before and after;
+   - a notice to both accounts' primary emails before the change takes effect;
+   - a 72-hour undo;
    - an alert when one operator performs more than a set number in a day.
-10. **Issuer keys (phase 3).** A separate RS256 keyring sealed under the `PLATFORM_KEK` keyring
-    with its own AAD kind, rotated about every 90 days (`next`, `active`, `retired`), never mixed
-    with the Ed25519 document keys pinned by device trust. Refresh-token rotation with family
-    revocation on reuse. Exact redirect-URI matching, no non-http(s) schemes except per-client
-    registered native schemes.
-11. **Stale rows to fix now.** A6 (drop `customers`), §5 `sub` and `email` rows (the product flow
-    now requires both), T5 extended to "a product's upstream IdP is malicious".
+10. **Issuer keys (layer 2).** A separate RS256 keyring sealed under `PLATFORM_KEK` with its own
+    AAD kind, rotated about every 90 days, never mixed with the Ed25519 document keys. Refresh-token
+    rotation with family revocation on reuse. Exact redirect-URI matching.
+11. **Stale rows to fix now** (I-01). A6 (drop `customers`), the §5 `sub` and `email` rows (the
+    product flow now requires both), and T5 extended to "a product's upstream IdP is malicious".
+12. **Cross-tenant correlation (new).** Two developers comparing notes must not be able to join
+    their users through Polaris.
+    - Controls: pairwise subjects everywhere; the account id never leaves Identity; links shown to
+      developers as kinds only; the account email shared only by consent; avatars served from
+      `key.plrs.im` under per-product URLs; no cross-product data in webhooks.
+    - Residual: correlation through data the developer has anyway, such as a buyer email from
+      their store, a Steam ID from their own Steam integration, or IP addresses. Polaris adds no new
+      join key. Apple private relay helps where users choose it. The privacy notice says so.
+13. **A malicious developer's app as an attack surface on the shared account (new).** A tenant
+    controls its app's code, branding and SDK calls.
+    - _Credentials stay off the app._ The login card runs only on `key.plrs.im` in the system
+      browser or on another device. The SDKs never render it in an embedded web view, and the
+      docs forbid it. No account credential, code or passkey ceremony passes through app code.
+    - _Product tokens never reach the account._ A product device token can do product things only:
+      activate, refresh, attach its own floating licence, read its own pairwise subject. It can
+      never list the Library, add or remove links, change the email, merge, read other products'
+      data or obtain an account session. The SDKs expose no account mutations (§5.2). The
+      boundary has a test in each direction.
+    - _Bounded asks._ An app can open the card for its own product only (the product comes from
+      the device token or registered client, not a parameter the app chooses), and only for
+      that product's licences and consented claims.
+    - _Abuse response._ A product whose app phishes or harasses can be suspended platform-wide by
+      an operator, and its outstanding device tokens and grants revoked.
+14. **Passthrough phishing (new).** A fake "<App> wants you to sign in" page on a look-alike domain
+    harvests email codes or session cookies, or a malicious app embeds a fake card.
+    - Controls: email codes are bound to the requesting flow and browser (item 4); passkeys are
+      phishing-resistant and are nudged after first sign-in; the card shows the full
+      `key.plrs.im` origin and the docs teach users to check it; system-browser-only sign-in in the
+      SDKs.
+    - Residual: relay phishing of an email code, where the attacker holds the flow and talks the
+      victim into reading out the code. It yields at most what that flow could: a device token for
+      the attacker's product, or an account session if the attacker started at the portal. So
+      step-up is required for every account change, and new-device sign-in emails go to the
+      primary address.
+    - Layer 2 note: a product IdP linked to the account would let the tenant mint sign-ins for
+      anyone. Hence product IdPs stay product-scoped unless the person links them from the portal
+      (§5.1, D18).
+15. **Account merge takeover (new).** Merge needs a live sign-in to both accounts in one flow, both
+    fresh (no older than 5 minutes). Both primary emails are notified, and the absorbed account
+    keeps a 30-day tombstone with an operator-reversible audit record. No email-match merge exists.
+16. **Tenant-scoped links (new).** A Game Center or native Apple subject for team A must never
+    resolve an account for a product of team B. Lookups key on the triple
+    `(issuer_key, tenant_scope, subject)`, and a test covers the cross-team miss.
+17. **The account is now a high-value target (new).** It holds every developer's licences.
+    Controls: passkey nudge; new-sign-in emails; a sessions and devices page with "sign out
+    everywhere"; step-up for all account changes; rate limits per account and per network on
+    the card. Polaris runs no recovery desk, so there is no support path to social-engineer at
+    the account level.
 
 ### 5.5 Privacy
 
-- **Roles** [I]: Polaris is the controller for portal accounts (global and Polaris-branded) and
-  the processor for product users, licences and links, which are the developer's records. Hosting
-  product users needs a DPA and a sub-processor list (Cloudflare) [U: legal review].
-- **Export (Art. 15 and 20).** Missing today. Add a portal `GET /api/me/export` (I-15) and a
-  console per-user export, JSON, for the developer to answer requests (I-07).
-- **Deletion (Art. 17).** Deleting a user:
-  - cascades to links, sessions, passkeys, grants and pairwise mappings;
+- **Roles [I; U: legal review].**
+  - Polaris is the **controller** for the account: its email, links, personal details, sessions
+    and Library index. It is a Polaris-branded consumer account, like the portal account before it.
+  - The developer is the controller, and Polaris the processor, for each product's data: its
+    licences, devices, account × product data (managed config, Cloud Sync) and the pairwise
+    subject.
+  - Hosting product data needs a DPA and a sub-processor list (Cloudflare). The account needs its
+    own privacy notice and Terms on `key.plrs.im`.
+- **Cross-tenant minimisation.** A developer receives the pairwise subject, its own product's data,
+  and only the profile claims the person consented to on the "Continue to <App>" step. Nothing
+  about other products, ever (owner).
+- **Account deletion (Art. 17)** removes the account and all links (owner), and:
+  - cascades to sessions, passkeys, grants, personal details, copied avatars in R2, and every
+    pairwise subject;
+  - deletes all account × product data for every product (S-17);
   - **detaches licences and scrubs their personal columns.** `licenses` still carries `sub`,
-    `name`, `email` and `groups_json` (`M/0001_init.sql:64-81`) [V], so "detach, not delete"
-    alone would leave personal data behind. Deletion sets those columns to null and keeps the
-    licence's commercial fields (tier, entitlements, dates), which are the developer's records;
-  - scrubs audit: `audit.summary` and `target_id` rows naming the user, and `portal_audit` rows,
-    are rewritten to a tombstone id (`M/0001_init.sql:181-193`, `M/0008_portal.sql:62`) [V];
+    `name`, `email` and `groups_json` (`M/0001_init.sql:64-81`) [V]. Deletion nulls them and keeps
+    the commercial fields (tier, entitlements, dates), which are the developers' records. A
+    detached licence becomes floating; its devices keep working until their seats lapse;
+  - scrubs audit rows naming the account to a tombstone id (`M/0001_init.sql:181-193`,
+    `M/0008_portal.sql:62`) [V];
   - revokes F-20 licence-bound tokens whose link disappears;
-  - in phase 3, sends back-channel logout to relying parties.
-- **Backups.** D1 Time Travel keeps any database state restorable for its retention window
-  (Cloudflare documents 30 days on Workers Paid [U: not re-read here]), so a deleted user is
-  recoverable for that long. The privacy notice says so, and a tombstone list (deleted user ids
-  and hashed emails) is re-applied after any restore so deletions survive it.
-- **Retention.** No user row is created until an email or other credential is verified, so
-  abandoned sign-ups leave only a short-lived Durable Object record. Inactive users (no sign-in
-  and no licence for a product-set period; default 24 months) are flagged in the console, and the
-  developer, as controller, chooses whether to purge them automatically.
-- **Hashing is not anonymisation.** An `email:<hash>` link (peppered hash) is pseudonymous
-  personal data under GDPR, not anonymous: whoever holds the pepper and a candidate email can
-  re-identify it. It is in scope for export and deletion like a plain email.
+  - notifies each affected product by a `subject.deleted` event carrying only its pairwise
+    subject, so the developer can delete what their own backend holds;
+  - in layer 2, sends back-channel logout to relying parties.
+- **Per-product deletion and export** (owner).
+  - From the portal's product page, the person can export one product's data (JSON) or remove
+    their data from that product. Removal deletes account × product data and the pairwise subject;
+    the licence stays in the Library (a purchase record) unless they also remove it.
+  - The developer's console offers the same per-subject export and deletion, to answer requests
+    sent to them.
+  - A full account export covers the account and every product's data for that person.
+- **Backups.** D1 Time Travel keeps state restorable for its retention window (30 days on Workers
+  Paid [U: not re-read here]). The privacy notice says so, and a tombstone list (deleted account
+  ids and hashed emails) is re-applied after any restore.
+- **Retention.** No account row exists until a first sign-in method is verified. Dormant accounts
+  (no sign-in and no licence for 36 months [I]) are warned by email and then deleted. Dormant
+  account × product data follows each developer's retention setting.
+- **Hashing is not anonymisation.** An `email:<hash>` link is pseudonymous personal data, in scope
+  for export and deletion like a plain email.
 - **Minimisation.** Upstream ID tokens are consumed once and never stored; no upstream access or
-  refresh tokens are kept; emails are stored only when verified.
-- **Correlation.** Users are product-scoped and issued subjects are pairwise, so two products
-  cannot correlate one person through Polaris. The portal account is the only place the join is
-  visible, and only to that person.
+  refresh tokens are kept, except the Steam Web API calls needed for profile import, which use the
+  publisher key, not user tokens; emails are stored only when verified.
+- **Profile import** (owner). Name, picture and locale are imported where offered and copied to R2
+  (same-origin, no provider tracking). Apps receive them only by consent. Deletion removes them.
 
 ### 5.6 How it composes
 
-- **License.** A licence gains a `user_id`. Sign-in finds the user's licence or, under the
-  product's auto-issue policy, mints one, as `activateFromIdentity` does today but keyed by user,
-  not `sub`. Operator-issued licences carrying an email attach to the user whose verified email
-  matches, when the product allows it, which closes G9. Seat limits stay device-based until J10.
-- **Commerce claims.** Store bindings stay licence-keyed (`dist_purchase_bindings`), so a user
-  reaches them through their licences. Signing in with Steam can optionally run the existing
-  `CheckAppOwnership` and apply store grants at first sign-in, through a Core descriptor hook
-  (rule 6), so Identity never imports Distribution.
-- **Registry tokens (F-20, F-21).** Unchanged contract. Licence-bound `pkeyr_` tokens stay bound to
-  a licence and minted from the portal. The revocation trigger "a portal link removed" gains an
-  equivalent: "a licence detached from its user, or a user deleted". The F-21 implementer should
-  route both through one Core hook.
-- **Portal.** Stays global and Polaris-branded. It links to product users by verified email or
-  explicit claim, as it links to licences today. Decide G10 explicitly (§10, D7).
+- **License.** A licence gains `account_id` (null means floating). Sign-in finds the account's
+  licences for the product or, under the product's auto-issue policy, mints one (the portal's
+  Discover "Add to library" uses the same path). Operator-issued and bought licences carrying an
+  email attach to the account whose verified email matches, when the product allows it, which
+  closes G9. Seats stay device-based until J10.
+- **Key-entry limits.** A License-side counter driven by Identity's policy; the refusal and its
+  `portalUrl` live in the License activation route (§5.3).
+- **Commerce claims.** Store bindings stay licence-keyed (`dist_purchase_bindings`), reached
+  through the account's licences. Signing in with Steam can run `CheckAppOwnership` and apply store
+  grants for the product through a Core descriptor hook (rule 6), so Identity never imports
+  Distribution.
+- **Config and Cloud Sync (S-17).** The licence-level config override layer is removed
+  everywhere and replaced by account × product managed config (owner). Floating licences have no
+  such layer. Overrides on licences with no owner are dropped at migration, with an
+  operator-visible report. Cloud Sync is its own service (slug `sync`) depending on Config and
+  Identity layer 1, and never works without signing in. Identity owes S-17 four things: the
+  account id inside the Worker, the pairwise subject at the edge, the merge and deletion hooks,
+  and, for web apps, a device token for origins on the product's `web.origins` allowlist (P0-05;
+  the redirect WP).
+- **Registry tokens (F-20, F-21).** Unchanged contract. The revocation trigger "a portal link
+  removed" maps to "a licence detached from its account, or an account deleted". The F-21
+  implementer routes both through one Core hook.
+- **Portal.** It becomes the account's home (§5.7). It is a platform concern and runs for every
+  product (G10, decided as the code does today).
 - **Console operator sign-in.** Out of the service: Pocket ID, `PLATFORM_ADMIN_GROUP`, one admin
-  level. Recommend a dedicated Pocket ID client for the console now.
+  level, a separate console client (I-03). `email_verified` is a claim there; a bulk export needs
+  an admin API key.
+
+### 5.7 Portal surface
+
+The portal becomes a proto-Steam account home at `key.plrs.im/portal` (owner). Pages [I] beyond
+what the owner named are marked as proposals.
+
+- **Library (default).** Every licence attached to the account, grouped by product: tier,
+  entitlements, devices (with remove), downloads, and the product's support link. Floating licences
+  appear nowhere until attached.
+- **Discover.** Products whose auto-issue policy makes this account eligible. **Add to library**
+  mints the licence through the same path as sign-in-based auto-issue.
+- **Activate License (modal).** Paste a key. If not signed in, each entry prompts the account
+  upgrade. The prompt is skippable while entries remain and forced at the limit; the licence then
+  attaches subject to the claim rules. Deep links from apps (`/activate?product=<slug>`) open it
+  with the product preselected.
+- **Product page.** Licence details, devices, downloads, "export my data for this product",
+  "remove my data from this product", and a **Cloud Sync** section only for products with that
+  service on (S-17).
+- **Account settings.**
+  - _Sign-in methods_: connect and disconnect under step-up, with the last-method guard; each
+    change is audited and emailed. Includes the "add another way to sign in" nudge,
+    link-existing-account (merge), and sign-in on another device by QR or code.
+  - _Profile_: choose which linked provider's name or picture to use, or upload one. Explicit
+    choices stick; untouched values refresh on sign-in.
+  - _Devices and sessions_ (proposal): every account session and every device token across
+    products, with sign-out and "sign out everywhere".
+  - _Connected apps_ (proposal): products the person has continued to, with the consented claims
+    and revoke. Layer 2 adds issuer grants here.
+  - _Privacy_: full export, account deletion (soft for 14 days, then hard).
+- **The login card.** Identifier-first email, then the methods: passkey (if enrolled), Apple,
+  Google, Steam, email code or magic link. The first provider sign-in passes the
+  email-confirmation and profile interstitial. In app passthrough the card carries the persistent
+  "<App> wants you to sign in" header, ends with "Continue to <App>", and returns to the web
+  redirect, native redirect or device-code poll.
 
 ## 6. What changes for the existing pieces
 
-| Piece                              | Fate                                                                                                                                 |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `oidc.ts` redirect flow            | Kept, generalised to discovery and many providers; calls `signIn`                                                                    |
-| Device code (`/auth/device/*`)     | Kept; provider choice moves to the phone page                                                                                        |
-| `/auth/poll`                       | Retired from discovery in phase 0; replaced by the native redirect token route in phase 2                                            |
-| Browser session and fused document | Replaced by a signed, revocable session; the fused shape is deleted as already planned (`doc.ts:7-12`)                               |
-| `POST /identity/session/license`   | Kept as the licence-key login method                                                                                                 |
-| Portal                             | Kept global; server-side sessions, export, links to users                                                                            |
-| `provider: platform` for end users | Becomes the Polaris-run login (email, passkey) in phase 1; Pocket ID kept for operators; Pocket ID passkeys do not carry over (I-09) |
-| `groupRoleMap`, provisioning hooks | Kept; evaluated over any verifier's normalised claims, not only ID-token claims                                                      |
+| Piece                              | Fate                                                                                                                                  |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `oidc.ts` redirect flow            | Kept for platform providers (Google, Apple, Steam) on the login card, generalised to discovery; calls `signIn`. Product IdPs: layer 2 |
+| Device code (`/auth/device/*`)     | Kept; lands on the login card with the passthrough header; callback bound to the confirming browser (R1-07)                           |
+| `/auth/poll`                       | Retired from discovery in phase 0; replaced by the native redirect token route in phase 1b                                            |
+| Browser session and fused document | Split: an account session on `key.plrs.im`; product browser sessions signed, revocable and product-scoped; the fused shape is deleted |
+| `POST /identity/session/license`   | Kept as the licence-key path, now counted against the key-entry limit (§5.3)                                                          |
+| Portal                             | Becomes the Library (§5.7). `portal_accounts` becomes `accounts`; `portal_license_links` becomes `licenses.account_id`                |
+| `provider: platform` for end users | Becomes the Polaris account in layer 1; Pocket ID kept for operators; Pocket ID passkeys do not carry over (I-17)                     |
+| Licence-level config overrides     | Removed; replaced by account × product managed config (S-17)                                                                          |
+| `groupRoleMap`, provisioning hooks | Kept for layer 2's product IdPs; inert for platform providers                                                                         |
 
 ## 7. Phases
 
-| Phase                         | Outcome a developer sees                                                                                                                                                                                  | Wire                                                                                                       |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| **0. Hygiene and groundwork** | Correct `origin`, true docs, fixed threat model, atomic single-use store, sharded rate limits; console gets its own Pocket ID client; the plan WP lands                                                   | discovery transcript only                                                                                  |
-| **1. Users and email**        | A Users page; operator and OIDC licences merge; Google and the product's own IdP (generic OIDC) and Apple (its own kind) work as methods; email sign-in hosted and in-app; Identity works without License | **plan mode for I-08 and I-11**: additive email-code routes, `errors.json`, transcripts, six SDKs; no bump |
-| **2. Native and games**       | `exchange()` for bring-your-own-auth; Steam, Game Center, Play Games and EOS sign-in; native redirect sign-in; passkeys; link and unlink in all six SDKs                                                  | plan mode, additive, transcripts                                                                           |
-| **3. Issuer**                 | "Sign in with <Product>": OIDC tokens with entitlement claims for the developer's web services; connected apps in the portal                                                                              | plan mode, new signed artefact, no device change                                                           |
-| **4. Later**                  | Named-user seats; product-backend assertion for consoles; custom auth domains; B2B organisations                                                                                                          | J10 touches the signed licence document                                                                    |
+Layer 1 ships first (owner). It is cut in two so the account is usable before every native
+platform is done.
+
+| Phase                              | Outcome a person or developer sees                                                                                                                                                                                                                                                                    | Wire                                                                                                                         |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| **0. Hygiene and groundwork**      | Correct `origin`, true docs, fixed threat-model rows, atomic single-use store, sharded rate limits; console gets its own Pocket ID client; the layer 1 contract plan lands                                                                                                                            | discovery transcript only                                                                                                    |
+| **1a. The account (layer 1 core)** | One Polaris Key account with email, Google, Apple and Steam on the login card; interstitial and profile import; Library, Discover, Activate License and account settings in the portal; licences attach to accounts; key-entry limits; app passthrough by web redirect and device code; console Users | **plan mode (I-04 → I-08, I-09 → I-10)**: key-entry refusal, attach, passthrough poll members; six SDKs and UI kits; no bump |
+| **1b. Native and passkeys**        | Game Center, Play Games, EOS and native Apple and Google as links; native redirect sign-in; passkeys; `provider: platform` end users leave Pocket ID                                                                                                                                                  | plan mode, additive, transcripts                                                                                             |
+| **2. Per-app identity (layer 2)**  | App-specific profiles; bring-your-own-auth with the product's IdP; "Sign in with <Product>" OIDC tokens with entitlement claims; connected apps grow issuer grants                                                                                                                                    | its own plan; new signed artefact for the issuer, no device change for it                                                    |
+| **3. Later**                       | Named-user seats; product-backend assertion for consoles; custom auth domains; B2B organisations; Microsoft/Xbox if that storefront becomes real                                                                                                                                                      | J10 touches the signed licence document                                                                                      |
 
 ### 7.1 Effort and the minimum viable cut
 
 Agent-day estimates per WP are in §8 [I]. Calendar time assumes three parallel lanes and about
 1.4× the critical path for review, gates and owner approvals [I].
 
-| Slice                                | WPs                                                                      | Agent-days | Calendar        |
-| ------------------------------------ | ------------------------------------------------------------------------ | ---------- | --------------- |
-| Phase 0                              | I-01, I-02, I-03, I-04                                                   | 8          | ~2 weeks        |
-| Phase 1                              | I-05, I-06, I-07, I-08, I-09, I-11, I-20, I-21, docs                     | 35         | ~4–5 weeks      |
-| Phase 2                              | I-10, I-12, I-13, I-14, I-15, I-22, docs                                 | 29         | ~3–4 weeks      |
-| **Phases 0–2**                       |                                                                          | **72**     | **~9–11 weeks** |
-| Phase 3 (issuer, its audit and docs) | I-16                                                                     | 14         | ~3 weeks        |
-| **Minimum viable Identity**          | I-01–I-08, I-10, I-11, I-21, I-22 (`oidc` and `firebase` verifiers only) | **46**     | **~7 weeks**    |
-| For comparison: Option A             | §4                                                                       | ~41        | ~7 weeks        |
+| Slice                                           | WPs                             | Agent-days | Calendar         |
+| ----------------------------------------------- | ------------------------------- | ---------- | ---------------- |
+| Phase 0                                         | I-01, I-02, I-03, I-04          | 9          | ~2 weeks         |
+| Phase 1a (layer 1 core)                         | I-05 to I-12, I-18, I-19 (part) | 53         | ~6–7 weeks       |
+| **Layer 1 core (phases 0 and 1a)**              |                                 | **62**     | **~8–9 weeks**   |
+| Phase 1b                                        | I-13, I-14, I-15, I-16, I-17    | 23         | ~4 weeks         |
+| **Layer 1 complete**                            |                                 | **85**     | **~11–13 weeks** |
+| Layer 2 (plan, issuer, BYO auth, app profiles)  | I-20, I-21, I-22, I-23          | 28         | ~5–6 weeks       |
+| **Both layers**                                 |                                 | **113**    | —                |
+| For comparison: the earlier product-scoped plan | phases 0–3                      | 86         | —                |
 
-**The cut line [I].** Minimum viable Identity is: product-scoped users and links, the console
-Users page with export and audited support tools, email sign-in (hosted and in-app) with its
-delivery operations, the fixed broker for any discovery-capable IdP, and token exchange for
-bring-your-own-auth, in all six SDKs. It leaves out the Apple kind (I-20), the Pocket ID
-end-user migration (I-09; I-03 already separates operators), game verifiers (I-12), native
-redirect (I-13), passkeys (I-14), portal convergence (I-15) and the issuer (I-16). For roughly
-Option A's cost it answers J1, J2, J3, J5 and J6; Option A answers J1 (partly), J3, J4, J5 and J9.
-Adding I-12 (games) to the cut brings it to about 54 agent-days. **Note the App Review 4.8
-constraint (§5.2):** an iOS product that uses Google through the MVI must wait for I-20.
+**Where the extra days come from [I].** The Library portal (+8), key-entry limits on the wire and
+in every UI kit (+4 and part of I-10), global account merge and pairwise subjects (+2 over the
+earlier users-and-links WP), and the interstitial and profile import (+2). The dropped in-app
+email-code API saves about 3.
+
+**Critical path:** I-04 → I-05 → I-07 → I-08 → I-10 (SDKs and UI kits), about 29 agent-days, so
+roughly 8 weeks at 1.4×. I-09 runs alongside I-07 once I-05 lands. The portal (I-11) follows I-07
+and I-09 (about 24 days). I-01, I-02, I-03 and I-18 start at once.
 
 ## 8. Work packages
 
 Sizes: S ≤ 1 day, M 2–4 days, L 5+ days, in the program's agent-days; the **Days** column is the
 estimate used in §7.1 [I]. ⚑ = plan mode (wire-touching, or a new signed artefact). Gates are in
-addition to the green gate. MVI = in the minimum viable cut.
+addition to the green gate. **Was** gives the earlier revision's id whose scope moved here. I-01 to
+I-03 keep their meaning (they are being built now); I-04 becomes the layer 1 account contract
+plan; I-05 to I-23 are re-cut, so their briefs must be regenerated (§8.1).
 
-| ID     | Work package                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Deps                   | Size | Days | Gates and flags                                                                                                                         |
-| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | ---- | ---- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| I-01   | MVI. Hygiene: `origin: "oidc"` on fresh OIDC licences plus a test; portal identities keyed by issuer (migration); THREAT-MODEL A6 and §5 rows; docs vs code on portal gating (per D7); drop `authPoll` from discovery                                                                                                                                                                                                                                                                                          | —                      | S    | 1    | `gen:transcripts -- --check`; `check:links`                                                                                             |
-| I-02   | MVI. Atomic single-use store (Durable Object) for magic links, codes, OIDC flows and device codes, with per-code attempt counters; shard `_portal` and `_admin` rate-limit buckets (R10-04a); per-recipient, per-device and per-product email limits                                                                                                                                                                                                                                                           | —                      | M    | 3    | `test:workerd`; rate-limit and portal suites                                                                                            |
-| I-03   | MVI. Console gets its own Pocket ID client: today `ADMIN_OIDC_*` is only a fallback behind `PLATFORM_OIDC_*` (`W/platformOidc.ts:9-30`), so console auth must prefer its own variables; runbook update                                                                                                                                                                                                                                                                                                         | —                      | S    | 1    | Owner action in Pocket ID [U]                                                                                                           |
-| I-04 ⚑ | MVI. **Plan**: replace D-14 with an Identity decision record; glossary nouns (rule 4); data model and migration; identity section of WIRE-CONTRACT-V4 including the email-code routes; error codes; parity feature ids; manifest schema; threat-model deltas of §5.4                                                                                                                                                                                                                                           | S-16 approved          | M    | 3    | Owner approval; planning only                                                                                                           |
-| I-05   | MVI. Broker fix: OIDC discovery (all discovered URLs through the SSRF and allowlist gates), configurable scopes and groups claim, RFC 9207 `iss`, multiple `oidc` methods per product, mandatory allowlist once any exist                                                                                                                                                                                                                                                                                      | I-04                   | M    | 3    | Manifest validator rules + mutation table (rule 9)                                                                                      |
-| I-06   | MVI. Users and identity links: tables, `licenses.user_id`, migration of `licenses.sub` (platform subjects become `oidc:https://id.plrs.im` links so they keep working), `signIn(verifiedIdentity)`, linking and conflict policy, licence claim rules (first attach, `license_owned`, email-bound claim, `claimByKey`), Identity without License, email-match attach for operator licences                                                                                                                      | I-04                   | L    | 6    | Migration test on a production-shaped copy; `boundaries` test (rule 6)                                                                  |
-| I-07   | MVI. Console Users and Sign-in methods pages; per-user audit; **per-user JSON export**; disable, sign out everywhere, delete (soft for 14 days, personal columns scrubbed on hard delete); **support relink and reassign under step-up**, mandatory reason, before-and-after audit, user notification and 72-hour undo; test sign-in dry run; App Review 4.8 warning                                                                                                                                           | I-06                   | M    | 5    | Admin build; console CSP parity; step-up and audit tests                                                                                |
-| I-08 ⚑ | MVI. Email login method: `email/start` and `email/verify` routes (flow-bound codes, attempt caps, lifetime), magic link with confirm-on-other-device, product-branded hosted page with Turnstile, in-SDK start gated on a device token, enumeration-safe responses; signed, revocable, product-scoped browser session replacing the fused document; device-code confirm screen and callback binding (R1-07)                                                                                                    | I-02, I-04, I-06, I-21 | L    | 5    | Contract first (I-04) → `errors.json` (rule 3) → transcripts (rule 1) → OpenAPI + `routeCoverage` (rule 10); cross-product session test |
-| I-09   | End users of `provider: platform` move to the Polaris login; Pocket ID becomes operator-only. Pocket ID passkeys are bound to `rp_id = id.plrs.im` and **cannot carry over**: each migrated subject needs a verified email. Users with an email verify it on next sign-in; subjects with none keep a temporary `oidc:https://id.plrs.im` method until a published sunset date, then operator-assisted relink                                                                                                   | I-03, I-08             | M    | 3    | Rollout runbook; owner sign-off; count of email-less subjects before sunset                                                             |
-| I-10 ⚑ | MVI. Exchange endpoint `POST /<p>/identity/token` with `oidc` (JWKS) and `firebase` (x509) verifiers; returns the activation response; discovery `methods[]`                                                                                                                                                                                                                                                                                                                                                   | I-04, I-06             | L    | 6    | `errors.json` first (rule 3); transcripts (rule 1); OpenAPI (rule 10); THREAT-MODEL delta                                               |
-| I-11 ⚑ | MVI. SDK identity v2, part 1, in **Node, React, Python, Swift, Kotlin and Godot**: `signInWithEmail` and `verifyCode` (with the hosted-page fallback), `user`, `signOut`, `deleteUser`, P1-07 attach everywhere                                                                                                                                                                                                                                                                                                | I-08                   | L    | 6    | `parity:check`; `gen:constants -- --check`; each SDK's transcript replayer                                                              |
-| I-12   | Game verifiers: Steam ticket (reuse commerce) with optional ownership grants through a Core hook; Game Center (reuse `core/x509.ts`); Play Games; EOS; Godot iOS and Android shims; Swift and Kotlin helpers                                                                                                                                                                                                                                                                                                   | I-10, I-22             | L    | 8    | Per-verifier security review; transcripts per kind                                                                                      |
-| I-13 ⚑ | Native redirect sign-in: PKCE public-client token route for loopback, claimed-HTTPS and registered-scheme redirects; retire `/auth/poll`; `signIn({redirect})` in **all six SDKs**: Node and Python (loopback), Swift (ASWebAuthenticationSession), Kotlin (Custom Tabs), React (web redirect with the token route's CORS), Godot (desktop loopback; device code on mobile and console)                                                                                                                        | I-10                   | M    | 4    | Same as I-10                                                                                                                            |
-| I-14   | Passkeys: `@simplewebauthn/server` under workerd, registration only after email verification, `rp_id = key.plrs.im`, per-product random user handle, legible `user.name`                                                                                                                                                                                                                                                                                                                                       | I-08                   | M    | 3    | `test:workerd`; D8 (domain story) decided first                                                                                         |
-| I-15   | Portal convergence: links to product users, server-side sessions with logout, `GET /api/me/export`, keep F-21 revocation hooks (one Core hook for "link removed" and "user deleted")                                                                                                                                                                                                                                                                                                                           | I-06, F-21             | M    | 3    | Portal suite; F-21 regression                                                                                                           |
-| I-16 ⚑ | **Plan** then build: per-product OIDC issuer (discovery, JWKS on a separate RS256 keyring, authorize, token, userinfo, refresh rotation, revocation, end-session), static clients in console and manifest, pairwise subjects, `pkey:*` scopes. The plan weighs in-house against Ory Hydra with the Worker as its login and consent app (D12)                                                                                                                                                                   | I-06, I-08             | L    | 10   | OIDF Basic OP and Config OP conformance plans against staging; THREAT-MODEL section; R-series audit (~3 days)                           |
-| I-17   | Docs: Identity concepts, recovery ("the developer's job beyond links"), "bring your own auth" quickstarts (Clerk, Firebase, Auth0, Supabase), Steam and Game Center guides, "Sign in with <Product>" recipes                                                                                                                                                                                                                                                                                                   | each phase             | M    | 3    | `check:links`                                                                                                                           |
-| I-18 ⚑ | Later: named-user seats (user claim in the licence `profile`, `devices.holder_user_id`, per-user caps)                                                                                                                                                                                                                                                                                                                                                                                                         | I-06                   | L    | —    | Corpus regeneration; all six SDKs                                                                                                       |
-| I-19 ⚑ | Later: RFC 7523 product-backend assertion (consoles), with `jti` replay cache and key management in the console                                                                                                                                                                                                                                                                                                                                                                                                | I-10                   | M    | —    | As I-10                                                                                                                                 |
-| I-20   | Provider kinds that are not generic OIDC: `apple` (Worker-minted ES256 client secret from the sealed `.p8`, `form_post` callback without Lax cookies, first-consent name capture, server-to-server notifications) @@                                                                                                                                                                                                                                                                                           | I-05, I-06             | M    | 3    | Manifest validator rules (rule 9); provider fixtures                                                                                    |
-| I-21   | MVI. Email delivery operations: SPF, DKIM and DMARC on a dedicated auth sending subdomain of `plrs.im` (reputation separate from portal mail); per-product sender display name ("<Product> via Polaris Key"); bounce and complaint handling where the Email Service exposes it [U], and a hashed suppression list; per-product daily send caps; on sender throttling or quota exhaustion, `email_unavailable` and the UI offers other methods, plus an operator alert; Apple private-relay sender registration | I-02                   | M    | 3    | Owner DNS action [U]; deliverability check on staging                                                                                   |
-| I-22 ⚑ | MVI. SDK identity v2, part 2, in all six SDKs: `exchange`, `link` and `unlink`                                                                                                                                                                                                                                                                                                                                                                                                                                 | I-10, I-11             | M    | 4    | As I-11                                                                                                                                 |
+| ID     | Layer, phase | Work package                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Was              | Deps                   | Size | Days | Gates and flags                                                                                |
+| ------ | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ---------------------- | ---- | ---- | ---------------------------------------------------------------------------------------------- |
+| I-01   | 1, 0         | Hygiene: `origin: "oidc"` on fresh OIDC licences plus a test; portal identities keyed by issuer (migration); THREAT-MODEL A6 and §5 rows; docs vs code on portal gating (G10: the portal runs for every product); drop `authPoll` from discovery. **Unchanged**                                                                                                                                                                                                             | I-01             | —                      | S    | 1    | `gen:transcripts -- --check`; `check:links`                                                    |
+| I-02   | 1, 0         | Atomic single-use store (Durable Object) for magic links, codes, OIDC flows, device codes and (new) interstitial flows, with per-code attempt counters; shard `_portal` and `_admin` rate-limit buckets (R10-04a); per-recipient, per-network and per-product email limits. **Unchanged**                                                                                                                                                                                   | I-02             | —                      | M    | 3    | `test:workerd`; rate-limit and portal suites                                                   |
+| I-03   | 1, 0         | Console gets its own Pocket ID client: console auth prefers `ADMIN_OIDC_*` over `PLATFORM_OIDC_*` (`W/platformOidc.ts:9-30`); runbook update. **Unchanged**                                                                                                                                                                                                                                                                                                                 | I-03             | —                      | S    | 1    | Owner action in Pocket ID                                                                      |
+| I-04 ⚑ | 1, 0         | **Plan: the layer 1 account contract.** Decision record replacing D-14; glossary nouns (§5.1); data model and migrations (`portal_accounts` → `accounts`, `licenses.sub` and `portal_license_links` → links and `licenses.account_id`); pairwise subjects; key-entry counting rules; WIRE-CONTRACT-V4 identity section (key-entry refusal and `portalUrl`, attach, passthrough poll members, discovery); error codes; parity ids; manifest schema; threat-model deltas §5.4 | I-04 (re-scoped) | S-16 approved          | M    | 4    | Owner approval; planning only                                                                  |
+| I-05   | 1, 1a        | Accounts and links core: tables, migrations with a production-shaped rehearsal, `signIn(verifiedIdentity)`, link conflict, last-method guard, step-up, merge with proof of both (pairwise aliases, tombstone), licence claim rules, floating licences, pairwise subjects, Identity without License                                                                                                                                                                          | I-06             | I-04                   | L    | 6    | Migration test; `boundaries` test (rule 6)                                                     |
+| I-06   | 1, 1a        | Login-card providers: Google, Apple (Polaris Services ID: ES256 secret from the sealed `.p8`, `form_post`, first-consent name, server notifications) and Steam (OpenID 2.0) as platform clients; OIDC discovery with SSRF and allowlist gates; RFC 9207                                                                                                                                                                                                                     | I-05, I-20       | I-04, I-05             | M    | 5    | Provider fixtures; per-provider audience tests                                                 |
+| I-07   | 1, 1a        | Login card and email: identifier-first card, email code and magic link with confirm-on-other-device, Turnstile, enumeration-safe responses; required first-provider-sign-in interstitial (provider-verified email accepted without a code; typed or unverified addresses get one; Terms); profile import with avatars copied to R2; account sessions                                                                                                                        | I-08 (part)      | I-02, I-05, I-18       | L    | 6    | Cross-product session test; CSP parity                                                         |
+| I-08 ⚑ | 1, 1a        | App passthrough: the "<App> wants you to sign in" header, "Continue to <App>" grants, web redirect for product web apps, device code onto the card with callback binding (R1-07) and explicit Continue, QR sign-in on another device; poll result members                                                                                                                                                                                                                   | I-08 (part)      | I-04, I-07             | M    | 5    | Contract first (I-04) → `errors.json` → transcripts → OpenAPI + `routeCoverage`                |
+| I-09 ⚑ | 1, 1a        | Key-entry limits and attach on the device wire: per-licence entry counter, `keyEntryLimit`, `key_entry_limit` refusal with `portalUrl`, optional `keyEntries`, `POST /<p>/identity/attach` with P1-07 confirm, discovery fields                                                                                                                                                                                                                                             | new              | I-04, I-05             | M    | 4    | `errors.json` (rule 3); transcripts (rule 1); OpenAPI (rule 10)                                |
+| I-10 ⚑ | 1, 1a        | SDK identity v2 for layer 1 in **Node, React, Python, Swift, Kotlin and Godot**, plus the UI kits' activation screens: key-entry refusal with deep link and QR, passthrough sign-in (device code; web redirect in React), attach, `subject`, `signOut`, `openAccount`                                                                                                                                                                                                       | I-11             | I-08, I-09             | L    | 8    | `parity:check`; `gen:constants -- --check`; each SDK's transcript replayer; UI kit screenshots |
+| I-11   | 1, 1a        | Portal as the Library: Library, Discover (Add to library), Activate License modal (prompt, skip, forced at limit), product pages (Cloud Sync section hook for S-17), account settings (sign-in methods, Profile, devices and sessions, connected apps), per-product and full export and deletion; F-21 revocation through one Core hook                                                                                                                                     | I-15             | I-05, I-07, I-09, F-21 | L    | 8    | Portal suite; F-21 regression; CSP parity                                                      |
+| I-12   | 1, 1a        | Console per-product Users: pairwise subjects only, that product's licences, devices and audit; per-subject export and product-data deletion; developer relink (step-up, reason, notice, 72-hour undo); sign-in settings; App Review 4.8 warning                                                                                                                                                                                                                             | I-07             | I-05                   | M    | 5    | Admin build; console CSP parity; step-up, audit and cross-product visibility tests             |
+| I-13 ⚑ | 1, 1b        | Exchange endpoint `POST /<p>/identity/token` for platform kinds (native Apple and Google ID tokens first), tenant-scoped links, `interstitial_required`; SDK `exchange` in all six SDKs                                                                                                                                                                                                                                                                                     | I-10, I-22       | I-05, I-10             | M    | 5    | As I-09                                                                                        |
+| I-14   | 1, 1b        | Game verifiers: Steam ticket (reuse commerce) with optional ownership grants through a Core hook; Game Center (reuse `core/x509.ts`); Play Games; EOS; Godot iOS and Android shims; Swift and Kotlin helpers                                                                                                                                                                                                                                                                | I-12             | I-13                   | L    | 8    | Per-verifier security review; transcripts per kind                                             |
+| I-15 ⚑ | 1, 1b        | Native redirect sign-in: PKCE token route for loopback, claimed-HTTPS and registered-scheme redirects; retire `/auth/poll`; `signIn({redirect})` in all six SDKs, system browser only                                                                                                                                                                                                                                                                                       | I-13             | I-08, I-10             | M    | 4    | As I-09                                                                                        |
+| I-16   | 1, 1b        | Passkeys: `@simplewebauthn/server` under workerd, enrolment only after email verification, `rp_id = key.plrs.im`, random account-level user handle, post-sign-in nudge                                                                                                                                                                                                                                                                                                      | I-14             | I-07                   | M    | 3    | `test:workerd`                                                                                 |
+| I-17   | 1, 1b        | `provider: platform` end users move to the Polaris account; Pocket ID becomes operator-only. Migrates by claim at each user's next sign-in (`email_verified` is a claim); bulk export only with an owner-issued admin API key; email-less subjects keep a temporary `oidc:https://id.plrs.im` link until a sunset set after a count                                                                                                                                         | I-09             | I-03, I-07             | M    | 3    | Rollout runbook; owner sign-off                                                                |
+| I-18   | 1, 0–1a      | Email delivery operations: SPF, DKIM and DMARC on a dedicated auth sending subdomain of `plrs.im`; "<App> via Polaris Key" display name in passthrough; bounce and complaint handling where exposed [U]; hashed suppression list; per-product caps; `email_unavailable` fallback; Apple private-relay sender registration                                                                                                                                                   | I-21             | I-02                   | M    | 3    | Owner DNS action; deliverability check on staging                                              |
+| I-19   | 1, each      | Docs: the account and Library, recovery ("remaining links, then the developer's licence tool"), key-entry limits for developers, tenant-scoped native links, Steam and Game Center guides, privacy notice inputs                                                                                                                                                                                                                                                            | I-17             | each phase             | M    | 3    | `check:links`                                                                                  |
+| I-20 ⚑ | 2            | **Plan: layer 2.** App-specific profiles, apps signing users in beyond licence attach, product-IdP kinds and their scoping (D18), the per-product issuer (in-house `jose` against Ory Hydra), clients and consent                                                                                                                                                                                                                                                           | I-16 (plan part) | layer 1 core           | M    | 3    | Owner approval; planning only                                                                  |
+| I-21 ⚑ | 2            | Per-product OIDC issuer: discovery, JWKS on a separate RS256 keyring, authorize, token, userinfo, refresh rotation, revocation, end-session; `sub` = pairwise subject; `pkey:*` scopes; static clients                                                                                                                                                                                                                                                                      | I-16             | I-20                   | L    | 14   | OIDF Basic OP and Config OP conformance against staging; THREAT-MODEL section; R-series audit  |
+| I-22 ⚑ | 2            | Bring-your-own-auth: `oidc` (JWKS) and `firebase` (x509) exchange kinds for the product's own IdP, product-scoped principals, optional portal-side linking under step-up; SDK support                                                                                                                                                                                                                                                                                       | I-10 (part)      | I-13, I-20             | M    | 6    | As I-09                                                                                        |
+| I-23   | 2            | App-specific profiles per account × product (shape from I-20), with consent and per-product export and deletion                                                                                                                                                                                                                                                                                                                                                             | new              | I-20                   | M    | 5    | Privacy review                                                                                 |
+| I-24 ⚑ | later        | Named-user seats (user claim in the licence `profile`, `devices.holder_account_id`, per-user caps)                                                                                                                                                                                                                                                                                                                                                                          | I-18             | I-05                   | L    | —    | Corpus regeneration; all six SDKs                                                              |
+| I-25 ⚑ | later        | RFC 7523 product-backend assertion (consoles), with `jti` replay cache and key management in the console                                                                                                                                                                                                                                                                                                                                                                    | I-19             | I-13                   | M    | —    | As I-09                                                                                        |
 
-Critical path: I-04 → I-06 → I-08 → I-11 → I-22 → I-12. I-01, I-02, I-03 and I-21 can start at
-once (I-21 needs only I-02's limits).
+The earlier in-app email-code routes (old I-08's `email/start` and `email/verify` device routes)
+are not carried forward (D17).
+
+### 8.1 Briefs that change
+
+- **Keep:** `I-01-identity-hygiene.md`, `I-02-single-use-store.md`, `I-03-console-oidc-client.md`.
+  Only their links into this note's sections need checking; their scope is unchanged (I-02 adds
+  interstitial flows to the store's record kinds).
+- **Rewrite:** `I-04-identity-plan.md` becomes "Plan the layer 1 account contract" with the scope
+  in the table above.
+- **Regenerate:** I-05 to I-23 from this table, retiring the current `I-05`…`I-22` files (their
+  ids now mean different work). `I-24` and `I-25` replace the old I-18 and I-19 (deferred).
+- **Cross-program:** S-17 (Cloud Sync) depends on I-05 (account id, pairwise subject, merge and
+  deletion hooks) and on the web-origin redirect WP that builds on P0-05's `web.origins`. Config
+  briefs that mention the licence-level override layer change with S-17.
 
 ## 9. Risks and open questions
 
 **Risks** [I]:
 
-1. **Scope creep into a game backend.** The charter in §2 (J16 never) is the guard.
-2. **Becoming an IdP is permanent.** An issuer URL cannot change once relying parties integrate,
-   and email reputation is shared. Mitigation: issuer last (phase 3), and path-based first.
-3. **Migration of `licenses.sub`.** It touches every OIDC licence. It needs a reversible migration
-   and a production-shaped rehearsal.
-4. **Verifier breadth.** Each bespoke verifier (Steam, Game Center, Play Games) needs its own
-   security review; Apple has rotated Game Center certificates before, so the leaf must not be
-   pinned.
-5. **Godot shims.** Game Center and Play Games need native plugin code outside pure GDScript; it
-   fits the P5-06 Android binding and the iOS plugin work [U].
-6. **F-21 timing.** If F-21 ships before I-15, its revocation hook must be written so I-15 can
-   extend it rather than replace it.
-7. **Shared email reputation.** Every product's sign-in email leaves one Polaris sender. One
-   abused tenant, or a quota cut, stops email sign-in for all of them. I-21's per-product caps,
-   suppression list and `email_unavailable` fallback limit the blast radius; per-product sender
-   domains (later) remove it.
-8. **Support takeover.** The console's relink and reassign tools are the softest target (§5.4
-   item 9). Step-up, notification and undo reduce it; developer support training does the rest.
-9. **Device-code phishing grows with use.** R1-07 is open today and this plan routes more
-   sign-ins through device code. I-08 must ship the callback binding, or device-code email and
-   upstream sign-in should wait.
-10. **Pocket ID migration strands users.** Subjects with no email cannot move automatically
-    (I-09). The sunset date must follow a count, not precede it.
+1. **Scope creep into a game backend or a store.** A cross-developer account with a Library and
+   Discover invites friends lists, reviews and payments. The charter in §2 (J16 never) is the
+   guard, and Discover lists only auto-issue products.
+2. **The account is a single high-value target** for every developer's licences (§5.4 item 17).
+   Passkey uptake and step-up are the main defences; no recovery desk means no support-side bypass.
+3. **Becoming a consumer brand.** A Polaris Key account means Polaris-facing Terms, a privacy
+   notice and controller duties (§5.5), separate from each developer's.
+4. **Migration of `licenses.sub` and portal accounts.** It touches every OIDC licence and every
+   portal account. It needs a reversible migration and a production-shaped rehearsal (I-05).
+5. **Key-entry limits frustrate legitimate users** if set low. Not counting re-entry on an
+   enrolled device, and the portal path at the limit, soften it. Developers pick the number.
+6. **Native first sign-in is not silent.** The required interstitial means one browser visit per
+   new platform link (§5.3). Steam players may resent it; the copy and a QR path on Steam Deck
+   matter.
+7. **Tenant-scoped native identities** split one person's Game Center or native Apple identity per
+   developer (§5.1). Users may expect "Sign in with Game Center" to find their account everywhere.
+8. **Verifier breadth.** Each bespoke verifier needs its own security review; Apple has rotated
+   Game Center certificates before, so the leaf must not be pinned.
+9. **Shared email reputation.** Every sign-in email leaves one Polaris sender (I-18).
+10. **Device-code phishing grows with use**, now against a shared account. I-08 must ship the
+    callback binding and the explicit Continue, or device-code passthrough should wait.
+11. **Pocket ID migration strands users.** Subjects with no email cannot move automatically
+    (I-17). The sunset date must follow a count, not precede it.
+12. **F-21 timing.** If F-21 ships before I-11, its revocation hook must be written so I-11 can
+    extend it rather than replace it.
 
 **Open questions** (not decisions):
 
-- Where Pocket ID is hosted, how it is backed up, and whether it can issue a second client for
-  the console today [U].
-- Whether a Polaris-hosted email account inside an iOS app counts as the developer's own account
-  under App Review 4.8 (the constraint itself is settled in §5.2), and the exact 5.1.1(v)
-  deletion requirement [U].
-- Whether Cloudflare Email Service exposes bounce and complaint events to a Worker, and its
-  current daily quota for `plrs.im` [U: needs the account].
-- D1 Time Travel's retention on this account, which bounds how long a deleted user stays
-  restorable [U].
-- Whether Pocket ID can export users' verified-email status, which sets the size of I-09's
-  email-less remainder [U].
-- Store rules on unlocking content bought on another store, before cross-store linking is
+- Where Pocket ID is hosted and how it is backed up [U].
+- Whether an iOS app that offers sign-in to a Polaris account must itself offer native Sign in with
+  Apple under App Review 4.8, and whether a portal deletion link meets 5.1.1(v) [U].
+- Whether Cloudflare Email Service exposes bounce and complaint events to a Worker, and its daily
+  quota for `plrs.im` [U: needs the account].
+- D1 Time Travel's retention on this account [U].
+- The exact scoping of Apple, Game Center, Play Games and EOS subjects (per team, per game or per
+  deployment), to settle `tenant_scope` per kind [U: provider docs].
+- Store rules on unlocking content bought on another store, before cross-store Library entries are
   promised [U].
 - Xbox XSTS, PSN and Nintendo token formats and the EOS Connect `iss` value [U: partner-gated].
-- Whether Google rejects the `groups` scope in practice [U].
-- Why React's `identity.oidc` row is marked implemented without an OIDC transcript
-  (`conformance/transcripts/` has none) [V]: a parity gap for I-11 to close.
+- Why React's `identity.oidc` row is marked implemented without an OIDC transcript [V]: a parity
+  gap for I-10 to close.
 
 ## 10. Owner decisions
 
-Each has a recommended default; accepting all of them is a coherent plan.
+**Decided (owner, 2026-10-04).** Recorded in the headers at the top; the numbers are kept from the
+earlier revision so briefs that cite them stay valid.
 
-1. **Option.** C (hybrid), phased as §7. _Default: C._
-2. **Principal scope.** Product-scoped `user`, with the portal account as the only cross-product
-   record. _Default: product-scoped._
-3. **Operator and customer split.** End users leave Pocket ID for the Polaris login; operators stay
-   on Pocket ID, with a dedicated console client now. _Default: split._
-4. **Identity without License.** Identity stops minting licences when License is off.
-   _Default: yes._
-5. **Login methods in phase 1.** Email one-time code and magic link (hosted and in-app), plus
-   upstream OIDC (Google and the product IdP through discovery; Apple as its own
-   kind, I-20); passkeys in phase 2; never passwords. _Default: as stated._
-6. **Linking policy.** Explicit linking always available; email auto-link only between
-   email-authoritative issuers and off by default for custom IdPs; Block on conflict.
-   _Default: as stated._
-7. **The portal and the Identity flag (G10).** Keep the portal a platform concern that runs for
-   every product, and fix the docs and service summary to match the code. _Default: platform
-   concern._
-8. **"Sign in with <Product>" and the domain story.** In scope, as phase 3, at a path-based
-   per-product issuer, RS256, entitlements in claims and no licence state. Custom auth domains
-   stay deferred, and passkeys are enrolled on `key.plrs.im`, accepting re-enrolment if a custom
-   domain ever comes. _Default: yes, phase 3; `key.plrs.im` only._
-9. **Licence document.** No user claim until named-user seats (I-18) are commissioned.
-   _Default: unchanged._
-10. **Hygiene now.** Ship I-01 to I-03 as standalone changes immediately, ahead of the plan.
-    _Default: yes._
-11. **D-14.** Replace it with a new decision record in the services design spec, written by I-04.
-    _Default: yes._
-12. **Who builds the phase 3 OP.** In-house on `jose`, or Ory Hydra with the Worker as its login
-    and consent app (Option F's best variant). _Default: decide in I-16's plan, leaning in-house
-    to stay on Workers, unless the conformance work proves heavier than running Hydra._
-13. **Scope to commit now.** The minimum viable cut (§7.1, about 46 agent-days), or all of phases
-    0–2 (about 72). _Default: commit to the minimum viable cut, then decide I-12 (games) and I-13
-    (native redirect) on demand from the Godot program._
-14. **Licence claim policy.** First attach only; an owned licence never moves by key; licences
-    with an email attach only by verified email unless the product sets `claimByKey: true`;
-    operator reassign under step-up with undo. _Default: as stated._
-15. **Recovery.** Through any remaining link; passkeys only after email; platform identities
-    recover through the platform; beyond that, the developer's support with the console tool.
-    Polaris runs no recovery desk. _Default: as stated._
-16. **In-app email start.** Allowed from SDKs with a registered device token and per-device
-    limits; otherwise the SDK opens the hosted page with Turnstile. _Default: on, product can turn
-    it off._
+1. **Option.** C, with the two-layer shape: layer 1 (one global account) first, layer 2 (per-app
+   identity) later. _Decided._
+2. **Principal scope.** One global Polaris Key account; products see pairwise subjects only.
+   _Decided; this replaces the earlier "product-scoped user" default._
+3. **Operator and customer split.** End users leave Pocket ID; operators stay, with a separate
+   console client. _Decided._
+4. **Identity without License.** Yes. _Decided._
+5. **Sign-in methods.** Email code or magic link, passkeys, Apple, Google, Steam; Game Center,
+   Play Games and EOS as native links; no Discord; Microsoft/Xbox only if that storefront becomes
+   real; never passwords. _Decided._
+6. **Linking policy.** Explicit linking under step-up with a last-method guard; merge only with
+   proof of both; never by email match. _Decided._
+7. **The portal and the Identity flag (G10).** The portal is a platform concern for every product,
+   now the Library. _Decided._
+8. **"Sign in with <Product>" and the domain story.** Layer 2; custom auth domains deferred;
+   passkeys on `key.plrs.im`. _Decided._
+9. **Licence document.** No user claim until named-user seats (I-24). _Default unchanged._
+10. **Hygiene now.** I-01 to I-03 ship ahead of the plan. _Decided; in progress._
+11. **D-14.** Replaced by a decision record written by I-04. _Decided._
+12. **Who builds the issuer.** Decide in I-20's plan, leaning in-house on `jose`. _Decided as a
+    lean._
+13. **Scope.** Everything, layer 1 first. _Decided._
+14. **Licence claim policy.** As stated in §5.1. _Decided._
+15. **Recovery.** Remaining links, then the developer's relink tool; no recovery desk. _Decided._
+16. **In-app email start.** Superseded by D17 below.
+
+**Proposed by this revision (need the owner's yes) [I]:**
+
+17. **No in-app email-code API in layer 1.** Account credentials are entered only on the login card
+    at `key.plrs.im` (system browser or another device), because the account is shared across
+    tenants and an app's own UI is tenant-controlled (§5.4 items 13–14). _Default: drop it; revisit
+    in layer 2 for app-specific profiles only._
+18. **A product's own IdP is product-scoped.** Bring-your-own-auth (Clerk, Firebase) yields a
+    product-only principal in layer 2. It joins the global account only if the person links it from
+    the portal under step-up. _Default: as stated._
+19. **What the console shows as a user's contact email.** The licence's buyer email where present;
+    the account's primary email only with the person's consent to share it with that product.
+    _Default: as stated._ The alternative, always showing the account email, is simpler for
+    support but gives tenants a cross-product join key.
+20. **Key-entry counting.** Count only entries that enrol a new device or are portal submissions;
+    never re-entries on an enrolled device, refreshes or sign-ins (§5.3). _Default: as stated._
+21. **Merge and pairwise subjects.** The surviving account's subject wins per product; the absorbed
+    one becomes an alias the console resolves, and the developer gets a `subject.merged` event.
+    _Default: as stated._
+22. **No silent cross-app SSO.** The first sign-in to each app needs "Continue to <App>"; device
+    code always needs Continue. _Default: as stated._
+23. **Dormant accounts.** Warned and deleted after 36 months with no sign-in and no licence.
+    _Default: 36 months._
 
 ## 11. Sources
 
