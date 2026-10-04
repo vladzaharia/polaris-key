@@ -214,7 +214,7 @@ export function settingsWarnings(env: Env): Warning[] {
     out.push({
       code: "ceiling_value_unrecognised",
       message:
-        'A kill-switch [vars] value is neither "on", "off" nor "runtime", so it is treated as a hard off and the console cannot turn the setting on. Set it to "runtime" to hand the setting to the console.',
+        'A kill-switch [vars] value is neither "on", "off" nor "runtime", so it is treated as a hard off and no runtime value can turn the setting on. Set it to "runtime" to let the settings page decide.',
       names: badCeiling,
     });
   return out;
