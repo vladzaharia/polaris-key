@@ -40,21 +40,23 @@ class CapabilitiesTest {
     fun anUnknownFeatureIsVersion() = assertEquals(UnsupportedReason.version, reason(jvm.supports("core.teleport", DEFAULT_SERVICES)))
 
     @Test
-    fun aPlannedFeatureIsVersion() = assertEquals(UnsupportedReason.version, reason(jvm.supports(Feature.devicesFingerprint, DEFAULT_SERVICES)))
+    fun aPlannedFeatureIsVersion() = assertEquals(UnsupportedReason.version, reason(jvm.supports(Feature.uiKit, DEFAULT_SERVICES)))
 
     @Test
     fun aRuntimeNaIsRuntimeOnEveryListedRuntime() {
         for (c in listOf(jvm, android)) assertEquals(UnsupportedReason.runtime, reason(c.supports(Feature.packsTypeGodotZip, DEFAULT_SERVICES)))
-        // `except jvm:runtime` on a planned row: runtime wins over planned on the JVM only.
-        assertEquals(UnsupportedReason.runtime, reason(jvm.supports(Feature.updateDriver, DEFAULT_SERVICES)))
-        assertEquals(UnsupportedReason.version, reason(android.supports(Feature.updateDriver, DEFAULT_SERVICES)))
+        // `except jvm:runtime` on an implemented row (P6-12): runtime on the JVM only; on Android the
+        // row asks for its opt-in service like any other.
+        val withUpdate = servicesFromList(listOf(ServiceSlug.update))
+        assertEquals(UnsupportedReason.runtime, reason(jvm.supports(Feature.updateDriver, withUpdate)))
+        assertTrue(android.supports(Feature.updateDriver, withUpdate).isSupported)
     }
 
     @Test
-    fun theStoreIsPlannedOnAndroidAndVersionedOnTheJvm() {
-        // core.store is planned (P6-12): `version` precedes the jvm dependency detector.
-        assertEquals(UnsupportedReason.version, reason(jvm.supports(Feature.coreStore, DEFAULT_SERVICES)))
-        assertEquals(UnsupportedReason.version, reason(android.supports(Feature.coreStore, DEFAULT_SERVICES)))
+    fun theStoreIsTheKeystoreOnAndroidAndDependencyOnTheJvm() {
+        // core.store is implemented (P6-12's Keystore store); the JVM's 0600 file is `dependency`.
+        assertEquals(UnsupportedReason.dependency, reason(jvm.supports(Feature.coreStore, DEFAULT_SERVICES)))
+        assertTrue(android.supports(Feature.coreStore, DEFAULT_SERVICES).isSupported)
     }
 
     @Test
@@ -102,14 +104,16 @@ class CapabilitiesTest {
         val caps = jvm.caps(DEFAULT_SERVICES)
         assertEquals(caps, FEATURE_VALUES.filter { it in caps })
         assertTrue(Feature.coreSync in caps)
-        assertFalse(Feature.devicesFingerprint in caps)
+        assertTrue(Feature.devicesFingerprint in caps)
+        assertFalse(Feature.uiKit in caps)
+        assertFalse("core.store is dependency on the JVM", Feature.coreStore in caps)
     }
 
     @Test
     fun anUnsupportedCallThrowsTheRegistryCode() {
-        val u = (jvm.supports(Feature.devicesFingerprint, DEFAULT_SERVICES) as Support.Unavailable).unsupported
+        val u = (jvm.supports(Feature.uiKit, DEFAULT_SERVICES) as Support.Unavailable).unsupported
         val e = UnsupportedException(u)
         assertEquals(ErrorCode.unsupported, e.code)
-        assertTrue(e.message!!.contains(Feature.devicesFingerprint))
+        assertTrue(e.message!!.contains(Feature.uiKit))
     }
 }

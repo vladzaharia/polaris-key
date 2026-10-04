@@ -3,8 +3,8 @@
 The Kotlin SDK for native Android apps and JVM desktop apps (P6-05), and the shared Android
 backend that the Godot SDK, and later Unity and MAUI, bind. It is built in slices: P6-06 landed the
 verified core and the conformance runner, P6-07 the licence, config, devices, identity and release
-services and the umbrella client, P6-08 the update client and the pack engine; the platform module's stable API (P6-09), the Compose UI kit (P6-11) and the
-Android glue (P6-12) follow. `parity.json` says which features are implemented today; the
+services and the umbrella client, P6-08 the update client and the pack engine, P6-09 the platform
+module's stable API and P6-12 the Android glue; the Compose UI kit (P6-11) follows. `parity.json` says which features are implemented today; the
 docs' parity page renders it.
 
 | Module         | Kind                  | What                                                                                                                                                                      |
@@ -19,18 +19,21 @@ docs' parity page renders it.
 | `:sdk`         | JVM library (JAR)     | `PolarisKeyClient`, the umbrella; re-exports `:core` and every service module (`api`)                                                                                     |
 | `:conformance` | tests only            | the corpus and HTTP-transcript runner (never published)                                                                                                                   |
 | `:platform`    | Android library (AAR) | install source, Keystore, Play Integrity, Play In-App Updates / Play Asset Delivery or PackageInstaller self-update (flavours `play`, `direct`); standalone               |
+| `:android`     | Android library (AAR) | the Android glue, the only module that sees both `:sdk` and `:platform`: Keystore store, device inputs, outlet readers, install drivers, the PAD transport (P6-12)        |
 | `:godot`       | Android library (AAR) | the Godot Android plugin (v2) over `:platform` ONLY, singleton `PolarisKeyAndroid` (`../godot/native/android/`); `checkPlatformOnly`                                      |
 | `:boundary`    | Android app (probe)   | an empty app per flavour; `tools/check_flavours.sh` proves the flavour boundary on its release                                                                            |
 
-Planned modules: `:android` (the only module that sees both `:core` and `:platform`, P6-12) and
-`:ui` (Compose, P6-11). No JVM module has an Android
+Planned module: `:ui` (Compose, P6-11). No JVM module has an Android
 dependency, each service module depends on `:core` only (never on a sibling; `:sdk` is the one
-place they meet) and `:platform` depends on no SDK module: `./gradlew checkModuleBoundaries` fails
-otherwise, in CI.
+place they meet), `:platform` depends on no SDK module, and no module but `:android` sees both
+`:core` and `:platform` (and nothing but the `:boundary` probe depends on `:android`):
+`./gradlew checkModuleBoundaries` fails otherwise, in CI.
 
 Coordinates are `im.plrs.key:polaris-key-<module>`, except `:platform`, which publishes one
 artifact per flavour: `polaris-key-platform-play` and `polaris-key-platform-direct` (see below),
-and `:godot`, likewise `polaris-key-godot-play` and `polaris-key-godot-direct`, each depending on
+`:android`, likewise `polaris-key-android-play` and `polaris-key-android-direct` (each depending on
+`polaris-key-sdk` and the platform artifact of the same flavour), and `:godot`, likewise
+`polaris-key-godot-play` and `polaris-key-godot-direct`, each depending on
 the platform artifact of the same flavour and on no other SDK module (P6-10: Godot keeps its
 verifier, licence client, updater and pack engine in GDScript, as Godot on iOS links only Swift's
 `PolarisKeyPlatform`).
@@ -64,8 +67,8 @@ for Ed25519 (`compileOnly` in `:core`; the JCA's Ed25519 serves JDK 15+ and Andr
   ETags, takes at most one shared re-acquire, escalates a 304 past the half-life, writes the cache
   once and reports. `discover()` installs the product's capability map (fail closed).
 - **Stores.** `InMemoryStore` and the 0600 `FileStore`. On the JVM there is no OS keyring without
-  a native library, so `FileStore.status()` reports `file` / `keyring-unavailable`; the Android
-  Keystore store is P6-12's.
+  a native library, so `FileStore.status()` reports `file` / `keyring-unavailable`; on Android,
+  `:android`'s `AndroidKeystoreStore` (below).
 - **Capabilities.** `Capabilities.sdk().supports(feature, services)` answers from the generated
   table (`Constants.generated.kt`, from `parity.json`), with typed reasons.
 - **Pure functions.** `bootTransition` (the boot stage machine), `licenseState`,
@@ -108,7 +111,7 @@ client.identity.waitForSignIn(prompt)
 - **Devices** (in `:core`, as the registry files them): `registerDevice`, `listDevices`,
   `renameDevice`, `deauthorizeDevice`, the report, and two ports: `FingerprintSource`
   (`JvmFingerprintSource` on a desktop) and `DeviceFactsSource` (`JvmDeviceFactsSource`); the
-  Android implementations are P6-12's.
+  Android implementations are `:android`'s.
 - **`:identity`**: `beginSignIn`, `pollSignIn` (once), `waitForSignIn` (paced, cancellable).
 - **`:release`**: `changelog`, `installUrl`, `downloadUrl` (built, never fetched), `verifyRecord`
   (a `pkey-release+jws` against the keys the app pins; `:core`'s `verifyReleaseRecord`, which the
@@ -140,12 +143,12 @@ client.packs.ensure(listOf("djdl.levels"))   // the stamp's pinned release, by t
 
 - **`:update`**: `check()` (`update/version`), `channelFeed()`, `decide(channel, staged,
 skipVersion)`, `releaseRecord(hash)`, `buildUrl(version, buildId)` and `install(check)` through the
-  `InstallDriver` port (Play In-App Updates and PackageInstaller are P6-12's; a JVM desktop build has
+  `InstallDriver` port (Play In-App Updates and PackageInstaller are `:android`'s; a JVM desktop build has
   none, `JvmInstallDriver` throws the typed `runtime` N/A). The decision logic is `:core`'s
   (`verifyFeed`, `decideUpdate`, `runUpdateCheck`, the content decision), as in Swift's
   `PolarisKeyCore`. `BootGuard` is the GUARD stage over a host's `UpdateSlots` (apply a staged update,
   count unconfirmed launches, roll back after two with `skipVersion`, the confirmation rows); outlet
-  signals come through `OutletSignalReader` (Android's readers are P6-12's).
+  signals come through `OutletSignalReader` (Android's reader is `:android`'s).
 - **`:packs`**: `PackEngine` (`load`, `ensure`, `ensureReleases`, `estimate`, `state`, `rollback`,
   `confirm`, `recoverState`, `revocations`, `isAvailable`, `packFor`, `registerHandler`, progress
   events) over the `PackStorage` port (`DirPackStorage` under the store's data directory, never a
@@ -157,9 +160,12 @@ skipVersion)`, `releaseRecord(hash)`, `buildUrl(version, buildId)` and `install(
   facet: the content stamp, embedded baselines, `bootFetch` for the stage machine, and the device
   report's `content.packSetId`.
 - **Native code.** zstd-jni is the SDK's only native library. The JAR carries the desktop natives;
-  on Android the `:android` glue links the zstd-jni AAR of the same version, whose `.so` files are
-  16 KB page aligned (`tools/check_16k_alignment.py`, in the `kotlin` CI job). Where the native
-  library cannot load, `supports(packs.apply.delta)` answers `dependency`.
+  on Android the `:android` glue excludes it and links zstd-jni's Android AAR, at 1.5.7-12
+  (`zstdJniAndroid`: every AAR from 1.5.7-13 on declares minCompileSdk 37, which compileSdk 36
+  under AGP 8.6.1 cannot consume), whose `.so` files are 16 KB page aligned
+  (`tools/check_16k_alignment.py`, in the `kotlin` CI job, and on the `:boundary` APKs in
+  `tools/check_flavours.sh`). Where the native library cannot load, `supports(packs.apply.delta)`
+  answers `dependency`.
 
 **Typed catalog mirror.** `pnpm gen:mirrors --catalog catalog.json --out-dir <dir> --lang kotlin
 --kotlin-package com.example.catalog` writes `ConfigSchema.generated.kt`, a dependency-free
@@ -255,6 +261,54 @@ permissions into play builds (notes/S-10 §2).
   update kills the app; nothing relaunches it), which journals it (`InstallJournal`) for the next
   launch and tells a running app through `InstallEvents.listener`.
 
+## :android
+
+`:android` (P6-12) is the Kotlin SDK's Android glue: the one module that depends on both the SDK
+(`:sdk`, and through it `:core` and every service module) and `:platform`, so `:platform` stays
+standalone for the Godot binding. Flavours match the platform's (`play`, `direct`), and the flavour
+boundary covers it (`tools/check_flavours.sh` reads the `:boundary` APKs, which now carry it).
+
+```kotlin
+val client = PolarisKeyAndroid.client(
+    context,
+    PolarisKeyClientOptions(
+        core = CoreOptions(productSlug = "diceroll", version = BuildConfig.VERSION_NAME, pinnedKeys = trust),
+        update = UpdateClientOptions(pinnedReleaseKeys = releaseKeys, stamp = stamp),
+        packs = PacksOptions(contentStamp = PackStampSource.FromBytes(assets.open("pkey-content.json").readBytes())),
+    ),
+    AndroidOptions(activity = { currentActivity }, playPacks = listOf("diceroll.foes")),
+)
+val check = client.update.decide()
+client.update.install(check)   // In-App Updates (play) or the verified PackageInstaller session (direct)
+```
+
+- **`AndroidKeystoreStore`** (`core.store`): the token and the device id wrapped by `SecureStore`
+  (one AndroidKeyStore AES-256-GCM key per product, StrongBox where present, blobs in
+  `noBackupFilesDir`), the verified cache and a copy of the device id in plain files under
+  `noBackupFilesDir/pkey/<product>/`. A legacy `FileStore`'s token and device id migrate in (the
+  token file is then removed, retried until it is); a failed Keystore call throws `StoreException`
+  and `status()` reports `keystore` / `keyring-error` until a call succeeds (no file fallback); a
+  lost key drops the token (`lastReset`) and keeps the device id.
+- **`AndroidFingerprintSource`, `AndroidDeviceFactsSource`** (`devices.fingerprint`,
+  `devices.facts`): `machineUuid` is `ANDROID_ID` (app-scoped; else a random anchor kept in the
+  Keystore), with `Build.MODEL` and the RAM bucket, hashed by `:core`; the device id hashes the same
+  anchor. Facts read `Build` and answer only the product's declared `android` probes, one
+  `getPackageInfo` each (list them in the app's `<queries>` on API 30+; no enumeration).
+- **`AndroidOutletSignalReader`** (`outlet.detect`): `android.installSource` and
+  `android.installerMismatch` from `:platform`'s `InstallSource`, as Godot reads them.
+- **Install drivers** (`update.driver`): `PlayInstallDriver` (play) acts on a `store` decision
+  through In-App Updates (complete a downloaded update, flexible or immediate by urgency, staging
+  answered `Declined("play-staging")`; `PlayUpdatePolicy` can make Play's priority or staleness
+  urgent). `DirectInstallDriver` (direct) installs `binary {method: native}`: the verified record's
+  one `payload` artifact, downloaded into `filesDir/pkey/<product>/updates/apk/`, size and SHA-256
+  checked, then `ApkInstaller`'s verified session; every refusal is `swap-refused` with its reasons.
+  `DirectInstallDriver.launchOutcome(context)` reads the journaled result at the next launch.
+- **`PlayPackTransport`** (`packs.transport.play`): on play, `PadPackTransport` re-reads each carried
+  pack's PAD location on every call (never persisted), finds `pkey/` or `pkey#tcf_*/`, and hands
+  `:packs` an embedded baseline the marker, record and stamp pin verify; `ensure(packId)` waits for
+  COMPLETED, asking the confirm hook before Play's cellular dialog. On direct it answers
+  `Unsupported(outlet)`. A pack delivered mid-session mounts at the facet's next start.
+
 ## Build and test
 
 ```sh
@@ -265,12 +319,14 @@ cd sdks/kotlin
 python3 tools/check_16k_alignment.py   # zstd-jni's Android natives are 16 KB page aligned
 # Android modules
 ./gradlew :platform:testPlayDebugUnitTest :platform:testDirectDebugUnitTest \
-          :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest
-./gradlew :platform:assembleRelease :godot:assembleRelease :boundary:assembleRelease
+          :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest \
+          :android:testPlayDebugUnitTest :android:testDirectDebugUnitTest
+./gradlew :platform:assembleRelease :godot:assembleRelease :android:assembleRelease :boundary:assembleRelease
 tools/check_flavours.sh        # the boundary on the release AARs and APKs
-./gradlew :platform:checkStandalone :godot:checkPlatformOnly \
-          :platform:publishAllPublicationsToLocalRepository :godot:publishAllPublicationsToLocalRepository
-tools/check_publication.sh     # both flavours of both in build/repo with POM, sources and .module
+./gradlew :platform:checkStandalone :godot:checkPlatformOnly checkModuleBoundaries \
+          :platform:publishAllPublicationsToLocalRepository :godot:publishAllPublicationsToLocalRepository \
+          :android:publishAllPublicationsToLocalRepository
+tools/check_publication.sh     # both flavours of each in build/repo with POM, sources and .module
 ```
 
 `:conformance` reads `conformance/corpus/v2/` and `conformance/transcripts/` from the repository
@@ -293,7 +349,9 @@ PackageInstaller; AndroidKeyStore is replaced by a software `KeyProvider` (Robol
 The `android` job in `.github/workflows/ci.yml` runs all of it. The real Keystore, a real silent
 self-update and Play Asset Delivery under `bundletool --local-testing` run on an emulator through
 `sdks/godot/native/android/export_check.sh` (see its README). In-App Updates and PAD from a real Play
-install need the owner's device checklist (the P5-06 brief).
+install, and `:android`'s device rows (an internal-track update offered, a direct self-update, a
+fast-follow pack mounted, the outlet readout), need the owner's device checklist (the P5-06 and P6-12
+briefs).
 
 The Gradle wrapper pins `distributionSha256Sum`; the wrapper jar is committed (the repository's
 `.gitignore` re-includes it).
