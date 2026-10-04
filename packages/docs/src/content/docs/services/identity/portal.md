@@ -161,9 +161,11 @@ match a license's `sub`, so subjects minted by mutually untrusted custom IdPs ca
 across products (the R5 audit findings, `R5-01` and `R5-02`).
 
 A portal account's OIDC identities are keyed by the issuer that minted the subject (the
-configured platform issuer URL), not by a provider kind, so a second issuer's subjects can never
+configured platform issuer URL, without a trailing slash), not by a provider kind, so a second issuer's subjects can never
 land in the platform issuer's namespace. Rows written before migration `0059` carried the literal
-`oidc`; the Worker re-keys them to the platform issuer at the next portal OIDC sign-in.
+`oidc`; the Worker re-keys them to the platform issuer at the next portal OIDC sign-in. The
+migration still accepts that literal on insert, so a Worker version from before it (still serving
+mid-deploy, or rolled back to) keeps signing new users in; those rows are re-keyed the same way.
 
 **In the console**, these settings are **Identity → Portal**. The sign-in methods and modules
 are read-only while the portal switch is off, and **Release downloads** is read-only while the

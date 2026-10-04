@@ -171,13 +171,25 @@ export async function getOrCreateAccountByEmail(
 export const LEGACY_PORTAL_IDENTITY_PROVIDER = "oidc";
 
 /**
+ * The `provider` key for identities minted by `issuer`: the configured issuer without a trailing
+ * slash, the same normalisation every issuer URL in the portal flow gets. An operator editing
+ * `PLATFORM_OIDC_ISSUER` only by its trailing slash therefore keeps every identity attached.
+ */
+export function portalIdentityIssuerKey(issuer: string): string {
+  return issuer.replace(/\/$/, "");
+}
+
+/**
  * Re-key pre-I-01 portal identities from the literal `"oidc"` to the platform issuer
  * (S-16 G14, migrations/0059). D1 SQL cannot read the issuer (a Worker secret), so the backfill
  * runs here, before each portal OIDC sign-in, and must run before the identity lookup or a
  * legacy user would get a second identity row. Idempotent; once no legacy row is left it is a
  * single empty primary-key search. The only writer of the literal was the platform-issuer flow,
- * so the re-key is exact. `OR IGNORE` leaves a legacy row in place if the issuer-keyed row
- * already exists (it cannot, since this runs first, but a duplicate must never abort sign-in).
+ * so the re-key is exact. A pre-I-01 Worker that is still serving or rolled back to keeps writing
+ * the literal (migrations/0059 lets it through for that reason); those rows are re-keyed here at
+ * the user's next sign-in. `OR IGNORE` leaves a legacy row in place if the issuer-keyed row
+ * already exists (possible only when such an older Worker served a user who had already been
+ * re-keyed); the lookup then finds the issuer-keyed row, and a duplicate never aborts sign-in.
  */
 export async function rekeyLegacyPortalIdentities(
   db: Db,

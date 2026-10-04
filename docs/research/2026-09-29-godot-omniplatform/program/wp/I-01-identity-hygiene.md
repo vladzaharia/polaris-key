@@ -74,12 +74,20 @@ Recorded by I-01 where the code made this brief's text inexact:
 
 - **The backfill cannot live in the migration.** The platform issuer is a Worker secret
   (`PLATFORM_OIDC_ISSUER`), which D1 SQL cannot read. Migration `0059_portal_identity_issuer.sql`
-  therefore adds only a data-layer guard (an insert trigger that refuses a `provider` that is not
-  an http(s) issuer URL) and leaves existing rows untouched; the Worker re-keys the legacy
-  `provider = 'oidc'` rows to the configured issuer (`rekeyLegacyPortalIdentities`, an idempotent
-  `UPDATE OR IGNORE`) before every portal OIDC sign-in, ahead of the identity lookup. The column
-  keeps its name (`provider`), so the change is additive for a Worker deployed before the
-  migration. The rollback statements are in the migration header and are exercised by a test.
+  therefore adds only a data-layer guard (an insert trigger that refuses a `provider` that is
+  neither an http(s) issuer URL nor the legacy literal `'oidc'`) and leaves existing rows
+  untouched; the Worker re-keys the legacy `provider = 'oidc'` rows to the configured issuer
+  (`rekeyLegacyPortalIdentities`, an idempotent `UPDATE OR IGNORE`) before every portal OIDC
+  sign-in, ahead of the identity lookup. The guard is expand-only on purpose: `deploy.yml` applies
+  migrations before it deploys the Worker, so a pre-I-01 Worker that is still serving (between the
+  two steps, or after a failed deploy) or one rolled back to in Cloudflare keeps writing `'oidc'`
+  on first-time portal sign-ins, and those must not fail. Such rows are re-keyed at the user's next
+  sign-in on the I-01 Worker. Refusing the literal belongs to a later contract-phase migration. The
+  column keeps its name (`provider`), so a Worker deployed before the migration keeps working, and
+  a Worker rollback needs no SQL; the optional data-shape rollback is in the migration header and
+  is exercised by a test. The issuer key is normalised without a trailing slash
+  (`portalIdentityIssuerKey`), like every other issuer URL in the flow, so an operator editing
+  `PLATFORM_OIDC_ISSUER` only by its trailing slash does not orphan identities.
   No table changes owner, so `TABLE_OWNERS` is unchanged.
 - **Transcripts did not move.** `conformance/transcripts/discovery-capabilities.json` records a
   product with Identity off (`"identity": { "enabled": false }`), so it never carried `authPoll`;
