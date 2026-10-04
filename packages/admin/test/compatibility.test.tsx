@@ -339,6 +339,7 @@ const RESULT: SimulateResponse = {
     composable: true,
     selector: {},
     omitted: [],
+    deltas: 0,
     target: { sha256: sha(15), version: "1.5.0", seq: 15 },
     appRollout: { halted: false, rollout: null, bucket: null },
   },
@@ -582,6 +583,19 @@ describe("Compatibility tab (P4-15)", () => {
     expect(within(foes).getByText("compatible → pinned")).toBeTruthy();
     expect(within(foes).getByText(/pinned by play-pad on play/)).toBeTruthy();
     expect(within(foes).getByText("≥ 2.0.0")).toBeTruthy();
+  });
+
+  it("shows the simulated feed's delta menu (P4-29)", async () => {
+    simulateUpdate
+      .mockReset()
+      .mockResolvedValue({ ...RESULT, feed: { ...RESULT.feed, deltas: 3 } });
+    render(<Compatibility slug={SLUG} />);
+    await screen.findByTestId("compat-row-app@1.5.0");
+    await userEvent.click(screen.getByRole("button", { name: "Simulate" }));
+    const result = await screen.findByRole("region", {
+      name: "Simulation result",
+    });
+    expect(within(result).getByText(/delta menu: 3 entries/)).toBeTruthy();
   });
 
   it("shows the worker's refusal when a simulation fails", async () => {

@@ -146,10 +146,24 @@ mise exec node@22 -- pnpm test:browser
   - Serving through the blob route and the payload URL also requires both P4-17 switches
     (decision 9).
   - The feed response's OpenAPI schema is a plain string, so only descriptions changed.
-  - No `test:workerd` CPU test at 64 packs × 3 levels was added (risk 3). The existing Node CPU
-    budget test and `test:workerd` pass.
-  - The simulation route (`simulate.ts`) passes no `env`, so the console's simulation shows no
-    menu.
+  - **Risk 3 understated the cost.** The plan said "one more indexed D1 read per feed request".
+    The candidate set is read on every request, before the seq hash, because the hash covers it:
+    the pins and holds of each target's app release (two reads per target), the product's
+    switch, one read of the ready rows, and the named pack records (one read per 90). The
+    device counts behind the rank (`installedBase`, one `COUNT … GROUP BY` over
+    `delta_demand_devices` per pack deliverable) are not hashed. Since the follow-up
+    (`fix/p4-29-followups`) they are read through a separate hook, `lazyDeltaDevices`, only when
+    a document is signed (`withRankedMenu` in `feedDoc.ts`); a request served from the stored
+    copy reads none. The feed route's probe `documentFor` carries no menu, since the menu never
+    changes the document choice.
+  - No `test:workerd` CPU test at 64 packs × 3 levels was added (risk 3). The Node CPU budget
+    test (`feedContentSize.test.ts`, 64 packs × 3 levels × 6 platforms) now runs with a 64-entry
+    menu, and a variant of P4-13's `appTargetNearCap` fixture sweeps the padding to show the
+    menu never adds a shed step. `test:workerd` passes.
+  - The simulation route (`simulate.ts`) originally passed no `env`, so the console's simulation
+    showed no menu. Since the follow-up, the admin handler passes the `LAZY_DELTAS` switch's
+    string value (still no binding), the simulated document is ranked as on the sign path, and
+    the answer's `feed.deltas` counts the entries listed; the console shows it.
 
 ## Hand-off
 

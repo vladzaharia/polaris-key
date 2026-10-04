@@ -64,6 +64,10 @@ import { SERVICES } from "../src/mount.js";
 import { deltaKey, recordObject, recordRef } from "../src/core/blobs.js";
 import { recordReady } from "../src/services/release/packs/deltas/store.js";
 import { dczHeader } from "../src/services/distribution/dictionary.js";
+import {
+  parseSimulateQuery,
+  simulate,
+} from "../src/services/update/simulate.js";
 
 installDigestStream();
 
@@ -850,6 +854,28 @@ describe("the composed feed's delta menu (plans/P4-29.md §6.1, §6.2)", () => {
     expect(off.deltas).toBeUndefined();
     expect(lazy.sha256).toBeTruthy();
     expect(off.seq).toBe(listed.seq + 1);
+  });
+
+  it("the console's simulation lists the menu as the route signs it, given only the switch string (P4-29 follow-up)", async () => {
+    const { app } = await coreWorld();
+    const product = (await loadProduct(env, db, SLUG))!;
+    const hooks = buildHooks(SERVICES, product.services, {
+      env,
+      db,
+      product,
+      now: NOW,
+    });
+    const q = parseSimulateQuery(
+      new URLSearchParams({ appRelease: app, platform: "web" }),
+    );
+    const ctx = { db, hooks, now: NOW, product: { slug: SLUG } };
+    const on = await simulate({ ...ctx, lazyDeltas: "on" }, q);
+    expect(on.feed.deltas).toBe(1);
+    // No switch string, or the switch off: no menu (the simulator never sees `env`).
+    expect((await simulate(ctx, q)).feed.deltas).toBe(0);
+    expect((await simulate({ ...ctx, lazyDeltas: "off" }, q)).feed.deltas).toBe(
+      0,
+    );
   });
 });
 

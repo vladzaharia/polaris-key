@@ -1143,6 +1143,8 @@ export interface SimulateResponse {
     composable: boolean;
     selector: Record<string, string>;
     omitted: string[];
+    /** Entries the document's delta menu lists (P4-29); 0: none. */
+    deltas: number;
     target: SimulatedReleaseDto | null;
     appRollout: {
       halted: boolean;

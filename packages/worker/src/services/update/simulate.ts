@@ -10,7 +10,9 @@
  *      floors, narrowing and revocations, P4-14's gates) build the document the feed route would
  *      sign for this channel and platform. It is signed with an EPHEMERAL Ed25519 key generated
  *      for this request (WebCrypto), never the product key: this module never reads the product's
- *      signing secret, so the console cannot be turned into a product-key signing oracle. The
+ *      signing secret, so the console cannot be turned into a product-key signing oracle (it
+ *      gets no `env`: only the `LAZY_DELTAS` switch string crosses, so the document lists P4-29's
+ *      delta menu as the route's would, ranked as on the sign path). The
  *      simulated device trusts that ephemeral public key in place of the product key; the feed
  *      signature itself is therefore not under test here (the conformance corpus covers it). The
  *      product's PUBLIC keys stay in the device's trust set, so a release key equal to one is still
@@ -75,7 +77,12 @@ import {
   composeChannelFeed,
   effectivePackBindings,
 } from "./compose.js";
-import { documentFor, feedSelfCheck, startingFeedSeq } from "./feedDoc.js";
+import {
+  documentFor,
+  feedSelfCheck,
+  startingFeedSeq,
+  withRankedMenu,
+} from "./feedDoc.js";
 import { variantOfKey } from "./packParts.js";
 
 /** A query that names no valid selector: the route's 400, with the field and why. */
@@ -265,6 +272,8 @@ export interface SimulateResult {
     selector: Record<string, string>;
     /** Content members the size cap or a self-check left out of this document. */
     omitted: string[];
+    /** Entries the document's delta menu lists (P4-29, ranked as the route signs it); 0: none. */
+    deltas: number;
     target: SimulatedRelease | null;
     /** The app rollout on the device's outlet entry, with the device's bucket. */
     appRollout: {
@@ -348,6 +357,8 @@ export async function simulate(
   ctx: Pick<ServiceContext, "db" | "hooks" | "now"> & {
     /** Only the slug: this module never reads the product's signing key (see the header). */
     product: { readonly slug: string };
+    /** Only the delta menu's deployment switch (P4-29), never the bindings: absent, no menu. */
+    lazyDeltas?: string;
   },
   q: SimulateQuery,
 ): Promise<SimulateResult> {
@@ -419,7 +430,15 @@ export async function simulate(
 
   // ── the feed document the route would sign ───────────────────────────────────────────────
   const composed = await composeChannelFeed(
-    { db, product: slug, hooks, cfg },
+    {
+      db,
+      product: slug,
+      hooks,
+      cfg,
+      ...(ctx.lazyDeltas !== undefined
+        ? { env: { LAZY_DELTAS: ctx.lazyDeltas } }
+        : {}),
+    },
     channel,
   );
   if (!composed)
@@ -430,7 +449,13 @@ export async function simulate(
     composed.channel,
   );
   const seq = seqRow?.seq ?? (await startingFeedSeq(db, slug));
-  const probe = documentFor(slug, composed, q.platform, seq, now);
+  const probe = documentFor(
+    slug,
+    await withRankedMenu(hooks, composed),
+    q.platform,
+    seq,
+    now,
+  );
   const doc: ChannelFeedDoc = probe.doc;
   const composable = feedSelfCheck(doc, probe.platform);
   const omitted = [
@@ -774,6 +799,10 @@ export async function simulate(
       composable,
       selector: doc.selector as Record<string, string>,
       omitted,
+      deltas: Object.values(doc.deltas ?? {}).reduce(
+        (n, list) => n + list.length,
+        0,
+      ),
       target: target
         ? {
             sha256: target.release.sha256,
