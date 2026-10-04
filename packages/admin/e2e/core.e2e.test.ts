@@ -63,9 +63,13 @@ afterAll(async () => {
   await new Promise<void>((r) => server?.httpServer.close(() => r()));
 });
 
-async function open(theme: "dark" | "light", hash: string): Promise<Page> {
+async function open(
+  theme: "dark" | "light",
+  hash: string,
+  viewport?: { width: number; height: number },
+): Promise<Page> {
   const ctx = await browser.newContext({
-    viewport: { width: 1440, height: SHOTS ? 2400 : 1000 },
+    viewport: viewport ?? { width: 1440, height: SHOTS ? 2400 : 1000 },
     colorScheme: theme,
   });
   await ctx.addInitScript((t) => {
@@ -142,5 +146,35 @@ describe("Core pages under the Worker's CSP", () => {
     await page.waitForTimeout(300);
     expect(await violations(page)).toEqual([]);
     await page.context().close();
+  });
+
+  // The shell owns scrolling: the document itself never scrolls, so nothing (an sr-only span, a
+  // Radix bubble input) can push a blank band under the page or a sideways scroll at the window.
+  it("the document never scrolls past the viewport, desktop or phone", async () => {
+    const cases: [string, string, { width: number; height: number }][] = [
+      ["#/p/djdl", "DJDL", { width: 1440, height: 900 }],
+      ["#/p/djdl/services", "Services", { width: 1440, height: 900 }],
+      ["#/p/djdl/settings", "Settings", { width: 1440, height: 900 }],
+      ["#/p/djdl/activity", "Activity", { width: 1440, height: 900 }],
+      ["#/p/djdl/services", "Services", { width: 390, height: 844 }],
+      ["#/p/djdl/devices", "Devices", { width: 390, height: 844 }],
+    ];
+    for (const [hash, title, viewport] of cases) {
+      const page = await open("dark", hash, viewport);
+      await page
+        .locator("[data-page-title]", { hasText: title })
+        .first()
+        .waitFor();
+      await page.waitForTimeout(300);
+      const m = await page.evaluate(() => ({
+        h: document.scrollingElement!.scrollHeight,
+        w: document.scrollingElement!.scrollWidth,
+        ih: window.innerHeight,
+        iw: window.innerWidth,
+      }));
+      expect(m.h, `${hash} @${viewport.width} height`).toBe(m.ih);
+      expect(m.w, `${hash} @${viewport.width} width`).toBe(m.iw);
+      await page.context().close();
+    }
   });
 });
