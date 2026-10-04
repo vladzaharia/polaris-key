@@ -167,9 +167,33 @@ export async function getOrCreateAccountByEmail(
   return account;
 }
 
+/** The issuer-less key every portal identity carried before I-01 (migrations/0059). */
+export const LEGACY_PORTAL_IDENTITY_PROVIDER = "oidc";
+
+/**
+ * Re-key pre-I-01 portal identities from the literal `"oidc"` to the platform issuer
+ * (S-16 G14, migrations/0059). D1 SQL cannot read the issuer (a Worker secret), so the backfill
+ * runs here, before each portal OIDC sign-in, and must run before the identity lookup or a
+ * legacy user would get a second identity row. Idempotent; once no legacy row is left it is a
+ * single empty primary-key search. The only writer of the literal was the platform-issuer flow,
+ * so the re-key is exact. `OR IGNORE` leaves a legacy row in place if the issuer-keyed row
+ * already exists (it cannot, since this runs first, but a duplicate must never abort sign-in).
+ */
+export async function rekeyLegacyPortalIdentities(
+  db: Db,
+  issuer: string,
+): Promise<void> {
+  await db.run(
+    `UPDATE OR IGNORE portal_account_identities SET provider = ? WHERE provider = ?`,
+    issuer,
+    LEGACY_PORTAL_IDENTITY_PROVIDER,
+  );
+}
+
 export async function getOrCreateAccountByIdentity(
   db: Db,
   input: {
+    /** The issuer URL that minted `subject` (migrations/0059), never a provider kind. */
     provider: string;
     subject: string;
     email?: string | null;
@@ -317,8 +341,8 @@ const AUTO_LINK_ENABLED_SQL = `
  * - **R5-02** — `WHERE sub = ?` with no product AND no issuer qualifier, so subjects minted by
  *   N mutually-untrusted IdPs shared one flat namespace and `evilco` could mint a license with
  *   `sub = "1000"` to collide with a platform-IdP subject. The left side of this join is ALWAYS
- *   a platform-IdP subject (`portal/auth.ts` hardcodes `provider: "oidc"` with the issuer from
- *   `platformOidcConfig`), so the right side must be restricted to licenses whose product also
+ *   a platform-IdP subject (`portal/auth.ts` keys it by the issuer from `platformOidcConfig`,
+ *   migrations/0059), so the right side must be restricted to licenses whose product also
  *   authenticates against the platform issuer. That is the issuer qualifier, derived from
  *   `oidc_config` rather than from a new denormalised column the product-OIDC lane would have
  *   to populate.

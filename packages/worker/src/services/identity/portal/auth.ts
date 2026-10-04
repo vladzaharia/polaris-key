@@ -15,6 +15,7 @@ import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   getOrCreateAccountByEmail,
   getOrCreateAccountByIdentity,
+  rekeyLegacyPortalIdentities,
   portalAuthCapabilities,
   portalAudit,
   syncAccountLicenseLinks,
@@ -324,10 +325,12 @@ export async function handlePortalCallback(
 
   const identity = mapClaims(claims);
   if (!identity.sub) return htmlError(401, "Sign-in could not be verified.");
+  // Keyed by issuer (S-16 G14). Re-key any pre-I-01 rows first, so the lookup finds them.
+  await rekeyLegacyPortalIdentities(db, cfg.issuer);
   const account = await getOrCreateAccountByIdentity(
     db,
     {
-      provider: "oidc",
+      provider: cfg.issuer,
       subject: identity.sub,
       email: identity.emailVerified ? identity.email : undefined,
       displayName: identity.name,
