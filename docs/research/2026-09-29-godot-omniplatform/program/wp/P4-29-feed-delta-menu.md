@@ -5,7 +5,7 @@
 | Phase       | P4: Packs (v3)                                                                                                                                   |
 | Size        | 1–1.5 engineer-weeks                                                                                                                             |
 | Depends on  | [P4-17](P4-17-lazy-deltas.md), [P4-13](P4-13-revocation-floors-decision.md), [P4-18](P4-18-web-dcz.md)                                           |
-| Unblocks    | [P4-30](P4-30-feed-delta-menu-python-swift.md), [P4-31](P4-31-feed-delta-menu-godot.md)                                                          |
+| Unblocks | [P4-30](P4-30-feed-delta-menu-python-swift.md), [P4-31](P4-31-feed-delta-menu-godot.md), [P6-08](P6-08-kotlin-update-packs.md) |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                            |
 | Plan mode   | yes: `program/plans/P4-29.md` is written and approved before any code                                                                            |
 | Gates       | plan mode; corpus (`feedContentCases`, a new `plan-matrix.json` section, mirrors); drift gates; every SDK; threat model; generated docs; workerd |
@@ -123,10 +123,15 @@ mise exec node@22 -- pnpm test:browser
   its own `nonWireIntegers`), so the check result gains `content`.
   - Node: `UpdateClient` keeps the menu after `decide()` and `feed()`. It also reads the
     committed feed from the cache, through `reloadFeeds` and with no freshness check, when the
-    pack engine starts.
+    pack engine starts. Since the follow-up, `feed({ channel })` keeps the menu only when
+    `channel` is the configured one.
   - React: `decideBrowserUpdate` returns `feedDeltas`. The adapter hands them to
     `BrowserPacks.recordFeedDeltas`, and `BrowserPacksOptions.feedDeltas` lets a host supply its
-    own.
+    own. Since the follow-up, the adapter also seeds the facet at construction
+    (`BrowserPacks.seedFeedDeltas`) with the menu of the most recently committed feed in its
+    cache (highest `issuedAt` that re-verifies, no freshness check), and the engine's start waits
+    for it. The adapter has no configured channel, so it takes the newest feed rather than the
+    canonical channel's.
   - The desktop bridge needs nothing: its host runs `@polaris-key/node`.
 - **A runner line outside the new sections.** In the Node runner, `delegationCases`' `feed` mode
   compared `r.content` with an `expect.content` of three members. It now compares the three and
@@ -146,10 +151,24 @@ mise exec node@22 -- pnpm test:browser
   - Serving through the blob route and the payload URL also requires both P4-17 switches
     (decision 9).
   - The feed response's OpenAPI schema is a plain string, so only descriptions changed.
-  - No `test:workerd` CPU test at 64 packs × 3 levels was added (risk 3). The existing Node CPU
-    budget test and `test:workerd` pass.
-  - The simulation route (`simulate.ts`) passes no `env`, so the console's simulation shows no
-    menu.
+  - **Risk 3 understated the cost.** The plan said "one more indexed D1 read per feed request".
+    The candidate set is read on every request, before the seq hash, because the hash covers it:
+    the pins and holds of each target's app release (two reads per target), the product's
+    switch, one read of the ready rows, and the named pack records (one read per 90). The
+    device counts behind the rank (`installedBase`, one `COUNT … GROUP BY` over
+    `delta_demand_devices` per pack deliverable) are not hashed. Since the follow-up
+    (`fix/p4-29-followups`) they are read through a separate hook, `lazyDeltaDevices`, only when
+    a document is signed (`withRankedMenu` in `feedDoc.ts`); a request served from the stored
+    copy reads none. The feed route's probe `documentFor` carries no menu, since the menu never
+    changes the document choice.
+  - No `test:workerd` CPU test at 64 packs × 3 levels was added (risk 3). The Node CPU budget
+    test (`feedContentSize.test.ts`, 64 packs × 3 levels × 6 platforms) now runs with a 64-entry
+    menu, and a variant of P4-13's `appTargetNearCap` fixture sweeps the padding to show the
+    menu never adds a shed step. `test:workerd` passes.
+  - The simulation route (`simulate.ts`) originally passed no `env`, so the console's simulation
+    showed no menu. Since the follow-up, the admin handler passes the `LAZY_DELTAS` switch's
+    string value (still no binding), the simulated document is ranked as on the sign path, and
+    the answer's `feed.deltas` counts the entries listed; the console shows it.
 
 ## Hand-off
 

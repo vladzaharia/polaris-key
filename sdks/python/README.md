@@ -534,6 +534,14 @@ garbage collection waits (`state().state_issue == "torn"`) until `recover_state(
 cannot be read at all (`"unreadable"`) blocks every write until the process restarts with it
 readable. The running set's `packSetId` rides on `devices/report` as `content`.
 
+Feed-offered deltas (P4-29): the committed channel feed can list lazy deltas (`deltas`, the
+Worker's delta menu). The client keeps the menu of the last feed `update.decide()` or
+`update.feed()` used, fresh or stale, and reads the committed feed from the cache when the pack
+engine starts, so an offline launch still has it. The engine adds the entries for a container's
+payload beside the record's own deltas (`with_feed_deltas`); every byte is still checked against
+the CI-signed record, any failure (a 404 included) falls back, and at most one feed-offered delta
+is tried per install. Nothing to configure.
+
 zstd comes from the stdlib's `compression.zstd` on 3.14 (`ZstdDict(base, is_raw=True).as_prefix`
 for deltas) and from `zstandard` below it (`DICT_TYPE_RAWCONTENT`); a start-up probe gates
 `zstd-patch-from` (`client.update.packs.zstd()`), and every delta frame's window is checked from

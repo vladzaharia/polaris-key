@@ -373,3 +373,33 @@ public func planTarget(
         release: recordSha256, payload: payload, full: fullT, platform: nil,
         chunks: chunkTarget(variant, chunkIndex), files: filesT, deltas: deltas)
 }
+
+/// `withFeedDeltas(variant, deltas) -> (variant, feedIds)` (plans/P4-29.md §2.4 step 2): the
+/// variant with the feed's menu for its payload appended to a copy of its deltas, after the
+/// record's own. Unchanged, with empty `feedIds`, when `deltas` is nil, the variant is not
+/// usable, its layout is not `container`, or the menu has no key equal to `variant.payload.sha256`.
+/// An entry whose artifact hash equals an existing delta id is skipped (a record delta wins).
+/// `feedIds` lists the appended artifact hashes in feed order. The merged list may exceed
+/// `MAX_VARIANT_DELTAS`, a claim on records only. Pure.
+public func withFeedDeltas(
+    _ variant: PackVariant, _ deltas: FeedDeltas?
+) -> (variant: PackVariant, feedIds: [String]) {
+    guard let deltas, variantUsable(variant), variant.files.layout == "container",
+        let menu = deltas[variant.payload.sha256]
+    else { return (variant, []) }
+    var merged = variant.deltas
+    var ids = Set(merged.compactMap(\.id))
+    var feedIds: [String] = []
+    for e in menu {
+        if !ids.insert(e.artifactSha256).inserted { continue }
+        merged.append(
+            .payload(
+                method: e.method, from: e.from, memBytes: e.memBytes,
+                artifact: PackHashBytes(sha256: e.artifactSha256, bytes: e.artifactBytes)))
+        feedIds.append(e.artifactSha256)
+    }
+    if feedIds.isEmpty { return (variant, feedIds) }
+    var out = variant
+    out.deltas = merged
+    return (out, feedIds)
+}

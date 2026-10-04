@@ -5,7 +5,7 @@
 | Phase       | P5: Distribution connectors and native plugins                                                                                                                                             |
 | Size        | 2–3 engineer-weeks                                                                                                                                                                         |
 | Depends on  | [P3-10](P3-10-godot-updater.md), [S-05](S-05-godot-platform-mechanics.md), [S-10](S-10-android-play-installer.md)                                                                          |
-| Unblocks    | [P5-08](P5-08-platform-pack-transports.md), [P6-02](P6-02-trust-tiers.md), [P6-05](P6-05-kotlin-sdk.md)                                                                                    |
+| Unblocks | [P5-08](P5-08-platform-pack-transports.md), [P6-02](P6-02-trust-tiers.md), [P6-06](P6-06-kotlin-core-runner.md), [P6-09](P6-09-kotlin-platform-module.md) |
 | Role        | `pkey-implementer`                                                                                                                                                                         |
 | Plan mode   | no                                                                                                                                                                                         |
 | Gates       | `ci:android` (a new Gradle job: JDK 17, Android SDK, unit tests, both flavours); `parity.json` for Godot                                                                                   |

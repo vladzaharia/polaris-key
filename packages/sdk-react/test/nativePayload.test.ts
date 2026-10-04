@@ -749,6 +749,47 @@ describe("createBrowserPacks and the feed's delta menu (plans/P4-29.md §2.4, §
     expect(events.some((e) => e.phase === "fallback")).toBe(false);
   });
 
+  it("seeds the menu on load from the committed feed, before any decision; a recorded menu wins (P4-29 follow-up)", async () => {
+    const { v1, v2, menu } = await chain();
+    const srv = server(
+      [v1, v2],
+      { base: sha(PROBE_BASE) },
+      {
+        [sha(PROBE_TARGET)]: sha(PROBE_BASE),
+      },
+    );
+    const { p } = browserPacks(srv, v1);
+    let loads = 0;
+    p.seedFeedDeltas(async () => {
+      loads++;
+      return menu;
+    });
+    // A second seed is ignored: the first load is the one.
+    p.seedFeedDeltas(async () => {
+      loads++;
+      return null;
+    });
+    await p.ensure([PACK]);
+    const [i] = await p.ensureReleases([target(v2)]);
+    expect(i!.payloadSha256).toBe(sha(PROBE_TARGET));
+    expect(loads).toBe(1);
+    expect(srv.log).toContain(`payload ${sha(PROBE_TARGET).slice(0, 8)} dcz`);
+
+    // A menu a decision recorded first wins: the seed's load never runs.
+    const { p: q } = browserPacks(server([v1, v2], { base: null }), v1);
+    q.recordFeedDeltas(null);
+    q.seedFeedDeltas(async () => {
+      loads++;
+      return menu;
+    });
+    expect(loads).toBe(1);
+
+    // A load that fails is no menu, and never fails the facet.
+    const { p: r } = browserPacks(server([v1, v2], { base: null }), v1);
+    r.seedFeedDeltas(() => Promise.reject(new Error("no cache")));
+    await r.ensure([PACK]);
+  });
+
   it("without the dictionary (409), runs the lazy delta's frame from the blob route in WASM", async () => {
     const { v1, v2, menu } = await chain();
     const srv = server([v1, v2], { base: null });

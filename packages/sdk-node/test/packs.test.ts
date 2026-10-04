@@ -76,6 +76,8 @@ class FakeServer {
    *  serves (P4-13). */
   records = new Map<string, string>();
   feed: string | null = null;
+  /** The channel `feed` is served under. */
+  feedChannel = "stable";
 
   async start(): Promise<void> {
     this.server = createServer((req, res) => void this.handle(req, res));
@@ -111,7 +113,10 @@ class FakeServer {
       res.end(body);
       return;
     }
-    if (url.pathname === `/${PRODUCT}/update/stable/feed.jws` && this.feed) {
+    if (
+      url.pathname === `/${PRODUCT}/update/${this.feedChannel}/feed.jws` &&
+      this.feed
+    ) {
       res.writeHead(200, { "content-type": "application/jose" });
       res.end(this.feed);
       return;
@@ -1121,7 +1126,7 @@ describe("client.update.packs and the feed's delta menu (plans/P4-29.md §2.4)",
       ]),
     };
   }
-  async function feedWithMenu(): Promise<string> {
+  async function feedWithMenu(channel = "stable"): Promise<string> {
     const now = Math.floor(Date.now() / 1000);
     const platform = { darwin: "macos", win32: "windows", linux: "linux" }[
       process.platform as "darwin" | "win32" | "linux"
@@ -1130,7 +1135,7 @@ describe("client.update.packs and the feed's delta menu (plans/P4-29.md §2.4)",
       schemaVersion: 1,
       iss: "key.plrs.im",
       aud: PRODUCT,
-      channel: "stable",
+      channel,
       selector: {},
       seq: 1,
       issuedAt: now - 10,
@@ -1234,5 +1239,27 @@ describe("client.update.packs and the feed's delta menu (plans/P4-29.md §2.4)",
     expect(install!.payloadSha256).toBe(sha(PROBE_TARGET));
     expect(blobPaths()).toEqual([sha(PROBE_FRAME)]);
     again.close();
+  });
+
+  it("keeps the configured channel's menu: update.feed() on another channel does not set it (P4-29 follow-up)", async () => {
+    const { stampDoc, v2Target } = await setup();
+    // Only a beta feed, carrying the menu; the client is configured for stable.
+    srv.feed = await feedWithMenu("beta");
+    srv.feedChannel = "beta";
+    try {
+      const c = await client({ stamp: [], stampDoc, handlers: [BLOB] });
+      await c.update.packs.ensure([PACK]);
+      await c.update.feed({ channel: "beta" });
+      srv.seen = [];
+      const [install] = await c.update.packs.ensureReleases([v2Target]);
+      expect(install!.payloadSha256).toBe(sha(PROBE_TARGET));
+      // No stable feed is committed, so no menu: the delta is never fetched.
+      expect(blobPaths()).not.toContain(sha(PROBE_FRAME));
+      expect(blobPaths().length).toBeGreaterThan(0);
+      c.close();
+    } finally {
+      srv.feed = null;
+      srv.feedChannel = "stable";
+    }
   });
 });

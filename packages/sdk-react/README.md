@@ -318,7 +318,9 @@ const strings = await packs.readFile("diceroll.l10n", "fr/strings.json");
 - **Web deltas** (P4-18, see below).
 - **Feed-offered deltas** (P4-29). When the adapter's `update.packs` is this facet,
   `decideUpdate()` hands it the decided feed's delta menu (`recordFeedDeltas`), and the next
-  installs plan those lazy deltas beside the records' own; `feedDeltas: () => menu` supplies a
+  installs plan those lazy deltas beside the records' own. Before any decision, the adapter
+  seeds it at construction with the menu of the most recently committed feed in its cache
+  (`seedFeedDeltas`), so a reload offers the menu offline too; `feedDeltas: () => menu` supplies a
   menu of the host's own instead. The payload URL answers `dcz` from a lazy delta's base, and
   without the dictionary the frame comes from the blob route and decodes in WASM. Every byte is
   checked against the CI-signed record, any failure falls back, and at most one feed-offered

@@ -3,6 +3,8 @@ dist/
 # The polaris-key/publish Action runs its committed bundle (P2-06; AGENTS.md rule 3) — the bare
 # `dist/` above would otherwise swallow it and the Action would ship with no entry point.
 !actions/publish/dist/
+# The console's CSP browser check builds a gallery bundle here (packages/admin/e2e/kit.e2e.test.ts).
+dist-kit/
 .turbo/
 *.tsbuildinfo
 coverage/

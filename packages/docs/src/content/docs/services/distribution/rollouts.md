@@ -11,17 +11,19 @@ outlet and channel**; the channel pointer, floor, `critical` flag and yanks stay
 per deliverable. Apple's phased release, Play's staged rollout and Polaris Key's own buckets
 are all per outlet, which is why the split falls there.
 
-:::caution[What a halt does today]
-The [storefront feeds](/docs/services/distribution/feeds/) that list releases (AltStore,
-AltStore PAL, F-Droid, Scoop and Flathub) honour rollouts: while a release's rollout on an
-outlet is paused, halted or below 100%, that outlet's feeds leave it out and list the previous
-release. **Obtainium does not.** Its config is a pointer, not a release: in F-Droid repository
-mode it follows the `fdroid-repo` outlet's holds, and in direct-link mode it follows the moving
-`builds/<channel>/<buildId>` download, which applies yanks and pins but not holds. Halting the
-`obtainium` outlet does not stop a build reaching Obtainium users. Until the
-signed channel feed carries rollouts and halts, everything else **keeps serving**: the Sparkle
-appcast, `/update/version` and the downloads do not read it. To stop a release reaching every
-device now, **yank it** or **pin the channel** to an earlier release
+:::note[What a halt reaches]
+A pause or halt stops offering the release on that outlet in the signed channel feed, the
+[app-updater feeds](/docs/services/update/updater-feeds/) (the Sparkle appcast, `/update/version`
+and the rest), the [storefront feeds](/docs/services/distribution/feeds/) and the public
+[download page](/docs/users/downloads/); they list the previous release instead. (The appcast
+of a product that publishes no release records keeps its GitHub-resolved path and does not read
+rollouts.) The storefront
+feeds that list releases (AltStore, AltStore PAL, F-Droid, Scoop and Flathub) also leave out a
+release whose rollout is below 100%. **Obtainium does not follow holds.** Its config is a
+pointer, not a release: in F-Droid repository mode it follows the `fdroid-repo` outlet's holds,
+and in direct-link mode it follows the moving `builds/<channel>/<buildId>` download, which
+applies yanks and pins but not holds. To take a release off every surface, moving downloads
+included, **yank it** or **pin the channel** to an earlier release
 ([Channels and policy](/docs/services/release/channels/)).
 :::
 
@@ -103,8 +105,7 @@ GET  /manage/api/products/<slug>/distribution/rollouts
 POST /manage/api/products/<slug>/distribution/rollouts/<outlet>/<channel>[/<verb>]
 ```
 
-Every answer carries `effect: { reachesDevices: false, note }`, the caveat above, so a control
-never implies more than it does. The Distribution console section lists the rollouts.
+The Distribution console section lists the rollouts, and its Matrix tab carries the controls.
 
 Every change, from either door, is audited as `distribution.rollout.<verb>` (`set`, `pause`,
 `resume`, `halt`, `complete`), with the session's subject or `ci:<subject>`.

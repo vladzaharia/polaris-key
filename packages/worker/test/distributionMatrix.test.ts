@@ -125,7 +125,7 @@ describe("distribution matrix", () => {
       "halted",
       "complete",
     ]);
-    expect(m.effect.note).toMatch(/signed feed/);
+    expect(m).not.toHaveProperty("effect");
     expect(
       (await matrix(w, "?limit=2")).releases.map((r) => r.version),
     ).toEqual(["1.2.0", "1.2.0-beta.1"]);
