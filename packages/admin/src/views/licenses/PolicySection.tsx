@@ -1,5 +1,5 @@
 import * as React from "react";
-import { api, type LicenseDetail, type PatchLicenseBody } from "../../api.js";
+import { type LicenseDetail, type PatchLicenseBody } from "../../api.js";
 import {
   Button,
   Card,
@@ -12,6 +12,7 @@ import {
   useToast,
 } from "../../components/ui/index.js";
 import { ChannelMultiSelect, useManualChannels } from "./shared.js";
+import { mutate } from "../../console/data/mutations.js";
 
 /**
  * The channel & version policy editor. An admin picks which release channels this license may
@@ -63,7 +64,7 @@ export function PolicySection({
         minVersion: minVersion.trim() || null,
         maxVersion: maxVersion.trim() || null,
       };
-      await api.patchLicense(slug, license.id, body);
+      await mutate("patchLicense", slug, license.id, body);
       toast.success("Policy updated");
       onSaved();
     } catch (err) {

@@ -1,11 +1,9 @@
 import * as React from "react";
 import { CheckCircle2, Github, KeyRound, PlusCircle } from "lucide-react";
 import {
-  api,
   type CreateManualProductResult,
   type LinkRepoResult,
 } from "../../api.js";
-import { invalidate } from "../../context.js";
 import { docsUrl } from "../../lib/docsLinks.js";
 import {
   Badge,
@@ -36,6 +34,7 @@ import {
   slugError,
   trimmedOrUndefined,
 } from "./util.js";
+import { mutate } from "../../console/data/mutations.js";
 
 /** A copyable read-only key/value row used in the success panels. */
 function ResultRow({
@@ -148,7 +147,7 @@ function ManualTab({
     setBusy(true);
     setFormError(null);
     try {
-      const res = await api.createManualProduct({
+      const res = await mutate("createManualProduct", {
         slug: slug.trim(),
         name: trimmedOrUndefined(name),
         schema: schemaParsed.value,
@@ -158,7 +157,6 @@ function ManualTab({
         defaultDeviceLimit: intOrUndefined(deviceLimit),
         adminGroup: trimmedOrUndefined(adminGroup),
       });
-      invalidate("products");
       toast.success("Product created", `“${res.slug}” is registered.`);
       setResult(res);
     } catch (err) {
@@ -354,8 +352,7 @@ function GithubTab({
     setBusy(true);
     setFormError(null);
     try {
-      const res = await api.linkRepo(url);
-      invalidate("products");
+      const res = await mutate("linkRepo", url);
       toast.success("Repository linked", `“${res.slug}” is registered.`);
       setResult(res);
     } catch (err) {

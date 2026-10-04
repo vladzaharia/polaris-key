@@ -1,17 +1,21 @@
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import { api, type Me, type ProductDetail } from "./api.js";
-import type { ServiceState } from "./route.js";
+import React, { createContext, useCallback, useContext } from "react";
+import { useQuery, type QueryKey } from "@tanstack/react-query";
+import type { Me } from "./api.js";
+import { queryClient } from "./console/data/queryClient.js";
+import { useProduct } from "./console/data/hooks.js";
+import type { ServiceState } from "./console/nav.js";
 
 /**
- * App-wide context: the admin identity (`me`) and the currently-selected product slug.
- * Views read the catalog per-product via `useResource` rather than threading props.
+ * TEMPORARY ADAPTER (docs/design/ADMIN.md §7.2 chunk 2; deleted in chunk 11).
+ *
+ * The legacy views were written against a hand-rolled resource cache (`useResource(key,
+ * fetcher)` + `invalidate(prefix)`). Chunk 2 moves the data layer to TanStack Query; rather than
+ * rewrite every view at once, `useResource` now reads through the one query client, keyed by the
+ * structured keys in `console/data/queries.ts`, so the views keep their shape until their area
+ * chunk rebuilds them on `useQuery` directly. Writes no longer invalidate by hand: every write goes
+ * through `mutate()`, which runs the write's declared invalidation (`console/data/mutations.ts`).
+ *
+ * `useAdmin` stays for the two views that read the session from context.
  */
 export interface AdminContextValue {
   me: Me;
@@ -37,145 +41,57 @@ export function useAdmin(): AdminContextValue {
   return ctx;
 }
 
-// ── a tiny per-key resource cache (load once, reload on demand) ───────────────
-interface CacheEntry<T = unknown> {
-  data: T | null;
-  error: string | null;
-  loading: boolean;
-  loadedAt: number;
-  subscribers: Set<() => void>;
-  promise?: Promise<void>;
-}
-const CACHE = new Map<string, CacheEntry>();
-
-function entryFor<T>(key: string): CacheEntry<T> {
-  let e = CACHE.get(key) as CacheEntry<T> | undefined;
-  if (!e) {
-    e = {
-      data: null,
-      error: null,
-      loading: false,
-      loadedAt: 0,
-      subscribers: new Set(),
-    };
-    CACHE.set(key, e);
-  }
-  return e;
-}
-
-function notify(e: CacheEntry): void {
-  for (const s of e.subscribers) s();
-}
-
-function load<T>(
-  e: CacheEntry<T>,
-  fetcher: () => Promise<T>,
-  force: boolean,
-): void {
-  if (e.promise && !force) return;
-  e.loading = true;
-  e.error = null;
-  notify(e);
-  e.promise = fetcher()
-    .then((data) => {
-      e.data = data;
-      e.loadedAt = Date.now();
-      e.error = null;
-    })
-    .catch((err: unknown) => {
-      e.error = err instanceof Error ? err.message : "Request failed.";
-    })
-    .finally(() => {
-      e.loading = false;
-      e.promise = undefined;
-      // Stamp the settle time on BOTH success and error so the auto-load effect
-      // (guarded on `loadedAt === 0`) doesn't re-fire forever on an errored entry —
-      // an infinite render loop. `reload()`/`invalidate()` still force a refetch
-      // (reload bypasses the guard; invalidate resets `loadedAt` to 0).
-      if (e.loadedAt === 0) e.loadedAt = Date.now();
-      notify(e);
-    });
-}
-
-/** Invalidate (and refetch on next render) every cache key that starts with `prefix`. */
-export function invalidate(prefix: string): void {
-  for (const [key, e] of CACHE.entries()) {
-    if (key.startsWith(prefix)) {
-      e.loadedAt = 0;
-      notify(e);
-    }
-  }
-}
-
 export interface ResourceState<T> {
   data: T | null;
+  /** True until the first answer (or error) arrives. A background refetch keeps the old data. */
   loading: boolean;
   error: string | null;
   reload: () => void;
 }
 
+/** The legacy resource hook, over TanStack Query. `key` comes from `qk.*`. */
 export function useResource<T>(
-  key: string,
+  key: QueryKey,
   fetcher: () => Promise<T>,
 ): ResourceState<T> {
-  const [, force] = useState(0);
-  const fetcherRef = useRef(fetcher);
-  fetcherRef.current = fetcher;
-  const e = entryFor<T>(key);
-
-  const reload = useCallback(
-    () => load(e, () => fetcherRef.current(), true),
-    [e],
-  );
-
-  useEffect(() => {
-    const refresh = () => force((n) => n + 1);
-    e.subscribers.add(refresh);
-    return () => {
-      e.subscribers.delete(refresh);
-    };
-  }, [e]);
-
-  useEffect(() => {
-    // `loadedAt === 0` is the single "no settled attempt yet" signal (stamped on both
-    // success and error in `load`). Guarding on `!e.data` instead would re-fire forever
-    // on an errored entry (data stays null) — an infinite render loop.
-    if (e.loadedAt === 0) load(e, () => fetcherRef.current(), false);
-  });
-
-  return { data: e.data, loading: e.loading, error: e.error, reload };
+  const query = useQuery<T>({ queryKey: key, queryFn: fetcher }, queryClient);
+  const { refetch } = query;
+  const reload = useCallback(() => {
+    void refetch();
+  }, [refetch]);
+  const err = query.error;
+  return {
+    data: query.data ?? null,
+    loading: query.isPending && query.fetchStatus !== "idle",
+    error: err
+      ? err instanceof Error
+        ? err.message
+        : "Request failed."
+      : null,
+    reload,
+  };
 }
 
 /**
- * Which services a product runs (D-15) — the shell's nav filter and the router's
- * enablement gate.
- *
- * Deliberately reads the SAME `product:<slug>` cache entry the views use rather than calling
- * `GET …/services`: the shell needs the answer before it can draw the sidebar that frames the
- * view, and a second round-trip would make the nav pop in a beat after the content it wraps.
- * Sharing the key means the shell's read is free whenever a view has already loaded the product
- * (and vice versa), and one `invalidate("product:")` after a services PATCH re-renders both.
- *
- * `null` means "not loaded, or a product row that predates `services_json`" and every caller
- * treats it as SHOW EVERYTHING. Fail-open is right here because enablement is an affordance
- * filter, not an access control — the worker gates each of these endpoints itself, so a
- * briefly-visible tab leaks nothing. Failing closed would cost real usability: the nav would
- * jump under the operator's cursor as sections appeared, and a deep link into a section this
- * product does run would flash a "not enabled" screen before the answer arrived.
+ * Which services a product runs (D-15): the sidebar's filter and the router's enablement gate.
+ * `null` means "not loaded, or a row that predates `services_json`", and every caller treats it as
+ * SHOW EVERYTHING (see `isSectionEnabled` in `console/nav.ts`).
  */
 export function useProductServices(slug: string): ServiceState {
-  // Hooks can't be called conditionally, so an empty slug (no products registered at all) gets
-  // a resolved-null fetcher instead of an early return — same shape, no request to
-  // `/manage/api/products/` that could only 404.
-  const { data } = useResource<ProductDetail | null>(
-    slug ? `product:${slug}` : "product:none",
-    () =>
-      slug ? api.product(slug).then((r) => r.product) : Promise.resolve(null),
-  );
+  const { data } = useProduct(slug || null);
   return data?.services ?? null;
 }
 
-/** Reset the module cache — used by tests to isolate renders. */
+/**
+ * Refetch everything under a key prefix, outside any write: the few places a view refreshes after
+ * a FAILED write (a 409 means the server's copy moved, so show it). A successful write never needs
+ * this; `mutate` invalidates what the write declared.
+ */
+export function invalidate(key: QueryKey): void {
+  void queryClient.invalidateQueries({ queryKey: key });
+}
+
+/** Reset the query cache: tests use it to isolate renders. */
 export function resetCache(): void {
-  CACHE.clear();
+  queryClient.clear();
 }

@@ -57,7 +57,7 @@ describe("Dashboard view", () => {
   it("links each card into the product overview", () => {
     render(withAdmin(makeMe()));
     const open = screen.getByRole("link", { name: "Open Acme" });
-    expect(open.getAttribute("href")).toBe("#/p/acme/overview");
+    expect(open.getAttribute("href")).toBe("#/p/acme");
   });
 
   it("shows an empty state when the operator administers no products", () => {

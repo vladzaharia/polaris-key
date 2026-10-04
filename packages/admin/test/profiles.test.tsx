@@ -160,7 +160,7 @@ describe("Profiles view", () => {
     // Editing is a routed page, not a modal — so a profile has a URL an operator can share.
     renderProfiles();
     const link = (await screen.findByText("Default")) as HTMLAnchorElement;
-    expect(link.getAttribute("href")).toBe("#/p/djdl/profiles/default");
+    expect(link.getAttribute("href")).toBe("#/p/djdl/config/profiles/default");
   });
 
   it("creates a profile via createProfile, then goes straight to its editor", async () => {
@@ -196,7 +196,7 @@ describe("Profiles view", () => {
     });
     // Create THEN edit: the payload is set on the profile's own page.
     await waitFor(() =>
-      expect(window.location.hash).toBe("#/p/djdl/profiles/trial"),
+      expect(window.location.hash).toBe("#/p/djdl/config/profiles/trial"),
     );
   });
 
@@ -231,7 +231,7 @@ describe("Profile detail — the routed payload editor", () => {
           name: /Back to profiles/,
         }) as HTMLAnchorElement
       ).getAttribute("href"),
-    ).toBe("#/p/djdl/profiles");
+    ).toBe("#/p/djdl/config/profiles");
     expect(mockApi.profile).toHaveBeenCalledWith("djdl", "default");
   });
 

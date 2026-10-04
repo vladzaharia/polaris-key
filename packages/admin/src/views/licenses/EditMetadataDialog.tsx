@@ -1,6 +1,5 @@
 import * as React from "react";
 import {
-  api,
   type LicenseDetail,
   type PatchLicenseBody,
   type TierSummary,
@@ -28,6 +27,7 @@ import {
   useToast,
 } from "../../components/ui/index.js";
 import { dateInputToEpoch, epochToDateInput } from "./shared.js";
+import { mutate } from "../../console/data/mutations.js";
 
 /** Radix Select has no empty-string item value, so "no tier" needs a sentinel. */
 const NO_TIER = "__none__";
@@ -134,7 +134,7 @@ export function EditMetadataDialog({
         onOpenChange(false);
         return;
       }
-      const result = await api.patchLicense(slug, license.id, body);
+      const result = await mutate("patchLicense", slug, license.id, body);
       if (result.overLimit) {
         toast.success(
           "License updated",

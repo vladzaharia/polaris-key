@@ -22,6 +22,7 @@ import {
   schemaSummary,
 } from "./catalog/helpers.js";
 import { PublishDialog } from "./catalog/PublishDialog.js";
+import { qk } from "../console/data/queries.js";
 
 /**
  * Catalog view: the active config catalog for a product, grouped by category, plus a
@@ -30,7 +31,7 @@ import { PublishDialog } from "./catalog/PublishDialog.js";
  * licenses. Read-heavy; the only mutation is publishing a new `schemaVersion`.
  */
 export function Catalog({ slug }: { slug: string }): React.ReactElement {
-  const { data, loading, error, reload } = useResource(`schema:${slug}`, () =>
+  const { data, loading, error, reload } = useResource(qk.catalog(slug), () =>
     api.schema(slug),
   );
   const [publishOpen, setPublishOpen] = React.useState(false);

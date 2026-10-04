@@ -32,6 +32,8 @@ import {
 } from "../components/ui/index.js";
 import { absoluteTime, relativeTime } from "./format.js";
 import { DeviceStatusBadge, formatStamp } from "./licenses/shared.js";
+import { qk } from "../console/data/queries.js";
+import { mutate } from "../console/data/mutations.js";
 
 /** Radix Select cannot hold an empty-string item value, so "no filter" gets a sentinel. */
 const ANY = "__any__";
@@ -60,7 +62,7 @@ const INITIAL: Filters = {
  * "Last seen" is the time of the device's most recent check-in, not a presence indicator.
  */
 export function Devices({ slug }: { slug: string }): React.ReactElement {
-  const summary = useResource(`devices-summary:${slug}`, () =>
+  const summary = useResource(qk.devicesSummary(slug), () =>
     api.productDeviceSummary(slug),
   );
 
@@ -509,10 +511,10 @@ function DeviceDrawer({
     setBusy(true);
     try {
       if (kind === "deauthorize") {
-        await api.deauthorizeProductDevice(slug, deviceId);
+        await mutate("deauthorizeProductDevice", slug, deviceId);
         toast.success("Device deauthorized");
       } else {
-        await api.resetProductDeviceFingerprint(slug, deviceId);
+        await mutate("resetProductDeviceFingerprint", slug, deviceId);
         toast.success(
           "Hardware binding cleared",
           "It re-binds on the next check-in.",

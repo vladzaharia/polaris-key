@@ -46,9 +46,9 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -75,7 +75,7 @@ jobs:
             sdks/godot/native/e2e/macos/run.sh --work "$RUNNER_TEMP/e2e-macos" --template "$D/macos.zip"
       - run: git diff --exit-code && test -z "$(git status --porcelain)"
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: native-desktop-macos-logs
           path: ${{ runner.temp }}/e2e-macos/logs
@@ -90,9 +90,9 @@ jobs:
         shell: pwsh
     steps:
       - run: git config --global core.autocrlf false
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -130,7 +130,7 @@ jobs:
             -Work (Join-Path $env:RUNNER_TEMP "e2e-windows")
       - run: git diff --exit-code; if ($LASTEXITCODE -ne 0 -or (git status --porcelain)) { git status --porcelain; exit 1 }
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: native-desktop-windows-logs
           path: ${{ runner.temp }}/e2e-windows/logs

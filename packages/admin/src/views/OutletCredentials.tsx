@@ -38,6 +38,8 @@ import {
   useToast,
 } from "../components/ui/index.js";
 import { absoluteTime, relativeTime } from "./format.js";
+import { qk } from "../console/data/queries.js";
+import { mutate } from "../console/data/mutations.js";
 
 /**
  * Outlet credentials (P5-01): the keys a store connector signs in to its store with — an App
@@ -184,7 +186,7 @@ export function OutletCredentials({
   slug: string;
 }): React.ReactElement {
   const { data, loading, error, reload } = useResource(
-    `outlet-credentials:${slug}`,
+    qk.credentials(slug),
     () => api.outletCredentials(slug),
   );
   const toast = useToast();
@@ -239,13 +241,12 @@ export function OutletCredentials({
         kind === "google-service-account"
           ? values.json!
           : Object.fromEntries(spec.fields.map((f) => [f.key, values[f.key]]));
-      await api.putOutletCredential(slug, credentialId, {
+      await mutate("putOutletCredential", slug, credentialId, {
         kind,
         value,
         ...(spec.pin ? { pin: pin.trim() } : {}),
         outletId: outletId.trim() || null,
       });
-      invalidate(`outlet-credentials:${slug}`);
       toast.success(
         "Credential saved",
         `“${credentialId}” was stored. Its value is never shown again.`,
@@ -265,7 +266,7 @@ export function OutletCredentials({
     if (!deleting) return;
     setBusy(true);
     try {
-      await api.deleteOutletCredential(slug, deleting);
+      await mutate("deleteOutletCredential", slug, deleting);
       toast.success("Credential deleted", `“${deleting}” was removed.`);
       setDeleting(null);
     } catch (err) {
@@ -275,7 +276,8 @@ export function OutletCredentials({
       );
     } finally {
       setBusy(false);
-      invalidate(`outlet-credentials:${slug}`);
+      // Success or not: a failed delete may still have changed what is stored.
+      invalidate(qk.credentials(slug));
     }
   };
 
@@ -289,11 +291,10 @@ export function OutletCredentials({
     setPinSaving(true);
     setPinError(null);
     try {
-      await api.putOutletCredential(slug, pinning.id, {
+      await mutate("putOutletCredential", slug, pinning.id, {
         kind: pinning.kind as OutletCredentialKind,
         pin: value,
       });
-      invalidate(`outlet-credentials:${slug}`);
       toast.success(
         "Credential pinned",
         `“${pinning.id}” is pinned to ${value}.`,

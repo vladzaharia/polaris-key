@@ -9,7 +9,7 @@ import type {
   ProductCatalog,
   RedactedPayload,
 } from "./api.js";
-import { hashFor } from "./route.js";
+import { r } from "./console/routes.js";
 import { cn } from "./lib/cn.js";
 import { docsUrl } from "./lib/docsLinks.js";
 import {
@@ -357,9 +357,7 @@ export function ManagedPayloadEditor({
         description="Managed values are declared by the catalog. Publish a catalog version with config, secret, or flag entries and they show up here."
         action={
           <Button asChild variant="outline">
-            <a href={hashFor({ kind: "product", slug, view: "config" })}>
-              Go to Config → Catalog
-            </a>
+            <a href={r.catalog(slug)}>Go to Config → Catalog</a>
           </Button>
         }
       />

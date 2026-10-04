@@ -7,14 +7,14 @@
  * URLs).
  *
  * Drift gate: `packages/worker/test/docsLinks.test.ts` asserts every path this module (and
- * `route.ts`'s per-tab `docs` declarations) names exists in the built site's slug manifest
+ * `console/nav.ts`'s per-page `docs` declarations) names exists in the built site's slug manifest
  * (`packages/docs/dist/docs-slugs.json`) — a help link cannot silently point at a page that
  * stopped existing. Add a link here → the page must exist; rename a page → this table (or
  * the nav table) fails CI until it follows.
  */
 
 /** Help topics for dialogs, empty states, and inline callouts (view headers live on the nav
- *  table in `route.ts` — `NavItem.docs` — so the sidebar and the help link cannot disagree). */
+ *  table in `console/nav.ts` — `NavPage.docs` — so the sidebar and the help link cannot disagree). */
 export const DOCS_LINKS = {
   // Dialogs
   createProduct: "/docs/admin/products/",

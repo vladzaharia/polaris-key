@@ -12,7 +12,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { SERVICE_ERROR_MESSAGES } from "../src/api.js";
-import { SECTIONS } from "../src/route.js";
+import { SECTIONS } from "../src/console/nav.js";
 import {
   SERVICE_REQUIRES,
   SERVICE_SLUGS,
@@ -33,12 +33,12 @@ describe("the service table, as the console sees it", () => {
     expect(SERVICE_TABLE.map((row) => row.slug)).toEqual([...SERVICE_SLUGS]);
   });
 
-  it("route.ts SECTIONS has one section per service, with the table's accent", () => {
+  it("nav.ts SECTIONS has one section per service, with the table's accent", () => {
     for (const row of SERVICE_TABLE) {
       const section = SECTIONS.find((s) => s.key === row.slug);
       expect(
         section,
-        `src/route.ts SECTIONS has no section for the "${row.slug}" service`,
+        `src/console/nav.ts SECTIONS has no section for the "${row.slug}" service`,
       ).toBeDefined();
       expect(section!.service, `section "${row.slug}" gates on`).toBe(row.slug);
       expect(
@@ -52,7 +52,7 @@ describe("the service table, as the console sees it", () => {
     }
     expect(
       SECTIONS.filter((s) => s.service !== null).map((s) => s.key),
-      "src/route.ts SECTIONS has a service section the table does not have, or out of order",
+      "src/console/nav.ts SECTIONS has a service section the table does not have, or out of order",
     ).toEqual([...SERVICE_SLUGS]);
   });
 
