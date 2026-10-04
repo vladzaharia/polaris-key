@@ -438,6 +438,13 @@ const dir = await client.update.packs.path("diceroll.l10n"); // the running tree
 - **Strategies.** The planner picks `delta` (a whole-payload or per-file `zstd --patch-from`
   set), `file` (only the files whose hash is not installed) or `full`; a refused strategy falls
   back to the next, `full` last.
+- **Feed-offered deltas** (P4-29). The committed channel feed can list lazy deltas (`deltas`, the
+  Worker's delta menu). The client keeps the menu of the last feed `update.decide()` or
+  `update.feed()` used, fresh or stale, and reads the committed feed from the cache when the
+  pack engine starts, so an offline launch still has it. The engine (`feedDeltas`) adds the
+  entries for a container's payload beside the record's own deltas; every byte is still checked
+  against the CI-signed record, any failure (a 404 included) falls back, and at most one
+  feed-offered delta is tried per install. Nothing to configure.
 - **Progress events.** `on(listener)` receives `{packId, phase, done, total}` with `phase`
   `download`, `apply`, `done`, `state-issue` (once at load, see State below) or `fallback`
   (P4-18): a strategy failed (`strategy`, and the verdict code in `error`) and the next candidate

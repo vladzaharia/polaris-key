@@ -568,10 +568,17 @@ refused when either payload is over 32 MiB, when the delta would not save 30% an
 cheapest other strategy, or past the product's daily cap (20 by default). A delta no device
 reported for 30 days goes cold and is collected.
 
-A lazy delta is in no signed record. Offering it to devices needs the channel feed's reserved
-`deltas` member, which has no shape yet (a wire change that has to be planned first); until then
-generated deltas are stored and recorded only. Operator steps: RUNBOOK "Lazy deltas"; setup:
-DEPLOYMENT "Lazy deltas".
+A lazy delta is in no signed record. The channel feed **offers** it (P4-29): its `deltas` member
+lists, per target payload, the `ready` lazy deltas devices on an older payload can use (at most 4
+per target and 64 per feed, ranked by how many devices sit on the base). The menu is added last,
+into the room left under the feed's 65,536-byte cap, so it never displaces content or app
+updates. A device plans a listed delta like any other, checks every byte it produces against the
+pack's CI-signed record, and falls back on any failure, trying at most one feed-offered delta per
+install. The blob route serves the frame by its hash under the pack's delivery rules (a gated
+pack's needs the gate), and the payload URL answers `dcz` from its base in the browser. Either
+opt-in switch withdraws the menu and the serving at the next request. See
+[the delta menu](/docs/build/wire/packs/#the-feeds-delta-menu). Operator steps: RUNBOOK "Lazy
+deltas"; setup: DEPLOYMENT "Lazy deltas".
 
 ## Installing packs on a device
 

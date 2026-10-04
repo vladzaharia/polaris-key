@@ -14,7 +14,9 @@ import type {
   ChunkRecord,
   FilesIndexDoc,
   PackVariant,
+  PayloadDelta,
 } from "@polaris-key/protocol/packs";
+import type { FeedDeltas } from "@polaris-key/protocol/update";
 import { has, isObject } from "./claims.js";
 import { compareBytes } from "./variant.js";
 
@@ -253,4 +255,51 @@ export function planTarget(
     files: filesT,
     deltas,
   };
+}
+
+/**
+ * `withFeedDeltas(variant, deltas)` (plans/P4-29.md §2.4 step 2): the variant with the feed's
+ * menu for its payload appended to a COPY of its deltas, after the record's own. Unchanged, with
+ * empty `feedIds`, when `deltas` is null, the variant is not usable, its layout is not
+ * `container`, or the menu has no key equal to `variant.payload.sha256`. An entry whose
+ * `artifact.sha256` equals an existing delta id is skipped (a record delta wins). `feedIds` is the
+ * set of appended artifact hashes. The merged list may exceed `MAX_VARIANT_DELTAS`, a claim on
+ * records only. Pure; never throws.
+ */
+export function withFeedDeltas(
+  variant: PackVariant,
+  deltas: FeedDeltas | null,
+): { variant: PackVariant; feedIds: string[] } {
+  if (
+    deltas === null ||
+    !variantUsable(variant) ||
+    variant.files.layout !== "container" ||
+    !has(deltas as Record<string, unknown>, variant.payload.sha256)
+  )
+    return { variant, feedIds: [] };
+  const merged = [...(variant.deltas ?? [])];
+  const ids = new Set<string>(
+    merged
+      .map((d) =>
+        d.scope === "payload"
+          ? (d as PayloadDelta).artifact?.sha256
+          : (d as { patch?: { sha256?: string } }).patch?.sha256,
+      )
+      .filter((x): x is string => typeof x === "string"),
+  );
+  const feedIds: string[] = [];
+  for (const e of deltas[variant.payload.sha256] ?? []) {
+    if (ids.has(e.artifact.sha256)) continue;
+    ids.add(e.artifact.sha256);
+    merged.push({
+      method: e.method,
+      scope: "payload",
+      from: e.from,
+      memBytes: e.memBytes,
+      artifact: { sha256: e.artifact.sha256, bytes: e.artifact.bytes },
+    });
+    feedIds.push(e.artifact.sha256);
+  }
+  if (feedIds.length === 0) return { variant, feedIds };
+  return { variant: { ...variant, deltas: merged }, feedIds };
 }

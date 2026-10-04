@@ -17,6 +17,8 @@ import {
   CHANNEL_ALIASES,
   CHANNEL_NAME_PATTERN,
   ISSUER,
+  MAX_FEED_DELTAS,
+  MAX_FEED_DELTAS_PER_TARGET,
 } from "@polaris-key/protocol/core";
 import {
   BINARY_UPDATES_ORDER,
@@ -37,6 +39,8 @@ import {
   ROLLOUT_BUCKETS,
   type ChannelFeedDoc,
   type FeedContent,
+  type FeedDelta,
+  type FeedDeltas,
   type FeedPackFloor,
   type FeedPackGate,
   type FeedPackOutlet,
@@ -708,6 +712,69 @@ function parseRevocations(
   return out;
 }
 
+/**
+ * The delta menu (plans/P4-29.md §2.2): target payload SHA-256 → `payload`-scope deltas. Both
+ * caps and both uniqueness rules count every entry, dropped ones too; an entry of another
+ * vocabulary scope is dropped alone and a key whose entries are all dropped is left out. An
+ * unknown `method` is kept for the planner's `caps.patchMethods` to decide.
+ */
+function parseDeltas(v: unknown, nonWire: NonWireIntegers): FeedDeltas {
+  if (!isObject(v)) no();
+  const out: FeedDeltas = {};
+  const artifacts = new Set<string>();
+  let total = 0;
+  for (const to of Object.keys(v as Record<string, unknown>)) {
+    if (!SHA256_RE.test(to)) no();
+    const list = (v as Record<string, unknown>)[to];
+    if (
+      !Array.isArray(list) ||
+      list.length < 1 ||
+      list.length > MAX_FEED_DELTAS_PER_TARGET
+    )
+      no();
+    total += (list as unknown[]).length;
+    if (total > MAX_FEED_DELTAS) no();
+    const kept: FeedDelta[] = [];
+    const pairs = new Set<string>();
+    for (const [i, e] of (list as unknown[]).entries()) {
+      if (!isObject(e)) no();
+      const d = e as Record<string, unknown>;
+      if (
+        typeof d.from !== "string" ||
+        !SHA256_RE.test(d.from) ||
+        d.from === to
+      )
+        no();
+      if (typeof d.method !== "string" || !VOCAB_TOKEN_PATTERN.test(d.method))
+        no();
+      if (typeof d.scope !== "string" || !VOCAB_TOKEN_PATTERN.test(d.scope))
+        no();
+      const at = `/deltas/${to}/${i}`;
+      if (!isWireInteger(d.memBytes, `${at}/memBytes`, 1, nonWire)) no();
+      if (!isObject(d.artifact)) no();
+      const a = d.artifact as Record<string, unknown>;
+      if (typeof a.sha256 !== "string" || !SHA256_RE.test(a.sha256)) no();
+      if (!isWireInteger(a.bytes, `${at}/artifact/bytes`, 1, nonWire)) no();
+      if (artifacts.has(a.sha256 as string)) no();
+      artifacts.add(a.sha256 as string);
+      const pair = JSON.stringify([d.from, d.method]);
+      if (pairs.has(pair)) no();
+      pairs.add(pair);
+      // A forward scope makes that entry alone ignored.
+      if (d.scope !== "payload") continue;
+      kept.push({
+        from: d.from as string,
+        method: d.method as string,
+        scope: "payload",
+        memBytes: d.memBytes as number,
+        artifact: { sha256: a.sha256 as string, bytes: a.bytes as number },
+      });
+    }
+    if (kept.length > 0) out[to] = kept;
+  }
+  return out;
+}
+
 function member<T>(
   doc: Record<string, unknown>,
   key: string,
@@ -723,9 +790,10 @@ function member<T>(
 
 /**
  * The feed's content members (plans/P4-13.md §2.2): `packSets`, `packFloors` and `revocations`,
+ * and the delta menu `deltas` (plans/P4-29.md §2.2),
  * each parsed, or null when absent or unusable. Integer members follow V4 §3.1's token rule at
  * their RFC 6901 pointers (pass the verified payload's `nonWireIntegers`; omit when checking an
- * object you built). An unusable member never refuses the feed and never affects the other two.
+ * object you built). An unusable member never refuses the feed and never affects the others.
  * A `packFloors` entry whose `versionScheme` is not in `FEED_VERSION_SCHEMES` is dropped alone.
  * Never throws.
  */
@@ -734,7 +802,12 @@ export function feedContent(
   nonWire: NonWireIntegers = NO_NON_WIRE_INTEGERS,
 ): FeedContent {
   if (!isObject(doc))
-    return { packSets: null, packFloors: null, revocations: null };
+    return {
+      packSets: null,
+      packFloors: null,
+      revocations: null,
+      deltas: null,
+    };
   return {
     packSets: member(doc, "packSets", (v) =>
       parsePackSets(v, doc.selector, nonWire),
@@ -743,6 +816,7 @@ export function feedContent(
     revocations: member(doc, "revocations", (v) =>
       parseRevocations(v, nonWire),
     ),
+    deltas: member(doc, "deltas", (v) => parseDeltas(v, nonWire)),
   };
 }
 
@@ -755,11 +829,18 @@ export function withFeedContent(
   feed: ChannelFeedDoc,
   content: FeedContent,
 ): ChannelFeedDoc {
-  const { packSets: _a, packFloors: _b, revocations: _c, ...rest } = feed;
+  const {
+    packSets: _a,
+    packFloors: _b,
+    revocations: _c,
+    deltas: _d,
+    ...rest
+  } = feed;
   return {
     ...rest,
     ...(content.packSets ? { packSets: content.packSets } : {}),
     ...(content.packFloors ? { packFloors: content.packFloors } : {}),
     ...(content.revocations ? { revocations: content.revocations } : {}),
+    ...(content.deltas ? { deltas: content.deltas } : {}),
   };
 }

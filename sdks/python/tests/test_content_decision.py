@@ -47,7 +47,7 @@ _BY_ID = {c["id"]: c for c in _REVOCATIONS}
 
 
 def test_has_every_vector_of_the_plan() -> None:
-    assert len(_FEED_CONTENT) == 48
+    assert len(_FEED_CONTENT) == 76
     assert len(_REVOCATIONS) == 27
     assert len(_ROWS) == 44
 

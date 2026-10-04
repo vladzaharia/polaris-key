@@ -190,6 +190,7 @@ export {
   variantUsable,
   verifyMarker,
   webCryptoSha256,
+  withFeedDeltas,
   type ApplyCounters,
   type ApplyDeltaOptions,
   type ApplyErrorCode,

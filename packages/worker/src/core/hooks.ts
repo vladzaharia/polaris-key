@@ -50,6 +50,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
+import type { FeedDelta } from "@polaris-key/protocol/update";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import type { ProductPublic } from "./products.js";
@@ -590,6 +591,36 @@ export interface ReleaseCatalog {
     buildId: string,
     payloadSha256: string,
   ): Promise<CatalogPackPayload | null>;
+
+  // ── The feed's delta menu (P4-29, plans/P4-29.md §6.1) ──
+  /**
+   * The ready lazy deltas (P4-17's `release_lazy_deltas`) TO a `container` variant of each pack
+   * record in `recordSha256s`, one entry per (record, delta). A row is left out when the variant
+   * already carries a record delta of the same `from` and `method`, when its descriptor fails the
+   * feed member's rules (plans/P4-29.md §2.2), or when its frame's `windowLog` exceeds
+   * `max(10, min(30, ⌈log2(memBytes)⌉))`. Empty while the deployment's `LAZY_DELTAS` is not `on`
+   * or the product's `lazy_delta_settings.enabled` is 0. Unranked and uncapped: the composer
+   * ranks, caps and sizes the menu. One indexed read of the ready rows, then the named records.
+   *
+   * Optional so a catalog without it lists no menu.
+   */
+  lazyDeltas?(recordSha256s: readonly string[]): Promise<CatalogLazyDelta[]>;
+}
+
+/** One ready lazy delta a feed may offer (`ReleaseCatalog.lazyDeltas`, P4-29). */
+export interface CatalogLazyDelta {
+  /** The pack record whose variant's payload the delta produces. */
+  recordSha256: string;
+  /** The pack deliverable. */
+  deliverableId: string;
+  /** The target payload's SHA-256 (the menu key). */
+  to: string;
+  /** The menu entry (plans/P4-29.md §2.2). */
+  entry: FeedDelta;
+  /** Devices last seen on `from` (P4-17's `installedBase`): the rank's first key. */
+  devices: number;
+  /** When the delta was generated, epoch seconds: the rank's second key (newest first). */
+  createdAt: number;
 }
 
 /** One container payload of a pack release, by its decoded SHA-256 (`packPayload`, P4-18). */
