@@ -4,6 +4,15 @@
 >
 > **Owner decisions (2026-10-04):** Option C approved. **Scope: everything, phases 0–3 including the per-product issuer** ("Sign in with <Product>", ~86 agent-days). Issuer: decide in I-16's plan, leaning in-house on jose (Ory Hydra stays the alternative). Safety defaults confirmed: a licence carrying an email attaches only to a user with that verified email (no attach-by-key unless the product sets `claimByKey`); a licence with an owner never moves by presenting its key; Polaris runs no recovery desk — beyond a user's remaining links, recovery is the developer's job via the console's audited relink tool (step-up, reason, notice, 72-hour undo); custom auth domains deferred, passkeys enrol on key.plrs.im only. Pocket ID facts (checked by the lead, 2026-10-04): separate OIDC clients per app are supported [V] (pocket-id.org/docs/introduction), so I-03 can give the console its own client; `email_verified` is in the discovery document's `claims_supported` [M] (id.plrs.im/.well-known/openid-configuration), so verified status is available per user at sign-in; a bulk export through the admin REST API needs an admin API key (the users endpoint answers 401 without one) [M] — I-09 therefore migrates by claim at each user's next sign-in, with a bulk export only if the owner issues an admin API key.
 
+> **Owner decision (2026-10-04): import profile data from identity providers.** Pull name, picture and locale where a provider offers them:
+>
+> - Google: name, picture, locale.
+> - Apple: name on first consent only, so capture it then; no picture.
+> - Steam: persona name and avatar through the Web API key.
+> - Game Center, Play Games and EOS: display name or alias, plus an avatar where exposed.
+>
+> The first-sign-in confirmation step shows the imported name and picture for the user to adjust. The account page gains a Profile section: choose which linked provider's name or picture to use, or upload one. Explicit choices stick; untouched values refresh on sign-in. Avatars are copied into our blob storage (same-origin for the CSP, no provider tracking, stable URLs). Apps receive profile claims only when requested and shown on the consent screen. Account deletion removes the profile and the copied avatars.
+
 > **Owner decision (2026-10-04): confirm the email on first provider sign-in.** The first time a user signs in through a provider (Apple, Google, Steam, or a platform identity), a required interstitial asks them to confirm their email before they can continue, the way storefronts gate Terms acceptance. It is prefilled with the provider's email (including an Apple private-relay address). The user can keep it or switch to a real address, and verifies it with a one-time code. The verified address becomes the account's primary email. It then drives the email-bound claim rules, notices and account matching. Steam and other providers that return no email start with an empty field. The same step can carry Terms acceptance when a product requires it.
 
 > **Owner decision (2026-10-04): the legacy licence-key flow becomes a bounded on-ramp to accounts.**
