@@ -315,3 +315,69 @@ export function mkReq(
   if (body !== undefined) init.body = JSON.stringify(body);
   return new Request("https://key.plrs.im/x", init) as unknown as Request;
 }
+
+/**
+ * One deliverable's `dist_access` row, as an operator sets it under Distribution → Access
+ * (P4-05). Shared by the pack-transport suite and the `packs-chunk-range` transcript (P4-32).
+ */
+export async function setDeliverableAccess(
+  db: Db,
+  product: string,
+  deliverable: string,
+  mode: string,
+  entitlement: string | null = null,
+  now: number = NOW,
+): Promise<void> {
+  await db.run(
+    `INSERT INTO dist_access (product, deliverable_id, mode, entitlement, source, modified_at)
+     VALUES (?, ?, ?, ?, 'admin', ?)
+     ON CONFLICT (product, deliverable_id) DO UPDATE SET
+       mode = excluded.mode, entitlement = excluded.entitlement`,
+    product,
+    deliverable,
+    mode,
+    entitlement,
+    now,
+  );
+}
+
+/** What `stagePackObjects` seeds: anything with an R2Mock-style `seed`. */
+export interface StagingBucket {
+  seed(
+    key: string,
+    bytes: Uint8Array,
+    opts?: { withSha256?: boolean },
+  ): unknown;
+}
+
+/**
+ * Stage `objects` for pack `deliverable` the way CI does (P4-02): an upload ticket from
+ * `POST /<p>/release/publish/uploads`, the bytes put under the ticket's staging prefix, then a
+ * `POST /<p>/release/publish/stage` round, which promotes them and earns `pack-upload` refs.
+ * `post(path, body)` sends one authenticated CI call to `/release/publish/<path>`. Shared by
+ * the pack-transport suite and the `packs-chunk-range` transcript (P4-32).
+ */
+export async function stagePackObjects(
+  post: (path: string, body: unknown) => Promise<Response>,
+  bucket: StagingBucket,
+  deliverable: string,
+  objects: readonly { bytes: Uint8Array; sha256: string }[],
+  gated = false,
+): Promise<void> {
+  const unique = [...new Map(objects.map((o) => [o.sha256, o])).values()];
+  const up = await post("uploads", {
+    objects: unique.map((o) => ({
+      sha256: o.sha256,
+      size: o.bytes.length,
+      gated,
+    })),
+  });
+  if (up.status !== 200)
+    throw new Error(`stage: uploads ${up.status} ${await up.text()}`);
+  const body = (await up.json()) as { ticket: string; prefix: string };
+  for (const o of unique)
+    bucket.seed(`${body.prefix}${o.sha256}`, o.bytes, { withSha256: true });
+  const res = await post("stage", { ticket: body.ticket, deliverable });
+  if (res.status !== 200)
+    throw new Error(`stage: stage ${res.status} ${await res.text()}`);
+}
