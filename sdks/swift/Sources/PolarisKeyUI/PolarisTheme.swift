@@ -98,7 +98,7 @@ public struct PolarisTheme: Sendable {
     public var branding: PolarisBranding?
     /// An accent override for both colour schemes; nil keeps the branding's accent (the app's
     /// tint natively, the core violet under `.polarisKey`).
-    public var accent: Color?
+    public var accentOverride: Color?
     /// The text colour on an overridden accent; nil keeps the palette's `onAccent`.
     public var accentOn: Color?
     /// A palette per colour scheme; nil uses `PolarisPalette.standard(_:for:)` for the branding.
@@ -109,7 +109,7 @@ public struct PolarisTheme: Sendable {
     /// A product-supplied logo view builder (image, SF Symbol, anything); nil shows a neutral key
     /// glyph in the tint natively and the Pinned K (`PolarisMark`, no section bit) under
     /// `.polarisKey`.
-    public var logo: (@Sendable () -> AnyView)?
+    public var logoOverride: (@Sendable () -> AnyView)?
     /// The badge shown under the activation card, or nil (the default) for none.
     public var poweredBy: PolarisPoweredBy?
 
@@ -124,12 +124,12 @@ public struct PolarisTheme: Sendable {
         poweredBy: PolarisPoweredBy? = nil
     ) {
         self.branding = branding
-        self.accent = accent
+        self.accentOverride = accent
         self.accentOn = accentOn
         self.palette = palette
         self.typography = typography
         self.copy = copy
-        self.logo = logo
+        self.logoOverride = logo
         self.poweredBy = poweredBy
     }
 
@@ -146,7 +146,7 @@ public struct PolarisTheme: Sendable {
         var resolved =
             palette?(scheme)
             ?? PolarisPalette.standard(resolvedBranding(environment), for: scheme)
-        if let accent {
+        if let accent = accentOverride {
             resolved.accent = accent
             resolved.accentText = accent
         }
@@ -164,7 +164,23 @@ public struct PolarisTheme: Sendable {
     /// Whether the gate sets its own tint. Natively, with no colour override, it does not, so the
     /// host app's `.tint` / accent colour flows through untouched.
     public func setsTint(branding environment: PolarisBranding = .native) -> Bool {
-        resolvedBranding(environment) == .polarisKey || accent != nil || palette != nil
+        resolvedBranding(environment) == .polarisKey || accentOverride != nil || palette != nil
+    }
+
+    /// The accent as a non-optional colour, kept for source compatibility: the override, or the
+    /// app's accent colour.
+    @available(*, deprecated, renamed: "accentOverride")
+    public var accent: Color {
+        get { accentOverride ?? .accentColor }
+        set { accentOverride = newValue }
+    }
+
+    /// The logo builder as a non-optional closure, kept for source compatibility: the override,
+    /// or the neutral key glyph.
+    @available(*, deprecated, renamed: "logoOverride")
+    public var logo: @Sendable () -> AnyView {
+        get { logoOverride ?? { AnyView(Image(systemName: "key.fill").accessibilityHidden(true)) } }
+        set { logoOverride = newValue }
     }
 
     /// The pre-brand-system accent's name, kept for source compatibility. It answers the brand's

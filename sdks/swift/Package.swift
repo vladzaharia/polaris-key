@@ -161,7 +161,7 @@ let package = Package(
             dependencies: ["PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyConfig"],
             // The launch kit's Rubik (with its OFL), the bit-less Pinned K and the "Powered by"
             // badges, unchanged from packages/brand/kit (tools/sync-brand-assets.sh;
-            // BrandAssetTests checks the bytes).
+            // BrandThemeTests checks the bytes).
             resources: [.copy("Resources/Brand")],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),

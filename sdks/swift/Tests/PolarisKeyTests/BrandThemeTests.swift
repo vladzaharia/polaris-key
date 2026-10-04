@@ -13,6 +13,20 @@
     import XCTest
 
     final class BrandThemeTests: XCTestCase {
+        /// The pre-2026-10-04 non-optional `accent` and `logo` still compile (deprecated) and map
+        /// onto the optional overrides.
+        @available(*, deprecated)
+        func testDeprecatedAccentAndLogoMapOntoTheOverrides() {
+            var theme = PolarisTheme()
+            XCTAssertEqual(theme.accent, .accentColor)
+            _ = theme.logo()
+            theme.accent = .teal
+            XCTAssertEqual(theme.accentOverride, .teal)
+            XCTAssertEqual(PolarisTheme(accent: .orange).accent, .orange)
+            theme.logo = { AnyView(Text("L")) }
+            XCTAssertNotNil(theme.logoOverride)
+        }
+
         func testBrandPaletteIsTheGeneratedTokens() {
             let dark = PolarisPalette.brand(for: .dark)
             XCTAssertEqual(dark.page, PolarisBrand.Dark.surfacePage.color)

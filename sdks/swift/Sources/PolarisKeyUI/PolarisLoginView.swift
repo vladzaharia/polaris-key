@@ -308,7 +308,7 @@ struct PolarisGateSurface<Content: View>: View {
     /// The product's logo, else the branding's default: a neutral key glyph in the tint natively,
     /// the bit-less Pinned K under `.polarisKey`.
     @ViewBuilder private var logo: some View {
-        if let custom = theme.logo {
+        if let custom = theme.logoOverride {
             custom()
                 .accessibilityHidden(true)
         } else if branding == .polarisKey {

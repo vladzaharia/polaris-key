@@ -94,7 +94,7 @@ final class LoginCopyTests: XCTestCase {
     func testDefaultThemeIsNativeAndNeutral() {
         // Owner direction (2026-10-04): no Polaris Key branding unless the integrator opts in.
         let theme = PolarisTheme()
-        XCTAssertNil(theme.accent)
+        XCTAssertNil(theme.accentOverride)
         XCTAssertNil(theme.branding)
         XCTAssertEqual(theme.resolvedBranding(), .native)
         XCTAssertEqual(theme.resolvedPalette(for: .dark), PolarisPalette.native)
