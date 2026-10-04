@@ -1,16 +1,16 @@
 # P6-09 Kotlin SDK platform module: P5-06's :platform in the SDK structure, with Play Integrity
 
-| Field       | Value |
-| ----------- | ----- |
-| Phase       | P6: Commerce, ops, web |
-| Size | 1.5–2 engineer-weeks |
-| Depends on | [P6-06](P6-06-kotlin-core-runner.md), [P5-06](P5-06-kotlin-aar.md), [P6-02](P6-02-trust-tiers.md) |
-| Unblocks | [P6-05](P6-05-kotlin-sdk.md), [P6-10](P6-10-godot-android-binding-on-kotlin.md), [P6-12](P6-12-kotlin-android-glue.md) |
-| Role | `pkey-implementer` |
-| Plan mode   | no |
-| Gates       | `ci:android` (both flavours), `tools/check_flavours.sh`, the `:boundary` build, `maven-publish` dry run to `build/repo` |
+| Field       | Value                                                                                                                                      |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | P6: Commerce, ops, web                                                                                                                     |
+| Size        | 1.5–2 engineer-weeks                                                                                                                       |
+| Depends on  | [P6-06](P6-06-kotlin-core-runner.md), [P5-06](P5-06-kotlin-aar.md), [P6-02](P6-02-trust-tiers.md)                                          |
+| Unblocks    | [P6-05](P6-05-kotlin-sdk.md), [P6-10](P6-10-godot-android-binding-on-kotlin.md), [P6-12](P6-12-kotlin-android-glue.md)                     |
+| Role        | `pkey-implementer`                                                                                                                         |
+| Plan mode   | no                                                                                                                                         |
+| Gates       | `ci:android` (both flavours), `tools/check_flavours.sh`, the `:boundary` build, `maven-publish` dry run to `build/repo`                    |
 | Human input | test devices (Android 12+ and 14+) for the Integrity and install-source checks; the P5-06 owner checklist rows that this move could change |
-| Repo        | `vladzaharia/polaris-key` |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                  |
 
 Slice d of [P6-05](P6-05-kotlin-sdk.md).
 
