@@ -497,9 +497,7 @@ export interface ReleaseCatalog {
    * store notes default from them (Distribution's listing model). The notes are answered whatever
    * the metadata access mode: the only caller is the platform-admin console API.
    */
-  releaseNotes(
-    releaseId: string,
-  ): Promise<{
+  releaseNotes(releaseId: string): Promise<{
     releaseId: string;
     version: string;
     title: string | null;
