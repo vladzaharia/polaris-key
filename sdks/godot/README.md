@@ -1097,6 +1097,22 @@ its own. `zstd-patch-from` is advertised only on the engines in `PKeyPackZstd.PA
 (4.6, 4.7: `PACK_FILE_DELTA` arrived in 4.6) whose start-up probe decodes; on the 4.4 floor the
 planner never chooses a delta, and the corpus's decode cases are held to fail closed.
 
+**Feed-offered deltas** (P4-31; plans/P4-29.md §2.4). A signed channel feed may carry a delta
+menu (`deltas`: target payload SHA-256 → `payload` deltas), which `PKeyFeed.feed_content` reads
+under the same rules as client-core: at most 4 per target and 64 in all, both uniqueness rules
+counting dropped entries, an entry of another `scope` dropped alone, and a bad menu nulling only
+`deltas`. `PKeyPacks` hands the engine (`feed_deltas`) the menu of the feed the last update check
+or feed fetch committed, or before that the cached committed feed of the configured channel,
+fresh or stale. `PKeyPackSelect.with_feed_deltas` appends the entries for the selected container
+variant's payload after the record's own deltas (a record delta wins a shared id), so the
+planner weighs them like any delta. The engine tries at most one feed-offered delta per install.
+A 404 (a cold delta) or any verdict falls back to the next candidate, with a `fallback` progress
+event, and the output is always checked against the record's payload. The journal keeps the
+entry as `feedDelta`, so a resumed install plans it again even when the feed no longer lists it,
+and a journal whose delta neither the record nor its `feedDelta` names is abandoned and
+re-planned. A platform-bound pack never takes one: its plan is `platform`. Godot has no native
+payload port, so every feed delta goes through the engine's own decode.
+
 **Chunk sync** (P4-11; `PKeyPackChunks`, plans/P4-10.md §2.3, §2.5): `chunk` is in the engine's
 default strategies (`delta`, `chunk`, `file`, `full`). A container variant carrying a usable
 `pkey-chunks/1` index is rebuilt from **seeds**: this pack's installs, then every other pack's
@@ -1233,7 +1249,10 @@ install, update and rollback; resume; refusals; kaykit v1→v2 by the payload de
 delta, file and full, each committing CI's v2 at `store/<sha256>.pck`, mounted by the next boot);
 state (the hardened state); http (the real transport against PKeyFakeServer); boot (the stages
 and signal order); guard (two failed boots roll the set back, with and without the binary);
-revocations (`revocations.json`: two loads, torn, unreadable with and without the flag, the flag
+feed_deltas (P4-29's engine cases: a feed delta planned for a record that carries none, the
+fallback after a 404, an artifact mismatch, a wrong output and a changed base, the one-feed-delta
+rule, a record delta winning a tie, a source that answers no menu, resume with `feedDelta` and an
+unknown journal delta re-planned); revocations (`revocations.json`: two loads, torn, unreadable with and without the flag, the flag
 restored, the cap, `pack-revoked` with and without `relearn`, the update check's content steps,
 and the facet's `packs` answer through FETCH and BACKGROUND); delegation (strict UTF-8 vectors, the
 delegated surfaces, `pack-not-data-only` before fetch, while writing and on reuse, a delegation

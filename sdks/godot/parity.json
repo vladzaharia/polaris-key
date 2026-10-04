@@ -195,9 +195,8 @@
       "note": "P4-08: zstd --patch-from frames decoded by the ENGINE's own GDDL delta decoder (a PACK_FILE_DELTA helper pack over a private-namespace prefix: a trailer appended to the installed store pack and truncated back, or a copy host), after the window check; advertised (zstd-patch-from) only on the pinned engines PKeyPackZstd.PATCH_FROM_ENGINES (4.6, 4.7) whose start-up probe decodes. On the 4.4 floor the planner never chooses a delta and the corpus's decode cases fail closed (delta-apply-failed)."
     },
     "packs.delta.feed": {
-      "status": "planned",
-      "wp": "P4-31",
-      "note": "P4-31 ports the reader, the merge and the one-feed-delta rule, the native payload port path included (plans/P4-29.md §5 order 3)."
+      "status": "implemented",
+      "note": "P4-31: core/feed.gd feed_content reads the deltas menu (plans/P4-29.md §2.2: both caps and both uniqueness rules counting dropped entries, a forward scope dropped alone, integer claims through PKeyClaims.is_wire_integer); packs/select.gd with_feed_deltas; PKeyPackEngine.feed_deltas (PKeyPacks wires the menu of the feed the last update check committed, else the cached committed feed) tries at most one feed-offered delta per install, falls back after a 404 or any verdict, journals feedDelta and merges it again on resume, and re-plans a journal whose delta is unknown. Godot has no native payload port, so there is no native path. Every feedContentCases deltas check, feedDeltaCases and feedDeltaApplyCases vector on the editor and the release template."
     },
     "packs.state": {
       "status": "implemented",
