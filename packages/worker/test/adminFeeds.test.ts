@@ -607,6 +607,17 @@ describe("platform scope", () => {
       },
       { slug: OWNER, name: OWNER, system: false, packageFeeds: true },
     ]);
+    // The system product's feeds are reachable only from Platform, never as a product scope.
+    for (const path of ["", "/npm", "/npm/packages"])
+      expect(
+        (
+          await admin(
+            "GET",
+            `/products/${SYSTEM_PRODUCT_SLUG}/distribution/feeds${path}`,
+          )
+        ).status,
+        path,
+      ).toBe(404);
     // Every owner by default; `owner` narrows.
     const all = await (await admin("GET", platform("/npm/packages"))).json();
     expect(all.items.map((i: { owner: string }) => i.owner)).toEqual([

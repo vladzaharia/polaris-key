@@ -155,7 +155,10 @@ async function handleProductScoped(
   // Distribution (its sidebar section), but composed in the admin layer, because a yank writes
   // Release's package rows and the settings are Distribution's (`handlers/feeds.ts` explains).
   if (resource === "distribution" && rest[1] === "feeds") {
-    if (!(await getProduct(db, slug))) return notFound();
+    // The system product's feeds are the platform's: reachable only from Platform → Package feeds
+    // (`/manage/api/platform/feeds/…`), never as a product scope.
+    const owner = await getProduct(db, slug);
+    if (!owner || owner.system === 1) return notFound();
     return handleFeedsAdmin(
       req,
       env,

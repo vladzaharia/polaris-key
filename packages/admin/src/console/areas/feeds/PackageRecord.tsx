@@ -16,7 +16,11 @@ import type {
   FeedVersionVerb,
 } from "../../../api.js";
 import { errorCopy } from "../../../lib/errorCopy.js";
-import { formatBytes, fromSeconds } from "../../../lib/format.js";
+import {
+  formatBytes,
+  fromSeconds,
+  truncateMiddle,
+} from "../../../lib/format.js";
 import { Button } from "../../../ui/Button.js";
 import { CodeBlock } from "../../../ui/CodeBlock.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
@@ -274,7 +278,11 @@ function versionColumns(): DataColumn<FeedPackageVersion>[] {
       header: "Size",
       accessorFn: (v) => v.size,
       meta: { priority: 2, numeric: true, label: "Size" },
-      cell: ({ row }) => formatBytes(row.original.size),
+      cell: ({ row }) => (
+        <span className="whitespace-nowrap">
+          {formatBytes(row.original.size)}
+        </span>
+      ),
     },
     {
       id: "integrity",
@@ -308,7 +316,8 @@ function versionColumns(): DataColumn<FeedPackageVersion>[] {
   ];
 }
 
-/** Each file's digests, each copyable. */
+/** Each file's digests, one per line, middle-truncated (the full value in a tooltip), each
+ *  copyable; a digest never wraps inside the narrow column. */
 function Digests({
   version,
 }: {
@@ -319,7 +328,7 @@ function Digests({
       {version.files.map((f) => (
         <li key={f.name} className="text-xs">
           <span className="font-mono text-fg-muted">{f.name}</span>
-          <span className="flex flex-wrap gap-x-2">
+          <span className="flex flex-col">
             {(
               [
                 ["sha256", f.sha256],
@@ -330,9 +339,12 @@ function Digests({
             )
               .filter((d): d is [string, string] => Boolean(d[1]))
               .map(([alg, value]) => (
-                <span key={alg} className="inline-flex items-center gap-0.5">
-                  <span className="font-mono">
-                    {alg} {value.slice(0, 10)}…
+                <span
+                  key={alg}
+                  className="inline-flex items-center gap-0.5 whitespace-nowrap"
+                >
+                  <span className="font-mono" title={`${alg} ${value}`}>
+                    {alg} {truncateMiddle(value, 8, 6)}
                   </span>
                   <CopyButton
                     value={value}

@@ -23,7 +23,6 @@ import type {
   FeedEcosystem,
   FeedSettingsWrite,
 } from "../../../api.js";
-import { formatBytes } from "../../../lib/format.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import { Form, FormField, useAdminForm } from "../../../ui/form.js";
 import { Input } from "../../../ui/Input.js";
@@ -468,7 +467,9 @@ function LimitsSection({
       v.mib === null || v.mib <= 0
         ? { mib: "Enter a size above zero." }
         : mibToBytes(v.mib) > ceiling
-          ? { mib: `At most the platform's ceiling, ${formatBytes(ceiling)}.` }
+          ? {
+              mib: `At most the platform's ceiling, ${bytesToMiB(ceiling)} MiB.`,
+            }
           : {},
     onSubmit: async (v) => {
       await save({ maxPackageBytes: mibToBytes(v.mib!) });
@@ -493,7 +494,7 @@ function LimitsSection({
       >
         <SettingsRow
           label="Largest package"
-          help={`The platform's ceiling for this ecosystem is ${formatBytes(ceiling)}.`}
+          help={`The platform's ceiling for this ecosystem is ${bytesToMiB(ceiling)} MiB.`}
         >
           <FormField<number | null> name="mib" label="Size">
             {(field) => (
