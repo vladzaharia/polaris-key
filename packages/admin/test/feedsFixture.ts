@@ -157,13 +157,60 @@ const NAMESPACES: Record<
   },
 };
 
+/** The worker's feed adapters' declarations (`registry/<ecosystem>/index.ts`). */
+const BASE_CAPS = {
+  signing: false,
+  immutableVersions: true,
+  delete: false,
+  search: false,
+  authChallenge: "basic",
+} as const;
 const CAPS: Record<FeedEcosystem, FeedDetailDto["capabilities"]> = {
-  npm: { yank: false, deprecate: true, yankPolicy: false },
-  pypi: { yank: true, deprecate: false, yankPolicy: false },
-  swift: { yank: true, deprecate: false, yankPolicy: false },
-  maven: { yank: true, deprecate: false, yankPolicy: true },
-  oci: { yank: true, deprecate: false, yankPolicy: false },
-  godot: { yank: true, deprecate: false, yankPolicy: false },
+  npm: {
+    ...BASE_CAPS,
+    yank: false,
+    deprecate: true,
+    yankPolicy: false,
+    channels: "dist-tags",
+  },
+  pypi: {
+    ...BASE_CAPS,
+    yank: true,
+    deprecate: false,
+    yankPolicy: false,
+    channels: "none",
+  },
+  swift: {
+    ...BASE_CAPS,
+    yank: true,
+    deprecate: false,
+    yankPolicy: false,
+    channels: "latest",
+    signing: true,
+  },
+  maven: {
+    ...BASE_CAPS,
+    yank: true,
+    deprecate: false,
+    yankPolicy: true,
+    channels: "latest",
+  },
+  oci: {
+    ...BASE_CAPS,
+    yank: true,
+    deprecate: false,
+    yankPolicy: false,
+    channels: "tags",
+    authChallenge: "oci-bearer",
+  },
+  godot: {
+    ...BASE_CAPS,
+    yank: true,
+    deprecate: false,
+    yankPolicy: false,
+    channels: "tags",
+    search: true,
+  },
 };
 
 export function feedDetail(
