@@ -1,8 +1,8 @@
 /// <reference types="@cloudflare/workers-types" />
 import type { Env } from "./env.js";
 
-// Atomic fixed-window rate limiter. One Durable Object instance per product
-// (`RL.idFromName(product)`); the DO serializes requests and its storage input-gate makes
+// Atomic fixed-window rate limiter. One Durable Object instance per product, or per shard of
+// a sharded limiter (see SHARDING below); the DO serializes requests and its storage input-gate makes
 // the read→increment→write race-free. One stored key per (bucket, id) holds
 // `{window, count, expiresAt}`.
 //
@@ -15,13 +15,12 @@ import type { Env } from "./env.js";
 // a window is over, the stored counter can never be read again (the next request in a new
 // window starts from zero), so deleting it is always safe.
 //
-// SHARDING IS STILL A SINGLE GLOBAL OBJECT PER PRODUCT (R10-04a, unfixed here). Worse,
-// `_admin` and `_portal` are literal shard names, so interactive sign-in for the ENTIRE
-// platform — every tenant, every operator — serializes through exactly two Durable Objects.
-// That is a cross-tenant availability chokepoint and the most attractive DoS target in the
-// system, because reaching it needs no credentials. Fixing it means keying the shard as
-// `${product}:${bucket}:${hash(id) % N}`, which changes every call site (several outside this
-// lane) — tracked separately.
+// SHARDING (R10-04a). A product's limiter is one object per product (`RL.idFromName(product)`);
+// it is tenant-scoped already. The two platform-global names, `_admin` and `_portal`, used to
+// be literal object names too, so interactive sign-in for the ENTIRE platform serialised
+// through two objects. They are now split across `RL_SHARDS` objects each, chosen by a hash of
+// the counter's `(bucket, id)` (`rateLimitShard` in `core/rateLimit.ts`), as are the email
+// buckets in every limiter. One counter still lives in exactly one object, so limits stay exact.
 
 interface CheckRequest {
   bucket: string;
@@ -102,7 +101,9 @@ export class RateLimitDO implements DurableObject {
       const expiresAt = counter?.expiresAt;
       if (typeof expiresAt !== "number" || expiresAt <= nowSec) stale.push(key);
     }
-    if (stale.length > 0) await storage.delete(stale);
+    // The storage API deletes at most 128 keys per call.
+    for (let i = 0; i < stale.length; i += 128)
+      await storage.delete(stale.slice(i, i + 128));
 
     const remaining = entries.size - stale.length;
     // Re-arm while live counters remain, or while the batch cap may have left more behind.

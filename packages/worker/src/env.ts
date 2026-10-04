@@ -10,6 +10,12 @@ export interface Env {
   HOT: KVNamespace;
   RL: DurableObjectNamespace;
   /**
+   * The atomic single-use store (I-02, `src/singleUseDo.ts`): sign-in flow records, magic links,
+   * device codes, email codes. Reached only through `core/singleUse.ts`, which fails closed
+   * when it is unbound or unreachable.
+   */
+  SINGLE_USE: DurableObjectNamespace;
+  /**
    * Update-health counters (P6-03, `src/updateHealthDo.ts`): one object per (product,
    * deliverable, release), reached only through `core/updateHealth.ts`. OPTIONAL: unbound, the
    * report still stores its `updates` but counts nothing, and the funnel and auto-halt read no
