@@ -25,8 +25,8 @@ import { isSignedOut } from "./errors.js";
  *
  * - `["me"]` is the session: `null` when signed out (401), an error only when the Worker could
  *   not be reached, so "Can't reach Polaris Key" is never shown as "signed out".
- * - A 401 from any other request means the session ended mid-visit: the session is set to null
- *   (the login card takes over, keeping the URL as the way back) and `onSignedOut` runs.
+ * - A 401 from any other request re-checks the session; when it really ended mid-visit the
+ *   login card takes over and says so.
  * - No silent retries; a failed read shows its error and a Retry.
  */
 export const portalKeys = {
@@ -39,25 +39,21 @@ export const portalKeys = {
   releases: ["portal", "releases"] as const,
 };
 
-export function createPortalQueryClient(onSignedOut?: () => void): QueryClient {
+export function createPortalQueryClient(): QueryClient {
+  // A 401 from a read or a write MAY mean the session ended (or, for the claim, that a key is
+  // unknown): re-check the session instead of assuming. If it really ended, `["me"]` becomes
+  // null and the login card takes over, keeping the URL as the way back.
+  const recheck = (err: unknown): void => {
+    if (isSignedOut(err))
+      void client.invalidateQueries({ queryKey: portalKeys.me });
+  };
   const client: QueryClient = new QueryClient({
     queryCache: new QueryCache({
       onError: (err, query) => {
-        if (query.queryKey[1] === "me") return;
-        if (isSignedOut(err)) {
-          client.setQueryData(portalKeys.me, null);
-          onSignedOut?.();
-        }
+        if (query.queryKey[1] !== "me") recheck(err);
       },
     }),
-    mutationCache: new MutationCache({
-      onError: (err) => {
-        if (isSignedOut(err)) {
-          client.setQueryData(portalKeys.me, null);
-          onSignedOut?.();
-        }
-      },
-    }),
+    mutationCache: new MutationCache({ onError: recheck }),
     defaultOptions: {
       queries: {
         staleTime: 30_000,
@@ -68,6 +64,18 @@ export function createPortalQueryClient(onSignedOut?: () => void): QueryClient {
     },
   });
   return client;
+}
+
+/** Signing out on purpose (account deleted): no "You were signed out" toast. */
+let quietSignOut = false;
+export function signOutQuietly(client: QueryClient): void {
+  quietSignOut = true;
+  client.setQueryData(portalKeys.me, null);
+}
+export function consumeQuietSignOut(): boolean {
+  const q = quietSignOut;
+  quietSignOut = false;
+  return q;
 }
 
 async function fetchSession(): Promise<PortalMe | null> {

@@ -34,7 +34,7 @@ export function LibraryEmpty({ email }: { email: string }): React.ReactElement {
         <div>
           <Button
             size="lg"
-            className="h-12"
+            className="h-12 font-bold"
             iconStart={<KeyRound aria-hidden />}
             onClick={() => activate.open()}
           >

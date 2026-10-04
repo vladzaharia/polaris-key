@@ -141,18 +141,18 @@ export function ActivateDialog({
                 : "Download it, see your license and manage devices on its page. You won't need the key again."}
             </p>
           </DialogBody>
-          <DialogFooter className="border-0 sm:flex-col-reverse sm:justify-start sm:[&>*]:w-full">
+          <DialogFooter className="flex-col border-0 sm:flex-col sm:justify-start sm:[&>*]:w-full">
             <Button
               variant="outline"
               size="lg"
-              className="h-11"
+              className="h-11 font-bold"
               onClick={reset}
             >
               Activate another
             </Button>
             <Button
               size="lg"
-              className="h-11"
+              className="h-11 font-bold"
               iconEnd={<ArrowRight aria-hidden />}
               onClick={() => openProduct(done.slug)}
             >
@@ -212,11 +212,16 @@ export function ActivateDialog({
             />
           </DialogBody>
           <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              variant="outline"
+              className="font-bold"
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button
               type="submit"
+              className="font-bold"
               loading={claim.isPending}
               disabled={check.kind !== "valid"}
             >

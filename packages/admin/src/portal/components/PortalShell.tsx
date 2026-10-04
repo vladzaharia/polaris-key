@@ -39,7 +39,8 @@ export function PortalShell({
   children: React.ReactNode;
 }): React.ReactElement {
   const activate = useActivate();
-  const onLibrary = route.kind === "library";
+  // The product pages live inside the Library (§3.2): its tab stays current there.
+  const onLibrary = route.kind === "library" || route.kind === "product";
   const mainRef = React.useRef<HTMLElement>(null);
 
   return (
@@ -55,13 +56,14 @@ export function PortalShell({
         Skip to content
       </a>
       <header className="sticky top-0 z-30 border-b border-border bg-surface-page">
-        <div className="mx-auto flex h-14 w-full max-w-[90rem] items-center gap-4 px-4 desk:h-16 desk:gap-8 desk:px-8">
+        <div className="mx-auto flex h-14 w-full max-w-[82rem] items-center gap-4 px-4 desk:h-16 desk:gap-8 desk:px-8">
           <a
             href={href.library()}
             aria-label="Polaris Key: your library"
             className="flex shrink-0 items-center rounded-md"
           >
-            <Lockup height={30} />
+            <Lockup height={64} className="hidden desk:block" />
+            <Lockup height={52} className="desk:hidden" />
           </a>
           <nav
             aria-label="Main"
@@ -97,12 +99,12 @@ export function PortalShell({
         id="content"
         ref={mainRef}
         tabIndex={-1}
-        className="mx-auto w-full max-w-[90rem] flex-1 px-4 pb-28 pt-6 outline-none desk:px-8 desk:pb-16 desk:pt-10"
+        className="mx-auto w-full max-w-[82rem] flex-1 px-4 pb-28 pt-6 outline-none desk:px-8 desk:pb-16 desk:pt-10"
       >
         {children}
       </main>
       <footer className="border-t border-border pb-24 desk:pb-0">
-        <div className="mx-auto flex w-full max-w-[90rem] flex-wrap items-center justify-between gap-2 px-4 py-6 text-sm text-fg-muted desk:px-8">
+        <div className="mx-auto flex w-full max-w-[82rem] flex-wrap items-center justify-between gap-2 px-4 py-6 text-sm text-fg-muted desk:px-8">
           <span>Polaris Key · key.plrs.im</span>
         </div>
       </footer>
@@ -162,7 +164,7 @@ function NavLink({
       )}
     >
       {label}
-      {count != null ? (
+      {count ? (
         <span className="text-xs font-normal text-fg-muted">{count}</span>
       ) : null}
     </a>

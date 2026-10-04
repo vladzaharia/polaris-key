@@ -35,8 +35,9 @@ export function LoginCard({
   return (
     <div className="relative flex min-h-dvh flex-col bg-surface-page text-fg">
       <StarField />
-      <div className="relative z-10 flex h-14 items-center justify-center border-b border-border sm:h-auto sm:border-0 sm:pb-8 sm:pt-[12vh]">
-        <Lockup height={36} />
+      <div className="relative z-10 flex h-14 items-center justify-center border-b border-border sm:h-auto sm:border-0 sm:pb-4 sm:pt-[10vh]">
+        <Lockup height={64} className="hidden sm:block" />
+        <Lockup height={52} className="sm:hidden" />
       </div>
       <main className="relative z-10 flex flex-1 flex-col items-center sm:px-4">
         <div className="w-full overflow-hidden bg-surface-raised sm:max-w-[28.5rem] sm:rounded-xl sm:border sm:border-border sm:shadow-elevation-2">

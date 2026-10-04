@@ -127,7 +127,13 @@ function LicenseFacts({
         </div>
         <div>
           <dt className="text-xs text-fg-muted">Covers versions</dt>
-          <dd className="mt-0.5 font-mono text-fg-strong">
+          <dd
+            className={
+              detail.minVersion || detail.maxVersion
+                ? "mt-0.5 font-mono text-fg-strong"
+                : "mt-0.5 text-fg-strong"
+            }
+          >
             {coversVersions(detail)}
           </dd>
         </div>

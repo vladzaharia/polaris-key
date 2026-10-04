@@ -1,5 +1,5 @@
 import * as React from "react";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { ThemeProvider } from "../components/theme.js";
 import { Button } from "../ui/Button.js";
 import { Announcer } from "../ui/LiveRegion.js";
@@ -16,7 +16,12 @@ import { useLibrary } from "./library.js";
 import { SCALE_THRESHOLD } from "./model/libraryView.js";
 import { StarScreen } from "./components/States.js";
 import { announceSignedIn } from "./session.js";
-import { createPortalQueryClient, useLicenses, useSession } from "./data.js";
+import {
+  consumeQuietSignOut,
+  createPortalQueryClient,
+  useLicenses,
+  useSession,
+} from "./data.js";
 import { portalErrorCopy } from "./errors.js";
 import { AccountPage } from "./pages/AccountPage.js";
 import { DiscoverPage } from "./pages/DiscoverPage.js";
@@ -41,11 +46,7 @@ import {
 export function PortalApp(): React.ReactElement {
   const [client] = React.useState(() => {
     rewriteActivatePath();
-    return createPortalQueryClient(() =>
-      toast.info("You were signed out", {
-        description: "Sign in again to carry on where you were.",
-      }),
-    );
+    return createPortalQueryClient();
   });
   return (
     <ThemeProvider>
@@ -60,6 +61,26 @@ export function PortalApp(): React.ReactElement {
 
 function Boot(): React.ReactElement {
   const session = useSession();
+  const qc = useQueryClient();
+  const signedOut = session.data === null;
+  // Signed out mid-visit: say so (a toast) as the login card takes over (§4.28).
+  const wasSignedIn = React.useRef(false);
+  React.useEffect(() => {
+    if (session.data) wasSignedIn.current = true;
+    else if (session.data === null && wasSignedIn.current) {
+      wasSignedIn.current = false;
+      if (!consumeQuietSignOut())
+        toast.info("You were signed out", {
+          description: "Sign in again to carry on where you were.",
+        });
+    }
+  }, [session.data]);
+  // Signed out (or deleted): nothing of the last account stays in the cache.
+  React.useEffect(() => {
+    if (!signedOut) return;
+    for (const key of ["licenses", "license", "releases"])
+      qc.removeQueries({ queryKey: ["portal", key] });
+  }, [signedOut, qc]);
   if (session.isPending) {
     return <StarScreen title="Opening Polaris Key" busy />;
   }

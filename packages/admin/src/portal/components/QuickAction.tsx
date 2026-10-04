@@ -53,14 +53,17 @@ export function QuickActionButton({
         variant={variant}
         size={size}
         loading={start.isPending}
-        iconStart={<Download aria-hidden />}
+        iconStart={twoLine ? undefined : <Download aria-hidden />}
         onClick={onClick}
         aria-label={`${action.label}: ${product.name} ${action.detail}`}
         className={cn(twoLine && "h-auto flex-col gap-0 py-2", className)}
       >
         {twoLine ? (
           <>
-            <span className="text-base font-bold">{action.label}</span>
+            <span className="flex items-center gap-2 text-base font-bold">
+              <Download aria-hidden className="size-5" />
+              {action.label}
+            </span>
             <span className="text-xs font-normal opacity-90">
               {action.detail}
             </span>
