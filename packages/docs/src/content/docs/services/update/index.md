@@ -134,10 +134,10 @@ the four modes.
 
 ## The console
 
-Feed access and the compatibility window live together under **Update settings** in the
-console — four fields (metadata access, artifact access, and the min/max supported client
-version) that are read in the same breath because every one of them is intersected on the
-same eligibility decision. The compatibility window used to sit in the general product
+Metadata access, the compatibility window and the artifact policy live under **Update → Feed**
+in the console, beside the public feed endpoints; artifact access is Distribution's delivery
+access, shown there read-only and set in **Distribution → Access**. They are read in the same
+breath because every one of them is intersected on the same eligibility decision. The compatibility window used to sit in the general product
 settings form, beside the display name; it moved here because it means nothing on its own
 — it is only ever read together with the access modes it is intersected against. There is
 no per-field API for the rest of Update's behavior: the appcast's content, the channels it

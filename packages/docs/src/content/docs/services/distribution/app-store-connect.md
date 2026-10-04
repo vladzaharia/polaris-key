@@ -37,7 +37,7 @@ The connector runs for a product when all of these hold:
        bundleId: gg.acme.dice
    ```
 
-2. An **`asc-api-key` outlet credential** is stored on the Secrets tab: a **team** API key with
+2. An **`asc-api-key` outlet credential** is stored in Distribution → Outlet credentials: a **team** API key with
    the **App Manager** role (not Admin), as key id, issuer id and the `.p8` file, **pinned** to
    this product's app — its App Store Connect app id, the same digits as the `appleId` above (see
    [Pinning the app](#pinning-the-app)). See
@@ -73,7 +73,7 @@ another app the key can see.
 So the key carries a **pin** that only a platform admin sets: the app id it may be used for in
 this product. The connector runs only while the manifest's `appleId` equals the pin.
 
-- **Set it with the key.** The Secrets tab asks for the app id with the key. Over the API, send it
+- **Set it with the key.** Distribution → Outlet credentials asks for the app id with the key. Over the API, send it
   as `pin`:
 
   ```http

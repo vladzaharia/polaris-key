@@ -429,7 +429,7 @@ function PolicySection({
         }
       >
         <SettingsRow
-          label="Minimum macOS version"
+          label="macOS"
           help="Rendered as sparkle:minimumSystemVersion, such as 13.0. Leave empty for no minimum."
         >
           <FormField<string>
@@ -449,12 +449,12 @@ function PolicySection({
           </FormField>
         </SettingsRow>
         <SettingsRow
-          label="Require Sparkle signatures"
+          label="Signatures"
           help="The appcast lists a DMG only with a verified EdDSA signature. Turning this off lets an unsigned build reach every updater."
         >
           <FormField<boolean>
             name="requireSparkleSignature"
-            label="Require signatures"
+            label="Require Sparkle signatures"
             group
             disabled={locked}
           >

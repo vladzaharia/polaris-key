@@ -258,7 +258,7 @@ const CREDENTIAL = codecs.string("");
 function LastResult({ c }: { c: OutletCredentialInfo }): React.ReactElement {
   if (c.lastError)
     return (
-      <span className="flex flex-col gap-0.5">
+      <span className="flex flex-col items-start gap-0.5">
         <StatusPill tone="danger" size="sm">
           Failed
         </StatusPill>
@@ -269,7 +269,7 @@ function LastResult({ c }: { c: OutletCredentialInfo }): React.ReactElement {
     );
   if (c.lastOkAt !== null)
     return (
-      <span className="flex flex-col gap-0.5">
+      <span className="flex flex-col items-start gap-0.5">
         <StatusPill tone="success" size="sm">
           OK
         </StatusPill>

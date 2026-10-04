@@ -41,6 +41,7 @@ import {
   SettingsTemplate,
 } from "../../templates/Settings.js";
 import { QUERY, useAccess, useCatalog, useDeliverables } from "./data.js";
+import { serverFieldErrors, SubmitError } from "./forms.js";
 
 const MODES: ReleaseAccess[] = [
   "public",
@@ -159,6 +160,7 @@ function AppAccess({
   const [reverting, setReverting] = React.useState(false);
   const form = useAdminForm<{ mode: ReleaseAccess }>({
     values: { mode: access.app.mode },
+    mapServerErrors: serverFieldErrors,
     onSubmit: async (v) => {
       await mutate("saveDeliveryAccess", slug, { mode: v.mode });
       toast.success(`App access set to ${ACCESS_LABELS[v.mode] ?? v.mode}`);
@@ -178,7 +180,15 @@ function AppAccess({
             onRevert={admin ? () => setReverting(true) : undefined}
           />
         }
-        footer={<SaveBar form={form} section="App" />}
+        footer={
+          <>
+            <SubmitError
+              error={form.submitError}
+              context={{ area: "distribution" }}
+            />
+            <SaveBar form={form} section="App" />
+          </>
+        }
       >
         <SettingsRow
           label="Who may download"
@@ -239,6 +249,7 @@ function PackAccess({
       entitlement: row?.entitlement ?? "",
     },
     resetOn: [row?.modifiedAt ?? null, row?.mode ?? null, access.app.mode],
+    mapServerErrors: serverFieldErrors,
     validate: (v): Record<string, string> =>
       v.mode === "entitled" &&
       v.entitlement.trim() !== "" &&
@@ -284,7 +295,15 @@ function PackAccess({
           )
         }
         source={row ? <SourceBadge source="admin" /> : undefined}
-        footer={<SaveBar form={form} section={id} />}
+        footer={
+          <>
+            <SubmitError
+              error={form.submitError}
+              context={{ area: "distribution" }}
+            />
+            <SaveBar form={form} section={id} />
+          </>
+        }
       >
         <SettingsRow
           label="Who may download"

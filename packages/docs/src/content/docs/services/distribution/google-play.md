@@ -48,7 +48,7 @@ The connector runs for a product when all of these hold:
    track your map does not name (as **unmapped**) without writing anything for it. A Play outlet
    naming another package is ignored; the connector serves one app per product.
 
-2. A **`google-service-account` outlet credential** is stored on the Secrets tab — the service
+2. A **`google-service-account` outlet credential** is stored in Distribution → Outlet credentials — the service
    account's JSON key file — **pinned** to this product's app: the same package name as the
    `packageName` above (see [Pinning the app](#pinning-the-app)). See
    [Outlet credentials](/docs/admin/secrets-and-keys/#outlet-credentials). A credential bound to
@@ -90,7 +90,7 @@ So the credential carries a **pin** that only a platform admin sets: the package
 used for in this product. The connector runs only while the manifest's `packageName` equals the
 pin.
 
-- **Set it with the key.** The Secrets tab asks for the package name with the key file. Over the
+- **Set it with the key.** Distribution → Outlet credentials asks for the package name with the key file. Over the
   API, send it as `pin`:
 
   ```http

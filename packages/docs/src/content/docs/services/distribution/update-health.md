@@ -85,10 +85,13 @@ per-device records (the event ids it counted) of a device idle for 30 days, are 
 
 ## The funnel
 
-The Distribution section's **Update health** tab shows, for every rollout, the funnel offered →
-downloaded → applied → confirmed / reverted, plus pack failures and boot rollbacks, in distinct
-devices over the last week (the number's tooltip is the event count), and the revert and boot
-rollback rates. The admin API behind it is narrative-only:
+**Distribution → Health** in the console shows, for every rollout, the funnel offered →
+downloaded → applied → confirmed with each step's conversion, then reverted, pack failed and boot
+rollback as separate bars, in distinct devices, and the revert and boot rollback rates. **Show as
+table** on each funnel gives the numbers. The window is 1, 6, 24 (the default) or 72 hours, up to
+what the deployment allows, and is part of the page's URL (`?window=6`). The page also shows the
+auto-halt's last reading, its settings, the rollouts it halted and the store rollouts it alerted
+on, and the Sentry candidates, open and decided. The admin API behind it is narrative-only:
 
 ```
 GET  /manage/api/products/<slug>/distribution/update-health[?windowHours=N]   # N ≤ 720
@@ -114,12 +117,12 @@ Distribution looks at each `active` rollout of the product:
   and CI, with `source: auto-halt`. One `distribution.rollout.halt` audit row (actor
   `system:auto-halt`) names the rate, the counts and the window.
 - A **store** rollout (mirrored from App Store Connect or Google Play) is never halted here;
-  halting it is a store control. The auto-halt raises an alert on the tab instead (and one
+  halting it is a store control. The auto-halt raises an alert on the Health page instead (and one
   `distribution.auto_halt.alert` audit row), and you halt it with the connector.
 - A rollout trips **once** per release, outlet and channel. If you resume it, the auto-halt does
   not halt it again. It never resumes, ramps, completes or starts anything: it can only halt.
-- If the counters cannot be read, or a read is incomplete, nothing is judged (the tab's last
-  reading says why). A halt that races a change to the rollout is retried on the next tick.
+- If the counters cannot be read, or a read is incomplete, nothing is judged (the Health page's
+  last reading says why). A halt that races a change to the rollout is retried on the next tick.
 
 :::caution[Open registration]
 The auto-halt counts distinct devices, so one device moves a rate by at most one. But under open
@@ -130,8 +133,10 @@ open-registration product, raise `minSample` well above what anyone would bother
 leave the auto-halt off. Either way it is a safety net, not a guarantee: watch the funnel.
 :::
 
-The settings are yours alone: they are saved only from the tab (a platform-admin session, audited
-as `distribution.auto_halt.settings`). No `.pkey/` manifest, resync or CI token can change them,
+The settings are yours alone: they are saved only from the Health page (a platform-admin session,
+audited as `distribution.auto_halt.settings`). Rates are entered as percentages (5 % is `0.05`),
+each strictly between 0 and 100 %, and **Reset to defaults** fills in the defaults above for you
+to save. No `.pkey/` manifest, resync or CI token can change them,
 so a push to the product's repository can never switch on an automatic halt.
 
 What a halt does to devices is what any halt does: see
@@ -140,14 +145,16 @@ What a halt does to devices is what any halt does: see
 ## Sentry alerts
 
 A Sentry alert can open a **halt candidate**. A candidate halts nothing: you confirm it (which
-halts the rollout, audited as you) or dismiss it, on the tab.
+halts the rollout, audited as you) or dismiss it, on the Health page. Confirming is marked as the
+stronger action: it halts the rollout at once.
 
 To connect a Sentry organisation:
 
 1. In Sentry, create an **internal integration** with the **Alert Rule Action** and webhooks
    enabled, and set its webhook URL to `https://key.plrs.im/<product>/distribution/hooks/sentry`.
-2. Store its **client secret** as an outlet credential of kind `sentry-integration` (Platform →
-   Secrets → Outlet credentials). Without one, the hook answers not-found.
+2. Store its **client secret** as an outlet credential of kind `sentry-integration`
+   (**Distribution → Outlet credentials**; the Health page links there while Sentry is not
+   connected). Without one, the hook answers not-found.
 3. Add the integration as an action on an issue alert rule.
 
 Sentry signs each delivery with the client secret (`Sentry-Hook-Signature`, hex HMAC-SHA256 of the

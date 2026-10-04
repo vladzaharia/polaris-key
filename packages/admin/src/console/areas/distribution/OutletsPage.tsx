@@ -219,7 +219,7 @@ export function OutletsPage({ slug }: { slug: string }): React.ReactElement {
       accessorFn: (o) => capabilitySummary(o),
       meta: { priority: 2 },
       cell: ({ row }) => (
-        <span className="flex flex-col gap-1">
+        <span className="flex flex-col items-start gap-1">
           <span className="text-xs text-fg">
             {capabilitySummary(row.original)}
           </span>
@@ -712,7 +712,7 @@ function KeysSection({
       accessorKey: "purpose",
       meta: { priority: 1, csv: (k) => purposeLabel(k.purpose) },
       cell: ({ row }) => (
-        <span className="flex flex-col gap-1">
+        <span className="flex flex-col items-start gap-1">
           <span>{purposeLabel(row.original.purpose)}</span>
           {row.original.flagged ? (
             <StatusPill tone="warning" size="sm">

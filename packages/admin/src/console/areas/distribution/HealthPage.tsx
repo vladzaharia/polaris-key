@@ -54,8 +54,15 @@ import {
   Panel,
   type AttentionItem,
 } from "../../templates/Dashboard.js";
-import { HEALTH_WINDOWS, QUERY, updatedAt, useHealth } from "./data.js";
+import {
+  HEALTH_WINDOWS,
+  QUERY,
+  updatedAt,
+  useHealth,
+  useReleaseStore,
+} from "./data.js";
 import { rolloutSummary } from "./format.js";
+import { serverFieldErrors, SubmitError } from "./forms.js";
 
 type HealthRollout = UpdateHealthResponse["rollouts"][number];
 
@@ -69,7 +76,16 @@ function rate(v: number | null | undefined): string {
 export function HealthPage({ slug }: { slug: string }): React.ReactElement {
   const [windowHours, setWindow] = useSearchParam("window", QUERY.window);
   const health = useHealth(slug, windowHours);
+  const store = useReleaseStore(slug);
   const data = health.data;
+  // UHL-6: versions, not raw release ids.
+  const versions = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of store.data?.releases ?? []) m.set(r.releaseId, r.version);
+    return m;
+  }, [store.data]);
+  const v = (id: string | null | undefined): string =>
+    id ? (versions.get(id) ?? id) : "a release";
   const maxWindow = data?.autoHalt.maxWindowHours ?? 72;
   const windows = HEALTH_WINDOWS.filter((w) => w <= maxWindow);
 
@@ -89,7 +105,7 @@ export function HealthPage({ slug }: { slug: string }): React.ReactElement {
           kind="rollout"
           release={c.releaseId ?? ""}
           outlet={c.outletId ?? ""}
-          label={`${c.releaseId ?? "A release"} on ${c.outletId ?? "an outlet"}`}
+          label={`${v(c.releaseId)} on ${c.outletId ?? "an outlet"}`}
         />
       ),
       reason: `Sentry alert${c.detail.rule ? ` “${String(c.detail.rule)}”` : ""} opened a halt candidate.`,
@@ -164,7 +180,7 @@ export function HealthPage({ slug }: { slug: string }): React.ReactElement {
             <StatTile label="Rollouts watched" loading />
             <StatTile label="Halted by auto-halt" loading />
             <StatTile label="Open Sentry candidates" loading />
-            <StatTile label="Auto-halt" loading />
+            <StatTile label="Auto-halt status" loading />
           </>
         ) : data ? (
           <>
@@ -185,7 +201,7 @@ export function HealthPage({ slug }: { slug: string }): React.ReactElement {
               }
             />
             <StatTile
-              label="Auto-halt"
+              label="Auto-halt status"
               value={data.autoHalt.settings.enabled ? "On" : "Off"}
             />
           </>
@@ -230,6 +246,7 @@ export function HealthPage({ slug }: { slug: string }): React.ReactElement {
                   key={rolloutKey(h)}
                   slug={slug}
                   h={h}
+                  version={v(h.rollout.releaseId)}
                   windowHours={data.windowHours}
                 />
               ))}
@@ -240,7 +257,7 @@ export function HealthPage({ slug }: { slug: string }): React.ReactElement {
                   {data.unknown
                     .map(
                       (u) =>
-                        `${u.releaseId}: ${formatCount(u.devices.update_applied)} applied, ${formatCount(u.devices.update_reverted)} reverted`,
+                        `${v(u.releaseId)}: ${formatCount(u.devices.update_applied)} applied, ${formatCount(u.devices.update_reverted)} reverted`,
                     )
                     .join("; ")}
                   .
@@ -254,14 +271,14 @@ export function HealthPage({ slug }: { slug: string }): React.ReactElement {
         data ? (
           <div className="space-y-6">
             <AutoHaltPanel slug={slug} data={data} />
-            <TripsPanel data={data} />
+            <TripsPanel data={data} version={v} />
           </div>
         ) : health.isPending ? (
           <Skeleton className="h-64 w-full" />
         ) : undefined
       }
     >
-      {data ? <SentryPanel slug={slug} data={data} /> : null}
+      {data ? <SentryPanel slug={slug} data={data} version={v} /> : null}
     </DashboardTemplate>
   );
 }
@@ -273,22 +290,29 @@ function rolloutKey(h: HealthRollout): string {
 function RolloutFunnel({
   slug,
   h,
+  version,
   windowHours,
 }: {
   slug: string;
   h: HealthRollout;
+  version: string;
   windowHours: number;
 }): React.ReactElement {
   const d = h.devices;
   const ro = h.rollout;
   return (
     <section
-      aria-label={`${ro.releaseId} on ${ro.outletId} / ${ro.channel}`}
+      aria-label={`${version} on ${ro.outletId} / ${ro.channel}`}
       className="space-y-2 border-b border-border pb-5 last:border-b-0 last:pb-0"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="flex flex-wrap items-center gap-2 text-sm">
-          <EntityLink slug={slug} kind="release" id={ro.releaseId} />
+          <EntityLink
+            slug={slug}
+            kind="release"
+            id={ro.releaseId}
+            label={<span className="font-mono text-xs">{version}</span>}
+          />
           <span className="text-fg-muted">
             on{" "}
             <EntityLink
@@ -306,7 +330,7 @@ function RolloutFunnel({
       </div>
       {d ? (
         <Funnel
-          label={`${ro.releaseId} on ${ro.outletId} / ${ro.channel}, last ${windowHours} h`}
+          label={`${version} on ${ro.outletId} / ${ro.channel}, last ${windowHours} h`}
           steps={[
             { label: "Offered", value: d.update_offered },
             { label: "Downloaded", value: d.update_downloaded },
@@ -356,6 +380,7 @@ function AutoHaltPanel({
   const s = data.autoHalt.settings;
   const max = data.autoHalt.maxWindowHours;
   const form = useAdminForm<AutoHaltDraft>({
+    mapServerErrors: serverFieldErrors,
     values: {
       enabled: s.enabled,
       windowHours: s.windowHours,
@@ -423,7 +448,7 @@ function AutoHaltPanel({
           {s.updatedBy ? ` Saved by ${s.updatedBy}.` : ""}
         </p>
         <Form form={form} aria-label="Auto-halt settings" className="space-y-3">
-          <FormField<boolean> name="enabled" label="Auto-halt" group>
+          <FormField<boolean> name="enabled" label="Auto-halt status" group>
             {(field) => (
               <Switch
                 checked={field.value}
@@ -468,6 +493,10 @@ function AutoHaltPanel({
           <Button size="sm" variant="ghost" onClick={resetToDefaults}>
             Reset to defaults
           </Button>
+          <SubmitError
+            error={form.submitError}
+            context={{ area: "distribution" }}
+          />
           <SaveBar form={form} section="Auto-halt" />
         </Form>
       </div>
@@ -477,8 +506,10 @@ function AutoHaltPanel({
 
 function TripsPanel({
   data,
+  version,
 }: {
   data: UpdateHealthResponse;
+  version: (id: string | null | undefined) => string;
 }): React.ReactElement {
   const items = [
     ...data.autoHalt.trips.map((t) => ({ kind: "trip" as const, o: t })),
@@ -507,7 +538,7 @@ function TripsPanel({
                   {i.kind === "trip" ? "Halted" : "Store alert"}
                 </StatusPill>
                 <span className="font-mono text-xs">
-                  {i.o.releaseId ?? "—"}
+                  {i.o.releaseId ? version(i.o.releaseId) : "—"}
                 </span>
                 <span className="text-xs text-fg-muted">
                   {i.o.outletId ?? ""}
@@ -529,9 +560,11 @@ function TripsPanel({
 function SentryPanel({
   slug,
   data,
+  version,
 }: {
   slug: string;
   data: UpdateHealthResponse;
+  version: (id: string | null | undefined) => string;
 }): React.ReactElement {
   const [tab, setTab] = React.useState("open");
   const [pending, setPending] = React.useState<{
@@ -541,7 +574,7 @@ function SentryPanel({
   const open = data.sentry.candidates.filter((c) => c.state === "open");
   const decided = data.sentry.candidates.filter((c) => c.state !== "open");
   const where = (c: UpdateHealthObject) =>
-    `${c.releaseId ?? "the release"} on ${c.outletId ?? "the outlet"}${c.ref.channel ? ` / ${String(c.ref.channel)}` : ""}`;
+    `${c.releaseId ? version(c.releaseId) : "the release"} on ${c.outletId ?? "the outlet"}${c.ref.channel ? ` / ${String(c.ref.channel)}` : ""}`;
 
   const row = (c: UpdateHealthObject, actions: boolean) => (
     <li
