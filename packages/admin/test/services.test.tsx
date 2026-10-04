@@ -153,6 +153,51 @@ describe("Core → Services", () => {
     await waitFor(() => expect(services.mock.calls.length).toBeGreaterThan(1));
   });
 
+  it("sends only the services it knows about, leaving an unrecognised slug untouched", async () => {
+    // A Worker one release ahead of this console runs a seventh service the page has never heard
+    // of. The PATCH body is keyed on the services the page draws, so the unknown slug is omitted
+    // and the server keeps its value: an older console cannot switch off a service it cannot show.
+    const user = userEvent.setup();
+    services.mockResolvedValue(
+      state({
+        services: {
+          ...state().services,
+          analytics: { enabled: true },
+        } as ServicesResponse["services"],
+      }),
+    );
+    updateServices.mockResolvedValue(state());
+    mount();
+    await screen.findByRole("switch", { name: /Config/ });
+    expect(screen.queryByRole("switch", { name: /analytics/i })).toBeNull();
+    await user.click(sw("Config"));
+    // The set is validated as a whole server-side: nothing is sent until Save.
+    expect(updateServices).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Save services" }));
+    await waitFor(() => expect(updateServices).toHaveBeenCalledTimes(1));
+    const [slug, body] = updateServices.mock.calls[0]!;
+    expect(slug).toBe("djdl");
+    expect(Object.keys(body.services ?? {}).sort()).toEqual([
+      "config",
+      "distribution",
+      "identity",
+      "license",
+      "release",
+      "update",
+    ]);
+    // Exactly one flag moved; every other known slug is echoed at the value the GET reported.
+    expect(body.services).toEqual({
+      license: { enabled: true },
+      config: { enabled: true },
+      release: { enabled: true },
+      distribution: { enabled: true },
+      update: { enabled: true },
+      identity: { enabled: true },
+    });
+    // An undeclared policy stays undeclared: a save must not freeze the derivation.
+    expect(body.registration).toBeNull();
+  });
+
   it("asks before turning a service off (L1), and a cancel saves nothing (SVC-2)", async () => {
     const user = userEvent.setup();
     updateServices.mockResolvedValue(state());
