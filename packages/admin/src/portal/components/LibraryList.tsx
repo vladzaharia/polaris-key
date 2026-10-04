@@ -68,6 +68,7 @@ export function LibraryList({
                   slug={p.slug}
                   name={p.name}
                   tint={p.presentation.tint}
+                  src={p.presentation.iconUrl}
                   size={48}
                 />
               </td>
@@ -94,7 +95,11 @@ export function LibraryList({
                 {p.latestVersion ?? "–"}
               </td>
               <td className="hidden px-2 py-3 text-sm text-fg wide:table-cell">
-                {p.status.kind === "signedInApp" ? "Any device" : p.deviceCount}
+                {p.status.kind === "signedInApp"
+                  ? "Any device"
+                  : p.seats
+                    ? `${p.seats.inUse} of ${p.seats.limit}`
+                    : p.deviceCount}
               </td>
               <td className="relative hidden px-2 py-3 text-right desk:table-cell">
                 <QuickActionButton

@@ -12,6 +12,8 @@ import {
   PortalApiError,
   setPortalCsrf,
   type PortalCapabilities,
+  type PortalDownloads,
+  type PortalLibraryItem,
   type PortalLicenseDetail,
   type PortalLicenseSummary,
   type PortalMe,
@@ -39,6 +41,9 @@ const qk = {
   portalLicense: (product: string, id: string) =>
     ["portal", "license", product, id] as const,
   portalReleases: () => ["portal", "releases"] as const,
+  portalLibrary: () => ["portal", "library"] as const,
+  portalDownloads: (product: string) =>
+    ["portal", "downloads", product] as const,
 };
 
 export const portalKeys = {
@@ -47,6 +52,8 @@ export const portalKeys = {
   licenses: qk.portalLicenses(),
   license: qk.portalLicense,
   releases: qk.portalReleases(),
+  library: qk.portalLibrary(),
+  downloads: qk.portalDownloads,
 };
 
 export function createPortalQueryClient(): QueryClient {
@@ -160,6 +167,57 @@ export function useReleases(enabled: boolean): UseQueryResult<PortalRelease[]> {
   });
 }
 
+/**
+ * The server-side library (PX-W1, `GET /api/library`): presentation (G1), seats (G5) and support
+ * links (G16) per product. Extra detail over the licence list: a Worker without the route (404)
+ * or a failed read leaves the client-side fallbacks in place instead of failing the Library.
+ */
+export function useLibraryItems(
+  enabled = true,
+): UseQueryResult<PortalLibraryItem[] | null> {
+  return useQuery({
+    queryKey: qk.portalLibrary(),
+    queryFn: async () => {
+      try {
+        return (await portalApi.library()).products;
+      } catch (err) {
+        if (err instanceof PortalApiError && err.status === 404) return null;
+        throw err;
+      }
+    },
+    enabled,
+  });
+}
+
+/**
+ * One product's downloads and store links (PX-W2, `GET /api/products/<p>/downloads`), or `null`
+ * when this Worker has no such route (404): Get it then falls back to `GET /api/releases`.
+ */
+export function useProductDownloads(
+  product: string,
+  enabled: boolean,
+): UseQueryResult<PortalDownloads | null> {
+  return useQuery({
+    queryKey: qk.portalDownloads(product),
+    queryFn: async () => {
+      try {
+        return await portalApi.downloads(product);
+      } catch (err) {
+        if (err instanceof PortalApiError && err.status === 404) return null;
+        throw err;
+      }
+    },
+    enabled,
+  });
+}
+
+/** The activate preview (PX-W5, G22): what adding a key would do, before it is added. */
+export function usePreviewKey() {
+  return useMutation({
+    mutationFn: (key: string) => portalApi.previewKey(key),
+  });
+}
+
 export function useClaimKey() {
   const qc = useQueryClient();
   return useMutation({
@@ -167,6 +225,7 @@ export function useClaimKey() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: portalKeys.licenses });
       void qc.invalidateQueries({ queryKey: portalKeys.releases });
+      void qc.invalidateQueries({ queryKey: portalKeys.library });
     },
   });
 }
@@ -181,6 +240,7 @@ export function useRemoveDevice(product: string, licenseId: string) {
         queryKey: portalKeys.license(product, licenseId),
       });
       void qc.invalidateQueries({ queryKey: portalKeys.licenses });
+      void qc.invalidateQueries({ queryKey: portalKeys.library });
     },
   });
 }

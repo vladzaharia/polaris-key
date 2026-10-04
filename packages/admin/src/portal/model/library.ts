@@ -1,5 +1,6 @@
 import type {
   PortalArtifact,
+  PortalLibraryItem,
   PortalLicenseSummary,
   PortalRelease,
 } from "../api.js";
@@ -9,10 +10,12 @@ import { PLATFORM_ORDER, type PlatformKey } from "../components/Glyphs.js";
  * The Library's model on today's API (PORTAL.md §5.3, §5.4, PX-02): licenses grouped into one
  * product each, the product's one status from its best license, and the one next action.
  *
- * Everything here is computed client-side from `GET /api/licenses` and `GET /api/releases`
- * until `GET /api/library` (G1, G5, PX-W1) returns it server-side. Facts today's API does not
- * carry are never guessed: no seat limit ("2 devices", not "of 3"), no developer name, no
- * Steam-key or device-limit states.
+ * Products are grouped client-side from `GET /api/licenses` and `GET /api/releases`; the
+ * server-side library (`GET /api/library`, PX-W1) adds what only the Worker knows: presentation
+ * and same-origin art (G1), the seat limit activation enforces (G5) and support links (G16).
+ * Without it (an older Worker, a failed read) those facts are never guessed: no seat limit
+ * ("2 devices", not "of 3"), no developer name, no device-limit state. Steam-key states wait
+ * for G8.
  */
 
 export type StatusKind =
@@ -38,13 +41,22 @@ export interface ProductStatus {
   attention: boolean;
 }
 
-/** The presentation fields a product may carry (G1/G16 names); all optional today. */
+/** The presentation fields a product may carry (G1/G16 names); each may be absent. */
 export interface Presentation {
   developer: string | null;
   tint: string | null;
   website: string | null;
   supportUrl: string | null;
   supportEmail: string | null;
+  /** Same-origin `/media/…` art (PX-W1's proxy), or null for the letter-on-tint fallback. */
+  iconUrl: string | null;
+  headerUrl: string | null;
+}
+
+/** The best licence's seats as activation counts them (G5); null when the Worker didn't say. */
+export interface Seats {
+  limit: number;
+  inUse: number;
 }
 
 export interface LibraryProduct {
@@ -57,8 +69,10 @@ export interface LibraryProduct {
   status: ProductStatus;
   /** When the product joined the library: its newest license's activation. */
   addedAt: number;
-  /** Devices on the best license (no limit until G5). */
+  /** Devices using a seat on the best license. */
   deviceCount: number;
+  /** The seat limit and use (G5), when the server-side library sent them. */
+  seats: Seats | null;
   /** This product's releases, newest first. */
   releases: PortalRelease[];
   latestVersion: string | null;
@@ -100,6 +114,29 @@ export function readPresentation(branding: unknown): Presentation {
     website: https(b.website),
     supportUrl: https(b.supportUrl),
     supportEmail: str(b.supportEmail),
+    iconUrl: null,
+    headerUrl: null,
+  };
+}
+
+/** Same-origin only: the proxy's `/media/…` paths, never a developer host (CSP, §G1). */
+function mediaUrl(v: string | null | undefined): string | null {
+  return typeof v === "string" && v.startsWith("/media/") ? v : null;
+}
+
+/** The server-side library's presentation (PX-W1), validated like the branding fallback. */
+export function presentationFrom(item: PortalLibraryItem): Presentation {
+  const base = readPresentation({
+    developerName: item.developerName,
+    tintColor: item.tintColor,
+    website: item.website,
+    supportUrl: item.support?.url,
+    supportEmail: item.support?.email,
+  });
+  return {
+    ...base,
+    iconUrl: mediaUrl(item.iconUrl),
+    headerUrl: mediaUrl(item.headerUrl),
   };
 }
 
@@ -118,7 +155,10 @@ export function formatDay(epochSeconds: number, withYear = true): string {
   }).format(new Date(epochSeconds * 1000));
 }
 
-export function devicesText(n: number): string {
+/** "2 devices", or "2 of 3 devices" when the seat limit is known (G5). */
+export function devicesText(n: number, limit?: number | null): string {
+  if (limit != null && limit > 0)
+    return `${n} of ${limit} ${limit === 1 ? "device" : "devices"}`;
   return `${n} ${n === 1 ? "device" : "devices"}`;
 }
 
@@ -126,6 +166,8 @@ export function devicesText(n: number): string {
 export function licenseStatus(
   l: PortalLicenseSummary,
   now: number,
+  /** The seats the Worker counted (G5); without them the device limit is never guessed. */
+  seats?: Seats | null,
 ): ProductStatus {
   const tier = tierLabel(l.tier);
   if (l.status !== "active") {
@@ -143,6 +185,17 @@ export function licenseStatus(
       label: "Expired",
       tone: "danger",
       note: `Ended ${formatDay(l.expiresAt)}`,
+      attention: true,
+    };
+  }
+  if (seats && seats.limit > 0 && seats.inUse >= seats.limit) {
+    return {
+      kind: "deviceLimit",
+      label: "Device limit reached",
+      tone: "warning",
+      note: [tier, `${devicesText(seats.inUse, seats.limit)} in use`]
+        .filter(Boolean)
+        .join(" · "),
       attention: true,
     };
   }
@@ -172,7 +225,13 @@ export function licenseStatus(
     kind: "active",
     label: "Active",
     tone: "success",
-    note: [tier, until, devicesText(l.deviceCount)].filter(Boolean).join(" · "),
+    note: [
+      tier,
+      until,
+      devicesText(seats ? seats.inUse : l.deviceCount, seats?.limit),
+    ]
+      .filter(Boolean)
+      .join(" · "),
     attention: false,
   };
 }
@@ -200,11 +259,15 @@ export function normalisePlatform(p: string | null): PlatformKey | null {
     : null;
 }
 
-/** Group licenses into products; releases attach by product slug. */
+/**
+ * Group licenses into products; releases attach by product slug, and the server-side library
+ * item (PX-W1), when there is one, supplies presentation and the best licence's seats.
+ */
 export function buildLibrary(
   licenses: readonly PortalLicenseSummary[],
   releases: readonly PortalRelease[],
   now: number,
+  items?: readonly PortalLibraryItem[] | null,
 ): LibraryProduct[] {
   const bySlug = new Map<string, PortalLicenseSummary[]>();
   for (const l of licenses) {
@@ -224,15 +287,27 @@ export function buildLibrary(
         const p = normalisePlatform(a.platform);
         if (p) platforms.add(p);
       }
+    const item = items?.find((i) => i.product === slug);
+    // Seats describe one licence: only trusted when the server picked the same best one.
+    const seats: Seats | null =
+      item && item.license.id === best.id && item.license.deviceLimit > 0
+        ? {
+            limit: item.license.deviceLimit,
+            inUse: item.license.activeSeatCount,
+          }
+        : null;
     out.push({
       slug,
-      name: best.productName || slug,
-      presentation: readPresentation(best.productBranding),
+      name: item?.name || best.productName || slug,
+      presentation: item
+        ? presentationFrom(item)
+        : readPresentation(best.productBranding),
       licenses: list,
       best,
-      status: licenseStatus(best, now),
+      status: licenseStatus(best, now, seats),
       addedAt: Math.max(...list.map((l) => l.activatedAt)),
-      deviceCount: best.deviceCount,
+      deviceCount: seats ? seats.inUse : best.deviceCount,
+      seats,
       releases: own,
       latestVersion: own[0]?.version ?? null,
       platforms: PLATFORM_ORDER.filter((p) => platforms.has(p)),
@@ -328,8 +403,16 @@ function pickBuild(builds: PortalArtifact[]): PortalArtifact | null {
 export function quickAction(
   p: LibraryProduct,
   device: DeviceInHand,
-  productHref: (section?: "get" | "license") => string,
+  productHref: (section?: "get" | "license" | "devices") => string,
 ): QuickAction {
+  if (p.status.kind === "deviceLimit") {
+    return {
+      kind: "link",
+      label: "Free up a device",
+      href: productHref("devices"),
+      icon: "details",
+    };
+  }
   if (p.status.kind === "signedInApp") {
     return p.presentation.website
       ? {
@@ -429,15 +512,29 @@ export interface AttentionItem {
 }
 
 /**
- * Only items the person can act on: an expiring, expired or suspended license with a renewal or
- * contact link (G16). Without one there is nothing to press, so the item is not shown (never a
- * dead-end "Needs attention"). Device limit and Steam keys join with G5 and G8.
+ * Only items the person can act on: a device limit (free up a device, G5), or an expiring,
+ * expired or suspended license with a renewal or contact link (G16). Without a link there is
+ * nothing to press, so the item is not shown (never a dead-end "Needs attention"). Steam keys
+ * join with G8.
  */
 export function attentionItems(
   products: readonly LibraryProduct[],
+  devicesHref?: (slug: string) => string,
 ): AttentionItem[] {
   const out: AttentionItem[] = [];
   for (const p of products) {
+    if (p.status.kind === "deviceLimit" && p.seats && devicesHref) {
+      out.push({
+        product: p,
+        text: `All ${devicesText(p.seats.limit)} are in use. Remove one to use ${p.name} on another.`,
+        action: {
+          label: "Free up a device",
+          href: devicesHref(p.slug),
+          external: false,
+        },
+      });
+      continue;
+    }
     const { supportUrl, supportEmail, developer } = p.presentation;
     const link = supportUrl ?? (supportEmail ? `mailto:${supportEmail}` : null);
     if (!link) continue;

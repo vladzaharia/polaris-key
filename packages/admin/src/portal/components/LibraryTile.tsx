@@ -37,6 +37,7 @@ export function LibraryTile({
         slug={product.slug}
         name={product.name}
         tint={pres.tint}
+        src={pres.headerUrl}
         variant="tile"
         className={compact ? "h-[10.25rem]" : "h-56"}
       >
@@ -52,6 +53,7 @@ export function LibraryTile({
             slug={product.slug}
             name={product.name}
             tint={pres.tint}
+            src={pres.iconUrl}
             size={64}
             className="relative border-[3px] border-surface-raised shadow-elevation-2"
           />

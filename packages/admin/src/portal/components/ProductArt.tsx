@@ -2,10 +2,11 @@ import * as React from "react";
 import { cn } from "../../lib/cn.js";
 
 /**
- * Product art (PORTAL.md §5.2 `ProductArt`). Until key art is proxied same-origin (G1, PX-W1)
- * every product uses the flat fallback: a tint field with the product's letter. No gradients.
- * The tint is the developer's `tintColor` when present, else a stable pick from a muted set by
- * slug, so a product keeps its colour everywhere.
+ * Product art (PORTAL.md §5.2 `ProductArt`): the listing's header art through the same-origin
+ * media proxy (G1, PX-W1) when there is one, else (or when it fails to load) the flat fallback: a
+ * tint field with the product's letter. No gradients. The tint is the developer's `tintColor`
+ * when present, else a stable pick from a muted set by slug, so a product keeps its colour
+ * everywhere.
  */
 const TINTS = [
   "#3b2f63",
@@ -38,12 +39,15 @@ export function ProductArt({
   name,
   tint,
   variant,
+  src,
   className,
   children,
 }: {
   slug: string;
   name: string;
   tint: string | null;
+  /** A same-origin `/media/…` URL, or null for the fallback. */
+  src?: string | null;
   variant: ArtVariant;
   className?: string;
   /** Overlays (the status plate) positioned inside the art. */
@@ -51,6 +55,26 @@ export function ProductArt({
 }): React.ReactElement {
   const letter = letterOf(name);
   const background = tintFor(slug, tint);
+  const [failed, setFailed] = React.useState(false);
+  if (src && !failed) {
+    return (
+      <div
+        data-art="image"
+        style={{ backgroundColor: background }}
+        className={cn("relative overflow-hidden", className)}
+      >
+        <img
+          src={src}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          onError={() => setFailed(true)}
+          className="absolute inset-0 size-full object-cover"
+        />
+        {children}
+      </div>
+    );
+  }
   return (
     <div
       data-art="fallback"

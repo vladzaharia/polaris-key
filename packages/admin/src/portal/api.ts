@@ -111,6 +111,8 @@ export interface PortalArtifact {
   /** Distribution's delivery access for the release's deliverable (P2b-04). */
   access: "public" | "authenticated" | "licensed" | "entitled" | string;
   canDownload: boolean;
+  /** Why not, when the per-product downloads view (PX-W2) said; `/api/releases` never does. */
+  reason?: PortalFileReason | null;
 }
 
 export interface PortalRelease {
@@ -194,6 +196,120 @@ export interface PortalProduct extends PortalPresentation {
       devices: PortalProductDevice[];
     }
   >;
+}
+
+// ── Downloads and store links (PX-W2; G2, G4) ──────────────────────────────────────────────
+
+/** Why a file can't be downloaded by this account (the Worker's codes, never copy). */
+export type PortalFileReason =
+  | "license_inactive"
+  | "not_entitled"
+  | "not_hosted";
+
+/** One file of a release, marked for this account by the token mint's own predicates. */
+export interface PortalDownloadFile {
+  releaseId: string;
+  artifactId: string;
+  version: string;
+  name: string;
+  buildId: string | null;
+  platform: string | null;
+  arch: string | null;
+  format: string | null;
+  role: string | null;
+  sizeBytes: number | null;
+  sha256: string | null;
+  minOs: string | null;
+  canDownload: boolean;
+  reason: PortalFileReason | null;
+}
+
+export interface PortalRecommendation {
+  platform: string;
+  label: string;
+  releaseId: string;
+  version: string;
+  /** `files[0]` runs on every arch of the platform. */
+  universal: boolean;
+  /** `false`: an older covered release (an update window that ended, §5.4). */
+  latest: boolean;
+  files: PortalDownloadFile[];
+}
+
+export interface PortalStoreLink {
+  id: string;
+  kind: string;
+  outletId: string;
+  platforms: string[];
+  label: string;
+  url: string | null;
+  deepLink: string | null;
+  command: string | null;
+  activateUrl: string | null;
+  live: boolean;
+  version: string | null;
+}
+
+export interface PortalDownloads {
+  product: { slug: string; name: string };
+  channel: string;
+  /** `false`: no downloads here (every list is then empty). */
+  available: boolean;
+  access: string | null;
+  detected: {
+    platform: string | null;
+    arch: string | null;
+    touchAmbiguous: boolean;
+  };
+  latest: {
+    releaseId: string;
+    version: string;
+    title: string | null;
+    publishedAt: number | null;
+  } | null;
+  recommended: PortalRecommendation | null;
+  platforms: Array<{
+    platform: string;
+    label: string;
+    recommended: PortalRecommendation | null;
+    files: PortalDownloadFile[];
+  }>;
+  extras: PortalDownloadFile[];
+  stores: PortalStoreLink[];
+}
+
+// ── Activate preview (PX-W5; G22) ──────────────────────────────────────────────────────────
+
+export type PortalPreviewVerdict =
+  | "addable"
+  | "already_yours"
+  | "owned_elsewhere"
+  | "email_mismatch"
+  | "portal_off"
+  | "unknown";
+
+/** What adding a key would do, before it is added (one evaluator with the claim). */
+export interface PortalKeyPreview {
+  verdict: PortalPreviewVerdict;
+  product: {
+    slug: string;
+    name: string;
+    developerName: string | null;
+    iconUrl: string | null;
+    headerUrl: string | null;
+  } | null;
+  license?: {
+    id?: string;
+    tier: string | null;
+    tierLabel: string | null;
+    status: string;
+    usable: boolean;
+    expiresAt: number | null;
+    deviceLimit: number | null;
+  };
+  platforms?: string[];
+  /** `email_mismatch` only: `m•••@proton.me`. */
+  maskedEmail?: string;
 }
 
 export class PortalApiError extends Error {
@@ -288,6 +404,13 @@ export const portalApi = {
   library: () => call<{ products: PortalLibraryItem[] }>("/api/library"),
   product: (product: string) =>
     call<PortalProduct>(`/api/products/${enc(product)}`),
+  downloads: (product: string) =>
+    call<PortalDownloads>(`/api/products/${enc(product)}/downloads`),
+  previewKey: (key: string) =>
+    call<PortalKeyPreview>("/api/activate/preview", {
+      method: "POST",
+      body: JSON.stringify({ key }),
+    }),
   releases: () => call<{ releases: PortalRelease[] }>("/api/releases"),
   /** G23: email the account's own address a link to this product's download for `platform`. */
   emailDownload: (product: string, platform: string) =>

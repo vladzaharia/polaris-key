@@ -209,6 +209,11 @@ function ProductBody({
               <div className="order-3">
                 <DevicesCard
                   productName={product.name}
+                  seatLimit={
+                    selected.id === product.best.id
+                      ? product.seats?.limit
+                      : null
+                  }
                   detail={detail.data}
                   loading={detail.isPending}
                   error={detail.error}

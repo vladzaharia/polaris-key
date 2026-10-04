@@ -130,6 +130,7 @@ export function JumpPalette({
                         slug={p.slug}
                         name={p.name}
                         tint={p.presentation.tint}
+                        src={p.presentation.iconUrl}
                         size={24}
                       />
                       <span className="min-w-0 flex-1 truncate">{p.name}</span>

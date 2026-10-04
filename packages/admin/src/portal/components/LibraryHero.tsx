@@ -35,6 +35,7 @@ export function LibraryHero({
         slug={product.slug}
         name={product.name}
         tint={pres.tint}
+        src={pres.headerUrl}
         variant="banner"
         className="aspect-video desk:aspect-auto desk:min-h-[26rem]"
       />
@@ -44,6 +45,7 @@ export function LibraryHero({
             slug={product.slug}
             name={product.name}
             tint={pres.tint}
+            src={pres.iconUrl}
             size={64}
           />
           <div className="min-w-0">
@@ -78,7 +80,7 @@ export function LibraryHero({
           <dd className="text-fg-strong">{product.status.note}</dd>
           <dt className="text-fg-muted">Devices</dt>
           <dd className="text-fg-strong">
-            {devicesText(product.deviceCount)} in use
+            {devicesText(product.deviceCount, product.seats?.limit)} in use
           </dd>
           {includes.length ? (
             <>

@@ -175,7 +175,11 @@ function ScaledLibrary({
         }}
       />
       <LiveRegion message={filtered ? summary : ""} />
-      {filtered ? null : <AttentionShelf items={attentionItems(products)} />}
+      {filtered ? null : (
+        <AttentionShelf
+          items={attentionItems(products, (s) => href.product(s, "devices"))}
+        />
+      )}
       <section aria-labelledby="all-h" className="space-y-4">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2

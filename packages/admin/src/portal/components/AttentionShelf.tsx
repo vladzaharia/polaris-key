@@ -36,6 +36,7 @@ export function AttentionShelf({
               slug={product.slug}
               name={product.name}
               tint={product.presentation.tint}
+              src={product.presentation.headerUrl}
               variant="thumb"
               className="hidden h-[4.625rem] w-[8.25rem] shrink-0 rounded-lg sm:block"
             />
@@ -50,10 +51,14 @@ export function AttentionShelf({
               </h3>
               <p className="text-sm text-fg-muted">{text}</p>
               <Button asChild size="md">
-                <a href={action.href} target="_blank" rel="noreferrer">
-                  <ExternalLink aria-hidden />
-                  {action.label}
-                </a>
+                {action.external ? (
+                  <a href={action.href} target="_blank" rel="noreferrer">
+                    <ExternalLink aria-hidden />
+                    {action.label}
+                  </a>
+                ) : (
+                  <a href={action.href}>{action.label}</a>
+                )}
               </Button>
             </div>
           </li>

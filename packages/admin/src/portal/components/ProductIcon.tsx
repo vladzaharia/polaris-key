@@ -2,17 +2,20 @@ import * as React from "react";
 import { cn } from "../../lib/cn.js";
 import { letterOf, tintFor } from "./ProductArt.js";
 
-/** The product icon: the tint-and-letter fallback until icons are proxied (G1). */
+/** The product icon: the listing icon through the media proxy (G1), else tint and letter. */
 export function ProductIcon({
   slug,
   name,
   tint,
   size,
+  src,
   className,
 }: {
   slug: string;
   name: string;
   tint: string | null;
+  /** A same-origin `/media/…` URL, or null for the fallback. */
+  src?: string | null;
   size: 20 | 24 | 40 | 48 | 64 | 112;
   className?: string;
 }): React.ReactElement {
@@ -24,6 +27,21 @@ export function ProductIcon({
     64: "size-16 text-2xl rounded-2xl",
     112: "size-28 text-5xl rounded-[1.75rem]",
   };
+  const [failed, setFailed] = React.useState(false);
+  if (src && !failed) {
+    return (
+      <img
+        src={src}
+        alt=""
+        aria-hidden
+        data-art="image"
+        decoding="async"
+        onError={() => setFailed(true)}
+        style={{ backgroundColor: tintFor(slug, tint) }}
+        className={cn("shrink-0 object-cover", sizes[size], className)}
+      />
+    );
+  }
   return (
     <span
       aria-hidden

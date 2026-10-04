@@ -15,16 +15,20 @@ import { SectionCard } from "./Card.js";
 /**
  * Devices (§4.20, §4.22): the devices using a seat, each with **Remove**, which expands the row
  * in place into the consequences and the confirm (focus moves to its heading). Devices that no
- * longer use a seat are counted ("+1 not using a seat"). The seat limit and meter wait for G5.
+ * longer use a seat are counted ("+1 not using a seat"). With the seat limit (G5, PX-W1) the
+ * count reads "2 of 3 devices in use"; without it the limit is never guessed.
  */
 export function DevicesCard({
   productName,
+  seatLimit,
   detail,
   loading,
   error,
   onRetry,
 }: {
   productName: string;
+  /** The licence's seat limit as activation enforces it, when the Worker sent it. */
+  seatLimit?: number | null;
   detail: PortalLicenseDetail | undefined;
   loading: boolean;
   error: unknown;
@@ -48,7 +52,12 @@ export function DevicesCard({
             <span className="text-xl font-bold text-fg-strong">
               {active.length}
             </span>{" "}
-            {active.length === 1 ? "device" : "devices"} in use
+            {seatLimit
+              ? `of ${seatLimit} ${seatLimit === 1 ? "device" : "devices"}`
+              : active.length === 1
+                ? "device"
+                : "devices"}{" "}
+            in use
             {idle > 0 ? ` · +${idle} not using a seat` : ""}
           </p>
           {active.length === 0 ? (
@@ -65,6 +74,7 @@ export function DevicesCard({
                   detail={detail}
                   productName={productName}
                   inUse={active.length}
+                  seatLimit={seatLimit}
                 />
               ))}
             </ul>
@@ -103,11 +113,13 @@ export function DeviceRow({
   detail,
   productName,
   inUse,
+  seatLimit,
 }: {
   device: PortalDevice;
   detail: PortalLicenseDetail;
   productName: string;
   inUse: number;
+  seatLimit?: number | null;
 }): React.ReactElement {
   const [confirming, setConfirming] = React.useState(false);
   const headingRef = React.useRef<HTMLHeadingElement>(null);
@@ -166,7 +178,8 @@ export function DeviceRow({
           </h3>
           <ul className="list-disc space-y-1 pl-5 text-sm text-fg">
             <li>
-              Its seat is free straight away: {devicesText(inUse - 1)} in use.
+              Its seat is free straight away:{" "}
+              {devicesText(inUse - 1, seatLimit)} in use.
             </li>
             <li>
               {productName} on that device asks to be activated the next time it

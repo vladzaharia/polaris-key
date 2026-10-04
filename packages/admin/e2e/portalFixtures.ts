@@ -1,8 +1,10 @@
 import type { Request } from "playwright";
 
 /**
- * Today's portal API for the browser checks (portal.e2e.test.ts): the mockup cast of
- * PORTAL.md (Mara Fennick and the fictional products), shaped exactly like the Worker's answers.
+ * The portal API for the browser checks (portal.e2e.test.ts): the mockup cast of PORTAL.md
+ * (Mara Fennick and the fictional products), shaped exactly like the Worker's answers, including
+ * wave 1's `GET /api/library` (PX-W1), `GET /api/products/<p>/downloads` (PX-W2) and
+ * `POST /api/activate/preview` (PX-W5).
  */
 export type PortalScenario = "signedOut" | "empty" | "one" | "three" | "twelve";
 
@@ -189,6 +191,198 @@ const RELEASES = [
   },
 ];
 
+/** PX-W1 presentation per product (developer names from the mockups; no art in fixtures). */
+const PRESENTATION: Record<
+  string,
+  { developerName: string; deviceLimit: number; support?: string }
+> = {
+  nightfall: {
+    developerName: "Kiln Games",
+    deviceLimit: 3,
+    support: "https://kiln.example/support",
+  },
+  tidewater: { developerName: "Harbor Audio", deviceLimit: 2 },
+  "ember-tactics": {
+    developerName: "Ashfall Studio",
+    deviceLimit: 3,
+    support: "https://ashfall.example/renew",
+  },
+  mossgarden: { developerName: "Little Fern", deviceLimit: 5 },
+  glyphsmith: {
+    developerName: "Northpaw Type",
+    deviceLimit: 2,
+    support: "https://northpaw.example/renew",
+  },
+};
+
+type Lic = ReturnType<typeof lic>;
+
+function libraryItem(l: Lic) {
+  const pres = PRESENTATION[l.product];
+  const limit = pres?.deviceLimit ?? 0;
+  const status =
+    l.expiresAt !== null && l.expiresAt <= NOW
+      ? "expired"
+      : limit > 0 && l.deviceCount >= limit
+        ? "device_limit"
+        : l.expiresAt !== null && l.expiresAt - NOW <= 14 * DAY
+          ? "expires_soon"
+          : "active";
+  return {
+    product: l.product,
+    name: l.productName,
+    developerName: pres?.developerName ?? null,
+    tintColor: null,
+    website: null,
+    iconUrl: null,
+    headerUrl: null,
+    support: pres?.support ? { url: pres.support, email: null } : null,
+    status,
+    license: {
+      id: l.id,
+      tier: l.tier,
+      status,
+      licenseStatus: l.status,
+      activatedAt: l.activatedAt,
+      expiresAt: l.expiresAt,
+      maxOfflineDays: l.maxOfflineDays,
+      deviceLimit: limit,
+      activeSeatCount: l.deviceCount,
+      deviceCount: l.deviceCount,
+      dormantCount: 0,
+    },
+    licenseCount: 1,
+    addedAt: l.activatedAt,
+  };
+}
+
+function file(
+  releaseId: string,
+  version: string,
+  artifactId: string,
+  name: string,
+  platform: string | null,
+  arch: string | null,
+  over: Record<string, unknown> = {},
+) {
+  return {
+    releaseId,
+    artifactId,
+    version,
+    name,
+    buildId: null,
+    platform,
+    arch,
+    format: name.split(".").pop() ?? null,
+    role: platform ? "payload" : null,
+    sizeBytes: 3_100_000_000,
+    sha256: "5b0e1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8fd913",
+    minOs: null,
+    canDownload: true,
+    reason: null,
+    ...over,
+  };
+}
+
+/** PX-W2's view of Nightfall: the Universal Mac build, the soundtrack not hosted yet, Steam. */
+function nightfallDownloads() {
+  const mac = file(
+    "rel_142",
+    "1.4.2",
+    "n-mac",
+    "Nightfall-1.4.2.dmg",
+    "macos",
+    "universal",
+  );
+  const win = file(
+    "rel_142",
+    "1.4.2",
+    "n-win",
+    "Nightfall-1.4.2-setup.exe",
+    "windows",
+    "x86_64",
+    { sizeBytes: 3_400_000_000 },
+  );
+  const linux = file(
+    "rel_142",
+    "1.4.2",
+    "n-linux",
+    "Nightfall-1.4.2.AppImage",
+    "linux",
+    "x86_64",
+    { sizeBytes: 3_200_000_000 },
+  );
+  const rec = (
+    platform: string,
+    label: string,
+    f: ReturnType<typeof file>,
+  ) => ({
+    platform,
+    label,
+    releaseId: "rel_142",
+    version: "1.4.2",
+    universal: f.arch === "universal",
+    latest: true,
+    files: [f],
+  });
+  return {
+    product: { slug: "nightfall", name: "Nightfall" },
+    channel: "stable",
+    available: true,
+    access: "licensed",
+    detected: { platform: "macos", arch: null, touchAmbiguous: false },
+    latest: {
+      releaseId: "rel_142",
+      version: "1.4.2",
+      title: "Stable",
+      publishedAt: NOW - 13 * DAY,
+    },
+    recommended: rec("macos", "macOS", mac),
+    platforms: [
+      {
+        platform: "macos",
+        label: "macOS",
+        recommended: rec("macos", "macOS", mac),
+        files: [mac],
+      },
+      {
+        platform: "windows",
+        label: "Windows",
+        recommended: rec("windows", "Windows", win),
+        files: [win],
+      },
+      {
+        platform: "linux",
+        label: "Linux",
+        recommended: rec("linux", "Linux", linux),
+        files: [linux],
+      },
+    ],
+    extras: [
+      file("rel_142", "1.4.2", "n-ost", "Original soundtrack.zip", null, null, {
+        sizeBytes: 840_000_000,
+        canDownload: false,
+        reason: "not_hosted",
+      }),
+    ],
+    stores: [
+      {
+        id: "steam:main",
+        kind: "steam",
+        outletId: "main",
+        platforms: ["windows", "macos", "linux"],
+        label: "Steam",
+        url: "https://store.steampowered.com/app/000000/",
+        deepLink: null,
+        command: null,
+        activateUrl: null,
+        live: true,
+        version: "1.4.2",
+      },
+    ],
+  };
+}
+
 const CAPS = {
   auth: { oidc: true, magic: true },
   modules: { licensing: true, claim: true, releases: true },
@@ -245,6 +439,37 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
     "/api/me": { body: { account: ACCOUNT, csrf: "csrf" } },
     "/api/capabilities": { body: CAPS },
     "/api/licenses": () => ({ body: { licenses } }),
+    "/api/library": () => ({ body: { products: licenses.map(libraryItem) } }),
+    "/api/products/nightfall/downloads": { body: nightfallDownloads() },
+    "POST /api/activate/preview": (req) => {
+      const { key } = req.postDataJSON() as { key: string };
+      if (key !== GOOD_KEY)
+        return { body: { verdict: "unknown", product: null, entries: null } };
+      return {
+        body: {
+          verdict: licenses.some((l) => l.product === "mossgarden")
+            ? "already_yours"
+            : "addable",
+          product: {
+            slug: "mossgarden",
+            name: "Mossgarden",
+            developerName: "Little Fern",
+            iconUrl: null,
+            headerUrl: null,
+          },
+          entries: null,
+          license: {
+            tier: "lifetime",
+            tierLabel: "Lifetime",
+            status: "active",
+            usable: true,
+            expiresAt: null,
+            deviceLimit: 5,
+          },
+          platforms: ["macos", "windows", "linux"],
+        },
+      };
+    },
     "/api/releases": {
       body: {
         releases: RELEASES.filter((r) =>

@@ -10,6 +10,7 @@ import {
   readPresentation,
 } from "../src/portal/model/library.js";
 import { artifact, DAY, license, NOW_S, release } from "./portalHarness.js";
+import type { PortalLibraryItem } from "../src/portal/api.js";
 
 const ph = (s?: string) => `#/p/x${s ? `/${s}` : ""}`;
 const MAC = { os: "macos" as const, phone: false };
@@ -168,6 +169,8 @@ describe("grouping", () => {
       website: null,
       supportUrl: null,
       supportEmail: null,
+      iconUrl: null,
+      headerUrl: null,
     });
     expect(readPresentation(null).developer).toBeNull();
   });
@@ -344,5 +347,88 @@ describe("Needs attention", () => {
     expect(items[0]!.text).toMatch(
       /^Your Studio license ends on \d+ \w{3}\. Updates stop after that\.$/,
     );
+  });
+});
+
+describe("the server-side library (PX-W1: G1, G5, G16)", () => {
+  const item = (over: Partial<PortalLibraryItem> = {}): PortalLibraryItem => ({
+    product: "x",
+    name: "Nightfall",
+    developerName: "Kiln Games",
+    tintColor: "#224466",
+    website: "https://kiln.example",
+    iconUrl: "/media/x/icon?v=1",
+    headerUrl: "/media/x/header?v=1",
+    support: { url: "https://kiln.example/help", email: null },
+    status: "active",
+    license: {
+      id: "lic_x_1",
+      tier: null,
+      status: "active",
+      licenseStatus: "active",
+      activatedAt: NOW_S,
+      expiresAt: null,
+      maxOfflineDays: null,
+      deviceLimit: 3,
+      activeSeatCount: 2,
+      deviceCount: 2,
+      dormantCount: 0,
+    },
+    licenseCount: 1,
+    addedAt: NOW_S,
+    ...over,
+  });
+  const lic = () => license({ product: "x", id: "lic_x_1", deviceCount: 2 });
+
+  it("takes presentation, same-origin art and the seat limit", () => {
+    const [p] = buildLibrary([lic()], [], NOW_S, [item()]);
+    expect(p!.name).toBe("Nightfall");
+    expect(p!.presentation).toMatchObject({
+      developer: "Kiln Games",
+      tint: "#224466",
+      supportUrl: "https://kiln.example/help",
+      iconUrl: "/media/x/icon?v=1",
+      headerUrl: "/media/x/header?v=1",
+    });
+    expect(p!.seats).toEqual({ limit: 3, inUse: 2 });
+    expect(p!.status.note).toBe("2 of 3 devices");
+  });
+
+  it("never loads art from another origin", () => {
+    const [p] = buildLibrary([lic()], [], NOW_S, [
+      item({ iconUrl: "https://evil.example/i.png", headerUrl: null }),
+    ]);
+    expect(p!.presentation.iconUrl).toBeNull();
+    expect(p!.presentation.headerUrl).toBeNull();
+  });
+
+  it("a full licence is 'Device limit reached', and its action frees a device", () => {
+    const full = item({
+      license: { ...item().license, activeSeatCount: 3, deviceCount: 3 },
+    });
+    const [p] = buildLibrary([lic()], [], NOW_S, [full]);
+    expect(p!.status).toMatchObject({
+      kind: "deviceLimit",
+      label: "Device limit reached",
+      attention: true,
+    });
+    expect(quickAction(p!, MAC, ph)).toMatchObject({
+      label: "Free up a device",
+      href: "#/p/x/devices",
+    });
+    const [att] = attentionItems([p!], (s) => `#/p/${s}/devices`);
+    expect(att!.action).toEqual({
+      label: "Free up a device",
+      href: "#/p/x/devices",
+      external: false,
+    });
+  });
+
+  it("ignores seats the server counted for a different licence", () => {
+    const [p] = buildLibrary([lic()], [], NOW_S, [
+      item({ license: { ...item().license, id: "lic_other" } }),
+    ]);
+    expect(p!.seats).toBeNull();
+    expect(p!.status.note).toBe("2 devices");
   });
 });

@@ -1,7 +1,10 @@
 import type {
   PortalArtifact,
+  PortalDownloadFile,
+  PortalDownloads,
   PortalLicenseDetail,
   PortalRelease,
+  PortalStoreLink,
 } from "../api.js";
 import type { PlatformKey } from "../components/Glyphs.js";
 import type { ProductSection } from "../router.js";
@@ -71,6 +74,8 @@ export function presentSections(
 
 export interface FileRowModel {
   artifact: PortalArtifact;
+  /** The release this file belongs to (the token mint names it). */
+  release: PortalRelease;
   platform: PlatformKey | null;
   /** "Universal", "Apple silicon", "x64", or the file name for an extra. */
   title: string;
@@ -109,13 +114,17 @@ export function notIncludedReason(a: PortalArtifact): string | null {
   return "Not available here yet";
 }
 
-export function fileRow(a: PortalArtifact, version: string): FileRowModel {
+export function fileRow(
+  a: PortalArtifact,
+  release: PortalRelease,
+): FileRowModel {
   const platform = normalisePlatform(a.platform);
   return {
     artifact: a,
+    release,
     platform,
     title: archTitle(a, platform),
-    meta: [version, ext(a.name), formatSize(a.sizeBytes)]
+    meta: [release.version, ext(a.name), formatSize(a.sizeBytes)]
       .filter(Boolean)
       .join(" · "),
     notIncluded: notIncludedReason(a),
@@ -154,7 +163,10 @@ const GROUP_ORDER: readonly PlatformKey[] = [
 
 /** All platforms grouped by OS, then Extras (§4.20). */
 export function groupFiles(r: PortalRelease): PlatformGroup[] {
-  const rows = r.artifacts.map((a) => fileRow(a, r.version));
+  return groupRows(r.artifacts.map((a) => fileRow(a, r)));
+}
+
+function groupRows(rows: FileRowModel[]): PlatformGroup[] {
   const groups: PlatformGroup[] = [];
   for (const p of GROUP_ORDER) {
     const own = rows
@@ -173,10 +185,14 @@ export interface GetItModel {
   /** The release the panel describes: the newest one with a covered build, else the newest. */
   release: PortalRelease;
   /** The newest release, when it isn't covered and an older one is shown instead. */
-  newerNotCovered: PortalRelease | null;
+  newerNotCovered: { version: string } | null;
+  /** The channel's newest release, for the subtitle. */
+  latest: { version: string; publishedAt: number | null };
   /** Covered builds for the device in hand (Universal or Apple silicon first). */
   recommended: FileRowModel[];
   groups: PlatformGroup[];
+  /** Store outlets reporting a live release (G2, "Also yours on"); empty without PX-W2. */
+  stores: PortalStoreLink[];
 }
 
 export function getItModel(
@@ -197,8 +213,83 @@ export function getItModel(
   return {
     release,
     newerNotCovered: covered && covered !== newest ? newest : null,
+    latest: { version: newest.version, publishedAt: newest.publishedAt },
     recommended,
     groups,
+    stores: [],
+  };
+}
+
+/**
+ * Get it from the per-product downloads view (PX-W2): the Worker already picked the build for
+ * the device (Universal named as such, two Mac builds both offered), the older covered release
+ * when the newest isn't (§5.4), and the reason each uncovered file isn't included.
+ */
+export function getItFromDownloads(
+  d: PortalDownloads,
+  device: DeviceInHand,
+): GetItModel | null {
+  if (!d.available || !d.latest) return null;
+  const releases = new Map<string, PortalRelease>();
+  const releaseOf = (f: PortalDownloadFile): PortalRelease => {
+    let r = releases.get(f.releaseId);
+    if (!r) {
+      r = {
+        product: d.product.slug,
+        productName: d.product.name,
+        releaseId: f.releaseId,
+        version: f.version,
+        title: null,
+        notes: null,
+        publishedAt: null,
+        sourceUrl: null,
+        artifacts: [],
+      };
+      releases.set(f.releaseId, r);
+    }
+    return r;
+  };
+  const row = (f: PortalDownloadFile): FileRowModel =>
+    fileRow(
+      {
+        artifactId: f.artifactId,
+        name: f.name,
+        kind: f.role,
+        platform: f.platform,
+        arch: f.arch,
+        sizeBytes: f.sizeBytes,
+        sha256: f.sha256,
+        access: d.access ?? "licensed",
+        canDownload: f.canDownload,
+        reason: f.reason,
+      },
+      releaseOf(f),
+    );
+  const rec = d.recommended;
+  const recommended =
+    rec && !device.phone ? rec.files.filter((f) => f.canDownload).map(row) : [];
+  const groups = groupRows([
+    ...d.platforms.flatMap((p) => p.files.map(row)),
+    ...d.extras.map(row),
+  ]);
+  const headline = rec ? recommended[0]?.release : undefined;
+  return {
+    release: headline ?? {
+      product: d.product.slug,
+      productName: d.product.name,
+      releaseId: d.latest.releaseId,
+      version: d.latest.version,
+      title: d.latest.title,
+      notes: null,
+      publishedAt: d.latest.publishedAt,
+      sourceUrl: null,
+      artifacts: [],
+    },
+    newerNotCovered: rec && !rec.latest ? { version: d.latest.version } : null,
+    latest: { version: d.latest.version, publishedAt: d.latest.publishedAt },
+    recommended,
+    groups,
+    stores: d.stores.filter((s) => s.live && (s.url || s.command)),
   };
 }
 

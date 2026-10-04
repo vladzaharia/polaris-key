@@ -238,6 +238,15 @@ describe("main flows", () => {
     await dialog.getByText("Key format is valid").waitFor();
     await shoot(o.page, "activate-key-desktop-dark");
     await dialog.getByRole("button", { name: "Continue" }).click();
+    const confirm = o.page.getByRole("dialog", {
+      name: "Add Mossgarden to your account?",
+    });
+    await confirm.waitFor();
+    await confirm.getByText("Lifetime · up to 5 devices").waitFor();
+    await shoot(o.page, "activate-confirm-desktop-dark");
+    expect(o.requests).toContain("POST /api/activate/preview");
+    expect(o.requests).not.toContain("POST /api/claim/license-key");
+    await confirm.getByRole("button", { name: "Add Mossgarden" }).click();
     const done = o.page.getByRole("dialog", {
       name: "Mossgarden is in your library",
     });

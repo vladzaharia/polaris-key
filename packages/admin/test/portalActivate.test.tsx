@@ -233,6 +233,128 @@ describe("Activate license modal (PX-06)", () => {
     );
   });
 
+  const PREVIEW_PRODUCT = {
+    slug: "mossgarden",
+    name: "Mossgarden",
+    developerName: "Little Fern",
+    iconUrl: null,
+    headerUrl: null,
+  };
+
+  async function pasteAndContinue(dialog: HTMLElement): Promise<void> {
+    fireEvent.paste(
+      within(dialog).getByRole("textbox", { name: "License key" }),
+      { clipboardData: { getData: () => KEY } },
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Continue" }),
+    );
+  }
+
+  it("confirms with the preview (G22) before adding: tier, terms, the key and Change key", async () => {
+    mockFetch({
+      ...routes(),
+      "POST /api/activate/preview": {
+        verdict: "addable",
+        product: PREVIEW_PRODUCT,
+        entries: null,
+        license: {
+          tier: "lifetime",
+          tierLabel: "Lifetime",
+          status: "active",
+          usable: true,
+          expiresAt: null,
+          deviceLimit: 5,
+        },
+        platforms: ["macos", "windows"],
+      },
+    });
+    renderPortal();
+    await pasteAndContinue(await openFromHeader());
+    const confirm = await screen.findByRole("dialog", {
+      name: "Add Mossgarden to your account?",
+    });
+    expect(confirm.textContent).toContain("Key recognised");
+    expect(confirm.textContent).toContain("Little Fern");
+    expect(confirm.textContent).toContain("Lifetime · up to 5 devices");
+    expect(confirm.textContent).toContain(KEY);
+    // Nothing is added until the person says so.
+    expect(fetchedRequests()).not.toContain("POST /api/claim/license-key");
+    expect(await axeViolations()).toEqual([]);
+    await userEvent.click(
+      within(confirm).getByRole("button", { name: "Add Mossgarden" }),
+    );
+    await screen.findByRole("dialog", {
+      name: "Mossgarden is in your library",
+    });
+    expect(fetchedRequests()).toContain("POST /api/claim/license-key");
+  });
+
+  it("Change key goes back to the field with the key kept", async () => {
+    mockFetch({
+      ...routes(),
+      "POST /api/activate/preview": {
+        verdict: "addable",
+        product: PREVIEW_PRODUCT,
+        entries: null,
+      },
+    });
+    renderPortal();
+    await pasteAndContinue(await openFromHeader());
+    const confirm = await screen.findByRole("dialog", {
+      name: "Add Mossgarden to your account?",
+    });
+    await userEvent.click(
+      within(confirm).getByRole("button", { name: "Change key" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Activate a license",
+    });
+    expect(
+      (
+        within(dialog).getByRole("textbox", {
+          name: "License key",
+        }) as HTMLInputElement
+      ).value,
+    ).toBe(KEY);
+  });
+
+  it("shows the preview's refusals inline in §4.19's words", async () => {
+    for (const [answer, copy] of [
+      [
+        { verdict: "owned_elsewhere", product: PREVIEW_PRODUCT },
+        "This Mossgarden license is already in another Polaris Key account. A license never moves by its key.",
+      ],
+      [
+        {
+          verdict: "email_mismatch",
+          product: PREVIEW_PRODUCT,
+          maskedEmail: "m•••@proton.me",
+        },
+        "Mossgarden was bought with m•••@proton.me. It joins only the account with that email verified.",
+      ],
+      [
+        { verdict: "portal_off", product: PREVIEW_PRODUCT },
+        "Little Fern manages this license elsewhere.",
+      ],
+      [{ verdict: "unknown", product: null }, /We couldn't find that key/],
+    ] as const) {
+      mockFetch({
+        ...routes(),
+        "POST /api/activate/preview": { entries: null, ...answer },
+      });
+      renderPortal();
+      const dialog = await openFromHeader();
+      await pasteAndContinue(dialog);
+      const alert = await within(dialog).findByRole("alert");
+      if (typeof copy === "string") expect(alert.textContent).toBe(copy);
+      else expect(alert.textContent).toMatch(copy);
+      expect(fetchedRequests()).not.toContain("POST /api/claim/license-key");
+      cleanup();
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("opens from /activate?key=… as the Library with the key filled in", async () => {
     window.history.replaceState(null, "", `/activate?key=${KEY}`);
     mockFetch(routes());

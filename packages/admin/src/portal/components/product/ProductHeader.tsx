@@ -38,6 +38,7 @@ export function ProductHeader({
         slug={product.slug}
         name={product.name}
         tint={pres.tint}
+        src={pres.headerUrl}
         variant="banner"
         className="-mx-4 aspect-video desk:mx-0 desk:aspect-auto desk:h-80 desk:rounded-xl"
       />
@@ -46,6 +47,7 @@ export function ProductHeader({
           slug={product.slug}
           name={product.name}
           tint={pres.tint}
+          src={pres.iconUrl}
           size={112}
           className="-mt-14 border-4 border-surface-page shadow-elevation-2 max-desk:size-20 max-desk:text-3xl desk:-mt-16"
         />
