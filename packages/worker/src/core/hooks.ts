@@ -601,10 +601,22 @@ export interface ReleaseCatalog {
    * `max(10, min(30, ⌈log2(memBytes)⌉))`. Empty while the deployment's `LAZY_DELTAS` is not `on`
    * or the product's `lazy_delta_settings.enabled` is 0. Unranked and uncapped: the composer
    * ranks, caps and sizes the menu. One indexed read of the ready rows, then the named records.
+   * Reads no device counts: the feed hashes this set on every request, and the rank (which the
+   * hash leaves out) is read through `lazyDeltaDevices` only when a document is signed.
    *
    * Optional so a catalog without it lists no menu.
    */
   lazyDeltas?(recordSha256s: readonly string[]): Promise<CatalogLazyDelta[]>;
+  /**
+   * Devices last seen on each base (P4-17's `installedBase` over the hot window), aligned with
+   * `bases`: the menu rank's first key (P4-29). One grouped read per distinct deliverable. Read
+   * only on the feed's sign path, never to decide its seq.
+   *
+   * Optional so a catalog without it ranks every base as 0 devices.
+   */
+  lazyDeltaDevices?(
+    bases: readonly { deliverableId: string; from: string }[],
+  ): Promise<number[]>;
 }
 
 /** One ready lazy delta a feed may offer (`ReleaseCatalog.lazyDeltas`, P4-29). */
@@ -617,8 +629,6 @@ export interface CatalogLazyDelta {
   to: string;
   /** The menu entry (plans/P4-29.md §2.2). */
   entry: FeedDelta;
-  /** Devices last seen on `from` (P4-17's `installedBase`): the rank's first key. */
-  devices: number;
   /** When the delta was generated, epoch seconds: the rank's second key (newest first). */
   createdAt: number;
 }
@@ -971,6 +981,22 @@ export interface Delivery {
   reportedAvailability(): Promise<
     { releaseId: string; outletId: string; state: string }[]
   >;
+  /**
+   * P6-02: what a device attestation is verified against — the bundle ids of the product's LIVE
+   * `app-store` and `testflight` outlets (App Attest's RP ID is `<TeamID>.<bundleId>`), and the
+   * Play package with the `google-service-account` credential PINNED to it (Distribution's own
+   * pin check, `resolvePlaySetup`), or why there is none. Optional so a test double need not
+   * implement it; Core's attest route treats a missing method like a missing setup.
+   */
+  attestationTargets?(): Promise<AttestationTargets>;
+}
+
+/** P6-02: the store identities a device attestation must match (`Delivery.attestationTargets`). */
+export interface AttestationTargets {
+  appleBundleIds: string[];
+  play:
+    | { packageName: string; credentialId: string }
+    | { packageName: null; credentialId: null; inert: string };
 }
 
 // ── outletCapabilities (Distribution) ───────────────────────────────────────────────────────

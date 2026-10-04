@@ -44,6 +44,10 @@ import type { DiscoveryContext, ServiceRegistry } from "./registry.js";
 import { buildHooks } from "./hooks.js";
 import { SERVICE_SLUGS, type ServiceSlug } from "./services.js";
 
+/** The discovery document's own `version` (a public, client-read field; not PROTOCOL_VERSION).
+ *  Exported so the admin version endpoint (A-11) reports the same number. */
+export const DISCOVERY_VERSION = 2;
+
 /** The one fragment shape a disabled service gets, everywhere. */
 const DISABLED = { enabled: false } as const;
 
@@ -86,7 +90,7 @@ export async function handleDiscovery(
   }
 
   const body = {
-    version: 2,
+    version: DISCOVERY_VERSION,
     protocolVersion: PROTOCOL_VERSION,
     schemaVersion: product.schemaVersion,
     product: product.slug,

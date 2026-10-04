@@ -43,8 +43,7 @@ import { mutate } from "../../console/data/mutations.js";
  * It renders `GET …/distribution/matrix` as it is and never recomputes it: which verbs a rollout
  * allows comes from the worker (`controls`), and a MIRRORED rollout (a store connector owns it)
  * shows its source with every control disabled. Each control is P2b-04's admin rollout route,
- * behind a confirmation that states its effect; the effect note the worker sends is shown above
- * the grid, so a halt is never presented as more than it does. The row header reuses P2-07's
+ * behind a confirmation that states its effect. The row header reuses P2-07's
  * build components (payload SHA-256, size, files).
  */
 
@@ -93,7 +92,7 @@ interface PendingAction {
   version: string;
 }
 
-/** What each verb does, worded from P2b-04's transitions and the worker's effect note. */
+/** What each verb does, worded from P2b-04's transitions. */
 function verbEffect(a: PendingAction): string {
   const where = `${a.rollout.outletId}/${a.rollout.channel}`;
   switch (a.verb) {
@@ -102,7 +101,7 @@ function verbEffect(a: PendingAction): string {
     case "resume":
       return `Resume the rollout of ${a.version} on ${where} at ${a.rollout.rolloutBp / 100}%.`;
     case "halt":
-      return `Halt the rollout of ${a.version} on ${where}. The signed feed tells devices on this outlet to stop offering it; resume to continue.`;
+      return `Halt the rollout of ${a.version} on ${where}. The signed feed, the app-updater feeds, the storefront feeds and the download page stop offering it there; resume to continue.`;
     case "complete":
       return `Offer ${a.version} to every device on ${where} (100%). A completed rollout cannot be paused again; start a new release instead.`;
   }
@@ -209,16 +208,6 @@ export function DistributionMatrixView({
         />
       ) : (
         <>
-          <div
-            role="note"
-            className="flex items-start gap-3 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm"
-          >
-            <AlertTriangle
-              aria-hidden
-              className="mt-0.5 size-4 shrink-0 text-warning"
-            />
-            <p className="text-muted-foreground">{data.effect.note}</p>
-          </div>
           <Card>
             <CardHeader>
               <CardTitle className="text-base">
@@ -263,9 +252,9 @@ export function DistributionMatrixView({
                           {!o.supported && (
                             <span
                               className="block font-normal"
-                              title={`${o.transport} is stored; Polaris Key does not deliver by it yet`}
+                              title={`${o.transport} is recorded; Polaris Key does not deliver by it`}
                             >
-                              {o.transport}: not supported yet
+                              {o.transport}: not delivered by Polaris Key
                             </span>
                           )}
                         </th>
@@ -338,11 +327,7 @@ export function DistributionMatrixView({
           }
           loading={busy}
           onConfirm={confirm}
-        >
-          {pending.verb === "halt" || pending.verb === "pause" ? (
-            <p className="text-sm text-muted-foreground">{data?.effect.note}</p>
-          ) : null}
-        </ConfirmDialog>
+        />
       ) : null}
     </section>
   );

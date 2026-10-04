@@ -321,6 +321,68 @@ describe("feed content under the payload cap (plans/P4-13.md §6.3)", () => {
     expect(d.doc.app.targets).toEqual(appTargetNearCap.targets);
   });
 
+  it("appTargetNearCap with a 64-entry delta menu (P4-29): the menu never adds a shed step at any padding", async () => {
+    const base = await composed({
+      packs: 64,
+      longIds: true,
+      levels: 3,
+      platforms: ["android"],
+      engines: [""],
+      groups: 0,
+      values: 0,
+      floors: 64 * 3,
+      revocations: 64,
+    });
+    const recs = Object.keys(base.content.packSets!.releases);
+    // Every entry on a record the target pins, so the menu has candidates even once packSets
+    // (the other source of menu records) is shed.
+    const menu: ComposedFeed["menu"] = {
+      candidates: candidates(64, recs),
+      pinnedBy: { android: recs },
+    };
+    const SHEDS = new Set([
+      "update.feed.packs_omitted",
+      "update.feed.floors_omitted",
+      "update.feed.revocations_trimmed",
+      "update.feed.revocations_omitted",
+    ]);
+    const MENU = new Set([
+      "update.feed.deltas_trimmed",
+      "update.feed.deltas_omitted",
+    ]);
+    // From the channel-wide document fitting to every content member shed (P4-13's fixture: an
+    // app part padded with outlets toward 60,000 bytes), in steps.
+    const seen = new Set<string>();
+    for (let extra = 0; extra <= 760; extra += 40) {
+      const k: ComposedFeed = { ...base, targets: [target("android", extra)] };
+      const without = sign(k, "android");
+      if (!without.ok) break;
+      const withMenu = sign({ ...k, menu }, "android");
+      expect(withMenu.ok, `extra=${extra}`).toBe(true);
+      expect(withMenu.platform, `extra=${extra}`).toBe(without.platform);
+      // The same shed steps, in the same order: the menu only ever trims or omits itself.
+      expect(
+        withMenu.audits.map((a) => a.action).filter((a) => !MENU.has(a)),
+        `extra=${extra}`,
+      ).toEqual(without.audits.map((a) => a.action));
+      for (const key of ["packSets", "packFloors", "revocations"] as const)
+        expect(withMenu.doc[key], `extra=${extra} ${key}`).toEqual(
+          without.doc[key],
+        );
+      expect(withMenu.size).toBeLessThanOrEqual(MAX_FEED_PAYLOAD_BYTES);
+      for (const a of without.audits)
+        if (SHEDS.has(a.action)) seen.add(a.action);
+    }
+    // The sweep crossed every P4-13 step (so no step was left untested).
+    expect([...seen].sort()).toEqual(
+      [
+        "update.feed.floors_omitted",
+        "update.feed.packs_omitted",
+        "update.feed.revocations_omitted",
+      ].sort(),
+    );
+  });
+
   it("the cap guard trips at the limit: an app part over the cap alone is never signed", async () => {
     const c = await composed({
       packs: 4,
@@ -343,8 +405,8 @@ describe("feed content under the payload cap (plans/P4-13.md §6.3)", () => {
     expect(d.ok).toBe(false);
   });
 
-  it("stays inside the CPU budget at 64 packs × 3 levels × 6 platforms", async () => {
-    const c = await composed({
+  it("stays inside the CPU budget at 64 packs × 3 levels × 6 platforms, with a 64-entry delta menu (P4-29)", async () => {
+    const base = await composed({
       packs: 64,
       longIds: true,
       levels: 3,
@@ -355,9 +417,23 @@ describe("feed content under the payload cap (plans/P4-13.md §6.3)", () => {
       floors: 64 * 3,
       revocations: 64,
     });
+    // P4-29: the full menu (MAX_FEED_DELTAS), every entry on a record each target pins, so the
+    // bisection runs over all 64 on every per-platform document.
+    const recs = Object.keys(base.content.packSets!.releases);
+    const c: ComposedFeed = {
+      ...base,
+      menu: {
+        candidates: candidates(64, recs),
+        pinnedBy: Object.fromEntries(PLATFORMS.map((p) => [p, recs])),
+      },
+    };
     const t0 = performance.now();
-    for (const platform of PLATFORMS) sign(c, platform);
+    const docs = PLATFORMS.map((platform) => sign(c, platform));
     expect(performance.now() - t0).toBeLessThan(1000);
+    for (const d of docs) {
+      expect(d.ok).toBe(true);
+      expect(Object.values(d.doc.deltas ?? {}).flat().length).toBe(64);
+    }
   });
 
   it("P4-19: a delegation's revocation (always referenced) survives size step 3; only step 4 drops it", async () => {
@@ -418,7 +494,7 @@ describe("feed content under the payload cap (plans/P4-13.md §6.3)", () => {
 function candidates(
   n: number,
   records: readonly string[],
-): NonNullable<ComposedFeed["deltas"]>["candidates"] {
+): NonNullable<ComposedFeed["menu"]>["candidates"] {
   return Array.from({ length: n }, (_, i) => ({
     recordSha256: records[i % records.length]!,
     deliverableId: "pk000",
@@ -450,7 +526,7 @@ describe("the delta menu under the payload cap (plans/P4-29.md §6.2)", () => {
     });
     const recs = Object.keys(c.content.packSets!.releases);
     const d = sign(
-      { ...c, deltas: { candidates: candidates(6, recs), pinnedBy: {} } },
+      { ...c, menu: { candidates: candidates(6, recs), pinnedBy: {} } },
       "android",
     );
     expect(d.ok).toBe(true);
@@ -482,7 +558,7 @@ describe("the delta menu under the payload cap (plans/P4-29.md §6.2)", () => {
     const d = sign(
       {
         ...c,
-        deltas: {
+        menu: {
           candidates: cands,
           pinnedBy: { android: [pinned], ios: [other] },
         },
@@ -495,7 +571,7 @@ describe("the delta menu under the payload cap (plans/P4-29.md §6.2)", () => {
       "djdl",
       {
         ...c,
-        deltas: { candidates: cands, pinnedBy: { android: [pinned] } },
+        menu: { candidates: cands, pinnedBy: { android: [pinned] } },
       },
       "android",
       7,
@@ -524,7 +600,7 @@ describe("the delta menu under the payload cap (plans/P4-29.md §6.2)", () => {
       return {
         ...c,
         targets: [t],
-        deltas: { candidates: candidates(1, recs), pinnedBy: {} },
+        menu: { candidates: candidates(1, recs), pinnedBy: {} },
       };
     };
     // Grow the app part until the menu's one entry lands on the cap exactly (listing URLs are
@@ -544,13 +620,41 @@ describe("the delta menu under the payload cap (plans/P4-29.md §6.2)", () => {
       ];
       return k;
     };
-    while (menuBytes(sized(0)) + 2000 < MAX_FEED_PAYLOAD_BYTES) mirrors++;
-    let pad = 0;
-    while (
-      menuBytes(sized(pad)) < MAX_FEED_PAYLOAD_BYTES &&
-      sign(sized(pad), "android").doc.deltas
-    )
-      pad++;
+    // The fewest mirrors that bring the payload within 2,000 bytes of the cap (a bisection).
+    const short = (m: number) => {
+      mirrors = m;
+      return menuBytes(sized(0)) + 2000 < MAX_FEED_PAYLOAD_BYTES;
+    };
+    let few = 0;
+    let many = 1;
+    while (short(many)) {
+      few = many;
+      many *= 2;
+    }
+    while (many - few > 1) {
+      const mid = (few + many) >> 1;
+      if (short(mid)) few = mid;
+      else many = mid;
+    }
+    mirrors = short(0) ? many : 0;
+    // The first pad at which the menu no longer fits under the cap (a bisection: the property
+    // flips once, from listed-and-under to not).
+    const fits = (pad: number) => {
+      const d = sign(sized(pad), "android");
+      return (
+        bytes(d.doc) < MAX_FEED_PAYLOAD_BYTES && d.doc.deltas !== undefined
+      );
+    };
+    let lo = 0;
+    let hi = 2048 - "https://apps.apple.com/app/".length;
+    expect(fits(lo)).toBe(true);
+    expect(fits(hi)).toBe(false);
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (fits(mid)) lo = mid;
+      else hi = mid;
+    }
+    const pad = hi;
     const exact = sign(sized(pad), "android");
     expect(exact.size).toBe(MAX_FEED_PAYLOAD_BYTES);
     expect(exact.doc.deltas).toBeDefined();
@@ -594,7 +698,7 @@ describe("the delta menu under the payload cap (plans/P4-29.md §6.2)", () => {
     const d = sign(
       {
         ...nearCap,
-        deltas: { candidates: candidates(64, recs), pinnedBy: {} },
+        menu: { candidates: candidates(64, recs), pinnedBy: {} },
       },
       "android",
     );

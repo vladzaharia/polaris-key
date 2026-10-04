@@ -148,8 +148,14 @@ class PacksClient:
         cache: Any = None,
         trust: Any = None,
         options: Optional[PacksOptions] = None,
+        feed_deltas: Optional[Callable[[], Optional[Mapping[str, Any]]]] = None,
+        load_feed_deltas: Optional[Callable[[], None]] = None,
     ) -> None:
         self._ctx = ctx
+        #: plans/P4-29.md §2.4 step 1: the committed feed's delta menu (fresh or stale), and the
+        #: read of it from the cache before the engine first plans.
+        self._feed_deltas = feed_deltas
+        self._load_feed_deltas = load_feed_deltas
         self._tokens = tokens
         self._discovery = discovery
         self._discover = discover
@@ -382,7 +388,13 @@ class PacksClient:
             now=lambda: ctx.now(),
             new_plan_id=lambda: secrets.token_hex(12),
             handlers=list(self._opts.handlers) + list(self._pending_handlers),
+            feed_deltas=self._feed_deltas,
         )
+        if self._load_feed_deltas is not None:
+            try:
+                self._load_feed_deltas()
+            except Exception:
+                pass
         engine.on(self._forward)
         # A handler registered while the engine loads goes straight to it.
         self._building = engine

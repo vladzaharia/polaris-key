@@ -195,10 +195,6 @@ const MATRIX: DistributionMatrix = {
     submission: ["submitted"],
     rollout: ["active", "paused", "halted", "complete"],
   },
-  effect: {
-    reachesDevices: "signed-feed",
-    note: "A pause or halt reaches devices through the signed feed (wire v4 SDKs). The legacy feeds keep serving it.",
-  },
 };
 
 function renderView() {
@@ -226,12 +222,10 @@ describe("Distribution — matrix", () => {
   });
   afterEach(cleanup);
 
-  it("shows availability, submission and rollout per (release, outlet), and the halt caveat", async () => {
+  it("shows availability, submission and rollout per (release, outlet), with no status caveat", async () => {
     renderView();
     await screen.findByRole("table", { name: "Distribution matrix" });
-    expect(
-      screen.getByText(/reaches devices through the signed feed/),
-    ).toBeTruthy();
+    expect(screen.queryByRole("note")).toBeNull();
     const direct = cellOf("v0.4.2", "direct");
     expect(within(direct).getByText("live (derived)")).toBeTruthy();
     expect(within(direct).getByText("active")).toBeTruthy();
@@ -239,8 +233,13 @@ describe("Distribution — matrix", () => {
     const store = cellOf("v0.4.2", "app-store");
     expect(within(store).getByText("in-review")).toBeTruthy();
     // A transport v1 does not act on is named in its column header (P4-05).
-    expect(screen.getByText("apple-ba: not supported yet")).toBeTruthy();
-    expect(screen.queryAllByText(/not supported yet/)).toHaveLength(1);
+    expect(
+      screen.getByText("apple-ba: not delivered by Polaris Key"),
+    ).toBeTruthy();
+    expect(screen.queryAllByText(/not delivered by Polaris Key/)).toHaveLength(
+      1,
+    );
+    expect(screen.queryByText(/not supported yet/)).toBeNull();
     expect(within(store).getByText("submitted")).toBeTruthy();
     expect(
       within(cellOf("v0.4.0", "direct")).getByText("not available"),
@@ -301,6 +300,10 @@ describe("Distribution — matrix", () => {
     expect(
       within(dialog).getByText(/Halt the rollout of 0.4.2 on direct\/stable/),
     ).toBeTruthy();
+    expect(
+      within(dialog).getByText(/download page stop offering it there/),
+    ).toBeTruthy();
+    expect(within(dialog).queryByText(/legacy feeds|yank it/)).toBeNull();
     expect(rolloutAction).not.toHaveBeenCalled();
     await userEvent.click(within(dialog).getByRole("button", { name: "Halt" }));
     await waitFor(() => expect(rolloutAction).toHaveBeenCalledTimes(1));

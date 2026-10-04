@@ -56,7 +56,25 @@ and their pack engines take a lazy delta from the committed feed with P4-29's fa
 
 ## Acceptance
 
-- [ ] Every new vector in the three sets passes in pytest and `swift test`.
-- [ ] Engine tests: fallback after a 404 and after each mismatch, the one-feed-delta rule, resume
+- [x] Every new vector in the three sets passes in pytest and `swift test`.
+- [x] Engine tests: fallback after a 404 and after each mismatch, the one-feed-delta rule, resume
       with `feedDelta`.
-- [ ] `pnpm parity:check` and the full green gate pass.
+- [x] `pnpm parity:check` and the full green gate pass.
+
+## Corrections from implementation
+
+- **No `fallback` event in Python or Swift.** The brief's "the existing fallback events" holds
+  only for Node and React (P4-18): neither the Python nor the Swift engine emits a `fallback`
+  progress event, and P4-30 adds none. Their engine tests read a fallback from the objects the
+  byte server was asked for instead.
+- **The check result's content.** Python's `run_update_check` result gains `content`
+  (`feed_content` over the decision feed, like client-core's `r.content`), which the update client
+  reads for the menu. Swift needed no new member: `UpdateCheckRun.feed` is already the decision
+  feed with its non-wire pointers, so the update client reads `run.feed.content.deltas`.
+- **Swift `FeedContent.json` keeps its three members.** It stays the shape of `expect.content`;
+  the menu has its own `deltasJSON` (`expect.deltas ?? null`), so the `delegationCases` feed
+  comparisons are unchanged and assert `deltas` is nil beside them. Python's `to_dict` includes
+  `deltas`, and its runners pop it before comparing `expect.content`.
+- **Swift wiring.** `PacksClient` gains `noteFeedDeltas(_:)` (the update client calls it after
+  every `decide()` and `channelFeed()`) and an optional `loadFeedDeltas` initialiser argument
+  that reads the committed feed from the cache when the engine starts before any check.

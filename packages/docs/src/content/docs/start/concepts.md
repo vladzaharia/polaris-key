@@ -235,6 +235,14 @@ be an import in disguise.
   probe results. Overwritten on each report; no history is kept.
 - **probe** — a product-declared check for a companion application, answered by the client as
   present/absent plus an optional version. There is no full installed-application enumeration.
+- **trust level** — how much the Worker trusts that a device is a genuine store install: `basic`
+  (every device, and the expected level for web, desktop and sideloaded builds) or `attested`
+  (the device proved itself with Apple App Attest or Google Play Integrity against a fresh
+  challenge, `POST /<product>/devices/attest`). It lives on the device row only, never in a signed
+  document or the device token. An operator's **trust policy** can require `attested` for
+  edge-mint, gated delivery and commerce claims, audited only until the policy enforces it. Code
+  says `trust_level`, never "tier": **tier** is a licence tier. See
+  [device trust levels](/docs/services/core/device-trust/).
 
 Note that **profile** is already taken twice — the reusable managed-payload baseline above, and
 `DocProfile` in the signed payload. Do not overload it a third time for device data.

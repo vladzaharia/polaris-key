@@ -21,9 +21,7 @@ import { qk } from "../console/data/queries.js";
  * It shows what is TRUE today: whether the chain release ← distribution ← update is coherent for
  * this product, which hook each service offers or consumes, and (P2b-04) the outlet rollouts
  * recorded for it. The rollouts list is read-only here — the per-cell controls are on the Matrix
- * tab (P2b-06, `distribution/Matrix.tsx`) — and it carries the caveat the worker sends with it: until the signed feed (P3-03)
- * carries rollouts and halts, a halt is recorded and shown but the legacy feeds keep serving, so
- * today's emergency stop is a yank or a channel pin.
+ * tab (P2b-06, `distribution/Matrix.tsx`).
  */
 
 type Enabled = ServicesResponse["services"];
@@ -55,7 +53,8 @@ const HOOKS: readonly HookRow[] = [
     name: "outletCapabilities",
     provider: "distribution",
     consumer: "Update",
-    today: "No outlets are declared yet, so every outlet answers nothing.",
+    today:
+      "What each declared outlet permits: its kind's default capabilities, narrowed by any operator override.",
   },
 ];
 
@@ -196,7 +195,7 @@ function HooksCard({ services }: { services: Enabled }): React.ReactElement {
                 <th className="py-2 pr-4 font-medium">Provided by</th>
                 <th className="py-2 pr-4 font-medium">Read by</th>
                 <th className="py-2 pr-4 font-medium">Status</th>
-                <th className="py-2 font-medium">Answers today</th>
+                <th className="py-2 font-medium">Answers</th>
               </tr>
             </thead>
             <tbody>
@@ -236,7 +235,7 @@ const STATE_VARIANT: Record<
   complete: "outline",
 };
 
-/** The outlet rollouts recorded for this product (P2b-04), read-only, with today's caveat. */
+/** The outlet rollouts recorded for this product (P2b-04), read-only. */
 function RolloutsCard({ slug }: { slug: string }): React.ReactElement {
   const { data, error } = useResource<RolloutsResponse>(qk.rollouts(slug), () =>
     api.rollouts(slug),
@@ -251,21 +250,6 @@ function RolloutsCard({ slug }: { slug: string }): React.ReactElement {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div
-          role="note"
-          className="flex items-start gap-3 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm"
-        >
-          <AlertTriangle
-            aria-hidden
-            className="mt-0.5 size-4 shrink-0 text-warning"
-          />
-          <p className="text-muted-foreground">
-            A halt is recorded and shown, but it does not stop devices yet: the
-            legacy feeds keep serving until the signed feed carries rollouts. To
-            stop a release reaching devices now, yank it or pin the channel
-            under Releases.
-          </p>
-        </div>
         {error ? (
           <p className="text-sm text-muted-foreground">
             Couldn’t load rollouts: {error}

@@ -153,7 +153,8 @@ async function handleSimulate(
   try {
     const q = parseSimulateQuery(new URL(ctx.req.url).searchParams);
     // Only the slug crosses: the simulator never sees the product's signing key (it signs with an
-    // ephemeral key of its own) and gets no `env`, so no binding that could unseal one.
+    // ephemeral key of its own) and gets no `env`, so no binding that could unseal one; only the
+    // delta menu's switch string (P4-29) crosses.
     return adminJson(
       await simulate(
         {
@@ -161,6 +162,9 @@ async function handleSimulate(
           hooks: ctx.hooks,
           now: ctx.now,
           product: { slug: ctx.product.slug },
+          ...(ctx.env.LAZY_DELTAS !== undefined
+            ? { lazyDeltas: ctx.env.LAZY_DELTAS }
+            : {}),
         },
         q,
       ),

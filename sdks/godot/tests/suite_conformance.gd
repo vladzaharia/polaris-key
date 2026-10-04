@@ -1,7 +1,7 @@
 extends RefCounted
 # @pkey-feature core.verify core.bundle devices.fingerprint license.gate core.headers
 # @pkey-feature update.feed release.record update.decide outlet.detect
-# @pkey-feature update.content packs.revoke packs.delegation
+# @pkey-feature update.content packs.revoke packs.delegation packs.delta.feed
 # The Godot conformance runner: every section of the generator-owned corpus mirror
 # (res://tests/corpus/v2/cases.json, gate-matrix.json, fingerprint.json and headers.json, written by
 # `pnpm gen:corpus`; never
@@ -28,7 +28,9 @@ extends RefCounted
 #                                                document, or the refusing step
 #   feedContentCases PKeyFeed.verify_feed + feed_content  plans/P4-13.md §2.2: the parsed content
 #                                                members, through verify_feed, over the decoded
-#                                                payload and through with_feed_content
+#                                                payload and through with_feed_content; the delta
+#                                                menu (plans/P4-29.md §4.1) against
+#                                                `expect.deltas`, null when absent, on every case
 #   revocationCases  PKeyReleaseRecord.verify_revocation  §2.3 steps 12–16, the body alone
 #                    (revocation_of), superseding (newer_revocation); replacement mode through
 #                    verify_release_record
@@ -525,12 +527,26 @@ func _feed_content_cases(t: PKeyTestContext, cases: Array) -> void:
 		if not t.check("%s verifies" % id, r["ok"], str(r.get("reason"))):
 			continue
 		var want: Dictionary = e["content"]
-		t.check("%s content" % id, _json_eq(r.get("content"), want), JSON.stringify(r.get("content")).left(400))
+		# plans/P4-29.md §4.1: `expect.content` holds the three P4-13 members; every case pins the
+		# delta menu in `expect.deltas` (absent: null).
+		var want_deltas = e.get("deltas")
+		var got: Dictionary = r.get("content")
+		t.check("%s content" % id, _json_eq(_without_deltas(got), want), JSON.stringify(got).left(400))
+		t.check("%s deltas" % id, got.has("deltas") and _json_eq(got["deltas"], want_deltas), JSON.stringify(got.get("deltas")).left(400))
 		# The decision's own reading of the decoded payload agrees with the token-rule reading here
 		# only when no member failed the token rule; through the decision's copy it always does.
 		var copy := PKeyFeed.with_feed_content(r["feed"], r["content"])
-		t.check("%s content through with_feed_content" % id, _json_eq(PKeyFeed.feed_content(copy), want))
+		var again := PKeyFeed.feed_content(copy)
+		t.check("%s content through with_feed_content" % id, _json_eq(_without_deltas(again), want) and _json_eq(again.get("deltas"), want_deltas))
 	_coverage(t, "feedContentCases", evaluated, cases.size(), _ms_since(t0))
+
+
+## feed_content's result without the delta menu (plans/P4-29.md §4.1: `expect.content` holds the
+## three P4-13 members only).
+static func _without_deltas(content: Dictionary) -> Dictionary:
+	var out := content.duplicate()
+	out.erase("deltas")
+	return out
 
 
 # ── revocationCases (plans/P4-13.md §2.3) ──────────────────────────────────────────────────
@@ -619,7 +635,9 @@ func _delegation_cases(t: PKeyTestContext, cases: Array) -> void:
 				"platform": c["platform"], "now": c["now"], "check_freshness": c["checkFreshness"],
 			})
 			if t.check("%s verifies" % id, r["ok"], str(r.get("reason"))):
-				t.check("%s content" % id, _json_eq(r["content"], e.get("content")), JSON.stringify(r["content"]).left(400))
+				# plans/P4-29.md §2.2: these feeds carry no delta menu.
+				t.check("%s content" % id, _json_eq(_without_deltas(r["content"]), e.get("content")), JSON.stringify(r["content"]).left(400))
+				t.check("%s deltas" % id, r["content"].has("deltas") and r["content"]["deltas"] == null)
 			continue
 		var want: String = "ok" if e["verify"] == "ok" else e["step"]
 		if c["mode"] == "revocation":

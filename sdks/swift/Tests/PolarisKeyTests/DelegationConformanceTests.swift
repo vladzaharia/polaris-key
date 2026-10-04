@@ -53,6 +53,8 @@ final class DelegationConformanceTests: XCTestCase {
                     continue
                 }
                 XCTAssertEqual(feed.content.json, expect["content"], desc)
+                // plans/P4-29.md §4.2: these feeds carry no delta menu.
+                XCTAssertNil(feed.content.deltas, desc)
             case "revocation":
                 let r = verifyRevocation(
                     c["jws"]!.stringValue!,

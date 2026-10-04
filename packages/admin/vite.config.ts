@@ -108,11 +108,94 @@ function brandWebAssets(): Plugin {
   };
 }
 
+/**
+ * sonner (the console's toasts) injects its stylesheet at import time with a `<style>` element,
+ * which the Worker's `style-src 'self'` blocks. Neutralise the injector; `styles.css` imports the
+ * same CSS (`sonner/dist/styles.css`) as a bundled, same-origin stylesheet instead.
+ */
+function sonnerNoInlineCss(): Plugin {
+  const marker = "function __insertCSS(code) {";
+  return {
+    name: "polaris-key-sonner-no-inline-css",
+    enforce: "pre",
+    transform(code, id) {
+      if (!/[\\/]sonner[\\/]dist[\\/]index\.m?js/.test(id)) return null;
+      if (!code.includes(marker)) {
+        this.error(
+          "sonner no longer defines __insertCSS: re-check its CSS injection against the CSP",
+        );
+      }
+      return { code: code.replace(marker, `${marker} return;`), map: null };
+    },
+  };
+}
+
+/**
+ * CodeMirror (the lazy `CodeEditor`) styles itself through style-mod, which adopts a
+ * constructable stylesheet only for shadow roots and, for a document, appends a `<style>`
+ * element to `<head>` that the Worker's `style-src 'self'` blocks (the editor would render
+ * unstyled and log a violation). Let it adopt the sheet on the document too; browsers without
+ * `adoptedStyleSheets` (and jsdom) keep the original `<style>` path.
+ */
+function styleModAdoptedSheets(): Plugin {
+  const marker =
+    "if (!root.head && root.adoptedStyleSheets && win.CSSStyleSheet) {";
+  return {
+    name: "polaris-key-style-mod-adopted-sheets",
+    enforce: "pre",
+    transform(code, id) {
+      if (!/[\\/]style-mod[\\/]src[\\/]style-mod\.js/.test(id)) return null;
+      if (!code.includes(marker)) {
+        this.error(
+          "style-mod changed how it mounts styles: re-check CodeMirror against the CSP",
+        );
+      }
+      return {
+        code: code.replace(
+          marker,
+          "if (root.adoptedStyleSheets && win.CSSStyleSheet) {",
+        ),
+        map: null,
+      };
+    },
+  };
+}
+
+/**
+ * Radix Select's viewport renders an inline `<style>` (hiding its scrollbar) that the Worker's
+ * `style-src 'self'` blocks. Drop the element; `styles.css` carries the same two rules.
+ */
+function radixSelectNoInlineStyle(): Plugin {
+  const pattern =
+    /jsx\(\s*"style",\s*\{\s*dangerouslySetInnerHTML:\s*\{\s*__html:\s*`\[data-radix-select-viewport\][^`]*`\s*\},\s*nonce\s*\}\s*\)/;
+  return {
+    name: "polaris-key-radix-select-no-inline-style",
+    enforce: "pre",
+    transform(code, id) {
+      if (!/[\\/]@radix-ui[\\/]react-select[\\/]dist[\\/]index\.mjs/.test(id))
+        return null;
+      if (!pattern.test(code)) {
+        this.error(
+          "Radix Select changed its viewport <style>: re-check it against the CSP",
+        );
+      }
+      return { code: code.replace(pattern, "null"), map: null };
+    },
+  };
+}
+
 // The customer portal is served at `/`; the operator console is served at `/manage`.
 // Both are emitted from one Vite build and served by the Worker assets binding.
 export default defineConfig({
   base: "/",
-  plugins: [react(), tailwindcss(), brandWebAssets()],
+  plugins: [
+    sonnerNoInlineCss(),
+    styleModAdoptedSheets(),
+    radixSelectNoInlineStyle(),
+    react(),
+    tailwindcss(),
+    brandWebAssets(),
+  ],
   resolve: {
     // @polaris-key/brand is a workspace package with its own React 18 dev dependency; its marks
     // must render with THIS package's React 19, never a second copy.
@@ -148,6 +231,9 @@ export default defineConfig({
             return "vendor-radix";
           if (id.includes("/@tanstack/")) return "vendor-query";
           if (id.includes("/cmdk/")) return "vendor-cmdk";
+          // CodeMirror is only reached through the lazy CodeEditor: leave it to that chunk.
+          if (id.includes("/@codemirror/") || id.includes("/@lezer/"))
+            return undefined;
           return "vendor";
         },
         // The app code both entries import (the components/ui kit, lib/, the stylesheet's JS

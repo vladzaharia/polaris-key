@@ -1,9 +1,10 @@
-// @pkey-feature update.content packs.revoke
+// @pkey-feature update.content packs.revoke packs.delta.feed
 // The Swift runner for P4-13's corpus sections (plans/P4-13.md §4; P4-23), read from the
 // generator-owned mirror in `Resources/v2/`, with the same ids as the Node runner
 // (`conformance/runners/node/suites.ts`) and the Python runner:
 //
 //   feedContentCases  §2.2's content members, every case             → verifyFeed, feedContent
+//                     (plans/P4-29.md §4.2: `content.deltas` against `expect.deltas ?? null`)
 //   revocationCases   §2.3's steps 12–16, superseding                 → verifyRevocation,
 //                                                                       verifyReleaseRecord,
 //                                                                       newerRevocation
@@ -54,6 +55,8 @@ final class ContentDecisionConformanceTests: XCTestCase {
             }
             let want = try XCTUnwrap(c["expect"]?.objectValue?["content"])
             XCTAssertEqual(feed.content.json, want, "\(id): \(c["description"]!)")
+            let wantDeltas = normalisedJSON(c["expect"]?.objectValue?["deltas"] ?? .null)
+            XCTAssertEqual(feed.content.deltasJSON, wantDeltas, "\(id) deltas: \(c["description"]!)")
             XCTAssertEqual(feedContent(feed.json, nonWire: feed.nonWireIntegers), feed.content, id)
         }
     }

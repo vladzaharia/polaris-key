@@ -31,6 +31,7 @@ import { handleGithubWebhook } from "./githubWebhook.js";
 import { notFound } from "./core/errors.js";
 import { handleDevices, handleReport } from "./core/devices.js";
 import { handleRegister } from "./core/register.js";
+import { handleAttest, handleAttestChallenge } from "./core/attestation.js";
 import { dispatchBytesHost, isBytesHost } from "./core/bytesHost.js";
 
 const PRODUCT_ROUTES = new Set<Route["kind"]>([
@@ -40,6 +41,8 @@ const PRODUCT_ROUTES = new Set<Route["kind"]>([
   "devices",
   "report",
   "register",
+  "attestChallenge",
+  "attest",
   "service",
 ]);
 
@@ -196,6 +199,18 @@ async function dispatchProductRoute(
       // authorized by the Identity descriptor (`ServiceDescriptor.authorizeRegistration`);
       // Core asks the registry rather than importing the service.
       return handleRegister(req, env, db, product, now, SERVICES);
+    case "attestChallenge":
+      return handleAttestChallenge(req, env, db, product, now);
+    case "attest":
+      // The hooks carry Distribution's store identities (`Delivery.attestationTargets`).
+      return handleAttest(
+        req,
+        env,
+        db,
+        product,
+        now,
+        buildHooks(SERVICES, product.services, { env, db, product, now }),
+      );
     case "jwks":
       return handleJwks(db, product);
     case "trustManifest":

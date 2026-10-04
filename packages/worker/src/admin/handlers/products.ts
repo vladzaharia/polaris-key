@@ -61,7 +61,7 @@ import {
   parseAutoIssue,
   parseFingerprintPolicy,
 } from "../../fingerprint.js";
-import { audit } from "../audit.js";
+import { audit, platformAudit } from "../audit.js";
 import { isPlatformAdmin } from "../authz.js";
 import type { AdminSession } from "../session.js";
 import {
@@ -833,10 +833,12 @@ async function handleKekKeyring(
     );
   }
 
+  const before = progressOf(await kekCounts(db), active, kids);
   const sweep = await resealSweep(env, db, active, limit);
   // One audit row per product actually touched. The audit table is product-scoped, so a sweep
-  // that spans tenants leaves a trail in each tenant's own log rather than one platform row
-  // nobody looking at a product would ever see.
+  // that spans tenants leaves a trail in each tenant's own log, where someone looking at that
+  // product will see it. A-12 adds ONE platform row per sweep on top (below): the sweep is a
+  // platform action, and it also re-seals platform-managed values no product log covers.
   for (const [product, count] of sweep.perProduct) {
     await audit(
       db,
@@ -849,6 +851,25 @@ async function handleKekKeyring(
     );
   }
   const counts = await kekCounts(db);
+  const after = progressOf(counts, active, kids);
+  // Counts only, never key material: `before`/`after` are the rows not yet under `active`.
+  await platformAudit(
+    db,
+    session,
+    now,
+    "kek.reseal",
+    { kind: "kek", id: active },
+    `Re-sealed ${sweep.resealed} value(s) under KEK ${active} (${after.remaining} remaining)`,
+    {
+      before,
+      after: {
+        ...after,
+        resealed: sweep.resealed,
+        skipped: sweep.skipped,
+        failed: sweep.failures.length,
+      },
+    },
+  );
   return adminJson({
     ok: true,
     active,
@@ -858,7 +879,7 @@ async function handleKekKeyring(
     failed: sweep.failures.length,
     failures: sweep.failures,
     counts,
-    ...progressOf(counts, active, kids),
+    ...after,
   });
 }
 

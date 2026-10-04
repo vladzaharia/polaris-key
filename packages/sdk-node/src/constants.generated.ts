@@ -11,6 +11,9 @@ export const ErrorCode = {
   notFound: "not_found",
   badRequest: "bad_request",
   forbidden: "forbidden",
+  attestationRequired: "attestation_required",
+  attestationRejected: "attestation_rejected",
+  attestationUnavailable: "attestation_unavailable",
   rateLimited: "rate_limited",
   bodyTooLarge: "body_too_large",
   methodNotAllowed: "method_not_allowed",
@@ -151,6 +154,9 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "not_found",
   "bad_request",
   "forbidden",
+  "attestation_required",
+  "attestation_rejected",
+  "attestation_unavailable",
   "rate_limited",
   "body_too_large",
   "method_not_allowed",
@@ -293,6 +299,9 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   not_found: "wire",
   bad_request: "wire",
   forbidden: "wire",
+  attestation_required: "wire",
+  attestation_rejected: "wire",
+  attestation_unavailable: "wire",
   rate_limited: "wire",
   body_too_large: "wire",
   method_not_allowed: "wire",
@@ -456,6 +465,7 @@ export const Feature = {
   devicesRegister: "devices.register",
   devicesManage: "devices.manage",
   devicesReport: "devices.report",
+  devicesAttest: "devices.attest",
   identityOidc: "identity.oidc",
   identityDevicecode: "identity.devicecode",
   releaseChangelog: "release.changelog",
@@ -528,6 +538,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "devices.register",
   "devices.manage",
   "devices.report",
+  "devices.attest",
   "identity.oidc",
   "identity.devicecode",
   "release.changelog",
@@ -1343,6 +1354,11 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "devices.register": { status: "implemented", service: "core", na: [] },
   "devices.manage": { status: "implemented", service: "core", na: [] },
   "devices.report": { status: "implemented", service: "core", na: [] },
+  "devices.attest": {
+    status: "na",
+    service: "core",
+    na: [{ runtime: "node", reason: "runtime" }],
+  },
   "identity.oidc": { status: "planned", service: "identity", na: [] },
   "identity.devicecode": { status: "implemented", service: "identity", na: [] },
   "release.changelog": { status: "implemented", service: "release", na: [] },
@@ -1422,4 +1438,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "ff9abbe63d189cee1ef8a042f6dcb7412c9ee5d925de54e835b1f47d451bb9d9";
+  "2d48e4d3b5df2512b8de34b2e130f808a546ea181e70b8eb00ef956d121474a3";

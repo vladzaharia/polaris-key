@@ -588,6 +588,13 @@ describe("R11-05 product scoping", () => {
       // (the object was shared), so the row is keyed by an autoincrement id with `product`
       // nullable; it is written only by the nightly collector and read by no tenant route.
       "blob_gc_log",
+      // 0054_a (A-11) — the deploy history. A row describes the whole deployment, written only
+      // by deploy.yml's final step and read only by the platform-admin Deployment endpoint.
+      "platform_deploys",
+      // 0054_b (A-12) — the product-less audit trail: platform actions that belong to no
+      // product (the KEK sweep, A-13's settings). Read only by the platform-admin activity
+      // endpoint; product-scoped actions still go to `audit`, which is product-first.
+      "platform_audit",
     ]);
     const offenders: string[] = [];
     for (const t of tables.map((r) => r.name)) {

@@ -182,20 +182,63 @@ public struct FeedRevocation: Sendable, Equatable {
     }
 }
 
+/// One delta menu entry (plans/P4-29.md §2.2): a `payload`-scope delta from `from` to the key's
+/// payload, served lazily by the Worker. Its bytes are checked against the CI-signed record.
+public struct FeedDelta: Sendable, Equatable {
+    public let from: String
+    public let method: String
+    /// Always `payload` (an entry of another scope is dropped alone).
+    public let scope: String
+    public let memBytes: Int
+    public let artifactSha256: String
+    public let artifactBytes: Int
+
+    public init(from: String, method: String, memBytes: Int, artifactSha256: String, artifactBytes: Int) {
+        self.from = from
+        self.method = method
+        self.scope = "payload"
+        self.memBytes = memBytes
+        self.artifactSha256 = artifactSha256
+        self.artifactBytes = artifactBytes
+    }
+
+    public var json: JSONValue {
+        .object([
+            "from": .string(from), "method": .string(method), "scope": .string(scope),
+            "memBytes": .int(memBytes),
+            "artifact": .object(["sha256": .string(artifactSha256), "bytes": .int(artifactBytes)]),
+        ])
+    }
+}
+
+/// The feed's delta menu: target payload SHA-256 → its `payload`-scope entries.
+public typealias FeedDeltas = [String: [FeedDelta]]
+
+/// The menu as JSON (`expect.deltas`' shape).
+public func feedDeltasJSON(_ d: FeedDeltas) -> JSONValue {
+    .object(d.mapValues { .array($0.map(\.json)) })
+}
+
 /// `feedContent`'s answer: each member parsed, or nil when absent or unusable.
 public struct FeedContent: Sendable, Equatable {
     public let packSets: FeedPackSets?
     public let packFloors: [FeedPackFloor]?
     public let revocations: [FeedRevocation]?
+    /// plans/P4-29.md §2.2: the delta menu.
+    public let deltas: FeedDeltas?
 
-    public init(packSets: FeedPackSets?, packFloors: [FeedPackFloor]?, revocations: [FeedRevocation]?) {
+    public init(
+        packSets: FeedPackSets?, packFloors: [FeedPackFloor]?, revocations: [FeedRevocation]?,
+        deltas: FeedDeltas? = nil
+    ) {
         self.packSets = packSets
         self.packFloors = packFloors
         self.revocations = revocations
+        self.deltas = deltas
     }
 
     /// `{packSets, packFloors, revocations}`, each its value or `null` (`feedContentCases`'
-    /// `expect.content`).
+    /// `expect.content`); the delta menu is `deltasJSON` (`expect.deltas`).
     public var json: JSONValue {
         .object([
             "packSets": packSets?.json ?? .null,
@@ -203,6 +246,9 @@ public struct FeedContent: Sendable, Equatable {
             "revocations": revocations.map { .array($0.map(\.json)) } ?? .null,
         ])
     }
+
+    /// The delta menu as JSON, or `null` (`feedContentCases`' `expect.deltas ?? null`).
+    public var deltasJSON: JSONValue { deltas.map(feedDeltasJSON) ?? .null }
 }
 
 /// A thrown marker for "this member is unusable", caught per member.
@@ -396,24 +442,69 @@ private func parseRevocations(_ v: JSONValue, nonWire: NonWireIntegers) throws -
     return out
 }
 
+/// The delta menu (plans/P4-29.md §2.2): both caps and both uniqueness rules count every entry,
+/// dropped ones too; an entry of another vocabulary scope is dropped alone and a key whose
+/// entries are all dropped is left out. An unknown `method` is kept for the planner's
+/// `caps.patchMethods` to decide. The integers (`/deltas/<to>/<i>/memBytes`,
+/// `.../artifact/bytes`) follow the token rule.
+private func parseDeltas(_ v: JSONValue, nonWire: NonWireIntegers) throws -> FeedDeltas {
+    guard let menu = v.objectValue else { throw Unusable() }
+    var out: FeedDeltas = [:]
+    var artifacts = Set<String>()
+    var total = 0
+    // The JSON object's key order is not kept; the verdict does not depend on it.
+    for (to, rawList) in menu {
+        try need(isSha256Hex(to))
+        guard let list = rawList.arrayValue, list.count >= 1, list.count <= MAX_FEED_DELTAS_PER_TARGET else {
+            throw Unusable()
+        }
+        total += list.count
+        try need(total <= MAX_FEED_DELTAS)
+        var kept: [FeedDelta] = []
+        var pairs = Set<String>()
+        for (i, e) in list.enumerated() {
+            guard let d = e.objectValue else { throw Unusable() }
+            let from = try sha256(d["from"])
+            try need(from != to)
+            let method = try string(d["method"], PackPatterns.vocabToken)
+            let scope = try string(d["scope"], PackPatterns.vocabToken)
+            let at = "/deltas/\(to)/\(i)"
+            let memBytes = try int(d["memBytes"], "\(at)/memBytes", 1, nonWire)
+            guard let a = d["artifact"]?.objectValue else { throw Unusable() }
+            let artifact = try sha256(a["sha256"])
+            let bytes = try int(a["bytes"], "\(at)/artifact/bytes", 1, nonWire)
+            try need(artifacts.insert(artifact).inserted)
+            try need(pairs.insert("\(from)\u{0}\(method)").inserted)
+            // A forward scope makes that entry alone ignored.
+            if scope != "payload" { continue }
+            kept.append(
+                FeedDelta(from: from, method: method, memBytes: memBytes, artifactSha256: artifact, artifactBytes: bytes))
+        }
+        if !kept.isEmpty { out[to] = kept }
+    }
+    return out
+}
+
 private func member<T>(_ doc: [String: JSONValue], _ key: String, _ parse: (JSONValue) throws -> T) -> T? {
     guard let v = doc[key] else { return nil }
     return try? parse(v)
 }
 
 /// The feed's content members (plans/P4-13.md §2.2): `packSets`, `packFloors` and `revocations`,
-/// each parsed, or nil when absent or unusable. Integer members follow V4 §3.1's token rule at
-/// their RFC 6901 pointers (pass the verified payload's `nonWireIntegers`; omit when checking an
-/// object you built). An unusable member never refuses the feed and never affects the other two.
-/// A `packFloors` entry whose `versionScheme` is not in `FEED_VERSION_SCHEMES` is dropped alone.
+/// and the delta menu `deltas` (plans/P4-29.md §2.2), each parsed, or nil when absent or
+/// unusable. Integer members follow V4 §3.1's token rule at their RFC 6901 pointers (pass the
+/// verified payload's `nonWireIntegers`; omit when checking an object you built). An unusable
+/// member never refuses the feed and never affects the others. A `packFloors` entry whose
+/// `versionScheme` is not in `FEED_VERSION_SCHEMES` is dropped alone.
 public func feedContent(_ doc: JSONValue, nonWire: NonWireIntegers = []) -> FeedContent {
     guard let o = doc.objectValue else {
-        return FeedContent(packSets: nil, packFloors: nil, revocations: nil)
+        return FeedContent(packSets: nil, packFloors: nil, revocations: nil, deltas: nil)
     }
     return FeedContent(
         packSets: member(o, "packSets") { try parsePackSets($0, selector: o["selector"], nonWire: nonWire) },
         packFloors: member(o, "packFloors") { try parsePackFloors($0, nonWire: nonWire) },
-        revocations: member(o, "revocations") { try parseRevocations($0, nonWire: nonWire) })
+        revocations: member(o, "revocations") { try parseRevocations($0, nonWire: nonWire) },
+        deltas: member(o, "deltas") { try parseDeltas($0, nonWire: nonWire) })
 }
 
 /// The feed as the decision reads it: `feed` with each content member replaced by `content`'s
@@ -425,6 +516,7 @@ public func withFeedContent(_ feed: ChannelFeedDoc, _ content: FeedContent) -> C
     o["packSets"] = content.packSets?.json
     o["packFloors"] = content.packFloors.map { .array($0.map(\.json)) }
     o["revocations"] = content.revocations.map { .array($0.map(\.json)) }
+    o["deltas"] = content.deltas.map(feedDeltasJSON)
     return ChannelFeedDoc(
         schemaVersion: feed.schemaVersion, iss: feed.iss, aud: feed.aud, channel: feed.channel,
         selectorPlatform: feed.selectorPlatform, seq: feed.seq, issuedAt: feed.issuedAt,

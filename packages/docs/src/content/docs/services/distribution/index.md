@@ -55,8 +55,8 @@ switched on by a migration, so its stored state keeps serving while its manifest
   [Byte delivery and delivery access](/docs/services/distribution/delivery/).
 - **Delivery access** per deliverable — who may download it — read by the downloads, the
   Sparkle appcast and the customer portal alike.
-- **Outlet rollouts and halts**, controlled from CI and the console. Until the signed feed
-  carries them, a halt is recorded and shown but does not stop legacy feeds; see
+- **Outlet rollouts and halts**, controlled from CI and the console, and read by the signed
+  feed, the app-updater feeds, the storefront feeds and the download page; see
   [Rollouts and halts](/docs/services/distribution/rollouts/).
 - **Availability and submissions** per release and outlet — reported from CI with
   `pkey distribution report`, written by store connectors, and derived for self-hosted outlets —
