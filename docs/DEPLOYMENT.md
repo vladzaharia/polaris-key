@@ -185,46 +185,48 @@ any migration runs when the permission or a queue is missing.
 
 ### GitHub environment `package-registry` (F-10)
 
-Our SDKs are published to the package feeds by the release workflows (`release.yml`,
-`release-python.yml`, `release-swift.yml`, `release-kotlin.yml`, `release-godot.yml`,
-`release-image.yml`), each through the reusable `.github/workflows/publish-package.yml`, which is
-the `polaris-key` system product's trusted publisher (`.pkey/release`
-`publishing.trustedPublisher`) and runs in the GitHub environment **`package-registry`**. In
-`vladzaharia/polaris-key` → Settings:
+Our SDKs are published to the package feeds automatically, in lockstep with the server (owner
+decision 2026-10-04): `.github/workflows/publish-sdks.yml` runs on every push to `main` (a
+`<next>-main.<N>` pre-release of every SDK) and, called by `deploy.yml` after the Worker is live, on
+every `v*` tag (every SDK at exactly that version). Each package goes through the reusable
+`.github/workflows/publish-package.yml`, which is the `polaris-key` system product's trusted
+publisher (`.pkey/release` `publishing.trustedPublisher`) and runs in the GitHub environment
+**`package-registry`**. In `vladzaharia/polaris-key` → Settings:
 
 1. **Environments → New environment** `package-registry`. Under **Deployment branches and tags**
-   choose **Selected branches and tags** and add **tag** rules only: `@polaris-key/*@*`,
-   `python-v*`, `swift-v*`, `kotlin-v*` and `godot-v*`. No branch may deploy to it. Optionally
-   require a reviewer.
+   choose **Selected branches and tags** and add the **branch** rule `main` and the **tag** rule
+   `v*`, nothing else. Optionally require a reviewer (every push to `main` then waits for one).
 2. **Environment secrets** on `package-registry`, for the signed Swift registry releases
    (plans/F-01.md §5.3). Until they exist, the Swift job stops with
    `Swift registry releases are signed (owner decision 2026-10-04). Set …`, and never publishes
-   unsigned:
+   unsigned; they reach the signing script through its environment only and are never echoed:
    - `SWIFT_REGISTRY_SIGNING_KEY`: the signing certificate's private key, PEM, then base64
      (`base64 -i key.pem | tr -d '\n'`);
    - `SWIFT_REGISTRY_SIGNING_CERT`: the leaf certificate, DER, then base64;
    - `SWIFT_REGISTRY_CERT_CHAIN`: the intermediates and the root, each DER and base64, separated
      by commas.
-3. **Rules → Rulesets → New tag ruleset** targeting the same five tag patterns, restricting
-   creation, update and deletion to maintainers. The trusted publisher requires
-   `ref_protected` (P2-02), so an unprotected tag cannot publish.
-4. In each Polaris Key environment (dev, staging, production), after the feeds bootstrap
-   (`POST /manage/api/platform/feeds/bootstrap`, RUNBOOK "Package feeds"), register the trusted
-   publisher as a platform admin. Linking a repository refuses the reserved slug, so claim the
-   policy directly:
-   `PUT /manage/api/products/polaris-key/ci-publisher` with
-   `{"repository": "vladzaharia/polaris-key", "repositoryId": <id>, "repositoryOwnerId": <id>,
-"workflow": ".github/workflows/publish-package.yml", "environment": "package-registry"}` (the
-   numeric ids from `gh api repos/vladzaharia/polaris-key --jq '.id, .owner.id'`).
-5. The system product must also hold the package deliverables of the root `.pkey/release`
-   (`release_deliverables`), which a package publish is checked against. Today only a repository
-   link or resync writes them, and both refuse or skip the system product, so this needs the
-   follow-up that lets the bootstrap sync the monorepo's `.pkey/` (F-10's hand-off). Until then
-   every package publish is refused as `invalid_descriptor` (no such deliverable).
+3. **Branch protection on `main`** and a **tag ruleset on `v*`** (restricting creation, update
+   and deletion to maintainers). The trusted publisher requires `ref_protected` (P2-02), so an
+   unprotected ref cannot publish. The `production` environment's deploy job (deploy.yml) relies
+   on the same tag ruleset.
+4. Nothing to register by hand. `deploy.yml`'s "Register the platform packages" step calls the
+   deploy hook (`POST /webhooks/deploy`, `packages/worker/src/platformDeploy.ts`) on every
+   production deploy, authenticated by the deploy job's own GitHub OIDC token (the job has
+   `id-token: write`; no secret exists for it). The hook bootstraps the system product (as
+   `POST /manage/api/platform/feeds/bootstrap` does; a service, `packageFeeds` or a feed an
+   operator turned off stays off), links it to this repository and applies the root `.pkey/` of
+   the tag being deployed: the package deliverables every publish is checked against, the `main`
+   channel, and the trusted publisher with the repository's numeric ids. The Worker admits only
+   this repository's `deploy.yml`, in the `production` environment, at a protected `v*` tag: the
+   prod `[env.prod.vars]` `PLATFORM_REPOSITORY`, `PLATFORM_REPOSITORY_ID` and
+   `PLATFORM_REPOSITORY_OWNER_ID` (GitHub's numeric ids,
+   `gh api repos/vladzaharia/polaris-key --jq '.id, .owner.id'`) say which. An environment without
+   those vars has no deploy hook (staging and dev today); bootstrap there from the console and
+   claim the publisher (`PUT /manage/api/products/polaris-key/ci-publisher`) if it should publish.
 
 No other publishing credential exists: there is no npm, PyPI, Maven Central or Docker Hub token,
-and no workflow publishes to GitHub Packages or PyPI (owner decision 2026-10-04, feeds only).
-Release steps: RUNBOOK, "Releasing our SDKs to the feeds".
+and no workflow publishes to GitHub Packages, PyPI or a GitHub Release (owner decision 2026-10-04,
+feeds only). Operating it: RUNBOOK, "Releasing our SDKs to the feeds".
 
 ## 3. Cloudflare resources
 

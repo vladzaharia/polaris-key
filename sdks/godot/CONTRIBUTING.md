@@ -32,9 +32,7 @@ data-only rule (README, "Content-key delegation").
 sdks/godot/
   README.md                   the adopter guide (rendered as the docs site's Godot page)
   CONTRIBUTING.md             this file
-  CHANGELOG.md                one section per released version (the release notes)
-  store/                      the Asset Store / Asset Library listing text and the owner's
-                              upload checklist (`.gdignore`d)
+  CHANGELOG.md                notable changes, by version
   project.godot               main loop = PKeyTestRunner; flush_stdout_on_print
   export_presets.cfg          one preset, "Conformance (Linux)": the test pack (and its
                               polaris_key/* stamp options)
@@ -339,37 +337,34 @@ runs) without a final `PKEY-TEST SUMMARY … failed=0`.
 
 ## Releasing
 
-One version is one value in four places: `addons/polaris_key/plugin.cfg`'s `version`,
-`PolarisKey.SDK_VERSION` in `polaris_key.gd` (sent as `X-PKey-SDK-Version`), the tag
-`godot-vX.Y.Z` and the zip names. Bump the first two together, add the version's section to
-`CHANGELOG.md` (its heading is `## X.Y.Z`), and merge.
+Nobody releases the addon by hand. It carries the server's version, in lockstep with every other SDK
+(F-10, owner decision 2026-10-04): `.github/workflows/publish-sdks.yml` stamps the version derived
+from git (`tools/sdk-version.mjs`) into `addons/polaris_key/plugin.cfg`'s `version` and
+`PolarisKey.SDK_VERSION` (sent as `X-PKey-SDK-Version`), packages the zip and publishes it to
+Polaris Key's Godot feed on every push to `main` (a `<next>-main.<N>` pre-release) and on every
+`v*` tag (exactly that version). The committed values are placeholders; keep the two in agreement
+(`package.py` refuses a build where they differ) and never bump them by hand.
 
 ```sh
-python3 sdks/godot/tools/package.py --check-version --tag godot-v0.1.0  # the four agree?
-python3 sdks/godot/tools/package.py --tag godot-v0.1.0                  # build/release/: both zips + SHA256SUMS
-python3 sdks/godot/tools/package.py --notes 0.1.0                       # the CHANGELOG section
-GODOT_BIN=godot sdks/godot/tools/smoke_install.sh sdks/godot/build/release/polaris-key-godot-v0.1.0.zip
+python3 sdks/godot/tools/package.py --check-version                     # plugin.cfg and SDK_VERSION agree?
+python3 sdks/godot/tools/package.py --allow-dirty --out build/release   # the zip + SHA256SUMS
+GODOT_BIN=godot sdks/godot/tools/smoke_install.sh build/release/polaris-key-godot-v0.1.0.zip
 ```
 
 - `package.py` zips `git ls-files addons/polaris_key` (committed files only; it refuses
-  uncommitted changes to them without `--allow-dirty`), checks every `.gd` has its `.gd.uid` and
-  the folder holds `plugin.cfg`, `LICENSE` and `README.md`, and writes the zips reproducibly
-  (sorted entries, fixed timestamps and modes): `polaris-key-godot-vX.Y.Z.zip`, rooted at
-  `addons/`, and `polaris-key-godot-vX.Y.Z-assetlib.zip`, the same files under one wrapper
-  directory. Godot 4.4–4.6's Asset Library installer drops a zip's single top-level directory by
-  default, `addons/` included (4.7 exempts `addons/`), so the legacy Asset Library gets the
-  wrapped zip.
+  uncommitted changes to them without `--allow-dirty`, which the publish job passes because the
+  stamp is its one change), checks every `.gd` has its `.gd.uid` and the folder holds
+  `plugin.cfg`, `LICENSE` and `README.md`, and writes `polaris-key-godot-vX.Y.Z.zip`
+  reproducibly (sorted entries, fixed timestamps and modes), rooted at `addons/`.
 - `smoke_install.sh` unzips a release zip into an empty project, imports it, enables the plugin
   through `EditorInterface.set_plugin_enabled` (so `_enable_plugin` registers the autoload),
   checks the `PolarisKey` autoload and the setup dock, runs the project and checks
   `SDK_VERSION`, and fails on any error line in a log.
-- `.github/workflows/release-godot.yml` runs on a `godot-v*` tag: the version check, the test
-  runner on the 4.7.2 editor and release template, `package.py`, the clean-install smoke test on
-  4.4.1 and 4.7.2 (both zips), then `gh release create` with both zips, `SHA256SUMS` and the
-  CHANGELOG section as notes. Run it by hand (`workflow_dispatch`) for a dry run: the same steps,
-  with the zips uploaded as a workflow artefact and no release.
-- The Asset Store and the Asset Library have no upload API. Their listing text, the icon and the
-  owner's step-by-step upload checklist are in `sdks/godot/store/`.
+- In `publish-sdks.yml`, the zip is published only after the test runner passed on the 4.7.2
+  editor and release template and the clean-install smoke test passed on the 4.4.1 floor and
+  4.7.2. The feed serves both editor shapes (the 4.4–4.6 Asset Library API and the 4.7+ Asset
+  Store API) from that one zip. Nothing is uploaded to the Godot Asset Store, the legacy Asset
+  Library or a GitHub Release (owner decision 2026-10-04, feeds only).
 - `addons/polaris_key/brand/` is written by `pnpm gen:brand` from `packages/brand/kit/` (never edit
   it; `pnpm gen:brand -- --check` is the drift gate). It is `.gdignore`d because an imported SVG's
   `.import` file differs between engine versions, which the CI job's clean-tree check would catch.

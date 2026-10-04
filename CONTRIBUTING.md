@@ -99,8 +99,9 @@ section, gated to platform admins (sign in at `/manage`; see the [README](README
   drift-gate inventory.
 - [The conformance corpus](https://key.plrs.im/docs/contribute/corpus/) — the generator, the
   language runners, the generator-owned mirrors (Swift, Godot), and how to add a case.
-- [Releasing](https://key.plrs.im/docs/contribute/releasing/) — the Changesets flow, the
-  Python/Swift tag releases, and how the worker deploys.
+- [Releasing](https://key.plrs.im/docs/contribute/releasing/) — every SDK published to its feed
+  automatically, in lockstep with the server (each push to `main`, each `v*` tag), and how the
+  worker deploys.
 
 ## Pull-request checklist
 

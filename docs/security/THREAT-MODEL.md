@@ -1117,18 +1117,40 @@ symbol); review catches the rest.
   refuse the slug; delete and rename refuse the row), published by trusted publishing only. Its
   Swift feed requires signed releases (`swift-unsigned`, never relaxed for the system product);
   the Worker checks presence and the `cms-1.0.0` format, SwiftPM verifies the chain.
-- **Our release pipeline (F-10).** One reusable workflow, `publish-package.yml`, is the system
-  product's only trusted publisher: every release workflow calls it, GitHub names it in
-  `job_workflow_ref`, and its job runs in the `package-registry` environment, whose deployment
-  policy admits release tags only; the job also refuses any non-tag ref and any commit not on
-  main, and the publisher requires a ruleset-protected ref. Merging never publishes (the
-  Changesets action has no publish step), and no workflow holds an npm, PyPI, Maven Central or
-  registry token, so a compromised dependency of a PR job has nothing to publish with. The Swift
-  signing key lives only in `package-registry`'s secrets: the signing job decodes it into the
-  runner's temp directory, never echoes it, and deletes it in an `always()` step; without it the
-  job stops rather than publish unsigned. Residual: anyone who can push a protected release tag
-  can publish a version (the ruleset is the control), and a version once published is immutable,
-  so a bad release is yanked and superseded, never replaced.
+- **Our release pipeline (F-10, automated 2026-10-04).** One reusable workflow,
+  `publish-package.yml`, is the system product's only trusted publisher: `publish-sdks.yml` calls
+  it for every package, GitHub names it in `job_workflow_ref`, and its job runs in the
+  `package-registry` environment, whose deployment policy admits `main` and `v*` tags only; the job
+  also refuses any other ref, any commit not on main and a channel that does not fit the version,
+  and the publisher requires a ruleset-protected ref. Every push to `main` publishes a `-main.N`
+  pre-release on the `main` channel (never npm's `latest`), so branch protection on `main` is now
+  a publishing control as much as the `v*` tag ruleset. No workflow holds an npm, PyPI, Maven
+  Central or registry token, so a compromised dependency of a PR job has nothing to publish with.
+  The version is derived from git and stamped in CI; nothing a pull request writes chooses it. The
+  Swift signing key lives only in `package-registry`'s secrets: the signing job decodes it into
+  the runner's temp directory, never echoes it, and deletes it in an `always()` step; without it
+  the job stops rather than publish unsigned. Residual: anyone who can push to `main` or push a
+  protected release tag can publish a version (branch protection and the ruleset are the
+  controls), and a version once published is immutable, so a bad release is yanked and
+  superseded, never replaced.
+- **The deploy hook (`POST /webhooks/deploy`, F-10 automation).** It bootstraps the system
+  product, links it to the monorepo and applies the root `.pkey/` sent in its body: the package
+  deliverables and the trusted publisher every SDK publish relies on. It is authenticated by the
+  production deploy job's own GitHub Actions OIDC token, verified like a publisher's (RS256
+  against GitHub's JWKS, the fixed issuer, `aud = <origin>/webhooks/deploy`, single-use `jti`
+  through `idx_ci_tokens_jti`) and held to a policy only the Worker's configuration sets:
+  `PLATFORM_REPOSITORY_ID` and `PLATFORM_REPOSITORY_OWNER_ID` (numeric, against renames), that
+  repository's `.github/workflows/deploy.yml` at the triggering ref, a `refs/tags/v*` ref,
+  `ref_protected`, a GitHub-hosted runner, the `production` environment. Without those vars the
+  route does not exist. The body cannot name another repository (the manifest's provider must be
+  the configured one, and the publisher's numeric ids come from the configuration, never the
+  manifest), cannot touch another product (the slug must be the system product's, checked before
+  anything is written), cannot re-enable a service, `packageFeeds` or a feed an operator switched
+  off (the bootstrap only creates), and cannot overwrite an operator-claimed publisher or claimed
+  access modes. A per-IP limit (fail closed) bounds unverified calls. Residual: the trust is the
+  deploy job's, which already holds `CLOUDFLARE_API_TOKEN`; a token captured from that job could
+  be replayed with a different body within its lifetime only if it was never used, and the job
+  uses it at once.
 
 **What remains (F-03, F-10).** Strict-router setup snippets keep each feed the only source of
 its names. The owner publishes nothing to public registries and claims the public names at

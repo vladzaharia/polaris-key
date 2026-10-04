@@ -52,9 +52,9 @@ for Ed25519 (`compileOnly` in `:core`; the JCA's Ed25519 serves JDK 15+ and Andr
 
 ## Install
 
-Every artifact is published to Polaris Key's Maven feed (a `kotlin-vX.Y.Z` tag runs
-`.github/workflows/release-kotlin.yml`, which publishes everything `publishAllPublicationsToLocalRepository`
-writes). Send the `im.plrs.key` group to the feed alone, so it is never looked up anywhere else:
+Every artifact is published to Polaris Key's Maven feed by `.github/workflows/publish-sdks.yml`
+(everything `publishAllPublicationsToLocalRepository` writes), at the server's version: each `v*`
+tag publishes exactly that version, each push to `main` a `<next>-main.<N>` pre-release. Send the `im.plrs.key` group to the feed alone, so it is never looked up anywhere else:
 
 ```kotlin
 // settings.gradle.kts

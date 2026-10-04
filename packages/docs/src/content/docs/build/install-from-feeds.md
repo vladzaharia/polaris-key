@@ -25,10 +25,13 @@ The feeds are public: no account and no token. Registry credentials come later (
 snippets will gain a token line then. How each feed behaves (tags, yanks, caching) is on
 [Package feeds](/docs/services/distribution/package-feeds/).
 
-**Pre-releases.** A version with a pre-release part (`2.0.0-beta.1`, or `2.0.0b1` for Python)
-is published to the `beta` channel. It is never npm's `latest`, Maven's `RELEASE` or the image's
-`latest`, and each client picks it only when asked for it by version or with its pre-release
-flag.
+**Versions.** Every SDK carries the server's version, in lockstep: a `v0.9.0` release of Polaris Key
+publishes every SDK at `0.9.0`. Each push to the monorepo's `main` also publishes a pre-release of
+the next version on the `main` channel: `0.9.1-main.<N>` (`0.9.1.dev<N>` for Python), `N` growing
+with every push. A pre-release, from `main` or a `v1.0.0-rc.1`-style tag (on the `beta` channel),
+is never npm's `latest`, Maven's `RELEASE` or the image's `latest`; each client picks one only when
+asked for it by version, by tag (`npm install @polaris-key/node@main`, `pkey:main`) or with its
+pre-release flag.
 
 **Earlier releases.** Versions published before the feeds existed stay where they are: the
 `@polaris-key/*` packages on GitHub Packages and `polaris-key` on PyPI. New versions are
@@ -147,8 +150,8 @@ make SwiftPM refuse an unsigned or untrusted release as well, set the security p
 ```
 
 The registry archive has `Package.swift` at its root, so Xcode and SwiftPM resolve it like any
-package. The git-URL path (the `swift-v*` tags of the monorepo) keeps working, but it cannot
-resolve a package in a subdirectory, which is why the registry is the recommended path.
+package. The registry is the one supported path: the monorepo publishes no per-SDK git tags, and
+SwiftPM's git-URL path cannot resolve a package in a subdirectory anyway.
 
 ## Kotlin and Android: Gradle and Maven
 
@@ -230,8 +233,6 @@ For scripted installs, GodotEnv takes the entry the feed's index publishes for e
 }
 ```
 
-The same zip is attached to each `godot-v*` GitHub Release of the repository.
-
 ## The `pkey` image
 
 `pkey` is also an image for `linux/amd64` and `linux/arm64`: Node 22 and the standalone CLI.
@@ -242,25 +243,21 @@ docker run --rm -v "$PWD:/work" pkg.plrs.im/polaris-key/pkey:latest validate
 podman pull pkg.plrs.im/polaris-key/pkey:0.1.0
 ```
 
-`latest` is the newest stable release, `beta` the newest pre-release, and each version is a tag
-that never moves.
+`latest` is the newest stable release, `beta` the newest tagged pre-release, `main` the newest
+build of `main`, and each version is a tag that never moves.
 
 ## How the SDKs get there
 
-Maintainers do not publish by hand. Each SDK has a release workflow that runs on a release tag,
-builds and tests the package, packs it, and publishes it with `pkey release publish` through one
-reusable workflow, `publish-package.yml`. That workflow is the `polaris-key` product's trusted
-publisher (see [Publishing from CI](/docs/build/ci/)), so the repository holds no publishing
-token.
+Nobody publishes by hand, and nobody picks a version. `.github/workflows/publish-sdks.yml` runs on
+every push to `main` and, through the production deploy, on every `v*` tag: it derives the version
+from git, stamps it into every SDK, builds and tests each one, and publishes each package with
+`pkey release publish` through one reusable workflow, `publish-package.yml`. That workflow is the
+`polaris-key` product's trusted publisher (see [Publishing from CI](/docs/build/ci/)), so the
+repository holds no publishing token. A last job reads every feed back and fails unless each
+package shows the version just published. The whole flow is on
+[Releasing](/docs/contribute/releasing/).
 
-| Tag                             | Workflow             | Publishes                                |
-| ------------------------------- | -------------------- | ---------------------------------------- |
-| `@polaris-key/<name>@<version>` | `release.yml`        | that npm package                         |
-| `@polaris-key/cli@<version>`    | `release-image.yml`  | the `pkey` image, beside the npm package |
-| `python-v<version>`             | `release-python.yml` | the wheel and the sdist                  |
-| `swift-v<version>`              | `release-swift.yml`  | the signed registry release              |
-| `kotlin-v<version>`             | `release-kotlin.yml` | every Maven artifact of the Kotlin build |
-| `godot-v<version>`              | `release-godot.yml`  | the addon zip                            |
-
-Merging the Changesets "Version Packages" pull request only bumps versions. The release is the
-tags pushed afterwards.
+| Trigger          | Every SDK is published at                  | Channel                                   |
+| ---------------- | ------------------------------------------ | ----------------------------------------- |
+| a push to `main` | `<next>-main.<N>` (Python `<next>.dev<N>`) | `main`                                    |
+| a `v*` tag       | the tag's version (`v0.9.0` → `0.9.0`)     | `stable`, or `beta` for a pre-release tag |

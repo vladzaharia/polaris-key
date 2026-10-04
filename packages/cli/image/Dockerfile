@@ -6,8 +6,9 @@
 # actions/publish/dist/index.js, so the image runs exactly the CLI the polaris-key/publish Action
 # runs at the same commit.
 #
-# Built by .github/workflows/release-image.yml for linux/amd64 and linux/arm64 into an OCI image
-# layout, which `pkey release publish --deliverable oci.pkey` publishes:
+# Built by .github/workflows/publish-sdks.yml (every push to main and every v* tag, at the lockstep
+# version) for linux/amd64 and linux/arm64 into an OCI image layout, which
+# `pkey release publish --deliverable oci.pkey` publishes:
 #
 #   docker buildx build --platform linux/amd64,linux/arm64 \
 #     --build-context action=actions/publish --build-arg VERSION=<version> \

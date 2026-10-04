@@ -1,16 +1,16 @@
 # F-10 Our SDKs onto the feeds: the root `.pkey/`, release workflows, Kotlin `maven-publish`, Swift signing and the first OCI image
 
-| Field       | Value                                                                                                                                                                                                                                                                                                                                             |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | F: Package feeds (pkg.plrs.im) (tier-1)                                                                                                                                                                                                                                                                                                           |
-| Size        | 1.5–2 engineer-weeks                                                                                                                                                                                                                                                                                                                              |
-| Depends on  | [F-04](F-04-npm-feed.md), [F-05](F-05-pypi-feed.md), [F-06](F-06-swift-registry.md), [F-07](F-07-maven-feed.md), [F-08](F-08-oci-registry.md), [F-09](F-09-godot-feed.md)                                                                                                                                                                         |
-| Unblocks    | none                                                                                                                                                                                                                                                                                                                                              |
-| Role        | `pkey-implementer`                                                                                                                                                                                                                                                                                                                                |
-| Plan mode   | no: follows [`plans/F-01.md`](../plans/F-01.md) §5                                                                                                                                                                                                                                                                                                |
-| Gates       | Action-bundle drift (workflows use the committed Action); docs links (`build/install-from-feeds.md`); CI (new `release-kotlin.yml`, changed release workflows)                                                                                                                                                                                    |
-| Human input | trusted-publisher registration of `vladzaharia/polaris-key` for the `polaris-key` system product in each environment; the Swift signing certificate and key as the CI secrets `SWIFT_REGISTRY_SIGNING_KEY`, `SWIFT_REGISTRY_SIGNING_CERT` and `SWIFT_REGISTRY_CERT_CHAIN` (the owner provides them later; the Swift job fails clearly until then) |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                         |
+| Field       | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | F: Package feeds (pkg.plrs.im) (tier-1)                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Size        | 1.5–2 engineer-weeks                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Depends on  | [F-04](F-04-npm-feed.md), [F-05](F-05-pypi-feed.md), [F-06](F-06-swift-registry.md), [F-07](F-07-maven-feed.md), [F-08](F-08-oci-registry.md), [F-09](F-09-godot-feed.md)                                                                                                                                                                                                                                                                                 |
+| Unblocks    | none                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Plan mode   | no: follows [`plans/F-01.md`](../plans/F-01.md) §5                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Gates       | Action-bundle drift (workflows use the committed Action); docs links (`build/install-from-feeds.md`); CI (new `release-kotlin.yml`, changed release workflows)                                                                                                                                                                                                                                                                                            |
+| Human input | the `package-registry` GitHub environment (deployment policy: the `main` branch and `v*` tags), branch protection on `main` and a `v*` tag ruleset; the Swift signing certificate and key as the `package-registry` secrets `SWIFT_REGISTRY_SIGNING_KEY`, `SWIFT_REGISTRY_SIGNING_CERT` and `SWIFT_REGISTRY_CERT_CHAIN` (the owner provides them later; the Swift job fails clearly until then). The trusted publisher registers itself (amendment below) |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
 ## Goal
 
@@ -154,3 +154,54 @@ feed: no Maven Central, no Sonatype, no `signing` plugin.
 - **Follow-ups to file:** link the system product to the monorepo (F-03's area, above); delete
   `sdks/godot/store/CHECKLIST.md` and `LISTING.md`, which describe the store submission the owner
   ruled out; the pip dependency route for the Python SDK (F-12).
+
+## Amendment: automation (owner decision 2026-10-04, binding)
+
+The owner ruled the SDKs are registered on and kept updated on our feeds **automatically**, in
+**lockstep with the server**, and that all legacy SDK deployment infrastructure goes. The
+automation pass implements it:
+
+- **Triggers and versions.** `.github/workflows/publish-sdks.yml` publishes every SDK on every push
+  to `main` (semver `<next>-main.<N>`, PEP 440 `<next>.dev<N>`, channel `main`: npm dist-tag
+  `main`, never `latest`) and, called by `deploy.yml` after the deploy and the registration, on
+  every `v*` tag (exactly that version; `stable`, or `beta` for a prerelease tag).
+  `tools/sdk-version.mjs` derives the version from git (`<next>` = the patch after the newest `v*`
+  tag, `<N>` = commits since it) and stamps it into every SDK after its tests; nothing is
+  versioned by hand or committed back. Unit-tested in `tools/sdk-version.test.ts`.
+- **Removed.** `release.yml` (Changesets), `release-python.yml`, `release-swift.yml`,
+  `release-godot.yml` (and its GitHub Release and asset-lib zip), `.changeset/`, the `changeset`
+  and `version-packages` scripts and `@changesets/cli`, `sdks/godot/store/`. `release-kotlin.yml`
+  and `release-image.yml` (this package's own, on `kotlin-v*` and `@polaris-key/cli@*` tags) are
+  folded into `publish-sdks.yml`, because lockstep leaves no per-SDK tag to run them on.
+  `package.py` no longer builds the asset-lib zip or requires a CHANGELOG section.
+- **Registration** (the F-03 follow-up the Corrections below found). `POST /webhooks/deploy`
+  (`packages/worker/src/platformDeploy.ts`), called by `deploy.yml` on every deploy through
+  `scripts/register-platform.mjs` and authenticated by the deploy job's own GitHub OIDC token
+  (policy: the prod vars `PLATFORM_REPOSITORY*`, `deploy.yml`, `production`, a protected `v*`
+  tag), runs `ensureSystemProduct` (idempotent; an operator's switches stay off) and the new
+  `linkSystemProduct`: `release_source = 'github'`, the `release_config` coordinates and
+  manifest-owned columns, the package deliverables and the manifest-owned trusted publisher with
+  the configured numeric ids. Narrative-only route (as `githubWebhook`), no OpenAPI path; no new
+  table (the single-use `jti` reuses `idx_ci_tokens_jti`).
+- **Drift.** The `drift` job runs `tools/feed-drift.mjs`: every package's newest version of the
+  build's kind on its feed must be the build's (npm dist-tag and image tag included), or the run
+  fails naming each package.
+- **Environment.** `publish-package.yml` takes the channel from the version job and refuses any
+  ref but `main` and `v*`; `package-registry`'s deployment policy is `main` plus `v*`; the Swift
+  signing job runs there and is signed or nothing.
+
+Corrections found by proving it locally (`pnpm --filter @polaris-key/worker registry:self-publish`,
+the whole pipeline against a local Worker with each real client):
+
+- A package publish's `channel` must be a declared channel: the root `.pkey/release` declares the
+  manual channel `main`, and the link re-applies `manual_channels_json` on every deploy.
+- The npm feed made the newest prerelease `latest` when nothing was on `stable`, so every
+  `-main.N` build would have been `latest` until the first release: a prerelease another
+  channel's tag names is no longer the `latest` fallback (`npm/render.ts`).
+
+What only CI or production can prove: GitHub's real OIDC tokens and the `package-registry`
+deployment policy, real R2 temporary credentials and the S3 upload, the Swift job with the real
+certificate, the Linux and Android runners, and the first deploy registering against production
+D1. The acceptance criterion "a tagged pre-release of each SDK appears on its staging feed" stays
+open until a production deploy and a `main` push have run; the staging environment has no deploy
+hook vars (DEPLOYMENT §2).

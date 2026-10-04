@@ -496,39 +496,47 @@ to F-09) and the console pages (F-11) follow.
 
 Every SDK this repository ships is a package deliverable of the system product, declared in the
 root `.pkey/release`, and is published only to its feed on `pkg.plrs.im` (owner decision
-2026-10-04: no npmjs, GitHub Packages, PyPI, Maven Central, Swift Package Index, Docker Hub or
-Godot store). Merging never publishes. A release is a tag on a commit that is on main:
+2026-10-04: no npmjs, GitHub Packages, PyPI, Maven Central, Swift Package Index, Docker Hub,
+Godot store or GitHub Release). Publishing is automatic and in lockstep with the server; there is
+nothing to bump and no per-SDK tag:
 
-| SDK                    | Bump                                        | Tag                             | Workflow             |
-| ---------------------- | ------------------------------------------- | ------------------------------- | -------------------- |
-| npm (`@polaris-key/*`) | merge the Changesets "Version Packages" PR  | `@polaris-key/<name>@<version>` | `release.yml`        |
-| the `pkey` image       | with `@polaris-key/cli`                     | `@polaris-key/cli@<version>`    | `release-image.yml`  |
-| Python                 | `sdks/python/pyproject.toml`                | `python-v<version>`             | `release-python.yml` |
-| Swift                  | none (the tag is the version)               | `swift-v<version>`              | `release-swift.yml`  |
-| Kotlin + Godot Android | `version` in `sdks/kotlin/build.gradle.kts` | `kotlin-v<version>`             | `release-kotlin.yml` |
-| Godot addon            | `plugin.cfg`, `SDK_VERSION`, `CHANGELOG.md` | `godot-v<version>`              | `release-godot.yml`  |
+| Trigger          | Workflow                                       | Every SDK is published at                                 | Channel                 |
+| ---------------- | ---------------------------------------------- | --------------------------------------------------------- | ----------------------- |
+| a push to `main` | `publish-sdks.yml`                             | `<next>-main.<N>` (PyPI `<next>.dev<N>`)                  | `main` (npm dist-tag)   |
+| a `v*` tag       | `deploy.yml` → `publish-sdks.yml` after deploy | exactly the tag's version (`v0.9.0` → `0.9.0` everywhere) | `stable`, `beta` if pre |
 
-- **npm:** after the version PR merges, `pnpm changeset tag` on main writes a tag per package
-  version. Push them **one at a time** (`git push origin '@polaris-key/node@1.2.0'`): GitHub
-  starts no workflow for a push of more than three tags at once. Push a package's
-  `@polaris-key` dependencies before it, so a dependant never lands before what it needs.
-- **Pre-releases:** a version with a pre-release part goes to the `beta` channel
-  (`publish-package.yml` decides from the version).
-- **Publishing:** each workflow builds, tests and packs, then calls `publish-package.yml`, the one
-  trusted publisher, in the `package-registry` environment (DEPLOYMENT §2). A version is unique
-  forever: a failed publish of a version that never landed can be re-run, a landed one cannot be
-  replaced (yank it and release the next version).
+- **The version** comes from git (`tools/sdk-version.mjs derive`): `<next>` is the patch after the
+  newest `v*` tag, `<N>` the commits since it. CI stamps it into every SDK's version file after
+  the tests (`tools/sdk-version.mjs stamp`) and never commits it. A prerelease tag must be
+  `-alpha.N`, `-beta.N` or `-rc.N` (PyPI has to spell it too); anything else fails the run.
+- **To release:** tag a commit on `main` `vX.Y.Z` and push the tag. `deploy.yml` deploys the
+  Worker, registers the platform packages (below), then publishes every SDK at `X.Y.Z`.
+- **Registration** (`deploy.yml`, "Register the platform packages"): the deploy hook bootstraps the
+  system product, links it to this repository and applies the root `.pkey/` of the tag: the
+  package deliverables, the `main` channel and the trusted publisher (DEPLOYMENT §2). It is
+  idempotent and leaves an operator's switches and claimed publisher alone. If it fails, the
+  deploy fails after the Worker is live: fix the cause (its `::error::` names the Worker's reason:
+  `policy_mismatch` with the claim, `invalid_manifest` with the validator's errors,
+  `wrong_manifest`) and rerun the job. A new deliverable in `.pkey/release` is registered by the
+  next deploy, so the first tag that adds one publishes it; a push to `main` before that deploy
+  is refused for that one package (`invalid_descriptor`) and the drift check names it.
+- **Publishing:** each package goes through `publish-package.yml`, the one trusted publisher, in
+  the `package-registry` environment (DEPLOYMENT §2), from `main` or a `v*` tag only. A version
+  is unique forever: a failed publish of a version that never landed can be re-run, a landed one
+  cannot be replaced (yank it; the next push publishes the next version).
+- **Drift:** the last job (`tools/feed-drift.mjs`) reads every package's listing back from its
+  feed and fails unless its newest version of the build's kind is the build's version (npm's
+  dist-tag and the image's tag included), naming each package that is behind. A failed publish
+  shows up here too; rerun the failed jobs, then the drift job.
 - **Swift signing:** the Swift job refuses to run without the three `SWIFT_REGISTRY_*` secrets
   and never publishes unsigned. To rotate the certificate, replace the secrets: new releases are
   signed with the new certificate, old releases keep their signatures, and adopters who trust
   the root see no change.
-- **Dry runs:** `release-godot.yml` and `release-kotlin.yml` run by hand (workflow_dispatch) do
-  everything but publish. Locally, `pkey release publish --product polaris-key --deliverable <id>
---dir <packed files> --dry-run` without a CI credential extracts and validates the package and
-  stops before the server.
-- **Before the first release** in an environment: the feeds bootstrap, the trusted publisher and
-  the system product's package deliverables (DEPLOYMENT §2, "GitHub environment
-  `package-registry`").
+- **Dry runs:** locally, `pnpm --filter @polaris-key/worker registry:self-publish` runs the whole
+  pipeline (derive, stamp, build, register, publish, drift, install with each real client)
+  against a local Worker. `pkey release publish --product polaris-key --deliverable <id> --dir
+<packed files> --dry-run` without a CI credential extracts and validates one package and stops
+  before the server.
 
 ### Do not roll back past 0058_b with package rows
 
