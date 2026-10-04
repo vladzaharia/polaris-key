@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { compile } from "tailwindcss";
 import { describe, expect, it } from "vitest";
 
-import { run } from "../scripts/gen.js";
+import { run, svgTree } from "../scripts/gen.js";
 import { SERVICE_ACCENTS, THEME_TOKENS } from "../src/generated/tokens.js";
 import { SERVICE_IDS, STATUS_IDS } from "../src/tokens/source.js";
 
@@ -60,6 +60,87 @@ describe("generator drift", () => {
     expect(gd).toContain("class_name PKeyBrand");
     expect(gd.startsWith("# GENERATED FILE")).toBe(true);
     expect(swift.startsWith("// GENERATED FILE")).toBe(true);
+  });
+
+  it("the Kotlin (Compose) output carries every accent, the bit-less marks and the kit fonts", () => {
+    const kt = readFileSync(
+      join(
+        PKG,
+        "../../sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/brand/PolarisBrandTokens.generated.kt",
+      ),
+      "utf8",
+    );
+    expect(kt.startsWith("// GENERATED FILE")).toBe(true);
+    for (const id of SERVICE_IDS) {
+      expect(kt).toContain(
+        `"${id}" to BrandAccent(solid = Color(0xFF${SERVICE_ACCENTS.dark[id].solid.slice(1).toUpperCase()})`,
+      );
+    }
+    expect(kt).toMatch(/"core" to BrandAccent\([^\n]*, bit = null\)/);
+    expect(kt).toContain("public val pinnedKDark: BrandVector");
+    expect(kt).toContain("public val poweredByCompactLight: BrandVector");
+    // The display-cut Pinned K without the terminal bit: no gold in the mark.
+    const pinned = kt.slice(
+      kt.indexOf("public val pinnedKDark"),
+      kt.indexOf("public val pinnedKLight"),
+    );
+    expect(pinned).not.toContain("FFC24D");
+    const ui = join(PKG, "../../sdks/kotlin/ui/src/main");
+    for (const [copy, kit] of [
+      ["res/font/polaris_rubik_regular.ttf", "Rubik-Regular.ttf"],
+      ["res/font/polaris_rubik_bold.ttf", "Rubik-Bold.ttf"],
+    ] as const) {
+      expect(
+        readFileSync(join(ui, copy)).equals(
+          readFileSync(join(PKG, "kit/source/fonts", kit)),
+        ),
+      ).toBe(true);
+    }
+    expect(
+      readFileSync(join(ui, "assets/polaris-key/fonts/OFL.txt"), "utf8"),
+    ).toContain("SIL OPEN FONT LICENSE");
+  });
+
+  it("svgTree reduces a kit SVG to groups and filled paths, and refuses anything else", () => {
+    const tree = svgTree(
+      '<svg width="10" height="10" viewBox="0 0 10 10"><title>t</title><g fill="#fff" transform="translate(1 2) scale(0.5 -0.5)"><path d="M0 0Z"/><path transform="translate(3 0)" d="M1 1Z"/></g></svg>',
+    );
+    expect(tree).toEqual({
+      width: 10,
+      height: 10,
+      nodes: [
+        {
+          kind: "group",
+          tx: 1,
+          ty: 2,
+          sx: 0.5,
+          sy: -0.5,
+          fill: "#fff",
+          children: [
+            { kind: "path", fill: null, d: "M0 0Z" },
+            {
+              kind: "group",
+              tx: 3,
+              ty: 0,
+              sx: 1,
+              sy: 1,
+              fill: null,
+              children: [{ kind: "path", fill: null, d: "M1 1Z" }],
+            },
+          ],
+        },
+      ],
+    });
+    expect(() =>
+      svgTree(
+        '<svg width="1" height="1" viewBox="0 0 1 1"><circle r="1"/></svg>',
+      ),
+    ).toThrow(/unsupported SVG element/);
+    expect(() =>
+      svgTree(
+        '<svg width="1" height="1" viewBox="0 0 1 1"><g transform="rotate(45)"></g></svg>',
+      ),
+    ).toThrow(/unsupported SVG transform/);
   });
 
   it("the Godot addon's brand folder is the kit's files, bit-less and never imported", () => {

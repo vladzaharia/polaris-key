@@ -37,9 +37,11 @@ no Polaris Key colours, and flipping the single switch produces the branded vari
 
 - `ui.kit` is `planned` for every SDK that is not React or Godot; the Kotlin SDK is the second
   native SDK to ship one, and native Android apps otherwise rebuild the gate by hand.
-- Today Swift's kit defaults to the brand accent (`PolarisTheme.brandAccent`); the owner wants the
-  Kotlin kit neutral by default, so the contract is stated here and the Swift kit can follow later
-  (a separate package, not this one).
+- The owner wants every SDK UI kit neutral by default, with Polaris Key branding opt-in. The React,
+  SwiftUI and Godot kits on main already are: Swift's `PolarisLoginView` defaults to
+  `PolarisBranding.native` (system fonts, the app's tint) behind `.polarisKeyBranding(.polarisKey)`,
+  and `PolarisTheme.brandAccent` survives only as a deprecated accessor. The Kotlin kit matches
+  that contract. The Swift kit's missing screens are a separate package, not this one.
 
 ## Read first
 
@@ -111,21 +113,22 @@ logo = null)`. With `None` every colour, shape and text style reads from the hos
 
 ## Acceptance criteria
 
-- [ ] With a stock Material 3 theme and defaults, no screen renders a Polaris Key colour, font,
+- [x] With a stock Material 3 theme and defaults, no screen renders a Polaris Key colour, font,
       logo or the badge (a snapshot and a test prove it).
-- [ ] Setting `PolarisBranding.PolarisKey` is the only change needed to get the branded variant;
+- [x] Setting `PolarisBranding.PolarisKey` is the only change needed to get the branded variant;
       `showPoweredBy = true` adds the badge and is independent of branding.
-- [ ] Every screen listed has snapshots (light, dark, large font, phone, tablet; neutral and
+- [x] Every screen listed has snapshots (light, dark, large font, phone, tablet; neutral and
       branded) and passes the accessibility tests.
-- [ ] Every string is in `PolarisCopy` or string resources; the state-to-copy mapping has unit tests.
-- [ ] `pnpm gen:brand -- --check` covers the Kotlin token file; `ui.kit` is `implemented` and
+- [x] Every string is in `PolarisCopy` or string resources; the state-to-copy mapping has unit tests.
+- [x] `pnpm gen:brand -- --check` covers the Kotlin token file; `ui.kit` is `implemented` and
       `parity:check` is green.
-- [ ] The green gate passes (`AGENTS.md`) and the CI jobs are green.
+- [x] The green gate passes (`AGENTS.md`) and the CI jobs are green (locally: the gate, and the
+      `android` job's `:ui` tasks with `checkModuleBoundaries`; the hosted CI run follows the push).
 
 ## Verify
 
 ```sh
-( cd sdks/kotlin && ./gradlew :ui:testDebugUnitTest :ui:verifyPaparazziDebug )   # or the chosen snapshot task
+( cd sdks/kotlin && ./gradlew :ui:verifyRoborazziDebug )   # every :ui unit test, with the snapshots verified (Roborazzi)
 mise exec node@22 -- pnpm gen:brand -- --check
 mise exec node@22 -- pnpm parity:check -- --check
 ```
@@ -137,3 +140,54 @@ mise exec node@22 -- pnpm parity:check -- --check
 - The role agent sets `--set P6-11 in-review` when it hands off. After review, the lead adds the last
   commit of the PR:
   `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P6-11 done`.
+
+## Corrections from implementation
+
+Recorded by the implementer on 2026-10-04. The code is the fact where this brief and the code
+disagree.
+
+- **Snapshot tool: Roborazzi.** Robolectric (4.14.1) is already the Android modules' unit-test
+  runtime, so the snapshots use Roborazzi 1.43 over Robolectric's native graphics rather than
+  Paparazzi. The verify task is `:ui:verifyRoborazziDebug`, and recording is `:ui:recordRoborazziDebug`.
+  The references are mdpi (one pixel per dp), so the 136 committed PNGs stay at about 2.7 MB. They
+  cover 19 screen states in 7 variants (phone neutral and branded in light and dark, phone at a
+  200 % font scale, tablet neutral and branded) and the badge in 3. Comparison allows a 1 % pixel
+  change for font hinting across hosts. Robolectric's 200 % is Android 14's nonlinear font scaling.
+  The accessibility suite also checks a linear 2x on a 360 x 640 dp phone.
+- **Versions.** Kotlin is pinned at 2.1.21 by Godot's Android template, so the kit uses the Compose
+  BOM 2025.05.01 (Compose 1.8, Material 3 1.3) and the Compose compiler plugin at the Kotlin
+  version. New dependencies:
+  - `material-icons-core`;
+  - ZXing `core` 3.5.3, the QR encoder: pure Java, no camera;
+  - `activity-compose`, for tests only.
+- **Dependencies.** `:ui` depends on `:sdk` only, which carries `:core`, `:update` and `:packs`
+  through `api`. `checkModuleBoundaries` now also fails when `:ui` reaches `:platform`, `:android`,
+  `:godot`, `:boundary` or `:conformance`.
+- **Brand artwork as vectors.** Swift bundles kit PNGs. Here the generator reduces the kit SVGs (the
+  bit-less display-cut Pinned K and the compact transparent badge) to groups and filled paths
+  (`svgTree`) and emits them in `PolarisBrandTokens.generated.kt`, so `gen:brand --check` covers the
+  marks as well as the tokens. The Rubik TTFs are binary copies into `res/font`, through a new
+  `COPIES` list that `--check` compares byte for byte. The OFL and the kit notice are in
+  `assets/polaris-key/fonts/`.
+- **Theme surface.** `PolarisTheme(branding, showPoweredBy, copy, logo)` as specified, plus
+  `darkTheme`, which follows the system. Neutral, the kit sets no `MaterialTheme` of its own. Material
+  3 has no role for warning and success, so those colours come from `PolarisStatusColors`: the
+  host's tertiary and primary roles when neutral, brand tokens when branded. Service accents (license,
+  update, release) colour only the small indicators when branded, and fall back to the host's
+  primary when neutral. The QR code is always dark on light, in both modes, so every scanner reads it.
+- **Copy.** `PolarisCopy` has 147 fields. `res/values/strings.xml` holds a resource for each, named
+  `pkey_ui_<snake_case>`. `PolarisCopy.localized()` reads them by field name, so a consumer R8 rule
+  keeps the field names. A debug-only `values-fr` stands in for an app's translation in the tests.
+- **Scope details.**
+  - Settings is read-only: it shows the licence summary and the resolved user-facing config values.
+  - Devices renames and signs out (deauthorises) through confirmation dialogs.
+  - The update prompt is a card, which `PolarisUpdatePromptDialog` wraps in a dialog. The snapshots
+    show the card, not the dialog windows.
+  - `PolarisKeyClient.bootHost()` treats a sync where every enabled document failed, or the call
+    threw, as `offline`.
+- **Docs.** The Kotlin SDK's own docs page is still P6-05's. This package adds
+  `build/sdks/kotlin-ui.mdx`, which renders `sdks/kotlin/ui/README.md`, and links it from the SDK
+  index.
+- **CI.** The `android` job runs `:ui:verifyRoborazziDebug`, `:ui:lintRelease`,
+  `:ui:assembleRelease` and `:ui:publishUiPublicationToLocalRepository`. The `kotlin` job
+  (`-Ppkey.jvmOnly`) leaves `:ui` out, like every Android module.

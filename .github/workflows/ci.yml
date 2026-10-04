@@ -442,8 +442,11 @@ jobs:
   # install are the owner's device checklist (the P5-06 brief). First-party actions, plus Gradle's
   # own wrapper-validation action, SHA-pinned, which checks the committed gradle-wrapper.jar against
   # Gradle's published checksums before anything runs it.
+  # P6-11: the Compose UI kit (:ui, polaris-key-ui): its unit, state-holder, branding, contrast and
+  # TalkBack suites with every screen's committed Roborazzi snapshot verified (Robolectric's native
+  # graphics, no emulator), lint and assembleRelease, and the local publication.
   android:
-    name: Android platform AAR + Godot binding
+    name: Android platform AAR + Godot binding + Compose UI kit
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -470,12 +473,13 @@ jobs:
         working-directory: sdks/kotlin
         run: >-
           ./gradlew --no-daemon :platform:testPlayDebugUnitTest :platform:testDirectDebugUnitTest
-          :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest
+          :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest :ui:verifyRoborazziDebug
       - name: Lint and assembleRelease (play and direct)
         working-directory: sdks/kotlin
         run: >-
           ./gradlew --no-daemon :platform:lintPlayRelease :platform:lintDirectRelease
           :godot:lintPlayRelease :godot:lintDirectRelease :platform:assembleRelease :godot:assembleRelease :boundary:assembleRelease
+          :ui:lintRelease :ui:assembleRelease
       - name: Flavour boundary
         run: sdks/kotlin/tools/check_flavours.sh
       - name: Module boundaries (:core has no Android dependency, :platform no SDK module)
@@ -491,7 +495,8 @@ jobs:
         working-directory: sdks/kotlin
         run: |
           ./gradlew --no-daemon :platform:checkStandalone :godot:checkPlatformOnly \
-            :platform:publishAllPublicationsToLocalRepository :godot:publishAllPublicationsToLocalRepository
+            :platform:publishAllPublicationsToLocalRepository :godot:publishAllPublicationsToLocalRepository \
+            :ui:publishUiPublicationToLocalRepository
           tools/check_publication.sh
       - uses: actions/cache@v4
         with:
@@ -508,6 +513,8 @@ jobs:
           name: android-logs
           path: |
             sdks/kotlin/platform/build/reports/
+            sdks/kotlin/ui/build/reports/
+            sdks/kotlin/ui/build/outputs/roborazzi/
             sdks/godot/native/android/build/reports/
             sdks/godot/build/logs/
 

@@ -21,9 +21,10 @@ docs' parity page renders it.
 | `:platform`    | Android library (AAR) | install source, Keystore, Play Integrity, Play In-App Updates / Play Asset Delivery or PackageInstaller self-update (flavours `play`, `direct`); standalone               |
 | `:godot`       | Android library (AAR) | the Godot Android plugin (v2) over `:platform` ONLY, singleton `PolarisKeyAndroid` (`../godot/native/android/`); `checkPlatformOnly`                                      |
 | `:boundary`    | Android app (probe)   | an empty app per flavour; `tools/check_flavours.sh` proves the flavour boundary on its release                                                                            |
+| `:ui`          | Android library (AAR) | the Jetpack Compose UI kit (P6-11): boot shell, gate, activation, sign-in with QR, settings, devices, update banner and prompt, pack progress; see `ui/README.md`         |
 
-Planned modules: `:android` (the only module that sees both `:core` and `:platform`, P6-12) and
-`:ui` (Compose, P6-11). No JVM module has an Android
+Planned module: `:android` (the only module that sees both `:core` and `:platform`, P6-12).
+`:ui` sees `:sdk` and never `:platform` or `:android`. No JVM module has an Android
 dependency, each service module depends on `:core` only (never on a sibling; `:sdk` is the one
 place they meet) and `:platform` depends on no SDK module: `./gradlew checkModuleBoundaries` fails
 otherwise, in CI.
