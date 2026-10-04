@@ -6,7 +6,7 @@ JSON objects (``dict``); a target is the plan-matrix shape (``dict``).
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from ...constants_generated import (
     CHUNKS_FORMAT,
@@ -24,6 +24,7 @@ __all__ = [
     "variant_usable",
     "select_variant",
     "plan_target",
+    "with_feed_deltas",
 ]
 
 
@@ -233,3 +234,53 @@ def plan_target(
         "files": files_t,
         "deltas": deltas,
     }
+
+
+def _delta_id(d: Any) -> Optional[str]:
+    """A delta's id: a ``payload`` delta's ``artifact.sha256``, a ``files`` delta's
+    ``patch.sha256``."""
+    if not isinstance(d, dict):
+        return None
+    ref = d.get("artifact") if d.get("scope") == "payload" else d.get("patch")
+    sha = ref.get("sha256") if isinstance(ref, dict) else None
+    return sha if isinstance(sha, str) else None
+
+
+def with_feed_deltas(
+    variant: Mapping[str, Any], deltas: Optional[Mapping[str, Any]]
+) -> Tuple[Mapping[str, Any], List[str]]:
+    """``withFeedDeltas(variant, deltas) -> (variant, feed_ids)`` (plans/P4-29.md §2.4 step 2):
+    the variant with the feed's menu for its payload appended to a COPY of its deltas, after the
+    record's own. Unchanged, with empty ``feed_ids``, when ``deltas`` is ``None``, the variant is
+    not usable, its layout is not ``container``, or the menu has no key equal to
+    ``variant.payload.sha256``. An entry whose ``artifact.sha256`` equals an existing delta id is
+    skipped (a record delta wins). ``feed_ids`` lists the appended artifact hashes in feed order.
+    The merged list may exceed ``MAX_VARIANT_DELTAS``, a claim on records only. Pure."""
+    if (
+        deltas is None
+        or not variant_usable(variant)
+        or variant["files"].get("layout") != "container"
+        or variant["payload"]["sha256"] not in deltas
+    ):
+        return variant, []
+    merged = list(variant.get("deltas") or [])
+    ids = {i for i in (_delta_id(d) for d in merged) if i is not None}
+    feed_ids: List[str] = []
+    for e in deltas[variant["payload"]["sha256"]] or []:
+        sha = e["artifact"]["sha256"]
+        if sha in ids:
+            continue
+        ids.add(sha)
+        merged.append(
+            {
+                "method": e["method"],
+                "scope": "payload",
+                "from": e["from"],
+                "memBytes": e["memBytes"],
+                "artifact": {"sha256": sha, "bytes": e["artifact"]["bytes"]},
+            }
+        )
+        feed_ids.append(sha)
+    if not feed_ids:
+        return variant, feed_ids
+    return {**variant, "deltas": merged}, feed_ids

@@ -11,6 +11,9 @@ export const ErrorCode = {
   notFound: "not_found",
   badRequest: "bad_request",
   forbidden: "forbidden",
+  attestationRequired: "attestation_required",
+  attestationRejected: "attestation_rejected",
+  attestationUnavailable: "attestation_unavailable",
   rateLimited: "rate_limited",
   bodyTooLarge: "body_too_large",
   methodNotAllowed: "method_not_allowed",
@@ -151,6 +154,9 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "not_found",
   "bad_request",
   "forbidden",
+  "attestation_required",
+  "attestation_rejected",
+  "attestation_unavailable",
   "rate_limited",
   "body_too_large",
   "method_not_allowed",
@@ -293,6 +299,9 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   not_found: "wire",
   bad_request: "wire",
   forbidden: "wire",
+  attestation_required: "wire",
+  attestation_rejected: "wire",
+  attestation_unavailable: "wire",
   rate_limited: "wire",
   body_too_large: "wire",
   method_not_allowed: "wire",
@@ -456,6 +465,7 @@ export const Feature = {
   devicesRegister: "devices.register",
   devicesManage: "devices.manage",
   devicesReport: "devices.report",
+  devicesAttest: "devices.attest",
   identityOidc: "identity.oidc",
   identityDevicecode: "identity.devicecode",
   releaseChangelog: "release.changelog",
@@ -528,6 +538,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "devices.register",
   "devices.manage",
   "devices.report",
+  "devices.attest",
   "identity.oidc",
   "identity.devicecode",
   "release.changelog",
@@ -1396,6 +1407,14 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     service: "core",
     na: [{ runtime: "web", reason: "runtime" }],
   },
+  "devices.attest": {
+    status: "na",
+    service: "core",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
   "identity.oidc": { status: "implemented", service: "identity", na: [] },
   "identity.devicecode": {
     status: "implemented",
@@ -1496,4 +1515,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "5609557f5c3fe9aeecdd6b0be3c455072a9d64f85d4817b3df74e08ca702275c";
+  "488e6e553a9be4739daff354dac2079fbb46ca7d651d867490f1f19d28287f16";

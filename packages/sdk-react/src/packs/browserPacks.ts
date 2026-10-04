@@ -223,7 +223,8 @@ export interface BrowserPacksOptions {
   now?: () => number;
   /**
    * plans/P4-29.md §2.4 step 1: the committed feed's delta menu, or null. Default: the menu the
-   * browser adapter's last `decideUpdate()` handed to `recordFeedDeltas` (null until one ran).
+   * browser adapter's last `decideUpdate()` handed to `recordFeedDeltas`; before any decision,
+   * the menu of the most recently committed feed in its cache (`seedFeedDeltas`); else null.
    */
   feedDeltas?: () => FeedDeltas | null;
 }
@@ -276,6 +277,11 @@ export interface BrowserPacks {
   /** plans/P4-29.md §2.4 step 1: keep the delta menu of the feed an update check used; the
    *  next installs offer its entries beside the records' own deltas. */
   recordFeedDeltas(deltas: FeedDeltas | null): void;
+  /** plans/P4-29.md §2.4 step 1: on load, before any update check, read the menu of the most
+   *  recently committed feed through `load` (the browser adapter calls this at construction). A
+   *  menu `recordFeedDeltas` already kept wins; a failing `load` is no menu. The engine's start
+   *  waits for it. */
+  seedFeedDeltas(load: () => Promise<FeedDeltas | null>): void;
 }
 
 /** The stamp's holds (`holdsOf`, plans/P4-13.md §2.4): from the original bytes or text, with
@@ -329,7 +335,9 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
   let engine: PackEngine | null = null;
   let building: PackEngine | null = null;
   let starting: Promise<PackEngine> | null = null;
-  let feedMenu: FeedDeltas | null = null;
+  /** Undefined until `recordFeedDeltas` ran or `seedFeedDeltas`'s load answered. */
+  let feedMenu: FeedDeltas | null | undefined = undefined;
+  let seeding: Promise<void> | null = null;
 
   const discovery = (): DiscoveryDocument | null =>
     typeof opts.discovery === "function" ? opts.discovery() : opts.discovery;
@@ -405,7 +413,8 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
         // The WASM decoder cannot stream: a `full` frame plus its payload must fit the same
         // budget, or the candidate is dropped and the plan refuses cleanly.
         oneShotBudget: budget,
-        feedDeltas: () => (opts.feedDeltas ? opts.feedDeltas() : feedMenu),
+        feedDeltas: () =>
+          opts.feedDeltas ? opts.feedDeltas() : (feedMenu ?? null),
         storage: store.storage,
         state: store.state,
         ...(store.revocations ? { revocations: store.revocations } : {}),
@@ -508,6 +517,8 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
         }
       });
       await e.load();
+      // plans/P4-29.md §2.4 step 1: the committed feed's menu, read on load (never throws).
+      if (seeding) await seeding;
       engine = e;
       return e;
     })().catch((err: unknown) => {
@@ -584,6 +595,17 @@ export function createBrowserPacks(opts: BrowserPacksOptions): BrowserPacks {
       }),
     recordFeedDeltas(deltas) {
       feedMenu = deltas;
+    },
+    seedFeedDeltas(load) {
+      if (feedMenu !== undefined || seeding !== null) return;
+      seeding = (async () => {
+        try {
+          const d = await load();
+          if (feedMenu === undefined) feedMenu = d;
+        } catch {
+          // No menu: the records' own deltas only.
+        }
+      })();
     },
     async requestPersistence() {
       const nav = (

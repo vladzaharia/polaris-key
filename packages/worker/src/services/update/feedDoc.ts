@@ -77,7 +77,9 @@ import {
   menuEntries,
   menuMember,
   menuRecords,
+  rankFeedDeltas,
 } from "./feedDeltas.js";
+import type { ServiceHooks } from "../../core/hooks.js";
 
 /** A stored document older than this is re-signed (half the 900 s TTL). */
 export const RESIGN_AFTER_SECONDS = 450;
@@ -309,7 +311,7 @@ function withDeltaMenu(
   platform: string | null,
   audits: FeedAudit[],
 ): ChannelFeedDoc {
-  const d = composed.deltas;
+  const d = composed.menu;
   if (!d || d.candidates.length === 0) return doc;
   const list = menuEntries(d, menuRecords(doc, d, platform));
   if (list.length === 0) return doc;
@@ -478,6 +480,43 @@ export function documentFor(
   };
 }
 
+/**
+ * P4-29: the composed feed with its ranked menu, for signing. The device counts behind the rank
+ * are read here, on the sign path only — the seq hash covers the candidate set, never the rank, so
+ * a request served from the stored copy reads none. A failure lists no menu, audited; it never
+ * fails a feed. The menu never changes which document is chosen, so `documentFor` over the result
+ * picks the same platform as over `composed`.
+ */
+export async function withRankedMenu(
+  hooks: ServiceHooks,
+  composed: ComposedFeed,
+): Promise<ComposedFeed> {
+  const d = composed.deltas;
+  if (!d || d.candidates.length === 0) return composed;
+  try {
+    return { ...composed, menu: await rankFeedDeltas(hooks, d) };
+  } catch (e) {
+    return {
+      ...composed,
+      menu: null,
+      content: {
+        ...composed.content,
+        audits: [
+          ...composed.content.audits,
+          {
+            action: "update.feed.deltas_omitted",
+            summary:
+              `The ${composed.channel} feed's delta menu could not be ranked and was left out: ${e instanceof Error ? e.message : String(e)}`.slice(
+                0,
+                1000,
+              ),
+          },
+        ],
+      },
+    };
+  }
+}
+
 function notComposable(): Response {
   return harden(wireError(500, "feed_not_composable"));
 }
@@ -600,7 +639,9 @@ export async function handleFeedRoute(
       summary: `The ${composed.channel} feed changed at the seq ceiling and was re-signed at ${state.seq}`,
     });
 
-  // Which document this request gets, and whether the stored copy of it is current.
+  // Which document this request gets, and whether the stored copy of it is current. The probe
+  // carries no delta menu (P4-29): the menu never changes the choice, and its rank is read only
+  // when the document is actually signed.
   const probe = documentFor(product.slug, composed, platform, state.seq, now);
   const key = selectorKey(probe.platform);
   const stored = await db.first<FeedDocRow>(
@@ -620,8 +661,17 @@ export async function handleFeedRoute(
   ) {
     jws = stored.jws;
   } else {
-    if (!feedSelfCheck(probe.doc, probe.platform)) return notComposable();
-    for (const a of probe.audits)
+    const signing = composed.deltas
+      ? documentFor(
+          product.slug,
+          await withRankedMenu(ctx.hooks, composed),
+          platform,
+          state.seq,
+          now,
+        )
+      : probe;
+    if (!feedSelfCheck(signing.doc, signing.platform)) return notComposable();
+    for (const a of signing.audits)
       await appendAudit(db, {
         product: product.slug,
         id: randomId("aud"),
@@ -636,7 +686,7 @@ export async function handleFeedRoute(
         summary: a.summary,
       });
     jws = await signDoc(
-      probe.doc,
+      signing.doc,
       product.signingKeyPem,
       product.signingKid,
       "pkey-feed+jws",

@@ -59,6 +59,7 @@ import {
   effectiveNow,
   highWaterMark,
   isValidHostOutlet,
+  reloadFeeds,
   resolveUpdateOutlet,
   type DetectedOutlet,
   type HostOutlet,
@@ -189,6 +190,10 @@ export interface BrowserUpdateConfig {
     }): Promise<void>;
     /** plans/P4-29.md §2.4 step 1: the decided feed's delta menu, for the next installs. */
     recordFeedDeltas?(deltas: FeedDeltas | null): void;
+    /** plans/P4-29.md §2.4 step 1: called once at construction with a reader of the most
+     *  recently committed feed's menu in the adapter's cache, so installs before any decision
+     *  still offer it. */
+    seedFeedDeltas?(load: () => Promise<FeedDeltas | null>): void;
   };
 }
 
@@ -399,7 +404,31 @@ export class BrowserAdapter implements PolarisAdapter {
     this.store = createStore<PolarisState>(
       initialState("browser", this.capabilities, this.localOverrides),
     );
+    this.updateConfig?.packs?.seedFeedDeltas?.(() =>
+      this.committedFeedDeltas(),
+    );
     void this.load();
+  }
+
+  /**
+   * plans/P4-29.md §2.4 step 1: the delta menu of the most recently committed feed in the cache
+   * (the highest `issuedAt` among the stored feeds that re-verify on the reload path, with no
+   * freshness check: a stale menu only falls back), or null. A browser adapter has no configured
+   * channel, so it is the feed the last decision committed. Reads only; never creates a record.
+   */
+  private async committedFeedDeltas(): Promise<FeedDeltas | null> {
+    if (!this.offline || !this.pinned) return null;
+    const record = await this.offline.read(this.product);
+    const cache = record?.cache?.v === CACHE_VERSION ? record.cache : undefined;
+    const committed = await reloadFeeds(cache?.feeds, {
+      trust: this.pinned,
+      expectedAud: this.product,
+      platform: this.updateConfig?.installed?.platform ?? Platform.web,
+    });
+    let best: (typeof committed.feeds)[string] | null = null;
+    for (const f of Object.values(committed.feeds))
+      if (best === null || f.feed.issuedAt > best.feed.issuedAt) best = f;
+    return best?.content.deltas ?? null;
   }
 
   /** The outlet update decisions use (`resolveUpdateOutlet`'s answer), or null without

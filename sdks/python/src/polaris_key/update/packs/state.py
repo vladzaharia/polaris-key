@@ -111,6 +111,23 @@ def _as_install(v: Any, pack_id: str) -> Optional[Dict[str, Any]]:
     return v
 
 
+def _is_feed_delta(v: Any) -> bool:
+    """A journal's ``feedDelta``: the shape of a feed menu entry (plans/P4-29.md §2.2)."""
+    if not isinstance(v, dict) or not isinstance(v.get("artifact"), dict):
+        return False
+    a = v["artifact"]
+    return (
+        is_sha256(v.get("from"))
+        and isinstance(v.get("method"), str)
+        and v.get("scope") == "payload"
+        and _nat(v.get("memBytes"))
+        and v["memBytes"] >= 1
+        and is_sha256(a.get("sha256"))
+        and _nat(a.get("bytes"))
+        and a["bytes"] >= 1
+    )
+
+
 def _as_journal(v: Any, pack_id: str) -> Optional[Dict[str, Any]]:
     if not isinstance(v, dict) or v.get("packId") != pack_id or not is_pack_id(pack_id):
         return None
@@ -120,6 +137,10 @@ def _as_journal(v: Any, pack_id: str) -> Optional[Dict[str, Any]]:
     if not is_sha256(v.get("recordSha256")):
         return None
     if "delta" in v and not isinstance(v["delta"], str):
+        return None
+    # plans/P4-29.md §2.4 step 6: the feed-offered delta being installed, when ``delta`` names
+    # one. Optional, so ``PACK_STATE_VERSION`` stays 1.
+    if "feedDelta" in v and not _is_feed_delta(v["feedDelta"]):
         return None
     if "delegation" in v and not isinstance(v["delegation"], str):
         return None

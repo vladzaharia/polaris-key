@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature outlet.detect core.store packs.transport.apple commerce.receipt
+# @pkey-feature outlet.detect core.store packs.transport.apple commerce.receipt devices.attest
 # The Apple platform plugin's GDScript side (P5-05), headless on every OS:
 #
 #   stubs     PKeyApple without the native class: every call answers Unsupported, reason
@@ -77,10 +77,11 @@ func _facade(t: PKeyTestContext) -> void:
 			await a.pack_status("foes-c3"), await a.ensure_packs([{"id": "foes-c3", "path": "p"}]),
 			await a.check_pack_updates(), await a.remove_pack("foes-c3"), await a.pack_path("p"),
 			await a.listen(), await a.watch_pack("foes-c3"), await a.unwatch_pack("foes-c3"),
+			await a.app_attest("h"), await a.app_attest_assert("k", "x"),
 		]
 		t.check("stubs: every awaited call (%d) is Unsupported (%s) with its feature" % [stub_calls.size(), why], stub_calls.all(func(r: PKeyResult): return not r.ok and r.code == &"unsupported" and r.detail.get("reason") == why) \
 				and stub_calls[0].detail["feature"] == PKeyConstants.Feature.OUTLET_DETECT and stub_calls[3].detail["feature"] == PKeyConstants.Feature.COMMERCE_RECEIPT \
-				and stub_calls[7].detail["feature"] == PKeyConstants.Feature.PACKS_TRANSPORT_APPLE)
+				and stub_calls[7].detail["feature"] == PKeyConstants.Feature.PACKS_TRANSPORT_APPLE and stub_calls[14].detail["feature"] == PKeyConstants.Feature.DEVICES_ATTEST)
 		a.free()
 
 	var fake := PKeyFakeAppleNative.new()
@@ -127,6 +128,23 @@ func _facade(t: PKeyTestContext) -> void:
 	var sideload := await a.pack_status("foes-c3")
 	t.check("facade: a build without the extension answers Unsupported (outlet)", not sideload.ok and sideload.code == &"unsupported" and sideload.detail["reason"] == "outlet" \
 			and sideload.detail["feature"] == PKeyConstants.Feature.PACKS_TRANSPORT_APPLE)
+	# P6-02: App Attest.
+	t.check("facade: capabilities reports appAttest", a.capabilities().detail.get("appAttest") == true and a.app_attest_supported().ok)
+	var att := await a.app_attest("q8Jm3rJ0b1x2Vd4n6Q9sT0uW1yZ2aB3cD4eF5gH6iJ7")
+	t.check("facade: app_attest generates a key and answers the attestation", att.ok and att.detail.get("generated") == true and att.detail.get("keyId") is String \
+			and fake.calls.any(func(c): return c["op"] == "app_attest_attest" and c.get("requestHash") == "q8Jm3rJ0b1x2Vd4n6Q9sT0uW1yZ2aB3cD4eF5gH6iJ7" and not c.has("keyId")))
+	var again := await a.app_attest("h", att.detail.get("keyId", ""))
+	t.check("facade: app_attest with a key id sends it", again.ok and again.detail.get("generated") == false and fake.calls.filter(func(c): return c["op"] == "app_attest_attest").back().get("keyId") == att.detail.get("keyId"))
+	var asserted := await a.app_attest_assert(att.detail.get("keyId", ""), "{}")
+	t.check("facade: app_attest_assert answers the assertion", asserted.ok and asserted.detail.get("assertion") is String)
+	fake.attest_keys.clear()
+	var lost := await a.app_attest("h", att.detail.get("keyId", ""))
+	t.check("facade: a lost key is platform-error invalid_key with its id", not lost.ok and lost.code == PKeyErrors.PLATFORM_ERROR and lost.detail.get("error") == "invalid_key" and lost.detail.get("keyId") == att.detail.get("keyId"))
+	fake.app_attest_supported = false
+	var sim := await a.app_attest("h")
+	t.check("facade: where App Attest does not run it is Unsupported (runtime)", sim.code == &"unsupported" and sim.detail.get("reason") == "runtime" and a.app_attest_supported().detail.get("reason") == "runtime")
+	fake.app_attest_supported = true
+
 	fake.packs_reason = "version"
 	var old := await a.ensure_packs([{"id": "foes-c3", "path": "p"}])
 	t.check("facade: below iOS 26.4 Background Assets answers Unsupported (version)", old.code == &"unsupported" and old.detail["reason"] == "version")

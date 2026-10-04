@@ -336,6 +336,8 @@ const TABLE_OWNERS = {
     "lazy_delta_settings",
     "delta_demand_devices",
     "delta_demand",
+    "platform_deploys",
+    "platform_audit",
   ],
   license: [
     "licenses",

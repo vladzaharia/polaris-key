@@ -22,6 +22,8 @@ extends PKeyResult
 ##   undismissable  a mandatory binary, store or platform answer, or any blocked answer: a prompt
 ##                  the player cannot dismiss over a game that keeps running
 ##   feed_doc       the verified feed the decision used;  record_doc  the verified record, or null
+##   content        PKeyFeed.feed_content over feed_doc (its content members and delta menu, read
+##                  with the feed's own non-wire pointers; plans/P4-29.md §2.4 step 1)
 ##
 ## A failure (`ok` false) means there was nothing to decide from, or the call was refused before
 ## dialling: `code` is `not-configured` (no configure(), or empty pinned_release_keys),
@@ -38,6 +40,7 @@ var errors: Array = []
 var boot := ""
 var undismissable := false
 var feed_doc: Dictionary = {}
+var content: Dictionary = {}
 var record_doc = null
 
 
@@ -52,6 +55,7 @@ static func of(flow: Dictionary) -> PKeyUpdateCheck:
 	r.boot = flow["boot"]
 	r.undismissable = PKeyDecision.is_undismissable(r.decision)
 	r.feed_doc = flow["feed_doc"]
+	r.content = flow.get("content", {})
 	r.record_doc = flow["record_doc"]
 	r.detail = check
 	return r

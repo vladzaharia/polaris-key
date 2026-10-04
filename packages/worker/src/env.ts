@@ -80,6 +80,22 @@ export interface Env {
    * and no badge shows. A `[vars]` value, public, per environment.
    */
   PKEY_ENVIRONMENT?: string;
+  /**
+   * Deploy identity (A-11, notes/S-13 §4): the release tag (`v0.8.6`) and the 40-hex commit the
+   * production deploy built, injected by `.github/workflows/deploy.yml` as
+   * `wrangler deploy --var PKEY_RELEASE_TAG:<tag> --var PKEY_GIT_SHA:<sha>`. Unset in tests, in
+   * `wrangler dev` and on a hand deploy, which `GET /manage/api/platform/version` reports as
+   * `null`. Public, not secrets; and configuration, so a hand deploy could set anything. The
+   * unforgeable half is `CF_VERSION_METADATA`.
+   */
+  PKEY_RELEASE_TAG?: string;
+  PKEY_GIT_SHA?: string;
+  /**
+   * The version metadata binding (A-11; `[env.*.version_metadata]` in both wrangler configs, NOT
+   * inherited from the top level): Cloudflare's own `{ id, tag, timestamp }` for the running
+   * version. Configuration cannot forge it. OPTIONAL: absent in the Node test lane.
+   */
+  CF_VERSION_METADATA?: WorkerVersionMetadata;
 
   // platform-wide secrets / vars (optional so tests can omit them)
   //

@@ -63,6 +63,8 @@ const CORE_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
   ],
   report: [["/{product}/devices/report", ["post"]]],
   register: [["/{product}/devices/register", ["post"]]],
+  attestChallenge: [["/{product}/devices/attest/challenge", ["post"]]],
+  attest: [["/{product}/devices/attest", ["post"]]],
 };
 
 /**
@@ -360,6 +362,9 @@ const CORS_EXCLUDED = new Set([
   "/{product}/distribution/report",
   // P5-02: a store webhook, called server-to-server by App Store Connect.
   "/{product}/distribution/hooks/asc",
+  // P6-02: device attestation — only a native iOS or Android build can attest, never a page.
+  "/{product}/devices/attest/challenge",
+  "/{product}/devices/attest",
   // P6-03: the Sentry alert webhook, called server-to-server by Sentry.
   "/{product}/distribution/hooks/sentry",
   // P6-01: the commerce bridge. The claim and binding routes serve store builds (App Store,

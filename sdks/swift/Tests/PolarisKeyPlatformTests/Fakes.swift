@@ -293,9 +293,70 @@ func fakeServices(
     appTransaction: FakeAppTransaction? = nil,
     store: FakeStoreClient? = nil,
     keychain: FakeKeychain? = nil,
-    packs: FakeAssetPackClient = FakeAssetPackClient()
+    packs: FakeAssetPackClient = FakeAssetPackClient(),
+    appAttest: any AppAttestClient = UnavailableAppAttestClient()
 ) -> PlatformServices {
     PlatformServices(
         availability: availability, distributor: distributor, bundleEvidence: { evidence },
-        appTransaction: appTransaction, store: store, keychain: keychain, assetPacks: packs)
+        appTransaction: appTransaction, store: store, keychain: keychain, assetPacks: packs, appAttest: appAttest)
+}
+
+// ── App Attest ───────────────────────────────────────────────────────────────────────────────
+
+/// DCAppAttestService in memory: keys it generated are known until `forget` (a reinstall);
+/// `failNext` makes the next attest or assert throw that failure code.
+final class FakeAppAttest: AppAttestClient, @unchecked Sendable {
+    private let lock = NSLock()
+    private var known: Set<String> = []
+    private var serial = 0
+    private var nextFailure: String?
+    private(set) var attested: [(keyId: String, hash: Data)] = []
+    private(set) var asserted: [(keyId: String, hash: Data)] = []
+    let supported: Bool
+    var hang = false
+
+    init(supported: Bool = true) { self.supported = supported }
+
+    func failNext(_ code: String) { lock.withLock { nextFailure = code } }
+
+    /// The system forgets every key (reinstall, device migration, restore).
+    func forget() { lock.withLock { known.removeAll() } }
+
+    func unavailable() -> PlatformUnavailable? {
+        supported ? nil : PlatformUnavailable(reason: "runtime", detail: "fake: App Attest is not supported")
+    }
+
+    func generateKey() async throws -> String {
+        lock.withLock {
+            serial += 1
+            let id = Data("fake-key-\(serial)".utf8).base64EncodedString()
+            known.insert(id)
+            return id
+        }
+    }
+
+    private func check(_ keyId: String) throws {
+        try lock.withLock {
+            if let code = nextFailure {
+                nextFailure = nil
+                throw AppAttestFailure(code: code, message: "fake \(code)")
+            }
+            guard known.contains(keyId) else {
+                throw AppAttestFailure(code: AppAttestFailure.invalidKey, message: "fake: unknown key")
+            }
+        }
+    }
+
+    func attestKey(_ keyId: String, clientDataHash: Data) async throws -> Data {
+        if hang { try? await Task.sleep(nanoseconds: 3_600_000_000_000) }
+        try check(keyId)
+        lock.withLock { attested.append((keyId, clientDataHash)) }
+        return Data("attestation:\(keyId)".utf8)
+    }
+
+    func generateAssertion(_ keyId: String, clientDataHash: Data) async throws -> Data {
+        try check(keyId)
+        lock.withLock { asserted.append((keyId, clientDataHash)) }
+        return Data("assertion:\(keyId)".utf8)
+    }
 }

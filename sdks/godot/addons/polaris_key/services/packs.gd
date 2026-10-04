@@ -87,6 +87,12 @@ var background_targets: Array = []
 
 var _core_ref: WeakRef = null
 var _starting := false
+## plans/P4-29.md §2.4 step 1: the delta menu of the feed the last update check or feed fetch in
+## this process committed (or fell back to), once one ran; before that the engine reads the
+## committed feed of the configured channel from the cache (re-verified on the reload path at
+## configure, fresh or stale).
+var _feed_menu: Variant = null
+var _feed_menu_known := false
 signal _started
 
 
@@ -187,6 +193,7 @@ func start() -> PKeyResult:
 	e.transport = transport if transport != null else cdn
 	e.transports = [e.transport.id()] if e.transport.id() != "" else ["pkey-cdn"]
 	e.entitlements = func() -> Variant: return _granted(core)
+	e.feed_deltas = feed_menu
 	for h in _pending_handlers:
 		e.register_handler(h)
 	# P4-28: what packs may attach (the built-in handlers, unless a custom one replaced them).
@@ -203,6 +210,31 @@ func start() -> PKeyResult:
 	_starting = false
 	_started.emit()
 	return PKeyResult.success()
+
+
+## plans/P4-29.md §2.4 step 1: the delta menu of the most recently committed feed of the canonical
+## channel (PKeyFeed.feed_content's `deltas`), fresh or stale, or null. A stale entry that 404s only
+## falls back, so freshness is not checked here.
+func feed_menu() -> Variant:
+	if _feed_menu_known:
+		return _feed_menu
+	var core := _core()
+	if core == null or core.cache == null:
+		return null
+	for k in PKeyFeed.bound_channels(core.channel):
+		var entry = core.cache.feeds.get(k)
+		if entry is Dictionary and entry.get("content") is Dictionary:
+			var m = entry["content"].get("deltas")
+			return m if m is Dictionary else null
+	return null
+
+
+## Keep the menu of the feed an update check or feed fetch just used (`content` is its
+## PKeyFeed.feed_content result; null keeps none).
+func remember_feed_content(fc: Variant) -> void:
+	_feed_menu_known = true
+	var m = fc.get("deltas") if fc is Dictionary else null
+	_feed_menu = m if m is Dictionary else null
 
 
 ## Every pack id a content stamp names: its pins, its expects and every raw `holds` entry's `pack`

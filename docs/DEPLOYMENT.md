@@ -613,6 +613,29 @@ git push origin v0.1.0
 
 If a tag is malformed, the workflow exits before applying migrations or deploying.
 
+**Deploy identity (A-11).** Both `wrangler deploy` calls carry the release tag and commit:
+`--var PKEY_RELEASE_TAG:<tag>`, `--var PKEY_GIT_SHA:<sha>`, and the same values on the
+Cloudflare version (`--tag <tag>`, cut to 25 characters, and `--message "<tag> <short sha>"`, the tag cut to 80).
+Both wrangler configs bind `CF_VERSION_METADATA` (`[env.<env>.version_metadata]`, one per
+environment, because a binding is not inherited from the top level). Platform admins read the
+result at `GET /manage/api/platform/version` and `/manage/api/platform/deployment`; the second
+also compares `d1_migrations` with the build's newest migration (`LATEST_MIGRATION`).
+
+**The deploy record (A-11).** The last step, "Record deploy", runs
+`packages/worker/scripts/record-deploy.mjs`, which inserts one `platform_deploys` row (tag,
+commit, run URL, time, environment, both scripts' Cloudflare version ids from wrangler's
+`WRANGLER_OUTPUT_FILE_PATH` output, the smoke outcome) with the same `CLOUDFLARE_API_TOKEN`; it
+already holds D1 edit for the migrations, so nothing new is provisioned. It runs once the request
+Worker deploy succeeded, even if the smoke check then failed, because the row records what is
+live. It is `continue-on-error`: a failure shows a "Deploy not recorded" warning on the run and
+never fails a deploy. To backfill a missed row, re-run the job's failed attempt or insert it by
+hand with `wrangler d1 execute <database> --env <env> --remote --command "INSERT INTO platform_deploys ..."`.
+
+After the first deploy that includes A-11, confirm on the Deployment endpoint that
+`migrations.applied` is a list (not `null`): that proves `d1_migrations` is readable through the
+binding on hosted D1, which the workerd lane shows only for local D1. If it is `null`, the page
+reports migrations as unknown and nothing else is affected.
+
 CI does not deploy on `main` pushes. PRs and `main` still run `.github/workflows/ci.yml`.
 
 ## 8. First admin login

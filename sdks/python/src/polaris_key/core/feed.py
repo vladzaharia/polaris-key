@@ -19,7 +19,12 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
-from ..constants_generated import CHANNEL_ALIASES, CHANNEL_NAME_PATTERN
+from ..constants_generated import (
+    CHANNEL_ALIASES,
+    CHANNEL_NAME_PATTERN,
+    MAX_FEED_DELTAS,
+    MAX_FEED_DELTAS_PER_TARGET,
+)
 from .jws import TrustSet, verify_jws
 from .models import (
     CLOCK_SKEW_SECONDS,
@@ -442,18 +447,21 @@ def bound_channels(requested: str) -> List[str]:
 
 @dataclass(frozen=True)
 class FeedContent:
-    """The feed's three content members, each the parsed value (plain JSON) or ``None`` when
-    absent or unusable."""
+    """The feed's content members, each the parsed value (plain JSON) or ``None`` when absent or
+    unusable: P4-13's three and P4-29's delta menu ``deltas`` (target payload SHA-256 → its
+    ``payload``-scope entries)."""
 
     packSets: Optional[Dict[str, Any]] = None
     packFloors: Optional[List[Dict[str, Any]]] = None
     revocations: Optional[List[Dict[str, Any]]] = None
+    deltas: Optional[Dict[str, List[Dict[str, Any]]]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "packSets": self.packSets,
             "packFloors": self.packFloors,
             "revocations": self.revocations,
+            "deltas": self.deltas,
         }
 
 
@@ -680,6 +688,66 @@ def _parse_revocations(v: Any) -> List[Dict[str, Any]]:
     return out
 
 
+def _parse_deltas(v: Any) -> Dict[str, List[Dict[str, Any]]]:
+    """The delta menu (plans/P4-29.md §2.2): target payload SHA-256 → ``payload``-scope deltas.
+    Both caps and both uniqueness rules count every entry, dropped ones too; an entry of another
+    vocabulary scope is dropped alone and a key whose entries are all dropped is left out. An
+    unknown ``method`` is kept for the planner's ``caps.patchMethods`` to decide. The integers
+    (``/deltas/<to>/<i>/memBytes``, ``.../artifact/bytes``) follow the token rule."""
+    if not isinstance(v, dict):
+        _no()
+    out: Dict[str, List[Dict[str, Any]]] = {}
+    artifacts = set()
+    total = 0
+    for to, entries in v.items():
+        if _full_match(_SHA256_RE, to) is None:
+            _no()
+        if not isinstance(entries, list) or not 1 <= len(entries) <= MAX_FEED_DELTAS_PER_TARGET:
+            _no()
+        total += len(entries)
+        if total > MAX_FEED_DELTAS:
+            _no()
+        kept: List[Dict[str, Any]] = []
+        pairs = set()
+        for d in entries:
+            if not isinstance(d, dict):
+                _no()
+            frm = d.get("from")
+            if _full_match(_SHA256_RE, frm) is None or frm == to:
+                _no()
+            if _full_match(VOCAB_TOKEN_PATTERN, d.get("method")) is None:
+                _no()
+            if _full_match(VOCAB_TOKEN_PATTERN, d.get("scope")) is None:
+                _no()
+            mem_bytes = _int(d.get("memBytes"), 1)
+            a = d.get("artifact")
+            if not isinstance(a, dict) or _full_match(_SHA256_RE, a.get("sha256")) is None:
+                _no()
+            nbytes = _int(a.get("bytes"), 1)
+            if a["sha256"] in artifacts:
+                _no()
+            artifacts.add(a["sha256"])
+            pair = (frm, d["method"])
+            if pair in pairs:
+                _no()
+            pairs.add(pair)
+            # A forward scope makes that entry alone ignored.
+            if d["scope"] != "payload":
+                continue
+            kept.append(
+                {
+                    "from": frm,
+                    "method": d["method"],
+                    "scope": "payload",
+                    "memBytes": mem_bytes,
+                    "artifact": {"sha256": a["sha256"], "bytes": nbytes},
+                }
+            )
+        if kept:
+            out[to] = kept
+    return out
+
+
 def _member(doc: Mapping[str, Any], key: str, parse: Callable[[Any], Any]) -> Any:
     if key not in doc:
         return None
@@ -691,9 +759,9 @@ def _member(doc: Mapping[str, Any], key: str, parse: Callable[[Any], Any]) -> An
 
 def feed_content(doc: Any) -> FeedContent:
     """The feed's content members (plans/P4-13.md §2.2): ``packSets``, ``packFloors`` and
-    ``revocations``, each parsed, or ``None`` when absent or unusable. ``doc`` is the verified
+    ``revocations``, and the delta menu ``deltas`` (plans/P4-29.md §2.2), each parsed, or ``None`` when absent or unusable. ``doc`` is the verified
     payload (``ChannelFeedDoc.raw``). An unusable member never refuses the feed and never affects
-    the other two. A ``packFloors`` entry whose ``versionScheme`` is not in
+    the others. A ``packFloors`` entry whose ``versionScheme`` is not in
     ``FEED_VERSION_SCHEMES`` is dropped alone. Never raises."""
     if isinstance(doc, ChannelFeedDoc):
         doc = doc.raw
@@ -703,17 +771,24 @@ def feed_content(doc: Any) -> FeedContent:
         packSets=_member(doc, "packSets", lambda v: _parse_pack_sets(v, doc.get("selector"))),
         packFloors=_member(doc, "packFloors", _parse_pack_floors),
         revocations=_member(doc, "revocations", _parse_revocations),
+        deltas=_member(doc, "deltas", _parse_deltas),
     )
 
 
 def with_feed_content(feed: ChannelFeedDoc, content: FeedContent) -> ChannelFeedDoc:
     """The feed as the decision reads it: ``feed`` with each content member of its payload
     replaced by ``content``'s parsed value, or removed when that is ``None``."""
-    raw = {k: v for k, v in feed.raw.items() if k not in ("packSets", "packFloors", "revocations")}
+    raw = {
+        k: v
+        for k, v in feed.raw.items()
+        if k not in ("packSets", "packFloors", "revocations", "deltas")
+    }
     if content.packSets is not None:
         raw["packSets"] = content.packSets
     if content.packFloors is not None:
         raw["packFloors"] = content.packFloors
     if content.revocations is not None:
         raw["revocations"] = content.revocations
+    if content.deltas is not None:
+        raw["deltas"] = content.deltas
     return dataclasses.replace(feed, raw=raw)

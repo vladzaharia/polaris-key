@@ -36,6 +36,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/devices/{deviceId}` | core | Read one device (self-service scope) |
 | PATCH | `/{product}/devices/{deviceId}` | core | Rename a device |
 | DELETE | `/{product}/devices/{deviceId}` | core | Deauthorize a device |
+| POST | `/{product}/devices/attest/challenge` | core | A single-use device attestation challenge (P6-02) |
+| POST | `/{product}/devices/attest` | core | Raise the device's trust level with App Attest or Play Integrity (P6-02) |
 | POST | `/{product}/devices/register` | core | Keyless device registration (policy-gated) |
 | POST | `/{product}/devices/report` | core | Report device facts (software snapshot + declared probes) |
 | GET | `/{product}/devices` | core | List the devices sharing this device's seat pool |
