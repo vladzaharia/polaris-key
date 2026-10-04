@@ -495,7 +495,7 @@ export interface ReleaseCatalog {
   /**
    * One release's title and notes as stored (Markdown or plain text), or null (one read). A-18b's
    * store notes default from them (Distribution's listing model). The notes are answered whatever
-   * the metadata access mode: the only caller is the platform-admin console.
+   * the metadata access mode: the only caller is the platform-admin console API.
    */
   releaseNotes(
     releaseId: string,
