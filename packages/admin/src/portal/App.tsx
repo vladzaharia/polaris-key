@@ -15,6 +15,7 @@ import { PortalShell } from "./components/PortalShell.js";
 import { useLibrary } from "./library.js";
 import { SCALE_THRESHOLD } from "./model/libraryView.js";
 import { StarScreen } from "./components/States.js";
+import { announceSignedIn } from "./session.js";
 import { createPortalQueryClient, useLicenses, useSession } from "./data.js";
 import { portalErrorCopy } from "./errors.js";
 import { AccountPage } from "./pages/AccountPage.js";
@@ -89,6 +90,8 @@ function BootTitle({ title }: { title: string }): null {
 
 function SignedIn({ account }: { account: PortalAccount }): React.ReactElement {
   const route = useRoute();
+  // Another tab waiting on "Check your email" signs itself in now (§4.4).
+  React.useEffect(() => announceSignedIn(), []);
   const licenses = useLicenses();
   const activate = useActivate();
   const libraryCount = licenses.data

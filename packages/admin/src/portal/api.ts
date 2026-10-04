@@ -27,6 +27,11 @@ export interface PortalCapabilities {
      */
     providers?: PortalProvider[];
   };
+  /**
+   * The product named by `?product=`, for the login card's context header (G1/G28). Not sent by
+   * today's Worker: without it the card shows no header rather than a slug.
+   */
+  product?: { slug: string; name: string; developerName?: string | null };
   modules: {
     licensing: boolean;
     claim: boolean;
