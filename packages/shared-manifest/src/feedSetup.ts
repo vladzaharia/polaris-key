@@ -244,12 +244,23 @@ const NPM_SETUP: FeedSetupDeclaration = {
 
 const PYPI_SETUP: FeedSetupDeclaration = {
   clients: ["pip", "uv", "Poetry"],
-  inputs: ["baseUrl", "owner", "package.name", "package.version"],
+  inputs: [
+    "baseUrl",
+    "owner",
+    "namespace.names",
+    "package.name",
+    "package.version",
+  ],
   feedPath: (owner) => `/pypi/${owner}/simple/`,
   render(v) {
     const baseUrl = v.get("baseUrl") as string;
     const index = v.get("owner") as string;
-    const name = str(v.get("package.name")) ?? "<package>";
+    // The feed's one project name, when it has exactly one, stands in for the package.
+    const names = list(v.get("namespace.names"));
+    const name =
+      str(v.get("package.name")) ??
+      (names.length === 1 ? names[0] : undefined) ??
+      "<package>";
     const version = str(v.get("package.version"));
     const secret = shSecret(v.credential);
     const uvVar = uvEnvName(index);

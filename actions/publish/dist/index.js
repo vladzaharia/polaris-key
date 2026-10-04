@@ -13928,12 +13928,19 @@ var NPM_SETUP = {
 };
 var PYPI_SETUP = {
   clients: ["pip", "uv", "Poetry"],
-  inputs: ["baseUrl", "owner", "package.name", "package.version"],
+  inputs: [
+    "baseUrl",
+    "owner",
+    "namespace.names",
+    "package.name",
+    "package.version"
+  ],
   feedPath: (owner) => `/pypi/${owner}/simple/`,
   render(v) {
     const baseUrl = v.get("baseUrl");
     const index = v.get("owner");
-    const name = str(v.get("package.name")) ?? "<package>";
+    const names = list(v.get("namespace.names"));
+    const name = str(v.get("package.name")) ?? (names.length === 1 ? names[0] : void 0) ?? "<package>";
     const version = str(v.get("package.version"));
     const secret = shSecret(v.credential);
     const uvVar = uvEnvName(index);
