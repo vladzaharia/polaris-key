@@ -140,6 +140,8 @@ class UpdateCheckResult:
     error: Optional[UpdateCheckError] = None
     #: With ``content`` (plans/P4-13.md §2.5): what to store, and the ``relearn`` it cleared.
     revocations: Optional[UpdateCheckRevocations] = None
+    #: ``feed_content`` over ``feed`` (the delta menu included, plans/P4-29.md §2.4 step 1).
+    content: Optional[FeedContent] = None
 
 
 def _safe_fetch(fetcher: Callable[[], FetchOutcome], fallback_code: str) -> FetchOutcome:
@@ -348,8 +350,8 @@ def run_update_check(
     content_input: Optional[UpdateContentInput] = None
     revocations: Optional[UpdateCheckRevocations] = None
     decision_feed = feed
+    fc = feed_content(feed.raw)
     if content is not None:
-        fc = feed_content(feed.raw)
         decision_feed = with_feed_content(feed, fc)
         content_input, revocations = _content_steps(
             content,
@@ -394,6 +396,7 @@ def run_update_check(
         feeds=feeds,
         release_records=release_records,
         revocations=revocations,
+        content=fc,
     )
 
 

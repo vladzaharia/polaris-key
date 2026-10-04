@@ -1,4 +1,4 @@
-// @pkey-feature packs.index.files packs.apply.full packs.apply.file packs.apply.delta packs.state packs.record update.content packs.index.chunks packs.apply.chunk
+// @pkey-feature packs.index.files packs.apply.full packs.apply.file packs.apply.delta packs.state packs.record update.content packs.index.chunks packs.apply.chunk packs.delta.feed
 //
 // The content corpus (`conformance/corpus/v2/content/cases.json`, plans/P4-01.md §4.4, P4-04)
 // through PolarisKeyPacks' production code:
@@ -13,6 +13,7 @@
 //   applyCases        §2.9's appliers, verdicts and counters    → applyFull, applyDelta, applyFile,
 //                                                                  applyChunk
 //   chunkIndexCases   plans/P4-10.md §2.3's parser               → parseChunkIndex
+//   feedDeltaApplyCases plans/P4-29.md §4.4's merged feed delta   → withFeedDeltas, applyDelta
 //
 // Content corpus v2 (plans/P4-10.md §4.3) adds `chunkIndexCases` and eight `strategy: chunk`
 // apply cases, run through P4-11's `parseChunkIndex` and `applyChunk`: seeds parsed unbound
@@ -328,6 +329,29 @@ final class ContentConformanceTests: XCTestCase {
             }
             XCTAssertEqual(r.verdict.json, normalisedJSON(o["expect"]!), "[\(label)] \(id): \(o["description"]!)")
         }
+        }
+    }
+
+    func testFeedDeltaApplyCases() throws {
+        let blobs = try ContentCorpus.blobs()
+        let cases = try XCTUnwrap(ContentCorpus.load()["feedDeltaApplyCases"]?.arrayValue)
+        XCTAssertEqual(cases.count, 4)
+        for (label, zstd) in Self.backends {
+            for c in cases {
+                let o = try XCTUnwrap(c.objectValue)
+                let id = o["id"]!.stringValue!
+                var store: [String: [UInt8]] = [:]
+                for (h, src) in o["objects"]?.objectValue ?? [:] { store[h] = try materialise(src, blobs) }
+                let objects: ObjectPort = { h in store[h].map { MemorySource($0) } }
+                let variant = try XCTUnwrap(PackVariant(json: o["variant"]!), id)
+                let merged = withFeedDeltas(variant, rawFeedDeltas(o["deltas"]))
+                XCTAssertEqual(merged.feedIds.count, 1, id)
+                let k = try XCTUnwrap(
+                    merged.variant.deltas.firstIndex { $0.scope == "payload" && $0.id == merged.feedIds.first }, id)
+                let base = try materialise(try XCTUnwrap(o["installed"]?.objectValue?["payload"]), blobs)
+                let r = applyDelta(merged.variant, k, base: MemorySource(base), ApplyPorts(objects: objects, zstd: zstd))
+                XCTAssertEqual(r.verdict.json, normalisedJSON(o["expect"]!), "[\(label)] \(id): \(o["description"]!)")
+            }
         }
     }
 

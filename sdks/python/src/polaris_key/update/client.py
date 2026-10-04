@@ -62,7 +62,7 @@ from ..core.context import CoreContext
 from ..core.decide import ResolvedOutlet, feed_target, is_valid_host_outlet, resolve_update_outlet
 from ..core.detection import detect_outlet, detection_stamp
 from ..core.errors import PolarisError
-from ..core.feed import reload_feeds
+from ..core.feed import bound_channels, reload_feeds
 from ..core.headers import canonical_arch, canonical_platform
 from ..core.models import (
     ChannelFeedDoc,
@@ -209,6 +209,10 @@ class _Configured:
 
 #: A code ``run_update_check`` never produces: ``feed()`` withholds the record fetch with it.
 _RECORD_WITHHELD = "record-withheld"
+
+
+#: ``UpdateClient._feed_menu`` before any check ran or the cache was read.
+_UNSET: Any = object()
 
 
 def _invalid(message: str) -> UpdateError:
@@ -386,6 +390,9 @@ class UpdateClient:
         )
         #: The v4 calls run one at a time: each is a read-modify-write of the cache slices.
         self._lock = threading.RLock()
+        #: plans/P4-29.md §2.4 step 1: the delta menu of the most recently committed feed, fresh
+        #: or stale (``_UNSET`` until a check ran or the cache was read).
+        self._feed_menu: Any = _UNSET
         packs_opts = _coerce_options(options).packs if options is not None else None
         if packs_opts is not None and not isinstance(packs_opts, PacksOptions):
             if isinstance(packs_opts, Mapping):
@@ -405,6 +412,8 @@ class UpdateClient:
             cache=cache,
             trust=trust,
             options=packs_opts,
+            feed_deltas=lambda: None if self._feed_menu is _UNSET else self._feed_menu,
+            load_feed_deltas=self._load_feed_menu,
         )
 
     @property
@@ -551,6 +560,7 @@ class UpdateClient:
             if not r.ok or r.check is None:
                 raise self._raise(r.error)
             cache.patch(feeds=r.feeds, release_records=r.release_records)
+            self._feed_menu = r.content.deltas if r.content is not None else None
             if r.revocations is not None:
                 self.packs.record_revocations(r.revocations)
             return r.check
@@ -586,6 +596,7 @@ class UpdateClient:
             if not r.ok or r.check is None or r.feed is None:
                 raise self._raise(r.error)
             cache.patch(feeds=r.feeds)
+            self._feed_menu = r.content.deltas if r.content is not None else None
             return FeedCheck(
                 channel=r.check.channel,
                 feed=r.feed,
@@ -715,6 +726,33 @@ class UpdateClient:
             cache.keep_update_slices(feeds=feeds, release_records=records)
 
     # ── Internals ───────────────────────────────────────────────────────────────────────
+
+    def _load_feed_menu(self) -> None:
+        """plans/P4-29.md §2.4 step 1: before any check this process, the menu of the committed
+        feed of the configured channel, re-verified on the reload path (no freshness: a stale
+        menu only falls back). Never raises; no cache or no committed feed is no menu."""
+        if self._feed_menu is not _UNSET:
+            return
+        try:
+            cache, trust = self._require_custody()
+            platform = self._platform_value()
+            if platform is None:
+                return
+            committed = reload_feeds(
+                cache.update_slices()["feeds"],
+                trust=trust.effective,
+                expected_aud=self._ctx.product,
+                platform=platform,
+            )
+            if self._feed_menu is not _UNSET:
+                return
+            for k in bound_channels(self._ctx.channel):
+                cf = committed.feeds.get(k)
+                if cf is not None:
+                    self._feed_menu = cf.content.deltas if cf.content is not None else None
+                    return
+        except Exception:
+            pass  # No menu: the record's deltas only.
 
     def _require_configured(self) -> _Configured:
         c = self._configured

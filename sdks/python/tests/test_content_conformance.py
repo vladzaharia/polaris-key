@@ -1,4 +1,4 @@
-# @pkey-feature packs.index.files packs.apply.full packs.apply.file packs.apply.delta packs.state packs.record update.content packs.index.chunks packs.apply.chunk
+# @pkey-feature packs.index.files packs.apply.full packs.apply.file packs.apply.delta packs.state packs.record update.content packs.index.chunks packs.apply.chunk packs.delta.feed
 """The content corpus (plans/P4-01.md §4.4, §5; P4-07): ``conformance/corpus/v2/content/``
 through the production pack core, as the Node runner (``conformance/runners/node/suites.ts``,
 ``defineContentSuites``) drives it. ``content/`` is not mirrored: this runner reads it from the
@@ -14,6 +14,8 @@ checkout.
 ``frameWindowCases``   §2.7 rule 3's header window                          ``frame_window``
 ``applyCases``         §2.9's appliers, verdicts and counters               ``apply_*``
 ``chunkIndexCases``    plans/P4-10.md §2.3's ``parseChunkIndex``            ``parse_chunk_index``
+``feedDeltaApplyCases``  plans/P4-29.md §4.4's merged feed delta            ``with_feed_deltas``,
+                                                                            ``apply_delta``
 =====================  ===================================================  =====================
 
 Content corpus v2 (plans/P4-10.md §4.3) adds ``chunkIndexCases`` and eight ``strategy: chunk``
@@ -50,6 +52,7 @@ from polaris_key.update.packs import (
     stamp_holds,
     parse_files_index,
     slice_source,
+    with_feed_deltas,
 )
 from polaris_key.update.packs.chunk_apply import (
     ApplyChunkPorts,
@@ -286,6 +289,33 @@ def test_apply_case(backend: Any, case: Dict[str, Any]) -> None:
         r = apply_file(case["variant"], case.get("delta"), installed, ports)
     else:
         raise AssertionError(f"unknown strategy {strategy!r} in {case['id']}")
+    assert _canonical(r.verdict) == _canonical(case["expect"]), case["description"]
+
+
+_FA = [(b, c) for b in _BACKENDS for c in _CONTENT["feedDeltaApplyCases"]]
+
+
+def test_has_every_feed_delta_apply_case() -> None:
+    assert len(_CONTENT["feedDeltaApplyCases"]) == 4
+
+
+@pytest.mark.parametrize("backend,case", _FA, ids=[f"{b[0]}:{c['id']}" for b, c in _FA])
+def test_feed_delta_apply_case(backend: Any, case: Dict[str, Any]) -> None:
+    store = {h: _materialise(src) for h, src in case["objects"].items()}
+
+    def objects(h: str) -> Any:
+        b = store.get(h)
+        return None if b is None else memory_source(b)
+
+    merged, feed_ids = with_feed_deltas(case["variant"], case["deltas"])
+    assert len(feed_ids) == 1, case["description"]
+    k = next(
+        n
+        for n, d in enumerate(merged.get("deltas") or [])
+        if d["scope"] == "payload" and d["artifact"]["sha256"] == feed_ids[0]
+    )
+    base = _materialise(case["installed"]["payload"])
+    r = apply_delta(merged, k, memory_source(base), ApplyPorts(objects=objects, zstd=backend[1]))
     assert _canonical(r.verdict) == _canonical(case["expect"]), case["description"]
 
 
