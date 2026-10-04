@@ -1042,6 +1042,31 @@ and PyPI fragment hashes give integrity, not authenticity.
 **Kill switches.** Per ecosystem, `dist_registry_policy.enabled`; per owner, `packageFeeds`;
 per feed, `enabled`. Each takes effect within the settings window.
 
+**OCI pull (F-08).** `/v2/<owner>/<repository…>/{manifests,blobs,tags/list}`
+(`services/distribution/registry/oci/`; tests: `test/registryOci.test.ts`,
+`test-workerd/registryOci.test.ts`, the OCI rows of `registry-clients.yml`). Read-only: every
+other method is 405 `UNSUPPORTED`, and `/v2/token` is the not-found until F-21.
+
+- **No cross-repository reads.** A manifest or blob is served only when its digest is one of the
+  files a version of THIS repository published (read through `releaseCatalog.packageVersions`),
+  never merely because the bucket holds those bytes for another owner, repository or product.
+  The owner is the first path segment and the repository is resolved under it, so one owner's
+  repository can never name another's.
+- **Bytes are what was verified.** Manifests and blobs are read from `blobs/sha256/<hex>` and
+  answered only when R2's stored SHA-256 equals the digest asked for (`blobResponse`'s rule); the
+  response's `Docker-Content-Digest` and ETag are that digest. A manifest leaves with its stored
+  media type only when that type is one of the four manifest types on `REGISTRY_HOST_TYPES`;
+  anything else is not served. Blobs are always `application/octet-stream` attachments.
+- **Tags.** Version tags never move (a version is unique forever); channel tags (`latest`,
+  `beta`, …) follow Release's channel heads and so never point at a yanked version. A yanked
+  version loses its tag but stays pullable by digest, so a pinned reference keeps working; that
+  is deliberate, and a yank is therefore not a recall (the same residual as PEP 592).
+- **Cache.** Blobs (up to 5 GiB, ranged) bypass the Cache API (`serveFeedRead`'s
+  `cacheApi: false`); the access ladder still runs first. Manifests by tag and tag lists are
+  60-second index documents, so a channel move or a yank shows within a minute. The rendered tag
+  documents carry a stamp of the package's D1 state and are re-rendered on read when it differs,
+  so a stale R2 object is never served.
+
 ### App-updater feeds (P3-09)
 
 **What arrived.** Update renders the native updaters' feeds from the CI-signed release records and

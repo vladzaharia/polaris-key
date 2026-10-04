@@ -90,8 +90,16 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/{product}/license/token` | license | Rotate/re-acquire the device token |
 | GET | `https://pkg.plrs.im/` | registry | The registry host's landing page (registry host only) |
 | HEAD | `https://pkg.plrs.im/` | registry | The registry host's landing page, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/v2/{owner}/{repository}/blobs/{digest}` | registry | OCI blob by digest, with Range (registry host only) |
+| HEAD | `https://pkg.plrs.im/v2/{owner}/{repository}/blobs/{digest}` | registry | OCI blob existence and size (registry host only) |
+| GET | `https://pkg.plrs.im/v2/{owner}/{repository}/manifests/{reference}` | registry | OCI manifest or image index by tag or digest (registry host only) |
+| HEAD | `https://pkg.plrs.im/v2/{owner}/{repository}/manifests/{reference}` | registry | OCI manifest existence check (registry host only) |
+| GET | `https://pkg.plrs.im/v2/{owner}/{repository}/tags/list` | registry | OCI tag list, paginated (registry host only) |
+| HEAD | `https://pkg.plrs.im/v2/{owner}/{repository}/tags/list` | registry | OCI tag list, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/v2/` | registry | OCI distribution base endpoint (registry host only) |
 | HEAD | `https://pkg.plrs.im/v2/` | registry | OCI distribution base endpoint, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/v2/token` | registry | OCI token endpoint, reserved (registry host only) |
+| HEAD | `https://pkg.plrs.im/v2/token` | registry | OCI token endpoint, reserved, headers only (registry host only) |
 | GET | `/{product}/release/changelog` | release | Release changelog |
 | POST | `/{product}/release/channels/{channel}/pin` | release | Pin a channel to a release (CI) |
 | POST | `/{product}/release/channels/{channel}/promote` | release | Promote a release to a channel (CI) |
