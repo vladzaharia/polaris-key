@@ -26,6 +26,7 @@ import type { PackTarget, ReleasePin } from "@polaris-key/protocol/update";
 import {
   PackEngine,
   PackError,
+  type PackInstallReport,
   bootPackOptions,
   parseContentStamp,
   runBootFetch,
@@ -222,6 +223,12 @@ export class PacksClient {
     } catch {
       return null;
     }
+  }
+
+  /** The newest finished installs (P4-17), for `devices/report`'s `packInstalls`; empty before
+   *  the engine runs (asking never starts it). */
+  packInstalls(): PackInstallReport[] {
+    return this.engine ? this.engine.packInstalls() : [];
   }
 
   /** Mark this boot healthy (CONTENT §10 step 7). */

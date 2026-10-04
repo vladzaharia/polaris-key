@@ -12,6 +12,7 @@
 
 import type { HardwareFingerprint } from "@polaris-key/protocol/core";
 import { PolarisError } from "@polaris-key/client-core";
+import type { PackInstallReport } from "@polaris-key/client-core/packs";
 import type { CoreContext } from "../core/context.js";
 import type { CacheManager } from "../core/cache.js";
 import type { TokenManager } from "../core/token.js";
@@ -72,6 +73,8 @@ export class DevicesClient {
   private readonly caps?: () => string[];
   /** The active pack set's id for the report's `content` (P4-06), set by the facade. */
   packSetId: () => Promise<string | null> = async () => null;
+  /** Recent pack installs (P4-17); wired by the client like `packSetId`. */
+  packInstalls: () => PackInstallReport[] = () => [];
 
   constructor(
     private readonly ctx: CoreContext,
@@ -207,7 +210,13 @@ export class DevicesClient {
     return reportSnapshot(
       this.ctx,
       token,
-      buildSnapshot(this.cache, this.probes, this.caps?.(), packSetId),
+      buildSnapshot(
+        this.cache,
+        this.probes,
+        this.caps?.(),
+        packSetId,
+        this.packInstalls(),
+      ),
     );
   }
 

@@ -300,6 +300,28 @@ export interface EmbeddedBaseline {
   location: string;
 }
 
+/** At most this many recent installs `packInstalls()` keeps: the Worker reads 8 (P4-17). */
+export const MAX_PACK_INSTALL_REPORTS = 8;
+
+/**
+ * One finished install, for `devices/report`'s `packInstalls` (P4-17): the pair of payloads it
+ * moved between, the strategy that installed it, its planned bytes, and whether a fallback ran
+ * (with the first failure's code). What the Worker counts as lazy-delta demand; never a path, a
+ * file name or a hardware value. A first install (nothing to move from) is not reported.
+ */
+export interface PackInstallReport {
+  pack: string;
+  /** The payload the device moved from: the delta's base, else the active install's. */
+  from: string;
+  /** The new variant's `payload.sha256`. */
+  to: string;
+  strategy: string;
+  bytes: number;
+  fallbackUsed: boolean;
+  /** The first failed strategy's verdict code, when a fallback ran. */
+  failureStage?: string;
+}
+
 export interface PackProgress {
   packId: string;
   /** `state-issue` is emitted once at `load` when the state document cannot be trusted (then
@@ -515,6 +537,8 @@ export class PackEngine {
   private readonly opts: PackEngineOptions;
   private readonly handlers = new Map<string, PackHandler>();
   private readonly listeners = new Set<(e: PackProgress) => void>();
+  /** The newest finished installs, oldest first (`packInstalls()`). */
+  private readonly installReports: PackInstallReport[] = [];
   private readonly embedded = new Map<string, PackInstall>();
   private readonly running = new Map<string, PackInstall>();
   /** Locations whose payload could not be read at load: kept out of use and out of GC. */
@@ -750,6 +774,12 @@ export class PackEngine {
   async open(packId: string): Promise<InstalledPayload | null> {
     const i = this.running.get(packId);
     return i ? this.opts.storage.installed(i) : null;
+  }
+
+  /** The newest finished installs, at most `MAX_PACK_INSTALL_REPORTS`, oldest first: for
+   *  `devices/report`'s `packInstalls` (P4-17). In memory only; a copy. */
+  packInstalls(): PackInstallReport[] {
+    return this.installReports.map((r) => ({ ...r }));
   }
 
   /** `packSetId` of the running set (plans/P4-01.md §2.9), for `devices/report`'s `content`. */
@@ -2334,6 +2364,7 @@ export class PackEngine {
           false,
           delegation,
         );
+        this.reportInstall(packId, installs, variant, cand, firstFailure);
         this.emit({ packId, phase: "done", done: total, total });
         return install;
       }
@@ -2379,6 +2410,42 @@ export class PackEngine {
         packId,
       })
     );
+  }
+
+  /** Keep one finished install for `packInstalls()` (P4-17). */
+  private reportInstall(
+    packId: string,
+    installs: readonly PackInstall[],
+    variant: PackVariant,
+    cand: { strategy: string; delta?: string; bytes: number },
+    firstFailure: PackError | null,
+  ): void {
+    const delta =
+      cand.strategy === "delta"
+        ? (variant.deltas ?? []).find(
+            (d) =>
+              (d.scope === "payload"
+                ? (d as PayloadDelta).artifact?.sha256
+                : (d as { patch?: { sha256?: string } }).patch?.sha256) ===
+              cand.delta,
+          )
+        : undefined;
+    const from = delta?.from ?? installs[0]?.payloadSha256;
+    if (!from || from === variant.payload.sha256) return;
+    this.installReports.push({
+      pack: packId,
+      from,
+      to: variant.payload.sha256,
+      strategy: cand.strategy,
+      bytes: cand.bytes,
+      fallbackUsed: firstFailure !== null,
+      ...(firstFailure !== null ? { failureStage: firstFailure.code } : {}),
+    });
+    if (this.installReports.length > MAX_PACK_INSTALL_REPORTS)
+      this.installReports.splice(
+        0,
+        this.installReports.length - MAX_PACK_INSTALL_REPORTS,
+      );
   }
 
   private knownActivation(record: PackRecordDoc): boolean {

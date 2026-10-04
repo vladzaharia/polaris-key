@@ -173,7 +173,11 @@ CLOUDFLARE_API_TOKEN
 
 The token must be able to apply D1 migrations and deploy Workers in the `Polaris`
 Cloudflare account. The local OAuth login already has the needed account access, but CI
-needs its own token.
+needs its own token. It also needs **Queues Edit** (P4-17): `wrangler deploy` lists the account's
+queues for the request Worker's `DELTA_QUEUE` producer (Queues Read), and the lazy-delta consumer
+(`wrangler.deltas.toml`) attaches itself to `pkey-deltas-<env>` as its consumer, which needs Queues
+Edit. The deploy job's "Queues preflight" step (`wrangler queues info` on both queues) fails before
+any migration runs when the permission or a queue is missing.
 
 ## 3. Cloudflare resources
 
@@ -383,6 +387,59 @@ aws s3api create-multipart-upload --endpoint-url "$ENDPOINT" --bucket "$BUCKET" 
 The GitHub OIDC side needs nothing from the operator: the issuer and its JWKS are GitHub's and
 fixed in code. A product opts in from its own `.pkey/release` (`publishing.trustedPublisher`).
 
+### Lazy deltas: the queues, the consumer Worker and the R2 rules (P4-17)
+
+Lazy hot-pair deltas (notes/S-08 §6; RUNBOOK "Lazy deltas") need Workers Paid with Queues
+enabled, two queues per environment, a second Worker script and, after its first deploy, two R2
+event-notification rules. The feature ships off (`LAZY_DELTAS = "off"` in both scripts); none of
+this changes behaviour until an operator turns it on.
+
+1. **Queues** (per environment `<env>` = `prod`, `staging`, `dev`):
+
+   ```sh
+   cd packages/worker
+   npx wrangler queues create pkey-deltas-<env>
+   npx wrangler queues create pkey-deltas-dlq-<env>
+   ```
+
+   `wrangler.toml` binds `pkey-deltas-<env>` as a producer (`DELTA_QUEUE`) of the request Worker,
+   so a deploy of either script fails while the queue is missing. (`prod` and `staging` were
+   created on 2026-10-03; create `dev`'s before deploying `dev`.)
+
+2. **The consumer Worker**, `polaris-key-deltas-<env>` from `wrangler.deltas.toml`: the queue's
+   consumer (batch 1, concurrency 1, 3 retries, then `pkey-deltas-dlq-<env>`; `cpu_ms = 60000`),
+   bound to the same D1 database and blob bucket as the request Worker. No route, no
+   workers.dev URL. The tag deploy ships it after the migrations and before the request Worker;
+   by hand:
+
+   ```sh
+   npx wrangler deploy -c wrangler.deltas.toml --env <env>
+   ```
+
+   Its D1 id must match `wrangler.toml`'s for the environment (the staging and dev placeholders
+   are replaced in both files together).
+
+3. **The R2 rules**, only after step 2 (a rule needs a queue with a consumer). One rule per final
+   payload prefix; they cannot overlap each other or anything else on the bucket (the bucket has
+   no other notification rule, and P4-17's own writes go to `deltas/`, outside both):
+
+   ```sh
+   npx wrangler r2 bucket notification create polaris-key-blobs-<env> \
+     --event-type object-create --queue pkey-deltas-<env> --prefix "blobs/sha256/"
+   npx wrangler r2 bucket notification create polaris-key-blobs-<env> \
+     --event-type object-create --queue pkey-deltas-<env> --prefix "gated/blobs/sha256/"
+   npx wrangler r2 bucket notification list polaris-key-blobs-<env>
+   ```
+
+   No suffix. Never put a rule on `staging/` (a staged object may never be published) or on
+   `deltas/` (the consumer's own output would feed back into it). Every object under the two
+   prefixes, pack payloads and file blobs alike, produces one message; the consumer
+   acknowledges an object of at most 1 MiB at once, and anything that is not a pack payload of
+   an opted-in product after one lookup.
+
+4. **Turn it on** for a product: set `LAZY_DELTAS = "on"` in BOTH scripts' `[env.<env>.vars]`,
+   deploy both, then opt the product in (RUNBOOK "Lazy deltas").
+
 ## 4. Worker secrets
 
 Generate local secret material:
@@ -459,6 +516,7 @@ pnpm test
 pnpm lint
 cd packages/worker
 npx wrangler d1 migrations apply polaris_key_prod --env prod --remote
+npx wrangler deploy -c wrangler.deltas.toml --env prod   # the lazy-delta consumer (P4-17)
 npx wrangler deploy --env prod
 ```
 
@@ -490,7 +548,9 @@ vMAJOR.MINOR.PATCH
 vMAJOR.MINOR.PATCH-prerelease
 ```
 
-The workflow applies D1 migrations, deploys the Worker/admin assets, and smoke-checks
+The workflow applies D1 migrations, deploys the lazy-delta consumer Worker
+(`wrangler.deltas.toml`, P4-17; its queues must exist, §3 "Lazy deltas"), deploys the
+Worker/admin assets, and smoke-checks
 `https://key.plrs.im/djdl/.well-known/jwks.json`, asserting a non-empty key set. That is a
 data-plane endpoint on purpose: `/manage` is a static asset and returns 200 with D1, KV and
 the signing path all down.
