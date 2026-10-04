@@ -32,10 +32,19 @@ S-14 §10, A-17d: the Distribute API.
   subtitle, screenshot sets) is A-18m (owner decision 1).
 - Writes call `performStoreWrite` once A-18a lands: an import change only.
 
+## Corrections (as built, 2026-10-04)
+
+- **A-17d landed before A-18b.** `distribute/beta-localization` and `distribute/version-localization`
+  take the notes from the request body; A-18b retrofits that one read to
+  `dist_listing_release_notes`, and the preflight's Apple fit report joins then.
+- **Writes call A-17a's `performAscWrite`**, the substrate that exists today; A-18a's
+  `performStoreWrite` is an import change when it lands.
+- The rest of the departures from S-14 are recorded in S-14's "Corrections (A-17d as built)".
+
 ## Acceptance criteria
 
-- [ ] S-14 §10's A-17d row is met.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] S-14 §10's A-17d row is met.
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Hand-off
 
