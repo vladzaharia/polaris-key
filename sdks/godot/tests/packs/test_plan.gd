@@ -1,9 +1,11 @@
 extends RefCounted
-# @pkey-feature packs.plan
+# @pkey-feature packs.plan packs.delta.feed
 # plan-matrix.json (the generator-owned mirror; plans/P4-01.md §4.5): every planner row,
 # variant case and target case through PKeyPackSelect, compared by canonical JSON, as
 # conformance/runners/node/suites.ts does. Plan matrix v2 (plans/P4-10.md §4.4) adds the chunk
-# rows and plan_target's chunk rule (`chunkIndex`).
+# rows and plan_target's chunk rule (`chunkIndex`). plans/P4-29.md §4.3 adds feedDeltaCases:
+# with_feed_deltas, then plan_target over the merged variant, then plan, compared as
+# {feedIds, target, plan}.
 
 const S := preload("res://tests/packs/support.gd")
 const PLAN_MATRIX := "res://tests/corpus/v2/plan-matrix.json"
@@ -35,5 +37,13 @@ func run(t: PKeyTestContext) -> void:
 		var got := PKeyPackSelect.plan_target(c["variant"], c["recordSha256"], c["filesIndex"], c.get("chunkIndex"))
 		S.check_same(t, "plan target %s" % c["id"], got, c["expect"])
 		n += 1
+	var feed: Array = m.get("feedDeltaCases", [])
+	t.check("plan: 13 feedDeltaCases", feed.size() == 13, str(feed.size()))
+	for c in feed:
+		var merged := PKeyPackSelect.with_feed_deltas(c["variant"], c["deltas"])
+		var target := PKeyPackSelect.plan_target(merged["variant"], c["recordSha256"], c["filesIndex"], c.get("chunkIndex"))
+		var planned := PKeyPackSelect.plan({"target": target.duplicate(true), "installed": c["installed"], "caps": c["caps"]})
+		S.check_same(t, "plan feed delta %s" % c["id"], {"feedIds": merged["feedIds"], "target": target, "plan": planned}, c["expect"])
+		n += 1
 	t.info("plan-matrix: %d evaluated in %.1f ms" % [n, (Time.get_ticks_usec() - started) / 1000.0])
-	t.check("plan: coverage", n == rows.size() + variants.size() + targets.size() and n >= 50, "%d evaluated" % n)
+	t.check("plan: coverage", n == rows.size() + variants.size() + targets.size() + feed.size() and n >= 63, "%d evaluated" % n)
