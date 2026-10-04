@@ -72,11 +72,33 @@ function brandWebAssets(): Plugin {
   };
 }
 
+/**
+ * sonner (the console's toasts) injects its stylesheet at import time with a `<style>` element,
+ * which the Worker's `style-src 'self'` blocks. Neutralise the injector; `styles.css` imports the
+ * same CSS (`sonner/dist/styles.css`) as a bundled, same-origin stylesheet instead.
+ */
+function sonnerNoInlineCss(): Plugin {
+  const marker = "function __insertCSS(code) {";
+  return {
+    name: "polaris-key-sonner-no-inline-css",
+    enforce: "pre",
+    transform(code, id) {
+      if (!/[\\/]sonner[\\/]dist[\\/]index\.m?js/.test(id)) return null;
+      if (!code.includes(marker)) {
+        this.error(
+          "sonner no longer defines __insertCSS: re-check its CSS injection against the CSP",
+        );
+      }
+      return { code: code.replace(marker, `${marker} return;`), map: null };
+    },
+  };
+}
+
 // The customer portal is served at `/`; the operator console is served at `/manage`.
 // Both are emitted from one Vite build and served by the Worker assets binding.
 export default defineConfig({
   base: "/",
-  plugins: [react(), tailwindcss(), brandWebAssets()],
+  plugins: [sonnerNoInlineCss(), react(), tailwindcss(), brandWebAssets()],
   resolve: {
     // @polaris-key/brand is a workspace package with its own React 18 dev dependency; its marks
     // must render with THIS package's React 19, never a second copy.
@@ -112,6 +134,9 @@ export default defineConfig({
             return "vendor-radix";
           if (id.includes("/@tanstack/")) return "vendor-query";
           if (id.includes("/cmdk/")) return "vendor-cmdk";
+          // CodeMirror is only reached through the lazy CodeEditor: leave it to that chunk.
+          if (id.includes("/@codemirror/") || id.includes("/@lezer/"))
+            return undefined;
           return "vendor";
         },
         // The app code both entries import (the components/ui kit, lib/, the stylesheet's JS

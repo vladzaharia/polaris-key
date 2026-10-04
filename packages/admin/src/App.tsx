@@ -16,12 +16,37 @@ export function App(): React.ReactElement {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <Toaster>
-          <Boot />
-        </Toaster>
+        <Toaster>{import.meta.env.DEV ? <DevKitOr /> : <Boot />}</Toaster>
       </ThemeProvider>
     </QueryClientProvider>
   );
+}
+
+/**
+ * Development only: `#/__kit` is the component gallery (ADMIN.md §4), which needs no session.
+ * `import.meta.env.DEV` is false in a production build, so this branch, and the gallery chunk
+ * behind it, are dropped from the bundle.
+ */
+const Kit = import.meta.env.DEV
+  ? React.lazy(() => import("./kit/Kit.js"))
+  : null;
+
+function DevKitOr(): React.ReactElement {
+  const hash = React.useSyncExternalStore(
+    (cb) => {
+      window.addEventListener("hashchange", cb);
+      return () => window.removeEventListener("hashchange", cb);
+    },
+    () => window.location.hash,
+  );
+  if (Kit && hash.startsWith("#/__kit")) {
+    return (
+      <React.Suspense fallback={null}>
+        <Kit />
+      </React.Suspense>
+    );
+  }
+  return <Boot />;
 }
 
 function Boot(): React.ReactElement {

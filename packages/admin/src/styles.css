@@ -21,6 +21,8 @@
 @import "@polaris-key/brand/fonts.css";
 @import "@polaris-key/brand/tokens.css";
 @import "@polaris-key/brand/theme.css";
+/* sonner's base toast layout, bundled (vite.config.ts stops its inline <style> injection). */
+@import "sonner/dist/styles.css";
 
 /*
  * A neutral fill that stands off BOTH the page and a raised card in either theme: one step up
