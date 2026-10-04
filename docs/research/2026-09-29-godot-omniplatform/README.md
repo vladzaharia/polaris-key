@@ -745,8 +745,10 @@ section lists only what is pack-specific; the full design is [`CONTENT.md`](CONT
 
 ### 3.8 Distribution (`distribution` service)
 
-Distribution delivers **every release of every deliverable** (the app and each pack) to devices
-and outlets, and tracks its state there.
+Distribution delivers **every release of every deliverable** (the app, each pack and each
+package) to devices and outlets, and tracks its state there. It has three delivery paths: **direct
+artifacts** (byte delivery, downloads, storefront feeds), **app stores** (outlets and connectors)
+and **package feeds** (package-manager registries on `pkg.plrs.im`; phase F, notes/S-12).
 
 **Data model** (sketch):
 
@@ -786,6 +788,9 @@ and outlets, and tracks its state there.
 - storefront feeds under `/<p>/distribution/…`: AltStore/SideStore/PAL sources, the F-Droid
   static relay, Obtainium configs, the winget REST source, Scoop/Flathub JSON;
 - the public download page (separate domain, §3.5);
+- package feeds on the registry host `pkg.plrs.im` (phase F, plans/F-01): npm, PyPI, the Swift
+  Package Registry, Maven, OCI at `/v2/` and the Godot asset APIs, rendered from Release's
+  `package` deliverables and isolated like the bytes host;
 - connector webhooks (ASC HMAC);
 - admin controls: rollout, pause, resume, halt, submit, release a `PENDING_DEVELOPER_RELEASE`.
 

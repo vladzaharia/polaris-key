@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const GRAPH = join(HERE, "workpackages.json");
 const INDEX = join(HERE, "INDEX.md");
-const ID_RE = /^(P0|P1|P1b|P2|P2b|P3|P4|P5|P6|X|S|D)-\d{2}$/;
+const ID_RE = /^(P0|P1|P1b|P2|P2b|P3|P4|P5|P6|X|S|D|F|A)-\d{2}$/;
 const DONE = new Set(["done", "dropped"]);
 
 const raw = readFileSync(GRAPH, "utf8");
@@ -185,7 +185,7 @@ function tail() {
 const fmtEst = ([a, b]) => (a === b ? `${a}` : `${a}–${b}`);
 
 // The header rows every brief carries that are derived from the graph (kept in sync by --sync-briefs).
-const ID_IN_TEXT = /\b(?:P0|P1b|P1|P2b|P2|P3|P4|P5|P6|X|S|D)-\d{2}\b/g;
+const ID_IN_TEXT = /\b(?:P0|P1b|P1|P2b|P2|P3|P4|P5|P6|X|S|D|F|A)-\d{2}\b/g;
 function dependantsOf() {
   const m = new Map(wps.map((w) => [w.id, []]));
   for (const w of wps) for (const d of w.deps) m.get(d)?.push(w.id);
