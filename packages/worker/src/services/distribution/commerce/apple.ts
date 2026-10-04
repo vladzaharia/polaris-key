@@ -147,6 +147,8 @@ export async function verifyAppleJws(
         length: 3,
         leafOids: [APPLE_LEAF_OID],
         intermediateOids: [APPLE_INTERMEDIATE_OID],
+        // The leaf signs the JWS: a keyUsage that is present must allow digitalSignature.
+        leafDigitalSignature: "ifPresent",
       },
     ));
   } catch (e) {

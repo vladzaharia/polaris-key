@@ -13,6 +13,7 @@ import {
   X509Error,
   decodeOid,
   ecdsaDerToRaw,
+  getExtension,
   parseCertificate,
   readDer,
   verifyChain,
@@ -21,8 +22,10 @@ import { APPLE_ROOT_CA_G3_DER } from "../src/services/distribution/commerce/appl
 import {
   APPLE_INTERMEDIATE_OID,
   APPLE_LEAF_OID,
+  makeCert,
   makeChain,
   makeRoot,
+  testKey,
 } from "./x509Fixtures.js";
 
 const AT = 1_700_000_000;
@@ -163,5 +166,150 @@ describe("the pinned Apple Root CA - G3", () => {
       join(here, "fixtures", "commerce", "AppleRootCA-G3.cer"),
     );
     expect(der.equals(Buffer.from(APPLE_ROOT_CA_G3_DER))).toBe(true);
+  });
+});
+
+describe("core/x509 — hardening (the parser P6-02 builds on)", () => {
+  async function leafWith(tamper: Record<string, unknown>, ca = false) {
+    const key = await testKey("P-256");
+    return makeCert({
+      subject: "Leaf",
+      issuer: "Leaf",
+      key,
+      signer: key,
+      notBefore: AT - 86400,
+      notAfter: AT + 86400,
+      ca,
+      tamper,
+    });
+  }
+  const refuse = (der: Uint8Array) => {
+    try {
+      parseCertificate(der);
+    } catch (e) {
+      if (e instanceof X509Error) return e.reason;
+      throw e;
+    }
+    return "accepted";
+  };
+
+  it("range-checks every time field (no rolling of month 13, day 31 in April or second 60)", async () => {
+    for (const raw of [
+      "20231301000000Z",
+      "20230431000000Z",
+      "20230101240000Z",
+      "20230101006000Z",
+      "20230101000060Z",
+      "20230229000000Z",
+    ])
+      expect(refuse(await leafWith({ notBeforeRaw: raw })), raw).toBe(
+        "time out of range",
+      );
+    expect(refuse(await leafWith({ notBeforeRaw: "20240229000000Z" }))).toBe(
+      "accepted",
+    );
+  });
+
+  it("refuses a repeated [3], a second element inside it, and a trailing element in an Extension", async () => {
+    expect(refuse(await leafWith({ repeatExtensions: true }))).toBe(
+      "repeated or misordered tbs field",
+    );
+    expect(refuse(await leafWith({ extensionsWrapperExtra: true }))).toBe(
+      "extensions wrapper shape",
+    );
+    expect(refuse(await leafWith({ extensionTrailer: true }))).toBe(
+      "trailing extension element",
+    );
+  });
+
+  it("refuses an explicitly encoded cA FALSE and a BOOLEAN of the wrong length", async () => {
+    expect(refuse(await leafWith({ explicitCaFalse: true }))).toBe(
+      "encoded default",
+    );
+    expect(refuse(await leafWith({ longBoolean: true }))).toBe("bad boolean");
+  });
+
+  it("exposes keyUsage, extensions and the parsed chain; checks digitalSignature on the leaf when asked", async () => {
+    const c = await makeChain({ at: AT });
+    const { chain, leaf } = await verifyChain(c.chain, {
+      ...POLICY([c.root]),
+      leafDigitalSignature: "require",
+    });
+    expect(chain).toHaveLength(3);
+    expect(leaf.digitalSignature).toBe(true);
+    expect(getExtension(leaf, APPLE_LEAF_OID)?.critical).toBe(false);
+    expect(getExtension(leaf, "1.2.3.4")).toBeNull();
+
+    // A leaf whose keyUsage is keyEncipherment only (bit 2), and one with no keyUsage at all.
+    const kuNoSign = await leafWith({ keyUsage: [5, 0x20] });
+    expect(parseCertificate(kuNoSign).digitalSignature).toBe(false);
+    const noKu = await leafWith({ keyUsage: null });
+    expect(parseCertificate(noKu).digitalSignature).toBeNull();
+    const root = await makeRoot(AT);
+    const signWith = async (tamper: Record<string, unknown>) => {
+      const key = await testKey("P-256");
+      return makeCert({
+        subject: "Leaf",
+        issuer: "Test Root CA - G3",
+        key,
+        signer: root.key,
+        notBefore: AT - 86400,
+        notAfter: AT + 86400,
+        ca: false,
+        tamper,
+      });
+    };
+    const base = { roots: [root.der], at: AT };
+    expect(
+      await reason(
+        verifyChain([await signWith({ keyUsage: [5, 0x20] }), root.der], {
+          ...base,
+          leafDigitalSignature: "ifPresent",
+        }),
+      ),
+    ).toBe("leaf may not sign");
+    expect(
+      await reason(
+        verifyChain([await signWith({ keyUsage: null }), root.der], {
+          ...base,
+          leafDigitalSignature: "ifPresent",
+        }),
+      ),
+    ).toBe("accepted");
+    expect(
+      await reason(
+        verifyChain([await signWith({ keyUsage: null }), root.der], {
+          ...base,
+          leafDigitalSignature: "require",
+        }),
+      ),
+    ).toBe("leaf may not sign");
+  });
+
+  it("refuses an unknown critical extension unless the caller lists it as understood", async () => {
+    const root = await makeRoot(AT);
+    const key = await testKey("P-256");
+    const leaf = await makeCert({
+      subject: "Leaf",
+      issuer: "Test Root CA - G3",
+      key,
+      signer: root.key,
+      notBefore: AT - 86400,
+      notAfter: AT + 86400,
+      ca: false,
+      criticalUnknown: true,
+    });
+    const base = { roots: [root.der], at: AT };
+    expect(await reason(verifyChain([leaf, root.der], base))).toBe(
+      "unknown critical extension",
+    );
+    expect(
+      await reason(
+        verifyChain([leaf, root.der], {
+          ...base,
+          understood: ["1.3.6.1.4.1.99999.1"],
+        }),
+      ),
+    ).toBe("accepted");
   });
 });

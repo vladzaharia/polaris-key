@@ -125,6 +125,23 @@ export interface CertSpec {
   criticalUnknown?: boolean;
   hash?: "SHA-256" | "SHA-384";
   serial?: number;
+  /** Refusal-test knobs, each breaking one DER/profile rule. */
+  tamper?: {
+    /** A raw GeneralizedTime string for notBefore (e.g. "20231301000000Z"). */
+    notBeforeRaw?: string;
+    /** The keyUsage BIT STRING contents ([unusedBits, ...bytes]); `null` omits keyUsage. */
+    keyUsage?: number[] | null;
+    /** Encode the leaf's basicConstraints cA FALSE explicitly (forbidden in DER). */
+    explicitCaFalse?: boolean;
+    /** A trailing element after extnValue in the first extension. */
+    extensionTrailer?: boolean;
+    /** Repeat the [3] extensions field. */
+    repeatExtensions?: boolean;
+    /** A second SEQUENCE inside the [3] wrapper. */
+    extensionsWrapperExtra?: boolean;
+    /** A critical BOOLEAN two bytes long. */
+    longBoolean?: boolean;
+  };
 }
 
 export async function makeCert(spec: CertSpec): Promise<Uint8Array> {
@@ -132,25 +149,40 @@ export async function makeCert(spec: CertSpec): Promise<Uint8Array> {
   const alg = seq(
     oid(hash === "SHA-256" ? OIDS.ecdsaSha256 : OIDS.ecdsaSha384),
   );
+  const t = spec.tamper ?? {};
+  const critical = t.longBoolean
+    ? tlv(0x01, Uint8Array.of(0xff, 0xff))
+    : bool(true);
+  const bcInner = [
+    ...(spec.ca ? [bool(true)] : t.explicitCaFalse ? [bool(false)] : []),
+    ...(spec.ca && spec.pathLen !== undefined
+      ? [integer(Uint8Array.of(spec.pathLen))]
+      : []),
+  ];
   const exts: Uint8Array[] = [
     seq(
       oid(OIDS.basicConstraints),
-      bool(true),
-      octets(
-        seq(
-          ...(spec.ca ? [bool(true)] : []),
-          ...(spec.ca && spec.pathLen !== undefined
-            ? [integer(Uint8Array.of(spec.pathLen))]
-            : []),
-        ),
-      ),
+      critical,
+      octets(seq(...bcInner)),
+      ...(t.extensionTrailer ? [tlv(0x05, new Uint8Array())] : []),
     ),
-    seq(
-      oid(OIDS.keyUsage),
-      bool(true),
-      // digitalSignature (bit 0), plus keyCertSign + cRLSign (bits 5, 6) for a CA.
-      octets(tlv(0x03, Uint8Array.of(spec.ca ? 1 : 7, spec.ca ? 0x86 : 0x80))),
-    ),
+    ...(t.keyUsage === null
+      ? []
+      : [
+          seq(
+            oid(OIDS.keyUsage),
+            bool(true),
+            // digitalSignature (bit 0), plus keyCertSign + cRLSign (bits 5, 6) for a CA.
+            octets(
+              tlv(
+                0x03,
+                Uint8Array.from(
+                  t.keyUsage ?? [spec.ca ? 1 : 7, spec.ca ? 0x86 : 0x80],
+                ),
+              ),
+            ),
+          ),
+        ]),
     ...(spec.oids ?? []).map((o) =>
       seq(oid(o), octets(tlv(0x05, new Uint8Array()))),
     ),
@@ -164,15 +196,23 @@ export async function makeCert(spec: CertSpec): Promise<Uint8Array> {
         ]
       : []),
   ];
+  const extField = tlv(
+    0xa3,
+    concat(seq(...exts), ...(t.extensionsWrapperExtra ? [seq()] : [])),
+  );
+  const notBefore = t.notBeforeRaw
+    ? tlv(0x18, new TextEncoder().encode(t.notBeforeRaw))
+    : generalizedTime(spec.notBefore);
   const tbs = seq(
     tlv(0xa0, integer(Uint8Array.of(2))),
     integer(Uint8Array.of(spec.serial ?? 1)),
     alg,
     name(spec.issuer),
-    seq(generalizedTime(spec.notBefore), generalizedTime(spec.notAfter)),
+    seq(notBefore, generalizedTime(spec.notAfter)),
     name(spec.subject),
     spec.key.spki,
-    tlv(0xa3, seq(...exts)),
+    extField,
+    ...(t.repeatExtensions ? [extField] : []),
   );
   const sig = new Uint8Array(
     await crypto.subtle.sign(
