@@ -164,7 +164,7 @@ export function delivery(ctx: HookContext): Delivery {
             .filter((b): b is string => b !== null && APPLE_BUNDLE_ID.test(b)),
         ),
       ];
-      const play = await resolvePlaySetup(db, slug);
+      const play = await resolvePlaySetup(ctx.env, db, slug);
       return {
         appleBundleIds,
         play: play.setup

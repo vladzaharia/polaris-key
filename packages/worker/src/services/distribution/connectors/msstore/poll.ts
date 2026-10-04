@@ -36,6 +36,10 @@ import type { CatalogRelease, ServiceHooks } from "../../../../core/hooks.js";
 import type { Db, Env } from "../../../../core/platform.js";
 import { recordOutletCredentialResult } from "../../../../core/outletCredentials.js";
 import {
+  parsePlatformCredentialHandle,
+  recordPlatformCredentialResult,
+} from "../../../../core/platformCredentials.js";
+import {
   findRelease,
   reportAvailability,
   reportSubmission,
@@ -79,7 +83,7 @@ import {
   type MsStoreRoute,
   type MsStoreSetup,
 } from "./setup.js";
-import { msStoreToken } from "./token.js";
+import { msStoreToken, platformMsStoreToken } from "./token.js";
 
 export const APPLICATION_OBJECT = "application";
 export const FLIGHT_OBJECT = "flight";
@@ -125,16 +129,27 @@ export function msStoreRun(o: {
   const fetchImpl: FetchImpl = o.fetchImpl ?? ((u, i) => fetch(u, i));
   const client = new MsStoreClient({
     applicationId: o.setup.productId,
+    // A-16: the platform Partner Center app is minted only for the Store ID this product's
+    // platform pin names (checked before the sealed cache and inside the open).
     token: () =>
-      msStoreToken(
-        o.env,
-        o.db,
-        o.product,
-        o.setup.credentialId,
-        o.use,
-        o.now,
-        fetchImpl,
-      ),
+      parsePlatformCredentialHandle(o.setup.credentialId)
+        ? platformMsStoreToken(
+            o.env,
+            o.db,
+            { product: o.product, pin: o.setup.productId },
+            o.use,
+            o.now,
+            fetchImpl,
+          )
+        : msStoreToken(
+            o.env,
+            o.db,
+            o.product,
+            o.setup.credentialId,
+            o.use,
+            o.now,
+            fetchImpl,
+          ),
     fetchImpl,
     ...(o.sleep ? { sleep: o.sleep } : {}),
   });
@@ -633,7 +648,7 @@ async function markNotReadable(run: MsStoreRun): Promise<void> {
  */
 export async function pollMsStore(ctx: ConnectorContext): Promise<PollOutcome> {
   const product = ctx.product.slug;
-  const { setup, inert } = await resolveMsStoreSetup(ctx.db, product);
+  const { setup, inert } = await resolveMsStoreSetup(ctx.env, ctx.db, product);
   if (!setup)
     return {
       connector: MSSTORE_CONNECTOR,
@@ -677,13 +692,26 @@ export async function pollMsStore(ctx: ConnectorContext): Promise<PollOutcome> {
       error: errorLine(e),
     };
   } finally {
-    if (run.client.calls > 0 || error)
-      await recordOutletCredentialResult(
-        run.db,
-        run.product,
-        setup.credentialId,
-        error ? { ok: false, error: errorLine(error) } : { ok: true },
-        run.now,
-      );
+    if (run.client.calls > 0 || error) {
+      const result = error
+        ? { ok: false as const, error: errorLine(error) }
+        : { ok: true as const };
+      const platformId = parsePlatformCredentialHandle(setup.credentialId);
+      if (platformId)
+        await recordPlatformCredentialResult(
+          run.db,
+          platformId,
+          result,
+          run.now,
+        );
+      else
+        await recordOutletCredentialResult(
+          run.db,
+          run.product,
+          setup.credentialId,
+          result,
+          run.now,
+        );
+    }
   }
 }

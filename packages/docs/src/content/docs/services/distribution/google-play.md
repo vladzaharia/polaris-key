@@ -62,6 +62,11 @@ outlet's package, the connector does not run for the product: the poller skips i
 control is refused. `GET …/distribution/connectors/play` says why in `inert` (`no_outlet`,
 `no_credential`, `pin_missing` or `pin_mismatch`, with a sentence on what to do).
 
+**The platform's team key.** A product with no `google-service-account` of its own falls back to the platform's
+team-level credential for this store, only for the app a platform admin assigned to the product
+(the same `pin_missing` / `pin_mismatch` reasons, with `credentialSource: "platform"`). A key of
+the product's own always wins. See [Store connections](/docs/admin/store-connections/).
+
 ### Least privilege for the service account
 
 A stolen service-account key can change rollouts for every app it is invited to, so give it as

@@ -65,6 +65,8 @@ export interface PlayWorld {
   fetchImpl: (input: string, init?: RequestInit) => Promise<Response>;
   /** Recorded `sleep` calls (the client's 429 backoff). */
   sleeps: number[];
+  /** The service account's key pair the fake trusts (A-16 reuses it for the platform key). */
+  keys: { privatePem: string; publicPem: string };
 }
 
 export function rsaKeyPair(): { privatePem: string; publicPem: string } {
@@ -157,7 +159,7 @@ export async function playWorld(
       ? fake.fetchImpl(input, init)
       : gh.fetchImpl(input, init);
   };
-  return { env, db, fake, fetchImpl, sleeps: [] };
+  return { env, db, fake, fetchImpl, sleeps: [], keys };
 }
 
 /** Run `fn` with the fakes as the global fetch (the poller reads it late-bound). */

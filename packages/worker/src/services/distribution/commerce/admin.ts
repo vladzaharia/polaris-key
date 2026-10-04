@@ -87,17 +87,18 @@ async function setupOf(
   return {
     "app-store": await one(
       settings.appStore !== null,
-      () => appStoreCredential(ctx.db, slug, settings.appStore!.bundleId),
+      () =>
+        appStoreCredential(ctx.env, ctx.db, slug, settings.appStore!.bundleId),
       "app-store-server-key",
     ),
     play: await one(
       settings.play !== null,
-      () => playCredential(ctx.db, slug, settings.play!.packageName),
+      () => playCredential(ctx.env, ctx.db, slug, settings.play!.packageName),
       "google-service-account",
     ),
     steam: await one(
       settings.steam !== null,
-      () => steamCredential(ctx.db, slug, settings.steam!.appId),
+      () => steamCredential(ctx.env, ctx.db, slug, settings.steam!.appId),
       "steam-publisher-key",
     ),
   };
