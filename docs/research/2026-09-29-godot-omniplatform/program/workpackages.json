@@ -80,10 +80,16 @@
       "phase": "P0",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.5, 0.75],
+      "estimateWeeks": [
+        0.5,
+        0.75
+      ],
       "deps": [],
       "planMode": false,
-      "gates": ["migration", "rule-9"],
+      "gates": [
+        "migration",
+        "rule-9"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
@@ -102,10 +108,17 @@
       "phase": "P0",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1.25],
+      "estimateWeeks": [
+        1,
+        1.25
+      ],
       "deps": [],
       "planMode": false,
-      "gates": ["migration", "rule-9", "table-owners"],
+      "gates": [
+        "migration",
+        "rule-9",
+        "table-owners"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
@@ -123,8 +136,13 @@
       "phase": "P0",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.25, 0.25],
-      "deps": ["P0-02"],
+      "estimateWeeks": [
+        0.25,
+        0.25
+      ],
+      "deps": [
+        "P0-02"
+      ],
       "planMode": false,
       "gates": [],
       "humanInputs": [
@@ -132,7 +150,10 @@
       ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §9.1 #7", "notes/A1"],
+      "refs": [
+        "README §9.1 #7",
+        "notes/A1"
+      ],
       "brief": "wp/P0-03-release-webhook.md",
       "status": "done"
     },
@@ -142,10 +163,17 @@
       "phase": "P0",
       "lane": "corpus",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [1, 1.25],
+      "estimateWeeks": [
+        1,
+        1.25
+      ],
       "deps": [],
       "planMode": true,
-      "gates": ["plan-mode", "corpus:gate-matrix", "all-sdks"],
+      "gates": [
+        "plan-mode",
+        "corpus:gate-matrix",
+        "all-sdks"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
@@ -164,14 +192,26 @@
       "phase": "P0",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.5, 0.75],
+      "estimateWeeks": [
+        0.5,
+        0.75
+      ],
       "deps": [],
       "planMode": false,
-      "gates": ["rule-9", "rule-10", "migration", "threat-model"],
+      "gates": [
+        "rule-9",
+        "rule-10",
+        "migration",
+        "threat-model"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §9.1 #10", "README §3.11", "notes/A3"],
+      "refs": [
+        "README §9.1 #10",
+        "README §3.11",
+        "notes/A3"
+      ],
       "brief": "wp/P0-05-cors.md",
       "status": "done"
     },
@@ -181,14 +221,22 @@
       "phase": "P0",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.25, 0.5],
+      "estimateWeeks": [
+        0.25,
+        0.5
+      ],
       "deps": [],
       "planMode": false,
-      "gates": ["docs-links"],
+      "gates": [
+        "docs-links"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §9.1 #12", "README §6.2 item 5"],
+      "refs": [
+        "README §9.1 #12",
+        "README §6.2 item 5"
+      ],
       "brief": "wp/P0-06-product-devices.md",
       "status": "done"
     },
@@ -198,14 +246,23 @@
       "phase": "P0",
       "lane": "cli-ci",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.25, 0.25],
+      "estimateWeeks": [
+        0.25,
+        0.25
+      ],
       "deps": [],
       "planMode": false,
-      "gates": ["rule-9", "docs-generated"],
+      "gates": [
+        "rule-9",
+        "docs-generated"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §9.1 #13", "notes/A3"],
+      "refs": [
+        "README §9.1 #13",
+        "notes/A3"
+      ],
       "brief": "wp/P0-07-cli-init-validate.md",
       "status": "done"
     },
@@ -215,7 +272,10 @@
       "phase": "P0",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.1, 0.25],
+      "estimateWeeks": [
+        0.1,
+        0.25
+      ],
       "deps": [],
       "planMode": false,
       "gates": [],
@@ -235,14 +295,29 @@
       "phase": "P0",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["P0-08", "P0-07"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "P0-08",
+        "P0-07"
+      ],
       "planMode": false,
-      "gates": ["drift-gate", "all-sdks"],
-      "humanInputs": ["P0-08 deployed to production first"],
+      "gates": [
+        "drift-gate",
+        "all-sdks"
+      ],
+      "humanInputs": [
+        "P0-08 deployed to production first"
+      ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.2", "README §11 decision 17", "notes/A3 §5.3"],
+      "refs": [
+        "README §3.2",
+        "README §11 decision 17",
+        "notes/A3 §5.3"
+      ],
       "brief": "wp/P0-09-service-table.md",
       "status": "done"
     },
@@ -252,7 +327,10 @@
       "phase": "P0",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.25, 0.5],
+      "estimateWeeks": [
+        0.25,
+        0.5
+      ],
       "deps": [],
       "planMode": false,
       "gates": [],
@@ -261,7 +339,9 @@
       ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §9.1 #11 #16"],
+      "refs": [
+        "README §9.1 #11 #16"
+      ],
       "brief": "wp/P0-10-sparkle-hardening.md",
       "status": "done"
     },
@@ -271,14 +351,22 @@
       "phase": "P0",
       "lane": "docs",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.25, 0.5],
+      "estimateWeeks": [
+        0.25,
+        0.5
+      ],
       "deps": [],
       "planMode": false,
-      "gates": ["docs-links"],
+      "gates": [
+        "docs-links"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §9.1 #20 #21 #22", "README §3.2 (the mount.ts claim)"],
+      "refs": [
+        "README §9.1 #20 #21 #22",
+        "README §3.2 (the mount.ts claim)"
+      ],
       "brief": "wp/P0-11-docs-drift.md",
       "status": "done"
     },
@@ -288,16 +376,26 @@
       "phase": "P0",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.5, 0.75],
+      "estimateWeeks": [
+        0.5,
+        0.75
+      ],
       "deps": [],
       "planMode": false,
-      "gates": ["threat-model", "migration", "table-owners"],
+      "gates": [
+        "threat-model",
+        "migration",
+        "table-owners"
+      ],
       "humanInputs": [
         "review of the secrets the migration marks as edge-mint signers"
       ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §9.1 #5", "README §5.3 secrets"],
+      "refs": [
+        "README §9.1 #5",
+        "README §5.3 secrets"
+      ],
       "brief": "wp/P0-12-edge-mint-hardening.md",
       "status": "done"
     },
@@ -307,11 +405,18 @@
       "phase": "P0",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.25, 0.5],
+      "estimateWeeks": [
+        0.25,
+        0.5
+      ],
       "deps": [],
       "planMode": false,
-      "gates": ["threat-model"],
-      "humanInputs": ["a deploy (in-flight sign-ins retry once)"],
+      "gates": [
+        "threat-model"
+      ],
+      "humanInputs": [
+        "a deploy (in-flight sign-ins retry once)"
+      ],
       "repo": "polaris-key",
       "optional": false,
       "refs": [
@@ -328,11 +433,20 @@
       "phase": "P1",
       "lane": "godot",
       "role": "pkey-godot-engineer",
-      "estimateWeeks": [1, 1.5],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
       "deps": [],
       "planMode": true,
-      "gates": ["plan-mode", "corpus:mirror", "ci"],
-      "humanInputs": ["make the new `godot` CI job a required check"],
+      "gates": [
+        "plan-mode",
+        "corpus:mirror",
+        "ci"
+      ],
+      "humanInputs": [
+        "make the new `godot` CI job a required check"
+      ],
       "repo": "polaris-key",
       "optional": false,
       "refs": [
@@ -350,14 +464,26 @@
       "phase": "P1",
       "lane": "godot",
       "role": "pkey-godot-engineer",
-      "estimateWeeks": [1.5, 2],
-      "deps": ["P1-01"],
+      "estimateWeeks": [
+        1.5,
+        2
+      ],
+      "deps": [
+        "P1-01"
+      ],
       "planMode": false,
-      "gates": ["corpus:cases"],
+      "gates": [
+        "corpus:cases"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §5.2 §5.3", "notes/A2 §1", "notes/A5", "PARITY §5.1"],
+      "refs": [
+        "README §5.2 §5.3",
+        "notes/A2 §1",
+        "notes/A5",
+        "PARITY §5.1"
+      ],
       "brief": "wp/P1-02-godot-core.md",
       "status": "done"
     },
@@ -367,14 +493,26 @@
       "phase": "P1",
       "lane": "godot",
       "role": "pkey-godot-engineer",
-      "estimateWeeks": [1, 1.25],
-      "deps": ["P1-02", "P0-04", "P1-05"],
+      "estimateWeeks": [
+        1,
+        1.25
+      ],
+      "deps": [
+        "P1-02",
+        "P0-04",
+        "P1-05"
+      ],
       "planMode": false,
-      "gates": ["corpus:gate-matrix"],
+      "gates": [
+        "corpus:gate-matrix"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["notes/A2 §1.9 §9.2", "PARITY §5.2"],
+      "refs": [
+        "notes/A2 §1.9 §9.2",
+        "PARITY §5.2"
+      ],
       "brief": "wp/P1-03-godot-license.md",
       "status": "done"
     },
@@ -384,14 +522,24 @@
       "phase": "P1",
       "lane": "godot",
       "role": "pkey-godot-engineer",
-      "estimateWeeks": [1, 1.25],
-      "deps": ["P1-02", "P0-12"],
+      "estimateWeeks": [
+        1,
+        1.25
+      ],
+      "deps": [
+        "P1-02",
+        "P0-12"
+      ],
       "planMode": false,
       "gates": [],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §5.4", "notes/A2 §1.10 §9.3", "PARITY §5.3"],
+      "refs": [
+        "README §5.4",
+        "notes/A2 §1.10 §9.3",
+        "PARITY §5.3"
+      ],
       "brief": "wp/P1-04-godot-config.md",
       "status": "done"
     },
@@ -401,14 +549,26 @@
       "phase": "P1",
       "lane": "godot",
       "role": "pkey-godot-engineer",
-      "estimateWeeks": [1, 1.25],
-      "deps": ["P1-02"],
+      "estimateWeeks": [
+        1,
+        1.25
+      ],
+      "deps": [
+        "P1-02"
+      ],
       "planMode": false,
-      "gates": ["corpus:fingerprint"],
+      "gates": [
+        "corpus:fingerprint"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §5.3", "notes/A2 §3 §8", "notes/A5", "PARITY §5.4"],
+      "refs": [
+        "README §5.3",
+        "notes/A2 §3 §8",
+        "notes/A5",
+        "PARITY §5.4"
+      ],
       "brief": "wp/P1-05-godot-devices.md",
       "status": "done"
     },
@@ -418,16 +578,27 @@
       "phase": "P1",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.5, 0.75],
-      "deps": ["P0-13"],
+      "estimateWeeks": [
+        0.5,
+        0.75
+      ],
+      "deps": [
+        "P0-13"
+      ],
       "planMode": false,
-      "gates": ["rule-10", "threat-model"],
+      "gates": [
+        "rule-10",
+        "threat-model"
+      ],
       "humanInputs": [
         "a production deploy before P1-07's end-to-end check and before D-02"
       ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §9.1 #18", "notes/A2 §6"],
+      "refs": [
+        "README §9.1 #18",
+        "notes/A2 §6"
+      ],
       "brief": "wp/P1-06-rfc8628-page.md",
       "status": "done"
     },
@@ -437,14 +608,26 @@
       "phase": "P1",
       "lane": "godot",
       "role": "pkey-godot-engineer",
-      "estimateWeeks": [0.75, 1],
-      "deps": ["P1-02", "P1-06"],
+      "estimateWeeks": [
+        0.75,
+        1
+      ],
+      "deps": [
+        "P1-02",
+        "P1-06"
+      ],
       "planMode": false,
       "gates": [],
-      "humanInputs": ["a deployed Worker for one manual QR scan"],
+      "humanInputs": [
+        "a deployed Worker for one manual QR scan"
+      ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §5.8", "notes/A2 §6", "notes/E9 §8"],
+      "refs": [
+        "README §5.8",
+        "notes/A2 §6",
+        "notes/E9 §8"
+      ],
       "brief": "wp/P1-07-godot-identity.md",
       "status": "done"
     },
@@ -454,14 +637,22 @@
       "phase": "P1",
       "lane": "godot",
       "role": "pkey-godot-engineer",
-      "estimateWeeks": [0.25, 0.5],
-      "deps": ["P1-02"],
+      "estimateWeeks": [
+        0.25,
+        0.5
+      ],
+      "deps": [
+        "P1-02"
+      ],
       "planMode": false,
       "gates": [],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["notes/A2 §9.6", "PARITY §5.5"],
+      "refs": [
+        "notes/A2 §9.6",
+        "PARITY §5.5"
+      ],
       "brief": "wp/P1-08-godot-update-check.md",
       "status": "done"
     },
@@ -471,14 +662,25 @@
       "phase": "P1",
       "lane": "corpus",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [1, 1.5],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
       "deps": [],
       "planMode": true,
-      "gates": ["plan-mode", "corpus:stage-matrix", "all-sdks"],
+      "gates": [
+        "plan-mode",
+        "corpus:stage-matrix",
+        "all-sdks"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §5.8", "README §8 item 6", "PARITY §4.1 §5.7"],
+      "refs": [
+        "README §5.8",
+        "README §8 item 6",
+        "PARITY §4.1 §5.7"
+      ],
       "brief": "wp/P1-09-boot-stage-machine.md",
       "status": "done"
     },
@@ -488,14 +690,28 @@
       "phase": "P1",
       "lane": "godot",
       "role": "pkey-godot-engineer",
-      "estimateWeeks": [1.5, 2],
-      "deps": ["P1-03", "P1-04", "P1-07", "P1-09", "P1-08", "P1-11"],
+      "estimateWeeks": [
+        1.5,
+        2
+      ],
+      "deps": [
+        "P1-03",
+        "P1-04",
+        "P1-07",
+        "P1-09",
+        "P1-08",
+        "P1-11"
+      ],
       "planMode": false,
       "gates": [],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §5.8", "README §6.3", "PARITY §5.7"],
+      "refs": [
+        "README §5.8",
+        "README §6.3",
+        "PARITY §5.7"
+      ],
       "brief": "wp/P1-10-godot-ui-kit.md",
       "status": "done"
     },
@@ -505,14 +721,23 @@
       "phase": "P1",
       "lane": "godot",
       "role": "pkey-godot-engineer",
-      "estimateWeeks": [0.5, 0.75],
-      "deps": ["P1-01", "P1-02"],
+      "estimateWeeks": [
+        0.5,
+        0.75
+      ],
+      "deps": [
+        "P1-01",
+        "P1-02"
+      ],
       "planMode": false,
       "gates": [],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §5.9", "README §3.4 pkey build-info"],
+      "refs": [
+        "README §5.9",
+        "README §3.4 pkey build-info"
+      ],
       "brief": "wp/P1-11-godot-export-plugin.md",
       "status": "done"
     },
@@ -522,10 +747,21 @@
       "phase": "P1",
       "lane": "godot",
       "role": "pkey-godot-engineer",
-      "estimateWeeks": [0.5, 0.75],
-      "deps": ["P1-05", "P1-08", "P1-10", "P1-11", "P0-05"],
+      "estimateWeeks": [
+        0.5,
+        0.75
+      ],
+      "deps": [
+        "P1-05",
+        "P1-08",
+        "P1-10",
+        "P1-11",
+        "P0-05"
+      ],
       "planMode": false,
-      "gates": ["docs-links"],
+      "gates": [
+        "docs-links"
+      ],
       "humanInputs": [
         "the addon's licence (the repository has no root LICENSE)",
         "the first version number and the tag push",
@@ -533,7 +769,10 @@
       ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §5.12", "README §6.1"],
+      "refs": [
+        "README §5.12",
+        "README §6.1"
+      ],
       "brief": "wp/P1-12-godot-release.md",
       "status": "in-review",
       "milestone": "Diceroll can adopt managed config, licensing and identity"
@@ -544,14 +783,23 @@
       "phase": "P1b",
       "lane": "parity",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1.5],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
       "deps": [],
       "planMode": false,
-      "gates": ["drift-gate", "docs-generated"],
+      "gates": [
+        "drift-gate",
+        "docs-generated"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["PARITY §3", "PARITY §5"],
+      "refs": [
+        "PARITY §3",
+        "PARITY §5"
+      ],
       "brief": "wp/P1b-01-parity-registry.md",
       "status": "done"
     },
@@ -561,14 +809,25 @@
       "phase": "P1b",
       "lane": "parity",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1],
-      "deps": ["P1b-01", "P0-09"],
+      "estimateWeeks": [
+        1,
+        1
+      ],
+      "deps": [
+        "P1b-01",
+        "P0-09"
+      ],
       "planMode": false,
-      "gates": ["drift-gate", "docs-generated"],
+      "gates": [
+        "drift-gate",
+        "docs-generated"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["PARITY §4.4"],
+      "refs": [
+        "PARITY §4.4"
+      ],
       "brief": "wp/P1b-02-sdk-constants.md",
       "status": "done"
     },
@@ -578,14 +837,24 @@
       "phase": "P1b",
       "lane": "parity",
       "role": "pkey-implementer",
-      "estimateWeeks": [2, 3],
-      "deps": ["P1b-01"],
+      "estimateWeeks": [
+        2,
+        3
+      ],
+      "deps": [
+        "P1b-01"
+      ],
       "planMode": false,
-      "gates": ["drift-gate", "all-sdks"],
+      "gates": [
+        "drift-gate",
+        "all-sdks"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["PARITY §4.2"],
+      "refs": [
+        "PARITY §4.2"
+      ],
       "brief": "wp/P1b-03-http-transcripts.md",
       "status": "done"
     },
@@ -595,14 +864,26 @@
       "phase": "P1b",
       "lane": "corpus",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [0.75, 1],
-      "deps": ["P1b-02"],
+      "estimateWeeks": [
+        0.75,
+        1
+      ],
+      "deps": [
+        "P1b-02"
+      ],
       "planMode": true,
-      "gates": ["plan-mode", "corpus", "all-sdks"],
+      "gates": [
+        "plan-mode",
+        "corpus",
+        "all-sdks"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["PARITY §4.1", "README §9.1 #17"],
+      "refs": [
+        "PARITY §4.1",
+        "README §9.1 #17"
+      ],
       "brief": "wp/P1b-04-headers-config-corpora.md",
       "status": "done"
     },
@@ -612,14 +893,25 @@
       "phase": "P1b",
       "lane": "parity",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.5, 0.75],
-      "deps": ["P0-04"],
+      "estimateWeeks": [
+        0.5,
+        0.75
+      ],
+      "deps": [
+        "P0-04"
+      ],
       "planMode": false,
-      "gates": ["ci"],
+      "gates": [
+        "ci"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["PARITY §4.3", "README §9.1 #15", "notes/A7 §11.5"],
+      "refs": [
+        "PARITY §4.3",
+        "README §9.1 #15",
+        "notes/A7 §11.5"
+      ],
       "brief": "wp/P1b-05-runners.md",
       "status": "done"
     },
@@ -629,14 +921,24 @@
       "phase": "P1b",
       "lane": "sdk",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [0.75, 1],
-      "deps": ["P1b-03"],
+      "estimateWeeks": [
+        0.75,
+        1
+      ],
+      "deps": [
+        "P1b-03"
+      ],
       "planMode": false,
-      "gates": ["all-sdks"],
+      "gates": [
+        "all-sdks"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §9.1 #14", "PARITY §8"],
+      "refs": [
+        "README §9.1 #14",
+        "PARITY §8"
+      ],
       "brief": "wp/P1b-06-reregister-401.md",
       "status": "done"
     },
@@ -646,14 +948,24 @@
       "phase": "P1b",
       "lane": "sdk",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [1.5, 2],
-      "deps": ["P1b-03"],
+      "estimateWeeks": [
+        1.5,
+        2
+      ],
+      "deps": [
+        "P1b-03"
+      ],
       "planMode": false,
-      "gates": ["all-sdks"],
+      "gates": [
+        "all-sdks"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["PARITY §5.1–§5.5 §8", "notes/A2 §9"],
+      "refs": [
+        "PARITY §5.1–§5.5 §8",
+        "notes/A2 §9"
+      ],
       "brief": "wp/P1b-07-license-config-release-gaps.md",
       "status": "done"
     },
@@ -663,14 +975,26 @@
       "phase": "P1b",
       "lane": "sdk",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["P1b-03", "P1-06", "P0-12"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "P1b-03",
+        "P1-06",
+        "P0-12"
+      ],
       "planMode": false,
-      "gates": ["all-sdks"],
+      "gates": [
+        "all-sdks"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["PARITY §8", "notes/A2 §6 §9.5"],
+      "refs": [
+        "PARITY §8",
+        "notes/A2 §6 §9.5"
+      ],
       "brief": "wp/P1b-08-devicecode-edgemint-ports.md",
       "status": "done"
     },
@@ -680,8 +1004,13 @@
       "phase": "P1b",
       "lane": "sdk",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["P1b-01"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "P1b-01"
+      ],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -693,7 +1022,11 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §9.1 #23–#27", "notes/E9 §5 §6 §12", "PARITY §8"],
+      "refs": [
+        "README §9.1 #23–#27",
+        "notes/E9 §5 §6 §12",
+        "PARITY §8"
+      ],
       "brief": "wp/P1b-09-fingerprint-storage-fixes.md",
       "status": "done"
     },
@@ -703,14 +1036,25 @@
       "phase": "P1b",
       "lane": "sdk",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [0.5, 1],
-      "deps": ["P1b-01", "P1b-02"],
+      "estimateWeeks": [
+        0.5,
+        1
+      ],
+      "deps": [
+        "P1b-01",
+        "P1b-02"
+      ],
       "planMode": false,
-      "gates": ["all-sdks"],
+      "gates": [
+        "all-sdks"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["PARITY §2.2", "PARITY §5.1 core.caps"],
+      "refs": [
+        "PARITY §2.2",
+        "PARITY §5.1 core.caps"
+      ],
       "brief": "wp/P1b-10-core-caps.md",
       "status": "done"
     },
@@ -720,17 +1064,29 @@
       "phase": "P2",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1.5],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
       "deps": [],
       "planMode": false,
-      "gates": ["threat-model", "wrangler", "migration", "table-owners"],
+      "gates": [
+        "threat-model",
+        "wrangler",
+        "migration",
+        "table-owners"
+      ],
       "humanInputs": [
         "Cloudflare R2 buckets per environment",
         "a separate registrable domain for bytes"
       ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.5", "README §11 decision 4", "notes/A3 §7"],
+      "refs": [
+        "README §3.5",
+        "README §11 decision 4",
+        "notes/A3 §7"
+      ],
       "brief": "wp/P2-01-blob-store.md",
       "status": "done"
     },
@@ -740,8 +1096,14 @@
       "phase": "P2",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["P2-01", "P2-04"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "P2-01",
+        "P2-04"
+      ],
       "planMode": false,
       "gates": [
         "threat-model",
@@ -755,7 +1117,11 @@
       ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.4 publishing", "notes/E5 §2", "notes/E7"],
+      "refs": [
+        "README §3.4 publishing",
+        "notes/E5 §2",
+        "notes/E7"
+      ],
       "brief": "wp/P2-02-trusted-publisher.md",
       "status": "done"
     },
@@ -765,14 +1131,26 @@
       "phase": "P2",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["P0-01", "P0-02"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "P0-01",
+        "P0-02"
+      ],
       "planMode": false,
-      "gates": ["migration", "table-owners"],
+      "gates": [
+        "migration",
+        "table-owners"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.4 schema", "notes/A1 §5"],
+      "refs": [
+        "README §3.4 schema",
+        "notes/A1 §5"
+      ],
       "brief": "wp/P2-03-release-data-model.md",
       "status": "done"
     },
@@ -782,10 +1160,17 @@
       "phase": "P2",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["P2-03"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "P2-03"
+      ],
       "planMode": false,
-      "gates": ["rule-9"],
+      "gates": [
+        "rule-9"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
@@ -803,14 +1188,26 @@
       "phase": "P2",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["P2-01", "P2-03"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "P2-01",
+        "P2-03"
+      ],
       "planMode": false,
-      "gates": ["rule-10"],
+      "gates": [
+        "rule-10"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.4 resolution rules", "README §3.5", "README §9.1 #3"],
+      "refs": [
+        "README §3.4 resolution rules",
+        "README §3.5",
+        "README §9.1 #3"
+      ],
       "brief": "wp/P2-05-release-routes.md",
       "status": "done"
     },
@@ -820,8 +1217,15 @@
       "phase": "P2",
       "lane": "cli-ci",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["P2-02", "P2-04", "P2-05"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "P2-02",
+        "P2-04",
+        "P2-05"
+      ],
       "planMode": false,
       "gates": [],
       "humanInputs": [
@@ -829,7 +1233,10 @@
       ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.4 CLI", "README §6.1"],
+      "refs": [
+        "README §3.4 CLI",
+        "README §6.1"
+      ],
       "brief": "wp/P2-06-publish-cli-action.md",
       "status": "done"
     },
@@ -839,14 +1246,21 @@
       "phase": "P2",
       "lane": "console",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.5, 1],
-      "deps": ["P2-05"],
+      "estimateWeeks": [
+        0.5,
+        1
+      ],
+      "deps": [
+        "P2-05"
+      ],
       "planMode": false,
       "gates": [],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §6.2 item 2"],
+      "refs": [
+        "README §6.2 item 2"
+      ],
       "brief": "wp/P2-07-console-builds.md",
       "status": "done",
       "milestone": "Every Diceroll artifact indexed and published without long-lived secrets"
@@ -857,17 +1271,32 @@
       "phase": "P2b",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["P0-09", "P2-03"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "P0-09",
+        "P2-03"
+      ],
       "planMode": false,
-      "gates": ["new-service", "threat-model", "rule-9", "migration"],
+      "gates": [
+        "new-service",
+        "threat-model",
+        "rule-9",
+        "migration"
+      ],
       "humanInputs": [
         "P0-08 deployed to production first",
         "djdl adds `distribution` to its .pkey/product before its next push"
       ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.2", "README §3.8", "README §11 decision 16"],
+      "refs": [
+        "README §3.2",
+        "README §3.8",
+        "README §11 decision 16"
+      ],
       "brief": "wp/P2b-01-distribution-service.md",
       "status": "done"
     },
@@ -877,14 +1306,27 @@
       "phase": "P2b",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1],
-      "deps": ["P2b-01", "P2-04"],
+      "estimateWeeks": [
+        1,
+        1
+      ],
+      "deps": [
+        "P2b-01",
+        "P2-04"
+      ],
       "planMode": false,
-      "gates": ["rule-9", "migration", "table-owners"],
+      "gates": [
+        "rule-9",
+        "migration",
+        "table-owners"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.8", "README §3.12"],
+      "refs": [
+        "README §3.8",
+        "README §3.12"
+      ],
       "brief": "wp/P2b-02-distribution-manifest.md",
       "status": "done"
     },
@@ -894,14 +1336,27 @@
       "phase": "P2b",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1],
-      "deps": ["P2b-02", "P2-06"],
+      "estimateWeeks": [
+        1,
+        1
+      ],
+      "deps": [
+        "P2b-02",
+        "P2-06"
+      ],
       "planMode": false,
-      "gates": ["rule-10", "migration", "threat-model"],
+      "gates": [
+        "rule-10",
+        "migration",
+        "threat-model"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.8 data model", "notes/E2 (developer verification)"],
+      "refs": [
+        "README §3.8 data model",
+        "notes/E2 (developer verification)"
+      ],
       "brief": "wp/P2b-03-availability-keys.md",
       "status": "done"
     },
@@ -911,14 +1366,28 @@
       "phase": "P2b",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1.5, 2],
-      "deps": ["P2b-02", "P2-05"],
+      "estimateWeeks": [
+        1.5,
+        2
+      ],
+      "deps": [
+        "P2b-02",
+        "P2-05"
+      ],
       "planMode": false,
-      "gates": ["rule-10", "migration", "threat-model"],
+      "gates": [
+        "rule-10",
+        "migration",
+        "threat-model"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.5", "README §3.8", "README §3.9"],
+      "refs": [
+        "README §3.5",
+        "README §3.8",
+        "README §3.9"
+      ],
       "brief": "wp/P2b-04-rollouts-delivery.md",
       "status": "done"
     },
@@ -928,10 +1397,21 @@
       "phase": "P2b",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [2, 3],
-      "deps": ["P2b-03", "P2b-04", "S-07"],
+      "estimateWeeks": [
+        2,
+        3
+      ],
+      "deps": [
+        "P2b-03",
+        "P2b-04",
+        "S-07"
+      ],
       "planMode": false,
-      "gates": ["rule-10", "migration", "rule-9"],
+      "gates": [
+        "rule-10",
+        "migration",
+        "rule-9"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
@@ -950,14 +1430,26 @@
       "phase": "P2b",
       "lane": "console",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1],
-      "deps": ["P2b-03", "P2b-04"],
+      "estimateWeeks": [
+        1,
+        1
+      ],
+      "deps": [
+        "P2b-03",
+        "P2b-04"
+      ],
       "planMode": false,
-      "gates": ["rule-10", "threat-model"],
+      "gates": [
+        "rule-10",
+        "threat-model"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.5 separate domain", "README §6.2 item 1"],
+      "refs": [
+        "README §3.5 separate domain",
+        "README §6.2 item 1"
+      ],
       "brief": "wp/P2b-06-download-page-matrix.md",
       "status": "done",
       "milestone": "Diceroll's AltStore source, F-Droid repo and download page come from Polaris Key"
@@ -968,14 +1460,28 @@
       "phase": "P3",
       "lane": "corpus",
       "role": "pkey-wire-planner",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["P2-03", "P2b-01"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "P2-03",
+        "P2b-01"
+      ],
       "planMode": true,
-      "gates": ["plan-mode", "human-approval"],
+      "gates": [
+        "plan-mode",
+        "human-approval"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.3", "README §3.6", "CONTENT §6.9", "PARITY §4.1"],
+      "refs": [
+        "README §3.3",
+        "README §3.6",
+        "CONTENT §6.9",
+        "PARITY §4.1"
+      ],
       "brief": "wp/P3-01-wire-v4-plan.md",
       "status": "done"
     },
@@ -985,8 +1491,14 @@
       "phase": "P3",
       "lane": "corpus",
       "role": "pkey-implementer",
-      "estimateWeeks": [2.75, 3.25],
-      "deps": ["P3-01", "S-06"],
+      "estimateWeeks": [
+        2.75,
+        3.25
+      ],
+      "deps": [
+        "P3-01",
+        "S-06"
+      ],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -999,7 +1511,11 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.3", "README §9.1 #19", "notes/A5 §3"],
+      "refs": [
+        "README §3.3",
+        "README §9.1 #19",
+        "notes/A5 §3"
+      ],
       "brief": "wp/P3-02-wire-v4-contract-corpus.md",
       "status": "done",
       "planRef": "P3-01"
@@ -1010,8 +1526,16 @@
       "phase": "P3",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [2.75, 3.25],
-      "deps": ["P3-02", "P2b-04", "P2-06", "P2b-03"],
+      "estimateWeeks": [
+        2.75,
+        3.25
+      ],
+      "deps": [
+        "P3-02",
+        "P2b-04",
+        "P2-06",
+        "P2b-03"
+      ],
       "planMode": false,
       "gates": [
         "rule-10",
@@ -1024,7 +1548,10 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.3", "README §3.6"],
+      "refs": [
+        "README §3.3",
+        "README §3.6"
+      ],
       "brief": "wp/P3-03-feed-composition.md",
       "status": "done"
     },
@@ -1035,14 +1562,25 @@
       "stage": "sdk-wave",
       "lane": "sdk",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [0.5, 0.75],
-      "deps": ["P3-02", "P3-05"],
+      "estimateWeeks": [
+        0.5,
+        0.75
+      ],
+      "deps": [
+        "P3-02",
+        "P3-05"
+      ],
       "planMode": false,
-      "gates": ["corpus"],
+      "gates": [
+        "corpus"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.6", "PARITY §5.5"],
+      "refs": [
+        "README §3.6",
+        "PARITY §5.5"
+      ],
       "brief": "wp/P3-04-v4-node.md",
       "status": "done"
     },
@@ -1053,14 +1591,24 @@
       "stage": "sdk-wave",
       "lane": "sdk",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [1.25, 1.75],
-      "deps": ["P3-02"],
+      "estimateWeeks": [
+        1.25,
+        1.75
+      ],
+      "deps": [
+        "P3-02"
+      ],
       "planMode": false,
-      "gates": ["corpus"],
+      "gates": [
+        "corpus"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.6", "PARITY §5.5"],
+      "refs": [
+        "README §3.6",
+        "PARITY §5.5"
+      ],
       "brief": "wp/P3-05-v4-react.md",
       "status": "done"
     },
@@ -1071,14 +1619,25 @@
       "stage": "sdk-wave",
       "lane": "sdk",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [0.5, 0.75],
-      "deps": ["P3-02", "P3-05"],
+      "estimateWeeks": [
+        0.5,
+        0.75
+      ],
+      "deps": [
+        "P3-02",
+        "P3-05"
+      ],
       "planMode": false,
-      "gates": ["corpus"],
+      "gates": [
+        "corpus"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.6", "PARITY §5.5"],
+      "refs": [
+        "README §3.6",
+        "PARITY §5.5"
+      ],
       "brief": "wp/P3-06-v4-python.md",
       "status": "done"
     },
@@ -1089,14 +1648,25 @@
       "stage": "sdk-wave",
       "lane": "sdk",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [0.5, 0.75],
-      "deps": ["P3-02", "P3-05"],
+      "estimateWeeks": [
+        0.5,
+        0.75
+      ],
+      "deps": [
+        "P3-02",
+        "P3-05"
+      ],
       "planMode": false,
-      "gates": ["corpus"],
+      "gates": [
+        "corpus"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.6", "PARITY §5.5"],
+      "refs": [
+        "README §3.6",
+        "PARITY §5.5"
+      ],
       "brief": "wp/P3-07-v4-swift.md",
       "status": "done"
     },
@@ -1107,14 +1677,26 @@
       "stage": "sdk-wave",
       "lane": "godot",
       "role": "pkey-godot-engineer",
-      "estimateWeeks": [0.5, 0.75],
-      "deps": ["P3-02", "P1-02", "P3-05"],
+      "estimateWeeks": [
+        0.5,
+        0.75
+      ],
+      "deps": [
+        "P3-02",
+        "P1-02",
+        "P3-05"
+      ],
       "planMode": false,
-      "gates": ["corpus"],
+      "gates": [
+        "corpus"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.6", "README §5.5"],
+      "refs": [
+        "README §3.6",
+        "README §5.5"
+      ],
       "brief": "wp/P3-08-v4-godot.md",
       "status": "done"
     },
@@ -1124,14 +1706,27 @@
       "phase": "P3",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1.5, 2],
-      "deps": ["P3-03", "P0-10", "P0-05"],
+      "estimateWeeks": [
+        1.5,
+        2
+      ],
+      "deps": [
+        "P3-03",
+        "P0-10",
+        "P0-05"
+      ],
       "planMode": false,
-      "gates": ["rule-10"],
+      "gates": [
+        "rule-10"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.6 app-updater feeds", "notes/E3", "notes/E1"],
+      "refs": [
+        "README §3.6 app-updater feeds",
+        "notes/E3",
+        "notes/E1"
+      ],
       "brief": "wp/P3-09-updater-feeds.md",
       "status": "done"
     },
@@ -1141,14 +1736,27 @@
       "phase": "P3",
       "lane": "godot",
       "role": "pkey-godot-engineer",
-      "estimateWeeks": [1.5, 2],
-      "deps": ["P3-08", "P3-09", "P3-11", "P1-10", "P1-11", "S-05"],
+      "estimateWeeks": [
+        1.5,
+        2
+      ],
+      "deps": [
+        "P3-08",
+        "P3-09",
+        "P3-11",
+        "P1-10",
+        "P1-11",
+        "S-05"
+      ],
       "planMode": false,
       "gates": [],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §5.5 §5.6", "README §9.2 #1"],
+      "refs": [
+        "README §5.5 §5.6",
+        "README §9.2 #1"
+      ],
       "brief": "wp/P3-10-godot-updater.md",
       "status": "done",
       "milestone": "Diceroll deletes its own updater and feed scripts"
@@ -1159,7 +1767,10 @@
       "phase": "P3",
       "lane": "sdk",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [1, 1.5],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
       "deps": [
         "P3-02",
         "P1-02",
@@ -1171,11 +1782,19 @@
         "P3-08"
       ],
       "planMode": false,
-      "gates": ["corpus", "all-sdks", "rule-9"],
+      "gates": [
+        "corpus",
+        "all-sdks",
+        "rule-9"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["notes/E9 §1", "PARITY §7", "README §5.5"],
+      "refs": [
+        "notes/E9 §1",
+        "PARITY §7",
+        "README §5.5"
+      ],
       "brief": "wp/P3-11-outlet-detection.md",
       "status": "done"
     },
@@ -1185,8 +1804,14 @@
       "phase": "P3",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["P3-01", "P3-02"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "P3-01",
+        "P3-02"
+      ],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -1200,7 +1825,11 @@
       ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["plans/P3-01.md §2.2", "plans/P3-01.md §6", "plans/P3-01.md §7"],
+      "refs": [
+        "plans/P3-01.md §2.2",
+        "plans/P3-01.md §6",
+        "plans/P3-01.md §7"
+      ],
       "brief": "wp/P3-12-worker-representability.md",
       "status": "done",
       "planRef": "P3-01"
@@ -1212,14 +1841,25 @@
       "stage": "v1",
       "lane": "corpus",
       "role": "pkey-wire-planner",
-      "estimateWeeks": [0.5, 0.75],
-      "deps": ["P3-01"],
+      "estimateWeeks": [
+        0.5,
+        0.75
+      ],
+      "deps": [
+        "P3-01"
+      ],
       "planMode": true,
-      "gates": ["plan-mode", "human-approval"],
+      "gates": [
+        "plan-mode",
+        "human-approval"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["CONTENT §6 §8 §9", "notes/A7 §3 §4 §11.5"],
+      "refs": [
+        "CONTENT §6 §8 §9",
+        "notes/A7 §3 §4 §11.5"
+      ],
       "brief": "wp/P4-01-packs-plan.md",
       "status": "done"
     },
@@ -1230,14 +1870,28 @@
       "stage": "v1",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1.5, 2],
-      "deps": ["P4-01", "P3-03", "P4-21"],
+      "estimateWeeks": [
+        1.5,
+        2
+      ],
+      "deps": [
+        "P4-01",
+        "P3-03",
+        "P4-21"
+      ],
       "planMode": false,
-      "gates": ["rule-9", "migration", "docs-generated"],
+      "gates": [
+        "rule-9",
+        "migration",
+        "docs-generated"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["CONTENT §3 §6.1 §6.9 §9", "README §3.4 §3.7"],
+      "refs": [
+        "CONTENT §3 §6.1 §6.9 §9",
+        "README §3.4 §3.7"
+      ],
       "brief": "wp/P4-02-pack-deliverables.md",
       "status": "done"
     },
@@ -1248,14 +1902,27 @@
       "stage": "v1",
       "lane": "cli-ci",
       "role": "pkey-implementer",
-      "estimateWeeks": [1.5, 2],
-      "deps": ["P4-01", "P2-06", "P3-03", "P4-21", "P4-02"],
+      "estimateWeeks": [
+        1.5,
+        2
+      ],
+      "deps": [
+        "P4-01",
+        "P2-06",
+        "P3-03",
+        "P4-21",
+        "P4-02"
+      ],
       "planMode": false,
       "gates": [],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["CONTENT §8 §9 §11", "notes/A6", "notes/A7 §3"],
+      "refs": [
+        "CONTENT §8 §9 §11",
+        "notes/A6",
+        "notes/A7 §3"
+      ],
       "brief": "wp/P4-03-ci-patch-artifacts.md",
       "status": "done"
     },
@@ -1266,14 +1933,28 @@
       "stage": "v1",
       "lane": "corpus",
       "role": "pkey-implementer",
-      "estimateWeeks": [1.5, 2],
-      "deps": ["P4-01", "P3-02", "P4-21"],
+      "estimateWeeks": [
+        1.5,
+        2
+      ],
+      "deps": [
+        "P4-01",
+        "P3-02",
+        "P4-21"
+      ],
       "planMode": true,
-      "gates": ["plan-mode", "corpus", "all-sdks"],
+      "gates": [
+        "plan-mode",
+        "corpus",
+        "all-sdks"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["notes/A7 §2 §5 §11.5", "prototype/content/"],
+      "refs": [
+        "notes/A7 §2 §5 §11.5",
+        "prototype/content/"
+      ],
       "brief": "wp/P4-04-content-corpus-v1.md",
       "status": "done"
     },
@@ -1284,14 +1965,26 @@
       "stage": "v1",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.75, 1],
-      "deps": ["P4-02", "P2b-04", "P2b-03"],
+      "estimateWeeks": [
+        0.75,
+        1
+      ],
+      "deps": [
+        "P4-02",
+        "P2b-04",
+        "P2b-03"
+      ],
       "planMode": false,
-      "gates": ["rule-10"],
+      "gates": [
+        "rule-10"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["CONTENT §7 §11", "README §3.5"],
+      "refs": [
+        "CONTENT §7 §11",
+        "README §3.5"
+      ],
       "brief": "wp/P4-05-pack-transports-cdn.md",
       "status": "done"
     },
@@ -1302,14 +1995,27 @@
       "stage": "v1",
       "lane": "sdk",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [1.75, 2.75],
-      "deps": ["P4-04", "P3-04", "P3-05", "P1b-09"],
+      "estimateWeeks": [
+        1.75,
+        2.75
+      ],
+      "deps": [
+        "P4-04",
+        "P3-04",
+        "P3-05",
+        "P1b-09"
+      ],
       "planMode": false,
-      "gates": ["corpus"],
+      "gates": [
+        "corpus"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["CONTENT §8.1 §10 §13", "notes/A7 §4 §11.4"],
+      "refs": [
+        "CONTENT §8.1 §10 §13",
+        "notes/A7 §4 §11.4"
+      ],
       "brief": "wp/P4-06-client-core-packs.md",
       "status": "done"
     },
@@ -1320,14 +2026,28 @@
       "stage": "v1",
       "lane": "sdk",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [1.25, 1.75],
-      "deps": ["P4-04", "P3-06", "P3-07", "P1b-09", "P4-06"],
+      "estimateWeeks": [
+        1.25,
+        1.75
+      ],
+      "deps": [
+        "P4-04",
+        "P3-06",
+        "P3-07",
+        "P1b-09",
+        "P4-06"
+      ],
       "planMode": false,
-      "gates": ["corpus"],
+      "gates": [
+        "corpus"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["CONTENT §13", "notes/A7 §10 §11.2"],
+      "refs": [
+        "CONTENT §13",
+        "notes/A7 §10 §11.2"
+      ],
       "brief": "wp/P4-07-python-swift-packs.md",
       "status": "done"
     },
@@ -1338,14 +2058,30 @@
       "stage": "v1",
       "lane": "godot",
       "role": "pkey-godot-engineer",
-      "estimateWeeks": [2.75, 3.25],
-      "deps": ["P4-04", "P1-10", "P3-08", "P3-10", "S-05", "P4-06"],
+      "estimateWeeks": [
+        2.75,
+        3.25
+      ],
+      "deps": [
+        "P4-04",
+        "P1-10",
+        "P3-08",
+        "P3-10",
+        "S-05",
+        "P4-06"
+      ],
       "planMode": false,
-      "gates": ["corpus"],
+      "gates": [
+        "corpus"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §5.7 §5.8", "CONTENT §4 §8.3", "notes/A6"],
+      "refs": [
+        "README §5.7 §5.8",
+        "CONTENT §4 §8.3",
+        "notes/A6"
+      ],
       "brief": "wp/P4-08-godot-packs.md",
       "status": "done",
       "milestone": "Diceroll's content-streaming phases 1–3 run on Polaris Key"
@@ -1357,14 +2093,22 @@
       "stage": "v1",
       "lane": "console",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.5, 0.5],
-      "deps": ["P4-02", "P2-07"],
+      "estimateWeeks": [
+        0.5,
+        0.5
+      ],
+      "deps": [
+        "P4-02",
+        "P2-07"
+      ],
       "planMode": false,
       "gates": [],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §6.2 item 4"],
+      "refs": [
+        "README §6.2 item 4"
+      ],
       "brief": "wp/P4-09-console-pack-views.md",
       "status": "done"
     },
@@ -1375,8 +2119,16 @@
       "stage": "v2",
       "lane": "corpus",
       "role": "pkey-implementer",
-      "estimateWeeks": [1.5, 2],
-      "deps": ["P4-04", "P4-06", "S-03", "S-02"],
+      "estimateWeeks": [
+        1.5,
+        2
+      ],
+      "deps": [
+        "P4-04",
+        "P4-06",
+        "S-03",
+        "S-02"
+      ],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -1390,7 +2142,12 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["CONTENT §8 §9", "notes/A7 §3.1", "notes/A6", "plans/P4-10.md"],
+      "refs": [
+        "CONTENT §8 §9",
+        "notes/A7 §3.1",
+        "notes/A6",
+        "plans/P4-10.md"
+      ],
       "brief": "wp/P4-10-chunk-indexes.md",
       "status": "done"
     },
@@ -1401,14 +2158,30 @@
       "stage": "v2",
       "lane": "sdk",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [1.5, 2],
-      "deps": ["P4-10", "P4-06", "P4-07", "P4-08", "S-02", "P4-05"],
+      "estimateWeeks": [
+        1.5,
+        2
+      ],
+      "deps": [
+        "P4-10",
+        "P4-06",
+        "P4-07",
+        "P4-08",
+        "S-02",
+        "P4-05"
+      ],
       "planMode": false,
-      "gates": ["corpus", "all-sdks"],
+      "gates": [
+        "corpus",
+        "all-sdks"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["CONTENT §8.1 §10", "notes/A7 §3.4"],
+      "refs": [
+        "CONTENT §8.1 §10",
+        "notes/A7 §3.4"
+      ],
       "brief": "wp/P4-11-chunk-sync-sdks.md",
       "status": "done"
     },
@@ -1419,14 +2192,26 @@
       "stage": "v2",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1.5, 2],
-      "deps": ["P4-02"],
+      "estimateWeeks": [
+        1.5,
+        2
+      ],
+      "deps": [
+        "P4-02"
+      ],
       "planMode": false,
-      "gates": ["migration", "rule-9", "table-owners"],
+      "gates": [
+        "migration",
+        "rule-9",
+        "table-owners"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["CONTENT §6.2–§6.5 §6.9", "README §3.4 §3.7"],
+      "refs": [
+        "CONTENT §6.2–§6.5 §6.9",
+        "README §3.4 §3.7"
+      ],
       "brief": "wp/P4-12-compat-resolution.md",
       "status": "done"
     },
@@ -1437,8 +2222,18 @@
       "stage": "v2",
       "lane": "corpus",
       "role": "pkey-implementer",
-      "estimateWeeks": [2.5, 3],
-      "deps": ["P4-12", "P3-04", "P3-05", "P3-06", "P3-07", "P3-08"],
+      "estimateWeeks": [
+        2.5,
+        3
+      ],
+      "deps": [
+        "P4-12",
+        "P3-04",
+        "P3-05",
+        "P3-06",
+        "P3-07",
+        "P3-08"
+      ],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -1455,7 +2250,11 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["CONTENT §6.7 §6.9", "README §3.3 §3.6", "plans/P4-13.md"],
+      "refs": [
+        "CONTENT §6.7 §6.9",
+        "README §3.3 §3.6",
+        "plans/P4-13.md"
+      ],
       "brief": "wp/P4-13-revocation-floors-decision.md",
       "status": "done"
     },
@@ -1466,14 +2265,27 @@
       "stage": "v2",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["P4-12", "P2b-04", "P4-13"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "P4-12",
+        "P2b-04",
+        "P4-13"
+      ],
       "planMode": false,
-      "gates": ["migration", "table-owners"],
+      "gates": [
+        "migration",
+        "table-owners"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["CONTENT §6.4 §6.7 §11", "README §3.8"],
+      "refs": [
+        "CONTENT §6.4 §6.7 §11",
+        "README §3.8"
+      ],
       "brief": "wp/P4-14-readiness-gc-rollouts.md",
       "status": "done"
     },
@@ -1484,14 +2296,24 @@
       "stage": "v2",
       "lane": "console",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1],
-      "deps": ["P4-12", "P4-13", "P4-14"],
+      "estimateWeeks": [
+        1,
+        1
+      ],
+      "deps": [
+        "P4-12",
+        "P4-13",
+        "P4-14"
+      ],
       "planMode": false,
       "gates": [],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["CONTENT §6.9", "README §6.2 item 4"],
+      "refs": [
+        "CONTENT §6.9",
+        "README §6.2 item 4"
+      ],
       "brief": "wp/P4-15-console-compat-matrix.md",
       "status": "done",
       "milestone": "Content ships between app releases"
@@ -1503,14 +2325,25 @@
       "stage": "v3",
       "lane": "sdk",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["P4-06", "P4-07", "P4-08"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "P4-06",
+        "P4-07",
+        "P4-08"
+      ],
       "planMode": false,
-      "gates": ["rule-9"],
+      "gates": [
+        "rule-9"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["CONTENT §4.2 §13"],
+      "refs": [
+        "CONTENT §4.2 §13"
+      ],
       "brief": "wp/P4-16-more-pack-types.md",
       "status": "done"
     },
@@ -1521,10 +2354,21 @@
       "stage": "v3",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["P4-22", "P3-03", "S-08"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "P4-22",
+        "P3-03",
+        "S-08"
+      ],
       "planMode": false,
-      "gates": ["migration", "table-owners", "threat-model"],
+      "gates": [
+        "migration",
+        "table-owners",
+        "threat-model"
+      ],
       "humanInputs": [
         "Cloudflare Queues, Workflows and Containers enabled (Workers Paid)",
         "an R2 event-notification rule",
@@ -1532,7 +2376,10 @@
       ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["CONTENT §8.1 telemetry", "notes/E5"],
+      "refs": [
+        "CONTENT §8.1 telemetry",
+        "notes/E5"
+      ],
       "brief": "wp/P4-17-lazy-deltas.md",
       "status": "done"
     },
@@ -1543,14 +2390,26 @@
       "stage": "v3",
       "lane": "sdk",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1],
-      "deps": ["P4-11", "P4-05", "P1b-05"],
+      "estimateWeeks": [
+        1,
+        1
+      ],
+      "deps": [
+        "P4-11",
+        "P4-05",
+        "P1b-05"
+      ],
       "planMode": false,
-      "gates": ["rule-10"],
+      "gates": [
+        "rule-10"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["CONTENT §10 web", "notes/A7 §9"],
+      "refs": [
+        "CONTENT §10 web",
+        "notes/A7 §9"
+      ],
       "brief": "wp/P4-18-web-dcz.md",
       "status": "done"
     },
@@ -1561,8 +2420,13 @@
       "stage": "v3",
       "lane": "corpus",
       "role": "pkey-implementer",
-      "estimateWeeks": [1.5, 2],
-      "deps": ["P4-13"],
+      "estimateWeeks": [
+        1.5,
+        2
+      ],
+      "deps": [
+        "P4-13"
+      ],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -1580,7 +2444,11 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.3", "README §11 decision 15", "plans/P4-19.md"],
+      "refs": [
+        "README §3.3",
+        "README §11 decision 15",
+        "plans/P4-19.md"
+      ],
       "brief": "wp/P4-19-content-key-delegation.md",
       "status": "done"
     },
@@ -1591,14 +2459,27 @@
       "stage": "v3",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1],
-      "deps": ["P4-12", "P4-08", "P4-06", "P4-07"],
+      "estimateWeeks": [
+        1,
+        1
+      ],
+      "deps": [
+        "P4-12",
+        "P4-08",
+        "P4-06",
+        "P4-07"
+      ],
       "planMode": false,
-      "gates": ["rule-9", "all-sdks"],
+      "gates": [
+        "rule-9",
+        "all-sdks"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["CONTENT §6.2 §6.7 item 8"],
+      "refs": [
+        "CONTENT §6.2 §6.7 item 8"
+      ],
       "brief": "wp/P4-20-save-compat.md",
       "status": "done",
       "milestone": "Localisation, events and supporter packs"
@@ -1610,8 +2491,14 @@
       "stage": "v1",
       "lane": "corpus",
       "role": "pkey-implementer",
-      "estimateWeeks": [1.25, 1.75],
-      "deps": ["P4-01", "P3-02"],
+      "estimateWeeks": [
+        1.25,
+        1.75
+      ],
+      "deps": [
+        "P4-01",
+        "P3-02"
+      ],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -1624,7 +2511,9 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["plans/P4-01.md §2.1–§2.8 §4.6 §8.4"],
+      "refs": [
+        "plans/P4-01.md §2.1–§2.8 §4.6 §8.4"
+      ],
       "brief": "wp/P4-21-packs-wire-core.md",
       "status": "done",
       "planRef": "P4-01"
@@ -1636,8 +2525,15 @@
       "stage": "v2",
       "lane": "cli-ci",
       "role": "pkey-implementer",
-      "estimateWeeks": [1.25, 1.75],
-      "deps": ["P4-10", "P4-02", "P4-03"],
+      "estimateWeeks": [
+        1.25,
+        1.75
+      ],
+      "deps": [
+        "P4-10",
+        "P4-02",
+        "P4-03"
+      ],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -1651,7 +2547,9 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["plans/P4-10.md §2.4 §3 §6"],
+      "refs": [
+        "plans/P4-10.md §2.4 §3 §6"
+      ],
       "brief": "wp/P4-22-ci-chunk-indexes.md",
       "status": "done",
       "planRef": "P4-10"
@@ -1663,14 +2561,26 @@
       "stage": "v2",
       "lane": "sdk",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["P4-13", "P4-07"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "P4-13",
+        "P4-07"
+      ],
       "planMode": true,
-      "gates": ["plan-mode", "corpus", "all-sdks"],
+      "gates": [
+        "plan-mode",
+        "corpus",
+        "all-sdks"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["plans/P4-13.md §2.5 §2.6 §5"],
+      "refs": [
+        "plans/P4-13.md §2.5 §2.6 §5"
+      ],
       "brief": "wp/P4-23-content-decision-python-swift.md",
       "status": "done",
       "planRef": "P4-13"
@@ -1682,14 +2592,26 @@
       "stage": "v2",
       "lane": "godot",
       "role": "pkey-godot-engineer",
-      "estimateWeeks": [1, 1.25],
-      "deps": ["P4-13", "P4-08"],
+      "estimateWeeks": [
+        1,
+        1.25
+      ],
+      "deps": [
+        "P4-13",
+        "P4-08"
+      ],
       "planMode": true,
-      "gates": ["plan-mode", "corpus", "all-sdks"],
+      "gates": [
+        "plan-mode",
+        "corpus",
+        "all-sdks"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["plans/P4-13.md §2.5 §2.6 §5"],
+      "refs": [
+        "plans/P4-13.md §2.5 §2.6 §5"
+      ],
       "brief": "wp/P4-24-content-decision-godot.md",
       "status": "done",
       "planRef": "P4-13"
@@ -1701,14 +2623,26 @@
       "stage": "v3",
       "lane": "sdk",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [0.75, 1],
-      "deps": ["P4-19", "P4-23"],
+      "estimateWeeks": [
+        0.75,
+        1
+      ],
+      "deps": [
+        "P4-19",
+        "P4-23"
+      ],
       "planMode": true,
-      "gates": ["plan-mode", "corpus", "all-sdks"],
+      "gates": [
+        "plan-mode",
+        "corpus",
+        "all-sdks"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["plans/P4-19.md §2 §5"],
+      "refs": [
+        "plans/P4-19.md §2 §5"
+      ],
       "brief": "wp/P4-25-delegation-python-swift.md",
       "status": "done",
       "planRef": "P4-19"
@@ -1720,14 +2654,26 @@
       "stage": "v3",
       "lane": "godot",
       "role": "pkey-godot-engineer",
-      "estimateWeeks": [0.5, 0.75],
-      "deps": ["P4-19", "P4-24"],
+      "estimateWeeks": [
+        0.5,
+        0.75
+      ],
+      "deps": [
+        "P4-19",
+        "P4-24"
+      ],
       "planMode": true,
-      "gates": ["plan-mode", "corpus", "all-sdks"],
+      "gates": [
+        "plan-mode",
+        "corpus",
+        "all-sdks"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["plans/P4-19.md §2 §5"],
+      "refs": [
+        "plans/P4-19.md §2 §5"
+      ],
       "brief": "wp/P4-26-delegation-godot.md",
       "status": "done",
       "planRef": "P4-19"
@@ -1739,14 +2685,26 @@
       "stage": "v3",
       "lane": "godot",
       "role": "pkey-godot-engineer",
-      "estimateWeeks": [0.5, 0.75],
-      "deps": ["P4-08", "P4-22"],
+      "estimateWeeks": [
+        0.5,
+        0.75
+      ],
+      "deps": [
+        "P4-08",
+        "P4-22"
+      ],
       "planMode": false,
-      "gates": ["all-sdks", "cli-bundle", "threat-model"],
+      "gates": [
+        "all-sdks",
+        "cli-bundle",
+        "threat-model"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["wp/P4-08-godot-packs.md"],
+      "refs": [
+        "wp/P4-08-godot-packs.md"
+      ],
       "brief": "wp/P4-27-rscc-scan.md",
       "status": "done"
     },
@@ -1757,14 +2715,25 @@
       "stage": "v3",
       "lane": "godot",
       "role": "pkey-godot-engineer",
-      "estimateWeeks": [0.5, 1],
-      "deps": ["P4-08"],
+      "estimateWeeks": [
+        0.5,
+        1
+      ],
+      "deps": [
+        "P4-08"
+      ],
       "planMode": false,
-      "gates": ["all-sdks", "cli-bundle", "threat-model"],
+      "gates": [
+        "all-sdks",
+        "cli-bundle",
+        "threat-model"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["wp/P4-08-godot-packs.md"],
+      "refs": [
+        "wp/P4-08-godot-packs.md"
+      ],
       "brief": "wp/P4-28-script-attach-allowlist.md",
       "status": "done"
     },
@@ -1775,8 +2744,15 @@
       "stage": "v3",
       "lane": "corpus",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["P4-17", "P4-13", "P4-18"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "P4-17",
+        "P4-13",
+        "P4-18"
+      ],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -1805,14 +2781,25 @@
       "stage": "v3",
       "lane": "sdk",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [0.5, 0.75],
-      "deps": ["P4-29"],
+      "estimateWeeks": [
+        0.5,
+        0.75
+      ],
+      "deps": [
+        "P4-29"
+      ],
       "planMode": true,
-      "gates": ["plan-mode", "corpus", "all-sdks"],
+      "gates": [
+        "plan-mode",
+        "corpus",
+        "all-sdks"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["plans/P4-29.md §2.2 §2.4 §4 §5"],
+      "refs": [
+        "plans/P4-29.md §2.2 §2.4 §4 §5"
+      ],
       "brief": "wp/P4-30-feed-delta-menu-python-swift.md",
       "status": "todo",
       "planRef": "P4-29"
@@ -1824,14 +2811,25 @@
       "stage": "v3",
       "lane": "godot",
       "role": "pkey-godot-engineer",
-      "estimateWeeks": [0.5, 0.75],
-      "deps": ["P4-29"],
+      "estimateWeeks": [
+        0.5,
+        0.75
+      ],
+      "deps": [
+        "P4-29"
+      ],
       "planMode": true,
-      "gates": ["plan-mode", "corpus", "all-sdks"],
+      "gates": [
+        "plan-mode",
+        "corpus",
+        "all-sdks"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["plans/P4-29.md §2.2 §2.4 §4 §5"],
+      "refs": [
+        "plans/P4-29.md §2.2 §2.4 §4 §5"
+      ],
       "brief": "wp/P4-31-feed-delta-menu-godot.md",
       "status": "todo",
       "planRef": "P4-29"
@@ -1842,14 +2840,24 @@
       "phase": "P5",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["P2b-01"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "P2b-01"
+      ],
       "planMode": false,
-      "gates": ["threat-model", "migration"],
+      "gates": [
+        "threat-model",
+        "migration"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.8 connectors and credential custody"],
+      "refs": [
+        "README §3.8 connectors and credential custody"
+      ],
       "brief": "wp/P5-01-outlet-credentials.md",
       "status": "done"
     },
@@ -1859,14 +2867,31 @@
       "phase": "P5",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [2, 2],
-      "deps": ["P5-01", "P2b-03", "P2b-04", "S-07"],
+      "estimateWeeks": [
+        2,
+        2
+      ],
+      "deps": [
+        "P5-01",
+        "P2b-03",
+        "P2b-04",
+        "S-07"
+      ],
       "planMode": false,
-      "gates": ["rule-10", "threat-model", "wrangler"],
-      "humanInputs": ["App Store Connect API key"],
+      "gates": [
+        "rule-10",
+        "threat-model",
+        "wrangler"
+      ],
+      "humanInputs": [
+        "App Store Connect API key"
+      ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.8", "notes/E1"],
+      "refs": [
+        "README §3.8",
+        "notes/E1"
+      ],
       "brief": "wp/P5-02-asc-connector.md",
       "status": "done"
     },
@@ -1876,14 +2901,29 @@
       "phase": "P5",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1.5, 2],
-      "deps": ["P5-01", "P2b-03", "P2b-04", "S-07"],
+      "estimateWeeks": [
+        1.5,
+        2
+      ],
+      "deps": [
+        "P5-01",
+        "P2b-03",
+        "P2b-04",
+        "S-07"
+      ],
       "planMode": false,
-      "gates": ["threat-model"],
-      "humanInputs": ["Play service account"],
+      "gates": [
+        "threat-model"
+      ],
+      "humanInputs": [
+        "Play service account"
+      ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.8", "notes/E2"],
+      "refs": [
+        "README §3.8",
+        "notes/E2"
+      ],
       "brief": "wp/P5-03-play-connector.md",
       "status": "done"
     },
@@ -1893,14 +2933,28 @@
       "phase": "P5",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.5, 1],
-      "deps": ["P5-01", "P2b-03", "S-07"],
+      "estimateWeeks": [
+        0.5,
+        1
+      ],
+      "deps": [
+        "P5-01",
+        "P2b-03",
+        "S-07"
+      ],
       "planMode": false,
-      "gates": ["threat-model"],
-      "humanInputs": ["Partner Center app registration"],
+      "gates": [
+        "threat-model"
+      ],
+      "humanInputs": [
+        "Partner Center app registration"
+      ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.8", "notes/E3"],
+      "refs": [
+        "README §3.8",
+        "notes/E3"
+      ],
       "brief": "wp/P5-04-msstore-connector.md",
       "status": "done"
     },
@@ -1910,14 +2964,31 @@
       "phase": "P5",
       "lane": "native",
       "role": "pkey-implementer",
-      "estimateWeeks": [2, 3],
-      "deps": ["P3-10", "S-01", "S-09"],
+      "estimateWeeks": [
+        2,
+        3
+      ],
+      "deps": [
+        "P3-10",
+        "S-01",
+        "S-09"
+      ],
       "planMode": false,
-      "gates": ["ci:macos-26"],
-      "humanInputs": ["Apple developer account", "test devices"],
+      "gates": [
+        "ci:macos-26"
+      ],
+      "humanInputs": [
+        "Apple developer account",
+        "test devices"
+      ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §5.10", "PARITY §1", "notes/E1", "notes/E9 §7.1"],
+      "refs": [
+        "README §5.10",
+        "PARITY §1",
+        "notes/E1",
+        "notes/E9 §7.1"
+      ],
       "brief": "wp/P5-05-apple-plugin-package.md",
       "status": "done"
     },
@@ -1927,14 +2998,31 @@
       "phase": "P5",
       "lane": "native",
       "role": "pkey-implementer",
-      "estimateWeeks": [2, 3],
-      "deps": ["P3-10", "S-05", "S-10"],
+      "estimateWeeks": [
+        2,
+        3
+      ],
+      "deps": [
+        "P3-10",
+        "S-05",
+        "S-10"
+      ],
       "planMode": false,
-      "gates": ["ci:android"],
-      "humanInputs": ["Play Console test track", "test devices"],
+      "gates": [
+        "ci:android"
+      ],
+      "humanInputs": [
+        "Play Console test track",
+        "test devices"
+      ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §5.10", "PARITY §1", "notes/E2", "notes/E9 §7.2"],
+      "refs": [
+        "README §5.10",
+        "PARITY §1",
+        "notes/E2",
+        "notes/E9 §7.2"
+      ],
       "brief": "wp/P5-06-kotlin-aar.md",
       "status": "done"
     },
@@ -1944,17 +3032,30 @@
       "phase": "P5",
       "lane": "native",
       "role": "pkey-implementer",
-      "estimateWeeks": [2, 3],
-      "deps": ["P3-10", "S-05", "S-11"],
+      "estimateWeeks": [
+        2,
+        3
+      ],
+      "deps": [
+        "P3-10",
+        "S-05",
+        "S-11"
+      ],
       "planMode": false,
-      "gates": ["ci:macos", "ci:windows"],
+      "gates": [
+        "ci:macos",
+        "ci:windows"
+      ],
       "humanInputs": [
         "code-signing certificates",
         "a Partner Center app for StoreContext testing"
       ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §5.10", "notes/E3"],
+      "refs": [
+        "README §5.10",
+        "notes/E3"
+      ],
       "brief": "wp/P5-07-desktop-plugins.md",
       "status": "done"
     },
@@ -1964,8 +3065,19 @@
       "phase": "P5",
       "lane": "native",
       "role": "pkey-implementer",
-      "estimateWeeks": [2, 2],
-      "deps": ["P5-02", "P5-05", "P5-06", "P4-14", "P4-08", "P4-03", "P5-03"],
+      "estimateWeeks": [
+        2,
+        2
+      ],
+      "deps": [
+        "P5-02",
+        "P5-05",
+        "P5-06",
+        "P4-14",
+        "P4-08",
+        "P4-03",
+        "P5-03"
+      ],
       "planMode": false,
       "gates": [],
       "humanInputs": [
@@ -1975,7 +3087,10 @@
       ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["CONTENT §6.6 §7 §11", "notes/E9 §7"],
+      "refs": [
+        "CONTENT §6.6 §7 §11",
+        "notes/E9 §7"
+      ],
       "brief": "wp/P5-08-platform-pack-transports.md",
       "status": "todo",
       "milestone": "Background Assets packs on iOS; in-app updates on Play"
@@ -1986,8 +3101,16 @@
       "phase": "P6",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [3, 4],
-      "deps": ["P5-02", "P5-03", "P5-05", "S-07"],
+      "estimateWeeks": [
+        3,
+        4
+      ],
+      "deps": [
+        "P5-02",
+        "P5-03",
+        "P5-05",
+        "S-07"
+      ],
       "planMode": false,
       "gates": [
         "threat-model",
@@ -2004,7 +3127,10 @@
       ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.10", "CONTENT §6.7 item 9"],
+      "refs": [
+        "README §3.10",
+        "CONTENT §6.7 item 9"
+      ],
       "brief": "wp/P6-01-commerce-bridge.md",
       "status": "done",
       "milestone": "Paid packs on stores"
@@ -2015,8 +3141,15 @@
       "phase": "P6",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["P5-05", "P5-06", "P5-01"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "P5-05",
+        "P5-06",
+        "P5-01"
+      ],
       "planMode": false,
       "gates": [
         "threat-model",
@@ -2032,7 +3165,9 @@
       ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §10 P6"],
+      "refs": [
+        "README §10 P6"
+      ],
       "brief": "wp/P6-02-trust-tiers.md",
       "status": "todo"
     },
@@ -2042,14 +3177,26 @@
       "phase": "P6",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["P3-03", "P2b-04"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "P3-03",
+        "P2b-04"
+      ],
       "planMode": false,
-      "gates": ["wrangler", "rule-10"],
+      "gates": [
+        "wrangler",
+        "rule-10"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §3.9", "README §6.2 item 6"],
+      "refs": [
+        "README §3.9",
+        "README §6.2 item 6"
+      ],
       "brief": "wp/P6-03-update-funnel-autohalt.md",
       "status": "done"
     },
@@ -2059,35 +3206,284 @@
       "phase": "P6",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["P2-01", "P0-05", "P2b-04", "P2-05"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "P2-01",
+        "P0-05",
+        "P2b-04",
+        "P2-05"
+      ],
       "planMode": false,
-      "gates": ["rule-10", "wrangler"],
-      "humanInputs": ["DNS and a Worker route for the hosting hostname"],
+      "gates": [
+        "rule-10",
+        "wrangler"
+      ],
+      "humanInputs": [
+        "DNS and a Worker route for the hosting hostname"
+      ],
       "repo": "polaris-key",
       "optional": true,
-      "refs": ["README §3.11", "README §11 decision 9"],
+      "refs": [
+        "README §3.11",
+        "README §11 decision 9"
+      ],
       "brief": "wp/P6-04-hosted-web.md",
       "status": "blocked"
     },
     {
       "id": "P6-05",
-      "title": "Optional: the Kotlin SDK at full parity",
+      "title": "The Kotlin SDK at full parity (umbrella)",
       "phase": "P6",
       "lane": "sdk",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [6, 8],
-      "deps": ["P5-06", "P1b-01", "P3-02", "P1b-03", "P1b-02"],
+      "estimateWeeks": [
+        0.1,
+        0.1
+      ],
+      "deps": [
+        "P6-06",
+        "P6-07",
+        "P6-08",
+        "P6-09",
+        "P6-10",
+        "P6-11",
+        "P6-12"
+      ],
       "planMode": false,
       "gates": [],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "PARITY §9",
+        "README §11 decision 10",
+        "owner decision 2026-10-04"
+      ],
+      "brief": "wp/P6-05-kotlin-sdk.md",
+      "status": "todo"
+    },
+    {
+      "id": "P6-06",
+      "title": "Kotlin SDK core module, conformance runner, constants and parity manifest",
+      "phase": "P6",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [
+        1.5,
+        2
+      ],
+      "deps": [
+        "P1b-01",
+        "P1b-02",
+        "P1b-03",
+        "P3-02",
+        "P5-06"
+      ],
+      "planMode": false,
+      "gates": [
+        "drift-gate",
+        "docs-generated",
+        "corpus-runner",
+        "ci:kotlin"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "PARITY §9",
+        "README §11 decision 10",
+        "PARITY §3"
+      ],
+      "brief": "wp/P6-06-kotlin-core-runner.md",
+      "status": "todo"
+    },
+    {
+      "id": "P6-07",
+      "title": "Kotlin SDK licence, config, devices, identity and release services",
+      "phase": "P6",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [
+        1.5,
+        2
+      ],
+      "deps": [
+        "P6-06"
+      ],
+      "planMode": false,
+      "gates": [
+        "drift-gate",
+        "corpus-runner",
+        "ci:kotlin"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "PARITY §5"
+      ],
+      "brief": "wp/P6-07-kotlin-license-config-identity.md",
+      "status": "todo"
+    },
+    {
+      "id": "P6-08",
+      "title": "Kotlin SDK update client and packs engine",
+      "phase": "P6",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [
+        2,
+        3
+      ],
+      "deps": [
+        "P6-06",
+        "P6-07",
+        "P4-11",
+        "P4-29"
+      ],
+      "planMode": false,
+      "gates": [
+        "drift-gate",
+        "corpus-runner",
+        "ci:kotlin"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "PARITY §5.5",
+        "PARITY §5.6",
+        "plans/P4-10.md §8.5",
+        "plans/P4-19.md",
+        "plans/P4-29.md §2.4 §5"
+      ],
+      "brief": "wp/P6-08-kotlin-update-packs.md",
+      "status": "todo"
+    },
+    {
+      "id": "P6-09",
+      "title": "Kotlin SDK platform module: P5-06's :platform in the SDK structure, with Play Integrity",
+      "phase": "P6",
+      "lane": "native",
+      "role": "pkey-implementer",
+      "estimateWeeks": [
+        1.5,
+        2
+      ],
+      "deps": [
+        "P6-06",
+        "P5-06",
+        "P6-02"
+      ],
+      "planMode": false,
+      "gates": [
+        "ci:android"
+      ],
       "humanInputs": [
-        "Maven Central account and signing key",
-        "go/no-go decision (README decision 10)"
+        "test devices for the Integrity and install-source checks"
       ],
       "repo": "polaris-key",
-      "optional": true,
-      "refs": ["PARITY §9", "README §11 decision 10"],
-      "brief": "wp/P6-05-kotlin-sdk.md",
+      "optional": false,
+      "refs": [
+        "PARITY §1",
+        "notes/E2",
+        "notes/E9 §7.2"
+      ],
+      "brief": "wp/P6-09-kotlin-platform-module.md",
+      "status": "todo"
+    },
+    {
+      "id": "P6-10",
+      "title": "Godot Android binding rebuilt on the Kotlin SDK platform module",
+      "phase": "P6",
+      "lane": "godot",
+      "role": "pkey-godot-engineer",
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "P6-09",
+        "P5-08"
+      ],
+      "planMode": false,
+      "gates": [
+        "ci:android"
+      ],
+      "humanInputs": [
+        "test devices and the Play Console internal test track (the P5-06 checklist re-run)"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "PARITY §1",
+        "notes/E4 §3.1"
+      ],
+      "brief": "wp/P6-10-godot-android-binding-on-kotlin.md",
+      "status": "todo"
+    },
+    {
+      "id": "P6-11",
+      "title": "Kotlin SDK Jetpack Compose UI kit",
+      "phase": "P6",
+      "lane": "ui",
+      "role": "pkey-implementer",
+      "estimateWeeks": [
+        2,
+        3
+      ],
+      "deps": [
+        "P6-07",
+        "P6-08"
+      ],
+      "planMode": false,
+      "gates": [
+        "drift-gate",
+        "ui-snapshots",
+        "ci:android"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "PARITY §5.7",
+        "README §5.8"
+      ],
+      "brief": "wp/P6-11-kotlin-compose-ui-kit.md",
+      "status": "todo"
+    },
+    {
+      "id": "P6-12",
+      "title": "Kotlin SDK Android glue: Keystore store, device inputs, outlet readers, update driver and Play pack transport",
+      "phase": "P6",
+      "lane": "native",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "P6-08",
+        "P6-09"
+      ],
+      "planMode": false,
+      "gates": [
+        "drift-gate",
+        "ci:android"
+      ],
+      "humanInputs": [
+        "test devices and a Play Console internal test track for the device rows"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "PARITY §2.2",
+        "notes/E2 §A2 §A3"
+      ],
+      "brief": "wp/P6-12-kotlin-android-glue.md",
       "status": "todo"
     },
     {
@@ -2096,14 +3492,29 @@
       "phase": "X",
       "lane": "sdk",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [10, 14],
-      "deps": ["P1b-01", "P4-11", "P1b-03", "P1b-04"],
+      "estimateWeeks": [
+        10,
+        14
+      ],
+      "deps": [
+        "P1b-01",
+        "P4-11",
+        "P1b-03",
+        "P1b-04"
+      ],
       "planMode": false,
       "gates": [],
-      "humanInputs": ["go/no-go decision", "NuGet publishing account"],
+      "humanInputs": [
+        "go/no-go decision",
+        "NuGet publishing account"
+      ],
       "repo": "polaris-key",
       "optional": true,
-      "refs": ["PARITY §1 §9", "notes/E9", "notes/A7 §10.3"],
+      "refs": [
+        "PARITY §1 §9",
+        "notes/E9",
+        "notes/A7 §10.3"
+      ],
       "brief": "wp/X-01-dotnet-sdk.md",
       "status": "todo"
     },
@@ -2113,8 +3524,16 @@
       "phase": "X",
       "lane": "native",
       "role": "pkey-implementer",
-      "estimateWeeks": [2, 3],
-      "deps": ["P1b-01", "P3-05", "P1b-09", "P1b-04"],
+      "estimateWeeks": [
+        2,
+        3
+      ],
+      "deps": [
+        "P1b-01",
+        "P3-05",
+        "P1b-09",
+        "P1b-04"
+      ],
       "planMode": false,
       "gates": [],
       "humanInputs": [
@@ -2123,7 +3542,10 @@
       ],
       "repo": "polaris-key",
       "optional": true,
-      "refs": ["PARITY §1 §9", "notes/E9"],
+      "refs": [
+        "PARITY §1 §9",
+        "notes/E9"
+      ],
       "brief": "wp/X-02-tauri-plugin.md",
       "status": "todo"
     },
@@ -2133,7 +3555,10 @@
       "phase": "S",
       "lane": "spike",
       "role": "pkey-spike-runner",
-      "estimateWeeks": [1, 1.5],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
       "deps": [],
       "planMode": false,
       "gates": [],
@@ -2146,7 +3571,11 @@
       ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §12", "CONTENT §17 Q1", "notes/E1 §E"],
+      "refs": [
+        "README §12",
+        "CONTENT §17 Q1",
+        "notes/E1 §E"
+      ],
       "brief": "wp/S-01-apple-background-assets.md",
       "status": "done"
     },
@@ -2156,7 +3585,10 @@
       "phase": "S",
       "lane": "spike",
       "role": "pkey-spike-runner",
-      "estimateWeeks": [0.5, 0.5],
+      "estimateWeeks": [
+        0.5,
+        0.5
+      ],
       "deps": [],
       "planMode": false,
       "gates": [],
@@ -2166,7 +3598,10 @@
       ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["CONTENT §17 Q2", "README §3.5"],
+      "refs": [
+        "CONTENT §17 Q2",
+        "README §3.5"
+      ],
       "brief": "wp/S-02-r2-range.md",
       "status": "done"
     },
@@ -2176,14 +3611,23 @@
       "phase": "S",
       "lane": "spike",
       "role": "pkey-spike-runner",
-      "estimateWeeks": [0.5, 0.75],
+      "estimateWeeks": [
+        0.5,
+        0.75
+      ],
       "deps": [],
       "planMode": false,
       "gates": [],
-      "humanInputs": ["read access to vladzaharia/diceroll releases"],
+      "humanInputs": [
+        "read access to vladzaharia/diceroll releases"
+      ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["CONTENT §17 Q3", "notes/A6", "prototype/content/"],
+      "refs": [
+        "CONTENT §17 Q3",
+        "notes/A6",
+        "prototype/content/"
+      ],
       "brief": "wp/S-03-chunk-size-real-history.md",
       "status": "done"
     },
@@ -2193,14 +3637,23 @@
       "phase": "S",
       "lane": "spike",
       "role": "pkey-spike-runner",
-      "estimateWeeks": [1, 1],
+      "estimateWeeks": [
+        1,
+        1
+      ],
       "deps": [],
       "planMode": false,
       "gates": [],
-      "humanInputs": ["low-end Android and iOS devices"],
+      "humanInputs": [
+        "low-end Android and iOS devices"
+      ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §12", "CONTENT §17 Q4", "PARITY §11 Q4"],
+      "refs": [
+        "README §12",
+        "CONTENT §17 Q4",
+        "PARITY §11 Q4"
+      ],
       "brief": "wp/S-04-low-end-performance.md",
       "status": "done"
     },
@@ -2210,7 +3663,10 @@
       "phase": "S",
       "lane": "spike",
       "role": "pkey-spike-runner",
-      "estimateWeeks": [1.5, 2],
+      "estimateWeeks": [
+        1.5,
+        2
+      ],
       "deps": [],
       "planMode": false,
       "gates": [],
@@ -2221,7 +3677,10 @@
       ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §12", "CONTENT §17 Q5"],
+      "refs": [
+        "README §12",
+        "CONTENT §17 Q5"
+      ],
       "brief": "wp/S-05-godot-platform-mechanics.md",
       "status": "done"
     },
@@ -2231,14 +3690,21 @@
       "phase": "S",
       "lane": "spike",
       "role": "pkey-spike-runner",
-      "estimateWeeks": [0.5, 1],
+      "estimateWeeks": [
+        0.5,
+        1
+      ],
       "deps": [],
       "planMode": false,
       "gates": [],
-      "humanInputs": ["devices and store accounts for the platforms it checks"],
+      "humanInputs": [
+        "devices and store accounts for the platforms it checks"
+      ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["notes/E9 §13"],
+      "refs": [
+        "notes/E9 §13"
+      ],
       "brief": "wp/S-06-outlet-signals.md",
       "status": "done"
     },
@@ -2248,14 +3714,19 @@
       "phase": "S",
       "lane": "spike",
       "role": "pkey-spike-runner",
-      "estimateWeeks": [0.25, 0.5],
+      "estimateWeeks": [
+        0.25,
+        0.5
+      ],
       "deps": [],
       "planMode": false,
       "gates": [],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["README §12 policy drift"],
+      "refs": [
+        "README §12 policy drift"
+      ],
       "brief": "wp/S-07-policy-recheck.md",
       "status": "done"
     },
@@ -2265,7 +3736,10 @@
       "phase": "S",
       "lane": "spike",
       "role": "pkey-spike-runner",
-      "estimateWeeks": [0.5, 1],
+      "estimateWeeks": [
+        0.5,
+        1
+      ],
       "deps": [],
       "planMode": false,
       "gates": [],
@@ -2284,7 +3758,10 @@
       "phase": "S",
       "lane": "spike",
       "role": "pkey-spike-runner",
-      "estimateWeeks": [0.5, 1],
+      "estimateWeeks": [
+        0.5,
+        1
+      ],
       "deps": [],
       "planMode": false,
       "gates": [],
@@ -2303,7 +3780,10 @@
       "phase": "S",
       "lane": "spike",
       "role": "pkey-spike-runner",
-      "estimateWeeks": [0.5, 1],
+      "estimateWeeks": [
+        0.5,
+        1
+      ],
       "deps": [],
       "planMode": false,
       "gates": [],
@@ -2322,7 +3802,10 @@
       "phase": "S",
       "lane": "spike",
       "role": "pkey-spike-runner",
-      "estimateWeeks": [0.5, 1],
+      "estimateWeeks": [
+        0.5,
+        1
+      ],
       "deps": [],
       "planMode": false,
       "gates": [],
@@ -2341,7 +3824,10 @@
       "phase": "D",
       "lane": "external",
       "role": "pkey-godot-engineer",
-      "estimateWeeks": [1.5, 2],
+      "estimateWeeks": [
+        1.5,
+        2
+      ],
       "deps": [],
       "planMode": false,
       "gates": [],
@@ -2353,7 +3839,10 @@
       ],
       "repo": "vladzaharia/diceroll",
       "optional": false,
-      "refs": ["README §9.2 #1–#3 #8", "README §13"],
+      "refs": [
+        "README §9.2 #1–#3 #8",
+        "README §13"
+      ],
       "brief": "wp/D-01-diceroll-now.md",
       "status": "todo"
     },
@@ -2363,8 +3852,15 @@
       "phase": "D",
       "lane": "external",
       "role": "pkey-godot-engineer",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["P1-12", "P0-02", "P0-05"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "P1-12",
+        "P0-02",
+        "P0-05"
+      ],
       "planMode": false,
       "gates": [],
       "humanInputs": [
@@ -2372,7 +3868,10 @@
       ],
       "repo": "vladzaharia/diceroll",
       "optional": false,
-      "refs": ["README §13", "notes/A4"],
+      "refs": [
+        "README §13",
+        "notes/A4"
+      ],
       "brief": "wp/D-02-diceroll-after-p1.md",
       "status": "todo"
     },
@@ -2382,8 +3881,16 @@
       "phase": "D",
       "lane": "external",
       "role": "pkey-godot-engineer",
-      "estimateWeeks": [1, 2],
-      "deps": ["P3-10", "P2b-05", "P2-06", "P5-07"],
+      "estimateWeeks": [
+        1,
+        2
+      ],
+      "deps": [
+        "P3-10",
+        "P2b-05",
+        "P2-06",
+        "P5-07"
+      ],
       "planMode": false,
       "gates": [],
       "humanInputs": [
@@ -2394,7 +3901,10 @@
       ],
       "repo": "vladzaharia/diceroll",
       "optional": false,
-      "refs": ["README §13", "notes/A4"],
+      "refs": [
+        "README §13",
+        "notes/A4"
+      ],
       "brief": "wp/D-03-diceroll-after-p3.md",
       "status": "todo"
     },
@@ -2404,14 +3914,26 @@
       "phase": "D",
       "lane": "external",
       "role": "pkey-godot-engineer",
-      "estimateWeeks": [1.5, 2],
-      "deps": ["P4-08", "P4-12", "P4-03", "P4-05", "P4-24"],
+      "estimateWeeks": [
+        1.5,
+        2
+      ],
+      "deps": [
+        "P4-08",
+        "P4-12",
+        "P4-03",
+        "P4-05",
+        "P4-24"
+      ],
       "planMode": false,
       "gates": [],
       "humanInputs": [],
       "repo": "vladzaharia/diceroll",
       "optional": false,
-      "refs": ["README §13", "CONTENT §6.8 §15"],
+      "refs": [
+        "README §13",
+        "CONTENT §6.8 §15"
+      ],
       "brief": "wp/D-04-diceroll-after-p4.md",
       "status": "todo"
     },
@@ -2421,8 +3943,14 @@
       "phase": "D",
       "lane": "external",
       "role": "pkey-godot-engineer",
-      "estimateWeeks": [1, 2],
-      "deps": ["P5-08", "P6-01"],
+      "estimateWeeks": [
+        1,
+        2
+      ],
+      "deps": [
+        "P5-08",
+        "P6-01"
+      ],
       "planMode": false,
       "gates": [],
       "humanInputs": [
@@ -2433,7 +3961,9 @@
       ],
       "repo": "vladzaharia/diceroll",
       "optional": false,
-      "refs": ["README §13"],
+      "refs": [
+        "README §13"
+      ],
       "brief": "wp/D-05-diceroll-after-p6.md",
       "status": "todo"
     },
@@ -2444,14 +3974,24 @@
       "stage": "tier-1",
       "lane": "worker",
       "role": "pkey-wire-planner",
-      "estimateWeeks": [1, 1.5],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
       "deps": [],
       "planMode": true,
-      "gates": ["plan-mode", "human-approval"],
+      "gates": [
+        "plan-mode",
+        "human-approval"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["notes/S-12 §5–§8", "notes/S-12 §10", "README §3.8"],
+      "refs": [
+        "notes/S-12 §5–§8",
+        "notes/S-12 §10",
+        "README §3.8"
+      ],
       "brief": "wp/F-01-feeds-plan.md",
       "status": "done"
     },
@@ -2462,16 +4002,30 @@
       "stage": "tier-1",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1.5, 2],
-      "deps": ["F-01"],
+      "estimateWeeks": [
+        1.5,
+        2
+      ],
+      "deps": [
+        "F-01"
+      ],
       "planMode": false,
-      "gates": ["workerd", "threat-model", "wrangler", "rule-10"],
+      "gates": [
+        "workerd",
+        "threat-model",
+        "wrangler",
+        "rule-10"
+      ],
       "humanInputs": [
         "the pkg.plrs.im, pkg-staging.plrs.im and pkg-dev.plrs.im custom domains on the plrs.im zone"
       ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["notes/S-12 §5", "notes/S-12 §7.1", "plans/F-01.md §6.1–§6.7"],
+      "refs": [
+        "notes/S-12 §5",
+        "notes/S-12 §7.1",
+        "plans/F-01.md §6.1–§6.7"
+      ],
       "brief": "wp/F-02-registry-host.md",
       "status": "todo"
     },
@@ -2482,8 +4036,13 @@
       "stage": "tier-1",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [2, 3],
-      "deps": ["F-01"],
+      "estimateWeeks": [
+        2,
+        3
+      ],
+      "deps": [
+        "F-01"
+      ],
       "planMode": false,
       "gates": [
         "rule-9",
@@ -2496,7 +4055,10 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["notes/S-12 §6", "plans/F-01.md §3, §6.3–§6.5"],
+      "refs": [
+        "notes/S-12 §6",
+        "plans/F-01.md §3, §6.3–§6.5"
+      ],
       "brief": "wp/F-03-package-releases.md",
       "status": "todo"
     },
@@ -2507,14 +4069,25 @@
       "stage": "tier-1",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["F-02", "F-03"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "F-02",
+        "F-03"
+      ],
       "planMode": false,
-      "gates": ["rule-10"],
+      "gates": [
+        "rule-10"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["notes/S-12 §4.1", "plans/F-01.md §6.8"],
+      "refs": [
+        "notes/S-12 §4.1",
+        "plans/F-01.md §6.8"
+      ],
       "brief": "wp/F-04-npm-feed.md",
       "status": "todo"
     },
@@ -2525,14 +4098,25 @@
       "stage": "tier-1",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["F-02", "F-03"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "F-02",
+        "F-03"
+      ],
       "planMode": false,
-      "gates": ["rule-10"],
+      "gates": [
+        "rule-10"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["notes/S-12 §4.1", "plans/F-01.md §6.8"],
+      "refs": [
+        "notes/S-12 §4.1",
+        "plans/F-01.md §6.8"
+      ],
       "brief": "wp/F-05-pypi-feed.md",
       "status": "todo"
     },
@@ -2543,14 +4127,26 @@
       "stage": "tier-1",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1.5, 2],
-      "deps": ["F-02", "F-03"],
+      "estimateWeeks": [
+        1.5,
+        2
+      ],
+      "deps": [
+        "F-02",
+        "F-03"
+      ],
       "planMode": false,
-      "gates": ["rule-10", "ci:macos"],
+      "gates": [
+        "rule-10",
+        "ci:macos"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["notes/S-12 §4.1", "plans/F-01.md §5.3, §6.8"],
+      "refs": [
+        "notes/S-12 §4.1",
+        "plans/F-01.md §5.3, §6.8"
+      ],
       "brief": "wp/F-06-swift-registry.md",
       "status": "todo"
     },
@@ -2561,14 +4157,25 @@
       "stage": "tier-1",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1],
-      "deps": ["F-02", "F-03"],
+      "estimateWeeks": [
+        1,
+        1
+      ],
+      "deps": [
+        "F-02",
+        "F-03"
+      ],
       "planMode": false,
-      "gates": ["rule-10"],
+      "gates": [
+        "rule-10"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["notes/S-12 §4.1", "plans/F-01.md §6.8"],
+      "refs": [
+        "notes/S-12 §4.1",
+        "plans/F-01.md §6.8"
+      ],
       "brief": "wp/F-07-maven-feed.md",
       "status": "todo"
     },
@@ -2579,14 +4186,28 @@
       "stage": "tier-1",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1.5, 2.5],
-      "deps": ["F-02", "F-03"],
+      "estimateWeeks": [
+        1.5,
+        2.5
+      ],
+      "deps": [
+        "F-02",
+        "F-03"
+      ],
       "planMode": false,
-      "gates": ["rule-10", "workerd", "cli-bundle"],
+      "gates": [
+        "rule-10",
+        "workerd",
+        "cli-bundle"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["notes/S-12 §4.1", "notes/S-12 §9", "plans/F-01.md §6.8"],
+      "refs": [
+        "notes/S-12 §4.1",
+        "notes/S-12 §9",
+        "plans/F-01.md §6.8"
+      ],
       "brief": "wp/F-08-oci-registry.md",
       "status": "todo"
     },
@@ -2597,14 +4218,25 @@
       "stage": "tier-1",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["F-02", "F-03"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "F-02",
+        "F-03"
+      ],
       "planMode": false,
-      "gates": ["rule-10"],
+      "gates": [
+        "rule-10"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["notes/S-12 §4.1", "plans/F-01.md §6.8"],
+      "refs": [
+        "notes/S-12 §4.1",
+        "plans/F-01.md §6.8"
+      ],
       "brief": "wp/F-09-godot-feed.md",
       "status": "todo"
     },
@@ -2615,17 +4247,34 @@
       "stage": "tier-1",
       "lane": "cli-ci",
       "role": "pkey-implementer",
-      "estimateWeeks": [1.5, 2],
-      "deps": ["F-04", "F-05", "F-06", "F-07", "F-08", "F-09"],
+      "estimateWeeks": [
+        1.5,
+        2
+      ],
+      "deps": [
+        "F-04",
+        "F-05",
+        "F-06",
+        "F-07",
+        "F-08",
+        "F-09"
+      ],
       "planMode": false,
-      "gates": ["cli-bundle", "docs-links", "ci"],
+      "gates": [
+        "cli-bundle",
+        "docs-links",
+        "ci"
+      ],
       "humanInputs": [
         "trusted-publisher registration of vladzaharia/polaris-key for the polaris-key system product in each environment",
         "the X.509 code-signing certificate and private key for Swift registry releases, as CI secrets"
       ],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["notes/S-12 §6.4", "plans/F-01.md §5"],
+      "refs": [
+        "notes/S-12 §6.4",
+        "plans/F-01.md §5"
+      ],
       "brief": "wp/F-10-sdks-onto-feeds.md",
       "status": "todo"
     },
@@ -2636,14 +4285,27 @@
       "stage": "tier-1",
       "lane": "console",
       "role": "pkey-implementer",
-      "estimateWeeks": [2, 3],
-      "deps": ["F-03"],
+      "estimateWeeks": [
+        2,
+        3
+      ],
+      "deps": [
+        "F-03"
+      ],
       "planMode": false,
-      "gates": ["docs-links", "console-csp-parity", "threat-model"],
+      "gates": [
+        "docs-links",
+        "console-csp-parity",
+        "threat-model"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["notes/S-12 §10.1–§10.2", "plans/F-01.md §6.9", "notes/S-13 §7"],
+      "refs": [
+        "notes/S-12 §10.1–§10.2",
+        "plans/F-01.md §6.9",
+        "notes/S-13 §7"
+      ],
       "brief": "wp/F-11-console-feeds.md",
       "status": "todo"
     },
@@ -2654,14 +4316,31 @@
       "stage": "tier-1",
       "lane": "console",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["F-11", "F-04", "F-05", "F-06", "F-07", "F-08", "F-09"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "F-11",
+        "F-04",
+        "F-05",
+        "F-06",
+        "F-07",
+        "F-08",
+        "F-09"
+      ],
       "planMode": false,
-      "gates": ["console-csp-parity", "cli-bundle"],
+      "gates": [
+        "console-csp-parity",
+        "cli-bundle"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["notes/S-12 §10.1", "plans/F-01.md §6.9"],
+      "refs": [
+        "notes/S-12 §10.1",
+        "plans/F-01.md §6.9"
+      ],
       "brief": "wp/F-12-console-feed-settings.md",
       "status": "todo"
     },
@@ -2672,14 +4351,25 @@
       "stage": "tier-2",
       "lane": "worker",
       "role": "pkey-wire-planner",
-      "estimateWeeks": [1, 1],
-      "deps": ["F-02"],
+      "estimateWeeks": [
+        1,
+        1
+      ],
+      "deps": [
+        "F-02"
+      ],
       "planMode": true,
-      "gates": ["plan-mode", "human-approval"],
+      "gates": [
+        "plan-mode",
+        "human-approval"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["notes/S-12 §7.2", "plans/F-01.md §6.6"],
+      "refs": [
+        "notes/S-12 §7.2",
+        "plans/F-01.md §6.6"
+      ],
       "brief": "wp/F-20-registry-credentials-plan.md",
       "status": "todo"
     },
@@ -2690,14 +4380,27 @@
       "stage": "tier-2",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [2, 3],
-      "deps": ["F-20", "F-11"],
+      "estimateWeeks": [
+        2,
+        3
+      ],
+      "deps": [
+        "F-20",
+        "F-11"
+      ],
       "planMode": false,
-      "gates": ["migration", "table-owners", "threat-model", "rule-10"],
+      "gates": [
+        "migration",
+        "table-owners",
+        "threat-model",
+        "rule-10"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["notes/S-12 §7.2"],
+      "refs": [
+        "notes/S-12 §7.2"
+      ],
       "brief": "wp/F-21-registry-auth.md",
       "status": "todo"
     },
@@ -2708,14 +4411,24 @@
       "stage": "tier-2",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [2, 2],
-      "deps": ["F-21"],
+      "estimateWeeks": [
+        2,
+        2
+      ],
+      "deps": [
+        "F-21"
+      ],
       "planMode": false,
-      "gates": ["rule-10", "threat-model"],
+      "gates": [
+        "rule-10",
+        "threat-model"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": true,
-      "refs": ["notes/S-12 §10 tier 2"],
+      "refs": [
+        "notes/S-12 §10 tier 2"
+      ],
       "brief": "wp/F-22-native-publish.md",
       "status": "todo"
     },
@@ -2726,14 +4439,27 @@
       "stage": "tier-2",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1.5, 2],
-      "deps": ["F-08", "F-21"],
+      "estimateWeeks": [
+        1.5,
+        2
+      ],
+      "deps": [
+        "F-08",
+        "F-21"
+      ],
       "planMode": false,
-      "gates": ["rule-10", "workerd", "threat-model"],
+      "gates": [
+        "rule-10",
+        "workerd",
+        "threat-model"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": true,
-      "refs": ["notes/S-12 §9", "notes/S-12 §10 tier 2"],
+      "refs": [
+        "notes/S-12 §9",
+        "notes/S-12 §10 tier 2"
+      ],
       "brief": "wp/F-23-docker-push.md",
       "status": "todo"
     },
@@ -2744,14 +4470,26 @@
       "stage": "tier-3",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1],
-      "deps": ["F-02", "F-03"],
+      "estimateWeeks": [
+        1,
+        1
+      ],
+      "deps": [
+        "F-02",
+        "F-03"
+      ],
       "planMode": false,
-      "gates": ["rule-9", "rule-10"],
+      "gates": [
+        "rule-9",
+        "rule-10"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": true,
-      "refs": ["notes/S-12 §4.1", "notes/S-12 §10 tier 3"],
+      "refs": [
+        "notes/S-12 §4.1",
+        "notes/S-12 §10 tier 3"
+      ],
       "brief": "wp/F-30-cargo-feed.md",
       "status": "todo"
     },
@@ -2762,14 +4500,26 @@
       "stage": "tier-3",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1, 1.5],
-      "deps": ["F-02", "F-03"],
+      "estimateWeeks": [
+        1,
+        1.5
+      ],
+      "deps": [
+        "F-02",
+        "F-03"
+      ],
       "planMode": false,
-      "gates": ["rule-9", "rule-10"],
+      "gates": [
+        "rule-9",
+        "rule-10"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": true,
-      "refs": ["notes/S-12 §4.1", "notes/S-12 §10 tier 3"],
+      "refs": [
+        "notes/S-12 §4.1",
+        "notes/S-12 §10 tier 3"
+      ],
       "brief": "wp/F-31-go-proxy.md",
       "status": "todo"
     },
@@ -2780,10 +4530,19 @@
       "stage": "tier-3",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1.5, 1.5],
-      "deps": ["F-02", "F-03"],
+      "estimateWeeks": [
+        1.5,
+        1.5
+      ],
+      "deps": [
+        "F-02",
+        "F-03"
+      ],
       "planMode": false,
-      "gates": ["rule-9", "rule-10"],
+      "gates": [
+        "rule-9",
+        "rule-10"
+      ],
       "humanInputs": [
         "the X-01 go/no-go decision, which makes this package required"
       ],
