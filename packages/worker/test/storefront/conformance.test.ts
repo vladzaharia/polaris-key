@@ -897,7 +897,16 @@ for (const f of FEED_ADAPTERS) {
         const s = f.capabilities.ops[op];
         if (s.mode === "unsupported")
           expect(s.reason.length).toBeGreaterThan(10);
-        if (s.mode === "api" && op !== "serve") expect(s.rules).toEqual([]);
+        // F-21: `auth` (registry tokens, judged by the same ladder) names the feed's credential
+        // routes (Swift's login) and owner-less routes (OCI's token service); nothing else names
+        // a rule but `serve`.
+        if (s.mode === "api" && op === "auth")
+          expect(s.rules).toEqual([
+            ...(f.authRoutes ?? []).map((r) => r.name),
+            ...(f.ownerlessRoutes ?? []).map((r) => r.name),
+          ]);
+        else if (s.mode === "api" && op !== "serve")
+          expect(s.rules).toEqual([]);
         expect(["api", "unsupported"]).toContain(s.mode);
       }
       const view = feedCapabilityView(f);
