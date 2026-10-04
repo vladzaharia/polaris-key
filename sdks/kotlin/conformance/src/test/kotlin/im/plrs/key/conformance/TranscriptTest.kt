@@ -2,6 +2,7 @@
 // @pkey-feature license.deactivate license.reregister devices.register devices.report
 // @pkey-feature config.schema release.changelog release.download
 // @pkey-feature identity.devicecode config.mint
+// @pkey-feature update.feed release.record update.decide
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
 // drive the umbrella `PolarisKeyClient` (:sdk) through every recorded conversation
@@ -17,6 +18,14 @@
 // Registration and activation send a FIXED hashed fingerprint (`replayFingerprint`), so a replay
 // does not depend on what this host can read; the report's software facts are this host's own
 // (the transcripts match them by shape).
+//
+// `updateDecide` (plans/P3-01.md §5, §6; P6-08) is `client.update.decide(channel, staged,
+// skipVersion)`, and its `expect` keys are the `UpdateCheck`'s own (`channel`, `decision`, `feed`,
+// `record`, `errors`). `initial.update` is the host's configuration: `pinnedReleaseKeys`, `outlet`,
+// `platform`, `arch`, `installed` and `methods` become `UpdateClientOptions`, the installed version
+// is the client's version, and `cache` seeds the store's `feeds` and `releaseRecords`. A transcript
+// with `initial.update` and no `initial.services` runs with Release, Distribution and Update
+// expected; one that loads no discovery itself is served the Worker's standard document.
 
 package im.plrs.key.conformance
 
@@ -44,6 +53,12 @@ import im.plrs.key.core.JsonText
 import im.plrs.key.release.ChangelogEntry
 import im.plrs.key.sdk.PolarisKeyClient
 import im.plrs.key.sdk.PolarisKeyClientOptions
+import im.plrs.key.core.BinaryMethod
+import im.plrs.key.core.CacheRecord
+import im.plrs.key.core.HostOutlet
+import im.plrs.key.core.StagedUpdate
+import im.plrs.key.core.objectValue
+import im.plrs.key.update.UpdateClientOptions
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -71,6 +86,21 @@ object KotlinReplay {
         val out = LinkedHashMap<String, JsonElement>()
         val args = step["args"]!!.obj
         when (val action = step["action"].stringValue) {
+            "updateDecide" -> {
+                val staged = args["staged"].objectValue?.let { st ->
+                    val v = st["version"].stringValue
+                    val c = st["channel"].stringValue
+                    if (v != null && c != null) StagedUpdate(v, c) else null
+                }
+                try {
+                    val check = client.update.decide(args["channel"].stringValue, staged, args["skipVersion"].stringValue)
+                    out.putAll(check.json)
+                    out["result"] = JsonPrimitive("ok")
+                } catch (e: PolarisException) {
+                    out["result"] = JsonPrimitive("error")
+                    out["code"] = JsonPrimitive(e.code)
+                }
+            }
             "discover" -> out["result"] = JsonPrimitive(
                 when (client.discover()) {
                     is DiscoveryResult.Ok -> "ok"
@@ -182,6 +212,14 @@ object KotlinReplay {
         return out
     }
 
+    /** `initial.update.outlet`: a kind, or `{id, kind, subkind?}`. */
+    private fun hostOutlet(v: JsonElement?): HostOutlet? = when {
+        v == null || v is JsonNull -> null
+        v is JsonPrimitive && v.isString -> HostOutlet.Kind(v.content)
+        v is JsonObject -> HostOutlet.Outlet(v["id"].stringValue!!, v["kind"].stringValue!!, v["subkind"].stringValue)
+        else -> throw AssertionError("initial.update.outlet is not an outlet")
+    }
+
     /** A changelog entry in the transcript's JSON vocabulary (null ⇒ `null`). */
     private fun entryValue(e: ChangelogEntry): JsonElement = JsonObject(
         mapOf(
@@ -208,15 +246,36 @@ object KotlinReplay {
         var clock = t.now
         val store = InMemoryStore(t.product, t.initial["deviceId"].stringValue!!)
         t.initial["token"].stringValue?.let { store.setToken(it) }
-        val services = t.initial["services"]?.arrayValue?.mapNotNull { ServiceSlug.of(it.stringValue) }
+        val u = t.initial["update"].objectValue
+        u?.get("cache").objectValue?.let { cache ->
+            fun strings(k: String) = cache[k].objectValue?.mapValues { it.value.stringValue!! } ?: emptyMap()
+            store.writeCache(CacheRecord(feeds = strings("feeds"), releaseRecords = strings("releaseRecords")))
+        }
+        val services = (t.initial["services"]?.arrayValue?.map { it.stringValue!! } ?: if (u != null) listOf("release", "distribution", "update") else null)
+            ?.mapNotNull { ServiceSlug.of(it) }
+        val installed = u?.get("installed").objectValue
         val client = PolarisKeyClient.create(
             PolarisKeyClientOptions(
                 core = CoreOptions(
-                    productSlug = t.product, baseUrl = t.baseUrl, version = t.initial["version"].stringValue!!,
+                    productSlug = t.product, baseUrl = t.baseUrl,
+                    version = installed?.get("version").stringValue ?: t.initial["version"].stringValue!!,
                     pinnedKeys = t.trust, store = store, transport = server, requestTimeoutSeconds = 0.0,
                     expectedServices = services, clock = { clock },
                 ),
                 license = LicenseClientOptions(fingerprintSource = replayFingerprint),
+                update = u?.let {
+                    UpdateClientOptions(
+                        pinnedReleaseKeys = it["pinnedReleaseKeys"]!!.obj.mapValues { e -> e.value.stringValue!! },
+                        outlet = hostOutlet(it["outlet"]),
+                        buildNumber = installed?.get("buildNumber").stringValue,
+                        format = installed?.get("format").stringValue,
+                        methods = it["methods"]?.arrayValue?.map { m -> m.stringValue!! } ?: listOf(BinaryMethod.download),
+                        binaryVersion = installed?.get("binaryVersion").stringValue,
+                        engine = installed?.get("engine").stringValue,
+                        platform = it["platform"].stringValue,
+                        arch = it["arch"].stringValue,
+                    )
+                },
             ),
         )
         val session = ReplaySession()
@@ -323,9 +382,18 @@ class TranscriptTest : ConformanceSuite() {
     @Test
     fun aTranscriptForAPlannedFeatureDoesNotApply() {
         val statuses = Transcript.manifestStatuses()
-        // commerce.receipt stays planned and unowned (as in Swift); the update transcripts are P6-08's.
+        // commerce.receipt stays planned and unowned (as in Swift).
         assertFalse(Transcript.applies(transcripts.first { it.id == "commerce-claim" }, statuses))
-        assertFalse(Transcript.applies(transcripts.first { it.id == "update-record-by-hash" }, statuses))
+        // P6-08 implemented update.decide and update.feed: the update transcripts now apply.
+        assertTrue(Transcript.applies(transcripts.first { it.id == "update-record-by-hash" }, statuses))
+        assertTrue(Transcript.applies(transcripts.first { it.id == "update-feed-rollback" }, statuses))
+    }
+
+    /** The update transcripts are held as tightly: an `UpdateCheck` member that disagrees fails. */
+    @Test
+    fun aDoctoredUpdateDecisionFails() {
+        assertReplayFails(transcripts.first { it.id == "update-feed-rollback" }.withExpect(0, "channel", JsonPrimitive("latest")), "step 0 (updateDecide): channel")
+        assertReplayFails(transcripts.first { it.id == "update-record-by-hash" }.withExpect(1, "record", JsonPrimitive("network")), "step 1 (updateDecide): record")
     }
 
     @Test
@@ -360,12 +428,14 @@ class TranscriptTest : ConformanceSuite() {
     }
 
     companion object {
-        /** Every transcript this SDK's implemented rows make applicable (P6-06 and P6-07). */
+        /** Every transcript this SDK's implemented rows make applicable (P6-06, P6-07 and P6-08). */
         val REQUIRED = listOf(
             "discovery-capabilities", "discovery-failure", "sync-etag-304", "sync-errors",
             "activate-enroll-deactivate", "config-schema-fetch", "devicecode-expired", "devicecode-happy",
             "edge-mint", "register-open", "register-reregister-401", "release-changelog",
             "release-changelog-entitled", "telemetry-report",
+            // P6-08: the v4 update decision.
+            "update-feed-rollback", "update-record-by-hash",
         )
     }
 }

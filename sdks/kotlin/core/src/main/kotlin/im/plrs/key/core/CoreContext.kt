@@ -148,6 +148,9 @@ public class CoreContext(options: CoreOptions) {
     private var loaded = LoadedCache()
     private var reacquireSpent = false
     private var reacquireInFlight: CompletableDeferred<Boolean>? = null
+    private var feedFloorsValue: Map<String, FeedFloor> = emptyMap()
+
+    @Volatile private var packSetIdSource: (suspend () -> String?)? = null
 
     /** Load device id, token and the cached artifacts, re-verifying everything. NO NETWORK. */
     public suspend fun start() {
@@ -192,8 +195,17 @@ public class CoreContext(options: CoreOptions) {
             manifestKeys = emptyMap()
             manifest = null
             clock.reset()
-            if (r == null || (r.feeds.isEmpty() && r.releaseRecords.isEmpty())) null
-            else CacheRecord(feeds = r.feeds, releaseRecords = r.releaseRecords).also { record = it }
+            if (r == null || (r.feeds.isEmpty() && r.releaseRecords.isEmpty())) {
+                feedFloorsValue = emptyMap()
+                null
+            } else {
+                // Wire v4: a deactivation removes every credential, never the feeds' `seq` floors (a
+                // floor a deactivation could reset could be rolled back). Re-verified against the
+                // now pinned-only trust set.
+                record = CacheRecord(feeds = r.feeds, releaseRecords = r.releaseRecords)
+                reloadUpdateSlices()
+                record
+            }
         }
         var failure: Exception? = null
         try {
@@ -248,7 +260,12 @@ public class CoreContext(options: CoreOptions) {
         }
         if (!response.isOk || response.body.size > JwsVerifier.MAX_HEADER_B64 + JwsVerifier.MAX_PAYLOAD_B64 + 128) return false
         val jws = response.text
-        val applied = lock.withLock { applyTrustManifest(jws, checkFreshness = true) }
+        val applied = lock.withLock {
+            applyTrustManifest(jws, checkFreshness = true).also { ok ->
+                // The effective trust set may have changed: the committed feeds are re-verified.
+                if (ok) reloadUpdateSlices()
+            }
+        }
         if (!applied) return false
         patchCache { it.copy(trustJws = jws) }
         return true
@@ -401,7 +418,55 @@ public class CoreContext(options: CoreOptions) {
             lastVerifiedAt = if (newest > 0 && newest < Long.MAX_VALUE / 1000) newest * 1000 else null,
         )
         record = next
+        // After the manifest: the feeds verify against the EFFECTIVE trust set.
+        reloadUpdateSlices()
     }
+
+    // ── Wire v4 update slices (plans/P3-01.md §2.5 "Reload path", §2.6) ──────────────────────
+
+    /**
+     * The reload path over the `feeds` and `releaseRecords` slices, on cache load and whenever the
+     * effective trust set changes: each `feeds[k]` through steps 3–6 (freshness off, no floor, its
+     * claim equal to `k`) gives `floors[k]`; each `releaseRecords[h]` is kept only while a surviving
+     * feed's target pins `h`. The update client runs the same reload with the release keys and its
+     * platform on every call (`runUpdateCheck`). Caller holds the lock.
+     */
+    private fun reloadUpdateSlices() {
+        val r = record
+        if (r == null) {
+            feedFloorsValue = emptyMap()
+            return
+        }
+        val reloaded = reloadFeeds(r.feeds, mergeTrust(pinnedTrust, manifestKeys), product, null)
+        feedFloorsValue = reloaded.floors
+        val pinned = reloaded.feeds.values.flatMap { c -> c.feed.app.targets.map { it.release.sha256 } }.toSet()
+        record = r.copy(feeds = reloaded.feeds.mapValues { it.value.jws }, releaseRecords = r.releaseRecords.filterKeys { it in pinned })
+    }
+
+    /** Each canonical channel's `seq` floor, derived from the committed feed that re-verified. */
+    public suspend fun feedFloors(): Map<String, FeedFloor> = lock.withLock { feedFloorsValue }
+
+    /** The `feeds` and `releaseRecords` slices as Core holds them (re-verified on load). */
+    public suspend fun updateSlices(): UpdateSlices = lock.withLock { UpdateSlices(record?.feeds ?: emptyMap(), record?.releaseRecords ?: emptyMap()) }
+
+    /**
+     * Write the update slices through Core's read-modify-write (§4.1's only mutation path) and
+     * re-derive the floors. A null argument leaves that slice as it is.
+     */
+    public suspend fun commitUpdateSlices(feeds: Map<String, String>? = null, releaseRecords: Map<String, String>? = null) {
+        patchCache { r -> r.copy(feeds = feeds ?: r.feeds, releaseRecords = releaseRecords ?: r.releaseRecords) }
+        lock.withLock {
+            feedFloorsValue = reloadFeeds(record?.feeds ?: emptyMap(), mergeTrust(pinnedTrust, manifestKeys), product, null).floors
+        }
+    }
+
+    /** Register where `devices/report`'s `content.packSetId` comes from (the packs facet does). */
+    public fun setPackSetIdSource(source: (suspend () -> String?)?) {
+        packSetIdSource = source
+    }
+
+    /** The active pack set's `packSetId` for the device report, or null when this host has no packs. */
+    public suspend fun packSetId(): String? = packSetIdSource?.invoke()
 
     /**
      * Re-verify a cached document at `max(now, its own issuedAt)` with freshness off, bounding how

@@ -6,7 +6,8 @@
 //                   capabilities, the boot stage machine and the generated constants (P6-06)
 //     :license :config :identity :release      (P6-07) the service modules; each depends on :core
 //                   only, never on a sibling (checkModuleBoundaries)
-//     :update :packs                            (P6-08)
+//     :update :packs (P6-08) the update client (check, signed feed, decide, boot guard, the install-
+//                   driver port) and the pack engine; each depends on :core only
 //     :sdk          polaris-key-sdk, the umbrella PolarisKeyClient (P6-07): the one place the
 //                   service modules meet, re-exported through `api`, so it is the one-line dependency
 //   Android libraries:
@@ -49,6 +50,8 @@ include(":license")
 include(":config")
 include(":identity")
 include(":release")
+include(":update")
+include(":packs")
 include(":sdk")
 include(":conformance")
 
