@@ -34,7 +34,8 @@
  * subject (`distribution.asc.<control>`), and then RE-READS the object from the API, so what the
  * console shows afterwards is Apple's answer, not the request's intent. Apple refusing a request
  * (an invalid transition, a version not held) is relayed as 409 `store_refused` with the status
- * Apple gave and nothing of its body. Submitting for review is not here (a follow-up).
+ * Apple gave and nothing of its body but its `errors[0].code` token (`appleCode`). The Distribute
+ * flow (builds, TestFlight, versions, submit for review) is `distribute.ts` (A-17d).
  *
  * "Register webhook" uses a secret stored beforehand as an `asc-webhook-secret` outlet
  * credential — generated server-side by the Core admin handler (`PUT …/outlet-credentials/<id>`
@@ -75,6 +76,11 @@ export interface ControlContext {
   session: AdminSession;
   /** The origin the console was reached on: the webhook URL is built from it. */
   origin: string;
+  /**
+   * The console's `Idempotency-Key` header for this user intent (A-17d; S-14 §7.3), or null.
+   * The Distribute writes require it and key their ledger steps by it.
+   */
+  idempotencyKey?: string | null;
   fetchImpl?: FetchImpl;
   sleep?: (ms: number) => Promise<void>;
 }
@@ -87,6 +93,8 @@ export type ControlResult =
       reason: string;
       message: string;
       fields?: string[];
+      /** Apple's `errors[0].code` token on a `store_refused` (never its free text). */
+      appleCode?: string;
     };
 
 export type ConnectorControl = (
@@ -94,7 +102,13 @@ export type ConnectorControl = (
   body: Record<string, unknown>,
 ) => Promise<ControlResult>;
 
-const refuse = (
+/** A connector read under `GET …/connectors/<kind>/<path>` (A-17d's Distribute reads). */
+export type ConnectorRead = (
+  c: ControlContext,
+  query: URLSearchParams,
+) => Promise<ControlResult>;
+
+export const refuse = (
   status: 404 | 409 | 422 | 502,
   reason: string,
   message: string,
@@ -108,7 +122,7 @@ const refuse = (
 });
 
 /** Run `fn` against a fresh connector run; Apple's refusals become `store_refused`. */
-async function withRun(
+export async function withRun(
   c: ControlContext,
   fn: (run: AscRun, setup: AscSetup) => Promise<ControlResult>,
 ): Promise<ControlResult> {
@@ -144,8 +158,8 @@ async function withRun(
     // The write gate refused before anything was minted or sent (core/asc/writeGate.ts).
     if (e instanceof AscWriteDenied)
       return refuse(409, "write_denied", e.message);
-    if (e instanceof AscError)
-      return refuse(
+    if (e instanceof AscError) {
+      const refused = refuse(
         e.status === 404
           ? 404
           : e.status >= 500 || e.status === 429
@@ -154,6 +168,11 @@ async function withRun(
         "store_refused",
         e.message,
       );
+      // Apple's enum-like code (`ENTITY_ERROR.ATTRIBUTE.INVALID`, A-17h), never its body.
+      return e.code && !refused.ok
+        ? { ...refused, appleCode: e.code }
+        : refused;
+    }
     throw e;
   } finally {
     await finishRun(run, error);
@@ -288,18 +307,20 @@ function phasedControl(verb: keyof typeof PHASED_TARGET): ConnectorControl {
  * A-17a: releasing is irreversible, so it takes a TYPED confirmation (owner decision,
  * 2026-10-04; ADMIN.md §5.2): the body's `confirm` must equal the app's name as App Store Connect
  * reports it now. Only after that comparison does the control assert `typedConfirmation` to the
- * write gate, which refuses the release request without it.
+ * write gate, which refuses the release request without it. A-17d's submit for review uses the
+ * same check (`action` names what is being confirmed in the refusal).
  */
-async function checkTypedConfirmation(
+export async function checkTypedConfirmation(
   run: AscRun,
   setup: AscSetup,
   typed: unknown,
+  action = "release",
 ): Promise<ControlResult | null> {
   if (typeof typed !== "string" || typed.trim() === "")
     return refuse(
       422,
       "confirmation_required",
-      "type the app's name in confirm to release",
+      `type the app's name in confirm to ${action}`,
       ["confirm"],
     );
   const app = single(

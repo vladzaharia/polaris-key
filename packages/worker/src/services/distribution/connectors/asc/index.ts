@@ -1,12 +1,14 @@
 /**
  * The App Store Connect connector (P5-02) as a `DistributionConnector`: the poller, the webhook
  * route and the controls. See `client.ts` (the API), `webhook.ts`, `map.ts` (the vocabulary),
- * `apply.ts` (read one object, write its state), `poll.ts` and `controls.ts`.
+ * `apply.ts` (read one object, write its state), `poll.ts`, `controls.ts` and `distribute.ts`
+ * (A-17d's Distribute flow).
  */
 
 import type { DistributionConnector } from "../index.js";
 import { eventView, listEvents, listObjects, objectView } from "../state.js";
 import { ASC_CONTROLS } from "./controls.js";
+import { ASC_DISTRIBUTE_CONTROLS, ASC_DISTRIBUTE_READS } from "./distribute.js";
 import { pollAsc } from "./poll.js";
 import { readRate } from "../../../../core/asc/budget.js";
 import {
@@ -17,13 +19,17 @@ import {
 } from "./setup.js";
 import { handleAscWebhook } from "./webhook.js";
 
+/** P5-02's controls and A-17d's Distribute writes, one table. */
+const CONTROLS = { ...ASC_CONTROLS, ...ASC_DISTRIBUTE_CONTROLS };
+
 export const ascConnector: DistributionConnector = {
   kind: ASC_CONNECTOR,
   label: ASC_LABEL,
   outletKinds: ASC_OUTLET_KINDS,
   poll: pollAsc,
   webhook: handleAscWebhook,
-  controls: ASC_CONTROLS,
+  controls: CONTROLS,
+  reads: ASC_DISTRIBUTE_READS,
   async status({ env, db, product, now }) {
     const { setup, inert } = await resolveAscSetup(env, db, product);
     const objects = await listObjects(db, product, ASC_CONNECTOR);
@@ -57,7 +63,8 @@ export const ascConnector: DistributionConnector = {
       objects: objects.map(objectView),
       unresolved: objects.filter((o) => o.release_id === null).length,
       events: (await listEvents(db, product, ASC_CONNECTOR)).map(eventView),
-      controls: Object.keys(ASC_CONTROLS),
+      controls: Object.keys(CONTROLS),
+      reads: Object.keys(ASC_DISTRIBUTE_READS),
     };
   },
 };
