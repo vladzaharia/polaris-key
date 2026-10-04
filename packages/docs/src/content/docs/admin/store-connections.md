@@ -178,6 +178,12 @@ with the same reasons as for its own keys, and the connector status says `creden
 
 An own credential that is unpinned or pinned elsewhere never falls through to the team key.
 
+**Setting up an assigned App Store app.** Once an app is assigned, the product's App Store Connect
+setup controls can prepare it, even before `.pkey/distribution` names the app. They set the server
+notifications URL and send a test, create TestFlight groups and add testers, and set the free price
+and availability defaults. They also keep a checklist of the steps only the portal can do. See
+[Setting up the app](/docs/services/distribution/app-store-connect/#setting-up-the-app).
+
 ## Provisioning a new App Store app
 
 Before an app record exists there is nothing to assign, so the App Store connection also carries
