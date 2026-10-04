@@ -4,7 +4,8 @@
 # the wire) — Core routes plus the six service
 # namespaces and the four permanent aliases. The admin (/manage/api/*) and portal (/api/*)
 # APIs are session-authenticated browser surfaces and are documented narratively on the docs
-# site instead (they are not "wire" — no SDK speaks them). The offline-bundle mint is one of
+# site instead (they are not "wire" — no SDK speaks them) — except the portal's library, product
+# and media routes (PX-W1, tag `portal`), which rule 10 pins here as they are added. The offline-bundle mint is one of
 # those admin surfaces (`POST /manage/api/products/<slug>/bundles`), so `pkey-bundle+jws`
 # appears here only as a `typ` value, never as a path.
 #
@@ -85,6 +86,11 @@ tags:
       SwiftPM, Maven and Gradle, OCI, Godot). Same Worker, third custom domain; every path here
       carries a `servers` override. No cookies, no CORS, GET and HEAD only, a sandbox CSP on
       every answer and an explicit type allowlist (`core/registryHost.ts`).
+  - name: portal
+    description: >
+      The customer portal's library, product and media routes (PX-W1): root paths on the console
+      host, authenticated by the portal session cookie (the media proxy is public). The rest of
+      the portal API is documented narratively on the docs site.
   - name: aliases
     description: >
       The permanent alias spellings: the four pre-namespace paths (SUFeedURL values compiled
@@ -9500,6 +9506,182 @@ paths:
             description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
           }
         "404": { $ref: "#/components/responses/NotFound" }
+  # ── The customer portal's library, product and media routes (PX-W1, docs/design/PORTAL.md
+  # G1, G5, G16). The rest of the portal API stays narrative (see the header); these three are
+  # pinned here and in `test/routeCoverage.test.ts` (PORTAL_KIND_PATHS). Root paths on the
+  # console host, never CORS: they share this origin with the portal session cookie.
+  /api/library:
+    get:
+      operationId: getPortalLibrary
+      tags: [portal]
+      summary: The signed-in account's library
+      description: >
+        One entry per product the portal account holds a licence for (portal-enabled products
+        only): the product's presentation from its `.pkey/distribution` root `listing`, the
+        status of its best licence, that licence's summary with seats, and the support links.
+        Art is only ever a same-origin `/media/…` URL, and only when the media proxy would serve
+        it. Session-authenticated by the portal cookie; `cache-control: no-store`.
+      responses:
+        "200":
+          description: The library.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalLibrary" }
+              examples:
+                oneProduct:
+                  summary: One product, one licence, two of three seats in use
+                  value:
+                    products:
+                      - product: tidewater
+                        name: Tidewater Studio
+                        developerName: Fennick Studio
+                        tintColor: "#1f3b5c"
+                        website: https://tidewater.example
+                        iconUrl: /media/tidewater/icon?v=3f9a0c2d1e4b5a6c
+                        headerUrl: /media/tidewater/header?v=8b7c6d5e4f3a2b1c
+                        support:
+                          url: https://tidewater.example/help
+                          email: help@tidewater.example
+                        status: active
+                        license:
+                          id: lic_8f2a
+                          tier: pro
+                          status: active
+                          licenseStatus: active
+                          activatedAt: 1790000000
+                          expiresAt: null
+                          maxOfflineDays: 14
+                          deviceLimit: 3
+                          activeSeatCount: 2
+                          deviceCount: 3
+                          dormantCount: 1
+                        licenseCount: 1
+                        addedAt: 1790000000
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/products/{product}:
+    get:
+      operationId: getPortalProduct
+      tags: [portal]
+      summary: One product in the signed-in account's library
+      description: >
+        The product's presentation, its `services` (each service's own toggle, so the page shows
+        a section only for a service that is on), its status, and every linked licence, best
+        first (status precedence, then the later expiry), each with its seats, its entitlements
+        and its authorized devices; a device past the dormancy window is `dormant` and holds no
+        seat. `404` when the account holds no licence for the product, or the developer has the
+        portal off for it. Session-authenticated by the portal cookie; `cache-control: no-store`.
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: The product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalProduct" }
+              examples:
+                product:
+                  summary: A product with one licence and a dormant device
+                  value:
+                    product: tidewater
+                    name: Tidewater Studio
+                    developerName: Fennick Studio
+                    tintColor: "#1f3b5c"
+                    website: https://tidewater.example
+                    iconUrl: /media/tidewater/icon?v=3f9a0c2d1e4b5a6c
+                    headerUrl: null
+                    support:
+                      { url: https://tidewater.example/help, email: null }
+                    services:
+                      license: true
+                      config: true
+                      release: true
+                      distribution: true
+                      update: false
+                      identity: false
+                    status: active
+                    addedAt: 1790000000
+                    licenses:
+                      - id: lic_8f2a
+                        tier: pro
+                        status: active
+                        licenseStatus: active
+                        activatedAt: 1790000000
+                        expiresAt: null
+                        maxOfflineDays: 14
+                        deviceLimit: 3
+                        activeSeatCount: 1
+                        deviceCount: 2
+                        dormantCount: 1
+                        entitlements: []
+                        devices:
+                          - deviceId: dev-studio
+                            label: Studio PC
+                            platform: windows
+                            arch: x64
+                            appVersion: 2.4.0
+                            firstSeen: 1790000000
+                            lastSeen: 1790500000
+                            dormant: false
+                          - deviceId: dev-old
+                            label: Old laptop
+                            platform: macos
+                            arch: arm64
+                            appVersion: 2.1.0
+                            firstSeen: 1780000000
+                            lastSeen: 1780000000
+                            dormant: true
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /media/{product}/{asset}:
+    get:
+      operationId: getPortalMedia
+      tags: [portal]
+      summary: A product's listing art, served same-origin
+      description: >
+        The customer portal's media proxy: the product's `listing.iconUrl` (`asset` = `icon`,
+        at most 1 MiB) or `listing.headerUrl` (`header`, at most 5 MiB), fetched by the Worker
+        and served from this origin, because the portal's CSP is `img-src 'self' data:`. Public
+        (listing art is public store-page metadata). The source must be an https URL on a
+        GitHub-hosted name (`github.com`, `*.githubusercontent.com`); redirects are followed by
+        hand, at most three, each re-checked; the bytes must be a PNG, JPEG, WebP or GIF by their
+        magic numbers, and the response carries the sniffed type, `x-content-type-options:
+        nosniff`, `content-security-policy: default-src 'none'; sandbox` and
+        `cross-origin-resource-policy: same-origin`. Every refusal is the same `404`
+        (THREAT-MODEL "Portal media proxy").
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - {
+            name: asset,
+            in: path,
+            required: true,
+            schema: { type: string, enum: [icon, header] },
+            description: "Which listing field: `icon` (iconUrl) or `header` (headerUrl).",
+          }
+        - {
+            name: v,
+            in: query,
+            required: false,
+            schema: { type: string, pattern: "^[0-9a-f]{16}$" },
+            description: "The source URL's version (the first 16 hex digits of its SHA-256), as `GET /api/library` hands it out. When it is the current one the answer is immutable for a year; otherwise it is cached for five minutes.",
+          }
+      responses:
+        "200":
+          description: "The image. `cache-control: public, max-age=31536000, immutable` with the current `v`, else `public, max-age=300`."
+          content:
+            image/png: { schema: { type: string, format: binary } }
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/webp: { schema: { type: string, format: binary } }
+            image/gif: { schema: { type: string, format: binary } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: Too many upstream fetches for this product from this client (cache misses only).
 components:
   securitySchemes:
     ciToken:
@@ -10297,6 +10479,148 @@ components:
             description: "The immutable `files/<releaseId>/<name>` URL on the bytes host.",
           }
         outletId: { type: string }
+    PortalPresentation:
+      type: object
+      description: >
+        A product's presentation in the portal (PX-W1, G1, G16), from its `.pkey/distribution`
+        root `listing`; without Distribution or a listing, `name` is the product's name and the
+        rest is null.
+      required:
+        [name, developerName, tintColor, website, iconUrl, headerUrl, support]
+      properties:
+        name: { type: string }
+        developerName: { type: [string, "null"] }
+        tintColor: { type: [string, "null"], pattern: "^#[0-9A-Fa-f]{6}$" }
+        website: { type: [string, "null"] }
+        iconUrl:
+          type: [string, "null"]
+          description: A same-origin `/media/<product>/icon?v=…` URL, or null.
+        headerUrl:
+          type: [string, "null"]
+          description: A same-origin `/media/<product>/header?v=…` URL, or null.
+        support:
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [url, email]
+              properties:
+                url: { type: [string, "null"] }
+                email: { type: [string, "null"] }
+    PortalLicenseSeats:
+      type: object
+      description: >
+        One licence's summary with seats (G5). `status` is the portal status; `licenseStatus` the
+        stored one (`active` or `disabled`). `deviceLimit` is the limit activation enforces;
+        `activeSeatCount` the authorized devices inside the dormancy window; `dormantCount` those
+        past it, which hold no seat.
+      required:
+        [
+          id,
+          tier,
+          status,
+          licenseStatus,
+          activatedAt,
+          expiresAt,
+          maxOfflineDays,
+          deviceLimit,
+          activeSeatCount,
+          deviceCount,
+          dormantCount,
+        ]
+      properties:
+        id: { type: string }
+        tier: { type: [string, "null"] }
+        status: { $ref: "#/components/schemas/PortalStatus" }
+        licenseStatus: { type: string }
+        activatedAt: { type: [integer, "null"] }
+        expiresAt: { type: [integer, "null"] }
+        maxOfflineDays: { type: [integer, "null"] }
+        deviceLimit: { type: integer }
+        activeSeatCount: { type: integer }
+        deviceCount: { type: integer }
+        dormantCount: { type: integer }
+    PortalStatus:
+      type: string
+      description: >
+        A product's status from its best licence, first match wins: `suspended` (the developer
+        disabled the licence), `expired`, `device_limit` (every seat in use), `expires_soon`
+        (within 14 days), `active`.
+      enum: [suspended, expired, device_limit, expires_soon, active]
+    PortalLibrary:
+      type: object
+      required: [products]
+      properties:
+        products:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/PortalPresentation"
+              - type: object
+                required: [product, status, license, licenseCount, addedAt]
+                properties:
+                  product: { type: string, description: The product slug. }
+                  status: { $ref: "#/components/schemas/PortalStatus" }
+                  license: { $ref: "#/components/schemas/PortalLicenseSeats" }
+                  licenseCount: { type: integer, minimum: 1 }
+                  addedAt:
+                    type: [integer, "null"]
+                    description: When the account's first licence for the product was linked.
+    PortalProduct:
+      allOf:
+        - $ref: "#/components/schemas/PortalPresentation"
+        - type: object
+          required: [product, services, status, addedAt, licenses]
+          properties:
+            product: { type: string }
+            services:
+              type: object
+              description: Each service slug and whether it is on for the product.
+              additionalProperties: { type: boolean }
+            status: { $ref: "#/components/schemas/PortalStatus" }
+            addedAt: { type: [integer, "null"] }
+            licenses:
+              type: array
+              items:
+                allOf:
+                  - $ref: "#/components/schemas/PortalLicenseSeats"
+                  - type: object
+                    required: [entitlements, devices]
+                    properties:
+                      entitlements:
+                        type: array
+                        items:
+                          type: object
+                          required: [key, label, value]
+                          properties:
+                            key: { type: string }
+                            label: { type: string }
+                            value: {}
+                      devices:
+                        type: array
+                        items:
+                          type: object
+                          required:
+                            [
+                              deviceId,
+                              label,
+                              platform,
+                              arch,
+                              appVersion,
+                              firstSeen,
+                              lastSeen,
+                              dormant,
+                            ]
+                          properties:
+                            deviceId: { type: string }
+                            label: { type: [string, "null"] }
+                            platform: { type: [string, "null"] }
+                            arch: { type: [string, "null"] }
+                            appVersion: { type: [string, "null"] }
+                            firstSeen: { type: integer }
+                            lastSeen: { type: integer }
+                            dormant:
+                              type: boolean
+                              description: Past the dormancy window; holds no seat.
     FlatError:
       type: object
       description: >

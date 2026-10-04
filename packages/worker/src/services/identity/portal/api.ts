@@ -1,5 +1,3 @@
-import { Catalog } from "@polaris-key/catalog";
-import type { ConfigEntry } from "@polaris-key/catalog";
 import { platformFromFileName } from "@polaris-key/manifest";
 import { CHANNEL_STABLE } from "@polaris-key/protocol";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
@@ -20,16 +18,13 @@ import {
 import { licenseEntitled } from "../../../core/entitledAccess.js";
 import { ErrorCode } from "../../../core/errors.js";
 import {
-  getActiveSchema,
   getDevice,
   getKey,
   getLicense,
   getProduct,
   setDeviceStatus,
 } from "../../../core/data.js";
-import { resolveEffective } from "../../../core/authz.js";
 import { licenseUsable } from "../../../core/devices.js";
-import { tighterMax, tighterMin } from "../../../core/entitlements.js";
 import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   getPortalAccount,
@@ -64,6 +59,8 @@ import {
   type PortalSession,
 } from "./session.js";
 import { handleMagicStart } from "./auth.js";
+import { entitlementView } from "./entitlements.js";
+import { libraryView, productView } from "./library.js";
 import { portalEmailConfigured, sendPortalNotice } from "./email.js";
 import { platformOidcConfig } from "../../../core/platform.js";
 import { portalSecurityHeaders } from "./headers.js";
@@ -126,52 +123,6 @@ function parseJson<T>(value: string | null, fallback: T): T {
   } catch {
     return fallback;
   }
-}
-
-async function visibleCatalogFlags(
-  db: Db,
-  product: string,
-): Promise<Map<string, ConfigEntry>> {
-  const row = await getActiveSchema(db, product);
-  if (!row) return new Map();
-  try {
-    const catalog = new Catalog(JSON.parse(row.catalog_json));
-    return new Map(
-      catalog.entries
-        .filter((entry) => entry.kind === "flag" && entry.userGrant === true)
-        .map((entry) => [entry.key, entry]),
-    );
-  } catch {
-    return new Map();
-  }
-}
-
-async function entitlementView(
-  db: Db,
-  license: PortalLicenseRow,
-  now: number,
-): Promise<Array<{ key: string; label: string; value: unknown }>> {
-  const payload = await resolveEffective(
-    db,
-    license.product,
-    license,
-    null,
-    now,
-    { tighterMin, tighterMax },
-  );
-  const flags = await visibleCatalogFlags(db, license.product);
-  const out: Array<{ key: string; label: string; value: unknown }> = [];
-  for (const [key, entry] of flags) {
-    const managed = payload.entitlements[key];
-    const value = managed?.value ?? entry.default ?? false;
-    if (value === false || value == null) continue;
-    out.push({ key, label: entry.grantLabel ?? entry.label ?? key, value });
-  }
-  const channels = parseJson<string[]>(license.channels_json, []);
-  if (channels.length > 0) {
-    out.push({ key: "channels", label: "Release channels", value: channels });
-  }
-  return out;
 }
 
 function licenseBase(row: PortalLicenseRow): Record<string, unknown> {
@@ -948,6 +899,22 @@ export async function handlePortalApi(
   }
   if (head === "releases")
     return handleReleases(req, env, db, session, rest, now, hooksFor);
+  // PX-W1: the library and the product page (`library.ts`). Reads only.
+  if (head === "library" && rest.length === 0) {
+    if (req.method !== "GET") return err(405, "method_not_allowed");
+    return portalJson(await libraryView(db, session.accountId, now, hooksFor));
+  }
+  if (head === "products" && rest.length === 1 && rest[0]) {
+    if (req.method !== "GET") return err(405, "method_not_allowed");
+    const view = await productView(
+      db,
+      session.accountId,
+      rest[0],
+      now,
+      hooksFor,
+    );
+    return view ? portalJson(view) : notFound();
+  }
   return notFound();
 }
 

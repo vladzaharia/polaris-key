@@ -154,6 +154,9 @@ const FAIL_MODE: Record<string, FailMode> = {
   // P2b-05: the public storefront feeds (AltStore, Obtainium, F-Droid relay, Scoop, Flathub).
   // A D1-read budget per IP, nothing secret behind it.
   distributionFeed: "open",
+  // PX-W1: the portal's media proxy, charged per product and IP on a cache MISS only (the
+  // upstream fetch). Listing art is public; an outage must not blank every library tile.
+  portalMedia: "open",
   // P3-09: the app-updater feeds (WinSparkle, Velopack, App Installer, zsync, the extended
   // appcast and version check). The same D1-read budget, the same reason to fail open.
   updateFeed: "open",

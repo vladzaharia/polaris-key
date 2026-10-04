@@ -149,6 +149,7 @@ export async function dispatchWith(
     case "portalCallback":
     case "portalLogout":
     case "portalMagicVerify":
+    case "portalMedia":
       return handlePortal(req, env, db, url.pathname, { hooksFor });
     case "portalDownload":
       return handlePortal(

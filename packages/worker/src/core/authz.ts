@@ -233,10 +233,11 @@ function resolveDeviceLimit(
 
 /** The seat limit `authorizeDevice` enforces on `license`: its resolved `deviceLimit`
  *  entitlement, else the product default. Exported for the identity attach (P1-07), which must
- *  not move more devices onto a licence than this allows. */
+ *  not move more devices onto a licence than this allows, and for the portal's seat meter
+ *  (PX-W1), which must show the same "of N" this enforces. */
 export async function licenseDeviceLimit(
   db: Db,
-  product: Product,
+  product: Pick<Product, "slug" | "defaultDeviceLimit">,
   license: LicenseRow,
   now: number,
 ): Promise<number> {
