@@ -451,7 +451,8 @@ function StorageFacts({ dry }: { dry: BlobGcDryRun }): React.ReactElement {
       <SettingsRow label="Collector">
         {dry.enabled ? (
           <StatusPill tone="success">
-            On · {formatDuration(dry.graceSeconds * 1000)} grace
+            On · {formatDuration(dry.graceSeconds * 1000).replace(/^for /, "")}{" "}
+            grace
           </StatusPill>
         ) : (
           <StatusPill tone="neutral">Off on this deployment</StatusPill>
