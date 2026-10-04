@@ -14,7 +14,8 @@ this section.
 
 ## Why the routes are root-level
 
-`/login`, `/callback`, `/logout`, `/magic/verify`, `/api/*`, and `/download/<token>` are reserved
+`/login`, `/callback`, `/logout`, `/magic/verify`, `/api/*`, `/download/<token>` and
+`/media/<product>/<asset>` are reserved
 ahead of every product slug and dispatched from the composition root, not from this service's
 product-scoped sub-router. That is a consequence of what the portal _is_: one account can hold
 licenses for several products at once, so there is no single `<product>` to hang these paths
@@ -117,6 +118,25 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
 - **`GET /api/licenses`** / **`GET /api/licenses/<product>/<licenseId>`** — every license linked
   to the account, across every product, with visible entitlements folded in; detail adds keys and
   devices.
+- **`GET /api/library`** — the account's library: one entry per product it holds a license for
+  (portal-enabled products only), with the product's presentation from its `.pkey/distribution`
+  root `listing` (name, developer, tint, website, support links; the product name and nulls
+  without one), the status of its best license (`suspended`, `expired`, `device_limit`,
+  `expires_soon` within 14 days, `active`, first match wins), that license's seats
+  (`deviceLimit` as activation enforces it, `activeSeatCount`, `dormantCount`), how many licenses
+  it holds and when it was added. Art is only ever a same-origin `/media/…` URL.
+- **`GET /api/products/<product>`** — one of those products: the presentation, `services` (each
+  service's own toggle), the status, and every linked license best first with its seats,
+  entitlements and authorized devices, each marked `dormant` once it is past the 90-day dormancy
+  window (a dormant device holds no seat). `404` for a product the account holds nothing for.
+- **`GET /media/<product>/<asset>`** — public, no session: the product's `icon` or `header` art
+  from its listing, fetched by the Worker and served from this origin, because the portal's CSP is
+  `img-src 'self' data:`. Only `https` sources on GitHub-hosted names (`github.com`,
+  `*.githubusercontent.com`), at most three redirects each re-checked, at most 1 MB (icon) or
+  5 MB (header), and only PNG, JPEG, WebP or GIF by their bytes; the answer carries the sniffed
+  type, `nosniff` and a `default-src 'none'; sandbox` policy. Every refusal is the same `404`.
+  With the URL's current `?v=` the answer is immutable for a year, otherwise cached for five
+  minutes.
 - **`DELETE /api/licenses/<product>/<licenseId>/devices/<deviceId>`** — disconnect one of the
   account's own devices. Ownership is checked _before_ the rate-limit charge is spent, so a
   caller who owns nothing on that product cannot spend a budget at all, and the budget it does
