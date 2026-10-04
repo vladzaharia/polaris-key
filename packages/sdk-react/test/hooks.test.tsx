@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { PolarisKeyProvider } from "../src/react/Provider.js";
+import { defaultTheme } from "../src/components/theme.js";
 import {
   useEntitlement,
   useLicense,
@@ -220,7 +221,9 @@ describe("useLicenseGate", () => {
     });
     await waitFor(() => expect(result.current.screen).toBe("ok"));
     expect(result.current.usable).toBe(true);
-    expect(result.current.theme.copy.productName).toBe("Polaris Key");
+    expect(result.current.theme.copy.productName).toBe(
+      defaultTheme.copy.productName,
+    );
     adapter.dispose();
   });
 
