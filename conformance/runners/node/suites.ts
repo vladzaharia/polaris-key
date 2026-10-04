@@ -208,6 +208,7 @@ import {
   selectVariant,
   sliceSource,
   verifyMarker,
+  withFeedDeltas,
   type BlockedState,
   type BundleRefusalReason,
   type ChunkSeed,
@@ -221,6 +222,7 @@ import {
   type VerifyOptions,
   type ZstdPort,
 } from "@polaris-key/client-core";
+import type { FeedDeltas } from "@polaris-key/protocol/update";
 import type { FilesIndexDoc, PackVariant } from "@polaris-key/protocol/packs";
 
 type TypV3 =
@@ -351,6 +353,8 @@ interface FeedContentCase extends NonWire {
   expect: {
     verify: "ok";
     content: { packSets: unknown; packFloors: unknown; revocations: unknown };
+    /** plans/P4-29.md §4.1: the delta menu, on the appended cases only; absent means null. */
+    deltas?: unknown;
   };
 }
 
@@ -637,6 +641,19 @@ export interface PlanMatrix {
     /** plans/P4-10.md §4.4: absent (null) on the cases before P4-10. */
     chunkIndex?: PlanChunkIndex | null;
     expect: PlanTarget;
+  }[];
+  /** plans/P4-29.md §4.3: the feed's delta menu, merged, mapped and planned. */
+  feedDeltaCases: {
+    id: string;
+    description: string;
+    recordSha256: string;
+    variant: PackVariant;
+    filesIndex: FilesIndexDoc | null;
+    chunkIndex: PlanChunkIndex | null;
+    deltas: FeedDeltas | null;
+    installed: PlanInput["installed"];
+    caps: PlanInput["caps"];
+    expect: { feedIds: string[]; target: PlanTarget; plan: unknown };
   }[];
 }
 
@@ -1498,6 +1515,33 @@ export function defineCorpusSuites({
     }
   });
 
+  // @pkey-feature packs.delta.feed
+  describe(`plan-matrix v${planMatrix.planMatrixVersion} — feed-offered deltas (plans/P4-29.md §4.3)`, () => {
+    it("has every feedDeltaCases vector", () => {
+      expect(planMatrix.feedDeltaCases.length).toBe(13);
+    });
+    for (const c of planMatrix.feedDeltaCases) {
+      it(`feed delta ${c.id}`, () => {
+        const merged = withFeedDeltas(c.variant, c.deltas);
+        const target = planTarget(
+          merged.variant,
+          c.recordSha256,
+          c.filesIndex,
+          c.chunkIndex,
+        );
+        const planned = plan({
+          target,
+          installed: c.installed,
+          caps: c.caps,
+        });
+        expect(
+          { feedIds: merged.feedIds, target, plan: planned },
+          c.description,
+        ).toEqual(c.expect);
+      });
+    }
+  });
+
   // ── plans/P3-01.md §5 order 1 (P3-05) — the full verifiers and the rest of the update matrix ──
 
   // @pkey-feature update.feed
@@ -1625,7 +1669,7 @@ export function defineCorpusSuites({
   // @pkey-feature update.content
   describe(`conformance corpus v${corpus.corpusVersion} — feed content members (plans/P4-13.md §2.2)`, () => {
     it("has every feedContentCases vector", () => {
-      expect(corpus.feedContentCases.length).toBe(48);
+      expect(corpus.feedContentCases.length).toBe(76);
     });
     for (const c of corpus.feedContentCases) {
       it(c.id, async () => {
@@ -1639,7 +1683,10 @@ export function defineCorpusSuites({
         });
         expect(r, c.description).toMatchObject({ ok: true });
         if (!r.ok) return;
-        expect(r.content, c.description).toEqual(c.expect.content);
+        const { deltas, ...content } = r.content;
+        expect(content, c.description).toEqual(c.expect.content);
+        // @pkey-feature packs.delta.feed — plans/P4-29.md §4.1: every case pins the menu.
+        expect(deltas, c.description).toEqual(c.expect.deltas ?? null);
       });
     }
   });
@@ -1764,7 +1811,12 @@ export function defineCorpusSuites({
             checkFreshness: c.checkFreshness!,
           });
           expect(r, c.description).toMatchObject({ ok: true });
-          if (r.ok) expect(r.content, c.description).toEqual(c.expect.content);
+          if (r.ok) {
+            // plans/P4-29.md §2.2: these feeds carry no delta menu.
+            const { deltas, ...content } = r.content;
+            expect(content, c.description).toEqual(c.expect.content);
+            expect(deltas, c.description).toBeNull();
+          }
           return;
         }
         if (c.mode === "revocation") {
@@ -1902,6 +1954,14 @@ export interface ContentCorpus {
     repair?: boolean;
     objects: Record<string, ContentRef>;
     skipBaseCheck?: boolean;
+    expect: unknown;
+  })[];
+  /** plans/P4-29.md §4.4. */
+  feedDeltaApplyCases: (ContentCase & {
+    variant: PackVariant;
+    deltas: FeedDeltas;
+    installed: { payload: ContentRef; files: ContentRef };
+    objects: Record<string, ContentRef>;
     expect: unknown;
   })[];
 }
@@ -2175,6 +2235,35 @@ export function defineContentSuites({
                     skipBaseCheck: c.skipBaseCheck === true,
                   })
                 : await applyFile(c.variant, c.delta ?? null, installed, ports);
+          expect(r.verdict, c.description).toEqual(c.expect);
+        });
+      }
+    });
+
+    // @pkey-feature packs.delta.feed
+    describe(`content corpus v${content.contentCorpusVersion} — feedDeltaApplyCases [${backend.label}] (plans/P4-29.md §4.4)`, () => {
+      it("has every feedDeltaApplyCases vector", () => {
+        expect(content.feedDeltaApplyCases.length).toBe(4);
+      });
+      for (const c of content.feedDeltaApplyCases) {
+        it(`feed delta apply ${c.id}`, async () => {
+          const store = new Map<string, Uint8Array>();
+          for (const [h, src] of Object.entries(c.objects))
+            store.set(h, await materialise(src, blobs, decode));
+          const merged = withFeedDeltas(c.variant, c.deltas);
+          expect(merged.feedIds.length, c.description).toBe(1);
+          const k = (merged.variant.deltas ?? []).findIndex(
+            (d) =>
+              d.scope === "payload" && d.artifact.sha256 === merged.feedIds[0],
+          );
+          const base = await materialise(c.installed.payload, blobs, decode);
+          const r = await applyDelta(merged.variant, k, memorySource(base), {
+            objects: async (h) => {
+              const b = store.get(h);
+              return b === undefined ? null : memorySource(b);
+            },
+            zstd: backend.zstd,
+          });
           expect(r.verdict, c.description).toEqual(c.expect);
         });
       }

@@ -1121,6 +1121,48 @@ export function refPlanTarget(
 }
 
 /** `packSetId(entries)` (§2.9): null for a bad id, a bad hash or a duplicate pack. */
+/**
+ * plans/P4-29.md §2.4 step 2: `withFeedDeltas(variant, deltas)`, from first principles. The
+ * variant unchanged (empty `feedIds`) when the menu is null, the variant is unusable or not a
+ * `container`, or the menu has no key equal to its payload hash; otherwise each entry of that
+ * key, in feed order, appended to a copy of `deltas` unless its artifact is an existing delta id.
+ */
+export function refWithFeedDeltas(
+  variant: Record<string, any>,
+  deltas: Record<string, any[]> | null,
+): { variant: Record<string, any>; feedIds: string[] } {
+  if (
+    deltas === null ||
+    !usableVariant(variant) ||
+    variant.files.layout !== "container" ||
+    !has(deltas, variant.payload.sha256)
+  )
+    return { variant, feedIds: [] };
+  const merged: Record<string, any>[] = [...(variant.deltas ?? [])];
+  const ids = new Set<string>();
+  for (const d of merged) {
+    if (d.scope === "payload" && isObj(d.artifact))
+      ids.add(d.artifact.sha256 as string);
+    else if (d.scope === "files" && isObj(d.patch))
+      ids.add(d.patch.sha256 as string);
+  }
+  const feedIds: string[] = [];
+  for (const e of deltas[variant.payload.sha256]!) {
+    if (ids.has(e.artifact.sha256)) continue;
+    ids.add(e.artifact.sha256);
+    merged.push({
+      method: e.method,
+      scope: "payload",
+      from: e.from,
+      memBytes: e.memBytes,
+      artifact: { sha256: e.artifact.sha256, bytes: e.artifact.bytes },
+    });
+    feedIds.push(e.artifact.sha256);
+  }
+  if (feedIds.length === 0) return { variant, feedIds };
+  return { variant: { ...variant, deltas: merged }, feedIds };
+}
+
 export function refPackSetId(
   entries: readonly { packId: unknown; releaseSha256: unknown }[],
 ): string | null {
@@ -3847,6 +3889,131 @@ export function buildContentCorpus(
       fail(`refs.json ${n} is inconsistent with the shipped indexes`);
   }
 
+  // plans/P4-29.md §4.4: `feedDeltaApplyCases`, the target-hash proof. The record's own deltas
+  // are removed and the feed offers the committed v1 → v2 frame; the runner merges, then applies
+  // the merged variant's feed delta with `applyDelta`.
+  const feedVariant = (sha256 = S2): Record<string, any> => {
+    const v = clone(fileV(levels2)) as Record<string, any>;
+    v.deltas = [];
+    v.payload = { ...v.payload, sha256 };
+    return v;
+  };
+  const frame = lv2.deltas.find(
+    (d: Record<string, any>) => d.scope === "payload",
+  )!;
+  const feedMenu = (to = S2) => ({
+    [to]: [
+      {
+        from: S1,
+        method: PATCH_METHOD,
+        scope: "payload",
+        memBytes: frame.memBytes,
+        artifact: {
+          sha256: frame.artifact.sha256,
+          bytes: frame.artifact.bytes,
+        },
+      },
+    ],
+  });
+  const frameObjects = (mutateFrame = false): Record<string, ObjectSource> => ({
+    [sha("deltas/v1-v2.pf.zst")]: blobRef(
+      "deltas/v1-v2.pf.zst",
+      mutateFrame ? { mutate: [{ op: "xor", offset: 100, value: 1 }] } : {},
+    ),
+  });
+  const altered = sha256Hex("p4-29 altered target payload");
+  const feedDeltaApplyCases: {
+    id: string;
+    description: string;
+    variant: Record<string, unknown>;
+    deltas: Record<string, unknown[]>;
+    installed: { payload: BlobCaseRef; files: BlobCaseRef };
+    objects: Record<string, ObjectSource>;
+    expect: Record<string, unknown>;
+  }[] = [
+    {
+      id: "feed-delta-apply-ok",
+      description:
+        "The feed offers the committed v1 → v2 frame for a record that carries no delta: merged, applied over the installed v1, and the output is the record's v2 payload.",
+      variant: feedVariant(),
+      deltas: feedMenu(),
+      installed: installedV1,
+      objects: frameObjects(),
+      expect: {},
+    },
+    {
+      id: "feed-delta-apply-artifact-mismatch",
+      description:
+        "The stored frame does not match the menu entry's artifact SHA-256: refused before decoding.",
+      variant: feedVariant(),
+      deltas: feedMenu(),
+      installed: installedV1,
+      objects: frameObjects(true),
+      expect: {},
+    },
+    {
+      id: "feed-delta-apply-base-mismatch",
+      description:
+        "The installed base has one flipped byte, so its SHA-256 is not the menu entry's `from`: refused before decoding.",
+      variant: feedVariant(),
+      deltas: feedMenu(),
+      installed: {
+        ...installedV1,
+        payload: decoded("payload/v1.full.zst", {
+          mutate: [{ op: "xor", offset: reuseFlip, value: 1 }],
+        }),
+      },
+      objects: frameObjects(),
+      expect: {},
+    },
+    {
+      id: "feed-delta-apply-target-mismatch",
+      description:
+        "The record's `payload.sha256` is altered and the menu is keyed to the altered hash: the correct frame decodes to v2, which fails the check against the record.",
+      variant: feedVariant(altered),
+      deltas: feedMenu(altered),
+      installed: installedV1,
+      objects: frameObjects(),
+      expect: {},
+    },
+  ];
+  const wantFeedApply: Record<string, string | null> = {
+    "feed-delta-apply-ok": null,
+    "feed-delta-apply-artifact-mismatch": "delta-artifact-mismatch",
+    "feed-delta-apply-base-mismatch": "delta-base-mismatch",
+    "feed-delta-apply-target-mismatch": "delta-apply-failed",
+  };
+  for (const c of feedDeltaApplyCases) {
+    const merged = refWithFeedDeltas(
+      clone(c.variant),
+      clone(c.deltas) as Record<string, any[]>,
+    );
+    if (merged.feedIds.length !== 1)
+      fail(`${c.id}: the menu must merge one delta`);
+    const k = (merged.variant.deltas as Record<string, any>[]).findIndex(
+      (d) => d.scope === "payload" && d.artifact.sha256 === merged.feedIds[0],
+    );
+    const r = runApplyCase(ref, set, {
+      id: c.id,
+      description: c.description,
+      strategy: "delta",
+      variant: merged.variant,
+      delta: k,
+      installed: c.installed,
+      objects: c.objects,
+      expect: {},
+    });
+    c.expect = r.verdict;
+    const want = wantFeedApply[c.id];
+    if (want === null) {
+      if (r.verdict.ok !== true || !r.out || !eq(r.out, set.v2))
+        fail(`${c.id} must rebuild v2: ${JSON.stringify(r.verdict)}`);
+    } else if (r.verdict.ok !== false || r.verdict.error !== want)
+      fail(
+        `${c.id} must fail with ${String(want)}: ${JSON.stringify(r.verdict)}`,
+      );
+  }
+
   const blobsTable: Record<string, { size: number; sha256: string }> = {};
   for (const n of [...set.blobs.keys()].sort(compareBytes)) {
     const b = set.blobs.get(n)!;
@@ -3855,7 +4022,7 @@ export function buildContentCorpus(
   const cases = {
     contentCorpusVersion: 2,
     description:
-      "The content corpus (plans/P4-01.md §4.4; plans/P4-10.md §4.3; WIRE-CONTRACT-V4 §2.6): the files index and its path rules, the chunk index (`pkey-chunks/1`), full, delta, file and chunk apply with negative cases, `packSetId`, the content stamp and `frameWindow`. Generated by `tools/gen-content-corpus.ts` from the committed inputs in `blobs/` (never compressed by a normal run): do not hand-edit. A runner first checks every file under `blobs/` against `blobs`, a harness error otherwise. `<ref>` is `{blob, codec?, size?, mutate?}`: the named blob, decoded when `codec` is `zstd` (to `size` bytes), then mutated in order (`truncate {length}`, `xor {offset, value}`, and the little-endian `putU16`, `putU32`, `putU64 {offset, value}`, a `putU64` value below 2^53). An apply case's `installed` is materialised (decoded, then mutated): its files are `installed.files`'s entries sliced from `installed.payload`, each with the SHA-256 the index claims. `objects` is the blob store by stored SHA-256, read raw (mutations apply to the stored bytes): the fetcher answers `objects[sha256]`, a `<ref>` or `{text}` (UTF-8); a chunk case's range request answers the object sliced to the range and clipped at its end. `variant` holds the record members the applier reads; `delta` indexes `variant.deltas` (a `payload` delta for `strategy: delta`, a `files` set for `strategy: file`; absent means the `file` strategy). A `strategy: chunk` case carries `seeds` (each `{payload, index}`, two `<ref>`s, in order) and `repair`; its verdict is `{ok: true, sha256, size, fetchedChunks, fetchedBytes, requests, seedChunks, selfChunks, repairedChunks}` (`requests` counts runs). `chunkIndexCases` pin `parseChunkIndex(stored, chunks, payload)`: `{ok: true, chunks, bundleSizes}` (u64s read as two u32 words and saturated at 2^53) or `{ok: false, error, chunk? | bundle?}`. `skipBaseCheck` is a test-only switch. Verdicts compare by canonical JSON: `{ok: true, …}` with the counters stated, or `{ok: false, error, path? | chunk? | bundle?}`; the first failure wins.",
+      "The content corpus (plans/P4-01.md §4.4; plans/P4-10.md §4.3; WIRE-CONTRACT-V4 §2.6): the files index and its path rules, the chunk index (`pkey-chunks/1`), full, delta, file and chunk apply with negative cases, `packSetId`, the content stamp and `frameWindow`. Generated by `tools/gen-content-corpus.ts` from the committed inputs in `blobs/` (never compressed by a normal run): do not hand-edit. A runner first checks every file under `blobs/` against `blobs`, a harness error otherwise. `<ref>` is `{blob, codec?, size?, mutate?}`: the named blob, decoded when `codec` is `zstd` (to `size` bytes), then mutated in order (`truncate {length}`, `xor {offset, value}`, and the little-endian `putU16`, `putU32`, `putU64 {offset, value}`, a `putU64` value below 2^53). An apply case's `installed` is materialised (decoded, then mutated): its files are `installed.files`'s entries sliced from `installed.payload`, each with the SHA-256 the index claims. `objects` is the blob store by stored SHA-256, read raw (mutations apply to the stored bytes): the fetcher answers `objects[sha256]`, a `<ref>` or `{text}` (UTF-8); a chunk case's range request answers the object sliced to the range and clipped at its end. `variant` holds the record members the applier reads; `delta` indexes `variant.deltas` (a `payload` delta for `strategy: delta`, a `files` set for `strategy: file`; absent means the `file` strategy). A `strategy: chunk` case carries `seeds` (each `{payload, index}`, two `<ref>`s, in order) and `repair`; its verdict is `{ok: true, sha256, size, fetchedChunks, fetchedBytes, requests, seedChunks, selfChunks, repairedChunks}` (`requests` counts runs). `chunkIndexCases` pin `parseChunkIndex(stored, chunks, payload)`: `{ok: true, chunks, bundleSizes}` (u64s read as two u32 words and saturated at 2^53) or `{ok: false, error, chunk? | bundle?}`. `skipBaseCheck` is a test-only switch. `feedDeltaApplyCases` (plans/P4-29.md §4.4) have the payload-delta shape plus the feed's `deltas` menu and no `delta`: the runner merges with `withFeedDeltas(variant, deltas)`, then runs `applyDelta` on the merged variant's delta whose id is `feedIds[0]`. Verdicts compare by canonical JSON: `{ok: true, …}` with the counters stated, or `{ok: false, error, path? | chunk? | bundle?}`; the first failure wins.",
     params: {
       zstd: ZSTD_CLI_VERSION,
       zstdLevel: ZSTD_LEVEL,
@@ -3883,6 +4050,8 @@ export function buildContentCorpus(
     frameWindowCases,
     // plans/P4-19.md §4.1: the data-only rule, appended as the last section.
     dataOnlyCases: buildDataOnlyCases(),
+    // plans/P4-29.md §4.4: the feed's delta menu, appended after it.
+    feedDeltaApplyCases,
   };
 
   const { planMatrix, planRealPins } = buildPlanMatrix(set, records);
@@ -4518,19 +4687,342 @@ function buildPlanMatrix(
 
   // targetCases (§4.5): synthetic variants and indexes of a few entries.
   const tgt = buildTargetCases(set);
+  // plans/P4-29.md §4.3: the feed's delta menu through the merge, the target and the plan.
+  const feedDeltaCases = buildFeedDeltaCases(set, records);
   if ((rows.length as number) !== 28) fail(`plan rows: ${rows.length} != 28`);
   return {
     planMatrix: {
       planMatrixVersion: 2,
       description:
-        'The install planner, variant selection and target mapping (plans/P4-01.md §2.9, §4.5; WIRE-CONTRACT-V4 §11.4, informative). Generated by `tools/gen-content-corpus.ts`; do not hand-edit. `rows` pin `plan(input)`: A7 §4.2 with `requestWeight` (default below; `caps.requestWeight` overrides) and `full` as `{bytes, requests?}` costing `requests ?? 1`; chunk targets and seeds are inline (`records` as `[id, len, clen, bundle, offset]`, `ids`), so the planner never parses an index. Results are verdicts, never exceptions: `{strategy, delta?, transport?, bytes, requests, cost, peakDisk, fallbacks}` or `{error}`. The `plan-real-*` rows are the content set\'s own menu through `planTarget`. `variantCases` pin `selectVariant(variants, prefs)` (`{index}` or `{error: "pack-no-variant"}`), `targetCases` `planTarget(variant, recordSha256, filesIndex, chunkIndex)`, where `chunkIndex` (`{payloadSize, payloadSha256, records}`, plans/P4-10.md §2.5) is absent, meaning null, on the cases before P4-10. Compare by canonical JSON.',
+        "The install planner, variant selection and target mapping (plans/P4-01.md §2.9, §4.5; WIRE-CONTRACT-V4 §11.4, informative). Generated by `tools/gen-content-corpus.ts`; do not hand-edit. `rows` pin `plan(input)`: A7 §4.2 with `requestWeight` (default below; `caps.requestWeight` overrides) and `full` as `{bytes, requests?}` costing `requests ?? 1`; chunk targets and seeds are inline (`records` as `[id, len, clen, bundle, offset]`, `ids`), so the planner never parses an index. Results are verdicts, never exceptions: `{strategy, delta?, transport?, bytes, requests, cost, peakDisk, fallbacks}` or `{error}`. The `plan-real-*` rows are the content set's own menu through `planTarget`. `variantCases` pin `selectVariant(variants, prefs)` (`{index}` or `{error: \"pack-no-variant\"}`), `targetCases` `planTarget(variant, recordSha256, filesIndex, chunkIndex)`, where `chunkIndex` (`{payloadSize, payloadSha256, records}`, plans/P4-10.md §2.5) is absent, meaning null, on the cases before P4-10. Compare by canonical JSON. `feedDeltaCases` (plans/P4-29.md §4.3, appended) pin the feed's delta menu: `withFeedDeltas(variant, deltas)` → `{variant, feedIds}`, then `planTarget(merged, recordSha256, filesIndex, chunkIndex)` and `plan({target, installed, caps})`; `expect` is `{feedIds, target, plan}`.",
       requestWeight: PLAN_REQUEST_WEIGHT,
       rows,
       variantCases,
       targetCases: tgt,
+      feedDeltaCases,
     },
     planRealPins,
   };
+}
+
+// ── plans/P4-29.md §4.3: `feedDeltaCases` ─────────────────────────────────────────────────────
+
+function buildFeedDeltaCases(
+  set: ContentSet,
+  records: ContentRecords,
+): Record<string, unknown>[] {
+  const ref = (c: string, bytes: number, size: number, codec = "zstd") => ({
+    sha256: H(c),
+    bytes,
+    size,
+    codec,
+  });
+  const payload = { size: 3000, sha256: H("a") };
+  const filesIndex = (layout: string): FilesIndex => ({
+    format: FILES_FORMAT,
+    layout,
+    payload,
+    files: [
+      {
+        path: "a.bin",
+        ...(layout === "container" ? { offset: 0 } : {}),
+        size: 1000,
+        sha256: H("1"),
+        blob: { sha256: H("4"), bytes: 400, codec: "zstd" },
+      },
+      {
+        path: "b.bin",
+        ...(layout === "container" ? { offset: 1000 } : {}),
+        size: 2000,
+        sha256: H("2"),
+        blob: { sha256: H("2"), bytes: 2000, codec: "none" },
+      },
+    ],
+  });
+  // The record's own payload delta (from H("0")) and the feed's entry (from H("5")).
+  const recordDelta = () => ({
+    method: PATCH_METHOD,
+    scope: "payload",
+    from: H("0"),
+    memBytes: 6000,
+    artifact: { sha256: H("d"), bytes: 500 },
+  });
+  const feedEntry = (o: Record<string, unknown> = {}) => ({
+    from: H("5"),
+    method: PATCH_METHOD,
+    scope: "payload",
+    memBytes: 6000,
+    artifact: { sha256: H("8"), bytes: 400 },
+    ...o,
+  });
+  const container = (
+    deltas: unknown[] = [recordDelta()],
+  ): Record<string, any> => ({
+    variant: {},
+    payload,
+    full: ref("b", 1500, 3000),
+    files: {
+      format: FILES_FORMAT,
+      layout: "container",
+      ...ref("c", 200, 600),
+      gaps: ref("9", 0, 0, "none"),
+    },
+    deltas,
+  });
+  const inst = (from: string) => ({
+    release: H("6"),
+    payloadSha256: from,
+    files: [H("1")],
+    chunks: null,
+  });
+  const caps = (): Record<string, any> => planBase().caps;
+  const out: Record<string, unknown>[] = [];
+  const add = (
+    id: string,
+    description: string,
+    c: {
+      variant: Record<string, any>;
+      deltas: Record<string, unknown[]> | null;
+      installed: Record<string, unknown>[];
+      caps?: Record<string, any>;
+      filesIndex?: FilesIndex | null;
+      chunkIndex?: PlanChunkIndex | null;
+      recordSha256?: string;
+    },
+    check: (e: { feedIds: string[]; plan: Record<string, any> }) => boolean,
+  ): void => {
+    const recordSha256 = c.recordSha256 ?? H("7");
+    const fi =
+      c.filesIndex === undefined ? filesIndex("container") : c.filesIndex;
+    const chunkIndex = c.chunkIndex ?? null;
+    const capsV = c.caps ?? caps();
+    const merged = refWithFeedDeltas(clone(c.variant), clone(c.deltas));
+    const target = refPlanTarget(merged.variant, recordSha256, fi, chunkIndex);
+    const planned = refPlan({
+      target,
+      installed: c.installed,
+      caps: capsV,
+    } as Record<string, Json>);
+    const expect = { feedIds: merged.feedIds, target, plan: planned };
+    if (
+      !check({ feedIds: merged.feedIds, plan: planned as Record<string, any> })
+    )
+      fail(
+        `feedDeltaCases ${id}: ${JSON.stringify(expect.feedIds)} ${JSON.stringify(planned)}`,
+      );
+    out.push({
+      id,
+      description,
+      variant: c.variant,
+      recordSha256,
+      filesIndex: fi,
+      chunkIndex,
+      deltas: c.deltas,
+      installed: c.installed,
+      caps: capsV,
+      expect,
+    });
+  };
+  const menu = (...entries: Record<string, unknown>[]) => ({
+    [H("a")]: entries,
+  });
+
+  add(
+    "feed-delta-only-candidate",
+    "No record delta; the feed offers one from the installed payload: the feed delta is planned.",
+    {
+      variant: container([]),
+      deltas: menu(feedEntry({ from: H("0") })),
+      installed: [inst(H("0"))],
+    },
+    (e) =>
+      e.feedIds.length === 1 &&
+      e.plan.strategy === "delta" &&
+      e.plan.delta === H("8"),
+  );
+  add(
+    "feed-delta-beats-unreachable-record-delta",
+    "The record's delta starts from a payload this device does not hold; the feed's starts from the one it does.",
+    {
+      variant: container(),
+      deltas: menu(feedEntry()),
+      installed: [inst(H("5"))],
+    },
+    (e) => e.plan.strategy === "delta" && e.plan.delta === H("8"),
+  );
+  add(
+    "feed-delta-tie-record-wins",
+    "A record delta and a feed delta of equal cost, both bases installed: the record's keeps the lower order, so CI wins the tie and the feed delta is the next fallback.",
+    {
+      variant: container(),
+      deltas: menu(feedEntry({ artifact: { sha256: H("8"), bytes: 500 } })),
+      installed: [inst(H("0")), inst(H("5"))],
+    },
+    (e) =>
+      e.plan.strategy === "delta" &&
+      e.plan.delta === H("d") &&
+      e.plan.fallbacks[0].delta === H("8"),
+  );
+  add(
+    "feed-delta-duplicate-id-dropped",
+    "A feed entry whose artifact is the record delta's id is not appended: the record delta wins.",
+    {
+      variant: container(),
+      deltas: menu(feedEntry({ artifact: { sha256: H("d"), bytes: 500 } })),
+      installed: [inst(H("5"))],
+    },
+    (e) => e.feedIds.length === 0 && e.plan.strategy !== "delta",
+  );
+  add(
+    "feed-delta-other-target-ignored",
+    "The menu offers a delta to another payload only: the variant is unchanged.",
+    {
+      variant: container([]),
+      deltas: { [H("b")]: [feedEntry()] },
+      installed: [inst(H("5"))],
+    },
+    (e) => e.feedIds.length === 0 && e.plan.strategy !== "delta",
+  );
+  {
+    const tree = container([]);
+    tree.files = {
+      format: FILES_FORMAT,
+      layout: "tree",
+      ...ref("c", 200, 600),
+    };
+    add(
+      "feed-delta-tree-variant-ignored",
+      "A tree variant takes no feed delta (a `payload` delta needs a container).",
+      {
+        variant: tree,
+        deltas: menu(feedEntry()),
+        installed: [inst(H("5"))],
+        filesIndex: filesIndex("tree"),
+      },
+      (e) => e.feedIds.length === 0 && e.plan.strategy !== "delta",
+    );
+  }
+  {
+    const bad = container([]);
+    bad.files.layout = "squashfs";
+    add(
+      "feed-delta-unusable-variant",
+      "An unusable variant (an unknown layout) takes no feed delta and maps to no candidate.",
+      { variant: bad, deltas: menu(feedEntry()), installed: [inst(H("5"))] },
+      (e) => e.feedIds.length === 0 && e.plan.error === "plan-no-strategy",
+    );
+  }
+  add(
+    "feed-delta-over-mem-budget",
+    "The feed delta's `memBytes` is above the memory budget: merged, never a candidate; `file` or `full` installs instead.",
+    {
+      variant: container([]),
+      deltas: menu(feedEntry({ memBytes: 64 * 2 ** 20 + 1 })),
+      installed: [inst(H("5"))],
+    },
+    (e) =>
+      e.feedIds.length === 1 &&
+      ["file", "full", "chunk"].includes(e.plan.strategy),
+  );
+  add(
+    "feed-delta-unknown-method",
+    "A feed entry of an unknown method (`hdiffpatch`) is merged, and the planner's `patchMethods` finds it infeasible.",
+    {
+      variant: container([]),
+      deltas: menu(feedEntry({ method: "hdiffpatch" })),
+      installed: [inst(H("5"))],
+    },
+    (e) => e.feedIds.length === 1 && e.plan.strategy !== "delta",
+  );
+  add(
+    "feed-delta-base-not-installed",
+    "The feed delta's base is not installed: merged, never a candidate.",
+    {
+      variant: container([]),
+      deltas: menu(feedEntry()),
+      installed: [inst(H("3"))],
+    },
+    (e) => e.feedIds.length === 1 && e.plan.strategy !== "delta",
+  );
+  {
+    const c = caps();
+    c.strategies = ["chunk", "file", "full"];
+    add(
+      "feed-delta-no-delta-strategy",
+      "A host without the `delta` strategy: the feed delta is merged and never a candidate.",
+      {
+        variant: container([]),
+        deltas: menu(feedEntry()),
+        installed: [inst(H("5"))],
+        caps: c,
+      },
+      (e) => e.feedIds.length === 1 && e.plan.strategy !== "delta",
+    );
+  }
+  add(
+    "feed-delta-null-menu",
+    "No usable menu (`deltas` null): the record's own menu only.",
+    { variant: container(), deltas: null, installed: [inst(H("0"))] },
+    (e) => e.feedIds.length === 0 && e.plan.delta === H("d"),
+  );
+  {
+    // The content set's v1 → v2 pair: `djdl.levels@1.2.0` (v2 with its chunk index) with its
+    // record payload delta removed, and P4-17's measured level-9 frame offered by the feed.
+    const v1Rec = records.get("djdl.levels@1.0.0");
+    const v3Rec = records.get("djdl.levels@1.2.0");
+    const v = clone((v3Rec.doc.variants as Record<string, any>[])[0]!);
+    v.deltas = (v.deltas as Record<string, any>[]).filter(
+      (d) => d.scope !== "payload",
+    );
+    const S1 = set.c1.payload.sha256;
+    const ci = set.chunks.v2;
+    add(
+      "feed-delta-real-v1-v2",
+      "The content set's v1 → v2 pair (`djdl.levels@1.2.0` with its record payload delta removed, v1 installed with its chunk ids and files) and P4-17's measured lazy frame (325,258 bytes, level 9) offered by the feed: the feed delta beats `chunk`, `file` and `full`.",
+      {
+        variant: v,
+        recordSha256: v3Rec.sha256,
+        filesIndex: set.c2,
+        chunkIndex: {
+          payloadSize: ci.payloadSize,
+          payloadSha256: ci.payloadSha256,
+          records: ci.records.map((r) => [...r]),
+        },
+        deltas: {
+          [v.payload.sha256]: [
+            {
+              from: S1,
+              method: PATCH_METHOD,
+              scope: "payload",
+              memBytes: set.c1.payload.size + v.payload.size,
+              artifact: {
+                sha256:
+                  "a618117da98f3766005409376dd214a4a7b3b7dfd62dc5e53d903ba76d09586a",
+                bytes: 325258,
+              },
+            },
+          ],
+        },
+        installed: [
+          {
+            release: v1Rec.sha256,
+            payloadSha256: S1,
+            chunks: { ids: set.chunks.v1.records.map((r) => r[0]) },
+            files: set.c1.files.map((f) => f.sha256),
+          },
+        ],
+      },
+      (e) =>
+        e.feedIds.length === 1 &&
+        e.plan.strategy === "delta" &&
+        e.plan.delta === e.feedIds[0] &&
+        (e.plan.fallbacks as Record<string, any>[]).some(
+          (f) => f.strategy === "chunk",
+        ),
+    );
+  }
+  if (out.length !== 13) fail(`feedDeltaCases: ${out.length} != 13`);
+  return out;
 }
 
 function buildTargetCases(set: ContentSet): Record<string, unknown>[] {

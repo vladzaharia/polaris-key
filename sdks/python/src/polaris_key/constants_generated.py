@@ -596,6 +596,7 @@ class Feature:
     PACKS_RECORD: Final = "packs.record"
     PACKS_REVOKE: Final = "packs.revoke"
     PACKS_DELEGATION: Final = "packs.delegation"
+    PACKS_DELTA_FEED: Final = "packs.delta.feed"
     PACKS_PLAN: Final = "packs.plan"
     PACKS_INDEX_FILES: Final = "packs.index.files"
     PACKS_INDEX_CHUNKS: Final = "packs.index.chunks"
@@ -666,6 +667,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "packs.record",
     "packs.revoke",
     "packs.delegation",
+    "packs.delta.feed",
     "packs.plan",
     "packs.index.files",
     "packs.index.chunks",
@@ -1562,6 +1564,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "packs.record": CapabilityRow("implemented", "release", ()),
         "packs.revoke": CapabilityRow("implemented", "release", ()),
         "packs.delegation": CapabilityRow("implemented", "release", ()),
+        "packs.delta.feed": CapabilityRow("planned", "release", ()),
         "packs.plan": CapabilityRow("implemented", "release", ()),
         "packs.index.files": CapabilityRow("implemented", "release", ()),
         "packs.index.chunks": CapabilityRow("implemented", "release", ()),
@@ -1589,4 +1592,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "73594026fc40fc49cc2e5367fc6961fad8ffe12884f023de41a60f1fe8346c0a"
+CAPABILITY_DIGEST: Final[str] = "a0208fc3cd330095c61411fb54679ca8c61b7e0eeea33c8c6eb6e94918e8ce97"

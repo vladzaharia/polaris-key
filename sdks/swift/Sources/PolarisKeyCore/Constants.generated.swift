@@ -471,6 +471,7 @@ public enum Feature {
     public static let packsRecord = "packs.record"
     public static let packsRevoke = "packs.revoke"
     public static let packsDelegation = "packs.delegation"
+    public static let packsDeltaFeed = "packs.delta.feed"
     public static let packsPlan = "packs.plan"
     public static let packsIndexFiles = "packs.index.files"
     public static let packsIndexChunks = "packs.index.chunks"
@@ -541,6 +542,7 @@ public let FEATURE_VALUES: [String] = [
     "packs.record",
     "packs.revoke",
     "packs.delegation",
+    "packs.delta.feed",
     "packs.plan",
     "packs.index.files",
     "packs.index.chunks",
@@ -1276,6 +1278,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "packs.record": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.revoke": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.delegation": CapabilityRow(status: "implemented", service: "release", na: []),
+    "packs.delta.feed": CapabilityRow(status: "planned", service: "release", na: []),
     "packs.plan": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.index.files": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.index.chunks": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -1302,4 +1305,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "9a1504edba5d1830d162faa8c558d585334f103b1a42993d5218a6bfd13387e8"
+public let CAPABILITY_DIGEST = "a01bed922eef8e90abe53f9610bd4c22aef28c7c253d08c6be43a49a8fef8d33"

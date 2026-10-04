@@ -38,7 +38,7 @@ final class ContentDecisionConformanceTests: XCTestCase {
 
     func testAllFeedContentCases() throws {
         let list = try XCTUnwrap(cases()["feedContentCases"]?.arrayValue)
-        XCTAssertEqual(list.count, 48)
+        XCTAssertEqual(list.count, 76)
         for raw in list {
             let c = try XCTUnwrap(raw.objectValue)
             let id = c["id"]!.stringValue!
