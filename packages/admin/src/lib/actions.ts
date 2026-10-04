@@ -75,6 +75,14 @@ export const ACTION_LEVELS = {
   "signing.breakGlassActivate": 3,
   "kek.reseal": 3,
   "portalAccount.delete": 3,
+
+  // Release · channels and yanks (ADMIN.md §6.3), levelled by §5.2's definitions: an unyank and a
+  // pack floor change what devices are offered and can be undone (L1); lowering or clearing a
+  // rollback floor re-opens a downgrade the floor exists to stop (L2).
+  "release.unyank": 1,
+  "channel.setPackFloor": 1,
+  "channel.lowerFloor": 2,
+  "channel.clearFloor": 2,
 } as const satisfies Record<string, ActionLevel>;
 
 export type ActionId = keyof typeof ACTION_LEVELS;

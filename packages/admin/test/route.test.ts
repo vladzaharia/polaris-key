@@ -317,15 +317,11 @@ describe("pages that are not built yet redirect to their host", () => {
     },
   );
 
-  it("a record that is not built yet goes to its collection", () => {
-    // The tier record is built (chunk 6): it parses as a record and stays put.
+  it("every record is built: the tier record parses as a record and stays put (chunk 6)", () => {
     expect(parseLocation("#/p/djdl/license/tiers/t1").redirect).toBeUndefined();
     expect(
       parseLocation("#/p/djdl/license/tiers/t1/used-by").route,
     ).toMatchObject({ page: "tiers", id: "t1", tab: "used-by" });
-    expect(
-      parseLocation("#/p/djdl/release/releases/rel_1/builds").redirect,
-    ).toBe("#/p/djdl/release/releases");
   });
 
   it("the device drawer is a routed record (chunk 5)", () => {
@@ -336,6 +332,27 @@ describe("pages that are not built yet redirect to their host", () => {
       page: "devices",
       id: "dev_1",
     });
+  });
+
+  it("a built record keeps its id and tab (the release record, chunk 8)", () => {
+    const parsed = parseLocation("#/p/djdl/release/releases/rel_1/builds");
+    expect(parsed.redirect).toBeUndefined();
+    expect(parsed.route).toMatchObject({
+      kind: "product",
+      page: "releases",
+      id: "rel_1",
+      tab: "builds",
+    });
+    // The Release section's pages are all built: none redirects to a host any more.
+    for (const path of [
+      "channels",
+      "content-keys",
+      "compatibility/simulator",
+    ]) {
+      expect(
+        parseLocation(`#/p/djdl/release/${path}`).redirect,
+      ).toBeUndefined();
+    }
   });
 
   it("every host chain ends at a built page in the same scope", () => {

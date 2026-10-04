@@ -9,7 +9,7 @@ declare module "@tanstack/react-table" {
      * below 1280 px (the operator can show it from "Columns").
      */
     priority?: 1 | 2 | 3;
-    /** Hidden until the operator shows it from "Columns", at every width (Licenses' Channels). */
+    /** Hidden until the operator shows it from "Columns", at every width (Licenses' Channels, Deliverables' low-value detail). */
     defaultHidden?: boolean;
     align?: "start" | "center" | "end";
     /** Ids, keys, hashes, versions: mono xs. */

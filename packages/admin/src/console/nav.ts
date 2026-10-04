@@ -373,10 +373,11 @@ export const SECTIONS: NavSection[] = [
         inNav: true,
         ready: true,
         shortcut: "r",
+        // The History tab joins when activity filters (A-2) can scope it to one release.
         record: {
           noun: "Release",
-          tabs: ["builds", "packs", "channels", "history"],
-          ready: false,
+          tabs: ["builds", "packs", "channels", "distribution"],
+          ready: true,
         },
       },
       {
@@ -386,9 +387,7 @@ export const SECTIONS: NavSection[] = [
         icon: Waypoints,
         docs: "/docs/services/release/channels/",
         inNav: true,
-        // The channels panel is part of Releases until the Release chunk (8) promotes it.
-        ready: false,
-        host: "releases",
+        ready: true,
       },
       {
         page: "deliverables",
@@ -420,8 +419,7 @@ export const SECTIONS: NavSection[] = [
         icon: FlaskConical,
         docs: "/docs/services/release/compatibility/",
         inNav: false,
-        ready: false,
-        host: "compatibility",
+        ready: true,
       },
       {
         page: "content-keys",
@@ -430,9 +428,7 @@ export const SECTIONS: NavSection[] = [
         icon: KeySquare,
         docs: "/docs/services/release/packs/",
         inNav: true,
-        // Part of Deliverables until the Release chunk (8) moves it (DLV-5).
-        ready: false,
-        host: "deliverables",
+        ready: true,
       },
     ],
   },
