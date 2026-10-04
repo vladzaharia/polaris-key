@@ -152,7 +152,12 @@ const DEPLOY_COLUMNS: DataColumn<PlatformDeploy>[] = [
     meta: { priority: 2 },
     cell: ({ row }) =>
       row.original.gitSha ? (
-        <Hash value={row.original.gitSha} label="commit" chars={7} />
+        <Hash
+          value={row.original.gitSha}
+          label="commit"
+          chars={7}
+          className="whitespace-nowrap"
+        />
       ) : (
         "—"
       ),
@@ -204,7 +209,7 @@ const DEPLOY_COLUMNS: DataColumn<PlatformDeploy>[] = [
           href={row.original.runUrl}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-1 text-accent-fg underline-offset-4 hover:underline"
+          className="inline-flex items-center gap-1 whitespace-nowrap text-accent-fg underline-offset-4 hover:underline"
         >
           View run
           <ExternalLink aria-hidden className="size-3.5" />
