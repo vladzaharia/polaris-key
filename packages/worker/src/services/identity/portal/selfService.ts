@@ -85,8 +85,12 @@ interface ProductFacts {
 export type KeyClaimVerdict =
   /** Not the shape of a license key at all (`LICENSE_KEY_SHAPE`). Nothing was looked up. */
   | { kind: "invalid" }
-  /** No such product, no such key, the key was replaced or revoked, or its licence is gone. */
-  | { kind: "unknown"; product: ProductFacts | null }
+  /**
+   * No such product, no such key, the key was replaced or revoked, or its licence is gone. Never
+   * carries the product's facts: a well-formed guess must not reveal whether a slug exists, or its
+   * name and branding.
+   */
+  | { kind: "unknown"; product: null }
   /** The product does not manage licences in this portal (portal or key claim switched off). */
   | { kind: "portal_off"; product: ProductFacts }
   /** Already linked to this account. */
@@ -145,9 +149,9 @@ export async function evaluateKeyClaim(
     await hashKey(key, env.KEY_HASH_PEPPER),
   );
   if (!keyRow || keyRow.status !== "active")
-    return { kind: "unknown", product };
+    return { kind: "unknown", product: null };
   const license = await getLicense(db, slug, keyRow.license_id);
-  if (!license) return { kind: "unknown", product };
+  if (!license) return { kind: "unknown", product: null };
 
   const settings = await getPortalProductSettings(db, slug);
   if (

@@ -148,7 +148,8 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   | `portal_off`      | nothing else                                                       | The product manages this license elsewhere (portal or key claim switched off). |
   | `unknown`         | nothing else                                                       | No such key (or it was replaced), or no such product.                          |
 
-  Every answer carries `product` (`slug`, `name`, `branding`; `developerName`, `iconUrl` and
+  Every answer carries `product` (`null` for `unknown`, so a guessed key never reveals whether a
+  product exists; otherwise `slug`, `name`, `branding`; `developerName`, `iconUrl` and
   `headerUrl` are reserved for the library presentation) and `entries`, which is `null` until key
   entries are counted. Nothing is written. A refusal never names the other account or the license.
 
@@ -184,7 +185,7 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
 Five plain booleans, all defaulting **on** for a product that has never written a settings row:
 `portalEnabled`, `oidcEnabled`, `magicEnabled`, `licenseKeyClaimEnabled`, `releasesEnabled`.
 
-Two more default **off** (PX-W5, migration `0062`):
+Two more default **off** (PX-W5, migration `0063`):
 
 - `keyReissueEnabled` — customers may replace a license's key from the portal ("Get a new key").
 - `claimByKey` — a license that carries an email may be added by anyone holding its key. Off is

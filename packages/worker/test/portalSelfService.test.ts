@@ -250,10 +250,11 @@ describe("POST /api/activate/preview (G22)", () => {
       product: null,
     });
 
+    // A well-formed guess on a real product learns nothing about it, not even that it exists.
     const noKey = await preview(env, db, s, mintLicenseKey("djdl"));
     expect(await noKey.json()).toMatchObject({
       verdict: "unknown",
-      product: { slug: "djdl" },
+      product: null,
     });
   });
 
