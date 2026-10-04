@@ -7446,6 +7446,180 @@ paths:
           headers:
             Docker-Distribution-API-Version:
               schema: { type: string, const: registry/2.0 }
+  # ── npm (F-04) ──
+  /npm/{owner}/{escapedName}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: npmPackument
+      tags: [registry]
+      summary: npm packument (registry host only)
+      description: >
+        F-04. The package metadata document of the npm registry API
+        (https://github.com/npm/registry/blob/main/docs/responses/package-metadata.md), for a
+        scoped name escaped the way npm clients send it (`@scope%2fname`; `%2f` and `%2F` are
+        one document, and `/npm/{owner}/{scope}/{name}` is the same route unescaped). Scoped names
+        only, and the scope must be the feed's; anything else is the not-found. The full document
+        (`application/json`) by default; the abbreviated one
+        (`application/vnd.npm.install-v1+json`) when `Accept` lists it first, as installers do.
+        `dist.tarball` is absolute on this host, `dist.integrity` is SHA-512 SRI (SHA-256 when the
+        ingest had no SHA-512), `dist.shasum` SHA-1; `dist-tags` come from the release channels
+        (`stable` is `latest`). npm has no yank: a yanked version stays listed and installable by
+        exact version, leaves every dist-tag and carries `deprecated` (the reason); a deprecated
+        one carries its message. Every read runs the feed's access check before the edge cache.
+      parameters:
+        - $ref: "#/components/parameters/NpmOwner"
+        - name: escapedName
+          in: path
+          required: true
+          description: The scoped package name with its slash escaped, `@scope%2fname`.
+          schema:
+            {
+              type: string,
+              pattern: "^@[a-z0-9][a-z0-9._~-]*%2[fF][a-z0-9][a-z0-9._~-]*$",
+            }
+        - $ref: "#/components/parameters/NpmAccept"
+      responses:
+        "200": { $ref: "#/components/responses/NpmPackument" }
+        "304": { $ref: "#/components/responses/NpmNotModified" }
+        "401": { $ref: "#/components/responses/NpmBasicChallenge" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+    head:
+      operationId: npmPackumentHead
+      tags: [registry]
+      summary: npm packument, headers only (registry host only)
+      description: F-04. As `GET /npm/{owner}/{escapedName}`, with no body.
+      parameters:
+        - $ref: "#/components/parameters/NpmOwner"
+        - {
+            name: escapedName,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+        - $ref: "#/components/parameters/NpmAccept"
+      responses:
+        "200": { description: The packument's headers. }
+        "401": { description: npm's Basic challenge (a non-public feed). }
+        "404": { description: The not-found. }
+  /npm/{owner}/{scope}/{name}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: npmPackumentUnescaped
+      tags: [registry]
+      summary: npm packument, unescaped name (registry host only)
+      description: >
+        F-04. The same document as `/npm/{owner}/{escapedName}`, for a client that sends the
+        scoped name with a literal slash (`@scope/name`).
+      parameters:
+        - $ref: "#/components/parameters/NpmOwner"
+        - $ref: "#/components/parameters/NpmScope"
+        - $ref: "#/components/parameters/NpmName"
+        - $ref: "#/components/parameters/NpmAccept"
+      responses:
+        "200": { $ref: "#/components/responses/NpmPackument" }
+        "304": { $ref: "#/components/responses/NpmNotModified" }
+        "401": { $ref: "#/components/responses/NpmBasicChallenge" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+    head:
+      operationId: npmPackumentUnescapedHead
+      tags: [registry]
+      summary: npm packument, unescaped name, headers only (registry host only)
+      description: F-04. As `GET /npm/{owner}/{scope}/{name}`, with no body.
+      parameters:
+        - $ref: "#/components/parameters/NpmOwner"
+        - $ref: "#/components/parameters/NpmScope"
+        - $ref: "#/components/parameters/NpmName"
+        - $ref: "#/components/parameters/NpmAccept"
+      responses:
+        "200": { description: The packument's headers. }
+        "401": { description: npm's Basic challenge (a non-public feed). }
+        "404": { description: The not-found. }
+  /npm/{owner}/{scope}/{name}/-/{tarball}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: npmTarball
+      tags: [registry]
+      summary: npm tarball (registry host only)
+      description: >
+        F-04. A version's tarball, at the URL its packument's `dist.tarball` names
+        (`name-<version>.tgz`, the conventional path Yarn Berry rebuilds). The content-addressed
+        blob, `application/octet-stream` as an attachment, immutable for a year with the
+        SHA-256 as ETag; clients verify it against `dist.integrity`. A yanked version's tarball
+        is still served (npm has no yank). Also answered under the escaped spelling,
+        `/npm/{owner}/{escapedName}/-/{tarball}`.
+      parameters:
+        - $ref: "#/components/parameters/NpmOwner"
+        - $ref: "#/components/parameters/NpmScope"
+        - $ref: "#/components/parameters/NpmName"
+        - $ref: "#/components/parameters/NpmTarballFile"
+      responses:
+        "200": { $ref: "#/components/responses/NpmTarball" }
+        "304": { $ref: "#/components/responses/NpmNotModified" }
+        "401": { $ref: "#/components/responses/NpmBasicChallenge" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+    head:
+      operationId: npmTarballHead
+      tags: [registry]
+      summary: npm tarball, headers only (registry host only)
+      description: F-04. As `GET /npm/{owner}/{scope}/{name}/-/{tarball}`, with no body and its `Content-Length`.
+      parameters:
+        - $ref: "#/components/parameters/NpmOwner"
+        - $ref: "#/components/parameters/NpmScope"
+        - $ref: "#/components/parameters/NpmName"
+        - $ref: "#/components/parameters/NpmTarballFile"
+      responses:
+        "200": { description: The tarball's headers. }
+        "401": { description: npm's Basic challenge (a non-public feed). }
+        "404": { description: The not-found. }
+  /npm/{owner}/{escapedName}/-/{tarball}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: npmTarballEscaped
+      tags: [registry]
+      summary: npm tarball, escaped name (registry host only)
+      description: >
+        F-04. The same tarball as `/npm/{owner}/{scope}/{name}/-/{tarball}`, under the escaped
+        spelling of the scoped name (`@scope%2fname`).
+      parameters:
+        - $ref: "#/components/parameters/NpmOwner"
+        - {
+            name: escapedName,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+        - $ref: "#/components/parameters/NpmTarballFile"
+      responses:
+        "200": { $ref: "#/components/responses/NpmTarball" }
+        "304": { $ref: "#/components/responses/NpmNotModified" }
+        "401": { $ref: "#/components/responses/NpmBasicChallenge" }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+    head:
+      operationId: npmTarballEscapedHead
+      tags: [registry]
+      summary: npm tarball, escaped name, headers only (registry host only)
+      description: F-04. As `GET /npm/{owner}/{escapedName}/-/{tarball}`, with no body.
+      parameters:
+        - $ref: "#/components/parameters/NpmOwner"
+        - {
+            name: escapedName,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+        - $ref: "#/components/parameters/NpmTarballFile"
+      responses:
+        "200": { description: The tarball's headers. }
+        "401": { description: npm's Basic challenge (a non-public feed). }
+        "404": { description: The not-found. }
 components:
   securitySchemes:
     ciToken:
@@ -7632,6 +7806,40 @@ components:
       description: The same cookie with an empty value and `Max-Age=0`.
       schema: { type: string }
       example: pkey_djdl_session=; Path=/djdl; Max-Age=0; HttpOnly; Secure; SameSite=Lax
+    # ── npm (F-04, the registry host) ──
+    NpmOwner:
+      name: owner
+      in: path
+      required: true
+      description: The feed's owner, a product slug (`polaris-key` for the platform's own packages).
+      schema: { type: string, pattern: "^[a-z0-9][a-z0-9-]*$" }
+    NpmScope:
+      name: scope
+      in: path
+      required: true
+      description: The package's scope with its `@`; it must be the feed's scope.
+      schema: { type: string, pattern: "^@[a-z0-9][a-z0-9._~-]*$" }
+    NpmName:
+      name: name
+      in: path
+      required: true
+      description: The package name without its scope.
+      schema: { type: string, pattern: "^[a-z0-9][a-z0-9._~-]*$" }
+    NpmTarballFile:
+      name: tarball
+      in: path
+      required: true
+      description: "`<name>-<version>.tgz`, as the packument's `dist.tarball` names it."
+      schema: { type: string, pattern: "^[^/]+\\.tgz$" }
+    NpmAccept:
+      name: Accept
+      in: header
+      required: false
+      description: >
+        `application/vnd.npm.install-v1+json` listed first (at a quality at least that of an
+        explicit `application/json`) selects the abbreviated packument; anything else the full
+        one.
+      schema: { type: string }
   responses:
     ChannelPolicyChanged:
       description: The channel's policy after the change.
@@ -7875,6 +8083,39 @@ components:
                     message: release metadata is temporarily unavailable,
                   },
               }
+    # ── npm (F-04, the registry host) ──
+    NpmPackument:
+      description: >
+        The packument. `Vary: Accept`; `cache-control: public, max-age=60,
+        stale-while-revalidate=60` and a strong ETag of the body's SHA-256 on a public feed
+        (`private, no-store` and no ETag otherwise).
+      content:
+        application/json:
+          schema: { type: object, required: [name, dist-tags, versions] }
+        application/vnd.npm.install-v1+json:
+          schema: { type: object, required: [name, dist-tags, versions] }
+    NpmTarball:
+      description: >
+        The tarball's bytes. `content-disposition: attachment`; `cache-control: public,
+        max-age=31536000, immutable` and the SHA-256 as ETag on a public feed.
+      content:
+        application/octet-stream:
+          schema: { type: string, format: binary }
+    NpmNotModified:
+      description: "`If-None-Match` named the answer's ETag."
+    NpmBasicChallenge:
+      description: >
+        The feed is not public, and tier 1 issues no registry credentials:
+        `WWW-Authenticate: Basic realm="pkg.plrs.im"` (the deployment's own registry host name),
+        `cache-control: no-store`.
+      headers:
+        WWW-Authenticate:
+          schema: { type: string }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/FlatError" }
+          examples:
+            unauthorized: { value: { error: unauthorized } }
   schemas:
     CompactJws:
       type: string

@@ -192,6 +192,11 @@ const REGISTRY_SERVER = "https://pkg.plrs.im";
 const REGISTRY_PATHS: Array<[string, string[], string]> = [
   ["/", ["get", "head"], "host"],
   ["/v2/", ["get", "head"], "host"],
+  // F-04: npm (both spellings of a scoped name; the escaped one carries %2f in {escapedName}).
+  ["/npm/{owner}/{escapedName}", ["get", "head"], "npm.packument"],
+  ["/npm/{owner}/{scope}/{name}", ["get", "head"], "npm.packument"],
+  ["/npm/{owner}/{escapedName}/-/{tarball}", ["get", "head"], "npm.tarball"],
+  ["/npm/{owner}/{scope}/{name}/-/{tarball}", ["get", "head"], "npm.tarball"],
 ];
 
 function specMethods(path: string): string[] {
