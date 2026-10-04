@@ -211,7 +211,7 @@ export function Products(): React.ReactElement {
           loading={loading && products.length === 0}
           filterable
           filterPlaceholder="Filter products…"
-          onRowClick={(p) => navigate(r.licenses(p.slug))}
+          onRowClick={(p) => navigate(r.overview(p.slug))}
           empty={
             <EmptyState
               icon={<Boxes aria-hidden />}

@@ -104,6 +104,13 @@ describe("Products view", () => {
     expect(screen.getByText("Manual")).toBeTruthy();
   });
 
+  it("opens a product's Overview when its row is clicked (owner, 2026-10-03)", async () => {
+    window.location.hash = "#/products";
+    renderProducts();
+    await userEvent.click(await screen.findByText("djdl"));
+    await waitFor(() => expect(window.location.hash).toBe("#/p/djdl"));
+  });
+
   it("shows the empty state when there are no products", async () => {
     mockApi.products.mockResolvedValue({ products: [] });
     renderProducts();
