@@ -7,7 +7,7 @@
  *     Reporting API can (`GET /v1beta1/apps:search`, every app the account may access). It is
  *     read at most `MAX_SEARCH_PAGES` pages of 1,000, on the fixed Reporting origin, with
  *     `redirect: "manual"` and a capped body, like every Play call.
- *   - **Track status.** For at most `MAX_TRACK_LOOKUPS` apps (in name order) one short edit is
+ *   - **Track status (opt-in, `?tracks=1`).** For at most `MAX_TRACK_LOOKUPS` apps (in name order) one short edit is
  *     opened, its tracks listed and the edit deleted (`edits.insert` → `edits.tracks.list` →
  *     `edits.delete`, never committed) — the same discipline as the connector's poll: nothing is
  *     held open. Apps past the cap are listed without tracks (`truncated`).
@@ -52,6 +52,9 @@ export interface PlatformPlayOptions {
   now: number;
   fetchImpl?: FetchImpl;
   refresh?: boolean;
+  /** Read each app's tracks (a short, deleted edit per app). Opt-in only — never from the
+   *  assignment path, which needs app ids alone. */
+  tracks?: boolean;
 }
 
 export const MAX_SEARCH_PAGES = 3;
@@ -195,7 +198,9 @@ async function fetchPlayApps(
   for (const [i, a] of found.entries()) {
     let tracks: ReturnType<typeof tracksView> | null = null;
     let tracksError: string | null = null;
-    if (i < MAX_TRACK_LOOKUPS) {
+    if (!o.tracks) {
+      // Not asked for: no edit is opened.
+    } else if (i < MAX_TRACK_LOOKUPS) {
       try {
         tracks = await readTracks(o, a.packageName);
       } catch (e) {
@@ -227,7 +232,8 @@ export async function listPlatformPlayApps(
   return cachedPlatformApps(
     o.env,
     "google-play",
-    ref.version,
+    // The track-status variant is cached apart from the plain list.
+    o.tracks ? `${ref.version}:tracks` : ref.version,
     o.refresh === true,
     async () => {
       try {

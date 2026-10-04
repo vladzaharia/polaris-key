@@ -1180,7 +1180,8 @@ falling back to the team credential when the product has no credential of the ki
 - **Bounded, redirect-free reads.** The listings use each store's fixed host with
   `redirect: "manual"` and capped bodies: App Store Connect `GET /v1/apps` (at most 5 pages of 200,
   versions and TestFlight versions as includes, at most 20 phased-release reads); Play Reporting
-  `apps:search` (at most 3 pages) plus at most 10 short edits that are deleted, never committed;
+  `apps:search` (at most 3 pages) plus, only on an explicit `?tracks=1` and never from the
+  assignment path, at most 10 short edits that are deleted, never committed;
   Partner Center `GET /v1.0/my/applications` (at most 5 pages of 100) plus at most 10 submission
   reads; Steam `GetPartnerAppListForWebAPIKey` on the publisher host (the key in the query string,
   as every Steam call). Results are cached 60 s in KV, keyed by the credential's version marker;
@@ -1191,7 +1192,7 @@ compromise (A1) or a Worker-secret leak hands an attacker every app of the team,
 The admin plane (A4) can assign any visible app to any product, which is the intended power of a
 platform admin; the audit trail is the detection. A Worker secret sits in Cloudflare's secret
 store, outside the KEK and the console's rotation; prefer the console credential and keep the
-secret for bootstrap. The Play listing's short edits share the service account's one-open-edit
+secret for bootstrap. The Play listing's opt-in track read (`?tracks=1`) opens short edits that share the service account's one-open-edit
 slot with that account's product connectors: a listing can invalidate an edit a poll holds at that
 moment (the poll fails and retries next tick). The Steam publisher key travels in query strings to
 Steam's publisher host by Steam's design. Least privilege per store (App Manager team key, the

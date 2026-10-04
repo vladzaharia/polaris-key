@@ -69,9 +69,10 @@ store again.
 - **App Store** — every app of the team, its newest App Store versions with the review and
   release state (`WAITING_FOR_REVIEW`, `PENDING_DEVELOPER_RELEASE`, `READY_FOR_DISTRIBUTION`, …),
   its newest TestFlight versions, and the phased release of a live or pending version.
-- **Google Play** — every app the service account may access, with each track's releases (status,
-  rollout fraction, version codes) for the first ten apps; an app the account cannot edit shows
-  its error instead.
+- **Google Play** — every app the service account may access. Track status (each track's
+  releases: status, rollout fraction, version codes, for the first ten apps) only with
+  `?tracks=1`, because reading it opens and deletes a short edit per app; an app the account
+  cannot edit shows its error instead. Assignment never reads tracks.
 - **Microsoft Store** — every app of the seller, its last published and pending submissions, and
   the pending submission's status.
 - **Steam** — the apps the publisher key may query, plus the operator-entered `steam/appIds`. A

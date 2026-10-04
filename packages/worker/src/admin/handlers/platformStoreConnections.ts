@@ -17,7 +17,7 @@
  *   PUT    /api/platform/store-connections/<store>/settings/<key>   `{value}`
  *   DELETE /api/platform/store-connections/<store>/settings/<key>
  *          A non-secret setting (`app-store` / `teamId`).
- *   GET    /api/platform/store-connections/<store>/apps[?refresh=1]
+ *   GET    /api/platform/store-connections/<store>/apps[?refresh=1][&tracks=1]
  *          Every app the team credential can see, with its distribution status and the product
  *          holding it. Cached briefly in KV (assignments are joined fresh).
  *   PUT    /api/platform/store-connections/<store>/apps/<appId>/product   `{product}`
@@ -105,6 +105,9 @@ export interface ListerOptions {
   actor: PlatformEventActor;
   now: number;
   refresh: boolean;
+  /** Extra per-app detail that costs store calls with side effects (Play's track status, which
+   *  opens and deletes an edit per app). Only on an explicit `?tracks=1`. */
+  tracks: boolean;
 }
 
 /** Each store's apps lister (the store's own bounded, redirect-free client). */
@@ -360,6 +363,7 @@ async function listing(
   store: PlatformStore,
   now: number,
   refresh: boolean,
+  tracks = false,
 ): Promise<PlatformAppsListing | Response> {
   const lister = LISTERS[store];
   if (!lister)
@@ -369,7 +373,14 @@ async function listing(
       `the ${STORE_LABELS[store]} apps listing is not available`,
     );
   try {
-    return await lister({ env, db, actor: actorOf(session), now, refresh });
+    return await lister({
+      env,
+      db,
+      actor: actorOf(session),
+      now,
+      refresh,
+      tracks,
+    });
   } catch (e) {
     if (e instanceof PlatformStoreNotConfigured)
       return err(
@@ -391,10 +402,10 @@ async function appsList(
   store: PlatformStore,
   now: number,
 ): Promise<Response> {
-  const refresh = /^(1|true)$/.test(
-    new URL(req.url).searchParams.get("refresh") ?? "",
-  );
-  const l = await listing(env, db, session, store, now, refresh);
+  const q = new URL(req.url).searchParams;
+  const refresh = /^(1|true)$/.test(q.get("refresh") ?? "");
+  const tracks = /^(1|true)$/.test(q.get("tracks") ?? "");
+  const l = await listing(env, db, session, store, now, refresh, tracks);
   if (l instanceof Response) return l;
   const held = await holders(db, store);
   return adminJson({

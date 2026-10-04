@@ -133,7 +133,17 @@ describe("platform Google Play: auth, sources, secrets", () => {
 describe("platform Google Play: the apps listing", () => {
   it("searches the account's apps and reads each one's tracks through a deleted edit", async () => {
     const w = await teamWorld();
-    const res = await api(w, "GET", "/google-play/apps");
+    // Without the opt-in, no edit is opened at all.
+    const plain = (await bodyOf(await api(w, "GET", "/google-play/apps"))) as {
+      apps: Array<{ appId: string; status: { tracks: unknown } }>;
+    };
+    expect(plain.apps.map((a) => a.appId).sort()).toEqual(
+      [OTHER_PACKAGE, PLAY_PACKAGE].sort(),
+    );
+    expect(plain.apps.every((a) => a.status.tracks === null)).toBe(true);
+    expect(w.fake.calls().some((c) => c.startsWith("POST edits"))).toBe(false);
+
+    const res = await api(w, "GET", "/google-play/apps?tracks=1");
     expect(res.status).toBe(200);
     const body = (await bodyOf(res)) as {
       apps: Array<{
@@ -187,6 +197,8 @@ describe("platform Google Play: assignment and the fallback", () => {
       },
     );
     expect(res.status).toBe(200);
+    // The assignment needed app ids only: no edit was opened for it.
+    expect(w.fake.calls().some((c) => c.startsWith("POST edits"))).toBe(false);
     expect(await platformPin(w.db, "google-play.service-account", SLUG)).toBe(
       PLAY_PACKAGE,
     );
