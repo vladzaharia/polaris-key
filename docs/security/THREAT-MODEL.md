@@ -2128,7 +2128,8 @@ in a code's 600-second life: with N codes live at once it hits one with probabil
 
 That per-network figure is not the whole bound. An attacker holding an IPv6 /48 (65,536 /64s,
 a common end-site assignment) or a botnet multiplies it by the networks it controls, and the
-ceiling is then the product's single `RateLimitDO` (R10-04a), of the order of 1,000 checks a
+ceiling is then the product's single `RateLimitDO` (a product's own limiter is still one object;
+I-02 sharded only the platform-global `_portal` and `_admin` ones), of the order of 1,000 checks a
 second shared with every other bucket of that product. At that ceiling — which also degrades
 the product's other rate-limited routes, a visible attack in its own right — 1,000 live flows
 give about 6 × 10⁵ guesses per 600 s and one hit roughly every 7 hours; at a more sustainable
@@ -2143,7 +2144,8 @@ either. Before that fix, one hit every 7 hours at the ceiling was one captured a
 every 7 hours. There is
 deliberately no product-wide bucket: one attacker could exhaust it and lock every player of a
 product out of sign-in. Residuals, unowned: aggregating the other per-IP buckets to /64 in
-`clientIp`, and sharding the rate-limit Durable Object (R10-04a).
+`clientIp`, and sharding a product's own rate-limit Durable Object (R10-04a is fixed for the
+platform-global `_portal` and `_admin` limiters only; see the single-use store section below).
 
 **Remote phishing (RFC 8628 §5.4) — open: R1-07, rooted in R8-03.** The flow's starter can
 complete the confirmation step without a browser and forward the resulting IdP sign-in to a
@@ -2225,6 +2227,62 @@ flight across the deploy. Confirmation on both routes is one function: the Fetch
 `Origin` check above, a single-use CSRF token, and a `303` to the IdP with `no-referrer` and
 `no-store`. The confirmation
 page's CSP widens `form-action` by exactly the IdP origin that `303` goes to.
+
+### The single-use store, sharded sign-in limiters and email limits (I-02)
+
+**Asset.** Every single-use sign-in artefact: product, portal and console OIDC flow records
+(`state` with its PKCE `verifier` and `nonce`), RFC 8628 device-code records and the user-code
+index, portal magic links (which name the recipient's email), and the email codes and recipient
+strike counters I-08 will use. A record replayed or redeemed twice is a sign-in an attacker did not
+earn.
+
+**What changed (S-16 G15).** These records lived in KV, consumed with `get` then `delete` (or
+`get`, check, `put`). KV is eventually consistent and those steps are not atomic, so two requests
+racing on one artefact could both read it before either write landed: two clicks on one magic
+link both signed in, two callbacks on one `state` could both pass the R8-04 `consumedAt` check,
+two polls of a ready flow could both mint a device token. They now live in `SingleUseDO`
+(`src/singleUseDo.ts`, client `src/core/singleUse.ts`), a Durable Object whose input gate
+serialises every operation on one object, so each of these is one atomic step:
+
+- `consume` (read and delete together): portal and console callbacks, `/magic/verify`, and the
+  poll's final redemption, which takes the flow before minting (a failed mint puts it back);
+- a compare-and-set `update`: the product callback's claim of a `state`, a device confirmation's
+  spend of its CSRF token, and the device poll's `lastPollAt` slot (so the deferred activation of
+  a device-code flow never runs twice side by side);
+- `put … ifAbsent`: the user-code index, so two flows can never claim one live user code;
+- `redeem` with a per-artefact attempt cap, and `strike` (a sliding-window counter with a
+  lockout), for email codes.
+
+Updates never create a record, so a late write cannot resurrect an artefact another request
+consumed. The store is addressed by `(kind, id)` where `id` is the product plus the secret's
+peppered hash (R12-04 holds: a storage listing yields nothing usable), and spread over 64 objects
+by a hash of the address, so it is not a global chokepoint. Records carry their own expiry and an
+alarm sweep deletes expired ones (storage is bounded by the live set, as in R10-04b). It fails
+closed: a read that cannot reach the store answers "absent" (an expired link, an unknown `state`,
+a locked recipient), a write throws, so no flow is handed out that could not be recorded.
+`test-workerd/singleUse.test.ts` proves the concurrent double-consume on the real object.
+
+**Sharded platform limiters (R10-04a, partly fixed).** `_portal` and `_admin` were literal
+`RateLimitDO` names, so every customer's and every operator's interactive sign-in serialised
+through two objects, reachable with no credentials. Each is now 32 objects; a counter's object is
+chosen by a hash of its `(bucket, id)`, so one counter still lives in exactly one object and every
+limit stays exact. The email buckets are sharded the same way in every limiter. **Residual:** a
+product's own limiter is still one object per product (tenant-scoped, so a flood degrades only that
+product), and an attacker can still pick ids that land in one shard; that concentrates load on one
+of 32 objects instead of one of one.
+
+**Email limits (S-16 §5.4 item 4), primitives only.** `src/core/emailLimits.ts` holds the send
+and verify limits as named constants: per recipient (peppered hash) 5 an hour and 20 a day, per
+client address 10 an hour, per network (IPv4 /24, IPv6 /48) 30 an hour, per device 3 starts an
+hour, a per-product daily cap (default 1,000 until I-21 sets the operational value); codes of 6
+digits, 10 minutes, dead after 5 wrong attempts, replaced (so invalidated) by a new code for the
+same recipient and flow; 10 wrong attempts across codes in an hour lock the recipient out of new
+codes for 15 minutes. Every limit is per product, so one tenant's traffic can neither drain
+another's budget nor lock a person out of another product. Both primitives answer without a
+reason (`{ send }`, `{ ok }`), so a caller that echoes them leaks nothing. **Open until I-08:** no
+route uses them yet; the enumeration-safe answers (a refused or locked send answered exactly like a
+sent one), the flow binding and Turnstile belong to I-08, and the operational cap and
+`email_unavailable` to I-21. Today's portal `/api/magic/start` keeps its per-IP limit only.
 
 ### Release keys, the strict verifier and the signed feed (wire contract v4, P3-02)
 
