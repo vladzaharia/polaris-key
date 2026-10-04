@@ -124,8 +124,15 @@ describe("qk.products() holds one shape for the Products page and the switcher",
     await go("#/products");
     await expectProductsPageRow();
 
-    // And back on a product page the switcher still lists it from the shared entry.
+    // And back on a product page the switcher still lists it from the shared entry. Wait for the
+    // page's heading to take focus first: route focus lands on it once it renders, and on a
+    // loaded machine that could happen after the switcher opened, closing it (focus outside).
     await go("#/p/djdl");
+    const heading = await screen.findByRole("heading", {
+      level: 1,
+      name: "Overview",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
     expect((await switcherOptions()).some((t) => t.startsWith("DJDL"))).toBe(
       true,
     );
