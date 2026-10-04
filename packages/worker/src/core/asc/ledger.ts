@@ -6,7 +6,7 @@
  *
  *   1. **Operation key.** The console sends `Idempotency-Key: <uuid>` per user intent; the step's
  *      `op_id` is `sha256(JSON [scope, product, op, naturalKey, idempotencyKey])`.
- *   2. **Ledger row** (`asc_operations`). A replay of a done `op_id` answers the stored result
+ *   2. **Ledger row** (`store_operations`, `store = 'app-store'`). A replay of a done `op_id` answers the stored result
  *      without calling Apple; the same key with a different request body is a `conflict` (409).
  *      A `failed`, `ambiguous` or still-`pending` row is retried under the same key, `find` first.
  *   3. **Natural-key read before write.** `find` looks the object up the way Apple's filters
@@ -19,7 +19,7 @@
  *   5. **Re-read and audit.** `reread` takes Apple's answer, not the request's intent; before and
  *      after are projected (`audit.ts`) onto the row, and ONE audit row is written.
  *
- * Multi-step flows are sequences of such steps; their progress is the rows (`listAscOperations`).
+ * Multi-step flows are sequences of such steps; their progress is the rows (`listStoreOperations`).
  */
 
 import type { Db } from "../platform.js";
@@ -51,9 +51,16 @@ export interface AscOpKey {
   idempotencyKey: string;
 }
 
+/**
+ * The `store` every A-17 row carries: the ledger is store-agnostic by name (notes/S-15 owner
+ * decision 3) and A-18a's storefront adapters add their own values.
+ */
+export const ASC_STORE = "app-store";
+
 /** One ledger row, as stored. */
-export interface AscOperationRow {
+export interface StoreOperationRow {
   op_id: string;
+  store: string;
   scope: AscOpScope;
   product: string | null;
   op: string;
@@ -63,8 +70,8 @@ export interface AscOperationRow {
   result_ids_json: string | null;
   before_json: string | null;
   after_json: string | null;
-  apple_status: number | null;
-  apple_code: string | null;
+  vendor_status: number | null;
+  vendor_code: string | null;
   actor: string;
   created_at: number;
   finished_at: number | null;
@@ -146,12 +153,12 @@ export type AscBegin =
    *  `ambiguous`, `failed`): go on, `find` first. */
   | { kind: "proceed"; opId: string; resumed: boolean }
   /** Done: answer the stored row, call nothing. */
-  | { kind: "replay"; row: AscOperationRow }
+  | { kind: "replay"; row: StoreOperationRow }
   /** The same key with a different body. */
   | { kind: "conflict"; opId: string };
 
 /** Open (or find) the ledger row of one step. */
-export async function beginAscOperation(
+export async function beginStoreOperation(
   db: Db,
   key: AscOpKey,
   request: unknown,
@@ -162,10 +169,11 @@ export async function beginAscOperation(
   const opId = await ascOpId(key);
   const requestHash = await ascRequestHash(request);
   const inserted = await db.runChanges(
-    `INSERT OR IGNORE INTO asc_operations
-       (op_id, scope, product, op, natural_key, state, request_hash, actor, created_at)
-     VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
+    `INSERT OR IGNORE INTO store_operations
+       (op_id, store, scope, product, op, natural_key, state, request_hash, actor, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
     opId,
+    ASC_STORE,
     key.scope,
     key.product,
     key.op,
@@ -175,19 +183,19 @@ export async function beginAscOperation(
     now,
   );
   if (inserted === 1) return { kind: "proceed", opId, resumed: false };
-  const row = await getAscOperation(db, opId);
+  const row = await getStoreOperation(db, opId);
   if (!row) throw new Error("ASC ledger row vanished");
   if (row.request_hash !== requestHash) return { kind: "conflict", opId };
   if (row.state === "done") return { kind: "replay", row };
   return { kind: "proceed", opId, resumed: true };
 }
 
-export function getAscOperation(
+export function getStoreOperation(
   db: Db,
   opId: string,
-): Promise<AscOperationRow | null> {
-  return db.first<AscOperationRow>(
-    "SELECT * FROM asc_operations WHERE op_id = ?",
+): Promise<StoreOperationRow | null> {
+  return db.first<StoreOperationRow>(
+    "SELECT * FROM store_operations WHERE op_id = ?",
     opId,
   );
 }
@@ -201,12 +209,12 @@ export type AscFinish =
     }
   | {
       state: "failed" | "ambiguous";
-      appleStatus: number | null;
-      appleCode: string | null;
+      vendorStatus: number | null;
+      vendorCode: string | null;
     };
 
 /** Close a step's row. */
-export async function finishAscOperation(
+export async function finishStoreOperation(
   db: Db,
   opId: string,
   f: AscFinish,
@@ -214,9 +222,9 @@ export async function finishAscOperation(
 ): Promise<void> {
   if (f.state === "done")
     await db.run(
-      `UPDATE asc_operations
+      `UPDATE store_operations
           SET state = 'done', result_ids_json = ?, before_json = ?, after_json = ?,
-              apple_status = NULL, apple_code = NULL, finished_at = ?
+              vendor_status = NULL, vendor_code = NULL, finished_at = ?
         WHERE op_id = ?`,
       JSON.stringify(f.resultIds),
       f.before === null ? null : JSON.stringify(f.before),
@@ -226,32 +234,32 @@ export async function finishAscOperation(
     );
   else
     await db.run(
-      `UPDATE asc_operations
-          SET state = ?, apple_status = ?, apple_code = ?, finished_at = ?
+      `UPDATE store_operations
+          SET state = ?, vendor_status = ?, vendor_code = ?, finished_at = ?
         WHERE op_id = ?`,
       f.state,
-      f.appleStatus,
-      f.appleCode,
+      f.vendorStatus,
+      f.vendorCode,
       now,
       opId,
     );
 }
 
 /** A scope's newest rows (a flow's resumable progress; the console's step list). */
-export function listAscOperations(
+export function listStoreOperations(
   db: Db,
   scope: { scope: "team" } | { scope: "product"; product: string },
   limit = 50,
-): Promise<AscOperationRow[]> {
+): Promise<StoreOperationRow[]> {
   const n = Math.max(1, Math.min(200, Math.floor(limit)));
   return scope.scope === "team"
-    ? db.all<AscOperationRow>(
-        `SELECT * FROM asc_operations WHERE scope = 'team'
+    ? db.all<StoreOperationRow>(
+        `SELECT * FROM store_operations WHERE scope = 'team'
           ORDER BY created_at DESC, op_id DESC LIMIT ?`,
         n,
       )
-    : db.all<AscOperationRow>(
-        `SELECT * FROM asc_operations WHERE scope = 'product' AND product = ?
+    : db.all<StoreOperationRow>(
+        `SELECT * FROM store_operations WHERE scope = 'product' AND product = ?
           ORDER BY created_at DESC, op_id DESC LIMIT ?`,
         scope.product,
         n,
@@ -295,7 +303,7 @@ export type AscWriteResult =
       before: AscProjection | null;
       after: AscProjection | null;
     }
-  | { outcome: "replayed"; row: AscOperationRow }
+  | { outcome: "replayed"; row: StoreOperationRow }
   | { outcome: "conflict"; opId: string };
 
 /**
@@ -307,7 +315,7 @@ export async function performAscWrite<T extends AscResource>(
   db: Db,
   s: AscWriteStep<T>,
 ): Promise<AscWriteResult> {
-  const begun = await beginAscOperation(
+  const begun = await beginStoreOperation(
     db,
     s.key,
     s.request,
@@ -328,7 +336,7 @@ export async function performAscWrite<T extends AscResource>(
     if (before && satisfied(before)) {
       const after = projectAscResource(before);
       const resultIds = s.resultIds(before);
-      await finishAscOperation(
+      await finishStoreOperation(
         db,
         opId,
         { state: "done", resultIds, before: after, after },
@@ -347,7 +355,7 @@ export async function performAscWrite<T extends AscResource>(
         if (found && satisfied(found)) {
           const after = projectAscResource(found);
           const resultIds = s.resultIds(found);
-          await finishAscOperation(
+          await finishStoreOperation(
             db,
             opId,
             {
@@ -377,7 +385,7 @@ export async function performAscWrite<T extends AscResource>(
     const resultIds = s.resultIds(final);
     const beforeP = projectAscResource(before);
     const afterP = projectAscResource(final);
-    await finishAscOperation(
+    await finishStoreOperation(
       db,
       opId,
       { state: "done", resultIds, before: beforeP, after: afterP },
@@ -404,13 +412,13 @@ export async function performAscWrite<T extends AscResource>(
     };
   } catch (e) {
     if (!attempted) throw e;
-    await finishAscOperation(
+    await finishStoreOperation(
       db,
       opId,
       {
         state: isAmbiguousFailure(e) ? "ambiguous" : "failed",
-        appleStatus: e instanceof AscError ? e.status : null,
-        appleCode: e instanceof AscError ? e.code : null,
+        vendorStatus: e instanceof AscError ? e.status : null,
+        vendorCode: e instanceof AscError ? e.code : null,
       },
       s.now,
     );

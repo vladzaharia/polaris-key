@@ -1513,7 +1513,8 @@ chose to keep the Admin team key (2026-10-04), so the write gate of A-17a (below
 
 **What it is.** `core/asc/` is the substrate every App Store Connect call goes through (notes/S-14
 §7): the client (moved here from P5-02's connector), the **write gate** (`writeGate.ts`), the
-**operation ledger** (`ledger.ts`, table `asc_operations`), the **before-and-after projection and
+**operation ledger** (`ledger.ts`, table `store_operations`, store-agnostic by name per S-15
+decision 3; every A-17 row is `store = 'app-store'`), the **before-and-after projection and
 audit** (`audit.ts`) and the **budget meter** (`budget.ts`). A-17's provisioning and distribution
 flows (A-17b to A-17e) build on it; P5-02's controls already run through it.
 
@@ -1578,7 +1579,7 @@ the same origin and `/v1/` or `/v2/`), and A-17c adds test-notification calls to
   Apple's own schedule read (never the request): a first price asserts `initial`, any change needs
   the typed app name and asserts `typedConfirmation`, and a price that appears between the check
   and the write is refused by the gate (neither assertion holds).
-- **(e) Ledger and audit.** Every A-17 step is an `asc_operations` row keyed by
+- **(e) Ledger and audit.** Every A-17 step is a `store_operations` row (`store = 'app-store'`) keyed by
   `sha256(scope, product, op, natural key, Idempotency-Key)`: a replay returns the stored result
   without calling Apple, a reused key with another body is refused, a 5xx or timeout after a write
   is `ambiguous` and the next attempt re-reads the natural key first. Before and after are Apple's

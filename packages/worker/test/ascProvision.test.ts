@@ -354,7 +354,7 @@ async function setupAudits(w: World) {
 
 async function ledger(w: World) {
   return w.db.all<Record<string, unknown>>(
-    "SELECT * FROM asc_operations WHERE product = ? ORDER BY created_at, op_id",
+    "SELECT * FROM store_operations WHERE product = ? ORDER BY created_at, op_id",
     SLUG,
   );
 }

@@ -351,7 +351,7 @@ async function platformTrail(db: Db) {
 
 async function ledger(db: Db) {
   return db.all<{ op: string; natural_key: string; state: string }>(
-    "SELECT op, natural_key, state FROM asc_operations ORDER BY rowid",
+    "SELECT op, natural_key, state FROM store_operations ORDER BY rowid",
   );
 }
 

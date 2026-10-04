@@ -251,7 +251,7 @@ describe("builds and export compliance", () => {
       after_json: string;
       state: string;
     }>(
-      "SELECT before_json, after_json, state FROM asc_operations WHERE op = 'build.export_compliance' AND state = 'done' ORDER BY created_at LIMIT 1",
+      "SELECT before_json, after_json, state FROM store_operations WHERE op = 'build.export_compliance' AND state = 'done' ORDER BY created_at LIMIT 1",
     );
     expect(
       JSON.parse(row!.before_json).attributes.usesNonExemptEncryption,
@@ -530,15 +530,15 @@ describe("the App Store version", () => {
     expect(JSON.stringify(r.json)).not.toContain("free text");
     const row = await w.db.first<{
       state: string;
-      apple_status: number;
-      apple_code: string;
+      vendor_status: number;
+      vendor_code: string;
     }>(
-      "SELECT state, apple_status, apple_code FROM asc_operations WHERE op = 'version.create'",
+      "SELECT state, vendor_status, vendor_code FROM store_operations WHERE op = 'version.create'",
     );
     expect(row).toEqual({
       state: "failed",
-      apple_status: 409,
-      apple_code: "ENTITY_ERROR.ATTRIBUTE.INVALID",
+      vendor_status: 409,
+      vendor_code: "ENTITY_ERROR.ATTRIBUTE.INVALID",
     });
   });
 

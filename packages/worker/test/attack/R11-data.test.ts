@@ -614,7 +614,7 @@ describe("R11-05 product scoping", () => {
       // capability) belongs to no product, so `product` is NULL there (a CHECK ties it to
       // `scope`) and the key is the derived `op_id`; product-scope reads always filter on
       // `product`. Written only by `core/asc/ledger.ts` on a platform admin's behalf.
-      "asc_operations",
+      "store_operations",
       // 0058_d (F-03) — the platform's per-ecosystem package-feed kill switch and size ceiling.
       // One row per ecosystem, above every owner's own settings; written only by a platform
       // admin. Each owner's settings live in `dist_registry_feeds`, which IS product-first.

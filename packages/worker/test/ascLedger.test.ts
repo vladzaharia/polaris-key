@@ -11,10 +11,10 @@ import { makeEnv, NOW, seedProduct } from "./seed.js";
 import type { AdminSession } from "../src/admin/session.js";
 import {
   ascOpId,
-  beginAscOperation,
-  getAscOperation,
+  beginStoreOperation,
+  getStoreOperation,
   isAmbiguousFailure,
-  listAscOperations,
+  listStoreOperations,
   performAscWrite,
   type AscOpKey,
   type AscWriteStep,
@@ -124,7 +124,7 @@ describe("performAscWrite", () => {
       },
     });
     expect(calls).toEqual({ find: 1, write: 1, reread: 1 });
-    const row = await getAscOperation(db, await ascOpId(TEAM_KEY));
+    const row = await getStoreOperation(db, await ascOpId(TEAM_KEY));
     expect(row).toMatchObject({
       scope: "team",
       product: null,
@@ -194,7 +194,7 @@ describe("performAscWrite", () => {
       },
     });
     expect((await performAscWrite(db, s)).outcome).toBe("existing");
-    expect((await getAscOperation(db, await ascOpId(TEAM_KEY)))!.state).toBe(
+    expect((await getStoreOperation(db, await ascOpId(TEAM_KEY)))!.state).toBe(
       "done",
     );
   });
@@ -210,8 +210,12 @@ describe("performAscWrite", () => {
       },
     });
     await expect(performAscWrite(db, first.s)).rejects.toBeInstanceOf(AscError);
-    const row = await getAscOperation(db, await ascOpId(TEAM_KEY));
-    expect(row).toMatchObject({ state: "ambiguous", apple_status: 503 });
+    const row = await getStoreOperation(db, await ascOpId(TEAM_KEY));
+    expect(row).toMatchObject({
+      store: "app-store",
+      state: "ambiguous",
+      vendor_status: 503,
+    });
     const retry = step({ state });
     expect((await performAscWrite(db, retry.s)).outcome).toBe("existing");
     expect(retry.calls).toMatchObject({ find: 1, write: 0 });
@@ -228,10 +232,10 @@ describe("performAscWrite", () => {
       ),
     });
     await expect(performAscWrite(db, s)).rejects.toBeInstanceOf(AscError);
-    expect(await getAscOperation(db, await ascOpId(TEAM_KEY))).toMatchObject({
+    expect(await getStoreOperation(db, await ascOpId(TEAM_KEY))).toMatchObject({
       state: "failed",
-      apple_status: 422,
-      apple_code: "ENTITY_ERROR.ATTRIBUTE.INVALID",
+      vendor_status: 422,
+      vendor_code: "ENTITY_ERROR.ATTRIBUTE.INVALID",
       before_json: null,
       after_json: null,
     });
@@ -245,7 +249,7 @@ describe("performAscWrite", () => {
       fail: new AscWriteDenied("POST", "/v1/certificates", "not_allowed"),
     });
     await expect(performAscWrite(db, s)).rejects.toBeInstanceOf(AscWriteDenied);
-    expect((await getAscOperation(db, await ascOpId(TEAM_KEY)))!.state).toBe(
+    expect((await getStoreOperation(db, await ascOpId(TEAM_KEY)))!.state).toBe(
       "failed",
     );
   });
@@ -258,10 +262,10 @@ describe("performAscWrite", () => {
       },
     });
     await expect(performAscWrite(db, s)).rejects.toBeInstanceOf(AscError);
-    expect((await getAscOperation(db, await ascOpId(TEAM_KEY)))!.state).toBe(
+    expect((await getStoreOperation(db, await ascOpId(TEAM_KEY)))!.state).toBe(
       "pending",
     );
-    const again = await beginAscOperation(db, TEAM_KEY, s.request, "u1", NOW);
+    const again = await beginStoreOperation(db, TEAM_KEY, s.request, "u1", NOW);
     expect(again).toMatchObject({ kind: "proceed", resumed: true });
   });
 
@@ -302,7 +306,7 @@ describe("performAscWrite", () => {
       },
     ]);
     expect(await platformRows(db)).toEqual([]);
-    const listed = await listAscOperations(db, {
+    const listed = await listStoreOperations(db, {
       scope: "product",
       product: "djdl",
     });
@@ -313,17 +317,17 @@ describe("performAscWrite", () => {
       attributes: { name: "External testers", isInternalGroup: false },
     });
     expect(
-      await listAscOperations(db, { scope: "product", product: "other" }),
+      await listStoreOperations(db, { scope: "product", product: "other" }),
     ).toEqual([]);
   });
 
   it("refuses a key whose product does not match its scope, or a bad Idempotency-Key", async () => {
     const db = makeTestDb();
     await expect(
-      beginAscOperation(db, { ...TEAM_KEY, product: "djdl" }, {}, "u1", NOW),
+      beginStoreOperation(db, { ...TEAM_KEY, product: "djdl" }, {}, "u1", NOW),
     ).rejects.toThrow("scope");
     await expect(
-      beginAscOperation(
+      beginStoreOperation(
         db,
         { ...TEAM_KEY, idempotencyKey: "x" },
         {},
@@ -333,7 +337,7 @@ describe("performAscWrite", () => {
     ).rejects.toThrow("Idempotency-Key");
     // Testers' emails are never stored: an email-shaped natural key is refused, nothing written.
     await expect(
-      beginAscOperation(
+      beginStoreOperation(
         db,
         {
           ...TEAM_KEY,
@@ -346,26 +350,35 @@ describe("performAscWrite", () => {
       ),
     ).rejects.toThrow("email");
     expect(
-      await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM asc_operations"),
+      await db.first<{ n: number }>(
+        "SELECT COUNT(*) AS n FROM store_operations",
+      ),
     ).toEqual({ n: 0 });
     await expect(
       db.run(
-        `INSERT INTO asc_operations (op_id, scope, product, op, natural_key, state, request_hash, actor, created_at)
-         VALUES ('o', 'product', NULL, 'x', 'k', 'pending', 'h', 'u', 0)`,
+        `INSERT INTO store_operations (op_id, store, scope, product, op, natural_key, state, request_hash, actor, created_at)
+         VALUES ('o', 'app-store', 'product', NULL, 'x', 'k', 'pending', 'h', 'u', 0)`,
+      ),
+    ).rejects.toThrow();
+    // S-15 decision 3: every row names its store, never an empty one.
+    await expect(
+      db.run(
+        `INSERT INTO store_operations (op_id, store, scope, product, op, natural_key, state, request_hash, actor, created_at)
+         VALUES ('o2', '', 'team', NULL, 'x', 'k', 'pending', 'h', 'u', 0)`,
       ),
     ).rejects.toThrow();
   });
 
   it("the request hash ignores key order", async () => {
     const db = makeTestDb();
-    await beginAscOperation(
+    await beginStoreOperation(
       db,
       TEAM_KEY,
       { a: 1, b: { c: 2, d: 3 } },
       "u1",
       NOW,
     );
-    const again = await beginAscOperation(
+    const again = await beginStoreOperation(
       db,
       TEAM_KEY,
       { b: { d: 3, c: 2 }, a: 1 },

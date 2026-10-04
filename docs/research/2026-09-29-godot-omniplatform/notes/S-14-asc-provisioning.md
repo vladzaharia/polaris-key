@@ -860,8 +860,9 @@ A-17a landed the substrate in `packages/worker/src/core/asc/`. Where the build d
   one unless `--accept` is passed. The deny side is an explicit list grouped by reason
   (`writeGateDenied.ts`), so a new spec operation fails CI even where a family rule would have
   denied it.
-- **Ledger.** `asc_operations` (migration `0059`) gained `before_json`, `after_json`,
-  `apple_status` and `apple_code`, because the product `audit` table has no before/after columns:
+- **Ledger.** `asc_operations` (migration `0059`; merged as `store_operations` in
+  `0061_store_operations.sql`, see the integration corrections below) gained `before_json`,
+  `after_json`, `apple_status` and `apple_code` (merged as `vendor_status` and `vendor_code`), because the product `audit` table has no before/after columns:
   the projections live on the ledger row and the product audit summary names the `op_id`. Only a
   `done` row replays; a `failed`, `ambiguous` or `pending` row is retried under the same key, and
   a failed pre-read leaves the row `pending` (nothing reached Apple).
@@ -972,7 +973,7 @@ the build departs from §7 and §8.1, the code is the fact:
   An existing schedule or availability is "existing", never changed.
 - **Checklist storage.** The ticks live in `dist_connector_settings` under `asc-setup`, not in a
   new table: no migration. `GET …/connectors/asc` adds `provisioning` (the checklist with deep links
-  and the product's newest `asc_operations` rows).
+  and the product's newest `store_operations` rows).
 - **Deep links** live in `ASC_DEEP_LINKS` in `provision.ts`; A-17f may move them into its own
   table.
 - **`Idempotency-Key`** reaches a control through `ControlContext.idempotencyKey`, from the request
@@ -1065,3 +1066,5 @@ Where the build departs from §7, §8.3 and §10 above, the code is the fact:
 - **Migration renumbered.** Main took `0059` (`0059_portal_identity_issuer.sql`, I-01) before
   A-17a merged, so A-17a's ledger migration is `0060_asc_operations.sql` on this branch
   (`LATEST_MIGRATION` and the generated data model follow). It has not reached production.
+  Superseded at integration: main also took `0060`, and the ledger merged as
+  `0061_store_operations.sql`.

@@ -45,7 +45,7 @@ import {
 } from "../../core/asc/client.js";
 import {
   isIdempotencyKey,
-  listAscOperations,
+  listStoreOperations,
   type AscWriteResult,
 } from "../../core/asc/ledger.js";
 import {
@@ -495,7 +495,7 @@ async function lookup(c: ProvisioningContext): Promise<Response> {
 
 async function operations(c: ProvisioningContext): Promise<Response> {
   const n = Number(new URL(c.req.url).searchParams.get("limit") ?? "50");
-  const rows = await listAscOperations(
+  const rows = await listStoreOperations(
     c.db,
     { scope: "team" },
     Number.isFinite(n) ? n : 50,
@@ -511,8 +511,8 @@ async function operations(c: ProvisioningContext): Promise<Response> {
         ? (JSON.parse(r.result_ids_json) as unknown)
         : null,
       after: r.after_json ? (JSON.parse(r.after_json) as unknown) : null,
-      appleStatus: r.apple_status,
-      appleCode: r.apple_code,
+      appleStatus: r.vendor_status,
+      appleCode: r.vendor_code,
       actor: r.actor,
       createdAt: r.created_at,
       finishedAt: r.finished_at,

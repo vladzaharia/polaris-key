@@ -68,7 +68,7 @@ import {
 import {
   ascTesterDigest,
   isIdempotencyKey,
-  listAscOperations,
+  listStoreOperations,
   performAscWrite,
   type AscWriteResult,
 } from "../../../../core/asc/ledger.js";
@@ -233,7 +233,7 @@ export async function provisioningView(
     finishedAt: number | null;
   }>;
 }> {
-  const rows = await listAscOperations(db, { scope: "product", product }, 50);
+  const rows = await listStoreOperations(db, { scope: "product", product }, 50);
   return {
     checklist: await checklistView(db, product, appleId),
     operations: rows.map((r) => ({
@@ -241,8 +241,8 @@ export async function provisioningView(
       op: r.op,
       state: r.state,
       resultIds: parseIds(r.result_ids_json),
-      appleStatus: r.apple_status,
-      appleCode: r.apple_code,
+      appleStatus: r.vendor_status,
+      appleCode: r.vendor_code,
       createdAt: r.created_at,
       finishedAt: r.finished_at,
     })),

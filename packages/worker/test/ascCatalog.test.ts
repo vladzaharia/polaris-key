@@ -556,7 +556,7 @@ describe("A-17e: price (first set plain, change typed) and availability", () => 
       before_json: string;
       after_json: string;
     }>(
-      "SELECT before_json, after_json FROM asc_operations WHERE op = 'iap.price' AND state = 'done' ORDER BY created_at, rowid",
+      "SELECT before_json, after_json FROM store_operations WHERE op = 'iap.price' AND state = 'done' ORDER BY created_at, rowid",
     );
     expect(JSON.parse(priceRows.at(-1)!.before_json).attributes).toMatchObject({
       customerPrice: "0.99",
