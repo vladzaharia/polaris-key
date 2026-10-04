@@ -167,6 +167,7 @@ function Page({
       return (
         <ProductPage
           key={route.product}
+          account={account}
           product={route.product}
           section={route.section}
           params={route.params}
