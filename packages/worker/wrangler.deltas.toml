@@ -1,0 +1,115 @@
+# The lazy-delta CONSUMER Worker (P4-17; notes/S-08 §6; docs/DEPLOYMENT.md "Lazy deltas").
+#
+# A second Worker script, built from this package (`src/deltasEntry.ts` and the same
+# `services/release/packs/deltas/` code as the request Worker), deployed per environment as
+# `polaris-key-deltas-<env>`:
+#
+#   npx wrangler deploy -c wrangler.deltas.toml --env <env>
+#
+# It has a `queue` handler and nothing else: no routes, no workers.dev URL, no cron. It drains
+# pkey-deltas-<env> one message at a time (batch 1, concurrency 1), so an encode (up to ~84 MiB
+# of WebAssembly memory at the 32 MiB cap) never shares an isolate with a request or with a
+# second encode. Messages that fail `max_retries` times land on pkey-deltas-dlq-<env>; nothing
+# consumes the DLQ (alert on its depth, docs/RUNBOOK.md "Lazy deltas").
+#
+# It binds the SAME D1 database and blob bucket as the request Worker of its environment
+# (wrangler.toml), and the same queue again as a producer, to fan an R2 event out into pair
+# jobs. The R2 event-notification rules on the bucket (object-create on `blobs/sha256/` and
+# `gated/blobs/sha256/`, to pkey-deltas-<env>) are created by the operator AFTER the first
+# deploy of this script: a rule needs a queue with a consumer.
+#
+# `LAZY_DELTAS = "off"` here as in wrangler.toml: the consumer acknowledges every message without
+# work until an operator turns it on (both scripts) and opts a product in.
+
+name = "polaris-key-deltas"
+main = "src/deltasEntry.ts"
+compatibility_date = "2026-04-07"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = false
+preview_urls = false
+
+# Headroom for slower production CPUs: a level-9 encode at the cap measured 0.15-0.4 s locally
+# (S-08 §4.2), against Queues' 30 s default. Inheritable, so every environment gets it.
+[limits]
+cpu_ms = 60000
+
+[observability]
+enabled = false
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[env.prod]
+workers_dev = false
+preview_urls = false
+[[env.prod.d1_databases]]
+binding = "DB"
+database_name = "polaris_key_prod"
+database_id = "4bcb24b2-80af-4180-abcc-0e5e99564ed8"
+[[env.prod.r2_buckets]]
+binding = "BLOBS"
+bucket_name = "polaris-key-blobs-prod"
+[[env.prod.queues.consumers]]
+queue = "pkey-deltas-prod"
+max_batch_size = 1
+max_batch_timeout = 5
+max_retries = 3
+max_concurrency = 1
+dead_letter_queue = "pkey-deltas-dlq-prod"
+[[env.prod.queues.producers]]
+binding = "DELTA_QUEUE"
+queue = "pkey-deltas-prod"
+[env.prod.vars]
+LAZY_DELTAS = "off"
+LAZY_DELTA_MAX_BYTES = "33554432"
+
+[env.staging]
+workers_dev = false
+preview_urls = false
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "polaris_key_staging"
+database_id = "REPLACE_ME_STAGING_D1_ID"
+[[env.staging.r2_buckets]]
+binding = "BLOBS"
+bucket_name = "polaris-key-blobs-staging"
+[[env.staging.queues.consumers]]
+queue = "pkey-deltas-staging"
+max_batch_size = 1
+max_batch_timeout = 5
+max_retries = 3
+max_concurrency = 1
+dead_letter_queue = "pkey-deltas-dlq-staging"
+[[env.staging.queues.producers]]
+binding = "DELTA_QUEUE"
+queue = "pkey-deltas-staging"
+[env.staging.vars]
+LAZY_DELTAS = "off"
+LAZY_DELTA_MAX_BYTES = "33554432"
+
+[env.dev]
+workers_dev = false
+preview_urls = false
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "polaris_key_dev"
+database_id = "REPLACE_ME_DEV_D1_ID"
+[[env.dev.r2_buckets]]
+binding = "BLOBS"
+bucket_name = "polaris-key-blobs-dev"
+[[env.dev.queues.consumers]]
+queue = "pkey-deltas-dev"
+max_batch_size = 1
+max_batch_timeout = 5
+max_retries = 3
+max_concurrency = 1
+dead_letter_queue = "pkey-deltas-dlq-dev"
+[[env.dev.queues.producers]]
+binding = "DELTA_QUEUE"
+queue = "pkey-deltas-dev"
+[env.dev.vars]
+LAZY_DELTAS = "off"
+LAZY_DELTA_MAX_BYTES = "33554432"

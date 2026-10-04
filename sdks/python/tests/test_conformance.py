@@ -3,7 +3,7 @@
 the production verifiers and assert the expected outcome.
 
 Mirrors ``conformance/runners/node/corpusV2.test.ts`` against the SAME ``cases.json`` —
-that is how four SDKs prove byte-identical verification. The corpus is found via a relative
+that is how five SDKs prove byte-identical verification. The corpus is found via a relative
 path up to the monorepo root.
 
 Six sections, six layers of the v3 documents (which wire contract v4 keeps), plus v4's

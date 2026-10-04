@@ -551,6 +551,28 @@ decoded by the payload URL, with Compression Dictionary Transport
 [Pack bytes](/docs/services/distribution/delivery/#pack-bytes) and
 [Availability](/docs/services/distribution/availability/).
 
+## Lazy deltas
+
+CI builds whole-payload deltas only against the last few releases, but the pairs devices actually
+need depend on who updates when. For a product an operator opted in, Polaris Key counts the pack
+installs devices report (`packInstalls` on
+[`devices/report`](/docs/services/core/device-principal/#post-pdevicesreport)) and, when at least
+25 devices (configurable) moved between the same two payloads of a `container` pack within 7 days
+without a delta, and the release's record has no CI delta from that base, generates one **off the
+request path**: a nightly sweep and an R2 event on each newly stored payload put the pair on a
+queue, and a dedicated consumer Worker encodes a level-9 `zstd-patch-from` frame in WebAssembly,
+verifies it by decoding it over the base, and stores it at `deltas/<from>/<to>.zstd-patch-from`
+(under `gated/` for gated content). The same publish rules hold as for a CI delta: never against a
+base that starts with `37 A4 30 EC`, one bare frame with its content size and checksum. A pair is
+refused when either payload is over 32 MiB, when the delta would not save 30% and 1 MiB against the
+cheapest other strategy, or past the product's daily cap (20 by default). A delta no device
+reported for 30 days goes cold and is collected.
+
+A lazy delta is in no signed record. Offering it to devices needs the channel feed's reserved
+`deltas` member, which has no shape yet (a wire change that has to be planned first); until then
+generated deltas are stored and recorded only. Operator steps: RUNBOOK "Lazy deltas"; setup:
+DEPLOYMENT "Lazy deltas".
+
 ## Installing packs on a device
 
 A build learns its pins from the **content stamp** (`pkey-content.json`) it ships, never from the

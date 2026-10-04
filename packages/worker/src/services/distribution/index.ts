@@ -32,6 +32,10 @@
  *     (`/distribution/hooks/asc`), a poller on the connector cron (`scheduled`) and operator
  *     controls under the admin surface. They write availability, submissions and mirrored
  *     rollouts through the same writers CI and the console use.
+ *   - P6-01 gave it the commerce bridge (`commerce/`): store purchases become licence flags per
+ *     deliverable — the binding and claim routes, the App Store and Play notification hooks, the
+ *     store re-checks on the connector cron and the store-product map under the admin surface. The
+ *     effect on a licence goes through Core's `applyStoreGrant` (License), never an import.
  *   - P6-03 gave it update health: the telemetry auto-halt on the same cron (`autoHalt.ts`,
  *     halt-only, off by default), the Sentry alert hook (`/distribution/hooks/sentry`,
  *     `sentry.ts`) that opens halt candidates an operator confirms, and the funnel in the console
@@ -59,6 +63,7 @@ import { handleDistributionRoutes } from "./routes.js";
 import { refreshReadiness } from "./readiness.js";
 import { pollConnectors } from "./connectors/index.js";
 import { runAutoHalt, type AutoHaltOutcome } from "./autoHalt.js";
+import { runCommerceTick, type CommerceTick } from "./commerce/recheck.js";
 import {
   getOutlet,
   manifestIngestStatements as outletIngestStatements,
@@ -148,13 +153,26 @@ async function scheduled(
       error: `readiness: ${e instanceof Error ? e.message : "refresh failed"}`,
     };
   }
+  // P6-01: the commerce bridge's acknowledgement retries, voided-purchase poll and Steam
+  // ownership re-check — fault-isolated like the rest, and a no-op for a product without commerce.
+  let commerce: CommerceTick | { error: string };
+  try {
+    commerce = await runCommerceTick(ctx);
+  } catch (e) {
+    commerce = {
+      error: `commerce: ${e instanceof Error ? e.message : "tick failed"}`,
+    };
+  }
   const errors = [
     ...outcomes.filter((o) => o.error).map((o) => `${o.connector}: ${o.error}`),
     ...(autoHalt.error ? [autoHalt.error] : []),
     ...("error" in readiness ? [readiness.error] : []),
+    ...("error" in commerce
+      ? [commerce.error]
+      : commerce.errors.map((e) => `commerce ${e}`)),
   ];
   if (errors.length) throw new Error(errors.join("; "));
-  return { connectors: outcomes, autoHalt, readiness };
+  return { connectors: outcomes, autoHalt, readiness, commerce };
 }
 
 export const distributionService: ServiceDescriptor = {

@@ -9,8 +9,8 @@ touches a filesystem, and never reads `process.env`.
 
 It verifies the frozen wire contract v3 compact-JWS envelope (Ed25519 / EdDSA), evaluates the
 license gate, resolves layered config, merges trust sets, and verifies offline activation
-bundles — the same rules the cross-language conformance corpus pins across Node, React, Python
-and Swift. See `docs/security/WIRE-CONTRACT-V3.md` for the normative spec; this package is a
+bundles — the same rules the cross-language conformance corpus pins across Node, React, Python,
+Swift and Godot. See `docs/security/WIRE-CONTRACT-V3.md` for the normative spec; this package is a
 _correct_ implementation of it, not the definition.
 
 ## Why one implementation

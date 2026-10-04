@@ -30,6 +30,12 @@ import {
   type DescriptorHooks,
   type ServiceHooks,
 } from "./hooks.js";
+import type {
+  StoreGrantChange,
+  StoreGrantContext,
+  StoreGrantOutcome,
+  StoreGrantWriter,
+} from "./storeGrants.js";
 
 /** Everything a service handler is given. `rest` is the path AFTER `/<product>/<service>`,
  *  already split — the service owns its own sub-routing from there.
@@ -78,11 +84,21 @@ export interface ServiceContext {
    * the Node tests, the transcript recorder — it must run the work inline before answering.
    */
   waitUntil?: (promise: Promise<unknown>) => void;
+  /**
+   * P6-01: Core's `applyStoreGrant`, bound to this product and request (`core/storeGrants.ts`) —
+   * the one way Distribution's commerce bridge changes a licence's store grants, implemented by
+   * License. Built by `dispatchService`; absent on a context built by hand, which the commerce
+   * code treats exactly as License off (fail closed).
+   */
+  storeGrants?: StoreGrantWriter;
 }
 
-/** A `ServiceContext` as a caller hands it to Core — everything but the Core-built `hooks` and
- *  `ingest`. */
-export type ServiceRequest = Omit<ServiceContext, "hooks" | "ingest">;
+/** A `ServiceContext` as a caller hands it to Core — everything but the Core-built `hooks`,
+ *  `ingest` and `storeGrants`. */
+export type ServiceRequest = Omit<
+  ServiceContext,
+  "hooks" | "ingest" | "storeGrants"
+>;
 
 /**
  * What a service is given when Core assembles `/.well-known/polaris.json`.
@@ -134,6 +150,8 @@ export interface ScheduledServiceContext {
   product: ProductPublic;
   now: number;
   hooks: ServiceHooks;
+  /** P6-01: as `ServiceContext.storeGrants` — the store re-checks on the cron revoke through it. */
+  storeGrants?: StoreGrantWriter;
 }
 
 /**
@@ -211,6 +229,19 @@ export interface ServiceDescriptor extends DescriptorHooks {
    */
   authorizeRegistration?(ctx: RegistrationAuthContext): Promise<boolean>;
   /**
+   * Grant or revoke one licence flag on behalf of a verified store purchase (P6-01,
+   * `core/storeGrants.ts`). The second place Core delegates a decision to a service on the
+   * `authorizeRegistration` pattern, and the only cross-service WRITE: Distribution verifies the
+   * purchase with the store, License owns the licence, and Core — which may import neither —
+   * declares the method and routes the call. Implemented by License alone; Core asks it only
+   * while License is enabled for the product. It writes License's own table and nothing else, and
+   * must be idempotent: a replayed grant or revoke answers `changed: false`.
+   */
+  applyStoreGrant?(
+    ctx: StoreGrantContext,
+    change: StoreGrantChange,
+  ): Promise<StoreGrantOutcome>;
+  /**
    * Periodic work for one product, run on the connector cron (`scheduled.ts`,
    * `CONNECTOR_POLL_CRON`) for every product that has this service ENABLED — the same gate as
    * dispatch: a disabled service's code never runs (P5-02: Distribution's store-connector
@@ -266,8 +297,44 @@ export async function dispatchService(
       product: ctx.product,
       now: ctx.now,
     }),
+    storeGrants: storeGrantWriter(registry, services, {
+      env: ctx.env,
+      db: ctx.db,
+      product: ctx.product,
+      now: ctx.now,
+    }),
   });
   return res ?? serviceNotFound();
+}
+
+/**
+ * Ask License to grant or revoke a store-purchase flag (P6-01). Fails CLOSED, enablement first —
+ * the same order as `authorizeRegistration`: with License off for this product (or no License
+ * descriptor, or one without the method) the answer is `license_disabled` and no License code
+ * runs. A product whose licences cannot be read must not have a purchase "granted" into a table
+ * nothing will ever show.
+ */
+export async function applyStoreGrant(
+  registry: ServiceRegistry,
+  services: ServicesMap,
+  ctx: StoreGrantContext,
+  change: StoreGrantChange,
+): Promise<StoreGrantOutcome> {
+  if (!services.license?.enabled)
+    return { ok: false, reason: "license_disabled" };
+  const descriptor = registry.get("license");
+  if (!descriptor?.applyStoreGrant)
+    return { ok: false, reason: "license_disabled" };
+  return descriptor.applyStoreGrant(ctx, change);
+}
+
+/** {@link applyStoreGrant}, bound to one registry, enablement map and product. */
+export function storeGrantWriter(
+  registry: ServiceRegistry,
+  services: ServicesMap,
+  ctx: StoreGrantContext,
+): StoreGrantWriter {
+  return (change) => applyStoreGrant(registry, services, ctx, change);
 }
 
 /**
@@ -369,7 +436,7 @@ export function manifestIngestFor(registry: ServiceRegistry): ManifestIngest {
  */
 export async function runScheduledServices(
   registry: ServiceRegistry,
-  ctx: Omit<ScheduledServiceContext, "hooks">,
+  ctx: Omit<ScheduledServiceContext, "hooks" | "storeGrants">,
 ): Promise<{
   results: Partial<Record<ServiceSlug, Record<string, unknown>>>;
   failures: Partial<Record<ServiceSlug, string>>;
@@ -378,11 +445,16 @@ export async function runScheduledServices(
   const failures: Partial<Record<ServiceSlug, string>> = {};
   const services = ctx.product.services;
   const hooks = buildHooks(registry, services, ctx);
+  const storeGrants = storeGrantWriter(registry, services, ctx);
   for (const slug of SERVICE_SLUGS) {
     const descriptor = registry.get(slug);
     if (!descriptor?.scheduled || !services[slug]?.enabled) continue;
     try {
-      results[slug] = await descriptor.scheduled({ ...ctx, hooks });
+      results[slug] = await descriptor.scheduled({
+        ...ctx,
+        hooks,
+        storeGrants,
+      });
     } catch (e) {
       failures[slug] = e instanceof Error ? e.message : String(e);
     }

@@ -61,6 +61,8 @@
 //                   register: "ok" | "registration-closed" | "rate-limited" | "not-configured" |
 //                     "error"
 //                   report: true when the server accepted the report
+//                   commerceBinding / commerceClaim: "ok", or the wire code the call was refused
+//                     with (`forbidden`, `not_entitled`, `bad_request`, `unavailable`, …)
 //   services        discover: the capability map afterwards, slug → enabled
 //   applied / unauthorized / blocked      sync: the SyncResult flags
 //   documents       sync: slice → "applied" | "unchanged" | "unauthorized" | "blocked" |
@@ -73,6 +75,10 @@
 //                   verificationUriComplete, expiresIn, interval } (never the device code)
 //   interval        pollSignIn on "slow-down": the interval the client must now wait (seconds)
 //   token / expiresAt   mintToken on "ok": the minted token and its expiry (epoch seconds)
+//   bindingId / products   commerceBinding on "ok": the binding UUID (compared case-insensitively)
+//                   and the store products, as the Worker listed them
+//   reason          commerceClaim / commerceBinding on a refusal: the body's `reason`
+//   flag / state / granted   commerceClaim on "ok": the flag, the purchase state, whether granted
 //   licenseStatus   the gate's status afterwards (client-core `licenseState`)
 //   tokenHeld       whether the client holds a device token afterwards
 //
@@ -97,7 +103,8 @@
 // Every key present is asserted; an absent key is not.
 //
 // Step `args` per action: activate { key }; sync { force }; beginSignIn { deviceName? };
-// mintToken { recipeId }; updateDecide { channel } (the REQUESTED name, which may be an alias). pollSignIn and waitForSignIn act on the prompt the transcript's last
+// mintToken { recipeId }; updateDecide { channel } (the REQUESTED name, which may be an alias);
+// commerceClaim { store, payload } (payload: the store's own fields, sent beside `store`). pollSignIn and waitForSignIn act on the prompt the transcript's last
 // beginSignIn returned.
 
 export const TRANSCRIPT_VERSION = 1;
@@ -160,7 +167,11 @@ export type Action =
   | "waitForSignIn"
   | "mintToken"
   /** P3-03: `client.update.decide({channel})` — the signed feed, the pinned record, the decision. */
-  | "updateDecide";
+  | "updateDecide"
+  /** P6-01: `client.commerce.getBinding()` — the licence's purchase binding and the products. */
+  | "commerceBinding"
+  /** P6-01: `client.commerce.claim(store, payload)` — a store purchase as a licence flag. */
+  | "commerceClaim";
 
 export interface Step {
   action: Action;

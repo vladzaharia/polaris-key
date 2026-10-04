@@ -204,7 +204,8 @@
                   "outlet",
                   "content",
                   "updates",
-                  "caps"
+                  "caps",
+                  "packInstalls"
                 ]
               }
             },
@@ -360,7 +361,8 @@
                   "outlet",
                   "content",
                   "updates",
-                  "caps"
+                  "caps",
+                  "packInstalls"
                 ]
               }
             },
@@ -513,7 +515,8 @@
                   "outlet",
                   "content",
                   "updates",
-                  "caps"
+                  "caps",
+                  "packInstalls"
                 ]
               }
             },

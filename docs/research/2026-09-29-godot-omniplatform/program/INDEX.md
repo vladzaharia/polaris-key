@@ -31,20 +31,20 @@ keys, devices). _Optional_ work packages are off the required path.
 
 12 work packages, 10.5–14.5 weeks.
 
-| Id                                        | Title                                                                                      | Depends on                               | Role           | Weeks    | Status |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------- | -------------- | -------- | ------ |
-| [P1-01](wp/P1-01-godot-scaffold.md) ⚑ ✋  | Create `sdks/godot` from the prototype, with a corpus mirror and CI runner                 | —                                        | godot-engineer | 1–1.5    | done   |
-| [P1-02](wp/P1-02-godot-core.md)           | Godot core: strict JSON, verify, trust, clock, cache, transport, persistence               | P1-01                                    | godot-engineer | 1.5–2    | done   |
-| [P1-03](wp/P1-03-godot-license.md)        | Godot licence client: gate, activation, enrolment, entitlements, re-register on 401        | P1-02, P0-04, P1-05                      | godot-engineer | 1–1.25   | done   |
-| [P1-04](wp/P1-04-godot-config.md)         | Godot config client: precedence, secrets, catalog fetch, edge-mint, typed mirrors          | P1-02, P0-12                             | godot-engineer | 1–1.25   | done   |
-| [P1-05](wp/P1-05-godot-devices.md)        | Godot devices: fingerprint per platform, register, manage, report (`engine`/`outlet` keys) | P1-02                                    | godot-engineer | 1–1.25   | done   |
-| [P1-06](wp/P1-06-rfc8628-page.md) ✋      | Serve an RFC 8628 user-code page for device-code sign-in                                   | P0-13                                    | implementer    | 0.5–0.75 | done   |
-| [P1-07](wp/P1-07-godot-identity.md) ✋    | Godot identity: device-code sign-in with a QR code                                         | P1-02, P1-06                             | godot-engineer | 0.75–1   | done   |
-| [P1-08](wp/P1-08-godot-update-check.md)   | Godot update-check parity with the existing SDKs                                           | P1-02                                    | godot-engineer | 0.25–0.5 | done   |
-| [P1-09](wp/P1-09-boot-stage-machine.md) ⚑ | Specify the boot stage machine as `stage-matrix.json` and implement it in `client-core`    | —                                        | sdk-porter     | 1–1.5    | done   |
-| [P1-10](wp/P1-10-godot-ui-kit.md)         | Godot UI kit v1 and `PKeyBoot` shell                                                       | P1-03, P1-04, P1-07, P1-09, P1-08, P1-11 | godot-engineer | 1.5–2    | done   |
-| [P1-11](wp/P1-11-godot-export-plugin.md)  | Godot export plugin v1: build stamp and editor dock                                        | P1-01, P1-02                             | godot-engineer | 0.5–0.75 | done   |
-| [P1-12](wp/P1-12-godot-release.md) ✋     | Package, document and publish the Godot SDK (docs page, Asset Store, Asset Library)        | P1-05, P1-08, P1-10, P1-11, P0-05        | godot-engineer | 0.5–0.75 | todo   |
+| Id                                        | Title                                                                                      | Depends on                               | Role           | Weeks    | Status    |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------- | -------------- | -------- | --------- |
+| [P1-01](wp/P1-01-godot-scaffold.md) ⚑ ✋  | Create `sdks/godot` from the prototype, with a corpus mirror and CI runner                 | —                                        | godot-engineer | 1–1.5    | done      |
+| [P1-02](wp/P1-02-godot-core.md)           | Godot core: strict JSON, verify, trust, clock, cache, transport, persistence               | P1-01                                    | godot-engineer | 1.5–2    | done      |
+| [P1-03](wp/P1-03-godot-license.md)        | Godot licence client: gate, activation, enrolment, entitlements, re-register on 401        | P1-02, P0-04, P1-05                      | godot-engineer | 1–1.25   | done      |
+| [P1-04](wp/P1-04-godot-config.md)         | Godot config client: precedence, secrets, catalog fetch, edge-mint, typed mirrors          | P1-02, P0-12                             | godot-engineer | 1–1.25   | done      |
+| [P1-05](wp/P1-05-godot-devices.md)        | Godot devices: fingerprint per platform, register, manage, report (`engine`/`outlet` keys) | P1-02                                    | godot-engineer | 1–1.25   | done      |
+| [P1-06](wp/P1-06-rfc8628-page.md) ✋      | Serve an RFC 8628 user-code page for device-code sign-in                                   | P0-13                                    | implementer    | 0.5–0.75 | done      |
+| [P1-07](wp/P1-07-godot-identity.md) ✋    | Godot identity: device-code sign-in with a QR code                                         | P1-02, P1-06                             | godot-engineer | 0.75–1   | done      |
+| [P1-08](wp/P1-08-godot-update-check.md)   | Godot update-check parity with the existing SDKs                                           | P1-02                                    | godot-engineer | 0.25–0.5 | done      |
+| [P1-09](wp/P1-09-boot-stage-machine.md) ⚑ | Specify the boot stage machine as `stage-matrix.json` and implement it in `client-core`    | —                                        | sdk-porter     | 1–1.5    | done      |
+| [P1-10](wp/P1-10-godot-ui-kit.md)         | Godot UI kit v1 and `PKeyBoot` shell                                                       | P1-03, P1-04, P1-07, P1-09, P1-08, P1-11 | godot-engineer | 1.5–2    | done      |
+| [P1-11](wp/P1-11-godot-export-plugin.md)  | Godot export plugin v1: build stamp and editor dock                                        | P1-01, P1-02                             | godot-engineer | 0.5–0.75 | done      |
+| [P1-12](wp/P1-12-godot-release.md) ✋     | Package, document and publish the Godot SDK (docs page, Asset Store, Asset Library)        | P1-05, P1-08, P1-10, P1-11, P0-05        | godot-engineer | 0.5–0.75 | in-review |
 
 ## P1b: SDK parity
 
@@ -111,7 +111,7 @@ keys, devices). _Optional_ work packages are off the required path.
 
 ## P4: Packs
 
-28 work packages, 33.25–44.25 weeks.
+31 work packages, 35.25–47.25 weeks.
 
 | Id                                                   | Title                                                                                                                                                   | Depends on                               | Role           | Weeks     | Status |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | -------------- | --------- | ------ |
@@ -131,7 +131,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P4-14](wp/P4-14-readiness-gc-rollouts.md)           | Distribution: outlet readiness holds, per-outlet pack rollouts and halts, server GC                                                                     | P4-12, P2b-04, P4-13                     | implementer    | 1–1.5     | done   |
 | [P4-15](wp/P4-15-console-compat-matrix.md)           | Console: compatibility matrix and the "what does this device get?" simulator                                                                            | P4-12, P4-13, P4-14                      | implementer    | 1         | done   |
 | [P4-16](wp/P4-16-more-pack-types.md)                 | More pack types in every SDK: `l10n.table`, `data.json`, `audio.bank`, `ml.model`, `custom.*`                                                           | P4-06, P4-07, P4-08                      | sdk-porter     | 1–1.5     | done   |
-| [P4-17](wp/P4-17-lazy-deltas.md) ✋                  | Lazy hot-pair delta generation from install telemetry                                                                                                   | P4-22, P3-03, S-08                       | implementer    | 1–1.5     | todo   |
+| [P4-17](wp/P4-17-lazy-deltas.md) ✋                  | Lazy hot-pair delta generation from install telemetry                                                                                                   | P4-22, P3-03, S-08                       | implementer    | 1–1.5     | done   |
 | [P4-18](wp/P4-18-web-dcz.md)                         | Web deltas via Compression Dictionary Transport, with the WASM decoder fallback                                                                         | P4-11, P4-05, P1b-05                     | implementer    | 1         | done   |
 | [P4-19](wp/P4-19-content-key-delegation.md) ⚑        | Content-key delegation for data-only packs                                                                                                              | P4-13                                    | implementer    | 1.5–2     | done   |
 | [P4-20](wp/P4-20-save-compat.md)                     | Save compatibility: `provides`/`removes` checks, `isAvailable`, content-interface fingerprint                                                           | P4-12, P4-08, P4-06, P4-07               | implementer    | 1         | done   |
@@ -143,6 +143,9 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P4-26](wp/P4-26-delegation-godot.md) ⚑              | Content-key delegation in Godot                                                                                                                         | P4-19, P4-24                             | godot-engineer | 0.5–0.75  | done   |
 | [P4-27](wp/P4-27-rscc-scan.md)                       | Scan compressed (RSCC) resources in packs so imported models are admitted                                                                               | P4-08, P4-22                             | godot-engineer | 0.5–0.75  | done   |
 | [P4-28](wp/P4-28-script-attach-allowlist.md)         | Script attachment allow-list and publish script-kind settings                                                                                           | P4-08                                    | godot-engineer | 0.5–1     | done   |
+| [P4-29](wp/P4-29-feed-delta-menu.md) ⚑               | The feed's delta menu: offer lazy deltas in the signed feed, read them in every SDK's planner                                                           | P4-17, P4-13, P4-18                      | implementer    | 1–1.5     | todo   |
+| [P4-30](wp/P4-30-feed-delta-menu-python-swift.md) ⚑  | Feed delta menu in Python and Swift                                                                                                                     | P4-29                                    | sdk-porter     | 0.5–0.75  | todo   |
+| [P4-31](wp/P4-31-feed-delta-menu-godot.md) ⚑         | Feed delta menu in Godot                                                                                                                                | P4-29                                    | godot-engineer | 0.5–0.75  | todo   |
 
 ## P5: Distribution connectors and native plugins
 
@@ -165,7 +168,7 @@ keys, devices). _Optional_ work packages are off the required path.
 
 | Id                                            | Title                                                                        | Depends on                           | Role        | Weeks | Status  |
 | --------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------ | ----------- | ----- | ------- |
-| [P6-01](wp/P6-01-commerce-bridge.md) ✋       | Commerce bridge: store purchases become licence entitlements per deliverable | P5-02, P5-03, P5-05, S-07            | implementer | 3–4   | todo    |
+| [P6-01](wp/P6-01-commerce-bridge.md) ✋       | Commerce bridge: store purchases become licence entitlements per deliverable | P5-02, P5-03, P5-05, S-07            | implementer | 3–4   | done    |
 | [P6-02](wp/P6-02-trust-tiers.md) ✋           | Device trust tiers from App Attest and Play Integrity                        | P5-05, P5-06, P5-01                  | implementer | 1–1.5 | todo    |
 | [P6-03](wp/P6-03-update-funnel-autohalt.md)   | Update funnel, auto-halt from telemetry, and Sentry integration              | P3-03, P2b-04                        | implementer | 1–1.5 | done    |
 | [P6-04](wp/P6-04-hosted-web.md) ✋ _optional_ | Optional: Polaris-hosted, channel-pinned web builds                          | P2-01, P0-05, P2b-04, P2-05          | implementer | 1–1.5 | blocked |
@@ -235,6 +238,9 @@ Every ⚑ package needs an approved plan in [`plans/`](plans/) before implementa
 | [P4-24](wp/P4-24-content-decision-godot.md)        | `plans/P4-13.md` (shared with P4-13) | godot-engineer |
 | [P4-25](wp/P4-25-delegation-python-swift.md)       | `plans/P4-19.md` (shared with P4-19) | sdk-porter     |
 | [P4-26](wp/P4-26-delegation-godot.md)              | `plans/P4-19.md` (shared with P4-19) | godot-engineer |
+| [P4-29](wp/P4-29-feed-delta-menu.md)               | `plans/P4-29.md`                     | implementer    |
+| [P4-30](wp/P4-30-feed-delta-menu-python-swift.md)  | `plans/P4-29.md` (shared with P4-29) | sdk-porter     |
+| [P4-31](wp/P4-31-feed-delta-menu-godot.md)         | `plans/P4-29.md` (shared with P4-29) | godot-engineer |
 
 ## Human inputs
 

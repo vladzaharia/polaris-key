@@ -1,7 +1,7 @@
 {
   "name": "@polaris-key/zstd-wasm",
   "version": "0.0.0",
-  "description": "Decoder-only libzstd 1.5.7 for wasm32: one frame, optionally with a raw-content prefix, window-checked before decoding.",
+  "description": "libzstd 1.5.7 for wasm32: a decoder (one frame, optionally with a raw-content prefix, window-checked before decoding) and, under ./encoder, the lazy-delta --patch-from encoder.",
   "license": "MIT AND BSD-3-Clause",
   "type": "module",
   "sideEffects": false,
@@ -18,11 +18,18 @@
       "types": "./dist/core.d.ts",
       "default": "./dist/core.js"
     },
+    "./encoder": {
+      "types": "./dist/encoder-node.d.ts",
+      "workerd": "./dist/encoder-workerd.js",
+      "node": "./dist/encoder-node.js",
+      "default": "./dist/encoder-node.js"
+    },
     "./browser": {
       "types": "./dist/browser.d.ts",
       "default": "./dist/browser.js"
     },
-    "./zdec.wasm": "./dist/zdec.wasm"
+    "./zdec.wasm": "./dist/zdec.wasm",
+    "./zenc.wasm": "./dist/zenc.wasm"
   },
   "files": [
     "dist",
@@ -30,7 +37,7 @@
     "LICENSE-MIT"
   ],
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.build.json && cp src/zdec.wasm dist/zdec.wasm",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && cp src/zdec.wasm src/zenc.wasm dist/",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",

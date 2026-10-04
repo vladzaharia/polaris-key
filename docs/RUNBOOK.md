@@ -487,6 +487,46 @@ surface in the cron's aggregate error (`blobRefs:<slug>`, `blobMark`, `blobSweep
   its lock age: stop the collector and escalate. Never shorten or remove the bucket lock to make
   it pass.
 
+## Lazy deltas (P4-17)
+
+When install telemetry shows at least 25 devices (per product, configurable) moving between the
+same two payloads of a container pack within 7 days without a delta, and the pack's record has no
+CI delta from that base, the consumer Worker `polaris-key-deltas-<env>` encodes a level-9
+`zstd-patch-from` delta in WebAssembly, verifies it, and stores it at
+`deltas/<from>/<to>.zstd-patch-from` (or under `gated/`) with a `ready` row in
+`release_lazy_deltas`. Pairs with a side over 32 MiB are refused as `over-worker-cap` (the
+evidence for a Container tier, P4-17b). Setup is DEPLOYMENT §3 "Lazy deltas".
+
+- **Turn it on.** `LAZY_DELTAS = "on"` in both `wrangler.toml` and `wrangler.deltas.toml` for the
+  environment, deploy both, then opt a product in:
+
+  ```sh
+  npx wrangler d1 execute polaris_key_<env> --env <env> --remote --command \
+    "INSERT INTO lazy_delta_settings (product, enabled, updated_at) VALUES ('<slug>', 1, unixepoch())
+     ON CONFLICT(product) DO UPDATE SET enabled = 1, updated_at = unixepoch()"
+  ```
+
+  `hot_devices` (default 25) and `daily_cap` (default 20 deltas a day) are optional columns of the
+  same row.
+
+- **Turn it off.** `enabled = 0` for one product (counting and generation stop at once), or
+  `LAZY_DELTAS = "off"` and deploy for everything. Stored deltas stay until they go cold.
+- **What it did.** `release_lazy_deltas` (`ready`, `refused` with a reason, `cold`), the nightly
+  aggregate in `delta_demand`, and the maintenance cron's `lazyDeltas:<slug>` step (failures
+  surface in the cron's aggregate error). Refusals worth acting on: `over-worker-cap` (a pack
+  above 32 MiB is hot: the case for P4-17b), `verify` (escalate: the encoder disagreed with
+  itself).
+- **Cold deltas.** A ready delta no device reported for 30 days is marked `cold` and loses its
+  `lazy-delta` ref; the blob collector then reclaims it under its usual grace and lock rules. If
+  devices come back to the pair, the sweep re-queues it.
+- **The DLQ.** `pkey-deltas-dlq-<env>` has no consumer: messages that failed 3 times wait there
+  and expire after 4 days. Alert on its depth (`npx wrangler queues info pkey-deltas-dlq-<env>`);
+  a growing DLQ means the consumer is throwing (read its logs: `npx wrangler tail
+polaris-key-deltas-<env>`).
+- **Live checks after the first deploy** (notes/S-08 §8.6): one pair at the 32 MiB cap, watching
+  the consumer's logs for Error 1102 or "exceeded resource limits"; the consumer's reported CPU
+  ms; the R2 event-to-consumer latency; and a re-PUT of the same object producing one delta.
+
 ## CI gates
 
 `.github/workflows/ci.yml` runs on PRs and `main` pushes:

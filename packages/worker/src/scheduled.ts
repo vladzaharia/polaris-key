@@ -44,6 +44,8 @@ import {
   purgeDownloadTokensForProduct,
 } from "./services/identity/portal/repo.js";
 import { pruneEvents as pruneConnectorEvents } from "./services/distribution/connectors/state.js";
+import { lazyDeltaProducts } from "./core/deltaDemand.js";
+import { sweepLazyDeltas } from "./services/release/packs/deltas/sweep.js";
 import { buildHooks } from "./core/hooks.js";
 import {
   GC_INDEX_READS_PER_TICK,
@@ -326,9 +328,39 @@ export async function runScheduledMaintenance(
     drain((limit) => prunePortalAudit(db, null, cutoff, limit)),
   );
 
+  // P4-17: the lazy-delta sweep, for products opted in (none while `LAZY_DELTAS` is off). Before
+  // the collector, so a delta marked cold tonight loses its ref before tonight's mark pass.
+  if (env) await runLazyDeltaSweep(report, env, db, now);
+
   if (env) await runBlobGc(report, env, db, now);
 
   return report;
+}
+
+/**
+ * The lazy-delta sweep (P4-17, `services/release/packs/deltas/sweep.ts`), one fault-isolated
+ * step per opted-in product (`lazyDeltas:<slug>`): refresh the demand aggregate, enqueue the
+ * pairs that turned hot (to `DELTA_QUEUE`; the consumer Worker encodes them), and mark cold the
+ * deltas no device used for 30 days. Nothing at all while the `LAZY_DELTAS` var is not `on`.
+ */
+export async function runLazyDeltaSweep(
+  report: MaintenanceReport,
+  env: Env,
+  db: Db,
+  now: number,
+): Promise<void> {
+  let products: string[] = [];
+  try {
+    products = await lazyDeltaProducts(env, db);
+  } catch (e) {
+    report.failures["lazyDeltas:products"] =
+      e instanceof Error ? e.message : String(e);
+  }
+  for (const product of products)
+    await step(report, `lazyDeltas:${product}`, async () => {
+      const r = await sweepLazyDeltas(env, db, product, now);
+      return r.demandRows + r.queued + r.cold;
+    });
 }
 
 /**

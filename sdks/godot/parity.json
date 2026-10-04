@@ -357,9 +357,8 @@
       "note": "P1-10's v1 kit: PKeyBoot, gate, activation panel, sign-in dialog with QR, offline activation, settings panel, status banner, update prompt, entitlement badge and dev-menu section, pinned as structural snapshots (suite_ui). PKeyDeviceList is not in v1 (unowned; needs P1-05) and the pack progress UI is P4-08's."
     },
     "commerce.receipt": {
-      "status": "planned",
-      "wp": "P6-01",
-      "note": "P5-05's PKeyApple carries the StoreKit 2 client (products, purchase with appAccountToken, entitlements, the deduplicated Transaction.updates listener, finish after the server records the purchase; every result carries the signed JWS); P6-01 builds the server-side bridge."
+      "status": "implemented",
+      "note": "PolarisKey.commerce (services/commerce.gd, P6-01): get_binding() (the licence's purchase binding — P5-05 PKeyApple's appAccountToken, godot-google-play-billing's obfuscatedAccountId, GodotSteam's getAuthTicketForWebApi identity — and the mapped store products) and claim(store, payload) for the StoreKit JWS, the Play purchase token or the Steam web-API ticket; the Worker verifies with the store and grants the licence flag. hidden_here() applies App Store 3.1.3(b) on Apple outlets. suite_commerce and the commerce-claim transcript (suite_transcripts)."
     }
   }
 }

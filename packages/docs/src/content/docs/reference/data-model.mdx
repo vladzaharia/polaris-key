@@ -31,6 +31,9 @@ this page or fails the freshness gate.
 | `ci_publishers` | 0035_a_ci_publishing.sql | `product`, `provider`, `repository_id`, `repository_owner_id`, `repository`, `workflow`, `environment`, `scopes_json`, `source`, `created_at`, `modified_at`, `modified_by` |
 | `ci_tokens` | 0035_a_ci_publishing.sql | `product`, `token_hash`, `token_id`, `kind`, `scopes_json`, `subject`, `label`, `jti`, `issued_at`, `expires_at`, `revoked_at`, `created_by` |
 | `ci_upload_tickets` | 0035_a_ci_publishing.sql | `product`, `ticket_hash`, `ticket_id`, `token_hash`, `objects_json`, `issued_at`, `expires_at`, `redeemed_at` |
+| `lazy_delta_settings` | 0051_lazy_deltas.sql | `product`, `enabled`, `hot_devices`, `daily_cap`, `updated_at` |
+| `delta_demand_devices` | 0051_lazy_deltas.sql | `product`, `deliverable_id`, `from_sha256`, `to_sha256`, `device_id`, `strategy`, `seen_at` |
+| `delta_demand` | 0051_lazy_deltas.sql | `product`, `deliverable_id`, `from_sha256`, `to_sha256`, `devices`, `window_start`, `last_seen` |
 
 ## license
 
@@ -40,6 +43,7 @@ this page or fails the freshness gate.
 | `keys_index` | 0001_init.sql | `product`, `key_hash`, `license_id`, `status`, `label`, `created_at`, `created_by`, `last_used_at` |
 | `tiers` | 0001_init.sql | `product`, `id`, `label`, `profile_id`, `policy_expiry_days`, `policy_device_limit`, `modified_by`, `modified_at`, `policy_fingerprint (0010)` |
 | `license_profiles` | 0004_license_profiles.sql | `product`, `license_id`, `profile_id`, `sort_order` |
+| `license_store_grants` | 0052_commerce.sql | `product`, `license_id`, `flag`, `store`, `purchase_key_hash`, `state`, `granted_at`, `revoked_at` |
 
 ## config
 
@@ -74,6 +78,7 @@ this page or fails the freshness gate.
 | `release_revocations` | 0047_release_revocations.sql | `product`, `deliverable_id`, `target_release_id`, `target_sha256`, `record_sha256`, `kid`, `jws`, `replacement_release_id`, `replacement_sha256`, `reason`, `issued_at`, `ingested_at` |
 | `release_delegations` | 0049_release_delegations.sql | `product`, `record_sha256`, `deliverable_id`, `seq`, `version`, `kid`, `jws`, `public_key`, `types_json`, `issued_at`, `expires_at`, `ingested_at`, `origin`, `revocation_sha256`, `revocation_jws`, `revocation_kid`, `revocation_reason`, `revocation_issued_at` |
 | `release_delegated_records` | 0049_release_delegations.sql | `product`, `record_sha256`, `delegation_sha256` |
+| `release_lazy_deltas` | 0051_lazy_deltas.sql | `product`, `deliverable_id`, `build_id`, `from_sha256`, `to_sha256`, `method`, `state`, `reason`, `storage_key`, `artifact_sha256`, `artifact_bytes`, `descriptor_json`, `created_at`, `updated_at` |
 
 ## distribution
 
@@ -91,6 +96,9 @@ this page or fails the freshness gate.
 | `dist_feed_files` | 0043_storefront_feeds.sql | `product`, `feed`, `channel`, `path`, `sha256`, `size`, `content_type`, `updated_at` |
 | `dist_connector_settings` | 0042_distribution_connector_settings.sql | `product`, `connector`, `settings_json`, `updated_at`, `updated_by` |
 | `dist_readiness` | 0048_a_dist_readiness_blob_gc.sql | `product`, `app_release_id`, `outlet_id`, `blocking_pack_release_id`, `state`, `detail_json`, `source`, `override_reason`, `computed_at`, `updated_at`, `updated_by` |
+| `dist_store_products` | 0052_commerce.sql | `product`, `store`, `store_product_id`, `deliverable_id`, `flag`, `source`, `modified_at`, `modified_by` |
+| `dist_purchase_bindings` | 0052_commerce.sql | `product`, `binding_id`, `license_id`, `created_at` |
+| `dist_purchases` | 0052_commerce.sql | `product`, `store`, `purchase_key_hash`, `store_product_id`, `license_id`, `state`, `environment`, `first_seen`, `last_verified`, `detail_json` |
 
 ## update
 

@@ -51,7 +51,7 @@ export function rawDeviceId(
 }
 
 /** The device-id formula itself, split out from the hardware read so it can be pinned by the
- *  conformance corpus. Node, Python, and Swift must agree here exactly. */
+ *  conformance corpus. Node, Python, Swift and Godot must agree here exactly. */
 export function deviceIdFromRaw(productSlug: string, raw: string): string {
   return createHash("sha256")
     .update(`pkey-device:${productSlug}:${raw}`, "utf8")

@@ -15,52 +15,40 @@ import {
 import { Link } from "../router.js";
 import { globalPage, productPage } from "../routes.js";
 import type { GlobalPageId, ProductPageId } from "../nav.js";
-import { PREF_KEYS, readPref, stringArray, writePref } from "../storage.js";
 import { Tooltip } from "../../components/ui/index.js";
 
 /**
- * Which sidebar sections are collapsed (owner requirement, 2026-10-03).
+ * Which sidebar sections are open (owner requirements, 2026-10-03).
  *
- * - Persisted per signed-in operator in `localStorage` (best-effort; see storage.ts).
- * - The section holding the current page is always open, and entering a section removes it from
- *   the collapsed set, so it stays open after you leave until you collapse it again.
+ * - Every section except the one holding the current page is collapsed, to save space.
+ * - A collapsed section can be expanded by hand to look inside; that is a temporary peek, and
+ *   entering any other section collapses it again. Nothing is persisted.
+ * - The active section is always open and cannot be collapsed.
  */
-export function useNavCollapse(
-  sub: string,
-  activeSection: SectionKey | null,
-): {
-  collapsed: ReadonlySet<SectionKey>;
+export function useNavCollapse(activeSection: SectionKey | null): {
+  expanded: ReadonlySet<SectionKey>;
   toggle: (key: SectionKey) => void;
 } {
-  const storageKey = PREF_KEYS.navCollapsed(sub);
-  const [collapsed, setCollapsed] = React.useState<ReadonlySet<SectionKey>>(
-    () => new Set(readPref(storageKey, stringArray, []) as SectionKey[]),
-  );
-  const save = React.useCallback(
-    (next: ReadonlySet<SectionKey>) => {
-      setCollapsed(next);
-      writePref(storageKey, [...next]);
-    },
-    [storageKey],
-  );
-  React.useEffect(() => {
-    if (activeSection && collapsed.has(activeSection)) {
-      const next = new Set(collapsed);
-      next.delete(activeSection);
-      save(next);
-    }
-  }, [activeSection, collapsed, save]);
+  const [peek, setPeek] = React.useState<{
+    section: SectionKey | null;
+    keys: ReadonlySet<SectionKey>;
+  }>({ section: activeSection, keys: new Set() });
+  // A change of section drops every peek, so only the new active section stays open.
+  const expanded =
+    peek.section === activeSection ? peek.keys : new Set<SectionKey>();
   const toggle = React.useCallback(
     (key: SectionKey) => {
       if (key === activeSection) return;
-      const next = new Set(collapsed);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      save(next);
+      setPeek((prev) => {
+        const keys = new Set(prev.section === activeSection ? prev.keys : []);
+        if (keys.has(key)) keys.delete(key);
+        else keys.add(key);
+        return { section: activeSection, keys };
+      });
     },
-    [activeSection, collapsed, save],
+    [activeSection],
   );
-  return { collapsed, toggle };
+  return { expanded, toggle };
 }
 
 export interface SidebarProps {
@@ -69,7 +57,8 @@ export interface SidebarProps {
   services: ServiceState;
   activePage: PageId | null;
   activeSection: SectionKey | null;
-  collapsed: ReadonlySet<SectionKey>;
+  /** Sections expanded by hand besides the active one (see `useNavCollapse`). */
+  expanded: ReadonlySet<SectionKey>;
   onToggleSection: (key: SectionKey) => void;
   /** Icons-only rail (desktop). */
   rail?: boolean;
@@ -89,15 +78,16 @@ export interface SidebarProps {
  * service's group is absent, not greyed out: a dimmed row invites a click that can only fail).
  *
  * Section headers are disclosure buttons (`aria-expanded`, `aria-controls`; Enter and Space
- * toggle) with no icon (owner, 2026-10-03); every item has one. A collapsed header keeps its
- * section's accent cue: the accent rule at its start.
+ * toggle) with no icon (owner, 2026-10-03); every item has one. Only the active section is open;
+ * `expanded` names the sections peeked into by hand (see `useNavCollapse`). A collapsed header
+ * keeps its section's accent cue: the accent rule at its start.
  */
 export function Sidebar({
   slug,
   services,
   activePage,
   activeSection,
-  collapsed,
+  expanded,
   onToggleSection,
   rail = false,
   onToggleRail,
@@ -134,7 +124,7 @@ export function Sidebar({
           slug={slug!}
           activePage={activePage}
           active={section.key === activeSection}
-          open={section.key === activeSection || !collapsed.has(section.key)}
+          open={section.key === activeSection || expanded.has(section.key)}
           onToggle={() => onToggleSection(section.key)}
           rail={rail}
           onNavigate={onNavigate}

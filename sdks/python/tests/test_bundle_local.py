@@ -1,7 +1,7 @@
 # @pkey-feature core.bundle core.local
 """Offline activation bundles (§7) and the transportless profile.
 
-The corpus's ``bundleCases`` pin the VERIFIER's numbered order across four SDKs; this suite
+The corpus's ``bundleCases`` pin the VERIFIER's numbered order across five SDKs; this suite
 pins the HOST half — step 5's atomic cache write, what the gate reads afterwards, and the
 local-only mode that makes an air-gapped install possible in the first place.
 """

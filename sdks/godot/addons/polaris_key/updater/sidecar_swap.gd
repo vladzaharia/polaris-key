@@ -31,7 +31,7 @@ extends RefCounted
 ## Windows rename. If the running game holds the pack open, the rename fails; it is retried 12
 ## times 250 ms apart (Diceroll's numbers), and if it still fails the staged update is KEPT and the
 ## guard applies it at the next launch, followed by one immediate restart (a second restart, the
-## brief's fallback; no detached helper). Not yet measured on Windows (see the README).
+## brief's fallback; no detached helper). Not yet measured on Windows (see the README, "Updates by outlet").
 
 const RENAME_TRIES := 12
 const RENAME_WAIT_MSEC := 250

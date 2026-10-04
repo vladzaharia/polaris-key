@@ -9,7 +9,12 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SERVICE_ACCENTS } from "@polaris-key/brand";
-import { PRODUCT_PAGES, SECTIONS } from "../src/console/nav.js";
+import {
+  PRODUCT_PAGES,
+  SECTIONS,
+  navItems,
+  platformLinks,
+} from "../src/console/nav.js";
 
 type ServiceAccentKey = keyof (typeof SERVICE_ACCENTS)["dark"];
 import { PREF_KEYS } from "../src/console/storage.js";
@@ -51,6 +56,26 @@ async function ready(): Promise<void> {
   await screen.findByRole("navigation", { name: "Console" });
   await waitFor(() => expect(sectionHeaders().length).toBeGreaterThan(0));
 }
+
+const expanded = (label: string): string | null =>
+  header(label).getAttribute("aria-expanded");
+
+/** Open a collapsed section by hand (a peek), so its items render. */
+async function expand(label: string): Promise<void> {
+  if (expanded(label) === "false") await userEvent.click(header(label));
+  expect(expanded(label)).toBe("true");
+}
+
+/** Peek into every collapsed section, so every item renders. */
+async function expandAll(): Promise<void> {
+  for (const label of sectionHeaders()) await expand(label);
+}
+
+/** The labels of the sidebar's links, in render order. */
+const navLinkLabels = (): string[] =>
+  within(nav())
+    .queryAllByRole("link")
+    .map((a) => a.textContent ?? "");
 
 describe("sections by enablement (D-15)", () => {
   it("draws Core, then one group per enabled service, in canonical order", async () => {
@@ -123,8 +148,15 @@ describe("items and headers (owner, 2026-10-03)", () => {
   it("every nav item renders an icon", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();
+    // Only the active section starts open, so peek into the rest: every item, not just Core's.
+    await expandAll();
     const links = within(nav()).getAllByRole("link");
     expect(links.length).toBeGreaterThan(10);
+    // Exactly the nav model's items: the platform links, then every section's.
+    expect(links.map((a) => a.textContent)).toEqual([
+      ...platformLinks().map((p) => p.label),
+      ...SECTIONS.flatMap((s) => navItems(s).map((p) => p.label)),
+    ]);
     for (const link of links) {
       expect(
         link.querySelector("svg[data-nav-icon]"),
@@ -181,6 +213,7 @@ describe("items and headers (owner, 2026-10-03)", () => {
   it("items are real links (middle-click and open in a new tab work, SH-5)", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();
+    await expand("License");
     expect(
       within(nav())
         .getByRole("link", { name: "Licenses" })
@@ -190,22 +223,59 @@ describe("items and headers (owner, 2026-10-03)", () => {
 });
 
 describe("collapsible section headers (owner, 2026-10-03)", () => {
+  it("opens only the active section at load; every other is collapsed", async () => {
+    boot("#/p/djdl/license/tiers", { services: ALL_ON });
+    await ready();
+    for (const section of SECTIONS) {
+      expect(expanded(section.label), section.label).toBe(
+        section.key === "license" ? "true" : "false",
+      );
+    }
+    // Only the active section's items render, beside the platform links.
+    const license = SECTIONS.find((s) => s.key === "license")!;
+    expect(navLinkLabels()).toEqual([
+      ...platformLinks().map((p) => p.label),
+      ...navItems(license).map((p) => p.label),
+    ]);
+  });
+
+  it("on a Core page, Core is the open section", async () => {
+    boot("#/p/djdl", { services: ALL_ON });
+    await ready();
+    for (const section of SECTIONS) {
+      expect(expanded(section.label), section.label).toBe(
+        section.key === "core" ? "true" : "false",
+      );
+    }
+    const core = SECTIONS.find((s) => s.key === "core")!;
+    expect(navLinkLabels()).toEqual([
+      ...platformLinks().map((p) => p.label),
+      ...navItems(core).map((p) => p.label),
+    ]);
+  });
+
   it("each header is a disclosure button with aria-expanded and aria-controls", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();
     const license = header("License");
     expect(license.tagName).toBe("BUTTON");
-    expect(license.getAttribute("aria-expanded")).toBe("true");
+    expect(license.getAttribute("aria-expanded")).toBe("false");
     const controls = license.getAttribute("aria-controls")!;
     expect(controls).toBeTruthy();
+    await expand("License");
     const region = document.getElementById(controls)!;
     expect(within(region).getByRole("link", { name: "Licenses" })).toBeTruthy();
   });
 
-  it("collapses and expands on click, and with Enter and Space", async () => {
+  it("a collapsed header expands as a peek on click, and with Enter and Space", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();
     const license = header("License");
+    expect(within(nav()).queryByRole("link", { name: "Licenses" })).toBeNull();
+
+    await userEvent.click(license);
+    expect(license.getAttribute("aria-expanded")).toBe("true");
+    expect(within(nav()).getByRole("link", { name: "Licenses" })).toBeTruthy();
     await userEvent.click(license);
     expect(license.getAttribute("aria-expanded")).toBe("false");
     expect(within(nav()).queryByRole("link", { name: "Licenses" })).toBeNull();
@@ -215,12 +285,18 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
     expect(license.getAttribute("aria-expanded")).toBe("true");
     await userEvent.keyboard(" ");
     expect(license.getAttribute("aria-expanded")).toBe("false");
+    await userEvent.keyboard(" ");
+    expect(license.getAttribute("aria-expanded")).toBe("true");
+
+    // A peek touches only its own section.
+    expect(expanded("Core")).toBe("true");
+    expect(expanded("Config")).toBe("false");
   });
 
   it("a collapsed section keeps its header and its accent cue", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();
-    await userEvent.click(header("Config"));
+    expect(expanded("Config")).toBe("false");
     const group = nav().querySelector('[data-section="config"]')!;
     expect(group.getAttribute("data-service")).toBe("config");
     expect(
@@ -231,82 +307,97 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
     ).not.toBeNull();
   });
 
-  it("persists per operator, and restores on the next load", async () => {
-    boot("#/p/djdl", { services: ALL_ON });
+  it("entering another section opens it and collapses the previous one and every peek", async () => {
+    boot("#/p/djdl/license/tiers", { services: ALL_ON });
     await ready();
-    await userEvent.click(header("Release"));
-    expect(
-      JSON.parse(window.localStorage.getItem(PREF_KEYS.navCollapsed("u1"))!),
-    ).toEqual(["release"]);
-    cleanup();
+    await expand("Config");
+    await expand("Release");
 
-    boot("#/p/djdl", { services: ALL_ON });
-    await ready();
-    expect(header("Release").getAttribute("aria-expanded")).toBe("false");
-    expect(header("License").getAttribute("aria-expanded")).toBe("true");
-  });
-
-  it("is per operator: another session's choice does not apply", async () => {
-    window.localStorage.setItem(
-      PREF_KEYS.navCollapsed("someone-else"),
-      JSON.stringify(["license"]),
+    // Follow a link inside a peeked section.
+    await userEvent.click(
+      within(nav()).getByRole("link", { name: "Profiles" }),
     );
-    boot("#/p/djdl", { services: ALL_ON });
-    await ready();
-    expect(header("License").getAttribute("aria-expanded")).toBe("true");
+    await waitFor(() =>
+      expect(
+        within(nav())
+          .getByRole("link", { name: "Profiles" })
+          .getAttribute("aria-current"),
+      ).toBe("page"),
+    );
+    expect(expanded("Config")).toBe("true");
+    expect(expanded("License")).toBe("false");
+    expect(expanded("Release")).toBe("false");
+    expect(within(nav()).queryByRole("link", { name: "Tiers" })).toBeNull();
+    expect(within(nav()).queryByRole("link", { name: "Releases" })).toBeNull();
+
+    // And by URL, into Core.
+    act(() => {
+      window.location.hash = "#/p/djdl/activity";
+    });
+    await waitFor(() => expect(expanded("Core")).toBe("true"));
+    expect(expanded("Config")).toBe("false");
+    for (const section of SECTIONS.filter((s) => s.key !== "core")) {
+      expect(expanded(section.label), section.label).toBe("false");
+    }
   });
 
-  it("survives broken storage", async () => {
-    window.localStorage.setItem(PREF_KEYS.navCollapsed("u1"), "{not json");
-    const setItem = vi
-      .spyOn(Storage.prototype, "setItem")
-      .mockImplementation(() => {
-        throw new Error("quota");
-      });
-    boot("#/p/djdl", { services: ALL_ON });
+  it("a peek stays open while you move between pages of the active section", async () => {
+    boot("#/p/djdl/license/tiers", { services: ALL_ON });
     await ready();
-    await userEvent.click(header("Config"));
-    expect(header("Config").getAttribute("aria-expanded")).toBe("false");
-    setItem.mockRestore();
+    await expand("Config");
+    await userEvent.click(
+      within(nav()).getByRole("link", { name: "Licenses" }),
+    );
+    await waitFor(() =>
+      expect(
+        within(nav())
+          .getByRole("link", { name: "Licenses" })
+          .getAttribute("aria-current"),
+      ).toBe("page"),
+    );
+    expect(expanded("Config")).toBe("true");
   });
 
-  it("the section holding the current page is always expanded", async () => {
+  it("the section holding the current page cannot be collapsed", async () => {
     boot("#/p/djdl/license/tiers", { services: ALL_ON });
     await ready();
     const license = header("License");
     expect(license.getAttribute("aria-disabled")).toBe("true");
     await userEvent.click(license);
     expect(license.getAttribute("aria-expanded")).toBe("true");
+    license.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(license.getAttribute("aria-expanded")).toBe("true");
+    await userEvent.keyboard(" ");
+    expect(license.getAttribute("aria-expanded")).toBe("true");
     expect(within(nav()).getByRole("link", { name: "Tiers" })).toBeTruthy();
   });
 
-  it("opening a route auto-expands its section", async () => {
-    window.localStorage.setItem(
-      PREF_KEYS.navCollapsed("u1"),
-      JSON.stringify(["config", "release"]),
-    );
+  it("persists nothing: no storage writes, and a peek does not survive a reload", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();
-    expect(header("Config").getAttribute("aria-expanded")).toBe("false");
+    const before = { ...window.localStorage };
+    const setItem = vi.spyOn(Storage.prototype, "setItem");
+    await expand("Config");
+    await expand("Release");
+    await userEvent.click(header("Release"));
     act(() => {
-      window.location.hash = "#/p/djdl/config/profiles";
+      window.location.hash = "#/p/djdl/license/tiers";
     });
-    await waitFor(() =>
-      expect(header("Config").getAttribute("aria-expanded")).toBe("true"),
-    );
-    // And it stays open after you leave, until you collapse it again.
-    act(() => {
-      window.location.hash = "#/p/djdl/activity";
-    });
-    await waitFor(() =>
-      expect(
-        within(nav())
-          .getByRole("link", { name: "Activity" })
-          .getAttribute("aria-current"),
-      ).toBe("page"),
-    );
-    expect(header("Config").getAttribute("aria-expanded")).toBe("true");
-    expect(header("Release").getAttribute("aria-expanded")).toBe("false");
+    await waitFor(() => expect(expanded("License")).toBe("true"));
+    await expand("Identity");
+    expect(setItem).not.toHaveBeenCalled();
+    expect({ ...window.localStorage }).toEqual(before);
+    setItem.mockRestore();
+    cleanup();
+
+    boot("#/p/djdl", { services: ALL_ON });
+    await ready();
+    for (const section of SECTIONS) {
+      expect(expanded(section.label), section.label).toBe(
+        section.key === "core" ? "true" : "false",
+      );
+    }
   });
 });
 
@@ -638,12 +729,30 @@ describe("page heading, title and focus", () => {
   it("moves focus to the new page's h1 and announces it", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();
+    await expand("License");
     await userEvent.click(within(nav()).getByRole("link", { name: "Tiers" }));
     const h1 = await screen.findByRole("heading", { level: 1, name: "Tiers" });
     await waitFor(() => expect(document.activeElement).toBe(h1));
     expect(document.getElementById("route-announcer")!.textContent).toBe(
       "Tiers, page loaded",
     );
+  });
+
+  it("scrolls back to the top on every page change, but not when only the query changes (owner, 2026-10-03)", async () => {
+    boot("#/p/djdl/license/licenses", { services: ALL_ON });
+    await ready();
+    const main = screen.getByRole("main");
+    main.scrollTop = 640;
+    await userEvent.click(within(nav()).getByRole("link", { name: "Tiers" }));
+    await screen.findByRole("heading", { level: 1, name: "Tiers" });
+    await waitFor(() => expect(main.scrollTop).toBe(0));
+
+    // A query-string change on the same page (a filter, a tab) keeps the reader's place.
+    main.scrollTop = 320;
+    window.location.hash = "#/p/djdl/license/tiers?q=pro";
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(main.scrollTop).toBe(320);
   });
 
   it("the skip link is the first focusable element and targets main", async () => {

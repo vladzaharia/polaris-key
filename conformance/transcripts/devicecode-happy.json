@@ -388,7 +388,8 @@
                   "outlet",
                   "content",
                   "updates",
-                  "caps"
+                  "caps",
+                  "packInstalls"
                 ]
               }
             },

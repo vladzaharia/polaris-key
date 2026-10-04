@@ -24,7 +24,7 @@ the page is a bug.
 ## What "frozen" means
 
 The verification path is not an implementation detail that each SDK may tune. It is a fixed
-construction that four languages must agree on byte-for-byte, and "frozen" is the operating
+construction that five languages must agree on byte-for-byte, and "frozen" is the operating
 rule that makes that possible:
 
 - **The encoding cannot drift.** Protected-header key order, size caps, the base64url

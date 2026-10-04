@@ -115,6 +115,12 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/distribution/hooks/asc", ["post"]],
   // P6-03: the Sentry alert webhook (Sentry → Worker, HMAC-signed); opens halt candidates.
   ["/{product}/distribution/hooks/sentry", ["post"]],
+  // P6-01: the commerce bridge — the binding and claim routes (device token) and the two store
+  // notification hooks (Apple-signed JWS; Google OIDC push).
+  ["/{product}/distribution/commerce/binding", ["get"]],
+  ["/{product}/distribution/commerce/claim", ["post"]],
+  ["/{product}/distribution/hooks/app-store", ["post"]],
+  ["/{product}/distribution/hooks/play-rtdn", ["post"]],
   // P2b-05: the storefront feeds, the F-Droid relay and its CI route.
   ["/{product}/distribution/altstore/{channel}/source.json", ["get"]],
   ["/{product}/distribution/altstore-pal/{channel}/source.json", ["get"]],
@@ -292,6 +298,12 @@ const CORS_EXCLUDED = new Set([
   "/{product}/distribution/hooks/asc",
   // P6-03: the Sentry alert webhook, called server-to-server by Sentry.
   "/{product}/distribution/hooks/sentry",
+  // P6-01: the commerce bridge. The claim and binding routes serve store builds (App Store,
+  // Play, Steam), never a browser page; the two hooks are called server-to-server by the stores.
+  "/{product}/distribution/commerce/binding",
+  "/{product}/distribution/commerce/claim",
+  "/{product}/distribution/hooks/app-store",
+  "/{product}/distribution/hooks/play-rtdn",
   // P2b-05: the F-Droid CI route, authenticated by a `pkeyci_` bearer.
   "/{product}/distribution/feeds/fdroid/{channel}",
   // P2b-06: the download page and its alias — HTML on the bytes host, a top-level navigation.

@@ -136,7 +136,7 @@ export class GoogleApiClient {
   url(
     segments: readonly string[],
     query?: Record<string, string>,
-    custom?: "commit" | "query",
+    custom?: "commit" | "query" | "acknowledge",
   ): URL {
     if (segments.length === 0) throw new Error("invalid Google Play path");
     const path = segments.map(encodeSegment).join("/");
@@ -166,7 +166,7 @@ export class GoogleApiClient {
     opts: {
       query?: Record<string, string>;
       body?: unknown;
-      custom?: "commit" | "query";
+      custom?: "commit" | "query" | "acknowledge";
     } = {},
   ): Promise<Record<string, unknown> | null> {
     const url = this.url(segments, opts.query, opts.custom);

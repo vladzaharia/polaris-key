@@ -24,6 +24,7 @@ import {
   SERVICE_SLUGS,
   SERVICE_TABLE,
   type ServiceIconName,
+  type ServiceTableRow,
 } from "../../services.generated.js";
 import { docsUrl } from "../../lib/docsLinks.js";
 import {
@@ -84,6 +85,8 @@ const SERVICE_ICONS: Record<ServiceIconName, LucideIcon> = {
 
 interface ServiceRow {
   slug: ServiceSlug;
+  /** The row's `data-service` scope, so its icon tile, icon and switch take the service's accent. */
+  accent: ServiceTableRow["accent"];
   label: string;
   description: string;
   icon: React.ReactNode;
@@ -94,6 +97,7 @@ const SERVICE_ROWS: ServiceRow[] = SERVICE_TABLE.map((row) => {
   const Icon = SERVICE_ICONS[row.icon];
   return {
     slug: row.slug,
+    accent: row.accent,
     label: row.label,
     description: row.summary,
     icon: <Icon aria-hidden className="size-4 text-accent-fg" />,
@@ -276,10 +280,11 @@ export function ServicesCard({ slug }: { slug: string }): React.ReactElement {
               return (
                 <div
                   key={row.slug}
+                  data-service={row.accent}
                   className="flex flex-wrap items-start justify-between gap-4 py-4 first:pt-0"
                 >
                   <div className="flex min-w-0 flex-1 items-start gap-3">
-                    <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                    <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-accent-subtle ring-1 ring-inset ring-accent/30">
                       {row.icon}
                     </div>
                     <div className="min-w-0">

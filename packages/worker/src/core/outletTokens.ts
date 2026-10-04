@@ -205,6 +205,60 @@ export async function ascToken(
   return token;
 }
 
+// ── App Store Server API (P6-01) ────────────────────────────────────────────────────────────
+
+/** The App Store Server API token's lifetime: Apple caps it at 60 minutes; 20 minutes, as for
+ *  App Store Connect, keeps a leaked token short-lived. */
+export const APP_STORE_SERVER_TOKEN_LIFETIME = 20 * 60;
+const appStoreMemo = new Map<string, { token: string; exp: number }>();
+
+/**
+ * The App Store Server API bearer token for the `app-store-server-key` credential `credentialId`
+ * (P6-01): ES256, header `kid` = the key id and `typ: JWT`, claims `iss` (issuer id), `iat`,
+ * `exp` (20 minutes), `aud: "appstoreconnect-v1"` and `bid` (the bundle id — the caller has
+ * already checked it equals the credential's pin). Memoised per isolate like `ascToken`; `null`
+ * for an unusable credential. A memo hit never opens the credential.
+ */
+export async function appStoreServerToken(
+  env: Env,
+  db: Db,
+  product: string,
+  credentialId: string,
+  bundleId: string,
+  use: string,
+  now: number,
+): Promise<string | null> {
+  const version = await outletCredentialVersion(
+    db,
+    product,
+    credentialId,
+    "app-store-server-key",
+  );
+  if (version === null) return null;
+  const hit = appStoreMemo.get(
+    `${product}:${credentialId}:${version}:${bundleId}`,
+  );
+  if (hit && hit.exp - ASC_REUSE_MARGIN > now) return hit.token;
+  const cred = await openOutletCredential(env, db, product, credentialId, use, {
+    kind: "app-store-server-key",
+    now,
+  });
+  if (!cred) return null;
+  const { keyId, issuerId, p8 } = cred.value;
+  const exp = now + APP_STORE_SERVER_TOKEN_LIFETIME;
+  const token = await signJwtEs256(
+    { iss: issuerId, iat: now, exp, aud: ASC_AUDIENCE, bid: bundleId },
+    p8,
+    keyId,
+  );
+  if (appStoreMemo.size >= ASC_MEMO_MAX) appStoreMemo.clear();
+  appStoreMemo.set(`${product}:${credentialId}:${cred.version}:${bundleId}`, {
+    token,
+    exp,
+  });
+  return token;
+}
+
 // ── Google (JWT-bearer) ──────────────────────────────────────────────────────────────────────
 
 export const GOOGLE_JWT_BEARER_GRANT =

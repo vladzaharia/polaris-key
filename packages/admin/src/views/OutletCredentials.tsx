@@ -146,6 +146,41 @@ const KINDS: {
       },
     ],
   },
+  {
+    value: "app-store-server-key",
+    label: "App Store In-App Purchase key",
+    pin: {
+      label: "App Store bundle id",
+      help: "The bundle id of the one app whose purchases this key may confirm for this product. The commerce bridge stays off for the App Store unless its settings name the same bundle id.",
+    },
+    fields: [
+      { key: "keyId", label: "Key ID" },
+      { key: "issuerId", label: "Issuer ID" },
+      {
+        key: "p8",
+        label: ".p8 private key",
+        secret: true,
+        multiline: true,
+        help: "App Store Connect → Users and Access → Integrations → In-App Purchase. Not the App Store Connect API key.",
+      },
+    ],
+  },
+  {
+    value: "steam-publisher-key",
+    label: "Steamworks Web API publisher key",
+    pin: {
+      label: "Steam app id",
+      help: "The app id of the one game whose DLC ownership this key may check for this product. The commerce bridge stays off for Steam unless its settings name the same app id.",
+    },
+    fields: [
+      {
+        key: "key",
+        label: "Publisher key",
+        secret: true,
+        help: "Steamworks → Users & Permissions → Manage Groups → Web API key (32 hex digits).",
+      },
+    ],
+  },
 ];
 
 const KIND_LABEL = new Map<string, string>(

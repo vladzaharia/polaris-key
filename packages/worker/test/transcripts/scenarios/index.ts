@@ -15,6 +15,7 @@ import { releaseChangelog, releaseChangelogEntitled } from "./release.js";
 import { edgeMint } from "./mint.js";
 import { syncErrors, syncEtag304 } from "./sync.js";
 import { updateFeedRollback, updateRecordByHash } from "./update.js";
+import { commerceClaim } from "./commerce.js";
 
 export const SCENARIOS: Scenario[] = [
   discoveryCapabilities,
@@ -33,4 +34,5 @@ export const SCENARIOS: Scenario[] = [
   edgeMint,
   updateFeedRollback,
   updateRecordByHash,
+  commerceClaim,
 ];

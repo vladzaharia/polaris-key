@@ -601,7 +601,7 @@ paths:
         per report; deleted with the device.
 
 
-        Twenty top-level keys survive the allowlist; anything else is dropped SILENTLY
+        Twenty-one top-level keys survive the allowlist; anything else is dropped SILENTLY
         rather than refused, so a newer SDK reporting a field this worker does not know still
         succeeds. `os`/`hardware`/`runtime`/`locale`/`timezone`/`probes` are projected into
         typed columns (strings truncated to 128 chars, probe ids and probe versions to 64);
@@ -619,7 +619,13 @@ paths:
         Supported for right now (`core.verify`, `update.decide`, …). It keeps only strings
         shaped like a feature id (at most 64 chars), deduplicated, at most 128; ids are not
         checked against the registry, so a newer SDK's features survive. A non-array `caps`
-        is dropped. An empty body is valid and means `{}`. Auth requires a usable license only
+        is dropped. `packInstalls` (P4-17) carries at most 8 recent pack installs (pack, the
+        `from` and `to` payload hashes, the strategy, sizes and timings), each validated (a
+        malformed entry is dropped, unknown fields are stripped, `failureStage` is cut to 128
+        characters); for a product that opted into lazy deltas they are counted, once per device
+        and pair, as demand for a server-generated delta, and an entry whose strategy is `delta`
+        is not demand. Counting is D1 only and fails open. An empty body is valid and means
+        `{}`. Auth requires a usable license only
         when the product enables the License service (D-08).
       security: [{ deviceToken: [] }]
       parameters: [{ $ref: "#/components/parameters/Product" }]
@@ -2361,7 +2367,12 @@ paths:
           in: path
           required: true
           description: The pack id.
-          schema: { type: string, pattern: "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$", maxLength: 64 }
+          schema:
+            {
+              type: string,
+              pattern: "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$",
+              maxLength: 64,
+            }
         - name: variant
           in: path
           required: true
@@ -2427,7 +2438,12 @@ paths:
         - { $ref: "#/components/parameters/Product" }
         - { name: pack, in: path, required: true, schema: { type: string } }
         - { name: variant, in: path, required: true, schema: { type: string } }
-        - { name: sha256, in: path, required: true, schema: { type: string, pattern: "^[0-9a-f]{64}$" } }
+        - {
+            name: sha256,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[0-9a-f]{64}$" },
+          }
       responses:
         "200":
           description: The answer's headers, no body.
@@ -3358,6 +3374,363 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
+
+  /{product}/distribution/commerce/binding:
+    get:
+      operationId: commerceBinding
+      tags: [distribution]
+      summary: The licence's purchase binding and the store products on sale (device token)
+      description: >
+        P6-01. The opaque binding UUID of the caller's licence — created on first use, never the
+        licence id, not PII — which the SDK hands the store BEFORE the purchase: Apple
+        `appAccountToken`, Play `obfuscatedAccountId`, or the `identity` of a Steam web-API
+        ticket. `products` lists the store products the operator mapped (store, product id, the
+        licence flag it grants, the deliverable it unlocks) for every store the product is set
+        up for, so a client knows what to sell; on an Apple outlet the SDK hides a flag that is
+        not also an App Store product (App Store 3.1.3(b); the licence document stays
+        outlet-agnostic). A device with no licence is 403 `not_entitled` with `reason:
+        no_license` — enrol first; the bridge never creates a licence. With License off for the
+        product the route is the service not-found. No CORS. Errors are NESTED.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "200":
+          description: "The binding and the mapped store products (`Cache-Control: private, no-store`)."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [bindingId, products]
+                properties:
+                  bindingId:
+                    type: string
+                    format: uuid
+                    description: Lowercase RFC 4122 UUID; compared case-insensitively.
+                  products:
+                    type: array
+                    items:
+                      type: object
+                      required: [store, productId, flag, deliverable]
+                      properties:
+                        store: { type: string, enum: [app-store, play, steam] }
+                        productId:
+                          type: string
+                          description: The App Store product id, the Play product id, or the Steam DLC app id.
+                        flag: { type: string }
+                        deliverable: { type: string }
+              examples:
+                binding:
+                  summary: test/commerce.test.ts
+                  value:
+                    bindingId: 6f1c2a9e-3b4d-4e5f-8a7b-9c0d1e2f3a4b
+                    products:
+                      - {
+                          store: app-store,
+                          productId: gg.acme.djdl.skins,
+                          flag: extras.diceSkins,
+                          deliverable: app,
+                        }
+                      - {
+                          store: steam,
+                          productId: "1234560",
+                          flag: extras.diceSkins,
+                          deliverable: app,
+                        }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: "The device has no licence (`not_entitled`, `reason: no_license`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /{product}/distribution/commerce/claim:
+    post:
+      operationId: commerceClaim
+      tags: [distribution]
+      summary: Claim a store purchase as a licence flag (device token)
+      description: >
+        P6-01. The device forwards what its store handed it; the Worker verifies it with the
+        store and grants the mapped flag on the caller's licence, for every release of the
+        deliverable, through License (`applyStoreGrant`). App Store: the StoreKit 2 JWS is
+        verified (ES256, `x5c` chain of three ending byte-for-byte at Apple Root CA - G3, Apple's
+        leaf and intermediate OIDs), then the transaction is re-read from the App Store Server
+        API and Apple's copy decides (bundle id, environment — `Sandbox` only where the operator
+        accepts it, `Xcode` never — non-consumable, owned as `PURCHASED`, `revocationDate`).
+        Play: `purchases.products.get` decides — only `purchaseState` 0 grants, 2 (pending)
+        records nothing granted, a licence-tester purchase only where the operator accepts test
+        purchases — and a granted purchase is acknowledged once. Steam:
+        `ISteamUserAuth/AuthenticateUserTicket` with the caller's binding as the ticket identity,
+        then `ISteamUser/CheckAppOwnership` for the DLC (owned by the account itself, not a
+        timed trial). In every case the store's record must name the CALLER's binding: a
+        transaction bound to another licence is 403 `binding_mismatch`, one already recorded for
+        another licence 403 `bound_elsewhere`, one with no binding 403 `unbound`. A replay
+        answers 200 with `changed: false`. Rate-limited per licence. With License off, or the
+        store not set up (no settings, or no credential pinned to the configured app), the route
+        is the service not-found. No CORS. Errors are NESTED; `reason` rides beside `error`.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [store, signedTransaction]
+                  properties:
+                    store: { const: app-store }
+                    signedTransaction:
+                      type: string
+                      description: StoreKit 2 `Transaction.jwsRepresentation` (at most 32 KiB).
+                - type: object
+                  required: [store, productId, purchaseToken]
+                  properties:
+                    store: { const: play }
+                    productId:
+                      { type: string, pattern: "^[a-z0-9][a-z0-9._]{0,139}$" }
+                    purchaseToken:
+                      { type: string, pattern: "^[A-Za-z0-9._-]{1,1024}$" }
+                - type: object
+                  required: [store, ticket, dlcAppId]
+                  properties:
+                    store: { const: steam }
+                    ticket:
+                      type: string
+                      pattern: "^[0-9A-Fa-f]{16,4096}$"
+                      description: A web-API session ticket (hex) whose identity is the binding.
+                    dlcAppId: { type: string, pattern: "^[1-9][0-9]{0,9}$" }
+            examples:
+              steam:
+                summary: test/commerce.test.ts
+                value:
+                  {
+                    store: steam,
+                    ticket: 14000000ab14000000ab,
+                    dlcAppId: "1234560",
+                  }
+      responses:
+        "200":
+          description: "Recorded. `granted` is true when the flag is now on the licence; `changed` false for a replay."
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  [
+                    ok,
+                    store,
+                    productId,
+                    flag,
+                    deliverable,
+                    state,
+                    granted,
+                    changed,
+                  ]
+                properties:
+                  ok: { type: boolean, const: true }
+                  store: { type: string, enum: [app-store, play, steam] }
+                  productId: { type: string }
+                  flag: { type: string }
+                  deliverable: { type: string }
+                  state: { type: string, enum: [active, pending, revoked] }
+                  granted: { type: boolean }
+                  changed: { type: boolean }
+              examples:
+                granted:
+                  summary: test/commerce.test.ts
+                  value:
+                    {
+                      ok: true,
+                      store: app-store,
+                      productId: gg.acme.djdl.skins,
+                      flag: extras.diceSkins,
+                      deliverable: app,
+                      state: active,
+                      granted: true,
+                      changed: true,
+                    }
+        "400":
+          description: >
+            `bad_request` with a `reason`: `bad_body`; `invalid_jws`, `untrusted_chain`,
+            `wrong_app`, `environment`, `unsupported_type`, `family_shared`,
+            `transaction_mismatch`, `unknown_transaction` (App Store); `unknown_purchase`,
+            `test_purchase`, `invalid_purchase` (Play); `invalid_ticket` (Steam).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: >
+            `forbidden` with `reason` `binding_mismatch`, `bound_elsewhere`, `unbound` or
+            `not_owned` (Steam); `not_entitled` with `reason: no_license` for a device without a
+            licence.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404":
+          description: "The service not-found, or `reason: unmapped_product` — the store product unlocks nothing here."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "413":
+          description: Body over 32 KiB.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many claims for this licence.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "503":
+          description: "The store could not be reached (`unavailable`, `reason: store_unavailable`); retry."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+
+  /{product}/distribution/hooks/app-store:
+    post:
+      operationId: appStoreNotifications
+      tags: [distribution]
+      summary: App Store Server Notifications V2 (Apple → Worker)
+      description: >
+        P6-01. The URL an operator sets in App Store Connect (App Information → App Store Server
+        Notifications, Version 2). The body's `signedPayload` is verified like a StoreKit JWS
+        (`x5c` to the pinned Apple Root CA - G3; 401 otherwise) BEFORE anything is believed.
+        Deduplicated on `notificationUUID`. ONE_TIME_CHARGE, REFUND, REVOKE and REFUND_REVERSED
+        are acted on — the transaction is re-read from the App Store Server API and Apple's copy
+        grants or revokes — and every other type (TEST included) is stored raw. A notification
+        for another bundle id or Apple ID, or from an environment the product refuses (a sandbox
+        delivery to a production product), answers 200 with `ignored` and changes nothing. A
+        Server API outage answers 503 so Apple redelivers. Rate-limited per client IP before verification and per product after it (only verified deliveries count against the product). Without App
+        Store settings and a pinned `app-store-server-key`, or with License off, the service
+        not-found. No CORS.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [signedPayload]
+              properties:
+                signedPayload:
+                  { type: string, description: The Apple-signed JWS. }
+      responses:
+        "200":
+          description: "Handled, a duplicate, or `ignored` (with the reason)."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean, const: true }
+                  duplicate: { type: boolean, const: true }
+                  ignored: { type: string }
+        "400":
+          description: "Not `{signedPayload}` (`reason: bad_body`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "401":
+          description: "Not signed by Apple (`reason`: `invalid_jws` or `untrusted_chain`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "413":
+          description: Body over 64 KiB.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many deliveries for this product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "503":
+          description: The App Store Server API could not be reached; Apple redelivers.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+
+  /{product}/distribution/hooks/play-rtdn:
+    post:
+      operationId: playRtdn
+      tags: [distribution]
+      summary: Google Play real-time developer notifications over Pub/Sub push (Google → Worker)
+      description: >
+        P6-01. The endpoint of an authenticated Pub/Sub push subscription on the app's RTDN
+        topic. `Authorization: Bearer` must be a Google-signed OIDC token (Google's JWKS, issuer
+        `https://accounts.google.com`, the configured audience, `email` equal to the push
+        service account, `email_verified`) — 401 with a `reason` otherwise, before the body is
+        read. Deduplicated on `message.messageId`. A `oneTimeProductNotification` is re-read
+        with `purchases.products.get` (the API decides; only PURCHASED grants, and a granted
+        purchase is acknowledged once); a `voidedPurchaseNotification` revokes; a test
+        notification is stored. A body that is not an RTDN for the configured package answers
+        200 (`ignored`) so Pub/Sub does not redeliver it. A Play API outage answers 503 so
+        Pub/Sub redelivers. Rate-limited per client IP before verification and per product after it (only verified deliveries count against the product). Without Play settings and a pinned
+        `google-service-account`, or with License off, the service not-found. No CORS.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message:
+                  type: object
+                  required: [data, messageId]
+                  properties:
+                    data:
+                      { type: string, description: Base64 of the RTDN JSON. }
+                    messageId: { type: string }
+                    publishTime: { type: string }
+                subscription: { type: string }
+      responses:
+        "200":
+          description: "Handled, a duplicate, or `ignored`."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean, const: true }
+                  duplicate: { type: boolean, const: true }
+                  ignored: { type: string }
+        "401":
+          description: >
+            The push token is missing or wrong (`reason`: `no_token`, `bad_token`,
+            `unknown_key`, `wrong_issuer`, `wrong_audience`, `wrong_account`,
+            `unverified_email`, `expired`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "413":
+          description: Body over 64 KiB.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many deliveries for this product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "503":
+          description: The Play Developer API could not be reached; Pub/Sub redelivers.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
 
   /{product}/distribution/altstore/{channel}/source.json:
     get:
@@ -8038,10 +8411,10 @@ components:
       type: object
       description: >
         The device's software snapshot. Deliberately narrow: no installed-app enumeration,
-        only product-declared probes. Twenty top-level keys survive the allowlist and
+        only product-declared probes. Twenty-one top-level keys survive the allowlist and
         anything else is dropped silently. The first six are projected into typed columns
         (strings truncated to 128 characters); the rest are stored as an opaque blob, with
-        `engine`, `outlet`, `content`, `updates` and `caps` bounded first.
+        `engine`, `outlet`, `content`, `updates`, `caps` and `packInstalls` bounded first.
       additionalProperties: false
       properties:
         os:
@@ -8156,6 +8529,50 @@ components:
             type: string
             maxLength: 64
             pattern: "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+$"
+        packInstalls:
+          type: array
+          maxItems: 8
+          description: >
+            Recent pack installs (P4-17, CONTENT §8.1), the input of lazy hot-pair deltas. At most
+            8 are read; an entry that does not match this schema is dropped and the rest are
+            kept. For a product that opted in, each (pack, from, to) counts once per device;
+            when at least 25 devices (configurable per product) moved between the same two
+            payloads without a delta within 7 days, the Worker may generate one off the request
+            path. An entry whose `strategy` is `delta` is not counted as demand. No hardware value
+            and no user identifier is carried.
+          items: { $ref: "#/components/schemas/PackInstall" }
+    PackInstall:
+      type: object
+      description: One pack install a device reports (P4-17).
+      required: [pack, from, to, strategy]
+      additionalProperties: false
+      properties:
+        pack:
+          type: string
+          maxLength: 64
+          pattern: "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$"
+          description: The pack id (its deliverable id).
+        from:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+          description: The installed release's `payload.sha256` before the install.
+        to:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+          description: The new release's `payload.sha256`.
+        strategy:
+          type: string
+          pattern: "^[a-z][a-z0-9-]{0,31}$"
+          description: The strategy that installed it (`delta`, `chunk`, `file`, `full`, …).
+        bytes: { type: integer, minimum: 0, description: Bytes downloaded. }
+        durationMs: { type: integer, minimum: 0 }
+        fallbackUsed:
+          type: boolean
+          description: A strategy failed first and a fallback installed it.
+        failureStage:
+          type: string
+          maxLength: 128
+          description: Where the first strategy failed, when one did (printable ASCII).
     UpdateOutcomeEvent:
       type: object
       description: One update outcome event a device reports (P6-03).

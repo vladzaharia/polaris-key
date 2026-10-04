@@ -38,6 +38,7 @@ import { SecretDialog } from "./products/SecretDialog.js";
 import { errorMessage, formatDate, releaseSourceOf } from "./products/util.js";
 import { qk } from "../console/data/queries.js";
 import { mutate } from "../console/data/mutations.js";
+import { fetchProducts } from "../console/data/hooks.js";
 
 type DialogKind = "edit" | "secret" | null;
 type ConfirmKind = "delete" | "rotate" | "resync" | null;
@@ -50,10 +51,11 @@ type ConfirmKind = "delete" | "rotate" | "resync" | null;
  */
 export function Products(): React.ReactElement {
   const toast = useToast();
-  const { data, loading, error, reload } = useResource(qk.products(), () =>
-    api.products(),
+  const { data, loading, error, reload } = useResource(
+    qk.products(),
+    fetchProducts,
   );
-  const products = data?.products ?? [];
+  const products = data ?? [];
 
   const [createOpen, setCreateOpen] = React.useState(false);
   const [active, setActive] = React.useState<ProductDetail | null>(null);
@@ -209,7 +211,7 @@ export function Products(): React.ReactElement {
           loading={loading && products.length === 0}
           filterable
           filterPlaceholder="Filter products…"
-          onRowClick={(p) => navigate(r.licenses(p.slug))}
+          onRowClick={(p) => navigate(r.overview(p.slug))}
           empty={
             <EmptyState
               icon={<Boxes aria-hidden />}

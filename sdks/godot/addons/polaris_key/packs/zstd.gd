@@ -77,7 +77,7 @@ static func frame_window(b: PackedByteArray) -> Variant:
 		return null
 	var single := (d & 0x20) != 0
 	# No array literal is indexed here: GDScript folds a constant literal into a shared read-only
-	# Array, which 4.4.1 reads racily from two threads (README "Writing GDScript here").
+	# Array, which 4.4.1 reads racily from two threads (CONTRIBUTING.md "Writing GDScript here").
 	var dict_bytes := d & 0x03
 	if dict_bytes == 3:
 		dict_bytes = 4

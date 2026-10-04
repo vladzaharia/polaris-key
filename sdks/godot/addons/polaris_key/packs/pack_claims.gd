@@ -18,7 +18,7 @@ extends RefCounted
 ##                                       parsed holds, or null when unusable
 ##   stamp_holds(bytes|text)             holds_of over a content stamp file, with its own pointers
 ##
-## Every helper is thread-safe: no const Array is indexed or iterated (README "Writing GDScript
+## Every helper is thread-safe: no const Array is indexed or iterated (CONTRIBUTING.md "Writing GDScript
 ## here": the 4.4.1 shared read slot).
 
 const DELIVERABLE_PATTERN := "[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*"

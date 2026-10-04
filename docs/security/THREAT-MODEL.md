@@ -1602,6 +1602,112 @@ candidates and fill the console; they cannot halt. An unsigned flood can starve 
 covers no timestamp, so a delivery replayed after the 30-day event retention can reopen a
 candidate — harmless, because a candidate still needs an admin to confirm it.
 
+### The commerce bridge: store purchases as licence flags (P6-01)
+
+**What it changes.** A verified App Store, Google Play or Steam purchase of a product the
+operator mapped (`dist_store_products`) puts a licence flag on the buyer's licence
+(`license_store_grants`), which `core/payload.ts` merges into every licence document after the
+licence profiles and before the licence's own overrides. The asset is therefore the same as
+AT-1's: a flag that unlocks paid content. The new inputs are a device's claim
+(`POST /<p>/distribution/commerce/claim`, device token), the binding read
+(`GET …/commerce/binding`), and two store notification hooks (`POST …/hooks/app-store`,
+`POST …/hooks/play-rtdn`). The licence document's shape and `PROTOCOL_VERSION` do not change: a
+flag was always a licence entitlement.
+
+**Who writes a grant.** Only License, through Core's `applyStoreGrant` descriptor method
+(`core/storeGrants.ts`, `core/registry.ts`), and only on a purchase Distribution has verified
+with its store. Core asks License only while License is enabled for the product
+(`license_disabled` otherwise, before any License code runs), so the coherence rule "commerce
+needs License" is structural; the admin API also refuses commerce settings and product mappings
+with License off (409 `commerce_requires_license`) and every commerce route answers the service
+not-found. The write path is the authorizeRegistration pattern, not a descriptor hook: hooks stay
+read-only (§ Service boundaries). Every grant change is an audit row as `system:commerce` naming
+the flag and the store, never a token.
+
+**Forged purchases and notifications.**
+
+- **App Store.** A StoreKit JWS, a Notifications V2 `signedPayload` and its
+  `signedTransactionInfo` are verified by `core/x509.ts` + `commerce/apple.ts`: exactly three
+  certificates, the last byte-identical to Apple Root CA - G3 pinned in code (`appleRoot.ts`,
+  fingerprint pinned by a test), each link's issuer name, CA bit, keyUsage and signature checked,
+  Apple's intermediate (`1.2.840.113635.100.6.2.1`) and leaf (`1.2.840.113635.100.6.11.1`)
+  marker OIDs required, unknown critical extensions refused, validity checked at the payload's
+  `signedDate` (never later than now), then the ES256 signature under the leaf key. A forged
+  notification is 401 before anything is stored. StoreKit Testing's self-signed `Xcode` chain
+  fails the chain and the environment check. The pinned root can be replaced only by a test-only
+  setter that a test keeps every `src/` file from naming.
+- **The device only forwards.** A claimed App Store transaction is re-read from the App Store
+  Server API with the operator's `app-store-server-key` and Apple's fresh copy decides; a
+  notification is a hint the same way (it names the transaction; the API says what it is). Play
+  decides from `purchases.products.get` through P5-03's client; Steam from
+  `AuthenticateUserTicket` and `CheckAppOwnership`. Nothing a device sends is trusted as a
+  purchase state.
+- **Play push.** The Pub/Sub push request must carry a Google-signed OIDC token: Google's JWKS
+  (KV-cached for an hour, refetched at most once a minute for an unknown `kid`), issuer
+  `https://accounts.google.com`, the operator's audience, `email` equal to the push
+  subscription's service account and `email_verified`. Without all five the request is 401
+  before the body is read. A valid push still only names a purchase token for the API to read.
+- **Steam.** The ticket is authenticated FOR the caller's binding (`identity`), so a ticket
+  captured from another player's session does not authenticate for this licence; ownership must be
+  the account's own (`ownersteamid` = `steamid`: a Family Sharing borrower gets nothing) and not a
+  timed trial.
+
+**Cross-licence claims.** Every purchase is bound before it is made: the licence's binding UUID
+(random, not the licence id, not PII) is handed to the store as Apple's `appAccountToken`, Play's
+`obfuscatedAccountId` or the Steam ticket identity. A claim grants only when the STORE's record
+names the caller's own binding (`binding_mismatch` otherwise) and refuses a purchase with no
+binding (`unbound`); once a purchase key (SHA-256 of the store's key) is recorded for a licence, no
+other licence can claim it (`bound_elsewhere`), whatever binding a later record carries. The
+binding is compared as a UUID (S-09: Apple's JWS carries it in lower case). Residual: anyone who
+learns a licence's binding can make a purchase that grants THAT licence — a gift, not a theft;
+the binding read needs the licence's own device token.
+
+**Replay.** Notifications are deduplicated on their own id (`notificationUUID`, the Pub/Sub
+`messageId`) in `dist_connector_events`; a `failed` delivery may be redelivered by the store and
+is processed again. A fresh notification or claim for a purchase already recorded is idempotent:
+the grant upsert changes nothing and audits nothing (`changed: false`). An old notification
+replayed after the events table's 30-day retention re-reads the store, which answers the current
+state — so a replay can only restate the truth.
+
+**Sandbox leaks.** A production product refuses App Store `Sandbox` transactions and Play
+licence-tester purchases (`purchaseType` 0) unless the operator turned on `acceptSandbox` /
+`acceptTestPurchases` in the commerce settings (operator-owned, audited, never manifest-writable);
+`Xcode` is refused always. A sandbox notification delivered to a production product is stored as
+`ignored` with a 200, so Apple stops retrying, and grants nothing. Sandbox transactions are read
+from Apple's sandbox host, never the production one.
+
+**Credentials and pins.** Two outlet-credential kinds join P5-01's custody: `app-store-server-key`
+(the In-App Purchase key, pinned to the bundle id) and `steam-publisher-key` (pinned to the game's
+app id); Play reuses the `google-service-account` pinned to the package. A store runs only when
+its commerce settings name the app AND an active credential is pinned to that same app, so a repo
+writer cannot aim the operator's key at another app (the settings are operator-owned too). The
+Steam key rides in a query string to `partner.steam-api.com`, so no error carries a URL; every
+store call is redirect-free and capped (`commerce/http.ts`).
+
+**Gated delivery and the App Store's cross-store rule.** The flag is enforced at delivery like any
+licence flag (`entitlementFlagRefusal`). App Store 3.1.3(b) — a flag bought elsewhere unlocks on an
+Apple outlet only if also sold there — is applied by the SDK (`PolarisKey.commerce.hidden_here`,
+from the binding route's product list), not by the Worker: delivery requests carry no outlet, so
+the Worker cannot tell an Apple build's download from another's. A modified client can ignore the
+rule; that is a store-policy matter, not an entitlement bypass (the player paid for the flag).
+
+**Lost or late signals.** Apple redelivers a notification answered non-2xx for days, Pub/Sub
+redelivers with backoff, and the hooks answer 503 on a store outage for exactly that reason. Play
+voids are also polled daily (Voided Purchases API, 30 days back); Steam pushes nothing, so active
+Steam grants are re-checked weekly and on every claim. Residual: a Steam refund keeps its flag for
+up to a week; an App Store refund whose notifications all fail keeps its flag until a later
+notification or claim re-reads the transaction (no App Store poll exists).
+
+**Abuse.** Claims are rate-limited per licence (`commerceClaim`). Each hook has two limiters,
+both failing closed: a per-client-IP bucket BEFORE verification (`appStoreHookIp`,
+`playRtdnHookIp`), which bounds the signature-checking CPU an unauthenticated sender can spend,
+and a per-product bucket AFTER it (`appStoreHook`, `playRtdnHook`), which counts only deliveries
+the store signed — so junk traffic can never drain the bucket a real refund notification needs
+(a test floods unsigned payloads, then delivers a signed one). Bodies are read through the shared
+streaming reader and cut off at the cap while streaming, chunked or not. Bodies are capped (32 KiB claims, 64 KiB hooks). Purchase keys are
+stored only as SHA-256; `detail_json` keeps the store ids a re-check needs (a Play purchase token,
+an order id, a Steam ID) and is never shown in full on the console.
+
 ### The device-code user-code page (P1-06)
 
 **What it is.** `GET`/`POST /<p>/identity/auth/device` is the RFC 8628 code-entry page a TV, a
@@ -2163,6 +2269,73 @@ Residuals, stated rather than defended:
   `bundles/` key is kept, and bundle storage only grows.
 - **`blob_gc_log` names keys, not tenants, for deletions.** An object's deletion is attributed to
   no product; the `ref-dropped` rows say which product dropped the last ref.
+
+### Lazy hot-pair deltas (P4-17)
+
+P4-17 adds install telemetry (`devices/report`'s `packInstalls`), a demand store in D1, a queue
+(`pkey-deltas-<env>`, with a dead-letter queue) fed by the nightly sweep and by an R2
+event-notification rule on the payload prefixes, and a **second Worker script**, the consumer
+(`polaris-key-deltas-<env>`, `wrangler.deltas.toml`), which encodes `zstd-patch-from` deltas in
+WebAssembly (`@polaris-key/zstd-wasm/encoder`, level 9, levels above 15 refused, 32 MiB per side).
+It adds no route and no wire member. Off by default twice: the `LAZY_DELTAS` var in both scripts
+and a per-product `lazy_delta_settings` row.
+
+- **A lazy delta carries no trust of its own.** It is in no CI-signed record. A device that is
+  offered one checks the artifact's SHA-256 and length, that its base is the installed payload,
+  and that the output's SHA-256 is the target's, which comes from the CI-signed pack record
+  (A7 §3.4); any mismatch fails the strategy and the device falls back. **A compromised Worker
+  (either script) can therefore offer junk deltas, which costs bandwidth and CPU, never
+  integrity.** The same window check every applier makes (`windowLogMax` from `memBytes`) bounds a
+  hostile frame's memory before it is decoded.
+- **No byte work on the request path.** The report handler only upserts D1 counters for an
+  opted-in product; it reads no payload, decodes nothing and enqueues nothing (asserted by
+  `test/register.test.ts` with a blob store that throws on use, and by a source check that only
+  `src/deltasEntry.ts` imports the encoder). Every encode runs in the consumer, one message at a
+  time (batch 1, concurrency 1), so an encode never shares an isolate with a request or with a
+  second encode.
+- **Telemetry cannot write bytes, only counts.** A device can claim any (from, to) pair, but a
+  claim only upserts its own row for that pair, and a device holds at most 32 demand rows per
+  product (`MAX_DEMAND_ROWS_PER_DEVICE`; each report evicts its oldest past that), so what one
+  device can write is bounded however many pairs it invents; the consumer encodes only between two payloads of
+  the same pack and variant that stored CI-signed records name, which the product holds refs to
+  (possession, as for every other ref), under the threshold (25 distinct devices in 7 days by
+  default) and the daily cap (20 per product by default). A fleet of forged devices can at most
+  make the product spend its daily cap on deltas it did not need; they are verified like any
+  other. The inputs are checked against the payload hashes the records name before encoding,
+  and the frame is decoded over the base and compared with the target before it is stored.
+- **Publish rules hold.** Never against a base starting with `37 A4 30 EC`; one bare frame with
+  its content size and checksum; stored only through `putVerified` (R2 checks the SHA-256, the
+  write is create-only) under `deltas/<from>/<to>.zstd-patch-from`, or under `gated/` when either
+  side is gated, so a gated delta is served (once the feed offers it) only through the same
+  delivery authorisation as the gated payloads.
+- **The ref a lazy delta earns.** The consumer records the object (`blob_objects`, kind `delta`)
+  and a `lazy-delta` ref for the product whose two payloads it read. The key is content-derived,
+  so two products with the same pair of payloads reach the same object; each earns its ref only
+  through its own possession of both payloads (its `pack-object` refs) and its own opt-in, never
+  from the other's. The collector never drops a `lazy-delta` ref; the sweep drops it when the
+  delta goes cold (no device reported the pair for 30 days), after which the collector's normal
+  mark, grace and lock rules apply.
+- **Poison and replay.** Each message is acknowledged or retried on its own; a malformed one is
+  acknowledged without work. Idempotency comes from the pair's `release_lazy_deltas` row and the
+  deterministic key (`head` before work, create-only put), never from the event: a duplicate or a
+  re-PUT event does nothing.
+
+Residuals, stated rather than defended:
+
+- **The delta menu is not served yet.** Offering a lazy delta to devices needs the feed's
+  reserved `deltas` member to be given a shape, which is a wire change (WIRE-CONTRACT-V4 §2.4;
+  P4-17's Corrections). Until then generated deltas are stored and recorded only.
+- **Demand rows hold device ids.** `delta_demand_devices` keeps (device, pair, strategy, time) for
+  30 days to count distinct devices (docs/PRIVACY.md); they are not purged with the device.
+- **workerd enforces neither 128 MB nor `cpu_ms` locally** (notes/S-08 §2.5). The memory budget is
+  a test against the encoder's own measurement, and the cap is the only defence against an
+  isolate OOM in production; a pair above it is refused as `over-worker-cap`, never attempted.
+  At the 32 MiB cap linear memory peaks near 84 MiB, and the frame lives once, in one buffer
+  preallocated at the largest frame worth keeping (about 22.4 MiB against an incompressible
+  32 MiB full object): the worst case measured, a random base and a target 68% new incompressible
+  bytes, is 83.8 + 22.4 = 106.2 MiB, which a test keeps under 110 MiB. The remaining headroom to
+  128 MB (JS heap, the runtime, the index reads before the encode) is an inference, not a
+  measurement, until the live check at the cap (RUNBOOK "Lazy deltas").
 
 ### The compatibility matrix and the device simulator (P4-15)
 
@@ -3133,6 +3306,9 @@ header and the stored artifact (P4-18), a ref kind other than `pack-upload` or `
 `pack-upload`, deletes an object that has a ref, deletes before the bucket lock's age, restores a
 ref no live release's verified record or index names, or its claim stops being checked by
 `recordObject`; or anything but an operator's audited override releases a readiness hold (P4-14);
+the commerce bridge (P6-01) gains a store, a writer of `license_store_grants` other than License's
+`applyStoreGrant`, a root other than Apple Root CA - G3, a way to grant without the store's own
+record naming the caller's binding, or a sandbox path open by default;
 a new product-secret usage or sealed kind is introduced (it must say which paths may open it,
 and that no manifest can grant it); an outlet-credential kind is added, or a file is added to an
 allowlist in `test/outletCredentialReach.test.ts` (it must say why that file needs a store

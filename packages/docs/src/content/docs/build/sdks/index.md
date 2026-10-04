@@ -18,12 +18,12 @@ per-service-sub-client shape, and fails closed the same way when a capability is
 | React   | `@polaris-key/react`                                    | [React](/docs/build/sdks/react/)               |
 | Python  | `polaris-key` (PyPI)                                    | [Python](/docs/build/sdks/python/)             |
 | Swift   | `PolarisKey` (SwiftPM)                                  | [Swift](/docs/build/sdks/swift/)               |
-| Godot   | the `addons/polaris_key` addon                          | [Godot](/docs/build/sdks/godot/)               |
+| Godot   | the `addons/polaris_key` addon (GitHub Release zip)     | [Godot](/docs/build/sdks/godot/)               |
 | CLI     | `@polaris-key/node/cli`, `polaris-key`'s console script | shipped inside the Node and Python pages above |
 
 Node and React additionally share one isomorphic implementation of the verification, gate,
 trust, config-resolution and boot-stage logic, `@polaris-key/client-core`, rather than each reimplementing
-it; Python and Swift carry independent ports proven identical by the same cross-language
+it; Python, Swift and Godot carry independent ports proven identical by the same cross-language
 conformance corpus. See `packages/client-core/README.md` for why that split exists, and
 [The wire contract](/docs/build/wire/) for the envelope itself.
 
@@ -47,10 +47,10 @@ carry its slug in their capability map.
 A handful of calls — `status`/`isLicensed`, `getConfig`, `sync`, `importBundle` — are also kept
 on the top-level client, for the code a host writes before it knows which service it's talking
 to. Verbs and field names follow each language's own convention (`activateWithKey` in
-TypeScript, `activate_with_key` in Python, `activate(key:)` in Swift), but the _shape_ —
+TypeScript, `activate_with_key` in Python, `activate(key:)` in Swift, `activate_with_key` in GDScript), but the _shape_ —
 Core plus one sub-client per service, the same services in the same order — never
 changes, which is what makes the SDK READMEs on the following pages readable as one document
-in four dialects rather than four unrelated APIs.
+in five dialects rather than five unrelated APIs.
 
 ## Capability negotiation, fail-closed
 
