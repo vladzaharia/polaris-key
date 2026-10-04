@@ -29,14 +29,24 @@ import { isSignedOut } from "./errors.js";
  *   login card takes over and says so.
  * - No silent retries; a failed read shows its error and a Retry.
  */
-export const portalKeys = {
-  me: ["portal", "me"] as const,
-  capabilities: (product?: string | null) =>
+// Named `qk` like the console's (test/queryKeyShapes.test.ts polices `qk.X(…)` keys); the
+// portal has its own QueryClient, and every family here starts with "portal".
+const qk = {
+  portalMe: () => ["portal", "me"] as const,
+  portalCapabilities: (product?: string | null) =>
     ["portal", "capabilities", product ?? null] as const,
-  licenses: ["portal", "licenses"] as const,
-  license: (product: string, id: string) =>
+  portalLicenses: () => ["portal", "licenses"] as const,
+  portalLicense: (product: string, id: string) =>
     ["portal", "license", product, id] as const,
-  releases: ["portal", "releases"] as const,
+  portalReleases: () => ["portal", "releases"] as const,
+};
+
+export const portalKeys = {
+  me: qk.portalMe(),
+  capabilities: qk.portalCapabilities,
+  licenses: qk.portalLicenses(),
+  license: qk.portalLicense,
+  releases: qk.portalReleases(),
 };
 
 export function createPortalQueryClient(): QueryClient {
@@ -91,7 +101,7 @@ async function fetchSession(): Promise<PortalMe | null> {
 
 export function useSession(): UseQueryResult<PortalMe | null> {
   return useQuery({
-    queryKey: portalKeys.me,
+    queryKey: qk.portalMe(),
     queryFn: fetchSession,
     // The session is re-checked on focus (the magic-link tab, POR-1) but never kept stale.
     staleTime: 0,
@@ -107,7 +117,7 @@ export function useCapabilities(
   product?: string | null,
 ): UseQueryResult<PortalCapabilities> {
   return useQuery({
-    queryKey: portalKeys.capabilities(product),
+    queryKey: qk.portalCapabilities(product),
     queryFn: () => portalApi.capabilities(product),
     staleTime: 5 * 60_000,
   });
@@ -124,7 +134,7 @@ export function useLicenses(
   enabled = true,
 ): UseQueryResult<PortalLicenseSummary[]> {
   return useQuery({
-    queryKey: portalKeys.licenses,
+    queryKey: qk.portalLicenses(),
     queryFn: async () => (await portalApi.licenses()).licenses,
     enabled,
   });
@@ -135,7 +145,7 @@ export function useLicense(
   id: string | null,
 ): UseQueryResult<PortalLicenseDetail> {
   return useQuery({
-    queryKey: portalKeys.license(product, id ?? ""),
+    queryKey: qk.portalLicense(product, id ?? ""),
     queryFn: () => portalApi.license(product, id!),
     enabled: id != null,
   });
@@ -144,7 +154,7 @@ export function useLicense(
 /** Releases are optional data: when the module is off the query never runs. */
 export function useReleases(enabled: boolean): UseQueryResult<PortalRelease[]> {
   return useQuery({
-    queryKey: portalKeys.releases,
+    queryKey: qk.portalReleases(),
     queryFn: async () => (await portalApi.releases()).releases,
     enabled,
   });
