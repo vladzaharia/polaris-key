@@ -20,12 +20,18 @@ export function useMe(): UseQueryResult<Me> {
   return useQuery({ queryKey: qk.me(), queryFn: fetchMe }, queryClient);
 }
 
+/**
+ * The registry list, as cached under `qk.products()`. Every reader of that key must fetch through
+ * this function: the cache holds one shape per key, and a view that stored the raw response
+ * (`{ products }`) under the same key broke the shell's switcher and the Products page in turn.
+ */
+export function fetchProducts(): Promise<ProductDetail[]> {
+  return api.products().then((r) => r.products);
+}
+
 export function useProducts(): UseQueryResult<ProductDetail[]> {
   return useQuery(
-    {
-      queryKey: qk.products(),
-      queryFn: () => api.products().then((r) => r.products),
-    },
+    { queryKey: qk.products(), queryFn: fetchProducts },
     queryClient,
   );
 }

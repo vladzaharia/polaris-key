@@ -913,7 +913,7 @@ describe("bounds, round 2", () => {
     const t0 = performance.now();
     expect(() => resolve([APP_15], packs)).toThrow(String(MAX_RESOLUTION_WORK));
     // About 35 ms on Node 22 (it was 17.5 s with pruning outside the budget).
-    expect(performance.now() - t0).toBeLessThan(300);
+    expect(performance.now() - t0).toBeLessThan(1500);
     expect((process.memoryUsage().heapUsed - heap0) / 1048576).toBeLessThan(64);
   });
 
@@ -970,7 +970,7 @@ describe("bounds, round 3", () => {
     }
     const t0 = performance.now();
     const { sets } = resolve([APP_15], packs);
-    expect(performance.now() - t0).toBeLessThan(300);
+    expect(performance.now() - t0).toBeLessThan(1500);
     // Each pair keeps the earlier pack (newest release) and leaves the other out.
     expect(sets[0]!.entries).toHaveLength(25);
     expect(

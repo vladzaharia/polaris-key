@@ -10,7 +10,7 @@ import {
   PackageOpen,
   ShieldCheck,
 } from "lucide-react";
-import { api, type ProductDetail } from "../api.js";
+import type { ProductDetail } from "../api.js";
 import { useResource } from "../context.js";
 import { r } from "../console/routes.js";
 import {
@@ -32,6 +32,7 @@ import {
   signingBundleOf,
 } from "./products/util.js";
 import { qk } from "../console/data/queries.js";
+import { fetchProduct } from "../console/data/hooks.js";
 
 export function ProductOverview({
   slug,
@@ -39,7 +40,7 @@ export function ProductOverview({
   slug: string;
 }): React.ReactElement {
   const { data, loading, error, reload } = useResource(qk.product(slug), () =>
-    api.product(slug).then((r) => r.product),
+    fetchProduct(slug),
   );
 
   if (loading && !data) return <OverviewSkeleton />;

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
-import { api, type SecretUsage } from "../api.js";
+import type { SecretUsage } from "../api.js";
 import { EdgeMintRecipes } from "./EdgeMintRecipes.js";
 import { OutletCredentials } from "./OutletCredentials.js";
 import { useResource } from "../context.js";
@@ -26,6 +26,7 @@ import {
   useToast,
 } from "../components/ui/index.js";
 import { qk } from "../console/data/queries.js";
+import { fetchProduct } from "../console/data/hooks.js";
 import { mutate } from "../console/data/mutations.js";
 
 /**
@@ -51,7 +52,7 @@ export const USAGE_CHOICES: { value: UsageChoice; label: string }[] = [
 ];
 export function Secrets({ slug }: { slug: string }): React.ReactElement {
   const { data, loading, error, reload } = useResource(qk.product(slug), () =>
-    api.product(slug).then((r) => r.product),
+    fetchProduct(slug),
   );
   const toast = useToast();
   const [name, setName] = React.useState("");

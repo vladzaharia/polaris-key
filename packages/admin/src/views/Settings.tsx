@@ -2,7 +2,6 @@ import * as React from "react";
 import { AlertTriangle, KeyRound, RotateCw, Trash2 } from "lucide-react";
 import {
   ApiError,
-  api,
   type ProductDetail,
   type UpdateProductBody,
 } from "../api.js";
@@ -25,6 +24,7 @@ import {
   useToast,
 } from "../components/ui/index.js";
 import { qk } from "../console/data/queries.js";
+import { fetchProduct } from "../console/data/hooks.js";
 import { mutate } from "../console/data/mutations.js";
 
 /**
@@ -40,7 +40,7 @@ import { mutate } from "../console/data/mutations.js";
  */
 export function Settings({ slug }: { slug: string }): React.ReactElement {
   const { data, loading, error, reload } = useResource(qk.product(slug), () =>
-    api.product(slug).then((r) => r.product),
+    fetchProduct(slug),
   );
 
   return (
