@@ -31,6 +31,10 @@ export interface PortalProductSettingsRow {
   releases_enabled: number;
   /** R5-01/R5-02. NULL = derive from the product's OIDC provider (see AUTO_LINK_ENABLED_SQL). */
   auto_link_enabled: number | null;
+  /** PX-W5 (G7): customers may replace their own license key from the portal. Opt-in, default 0. */
+  key_reissue_enabled: number;
+  /** PX-W5 / S-16: an email-carrying license may be claimed by key without that email. Default 0. */
+  claim_by_key: number;
   branding_json: string | null;
   created_at: number;
   modified_at: number;
@@ -43,6 +47,8 @@ export interface PortalProductSettingsView {
   licenseKeyClaimEnabled: boolean;
   releasesEnabled: boolean;
   autoLinkEnabled: boolean | null;
+  keyReissueEnabled: boolean;
+  claimByKey: boolean;
   branding: unknown;
   modifiedAt: number;
 }
@@ -500,6 +506,9 @@ export async function getPortalProductSettings(
       license_key_claim_enabled: 1,
       releases_enabled: 1,
       auto_link_enabled: null,
+      // Both PX-W5 switches default OFF, exactly as the migration's column defaults do.
+      key_reissue_enabled: 0,
+      claim_by_key: 0,
       branding_json: null,
       created_at: 0,
       modified_at: 0,
@@ -519,6 +528,8 @@ export function portalProductSettingsView(
     // null = "auto" (derived from the product's OIDC issuer). See AUTO_LINK_ENABLED_SQL.
     autoLinkEnabled:
       row.auto_link_enabled == null ? null : row.auto_link_enabled === 1,
+    keyReissueEnabled: row.key_reissue_enabled === 1,
+    claimByKey: row.claim_by_key === 1,
     branding: parseJsonUnknown(row.branding_json),
     modifiedAt: row.modified_at,
   };
@@ -535,6 +546,8 @@ export async function upsertPortalProductSettings(
     releasesEnabled: boolean;
     /** `null` restores "auto" (derived from the product's OIDC issuer) — R5-01/R5-02. */
     autoLinkEnabled: boolean | null;
+    keyReissueEnabled: boolean;
+    claimByKey: boolean;
     branding: unknown;
   }>,
   now: number,
@@ -579,6 +592,18 @@ export async function upsertPortalProductSettings(
           : patch.autoLinkEnabled
             ? 1
             : 0,
+    key_reissue_enabled:
+      patch.keyReissueEnabled === undefined
+        ? current.key_reissue_enabled
+        : patch.keyReissueEnabled
+          ? 1
+          : 0,
+    claim_by_key:
+      patch.claimByKey === undefined
+        ? current.claim_by_key
+        : patch.claimByKey
+          ? 1
+          : 0,
     branding_json:
       patch.branding === undefined
         ? current.branding_json
@@ -590,8 +615,8 @@ export async function upsertPortalProductSettings(
     `INSERT INTO portal_product_settings
        (product, portal_enabled, oidc_enabled, magic_enabled,
         license_key_claim_enabled, releases_enabled, auto_link_enabled,
-        branding_json, created_at, modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        key_reissue_enabled, claim_by_key, branding_json, created_at, modified_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(product) DO UPDATE SET
        portal_enabled = excluded.portal_enabled,
        oidc_enabled = excluded.oidc_enabled,
@@ -599,6 +624,8 @@ export async function upsertPortalProductSettings(
        license_key_claim_enabled = excluded.license_key_claim_enabled,
        releases_enabled = excluded.releases_enabled,
        auto_link_enabled = excluded.auto_link_enabled,
+       key_reissue_enabled = excluded.key_reissue_enabled,
+       claim_by_key = excluded.claim_by_key,
        branding_json = excluded.branding_json,
        modified_at = excluded.modified_at`,
     product,
@@ -608,6 +635,8 @@ export async function upsertPortalProductSettings(
     next.license_key_claim_enabled,
     next.releases_enabled,
     next.auto_link_enabled,
+    next.key_reissue_enabled,
+    next.claim_by_key,
     next.branding_json,
     current.created_at || now,
     now,
@@ -1085,4 +1114,41 @@ export async function listLinkedProducts(
       ORDER BY p.name`,
     accountId,
   );
+}
+
+/**
+ * Is this licence linked to any portal account OTHER than `accountId`? (PX-W5, the S-16 claim
+ * rule "an owned licence never moves by its key".) Answers a boolean and nothing else: the
+ * activate preview may say THAT a licence is held elsewhere, never by whom.
+ */
+export async function licenseLinkedElsewhere(
+  db: Db,
+  accountId: string,
+  product: string,
+  licenseId: string,
+): Promise<boolean> {
+  const row = await db.first<{ one: number }>(
+    `SELECT 1 AS one FROM portal_license_links
+      WHERE product = ? AND license_id = ? AND account_id != ?
+      LIMIT 1`,
+    product,
+    licenseId,
+    accountId,
+  );
+  return row !== null;
+}
+
+/** Has this account verified `email` (a magic link the portal delivered, or a verified IdP claim)? */
+export async function accountHasVerifiedEmail(
+  db: Db,
+  accountId: string,
+  email: string,
+): Promise<boolean> {
+  const row = await db.first<{ one: number }>(
+    `SELECT 1 AS one FROM portal_account_emails
+      WHERE account_id = ? AND email = ? AND verified_at > 0`,
+    accountId,
+    normalizeEmail(email),
+  );
+  return row !== null;
 }

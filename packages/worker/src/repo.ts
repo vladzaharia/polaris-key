@@ -1010,6 +1010,47 @@ export async function setKeyStatus(
   );
 }
 
+/**
+ * Replace every active key of a licence with `row`, atomically (PX-W5, the portal's "Get a new
+ * key", docs/design/PORTAL.md G7): the old keys are revoked and the new one inserted in ONE batch,
+ * so there is no moment at which the licence has two working keys, and no failure that leaves it
+ * with none. Answers how many keys were revoked. Devices are untouched: a key only activates new
+ * devices, and every device already activated keeps its own token.
+ */
+export async function replaceLicenseKeys(db: Db, row: KeyRow): Promise<number> {
+  const statements: DbStatement[] = [
+    {
+      sql: "UPDATE keys_index SET status = 'revoked' WHERE product = ? AND license_id = ? AND status = 'active'",
+      params: [row.product, row.license_id],
+    },
+    {
+      sql: `INSERT INTO keys_index (product, key_hash, license_id, status, label, created_at, created_by, last_used_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      params: [
+        row.product,
+        row.key_hash,
+        row.license_id,
+        row.status,
+        row.label,
+        row.created_at,
+        row.created_by,
+        row.last_used_at,
+      ],
+    },
+  ];
+  if (db.batchChanges) {
+    const [revoked] = await db.batchChanges(statements);
+    return revoked ?? 0;
+  }
+  const before = await db.first<{ n: number }>(
+    "SELECT COUNT(*) AS n FROM keys_index WHERE product = ? AND license_id = ? AND status = 'active'",
+    row.product,
+    row.license_id,
+  );
+  await db.batch(statements);
+  return before?.n ?? 0;
+}
+
 // ── Devices ──────────────────────────────────────────────────────────────────
 export async function getDevice(
   db: Db,

@@ -196,6 +196,24 @@
       "description": "Email sign-in was requested but the platform has no email sender configured."
     },
     {
+      "code": "owned_elsewhere",
+      "kind": "wire",
+      "service": "identity",
+      "description": "409 from the customer portal's POST /api/claim/license-key (and the activate preview's verdict of the same name): the licence is already linked to another portal account, and an owned licence never moves by presenting its key (S-16). Carries no detail of the other account."
+    },
+    {
+      "code": "email_mismatch",
+      "kind": "wire",
+      "service": "identity",
+      "description": "403 from the customer portal's POST /api/claim/license-key (and the activate preview's verdict of the same name): the licence carries an email this account has not verified, and the product does not set claimByKey. Carries `maskedEmail` (first character and domain only)."
+    },
+    {
+      "code": "step_up_required",
+      "kind": "wire",
+      "service": "identity",
+      "description": "401 from the customer portal's POST /api/licenses/<p>/<id>/keys: minting a new licence key needs a sign-in at most `maxAgeSeconds` old; sign in again and retry."
+    },
+    {
       "code": "download_auth_required",
       "kind": "wire",
       "service": "release",

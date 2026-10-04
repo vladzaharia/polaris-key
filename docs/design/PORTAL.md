@@ -678,9 +678,10 @@ The `KeyField`:
 - **Never rewritten.** No auto-grouping, no dashes inserted, **no uppercasing or lowercasing**. The
   only normalisation is trimming leading and trailing whitespace (and newlines from a paste).
 - **Format validation** is the regex `^pkey_([a-z0-9-]+)_([A-Za-z0-9_-]{22})$`. A valid key gets the
-  success border and a check ("Key format is valid"); **Continue** enables. (`productFromKey`
-  accepts 8 or more characters after the slug; the portal checks the exact minted length so a
-  cut-off paste is caught before any request.)
+  success border and a check ("Key format is valid"); **Continue** enables. The server checks the
+  same exact shape (`LICENSE_KEY_SHAPE` in `crypto.ts`, used by `productFromKey`; owner decision
+  2026-10-04, PX-W5), so a cut-off paste is caught before any request and refused by the Worker
+  if one is sent anyway.
 - **The parts are coloured:** `pkey_` and the separator in `text-subtle`, the slug in `accent-fg`,
   the secret in `text-strong`.
 - **The product is known before the server is called.** The `pkey_<product>_` prefix names the

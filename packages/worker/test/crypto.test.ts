@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   hashKey,
   isDeviceToken,
+  LICENSE_KEY_SHAPE,
   mintDeviceToken,
   mintLicenseKey,
   mintOpaqueToken,
@@ -85,14 +86,39 @@ describe("randomId", () => {
 
 describe("productFromKey", () => {
   it("extracts from a valid license key", () => {
-    expect(productFromKey("pkey_acme_AbCdEfGhIjKl")).toBe("acme");
+    expect(productFromKey("pkey_acme_Q7xZr2Lk9vT3mN8pB1cY4w")).toBe("acme");
+    expect(productFromKey("pkey_my-app_Q7xZr2Lk9vT3mN8pB1cY4w")).toBe("my-app");
+  });
+  it("accepts `_` and `-` inside the 22-character secret", () => {
+    expect(productFromKey("pkey_acme_Q7x_r2Lk9vT3-N8pB1cY4_")).toBe("acme");
+    expect(productFromKey(`pkey_acme_${"_".repeat(22)}`)).toBe("acme");
   });
   it("returns null for non-license strings", () => {
     expect(productFromKey("not-a-key")).toBeNull();
     expect(productFromKey("pkeyt_opaqueXXXXXXXX")).toBeNull(); // token, not key
-    expect(productFromKey("pkey_acme_short")).toBeNull(); // suffix too short (<8)
-    expect(productFromKey("pkey__AbCdEfGhIjKl")).toBeNull(); // empty product
-    expect(productFromKey("pkey_UPPER_AbCdEfGhIjKl")).toBeNull(); // uppercase slug illegal
+    expect(productFromKey("pkey_acme_short")).toBeNull(); // suffix too short
+    expect(productFromKey("pkey__Q7xZr2Lk9vT3mN8pB1cY4w")).toBeNull(); // empty product
+    expect(productFromKey("pkey_UPPER_Q7xZr2Lk9vT3mN8pB1cY4w")).toBeNull(); // uppercase slug illegal
+    expect(productFromKey("pkey_acme_Q7xZr2Lk9vT3mN8pB1cY4=")).toBeNull(); // padding is not base64url
+    expect(productFromKey(" pkey_acme_Q7xZr2Lk9vT3mN8pB1cY4w")).toBeNull(); // callers trim
+  });
+  it("requires EXACTLY 22 characters after the slug (owner decision 2026-10-04)", () => {
+    const secret = "Q7xZr2Lk9vT3mN8pB1cY4w";
+    expect(secret).toHaveLength(22);
+    expect(productFromKey(`pkey_acme_${secret.slice(0, 21)}`)).toBeNull(); // cut off by one
+    expect(productFromKey(`pkey_acme_${secret}A`)).toBeNull(); // one too many
+    expect(productFromKey("pkey_acme_AbCdEfGhIjKl")).toBeNull(); // the old 8+ floor accepted this
+    expect(productFromKey(`pkey_acme_${secret}`)).toBe("acme");
+  });
+  it("accepts every key mintLicenseKey can produce (16 random bytes -> 22 chars)", () => {
+    // No issued key can fail the tightened check: 16 bytes are always 22 unpadded base64url
+    // characters, so the exact length is a property of the mint, not of the sample.
+    for (let i = 0; i < 2000; i++) {
+      const slug = i % 2 === 0 ? "djdl" : "my-app-2";
+      const key = mintLicenseKey(slug);
+      expect(LICENSE_KEY_SHAPE.exec(key)?.[2]).toHaveLength(22);
+      expect(productFromKey(key)).toBe(slug);
+    }
   });
 });
 

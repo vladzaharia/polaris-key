@@ -237,6 +237,8 @@ function resolveDeviceLimit(
  *  (PX-W1), which must show the same "of N" this enforces. */
 export async function licenseDeviceLimit(
   db: Db,
+  // Only the slug and the product default are read, so a caller holding the public projection
+  // (`ProductPublic`, no signing key — the portal's activate preview, PX-W5) can ask too.
   product: Pick<Product, "slug" | "defaultDeviceLimit">,
   license: LicenseRow,
   now: number,

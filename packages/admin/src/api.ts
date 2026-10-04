@@ -723,6 +723,10 @@ export interface PortalProductSettings {
    * override in either direction, which is why this is not a boolean with a default.
    */
   autoLinkEnabled: boolean | null;
+  /** PX-W5 (G7): customers may replace a license's key from the portal. Off by default. */
+  keyReissueEnabled?: boolean;
+  /** PX-W5 / S-16: an email-carrying license may be added by key without that email. Off by default. */
+  claimByKey?: boolean;
   branding?: unknown;
   modifiedAt?: number;
 }
@@ -845,6 +849,8 @@ export type UpdatePortalSettingsBody = Partial<
     | "magicEnabled"
     | "licenseKeyClaimEnabled"
     | "releasesEnabled"
+    | "keyReissueEnabled"
+    | "claimByKey"
     | "autoLinkEnabled"
     | "branding"
   >

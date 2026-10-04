@@ -3,10 +3,8 @@ import { CHANNEL_STABLE } from "@polaris-key/protocol";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import {
   deleteTokenRecord,
-  hashKey,
   isAllowedDownloadRedirectHost,
   isAllowedStorageHost,
-  productFromKey,
   type Db,
   type Env,
 } from "../../../core/platform.js";
@@ -19,8 +17,6 @@ import { licenseEntitled } from "../../../core/entitledAccess.js";
 import { ErrorCode } from "../../../core/errors.js";
 import {
   getDevice,
-  getKey,
-  getLicense,
   getProduct,
   setDeviceStatus,
 } from "../../../core/data.js";
@@ -33,7 +29,6 @@ import {
   getPortalLicense,
   getPortalProductSettings,
   getPortalReleaseFacts,
-  linkLicense,
   listLinkedProducts,
   listPortalArtifacts,
   listPortalLicenses,
@@ -61,6 +56,12 @@ import {
 import { handleMagicStart } from "./auth.js";
 import { entitlementView } from "./entitlements.js";
 import { libraryView, productView } from "./library.js";
+import {
+  handleActivatePreview,
+  handleClaimKey,
+  handleDeviceRename,
+  handleKeyReissue,
+} from "./selfService.js";
 import { portalEmailConfigured, sendPortalNotice } from "./email.js";
 import { platformOidcConfig } from "../../../core/platform.js";
 import { portalSecurityHeaders } from "./headers.js";
@@ -103,7 +104,7 @@ function isMutation(method: string): boolean {
   return method !== "GET" && method !== "HEAD";
 }
 
-async function readBody(req: Request): Promise<Record<string, unknown>> {
+export async function readBody(req: Request): Promise<Record<string, unknown>> {
   const raw = await req.text();
   if (!raw.trim()) return {};
   try {
@@ -146,7 +147,7 @@ function licenseBase(row: PortalLicenseRow): Record<string, unknown> {
   };
 }
 
-async function shapeLicenseSummary(
+export async function shapeLicenseSummary(
   db: Db,
   row: PortalLicenseRow,
   now: number,
@@ -532,76 +533,10 @@ async function handleLicenses(
   if (!row) return notFound();
   const settings = await getPortalProductSettings(db, product);
   if (settings.portal_enabled !== 1) return notFound();
-  return portalJson(await shapeLicenseDetail(db, row, now));
-}
-
-async function handleClaimKey(
-  req: Request,
-  env: Env,
-  db: Db,
-  session: PortalSession,
-  now: number,
-): Promise<Response> {
-  if (req.method !== "POST") return err(405, "method_not_allowed");
-  const limited = await requireActionRateLimit(
-    req,
-    env,
-    session,
-    "portalClaimKey",
-    now,
-    10,
-  );
-  if (limited) return limited;
-  const body = await readBody(req);
-  const key = typeof body.key === "string" ? body.key.trim() : "";
-  const product = productFromKey(key);
-  if (!product) return err(422, ErrorCode.BadRequest, "invalid license key");
-  const settings = await getPortalProductSettings(db, product);
-  if (
-    settings.portal_enabled !== 1 ||
-    settings.license_key_claim_enabled !== 1
-  ) {
-    return notFound();
-  }
-  const keyHash = await hashKey(key, env.KEY_HASH_PEPPER);
-  const keyRow = await getKey(db, product, keyHash);
-  if (!keyRow || keyRow.status !== "active") {
-    return err(401, ErrorCode.Unauthorized, "license key not found");
-  }
-  const license = await getLicense(db, product, keyRow.license_id);
-  if (!license) return err(401, ErrorCode.Unauthorized, "license unavailable");
-  await linkLicense(
-    db,
-    session.accountId,
-    product,
-    license.id,
-    "license-key",
-    now,
-  );
-  await portalAudit(db, {
-    accountId: session.accountId,
-    action: "portal.license.claim",
-    product,
-    targetKind: "license",
-    targetId: license.id,
-    summary: "Claimed license with a license key",
-    now,
-  });
-  await sendPortalNotice(
-    env,
-    session.email,
-    "License added to your Polaris Key account",
-    `A license for ${product} was added to your Polaris Key account.`,
-  );
-  const portalRow = await getPortalLicense(
-    db,
-    session.accountId,
-    product,
-    license.id,
-  );
   return portalJson({
-    ok: true,
-    license: portalRow ? await shapeLicenseSummary(db, portalRow, now) : null,
+    ...(await shapeLicenseDetail(db, row, now)),
+    // PX-W5 (G7): whether "Get a new key" is offered for this licence — the product's opt-in.
+    canGetNewKey: settings.key_reissue_enabled === 1,
   });
 }
 
@@ -881,6 +816,35 @@ export async function handlePortalApi(
     rest[2] === "devices" &&
     rest[0] &&
     rest[1] &&
+    rest[3] &&
+    rest.length === 4 &&
+    req.method === "PATCH"
+  ) {
+    return handleDeviceRename(
+      req,
+      env,
+      db,
+      session,
+      rest[0],
+      rest[1],
+      rest[3],
+      now,
+    );
+  }
+  if (
+    head === "licenses" &&
+    rest[2] === "keys" &&
+    rest[0] &&
+    rest[1] &&
+    rest.length === 3
+  ) {
+    return handleKeyReissue(req, env, db, session, rest[0], rest[1], now);
+  }
+  if (
+    head === "licenses" &&
+    rest[2] === "devices" &&
+    rest[0] &&
+    rest[1] &&
     rest[3]
   ) {
     return handleDeviceDelete(
@@ -897,6 +861,9 @@ export async function handlePortalApi(
   if (head === "licenses") return handleLicenses(db, session, rest, now);
   if (head === "claim" && rest[0] === "license-key") {
     return handleClaimKey(req, env, db, session, now);
+  }
+  if (head === "activate" && rest[0] === "preview" && rest.length === 1) {
+    return handleActivatePreview(req, env, db, session, now, hooksFor);
   }
   if (head === "releases")
     return handleReleases(req, env, db, session, rest, now, hooksFor);

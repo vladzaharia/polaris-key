@@ -3961,6 +3961,45 @@ wrote (docs/design/PORTAL.md G1, G5, G16).
   proxy rules and the admin package's browser test proves the images load under the portal's
   real policy with no violation.
 
+### The portal's key preview, new keys and device names (PX-W5)
+
+The customer portal gained three self-service routes (docs/design/PORTAL.md §10.2 G6, G7, G22):
+`POST /api/activate/preview`, `POST /api/licenses/<p>/<id>/keys` and
+`PATCH /api/licenses/<p>/<id>/devices/<deviceId>`. All three sit behind the portal session and the
+CSRF header like every other portal mutation.
+
+- **The preview is not a key oracle.** It answers only for a WHOLE key of the exact minted shape
+  (`pkey_<slug>_` and 22 base64url characters, 128 random bits); anything else is a 422 before any
+  lookup. Guessing a key through it is the same 2^128 search as guessing one anywhere else.
+- **Enumeration by a key holder is bounded to the design's list.** A holder learns the product's
+  public presentation and, for a licence they could add, its tier, expiry, device limit and
+  platforms. Refusals carry no ownership details: `owned_elsewhere` says only that another account
+  holds the licence (no account, email or licence id), and `email_mismatch` shows the first
+  character and the domain of the licence's address (`m•••@proton.me`). Residual: the masked form
+  confirms the domain of the buyer's address to whoever holds the key; the design accepts it so
+  the buyer can recognise their own address.
+- **The preview cannot be a cheaper probe than the add.** Preview and claim are one rate bucket
+  (`portalClaimKey`, 10 a minute per account and IP, charged before any lookup), and both act on one
+  evaluator (`evaluateKeyClaim`), so the preview never promises an add the claim refuses.
+- **The claim now enforces the S-16 safety defaults.** An owned licence never moves by its key
+  (`owned_elsewhere`, 409), and a licence that carries an email attaches only to an account that
+  verified that email (`email_mismatch`, 403) unless the product sets `claimByKey`. Every attach
+  emails the licence's own address too. Residual (as S-16 §5.4 item 5): a licence with no email,
+  leaked before its buyer adds it, goes to whoever adds it first; the buyer's remedy is the
+  developer.
+- **A new key needs a recent sign-in.** "Get a new key" is a per-product opt-in
+  (`key_reissue_enabled`, default off) and refuses with `step_up_required` unless the session's
+  sign-in is at most 5 minutes old, so a stolen cookie that is days old cannot mint a credential.
+  The old keys are revoked and the new one inserted in one batch; the raw key is in the response
+  only (`no-store`), never stored or readable again, and both the account and the licence email are
+  told. Devices already activated keep their tokens: a key only activates new devices. Residual:
+  until passkeys (S-16 I-14) a recent sign-in is the strongest presence check the portal has; an
+  attacker who can complete a fresh sign-in (a mailbox compromise) can replace the key, which the
+  notice to the licence email surfaces.
+- **Device names are display text, held to plain text.** At most 64 characters, trimmed, with no
+  control or format characters (no bidirectional overrides that make one name render as another);
+  owner-only, rate limited in the product's shard, audited. They are rendered as text everywhere.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The
