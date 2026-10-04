@@ -535,7 +535,8 @@ export type Support =
       mode: "deep-link";
       link: string; // id in the deep-link table
       verify:
-        { read: string; every: number; until: number } | "operator-assertion";
+        | { read: string; every: number; until: number }
+        | "operator-assertion";
     }
   | { mode: "unsupported"; reason: string }; // the F-01 `unsupported_by_ecosystem` case
 
@@ -606,7 +607,13 @@ export interface StorefrontAdapter extends Adapter<StorefrontId, StorefrontOp> {
 ```ts
 // services/distribution/registry/: the FeedAdapter is today's RegistryRenderer plus the same base
 export type FeedOp =
-  "render" | "serve" | "auth" | "yank" | "unyank" | "deprecate" | "setup";
+  | "render"
+  | "serve"
+  | "auth"
+  | "yank"
+  | "unyank"
+  | "deprecate"
+  | "setup";
 export interface FeedAdapter extends Adapter<RegistryEcosystem, FeedOp> {
   render(
     pkg: RegistryPackage,
