@@ -37,7 +37,7 @@ Operators need to support customers' synced settings without seeing other produc
 ## Design notes
 
 - Pairwise subject only; every read and write audited (T10).
-- I-12's Users page is platform-level (Core), shown on every product whether or not Identity is on, so the Data tab appears for every product with Cloud Sync on (owner clarification, 2026-10-04: Cloud Sync depends on the account, not the Identity toggle).
+- The Data tab appears on I-12's Users page for every product with Cloud Sync on, which implies Identity on (owner, 2026-10-04, final answers).
 - Contact email follows S-16 D19 (accepted): the buyer email, and the account's primary email only with the person's consent.
 
 ## Steps

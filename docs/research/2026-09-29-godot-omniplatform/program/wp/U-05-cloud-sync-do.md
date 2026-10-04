@@ -4,7 +4,7 @@
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Phase       | U: Cloud Sync (S-17) (U1 MVP)                                                                                                                                                                                                                                                                                                                                                  |
 | Size        | 2–2.8 engineer-weeks                                                                                                                                                                                                                                                                                                                                                           |
-| Depends on  | [U-01](U-01-cloud-sync-plan.md), [U-02](U-02-principal-binding.md), [U-04](U-04-catalog-and-service.md)                                                                                                                                                                                                                                                                        |
+| Depends on  | [U-01](U-01-cloud-sync-plan.md), [U-02](U-02-principal-binding.md), [U-04](U-04-catalog-and-service.md), [I-08](I-08-app-passthrough.md)                                                                                                                                                                                                                                       |
 | Unblocks    | [U-19](U-19-security-review.md), [U-06](U-06-sdk-settings-node-python.md), [U-20](U-20-sdk-settings-react.md), [U-07](U-07-sdk-settings-swift-kotlin.md), [U-21](U-21-sdk-settings-godot.md), [U-12](U-12-privacy-settings-portal.md), [U-11a](U-11a-console-data-settings.md), [U-10](U-10-saves-backend.md), [U-09](U-09-collections-backend.md), [U-14](U-14-live-pokes.md) |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                                                                                                          |
 | Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                                                                                                                                                                                                                                              |
@@ -14,7 +14,7 @@
 
 ## Goal
 
-Devices push and pull user settings through `/<p>/sync/` against one Durable Object per `(product, subject)`, with push rules 1–8 enforced on the server, `403 account_required` for devices with no principal (neither signed in nor on a licence attached to an account), the settings account-merge hook, coalesced D1 directory writes, unlicensed limits and product ceilings, and browser bearer access through the CORS list.
+Devices push and pull user settings through `/<p>/sync/` against one Durable Object per `(product, subject)`, with push rules 1–8 enforced on the server, `403 account_required` for devices with no signed-in account, the settings account-merge hook, coalesced D1 directory writes, unlicensed limits and product ceilings, and browser bearer access through the CORS list.
 
 ## Why
 
@@ -43,9 +43,9 @@ This is the MVP's core service ([S-17 §5.4](../../notes/S-17-user-data-sync.md#
 
 ## Design notes
 
-- No Cloud Sync without a Polaris Key account, ever (owner). The principal comes from U-02's `resolveSyncPrincipal` (`devices.subject ?? subjectFor(license.account_id, product)`), so the routes work on products with Identity off: Cloud Sync requires Config and the platform account, not the Identity toggle (owner clarification, 2026-10-04).
-- `account_required` tells the SDK which offer to show, in the shape U-01 fixes: always the Worker-built portal link ("Add this licence to your Polaris Key account to sync"), and sign-in only when the product's Identity service is on. It never forces anything.
-- The principal is resolved per request, so a detach or relink that changes the licence-owner line takes effect on the next request (old subject never served).
+- No Cloud Sync without signing in, ever (owner; literal sign-in per the final answers of 2026-10-04). The principal comes from U-02's `resolveSyncPrincipal` (`devices.subject`, set only by sign-in through the product), and Cloud Sync requires Config and Identity. A key-activated device, even on a licence attached to an account, gets `account_required`.
+- `account_required` carries the sign-in offer in the shape U-01 fixes (I-08's `signInUrl` and device-code start). It never forces anything.
+- The principal is resolved per request, so a sign-out, a relink that clears the binding or a merge alias takes effect on the next request (old subject never served).
 - The first-party session cookie is never accepted on `/sync` routes.
 - Production deploy waits for U-19's security review.
 
@@ -61,7 +61,7 @@ This is the MVP's core service ([S-17 §5.4](../../notes/S-17-user-data-sync.md#
 - [ ] Every transcript in [S-17 §5.13](../../notes/S-17-user-data-sync.md#513-wire-impact) for settings is recorded and passes.
 - [ ] `403 account_required` leaves licence state and cached documents untouched (transcript).
 - [ ] A merged account's settings end up in the surviving subject's DO (test).
-- [ ] On a product with Identity off, a key-activated device on a licence attached to an account syncs, and the same device after detach gets `account_required` (tests).
+- [ ] A key-activated device that never signed in gets `account_required` even when its licence is attached to an account; a signed-in device syncs (tests).
 - [ ] Load test results (rows written, billable duration per op) in the PR.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 

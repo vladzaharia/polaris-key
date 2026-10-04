@@ -36,7 +36,7 @@ Cloud Sync is the first device-writable data service ([S-17 §7.1](../../notes/S
 ## Design notes
 
 - The reviewer is not the U-05 implementer.
-- Include the licence-owner line: a key-activated device on an owned licence on a product with Identity off reaches the owner's data (accepted residual if the owner approves the S-17 default); verify detach, relink and portal device removal cut access on the next request.
+- Verify that a key-activated device never reaches Cloud Sync data, even on a licence attached to an account (Cloud Sync needs sign-in), and that sign-out, relink and portal device removal cut access on the next request.
 
 ## Steps
 

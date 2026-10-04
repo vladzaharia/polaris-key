@@ -11,6 +11,27 @@
 > web redirect's code exchange, S-17's requested hooks, privacy residuals and the SDK estimate.
 > Finalised the same day for the owner decisions directly below (D17–D23, the account/service
 > split, key-entry limits only with Identity, and the join offer at email confirmation).
+> Closed the same day for the owner's final answers directly below: D24, D25 and D27 accepted
+> (D27 pending a legal review), and Cloud Sync needs sign-in, so it requires Identity.
+
+> **Owner's final answers (2026-10-04). These close §10 and win over every header and section
+> below.**
+>
+> 1. **D24 accepted.** On a product with Identity on, entering the key of an owned licence on a
+>    _new_ device is refused with `license_owned` (403, with `signInUrl`) and the device signs in
+>    instead. Re-entry on an already enrolled device keeps working, and existing installs are
+>    untouched (§5.3).
+> 2. **D25 accepted as proposed.** "Remove my data from <Product>" keeps the licence attached
+>    unless the person also chooses "remove the licence from my Library" (§5.1).
+> 3. **D27 accepted as proposed, still pending a legal review** of the DPA wording (§5.5).
+> 4. **Cloud Sync needs sign-in** (S-17's decision 22, decided the other way from its proposal).
+>    Cloud Sync is available only to devices signed in through the product (`devices.subject`,
+>    set by sign-in), never through the licence owner. Its descriptor is
+>    `requires: [config, identity]`, and the console Services toggle enforces that dependency.
+>    This replaces the final-round header's "Cloud Sync depends on the account, not on the
+>    Identity toggle" (item 2 below). Config's account override layer still reaches key-entry
+>    devices on owned licences through the licence owner; floating licences have no such layer
+>    (S-17 §5.12).
 
 > **Owner decisions (2026-10-04, final round). These govern the note; where any header or section
 > below says otherwise, these win.**
@@ -37,8 +58,9 @@
 >    redirect, device code or exchange), available only on products with Identity on. It also
 >    covers app-specific profiles and, later, "Sign in with <Product>" (layer 2). Products without
 >    Identity still attach licences to accounts through Activate License, the portal and Discover,
->    but never show app sign-in. **Cloud Sync depends on the account, not on the Identity toggle**
->    (S-17). This supersedes D26 (§5.1, "The account and the Identity service").
+>    but never show app sign-in. **Cloud Sync needs sign-in, so it requires Identity** (final
+>    answers above; this item first said Cloud Sync depends on the account, not on the toggle).
+>    This supersedes D26 (§5.1, "The account and the Identity service").
 > 3. **Licence-key entry limits apply only to products with Identity on.** Without Identity a key is
 >    the app's only activation path, so key entry stays unlimited, there is no owned-licence
 >    refusal, and the portal offers the account upgrade on every entry but never forces it (§5.3).
@@ -77,8 +99,8 @@
 >    licence attach, and the per-product issuer ("Sign in with <Product>", leaning in-house on
 >    jose). Full scope stays approved, but layer 1 is the focus and ships first.
 > 4. **Cloud Sync (S-17)** is its own service, "Cloud Sync" (slug e.g. `sync`), with its own
->    toggle, depending on Config and the layer 1 account (not the product's Identity toggle; see
->    the final-round header above). The licence-level config override layer is
+>    toggle, depending on Config and on the product's Identity service (sign-in; see the final
+>    answers above). The licence-level config override layer is
 >    removed everywhere, replaced by user-level managed config attached to the **account per
 >    product**. Floating licences have no such layer. Overrides on licences with no owner are
 >    dropped at migration with an operator-visible report. No Cloud Sync without signing in, ever.
@@ -205,7 +227,8 @@ account**, not a product-scoped user.
    Without Identity, key entry stays unlimited and the portal offers the upgrade but never forces
    it (owner, final round).
 4. **The portal becomes the Library** (§5.7): Library, Discover, Activate License, account
-   settings (sign-in methods, profile, devices, privacy), and Cloud Sync on product pages.
+   settings (sign-in methods, profile, devices, privacy), and Cloud Sync on the pages of products
+   that have it (which implies Identity).
 5. **Developers see only their own products** (§5.2). The console's Users page, on every product
    (platform-level, like the account), lists pairwise subjects of accounts that hold or used the
    product's licences; Identity adds each subject's sign-ins to the product. It never shows the global
@@ -578,11 +601,12 @@ the same licence, so it is trivially re-joined to the old one. Unlinkability nee
 go too: the removal screen says this plainly and offers "also remove the licence from my Library",
 which detaches it (it becomes floating, and the developer keeps its commercial record) and clears
 `devices.subject` on its devices. Even then a developer can match the person by data it holds
-anyway, such as the buyer email at a later purchase (§5.4 item 12) [I; D25].
+anyway, such as the buyer email at a later purchase (§5.4 item 12) [I; D25, accepted].
 
 **Where the subject travels.** Devices do not carry the subject in their token. A device that
-signed in has `devices.subject`; a device without a sign-in reaches its licence owner's subject
-through `licenses.account_id`, which Core resolves `(account, product)` to the pairwise subject
+signed in has `devices.subject`, and that is Cloud Sync's only principal (owner's final answers).
+Config's account override layer also reaches a device without a sign-in through its licence
+owner, `licenses.account_id`, which Core resolves `(account, product)` to the pairwise subject
 behind one function, so Cloud Sync and Config never import Identity (rule 6). The subject is what
 every licence view, console page, webhook, export and (in layer 2) issued token shows. The global
 account id never leaves the Worker's Identity and Core code: it is in no developer-facing API,
@@ -640,8 +664,8 @@ account. Steam IDs, Google subjects and email are global. The SDK docs say this 
     paths, with a new error code `license_owned` that I-04 defines (it does not exist in the Worker
     or `errors.json` today). It moves only when its owner detaches it or a developer reassigns it
     with the relink tool (§5.4 item 9). Whether key _entry_ on a new device still works for an
-    owned licence is a separate question, not settled by "an owned licence never moves by key"
-    (§5.3, D24);
+    owned licence is a separate question, not settled by "an owned licence never moves by key";
+    D24 (accepted) refuses it on a new device of a product with Identity on (§5.3);
   - **a licence that carries an email** attaches only to an account whose verified email matches,
     unless the product sets `claimByKey: true`;
   - each attach notifies the licence's email, if any.
@@ -670,14 +694,15 @@ account. Steam IDs, Google subjects and email are global. The SDK docs say this 
     fragment's sign-in members;
   - key-entry limits and the `license_owned` key-entry refusal (I-09; owner, final round);
   - the console's sign-in settings, passthrough branding and each user's sign-ins to the product;
-  - layer 2: app-specific profiles, bring-your-own-auth and "Sign in with <Product>".
+  - layer 2: app-specific profiles, bring-your-own-auth and "Sign in with <Product>";
+  - Cloud Sync, which needs sign-in: the `sync` descriptor is `requires: [config, identity]` and
+    the console Services toggle enforces it (owner's final answers).
 
   With the toggle off, the product behaves exactly as today on devices (unlimited key entry, no
   sign-in routes in discovery) and never shows app sign-in, but its licences still attach to
   accounts through Activate License, the portal and Discover, the console's Users page still lists
-  the subjects that own them, Config's account override layer applies through the licence owner,
-  and **Cloud Sync works through the licence owner** (S-17: the `sync` descriptor is
-  `requires: [config]`; it depends on the account, not on Identity).
+  the subjects that own them, and Config's account override layer applies through the licence
+  owner. Cloud Sync is unavailable: it needs sign-in (owner's final answers; S-17 §5.2).
 
 - **Bring-your-own-auth is layer 2** [I; D18]. A product's own IdP (Clerk, Firebase) is a
   per-app identity: linking it to the global account would hang a tenant-controlled login on a
@@ -706,8 +731,8 @@ identity:
 `identity` service toggle is on. The toggle gates passthrough sign-in, the exchange, device-wire
 attach, `subject()`, key-entry limits and the console's sign-in pages for that product; the
 account, login card, Library and the Users page stay platform-level (§5.1). A product that wants
-app sign-in turns Identity on. Cloud Sync does not need it: it requires Config and the account,
-and reaches a product without Identity through the licence owner (S-17).
+app sign-in turns Identity on, and so does a product that wants Cloud Sync, which requires Config
+and Identity because it needs sign-in (owner's final answers; S-17).
 
 Every new field gets a validator rule and a mutation-table entry (rule 9). Layer 2 adds
 `identity.methods[]` for the product's own IdPs and `identity.clients[]` for the issuer.
@@ -827,17 +852,18 @@ products with Identity on.
 - Refused or failed attempts are not counted (they are rate-limited instead).
 - Device-token refresh, offline grace, the licence document, store-binding activation and
   sign-in-based activation never count. **Existing installs are never affected** (owner).
-- **An owned licence's key entry on a new device is a new refusal, and an open decision (D24).**
+- **An owned licence's key entry on a new device is a new refusal (D24, accepted by the owner
+  2026-10-04, on products with Identity on).**
   No such refusal exists today: `license_owned` is not in `packages/worker/src` or
   `conformance/parity/errors.json` [V]. The earlier draft proposed it for portal claim only. The
   owner's rule "an owned licence never moves by key" is about transfer of ownership; activating a
-  device by key does not move the licence. The proposed default is to refuse key entry on a new
-  device once the licence is attached, with `license_owned` (403) checked before any count, so
+  device by key does not move the licence. The owner accepted the default: refuse key entry on a
+  new device once the licence is attached, with `license_owned` (403) checked before any count, so
   that the owner's other devices reach the licence through sign-in and a leaked key stops working
   for strangers. Re-entering the key on a device already enrolled on that licence is still
-  accepted (existing installs are never affected). The alternative is to keep accepting key entry
-  on owned licences, counted against the limit, with the device never bound to the account.
-- The limit counts per licence over its lifetime. Under D24's default, attaching the licence to
+  accepted (existing installs are never affected). The rejected alternative kept accepting key
+  entry on owned licences, counted against the limit, with the device never bound to the account.
+- The limit counts per licence over its lifetime. Under D24, attaching the licence to
   an account ends key entry for it on new devices; from then on it reaches them through sign-in.
 
 | Change                                                                                                                                                                                                                                                                                                                                                 | Device wire?                                                                                                 | `PROTOCOL_VERSION` / corpus                                                                              | Who follows                                                                                                                                                                                                                                                                                                   |
@@ -845,7 +871,7 @@ products with Identity on.
 | Phase 0 hygiene; removing dead `authPoll` from the discovery fragment                                                                                                                                                                                                                                                                                  | Discovery response only                                                                                      | Neither; `gen:transcripts` re-records `discovery-capabilities.json`                                      | No SDK reads `authPoll` [U: grep each SDK in the WP]                                                                                                                                                                                                                                                          |
 | Accounts, links, pairwise subjects, console pages, manifest `identity.*`                                                                                                                                                                                                                                                                               | No                                                                                                           | Neither                                                                                                  | Worker, admin, `shared-manifest` (rule 9)                                                                                                                                                                                                                                                                     |
 | **Layer 1 (I-09 ⚑): key-entry refusal.** Activation by key past the limit returns a new error `key_entry_limit` (403) carrying `portalUrl`                                                                                                                                                                                                             | **Yes**: a new error code and an extra error field on an existing route                                      | No bump: additive; transcripts and parity, not signed corpus                                             | **Plan mode.** `errors.json` → transcripts → I-10a and I-10b in all six SDKs: surface the deep link, never retry; UI kits show the URL and a QR code for TVs                                                                                                                                                  |
-| **Layer 1 (I-09 ⚑, D24): owned-licence refusal.** Activation by key (`POST /<p>/license/activate`, `W/services/license/activation.ts:153`) of a licence attached to an account, on a device not already enrolled on it, returns a new error `license_owned` (403) carrying `signInUrl`                                                                 | **Yes**: a new error code and an extra error field on an existing route                                      | No bump: additive; transcripts and parity                                                                | **Plan mode.** `errors.json` → transcripts → I-10a and I-10b: never retry, never wipe stored state; offer sign-in (device code or redirect) for the same product. UI kit copy: "This licence belongs to a Polaris Key account. Sign in to use it on this device." with a Sign in button and a QR code for TVs |
+| **Layer 1 (I-09 ⚑, D24 accepted): owned-licence refusal.** Activation by key (`POST /<p>/license/activate`, `W/services/license/activation.ts:153`) of a licence attached to an account, on a device not already enrolled on it, returns a new error `license_owned` (403) carrying `signInUrl`                                                        | **Yes**: a new error code and an extra error field on an existing route                                      | No bump: additive; transcripts and parity                                                                | **Plan mode.** `errors.json` → transcripts → I-10a and I-10b: never retry, never wipe stored state; offer sign-in (device code or redirect) for the same product. UI kit copy: "This licence belongs to a Polaris Key account. Sign in to use it on this device." with a Sign in button and a QR code for TVs |
 | **Layer 1 (I-09 ⚑):** optional `keyEntries: { used, limit }` in the activation-by-key response                                                                                                                                                                                                                                                         | **Yes**: an optional response member                                                                         | No bump; transcripts                                                                                     | Same; UI kits may show "N activations left" with an "add to your Library" link                                                                                                                                                                                                                                |
 | **Layer 1 (I-09 ⚑): account attach.** `POST /<p>/identity/attach` with the device token after a sign-in; returns the activation response                                                                                                                                                                                                               | **Yes**: a new route, request and response shapes, error codes                                               | No bump: the licence document's shape is unchanged (it carries no account)                               | Same chain; P1-07's show-then-confirm step in every SDK                                                                                                                                                                                                                                                       |
 | **Layer 1 (I-08 ⚑): passthrough sign-in.** Device code lands on the login card; its poll result can carry `subject` and `attachable`                                                                                                                                                                                                                   | **Yes**: additive members on an existing response                                                            | No bump; transcripts                                                                                     | Same chain                                                                                                                                                                                                                                                                                                    |
@@ -1054,7 +1080,7 @@ over from the product-scoped design, adjusted; items 12–17 are new with the sh
     subject.
   - Hosting product data needs a DPA and a sub-processor list (Cloudflare). The account needs its
     own privacy notice and Terms on `key.plrs.im`.
-  - **The DPA carries a standing instruction [I; D27].** Because the person exercises rights
+  - **The DPA carries a standing instruction [I; D27, accepted pending a legal review].** Because the person exercises rights
     through their Polaris account, the DPA instructs Polaris, as processor, to carry out a data
     subject's deletion and export requests made through the account against the account × product
     data Polaris hosts for the developer (managed config overrides, Cloud Sync), and to notify the
@@ -1127,10 +1153,10 @@ over from the product-scoped design, adjusted; items 12–17 are new with the sh
   everywhere and replaced by account × product managed config (owner). Floating licences have no
   such layer. Overrides on licences with no owner are dropped at migration, with an
   operator-visible report. Cloud Sync is its own service (slug `sync`) depending on Config and
-  the layer 1 account, and never works without an account. The account is platform-level and the
-  Identity toggle gates only app sign-in (§5.1; owner, final round), so Cloud Sync declares
-  `requires: [config]` and reaches a product without Identity through the licence owner (S-17
-  §5.2). Identity and Core owe S-17:
+  Identity: it needs sign-in, so it declares `requires: [config, identity]`, the console Services
+  toggle enforces that, and its only principal is `devices.subject` (owner's final answers; S-17
+  §5.2). Config's account override layer, not Cloud Sync, still follows the licence owner on
+  key-entry devices. Identity and Core owe S-17:
   - **the device binding**: `devices.subject`, reserved by I-04 and set by I-05's sign-in
     through Core's activation path (Identity passes the pairwise subject; Core writes the column), cleared
     by sign-out, "sign out everywhere", detach, per-product removal and account deletion through
@@ -1177,7 +1203,7 @@ what the owner named are marked as proposals.
 - **Product page.** Licence details, devices, downloads, the person's support code for this
   product (its pairwise subject, for the developer's relink tool, §5.2), "export my data for this product",
   "remove my data from this product", and a **Cloud Sync** section only for products with that
-  service on (S-17).
+  service on, which implies Identity (S-17; owner's final answers).
 - **Account settings.**
   - _Sign-in methods_: connect and disconnect under step-up, with the last-method guard; each
     change is audited and emailed. Includes the "add another way to sign in" nudge,
@@ -1314,7 +1340,7 @@ are not carried forward (D17).
   I-04, I-05, I-08, I-10a/I-10b, I-11, I-12 and I-24 are folded into the table above (§5.6), so the
   two notes agree. Two points for S-17 to follow: the device binding is created by I-05 (S-17's
   U-02 builds on it rather than migrating it), and Cloud Sync's descriptor is
-  `requires: [config]`: it depends on the account, not on the Identity toggle (owner, final round). Config briefs that mention the licence-level override
+  `requires: [config, identity]`: Cloud Sync needs sign-in (owner's final answers). Config briefs that mention the licence-level override
   layer change with S-17.
 
 ## 9. Risks and open questions
@@ -1395,9 +1421,10 @@ earlier revision so briefs that cite them stay valid.
 15. **Recovery.** Remaining links, then the developer's relink tool; no recovery desk. _Decided._
 16. **In-app email start.** Superseded by D17 below.
 
-**Accepted by the owner (2026-10-04, final round): D17 to D23, as proposed below.** D24, D25 and
-D27 (from the critique fixes) still need the owner's yes. D26 is superseded by the owner's
-account/service clarification (the header at the top).
+**Accepted by the owner (2026-10-04, final round): D17 to D23, as proposed below. Accepted with
+the final answers the same day: D24, D25 and D27 (D27 pending a legal review).** D26 is
+superseded by the owner's account/service clarification (the header at the top), and Cloud Sync
+needs sign-in (the final answers at the top).
 
 17. **No in-app email-code API in layer 1.** Account credentials are entered only on the login card
     at `key.plrs.im` (system browser or another device), because the account is shared across
@@ -1424,25 +1451,29 @@ account/service clarification (the header at the top).
     with `signInUrl`), and the device signs in instead; re-entry on an already enrolled device
     still works and existing installs are untouched (§5.3). This is a behaviour change: today any
     key entry within the device seats succeeds, and "an owned licence never moves by key" decides
-    transfer, not activation. _Default: refuse._ The alternative keeps accepting key entry on
-    owned licences, counted against the limit, with the device never bound to the account. It is
-    friendlier offline but leaves a leaked key usable by strangers until the limit.
+    transfer, not activation. _Decided (owner, 2026-10-04, final answers): refuse on a new device;
+    re-entry on enrolled devices and existing installs keep working._ The rejected alternative kept
+    accepting key entry on owned licences, counted against the limit, with the device never bound
+    to the account: friendlier offline, but a leaked key stayed usable by strangers until the limit.
 25. **Per-product removal and the licence.** "Remove my data from <Product>" deletes account ×
     product data and the pairwise subject but keeps the licence attached, and the screen says
     that the developer can still connect the person to their old records through it. It offers
-    "also remove the licence from my Library", which detaches it (§5.1). _Default: as stated._
+    "also remove the licence from my Library", which detaches it (§5.1). _Decided (owner,
+    2026-10-04, final answers): as stated._
     The alternative, always detaching, would silently drop a purchase from the Library.
 26. **Identity toggle.** _Superseded (owner, 2026-10-04, final round)._ The account, login card,
     Library, Discover, Activate License, pairwise subjects and the console's Users page are
     platform-level and always on. The product's `identity` toggle gates app sign-in through that
     product (passthrough, exchange, device-wire attach, `subject()`, "Continue to <App>"), the
-    key-entry limits and `license_owned` key-entry refusal, the console's sign-in pages, and layer 2. Cloud Sync declares `requires: [config]`: it depends on the account, not on Identity, and
-    reaches a product without Identity through the licence owner (§5.1; S-17 §5.2).
+    key-entry limits and `license_owned` key-entry refusal, the console's sign-in pages, layer 2,
+    and Cloud Sync: Cloud Sync needs sign-in, so it declares `requires: [config, identity]` and the
+    console Services toggle enforces it (owner, 2026-10-04, final answers; §5.1; S-17 §5.2).
 27. **Deletion and the developer's records.** The DPA instructs Polaris to delete hosted account
     × product data on the person's request through their account. Polaris nulls its own copies on
     licences and detaches them, but leaves the developer-set buyer email and name, notifying the
     developer through `subject.deleted` with the licence ids to act within one month (§5.5).
-    _Default: as stated [U: legal review]._ The alternative, Polaris nulling buyer columns too,
+    _Decided (owner, 2026-10-04, final answers): as stated, pending a legal review of the DPA
+    wording [U: legal review]._ The alternative, Polaris nulling buyer columns too,
     oversteps a processor's role over the developer's commercial records.
 
 ## 11. Sources

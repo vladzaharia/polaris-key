@@ -1,16 +1,16 @@
 # I-08 App passthrough: the "<App> wants you to sign in" header, Continue-to-App grants, device code onto the card with callback binding, QR sign-in, and the web redirect (authorize plus PKCE code exchange) that gives product web apps a browser device token
 
-| Field       | Value                                                                                                                                                                    |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1a)                                                                                   |
-| Size        | 1.2–1.7 engineer-weeks                                                                                                                                                   |
-| Depends on  | [I-04](I-04-account-contract-plan.md), [I-07](I-07-login-card-email.md)                                                                                                  |
-| Unblocks    | [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md), [I-15](I-15-native-redirect.md), [U-20](U-20-sdk-settings-react.md) |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                    |
-| Plan mode   | yes: executes the approved [`plans/I-04.md`](../plans/I-04.md) (no separate plan)                                                                                        |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; `test:workerd`                   |
-| Human input | none                                                                                                                                                                     |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                |
+| Field       | Value                                                                                                                                                                                                   |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1a)                                                                                                                  |
+| Size        | 1.2–1.7 engineer-weeks                                                                                                                                                                                  |
+| Depends on  | [I-04](I-04-account-contract-plan.md), [I-07](I-07-login-card-email.md)                                                                                                                                 |
+| Unblocks    | [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md), [I-15](I-15-native-redirect.md), [U-05](U-05-cloud-sync-do.md), [U-20](U-20-sdk-settings-react.md) |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                   |
+| Plan mode   | yes: executes the approved [`plans/I-04.md`](../plans/I-04.md) (no separate plan)                                                                                                                       |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; `test:workerd`                                                  |
+| Human input | none                                                                                                                                                                                                    |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                               |
 
 ## Goal
 
@@ -18,7 +18,7 @@ An app can send a person to the login card and get them back signed in: the card
 
 ## Why
 
-Passthrough is how an app with the Identity service on reaches the shared account without hosting credential entry ([S-16 §5.3](../../notes/S-16-identity-service.md#53-wire-impact); D17, accepted). It is the core of the per-product Identity service (owner, 2026-10-04): the account itself is platform-level, but "<App> wants you to sign in" exists only for products whose `identity` toggle is on. Device code becomes a main front door against an account holding every developer's licences, so R1-07 closes here ([S-16 §5.4](../../notes/S-16-identity-service.md#54-threat-model-deltas) item 6). The web redirect is S-17's signed-in browser principal (decision 19) and the dependency of web Cloud Sync on products with Identity on ([S-17 §6](../../notes/S-17-user-data-sync.md#6-phases-and-work-packages)); a product without Identity reaches Cloud Sync only through the licence owner's account, never through this route.
+Passthrough is how an app with the Identity service on reaches the shared account without hosting credential entry ([S-16 §5.3](../../notes/S-16-identity-service.md#53-wire-impact); D17, accepted). It is the core of the per-product Identity service (owner, 2026-10-04): the account itself is platform-level, but "<App> wants you to sign in" exists only for products whose `identity` toggle is on. Device code becomes a main front door against an account holding every developer's licences, so R1-07 closes here ([S-16 §5.4](../../notes/S-16-identity-service.md#54-threat-model-deltas) item 6). The web redirect is S-17's browser principal (decision 19) and the only way to web Cloud Sync (decision 23, decided by the owner 2026-10-04 in the final answers); Cloud Sync needs sign-in and requires Identity, so the sign-in this package delivers is how every device reaches Cloud Sync ([S-17 §6](../../notes/S-17-user-data-sync.md#6-phases-and-work-packages)).
 
 ## Read first
 

@@ -14,7 +14,7 @@
 
 ## Goal
 
-Developers can adopt synced settings from the docs: concepts, the five-minute quickstart, the client-writable banner, a plain "no Cloud Sync without a Polaris Key account" statement, the migration notice for operators, and clock limits.
+Developers can adopt synced settings from the docs: concepts, the five-minute quickstart, the client-writable banner, a plain "no Cloud Sync without sign-in" statement, the migration notice for operators, and clock limits.
 
 ## Why
 
@@ -36,8 +36,7 @@ The owner's decisions change what developers get (no zero-sign-in sync; licence 
 
 ## Design notes
 
-- The quickstart lists `config` and `sync` as the required services; `identity` is optional (owner clarification, 2026-10-04). It explains both ways a device binds: its licence attached to an account (every product, the only way without Identity) and sign-in through the product (Identity on). Without Identity the app never shows sign-in; the UI kits offer "Add this licence to your Polaris Key account to sync".
-- State the Identity-off residual plainly: anyone holding an owned licence's key can enrol a device and reach the owner's synced data; the owner is emailed and can remove the device.
+- The quickstart lists `identity` among the required services ((owner, 2026-10-04, final answers): Cloud Sync needs sign-in and requires Identity); devices sync only after signing in through the product.
 - Never hand-edit generated pages.
 
 ## Steps

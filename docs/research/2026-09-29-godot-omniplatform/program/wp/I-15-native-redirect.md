@@ -42,7 +42,7 @@ Device code is a poor fit on a phone, and four native SDK rows are planned and u
 
 - No non-http(s) schemes except per-product registered native schemes; never an embedded web view. Account credentials are entered only on the `key.plrs.im` login card (D17, decided by the owner 2026-10-04).
 - Identity service only (owner, 2026-10-04): native redirect is app passthrough sign-in ("<App> wants you to sign in"), offered only for products with Identity on. The first sign-in to each app ends on "Continue to <App>" (D22).
-- Cloud Sync does not need this or the Identity toggle: on a product with Identity off, its principal is the licence owner's subject (`devices.subject ?? subjectFor(license.account_id, product)`, S-17), so the soft dependency below applies only to Identity-on products.
+- Cloud Sync needs sign-in (owner, 2026-10-04, final answers); native SDKs sign in by device code or QR until this lands, so it stays a soft dependency of the Cloud Sync SDK packages.
 - Returns the activation response; no `PROTOCOL_VERSION` bump.
 - Native sign-in in S-17's MVP is device code or QR until this lands; it is a soft dependency of U-06, U-07 and U-21.
 

@@ -43,7 +43,7 @@ The game program needs Godot first, and this half is the estimate most likely to
 - Godot's existing device-code QR is the base; Swift's `PolarisLoginView(onSignIn:)` stops defaulting to a no-op.
 - Same refusal rules and copy as I-10a.
 - **Identity on vs off (owner, 2026-10-04).** The SDK Identity feature (sign-in, `attach`, `subject`, `signOut`) is the per-product Identity service and runs only when discovery says the product's Identity toggle is on. With it off the SDK shows no sign-in at all: `activate(key)` behaves exactly as today (no limit, no `license_owned`), and the UI kit's only account surface is a skippable "Add to your Polaris Key Library" link to the portal, never a forced step. `openAccount()` still works, because the account is platform-level.
-- Cloud Sync does not need the Identity feature: on a product without Identity, a device whose licence is attached to an account reaches Cloud Sync through the licence owner (S-17), and this package adds nothing for that path.
+- Cloud Sync needs sign-in (owner, 2026-10-04, final answers): this package's sign-in is how an SDK device gets its Cloud Sync principal (`devices.subject`); a key-activated device has none.
 
 ## Steps
 

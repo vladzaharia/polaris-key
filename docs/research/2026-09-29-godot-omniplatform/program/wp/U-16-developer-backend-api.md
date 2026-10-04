@@ -35,7 +35,7 @@ Decision 12 ([S-17 §7.3](../../notes/S-17-user-data-sync.md#73-owner-decisions)
 ## Design notes
 
 - Optional; addressed by pairwise subject only, never the account id.
-- The I-21 credential is an Identity layer 2 artefact, so this API as planned serves only products with Identity on; a product with Cloud Sync and Identity off uses the existing product-scoped admin credentials by default ([S-17 §7.3](../../notes/S-17-user-data-sync.md#73-owner-decisions) decision 24, proposed); the plan confirms it. The I-21 dependency stays for the `pkey:sync` scope on Identity products.
+- The credential follows Identity ([S-17 §7.3](../../notes/S-17-user-data-sync.md#73-owner-decisions) decision 24, decided by the owner 2026-10-04 in the final answers): I-21 client credentials with a `pkey:sync` scope, else an I-25 assertion. Every Cloud Sync product has Identity on, so no admin-credential fallback is needed.
 
 ## Steps
 

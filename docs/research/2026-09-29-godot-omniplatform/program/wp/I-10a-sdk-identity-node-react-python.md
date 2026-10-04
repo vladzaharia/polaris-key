@@ -44,7 +44,7 @@ S-16 re-estimated the SDK work and split it by toolchain so the two halves run i
 
 - Never retry or treat `key_entry_limit` or `license_owned` as revocation; never wipe stored state.
 - **Identity on vs off (owner, 2026-10-04).** The SDK Identity feature (sign-in, `attach`, `subject`, `signOut`) is the per-product Identity service and runs only when discovery says the product's Identity toggle is on. With it off the SDK shows no sign-in at all: `activate(key)` behaves exactly as today (no limit, no `license_owned`), and the UI kit's only account surface is a skippable "Add to your Polaris Key Library" link to the portal, never a forced step. `openAccount()` still works, because the account is platform-level.
-- Cloud Sync does not need the Identity feature: on a product without Identity, a device whose licence is attached to an account reaches Cloud Sync through the licence owner (S-17), and this package adds nothing for that path.
+- Cloud Sync needs sign-in (owner, 2026-10-04, final answers): this package's sign-in is how an SDK device gets its Cloud Sync principal (`devices.subject`); a key-activated device has none.
 - System browser only, never an embedded web view ([S-16 §5.4](../../notes/S-16-identity-service.md#54-threat-model-deltas) item 13).
 - Copy for `license_owned`: "This licence belongs to a Polaris Key account. Sign in to use it on this device."
 

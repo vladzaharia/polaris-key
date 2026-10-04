@@ -30,9 +30,9 @@ Cloud Sync is the first device-writable data service; a slip is a cross-tenant o
 
 **In:**
 
-- `resolveSyncPrincipal(device)` → `(product, subject)` as `devices.subject ?? subjectFor(license.account_id, product)`, the same rule as Config's account-override line (owner clarification, 2026-10-04: Cloud Sync depends on the account, not on the product's Identity toggle). The signed-in line works only on products with Identity on; the licence-owner line works on every product, so a device on a product without Identity gets a principal once its licence is attached to an account. Floating licences with no binding resolve to "no principal" (`account_required`). Merge aliases resolve to the surviving subject (D21); a deleted subject resolves to "no principal".
-- `subjectFor(account, product)` for Config's owner fallback and Cloud Sync's licence-owner line (creates the subject on first use).
-- Clearing-hook cases for Cloud Sync: sign-out, disable, deletion, sign out everywhere, relink of the device's licence; not plain detach (the binding stays, but a detach ends the licence-owner line, so an unbound device on that licence resolves to no principal).
+- `resolveSyncPrincipal(device)` → `(product, subject)` as `devices.subject` only, after one check against Identity's subject table (owner, 2026-10-04, final answers): Cloud Sync needs sign-in, so there is no licence-owner fallback. A device with no binding (key-activated, floating licence, never signed in) resolves to "no principal" (`account_required`). Merge aliases resolve to the surviving subject (D21); a deleted subject resolves to "no principal".
+- `subjectFor(account, product)` for Config's account-override owner fallback only (creates the subject on first use); Cloud Sync never calls it.
+- Clearing-hook cases for Cloud Sync: sign-out, disable, deletion, sign out everywhere, relink of the device's licence; not plain detach.
 - The guard test over the merge and deletion registries.
 
 **Out** (and where it belongs instead):
@@ -42,9 +42,8 @@ Cloud Sync is the first device-writable data service; a slip is a cross-tenant o
 
 ## Design notes
 
-- Licence-key activation never sets `devices.subject` (test); a key-activated device reaches a principal only through the licence-owner line. The binding is never signed.
-- **Principal change.** A detach or relink changes what the licence-owner line resolves to; Cloud Sync answers the next request for the old subject with `account_required` (or the new subject's state), and the SDK handles it like sign-out (U-06 and siblings).
-- **Residual risk, Identity-off products** ([S-17 §7.3](../../notes/S-17-user-data-sync.md#73-owner-decisions) decision 22, proposed): with no `license_owned` refusal there, anyone holding an owned licence's key can enrol a device and reach the owner's Cloud Sync data through the licence-owner line. Mitigation: the owner is emailed on each new device on an owned licence and can remove it in the portal (I-11), which ends its access. Add the test that a removed device resolves to no principal.
+- Licence-key activation never sets `devices.subject` (test), so a key-activated device has no Cloud Sync principal until it signs in. The binding is never signed.
+- **Principal change.** A clearing trigger or a merge alias changes what the binding resolves to; Cloud Sync answers the next request for the old subject with `account_required` (or the survivor's state), and the SDK handles it like sign-out (U-06 and siblings).
 - Rule 6: Cloud Sync and Config call Core, never Identity.
 
 ## Steps
@@ -56,7 +55,7 @@ Cloud Sync is the first device-writable data service; a slip is a cross-tenant o
 
 - [ ] A licence-key activation never sets the binding (test); every clearing trigger clears it (tests).
 - [ ] An aliased subject resolves to the survivor; a deleted one to no principal (tests).
-- [ ] A key-activated device on an owned licence resolves to the owner's subject on a product with Identity off and on; after detach it resolves to no principal; a floating licence never resolves (tests).
+- [ ] A key-activated device on an owned licence and a floating licence both resolve to no principal; the same device after sign-in resolves to its pairwise subject (tests).
 - [ ] The guard test fails on a subject-keyed store without merge and deletion hooks.
 - [ ] The `boundaries` test passes; no S-17 row or key holds the account id.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.

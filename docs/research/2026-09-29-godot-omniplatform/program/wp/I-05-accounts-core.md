@@ -71,7 +71,7 @@ There is no person record today: "the user" is four columns on `licenses` and a 
 - [ ] A merge keeps the absorbed subject resolvable as an alias for each product (test); no merge happens without two fresh sign-ins (test).
 - [ ] A tenant-scoped link of team A never resolves an account for a product of team B (test).
 - [ ] Licence-key activation never sets the device binding (test); sign-out clears it (test).
-- [ ] `subjectFor` resolves the licence owner's subject for a product with the Identity toggle off (test), so the account override layer and Cloud Sync's licence-owner line work there.
+- [ ] `subjectFor` resolves the licence owner's subject for a product with the Identity toggle off (test), so the account override layer's owner fallback works there (Cloud Sync never uses it: it needs sign-in).
 - [ ] No developer-facing response contains the account id (test over the admin and device routes touched).
 - [ ] An Identity-only product signs in without a `licenses` row (test); the `boundaries` test passes (rule 6).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.

@@ -2345,7 +2345,7 @@
       "planMode": true,
       "gates": ["plan-mode", "human-approval"],
       "humanInputs": [
-        "owner answers S-16 §10 D24, D25 and D27 (proposed defaults; the plan encodes each default unless the owner says otherwise; D17–D23 are decided and D26 is superseded); D27 also needs a legal review of the DPA wording"
+        "a legal review of the DPA wording for S-16 §10 D27 (D17–D25 and D27 accepted by the owner on 2026-10-04, D27 pending that review; D26 superseded)"
       ],
       "repo": "polaris-key",
       "optional": false,
@@ -3029,9 +3029,7 @@
       "deps": ["I-04"],
       "planMode": true,
       "gates": ["plan-mode", "human-approval"],
-      "humanInputs": [
-        "owner answers S-17 §7.3 decision 20 (entitlement overrides stay on the licence) and decision 21 (30-day notice, 90-day report)"
-      ],
+      "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
       "refs": [
@@ -3085,8 +3083,7 @@
         "console-csp-parity"
       ],
       "humanInputs": [
-        "owner schedules the production migration run, no earlier than the notice window after I-07 and I-11 are both live in production (decision 21)",
-        "owner's answer to S-17 decision 20 before step 4 (the freeze of `PUT /licenses/<id>/overrides`) is finalised"
+        "owner schedules the production migration run, no earlier than the notice window after I-07 and I-11 are both live in production (decision 21)"
       ],
       "repo": "polaris-key",
       "optional": false,
@@ -3103,7 +3100,7 @@
     },
     {
       "id": "U-04",
-      "title": "Catalog, manifest and the `sync` service: catalog `user` block and `cloudSync` block with validator rules 1–11, typed setting keys in the mirrors, generated docs, the Cloud Sync service descriptor (`requires: [config]`), console catalog form and Cloud Sync page",
+      "title": "Catalog, manifest and the `sync` service: catalog `user` block and `cloudSync` block with validator rules 1–11, typed setting keys in the mirrors, generated docs, the Cloud Sync service descriptor (`requires: [config, identity]`), console catalog form and Cloud Sync page",
       "phase": "U",
       "stage": "U1 MVP",
       "lane": "worker",
@@ -3138,7 +3135,7 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [2, 2.8],
-      "deps": ["U-01", "U-02", "U-04"],
+      "deps": ["U-01", "U-02", "U-04", "I-08"],
       "planMode": true,
       "gates": [
         "plan-mode",

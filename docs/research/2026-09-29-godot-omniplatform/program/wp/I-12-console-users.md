@@ -14,7 +14,7 @@
 
 ## Goal
 
-Each product's console has a Users page that lists only that product's pairwise subjects, with that product's licences, devices, sessions, data size and audit, per-subject export and data deletion, a reserved Data tab and account override editor, the developer relink tool, and, for products with Identity on, sign-in settings and branding. Nothing about other products or the global account is ever shown. The Users page is platform-level and exists for every product (owner, 2026-10-04: the account is part of Core and the portal), because licences of any product attach to accounts and the account override layer and Cloud Sync work without Identity.
+Each product's console has a Users page that lists only that product's pairwise subjects, with that product's licences, devices, sessions, data size and audit, per-subject export and data deletion, a reserved Data tab and account override editor, the developer relink tool, and, for products with Identity on, sign-in settings and branding. Nothing about other products or the global account is ever shown. The Users page is platform-level and exists for every product (owner, 2026-10-04: the account is part of Core and the portal), because licences of any product attach to accounts and the account override layer works without Identity (Cloud Sync requires Identity).
 
 ## Why
 
@@ -33,7 +33,7 @@ Developers only ever see data for their own products (owner). With no recovery d
 - Users list and row detail keyed by pairwise subject, for every product: the product's licences, devices, account × product data size, and the product's audit trail. With Identity on, the row adds that product's sessions and sign-in history, showing only the method kind used to reach this product ("signed in with Steam"), never the account's link list. A merged subject shows "merged from" and resolves its alias (D21).
 - Contact email: the licence's buyer email; the account primary email only with the person's consent (D19, accepted by the owner 2026-10-04).
 - Actions: export the product's data for the subject (JSON); delete the product's data; detach the product's licence; **relink** a licence of this product to another subject.
-- Reserved Data tab (U-11a) and account override editor slot (U-03); per-subject export and deletion call the deletion registry. The Data tab appears whenever Cloud Sync is on, regardless of the Identity toggle; the override editor appears whenever Config is on.
+- Reserved Data tab (U-11a) and account override editor slot (U-03); per-subject export and deletion call the deletion registry. The Data tab appears whenever Cloud Sync is on (which implies Identity on); the override editor appears whenever Config is on.
 - Sign-in settings, shown only while the product's Identity toggle is on: key-entry limit, `claimByKey`, Terms version, native platform config with a per-kind checklist and a "test sign-in" dry run that mints nothing; branding for the passthrough header under the reserved-name validator; the App Review 4.8 warning.
 
 **Out** (and where it belongs instead):

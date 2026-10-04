@@ -1,4 +1,4 @@
-# U-04 Catalog, manifest and the `sync` service: catalog `user` block and `cloudSync` block with validator rules 1–11, typed setting keys in the mirrors, generated docs, the Cloud Sync service descriptor (`requires: [config]`), console catalog form and Cloud Sync page
+# U-04 Catalog, manifest and the `sync` service: catalog `user` block and `cloudSync` block with validator rules 1–11, typed setting keys in the mirrors, generated docs, the Cloud Sync service descriptor (`requires: [config, identity]`), console catalog form and Cloud Sync page
 
 | Field       | Value                                                                                                                                                                                                                     |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -14,7 +14,7 @@
 
 ## Goal
 
-Products declare user settings and Cloud Sync data in `.pkey/schema` and turn on a new **Cloud Sync** service: the catalog `user` block and the `cloudSync` block validate under rules 1–11, mirrors expose typed setting keys, docs regenerate, and `tools/services.json` gains the `sync` descriptor with `requires: [config]`, its toggle, discovery fragment and console section.
+Products declare user settings and Cloud Sync data in `.pkey/schema` and turn on a new **Cloud Sync** service: the catalog `user` block and the `cloudSync` block validate under rules 1–11, mirrors expose typed setting keys, docs regenerate, and `tools/services.json` gains the `sync` descriptor with `requires: [config, identity]`, its toggle, discovery fragment and console section.
 
 ## Why
 
@@ -32,7 +32,7 @@ Owner decision 2: Cloud Sync is its own service with its own toggle ([S-17 owner
 
 - `user` block (`sync`, `conflict`, `listed`, with `merge` members) on `config` entries; `cloudSync` block (collections, saves, limits, `unlicensed`, `writes`, `migrations`).
 - Validator rules 1–11 with mutation-table entries and JSON schema (rule 9); `gen-mirrors` typed setting keys; `gen-docs`.
-- The `sync` service: descriptor, `requires: [config]`, toggle, discovery fragment, console section and accent. It does not require `identity`: Cloud Sync depends on the Polaris Key account, which is platform-level (Core and the portal), not on the product's Identity toggle (owner clarification, 2026-10-04).
+- The `sync` service: descriptor, `requires: [config, identity]`, toggle, discovery fragment, console section and accent. Cloud Sync needs sign-in, so it requires the product's Identity service (owner, 2026-10-04, final answers); the console Services toggle enforces the dependency both ways.
 - Console catalog form fields and the Cloud Sync page shell.
 
 **Out** (and where it belongs instead):
@@ -44,7 +44,7 @@ Owner decision 2: Cloud Sync is its own service with its own toggle ([S-17 owner
 - No new `ConfigKind`; `enums.json` and generated constants do not change.
 - Limits, including `unlicensed`, must not exceed the platform ceilings; `unlicensed` must not exceed licensed.
 - One new slug per PR (program README §5).
-- The Cloud Sync page states how devices get a principal on this product: through the licence's account always, and also through sign-in when Identity is on.
+- The Cloud Sync page states that devices get a principal only by signing in through the product; key-activated devices keep settings locally.
 
 ## Steps
 
@@ -56,7 +56,7 @@ Owner decision 2: Cloud Sync is its own service with its own toggle ([S-17 owner
 
 - [ ] Every rule 1–11 has a validator rule, a mutation-table entry and schema coverage.
 - [ ] `gen:services -- --check`, `gen:mirrors` drift and generated docs are clean.
-- [ ] The `sync` toggle cannot be enabled without Config, and can be enabled with Identity off (tests).
+- [ ] The `sync` toggle cannot be enabled without Config and Identity, and Identity cannot be turned off while Cloud Sync is on (tests).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

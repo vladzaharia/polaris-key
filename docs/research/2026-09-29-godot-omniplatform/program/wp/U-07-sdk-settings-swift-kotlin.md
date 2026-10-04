@@ -36,11 +36,11 @@ Same as U-06 for the native SDKs ([S-17 §5.11](../../notes/S-17-user-data-sync.
 
 ## Design notes
 
-- Native sign-in (Identity products only) is device code or QR until I-15.
-- **When the device binds** (owner clarification, 2026-10-04): Cloud Sync depends on the Polaris Key account, not on the product's Identity toggle. The device has a principal when it signed in through the product (Identity on) or when its licence is attached to an account (any product: portal Activate License, Library, Discover). "First sign-in" below means this first bind; local values upload then, per key with original edit clocks, no prompt.
-- **The offer on `account_required`:** on a product without Identity the SDK and UI kit never show app sign-in; they show "Add this licence to your Polaris Key account to sync" with the Worker-built portal link (an offer, never forced). On a product with Identity they may also offer sign-in.
-- **Principal change** (detach or relink on the licence-owner line, or a different subject after a merge alias resolves) is handled like sign-out: no flush to the new principal, the cloud cache is dropped, local values stay as the unbound partition (scenario).
-- `PolarisKeyUI` and the Kotlin component show the matching offer screen.
+- Native sign-in is device code or QR until I-15.
+- **Cloud Sync needs sign-in** (owner, 2026-10-04, final answers): the device has a principal only when it signed in through the product, which needs the product's Identity service (Cloud Sync requires it). A key-activated device, a floating licence or a device that never signed in keeps settings locally only; at the first sign-in local values upload per key with original edit clocks, no prompt.
+- **The offer on `account_required`:** the SDK and UI kit offer sign-in (I-08's passthrough: device code or QR, web redirect, native redirect once I-15 lands); never forced, and licence state is untouched.
+- **Principal change** (sign-out, a relink of the device's licence that clears the binding, or a different subject after a merge alias resolves) is handled like sign-out: no flush to the new principal, the cloud cache is dropped, local values stay as the unbound partition (scenario).
+- `PolarisKeyUI` and the Kotlin component show the sign-in offer screen.
 
 ## Steps
 

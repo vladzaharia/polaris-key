@@ -36,10 +36,10 @@ Settings and account overrides are personal data from the MVP on ([S-17 §5.9](.
 
 ## Design notes
 
-- Cloud Sync appears only on product pages of products with the service on, whether or not the product has Identity on (Cloud Sync depends on the account, owner clarification 2026-10-04).
-- The section lists the devices that reach this product's data and offers "remove device" (I-11's device control), the mitigation for the Identity-off licence-owner line ([S-17 §7.3](../../notes/S-17-user-data-sync.md#73-owner-decisions) decision 22, proposed); the owner email on each new device on an owned licence is I-11's or I-18's to send.
+- Cloud Sync appears only on product pages of products with the service on, which now implies Identity on (owner, 2026-10-04, final answers).
+- The section lists the signed-in devices that reach this product's data; "remove device" is I-11's ordinary device control.
 - Dormant-account deletion (S-16 D23, accepted: no sign-in and no licence for 36 months, after an email warning) runs the same delete cascade.
-- Controller-requested deletion and operator-authored account overrides follow S-16's answer ([S-16 §10](../../notes/S-16-identity-service.md#10-owner-decisions) D27).
+- Controller-requested deletion and operator-authored account overrides follow S-16 D27 ([S-16 §10](../../notes/S-16-identity-service.md#10-owner-decisions), accepted 2026-10-04 pending a legal review of the DPA wording).
 
 ## Steps
 

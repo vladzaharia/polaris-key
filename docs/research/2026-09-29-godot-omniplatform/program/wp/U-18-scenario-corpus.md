@@ -28,7 +28,7 @@ HTTP transcripts pin the wire, not what the client does between requests; six of
 
 ## Scope
 
-**In:** the format, the reference client and server, the initial scenario set of [S-17 §5.13](../../notes/S-17-user-data-sync.md#513-wire-impact) including first-bind upload (sign-in, and licence attach with no sign-in), `403 account_required` with the portal offer, principal change on detach or relink handled like sign-out, the generator and its `--check`, the Node runner.
+**In:** the format, the reference client and server, the initial scenario set of [S-17 §5.13](../../notes/S-17-user-data-sync.md#513-wire-impact) including first-sign-in upload, `403 account_required` with the sign-in offer, principal change (sign-out, a relink that clears the binding, a merge alias) handled like sign-out, the generator and its `--check`, the Node runner.
 
 **Out** (and where it belongs instead):
 
