@@ -262,6 +262,7 @@ function ServicesForm({
       sections={[
         { id: "services-enablement", title: "Enabled services" },
         { id: "services-registration", title: "Device registration" },
+        { id: "services-package-feeds", title: "Package feeds" },
       ]}
     >
       <Form form={form} aria-label="Services" className="space-y-6">
@@ -438,6 +439,8 @@ function ServicesForm({
         <SaveBar form={form} section="Services" saveLabel="Save services" />
       </Form>
 
+      <PackageFeedsSection slug={slug} distributionOn={values.distribution} />
+
       <ConfirmDialog
         open={gate.open}
         onOpenChange={(open) => {
@@ -554,4 +557,140 @@ function DeliveryChain({ draft }: { draft: Draft }): React.ReactElement {
 
 function errorText(code: string): string {
   return `The server refused this set (${code}).`;
+}
+
+/**
+ * Distribution's `packageFeeds` sub-capability (F-11, plans/F-01.md §6.3): whether the product's
+ * packages are served on the registry host. Operator-owned (a manifest never writes it), its own
+ * resource and so its own form and SaveBar (`PUT …/distribution/package-feeds`, 409 when it moved).
+ * Turning it off is L1: every feed of the product stops answering at once.
+ */
+function PackageFeedsSection({
+  slug,
+  distributionOn,
+}: {
+  slug: string;
+  distributionOn: boolean;
+}): React.ReactElement {
+  const query = useQuery(
+    {
+      queryKey: qk.packageFeedsSwitch(slug),
+      queryFn: () => api.packageFeeds(slug),
+    },
+    queryClient,
+  );
+  const gate = useConfirmGate<true>();
+  const current = query.data?.packageFeeds;
+  const form = useAdminForm<{ enabled: boolean }>({
+    values: { enabled: current?.enabled ?? false },
+    resetOn: [current?.version ?? null],
+    onSubmit: async (v) => {
+      if (current?.enabled && !v.enabled && !(await gate.ask(true)))
+        throw new SaveCancelled();
+      await mutate("savePackageFeeds", slug, {
+        enabled: v.enabled,
+        expectedVersion: current?.version ?? 0,
+      });
+      toast.success(
+        v.enabled ? "Package feeds turned on" : "Package feeds turned off",
+      );
+    },
+    mapServerErrors: () => null,
+  });
+  const enabled = form.rhf.watch("enabled");
+  return (
+    <Form form={form} aria-label="Package feeds">
+      <div data-service="distribution">
+        <SettingsSection
+          id="services-package-feeds"
+          title="Package feeds"
+          description={
+            <>
+              Serve this product's packages to npm, pip, docker, SwiftPM, Gradle
+              and Godot from the registry host.{" "}
+              <a
+                href={docsUrl("packageFeeds")}
+                target="_blank"
+                rel="noreferrer"
+                className="text-accent-fg underline-offset-4 hover:underline"
+              >
+                How package feeds work
+              </a>
+            </>
+          }
+          footer={
+            <>
+              {form.submitError &&
+              !(form.submitError instanceof SaveCancelled) ? (
+                <div className="px-5 py-3">
+                  <Callout
+                    tone="danger"
+                    title={errorCopy(form.submitError).title}
+                  >
+                    {errorCopy(form.submitError).description}
+                  </Callout>
+                </div>
+              ) : null}
+              <SaveBar
+                form={form}
+                section="Package feeds"
+                saveLabel="Save package feeds"
+              />
+            </>
+          }
+        >
+          {query.isError ? (
+            <ErrorState
+              compact
+              error={query.error}
+              onRetry={() => void query.refetch()}
+            />
+          ) : (
+            <SettingsRow
+              label={
+                <span className="inline-flex items-center gap-2">
+                  <ServiceGlyph id="distribution" />
+                  Package feeds
+                </span>
+              }
+              htmlFor="service-package-feeds"
+              help={
+                distributionOn
+                  ? "Off, every feed of this product answers not-found. Its feed settings are kept."
+                  : "Needs Distribution: with Distribution off, no feed answers whatever this says."
+              }
+            >
+              <div className="flex flex-wrap items-center gap-3">
+                <Switch
+                  id="service-package-feeds"
+                  checked={enabled}
+                  readOnly={form.isSubmitting || query.isPending}
+                  onCheckedChange={(c) =>
+                    form.rhf.setValue("enabled", c, { shouldDirty: true })
+                  }
+                />
+                <span className="text-sm text-fg-muted">
+                  {enabled ? "On" : "Off"}
+                </span>
+              </div>
+            </SettingsRow>
+          )}
+        </SettingsSection>
+      </div>
+      <ConfirmDialog
+        open={gate.open}
+        onOpenChange={(open) => {
+          if (!open) gate.cancel();
+        }}
+        intent={intentOf("packageFeeds.disable")}
+        title="Turn off package feeds?"
+        consequences={[
+          "Every feed of this product answers not-found within 30 seconds: installs and updates from it fail.",
+          "Package feeds leave the navigation; feed settings, packages and versions are kept and answer again when it is turned on.",
+        ]}
+        confirmLabel="Turn off package feeds"
+        onConfirm={gate.confirm}
+      />
+    </Form>
+  );
 }

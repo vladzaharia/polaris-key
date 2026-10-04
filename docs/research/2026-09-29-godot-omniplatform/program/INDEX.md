@@ -111,7 +111,7 @@ keys, devices). _Optional_ work packages are off the required path.
 
 ## P4: Packs
 
-31 work packages, 35.25–47.25 weeks.
+32 work packages, 35.75–48.25 weeks.
 
 | Id                                                   | Title                                                                                                                                                   | Depends on                               | Role           | Weeks     | Status |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | -------------- | --------- | ------ |
@@ -146,6 +146,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | [P4-29](wp/P4-29-feed-delta-menu.md) ⚑               | The feed's delta menu: offer lazy deltas in the signed feed, read them in every SDK's planner                                                           | P4-17, P4-13, P4-18                      | implementer    | 1–1.5     | done   |
 | [P4-30](wp/P4-30-feed-delta-menu-python-swift.md) ⚑  | Feed delta menu in Python and Swift                                                                                                                     | P4-29                                    | sdk-porter     | 0.5–0.75  | done   |
 | [P4-31](wp/P4-31-feed-delta-menu-godot.md) ⚑         | Feed delta menu in Godot                                                                                                                                | P4-29                                    | godot-engineer | 0.5–0.75  | done   |
+| [P4-32](wp/P4-32-chunk-range-transcript.md) ⚑        | HTTP transcript for the chunk-bundle Range + If-Range fetch                                                                                             | P4-11                                    | sdk-porter     | 0.5–1     | todo   |
 
 ## P5: Distribution connectors and native plugins
 
@@ -166,20 +167,20 @@ keys, devices). _Optional_ work packages are off the required path.
 
 12 work packages, 15.6–22.1 weeks for the required ones.
 
-| Id                                                      | Title                                                                                                         | Depends on                                      | Role           | Weeks | Status    |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | -------------- | ----- | --------- |
-| [P6-01](wp/P6-01-commerce-bridge.md) ✋                 | Commerce bridge: store purchases become licence entitlements per deliverable                                  | P5-02, P5-03, P5-05, S-07                       | implementer    | 3–4   | done      |
-| [P6-02](wp/P6-02-trust-tiers.md) ✋                     | Device trust tiers from App Attest and Play Integrity                                                         | P5-05, P5-06, P5-01                             | implementer    | 1–1.5 | done      |
-| [P6-03](wp/P6-03-update-funnel-autohalt.md)             | Update funnel, auto-halt from telemetry, and Sentry integration                                               | P3-03, P2b-04                                   | implementer    | 1–1.5 | done      |
-| [P6-04](wp/P6-04-hosted-web.md) ✋ _optional_           | Optional: Polaris-hosted, channel-pinned web builds                                                           | P2-01, P0-05, P2b-04, P2-05                     | implementer    | 1–1.5 | blocked   |
-| [P6-05](wp/P6-05-kotlin-sdk.md)                         | The Kotlin SDK at full parity (umbrella)                                                                      | P6-06, P6-07, P6-08, P6-09, P6-10, P6-11, P6-12 | sdk-porter     | 0.1   | todo      |
-| [P6-06](wp/P6-06-kotlin-core-runner.md)                 | Kotlin SDK core module, conformance runner, constants and parity manifest                                     | P1b-01, P1b-02, P1b-03, P3-02, P5-06            | sdk-porter     | 1.5–2 | done      |
-| [P6-07](wp/P6-07-kotlin-license-config-identity.md)     | Kotlin SDK licence, config, devices, identity and release services                                            | P6-06                                           | sdk-porter     | 1.5–2 | done      |
-| [P6-08](wp/P6-08-kotlin-update-packs.md)                | Kotlin SDK update client and packs engine                                                                     | P6-06, P6-07, P4-11, P4-29                      | sdk-porter     | 2–3   | in-review |
-| [P6-09](wp/P6-09-kotlin-platform-module.md) ✋          | Kotlin SDK platform module: P5-06's :platform in the SDK structure, with Play Integrity                       | P6-06, P5-06, P6-02                             | implementer    | 1.5–2 | done      |
-| [P6-10](wp/P6-10-godot-android-binding-on-kotlin.md) ✋ | Godot Android binding rebuilt on the Kotlin SDK platform module                                               | P6-09, P5-08                                    | godot-engineer | 1–1.5 | done      |
-| [P6-11](wp/P6-11-kotlin-compose-ui-kit.md)              | Kotlin SDK Jetpack Compose UI kit                                                                             | P6-07, P6-08                                    | implementer    | 2–3   | todo      |
-| [P6-12](wp/P6-12-kotlin-android-glue.md) ✋             | Kotlin SDK Android glue: Keystore store, device inputs, outlet readers, update driver and Play pack transport | P6-08, P6-09                                    | sdk-porter     | 1–1.5 | todo      |
+| Id                                                      | Title                                                                                                         | Depends on                                      | Role           | Weeks | Status  |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | -------------- | ----- | ------- |
+| [P6-01](wp/P6-01-commerce-bridge.md) ✋                 | Commerce bridge: store purchases become licence entitlements per deliverable                                  | P5-02, P5-03, P5-05, S-07                       | implementer    | 3–4   | done    |
+| [P6-02](wp/P6-02-trust-tiers.md) ✋                     | Device trust tiers from App Attest and Play Integrity                                                         | P5-05, P5-06, P5-01                             | implementer    | 1–1.5 | done    |
+| [P6-03](wp/P6-03-update-funnel-autohalt.md)             | Update funnel, auto-halt from telemetry, and Sentry integration                                               | P3-03, P2b-04                                   | implementer    | 1–1.5 | done    |
+| [P6-04](wp/P6-04-hosted-web.md) ✋ _optional_           | Optional: Polaris-hosted, channel-pinned web builds                                                           | P2-01, P0-05, P2b-04, P2-05                     | implementer    | 1–1.5 | blocked |
+| [P6-05](wp/P6-05-kotlin-sdk.md)                         | The Kotlin SDK at full parity (umbrella)                                                                      | P6-06, P6-07, P6-08, P6-09, P6-10, P6-11, P6-12 | sdk-porter     | 0.1   | todo    |
+| [P6-06](wp/P6-06-kotlin-core-runner.md)                 | Kotlin SDK core module, conformance runner, constants and parity manifest                                     | P1b-01, P1b-02, P1b-03, P3-02, P5-06            | sdk-porter     | 1.5–2 | done    |
+| [P6-07](wp/P6-07-kotlin-license-config-identity.md)     | Kotlin SDK licence, config, devices, identity and release services                                            | P6-06                                           | sdk-porter     | 1.5–2 | done    |
+| [P6-08](wp/P6-08-kotlin-update-packs.md)                | Kotlin SDK update client and packs engine                                                                     | P6-06, P6-07, P4-11, P4-29                      | sdk-porter     | 2–3   | done    |
+| [P6-09](wp/P6-09-kotlin-platform-module.md) ✋          | Kotlin SDK platform module: P5-06's :platform in the SDK structure, with Play Integrity                       | P6-06, P5-06, P6-02                             | implementer    | 1.5–2 | done    |
+| [P6-10](wp/P6-10-godot-android-binding-on-kotlin.md) ✋ | Godot Android binding rebuilt on the Kotlin SDK platform module                                               | P6-09, P5-08                                    | godot-engineer | 1–1.5 | done    |
+| [P6-11](wp/P6-11-kotlin-compose-ui-kit.md)              | Kotlin SDK Jetpack Compose UI kit                                                                             | P6-07, P6-08                                    | implementer    | 2–3   | todo    |
+| [P6-12](wp/P6-12-kotlin-android-glue.md) ✋             | Kotlin SDK Android glue: Keystore store, device inputs, outlet readers, update driver and Play pack transport | P6-08, P6-09                                    | sdk-porter     | 1–1.5 | todo    |
 
 ## F: Package feeds (pkg.plrs.im)
 
@@ -190,16 +191,16 @@ keys, devices). _Optional_ work packages are off the required path.
 | [F-01](wp/F-01-feeds-plan.md) ⚑                | Plan the package-feed model: registry host, `package` deliverables, feed settings, admin API                                     | —                                        | wire-planner | 1–1.5   | done   |
 | [F-02](wp/F-02-registry-host.md) ✋            | Registry host `pkg.plrs.im`: `core/registryHost.ts`, `authorizeFeedRead`, the materialiser and the client-matrix harness         | F-01                                     | implementer  | 1.5–2   | done   |
 | [F-03](wp/F-03-package-releases.md)            | Package releases: the `package` deliverable kind, descriptor, ingest, the system product and `pkey release publish` package mode | F-01                                     | implementer  | 2–3     | done   |
-| [F-04](wp/F-04-npm-feed.md)                    | npm feed: packuments, tarballs, dist-tags, deprecation and scope enforcement                                                     | F-02, F-03                               | implementer  | 1–1.5   | todo   |
-| [F-05](wp/F-05-pypi-feed.md)                   | PyPI feed: PEP 691 JSON, PEP 658/714 metadata, PEP 592 yank and the inert HTML fallback                                          | F-02, F-03                               | implementer  | 1–1.5   | todo   |
-| [F-06](wp/F-06-swift-registry.md)              | Swift registry: SE-0292 endpoints, `/identifiers`, signed releases and the compatibility suite                                   | F-02, F-03                               | implementer  | 1.5–2   | todo   |
-| [F-07](wp/F-07-maven-feed.md)                  | Maven feed: repository layout, generated `maven-metadata.xml`, checksum sidecars and `.module`                                   | F-02, F-03                               | implementer  | 1       | todo   |
-| [F-08](wp/F-08-oci-registry.md)                | OCI registry pull at `/v2/` and image-layout publish through upload tickets                                                      | F-02, F-03                               | implementer  | 1.5–2.5 | todo   |
-| [F-09](wp/F-09-godot-feed.md)                  | Godot feed: the ≤ 4.6 Asset Library API, the 4.7 Asset Store API and the GodotEnv index                                          | F-02, F-03                               | implementer  | 1–1.5   | todo   |
+| [F-04](wp/F-04-npm-feed.md)                    | npm feed: packuments, tarballs, dist-tags, deprecation and scope enforcement                                                     | F-02, F-03                               | implementer  | 1–1.5   | done   |
+| [F-05](wp/F-05-pypi-feed.md)                   | PyPI feed: PEP 691 JSON, PEP 658/714 metadata, PEP 592 yank and the inert HTML fallback                                          | F-02, F-03                               | implementer  | 1–1.5   | done   |
+| [F-06](wp/F-06-swift-registry.md)              | Swift registry: SE-0292 endpoints, `/identifiers`, signed releases and the compatibility suite                                   | F-02, F-03                               | implementer  | 1.5–2   | done   |
+| [F-07](wp/F-07-maven-feed.md)                  | Maven feed: repository layout, generated `maven-metadata.xml`, checksum sidecars and `.module`                                   | F-02, F-03                               | implementer  | 1       | done   |
+| [F-08](wp/F-08-oci-registry.md)                | OCI registry pull at `/v2/` and image-layout publish through upload tickets                                                      | F-02, F-03                               | implementer  | 1.5–2.5 | done   |
+| [F-09](wp/F-09-godot-feed.md)                  | Godot feed: the ≤ 4.6 Asset Library API, the 4.7 Asset Store API and the GodotEnv index                                          | F-02, F-03                               | implementer  | 1–1.5   | done   |
 | [F-10](wp/F-10-sdks-onto-feeds.md) ✋          | Our SDKs onto the feeds: the root `.pkey/`, release workflows, Kotlin `maven-publish`, Swift signing and the first OCI image     | F-04, F-05, F-06, F-07, F-08, F-09       | implementer  | 1.5–2   | todo   |
-| [F-11](wp/F-11-console-feeds.md)               | Console: the Feeds overview and per-feed pages in both scopes, the package record and the admin API                              | F-03                                     | implementer  | 2–3     | todo   |
+| [F-11](wp/F-11-console-feeds.md)               | Console: the Feeds overview and per-feed pages in both scopes, the package record and the admin API                              | F-03                                     | implementer  | 2–3     | done   |
 | [F-12](wp/F-12-console-feed-settings.md)       | Console: per-ecosystem settings panels and the shared setup-snippet renderer (`pkey feeds setup`)                                | F-11, F-04, F-05, F-06, F-07, F-08, F-09 | implementer  | 1–1.5   | todo   |
-| [F-20](wp/F-20-registry-credentials-plan.md) ⚑ | Plan registry credentials: `pkeyr_` tokens, licence binding, per-client challenges and the OCI token service                     | F-02                                     | wire-planner | 1       | todo   |
+| [F-20](wp/F-20-registry-credentials-plan.md) ⚑ | Plan registry credentials: `pkeyr_` tokens, licence binding, per-client challenges and the OCI token service                     | F-02                                     | wire-planner | 1       | done   |
 | [F-21](wp/F-21-registry-auth.md)               | Registry auth: tokens, the per-feed access-mode switch, console and portal token UI                                              | F-20, F-11                               | implementer  | 2–3     | todo   |
 | [F-22](wp/F-22-native-publish.md) _optional_   | Optional: native-client publish adapters (`npm publish`, `twine`, `swift package-registry publish`, Maven `PUT`)                 | F-21                                     | implementer  | 2       | todo   |
 | [F-23](wp/F-23-docker-push.md) _optional_      | Optional: native `docker push` over R2 multipart                                                                                 | F-08, F-21                               | implementer  | 1.5–2   | todo   |
@@ -274,6 +275,7 @@ Every ⚑ package needs an approved plan in [`plans/`](plans/) before implementa
 | [P4-29](wp/P4-29-feed-delta-menu.md)               | `plans/P4-29.md`                     | implementer    |
 | [P4-30](wp/P4-30-feed-delta-menu-python-swift.md)  | `plans/P4-29.md` (shared with P4-29) | sdk-porter     |
 | [P4-31](wp/P4-31-feed-delta-menu-godot.md)         | `plans/P4-29.md` (shared with P4-29) | godot-engineer |
+| [P4-32](wp/P4-32-chunk-range-transcript.md)        | `plans/P4-32.md`                     | sdk-porter     |
 | [F-01](wp/F-01-feeds-plan.md)                      | `plans/F-01.md`                      | planning only  |
 | [F-20](wp/F-20-registry-credentials-plan.md)       | `plans/F-20.md`                      | planning only  |
 

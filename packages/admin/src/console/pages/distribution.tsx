@@ -5,6 +5,7 @@ import { HealthPage } from "../areas/distribution/HealthPage.js";
 import { MatrixPage } from "../areas/distribution/MatrixPage.js";
 import { OutletsPage } from "../areas/distribution/OutletsPage.js";
 import { RolloutsPage } from "../areas/distribution/RolloutsPage.js";
+import { FeedsArea } from "../areas/feeds/FeedsArea.js";
 import type { SectionPageProps } from "./types.js";
 
 /** Distribution (ADMIN.md §2.3, §6.4): the pages chunk 9 rebuilt on the templates. */
@@ -25,6 +26,15 @@ export default function DistributionPages({
       return <HealthPage slug={slug} />;
     case "credentials":
       return <CredentialsPage slug={slug} />;
+    case "package-feeds":
+      return (
+        <FeedsArea
+          scope={{ kind: "product", slug }}
+          eco={route.id}
+          tab={route.tab}
+          child={route.child}
+        />
+      );
     default:
       return null;
   }

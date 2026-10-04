@@ -4,11 +4,20 @@
 // src/styles/global.css maps onto the --pk-* tokens. This file moves the code surface itself to
 // --pk-surface-sunken ("wells, code blocks") and tells Expressive Code the hex value behind it in
 // each theme, so its syntax-colour contrast pass (minimum 5.5:1) measures against the background
-// the reader actually sees. Keep the two hex values equal to tokens.css' surface-sunken.
+// the reader actually sees. The two values are read from @polaris-key/brand's tokens.json (the
+// same source tokens.css is generated from), never written out here.
 
+import { createRequire } from "node:module";
 import { defineEcConfig } from "@astrojs/starlight/expressive-code";
 
-const SUNKEN = { dark: "#020408", light: "#ebeef8" };
+const tokens = createRequire(import.meta.url)("@polaris-key/brand/tokens.json");
+
+const SUNKEN = {
+  dark: tokens.themes.dark.surface.sunken,
+  light: tokens.themes.light.surface.sunken,
+};
+if (typeof SUNKEN.dark !== "string" || typeof SUNKEN.light !== "string")
+  throw new Error("@polaris-key/brand tokens.json has no surface.sunken");
 
 export default defineEcConfig({
   customizeTheme(theme) {

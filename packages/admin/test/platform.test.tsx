@@ -151,14 +151,10 @@ describe("the Platform section in the sidebar", () => {
     expect(deployment.querySelector("svg[data-nav-icon]")).not.toBeNull();
     const settings = within(nav()).getByRole("link", { name: "Settings" });
     expect(settings.getAttribute("href")).toBe("#/platform/settings");
-    // Pages still to come are not listed: they would only redirect.
-    for (const name of ["Package feeds"]) {
-      expect(
-        within(nav())
-          .queryAllByRole("link", { name })
-          .filter((a) => a.getAttribute("href")?.startsWith("#/platform")),
-      ).toEqual([]);
-    }
+    // F-11 built Package feeds: every Platform page is listed, each with its icon.
+    const feeds = within(nav()).getByRole("link", { name: "Package feeds" });
+    expect(feeds.getAttribute("href")).toBe("#/platform/feeds");
+    expect(feeds.querySelector("svg[data-nav-icon]")).not.toBeNull();
   });
 
   it("is the open section on a Platform page, and shown beside a product's sections", async () => {
@@ -186,16 +182,6 @@ describe("Platform URLs", () => {
       expect(window.location.hash).toBe("#/platform/settings"),
     );
   });
-
-  for (const path of ["feeds"]) {
-    it(`#/platform/${path} redirects to Deployment`, async () => {
-      boot(`#/platform/${path}`, { extra: platformRoutes() });
-      await deploymentPage();
-      await waitFor(() =>
-        expect(window.location.hash).toBe("#/platform/deployment"),
-      );
-    });
-  }
 });
 
 describe("Deployment", () => {

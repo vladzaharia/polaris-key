@@ -1837,6 +1837,28 @@
       "planRef": "P4-29"
     },
     {
+      "id": "P4-32",
+      "title": "HTTP transcript for the chunk-bundle Range + If-Range fetch",
+      "phase": "P4",
+      "stage": "v2",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.5, 1],
+      "deps": ["P4-11"],
+      "planMode": true,
+      "gates": ["plan-mode", "all-sdks", "drift-gate", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "wp/P4-11 follow-up (HTTP transcript)",
+        "PARITY §4.2",
+        "WIRE-CONTRACT-V4 §11.4"
+      ],
+      "brief": "wp/P4-32-chunk-range-transcript.md",
+      "status": "todo"
+    },
+    {
       "id": "P5-01",
       "title": "Outlet-credential custody and shared JWT signing (ES256, RS256)",
       "phase": "P5",
@@ -2146,7 +2168,7 @@
         "plans/P4-29.md §2.4 §5"
       ],
       "brief": "wp/P6-08-kotlin-update-packs.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P6-09",
@@ -2648,7 +2670,7 @@
       "optional": false,
       "refs": ["notes/S-12 §4.1", "plans/F-01.md §6.8"],
       "brief": "wp/F-04-npm-feed.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "F-05",
@@ -2666,7 +2688,7 @@
       "optional": false,
       "refs": ["notes/S-12 §4.1", "plans/F-01.md §6.8"],
       "brief": "wp/F-05-pypi-feed.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "F-06",
@@ -2684,7 +2706,7 @@
       "optional": false,
       "refs": ["notes/S-12 §4.1", "plans/F-01.md §5.3, §6.8"],
       "brief": "wp/F-06-swift-registry.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "F-07",
@@ -2702,7 +2724,7 @@
       "optional": false,
       "refs": ["notes/S-12 §4.1", "plans/F-01.md §6.8"],
       "brief": "wp/F-07-maven-feed.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "F-08",
@@ -2720,7 +2742,7 @@
       "optional": false,
       "refs": ["notes/S-12 §4.1", "notes/S-12 §9", "plans/F-01.md §6.8"],
       "brief": "wp/F-08-oci-registry.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "F-09",
@@ -2738,7 +2760,7 @@
       "optional": false,
       "refs": ["notes/S-12 §4.1", "plans/F-01.md §6.8"],
       "brief": "wp/F-09-godot-feed.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "F-10",
@@ -2777,7 +2799,7 @@
       "optional": false,
       "refs": ["notes/S-12 §10.1–§10.2", "plans/F-01.md §6.9", "notes/S-13 §7"],
       "brief": "wp/F-11-console-feeds.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "F-12",
@@ -2813,7 +2835,7 @@
       "optional": false,
       "refs": ["notes/S-12 §7.2", "plans/F-01.md §6.6"],
       "brief": "wp/F-20-registry-credentials-plan.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "F-21",
