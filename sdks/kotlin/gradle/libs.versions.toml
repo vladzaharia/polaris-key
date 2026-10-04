@@ -1,7 +1,17 @@
 # Versions pinned to Godot 4.7.2's Android build template (AGP 8.6.1, Gradle 8.11.1, Kotlin 2.1.21,
 # compile/target SDK 36, min SDK 24, Java 17 bytecode; notes/S-10 §Environment), so the AARs drop
 # into a Godot Gradle export unchanged. Play Core versions: the latest on 2026-10-03.
+# The JVM modules (P6-06): kotlinx-coroutines and kotlinx-serialization-json at the last releases
+# built with Kotlin 2.1, OkHttp 4.12 (the one HTTP client that runs on Android API 24 and the JVM;
+# java.net.http does not exist on Android), and Tink as the Ed25519 backend below Android API 33
+# (compileOnly in :core: the JCA backend needs nothing, and :android brings tink-android, P6-12).
 [versions]
+# The shared Android conventions every module reads (P6-09): compile and target SDK, min SDK and the
+# JVM bytecode level. Change them here, never in a module's build file.
+androidCompileSdk = "36"
+androidTargetSdk = "36"
+androidMinSdk = "24"
+jvmTarget = "17"
 agp = "8.6.1"
 kotlin = "2.1.21"
 godot = "4.7.2.stable"
@@ -11,6 +21,10 @@ playIntegrity = "1.6.0"
 junit = "4.13.2"
 robolectric = "4.14.1"
 androidxTestCore = "1.6.1"
+coroutines = "1.10.2"
+serialization = "1.8.1"
+okhttp = "4.12.0"
+tink = "1.17.0"
 
 [libraries]
 godot = { module = "org.godotengine:godot", version.ref = "godot" }
@@ -20,8 +34,15 @@ play-integrity = { module = "com.google.android.play:integrity", version.ref = "
 junit = { module = "junit:junit", version.ref = "junit" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTestCore" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
+okhttp-mockwebserver = { module = "com.squareup.okhttp3:mockwebserver", version.ref = "okhttp" }
+tink = { module = "com.google.crypto.tink:tink", version.ref = "tink" }
 
 [plugins]
 android-library = { id = "com.android.library", version.ref = "agp" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

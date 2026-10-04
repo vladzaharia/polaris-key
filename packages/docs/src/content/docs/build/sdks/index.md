@@ -7,8 +7,8 @@ sidebar:
 ---
 
 There is **one** wire contract — the frozen compact-JWS envelope described in
-[The wire contract](/docs/build/wire/) — and **six** surfaces that speak it: five language
-SDKs, and a CLI built from the same core as a sixth. Whichever one your product links against,
+[The wire contract](/docs/build/wire/) — and **seven** surfaces that speak it: six language
+SDKs, and a CLI built from the same core as a seventh. Whichever one your product links against,
 it verifies the identical signed documents, exposes the identical `core` +
 per-service-sub-client shape, and fails closed the same way when a capability is not on.
 
@@ -19,11 +19,12 @@ per-service-sub-client shape, and fails closed the same way when a capability is
 | Python  | `polaris-key` (PyPI)                                    | [Python](/docs/build/sdks/python/)             |
 | Swift   | `PolarisKey` (SwiftPM)                                  | [Swift](/docs/build/sdks/swift/)               |
 | Godot   | the `addons/polaris_key` addon (GitHub Release zip)     | [Godot](/docs/build/sdks/godot/)               |
+| Kotlin  | `sdks/kotlin` (`:core` today; Polaris Key's Maven feed) | `sdks/kotlin/README.md` (in progress, P6-05)   |
 | CLI     | `@polaris-key/node/cli`, `polaris-key`'s console script | shipped inside the Node and Python pages above |
 
 Node and React additionally share one isomorphic implementation of the verification, gate,
 trust, config-resolution and boot-stage logic, `@polaris-key/client-core`, rather than each reimplementing
-it; Python, Swift and Godot carry independent ports proven identical by the same cross-language
+it; Python, Swift, Godot and Kotlin carry independent ports proven identical by the same cross-language
 conformance corpus. See `packages/client-core/README.md` for why that split exists, and
 [The wire contract](/docs/build/wire/) for the envelope itself.
 

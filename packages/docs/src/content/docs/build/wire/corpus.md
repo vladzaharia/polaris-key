@@ -121,6 +121,7 @@ reference implementation written for the test.
 | Swift   | `sdks/swift/Tests/PolarisKeyTests/ConformanceTests.swift` | The Swift SDK, against the mirrored `Resources/v2/`                                                |
 | React   | `packages/sdk-react/test/gateMatrixParity.test.ts`        | `gate-matrix.json` through `licenseState` **and** the React projection                             |
 | Godot   | `sdks/godot/tests/suite_conformance.gd`                   | The addon's core, from the `res://` mirror, on an editor **and** an exported template              |
+| Kotlin  | `sdks/kotlin/conformance/src/test/…/CorpusV2Test.kt`      | `:core`, reading `conformance/corpus/v2/` in place, once on the JCA and once on the Tink backend   |
 | Worker  | `packages/worker/test/gateMatrixCorpus.test.ts`           | `gate-matrix.json` through the server's own `checkBuildGate`: the oracle for every runner's port   |
 
 ### Runtimes and version floors

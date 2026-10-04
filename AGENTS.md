@@ -5,8 +5,8 @@ if a tool-specific file (`CLAUDE.md`, `.opencode/`, …) disagrees with this one
 Human-facing prose lives in `CONTRIBUTING.md` and on the docs site; this file is the short,
 enforceable version.
 
-Polaris Key is a **contract-first, six-language monorepo**: one Cloudflare Worker plus SDKs for
-Node, React, Python, Swift and Godot, all agreeing on a single frozen wire format. Everything below
+Polaris Key is a **contract-first, seven-language monorepo**: one Cloudflare Worker plus SDKs for
+Node, React, Python, Swift, Godot and Kotlin, all agreeing on a single frozen wire format. Everything below
 follows from that one fact — **the wire contract is the source of truth, and every language must
 verify it identically.**
 
@@ -31,6 +31,8 @@ sdks/
   python/            polaris-key (PyPI)        full client + CLI adapters
   swift/             PolarisKey (SwiftPM)      native CryptoKit + SwiftUI login
   godot/             Godot addon               pure-GDScript verify and a headless runner
+  kotlin/            Gradle build              :core (JVM: verify, cache, sync, stages) + the
+                                               :conformance runner; :platform Android backend
 conformance/         corpus/v2 ONLY (one signer's golden vectors) + the Node and browser runners
                      + parity/ (features.json registry, errors.json + enums.json; each SDK
                        keeps its own parity.json)
@@ -59,7 +61,8 @@ the repo; the monorepo map, the wave model, the corpus and the release flow now 
 `packages/docs/src/content/docs/contribute/`.
 
 The `pnpm` + `turbo` JS workspace covers `packages/*`, `tools`, `products`, and the Node and
-browser conformance runners. Python, Swift and Godot are standalone toolchains under `sdks/`.
+browser conformance runners. Python, Swift, Godot and Kotlin are standalone toolchains under
+`sdks/`.
 
 Inside the Worker, `src/core/` is the always-on substrate and each `src/services/<slug>/` is one
 opt-in service (`license`, `config`, `release`, `distribution`, `update`, `identity`). The services
@@ -122,12 +125,14 @@ pnpm test:browser                # add `-- --browser=firefox` or `-- --browser=w
 ( cd sdks/python && .venv/bin/python -m pytest -q )   # Python (CPython 3.9 + 3.14 on ubuntu, macOS in CI)
 ( cd sdks/swift && swift build && swift test )        # Swift
 sdks/godot/tools/run_tests.sh    # Godot (GODOT_BIN, optional GODOT_TEMPLATE; CI runs both)
+( cd sdks/kotlin && ./gradlew -Ppkey.jvmOnly=true :core:test :conformance:test )  # Kotlin (JDK 17;
+                                 # :conformance runs every suite on JCA and again with Tink forced)
 
 pnpm format                      # prettier check over md/json too (format:fix to apply)
 ```
 
-`pnpm test:all` runs turbo test + Python pytest + Swift `swift test` + the Godot runner in one
-shot. Note that
+`pnpm test:all` runs turbo test + Python pytest + Swift `swift test` + the Godot runner + the
+Kotlin `:core` and `:conformance` tests in one shot. Note that
 `pnpm build` does **not** typecheck the worker (esbuild strips types), so `pnpm typecheck` is not
 redundant with it — that gap once hid five broken type-only imports.
 
@@ -165,8 +170,8 @@ envelope (`iss` + `aud` + `deviceId` + `issuedAt` / `expiresAt` / `graceUntil`).
 manifest and the feed are device-less. A release record is signed by a CI-held release key,
 never a product key, and verified only against the keys the app pins. Changing the encoding is
 a deliberate, all-languages event: contract → catalog → corpus → SDKs, in that order, and a
-feature is not done until all six implementations pass (client-core, Node, React, Python, Swift
-and Godot).
+feature is not done until every implementation passes (client-core, Node, React, Python, Swift,
+Godot, and Kotlin for the features its parity manifest has implemented).
 
 **3. Generated files carry a GENERATED banner — regenerate, never hand-edit.** Six families:
 
@@ -174,8 +179,8 @@ and Godot).
 | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | `packages/worker/src/docsCsp.generated.ts`                                                                                                                                       | the docs build (`scripts/collect-csp-hashes.mjs`)                                                                             |
 | `packages/docs/src/content/docs/reference/*.mdx`                                                                                                                                 | `pnpm --filter @polaris-key/docs gen`                                                                                         |
-| `*services.generated.ts`, `_services.py`, `ServiceSlug.generated.swift`, `services_generated.gd`                                                                                 | `pnpm gen:services` from `tools/services.json`                                                                                |
-| `constants.generated.ts`, `constants_generated.py`, `Constants.generated.swift`, `constants_generated.gd`                                                                        | `pnpm gen:constants` from `conformance/parity/` (errors, enums, features), the service table and `@polaris-key/protocol/core` |
+| `*services.generated.ts`, `_services.py`, `ServiceSlug.generated.swift`, `services_generated.gd`, `ServiceSlug.generated.kt`                                                     | `pnpm gen:services` from `tools/services.json`                                                                                |
+| `constants.generated.ts`, `constants_generated.py`, `Constants.generated.swift`, `constants_generated.gd`, `Constants.generated.kt`                                              | `pnpm gen:constants` from `conformance/parity/` (errors, enums, features), the service table and `@polaris-key/protocol/core` |
 | `actions/publish/dist/index.js`                                                                                                                                                  | `pnpm --filter @polaris-key/cli bundle:action` (esbuild) from `@polaris-key/cli` and the built workspace packages it imports  |
 | `packages/brand/{css/tokens.css,css/theme.css,tokens.json,src/generated/*}`, `brand_tokens_generated.gd`, `BrandTokens.generated.swift`, `sdks/godot/addons/polaris_key/brand/*` | `pnpm gen:brand` from `packages/brand/src/tokens/` and the launch-kit copy in `packages/brand/kit/`                           |
 

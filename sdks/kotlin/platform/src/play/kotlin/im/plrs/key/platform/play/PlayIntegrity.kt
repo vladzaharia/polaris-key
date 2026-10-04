@@ -8,6 +8,9 @@ import com.google.android.play.core.integrity.StandardIntegrityManager.PrepareIn
 import com.google.android.play.core.integrity.StandardIntegrityManager.StandardIntegrityTokenProvider
 import com.google.android.play.core.integrity.StandardIntegrityManager.StandardIntegrityTokenRequest
 import com.google.android.play.core.integrity.model.StandardIntegrityErrorCode
+import im.plrs.key.platform.IntegrityResult
+import im.plrs.key.platform.PlatformIntegrity
+import im.plrs.key.platform.PlatformIntegrityToken
 import org.json.JSONObject
 
 /**
@@ -176,6 +179,47 @@ public class PlayIntegrity(private val backend: IntegrityBackend) {
         public const val PROVIDER_INVALID: Int = StandardIntegrityErrorCode.INTEGRITY_TOKEN_PROVIDER_INVALID
 
         /** The longest request hash Play accepts. */
-        public const val MAX_REQUEST_HASH: Int = 500
+        public const val MAX_REQUEST_HASH: Int = PlatformIntegrity.MAX_REQUEST_HASH
+    }
+}
+
+/**
+ * [PlatformIntegrity] over [PlayIntegrity], the `play` flavour's answer to
+ * [PlatformIntegrity.create]: arguments are checked first ([IntegrityResult.Refused], Play never
+ * asked), then Play's failures become [IntegrityResult.Failed] with their error code. The
+ * [PlayIntegrity] (and so Play's StandardIntegrityManager) is created on first use.
+ */
+public class PlayPlatformIntegrity(integrity: () -> PlayIntegrity) : PlatformIntegrity {
+    public constructor(integrity: PlayIntegrity) : this({ integrity })
+
+    private val play: PlayIntegrity by lazy(integrity)
+
+    override val isSupported: Boolean get() = true
+
+    override fun prepare(cloudProjectNumber: Long, callback: (IntegrityResult<Boolean>) -> Unit) {
+        PlatformIntegrity.refusal(cloudProjectNumber, null)?.let {
+            callback(IntegrityResult.Refused(it))
+            return
+        }
+        play.prepare(cloudProjectNumber) { r -> callback(r.fold({ IntegrityResult.Success(it) }, { failed(it) })) }
+    }
+
+    override fun request(
+        cloudProjectNumber: Long,
+        requestHash: String,
+        callback: (IntegrityResult<PlatformIntegrityToken>) -> Unit,
+    ) {
+        PlatformIntegrity.refusal(cloudProjectNumber, requestHash)?.let {
+            callback(IntegrityResult.Refused(it))
+            return
+        }
+        play.request(cloudProjectNumber, requestHash) { r ->
+            callback(r.fold({ IntegrityResult.Success(PlatformIntegrityToken(it.token, it.prepared, it.reprepared)) }, { failed(it) }))
+        }
+    }
+
+    private fun failed(e: Throwable): IntegrityResult.Failed {
+        val err = IntegrityError.of(e)
+        return IntegrityResult.Failed(err.exception, err.message, err.errorCode)
     }
 }
