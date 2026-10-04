@@ -8,9 +8,12 @@
  *     PUT    …/distribution/commerce/settings                replace the settings (`settings.ts`)
  *     PUT    …/distribution/commerce/products                map one store product to a flag and
  *                                                            a deliverable
- *     DELETE …/distribution/commerce/products/<store>/<id>   remove a mapping (grants already
- *                                                            made stay until a refund revokes
- *                                                            them)
+ *     DELETE …/distribution/commerce/products/<store>/<id>   remove a mapping: no new grant for
+ *                                                            the product; grants already made
+ *                                                            stay, and a later refund or
+ *                                                            revocation still revokes every
+ *                                                            grant the purchase made (by its
+ *                                                            hash, whatever the map says now)
  *
  * Narrative-only like the rest of the console API; platform-admin session, CSRF and rate limit
  * run in `admin/api.ts` first. Every write is audited with the session's subject.

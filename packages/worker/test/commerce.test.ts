@@ -484,6 +484,60 @@ describe("commerce: App Store", () => {
       expect(await grants(cw, cw.licenseA)).toEqual([`app-store:${FLAG}`]);
     });
 
+    it("a REFUND revokes the grant after the mapping was deleted, and the OLD flag after a remap", async () => {
+      for (const change of ["delete", "remap"] as const) {
+        w?.close();
+        const cw = await world();
+        const { jws, tx } = await bought(cw);
+        expect(
+          (
+            await claim(cw, cw.tokenA, {
+              store: "app-store",
+              signedTransaction: jws,
+            })
+          ).status,
+        ).toBe(200);
+        expect(await grants(cw, cw.licenseA)).toEqual([`app-store:${FLAG}`]);
+        if (change === "delete")
+          expect(
+            (
+              await admin(
+                cw,
+                "DELETE",
+                `/commerce/products/app-store/${APPLE_PRODUCT}`,
+              )
+            ).status,
+          ).toBe(200);
+        else
+          expect(
+            (
+              await admin(cw, "PUT", "/commerce/products", {
+                store: "app-store",
+                productId: APPLE_PRODUCT,
+                flag: "extras.other",
+              })
+            ).status,
+          ).toBe(200);
+        cw.fakes.apple.transactions.set(tx.transactionId, {
+          ...tx,
+          revocationDate: NOW * 1000,
+        });
+        const n = await cw.fakes.apple.signNotification(
+          {
+            uuid: `1b6e2f6a-0000-4000-8000-0000000001${change === "delete" ? "01" : "02"}`,
+            type: "REFUND",
+            tx,
+          },
+          NOW,
+        );
+        expect((await hook(cw, n)).status, change).toBe(200);
+        expect(await grants(cw, cw.licenseA), change).toEqual([]);
+        expect(await entitlements(cw, cw.tokenA), change).not.toHaveProperty(
+          FLAG,
+        );
+      }
+    });
+
     it("REVOKE (Family Sharing withdrawn) revokes", async () => {
       const cw = await world();
       const { jws, tx } = await bought(cw);

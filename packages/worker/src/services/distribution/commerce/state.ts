@@ -287,10 +287,21 @@ export async function recordPurchase(
 ): Promise<RecordOutcome> {
   const { db, product, now } = ctx;
   if (!ctx.storeGrants) return { ok: false, reason: "license_disabled" };
-  const mapping = await getStoreProduct(db, product, p.store, p.storeProductId);
-  if (!mapping) return { ok: false, reason: "unmapped" };
   const hash = await purchaseKeyHash(p.store, p.purchaseKey);
   const existing = await getPurchase(db, product, p.store, hash);
+  // A refund or revocation of a recorded purchase revokes EVERY grant it made, before the map is
+  // consulted: the operator may have deleted or remapped the store product since the grant, and
+  // neither may keep a refunded flag alive.
+  if (p.state === "revoked" && existing) {
+    if (
+      ctx.claimLicenseId !== undefined &&
+      ctx.claimLicenseId !== existing.license_id
+    )
+      return { ok: false, reason: "bound_elsewhere" };
+    return (await revokeRecordedPurchase(ctx, p.store, hash, p.detail))!;
+  }
+  const mapping = await getStoreProduct(db, product, p.store, p.storeProductId);
+  if (!mapping) return { ok: false, reason: "unmapped" };
 
   const bound = await licenseOfBinding(db, product, p.binding);
   let licenseId: string;
@@ -390,19 +401,17 @@ export async function revokeRecordedPurchase(
     store,
     hash,
   );
-  // The grant names the flag the mapping had when it was granted; a mapping removed since is
-  // revoked through every flag this purchase granted (`license_store_grants` by hash).
-  const flags = mapping
-    ? [mapping.flag]
-    : (
-        await ctx.db.all<{ flag: string }>(
-          `SELECT flag FROM license_store_grants
-            WHERE product = ? AND store = ? AND purchase_key_hash = ? AND state = 'active'`,
-          ctx.product,
-          store,
-          hash,
-        )
-      ).map((r) => r.flag);
+  // Every active grant this purchase made, by its hash — never the CURRENT mapping's flag, which
+  // the operator may have deleted or changed since the grant.
+  const flags = (
+    await ctx.db.all<{ flag: string }>(
+      `SELECT flag FROM license_store_grants
+        WHERE product = ? AND store = ? AND purchase_key_hash = ? AND state = 'active'`,
+      ctx.product,
+      store,
+      hash,
+    )
+  ).map((r) => r.flag);
   let changed = false;
   for (const flag of flags) {
     const outcome = await ctx.storeGrants({
@@ -419,7 +428,7 @@ export async function revokeRecordedPurchase(
   return {
     ok: true,
     state: "revoked",
-    flag: mapping?.flag ?? flags[0] ?? "",
+    flag: flags[0] ?? mapping?.flag ?? "",
     deliverable: mapping?.deliverable_id ?? "",
     licenseId: row.license_id,
     changed,
