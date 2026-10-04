@@ -127,6 +127,58 @@ describe("admin api", () => {
     expect(typeof body.csrf).toBe("string");
   });
 
+  it("/api/me names the deployment and when the session ends (ADMIN.md A-1)", async () => {
+    const me = async (
+      environment: string | undefined,
+    ): Promise<{ environment: unknown; sessionExpiresAt: unknown }> => {
+      const db = makeTestDb();
+      const env = adminEnv(new KvMock(), []);
+      if (environment !== undefined) env.PKEY_ENVIRONMENT = environment;
+      const { cookie } = await sessionCookie(env, {
+        sub: "u1",
+        name: "Ada",
+        email: "ada@x.io",
+        groups: [PLATFORM_GROUP],
+      });
+      const res = await dispatch(
+        mkReq("GET", "/api/me", { cookie }),
+        env,
+        db,
+        "/api/me",
+      );
+      expect(res.status).toBe(200);
+      return (await res.json()) as {
+        environment: unknown;
+        sessionExpiresAt: unknown;
+      };
+    };
+
+    for (const value of ["prod", "staging", "dev"]) {
+      expect((await me(value)).environment).toBe(value);
+    }
+    expect((await me(" Staging ")).environment).toBe("staging");
+    // Unset or unrecognised: `null`, and the raw value is never echoed.
+    expect((await me(undefined)).environment).toBeNull();
+    expect((await me("<script>")).environment).toBeNull();
+
+    // The session's own signed expiry, in epoch seconds: a hard 8 h after it was issued.
+    const { sessionExpiresAt } = await me("prod");
+    expect(typeof sessionExpiresAt).toBe("number");
+    expect(sessionExpiresAt).toBe(NOW + 8 * 60 * 60);
+  });
+
+  it("every deployment in wrangler.toml names itself to the console", async () => {
+    const { readFileSync } = await import("node:fs");
+    const toml = readFileSync(
+      new URL("../wrangler.toml", import.meta.url),
+      "utf8",
+    );
+    for (const env of ["prod", "staging", "dev"]) {
+      const block = toml.split(`[env.${env}.vars]`)[1]!.split("\n[")[0]!;
+      expect(block, env).toContain(`PKEY_ENVIRONMENT = "${env}"`);
+    }
+  });
+
   it("product create requires a platform admin", async () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), []);

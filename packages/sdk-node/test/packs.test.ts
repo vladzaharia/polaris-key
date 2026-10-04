@@ -399,6 +399,22 @@ describe("client.update.packs (Node)", () => {
     expect((await c.update.packs.state()).previous["djdl.l10n"]!.version).toBe(
       "1.0.0",
     );
+    // P4-17: the report carries the pair it moved between, for lazy-delta demand.
+    srv.reports.length = 0;
+    expect(await c.devices.report()).toBe(true);
+    expect(srv.reports).toEqual([
+      expect.objectContaining({
+        packInstalls: [
+          expect.objectContaining({
+            pack: "djdl.l10n",
+            from: v1.treeDigest,
+            to: v2.treeDigest,
+            strategy: "file",
+            fallbackUsed: false,
+          }),
+        ],
+      }),
+    ]);
     c.close();
   });
 

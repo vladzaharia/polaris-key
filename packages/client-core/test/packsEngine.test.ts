@@ -260,6 +260,8 @@ describe("PackEngine: a files.tree pack through the pipeline", () => {
       v1.fullSha256,
     ]);
     expect(progress.at(-1)).toBeGreaterThan(0);
+    // P4-17: a first install moves from nothing, so it is not an install report.
+    expect(e.packInstalls()).toEqual([]);
     // Ensuring the same pin again is a no-op that fetches nothing.
     await e.ensure(["djdl.l10n"]);
     expect(server.calls.length).toBe(2);
@@ -282,6 +284,17 @@ describe("PackEngine: a files.tree pack through the pipeline", () => {
     expect(server.calls.map((c) => c.sha256)).toEqual([
       v2.indexSha256,
       sha('{"hello":"salut"}'),
+    ]);
+    // P4-17: the pair it moved between and how, for `devices/report`'s `packInstalls`.
+    expect(e.packInstalls()).toEqual([
+      {
+        pack: "djdl.l10n",
+        from: v1.treeDigest,
+        to: v2.treeDigest,
+        strategy: "file",
+        bytes: expect.any(Number),
+        fallbackUsed: false,
+      },
     ]);
 
     server.calls.length = 0;
@@ -316,6 +329,9 @@ describe("PackEngine: a files.tree pack through the pipeline", () => {
         .sort(),
     );
     expect(e.state().previous["djdl.l10n"]!.recordSha256).toBe(v2.recordSha256);
+    expect(e.packInstalls()).toMatchObject([
+      { from: v2.treeDigest, to: v3.treeDigest, strategy: "delta" },
+    ]);
     // GC: only active (v3) and previous (v2) stay.
     expect([...storage.store.keys()].sort()).toEqual(
       [i2!.location, i3!.location].sort(),

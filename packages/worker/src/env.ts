@@ -33,6 +33,25 @@ export interface Env {
   /** The collector's grace period in days (default 30, never under 1). A `[vars]` value. */
   BLOB_GC_GRACE_DAYS?: string;
   /**
+   * Lazy hot-pair deltas (P4-17, `core/deltaDemand.ts`, `services/release/packs/deltas/`): the
+   * deployment's kill switch. Exactly `on` lets an opted-in product (`lazy_delta_settings`)
+   * count demand and generate deltas; anything else (or unset) turns the whole subsystem off.
+   * A `[vars]` value, `off` in every environment until an operator turns it on.
+   */
+  LAZY_DELTAS?: string;
+  /**
+   * The lazy-delta queue (P4-17; `pkey-deltas-<env>`). The main Worker only PRODUCES to it (the
+   * nightly sweep's hot pairs); the consumer is its own Worker script (`wrangler.deltas.toml`,
+   * `src/deltasEntry.ts`), which produces to it too (an R2 event fans out into pair jobs), so no
+   * request ever shares an isolate with an encode. OPTIONAL: unbound, nothing is enqueued.
+   */
+  DELTA_QUEUE?: Queue<unknown>;
+  /**
+   * The consumer's per-side cap in bytes (default 33,554,432 = 32 MiB, notes/S-08 §4.2): a pair
+   * with either payload larger is refused as `over-worker-cap`. A `[vars]` value.
+   */
+  LAZY_DELTA_MAX_BYTES?: string;
+  /**
    * The bytes host's origin, e.g. `https://dl.plrs.im`. A request whose host is this origin's
    * host reaches ONLY the byte routes (`core/bytesHost.ts`); everything else there — the
    * console, the portal, `/docs`, discovery — answers not-found. Unset (or unparsable) ⇒ there
@@ -47,6 +66,12 @@ export interface Env {
    * F-Droid, Scoop) out. A `[vars]` value, public, per environment.
    */
   CONSOLE_ORIGIN?: string;
+  /**
+   * Which deployment this Worker is: `prod`, `staging` or `dev` (ADMIN.md A-1). `/manage/api/me`
+   * echoes it so the console can badge staging and dev; unset or anything else reads as `null`
+   * and no badge shows. A `[vars]` value, public, per environment.
+   */
+  PKEY_ENVIRONMENT?: string;
 
   // platform-wide secrets / vars (optional so tests can omit them)
   //

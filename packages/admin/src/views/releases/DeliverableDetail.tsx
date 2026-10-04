@@ -15,7 +15,8 @@ import type {
 } from "../../api.js";
 import { api } from "../../api.js";
 import { useResource } from "../../context.js";
-import { navigate } from "../../route.js";
+import { r } from "../../console/routes.js";
+import { navigate } from "../../console/router.js";
 import {
   Badge,
   Button,
@@ -32,6 +33,7 @@ import {
 import { absoluteTime, relativeTime } from "../format.js";
 import { formatBytes, Sha256 } from "./ReleaseBuilds.js";
 import { GateCell, PinnedCell } from "./Deliverables.js";
+import { qk } from "../../console/data/queries.js";
 
 /**
  * A pack deliverable's page (P4-09): its declaration, then its releases newest first — version,
@@ -51,17 +53,16 @@ export function DeliverableDetail({
   slug: string;
   id: string;
 }): React.ReactElement {
-  const list = useResource(`deliverables:${slug}`, () =>
-    api.deliverables(slug),
-  );
-  const releases = useResource(`pack-releases:${slug}:${id}`, () =>
+  const list = useResource(qk.deliverables(slug), () => api.deliverables(slug));
+  const releases = useResource(qk.packReleases(slug, id), () =>
     api.packReleases(slug, id),
   );
   const decl =
     list.data?.deliverables.find((d) => d.id === id && d.kind !== "app") ??
     null;
-  const back = (): void =>
-    navigate({ kind: "product", slug, view: "deliverables" });
+  const back = (): void => {
+    navigate(r.deliverables(slug));
+  };
 
   if (releases.error && !releases.data) {
     return (

@@ -54,6 +54,9 @@ export interface ProductRef {
   schemaVersion: number;
 }
 
+/** The deployment a console session talks to (worker `PKEY_ENVIRONMENT`, ADMIN.md A-1). */
+export type ConsoleEnvironment = "prod" | "staging" | "dev";
+
 export interface Me {
   sub: string;
   name: string;
@@ -61,6 +64,13 @@ export interface Me {
   csrf: string;
   platformAdmin: boolean;
   products: ProductRef[];
+  /**
+   * Which deployment this is (A-1). `null`/absent when the worker has no `PKEY_ENVIRONMENT`:
+   * the environment badge then stays hidden, as it does in production.
+   */
+  environment?: ConsoleEnvironment | null;
+  /** When the admin session ends, epoch seconds (A-1; the session is a hard 8 h). */
+  sessionExpiresAt?: number;
 }
 
 // ── products (platform registry) ──────────────────────────────────────────────
@@ -1676,7 +1686,7 @@ const enc = encodeURIComponent;
 /** Build a per-product API base. */
 const p = (slug: string): string => `/manage/api/products/${enc(slug)}`;
 
-export const api = {
+const rawApi = {
   // ── identity ────────────────────────────────────────────────────────────────
   me: () => call<Me>("/manage/api/me"),
   logout: () => call<{ ok: true }>("/manage/api/logout", { method: "POST" }),
@@ -2163,3 +2173,14 @@ export const api = {
     return call<ActivityPage>(`${p(slug)}/activity?${search.toString()}`);
   },
 };
+
+/** The admin API surface: every endpoint the console calls. */
+export type AdminApi = typeof rawApi;
+export type AdminApiMethod = keyof AdminApi;
+
+/**
+ * The admin API client. Reads are called directly; WRITES go through `mutate()` in
+ * `console/data/mutations.ts`, which runs each write's declared invalidation (ADMIN.md §5.4).
+ * `test/mutations.test.ts` fails if a view calls a write on `api` directly.
+ */
+export const api: AdminApi = rawApi;

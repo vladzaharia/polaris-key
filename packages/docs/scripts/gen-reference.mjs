@@ -327,6 +327,9 @@ const TABLE_OWNERS = {
     "ci_publishers",
     "ci_tokens",
     "ci_upload_tickets",
+    "lazy_delta_settings",
+    "delta_demand_devices",
+    "delta_demand",
   ],
   license: [
     "licenses",
@@ -362,6 +365,7 @@ const TABLE_OWNERS = {
     "release_revocations",
     "release_delegations",
     "release_delegated_records",
+    "release_lazy_deltas",
   ],
   distribution: [
     "dist_outlets",

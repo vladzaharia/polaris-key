@@ -18,6 +18,8 @@ import {
   useToast,
 } from "../../components/ui/index.js";
 import { CopyButton } from "./shared.js";
+import { qk } from "../../console/data/queries.js";
+import { mutate } from "../../console/data/mutations.js";
 
 /**
  * The offline-activation bundle mint — the console half of the request-code flow
@@ -90,7 +92,7 @@ export function OfflineBundleDialog({
   // Enablement decides which documents a bundle can carry, so the console has to ask rather
   // than assume. Keyed per product and shared through the resource cache: the dialog is mounted
   // with the detail view, so the answer is already settled by the time it is opened.
-  const { data: serviceData } = useResource(`services:${slug}`, () =>
+  const { data: serviceData } = useResource(qk.services(slug), () =>
     api.services(slug),
   );
   const configEnabled = serviceData
@@ -123,7 +125,7 @@ export function OfflineBundleDialog({
       // Only assert a config preference when the operator was actually offered one; otherwise
       // let the server's enablement answer, which it would anyway.
       if (configEnabled) body.includeConfig = includeConfig;
-      const res = await api.mintBundle(slug, body);
+      const res = await mutate("mintBundle", slug, body);
       // Carry the device id into the result so the filename cannot drift from what was signed.
       setMinted({ ...res, deviceId: body.deviceId });
       toast.success(

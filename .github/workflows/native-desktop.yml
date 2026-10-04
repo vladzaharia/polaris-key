@@ -1,0 +1,137 @@
+name: Native desktop plugins
+
+# P5-07: the Godot SDK's desktop update plugins (sdks/godot/native/). Each job builds its OS's
+# GDExtension from source (nothing binary is committed) and runs the end-to-end updates unsigned,
+# against feeds rendered by the Worker's own code:
+#
+#   macos    the Sparkle bridge (universal), the export plugin's Info.plist / entitlement /
+#            never-unsigned / chmod switches, sign_and_notarize.sh ad hoc, and delta and full
+#            Sparkle updates through PKeySparkleBridge with the headless user driver
+#   windows  pkey_win.dll (Velopack, WinSparkle, StoreContext) and the Velopack shim, a Microsoft
+#            Store export without updater DLLs, the facades with the DLLs removed, StoreContext
+#            unpackaged, a Velopack delta through the 302 package route, and a WinSparkle silent
+#            installer
+#
+# No secrets, no signing certificate, no account: safe on pull_request. Code signing,
+# notarisation and Store checks are the owner's checklist (notes/S-11 §7). A path filter keeps
+# these 10-20 minute jobs off unrelated changes; they are not required checks. Only first-party
+# actions; every download is pinned (sdks/godot/tools/godot.sha512, sdks/godot/native/deps.env).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "sdks/godot/**"
+      - "packages/worker/src/services/update/**"
+      - "packages/worker/src/services/release/sparkle.ts"
+      - ".github/workflows/native-desktop.yml"
+  pull_request:
+    paths:
+      - "sdks/godot/**"
+      - "packages/worker/src/services/update/**"
+      - "packages/worker/src/services/release/sparkle.ts"
+      - ".github/workflows/native-desktop.yml"
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: "4.7.2"
+
+jobs:
+  macos:
+    name: Native desktop (macOS Sparkle bridge + e2e)
+    runs-on: macos-15
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pkey-godot/native-${{ env.GODOT_VERSION }}
+          key: pkey-godot-native-${{ env.GODOT_VERSION }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('sdks/godot/tools/godot.sha512') }}
+      # godot-cpp with its SCons signatures, and Sparkle: rebuilt only when deps.env changes.
+      - uses: actions/cache@v4
+        with:
+          path: sdks/godot/native/.deps
+          key: pkey-native-deps-${{ runner.os }}-${{ hashFiles('sdks/godot/native/deps.env') }}-r1
+      - run: >-
+          sdks/godot/tools/fetch_godot.sh "$GODOT_VERSION"
+          "$HOME/.cache/pkey-godot/native-$GODOT_VERSION" --host-template
+      - run: pip3 install --break-system-packages "scons==$(grep '^SCONS_VERSION=' sdks/godot/native/deps.env | cut -d= -f2)"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter "@polaris-key/worker^..." build
+      - name: macOS end-to-end
+        timeout-minutes: 25
+        run: |
+          D="$HOME/.cache/pkey-godot/native-$GODOT_VERSION"
+          GODOT_BIN="$D/Godot.app/Contents/MacOS/Godot" \
+            sdks/godot/native/e2e/macos/run.sh --work "$RUNNER_TEMP/e2e-macos" --template "$D/macos.zip"
+      - run: git diff --exit-code && test -z "$(git status --porcelain)"
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-desktop-macos-logs
+          path: ${{ runner.temp }}/e2e-macos/logs
+          retention-days: 7
+
+  windows:
+    name: Native desktop (Windows Velopack, WinSparkle, StoreContext + e2e)
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pkey-godot/native-${{ env.GODOT_VERSION }}
+          key: pkey-godot-native-${{ env.GODOT_VERSION }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('sdks/godot/tools/godot.sha512') }}
+      # godot-cpp with the SCons signature database build.ps1 keeps beside it (uncached 287-503 s
+      # on this runner, cached under 30 s), velopack_libc and WinSparkle.
+      - uses: actions/cache@v4
+        with:
+          path: sdks/godot/native/.deps
+          key: pkey-native-deps-${{ runner.os }}-${{ hashFiles('sdks/godot/native/deps.env') }}-r1
+      - shell: bash
+        run: >-
+          sdks/godot/tools/fetch_godot.sh "$GODOT_VERSION"
+          "$HOME/.cache/pkey-godot/native-$GODOT_VERSION" --host-template
+      - name: Tools (SCons, vpk, Inno Setup)
+        run: |
+          $pins = @{}
+          Get-Content sdks/godot/native/deps.env | Where-Object { $_ -match '^([A-Z0-9_]+)=(.*)$' } | ForEach-Object { $pins[$Matches[1]] = $Matches[2] }
+          python -m pip install --quiet "scons==$($pins.SCONS_VERSION)"
+          dotnet tool install -g vpk --version $pins.VELOPACK_VERSION
+          if (-not (Get-Command iscc -ErrorAction SilentlyContinue) -and -not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter "@polaris-key/worker^..." build
+      - name: Windows end-to-end
+        # Bounded, so a hung case fails with its log instead of running into the job's limit.
+        timeout-minutes: 30
+        run: |
+          $d = Join-Path $HOME ".cache/pkey-godot/native-$env:GODOT_VERSION"
+          pwsh -NoProfile -File sdks/godot/native/e2e/windows/run.ps1 `
+            -Godot (Join-Path $d "Godot_v$($env:GODOT_VERSION)-stable_win64_console.exe") `
+            -Template (Join-Path $d "windows_release_x86_64.exe") `
+            -Work (Join-Path $env:RUNNER_TEMP "e2e-windows")
+      - run: git diff --exit-code; if ($LASTEXITCODE -ne 0 -or (git status --porcelain)) { git status --porcelain; exit 1 }
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-desktop-windows-logs
+          path: ${{ runner.temp }}/e2e-windows/logs
+          retention-days: 7

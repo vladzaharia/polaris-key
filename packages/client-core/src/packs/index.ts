@@ -93,6 +93,7 @@ export {
 } from "./apply.js";
 export {
   FILES_TREE_HANDLER,
+  MAX_PACK_INSTALL_REPORTS,
   PackEngine,
   PackError,
   type ChunkIndexStore,
@@ -108,6 +109,7 @@ export {
   type PackHandler,
   type PackEstimate,
   type PackPayloadAccess,
+  type PackInstallReport,
   type PackProgress,
   type PacksSnapshot,
   type PackStorage,

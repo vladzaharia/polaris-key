@@ -20,12 +20,12 @@ jobs:
       group: deploy-production
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # No `version:` here — the action reads `packageManager` from package.json.
       # Specifying both makes v4 abort with "Multiple versions of pnpm specified",
       # which is why every CI run in this repo failed at step 2 until 2026-08-26.
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -72,6 +72,18 @@ jobs:
         run: |
           cd packages/worker
           pnpm check:representable
+      # P4-17: both scripts bind pkey-deltas-<env> (the request Worker as a producer, the
+      # lazy-delta consumer as its consumer), so `wrangler deploy` needs the queues to exist and
+      # the token to hold Queues Edit (docs/DEPLOYMENT.md §2). Check both here, BEFORE the
+      # migrations, so a missing permission or queue fails the job before anything changes.
+      - name: Queues preflight
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ENV: ${{ steps.target.outputs.env }}
+        run: |
+          cd packages/worker
+          npx wrangler queues info "pkey-deltas-$ENV"
+          npx wrangler queues info "pkey-deltas-dlq-$ENV"
       - name: Apply D1 migrations
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -94,6 +106,21 @@ jobs:
           ASSERTION="$(ls migrations/*_index_assertion.sql | sort | tail -1)"
           echo "Re-asserting required indexes from $ASSERTION"
           npx wrangler d1 execute "$DATABASE" --env "$ENV" --remote --file "$ASSERTION"
+      # P4-17: the lazy-delta consumer, a second Worker script (wrangler.deltas.toml →
+      # polaris-key-deltas-<env>): after the migrations whose tables it reads, before the request
+      # Worker whose nightly sweep produces to its queue. Same environment, same token (Workers
+      # Scripts edit covers both scripts). It ships with LAZY_DELTAS = "off": until an operator
+      # turns it on and opts a product in, it acknowledges every message without work. The queues
+      # and the token's Queues Edit are checked by "Queues preflight" before the migrations; a
+      # failure HERE comes after the migrations were applied (they are additive, and the previous
+      # Worker version keeps serving), so re-run the job once the cause is fixed.
+      - name: Deploy lazy-delta consumer
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ENV: ${{ steps.target.outputs.env }}
+        run: |
+          cd packages/worker
+          npx wrangler deploy -c wrangler.deltas.toml --env "$ENV"
       - name: Assemble static assets (admin SPA + docs site)
         run: pnpm --filter @polaris-key/worker assemble
       - name: Deploy worker + admin assets

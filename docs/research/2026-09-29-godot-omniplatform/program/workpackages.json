@@ -1530,7 +1530,7 @@
       "optional": false,
       "refs": ["CONTENT §8.1 telemetry", "notes/E5"],
       "brief": "wp/P4-17-lazy-deltas.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P4-18",
@@ -1765,6 +1765,74 @@
       "status": "done"
     },
     {
+      "id": "P4-29",
+      "title": "The feed's delta menu: offer lazy deltas in the signed feed, read them in every SDK's planner",
+      "phase": "P4",
+      "stage": "v3",
+      "lane": "corpus",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1, 1.5],
+      "deps": ["P4-17", "P4-13", "P4-18"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "corpus",
+        "drift-gate",
+        "all-sdks",
+        "threat-model",
+        "docs-generated",
+        "workerd"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/P4-29.md",
+        "wp/P4-17-lazy-deltas.md Corrections",
+        "WIRE-CONTRACT-V4 §2.4"
+      ],
+      "brief": "wp/P4-29-feed-delta-menu.md",
+      "status": "todo"
+    },
+    {
+      "id": "P4-30",
+      "title": "Feed delta menu in Python and Swift",
+      "phase": "P4",
+      "stage": "v3",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.5, 0.75],
+      "deps": ["P4-29"],
+      "planMode": true,
+      "gates": ["plan-mode", "corpus", "all-sdks"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["plans/P4-29.md §2.2 §2.4 §4 §5"],
+      "brief": "wp/P4-30-feed-delta-menu-python-swift.md",
+      "status": "todo",
+      "planRef": "P4-29"
+    },
+    {
+      "id": "P4-31",
+      "title": "Feed delta menu in Godot",
+      "phase": "P4",
+      "stage": "v3",
+      "lane": "godot",
+      "role": "pkey-godot-engineer",
+      "estimateWeeks": [0.5, 0.75],
+      "deps": ["P4-29"],
+      "planMode": true,
+      "gates": ["plan-mode", "corpus", "all-sdks"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["plans/P4-29.md §2.2 §2.4 §4 §5"],
+      "brief": "wp/P4-31-feed-delta-menu-godot.md",
+      "status": "todo",
+      "planRef": "P4-29"
+    },
+    {
       "id": "P5-01",
       "title": "Outlet-credential custody and shared JWT signing (ES256, RS256)",
       "phase": "P5",
@@ -1884,7 +1952,7 @@
       "optional": false,
       "refs": ["README §5.10", "notes/E3"],
       "brief": "wp/P5-07-desktop-plugins.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P5-08",
@@ -1996,7 +2064,7 @@
       "optional": true,
       "refs": ["README §3.11", "README §11 decision 9"],
       "brief": "wp/P6-04-hosted-web.md",
-      "status": "todo"
+      "status": "blocked"
     },
     {
       "id": "P6-05",

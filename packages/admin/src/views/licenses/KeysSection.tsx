@@ -1,6 +1,6 @@
 import * as React from "react";
 import { KeyRound, Plus } from "lucide-react";
-import { api, type KeyDto } from "../../api.js";
+import { type KeyDto } from "../../api.js";
 import { docsUrl } from "../../lib/docsLinks.js";
 import {
   Button,
@@ -25,6 +25,7 @@ import {
   KeyStatusBadge,
   OneTimeKeyPanel,
 } from "./shared.js";
+import { mutate } from "../../console/data/mutations.js";
 
 /**
  * The license keys table: lists each issued key (by its hash, never the secret), supports minting
@@ -51,7 +52,7 @@ export function KeysSection({
     if (!revoking) return;
     setBusy(true);
     try {
-      await api.revokeKey(slug, id, revoking.hash);
+      await mutate("revokeKey", slug, id, revoking.hash);
       toast.success("Key revoked");
       onChanged();
       setRevoking(null);
@@ -186,7 +187,7 @@ function MintKeyDialog({
     e.preventDefault();
     setBusy(true);
     try {
-      const res = await api.mintKey(slug, id, label.trim() || undefined);
+      const res = await mutate("mintKey", slug, id, label.trim() || undefined);
       setMinted(res.key);
       toast.success("Key minted");
       onMinted();

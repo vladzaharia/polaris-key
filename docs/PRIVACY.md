@@ -101,6 +101,17 @@ only; no crash payload is stored. Of each Sentry delivery the Worker keeps only 
 rule, issueId, release, environment, outlet}` (30 days, with the connector event log), never the
 crash message, exception, user or other tags.
 
+### Pack install reports — SDKs with packs (Node today)
+
+How the device's recent content-pack installs went: the pack id, the content hashes of the
+payload it moved from and to, the strategy that installed it (`delta`, `chunk`, `file`, `full`),
+the planned bytes, whether a fallback ran and, if so, the first failure's code. At most 8 per
+report, in the report's `packInstalls` key. No file name, path, hardware value or user identifier.
+
+Used for: finding the pairs of pack releases many devices move between, so the server can
+prepare a smaller download for them (lazy deltas), and nothing else. Counted only for products
+whose operator opted in.
+
 ### Store purchases — the commerce bridge (P6-01, products that sell through a store)
 
 When a player claims a store purchase, the Worker keeps what it needs to keep the licence flag
@@ -128,6 +139,8 @@ applications, and any raw hardware serial. None of these are read by any SDK.
 | Drift and mismatch events                                                                                                                  | `audit`                                         | Retained with the product's audit log                                                           |
 | Update outcome events (latest report's `updates`)                                                                                          | `devices.reported_json`                         | Replaced by the next report; deleted with the device                                            |
 | Update outcome counters (per release, outlet, channel, event) and one record per device (its counted event ids, to count distinct devices) | `UpdateHealthDO` (a Durable Object per release) | 30 days (a device record: 30 days after its last event), then deleted by the object's own sweep |
+| Pack install reports (latest report's `packInstalls`)                                                                                      | `devices.reported_json`                         | Replaced by the next report; deleted with the device                                            |
+| Lazy-delta demand: one row per device and pack-payload pair (strategy, last time), for products that opted in                              | `delta_demand_devices`                          | 30 days after the device last reported the pair, then deleted by the nightly sweep              |
 | Store purchases (hashed key, product, licence, state, re-check ids incl. a Steam ID) and the licence's store grants                        | `dist_purchases`, `license_store_grants`        | Kept while the licence exists; a refund marks them revoked                                      |
 | Purchase binding (random UUID per licence)                                                                                                 | `dist_purchase_bindings`                        | Kept while the licence exists                                                                   |
 | Store notifications (as received)                                                                                                          | `dist_connector_events`                         | 30 days                                                                                         |
@@ -140,7 +153,9 @@ outcome counters are the exception: they are aggregates per release, not per dev
 not purged with a device; each counter object deletes buckets older than 30 days and every device
 record (a device id with the event ids it had counted) idle for 30 days, on its own alarm — it
 resumes within minutes until the whole object has been swept — and deletes itself entirely once
-nothing is left.
+nothing is left. Lazy-delta demand rows are the other exception: they count distinct devices per
+pair of pack payloads, so they are kept 30 days after the device last reported that pair and then
+pruned by the nightly maintenance sweep, whether or not the device still exists.
 
 ## Per-product opt-out
 

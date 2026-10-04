@@ -2,7 +2,7 @@ import * as React from "react";
 import { AlertTriangle, ArrowLeft } from "lucide-react";
 import { api, type ProfileDetail as ProfileDetailDto } from "../../api.js";
 import { useResource } from "../../context.js";
-import { hashFor } from "../../route.js";
+import { r } from "../../console/routes.js";
 import { absoluteTime, relativeTime } from "../format.js";
 import { MetaItem } from "../licenses/shared.js";
 import {
@@ -12,6 +12,7 @@ import {
   Skeleton,
 } from "../../components/ui/index.js";
 import { PayloadEditor } from "./PayloadEditor.js";
+import { qk } from "../../console/data/queries.js";
 
 /**
  * A profile's detail view — the managed payload an operator actually edits.
@@ -30,10 +31,10 @@ export function ProfileDetail({
   slug: string;
   id: string;
 }): React.ReactElement {
-  const res = useResource<ProfileDetailDto>(`profile:${slug}:${id}`, () =>
+  const res = useResource<ProfileDetailDto>(qk.profile(slug, id), () =>
     api.profile(slug, id),
   );
-  const backHref = hashFor({ kind: "product", slug, view: "profiles" });
+  const backHref = r.profiles(slug);
 
   if (res.error) {
     return (

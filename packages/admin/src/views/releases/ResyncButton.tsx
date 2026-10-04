@@ -1,12 +1,11 @@
 import * as React from "react";
 import { RefreshCw } from "lucide-react";
-import { api } from "../../api.js";
-import { invalidate } from "../../context.js";
 import { docsUrl } from "../../lib/docsLinks.js";
 import { Button, ConfirmDialog, useToast } from "../../components/ui/index.js";
+import { mutate } from "../../console/data/mutations.js";
 
 /**
- * Triggers `api.resyncProduct(slug)` — re-fetches the product's `.pkey/` manifest and re-applies
+ * Triggers `mutate("resyncProduct", slug)` — re-fetches the product's `.pkey/` manifest and re-applies
  * release config + catalog + minters from the linked repo. This is the canonical way to EDIT
  * release config (there is no per-field release API); the operator changes `.pkey/release.*` in
  * the repo, then resyncs here. Confirmed because it overwrites server-side rows from the repo.
@@ -30,15 +29,12 @@ export function ResyncButton({
   const confirm = async (): Promise<void> => {
     setBusy(true);
     try {
-      await api.resyncProduct(slug);
+      await mutate("resyncProduct", slug);
       toast.success(
         "Resynced from repo",
         "Release config and catalog were re-applied from `.pkey/`.",
       );
       // Refresh anything derived from the product row + its catalog.
-      invalidate(`product:${slug}`);
-      invalidate(`release-health:${slug}`);
-      invalidate(`schema:${slug}`);
       setOpen(false);
     } catch (err) {
       toast.error(

@@ -2269,6 +2269,73 @@ Residuals, stated rather than defended:
 - **`blob_gc_log` names keys, not tenants, for deletions.** An object's deletion is attributed to
   no product; the `ref-dropped` rows say which product dropped the last ref.
 
+### Lazy hot-pair deltas (P4-17)
+
+P4-17 adds install telemetry (`devices/report`'s `packInstalls`), a demand store in D1, a queue
+(`pkey-deltas-<env>`, with a dead-letter queue) fed by the nightly sweep and by an R2
+event-notification rule on the payload prefixes, and a **second Worker script**, the consumer
+(`polaris-key-deltas-<env>`, `wrangler.deltas.toml`), which encodes `zstd-patch-from` deltas in
+WebAssembly (`@polaris-key/zstd-wasm/encoder`, level 9, levels above 15 refused, 32 MiB per side).
+It adds no route and no wire member. Off by default twice: the `LAZY_DELTAS` var in both scripts
+and a per-product `lazy_delta_settings` row.
+
+- **A lazy delta carries no trust of its own.** It is in no CI-signed record. A device that is
+  offered one checks the artifact's SHA-256 and length, that its base is the installed payload,
+  and that the output's SHA-256 is the target's, which comes from the CI-signed pack record
+  (A7 §3.4); any mismatch fails the strategy and the device falls back. **A compromised Worker
+  (either script) can therefore offer junk deltas, which costs bandwidth and CPU, never
+  integrity.** The same window check every applier makes (`windowLogMax` from `memBytes`) bounds a
+  hostile frame's memory before it is decoded.
+- **No byte work on the request path.** The report handler only upserts D1 counters for an
+  opted-in product; it reads no payload, decodes nothing and enqueues nothing (asserted by
+  `test/register.test.ts` with a blob store that throws on use, and by a source check that only
+  `src/deltasEntry.ts` imports the encoder). Every encode runs in the consumer, one message at a
+  time (batch 1, concurrency 1), so an encode never shares an isolate with a request or with a
+  second encode.
+- **Telemetry cannot write bytes, only counts.** A device can claim any (from, to) pair, but a
+  claim only upserts its own row for that pair, and a device holds at most 32 demand rows per
+  product (`MAX_DEMAND_ROWS_PER_DEVICE`; each report evicts its oldest past that), so what one
+  device can write is bounded however many pairs it invents; the consumer encodes only between two payloads of
+  the same pack and variant that stored CI-signed records name, which the product holds refs to
+  (possession, as for every other ref), under the threshold (25 distinct devices in 7 days by
+  default) and the daily cap (20 per product by default). A fleet of forged devices can at most
+  make the product spend its daily cap on deltas it did not need; they are verified like any
+  other. The inputs are checked against the payload hashes the records name before encoding,
+  and the frame is decoded over the base and compared with the target before it is stored.
+- **Publish rules hold.** Never against a base starting with `37 A4 30 EC`; one bare frame with
+  its content size and checksum; stored only through `putVerified` (R2 checks the SHA-256, the
+  write is create-only) under `deltas/<from>/<to>.zstd-patch-from`, or under `gated/` when either
+  side is gated, so a gated delta is served (once the feed offers it) only through the same
+  delivery authorisation as the gated payloads.
+- **The ref a lazy delta earns.** The consumer records the object (`blob_objects`, kind `delta`)
+  and a `lazy-delta` ref for the product whose two payloads it read. The key is content-derived,
+  so two products with the same pair of payloads reach the same object; each earns its ref only
+  through its own possession of both payloads (its `pack-object` refs) and its own opt-in, never
+  from the other's. The collector never drops a `lazy-delta` ref; the sweep drops it when the
+  delta goes cold (no device reported the pair for 30 days), after which the collector's normal
+  mark, grace and lock rules apply.
+- **Poison and replay.** Each message is acknowledged or retried on its own; a malformed one is
+  acknowledged without work. Idempotency comes from the pair's `release_lazy_deltas` row and the
+  deterministic key (`head` before work, create-only put), never from the event: a duplicate or a
+  re-PUT event does nothing.
+
+Residuals, stated rather than defended:
+
+- **The delta menu is not served yet.** Offering a lazy delta to devices needs the feed's
+  reserved `deltas` member to be given a shape, which is a wire change (WIRE-CONTRACT-V4 §2.4;
+  P4-17's Corrections). Until then generated deltas are stored and recorded only.
+- **Demand rows hold device ids.** `delta_demand_devices` keeps (device, pair, strategy, time) for
+  30 days to count distinct devices (docs/PRIVACY.md); they are not purged with the device.
+- **workerd enforces neither 128 MB nor `cpu_ms` locally** (notes/S-08 §2.5). The memory budget is
+  a test against the encoder's own measurement, and the cap is the only defence against an
+  isolate OOM in production; a pair above it is refused as `over-worker-cap`, never attempted.
+  At the 32 MiB cap linear memory peaks near 84 MiB, and the frame lives once, in one buffer
+  preallocated at the largest frame worth keeping (about 22.4 MiB against an incompressible
+  32 MiB full object): the worst case measured, a random base and a target 68% new incompressible
+  bytes, is 83.8 + 22.4 = 106.2 MiB, which a test keeps under 110 MiB. The remaining headroom to
+  128 MB (JS heap, the runtime, the index reads before the encode) is an inference, not a
+  measurement, until the live check at the cap (RUNBOOK "Lazy deltas").
+
 ### The compatibility matrix and the device simulator (P4-15)
 
 P4-15 adds two read-only routes to the console's admin API: `GET …/release/compat` and
@@ -2797,6 +2864,69 @@ it is re-verified at every load and holds nothing secret.
   `AfterFirstUnlock` (backup-restorable) and the device id to a 0600 file; that difference is
   open with the Swift SDK's owner.
 
+### Client updater plugins on the desktop (P5-07)
+
+The Godot SDK hands a binary update to the platform's own updater through optional plugins
+(`sdks/godot/native/`; facades in `addons/polaris_key/native/`). The plugins install new code,
+so what verifies that code matters more than anything else on this path. Polaris Key never
+verifies an update itself on these paths, and no plugin holds a private key: the Sparkle and
+WinSparkle EdDSA private keys are CI's (notes/E1 §C1), and the Worker never sees them.
+
+- **Trust anchors.**
+  - Sparkle verifies every download against `SUPublicEDKey` in the code-signed bundle's
+    `Info.plist`. The bridge refuses to start without that key; an attacker who replaces an
+    update cannot replace the key with it.
+  - WinSparkle verifies the EdDSA signature against `PKeyOptions.update_eddsa_public_key`, which
+    ships inside the game's pack. Whoever can replace the pack can already replace the code, so
+    the key is no weaker than the binary that carries it. Without a key WinSparkle refuses to
+    start.
+  - Velopack has **no signature**: it checks the SHA-1/SHA-256 that the feed lists, over HTTPS,
+    and Authenticode on the installer and Update.exe is the owner's (notes/S-11 §7). Its
+    integrity is therefore the feed's: TLS to the Worker, and the Worker's selection over
+    verified release records. The facades refuse a plain-http feed off loopback.
+- **Disable Library Validation (macOS).** A GDExtension in a hardened-runtime app needs
+  `com.apple.security.cs.disable-library-validation`, which lets the app load a library signed
+  by anyone.
+  - The export plugin adds it only when `polaris_key/sparkle/enabled` is on, and never on a Mac
+    App Store preset. The App Store export logs an error while the bridge is installed.
+  - `sign_and_notarize.sh` fails when the entitlements also grant
+    `com.apple.security.cs.allow-dyld-environment-variables`. The pair would let
+    `DYLD_INSERT_LIBRARIES` inject code into a notarised build.
+  - Residual: with DLV on, a library planted in the bundle loads. The bundle's seal, and
+    notarisation, are what stop that.
+- **Never unsigned.** A macOS export with `codesign/codesign` Disabled keeps the template's own
+  signature on a modified bundle, and Sparkle then rejects every update. The plugin turns
+  Disabled into the built-in ad-hoc signature. Ad hoc is a floor for local runs only: Sparkle's
+  code-signing match and Gatekeeper need a Developer ID (§7 rows 1–4 of the S-11 checklist).
+- **The bearer and redirects.** Foundation, under Sparkle, drops `Authorization` on a
+  cross-origin redirect (measured, S-11 m6). ureq, under Velopack, drops it on every redirect,
+  even a same-origin one (measured in P5-07). WinSparkle's HTTP stack across origins is
+  unmeasured, so treat it the same way. So an `entitled` or `licensed` delivery whose package
+  URL redirects to the bytes host refuses the second hop, and fails closed. Velopack is supported
+  under public delivery only. A 401 or 403 download answers `unsupported` (`product`); it never
+  retries with the bearer in the URL. The bearer is never written into a feed, a log or an
+  enclosure URL.
+- **The headless user driver** installs every update without asking. It exists for unattended
+  tests and is refused unless the process environment sets `PKEY_SPARKLE_HEADLESS=1`. Both the
+  facade and the native bridge check the flag, and nothing a game ships sets it. Anyone able to
+  set a game's environment can already run code as the user.
+- **Runtime DLL loading and the shim (Windows).**
+  - `velopack_libc.dll` and `WinSparkle.dll` are loaded by absolute path from beside the
+    executable. The load uses `LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32`,
+    so their own dependencies never come from the current directory or PATH, and a relative path
+    is refused. A writable install folder is the residual: an attacker who can write there can
+    replace the game's exe too.
+  - The Rust launcher shim is the Velopack main exe. It answers the `--veloapp-*` hooks, then
+    starts `<stem>_godot.exe` beside itself with the arguments it got, as OS strings. It reads no
+    network input and, in a release build, no environment variable.
+- **WinSparkle runs installers.** After the EdDSA check passes, WinSparkle runs the downloaded
+  installer with the appcast's `sparkle:installerArguments`, which the Worker derives from the
+  build's `format`. A product that publishes a malicious installer signed with its own EdDSA key
+  is outside this model: that is the release key's compromise (AT-3).
+- **Store builds.** A Microsoft Store export ships no updater but StoreContext: the export plugin
+  removes the updater DLLs and the shim (folder or `.zip`). StoreContext only asks the Store to
+  install what the Store already holds for the package.
+
 ### The Android platform plugin: Keystore and self-update (P5-06)
 
 The Godot SDK reaches Android through `polaris-key-platform` (sdks/kotlin) and the
@@ -3151,4 +3281,5 @@ code, or a non-tree layout becomes delegable, or the head or tail sniff is narro
 pack-type handlers (P4-16), a handler starts evaluating what it reads (a script engine, an object
 reviver, a resource loader, a plural-formula evaluator) or resolves a path from payload contents
 other than by exact index match, a type joins `MOUNTED_PACK_TYPES`, or a rule of the `godot.zip`
-reader is relaxed in the CLI or on a device.
+reader is relaxed in the CLI or on a device; or, for the client updater plugins (P5-07), a new
+updater backend, or a change to Disable Library Validation or the signing defaults.
