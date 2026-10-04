@@ -383,6 +383,21 @@ export const CORE_ROUTES: Record<string, unknown> = {
     earliestDeletion: NOW + 5 * DAY,
   },
   "/manage/api/products/djdl/activity": { items: activity, nextCursor: null },
+  // Enrollment's fingerprint policy (and the probes that ride on it), so the page renders whole.
+  "/manage/api/products/djdl/license/policy": {
+    policy: {
+      enabled: true,
+      defaultMode: "normal",
+      probes: [
+        {
+          id: "rekordbox",
+          label: "rekordbox",
+          macos: "/Applications/rekordbox 7/rekordbox.app",
+        },
+      ],
+    },
+    source: "manifest",
+  },
   "/manage/api/products/djdl/config/catalog": {
     schemaVersion: 8,
     entries: Array.from({ length: 42 }, (_, i) => ({

@@ -1,14 +1,14 @@
 import * as React from "react";
-import { channelOptions, HINT_PR } from "../lib/channels.js";
+import { channelOptions, HINT_DEV, HINT_PR } from "../lib/channels.js";
 import { cn } from "../lib/cn.js";
 import { Checkbox } from "./Checkbox.js";
 
 /** What each built-in channel grant means (components.md §3.3). */
 const SEMANTICS: Record<string, string> = {
   stable: "General releases",
-  beta: "Pre-releases, and everything in stable",
+  beta: "Pre-releases, plus everything on stable",
   pr: HINT_PR,
-  dev: "Dev builds bypass the version window and channel checks",
+  dev: HINT_DEV,
 };
 
 export interface ChannelPickerProps {

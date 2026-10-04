@@ -1,4 +1,5 @@
 import * as React from "react";
+import { PLATFORM_LABELS } from "../../lib/labels.js";
 import { useQuery } from "@tanstack/react-query";
 import {
   api,
@@ -103,21 +104,25 @@ export function DeviceDrawer({
             <DeviceFacts slug={slug} device={d} now={now} />
           ) : null}
         </DrawerBody>
-        <DrawerFooter>
-          <Button variant="ghost" onClick={onClose}>
-            Close
-          </Button>
-          {d?.fingerprint ? (
-            <Button variant="outline" onClick={() => setConfirm("reset")}>
-              Reset binding…
-            </Button>
-          ) : null}
-          {d?.status === "authorized" ? (
-            <Button variant="danger" onClick={() => setConfirm("deauthorize")}>
-              Deauthorize…
-            </Button>
-          ) : null}
-        </DrawerFooter>
+        {/* The header's close (Back on a phone) closes the drawer; the footer is for actions,
+            side by side on every width. */}
+        {d?.fingerprint || d?.status === "authorized" ? (
+          <DrawerFooter className="flex-row flex-wrap justify-end">
+            {d?.fingerprint ? (
+              <Button variant="outline" onClick={() => setConfirm("reset")}>
+                Reset binding…
+              </Button>
+            ) : null}
+            {d?.status === "authorized" ? (
+              <Button
+                variant="danger"
+                onClick={() => setConfirm("deauthorize")}
+              >
+                Deauthorize…
+              </Button>
+            ) : null}
+          </DrawerFooter>
+        ) : null}
       </Drawer>
 
       <ConfirmDialog
@@ -203,7 +208,7 @@ function DeviceFacts({
     <div className="space-y-6">
       <section aria-labelledby="device-status" className="space-y-3">
         <h3 id="device-status" className="text-sm font-bold text-fg-strong">
-          Status
+          Device
         </h3>
         <DescriptionList
           columns={2}
@@ -241,9 +246,7 @@ function DeviceFacts({
                     Attested{" "}
                     <Timestamp at={fromSeconds(d.attestedAt)} now={now} />
                   </>
-                ) : (
-                  "Basic is expected for web, desktop and sideloaded builds."
-                ),
+                ) : undefined,
             },
             {
               term: "Last attestation verdict",
@@ -268,7 +271,6 @@ function DeviceFacts({
                   now={now}
                 />
               ),
-              help: "The most recent check-in, not a presence indicator.",
             },
           ]}
         />
@@ -283,7 +285,10 @@ function DeviceFacts({
           items={[
             {
               term: "Platform",
-              detail: join(d.platform, d.arch && `· ${d.arch}`),
+              detail: join(
+                d.platform ? (PLATFORM_LABELS[d.platform] ?? d.platform) : null,
+                d.arch && `· ${d.arch}`,
+              ),
             },
             {
               term: "App version",
@@ -354,20 +359,17 @@ function DeviceFacts({
           ]}
         />
         {probes.length ? (
-          <div>
-            <h4 className="mb-1 text-xs font-bold text-fg-muted">Probes</h4>
-            <ul className="space-y-1">
-              {probes.map(([id, p]) => (
-                <li key={id} className="flex flex-wrap gap-2 text-sm">
-                  <span className="font-mono text-xs">{id}</span>
-                  <span className="text-fg-muted">
-                    {p.present
-                      ? `present${p.version ? `, ${p.version}` : ""}`
-                      : "not present"}
-                  </span>
-                </li>
-              ))}
-            </ul>
+          <div className="space-y-2">
+            <h4 className="text-xs font-bold text-fg-muted">Probes</h4>
+            <DescriptionList
+              columns={2}
+              items={probes.map(([id, p]) => ({
+                term: <span className="font-mono">{id}</span>,
+                detail: p.present
+                  ? `Present${p.version ? `, ${p.version}` : ""}`
+                  : "Not present",
+              }))}
+            />
           </div>
         ) : null}
       </section>
@@ -412,10 +414,6 @@ function DeviceFacts({
                   ),
                 },
                 {
-                  term: "Components",
-                  detail: String(fp.componentCount),
-                },
-                {
                   term: "Last change",
                   detail: fp.lastDriftAt ? (
                     <>
@@ -431,17 +429,20 @@ function DeviceFacts({
               ]}
             />
             {components.length ? (
-              <ul className="space-y-1">
-                {components.map(([name, value]) => (
-                  <li
-                    key={name}
-                    className="grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)] gap-2"
-                  >
-                    <span className="text-fg-muted">{name}</span>
-                    <span className="break-all font-mono text-xs">{value}</span>
-                  </li>
-                ))}
-              </ul>
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-fg-muted">Components</h4>
+                <DescriptionList
+                  columns={2}
+                  items={components.map(([name, value]) => ({
+                    term: name,
+                    detail: (
+                      <span className="break-all font-mono text-xs">
+                        {value}
+                      </span>
+                    ),
+                  }))}
+                />
+              </div>
             ) : null}
           </>
         )}

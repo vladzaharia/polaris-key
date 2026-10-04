@@ -35,6 +35,7 @@ import {
   type DataColumn,
   type TableState,
 } from "../../ui/data-table/index.js";
+import { cn } from "../../lib/cn.js";
 import { DescriptionList } from "../../ui/DescriptionList.js";
 import { EmptyState } from "../../ui/EmptyState.js";
 import { ErrorState } from "../../ui/ErrorState.js";
@@ -493,6 +494,7 @@ function JobBlock({
             empty={
               <EmptyState
                 kind="first-run"
+                variant="inline"
                 title="No steps recorded"
                 description="The run recorded a summary and no individual steps."
               />
@@ -511,10 +513,7 @@ function CronPanel({ jobs }: { jobs: PlatformOperations["jobs"] }) {
   const [recentState, setRecentState] =
     React.useState<TableState>(EMPTY_TABLE_STATE);
   return (
-    <Panel
-      title="Cron jobs"
-      description="The latest run of each scheduled job, step by step, and the runs before it."
-    >
+    <Panel title="Cron jobs">
       {jobs === null ? (
         <Unavailable what="The run history" />
       ) : (
@@ -535,8 +534,9 @@ function CronPanel({ jobs }: { jobs: PlatformOperations["jobs"] }) {
               empty={
                 <EmptyState
                   kind="first-run"
+                  variant="inline"
                   title="No runs recorded"
-                  description="Each cron tick records its steps here, and the record is kept for 30 days."
+                  description="Each cron tick's steps are kept for 30 days."
                 />
               }
               mobile="cards"
@@ -577,10 +577,7 @@ function CronPanel({ jobs }: { jobs: PlatformOperations["jobs"] }) {
 function HeartbeatsPanel({ op }: { op: PlatformOperations }) {
   const backlog = op.queues.deltas.bound ? op.queues.deltas.backlogCount : null;
   return (
-    <Panel
-      title="Heartbeats"
-      description="When each script last reported, and whether that is recent enough."
-    >
+    <Panel title="Heartbeats">
       {op.heartbeats === null ? (
         <Unavailable what="The heartbeat rows" />
       ) : (
@@ -597,11 +594,13 @@ function HeartbeatsPanel({ op }: { op: PlatformOperations }) {
             );
             return (
               <li key={script} className="space-y-1.5">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-sm font-bold text-fg-strong">
+                <div className="flex items-start justify-between gap-3">
+                  <span className="min-w-0 text-sm font-bold text-fg-strong">
                     {SCRIPT_LABEL[script]}
                   </span>
-                  <HealthPill health={state.health}>{state.label}</HealthPill>
+                  <span className="shrink-0">
+                    <HealthPill health={state.health}>{state.label}</HealthPill>
+                  </span>
                 </div>
                 {beat ? (
                   <DescriptionList
@@ -656,8 +655,10 @@ function QueueBlock({
   const h = queueHealth(q, dead);
   return (
     <li className="space-y-1.5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-sm font-bold text-fg-strong">{title}</span>
+      <div className="flex items-start justify-between gap-3">
+        <span className="min-w-0 text-sm font-bold text-fg-strong">
+          {title}
+        </span>
         {h ? (
           <HealthPill health={h}>
             {h === "healthy"
@@ -680,27 +681,19 @@ function QueueBlock({
             {q.error ?? "Its backlog could not be read."}
           </p>
         ) : (
-          <DescriptionList
-            items={[
-              {
-                term: "Messages",
-                detail: formatCount(q.backlogCount ?? 0),
-              },
-              {
-                term: "Size",
-                detail: formatBytes(q.backlogBytes ?? 0),
-              },
-              {
-                term: "Oldest message",
-                detail:
-                  q.oldestMessageAt !== null ? (
-                    <Timestamp at={ms(q.oldestMessageAt)} format="relative" />
-                  ) : (
-                    "None waiting"
-                  ),
-              },
-            ]}
-          />
+          <p className="text-sm tabular-nums text-fg">
+            {formatCount(q.backlogCount ?? 0)}{" "}
+            {(q.backlogCount ?? 0) === 1 ? "message" : "messages"} ·{" "}
+            {formatBytes(q.backlogBytes ?? 0)} ·{" "}
+            {q.oldestMessageAt !== null ? (
+              <>
+                oldest{" "}
+                <Timestamp at={ms(q.oldestMessageAt)} format="relative" />
+              </>
+            ) : (
+              <span className="text-fg-muted">none waiting</span>
+            )}
+          </p>
         )
       ) : null}
     </li>
@@ -710,10 +703,7 @@ function QueueBlock({
 function QueuesPanel({ op }: { op: PlatformOperations }) {
   const c = op.queues.consumer;
   return (
-    <Panel
-      title="Queues"
-      description="The lazy-delta queue and the dead-letter queue behind it."
-    >
+    <Panel title="Queues">
       <ul className="space-y-4">
         <QueueBlock title="Delta queue" q={op.queues.deltas} dead={false} />
         <QueueBlock title="Dead-letter queue" q={op.queues.deadLetter} dead />
@@ -736,10 +726,7 @@ function ProbesPanel({ op }: { op: PlatformOperations }) {
     ["Email binding", op.probes.email],
   ];
   return (
-    <Panel
-      title="Bindings"
-      description="Each binding probed with a read that cannot find anything."
-    >
+    <Panel title="Bindings">
       <ul className="space-y-2">
         {rows.map(([name, p]) => {
           const probe = p as OperationsProbe;
@@ -790,27 +777,17 @@ function StoragePanel({ op }: { op: PlatformOperations }) {
   const missing = op.indexes.missing;
   return (
     <Panel
-      title="Storage and indexes"
-      description="Database size, committed object bytes and the indexes this build requires."
+      title={r2 && r2.byKind.length > 0 ? "Storage and indexes" : "Indexes"}
     >
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div
+        className={cn(
+          "grid grid-cols-1 gap-6",
+          r2 && r2.byKind.length > 0 && "lg:grid-cols-2",
+        )}
+      >
         <div className="min-w-0 space-y-4">
           <DescriptionList
             items={[
-              {
-                term: "D1 size",
-                detail:
-                  op.storage.d1.sizeBytes !== null
-                    ? formatBytes(op.storage.d1.sizeBytes)
-                    : "Not reported",
-              },
-              {
-                term: "R2 committed",
-                detail: r2
-                  ? `${formatBytes(r2.committedBytes)} in ${formatCount(r2.objects)} object${r2.objects === 1 ? "" : "s"}`
-                  : "Not reported",
-                help: "Committed objects only. Uploads still in staging expire after a day and are not counted.",
-              },
               {
                 term: "Required indexes",
                 detail:
@@ -838,8 +815,8 @@ function StoragePanel({ op }: { op: PlatformOperations }) {
             </ul>
           ) : null}
         </div>
-        <div className="min-w-0">
-          {r2 && r2.byKind.length > 0 ? (
+        {r2 && r2.byKind.length > 0 ? (
+          <div className="min-w-0">
             <table className="w-full text-sm">
               <caption className="pb-2 text-left text-sm font-bold text-fg-strong">
                 Committed bytes by kind
@@ -876,12 +853,8 @@ function StoragePanel({ op }: { op: PlatformOperations }) {
                 ))}
               </tbody>
             </table>
-          ) : (
-            <p className="text-sm text-fg-muted">
-              No committed objects in the blob store.
-            </p>
-          )}
-        </div>
+          </div>
+        ) : null}
       </div>
     </Panel>
   );
@@ -947,7 +920,7 @@ const CONNECTOR_COLUMNS: DataColumn<OperationsConnector>[] = [
     id: "event",
     header: "Last webhook",
     accessorFn: (c) => c.lastEventAt ?? 0,
-    meta: { priority: 3 },
+    meta: { priority: 3, defaultHidden: true },
     cell: ({ row }) =>
       row.original.lastEventAt !== null ? (
         <Timestamp at={ms(row.original.lastEventAt)} />
@@ -971,10 +944,7 @@ function ConnectorsPanel({
 }) {
   const [state, setState] = React.useState<TableState>(EMPTY_TABLE_STATE);
   return (
-    <Panel
-      title="Store connectors"
-      description="Each connector aggregated across every product that uses it."
-    >
+    <Panel title="Store connectors">
       {connectors === null ? (
         <Unavailable what="The connector status" />
       ) : (
@@ -991,6 +961,7 @@ function ConnectorsPanel({
             empty={
               <EmptyState
                 kind="first-run"
+                variant="inline"
                 title="No connectors in use"
                 description="A connector appears here once a product configures it in Distribution."
                 docs="/docs/admin/store-connections/"
@@ -1022,7 +993,7 @@ function RefusalsPanel({ op }: { op: PlatformOperations }) {
   return (
     <Panel
       title="Delta refusals"
-      description="Pairs the consumer declined to encode in the last 7 days, by reason."
+      description={refusals?.length ? "Last 7 days, by reason." : undefined}
     >
       {refusals === null ? (
         <Unavailable what="The refusal counts" />
@@ -1097,7 +1068,6 @@ export function Operations(): React.ReactElement {
           <HealthPill health={assessment.overall} size="md" />
         ) : undefined
       }
-      description="What the instance's background work is doing now: cron runs, consumers, queues, storage and store connectors."
       meta={
         <Switch
           checked={auto}
@@ -1216,6 +1186,7 @@ export function Operations(): React.ReactElement {
           <div className="space-y-6">
             <HeartbeatsPanel op={op} />
             <QueuesPanel op={op} />
+            <ProbesPanel op={op} />
           </div>
         ) : (
           <Panel title="Heartbeats">
@@ -1227,14 +1198,7 @@ export function Operations(): React.ReactElement {
       {op ? (
         <>
           <StoragePanel op={op} />
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <div className="min-w-0 lg:col-span-2">
-              <ConnectorsPanel connectors={op.connectors} />
-            </div>
-            <div className="min-w-0 space-y-6">
-              <ProbesPanel op={op} />
-            </div>
-          </div>
+          <ConnectorsPanel connectors={op.connectors} />
           <RefusalsPanel op={op} />
         </>
       ) : (

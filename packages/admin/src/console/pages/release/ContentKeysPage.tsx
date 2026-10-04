@@ -231,7 +231,7 @@ export function ContentKeysPage({
               </span>
             ) : null
           }
-          description="Keys the release key delegated to publish data-only packs under a scope. CI delegates and revokes them; this page reads them."
+          description="CI delegates and revokes these keys; this page only reads them."
           refetching={query.isFetching && !query.isPending}
         />
       }

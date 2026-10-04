@@ -104,8 +104,10 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         cell: ({ row }) => {
           const l = row.original;
           return (
-            <span className="inline-flex min-w-0 flex-col">
-              <span className="truncate">{l.name || "Unnamed license"}</span>
+            <span className="flex min-w-0 max-w-[22rem] flex-col">
+              <span className="truncate" title={l.name || undefined}>
+                {l.name || "Unnamed license"}
+              </span>
               {l.email ? (
                 <span className="truncate text-xs font-normal text-fg-muted">
                   {l.email}
@@ -142,6 +144,14 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         header: "Tier",
         accessorFn: (l) => tierLabel(l.tier),
         meta: { priority: 2 },
+        cell: ({ getValue }) => (
+          <span
+            className="block max-w-[14rem] truncate"
+            title={getValue() as string}
+          >
+            {getValue() as string}
+          </span>
+        ),
       },
       {
         id: "expires",
@@ -303,7 +313,6 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
               </span>
             ) : null
           }
-          description="Who holds this product, on what terms, and on which devices."
           primaryAction={
             <Button iconStart={<Plus />} onClick={() => setCreateOpen(true)}>
               Create license
@@ -348,8 +357,8 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
           mode: "multi",
           bulkActions: [
             {
+              // Reversible, so an outline button; its confirm states the consequence.
               label: "Disable…",
-              tone: "danger",
               onSelect: (rows) => setBulk({ enable: false, rows }),
             },
             {

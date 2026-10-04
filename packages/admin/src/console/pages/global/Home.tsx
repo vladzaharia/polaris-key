@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArrowRight, Github, Plus, Search } from "lucide-react";
+import { Github, Plus, Search } from "lucide-react";
 import type { ProductDetail, ServiceSlug } from "../../../api.js";
 import { formatCount, fromSeconds } from "../../../lib/format.js";
 import { label, PROVIDER_LABELS } from "../../../lib/labels.js";
@@ -14,9 +14,8 @@ import { Select } from "../../../ui/Select.js";
 import { ServiceGlyph, serviceLabel } from "../../../ui/ServiceBadge.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
-import { formatSessionEnd } from "../../shell/UserMenu.js";
 import { PageHeader } from "../../components/PageHeader.js";
-import { useMe, useProducts } from "../../data/hooks.js";
+import { useProducts } from "../../data/hooks.js";
 import { codecs, Link, useSearchParam } from "../../router.js";
 import { r } from "../../routes.js";
 import {
@@ -94,7 +93,6 @@ function sortProducts(
  * omitted rather than faked.
  */
 export function Home(): React.ReactElement {
-  const me = useMe();
   const products = useProducts();
   const [q, setQ] = useSearchParam("q", qCodec);
   const [sort, setSort] = useSearchParam("sort", sortCodec);
@@ -110,16 +108,9 @@ export function Home(): React.ReactElement {
 
   const loading = products.isPending;
   const failed = products.isError && !products.data;
-  const sessionEnds = me.data?.sessionExpiresAt;
-
   const description = loading
     ? "Loading your products"
-    : [
-        `${formatCount(list.length)} ${list.length === 1 ? "product" : "products"}`,
-        sessionEnds ? `session ends ${formatSessionEnd(sessionEnds)}` : null,
-      ]
-        .filter(Boolean)
-        .join(" · ");
+    : `${formatCount(list.length)} ${list.length === 1 ? "product" : "products"}`;
 
   const header = (
     <PageHeader
@@ -135,12 +126,15 @@ export function Home(): React.ReactElement {
           : undefined
       }
       primaryAction={
-        <Button asChild>
-          <Link to={r.productNew()}>
-            <Plus aria-hidden />
-            New product
-          </Link>
-        </Button>
+        // With no products, the empty state's own two calls to action are the way in.
+        loading || list.length > 0 ? (
+          <Button asChild>
+            <Link to={r.productNew()}>
+              <Plus aria-hidden />
+              New product
+            </Link>
+          </Button>
+        ) : undefined
       }
     />
   );
@@ -233,7 +227,11 @@ export function Home(): React.ReactElement {
             label="Need attention"
             loading={loading}
             value={formatCount(counts.size)}
-            secondary={`${formatCount(attention.length)} open ${attention.length === 1 ? "item" : "items"}`}
+            secondary={
+              attention.length > 0
+                ? `${formatCount(attention.length)} open ${attention.length === 1 ? "item" : "items"}`
+                : undefined
+            }
           />
           <StatTile
             label="Setup complete"
@@ -250,9 +248,8 @@ export function Home(): React.ReactElement {
     >
       <Panel
         title="All products"
-        description="Every product on this instance."
         action={
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:w-auto">
             <Input
               aria-label="Filter products"
               placeholder="Filter products"
@@ -260,14 +257,14 @@ export function Home(): React.ReactElement {
               clearable
               value={q}
               onValueChange={setQ}
-              className="w-56"
+              className="w-full sm:w-56"
             />
             <Select
               aria-label="Sort products"
               value={sort}
               onChange={(v) => setSort((v ?? "recent") as HomeSort)}
               options={SORTS.map((s) => ({ value: s, label: SORT_LABELS[s] }))}
-              className="w-44"
+              className="w-36 sm:w-44"
             />
           </div>
         }
@@ -310,8 +307,8 @@ export function Home(): React.ReactElement {
 }
 
 /**
- * One product on Home. The card is not a link (DSH-3): the name is, and "Open" says so for the
- * keyboard and screen readers.
+ * One product on Home. The name is the one link (DSH-3); its hit area stretches over the whole
+ * card (a pseudo-element), so a click anywhere opens the product without a second "Open" link.
  */
 function ProductCard({
   product: p,
@@ -325,14 +322,14 @@ function ProductCard({
   return (
     <article
       aria-label={name}
-      className="flex h-full flex-col gap-3 rounded-lg border border-border bg-surface-raised p-4"
+      className="relative flex h-full flex-col gap-3 rounded-lg border border-border bg-surface-raised p-4 hover:border-border-strong has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-focus"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="truncate text-base font-bold text-fg-strong">
             <Link
               to={r.overview(p.slug)}
-              className="underline-offset-4 hover:underline"
+              className="underline-offset-4 outline-hidden after:absolute after:inset-0 after:rounded-lg after:content-[''] hover:underline focus-visible:ring-0"
             >
               {name}
             </Link>
@@ -369,14 +366,6 @@ function ProductCard({
           </span>
         ) : null}
       </div>
-      <Link
-        to={r.overview(p.slug)}
-        aria-label={`Open ${name}`}
-        className="inline-flex items-center gap-1 self-end text-sm text-accent-fg underline-offset-4 hover:underline"
-      >
-        Open
-        <ArrowRight aria-hidden className="size-3.5" />
-      </Link>
     </article>
   );
 }

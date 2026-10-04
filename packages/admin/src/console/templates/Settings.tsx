@@ -2,8 +2,8 @@
  * T4 · Settings, a sectioned form (ADMIN.md §3): Services, Keys & secrets, Settings, Enrollment,
  * Access, Feed, Portal, and Platform → Settings (S-13 §9.1).
  *
- * - Sections are cards with a two-column field layout (label and help left, control right, at
- *   ≥ 1024 px; stacked below).
+ * - Sections are cards of settings rows: label and help left, the control flush right
+ *   (`SettingsRow`, `align="stretch"` for wide editors).
  * - "On this page" is an anchor rail, only with 3 or more sections and at ≥ 1280 px.
  * - **One form per independently saved resource.** A section (or a single row, as Platform →
  *   Settings does) owns its own `useAdminForm` and `SaveBar`; the bar names its scope. Never one
@@ -106,8 +106,8 @@ export function SettingsSection({
         tone === "danger" ? "border-danger-border" : "border-border",
       )}
     >
-      <div className="flex flex-wrap items-start justify-between gap-2 border-b border-border px-5 py-3">
-        <div className="min-w-0 space-y-0.5">
+      <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-3">
+        <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex flex-wrap items-center gap-2">
             <h2
               id={headingId}
@@ -125,7 +125,9 @@ export function SettingsSection({
           ) : null}
         </div>
         {actions ? (
-          <div className="flex shrink-0 items-center gap-2">{actions}</div>
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            {actions}
+          </div>
         ) : null}
       </div>
       <div className="divide-y divide-border">{children}</div>
@@ -135,14 +137,28 @@ export function SettingsSection({
 }
 
 /**
- * One setting: label and help on the left, the control (and its source) on the right at
- * ≥ 1024 px. `htmlFor` ties the label to a control; for a read-only fact, omit it.
+ * One setting: label and help on the left, the control (or read-only value) on the right.
+ *
+ * - `align="end"` (the default) is for compact controls and values: a switch, a pill, a short
+ *   input, a select, a link or a button. The control sits flush right, beside the label on every
+ *   width while it fits, and wraps under the label (still right-aligned) when it does not.
+ * - `align="stretch"` is for wide editors (code editors, paired inputs): label and help left,
+ *   the editor filling the right 3/5 at ≥ 1024 px, stacked full width below.
+ * - `align="block"` is for editors that need the card's full width (radio cards): the label
+ *   line on top, the editor full width under it.
+ *
+ * `aside` is a read-only status for the row ("Enforced now: …"), drawn flush right on the label
+ * line in `stretch` and `block` rows and before the control in `end` rows.
+ *
+ * `htmlFor` ties the label to a control; for a read-only fact, omit it.
  */
 export function SettingsRow({
   label,
   help,
   htmlFor,
   source,
+  align = "end",
+  aside,
   children,
   footer,
 }: {
@@ -151,31 +167,62 @@ export function SettingsRow({
   htmlFor?: string;
   /** A `SourceBadge` for this one value (Platform → Settings). */
   source?: React.ReactNode;
+  align?: "end" | "stretch" | "block";
+  aside?: React.ReactNode;
   children: React.ReactNode;
   /** A per-row `SaveBar` when the row saves on its own. */
   footer?: React.ReactNode;
 }): React.ReactElement {
-  return (
-    <div className="px-5 py-4">
-      <div className="grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-6">
-        <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            {htmlFor ? (
-              <label
-                htmlFor={htmlFor}
-                className="text-sm font-bold text-fg-strong"
-              >
-                {label}
-              </label>
-            ) : (
-              <span className="text-sm font-bold text-fg-strong">{label}</span>
-            )}
-            {source}
-          </div>
-          {help ? <p className="text-sm text-fg-muted">{help}</p> : null}
-        </div>
-        <div className="min-w-0 text-sm text-fg">{children}</div>
+  const labelBlock = (
+    <div className="min-w-0 space-y-1">
+      <div className="flex flex-wrap items-center gap-2">
+        {htmlFor ? (
+          <label htmlFor={htmlFor} className="text-sm font-bold text-fg-strong">
+            {label}
+          </label>
+        ) : (
+          <span className="text-sm font-bold text-fg-strong">{label}</span>
+        )}
+        {source}
       </div>
+      {help ? <p className="text-sm text-fg-muted">{help}</p> : null}
+    </div>
+  );
+  return (
+    <div className="px-5 py-4" data-align={align}>
+      {align === "block" ? (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
+            <div className="min-w-0 flex-[1_1_16rem]">{labelBlock}</div>
+            {aside ? (
+              <div className="ml-auto flex flex-wrap items-center justify-end gap-2 text-sm text-fg">
+                {aside}
+              </div>
+            ) : null}
+          </div>
+          <div className="min-w-0 text-sm text-fg">{children}</div>
+        </div>
+      ) : align === "stretch" ? (
+        <div className="grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-6">
+          <div className="min-w-0 space-y-2">
+            {labelBlock}
+            {aside ? (
+              <div className="flex flex-wrap items-center gap-2 text-sm text-fg">
+                {aside}
+              </div>
+            ) : null}
+          </div>
+          <div className="min-w-0 text-sm text-fg">{children}</div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
+          <div className="min-w-0 flex-[1_1_16rem]">{labelBlock}</div>
+          <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2 text-right text-sm text-fg">
+            {aside}
+            {children}
+          </div>
+        </div>
+      )}
       {footer}
     </div>
   );

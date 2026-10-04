@@ -191,6 +191,13 @@
     @apply outline-hidden ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
 
+  /* A menu's container takes focus when it opens; the highlighted item shows where focus is, so
+     the container itself draws no ring (it read as a selection border around the whole menu). */
+  [role="menu"]:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+
   /* A page heading takes focus after a navigation (ADMIN.md §5.6) so screen readers start there;
      it is not a control, so it draws no focus ring. */
   [data-page-title]:focus-visible,

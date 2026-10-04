@@ -11,6 +11,7 @@ import {
   type NavFeatures,
   type NavGroupKey,
   type NavPage,
+  type NavSection,
   type PageId,
   type SectionKey,
   type ServiceAccent,
@@ -20,6 +21,7 @@ import { Link } from "../router.js";
 import { globalPage, productPage } from "../routes.js";
 import type { GlobalPageId, ProductPageId } from "../nav.js";
 import { Tooltip } from "../../components/ui/index.js";
+import { PolarisMark } from "@polaris-key/brand/react";
 
 /**
  * Which sidebar sections are open (owner requirements, 2026-10-03).
@@ -122,7 +124,7 @@ export function Sidebar({
             <SidebarItem
               page={p}
               to={globalPage(p.page as GlobalPageId)}
-              active={activePage === p.page}
+              active={isActivePage(activePage, p.page)}
               rail={rail}
               onNavigate={onNavigate}
             />
@@ -156,6 +158,7 @@ export function Sidebar({
           groupKey={section.key}
           label={section.label}
           accent={section.accent}
+          glyph={section.glyph}
           items={navItems(section, features).map((p) => ({
             page: p,
             to: productPage(slug!, p.page as ProductPageId),
@@ -195,10 +198,18 @@ export function Sidebar({
   );
 }
 
+/** A page is active itself, or as the parent of the page shown (New product → Products). */
+function isActivePage(activePage: PageId | null, page: string): boolean {
+  return (
+    activePage === page || (activePage === "product-new" && page === "products")
+  );
+}
+
 function SidebarGroup({
   groupKey,
   label,
   accent,
+  glyph,
   items: links,
   activePage,
   active,
@@ -212,6 +223,8 @@ function SidebarGroup({
   groupKey: NavGroupKey;
   label: string;
   accent: ServiceAccent;
+  /** The section glyph, drawn for a collapsed section in the rail; Platform has none. */
+  glyph?: NavSection["glyph"];
   items: { page: NavPage; to: string }[];
   activePage: PageId | null;
   active: boolean;
@@ -227,7 +240,7 @@ function SidebarGroup({
       <SidebarItem
         page={p}
         to={to}
-        active={activePage === p.page}
+        active={isActivePage(activePage, p.page)}
         rail={rail}
         onNavigate={onNavigate}
         onPrefetch={onPrefetch}
@@ -237,6 +250,10 @@ function SidebarGroup({
 
   if (rail) {
     // Icons only: the section reads as an accent rule between groups, named for assistive tech.
+    // Only the active section shows its pages (the one-open-section rule); any other section is
+    // one icon, the section glyph (its first page's icon where it has none), named for the
+    // section and linking to that first page.
+    const first = links[0];
     return (
       <div data-service={accent} data-section={groupKey}>
         <div
@@ -244,7 +261,27 @@ function SidebarGroup({
           aria-label={label}
           className="mx-2 my-2 h-0.5 rounded-full bg-accent"
         />
-        <ul className="flex flex-col gap-0.5">{items}</ul>
+        <ul className="flex flex-col gap-0.5">
+          {active || !first ? (
+            items
+          ) : (
+            <li>
+              <SidebarItem
+                page={{
+                  ...first.page,
+                  label,
+                  icon: glyph && glyph !== "star-cut" ? glyph : first.page.icon,
+                }}
+                starCut={glyph === "star-cut"}
+                to={first.to}
+                active={false}
+                rail
+                onNavigate={onNavigate}
+                onPrefetch={onPrefetch}
+              />
+            </li>
+          )}
+        </ul>
       </div>
     );
   }
@@ -303,6 +340,7 @@ export function SidebarItem({
   to,
   active,
   rail,
+  starCut = false,
   onNavigate,
   onPrefetch,
 }: {
@@ -310,6 +348,8 @@ export function SidebarItem({
   to: string;
   active: boolean;
   rail: boolean;
+  /** Draw the Star Cut (the Distribution glyph) in place of the page icon. */
+  starCut?: boolean;
   onNavigate?: () => void;
   onPrefetch?: () => void;
 }): React.ReactElement {
@@ -332,12 +372,18 @@ export function SidebarItem({
           : "text-fg-muted hover:bg-hover hover:text-fg-strong",
       )}
     >
-      <Icon
-        aria-hidden
-        data-nav-icon=""
-        strokeWidth={2}
-        className={cn("size-4 shrink-0", active && "text-accent")}
-      />
+      {starCut ? (
+        <span aria-hidden data-nav-icon="" className="inline-flex shrink-0">
+          <PolarisMark kind="update" size={16} theme="mono" />
+        </span>
+      ) : (
+        <Icon
+          aria-hidden
+          data-nav-icon=""
+          strokeWidth={2}
+          className={cn("size-4 shrink-0", active && "text-accent")}
+        />
+      )}
       {rail ? null : <span className="truncate">{page.label}</span>}
     </Link>
   );

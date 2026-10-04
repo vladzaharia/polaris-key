@@ -316,7 +316,6 @@ export function Deployment(): React.ReactElement {
   const header = (
     <PageHeader
       title="Deployment"
-      description="The build this instance runs, how it got there, and the state of its database."
       freshness={
         deployment.dataUpdatedAt
           ? {
@@ -365,36 +364,21 @@ export function Deployment(): React.ReactElement {
             label="Release"
             loading={loading}
             value={d ? buildLabel(d.current) : undefined}
-            secondary={
-              d?.current.releaseTag && d.current.gitSha
-                ? `Commit ${d.current.gitSha.slice(0, 7)}`
-                : undefined
-            }
-          />
-          <StatTile
-            label="Environment"
-            loading={loading}
-            value={
-              d
-                ? d.current.environment
-                  ? label(ENVIRONMENT_LABELS, d.current.environment)
-                  : "Not set"
-                : undefined
-            }
           />
           <StatTile
             label="D1 migrations"
             loading={loading}
             value={migrationState}
             secondary={
-              d ? `Newest in this build: ${d.migrations.latest}` : undefined
+              d?.migrations.upToDate === null
+                ? "The migration table could not be read."
+                : undefined
             }
           />
           <StatTile
             label="Bindings"
             loading={loading}
             value={d ? `${present} of ${bindings.length}` : undefined}
-            secondary="Present in this Worker"
           />
         </>
       }
@@ -453,7 +437,6 @@ export function Deployment(): React.ReactElement {
                       {d.current.protocolVersion}
                     </span>
                   ),
-                  help: "The wire version every SDK negotiates.",
                 },
                 {
                   term: "Discovery document",
@@ -478,10 +461,7 @@ export function Deployment(): React.ReactElement {
         </Panel>
       }
       side={
-        <Panel
-          title="Worker bindings"
-          description="Presence only, never an id."
-        >
+        <Panel title="Worker bindings">
           {d ? (
             <ul className="space-y-2">
               {bindings.map(([name, ok]) => (
@@ -505,10 +485,7 @@ export function Deployment(): React.ReactElement {
         </Panel>
       }
     >
-      <Panel
-        title="Deploy history"
-        description="Each production deploy, as the deploy workflow recorded it."
-      >
+      <Panel title="Deploy history">
         <DataTable<PlatformDeploy>
           id="platform-deploys"
           caption="Deploy history"
@@ -530,8 +507,9 @@ export function Deployment(): React.ReactElement {
           empty={
             <EmptyState
               kind="first-run"
+              variant="inline"
               title="No deploys recorded"
-              description="The deploy workflow records a row here after each production deploy. A hand deploy or wrangler dev records none."
+              description="The deploy workflow records each production deploy. A hand deploy or wrangler dev records none."
               docs="/docs/admin/deploy/"
             />
           }
@@ -569,10 +547,7 @@ function MigrationsPanel({
   const newestFirst = applied ? [...applied].reverse() : [];
   const shown = all ? newestFirst : newestFirst.slice(0, 8);
   return (
-    <Panel
-      title="Database"
-      description="D1 migrations applied, and the indexes the build requires."
-    >
+    <Panel title="Database">
       {loading || !d ? (
         <div
           aria-hidden
@@ -589,27 +564,6 @@ function MigrationsPanel({
                     {d.migrations.latest}
                   </span>
                 ),
-              },
-              {
-                term: "State",
-                detail:
-                  d.migrations.upToDate === true ? (
-                    <StatusPill tone="success" size="sm">
-                      Up to date
-                    </StatusPill>
-                  ) : d.migrations.upToDate === false ? (
-                    <StatusPill tone="danger" size="sm">
-                      Behind
-                    </StatusPill>
-                  ) : (
-                    <StatusPill tone="neutral" size="sm">
-                      Unknown
-                    </StatusPill>
-                  ),
-                help:
-                  d.migrations.upToDate === null
-                    ? "The database's migration table could not be read."
-                    : undefined,
               },
               {
                 term: "Required indexes",
@@ -682,10 +636,7 @@ export function ActivityPanel(): React.ReactElement {
     activity.data,
   );
   return (
-    <Panel
-      title="Platform activity"
-      description="Admin actions that belong to no single product."
-    >
+    <Panel title="Platform activity">
       {activity.isPending ? (
         <div
           aria-hidden
@@ -700,6 +651,7 @@ export function ActivityPanel(): React.ReactElement {
       ) : more.items.length === 0 ? (
         <EmptyState
           kind="first-run"
+          variant="inline"
           title="No platform activity yet"
           description="Actions on the instance as a whole, such as a KEK re-seal sweep, are recorded here with who ran them."
         />

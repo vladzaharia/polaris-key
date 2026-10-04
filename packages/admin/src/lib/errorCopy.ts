@@ -344,7 +344,11 @@ export function errorCopy(
     };
   }
   return {
-    title: `The server refused this (${status}${code ? ` ${code}` : ""})`,
+    // A 5xx is the server failing, not a refusal; "refused" is for 4xx.
+    title:
+      status >= 500
+        ? `Something went wrong on the server (${status}${code ? ` ${code}` : ""})`
+        : `The server refused this (${status}${code ? ` ${code}` : ""})`,
     description: message ?? "Copy the details for a support report.",
     action: "copy-details",
     details,

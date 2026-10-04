@@ -263,11 +263,8 @@ describe("Keys & secrets → Signing keys (A-4)", () => {
     expect(screen.getByText("Staged")).toBeTruthy();
     expect(screen.getAllByText(/^Retired/).length).toBeGreaterThan(0);
     expect(screen.getByText(/Activatable in 4 min/)).toBeTruthy();
-    expect(
-      screen
-        .getByRole("button", { name: "Activate…" })
-        .getAttribute("aria-disabled"),
-    ).toBe("true");
+    // Not yet activatable: the countdown says when, and there is no dead button.
+    expect(screen.queryByRole("button", { name: "Activate…" })).toBeNull();
   });
 
   it("activates a staged key once its window has ended (L1)", async () => {

@@ -262,7 +262,10 @@ function LastResult({ c }: { c: OutletCredentialInfo }): React.ReactElement {
         <StatusPill tone="danger" size="sm">
           Failed
         </StatusPill>
-        <span className="max-w-64 truncate text-xs text-fg-muted">
+        <span
+          className="line-clamp-2 max-w-64 text-xs text-fg-muted"
+          title={c.lastError}
+        >
           {c.lastError}
         </span>
       </span>
@@ -310,7 +313,7 @@ export function CredentialsPage({
   const columns: DataColumn<OutletCredentialInfo>[] = [
     {
       id: "id",
-      header: "Id",
+      header: "ID",
       accessorKey: "id",
       meta: { priority: 1, primary: true, mono: true },
     },
@@ -422,7 +425,7 @@ export function CredentialsPage({
               </span>
             ) : undefined
           }
-          description="Store keys and the Sentry integration secret. Kept apart from product secrets, opened only by Distribution, every use audited, values never shown again."
+          description="Store keys and the Sentry secret. Values are never shown again."
           primaryAction={
             <Button
               iconStart={<Plus aria-hidden />}
@@ -852,7 +855,7 @@ function SetCredentialDrawer({
               {!rotate ? (
                 <FormField<string>
                   name="id"
-                  label="Credential id"
+                  label="Credential ID"
                   required
                   help="Lowercase, e.g. asc-team-key."
                   value={id}

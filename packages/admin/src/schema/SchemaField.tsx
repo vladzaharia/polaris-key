@@ -127,6 +127,8 @@ export function SchemaField({
           return (
             <Switch
               {...aria}
+              // Toggles sit at the row's right edge, under the pills.
+              className="self-end"
               checked={value === true}
               // A switch validates too (SCF-3): a schema can pin a boolean with `const`/`enum`.
               onCheckedChange={(checked) => emit(checked === true)}
@@ -139,6 +141,8 @@ export function SchemaField({
           return (
             <Select
               {...aria}
+              // A short pick needs a short control, not the full row.
+              className="w-full sm:max-w-xs"
               value={value == null ? "" : String(value)}
               placeholder="Choose…"
               options={options.map((o) => ({
@@ -157,6 +161,7 @@ export function SchemaField({
           return (
             <Input
               {...aria}
+              className="w-full sm:max-w-[12rem]"
               type="number"
               inputMode={schema.type === "integer" ? "numeric" : "decimal"}
               value={value === undefined || value === null ? "" : String(value)}

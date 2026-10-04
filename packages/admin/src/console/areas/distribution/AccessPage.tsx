@@ -29,6 +29,7 @@ import { RadioCards } from "../../../ui/RadioCards.js";
 import { SaveBar } from "../../../ui/SaveBar.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
 import { SourceBadge } from "../../../ui/SourceBadge.js";
+import { StatusPill } from "../../../ui/StatusPill.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { toast } from "../../../ui/toast.js";
 import { PageHeader } from "../../components/PageHeader.js";
@@ -108,7 +109,7 @@ export function AccessPage({ slug }: { slug: string }): React.ReactElement {
       header={
         <PageHeader
           title="Access"
-          description="Who may download each deliverable. The appcast, the download routes and the customer portal all read this one answer."
+          description="The appcast, the download routes and the customer portal all use this."
           refetching={access.isFetching && !access.isPending}
         />
       }
@@ -172,7 +173,6 @@ function AppAccess({
       <SettingsSection
         id="access-app"
         title="App"
-        description="The installer, the direct downloads and the appcast."
         source={
           <SourceBadge
             source={admin ? "admin" : "manifest"}
@@ -192,13 +192,23 @@ function AppAccess({
       >
         <SettingsRow
           label="Who may download"
-          help="An operator-set mode survives a resync until it is reverted."
+          align="block"
+          help={
+            admin
+              ? "Set in the console: it survives a resync until it is reverted."
+              : undefined
+          }
         >
-          <FormField<ReleaseAccess> name="mode" label="Mode" group>
+          <FormField<ReleaseAccess>
+            name="mode"
+            label="Who may download"
+            hideLabel
+            group
+          >
             {(field) => (
               <RadioCards<ReleaseAccess>
                 {...field}
-                columns={2}
+                columns={4}
                 options={modeOptions("app")}
               />
             )}
@@ -294,7 +304,15 @@ function PackAccess({
             `Pack · inherits the app's mode (${ACCESS_LABELS[access.app.mode] ?? access.app.mode}) until you set one`
           )
         }
-        source={row ? <SourceBadge source="admin" /> : undefined}
+        source={
+          row ? (
+            <SourceBadge source="admin" />
+          ) : (
+            <StatusPill tone="neutral" icon={false}>
+              Inherited
+            </StatusPill>
+          )
+        }
         footer={
           <>
             <SubmitError
@@ -305,15 +323,17 @@ function PackAccess({
           </>
         }
       >
-        <SettingsRow
-          label="Who may download"
-          help="The pack's payloads, files and deltas on the blob route."
-        >
-          <FormField<ReleaseAccess> name="mode" label="Mode" group>
+        <SettingsRow label="Who may download" align="block">
+          <FormField<ReleaseAccess>
+            name="mode"
+            label="Who may download"
+            hideLabel
+            group
+          >
             {(field) => (
               <RadioCards<ReleaseAccess>
                 {...field}
-                columns={2}
+                columns={4}
                 options={modeOptions("pack")}
               />
             )}
@@ -322,9 +342,10 @@ function PackAccess({
         {mode === "entitled" ? (
           <SettingsRow
             label="Gate"
-            help="The license flag a device must hold to fetch this pack. Renaming the flag moves who may download at once."
+            align="stretch"
+            help="The license flag a device must hold. Renaming the flag moves who may download at once."
           >
-            <FormField<string> name="entitlement" label="Flag">
+            <FormField<string> name="entitlement" label="Flag" hideLabel>
               {(field) =>
                 flagsAvailable ? (
                   <Combobox

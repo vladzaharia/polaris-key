@@ -307,7 +307,6 @@ export function StoreConnections(): React.ReactElement {
   const header = (
     <PageHeader
       title="Store connections"
-      description="The team credential for each store, the apps it can see, and which product each app belongs to."
       freshness={
         stores.dataUpdatedAt
           ? {
@@ -406,7 +405,12 @@ function StoreTiles({
               <StatusPill tone={health.tone} size="sm">
                 {health.label}
               </StatusPill>
-            ) : null}
+            ) : (
+              // The Worker does not list this store: say so rather than leave a blank tile.
+              <StatusPill tone="neutral" size="sm">
+                Not set up
+              </StatusPill>
+            )}
             {s ? (
               <span className="text-xs text-fg-muted">
                 {s.assignments.length === 1
@@ -472,13 +476,38 @@ function StoreDetail({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="min-w-0 lg:col-span-2">
-          <CredentialsPanel connection={s} />
+      {/* The Account card only when the store has shared settings to show. */}
+      <div
+        className={cn(
+          "grid grid-cols-1 items-start gap-6",
+          s.settings.length > 0 && "lg:grid-cols-3",
+        )}
+      >
+        <div
+          className={cn("min-w-0", s.settings.length > 0 && "lg:col-span-2")}
+        >
+          <CredentialsPanel
+            connection={s}
+            action={
+              configured && s.appsListing ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  loading={checking}
+                  onClick={() => void recheck()}
+                >
+                  <RefreshCw aria-hidden />
+                  Re-check
+                </Button>
+              ) : undefined
+            }
+          />
         </div>
-        <div className="min-w-0">
-          <SettingsPanel connection={s} />
-        </div>
+        {s.settings.length > 0 ? (
+          <div className="min-w-0">
+            <SettingsPanel connection={s} />
+          </div>
+        ) : null}
       </div>
 
       {outcome ? (
@@ -493,21 +522,8 @@ function StoreDetail({
         title="Apps"
         description={
           configured
-            ? `Every app the team ${primaryOf(s)?.label ?? "credential"} can see, and the product it belongs to.`
+            ? undefined
             : "The apps appear once the store has a team credential."
-        }
-        action={
-          configured && s.appsListing ? (
-            <Button
-              variant="outline"
-              size="sm"
-              loading={checking}
-              onClick={() => void recheck()}
-            >
-              <RefreshCw aria-hidden />
-              Re-check
-            </Button>
-          ) : undefined
         }
       >
         {!configured ? (
@@ -541,13 +557,16 @@ function primaryOf(
 
 function CredentialsPanel({
   connection: s,
+  action,
 }: {
   connection: PlatformStoreConnection;
+  action?: React.ReactNode;
 }): React.ReactElement {
   return (
     <Panel
       title="Credentials"
-      description="Presence, account and last check. Keys are never shown."
+      description="Keys are never shown."
+      action={action}
     >
       <ul className="divide-y divide-border">
         {s.credentials.map((c) => (
@@ -622,7 +641,6 @@ function CredentialRow({
     items.push({
       term: "Products assigned",
       detail: formatCount(c.pins),
-      help: `Each pins one ${PIN_FIELD_LABELS[c.pinField] ?? c.pinField}.`,
     });
   }
 
@@ -682,10 +700,7 @@ function SettingsPanel({
   connection: PlatformStoreConnection;
 }): React.ReactElement {
   return (
-    <Panel
-      title="Account"
-      description="Shared store settings every product falls back to."
-    >
+    <Panel title="Account" description="Every product falls back to these.">
       {s.settings.length === 0 ? (
         <p className="text-sm text-fg-muted">
           {s.label} has no shared settings.

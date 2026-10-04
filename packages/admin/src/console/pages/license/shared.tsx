@@ -70,7 +70,7 @@ const DAY_MS = 86_400_000;
 
 export const LICENSE_STATE_LABELS: Record<LicenseState, string> = {
   active: "Active",
-  expiring: `Expiring ≤${EXPIRING_DAYS} d`,
+  expiring: "Expiring soon",
   expired: "Expired",
   disabled: "Disabled",
 };
@@ -194,7 +194,7 @@ export function effectivePolicy(
   if (input.maxOfflineDays != null) {
     lines.push({
       label: "Offline",
-      value: `${input.maxOfflineDays} d`,
+      value: `${input.maxOfflineDays} days`,
       source: "license",
       from: "this license",
     });
@@ -202,7 +202,7 @@ export function effectivePolicy(
     const d = product?.defaultMaxOfflineDays;
     lines.push({
       label: "Offline",
-      value: d === undefined ? "—" : `${d} d`,
+      value: d === undefined ? "—" : `${d} days`,
       source: "product",
       from: "product default",
     });

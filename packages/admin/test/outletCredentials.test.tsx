@@ -65,7 +65,7 @@ describe("Distribution → Outlet credentials", () => {
   it("says Sentry is one of the kinds (OUT-7)", async () => {
     bootWith(HASH);
     await table();
-    expect(screen.getByText(/Sentry integration secret/)).toBeTruthy();
+    expect(screen.getByText(/the Sentry secret/)).toBeTruthy();
   });
 
   it("re-pins a credential without its value (P5-02f)", async () => {
@@ -143,10 +143,10 @@ describe("Distribution → Outlet credentials", () => {
       name: "Set an outlet credential",
     });
     // Kind comes first; nothing else until it is chosen.
-    expect(within(drawer).queryByLabelText(/Credential id/)).toBeNull();
+    expect(within(drawer).queryByLabelText(/Credential ID/)).toBeNull();
     await pick(drawer, /Kind/, /App Store Connect API key/);
     await userEvent.type(
-      within(drawer).getByLabelText(/Credential id/),
+      within(drawer).getByLabelText(/Credential ID/),
       "asc-new",
     );
     await userEvent.click(
@@ -204,7 +204,7 @@ describe("Distribution → Outlet credentials", () => {
     });
     await pick(drawer, /Kind/, /Google service account/);
     await userEvent.type(
-      within(drawer).getByLabelText(/Credential id/),
+      within(drawer).getByLabelText(/Credential ID/),
       "play-2",
     );
     await userEvent.type(within(drawer).getByLabelText(/JSON key file/), "{{}");
@@ -244,7 +244,7 @@ describe("Distribution → Outlet credentials", () => {
     });
     await pick(drawer, /Kind/, /Sentry internal integration/);
     await userEvent.type(
-      within(drawer).getByLabelText(/Credential id/),
+      within(drawer).getByLabelText(/Credential ID/),
       "asc-team-key",
     );
     expect(
@@ -291,7 +291,7 @@ describe("Distribution → Outlet credentials", () => {
     });
     await pick(drawer, /Kind/, /App Store webhook secret/);
     await userEvent.type(
-      within(drawer).getByLabelText(/Credential id/),
+      within(drawer).getByLabelText(/Credential ID/),
       "asc-hook",
     );
     expect(within(drawer).queryByLabelText(/^Secret/)).toBeNull();
@@ -369,7 +369,7 @@ describe("Distribution → Outlet credentials", () => {
       expect(within(asc).getByText("Connected")).toBeTruthy();
       const ms = screen.getByRole("region", { name: "Microsoft Store" });
       expect(within(ms).getByText(/Not running/)).toBeTruthy();
-      expect(within(ms).getByText(/declare an ms-store outlet/)).toBeTruthy();
+      expect(within(ms).getByText(/Declare an ms-store outlet/)).toBeTruthy();
     });
 
     it("says when App Store Connect uses the platform's team key (A-16)", async () => {

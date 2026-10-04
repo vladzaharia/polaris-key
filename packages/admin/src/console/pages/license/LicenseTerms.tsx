@@ -207,7 +207,7 @@ export function LicenseTerms({
         description={
           currentTier
             ? `From tier “${currentTier.label || currentTier.id}”, plus what this license sets itself.`
-            : "What this license grants. A blank field uses the tier's or the product's default."
+            : "A blank field uses the tier's or the product's default."
         }
       >
         <div className="grid gap-5 px-5 py-4 lg:grid-cols-2">
@@ -348,7 +348,7 @@ export function LicenseTerms({
         <div className="px-5 py-4">
           <EffectivePolicy
             title="Effective policy"
-            description="What devices on this license receive, with your unsaved changes."
+            description="Includes your unsaved changes."
             lines={policy}
           />
         </div>

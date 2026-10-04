@@ -87,10 +87,10 @@ export const CHANNEL_LABELS: Record<string, string> = {
 };
 
 export const CHANNEL_DESCRIPTIONS: Record<string, string> = {
-  stable: "General releases.",
-  beta: "Pre-releases, plus everything on stable.",
-  pr: "Every PR build.",
-  dev: "Bypasses channel gating, for development devices.",
+  stable: "General releases",
+  beta: "Pre-releases, plus everything on stable",
+  pr: "Every PR build",
+  dev: "Skips the version window and channel checks",
 };
 
 /** Outlet kinds (Distribution). */

@@ -426,9 +426,12 @@ function ReadinessSection({
             Clear override…
           </Button>
         ) : canOverride ? (
+          // An escape hatch, not the drawer's headline action: outlined, danger text; the
+          // reason-required confirm is the safety.
           <Button
             size="sm"
-            variant="danger"
+            variant="outline"
+            className="text-danger"
             onClick={() => setOverriding(true)}
           >
             Override…

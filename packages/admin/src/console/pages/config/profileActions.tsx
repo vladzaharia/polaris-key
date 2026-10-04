@@ -120,7 +120,7 @@ export function CreateProfileDrawer({
       onOpenChange={onOpenChange}
       dismissible={!saving}
       title="New profile"
-      description="A named set of config, secret and flag values that tiers and licenses inherit. Its values are set on its own page next."
+      description="Its values are set on its own page next."
     >
       <form
         className="contents"
@@ -148,7 +148,7 @@ export function CreateProfileDrawer({
                   autoFocus
                   autoComplete="off"
                   spellCheck={false}
-                  placeholder="base-pro"
+                  placeholder="e.g. base-pro"
                   value={id}
                   onChange={(e) => {
                     setId(e.target.value);
@@ -166,7 +166,7 @@ export function CreateProfileDrawer({
               {(f) => (
                 <Input
                   {...f}
-                  placeholder="Base (Pro)"
+                  placeholder="e.g. Base (Pro)"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />

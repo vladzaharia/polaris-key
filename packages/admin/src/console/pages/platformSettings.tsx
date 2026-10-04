@@ -31,6 +31,7 @@ import {
   type PlatformSettingsView,
   type PlatformSwitchSetting,
 } from "../../api.js";
+import { cn } from "../../lib/cn.js";
 import { errorCopy } from "../../lib/errorCopy.js";
 import {
   formatCount,
@@ -228,7 +229,6 @@ export function PlatformSettingsPage(): React.ReactElement {
   const header = (
     <PageHeader
       title="Settings"
-      description="Instance-wide settings: the background jobs you can change here, and the deploy-time values, keyring and secrets this deployment runs with."
       freshness={
         query.dataUpdatedAt
           ? {
@@ -261,9 +261,27 @@ export function PlatformSettingsPage(): React.ReactElement {
   const deploy = new Map(view.deployTime.map((d) => [d.name, d]));
   const secrets = new Map(view.secrets.map((s) => [s.name, s.set]));
   const kekWarning = view.warnings.find((w) => w.code === "kek_id_set");
+  const showIdentity =
+    IDENTITY_VARS.some((n) => deploy.has(n)) ||
+    view.constants.some((c) => c.name === "ADMIN_SESSION_TTL_SECONDS");
+  const showDelivery = DELIVERY_VARS.some((n) => deploy.has(n));
+  const showEmail = deploy.has("PORTAL_EMAIL_FROM");
+  const showLimits = view.constants.some(
+    (c) => c.name !== "ADMIN_SESSION_TTL_SECONDS",
+  );
+  // The rail lists only the sections this deployment has something to show in.
+  const hidden = new Set([
+    ...(showIdentity ? [] : ["platform-identity"]),
+    ...(showDelivery ? [] : ["platform-delivery"]),
+    ...(showEmail ? [] : ["platform-email"]),
+    ...(showLimits ? [] : ["platform-limits"]),
+  ]);
 
   return (
-    <SettingsTemplate header={header} sections={SECTIONS}>
+    <SettingsTemplate
+      header={header}
+      sections={SECTIONS.filter((s) => !hidden.has(s.id))}
+    >
       {view.warnings.length > 0 ? (
         <div className="space-y-3" aria-label="Warnings" role="region">
           {view.warnings.map((w) => (
@@ -311,40 +329,37 @@ export function PlatformSettingsPage(): React.ReactElement {
         )}
       </SettingsSection>
 
-      <SettingsSection
-        id="platform-identity"
-        title="Identity & access"
-        description="Who can sign in to this console. Deploy-time: these change only with a deploy, so a console session can never widen its own access."
-      >
-        <DeployRow item={deploy.get("PLATFORM_ADMIN_GROUP")} />
-        <DeployRow item={deploy.get("ADMIN_OIDC_ISSUER")} />
-        <DeployRow item={deploy.get("ADMIN_OIDC_CLIENT_ID")} />
-        <DeployRow item={deploy.get("PLATFORM_OIDC_ISSUER")} />
-        <DeployRow item={deploy.get("PLATFORM_OIDC_CLIENT_ID")} />
-        <DeployRow item={deploy.get("OIDC_ISSUER_ALLOWLIST")} />
-        <ConstantRow view={view} name="ADMIN_SESSION_TTL_SECONDS" />
-      </SettingsSection>
+      {/* A section none of whose values this deployment reports is left out, not drawn empty. */}
+      {showIdentity ? (
+        <SettingsSection
+          id="platform-identity"
+          title="Identity & access"
+          description="Deploy-time: a console session can never widen its own access."
+        >
+          {IDENTITY_VARS.map((n) => (
+            <DeployRow key={n} item={deploy.get(n)} />
+          ))}
+          <ConstantRow view={view} name="ADMIN_SESSION_TTL_SECONDS" />
+        </SettingsSection>
+      ) : null}
 
-      <SettingsSection
-        id="platform-delivery"
-        title="Delivery"
-        description="Where this deployment serves from and stores bytes. Deploy-time."
-      >
-        <DeployRow item={deploy.get("PKEY_ENVIRONMENT")} />
-        <DeployRow item={deploy.get("CONSOLE_ORIGIN")} />
-        <DeployRow item={deploy.get("BLOB_ORIGIN")} />
-        <DeployRow item={deploy.get("BLOBS_BUCKET_NAME")} />
-        <DeployRow item={deploy.get("R2_ACCOUNT_ID")} />
-        <DeployRow item={deploy.get("GITHUB_APP_ID")} />
-      </SettingsSection>
+      {showDelivery ? (
+        <SettingsSection id="platform-delivery" title="Delivery">
+          {DELIVERY_VARS.map((n) => (
+            <DeployRow key={n} item={deploy.get(n)} />
+          ))}
+        </SettingsSection>
+      ) : null}
 
-      <SettingsSection
-        id="platform-email"
-        title="Email"
-        description="The customer portal's sign-in email. The email binding's allowed senders still restrict it."
-      >
-        <DeployRow item={deploy.get("PORTAL_EMAIL_FROM")} />
-      </SettingsSection>
+      {showEmail ? (
+        <SettingsSection
+          id="platform-email"
+          title="Email"
+          description="The email binding's allowed senders still restrict it."
+        >
+          <DeployRow item={deploy.get("PORTAL_EMAIL_FROM")} />
+        </SettingsSection>
+      ) : null}
 
       <LimitsSection view={view} />
 
@@ -813,34 +828,31 @@ function SwitchSettingRow({
           onRevert={() => run(writes.revert())}
         />
       }
-    >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <Switch
-            id={id}
-            checked={setting.value === "on"}
-            disabled={locked || busy}
-            onCheckedChange={(on) => run(writes.change(on ? "on" : "off"))}
+      footer={
+        <>
+          <RowNotes setting={setting} />
+          <ConflictNote
+            setting={setting}
+            state={writes.conflict}
+            reloading={writes.reloading}
+            onReload={() => void writes.reload()}
+            onDismiss={writes.clearConflict}
           />
-          <span className="text-sm text-fg-strong" aria-hidden>
-            {setting.value === "on" ? "On" : "Off"}
-          </span>
-        </div>
-        <RevertButton
-          setting={setting}
-          disabled={!storeAvailable || busy}
-          onRevert={() => run(writes.revert())}
-        />
-      </div>
-      <RowNotes setting={setting} />
-      <ConflictNote
+          {writes.dialog}
+        </>
+      }
+    >
+      <RevertButton
         setting={setting}
-        state={writes.conflict}
-        reloading={writes.reloading}
-        onReload={() => void writes.reload()}
-        onDismiss={writes.clearConflict}
+        disabled={!storeAvailable || busy}
+        onRevert={() => run(writes.revert())}
       />
-      {writes.dialog}
+      <Switch
+        id={id}
+        checked={setting.value === "on"}
+        disabled={locked || busy}
+        onCheckedChange={(on) => run(writes.change(on ? "on" : "off"))}
+      />
     </SettingsRow>
   );
 }
@@ -904,64 +916,84 @@ function IntegerSettingRow({
     ? `${formatNumber(min)} to ${formatNumber(max)} MiB. It can only lower the measured ${formatNumber(max)} MiB ceiling.`
     : `${formatCount(setting.min)} to ${formatCount(setting.max)} days.`;
   return (
-    <SettingsRow
-      label={setting.label}
-      help={<SettingHelp setting={setting} />}
-      source={
-        <SettingSource
-          setting={setting}
-          onRevert={() => void writes.revert().catch(() => undefined)}
-        />
-      }
-    >
-      <Form form={form} id={id} aria-label={`${setting.label} value`}>
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <FormField<number | null>
-            name="value"
-            label={`Value (${unitLabel})`}
-            help={bounds}
-            disabled={!storeAvailable}
-            className="min-w-48 max-w-xs flex-1"
-          >
-            {(f) => (
-              <NumberInput
-                {...f}
-                unit={unitLabel}
-                min={min}
-                max={max}
-                step={bytes ? "any" : 1}
-                integer={!bytes}
-              />
-            )}
-          </FormField>
-          <RevertButton
+    <Form form={form} id={id} aria-label={`${setting.label} value`}>
+      <SettingsRow
+        label={setting.label}
+        help={<SettingHelp setting={setting} />}
+        source={
+          <SettingSource
             setting={setting}
-            disabled={!storeAvailable}
             onRevert={() => void writes.revert().catch(() => undefined)}
           />
-        </div>
-        <SaveBar form={form} section={setting.label} saveLabel="Save" />
-      </Form>
-      {bytes ? (
-        <p className="mt-2 text-xs text-fg-muted">
-          In effect: {formatCount(setting.value)} bytes.
-        </p>
-      ) : null}
-      <RowNotes setting={setting} />
-      <ConflictNote
-        setting={setting}
-        state={writes.conflict}
-        reloading={writes.reloading}
-        onReload={() => void writes.reload()}
-        onDismiss={writes.clearConflict}
-        draft={draftText}
-      />
-      {writes.dialog}
-    </SettingsRow>
+        }
+        footer={
+          <>
+            <SaveBar form={form} section={setting.label} saveLabel="Save" />
+            {bytes ? (
+              <p className="mt-2 text-xs text-fg-muted">
+                In effect: {formatCount(setting.value)} bytes.
+              </p>
+            ) : null}
+            <RowNotes setting={setting} />
+            <ConflictNote
+              setting={setting}
+              state={writes.conflict}
+              reloading={writes.reloading}
+              onReload={() => void writes.reload()}
+              onDismiss={writes.clearConflict}
+              draft={draftText}
+            />
+            {writes.dialog}
+          </>
+        }
+      >
+        <RevertButton
+          setting={setting}
+          disabled={!storeAvailable}
+          onRevert={() => void writes.revert().catch(() => undefined)}
+        />
+        <FormField<number | null>
+          name="value"
+          label={`${setting.label} (${unitLabel})`}
+          hideLabel
+          help={bounds}
+          disabled={!storeAvailable}
+          className="w-48 text-left"
+        >
+          {(f) => (
+            <NumberInput
+              {...f}
+              unit={unitLabel}
+              min={min}
+              max={max}
+              step={bytes ? "any" : 1}
+              integer={!bytes}
+            />
+          )}
+        </FormField>
+      </SettingsRow>
+    </Form>
   );
 }
 
 // ── Read-only inventory ──────────────────────────────────────────────────────────────────────
+
+const IDENTITY_VARS = [
+  "PLATFORM_ADMIN_GROUP",
+  "ADMIN_OIDC_ISSUER",
+  "ADMIN_OIDC_CLIENT_ID",
+  "PLATFORM_OIDC_ISSUER",
+  "PLATFORM_OIDC_CLIENT_ID",
+  "OIDC_ISSUER_ALLOWLIST",
+];
+const DELIVERY_VARS = [
+  "PKEY_ENVIRONMENT",
+  "CONSOLE_ORIGIN",
+  "BLOB_ORIGIN",
+  "BLOBS_BUCKET_NAME",
+  "R2_ACCOUNT_ID",
+  "GITHUB_APP_ID",
+];
 
 const DEPLOY_LABELS: Record<
   string,
@@ -969,7 +1001,7 @@ const DEPLOY_LABELS: Record<
 > = {
   PKEY_ENVIRONMENT: {
     label: "Environment",
-    help: "Names this deployment; the console badge shows it.",
+    help: "",
     unset: "Not set",
   },
   PLATFORM_ADMIN_GROUP: {
@@ -1052,11 +1084,13 @@ function DeployRow({
       help={
         <>
           {meta.help}
-          <span className="mt-1 block font-mono text-xs">{item.name}</span>
+          <span className={cn("block font-mono text-xs", meta.help && "mt-1")}>
+            {item.name}
+          </span>
         </>
       }
     >
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
         {value === null || (Array.isArray(value) && value.length === 0) ? (
           <span className="text-fg-muted">{meta.unset}</span>
         ) : Array.isArray(value) ? (
@@ -1073,7 +1107,9 @@ function DeployRow({
         ) : item.name === "PKEY_ENVIRONMENT" ? (
           <span>{labelOf(ENVIRONMENT_LABELS, value)}</span>
         ) : (
-          <span className="break-all font-mono text-xs text-fg">{value}</span>
+          <span className="font-mono text-xs text-fg [overflow-wrap:anywhere]">
+            {value}
+          </span>
         )}
       </div>
     </SettingsRow>
@@ -1145,16 +1181,17 @@ function LimitsSection({
   view,
 }: {
   view: PlatformSettingsView;
-}): React.ReactElement {
+}): React.ReactElement | null {
   const [open, setOpen] = React.useState(false);
   const shown = view.constants.filter(
     (c) => c.name !== "ADMIN_SESSION_TTL_SECONDS",
   );
+  if (shown.length === 0) return null;
   return (
     <SettingsSection
       id="platform-limits"
       title="Limits"
-      description="Retention and storage bounds built into this build. They change only through a code change, where review sees them."
+      description="Built into this build: they change only through a code change, where review sees them."
       actions={
         <Button
           size="sm"
@@ -1217,7 +1254,7 @@ function KeyringSection({
     <SettingsSection
       id="platform-keyring"
       title="Keyring"
-      description="The platform key-encryption key seals every product's signing key and secrets. Read-only here: rotation is a deploy-time change, and the runbook walks through it with the re-seal sweep."
+      description="Read-only here: rotation is a deploy-time change; the runbook walks through it."
       actions={
         <a
           href="/docs/admin/kek/"
@@ -1238,24 +1275,17 @@ function KeyringSection({
           </Callout>
         </div>
       ) : null}
-      <SettingsRow
-        label="Key configuration"
-        help="Which KEK secrets this deployment has. Presence only."
-      >
+      <SettingsRow label="Key configuration" align="block">
         <ul className="space-y-1.5">
           <PresenceItem name="PLATFORM_KEK_KEYS" set={ring} />
           <PresenceItem name="PLATFORM_KEK" set={single} />
           <li className="flex flex-wrap items-center justify-between gap-2">
             <span className="font-mono text-xs">PLATFORM_KEK_ACTIVE</span>
-            <span className="font-mono text-xs text-fg">
-              {typeof activeVar === "string" ? activeVar : "Not set"}
-            </span>
+            <PresenceValue value={activeVar} />
           </li>
           <li className="flex flex-wrap items-center justify-between gap-2">
             <span className="font-mono text-xs">PLATFORM_KEK_ID</span>
-            <span className="font-mono text-xs text-fg">
-              {typeof idVar === "string" ? idVar : "Not set"}
-            </span>
+            <PresenceValue value={idVar} />
           </li>
         </ul>
       </SettingsRow>
@@ -1281,16 +1311,10 @@ function KeyringSection({
         </div>
       ) : (
         <>
-          <SettingsRow
-            label="Active key"
-            help="New values are sealed under it."
-          >
+          <SettingsRow label="Active key">
             <span className="font-mono text-xs">{k.active}</span>
           </SettingsRow>
-          <SettingsRow
-            label="Keys in the ring"
-            help="Every key the Worker can open values with."
-          >
+          <SettingsRow label="Keys in the ring" align="block">
             <ul className="space-y-1.5" aria-label="Keys in the ring">
               {[...new Set([...k.kids, ...perKid.keys()])].map((kid) => {
                 const inRing = k.kids.includes(kid);
@@ -1323,10 +1347,7 @@ function KeyringSection({
               })}
             </ul>
           </SettingsRow>
-          <SettingsRow
-            label="Re-seal progress"
-            help="Values still sealed under an older key."
-          >
+          <SettingsRow label="Re-seal progress">
             {k.unopenable > 0 ? (
               <Callout tone="danger" title="Values cannot be opened">
                 {formatCount(k.unopenable)} sealed{" "}
@@ -1344,10 +1365,7 @@ function KeyringSection({
             )}
           </SettingsRow>
           {groups.length > 0 ? (
-            <SettingsRow
-              label="Sealed values"
-              help="Per kind of value, per key."
-            >
+            <SettingsRow label="Sealed values" align="block">
               <ul className="space-y-1.5">
                 {groups.map(([group, counts]) => (
                   <li
@@ -1368,6 +1386,17 @@ function KeyringSection({
         </>
       )}
     </SettingsSection>
+  );
+}
+
+/** A deploy var's value in the keyring list: the value, or the same "Not set" pill as a secret. */
+function PresenceValue({ value }: { value: unknown }): React.ReactElement {
+  return typeof value === "string" ? (
+    <span className="font-mono text-xs text-fg">{value}</span>
+  ) : (
+    <StatusPill tone="neutral" size="sm">
+      Not set
+    </StatusPill>
   );
 }
 
@@ -1427,7 +1456,7 @@ function SecretsSection({
     <SettingsSection
       id="platform-secrets"
       title="Secrets"
-      description="Whether each Worker secret is set. Values are never shown: not a length, not a hash. Set them with wrangler secret put."
+      description="Values are never shown: not a length, not a hash. Set them with wrangler secret put."
     >
       <div className="px-5 py-4">
         <ul className="divide-y divide-border" aria-label="Worker secrets">
@@ -1546,11 +1575,7 @@ function HistorySection({
     return `${formatSettingValue(s, before)} → ${formatSettingValue(s, after)}`;
   };
   return (
-    <SettingsSection
-      id="platform-history"
-      title="History"
-      description="Every change to a background-job setting, newest first, from the platform trail."
-    >
+    <SettingsSection id="platform-history" title="History">
       <div className="px-5 py-4">
         {history.isPending ? (
           <div
@@ -1565,6 +1590,7 @@ function HistorySection({
           />
         ) : items.length === 0 && !cursor ? (
           <EmptyState
+            variant="inline"
             kind="first-run"
             title="No setting changes yet"
             description="Each change made here is recorded with who made it and the value before and after."

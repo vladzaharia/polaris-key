@@ -121,7 +121,6 @@ export function EnrollmentPage({ slug }: { slug: string }): React.ReactElement {
       header={
         <PageHeader
           title="Enrollment"
-          description="How devices register, and how tightly a seat is bound to the machine that took it."
           refetching={policyQ.isFetching && !policyQ.isPending}
         />
       }
@@ -133,14 +132,19 @@ export function EnrollmentPage({ slug }: { slug: string }): React.ReactElement {
     >
       <RegistrationSection slug={slug} />
       {policyQ.isPending ? (
-        <section
-          aria-busy="true"
-          aria-label="Loading the fingerprint policy"
-          className="space-y-3 rounded-lg border border-border bg-surface-raised p-5"
-        >
-          <Skeleton className="h-5 w-40" />
-          <Skeleton className="h-24 w-full" />
-        </section>
+        <>
+          <section
+            aria-busy="true"
+            aria-label="Loading the fingerprint policy"
+            className="space-y-3 rounded-lg border border-border bg-surface-raised p-5"
+          >
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-24 w-full" />
+          </section>
+          <ProbesShell busy>
+            <Skeleton className="h-16 w-full" />
+          </ProbesShell>
+        </>
       ) : policyQ.data ? (
         <>
           <PolicySection
@@ -151,17 +155,52 @@ export function EnrollmentPage({ slug }: { slug: string }): React.ReactElement {
           <ProbesSection slug={slug} probes={policyQ.data.policy.probes} />
         </>
       ) : (
-        <SettingsSection id="enrollment-fingerprint" title="Fingerprint policy">
-          <div className="p-5">
-            <ErrorState
-              error={policyQ.error}
-              onRetry={() => void policyQ.refetch()}
-              compact
-            />
-          </div>
-        </SettingsSection>
+        <>
+          <SettingsSection
+            id="enrollment-fingerprint"
+            title="Fingerprint policy"
+          >
+            <div className="p-5">
+              <ErrorState
+                error={policyQ.error}
+                onRetry={() => void policyQ.refetch()}
+                compact
+              />
+            </div>
+          </SettingsSection>
+          <ProbesShell>
+            <p className="text-sm text-fg-muted">
+              Probes load with the fingerprint policy.
+            </p>
+          </ProbesShell>
+        </>
       )}
     </SettingsTemplate>
+  );
+}
+
+/**
+ * The Probes card while the policy it comes from is loading or failed, so the "On this page"
+ * anchor always has a target. A plain card, not a labelled region: the real section replaces it.
+ */
+function ProbesShell({
+  busy = false,
+  children,
+}: {
+  busy?: boolean;
+  children: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <div
+      id="enrollment-probes"
+      aria-busy={busy || undefined}
+      className="scroll-mt-20 rounded-lg border border-border bg-surface-raised"
+    >
+      <p className="border-b border-border px-5 py-3 text-base font-bold text-fg-strong">
+        Probes
+      </p>
+      <div className="px-5 py-4">{children}</div>
+    </div>
   );
 }
 
@@ -176,7 +215,6 @@ function RegistrationSection({ slug }: { slug: string }): React.ReactElement {
     <SettingsSection
       id="enrollment-registration"
       title="Registration"
-      description="Whether a device can get a token at all, and on what terms. It follows the services this product runs."
       actions={
         <Button variant="outline" size="sm" asChild>
           <Link to={r.services(slug)}>Change in Services</Link>
@@ -194,10 +232,7 @@ function RegistrationSection({ slug }: { slug: string }): React.ReactElement {
               {label(data.effectiveRegistration)}
             </StatusPill>
           </SettingsRow>
-          <SettingsRow
-            label="Declared"
-            help="A declared policy overrides the one the services imply."
-          >
+          <SettingsRow label="Declared">
             {data.registration ? (
               label(data.registration)
             ) : (
@@ -254,7 +289,6 @@ function PolicySection({
       <SettingsSection
         id="enrollment-fingerprint"
         title="Fingerprint policy"
-        description="Hardware components arrive hashed on the device; the server decides how much drift a seat survives."
         source={
           <SourceBadge
             source={source}
@@ -336,6 +370,9 @@ function ProbesSection({
         header: "Probe",
         accessorFn: (p) => p.label || p.id,
         meta: { priority: 1 },
+        cell: ({ getValue }) => (
+          <span className="whitespace-nowrap">{getValue() as string}</span>
+        ),
       },
       {
         id: "id",
@@ -348,7 +385,8 @@ function ProbesSection({
           id: os,
           header: { macos: "macOS", windows: "Windows", linux: "Linux" }[os],
           accessorFn: (p) => p[os] ?? "",
-          meta: { priority: 2, mono: true },
+          // Priority 1: the paths are the probe's content, so phone cards show them too.
+          meta: { priority: 1, mono: true },
           cell: ({ getValue }) =>
             (getValue() as string) || (
               <span className="font-sans text-fg-muted">—</span>
@@ -364,9 +402,7 @@ function ProbesSection({
       title="Probes"
       description={
         <>
-          Presence checks each device answers: a companion app, a driver, a
-          plugin host. Probes come from{" "}
-          <code className="font-mono text-xs">.pkey/product</code>; each
+          From <code className="font-mono text-xs">.pkey/product</code>; each
           device's answers show in its drawer.
         </>
       }
@@ -384,7 +420,7 @@ function ProbesSection({
         </Button>
       }
     >
-      <div className="p-4">
+      <div className="px-5 py-4">
         <DataTable<FingerprintProbeDto>
           id="probes"
           caption="Probes"
@@ -397,6 +433,7 @@ function ProbesSection({
           empty={
             <EmptyState
               kind="first-run"
+              variant="inline"
               title="No probes declared"
               description="Add probes to the product manifest and resync to collect companion-app facts."
               docs={docsUrl("deviceFingerprints")}

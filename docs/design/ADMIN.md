@@ -111,7 +111,7 @@ alias layer in admin absorbs the difference:
 | Section scoping            | A `[data-service="<ServiceId>"]` selector that re-points the `accent.*` custom properties to that section's family, with `core` as the default                                                                        | shell, buttons, nav, focus ring |
 | Theme selector             | `:root[data-theme="dark" \| "light"]`, plus a pre-paint snippet that resolves `system`                                                                                                                                | both SPAs                       |
 | `SectionMark`              | `<SectionMark section={ServiceId} size={28} />`: the Pinned K whose terminal bit is `signed.mark` for `core` and the section's `accent.solid` otherwise, star unchanged                                               | `BrandBlock` (top bar)          |
-| `ServiceGlyph`             | `<ServiceGlyph id size={16 \| 24} />`: the Star Cut service and favicon cuts for distribution and update. ADMIN supplies lucide icons for the rest                                                                    | sidebar, badges, empty states   |
+| `ServiceGlyph`             | `<ServiceGlyph id size={16 \| 24} />`: the Star Cut service and favicon cuts for distribution; lucide icons for the rest (Update: `CircleArrowUp`)                                                                    | sidebar, badges, empty states   |
 | `SignedGlyph`              | the terminal-bit rhombus as a 10–12 px UI glyph in `signed.solid`                                                                                                                                                     | `SignedBadge`                   |
 | Fonts                      | `@polaris-key/brand/fonts.css` (Rubik 400/700, latin and latin-ext WOFF2), self-hosted through Vite                                                                                                                   | both SPAs                       |
 | Favicons and PWA           | the kit's `04-web/key` set for `/manage` and `/`                                                                                                                                                                      | `index.html`, `manage.html`     |
@@ -292,9 +292,10 @@ that is not built yet carries `ready: false` in `nav.ts` and redirects to Deploy
 - **Devices stay in Core.** The device is Core's principal and exists without License. License
   detail embeds the same `DeviceTable` scoped to that license.
 - **Update keeps its own section** although it has one page. The service table and glossary make
-  sections equal to services. Its pages sit directly under Distribution's in the sidebar, and both
-  carry the Star Cut glyph, so they read as one delivery family; since 2026-10-03 their accents
-  differ (Distribution green, Update tangerine).
+  sections equal to services. Its pages sit directly under Distribution's in the sidebar. Since
+  2026-10-03 their accents differ (Distribution green, Update tangerine), and since 2026-10-04 the
+  Update glyph is lucide `CircleArrowUp` (owner feedback: a recognisable "update" icon; the Star
+  Cut alone made the two sections indistinguishable). `RefreshCw` stays the refresh/resync verb.
 
 ### 2.4 Accent and mark mapping
 
@@ -305,7 +306,7 @@ that is not built yet carries `ready: false` in `nav.ts` and redirects to Deploy
 | Config                                                | `config`       | yellow             | lucide `SlidersHorizontal`             | yellow                         |
 | Release                                               | `release`      | cyan               | lucide `Package`                       | cyan                           |
 | Distribution                                          | `distribution` | green              | **Star Cut**                           | green                          |
-| Update                                                | `update`       | tangerine          | **Star Cut**                           | tangerine                      |
+| Update                                                | `update`       | tangerine          | lucide `CircleArrowUp`                 | tangerine                      |
 | Identity                                              | `identity`     | orchid             | lucide `UserRound`                     | orchid                         |
 
 **Rules.**

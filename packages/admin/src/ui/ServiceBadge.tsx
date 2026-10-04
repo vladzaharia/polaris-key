@@ -1,6 +1,7 @@
 import * as React from "react";
 import {
   Box,
+  CircleArrowUp,
   KeyRound,
   Package,
   SlidersHorizontal,
@@ -14,7 +15,8 @@ import { cn } from "../lib/cn.js";
 
 /**
  * A service's glyph (components.md §6.6, ADMIN.md §2.4): the Star Cut ("Polaris Key Delivery")
- * for Distribution and Update, a lucide icon for the others. It sets its own `data-service`, so
+ * for Distribution, a lucide icon for the others (Update: `CircleArrowUp`, the recognisable
+ * "update available" glyph; `RefreshCw` stays the refresh/resync verb). It sets its own `data-service`, so
  * it takes that service's accent wherever it sits; it is the one component allowed to.
  * Decorative: the label beside it names the service. The Star Cut is identity only, never a
  * status or progress indicator (BRAND.md §7.1).
@@ -24,10 +26,11 @@ const LUCIDE: Record<string, LucideIcon> = {
   license: KeyRound,
   config: SlidersHorizontal,
   release: Package,
+  update: CircleArrowUp,
   identity: UserRound,
 };
 
-const STAR_CUT = new Set(["distribution", "update"]);
+const STAR_CUT = new Set(["distribution"]);
 
 export function ServiceGlyph({
   id,

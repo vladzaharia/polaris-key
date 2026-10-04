@@ -47,7 +47,11 @@ export function ServiceDots({
   );
   return (
     <span className={cn("inline-flex items-center gap-1", className)}>
-      <span className="inline-flex items-center gap-0.5" aria-hidden>
+      <span
+        className="inline-flex items-center gap-0.5"
+        aria-hidden
+        title={labels.length ? `Runs ${labels.join(", ")}` : undefined}
+      >
         {slugs.map((slug) => (
           <span
             key={slug}

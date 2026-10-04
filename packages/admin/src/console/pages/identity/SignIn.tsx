@@ -108,11 +108,8 @@ export function SignInPage({ slug }: { slug: string }): React.ReactElement {
       title="Sign-in"
       description={
         <>
-          The identity provider customers of{" "}
-          {product.data?.name ?? <span className="font-mono">{slug}</span>} sign
-          in with. It is authored in the product’s{" "}
-          <code className="font-mono text-xs">.pkey/product</code>; a resync
-          applies a change.
+          Authored in <code className="font-mono text-xs">.pkey/product</code>;
+          a resync applies a change.
         </>
       }
       primaryAction={
@@ -141,7 +138,12 @@ export function SignInPage({ slug }: { slug: string }): React.ReactElement {
     body = (
       <ErrorState error={mint.error} onRetry={() => void mint.refetch()} />
     );
-  } else if (mint.data.identity === null) {
+  } else if (
+    // Identity off is the services' answer, not an absent identity block: a product with
+    // Identity on and nothing configured rides the platform OIDC client.
+    product.data?.services?.identity?.enabled === false ||
+    (mint.data.identity === null && !product.data?.services)
+  ) {
     body = (
       <EmptyState
         kind="service-off"
@@ -163,7 +165,14 @@ export function SignInPage({ slug }: { slug: string }): React.ReactElement {
     body = (
       <SignInBody
         slug={slug}
-        identity={mint.data.identity}
+        identity={
+          mint.data.identity ?? {
+            provider: null,
+            issuer: null,
+            clientId: null,
+            groupRoleMapJson: null,
+          }
+        }
         oidcDefault={mint.data.oidcDefault}
       />
     );
@@ -223,9 +232,7 @@ function SignInBody({
         id="sign-in-provider"
         title="Provider"
         description={
-          custom
-            ? "This product links its own OIDC client."
-            : "The platform's OIDC client, shared with the customer portal's sign-in."
+          custom ? undefined : "Shared with the customer portal's sign-in."
         }
       >
         <div className="px-5 py-4">
@@ -235,14 +242,16 @@ function SignInBody({
               {
                 term: "Provider",
                 detail: custom ? "Custom" : "Platform OIDC",
-                help: custom ? undefined : "The default.",
               },
               {
                 term: "Issuer",
                 detail: identity.issuer ? (
-                  <span className="break-all font-mono text-xs">
-                    {identity.issuer}
-                  </span>
+                  <IdChip
+                    value={identity.issuer}
+                    noun="issuer"
+                    head={28}
+                    tail={12}
+                  />
                 ) : custom ? (
                   <span className="text-fg-muted">Not set</span>
                 ) : (
@@ -276,7 +285,7 @@ function SignInBody({
       <SettingsSection
         id="sign-in-groups"
         title="Groups and tiers"
-        description="Which IdP groups a sign-in licenses, and on which tier. The first mapped group that names a tier decides it."
+        description="The first mapped group that names a tier decides it."
       >
         <div className="px-5 py-4">
           {groups === "invalid" ? (
@@ -294,13 +303,13 @@ function SignInBody({
                 <caption className="sr-only">Groups and tiers</caption>
                 <thead className="text-xs text-fg-muted">
                   <tr className="border-b border-border">
-                    <th scope="col" className="py-2 pr-4 font-normal">
+                    <th scope="col" className="py-2 pr-4 font-bold">
                       Group
                     </th>
-                    <th scope="col" className="py-2 pr-4 font-normal">
+                    <th scope="col" className="py-2 pr-4 font-bold">
                       Role
                     </th>
-                    <th scope="col" className="py-2 font-normal">
+                    <th scope="col" className="py-2 font-bold">
                       Tier
                     </th>
                   </tr>
@@ -348,10 +357,8 @@ function SignInBody({
         title="Where it is authored"
         description={
           <>
-            The <code className="font-mono text-xs">oidc</code> block of{" "}
-            <code className="font-mono text-xs">.pkey/product</code> holds the
-            provider, the group map and the provisioning hooks. Edit it, commit,
-            then resync.{" "}
+            Edit the <code className="font-mono text-xs">oidc</code> block,
+            commit, then resync.{" "}
             <a
               className="text-accent-fg underline underline-offset-2"
               href={docsUrl("identityOidcNote")}
@@ -364,11 +371,27 @@ function SignInBody({
         }
       >
         <div className="px-5 py-4">
-          <CodeBlock
-            code={MANIFEST_EXAMPLE}
-            language="json"
-            filename="Example: a custom provider"
-          />
+          {/* Once a provider is configured the example is reference, not the page's subject. */}
+          {custom ? (
+            <details>
+              <summary className="cursor-pointer text-sm text-accent-fg">
+                Show an example oidc block
+              </summary>
+              <div className="mt-3">
+                <CodeBlock
+                  code={MANIFEST_EXAMPLE}
+                  language="json"
+                  filename="Example: a custom provider"
+                />
+              </div>
+            </details>
+          ) : (
+            <CodeBlock
+              code={MANIFEST_EXAMPLE}
+              language="json"
+              filename="Example: a custom provider"
+            />
+          )}
         </div>
       </SettingsSection>
     </div>

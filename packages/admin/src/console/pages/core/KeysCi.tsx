@@ -71,11 +71,7 @@ export function CiPublishingSection({
   slug: string;
 }): React.ReactElement {
   return (
-    <SettingsSection
-      id="keys-ci"
-      title="CI publishing"
-      description="How your CI proves who it is when it publishes releases and reports store status."
-    >
+    <SettingsSection id="keys-ci" title="CI publishing">
       <PublisherRow slug={slug} />
       <TokensRow slug={slug} />
     </SettingsSection>
@@ -103,7 +99,20 @@ function PublisherRow({ slug }: { slug: string }): React.ReactElement {
   return (
     <SettingsRow
       label="Trusted publisher"
-      help="A GitHub Actions run from this repository, workflow and environment exchanges its OIDC token for a short-lived publishing token. No stored secret is involved."
+      align="block"
+      help="A GitHub Actions run exchanges its OIDC token for a short-lived publishing token; no stored secret is involved."
+      aside={
+        policy.data ? (
+          <Button
+            variant="outline"
+            size="sm"
+            iconStart={<Pencil aria-hidden />}
+            onClick={() => setEditing(true)}
+          >
+            Edit…
+          </Button>
+        ) : undefined
+      }
       source={
         policy.data ? (
           <SourceBadge source={policy.data.source} path=".pkey/release" />
@@ -121,7 +130,7 @@ function PublisherRow({ slug }: { slug: string }): React.ReactElement {
       ) : policy.data ? (
         <div className="space-y-3">
           <DescriptionList
-            columns={2}
+            columns={3}
             items={[
               {
                 term: "Repository",
@@ -146,14 +155,6 @@ function PublisherRow({ slug }: { slug: string }): React.ReactElement {
               },
             ]}
           />
-          <Button
-            variant="outline"
-            size="sm"
-            iconStart={<Pencil aria-hidden />}
-            onClick={() => setEditing(true)}
-          >
-            Edit…
-          </Button>
         </div>
       ) : (
         <div className="space-y-2">
@@ -464,7 +465,7 @@ function TokensRow({ slug }: { slug: string }): React.ReactElement {
   return (
     <SettingsRow
       label="CI tokens"
-      help="Static tokens for a CI that is not GitHub Actions, and the short-lived tokens trusted runs were issued. A static token lasts at most 90 days."
+      help="For a CI that is not GitHub Actions. A static token lasts at most 90 days."
       footer={
         <div className="mt-4">
           <DataTable<CiTokenDto>
@@ -493,9 +494,10 @@ function TokensRow({ slug }: { slug: string }): React.ReactElement {
             empty={
               <EmptyState
                 kind="first-run"
+                variant="inline"
                 headingLevel={3}
                 title="No CI tokens"
-                description="Issue a static token for a CI that cannot use GitHub's OIDC. Trusted publisher runs need none."
+                description="Trusted publisher runs need none."
               />
             }
           />
@@ -617,7 +619,7 @@ function IssueTokenDialog({
           <FormField
             name="label"
             label="Label"
-            help="Where the token is used, so you can tell tokens apart."
+            optional
             value={label}
             onChange={(v: string) => setLabel(v)}
           >
@@ -627,6 +629,7 @@ function IssueTokenDialog({
           <FormField
             name="expiresInDays"
             label="Expires after"
+            className="w-44"
             required
             value={days}
             onChange={(v: number | null) => setDays(v)}

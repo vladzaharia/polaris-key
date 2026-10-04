@@ -31,8 +31,11 @@ export interface StatusPillProps {
   domain?: StatusDomain;
   state?: string;
   tone?: Tone;
-  /** Overrides the vocabulary's icon. `null` renders a dot instead. */
-  icon?: LucideIcon | null;
+  /**
+   * Overrides the vocabulary's icon. `null` renders a dot instead; `false` renders no glyph (a
+   * count or a version, where a dot would encode nothing).
+   */
+  icon?: LucideIcon | null | false;
   /** Overrides the vocabulary's label ("Rolling out 25 %"). */
   children?: React.ReactNode;
   size?: "sm" | "md";
@@ -51,7 +54,10 @@ export function StatusPill({
   const entry =
     domain && state !== undefined ? statusOf(domain, state) : undefined;
   const t: Tone = tone ?? entry?.tone ?? "neutral";
-  const Icon = icon === null ? null : (icon ?? entry?.icon ?? TONE_ICON[t]);
+  const Icon =
+    icon === null || icon === false
+      ? null
+      : (icon ?? entry?.icon ?? TONE_ICON[t]);
   const label = children ?? entry?.label ?? "";
   return (
     <span
@@ -67,7 +73,7 @@ export function StatusPill({
         <SignedGlyph size={10} />
       ) : Icon ? (
         <Icon aria-hidden className={size === "sm" ? "size-3" : "size-3.5"} />
-      ) : (
+      ) : icon === false ? null : (
         <span aria-hidden className="size-1.5 rounded-full bg-current" />
       )}
       <span className="truncate">{label}</span>

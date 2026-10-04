@@ -146,5 +146,10 @@ export interface DataTableProps<T> {
   toolbarActions?: React.ReactNode;
   /** Offer "Export CSV" (client mode only). Default true in client mode. */
   exportCsv?: boolean;
+  /**
+   * The table chrome. `full` always offers Columns and density; `minimal` never does (a small
+   * reference table inside a card). Default `auto`: minimal below 10 rows in client mode.
+   */
+  chrome?: "auto" | "full" | "minimal";
   className?: string;
 }

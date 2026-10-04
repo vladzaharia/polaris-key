@@ -1,4 +1,5 @@
 import * as React from "react";
+import { cn } from "../../../lib/cn.js";
 import { Plus } from "lucide-react";
 import type { ProfileSummary } from "../../../api.js";
 import { fromSeconds } from "../../../lib/format.js";
@@ -57,12 +58,28 @@ export function ProfilesPage({ slug }: { slug: string }): React.ReactElement {
         header: "Name",
         accessorFn: (p) => p.name || p.id,
         meta: { priority: 1, primary: true, alwaysVisible: true },
+        cell: ({ getValue }) => (
+          <span
+            className="block max-w-[16rem] truncate"
+            title={getValue() as string}
+          >
+            {getValue() as string}
+          </span>
+        ),
       },
       {
         id: "id",
         header: "Id",
         accessorKey: "id",
         meta: { priority: 2, mono: true },
+        cell: ({ getValue }) => (
+          <span
+            className="block max-w-[14rem] truncate"
+            title={getValue() as string}
+          >
+            {getValue() as string}
+          </span>
+        ),
       },
       {
         id: "description",
@@ -87,11 +104,10 @@ export function ProfilesPage({ slug }: { slug: string }): React.ReactElement {
         meta: { priority: 1, label: "Used by", csv: usedByText },
         cell: ({ row }) => (
           <span
-            className={
-              usedByText(row.original) === "Nothing"
-                ? "text-fg-muted"
-                : undefined
-            }
+            className={cn(
+              "whitespace-nowrap",
+              usedByText(row.original) === "Nothing" && "text-fg-muted",
+            )}
           >
             {usedByText(row.original)}
           </span>
@@ -110,12 +126,14 @@ export function ProfilesPage({ slug }: { slug: string }): React.ReactElement {
         },
         cell: ({ row }) =>
           row.original.modifiedAt ? (
-            <span>
+            <span className="flex min-w-0 flex-col">
               <Timestamp at={fromSeconds(row.original.modifiedAt)} />
               {row.original.modifiedBy ? (
-                <span className="text-fg-muted">
-                  {" "}
-                  · {row.original.modifiedBy}
+                <span
+                  className="block max-w-[14rem] truncate text-xs text-fg-muted"
+                  title={row.original.modifiedBy}
+                >
+                  {row.original.modifiedBy}
                 </span>
               ) : null}
             </span>
@@ -147,15 +165,16 @@ export function ProfilesPage({ slug }: { slug: string }): React.ReactElement {
               <span className="text-sm text-fg-muted">{rows.length}</span>
             ) : null
           }
-          description="Named sets of config, secret and flag values that tiers and licenses inherit."
           refetching={profiles.isFetching && !profiles.isPending}
-          primaryAction={newButton}
+          // With nothing yet and no catalog, the empty state's catalog link is the one action.
+          primaryAction={noCatalog && rows.length === 0 ? undefined : newButton}
         />
       }
     >
       <DataTable<ProfileSummary>
         id="profiles"
         caption="Profiles"
+        mobile="cards"
         data={rows}
         columns={columns}
         getRowId={(p) => p.id}
@@ -185,13 +204,27 @@ export function ProfilesPage({ slug }: { slug: string }): React.ReactElement {
           },
         ]}
         empty={
-          <EmptyState
-            kind="first-run"
-            title="No profiles yet"
-            description="A profile names a set of config, secret and flag values once, so tiers and licenses can inherit it."
-            docs="/docs/services/config/profiles/"
-            primaryAction={newButton}
-          />
+          noCatalog ? (
+            // Profiles are checked against the catalog: say why, and offer the way there.
+            <EmptyState
+              kind="first-run"
+              title="Publish a catalog first"
+              description="A profile's values are checked against the catalog."
+              primaryAction={
+                <Button asChild>
+                  <Link to={r.catalog(slug)}>Open the catalog</Link>
+                </Button>
+              }
+            />
+          ) : (
+            <EmptyState
+              kind="first-run"
+              title="No profiles yet"
+              description="Tiers and licenses inherit a profile's values."
+              docs="/docs/services/config/profiles/"
+              primaryAction={newButton}
+            />
+          )
         }
       />
       <CreateProfileDrawer
