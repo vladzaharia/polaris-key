@@ -1856,7 +1856,7 @@
         "WIRE-CONTRACT-V4 §11.4"
       ],
       "brief": "wp/P4-32-chunk-range-transcript.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "P5-01",
