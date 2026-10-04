@@ -92,14 +92,14 @@ export interface FeedSettingsView {
   updatedBy: string | null;
 }
 
-/** The access modes, in the ladder's order. Only `public` can be set until registry auth (F-21). */
+/** The access modes, in the ladder's order. Every one can be set since registry auth (F-21). */
 export const FEED_ACCESS_MODES = [
   "public",
   "authenticated",
   "licensed",
   "entitled",
 ] as const;
-export const SETTABLE_ACCESS_MODES: readonly string[] = ["public"];
+export const SETTABLE_ACCESS_MODES: readonly string[] = FEED_ACCESS_MODES;
 
 const MAX_LIST = 32;
 const MAX_ITEM = 128;

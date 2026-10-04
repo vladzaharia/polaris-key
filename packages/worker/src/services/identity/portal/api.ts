@@ -31,6 +31,19 @@ import { resolveEffective } from "../../../core/authz.js";
 import { licenseUsable } from "../../../core/devices.js";
 import { tighterMax, tighterMin } from "../../../core/entitlements.js";
 import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
+import { registryOrigin } from "../../../core/registryHostname.js";
+import {
+  MAX_LIVE_TOKENS_PER_LICENSE,
+  REGISTRY_TOKEN_DEFAULT_DAYS,
+  REGISTRY_TOKEN_MAX_DAYS,
+  REGISTRY_TOKEN_MIN_DAYS,
+  REGISTRY_TOKEN_USERNAME,
+  REGISTRY_URL_TOKEN_DEFAULT_DAYS,
+  listRegistryTokens,
+  mintRegistryToken,
+  revokeRegistryToken,
+} from "../../../core/registryTokens.js";
+import { PACKAGE_ECOSYSTEMS } from "@polaris-key/manifest";
 import {
   getPortalAccount,
   getPortalArtifact,
@@ -583,6 +596,192 @@ async function handleLicenses(
   return portalJson(await shapeLicenseDetail(db, row, now));
 }
 
+/** One non-public feed a licensee may mint a token for (Q3). */
+interface PackageAccessFeed {
+  ecosystem: string;
+  accessMode: string;
+  baseUrl: string | null;
+}
+
+/**
+ * The product's enabled feeds that are not public, through Distribution's delivery hook (rule 6:
+ * the settings are Distribution's): what the portal's Package access card lists, and the
+ * condition for a licensee to mint at all (Q3: no extra opt-in).
+ */
+async function nonPublicFeeds(
+  db: Db,
+  hooksFor: PortalHooksFor | undefined,
+  product: string,
+  now: number,
+): Promise<PackageAccessFeed[]> {
+  const gate = await deliveryGate(db, hooksFor, product, now);
+  if (!gate) return [];
+  const out: PackageAccessFeed[] = [];
+  for (const eco of PACKAGE_ECOSYSTEMS) {
+    const feed = await gate.delivery.packageFeed(eco);
+    if (
+      !feed ||
+      !feed.enabled ||
+      !feed.ownerEnabled ||
+      !feed.policyEnabled ||
+      (feed.accessMode ?? "public") === "public"
+    )
+      continue;
+    out.push({
+      ecosystem: eco,
+      accessMode: feed.accessMode!,
+      baseUrl: feed.baseUrl ?? null,
+    });
+  }
+  return out;
+}
+
+/**
+ * Package access (F-21, plans/F-20.md §6.5, PORTAL.md's "Package access" card): a licensee's own
+ * registry tokens for one linked licence.
+ *
+ *   GET    /portal/api/licenses/:product/:licenseId/registry-tokens           the card's state:
+ *          `available` (an enabled non-public feed exists), those feeds with their base URLs,
+ *          the tokens this account minted for this licence, the username and the limits
+ *   POST   …/registry-tokens  {label, ecosystem?, presentation?, expiresInDays?}   mint a
+ *          licence-bound read token; the plaintext is in this answer only
+ *   DELETE …/registry-tokens/:tokenId                                         revoke one
+ *
+ * Minting needs the session, the CSRF header (checked for every mutation by the router), a
+ * usable linked licence and an available feed; it spends `portalRegistryToken` (per account,
+ * fail closed). Audited `portal.registry_token.create` and `.revoke`.
+ */
+async function handleRegistryTokens(
+  req: Request,
+  env: Env,
+  db: Db,
+  session: PortalSession,
+  product: string,
+  licenseId: string,
+  tokenId: string | undefined,
+  now: number,
+  hooksFor: PortalHooksFor | undefined,
+): Promise<Response> {
+  const settings = await getPortalProductSettings(db, product);
+  if (settings.portal_enabled !== 1) return notFound();
+  const license = await getPortalLicense(
+    db,
+    session.accountId,
+    product,
+    licenseId,
+  );
+  if (!license) return notFound();
+  const filter = { licenseId, portalAccountId: session.accountId };
+  const by = `portal:${session.accountId}`;
+  if (tokenId !== undefined) {
+    if (req.method !== "DELETE") return err(405, "method_not_allowed");
+    const view = await revokeRegistryToken(
+      db,
+      product,
+      tokenId,
+      by,
+      "manual",
+      now,
+      filter,
+    );
+    if (!view) return notFound();
+    await portalAudit(db, {
+      accountId: session.accountId,
+      action: "portal.registry_token.revoke",
+      product,
+      targetKind: "registry_token",
+      targetId: tokenId,
+      summary: `Revoked registry token “${view.label}” (…${view.hint})`,
+      now,
+    });
+    return portalJson({ ok: true, view });
+  }
+  const feeds = await nonPublicFeeds(db, hooksFor, product, now);
+  if (req.method === "GET")
+    return portalJson({
+      available: feeds.length > 0,
+      licenseUsable: licenseUsable(license, now),
+      registryOrigin: registryOrigin(env),
+      username: REGISTRY_TOKEN_USERNAME,
+      feeds,
+      tokens: await listRegistryTokens(db, product, now, filter),
+      limits: {
+        minDays: REGISTRY_TOKEN_MIN_DAYS,
+        maxDays: REGISTRY_TOKEN_MAX_DAYS,
+        defaultDays: REGISTRY_TOKEN_DEFAULT_DAYS,
+        urlDefaultDays: REGISTRY_URL_TOKEN_DEFAULT_DAYS,
+        perLicense: MAX_LIVE_TOKENS_PER_LICENSE,
+      },
+    });
+  if (req.method !== "POST") return err(405, "method_not_allowed");
+  const limited = await requireActionRateLimit(
+    req,
+    env,
+    session,
+    "portalRegistryToken",
+    now,
+    20,
+    product,
+    3600,
+  );
+  if (limited) return limited;
+  if (!licenseUsable(license, now))
+    return err(403, ErrorCode.Forbidden, "this licence is not active");
+  if (feeds.length === 0)
+    return err(409, ErrorCode.BadRequest, "this product has no private package feed");
+  const body = await readBody(req);
+  const presentation = body.presentation === "url" ? "url" : "header";
+  const ecosystem =
+    body.ecosystem === undefined || body.ecosystem === null
+      ? null
+      : body.ecosystem;
+  const offered = feeds.map((f) => f.ecosystem);
+  if (
+    (ecosystem !== null &&
+      (typeof ecosystem !== "string" || !offered.includes(ecosystem))) ||
+    (presentation === "url" && !offered.includes("godot"))
+  )
+    return err(422, ErrorCode.BadRequest, "choose one of the product's private feeds");
+  const res = await mintRegistryToken(
+    env,
+    db,
+    {
+      product,
+      label: typeof body.label === "string" ? body.label : "",
+      ecosystems: ecosystem === null ? null : [ecosystem as string],
+      ...(typeof body.expiresInDays === "number"
+        ? { expiresInDays: body.expiresInDays }
+        : {}),
+      binding: "license",
+      licenseId,
+      presentation,
+      createdBy: by,
+      portalAccountId: session.accountId,
+    },
+    now,
+  );
+  if (!res.ok)
+    return portalJson(
+      {
+        error: res.status === 404 ? ErrorCode.NotFound : ErrorCode.BadRequest,
+        message: res.message,
+        reason: res.reason,
+        ...(res.fields ? { fields: res.fields } : {}),
+      },
+      res.status,
+    );
+  await portalAudit(db, {
+    accountId: session.accountId,
+    action: "portal.registry_token.create",
+    product,
+    targetKind: "registry_token",
+    targetId: res.view.tokenId,
+    summary: `Created registry token “${res.view.label}” (…${res.view.hint}) for licence ${licenseId}`,
+    now,
+  });
+  return portalJson({ ok: true, token: res.token, view: res.view }, 201);
+}
+
 async function handleClaimKey(
   req: Request,
   env: Env,
@@ -942,6 +1141,24 @@ export async function handlePortalApi(
       now,
     );
   }
+  if (
+    head === "licenses" &&
+    rest[2] === "registry-tokens" &&
+    rest[0] &&
+    rest[1] &&
+    rest.length <= 4
+  )
+    return handleRegistryTokens(
+      req,
+      env,
+      db,
+      session,
+      rest[0],
+      rest[1],
+      rest[3],
+      now,
+      hooksFor,
+    );
   if (head === "licenses") return handleLicenses(db, session, rest, now);
   if (head === "claim" && rest[0] === "license-key") {
     return handleClaimKey(req, env, db, session, now);

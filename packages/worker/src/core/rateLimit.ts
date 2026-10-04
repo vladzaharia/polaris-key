@@ -136,6 +136,14 @@ const FAIL_MODE: Record<string, FailMode> = {
   emailSendRecipientHour: "closed",
   emailSendRecipientDay: "closed",
   emailSendProductDay: "closed",
+  // F-21 (plans/F-20.md §6.6): the registry host's credential surfaces. `/v2/token` mints a pull
+  // token (per IP); SwiftPM's login checks a token (per IP); `registryCredentialMiss` counts only
+  // lookups that missed the cache AND D1, so only bad tokens spend it (per IP); the portal mint
+  // is per account. All fail closed: they guard a credential.
+  registryOciToken: "closed",
+  registryLogin: "closed",
+  registryCredentialMiss: "closed",
+  portalRegistryToken: "closed",
 
   // ── authenticated, non-credential surfaces — fail open ─────────────────────
   adminApi: "open",
@@ -157,6 +165,9 @@ const FAIL_MODE: Record<string, FailMode> = {
   // P3-09: the app-updater feeds (WinSparkle, Velopack, App Installer, zsync, the extended
   // appcast and version check). The same D1-read budget, the same reason to fail open.
   updateFeed: "open",
+  // F-21: credentialed registry reads bypass the Cache API; a per-token cost budget, nothing
+  // secret behind it (the read is already authenticated), so an outage must not stop installs.
+  registryPrivateRead: "open",
 };
 
 function failModeFor(bucket: string): FailMode {
