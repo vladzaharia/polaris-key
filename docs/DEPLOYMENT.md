@@ -391,8 +391,9 @@ fixed in code. A product opts in from its own `.pkey/release` (`publishing.trust
 
 Lazy hot-pair deltas (notes/S-08 §6; RUNBOOK "Lazy deltas") need Workers Paid with Queues
 enabled, two queues per environment, a second Worker script and, after its first deploy, two R2
-event-notification rules. The feature ships off (`LAZY_DELTAS = "off"` in both scripts); none of
-this changes behaviour until an operator turns it on.
+event-notification rules. The feature ships off: both scripts carry `LAZY_DELTAS = "runtime"`,
+which hands the switch to the console's platform settings store (A-13), where it defaults to off.
+None of this changes behaviour until an operator turns it on.
 
 1. **Queues** (per environment `<env>` = `prod`, `staging`, `dev`):
 
@@ -437,8 +438,11 @@ this changes behaviour until an operator turns it on.
    acknowledges an object of at most 1 MiB at once, and anything that is not a pack payload of
    an opted-in product after one lookup.
 
-4. **Turn it on** for a product: set `LAZY_DELTAS = "on"` in BOTH scripts' `[env.<env>.vars]`,
-   deploy both, then opt the product in (RUNBOOK "Lazy deltas").
+4. **Turn it on** in the console (Platform → Settings, or
+   `PATCH /manage/api/platform/settings/LAZY_DELTAS`), with no deploy: both scripts read the same
+   `platform_settings` row within 30 seconds. Then opt the product in (RUNBOOK "Lazy deltas").
+   `LAZY_DELTAS = "off"` in a script's `[env.<env>.vars]` is the deploy-time hard off that no
+   console value can override.
 
 ## 4. Worker secrets
 

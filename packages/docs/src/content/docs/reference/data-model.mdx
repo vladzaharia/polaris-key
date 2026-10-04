@@ -36,6 +36,7 @@ this page or fails the freshness gate.
 | `delta_demand` | 0051_lazy_deltas.sql | `product`, `deliverable_id`, `from_sha256`, `to_sha256`, `devices`, `window_start`, `last_seen` |
 | `platform_deploys` | 0054_a_platform_deploys.sql | `id`, `at`, `environment`, `tag`, `git_sha`, `run_url`, `scripts`, `latest_migration`, `cf_version_id`, `deltas_version_id`, `smoke` |
 | `platform_audit` | 0054_b_platform_audit.sql | `id`, `at`, `actor_sub`, `actor_name`, `actor_email`, `action`, `target_kind`, `target_id`, `summary`, `before_json`, `after_json` |
+| `platform_settings` | 0056_platform_settings.sql | `key`, `value_json`, `version`, `updated_at`, `updated_by` |
 
 ## license
 

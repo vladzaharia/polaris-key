@@ -26,9 +26,10 @@
  *
  * ── GATED TWICE ─────────────────────────────────────────────────────────────────────────────
  *
- * Nothing is counted unless the deployment's `LAZY_DELTAS` var is `on` AND the product has a
- * `lazy_delta_settings` row with `enabled = 1` (docs/RUNBOOK.md "Lazy deltas"). Both default off,
- * so deploying this changes nothing until an operator opts a product in.
+ * Nothing is counted unless the deployment's `LAZY_DELTAS` switch is on (the platform settings
+ * store, A-13: the console's value unless the `[vars]` value is a hard `off`) AND the product has
+ * a `lazy_delta_settings` row with `enabled = 1` (docs/RUNBOOK.md "Lazy deltas"). Both default
+ * off, so deploying this changes nothing until an operator turns it on and opts a product in.
  *
  * Privacy (docs/PRIVACY.md): an entry carries a pack id, two content hashes, a strategy name and
  * optional sizes and timings — no hardware value and no user identifier beyond the device id the
@@ -39,6 +40,7 @@
 import { isDeliverableId } from "@polaris-key/manifest";
 import type { Db, DbStatement } from "../db/types.js";
 import type { Env } from "../env.js";
+import { platformSetting } from "./platformSettings.js";
 
 /** At most this many `packInstalls` entries per report; the rest are dropped. */
 export const MAX_PACK_INSTALLS = 8;
@@ -126,9 +128,16 @@ export function boundedPackInstalls(
 
 // ── The opt-in ───────────────────────────────────────────────────────────────────────────────
 
-/** The deployment's kill switch: exactly `on` enables the subsystem. */
-export function lazyDeltasOn(env: Pick<Env, "LAZY_DELTAS">): boolean {
-  return (env.LAZY_DELTAS ?? "").trim().toLowerCase() === "on";
+/**
+ * The deployment's kill switch, resolved through the platform settings store (A-13,
+ * `core/platformSettings.ts`): a `[vars]` value of `off` is a hard off that answers without a
+ * read; otherwise a console value, then `[vars]` `on`, then off.
+ */
+export async function lazyDeltasOn(
+  env: Pick<Env, "LAZY_DELTAS">,
+  db: Db,
+): Promise<boolean> {
+  return (await platformSetting(env, db, "LAZY_DELTAS")) === "on";
 }
 
 export interface LazyDeltaSettings {
@@ -170,7 +179,7 @@ export async function lazyDeltasEnabled(
   db: Db,
   product: string,
 ): Promise<LazyDeltaSettings | null> {
-  if (!lazyDeltasOn(env)) return null;
+  if (!(await lazyDeltasOn(env, db))) return null;
   const s = await lazyDeltaSettings(db, product);
   return s.enabled ? s : null;
 }
@@ -180,7 +189,7 @@ export async function lazyDeltaProducts(
   env: Pick<Env, "LAZY_DELTAS">,
   db: Db,
 ): Promise<string[]> {
-  if (!lazyDeltasOn(env)) return [];
+  if (!(await lazyDeltasOn(env, db))) return [];
   const rows = await db.all<{ product: string }>(
     `SELECT s.product FROM lazy_delta_settings s
        JOIN products p ON p.slug = s.product

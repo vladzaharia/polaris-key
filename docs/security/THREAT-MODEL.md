@@ -2380,6 +2380,53 @@ privilege level.
   holds no secret by construction. The per-product `kek.reseal` rows stay, so each product's own
   log still shows the sweep.
 
+### Platform settings and operations: the runtime settings store (A-13)
+
+A-13 makes four deploy settings editable from the console without a deploy, through
+`platform_settings` (migration 0056) and `GET`/`PATCH`/`DELETE /manage/api/platform/settings`
+behind the same gates as the rest of the Platform section (session, `PLATFORM_ADMIN_GROUP`, the
+per-subject limiter, CSRF on mutations, and `handlePlatform`'s second platform-admin check). There
+is no new privilege level and no outbound call.
+
+- **What is editable is a closed list in code.** `PLATFORM_SETTINGS` (`core/platformSettings.ts`)
+  declares `LAZY_DELTAS`, `LAZY_DELTA_MAX_BYTES`, `BLOB_GC_MODE` and `BLOB_GC_GRACE_DAYS`, and
+  nothing else: a D1 row with any other key is ignored, and a value outside an entry's validator
+  is never applied (the resolver falls through to `[vars]` or the code default). Each is a
+  background job's kill switch or tunable. The worst a hostile session can do with them is waste
+  delta CPU (bounded by each product's daily cap and the 32 MiB ceiling, which the size cap can
+  only lower), stop the collector (it costs storage), or restart it with a one-day grace (the
+  180-day R2 age lock still bounds every deletion, and the collector deletes only unreferenced
+  objects; see "Readiness holds, pack gates and the blob collector"). None changes what a device
+  is offered or what is signed.
+- **Why nothing else may join it (AT-2).** Whoever takes the admin plane already reaches A2, A3,
+  A5 and A6 through the API for as long as the session lasts. A runtime knob that _widens_ what a
+  session can do (a longer session TTL, a raised rate limit, a looser `OIDC_ISSUER_ALLOWLIST`, a
+  different `PLATFORM_ADMIN_GROUP`, another origin, a KEK kid, the admin IdP) would let that
+  session make itself permanent, or move the platform's trust roots, from inside the console.
+  Deploy-time settings need the repository and the deploy token, a separate boundary. So
+  origins, the privilege root, the admin IdP, security gates, key material and kid selection,
+  session lengths, rate limits, retention periods and bucket names stay deploy-time, and
+  `test/platformSettings.test.ts` refuses any of those names (or a `*_SECRET`, `*_KEY*`,
+  `*_TTL*`, `*_ORIGIN` or `*_PEPPER` name) in the registry.
+- **A deploy-time off survives a compromised session.** Kill switches use `ceiling` precedence:
+  `[vars]` = `off` is a hard off that no D1 value overrides, and the resolver answers it without
+  reading the table. The committed value is `"runtime"` (the console decides, default off for
+  lazy deltas, on for the collector). An unreadable store resolves a kill switch to off, never on.
+- **Auditable, race-free writes.** Every `PATCH` and `DELETE` carries `expectedVersion` and is
+  one conditional statement (409 on a mismatch), so two operators cannot silently overwrite each
+  other, and each appends a `platform_audit` row (actor from the verified session) with the stored
+  and effective value before and after. `before_json` / `after_json` are safe because no secret
+  can be in the registry.
+- **The inventory never reveals a secret.** `GET …/settings` reports deploy-time values that are
+  not credentials (the environment, the admin group name, the IdP issuer and client id, the
+  parsed issuer allowlist, the origins, the bucket, the account and GitHub App ids, kid names)
+  and every secret as `{ name, set }` only: never a value, a length, a prefix or a hash. It warns
+  when the legacy `ADMIN_OIDC_*` names are what resolved, when `PLATFORM_KEK_ID` is set, and
+  when `PORTAL_SESSION_SECRET` is unset (the portal then signs with `ADMIN_SESSION_SECRET`).
+- **Propagation.** Each isolate caches the table for 30 s; the cron handler and the lazy-delta
+  consumer re-read it at the start of each invocation. A setting that must take effect instantly
+  does not belong in this store.
+
 ### The compatibility matrix and the device simulator (P4-15)
 
 P4-15 adds two read-only routes to the console's admin API: `GET …/release/compat` and
@@ -3409,4 +3456,8 @@ Platform section (A-11, A-12), a Worker path starts writing `platform_deploys`, 
 step gains a credential or a permission beyond the deploy token's D1 edit, a platform route starts
 reporting a binding's resource id or any secret-derived value, a route updates or deletes a
 `platform_audit` row, or a writer puts a secret (or a hash or length of one) in `before_json` or
-`after_json`.
+`after_json`; or, for the platform settings store (A-13), a setting is added to
+`PLATFORM_SETTINGS`, a setting's precedence changes from `ceiling` to `runtime`, a registry
+entry's bounds widen (`LAZY_DELTA_MAX_BYTES` above the measured 32 MiB ceiling, or a grace below
+one day), the settings inventory starts reporting anything about a secret beyond its presence,
+or a path reads one of the four settings from the raw `[vars]` instead of through the resolver.

@@ -48,12 +48,13 @@ import {
 } from "./services/identity/portal/repo.js";
 import { pruneEvents as pruneConnectorEvents } from "./services/distribution/connectors/state.js";
 import { lazyDeltaProducts } from "./core/deltaDemand.js";
+import { refreshPlatformSettings } from "./core/platformSettings.js";
 import { sweepLazyDeltas } from "./services/release/packs/deltas/sweep.js";
 import { buildHooks } from "./core/hooks.js";
 import {
   GC_INDEX_READS_PER_TICK,
   applyProductGc,
-  blobGcSettings,
+  effectiveBlobGcSettings,
   markUnreferenced,
   planProductGc,
   pruneGcLog,
@@ -224,8 +225,9 @@ export async function runBlobGc(
   db: Db,
   now: number,
 ): Promise<void> {
-  const settings = blobGcSettings(env);
-  if (!env.BLOBS || !settings.enabled) return;
+  if (!env.BLOBS) return;
+  const settings = await effectiveBlobGcSettings(env, db);
+  if (!settings.enabled) return;
   let slugs: string[] = [];
   try {
     slugs = (await listProducts(db)).map((p) => p.slug).sort();
@@ -349,7 +351,8 @@ export async function runScheduledMaintenance(
  * The lazy-delta sweep (P4-17, `services/release/packs/deltas/sweep.ts`), one fault-isolated
  * step per opted-in product (`lazyDeltas:<slug>`): refresh the demand aggregate, enqueue the
  * pairs that turned hot (to `DELTA_QUEUE`; the consumer Worker encodes them), and mark cold the
- * deltas no device used for 30 days. Nothing at all while the `LAZY_DELTAS` var is not `on`.
+ * deltas no device used for 30 days. Nothing at all while the `LAZY_DELTAS` switch is off (the
+ * platform settings store, A-13: a `[vars]` `off` is a hard off).
  */
 export async function runLazyDeltaSweep(
   report: MaintenanceReport,
@@ -445,6 +448,9 @@ export async function handleScheduled(
   cron?: string,
 ): Promise<MaintenanceReport> {
   const now = Math.floor(Date.now() / 1000);
+  // A-13: each invocation starts from a fresh read of the platform settings store (the 30 s
+  // per-isolate cache would otherwise carry a value across ticks).
+  await refreshPlatformSettings(env, db);
   const poll = cron === CONNECTOR_POLL_CRON;
   const report = poll
     ? await runConnectorPolls(env, db, now)
