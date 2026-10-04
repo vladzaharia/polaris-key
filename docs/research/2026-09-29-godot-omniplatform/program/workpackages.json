@@ -2345,7 +2345,7 @@
       "planMode": true,
       "gates": ["plan-mode", "human-approval"],
       "humanInputs": [
-        "owner answers S-16 §10 D17–D27 (proposed defaults; the plan encodes each default unless the owner says otherwise); D27 also needs a legal review of the DPA wording"
+        "owner answers S-16 §10 D24, D25 and D27 (proposed defaults; the plan encodes each default unless the owner says otherwise; D17–D23 are decided and D26 is superseded); D27 also needs a legal review of the DPA wording"
       ],
       "repo": "polaris-key",
       "optional": false,
@@ -2477,7 +2477,7 @@
     },
     {
       "id": "I-09",
-      "title": "Key-entry limits and attach on the device wire: entry counter, `key_entry_limit` with `portalUrl`, `license_owned` with `signInUrl`, `POST /<p>/identity/attach`, discovery fields, all behind the product's Identity toggle",
+      "title": "Key-entry limits and attach on the device wire: entry counter, `key_entry_limit` with `portalUrl`, `license_owned` with `signInUrl`, `POST /<p>/identity/attach`, discovery fields; the limits and the key-entry refusal only behind the product's Identity toggle",
       "phase": "I",
       "stage": "layer-1, phase-1a",
       "lane": "worker",
@@ -2626,7 +2626,7 @@
     },
     {
       "id": "I-12",
-      "title": "Console per-product Users: pairwise subjects only, that product's licences, devices and audit, per-subject export and deletion, reserved Data tab and account override editor, developer relink with step-up and 72-hour undo, sign-in settings",
+      "title": "Console per-product Users (every product; sign-in history and settings with Identity on): pairwise subjects only, that product's licences, devices and audit, per-subject export and deletion, reserved Data tab and account override editor, developer relink with step-up and 72-hour undo, sign-in settings",
       "phase": "I",
       "stage": "layer-1, phase-1a",
       "lane": "console",
@@ -3103,7 +3103,7 @@
     },
     {
       "id": "U-04",
-      "title": "Catalog, manifest and the `sync` service: catalog `user` block and `cloudSync` block with validator rules 1–11, typed setting keys in the mirrors, generated docs, the Cloud Sync service descriptor (`requires: [config, identity]`), console catalog form and Cloud Sync page",
+      "title": "Catalog, manifest and the `sync` service: catalog `user` block and `cloudSync` block with validator rules 1–11, typed setting keys in the mirrors, generated docs, the Cloud Sync service descriptor (`requires: [config]`), console catalog form and Cloud Sync page",
       "phase": "U",
       "stage": "U1 MVP",
       "lane": "worker",

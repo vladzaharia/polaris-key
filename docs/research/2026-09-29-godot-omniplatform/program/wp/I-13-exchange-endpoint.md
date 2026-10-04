@@ -45,6 +45,9 @@ Native apps should not be limited to device code ([S-16 §2](../../notes/S-16-id
 - A token for a developer's bundle id is never a login-card sign-in, and the reverse ([S-16 §5.4](../../notes/S-16-identity-service.md#54-threat-model-deltas) item 2).
 - A Game Center or native Apple subject for team A must never resolve an account for team B (test).
 - Returns the existing activation response; no `PROTOCOL_VERSION` bump.
+- **Identity service only (owner, 2026-10-04).** The Polaris Key account is platform-level (Core and the portal) and always present; the per-product Identity service is the toggle. The exchange is app sign-in, so it is available only for products with Identity on. With Identity off the product's discovery advertises none of it and the route refuses.
+- **No silent first sign-in to an app (D22, decided by the owner 2026-10-04).** Besides a new link, a known link with no "Continue to <App>" grant for this product (`account_product_grants`) also answers `interstitial_required`; only after both exist is the exchange silent.
+- **Joining on the email step (owner, 2026-10-04).** If the email confirmed in the interstitial already belongs to another Polaris Key account, the card offers to join the two accounts with both proven in one session; it never joins silently (S-16 §5.1).
 
 ## Steps
 
@@ -55,6 +58,7 @@ Native apps should not be limited to device code ([S-16 §2](../../notes/S-16-id
 ## Acceptance criteria
 
 - [ ] First exchange answers `interstitial_required`; after the card visit the same token signs in silently (tests).
+- [ ] A known link without a Continue-to-<App> grant for this product answers `interstitial_required` (D22, test); with the product's Identity toggle off the route refuses and discovery omits `exchange` (test).
 - [ ] Cross-team tenant-scoped miss (test); wrong audience refused (test).
 - [ ] All six SDKs replay the exchange transcripts; parity rows updated.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.

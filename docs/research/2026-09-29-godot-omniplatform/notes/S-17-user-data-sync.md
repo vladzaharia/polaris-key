@@ -21,6 +21,44 @@
 > device stores the pairwise subject rather than the account id, and the migration's multi-licence
 > outcome and dependencies are pinned. **Merge order:** this note cites S-16 at `1ee7375a` (branch
 > `wp/S-16-two-layer`), which this branch does not yet carry, so S-17 merges after S-16.
+> **Finalised** the same day for the owner's final-round decisions directly below: Cloud Sync
+> depends on the account, not on the Identity toggle, so its principal also follows the licence
+> owner.
+
+> **Owner decisions (2026-10-04, final round). These govern the note; where any header or section
+> below says otherwise, these win.**
+>
+> 1. **The account is platform-level; Identity is a per-product service** (S-16's final-round
+>    header). The Polaris Key account (layer 1) is always present, part of Core and the portal,
+>    with no per-product toggle. Identity is the per-product service whose core is app passthrough
+>    sign-in ("<App> wants you to sign in"); products without it never show app sign-in but still
+>    attach licences to accounts through Activate License, the portal and Discover.
+> 2. **Cloud Sync depends on the account, not on the Identity toggle.** Its descriptor is
+>    `requires: [config]`. Its principal follows the same rule as Config's account override layer
+>    [I]:
+>
+>    ```
+>    resolveSyncPrincipal(device) = device.subject                          // a sign-in (Identity on)
+>                                ?? subjectFor(license.account_id, product)  // else the licence owner
+>    ```
+>
+>    So a device on a product without Identity gets Cloud Sync once its licence is attached to an
+>    account; on a product with Identity, a sign-in also binds (§5.2, §5.8 item 2). The data is
+>    always the account's (keyed by its pairwise subject), never a licence partition, so decision
+>    18's "no zero-sign-in path" still holds: someone signed in to attach the licence.
+>
+> 3. **"No Cloud Sync without signing in" reads as "no Cloud Sync without a Polaris Key account".**
+>    Floating licences and devices with neither a sign-in nor an owned licence get local persistence
+>    only, uploaded at the first bind. On a product without Identity the SDK UI kits never show app
+>    sign-in: they offer "Add this licence to your Polaris Key account to sync" with a portal deep
+>    link, never forced.
+> 4. **Key-entry limits apply only to products with Identity on** (S-16 §5.3), and **D17–D23 are
+>    accepted**: notably D21 (on merge the survivor's subject wins, the other is an alias, and the
+>    developer gets `subject.merged`) and the email step's offer to join two accounts, both proven in
+>    one session, never silently (S-16 §5.1).
+> 5. **Proposed with this finalisation (need the owner's yes) [I]:** decisions 22 to 24 in §7.3:
+>    the licence-owner line's residual risk on products without Identity and its mitigation, web
+>    Cloud Sync without Identity, and the developer-backend credential without Identity.
 
 > **Owner decisions (2026-10-04), binding. This header governs the note; where older text below
 > seems to say otherwise, this header wins.**
@@ -31,7 +69,8 @@
 >    Developers only ever see data for their own products, through a **pairwise (per-product)
 >    subject**, never the global account id.
 > 2. **Cloud Sync is its own service**, named "Cloud Sync" (slug `sync`), with its own toggle. It
->    depends on Config and on Identity layer 1. It is no longer a sub-surface of Config (§4).
+>    depends on Config and on the layer 1 account (not on the Identity toggle: final round above).
+>    It is no longer a sub-surface of Config (§4).
 > 3. **The principal is the account × product**, seen by the product as its pairwise subject
 >    (§5.2).
 > 4. **The licence-level config override layer is removed everywhere.** It is replaced by
@@ -41,7 +80,9 @@
 > 6. **Overrides on licences with no owner are dropped at migration**, with an operator-visible
 >    report. There is no grace period.
 > 7. **No Cloud Sync without signing in, ever.** The zero-sign-in path (the licence-owned settings
->    backup and U-26) is removed. Before sign-in, settings persist locally only.
+>    backup and U-26) is removed. Before sign-in, settings persist locally only. (Final round: read
+>    "signing in" as "a Polaris Key account bound to the device", by sign-in or by the licence's
+>    owner.)
 > 8. **Defaults confirmed:**
 >    - the MVP of about 64 agent-days first, then the anonymous-to-signed-in merge and saves,
 >      before collections;
@@ -105,10 +146,9 @@ the owner's decision].** Cloud Sync data is three tiers on one principal, all de
 per-principal Durable Object, R2 save blobs and its console section. It reads the product's
 catalog through `shared-catalog` and Core, never by importing the Config service (rule 6). Config
 keeps the signed document and gains the operator layer below. A product turns Cloud Sync on with
-its own toggle, whose descriptor is `requires: [config, identity]`. The account is platform-wide,
-but the product's sign-in routes (passthrough, device code, web redirect) and the pairwise subject
-they issue belong to the product's Identity service, so the requirement is explicit, not implied
-by the account.
+its own toggle, whose descriptor is `requires: [config]` (owner, final round). Cloud Sync depends
+on the Polaris Key account, which is platform-level and always present, not on the product's
+Identity toggle. Identity only adds a second way to bind a device: app sign-in.
 
 **Operator side: the account override.** The owner removed the licence-level config override layer
 everywhere. In its place, an operator writes **user-level managed config for one account on one
@@ -128,14 +168,21 @@ subject. A new Core column, `devices.subject`, records "this product's pairwise 
 on this device". It holds the pairwise subject, not the global account id, so no product-tenant row
 that S-17 adds carries the global id. Identity's sign-in sets it when it returns the activation
 response, and sign-out clears it. It is not a seat claim and never enters a signed document, so
-S-16 decision 9 stands. Licence-key activations never set it. Cloud Sync storage is keyed by
-`(product, subject)`, so nothing in it carries the global account id or joins across products.
+S-16 decision 9 stands. Licence-key activations never set it. A device with no sign-in reaches its
+licence owner's subject instead, through `licenses.account_id` (owner, final round), so
+`resolveSyncPrincipal(device) = device.subject ?? subjectFor(license.account_id, product)`, the
+same rule as the account override. Cloud Sync storage is keyed by `(product, subject)`, so nothing
+in it carries the global account id or joins across products.
 
-**No Cloud Sync without signing in.** Cross-device sync needs the Cloud Sync toggle on and a
-signed-in account. Before sign-in, settings persist locally. At the first sign-in they upload as
+**No Cloud Sync without a Polaris Key account.** Cross-device sync needs the Cloud Sync toggle on
+and an account bound to the device: a sign-in through the product (Identity on), or the device's
+licence attached to an account (any product). Before that, settings persist locally. At the first
+bind they upload as
 ordinary per-key last-writer-wins mutations carrying their original edit clocks, with no prompt
 and no merge framework, inside the MVP's SDK packages (§5.5). A floating-licence device has no
-Cloud Sync and sees the sign-up prompt. §5.16 has the five-minute quickstart.
+Cloud Sync and sees the sign-up prompt (on a product without Identity, "Add this licence to your
+Polaris Key account to sync" with a portal link, never app sign-in). §5.16 has the five-minute
+quickstart.
 
 **Browser.** A web React app is a browser device. It holds a device token obtained through S-16
 I-08's web redirect: an authorization code returned to an origin on the product's `web.origins`
@@ -202,7 +249,7 @@ flowchart LR
     UDO["Cloud Sync Durable Object<br/>per (product, subject)<br/>settings · records · save pointers · seq"]
     D1[("D1<br/>account_overrides · directory · quotas")]
     R2[("R2<br/>save blobs")]
-    ID["Identity layer 1 (S-16)<br/>sign-in sets devices.subject"]
+    ID["Account (S-16 layer 1) and Identity<br/>licence owner, or sign-in sets devices.subject"]
   end
   ID --> CORE
   R -- "GET /config/document" --> CFG
@@ -353,19 +400,19 @@ Read against S-16 at `1ee7375a`, restructured around the owner's two-layer decis
 
 ### 3.4 Extension points
 
-| Extension point                                                                              | Reuse                                                                              |
-| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| Client `local` slot and `ConfigSource`                                                       | User settings fill it; `getConfigSource` keeps answering `local`                   |
-| Godot `PKeyOverrideStore`                                                                    | `PKeyUserSettingsStore extends PKeyOverrideStore`                                  |
-| `Catalog.validateKeyValue` and representability                                              | Server-side validation of every settings write and schema-bearing record           |
-| `applyOverrides` batch semantics and sealing                                                 | The operator account override layer, unchanged                                     |
-| `mergePayloads` and the enforced-wins rule                                                   | The account override layer slots in where licence overrides sit                    |
-| `ManagedPayloadEditor.tsx`                                                                   | The console editor for account overrides                                           |
-| `RateLimitDO`, `UpdateHealthDO`, R2 `BLOBS` (`packages/worker/wrangler.toml:31-40, 143-157`) | Precedent for a new Durable Object class and the R2 binding [V]                    |
-| `devices/report` caps and `coreDeviceAllowed`                                                | Request-size caps and licence scoping on writes                                    |
-| `tools/services.json` descriptors and the services checklist                                 | The new `sync` service (Cloud Sync), its toggle and `requires: [config, identity]` |
-| `tools/gen-mirrors.ts`                                                                       | Typed setting keys and collection types per language                               |
-| `packages/cli/src/saveCompat.ts` (`provides`, `contentApi`)                                  | Save metadata records the content API a save needs                                 |
+| Extension point                                                                              | Reuse                                                                    |
+| -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Client `local` slot and `ConfigSource`                                                       | User settings fill it; `getConfigSource` keeps answering `local`         |
+| Godot `PKeyOverrideStore`                                                                    | `PKeyUserSettingsStore extends PKeyOverrideStore`                        |
+| `Catalog.validateKeyValue` and representability                                              | Server-side validation of every settings write and schema-bearing record |
+| `applyOverrides` batch semantics and sealing                                                 | The operator account override layer, unchanged                           |
+| `mergePayloads` and the enforced-wins rule                                                   | The account override layer slots in where licence overrides sit          |
+| `ManagedPayloadEditor.tsx`                                                                   | The console editor for account overrides                                 |
+| `RateLimitDO`, `UpdateHealthDO`, R2 `BLOBS` (`packages/worker/wrangler.toml:31-40, 143-157`) | Precedent for a new Durable Object class and the R2 binding [V]          |
+| `devices/report` caps and `coreDeviceAllowed`                                                | Request-size caps and licence scoping on writes                          |
+| `tools/services.json` descriptors and the services checklist                                 | The new `sync` service (Cloud Sync), its toggle and `requires: [config]` |
+| `tools/gen-mirrors.ts`                                                                       | Typed setting keys and collection types per language                     |
+| `packages/cli/src/saveCompat.ts` (`provides`, `contentApi`)                                  | Save metadata records the content API a save needs                       |
 
 ## 4. Options
 
@@ -405,7 +452,7 @@ schemas outside the catalog. Settings are merged client-side.
 ### Option C: one catalog, its own service (recommended; the service split is the owner's decision)
 
 The first revision put Cloud Sync inside Config. The owner then decided it is **its own service**,
-"Cloud Sync" (slug `sync`), with its own toggle, depending on Config and on Identity layer 1. The
+"Cloud Sync" (slug `sync`), with its own toggle, depending on Config and on the layer 1 account. The
 recommendation keeps what made the hybrid work and adopts the split:
 
 - **One catalog.** Settings are catalog `config` keys with a `user` block; collections and saves
@@ -414,8 +461,8 @@ recommendation keeps what made the hybrid work and adopts the split:
 - **Settings fill the client `local` slot.** The Config SDK persists them locally on every product;
   Cloud Sync carries them across devices when it is on and the person is signed in.
 - **Its own service.** Routes under `/<p>/sync/`, its own Durable Object class, R2 prefix, discovery
-  fragment, console section and `tools/services.json` entry. Turning it on requires Config and
-  Identity (`requires: [config, identity]`).
+  fragment, console section and `tools/services.json` entry. Turning it on requires Config
+  (`requires: [config]`); the account it needs is platform-level (owner, final round).
 - **The operator layer stays in Config.** The account override is managed config, merged by Core
   into the signed document (§5.12). It does not need Cloud Sync.
 
@@ -724,11 +771,12 @@ that it stays a hint and that `user.sync` is the enforced field (decision 9).
 
 ### 5.4 Sync protocol
 
-All routes sit under the Cloud Sync service (`/<p>/sync/`). They need Config, Identity and the
-product's Cloud Sync toggle on (§5.16), and a device whose `devices.subject` resolves to a live
-pairwise subject. There is no other principal: a device with a valid token but no signed-in
-account, including every device on a floating licence, gets **`403 account_required`** with a hint
-to sign in (decision 18).
+All routes sit under the Cloud Sync service (`/<p>/sync/`). They need Config and the product's
+Cloud Sync toggle on (§5.16), and a device for which `resolveSyncPrincipal` finds a live pairwise
+subject: `devices.subject`, else its licence owner's subject. There is no other principal: a device
+with a valid token and neither, including every device on a floating licence, gets
+**`403 account_required`** with a hint to sign in where Identity is on, or to add the licence to an
+account in the portal where it is not (decision 18).
 
 **Why 403, not 401 [V/I].** client-core records a hard 401 on a document fetch as the offline
 revocation signal (`lastSyncUnauthorized`, `packages/client-core/src/store.ts:46`,
@@ -744,7 +792,7 @@ device. The device token is valid, the principal is missing, so it is a 403, as 
   cached signed documents and `lastSyncUnauthorized` untouched (§5.13).
 
 **Authentication.** Every route takes `Authorization: Bearer <device token>`, resolved by Core's
-`validateDeviceToken` to the device row and then to `devices.subject`:
+`validateDeviceToken` to the device row and then through `resolveSyncPrincipal`:
 
 - **Native SDKs** send the token they already hold.
 - **A web React app** is a browser device: it registers like any device and holds its token in
@@ -1169,11 +1217,24 @@ Other limit rules:
      Relink is the developer's remedy for a licence in the wrong hands (S-16's account-recovery
      path), so the previous owner's binding on those devices must not survive it. The device keeps
      running on its licence, and the next sign-in binds whoever signs in.
-   - A licence-key activation never binds an account (an owned licence never moves by key, S-16
-     §5.1). The operator account override layer still resolves through the licence's owning account
-     for such a device (§5.12). That is operator configuration for the customer, as licence
-     overrides are today. It gives the device no access to the account's settings, records or saves.
-   - A device without a bound account gets `403 account_required` with a hint to sign in, never a
+   - A licence-key activation never sets `devices.subject` (an owned licence never moves by key,
+     S-16 §5.1). **But the device follows its licence owner (owner, final round):** with no sign-in,
+     `resolveSyncPrincipal` falls back to the owner's subject for the product, exactly as the
+     account override layer does (§5.12). That is how a product without Identity gets Cloud Sync at
+     all. The line ends when the licence is detached (the device then has no principal) and moves
+     when it is relinked; the SDK treats either change like a sign-out (flush what it can, drop the
+     old principal's cache, keep local settings for the next bind).
+   - **Residual risk of the licence-owner line [I; decision 22].** On a product with Identity on,
+     key entry on a new device is refused once the licence is owned (S-16 D24), so only devices
+     enrolled before the attach follow the owner. On a product without Identity, key entry is never
+     refused or limited, so anyone holding an owned licence's key can enrol a device and read or
+     write the owner's Cloud Sync data and receive the owner's account overrides for that product.
+     Mitigations: an email to the owner for each new device enrolled by key on an owned licence
+     (I-11, through I-18), the Library's "remove device", which revokes it and cuts its access, and
+     docs that tell developers to turn Identity on when the data matters. It never reaches another
+     product (pairwise subjects).
+   - A device without a principal gets `403 account_required` with a hint to sign in (Identity on)
+     or to add the licence to an account (Identity off), never a
      401, so the client's revocation handling is not triggered (§5.4). There is no licence or device
      partition to fall back to (decision 18).
 3. **Licence and entitlement gating.**
@@ -1436,7 +1497,7 @@ catalog defaults → tier profile → licence profiles → store grants → ACCO
 
 The account override layer replaces `licenses.overrides_json` config and secrets at `payload.ts:142`.
 Its position after store grants keeps today's property that an operator override beats a store
-grant (`payload.ts:137-141`) [V]. It is Config's layer: it needs Config and Identity layer 1's
+grant (`payload.ts:137-141`) [V]. It is Config's layer: it needs Config and layer 1's
 platform account (licences attach through the portal Library, which runs for every product), not
 the product's Identity toggle and not the Cloud Sync toggle. It reaches every device the rule below
 picks, signed in or not. A product with Identity off still gets the layer through the licence-owner
@@ -1638,36 +1699,37 @@ U-18 before any SDK work [I]:
 
 ### 5.14 Threat-model deltas
 
-| #   | Threat                                                                      | Control                                                                                                                                    |
-| --- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| T1  | Cross-user read or write by naming another user (IDOR)                      | Owner derived from the credential; DO name server-side; no user id in device routes (§5.8 item 1)                                          |
-| T2  | A leaked licence key reads the owner's saves                                | Licence-key activation never binds an account; an owned licence never moves by key (S-16 §5.1)                                             |
-| T3  | A stolen device token keeps writing after sign-out or "sign out everywhere" | One Core hook clears `devices.subject`; DO checks the binding per request                                                                  |
-| T4  | Player edits saves or `owner` records to cheat                              | Value lives in `ownerRead`/`server`; schema and monotonic constraints; receipts later; docs banner                                         |
-| T5  | Client data reaches a gate (the R2-01/R4-01 class)                          | Separate journal; lint rule in the SDK review checklist; never consulted by licence or entitlement code                                    |
-| T6  | Storage or cost abuse from one tenant or account                            | Per-principal and per-product quotas and rate limits; device-trust gate option; `requiresFlag`                                             |
-| T7  | Clock tampering wins LWW forever                                            | HLC with server clamp                                                                                                                      |
-| T8  | Account switch on a shared PC leaks or flushes into the wrong user          | Journal and cache partitioned by user id; `onSignOut: clear` by default                                                                    |
-| T9  | Hostile JSON or blob (deep nesting, prototype keys, served as HTML)         | Caps before parse; key charset; `octet-stream` + `attachment` on download; no public URLs                                                  |
-| T10 | Operator or support abuse of personal data                                  | Audit every read of saves and every write; step-up for export, delete and bulk restore                                                     |
-| T11 | Deleted user's data restored from backup                                    | Crypto-shredding; tombstone re-apply covers DO and R2                                                                                      |
-| T12 | Unsafe deserialisation of save bytes in Godot                               | Docs and SDK sample use `bytes_to_var` without objects                                                                                     |
-| T13 | XSS on a web app steals the browser device token                            | Bearer only, never a cookie; strict-CSP guidance; server-side revoke via the Core hook; token scoped to one user in one product            |
-| T14 | Scripted mass sign-up fills storage (denial of wallet)                      | Lazy DO creation; unlicensed defaults (saves off); per-product byte and user ceilings (§5.7); S-16 sign-up limits                          |
-| T15 | Cloud Sync identifiers become a cross-product join key                      | Keys, DO names, R2 prefixes, exports and `devices.subject` use the pairwise subject only; S-17 adds no account id to any tenant row (§5.2) |
-| T16 | Operator overrides reach a licence-key device through the owner fallback    | Intended: same data the licence override delivered before migration; operator data only, no Cloud Sync data (§5.12)                        |
+| #   | Threat                                                                      | Control                                                                                                                                                 |
+| --- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T1  | Cross-user read or write by naming another user (IDOR)                      | Owner derived from the credential; DO name server-side; no user id in device routes (§5.8 item 1)                                                       |
+| T2  | A leaked licence key reads the owner's saves                                | Identity on: key entry on a new device is refused once owned (S-16 D24). Identity off: residual; new-device email, portal "remove device" (decision 22) |
+| T3  | A stolen device token keeps writing after sign-out or "sign out everywhere" | One Core hook clears `devices.subject`; DO checks the binding per request                                                                               |
+| T4  | Player edits saves or `owner` records to cheat                              | Value lives in `ownerRead`/`server`; schema and monotonic constraints; receipts later; docs banner                                                      |
+| T5  | Client data reaches a gate (the R2-01/R4-01 class)                          | Separate journal; lint rule in the SDK review checklist; never consulted by licence or entitlement code                                                 |
+| T6  | Storage or cost abuse from one tenant or account                            | Per-principal and per-product quotas and rate limits; device-trust gate option; `requiresFlag`                                                          |
+| T7  | Clock tampering wins LWW forever                                            | HLC with server clamp                                                                                                                                   |
+| T8  | Account switch on a shared PC leaks or flushes into the wrong user          | Journal and cache partitioned by user id; `onSignOut: clear` by default                                                                                 |
+| T9  | Hostile JSON or blob (deep nesting, prototype keys, served as HTML)         | Caps before parse; key charset; `octet-stream` + `attachment` on download; no public URLs                                                               |
+| T10 | Operator or support abuse of personal data                                  | Audit every read of saves and every write; step-up for export, delete and bulk restore                                                                  |
+| T11 | Deleted user's data restored from backup                                    | Crypto-shredding; tombstone re-apply covers DO and R2                                                                                                   |
+| T12 | Unsafe deserialisation of save bytes in Godot                               | Docs and SDK sample use `bytes_to_var` without objects                                                                                                  |
+| T13 | XSS on a web app steals the browser device token                            | Bearer only, never a cookie; strict-CSP guidance; server-side revoke via the Core hook; token scoped to one user in one product                         |
+| T14 | Scripted mass sign-up fills storage (denial of wallet)                      | Lazy DO creation; unlicensed defaults (saves off); per-product byte and user ceilings (§5.7); S-16 sign-up limits                                       |
+| T15 | Cloud Sync identifiers become a cross-product join key                      | Keys, DO names, R2 prefixes, exports and `devices.subject` use the pairwise subject only; S-17 adds no account id to any tenant row (§5.2)              |
+| T16 | Operator overrides reach a licence-key device through the owner fallback    | Intended: same data the licence override delivered before migration; operator data only, no Cloud Sync data (§5.12)                                     |
 
 ### 5.15 How it composes
 
 - **Config.** User settings are config keys, and the Config SDK persists them locally on every
   product. The account override is a Config merge layer, read by Core. D-08 still holds for the
   signed document, which needs no licence. Config stays read-only on the device wire.
-- **Cloud Sync.** Its own service (slug `sync`) and toggle, requiring Config and Identity
-  (`requires: [config, identity]`). It reads the catalog
+- **Cloud Sync.** Its own service (slug `sync`) and toggle, requiring Config (`requires: [config]`)
+  and the platform account, not the Identity toggle. It reads the catalog
   through `shared-catalog` and a Core accessor, and its principal through `resolveSyncPrincipal`,
   so it imports neither Config nor Identity (rule 6).
-- **Identity (layer 1).** It supplies the account, and sets and clears `devices.subject`
-  through Core. Account deletion, per-product deletion and export cascade into Cloud Sync data and
+- **The account and Identity (layer 1).** The account (platform-level) supplies the licence-owner
+  line through `licenses.account_id`; Identity's app sign-in, where the product turns it on, sets
+  and clears `devices.subject` through Core. Account deletion, per-product deletion and export cascade into Cloud Sync data and
   account overrides. The UI kits' sign-in screens gain the merge prompt.
   - **Account merge** moves data: for each product, the absorbed subject's Cloud Sync data and
     account overrides join the surviving subject through hooks that ship with the MVP for
@@ -1688,11 +1750,17 @@ U-18 before any SDK work [I]:
 
 ### 5.16 Quickstart: synced settings in five minutes
 
-The promise, stated plainly: **Cloud Sync needs the Identity and Cloud Sync toggles and a
-signed-in Polaris Key account. It never works without sign-in** (owner). Sign-in itself needs no
-per-product provider setup in layer 1: the account and its sign-in methods are platform-wide (S-16
-§5.2); the product only turns Identity on. Without sign-in, settings still persist locally on the
-device and upload at the first sign-in, with no prompt (§5.5).
+The promise, stated plainly: **Cloud Sync needs the Cloud Sync toggle and a Polaris Key account
+bound to the device. It never works without an account** (owner). The account is platform-wide and
+needs no per-product setup (S-16 §5.2). A device binds in one of two ways (owner, final round):
+
+- **its licence is attached to an account** (Activate License, the Library or Discover in the
+  portal), on any product, with or without Identity; or
+- **the person signs in through the app**, only on a product with Identity on.
+
+Until then, settings persist locally on the device and upload at the first bind, with no prompt
+(§5.5). The quickstart below uses Identity; without it, skip step 3's `signIn()` and show the
+"Add this licence to your Polaris Key account" offer instead.
 
 **Native sign-in in the MVP is device code or QR** [I]. The MVP depends on S-16 I-10 (phase 1a),
 which ships device code for native SDKs and the web redirect in React. Native redirect through the
@@ -1714,7 +1782,7 @@ services: [license, config, identity, sync]
   user: { sync: user } # the only new line
 ```
 
-**2. Console.** Push or resync as today. Then turn on **Cloud Sync** (Identity must be on). The toggle is off by default
+**2. Console.** Push or resync as today. Then turn on **Cloud Sync** (Identity is optional). The toggle is off by default
 because it creates storage cost, and its page shows the product's ceilings (§5.7).
 
 **3. Node** (S-16 I-10's names are a sketch [I]):
@@ -1863,7 +1931,7 @@ Ids are kept from the earlier revisions so cross-references stay valid; U-26 is 
 | U-01 ⚑   | U0       | **Plan.** Decision record (Cloud Sync as its own service on Config's catalog; DO per `(product, subject)`; account overrides in Config), glossary nouns (rule 4), data model, WIRE-CONTRACT-V4 Cloud Sync section with the op table and push rules, browser principal and CORS list, `shared-protocol` types, error codes, parity ids, manifest schema, scenario-corpus format, ceilings, threat rows T1–T16, catalog-parser tolerance check in each SDK                                                               | I-04                                             | M    | 5    | Plan approval; rule 2 argument (no bump); rule 4                                                                                                                              |
 | U-02     | U1       | Principal binding: `devices.subject` migration (the pairwise subject, never the account id); Core activation path sets it on Identity sign-in (native and browser devices); one Core hook clears it (sign-out, disable, deletion, sign out everywhere, relink; not plain detach); `resolveSyncPrincipal` with alias resolution; `subjectFor` for Config's owner fallback (rule 6); the merge-hook and deletion-hook registry with its guard test                                                                       | U-01, I-05                                       | M    | 3    | Boundaries test; test that licence-key activation never binds; no account id in any S-17 tenant row or Cloud Sync key; every subject-keyed store has merge and deletion hooks |
 | U-03     | U1       | Account override layer: `account_overrides`, `overrideAccount` with the licence-owner fallback, sealing through `applyOverrides`, console editor on the Users page, admin route; **its account-merge hook** (per-key surviving value, collisions reported, §5.5); **the platform-wide migration** (§5.12 steps 1–5) with the inventory, notice, multi-licence collapse and report. Step 4's freeze scope waits for decision 20                                                                                         | U-02, I-05, I-12; the run also I-07, I-11 (live) | L    | 6    | The eight §5.12 tests; corpus unchanged (assert); migration dry run on a production-shaped copy; notice not started before I-07 and I-11 are live                             |
-| U-04     | U1       | Catalog, manifest and service: `user` block (with `merge` members) and `cloudSync` block (with `unlicensed`), validator rules 1–11 with mutation-table entries, `gen-mirrors` typed setting keys, `gen-docs`; **the `sync` service** in `tools/services.json` (descriptor, `requires: [config, identity]`, toggle, discovery fragment, console section and accent); console catalog form and Cloud Sync page                                                                                                           | U-01                                             | L    | 6    | Rule 9 mutation table; services checklist and boundaries test; `gen-mirrors` drift; docs drift                                                                                |
+| U-04     | U1       | Catalog, manifest and service: `user` block (with `merge` members) and `cloudSync` block (with `unlicensed`), validator rules 1–11 with mutation-table entries, `gen-mirrors` typed setting keys, `gen-docs`; **the `sync` service** in `tools/services.json` (descriptor, `requires: [config]`, toggle, discovery fragment, console section and accent); console catalog form and Cloud Sync page                                                                                                                     | U-01                                             | L    | 6    | Rule 9 mutation table; services checklist and boundaries test; `gen-mirrors` drift; docs drift                                                                                |
 | U-05 ⚑   | U1       | Cloud Sync Durable Object (settings and `setting_members`, `seq`, clients, tombstones, lazy migrations), push rules 1–8 on the server, **the settings account-merge hook** (copy or per-key merge into the surviving subject's DO, device rows rewritten, §5.5), `403 account_required`, coalesced directory alarm, unlicensed limits and product ceilings, `RateLimitDO` limits, pull and push routes, browser bearer and CORS inclusion, discovery fragment, `errors.json`, OpenAPI and `routeCoverage`, transcripts | U-02, U-04                                       | L    | 10   | Plan-mode chain (rules 3, 10); merged-account test; load test of one DO at the push limit, measuring rows written and billable duration per op                                |
 | U-19     | U1       | **Security review of U-05** before any production deploy: T1–T3, T13–T16, cross-tenant, cross-product and cross-account tests, CORS behaviour, the clamp and quota paths                                                                                                                                                                                                                                                                                                                                               | U-05                                             | M    | 2    | **Gates U-05's production deploy and every U1 SDK release**; findings tracked as R-series                                                                                     |
 | U-18     | U1       | **Scenario corpus**: `sync-scenarios.json`, reference client state machine and in-memory server in `client-core`, `gen:sync-scenarios -- --check`, the Node runner as the template; first-sign-in upload and `403 account_required` scenarios                                                                                                                                                                                                                                                                          | U-01                                             | M    | 4    | Drift gate; every push and journal rule, and the first-sign-in rule, has a scenario                                                                                           |
@@ -1946,9 +2014,8 @@ belong in that regeneration:
   U-20.
 - **I-15** (native redirect) is a soft dependency of the native settings SDK packages: until it
   lands, native sign-in is device code or QR.
-- **The `sync` descriptor** is `requires: [config, identity]`. S-16 should state the rule that a
-  service needing a signed-in principal requires `identity`, even though the account itself is
-  platform-wide.
+- **The `sync` descriptor** is `requires: [config]` (owner, final round): Cloud Sync depends on the
+  platform account, not the Identity toggle, and S-16 §5.1 now states the account/service split.
 - **I-10**'s `signOut` calls the Cloud Sync flush-before-sign-out rule (§5.4 rule 5) when the
   service is on.
 - **I-11**'s product page reserves the Cloud Sync section and its per-product export and deletion
@@ -1988,8 +2055,8 @@ in this branch.
    so customers can attach) and the report (§5.12 steps 1 and 3) are the mitigation; the size of the
    loss is unknown until U-03's inventory counts it. Owners of several licences of one product also
    lose the per-licence values that do not win the collapse (§5.12 step 2), listed in the report.
-7. **No Cloud Sync without sign-in.** By the owner's decision, floating-licence and never-signed-in
-   users get local persistence only. Products whose customers will not sign in get no sync; the
+7. **No Cloud Sync without an account.** By the owner's decision, floating-licence users with no
+   sign-in get local persistence only (a device whose licence an account owns follows that owner). Products whose customers will not sign in get no sync; the
    sign-up prompt and the "what signing in adds" copy carry the value.
 8. **Account merge re-keys data.** A merge is the one operation that moves Cloud Sync data between
    subjects, and S-16 ships it before any Cloud Sync phase. Each store registers its merge hook in
@@ -2029,12 +2096,13 @@ in this branch.
 valid.
 
 - **1. Option.** C, with Cloud Sync as **its own service** ("Cloud Sync", slug `sync`, its own
-  toggle) on Config's catalog, depending on Config and Identity layer 1; one Durable Object per
-  principal. _Decided._
+  toggle) on Config's catalog, depending on Config and the layer 1 account (`requires: [config]`,
+  not the Identity toggle: owner, final round); one Durable Object per principal. _Decided._
 - **2. Principal.** The account × product, named by the pairwise subject; `devices.subject` (the
   pairwise subject, not the account id) set by real sign-in and cleared by sign-out, revocation and
   relink but not by plain licence detach, never signed, never set by licence-key activation, reused
-  by I-24. _Decided (the binding column is this note's design)._
+  by I-24; a device with no sign-in follows its licence owner's subject (owner, final round).
+  _Decided (the binding column and the resolver are this note's design)._
 - **3. What is removed, and where.** The licence-level config override layer, **everywhere**,
   replaced by user-level managed config on the account × product. Floating licences have no such
   layer and are prompted to sign up. _Decided; the first revision's "keep licence overrides on
@@ -2051,13 +2119,14 @@ valid.
   anonymous-to-signed-in merge prompt and saves, then collections. _Decided._ The MVP still uploads
   local settings at first sign-in (per-key, no prompt) and handles account merge for settings and
   account overrides, because both already exist in the MVP; only the prompt framework waits for U2.
-- **18. A zero-sign-in path.** None, ever. _Decided; U-26 is retired, and threat T15 now covers the
+- **18. A zero-sign-in path.** None, ever: every principal is an account, bound by sign-in or as the
+  licence's owner (final round). _Decided; U-26 is retired, and threat T15 now covers the
   cross-product join key instead of a licence partition._
 - **19. Browser principal.** A web app authenticates as a browser device with a bearer device token
   issued to an origin on the product's `web.origins` allowlist through I-08's web redirect (an
   authorization code exchanged with PKCE, a new S-16 wire row, §6); CORS without credentials; the
   first-party session cookie is not accepted on Cloud Sync routes. _Decided; web Cloud Sync depends
-  on I-08._
+  on I-08_ (for products without Identity, see decision 23).
 
 **Carried defaults (the owner's decisions above did not change them; accepting them all is a
 coherent plan) [I]:**
@@ -2082,7 +2151,8 @@ coherent plan) [I]:**
   merge moves data (§5.5). _Default: yes._
 - **12. Developer-backend credential** for `ownerRead` and `server` writes, addressed by pairwise
   subject: layer 2 issuer client credentials with a `pkey:sync` scope (I-21), else an RFC 7523
-  assertion (I-25). The console writes from day one. _Default: I-21 client credentials, in U-16._
+  assertion (I-25). The console writes from day one. _Default: I-21 client credentials, in U-16_
+  (both need Identity on; for products without it, see decision 24).
 - **13. Server-signed receipts.** Later, on their own keyring, outside the corpus. _Default: later._
 - **14. Client-side end-to-end encryption.** Later, as an opaque value type with developer-held keys.
   Per-principal server-side keys for saves in v1, for crypto-shredding. _Default: as stated._
@@ -2103,6 +2173,25 @@ coherent plan) [I]:**
 - **21. Migration notice and report window.** Show the inventory 30 days before the run, counted
   from the day I-07 and I-11 are live in production; keep the
   report (secret values by name only) for 90 days. _Default: as stated._
+
+**Needs the owner's yes (new with the final round, 2026-10-04) [I]:**
+
+- **22. The licence-owner line on products without Identity.** Cloud Sync follows the licence owner
+  on every product (final round). On a product without Identity, key entry on an owned licence is
+  never refused, so a leaked key reaches the owner's Cloud Sync data and account overrides for that
+  one product (§5.8 item 2). _Default: accept it, with an email to the owner for each new device
+  enrolled by key on an owned licence (I-11, sent through I-18), the Library's "remove device"
+  (revokes it and cuts Cloud Sync), and docs that recommend Identity when the data matters._ The
+  alternative, Cloud Sync only through sign-in, would contradict "Cloud Sync depends on the account,
+  not on Identity" by making Identity a hard requirement.
+- **23. Web Cloud Sync without Identity.** A browser device gets its token from I-08's web redirect,
+  which exists only with Identity on. _Default: no new route; a browser device activated by
+  licence key follows its licence owner like any device, and a web app without either gets local
+  persistence only. U-01 records the rule and U-20 tests it._
+- **24. The developer-backend credential without Identity.** Decision 12's credentials (I-21, I-25)
+  are Identity features. _Default: products without Identity use the existing product-scoped admin
+  credentials (§5.8 item 1) for U-16's routes; U-16's plan confirms it, so U-16 keeps its I-21
+  dependency only for the `pkey:sync` scope on Identity products._
 
 ## 8. Sources
 

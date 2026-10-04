@@ -47,6 +47,7 @@ Layer 1's methods are platform-wide, so Polaris registers one client per provide
 - Entra-style `email` claims are never trusted as verified; only a provider-asserted verified email skips I-07's code.
 - Apple's private-relay addresses receive mail only from registered sender domains; coordinate with I-18.
 - No Discord (owner). Microsoft/Xbox only if that storefront becomes real.
+- These are account sign-in methods, platform-level and never behind a product's `identity` toggle (owner, 2026-10-04): the portal and the Library use them for every product.
 - Upstream ID tokens are consumed once and never stored; no upstream access or refresh tokens are kept ([S-16 §5.5](../../notes/S-16-identity-service.md#55-privacy)).
 
 ## Steps

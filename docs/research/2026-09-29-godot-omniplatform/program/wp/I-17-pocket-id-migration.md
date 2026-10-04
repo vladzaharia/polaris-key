@@ -42,7 +42,8 @@ Operators and customers should not share a directory ([S-16 §5.4](../../notes/S
 
 - **Pocket ID facts (lead, 2026-10-04).** `email_verified` is in `claims_supported` [M]; the admin REST users endpoint answers 401 without an admin API key [M]. So this migrates by claim at next sign-in.
 - The sunset date follows the count, never precedes it.
-- Migrating by email here is not "linking by email match across accounts": the Pocket ID subject is the same person's previous Polaris sign-in, and it lands on the account only if no other account holds that email; otherwise it routes to "sign in to connect".
+- Migrating by email here is not "linking by email match across accounts": the Pocket ID subject is the same person's previous Polaris sign-in, and it lands on an account only if no other account holds that email. Otherwise the email step offers to join that account, with both proven in one session (the person signs in to the existing account by any of its methods), and never joins silently (owner, 2026-10-04).
+- Migrated accounts are ordinary accounts for dormancy: no sign-in and no licence for 36 months means a warning email, then deletion (D23, decided by the owner 2026-10-04).
 
 ## Steps
 
@@ -51,7 +52,7 @@ Operators and customers should not share a directory ([S-16 §5.4](../../notes/S
 
 ## Acceptance criteria
 
-- [ ] A platform user with a verified email lands on one account on next sign-in (test); a conflicting email routes to "sign in to connect" (test).
+- [ ] A platform user with a verified email lands on one account on next sign-in (test); a conflicting email gets the join offer (both accounts proven in one session, never joined silently) (test).
 - [ ] Email-less subjects keep signing in through the temporary link (test).
 - [ ] Runbook updated; the count is reported in the PR.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.

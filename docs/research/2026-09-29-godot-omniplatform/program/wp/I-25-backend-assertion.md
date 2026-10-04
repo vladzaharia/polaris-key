@@ -36,6 +36,7 @@ Console platform verification is under NDA and cannot ship in an open-source Wor
 ## Design notes
 
 - Optional and deferred.
+- Identity service only (owner, 2026-10-04). The assertion is minted by the developer's backend, so like D18 (decided) it is tenant-controlled: its links are tenant-scoped to that developer and are created only after the person proves their account on the login card (`interstitial_required`, with "Continue to <App>" per D22). A backend can never reach an account outside its own products.
 
 ## Steps
 

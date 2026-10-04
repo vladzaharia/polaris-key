@@ -14,7 +14,7 @@
 
 ## Goal
 
-Identity owns one global principal: `accounts`, `account_links` and `account_product_subjects` exist; licences point at accounts through `licenses.account_id`; every front door ends in one `signIn(verifiedIdentity)`; the link, merge and licence-claim rules of [S-16 §5.1](../../notes/S-16-identity-service.md#51-concepts-and-data-model) are enforced; and Core has the device binding, the subject resolver and the merge and deletion hooks Cloud Sync and Config build on. Identity works without License.
+Identity owns one global principal: `accounts`, `account_links` and `account_product_subjects` exist; licences point at accounts through `licenses.account_id`; every front door ends in one `signIn(verifiedIdentity)`; the link, merge and licence-claim rules of [S-16 §5.1](../../notes/S-16-identity-service.md#51-concepts-and-data-model) are enforced; and Core has the device binding, the subject resolver and the merge and deletion hooks Cloud Sync and Config build on. Identity works without License. The account is platform-level (owner, 2026-10-04): it exists for every product, whatever the product's `identity` toggle says.
 
 ## Why
 
@@ -33,8 +33,8 @@ There is no person record today: "the user" is four columns on `licenses` and a 
 
 - Tables and the reversible migration from `portal_accounts`, `licenses.sub` and `portal_license_links` to `accounts`, `account_links`, `account_product_subjects` and `licenses.account_id`, rehearsed on a production-shaped copy. `TABLE_OWNERS` entries.
 - `signIn(verifiedIdentity)` and the link engine: one link per account (`link_conflict`), last-method guard (`last_link`), step-up (fresh sign-in no older than 5 minutes), audit and email on every link change.
-- Merge with proof of both (live sign-in to each account in one flow, both fresh): links, licences, sessions and personal details move; per product the surviving pairwise subject wins and the other becomes an alias; the absorbed account is a 30-day tombstone; `subject.merged` event.
-- Pairwise subjects: stored random values per `(account, product)`, created on first contact; tenant-scoped link lookups on `(issuer_key, tenant_scope, subject)`.
+- Merge with proof of both (live sign-in to each account in one flow, both fresh): links, licences, sessions and personal details move; per product the surviving pairwise subject wins and the other becomes an alias; the absorbed account is a 30-day tombstone; the developer gets a `subject.merged` event (D21, accepted by the owner 2026-10-04). The same merge primitive serves I-07's join offer when a confirmed email belongs to another account.
+- Pairwise subjects: stored random values per `(account, product)`, created on first contact (a licence of the product attached in the portal, a sign-in through the product, or account × product data), for every product whether or not its Identity toggle is on; tenant-scoped link lookups on `(issuer_key, tenant_scope, subject)`.
 - Licence claim rules (below), floating licences, Identity without License (`requires-identity`, no licence row needed).
 - **S-17 hooks:** the device binding column (name and content from I-04's plan, default `devices.subject` holding the pairwise subject); sign-in passes the subject to Core's activation path, which sets the binding; one Core hook clears it (sign-out, sign out everywhere, disable, deletion, per-product removal, relink; not plain detach); Core's resolver from `(account, product)` to the pairwise subject (`subjectFor`), with alias resolution; the per-product merge-hook and deletion-hook registry; merge enumerates account × product data to re-key; per-product removal and account deletion call registered deletion hooks (Cloud Sync, Config) before deleting the subject; detach on deletion with `subject.deleted` carrying licence ids.
 - The decision record replacing D-14, as named in the plan.
@@ -48,7 +48,8 @@ There is no person record today: "the user" is four columns on `licenses` and a 
 ## Design notes
 
 - **Licence claim and transfer (safety defaults, owner-confirmed).** First attach only: a floating licence attaches by its key or by the device's enrolled licence after a confirm screen (P1-07's show-then-confirm). An owned licence is refused with `license_owned` on attach and portal Activate License; it never moves by key. It moves only when its owner detaches it or a developer relinks it (I-12). A licence that carries an email attaches only to an account whose verified email matches, unless the product sets `claimByKey: true`. Each attach notifies the licence's email, if any.
-- **Never by email match.** A provider-verified email equal to another account's primary email never attaches the provider to it; the card routes to "sign in to connect".
+- **Never by email match.** A provider-verified email equal to another account's primary email never attaches the provider to it silently; the card offers to join the two accounts once both are proven in one session (owner, 2026-10-04; I-07).
+- **Platform, not a toggle** (owner, 2026-10-04; supersedes D26). The account tables, `signIn`, merge, claim rules, `subjectFor` and the clearing hook run for every product; I-04's plan says which module owns the tables (`TABLE_OWNERS`), and nothing here reads the product's `identity` toggle. Only the sign-in routes that reach `signIn` _through a product_ (I-08, I-09's device-wire attach, I-13, I-15) check that toggle.
 - **The global account id never leaves the Worker's Identity and Core code** (I-04's wording): not in any developer-facing API, export, webhook or SDK response. Developers see pairwise subjects only.
 - **Per-product removal is not unlinkability** while a licence of that product stays attached (D25); the removal path offers detaching the licence too.
 - No account row exists until a credential is verified ([S-16 §5.5](../../notes/S-16-identity-service.md#55-privacy) retention).
@@ -70,6 +71,7 @@ There is no person record today: "the user" is four columns on `licenses` and a 
 - [ ] A merge keeps the absorbed subject resolvable as an alias for each product (test); no merge happens without two fresh sign-ins (test).
 - [ ] A tenant-scoped link of team A never resolves an account for a product of team B (test).
 - [ ] Licence-key activation never sets the device binding (test); sign-out clears it (test).
+- [ ] `subjectFor` resolves the licence owner's subject for a product with the Identity toggle off (test), so the account override layer and Cloud Sync's licence-owner line work there.
 - [ ] No developer-facing response contains the account id (test over the admin and device routes touched).
 - [ ] An Identity-only product signs in without a `licenses` row (test); the `boundaries` test passes (rule 6).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.

@@ -37,6 +37,10 @@ A web app is a browser device with a bearer token, never a cookie ([S-17 §1](..
 ## Design notes
 
 - Strict-CSP guidance for web apps (T13); the token is scoped to one user in one product.
+- **When the device binds** (owner clarification, 2026-10-04): Cloud Sync depends on the Polaris Key account, not on the product's Identity toggle. The device has a principal when it signed in through the product (Identity on) or when its licence is attached to an account (any product: portal Activate License, Library, Discover). "First sign-in" below means this first bind; local values upload then, per key with original edit clocks, no prompt.
+- **The offer on `account_required`:** on a product without Identity the SDK and UI kit never show app sign-in; they show "Add this licence to your Polaris Key account to sync" with the Worker-built portal link (an offer, never forced). On a product with Identity they may also offer sign-in.
+- **Principal change** (detach or relink on the licence-owner line, or a different subject after a merge alias resolves) is handled like sign-out: no flush to the new principal, the cloud cache is dropped, local values stay as the unbound partition (scenario).
+- **Web on a product without Identity ([S-17 §7.3](../../notes/S-17-user-data-sync.md#73-owner-decisions) decision 23, proposed).** I-08's web redirect is sign-in through the product, so it exists only with Identity on. Default: no new route; a browser device activated by licence key follows its licence owner like any device, and a web app with neither gets local persistence only. U-01 records the rule; this package tests both cases. React desktop follows the licence-owner line like the native SDKs.
 
 ## Steps
 

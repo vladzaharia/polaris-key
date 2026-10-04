@@ -37,6 +37,7 @@ No licensing peer offers it, so it is a real differentiator ([S-16 §2](../../no
 
 - Keyring rotated about every 90 days, never mixed with the Ed25519 document keys; exact redirect-URI matching.
 - Issuer tokens are outside the signed corpus.
+- Part of the per-product Identity service: the issuer exists only while the product's Identity toggle is on (owner, 2026-10-04). Its consent screen builds on the D22 "Continue to <App>" grant, and the `email` scope releases the account email only with consent (D19), both decided 2026-10-04.
 
 ## Steps
 

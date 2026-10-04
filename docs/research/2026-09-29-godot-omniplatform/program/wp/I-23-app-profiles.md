@@ -35,6 +35,7 @@ App-specific profiles are part of the layer 2 scope the owner approved ([S-16 ow
 
 ## Design notes
 
+- App-specific profiles are part of the per-product Identity service and exist only for products with Identity on (owner, 2026-10-04). Consent rides on the D22 "Continue to <App>" grant (decided 2026-10-04).
 - Consented profile claims are join keys between developers; say so on the consent screen ([S-16 §5.4](../../notes/S-16-identity-service.md#54-threat-model-deltas) item 12).
 
 ## Steps

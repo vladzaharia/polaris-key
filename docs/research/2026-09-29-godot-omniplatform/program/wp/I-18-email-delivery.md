@@ -41,6 +41,7 @@ Every sign-in email for every developer leaves one Polaris sender, so its reputa
 ## Design notes
 
 - DNS and the Apple registration are owner actions; agents never touch DNS or accounts.
+- Platform mail, sent as "Polaris Key" (never "<App> via"), includes the dormant-account warning before deletion at 36 months (D23) and the merge and join notices (D21 and the email-step join offer), all decided by the owner 2026-10-04. Per-product caps never throttle these.
 - Whether the Email Service exposes bounce events is open [U]; record what exists.
 
 ## Steps

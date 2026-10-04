@@ -37,6 +37,7 @@ Keygen `maxUsers` and Cryptlex named-user licences are table stakes for teams ([
 ## Design notes
 
 - Optional and deferred; the owner's D9 keeps the licence document account-free until this lands.
+- Seat holders are signed-in subjects recorded in `devices.subject` (the pairwise subject, never the account id), so named-user seats need the product's Identity service on (owner, 2026-10-04: app sign-in is Identity-only).
 
 ## Steps
 

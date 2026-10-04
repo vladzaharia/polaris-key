@@ -41,6 +41,8 @@ The owner approved layer 2 in full but put it after layer 1, leaning in-house on
 ## Design notes
 
 - Layer 1 already fixes `sub` as the pairwise subject, so issuer tokens add no join key.
+- Everything in layer 2 belongs to the per-product Identity service and exists only for products with Identity on; the account stays platform-level (owner, 2026-10-04).
+- Decided by the owner 2026-10-04 and binding on the plan: D17 (credentials only on the login card; an in-app credential API is revisited only for app-specific profiles), D18 (a product's own IdP stays product-only, linkable from the portal under step-up), D19 (the account email reaches a product only with consent), D21 (merge: survivor's subject wins, alias, `subject.merged`) and D22 (no silent SSO: first sign-in per app, and every device code, needs "Continue to <App>"; issuer consent builds on that grant).
 - Access tokens 5–15 minutes; claims carry entitlements, not licence state.
 
 ## Steps

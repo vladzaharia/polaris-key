@@ -37,6 +37,8 @@ The owner ordered the merge and saves right after the MVP ([S-17 owner decisions
 
 - Upload when the cloud is empty; otherwise per-tier policy; saves are never overwritten; prompt only on a real conflict.
 - The absorbed subject's records and saves are parked, never deleted, until the prompt resolves.
+- Account merge follows S-16 D21 (accepted 2026-10-04): per product the survivor's pairwise subject wins, the other becomes an alias, and the developer receives `subject.merged`. A merge starts only from proof of both accounts in one session, including the email-confirmation step's join offer when the confirmed email belongs to another account; it is never silent.
+- "Anonymous-to-signed-in" means the device's first bind (sign-in on an Identity product, or its licence becoming attached to an account on any product); the prompt appears at that bind, so on a product without Identity it is triggered by the attach, not by an app sign-in (U-01 fixes the trigger).
 - The Godot slice can start as soon as U-21 lands.
 
 ## Steps

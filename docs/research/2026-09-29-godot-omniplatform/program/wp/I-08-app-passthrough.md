@@ -18,7 +18,7 @@ An app can send a person to the login card and get them back signed in: the card
 
 ## Why
 
-Passthrough is how every app reaches the shared account without hosting credential entry ([S-16 §5.3](../../notes/S-16-identity-service.md#53-wire-impact), D17). Device code becomes a main front door against an account holding every developer's licences, so R1-07 closes here ([S-16 §5.4](../../notes/S-16-identity-service.md#54-threat-model-deltas) item 6). The web redirect is S-17's browser principal (decision 19) and the dependency of web Cloud Sync ([S-17 §6](../../notes/S-17-user-data-sync.md#6-phases-and-work-packages)).
+Passthrough is how an app with the Identity service on reaches the shared account without hosting credential entry ([S-16 §5.3](../../notes/S-16-identity-service.md#53-wire-impact); D17, accepted). It is the core of the per-product Identity service (owner, 2026-10-04): the account itself is platform-level, but "<App> wants you to sign in" exists only for products whose `identity` toggle is on. Device code becomes a main front door against an account holding every developer's licences, so R1-07 closes here ([S-16 §5.4](../../notes/S-16-identity-service.md#54-threat-model-deltas) item 6). The web redirect is S-17's signed-in browser principal (decision 19) and the dependency of web Cloud Sync on products with Identity on ([S-17 §6](../../notes/S-17-user-data-sync.md#6-phases-and-work-packages)); a product without Identity reaches Cloud Sync only through the licence owner's account, never through this route.
 
 ## Read first
 
@@ -37,6 +37,7 @@ Passthrough is how every app reaches the shared account without hosting credenti
 - QR sign-in on another device for the card.
 - **Web redirect:** `GET /<p>/identity/authorize` (`redirect_uri`, `state`, `code_challenge`, S256 only) → card → `302` to `redirect_uri?code=…&state=…`; `POST /<p>/identity/redirect/token` (route name per I-04) with `code` and `code_verifier` returns the activation response (browser device token, device id, pairwise subject); CORS for the product's `web.origins` only, without credentials.
 - Per-product start rate limits; discovery advertises the routes.
+- **Behind the product's `identity` toggle** (owner, 2026-10-04): with it off, `authorize`, the code exchange and device-code passthrough answer as for an unknown service and discovery advertises no sign-in routes; the card never shows a passthrough header for that product.
 
 **Out** (and where it belongs instead):
 
@@ -46,7 +47,7 @@ Passthrough is how every app reaches the shared account without hosting credenti
 ## Design notes
 
 - **Never a token in a URL or fragment.** The code lives 60 seconds, is single use in I-02's store, and is bound to the `code_challenge`, the product, the origin and the redirect URI. `redirect_uri`'s origin must equal a `web.origins` entry exactly (scheme, host, port) and its path must be in `identity.redirectPaths`; no wildcard, prefix or suffix matching; a mismatch shows an error on the card and never redirects.
-- **No silent grants.** The first sign-in to each app needs Continue; later web redirects may skip it, device code never does (D22).
+- **No silent grants (D22, accepted by the owner 2026-10-04).** No silent SSO into apps: the first sign-in to each app needs "Continue to <App>"; later web redirects may skip it, device code never does.
 - **Bounded yield.** A flow returns only the product the card names, its licences, its pairwise subject and the consented claims; never an account session. Anyone can start a flow for any product (no registered clients in layer 1): the card's product name, explicit Continue, exact origin matching and start rate limits are the mitigation ([S-16 §5.4](../../notes/S-16-identity-service.md#54-threat-model-deltas) item 6 residual).
 - `PROTOCOL_VERSION` unchanged; additive and feature-detected.
 - The first-party session cookie is never accepted on Cloud Sync routes (S-17 decision 19).
@@ -65,6 +66,7 @@ Passthrough is how every app reaches the shared account without hosting credenti
 - [ ] An unlisted origin, an unlisted path or a near-match is refused without a redirect (tests); a replayed or expired code and a wrong verifier are refused (tests).
 - [ ] The exchange answers CORS for listed origins only, never with credentials (test).
 - [ ] An existing account session does not skip Continue on a first sign-in to an app, nor ever on device code (tests).
+- [ ] With the product's Identity toggle off, every passthrough route is refused and discovery lists none (test).
 - [ ] Transcripts recorded; `errors.json`, OpenAPI and `routeCoverage` updated; THREAT-MODEL sections written; `PROTOCOL_VERSION` unchanged.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 

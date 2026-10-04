@@ -14,7 +14,7 @@
 
 ## Goal
 
-Devices push and pull user settings through `/<p>/sync/` against one Durable Object per `(product, subject)`, with push rules 1–8 enforced on the server, `403 account_required` for devices with no signed-in account, the settings account-merge hook, coalesced D1 directory writes, unlicensed limits and product ceilings, and browser bearer access through the CORS list.
+Devices push and pull user settings through `/<p>/sync/` against one Durable Object per `(product, subject)`, with push rules 1–8 enforced on the server, `403 account_required` for devices with no principal (neither signed in nor on a licence attached to an account), the settings account-merge hook, coalesced D1 directory writes, unlicensed limits and product ceilings, and browser bearer access through the CORS list.
 
 ## Why
 
@@ -31,7 +31,7 @@ This is the MVP's core service ([S-17 §5.4](../../notes/S-17-user-data-sync.md#
 **In:**
 
 - The DO: `meta`, `settings`, `setting_members`, `clients`, `tombstones`, lazy migrations; push rules 1–8; HLC clamp.
-- The settings account-merge hook (copy or per-key merge into the surviving subject's DO; device rows rewritten).
+- The settings account-merge hook (copy or per-key merge into the surviving subject's DO, the survivor's pairwise subject winning per D21; device rows rewritten).
 - Pull and push routes, `403 account_required` (licence state untouched), `cursor_expired`, `client_mismatch`.
 - Coalesced directory alarm (at most once every 15 minutes), per-product aggregate every 15 minutes, unlicensed limits, product ceilings (50 GiB, 100k data-holding users, 2,000 pushes/s), `RateLimitDO` limits.
 - Browser bearer and CORS inclusion; discovery fragment; `errors.json`, OpenAPI, `routeCoverage`, transcripts.
@@ -43,7 +43,9 @@ This is the MVP's core service ([S-17 §5.4](../../notes/S-17-user-data-sync.md#
 
 ## Design notes
 
-- No Cloud Sync without signing in, ever (owner).
+- No Cloud Sync without a Polaris Key account, ever (owner). The principal comes from U-02's `resolveSyncPrincipal` (`devices.subject ?? subjectFor(license.account_id, product)`), so the routes work on products with Identity off: Cloud Sync requires Config and the platform account, not the Identity toggle (owner clarification, 2026-10-04).
+- `account_required` tells the SDK which offer to show, in the shape U-01 fixes: always the Worker-built portal link ("Add this licence to your Polaris Key account to sync"), and sign-in only when the product's Identity service is on. It never forces anything.
+- The principal is resolved per request, so a detach or relink that changes the licence-owner line takes effect on the next request (old subject never served).
 - The first-party session cookie is never accepted on `/sync` routes.
 - Production deploy waits for U-19's security review.
 
@@ -59,6 +61,7 @@ This is the MVP's core service ([S-17 §5.4](../../notes/S-17-user-data-sync.md#
 - [ ] Every transcript in [S-17 §5.13](../../notes/S-17-user-data-sync.md#513-wire-impact) for settings is recorded and passes.
 - [ ] `403 account_required` leaves licence state and cached documents untouched (transcript).
 - [ ] A merged account's settings end up in the surviving subject's DO (test).
+- [ ] On a product with Identity off, a key-activated device on a licence attached to an account syncs, and the same device after detach gets `account_required` (tests).
 - [ ] Load test results (rows written, billable duration per op) in the PR.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 

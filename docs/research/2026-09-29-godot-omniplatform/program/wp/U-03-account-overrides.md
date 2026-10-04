@@ -33,8 +33,8 @@ Owner decisions 3 and 4 ([S-17 owner decisions](../../notes/S-17-user-data-sync.
 - `account_overrides (product, subject)` with `config` and `secrets` sealed under `PLATFORM_KEK`; `TABLE_OWNERS`.
 - Merge order: catalog defaults → tier profile → licence profiles → store grants → **account overrides** → device overrides.
 - `overrideAccount(device) = device.subject ?? subjectFor(license.account_id, product) ?? none`.
-- Console editor on I-12's Users row and an admin route (rule 10); the licence page says "No account: managed config for this customer needs an account" with the sign-up link.
-- The account-merge hook: per-key surviving value, collisions reported ([S-17 §5.5](../../notes/S-17-user-data-sync.md#55-conflict-strategies-and-developer-merge-hooks)).
+- Console editor on I-12's Users row and an admin route (rule 10). The layer and its editor exist on every product, Identity on or off: the account is platform-level and I-12's Users page is Core's, not gated by the Identity toggle (owner clarification, 2026-10-04). The licence page says "No account: managed config for this customer needs an account" with the portal link (an offer to the customer, never forced).
+- The account-merge hook: rows re-keyed to the surviving pairwise subject (D21: the survivor's subject wins, the other becomes an alias, the developer gets `subject.merged`), per-key surviving value, collisions reported ([S-17 §5.5](../../notes/S-17-user-data-sync.md#55-conflict-strategies-and-developer-merge-hooks)).
 - **The migration** ([S-17 §5.12](../../notes/S-17-user-data-sync.md#512-the-account-override-layer-and-the-licence-override-migration-owner-decision) steps 1–5): daily inventory and notice in the console; owned licences merged into the owner's row (multi-licence collapse by most recently updated, listed in the report); unowned licences' overrides dropped with an audit row each and a 90-day report (secret values by name only); freeze of `PUT /licenses/<id>/overrides`; `payload.ts` stops reading licence config and secrets in the same release.
 
 **Out** (and where it belongs instead):

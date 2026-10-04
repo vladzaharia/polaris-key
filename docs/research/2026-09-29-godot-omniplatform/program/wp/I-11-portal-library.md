@@ -18,12 +18,12 @@ The customer portal becomes the account's home, a proto-Steam Library: Library (
 
 ## Why
 
-The owner chose a Steam-like account home ([S-16 owner decisions](../../notes/S-16-identity-service.md)); the portal is a platform concern for every product (G10, D7). The Activate License modal is where key entry turns into accounts, and the Library must be live before S-17's migration notice starts ([S-17 §5.12](../../notes/S-17-user-data-sync.md#512-the-account-override-layer-and-the-licence-override-migration-owner-decision)).
+The owner chose a Steam-like account home ([S-16 owner decisions](../../notes/S-16-identity-service.md)); the portal is a platform concern for every product (G10, D7). The account is platform-level, part of Core and the portal, and never a per-product toggle (owner, 2026-10-04), so everything here runs for every product whether or not its Identity service is on. The Activate License modal is where key entry turns into accounts, and the Library must be live before S-17's migration notice starts ([S-17 §5.12](../../notes/S-17-user-data-sync.md#512-the-account-override-layer-and-the-licence-override-migration-owner-decision)).
 
 ## Read first
 
 - `AGENTS.md` (always) and `CLAUDE.md`; `plans/I-04.md`.
-- [S-16 owner decisions](../../notes/S-16-identity-service.md) (portal), [S-16 §5.5](../../notes/S-16-identity-service.md#55-privacy), [S-16 §5.6](../../notes/S-16-identity-service.md#56-how-it-composes) (registry tokens), [S-16 §5.7](../../notes/S-16-identity-service.md#57-portal-surface), [S-16 §8](../../notes/S-16-identity-service.md#8-work-packages) row I-11, [S-16 §9](../../notes/S-16-identity-service.md#9-risks-and-open-questions) risk 12; [S-17 §5.15](../../notes/S-17-user-data-sync.md#515-how-it-composes) (portal).
+- [S-16 owner decisions](../../notes/S-16-identity-service.md) (the header block: portal, the 2026-10-04 account/service split and key-entry limits only with Identity on), [S-16 §5.5](../../notes/S-16-identity-service.md#55-privacy), [S-16 §5.6](../../notes/S-16-identity-service.md#56-how-it-composes) (registry tokens), [S-16 §5.7](../../notes/S-16-identity-service.md#57-portal-surface), [S-16 §8](../../notes/S-16-identity-service.md#8-work-packages) row I-11, [S-16 §9](../../notes/S-16-identity-service.md#9-risks-and-open-questions) risk 12; [S-17 §5.15](../../notes/S-17-user-data-sync.md#515-how-it-composes) (portal).
 - [`plans/F-20.md`](../plans/F-20.md) and the F-21 brief; `packages/worker/src/services/identity/portal/{session,repo,api,auth}.ts`; `docs/design/BRAND.md`.
 
 ## Scope
@@ -32,9 +32,10 @@ The owner chose a Steam-like account home ([S-16 owner decisions](../../notes/S-
 
 - **Library:** every licence attached to the account, grouped by product: tier, entitlements, devices (with remove), downloads, support link. Floating licences appear only once attached.
 - **Discover:** products whose auto-issue policy makes this account eligible; Add to library mints the licence through the sign-in auto-issue path.
-- **Activate License modal:** paste a key; if not signed in, each entry prompts the account upgrade, skippable while entries remain and forced at the limit; the licence then attaches under the claim rules; `/activate?product=<slug>` deep links preselect the product.
-- **Product page:** licence details, devices, downloads, export my data for this product, remove my data from this product (with "also remove the licence from my Library", D25), and a reserved Cloud Sync section shown only when the product has that service on (filled by U-12).
-- **Account settings:** sign-in methods (connect and disconnect under step-up, last-method guard, audited and emailed; link-existing-account merge; QR sign-in on another device), Profile (choose a linked provider's name or picture, or upload), devices and sessions with sign out everywhere, connected apps with consented claims and revoke, privacy (full export; account deletion soft for 14 days, then hard).
+- **Activate License modal:** paste a key; if not signed in, each entry prompts the account upgrade; the licence then attaches under the claim rules; `/activate?product=<slug>` deep links preselect the product. **For a product with Identity on**, entries count (D20) and the prompt is skippable while entries remain and forced at the limit. **For a product without Identity** (owner, 2026-10-04), entries are not counted and the upgrade is always offered and never forced, because the key is that app's only activation path.
+- **Product page:** licence details, devices, downloads, the person's short support code for this product (their pairwise subject's support form, which the developer's relink tool accepts; I-12), shown for every product so Identity-off products have a relink path (created only by an explicit, rate-limited "Get a support code" action; a subject with no licence, sign-in or data is not listed on the console's Users page, S-16 §5.2), export my data for this product, remove my data from this product (with "also remove the licence from my Library", D25), and a reserved Cloud Sync section shown only when the product has that service on (filled by U-12).
+- **Account settings:** sign-in methods (connect and disconnect under step-up, last-method guard, audited and emailed; link-existing-account merge; QR sign-in on another device), Profile (choose a linked provider's name or picture, or upload), devices and sessions with sign out everywhere, connected apps (products the person continued to through passthrough, D22) with consented claims and revoke, privacy (full export; account deletion soft for 14 days, then hard).
+- **New-device notice** ([S-17 §7.3](../../notes/S-17-user-data-sync.md#73-owner-decisions) decision 22 (proposed)): when a device is newly enrolled by key on a licence attached to an account (relevant on products without Identity, where key entry on owned licences is never refused), the account owner gets an email, "a new device was activated with your <Product> licence", sent through I-18's platform mail, linking to the Library product page, where "remove device" revokes it and cuts its Cloud Sync access.
 - Per-product and full export and deletion call I-05's deletion registry (Cloud Sync and account overrides hook, U-12).
 - The one Core revocation hook (licence detached or account deleted) against I-04's contract; extend F-21's if it landed first.
 
@@ -46,7 +47,8 @@ The owner chose a Steam-like account home ([S-16 owner decisions](../../notes/S-
 
 - **Portal UI follows the brand system** (`docs/design/BRAND.md`, and `docs/design/PORTAL.md` once it lands); do not invent a parallel design.
 - F-21 is a soft dependency only: whichever lands first writes against I-04's hook contract ([S-16 §9](../../notes/S-16-identity-service.md#9-risks-and-open-questions) risk 12).
-- Cloud Sync appears only on product pages of products with the service; never a global Cloud Sync page.
+- Cloud Sync appears only on product pages of products with the service; never a global Cloud Sync page. Its portal surfaces appear whenever Cloud Sync is on, regardless of Identity: it depends on the account, not on the product's Identity toggle (owner, 2026-10-04), so a product with Cloud Sync and without Identity still shows the section for its licence owners.
+- The link-existing-account merge follows D21 (accepted): the survivor's pairwise subject wins per product, the other becomes an alias, the developer gets `subject.merged`.
 - Account deletion: removes the account and all links, cascades to sessions, passkeys, grants, personal details and R2 avatars, every pairwise subject and all account × product data, detaches licences (D27), scrubs audit rows to a tombstone id, and records a tombstone re-applied after any D1 restore ([S-16 §5.5](../../notes/S-16-identity-service.md#55-privacy)).
 
 ## Steps
@@ -58,12 +60,15 @@ The owner chose a Steam-like account home ([S-16 owner decisions](../../notes/S-
 
 ## Acceptance criteria
 
-- [ ] At the entry limit the modal cannot be skipped and the licence attaches only under the claim rules (tests).
+- [ ] For a product with Identity on, at the entry limit the modal cannot be skipped and the licence attaches only under the claim rules (tests).
+- [ ] For a product with Identity off, entries are never counted and the upgrade prompt can always be skipped (test).
 - [ ] Add to library mints a licence only for eligible auto-issue products (test).
+- [ ] The product page shows a support code the console's relink tool accepts, for a product with Identity off (test).
 - [ ] Removing the last sign-in method is refused; every link change needs step-up and sends an email (tests).
 - [ ] Per-product removal deletes account × product data and the subject but keeps the licence unless chosen (test).
 - [ ] Account deletion cascades as above and survives a simulated restore through the tombstone list (test).
 - [ ] Detaching a licence revokes F-20 licence-bound tokens through the one hook (test).
+- [ ] A key enrolment of a new device on an owned licence emails the owner with a link to the product page, and "remove device" there revokes the device and its Cloud Sync access (tests).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

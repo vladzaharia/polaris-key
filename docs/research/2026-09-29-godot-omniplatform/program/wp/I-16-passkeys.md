@@ -39,6 +39,7 @@ Passkeys are the main defence of a high-value shared account and are phishing-re
 ## Design notes
 
 - The user handle is never the account id.
+- Passkeys are an account sign-in method, platform-level and independent of any product's Identity toggle (owner, 2026-10-04). A passkey sign-in during app passthrough still ends on "Continue to <App>" the first time (D22).
 - Must run under workerd.
 - Pocket ID passkeys (`rp_id = id.plrs.im`) cannot carry over; migrated users enrol again (I-17).
 

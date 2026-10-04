@@ -30,6 +30,10 @@ The shared account changes what developers can promise their users, and recovery
 
 **In:**
 
+- **The account and the Identity service are different things (owner, 2026-10-04).** The Polaris Key account is platform-level, part of Core and the portal, and always present; no product toggles it. Identity is the per-product service (console toggle and the SDK Identity feature): app passthrough sign-in ("<App> wants you to sign in"), and later app-specific profiles and "Sign in with <Product>". Products without Identity still attach licences to accounts through Activate License, the portal and Discover, but never show app sign-in.
+- **Key-entry limits apply only with Identity on (owner, 2026-10-04).** Without Identity a key is the app's only activation path: unlimited key entry, and the portal offers the account upgrade but never forces it.
+- **Cloud Sync depends on the account, not on the Identity toggle (owner, 2026-10-04).** On an Identity-off product its principal is the licence owner's pairwise subject; a floating licence gets no Cloud Sync. U-15a writes the Cloud Sync pages; these pages link to them.
+- The decided defaults D17–D23 (owner, 2026-10-04): credentials only on the login card; a product's own IdP is product-only, linkable from the portal under step-up; console email is the buyer email, the account email only with consent; which key entries count; merge keeps the survivor's subject with an alias and a `subject.merged` event; "Continue to <App>" on the first sign-in per app and always on device code; dormant-account deletion at 36 months with a warning. Also the email step's join offer (both accounts proven in one session, never silent).
 - Concepts (the I-04 glossary), the account and Library, recovery, key-entry limits and the refusals, device code and web redirect quickstarts, tenant-scoped links, Steam and Game Center guides, the "system browser only" rule, and privacy-notice inputs (controller and processor split, deletion behaviour, D1 restore window).
 
 **Out** (and where it belongs instead):
@@ -50,6 +54,7 @@ The shared account changes what developers can promise their users, and recovery
 
 - [ ] Every page above exists and links resolve (`check:links`).
 - [ ] Recovery says plainly that Polaris runs no recovery desk.
+- [ ] The concepts page separates the platform account from the per-product Identity service, and the key-entry page says limits apply only with Identity on.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

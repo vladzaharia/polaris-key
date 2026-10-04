@@ -23,7 +23,7 @@ S-16 re-estimated the SDK work and split it by toolchain so the two halves run i
 ## Read first
 
 - `AGENTS.md` (always) and `CLAUDE.md` (plan mode); [`plans/I-04.md`](../plans/I-04.md) (this package executes it).
-- [S-16 §5.2](../../notes/S-16-identity-service.md#52-developer-facing-surface) (SDK API table), [S-16 §5.3](../../notes/S-16-identity-service.md#53-wire-impact) (notes on the refusals), [S-16 §7.1](../../notes/S-16-identity-service.md#71-effort-and-the-minimum-viable-cut), [S-16 §8](../../notes/S-16-identity-service.md#8-work-packages) row I-10a; [S-16 §9](../../notes/S-16-identity-service.md#9-risks-and-open-questions) open question on React's `identity.oidc` parity row.
+- [S-16 owner decisions](../../notes/S-16-identity-service.md) (the header block, including the 2026-10-04 account/service split), [S-16 §5.2](../../notes/S-16-identity-service.md#52-developer-facing-surface) (SDK API table), [S-16 §5.3](../../notes/S-16-identity-service.md#53-wire-impact) (notes on the refusals), [S-16 §7.1](../../notes/S-16-identity-service.md#71-effort-and-the-minimum-viable-cut), [S-16 §8](../../notes/S-16-identity-service.md#8-work-packages) row I-10a; [S-16 §9](../../notes/S-16-identity-service.md#9-risks-and-open-questions) open question on React's `identity.oidc` parity row.
 - `packages/sdk-node/src/identity/client.ts`, `packages/sdk-react/src/`, `sdks/python/src/polaris_key/`, `conformance/parity/`.
 
 ## Scope
@@ -43,6 +43,8 @@ S-16 re-estimated the SDK work and split it by toolchain so the two halves run i
 ## Design notes
 
 - Never retry or treat `key_entry_limit` or `license_owned` as revocation; never wipe stored state.
+- **Identity on vs off (owner, 2026-10-04).** The SDK Identity feature (sign-in, `attach`, `subject`, `signOut`) is the per-product Identity service and runs only when discovery says the product's Identity toggle is on. With it off the SDK shows no sign-in at all: `activate(key)` behaves exactly as today (no limit, no `license_owned`), and the UI kit's only account surface is a skippable "Add to your Polaris Key Library" link to the portal, never a forced step. `openAccount()` still works, because the account is platform-level.
+- Cloud Sync does not need the Identity feature: on a product without Identity, a device whose licence is attached to an account reaches Cloud Sync through the licence owner (S-17), and this package adds nothing for that path.
 - System browser only, never an embedded web view ([S-16 §5.4](../../notes/S-16-identity-service.md#54-threat-model-deltas) item 13).
 - Copy for `license_owned`: "This licence belongs to a Polaris Key account. Sign in to use it on this device."
 
@@ -55,6 +57,7 @@ S-16 re-estimated the SDK work and split it by toolchain so the two halves run i
 ## Acceptance criteria
 
 - [ ] Each SDK replays the I-08 and I-09 transcripts (tests).
+- [ ] With the product's Identity toggle off, no SDK or UI kit shows sign-in, and key activation is unchanged (test per SDK against the existing transcripts).
 - [ ] Neither refusal clears stored licence state (test per SDK).
 - [ ] React completes a web redirect sign-in against the exchange transcript (test).
 - [ ] UI component screenshots for both refusals.

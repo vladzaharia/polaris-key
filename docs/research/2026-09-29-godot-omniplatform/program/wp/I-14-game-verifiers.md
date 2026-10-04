@@ -43,6 +43,8 @@ Platform sign-in is the game program's differentiator ([S-16 §2](../../notes/S-
 
 - Each verifier gets its own security review recorded in the PR.
 - Game Center, Play Games and EOS subjects are tenant-scoped (per team, game or deployment); Steam IDs are global ([S-16 §5.1](../../notes/S-16-identity-service.md#51-concepts-and-data-model)).
+- Identity service only (owner, 2026-10-04): every kind here is app sign-in, so it exists only for products with Identity on; the account and its links stay platform-level.
+- Steam IDs are global, so a Steam link created through another product already resolves the account, but the first sign-in to this app still needs "Continue to <App>" (D22, decided 2026-10-04) and answers `interstitial_required` like a new link.
 - First sign-in per new link goes through the card (`interstitial_required`); Steam players may resent it, so the copy and a QR path on Steam Deck matter ([S-16 §9](../../notes/S-16-identity-service.md#9-risks-and-open-questions) risk 6).
 - The Godot shims may need `pkey-godot-engineer`; the lead can split them out if the native work grows.
 

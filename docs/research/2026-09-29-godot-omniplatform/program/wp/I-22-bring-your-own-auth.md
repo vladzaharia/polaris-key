@@ -36,6 +36,7 @@ No user migration for the product ([S-16 §2](../../notes/S-16-identity-service.
 ## Design notes
 
 - Fail closed: missing `aud`/`azp` configuration is a validation error; Entra `email` is never trusted for linking.
+- D18 is decided (owner, 2026-10-04): the product-IdP principal is product-only; linking to the global account happens only from the portal under step-up, never in the app. Available only for products with Identity on.
 
 ## Steps
 
