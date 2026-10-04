@@ -1684,3 +1684,114 @@ export async function listAudit(
     limit,
   );
 }
+
+// ── Platform audit (A-12; product-less twin of `audit`, keyset on (at DESC, id DESC)) ──────
+export interface PlatformAuditRow {
+  id: string;
+  at: number;
+  actor_sub: string | null;
+  actor_name: string | null;
+  actor_email: string | null;
+  action: string;
+  target_kind: string | null;
+  target_id: string | null;
+  summary: string | null;
+  before_json: string | null;
+  after_json: string | null;
+}
+
+export async function appendPlatformAudit(
+  db: Db,
+  row: PlatformAuditRow,
+): Promise<void> {
+  await db.run(
+    `INSERT INTO platform_audit (id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, summary, before_json, after_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    row.id,
+    row.at,
+    row.actor_sub,
+    row.actor_name,
+    row.actor_email,
+    row.action,
+    row.target_kind,
+    row.target_id,
+    row.summary,
+    row.before_json,
+    row.after_json,
+  );
+}
+
+export async function listPlatformAudit(
+  db: Db,
+  opts: { beforeAt?: number; beforeId?: string; limit?: number } = {},
+): Promise<PlatformAuditRow[]> {
+  const limit = Math.min(opts.limit ?? 50, 200);
+  if (opts.beforeAt !== undefined && opts.beforeId !== undefined) {
+    return db.all<PlatformAuditRow>(
+      `SELECT * FROM platform_audit WHERE (at < ? OR (at = ? AND id < ?))
+       ORDER BY at DESC, id DESC LIMIT ?`,
+      opts.beforeAt,
+      opts.beforeAt,
+      opts.beforeId,
+      limit,
+    );
+  }
+  return db.all<PlatformAuditRow>(
+    "SELECT * FROM platform_audit ORDER BY at DESC, id DESC LIMIT ?",
+    limit,
+  );
+}
+
+/**
+ * Delete `platform_audit` rows older than `cutoff`, at most `limit` per call (the nightly sweep
+ * drains it like `pruneAudit`). The table has no product column: it is platform-level by
+ * construction, which `scheduled.ts`'s "product-scoped" property names explicitly.
+ */
+export async function prunePlatformAudit(
+  db: Db,
+  cutoff: number,
+  limit: number,
+): Promise<number> {
+  return db.runChanges(
+    `DELETE FROM platform_audit
+      WHERE rowid IN (SELECT rowid FROM platform_audit WHERE at < ? LIMIT ?)`,
+    cutoff,
+    limit,
+  );
+}
+
+// ── Platform deploys (A-11; written only by deploy.yml, read here) ─────────────────────────
+export interface PlatformDeployRow {
+  id: string;
+  at: number;
+  environment: string;
+  tag: string;
+  git_sha: string;
+  run_url: string | null;
+  scripts: string;
+  latest_migration: string | null;
+  cf_version_id: string | null;
+  deltas_version_id: string | null;
+  smoke: string | null;
+}
+
+export async function listPlatformDeploys(
+  db: Db,
+  opts: { beforeAt?: number; beforeId?: string; limit?: number } = {},
+): Promise<PlatformDeployRow[]> {
+  const limit = Math.min(opts.limit ?? 20, 100);
+  if (opts.beforeAt !== undefined && opts.beforeId !== undefined) {
+    return db.all<PlatformDeployRow>(
+      `SELECT * FROM platform_deploys WHERE (at < ? OR (at = ? AND id < ?))
+       ORDER BY at DESC, id DESC LIMIT ?`,
+      opts.beforeAt,
+      opts.beforeAt,
+      opts.beforeId,
+      limit,
+    );
+  }
+  return db.all<PlatformDeployRow>(
+    "SELECT * FROM platform_deploys ORDER BY at DESC, id DESC LIMIT ?",
+    limit,
+  );
+}

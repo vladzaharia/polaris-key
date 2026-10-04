@@ -55,6 +55,7 @@ jobs:
             exit 1
           fi
           echo "env=prod" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "database=polaris_key_prod" >> "$GITHUB_OUTPUT"
           # A data-plane endpoint, deliberately NOT the SPA. The previous smoke URL was
           # https://key.plrs.im/manage — a STATIC ASSET, which returns 200 with D1, KV and
@@ -114,23 +115,39 @@ jobs:
       # and the token's Queues Edit are checked by "Queues preflight" before the migrations; a
       # failure HERE comes after the migrations were applied (they are additive, and the previous
       # Worker version keeps serving), so re-run the job once the cause is fixed.
+      #
+      # A-11 deploy identity, on BOTH deploys: the release tag and commit as vars
+      # (PKEY_RELEASE_TAG, PKEY_GIT_SHA → GET /manage/api/platform/version), and the same tag and
+      # commit on the Cloudflare version itself (--tag, --message; the tag is cut to 25 characters
+      # and the message stays short, so neither can exceed a version-field limit). wrangler writes
+      # its result, including the new version id, to WRANGLER_OUTPUT_FILE_PATH for "Record deploy".
       - name: Deploy lazy-delta consumer
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           ENV: ${{ steps.target.outputs.env }}
+          TAG: ${{ steps.target.outputs.tag }}
+          WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-deltas.ndjson
         run: |
           cd packages/worker
-          npx wrangler deploy -c wrangler.deltas.toml --env "$ENV"
+          npx wrangler deploy -c wrangler.deltas.toml --env "$ENV" \
+            --var "PKEY_RELEASE_TAG:$TAG" --var "PKEY_GIT_SHA:$GITHUB_SHA" \
+            --tag "${TAG:0:25}" --message "$TAG ${GITHUB_SHA:0:12}"
       - name: Assemble static assets (admin SPA + docs site)
         run: pnpm --filter @polaris-key/worker assemble
       - name: Deploy worker + admin assets
+        id: deploy-main
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           ENV: ${{ steps.target.outputs.env }}
+          TAG: ${{ steps.target.outputs.tag }}
+          WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-main.ndjson
         run: |
           cd packages/worker
-          npx wrangler deploy --env "$ENV"
+          npx wrangler deploy --env "$ENV" \
+            --var "PKEY_RELEASE_TAG:$TAG" --var "PKEY_GIT_SHA:$GITHUB_SHA" \
+            --tag "${TAG:0:25}" --message "$TAG ${GITHUB_SHA:0:12}"
       - name: Smoke check
+        id: smoke
         env:
           SMOKE_URL: ${{ steps.target.outputs.smoke }}
         run: |
@@ -165,3 +182,27 @@ jobs:
             sleep 5
           done
           echo "Smoke check OK: data plane is serving a non-empty JWKS."
+      # A-11: one platform_deploys row for the console's Deployment page (tag, commit, run URL,
+      # time, environment, both Cloudflare version ids, the smoke outcome). LAST, and it can never
+      # fail the deploy: continue-on-error, and a miss prints a ::warning:: annotation instead.
+      # It runs whenever the request Worker deploy succeeded, even if the smoke check failed,
+      # because the row records what is live. Same token: it already holds D1 edit (migrations).
+      # test/recordDeploy.test.ts pins this step's position and guards.
+      - name: Record deploy
+        if: ${{ !cancelled() && steps.deploy-main.outcome == 'success' }}
+        continue-on-error: true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ENV: ${{ steps.target.outputs.env }}
+          DATABASE: ${{ steps.target.outputs.database }}
+          TAG: ${{ steps.target.outputs.tag }}
+          GIT_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          SMOKE: ${{ steps.smoke.outcome }}
+          MAIN_OUTPUT: ${{ runner.temp }}/wrangler-main.ndjson
+          DELTAS_OUTPUT: ${{ runner.temp }}/wrangler-deltas.ndjson
+        run: |
+          cd packages/worker
+          node scripts/record-deploy.mjs

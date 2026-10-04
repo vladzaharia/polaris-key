@@ -6,6 +6,8 @@
  *   /api/me                                  — the signed-in identity + CSRF + grants
  *   /api/products                            — PLATFORM registry CRUD (platform admins only)
  *   /api/products/<slug>/...                 — per-product admin (platform admins only)
+ *   /api/platform/{version,deployment,activity} — instance-wide, product-less (platform admins
+ *                                              only; A-11/A-12, `handlers/platform.ts`)
  *
  * Per-product resources are grouped by the SERVICE that owns them (plan §R1, spec §4.2). What is
  * left at the top level here is core/platform — the things a product has whether or not it runs
@@ -61,6 +63,7 @@ import {
   unauthorized,
 } from "./lib/respond.js";
 import { handleMe } from "./handlers/me.js";
+import { handlePlatform } from "./handlers/platform.js";
 import {
   handleProducts,
   handleProductScopedResource,
@@ -303,6 +306,7 @@ export async function handleAdminApi(
   const [head, ...rest] = segments;
 
   if (head === "me") return handleMe(env, db, session);
+  if (head === "platform") return handlePlatform(req, env, db, session, rest);
   if (head === "logout") {
     // R1-03: logout clears the session, so it is a mutation and must go through the CSRF
     // check above — which `isMutation` only applies to non-GET methods. As a GET it was a

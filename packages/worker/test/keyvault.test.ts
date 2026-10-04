@@ -31,7 +31,7 @@ import {
   issueSession,
 } from "../src/admin/session.js";
 import { loadProduct } from "../src/core/products.js";
-import { getProductSecret, listAudit } from "../src/repo.js";
+import { getProductSecret, listAudit, listPlatformAudit } from "../src/repo.js";
 
 const env = { PLATFORM_KEK: TEST_KEK } as unknown as Env;
 const ctx = { product: "djdl", kind: "signing-key", id: "kid-1" } as const;
@@ -405,6 +405,33 @@ describe("KEK rotation sweep (GET|POST /api/products/kek)", () => {
     // Every sweep is attributed, per tenant.
     const audits = await listAudit(db, "djdl", {});
     expect(audits.map((r) => r.action)).toContain("kek.reseal");
+    // …and once per sweep on the platform trail (A-12), with counts only, never key material.
+    const platform = await listPlatformAudit(db);
+    expect(platform.length).toBeGreaterThan(0);
+    for (const row of platform) {
+      expect(row).toMatchObject({ action: "kek.reseal", target_kind: "kek" });
+      expect(row.after_json).not.toContain(KEK_NEW);
+      expect(row.after_json).not.toContain(KEK_OLD);
+    }
+    // Every sweep in this walk ran at the same NOW, so match rows by content, not order.
+    const sweeps = platform.map((r) => ({
+      before: JSON.parse(r.before_json!) as { remaining: number },
+      after: JSON.parse(r.after_json!) as {
+        remaining: number;
+        resealed: number;
+      },
+    }));
+    expect(
+      sweeps.some((x) => x.before.remaining > 0 && x.after.resealed > 0),
+    ).toBe(true);
+    expect(
+      sweeps.some(
+        (x) =>
+          x.before.remaining === 0 &&
+          x.after.remaining === 0 &&
+          x.after.resealed === 0,
+      ),
+    ).toBe(true);
 
     // Step 8 — retire the old KEK. The platform is unaffected because nothing references it.
     const retired = kekAdminEnv(kv, {
