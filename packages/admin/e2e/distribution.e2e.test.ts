@@ -54,6 +54,16 @@ const ROUTES: Record<string, unknown> = {
   },
   "/manage/api/products": { products: [row("djdl", "DJDL")] },
   "/manage/api/products/djdl": { product: row("djdl", "DJDL") },
+  // A platform admin's account menu reads the deployed version (chunk 4).
+  "/manage/api/platform/version": {
+    releaseTag: "v0.8.6",
+    gitSha: "0123456789abcdef0123456789abcdef01234567",
+    cloudflare: null,
+    protocolVersion: 4,
+    discoveryVersion: 2,
+    latestMigration: "0054_b_platform_audit.sql",
+    environment: "staging",
+  },
   ...DISTRIBUTION_ROUTES,
 };
 
