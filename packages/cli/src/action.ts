@@ -313,7 +313,9 @@ export async function runAction(io: ActionIo): Promise<number> {
       version: input("version"),
       tag: input("tag"),
       channel: input("channel"),
-      source: input("source") as PublishSource | undefined,
+      // `r2` unless set. action.yml gives `source` no `default:`: GitHub passes every defaulted
+      // input, so a default there would reach the package and transport paths, which refuse it.
+      source: (input("source") ?? "r2") as PublishSource,
       meta: input("meta"),
       baseUrl: input("base-url"),
       // P3-03: the release key's PKCS#8 PEM, from a GitHub Environment secret. Read here, never

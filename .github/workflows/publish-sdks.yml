@@ -197,12 +197,17 @@ jobs:
       channel: ${{ needs.version.outputs.channel }}
 
   # ── Swift: polaris-key.PolarisKey, signed (plans/F-01.md §5.3) ─────────────────────────────
+  # Both Swift jobs run on ci.yml's `apple` toolchain: macos-26 with Xcode 26.6, failing unless the
+  # compiler is Swift 6.3 or later (sdks/swift/tools/select-xcode-26.sh). Package.swift needs Swift
+  # tools 6.x and the Background Assets code needs 6.3; macos-14 carries Swift 5.10.
   swift-test:
     name: Test the Swift SDK
     needs: version
-    runs-on: macos-14
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v7
+      - name: Xcode 26.6, Swift 6.3 or later
+        run: sdks/swift/tools/select-xcode-26.sh
       - run: swift test --package-path sdks/swift
 
   # In `package-registry`, which holds the signing secrets: sdks/swift/tools/sign-registry-release.sh
@@ -215,10 +220,12 @@ jobs:
   swift-sign:
     name: Sign the Swift registry release
     needs: [version, swift-test]
-    runs-on: macos-14
+    runs-on: macos-26
     environment: package-registry
     steps:
       - uses: actions/checkout@v7
+      - name: Xcode 26.6, Swift 6.3 or later
+        run: sdks/swift/tools/select-xcode-26.sh
       - uses: actions/setup-node@v7
         with:
           node-version: 22
