@@ -177,7 +177,7 @@ describe("Core → Settings", () => {
   it("shows the blob collector's dry run", async () => {
     mount();
     expect(await screen.findByText("15 objects")).toBeTruthy();
-    expect(screen.getByText(/kept for 1 week/)).toBeTruthy();
+    expect(screen.getByText(/1 week grace/)).toBeTruthy();
   });
 
   it("deletes the product only after the slug is typed (L3), sending it as confirmSlug, then goes Home", async () => {

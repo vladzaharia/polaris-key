@@ -1,6 +1,7 @@
 import * as React from "react";
 import type { DeviceDto, ProductDeviceDto } from "../../api.js";
 import { fromSeconds } from "../../lib/format.js";
+import { PLATFORM_LABELS } from "../../lib/labels.js";
 import {
   DataTable,
   type DataColumn,
@@ -91,13 +92,18 @@ export function DeviceTable({
         cell: ({ row }) => {
           const d = row.original;
           return (
-            <span className="inline-flex min-w-0 flex-col">
-              <span className="truncate">{d.label || d.deviceId}</span>
+            <span className="flex min-w-0 max-w-[22rem] flex-col">
               {d.label ? (
-                <span className="truncate font-mono text-xs font-normal text-fg-muted">
-                  {d.deviceId}
+                <span className="truncate">{d.label}</span>
+              ) : (
+                // No label: a muted placeholder, not the 32-character id in bold.
+                <span className="truncate font-normal text-fg-muted">
+                  Unnamed device
                 </span>
-              ) : null}
+              )}
+              <span className="truncate font-mono text-xs font-normal text-fg-muted">
+                {d.deviceId}
+              </span>
             </span>
           );
         },
@@ -141,10 +147,18 @@ export function DeviceTable({
       {
         id: "platform",
         header: "Platform",
-        accessorFn: (d) => [d.platform, d.arch].filter(Boolean).join(" · "),
+        accessorFn: (d) =>
+          [
+            d.platform ? (PLATFORM_LABELS[d.platform] ?? d.platform) : null,
+            d.arch,
+          ]
+            .filter(Boolean)
+            .join(" · "),
         meta: { priority: 2 },
         cell: ({ getValue }) => (
-          <span className="text-xs">{(getValue() as string) || "—"}</span>
+          <span className="whitespace-nowrap">
+            {(getValue() as string) || "—"}
+          </span>
         ),
       },
       {
@@ -205,7 +219,7 @@ export function DeviceTable({
         ),
       ]
         .sort()
-        .map((p) => ({ value: p, label: p })),
+        .map((p) => ({ value: p, label: PLATFORM_LABELS[p] ?? p })),
     [devices, platformList],
   );
   const facets: Facet<DeviceRow>[] = [

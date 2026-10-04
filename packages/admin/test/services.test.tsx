@@ -115,7 +115,8 @@ describe("Core → Services", () => {
     const user = userEvent.setup();
     mount();
     await screen.findByRole("switch", { name: /Release/ });
-    expect(screen.getAllByText("Requires Release.").length).toBeGreaterThan(0);
+    // The one dependency chain is on screen before any save.
+    expect(screen.getByRole("list", { name: "Delivery chain" })).toBeTruthy();
     await user.click(sw("Release"));
     const msg = SERVICE_ERROR_MESSAGES.distribution_requires_release!;
     expect((await screen.findAllByText(msg)).length).toBeGreaterThan(0);
@@ -263,11 +264,11 @@ describe("Core → Services", () => {
   it("offers no revert for a set the manifest already owns", async () => {
     services.mockResolvedValue(state({ source: "manifest" }));
     mount();
-    const button = await screen.findByRole("button", {
-      name: /Revert to manifest/,
-    });
-    expect(button.getAttribute("aria-disabled")).toBe("true");
-    expect(screen.getByText("From manifest")).toBeTruthy();
+    expect(await screen.findByText("From manifest")).toBeTruthy();
+    // Nothing to revert: the action is absent, not a dead button.
+    expect(
+      screen.queryByRole("button", { name: /Revert to manifest/ }),
+    ).toBeNull();
   });
 
   it("shows an error state with a working retry", async () => {

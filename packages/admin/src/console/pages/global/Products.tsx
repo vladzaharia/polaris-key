@@ -221,7 +221,6 @@ export function Products(): React.ReactElement {
               </span>
             ) : null
           }
-          description="Every product registered on this instance."
           refetching={products.isFetching && !products.isPending}
           primaryAction={
             <Button asChild>

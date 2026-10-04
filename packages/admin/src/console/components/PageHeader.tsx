@@ -183,7 +183,7 @@ export function PageHeader({
           </div>
         ) : null}
         {primaryAction ? (
-          <div className="col-span-2 [&>*]:w-full sm:col-span-1 sm:col-start-3 sm:row-start-1 sm:[&>*]:w-auto">
+          <div className="col-span-2 sm:col-span-1 sm:col-start-3 sm:row-start-1 [&>:not(.sr-only)]:w-full sm:[&>:not(.sr-only)]:w-auto">
             {primaryAction}
           </div>
         ) : null}

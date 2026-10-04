@@ -118,7 +118,7 @@ export function Sidebar({
             <SidebarItem
               page={p}
               to={globalPage(p.page as GlobalPageId)}
-              active={activePage === p.page}
+              active={isActivePage(activePage, p.page)}
               rail={rail}
               onNavigate={onNavigate}
             />
@@ -191,6 +191,13 @@ export function Sidebar({
   );
 }
 
+/** A page is active itself, or as the parent of the page shown (New product → Products). */
+function isActivePage(activePage: PageId | null, page: string): boolean {
+  return (
+    activePage === page || (activePage === "product-new" && page === "products")
+  );
+}
+
 function SidebarGroup({
   groupKey,
   label,
@@ -223,7 +230,7 @@ function SidebarGroup({
       <SidebarItem
         page={p}
         to={to}
-        active={activePage === p.page}
+        active={isActivePage(activePage, p.page)}
         rail={rail}
         onNavigate={onNavigate}
         onPrefetch={onPrefetch}
@@ -233,6 +240,9 @@ function SidebarGroup({
 
   if (rail) {
     // Icons only: the section reads as an accent rule between groups, named for assistive tech.
+    // Only the active section shows its pages (the one-open-section rule); any other section is
+    // one icon, its first page, named for the section.
+    const first = links[0];
     return (
       <div data-service={accent} data-section={groupKey}>
         <div
@@ -240,7 +250,22 @@ function SidebarGroup({
           aria-label={label}
           className="mx-2 my-2 h-0.5 rounded-full bg-accent"
         />
-        <ul className="flex flex-col gap-0.5">{items}</ul>
+        <ul className="flex flex-col gap-0.5">
+          {active || !first ? (
+            items
+          ) : (
+            <li>
+              <SidebarItem
+                page={{ ...first.page, label }}
+                to={first.to}
+                active={false}
+                rail
+                onNavigate={onNavigate}
+                onPrefetch={onPrefetch}
+              />
+            </li>
+          )}
+        </ul>
       </div>
     );
   }

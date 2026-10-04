@@ -44,7 +44,6 @@ import { IdChip } from "../../../ui/IdChip.js";
 import { KeyDisplay } from "../../../ui/KeyDisplay.js";
 import { SegmentedControl } from "../../../ui/SegmentedControl.js";
 import { ServiceGlyph, serviceLabel } from "../../../ui/ServiceBadge.js";
-import { SignedBadge } from "../../../ui/SignedBadge.js";
 import { PageSkeleton, Skeleton } from "../../../ui/Skeleton.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { Timeline, TimelineItem } from "../../../ui/Timeline.js";
@@ -202,7 +201,7 @@ function OverviewBody({
         ) : undefined
       }
       tiles={
-        <div className="grid grid-cols-1 gap-4 sm:col-span-2 sm:grid-cols-2 lg:grid-cols-3 xl:col-span-4">
+        <div className="col-span-full grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {enabled.map((s) => (
             <ServiceTile
               key={s}
@@ -224,6 +223,7 @@ function OverviewBody({
         )
       }
       side={<TrustPanel slug={slug} product={p} />}
+      split="1-1"
     >
       {!complete || showChecklist ? <RecentActivity slug={slug} /> : null}
     </DashboardTemplate>
@@ -348,7 +348,11 @@ function useChecklist(
       action: s.configured ? undefined : { label: "Set", href: r.keys(slug) },
     });
   }
-  if (on(p, "config")) {
+  // A catalog that failed to load is unknown, not unpublished: say nothing rather than "To do".
+  const catalogUnknown =
+    catalog.isError &&
+    !(catalog.error instanceof ApiError && catalog.error.status === 404);
+  if (on(p, "config") && !catalogUnknown) {
     const published =
       catalog.data !== undefined && (catalog.data.entries?.length ?? 0) > 0;
     items.push({
@@ -437,13 +441,21 @@ function ChecklistPanel({
   return (
     <Panel
       title="Setup"
-      description={`${done} of ${items.length} done`}
       action={
-        onHide ? (
-          <Button variant="ghost" size="sm" onClick={onHide}>
-            Hide
-          </Button>
-        ) : undefined
+        <span className="flex items-center gap-2">
+          <StatusPill
+            tone={done === items.length ? "success" : "neutral"}
+            icon={false}
+            size="sm"
+          >
+            {done} of {items.length} done
+          </StatusPill>
+          {onHide ? (
+            <Button variant="ghost" size="sm" onClick={onHide}>
+              Hide
+            </Button>
+          ) : null}
+        </span>
       }
     >
       <ul className="divide-y divide-border">
@@ -497,6 +509,7 @@ function ChecklistPanel({
 
 function TileFrame({
   service,
+  badge,
   href,
   linkLabel,
   loading,
@@ -505,6 +518,8 @@ function TileFrame({
   children,
 }: {
   service: ServiceSlug;
+  /** A pill beside the service name, top-left ("Schema v8"). */
+  badge?: React.ReactNode;
   href: string;
   linkLabel: string;
   loading?: boolean;
@@ -525,6 +540,7 @@ function TileFrame({
       >
         <ServiceGlyph id={service} />
         {serviceLabel(service)}
+        {badge}
       </h2>
       <div className="min-h-12 flex-1 space-y-1 text-sm text-fg">
         {loading ? (
@@ -649,6 +665,13 @@ function ConfigTile({ slug }: { slug: string }): React.ReactElement {
   return (
     <TileFrame
       service="config"
+      badge={
+        catalog.data && !missing ? (
+          <StatusPill tone="neutral" icon={false} size="sm">
+            Schema v{catalog.data.schemaVersion}
+          </StatusPill>
+        ) : undefined
+      }
       href={r.catalog(slug)}
       linkLabel="Catalog"
       loading={catalog.isPending}
@@ -660,7 +683,6 @@ function ConfigTile({ slug }: { slug: string }): React.ReactElement {
       ) : (
         <>
           <Big>{formatCount(catalog.data.entries.length)} keys</Big>
-          <Line>Schema version {catalog.data.schemaVersion}</Line>
         </>
       )}
       {profiles.data ? (
@@ -707,8 +729,7 @@ function ReleaseTile({ slug }: { slug: string }): React.ReactElement {
           "No releases"
         )}
       </Big>
-      {latest ? <Line>latest</Line> : null}
-      {stableVersion ? (
+      {stableVersion && stableVersion !== latest?.version ? (
         <Line>
           stable → <span className="font-mono">{stableVersion}</span>
         </Line>
@@ -790,7 +811,6 @@ function UpdateTile({ slug }: { slug: string }): React.ReactElement {
             {ACCESS_LABELS[feed.data.metadataAccess] ??
               feed.data.metadataAccess}
           </Big>
-          <Line>who can read the feed</Line>
           <Line>
             Supports <span className="font-mono">{feed.data.compatMin}</span> to{" "}
             <span className="font-mono">{feed.data.compatMax}</span>
@@ -896,7 +916,7 @@ function TrustPanel({
           <div className="space-y-1">
             <p className="text-xs font-bold text-fg-muted">JWKS</p>
             <p className="flex items-start gap-1">
-              <code className="min-w-0 flex-1 break-all font-mono text-xs text-fg">
+              <code className="min-w-0 flex-1 font-mono text-xs text-fg [overflow-wrap:anywhere]">
                 {jwks}
               </code>
               <CopyButton value={jwks} label="Copy the JWKS URL" />
@@ -930,12 +950,6 @@ function TrustPanel({
             }
             wrap
           />
-          {pub ? (
-            <p className="flex items-center gap-1 text-xs text-fg-muted">
-              <SignedBadge kid={kid} by="signing key" />
-              The pinned key is this product's active signing key.
-            </p>
-          ) : null}
         </div>
       </div>
     </Panel>
@@ -1021,7 +1035,7 @@ function RecentActivity({ slug }: { slug: string }): React.ReactElement {
       ) : (
         <Timeline
           label="Recent activity"
-          groupBy="none"
+          groupBy="day"
           items={items}
           getKey={(i) => i.id}
           getTime={(i) => fromSeconds(i.at)}

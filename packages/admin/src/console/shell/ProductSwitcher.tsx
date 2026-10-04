@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Command } from "cmdk";
 import { Popover } from "radix-ui";
-import { ChevronsUpDown, Boxes, Plus } from "lucide-react";
+import { Boxes, Check, ChevronsUpDown, Plus } from "lucide-react";
 import { cn } from "../../lib/cn.js";
 import { sameViewIn, type ProductPageId, type ServiceState } from "../nav.js";
 import { navigate } from "../router.js";
@@ -76,11 +76,17 @@ export function ProductSwitcher({
         onSelect={() => select(p)}
         className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm data-[selected=true]:bg-accent-subtle data-[selected=true]:text-fg-strong"
       >
-        <span className="min-w-0 flex-1 truncate">
+        <span
+          className={cn(
+            "min-w-0 flex-1 truncate",
+            p.slug === current.slug && "font-bold text-fg-strong",
+          )}
+        >
           {p.name}{" "}
-          <span className="font-mono text-xs text-fg-muted">{p.slug}</span>
+          <span className="font-mono text-xs font-normal text-fg-muted">
+            {p.slug}
+          </span>
         </span>
-        <ServiceDots product={p} className="ml-2" />
         {attention > 0 ? (
           <span
             className="rounded-full bg-warning-subtle px-1.5 text-xs font-bold text-warning"
@@ -90,7 +96,10 @@ export function ProductSwitcher({
           </span>
         ) : null}
         {p.slug === current.slug ? (
-          <span className="sr-only">(current)</span>
+          <>
+            <Check aria-hidden className="size-4 shrink-0 text-accent-fg" />
+            <span className="sr-only">(current)</span>
+          </>
         ) : null}
       </Command.Item>
     );

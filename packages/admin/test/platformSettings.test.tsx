@@ -360,11 +360,11 @@ describe("Background jobs", () => {
     expect(within(jobs).getByText("Set in console")).toBeTruthy();
     // The byte cap is shown in MiB, with the exact bytes in effect.
     expect(
-      (within(jobs).getByLabelText(/Value \(MiB\)/) as HTMLInputElement).value,
+      (within(jobs).getByLabelText(/\(MiB\)$/) as HTMLInputElement).value,
     ).toBe("32");
     expect(within(jobs).getByText("In effect: 33,554,432 bytes.")).toBeTruthy();
     expect(
-      (within(jobs).getByLabelText(/Value \(days\)/) as HTMLInputElement).value,
+      (within(jobs).getByLabelText(/\(days\)$/) as HTMLInputElement).value,
     ).toBe("21");
   });
 
@@ -498,7 +498,7 @@ describe("Background jobs", () => {
       }),
     });
     const jobs = await section("Background jobs");
-    const input = within(jobs).getByLabelText(/Value \(MiB\)/);
+    const input = within(jobs).getByLabelText(/\(MiB\)$/);
     await userEvent.clear(input);
     await userEvent.type(input, "40");
     const bar = await within(jobs).findByRole("region", {
@@ -528,7 +528,7 @@ describe("Background jobs", () => {
       }),
     });
     const jobs = await section("Background jobs");
-    const input = within(jobs).getByLabelText(/Value \(days\)/);
+    const input = within(jobs).getByLabelText(/\(days\)$/);
     await userEvent.clear(input);
     await userEvent.type(input, "14");
     const bar = await within(jobs).findByRole("region", {
@@ -563,7 +563,7 @@ describe("Background jobs", () => {
       }),
     });
     const jobs = await section("Background jobs");
-    const input = within(jobs).getByLabelText(/Value \(days\)/);
+    const input = within(jobs).getByLabelText(/\(days\)$/);
     await userEvent.clear(input);
     await userEvent.type(input, "60");
     const bar = await within(jobs).findByRole("region", {

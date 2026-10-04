@@ -5,8 +5,8 @@
  *
  * - The server validates the SET, not each flag (`core/services.ts`): the draft accumulates a
  *   whole proposed set and one `SaveBar` submits it (SVC-3).
- * - Dependencies are visible before a save: each row names what it requires and what requires
- *   it, and a draft that breaks an edge says so inline with a one-click fix (SVC-1). The server's
+ * - Dependencies are visible before a save: the Delivery chain row shows the one dependency
+ *   chain, and a draft that breaks an edge says so inline with a one-click fix (SVC-1). The server's
  *   coherence codes still land beside the controls they indict.
  * - Turning a service off is L1: the save asks first, with the consequences (SVC-2).
  * - Each row is its service's `data-service` scope, so its glyph and switch take the accent
@@ -164,7 +164,6 @@ export function ServicesPage({ slug }: { slug: string }): React.ReactElement {
   const header = (
     <PageHeader
       title="Services"
-      description="Which Polaris Key services this product runs, and how a device may register."
       refetching={query.isFetching && !query.isPending}
     />
   );
@@ -276,25 +275,21 @@ function ServicesForm({
             />
           }
           actions={
-            <Button
-              variant="outline"
-              size="sm"
-              iconStart={<Undo2 aria-hidden />}
-              disabledReason={
-                isAdmin
-                  ? undefined
-                  : "The manifest already owns this product's services."
-              }
-              onClick={() => setConfirmRevert(true)}
-            >
-              Revert to manifest…
-            </Button>
+            // Nothing to revert while the manifest already owns the set.
+            isAdmin ? (
+              <Button
+                variant="outline"
+                size="sm"
+                iconStart={<Undo2 aria-hidden />}
+                onClick={() => setConfirmRevert(true)}
+              >
+                Revert to manifest…
+              </Button>
+            ) : undefined
           }
         >
           {SERVICE_TABLE.map((row) => {
             const problems = messagesFor(row.slug);
-            const requires = SERVICE_REQUIRES[row.slug];
-            const requiredBy = REQUIRED_BY[row.slug];
             const id = `service-${row.slug}`;
             return (
               <div key={row.slug} data-service={row.accent}>
@@ -306,54 +301,40 @@ function ServicesForm({
                     </span>
                   }
                   htmlFor={id}
-                  help={
-                    <>
-                      {row.summary}
-                      {requires.length ? (
-                        <span className="mt-1 block text-xs">
-                          Requires {requires.map(serviceLabel).join(", ")}.
-                        </span>
-                      ) : null}
-                      {requiredBy.length ? (
-                        <span className="mt-1 block text-xs">
-                          Required by {requiredBy.map(serviceLabel).join(", ")}.
-                        </span>
-                      ) : null}
-                    </>
+                  footer={
+                    problems.length ? (
+                      <div className="mt-2">
+                        {problems.map((message) => (
+                          <CoherenceLine
+                            key={message}
+                            message={message}
+                            fix={fixFor(row.slug, draft)}
+                            onFix={enable}
+                          />
+                        ))}
+                      </div>
+                    ) : undefined
                   }
                 >
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Switch
-                      id={id}
-                      checked={draft[row.slug]}
-                      readOnly={form.isSubmitting}
-                      onCheckedChange={(c) => enable(row.slug, c)}
-                      aria-invalid={problems.length ? true : undefined}
-                    />
-                    <span className="text-sm text-fg-muted">
-                      {draft[row.slug] ? "On" : "Off"}
-                    </span>
-                    {draft[row.slug] !== values[row.slug] ? (
-                      <StatusPill tone="accent" icon={null} size="sm">
-                        Changed
-                      </StatusPill>
-                    ) : null}
-                  </div>
-                  {problems.map((message) => (
-                    <CoherenceLine
-                      key={message}
-                      message={message}
-                      fix={fixFor(row.slug, draft)}
-                      onFix={enable}
-                    />
-                  ))}
+                  {draft[row.slug] !== values[row.slug] ? (
+                    <StatusPill tone="accent" icon={null} size="sm">
+                      Changed
+                    </StatusPill>
+                  ) : null}
+                  <Switch
+                    id={id}
+                    checked={draft[row.slug]}
+                    readOnly={form.isSubmitting}
+                    onCheckedChange={(c) => enable(row.slug, c)}
+                    aria-invalid={problems.length ? true : undefined}
+                  />
                 </SettingsRow>
               </div>
             );
           })}
           <SettingsRow
             label="Delivery chain"
-            help="Release says what exists, Distribution delivers it, Update offers it to clients. Each needs the one before it."
+            help="Each service needs the one before it."
           >
             <DeliveryChain draft={draft} />
           </SettingsRow>
@@ -364,7 +345,6 @@ function ServicesForm({
           title="Device registration"
           description={
             <>
-              How a device obtains a token.{" "}
               <a
                 href={docsUrl("registrationPolicy")}
                 target="_blank"
@@ -378,20 +358,23 @@ function ServicesForm({
         >
           <SettingsRow
             label="Registration policy"
-            help={
+            align="block"
+            aside={
               <>
-                Enforced now:{" "}
+                <span className="text-fg-muted">Enforced now</span>
                 <StatusPill tone="neutral" icon={null}>
                   {REGISTRATION_LABELS[data.effectiveRegistration] ??
                     data.effectiveRegistration}
                 </StatusPill>
                 {form.isDirty &&
                 effectiveOf(draft) !== data.effectiveRegistration ? (
-                  <span className="mt-1 block">
-                    After saving:{" "}
-                    {REGISTRATION_LABELS[effectiveOf(draft)] ??
-                      effectiveOf(draft)}
-                  </span>
+                  <>
+                    <span className="text-fg-muted">After saving</span>
+                    <StatusPill tone="accent" icon={null}>
+                      {REGISTRATION_LABELS[effectiveOf(draft)] ??
+                        effectiveOf(draft)}
+                    </StatusPill>
+                  </>
                 ) : null}
               </>
             }

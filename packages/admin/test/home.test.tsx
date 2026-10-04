@@ -73,7 +73,7 @@ const cards = (): HTMLElement[] =>
   );
 
 describe("Home", () => {
-  it("lists every product as a card whose name is the link, with an explicit Open (DSH-3)", async () => {
+  it("lists every product as a card whose name is the one link, stretched over the card (DSH-3)", async () => {
     boot("#/", { extra: registry() });
     await home();
     await waitFor(() => expect(cards()).toHaveLength(2));
@@ -81,11 +81,8 @@ describe("Home", () => {
     expect(
       within(acme).getByRole("link", { name: "Acme" }).getAttribute("href"),
     ).toBe("#/p/acme");
-    expect(
-      within(acme)
-        .getByRole("link", { name: "Open Acme" })
-        .getAttribute("href"),
-    ).toBe("#/p/acme");
+    // One link per card: no separate "Open" link repeating the name's target.
+    expect(within(acme).getAllByRole("link")).toHaveLength(1);
     // The card itself is not a link or a button.
     expect(acme.tagName).toBe("ARTICLE");
   });

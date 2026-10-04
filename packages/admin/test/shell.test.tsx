@@ -894,9 +894,12 @@ describe("keyboard shortcuts (ADMIN.md §5.5)", () => {
     fireEvent.keyDown(window, { key: "\\", metaKey: true });
     await waitFor(() =>
       expect(
-        within(nav()).getByRole("link", { name: "Licenses" }).textContent,
+        within(nav()).getByRole("link", { name: "Overview" }).textContent,
       ).toBe(""),
     );
+    // Only the active section lists its pages; another section is one icon named for it.
+    expect(within(nav()).queryByRole("link", { name: "Licenses" })).toBeNull();
+    expect(within(nav()).getByRole("link", { name: "License" })).toBeTruthy();
     expect(window.localStorage.getItem(PREF_KEYS.sidebarRail)).toBe("true");
   });
 });
