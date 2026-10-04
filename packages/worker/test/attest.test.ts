@@ -65,7 +65,13 @@ import {
   makeTestChain,
   type AttestKnobs,
 } from "./attestFixtures.js";
-import { playWorld, PLAY_PACKAGE, SLUG as PLAY_SLUG } from "./playWorld.js";
+import {
+  CLIENT_EMAIL,
+  playWorld,
+  PLAY_PACKAGE,
+  SLUG as PLAY_SLUG,
+} from "./playWorld.js";
+import { setPlatformPin } from "../src/core/platformCredentials.js";
 import { NO_HOOKS } from "./helpers.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -510,9 +516,34 @@ function integrityToken(
 }
 
 async function playAttestWorld(
-  opts: { pin?: string | null; policy?: Record<string, unknown> } = {},
+  opts: {
+    pin?: string | null;
+    policy?: Record<string, unknown>;
+    /** A-16: no credential of the product's own; the platform service account instead. */
+    platform?: { pin: string | null };
+  } = {},
 ) {
-  const pw = await playWorld(opts.pin === undefined ? {} : { pin: opts.pin });
+  const pw = await playWorld({
+    ...(opts.pin === undefined ? {} : { pin: opts.pin }),
+    ...(opts.platform ? { credential: false } : {}),
+  });
+  if (opts.platform) {
+    (pw.env as Record<string, unknown>).PLATFORM_GOOGLE_SERVICE_ACCOUNT =
+      JSON.stringify({
+        type: "service_account",
+        client_email: CLIENT_EMAIL,
+        private_key: pw.keys.privatePem,
+        token_uri: "https://oauth2.googleapis.com/token",
+      });
+    if (opts.platform.pin !== null)
+      await setPlatformPin(pw.db, {
+        id: "google-play.service-account",
+        product: PLAY_SLUG,
+        pin: opts.platform.pin,
+        actor: "x",
+        now: NOW,
+      });
+  }
   await setServices(
     pw.db,
     PLAY_SLUG,
@@ -755,6 +786,83 @@ describe("POST /<p>/devices/attest — play-integrity", () => {
       const r = await attest(w, token, await playBody(w, token));
       expect(r.status).toBe(409);
       expect(decodes).toHaveLength(0);
+    }
+  });
+});
+
+// ── A-16: the platform defaults (Team ID, project number, the Play service account) ─────────
+
+describe("the platform store connection's defaults (A-16)", () => {
+  const setPlatformSetting = (
+    db: Db,
+    store: string,
+    key: string,
+    value: string,
+  ) =>
+    db.run(
+      "INSERT INTO platform_store_settings (store, key, value, updated_at, updated_by) VALUES (?, ?, ?, ?, 'x')",
+      store,
+      key,
+      value,
+      NOW,
+    );
+
+  it("App Attest uses the platform Team ID when the policy omits one; an explicit Team ID wins", async () => {
+    const w = await appleWorld({ appAttest: { environment: "production" } });
+    let token = await register(w);
+    // No Team ID anywhere: unavailable, as before.
+    expect((await attest(w, token, await appAttestBody(w, token))).status).toBe(
+      409,
+    );
+    (w.env as Record<string, unknown>).PLATFORM_APPLE_TEAM_ID = TEAM;
+    expect(await attest(w, token, await appAttestBody(w, token))).toMatchObject(
+      {
+        status: 200,
+        body: { trustLevel: "attested" },
+      },
+    );
+
+    // An explicit policy Team ID beats a different platform one.
+    const w2 = await appleWorld({
+      appAttest: { teamId: TEAM, environment: "production" },
+    });
+    await setPlatformSetting(w2.db, "app-store", "teamId", "ZZZZZ99999");
+    token = await register(w2);
+    expect(
+      (await attest(w2, token, await appAttestBody(w2, token))).status,
+    ).toBe(200);
+  });
+
+  it("the challenge hands out the platform's Play project number when the policy omits it; an explicit one wins", async () => {
+    const w = await appleWorld({ playIntegrity: {} });
+    expect((await challenge(w, await register(w))).body.play).toBeUndefined();
+    await setPlatformSetting(w.db, "google-play", "cloudProjectNumber", "999");
+    expect((await challenge(w, await register(w))).body.play).toEqual({
+      cloudProjectNumber: "999",
+    });
+    const w2 = await appleWorld({
+      playIntegrity: { cloudProjectNumber: "123456789012" },
+    });
+    await setPlatformSetting(w2.db, "google-play", "cloudProjectNumber", "999");
+    expect((await challenge(w2, await register(w2))).body.play).toEqual({
+      cloudProjectNumber: "123456789012",
+    });
+  });
+
+  it("Play Integrity works for a product on the platform service account — only for its pinned package", async () => {
+    const { w, decodes } = await playAttestWorld({
+      platform: { pin: PLAY_PACKAGE },
+    });
+    const token = await register(w);
+    const r = await attest(w, token, await playBody(w, token));
+    expect(r).toMatchObject({ status: 200, body: { trustLevel: "attested" } });
+    expect(decodes).toHaveLength(1);
+
+    for (const pin of [null, "gg.acme.other"]) {
+      const x = await playAttestWorld({ platform: { pin } });
+      const t = await register(x.w);
+      expect((await attest(x.w, t, await playBody(x.w, t))).status).toBe(409);
+      expect(x.decodes).toHaveLength(0);
     }
   });
 });

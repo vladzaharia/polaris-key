@@ -52,7 +52,12 @@ No response ever carries a key.
 | `steam` / `appIds`                   | console                                | apps added to the Steam list (comma-separated app ids)                                    |
 
 Set one with `PUT …/<store>/settings/<key>` and `{"value": "…"}`; `DELETE` clears it. A product's
-own explicit value always wins over the platform default.
+own explicit value always wins over the platform default. For the trust policy, the block still
+turns the check on: `"appAttest": {"environment": "production"}` (no `teamId`) enables App Attest
+with the platform Team ID, and `"playIntegrity": {}` enables Play Integrity with the platform
+project number. A product on the platform's Play service account (no
+`google-service-account` of its own, its package assigned here) also gets its Play Integrity
+decode token through that account.
 
 ## The apps list
 

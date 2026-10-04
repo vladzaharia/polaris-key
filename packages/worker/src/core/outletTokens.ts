@@ -46,6 +46,7 @@ import {
 } from "./outletCredentials.js";
 import {
   openPlatformCredential,
+  parsePlatformCredentialHandle,
   PLATFORM_SEAL_PRODUCT,
   platformPin,
   resolvePlatformCredential,
@@ -537,4 +538,43 @@ export async function platformGoogleAccessToken(
   );
   await writeSealedToken(env, await slotFor(cred.version), token, ttl, now);
   return token;
+}
+
+/**
+ * A Google access token for a credential id OR a platform handle (`platform:<id>`, A-16): the
+ * product's own `google-service-account` through `googleAccessToken`, the platform service account
+ * through `platformGoogleAccessToken` with `pin` (the package acted on) as the product's required
+ * pin. One entry point for callers that hold a setup's `credentialId`.
+ */
+export async function googleAccessTokenFor(
+  env: Env,
+  db: Db,
+  product: string,
+  credentialId: string,
+  pin: string,
+  scopes: readonly string[],
+  use: string,
+  now: number,
+  fetchImpl: FetchImpl = fetch,
+): Promise<string | null> {
+  return parsePlatformCredentialHandle(credentialId)
+    ? platformGoogleAccessToken(
+        env,
+        db,
+        { product, pin },
+        scopes,
+        use,
+        now,
+        fetchImpl,
+      )
+    : googleAccessToken(
+        env,
+        db,
+        product,
+        credentialId,
+        scopes,
+        use,
+        now,
+        fetchImpl,
+      );
 }
