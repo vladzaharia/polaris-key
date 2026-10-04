@@ -103,3 +103,12 @@ mise exec node@22 -- node packages/cli/dist/pkey.mjs validate
 
 The role agent sets `--set F-10 in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set F-10 done`.
+
+## Amendment (owner decision 2026-10-04)
+
+The Kotlin SDK ([P6-05](P6-05-kotlin-sdk.md) and its children P6-06 to P6-12) adds modules beyond
+`:platform` and `:godot`: `:core`, `:license`, `:config`, `:identity`, `:release`, `:update`,
+`:packs`, `:sdk`, `:android` and `:ui`. Each carries its own `maven-publish` metadata, so
+`publishAllPublicationsToLocalRepository` and `release-kotlin.yml` cover whatever modules exist when
+this package lands, and the rest as they land. Kotlin artifacts go **only** to Polaris Key's Maven
+feed: no Maven Central, no Sonatype, no `signing` plugin.

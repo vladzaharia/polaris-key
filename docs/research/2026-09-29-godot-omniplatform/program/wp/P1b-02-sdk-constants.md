@@ -5,7 +5,7 @@
 | Phase       | P1b: SDK parity                                                                                                                              |
 | Size        | 1 engineer-weeks                                                                                                                             |
 | Depends on  | [P1b-01](P1b-01-parity-registry.md), [P0-09](P0-09-service-table.md)                                                                         |
-| Unblocks    | [P1b-04](P1b-04-headers-config-corpora.md), [P1b-10](P1b-10-core-caps.md), [P6-05](P6-05-kotlin-sdk.md)                                      |
+| Unblocks    | [P1b-04](P1b-04-headers-config-corpora.md), [P1b-10](P1b-10-core-caps.md), [P6-06](P6-06-kotlin-core-runner.md)                              |
 | Role        | `pkey-implementer`                                                                                                                           |
 | Plan mode   | no (it must not edit `shared-protocol` or `client-core`; see Design notes)                                                                   |
 | Gates       | a new drift gate (`pnpm gen:constants -- --check`, in CI and the green gate); the generated `reference/error-codes.mdx` page (AGENTS rule 3) |
