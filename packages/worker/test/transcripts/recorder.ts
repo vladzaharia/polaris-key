@@ -76,6 +76,11 @@ export interface ExchangeSpec {
   ifNoneMatch?: string;
   /** Extra headers SENT but not asserted (e.g. `accept`). */
   headers?: Record<string, string>;
+  /** Headers SENT and asserted by VALUE (e.g. a chunk fetch's `range`, P4-32). */
+  assertHeaders?: Record<string, string>;
+  /** Headers SENT and asserted by PRESENCE only (added to `requiredHeaders`): a value the
+   *  recorder must choose but no replaying SDK can reproduce, such as a stale `if-range`. */
+  presentHeaders?: Record<string, string>;
   /** The JSON body actually sent. */
   body?: unknown;
   /** What a replaying SDK's body is held to. Required when `body` is set. */
@@ -137,6 +142,12 @@ export class StepRecorder {
       sent["if-none-match"] = spec.ifNoneMatch;
       asserted["if-none-match"] = spec.ifNoneMatch;
     }
+    for (const [name, value] of Object.entries(spec.assertHeaders ?? {})) {
+      sent[name.toLowerCase()] = value;
+      asserted[name.toLowerCase()] = value;
+    }
+    for (const [name, value] of Object.entries(spec.presentHeaders ?? {}))
+      sent[name.toLowerCase()] = value;
     let body: string | undefined;
     if (spec.body !== undefined) {
       if (!spec.expectBody)
@@ -190,6 +201,8 @@ export class StepRecorder {
 
     const requiredHeaders: string[] = metadata ? [...METADATA_HEADERS] : [];
     if (body !== undefined) requiredHeaders.push("content-type");
+    for (const name of Object.keys(spec.presentHeaders ?? {}))
+      requiredHeaders.push(name.toLowerCase());
     const request: RecordedRequest = {
       method: spec.method,
       path: spec.path,

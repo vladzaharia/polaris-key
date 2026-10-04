@@ -1,16 +1,16 @@
 # F-11 Console: the Feeds overview and per-feed pages in both scopes, the package record and the admin API
 
-| Field       | Value                                                                               |
-| ----------- | ----------------------------------------------------------------------------------- |
-| Phase       | F: Package feeds (pkg.plrs.im) (tier-1)                                             |
-| Size        | 2–3 engineer-weeks                                                                  |
-| Depends on  | [F-03](F-03-package-releases.md)                                                    |
-| Unblocks    | [F-12](F-12-console-feed-settings.md), [F-21](F-21-registry-auth.md)                |
-| Role        | `pkey-implementer`                                                                  |
-| Plan mode   | no: follows [`plans/F-01.md`](../plans/F-01.md) §6.9                                |
-| Gates       | docs links and help-link tables; console CSP parity; THREAT-MODEL (admin mutations) |
-| Human input | none                                                                                |
-| Repo        | `vladzaharia/polaris-key`                                                           |
+| Field       | Value                                                                                                       |
+| ----------- | ----------------------------------------------------------------------------------------------------------- |
+| Phase       | F: Package feeds (pkg.plrs.im) (tier-1)                                                                     |
+| Size        | 2–3 engineer-weeks                                                                                          |
+| Depends on  | [F-03](F-03-package-releases.md)                                                                            |
+| Unblocks    | [F-12](F-12-console-feed-settings.md), [F-21](F-21-registry-auth.md), [A-18j](A-18j-console-storefronts.md) |
+| Role        | `pkey-implementer`                                                                                          |
+| Plan mode   | no: follows [`plans/F-01.md`](../plans/F-01.md) §6.9                                                        |
+| Gates       | docs links and help-link tables; console CSP parity; THREAT-MODEL (admin mutations)                         |
+| Human input | none                                                                                                        |
+| Repo        | `vladzaharia/polaris-key`                                                                                   |
 
 ## Goal
 

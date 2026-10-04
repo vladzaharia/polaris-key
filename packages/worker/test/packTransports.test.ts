@@ -16,7 +16,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseManifest } from "@polaris-key/manifest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { mkReq, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
+import {
+  mkReq,
+  NOW,
+  seedLicenseWithKey,
+  seedProduct,
+  setDeliverableAccess,
+  stagePackObjects,
+} from "./seed.js";
 import { asR2, installDigestStream, R2Mock } from "./r2Mock.js";
 import {
   BYTES,
@@ -233,40 +240,17 @@ function post(path: string, body: unknown) {
 }
 
 /** One deliverable's `dist_access` row, as an operator sets it. */
-async function access(
+function access(
   deliverable: string,
   mode: string,
   entitlement: string | null = null,
 ) {
-  await db.run(
-    `INSERT INTO dist_access (product, deliverable_id, mode, entitlement, source, modified_at)
-     VALUES (?, ?, ?, ?, 'admin', ?)
-     ON CONFLICT (product, deliverable_id) DO UPDATE SET
-       mode = excluded.mode, entitlement = excluded.entitlement`,
-    SLUG,
-    deliverable,
-    mode,
-    entitlement,
-    NOW,
-  );
+  return setDeliverableAccess(db, SLUG, deliverable, mode, entitlement, NOW);
 }
 
 /** Upload `objects` through a ticket and a stage round for `deliverable`. */
-async function stage(deliverable: string, objects: Obj[], gated = false) {
-  const unique = [...new Map(objects.map((o) => [o.sha256, o])).values()];
-  const up = await post("uploads", {
-    objects: unique.map((o) => ({
-      sha256: o.sha256,
-      size: o.bytes.length,
-      gated,
-    })),
-  });
-  expect(up.status).toBe(200);
-  const body = (await up.json()) as { ticket: string; prefix: string };
-  for (const o of unique)
-    r2.seed(`${body.prefix}${o.sha256}`, o.bytes, { withSha256: true });
-  const res = await post("stage", { ticket: body.ticket, deliverable });
-  expect(res.status, await res.clone().text()).toBe(200);
+function stage(deliverable: string, objects: Obj[], gated = false) {
+  return stagePackObjects(post, r2, deliverable, objects, gated);
 }
 
 function coreVariants(seed: string): BuiltVariant[] {
