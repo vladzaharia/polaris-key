@@ -25,7 +25,6 @@ import type {
   PackageFile,
   RegistryPackage,
 } from "../src/services/distribution/registry/materialise.js";
-import type { R2Mock } from "./r2Mock.js";
 
 export const OCI_ID = "oci.app";
 export const OCI_REPO = "tools/app";
@@ -206,6 +205,15 @@ export function ociFixturePackage(owner: string): RegistryPackage {
   };
 }
 
+/** Where the fixture's objects go: the Node lane's `R2Mock` or workerd's real R2 binding. */
+export interface FixtureBucket {
+  put(
+    key: string,
+    value: Uint8Array,
+    options: { sha256: string },
+  ): Promise<unknown>;
+}
+
 /**
  * Declare `oci.app` (`tools/app`) for `product`, store every object in `bucket` with its
  * checksum, publish the four versions through the real ingest, then set the yank and the
@@ -214,7 +222,7 @@ export function ociFixturePackage(owner: string): RegistryPackage {
 export async function publishOciFixture(
   db: Db,
   env: Env,
-  bucket: R2Mock,
+  bucket: FixtureBucket,
   product: string,
   now: number,
 ): Promise<OciFixtureVersion[]> {
