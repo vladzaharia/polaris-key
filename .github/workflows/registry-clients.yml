@@ -6,7 +6,7 @@ name: Registry clients
 # packages/worker/scripts/registry-clients/run.mjs. F-02 ships the smoke client (curl), which pins
 # the host's isolation contract over real HTTP; F-04 to F-09 add their ecosystem's clients as
 # matrix rows (npm, pnpm, Yarn, Bun; pip, uv, Poetry; SwiftPM on macOS; Gradle and Maven; docker,
-# podman and crane; GodotEnv).
+# podman and crane; GodotEnv). `workflow_dispatch -f ecosystem=<name>` runs one ecosystem's rows.
 #
 # Making it a required check on pull requests that touch these paths is a branch-protection
 # setting (DEPLOYMENT §7).
@@ -25,7 +25,7 @@ on:
   workflow_dispatch:
     inputs:
       ecosystem:
-        description: "Run only this ecosystem's clients (curl, npm, pypi, swift, …); empty runs every job."
+        description: "Run only this ecosystem's clients (curl, npm, pypi, swift, maven, oci, …); empty runs every job."
         required: false
         default: ""
 
@@ -109,9 +109,32 @@ jobs:
           - client: maven
             ecosystem: maven
             os: ubuntu-latest
+          # F-08: OCI pull. `oci` is the curl contract; then the OCI conformance suite (pull
+          # workflow, built from distribution-spec v1.1.1), crane, docker and podman, each pulling
+          # both platforms of the seeded multi-arch image. The runner image ships docker and
+          # podman; crane and the suite need Go.
+          - client: oci
+            ecosystem: oci
+            os: ubuntu-latest
+          - client: oci-conformance
+            ecosystem: oci
+            os: ubuntu-latest
+            go: true
+          - client: oci-crane
+            ecosystem: oci
+            os: ubuntu-latest
+            go: true
+          - client: oci-docker
+            ecosystem: oci
+            os: ubuntu-latest
+          - client: oci-podman
+            ecosystem: oci
+            os: ubuntu-latest
     # A dispatch with `ecosystem` set runs only that ecosystem's rows; the others pass, empty. (A
     # job-level `if:` cannot read `matrix`, so the filter is a step condition.)
     env:
+      # A client whose tool is missing fails rather than skipping (clients/oci.inc `need`).
+      REGISTRY_CLIENTS_REQUIRE: "1"
       PICKED: ${{ github.event_name != 'workflow_dispatch' || inputs.ecosystem == '' || inputs.ecosystem == matrix.ecosystem }}
     steps:
       - uses: actions/checkout@v7
@@ -126,6 +149,16 @@ jobs:
           cache: pnpm
       - if: ${{ env.PICKED == 'true' && matrix.bun }}
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - uses: actions/setup-go@v6
+        if: env.PICKED == 'true' && matrix.go
+        with:
+          go-version: stable
+          cache: false
+      - name: Install crane
+        if: env.PICKED == 'true' && matrix.client == 'oci-crane'
+        run: |
+          go install github.com/google/go-containerregistry/cmd/crane@v0.20.6
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - run: pnpm install --frozen-lockfile
         if: env.PICKED == 'true'
       # The Worker imports the built workspace packages (brand, manifest, protocol, …).

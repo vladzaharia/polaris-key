@@ -38,11 +38,12 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { WORKER, WRANGLER, argValue, argValues } from "./lib.mjs";
+import { TSX, WORKER, WRANGLER, argValue, argValues } from "./lib.mjs";
 import { seedFixtures } from "./fixtures.mjs";
 import { FIXTURE_OWNER, seed } from "./seed.mjs";
 
 const CLIENTS = join(WORKER, "scripts", "registry-clients", "clients");
+const SEEDS = join(WORKER, "scripts", "registry-clients", "seeds");
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -91,6 +92,19 @@ let failed = 0;
 try {
   await seed(state);
   await seedFixtures(state, FIXTURE_OWNER);
+  // Per-ecosystem seeds (F-08 onward): every `seeds/*.ts`, run with tsx against the same state
+  // directory before the Worker starts, so it serves what they published.
+  for (const file of readdirSync(SEEDS)
+    .filter((f) => f.endsWith(".ts"))
+    .sort()) {
+    const r = spawnSync(TSX, [join(SEEDS, file), "--persist-to", state], {
+      cwd: WORKER,
+      stdio: "inherit",
+      env: { ...process.env, CI: "true", WRANGLER_SEND_METRICS: "false" },
+    });
+    if (r.status !== 0)
+      throw new Error(`seed ${file} failed (exit ${r.status})`);
+  }
   // Per-client fixtures (F-05 onwards): `clients/<client>.seed.mjs`, or the seed of the client's
   // family (`swift-compat` → `swift.seed.mjs`), each run once, as a script with STATE (the state
   // directory) and OWNER in its environment, before the Worker starts.

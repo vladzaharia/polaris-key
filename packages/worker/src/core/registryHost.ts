@@ -249,7 +249,11 @@ export function registryNotFound(
           },
         ],
       },
-      { status: 404 },
+      // F-08: every answer under `/v2/` names the distribution API version.
+      {
+        status: 404,
+        headers: { "docker-distribution-api-version": "registry/2.0" },
+      },
     );
   if (ecosystem === "swift")
     return json(
@@ -297,7 +301,13 @@ export function registryMethodNotAllowed(
           { code: "UNSUPPORTED", message: "The operation is unsupported." },
         ],
       },
-      { status: 405, headers: allow },
+      {
+        status: 405,
+        headers: {
+          ...allow,
+          "docker-distribution-api-version": "registry/2.0",
+        },
+      },
     );
   const res = errorResponse(405, "method_not_allowed");
   res.headers.set("allow", allow.allow);

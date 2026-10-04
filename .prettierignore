@@ -10,6 +10,8 @@ packages/docs/src/content/docs/reference/
 # P2b-05's storefront feed goldens: byte-compared against the rendered feed bodies.
 packages/worker/test/fixtures/feeds/
 packages/cli/test/fixtures/feeds/
+# F-04 to F-09's package-feed goldens: byte-compared against the rendered registry documents.
+packages/worker/test/fixtures/registry/
 # P3-09's app-updater feed goldens: byte-compared against the rendered feed bodies.
 packages/worker/test/fixtures/updater-feeds/
 # F-05's PyPI feed goldens (PEP 691 JSON, PEP 503 HTML): byte-compared against the rendered pages.

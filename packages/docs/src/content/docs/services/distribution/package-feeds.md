@@ -293,6 +293,68 @@ dependencyResolutionManagement {
 `<owner>` is the product slug (`polaris-key` for the platform's own packages) and `<groupPrefix>`
 each entry of the feed's group prefixes (`im.plrs.key` for the platform's).
 
+## OCI images
+
+The OCI feed serves container images (and any OCI artifact built as an image) to `docker`,
+`podman`, `crane` and every other client of the
+[OCI Distribution Specification](https://github.com/opencontainers/distribution-spec/blob/main/spec.md).
+A repository's full name is `<owner>/<repository>`, where `<repository>` is the package
+deliverable's declared `name` (lower-case path components such as `tools/pkey`):
+
+```sh
+docker pull pkg.plrs.im/polaris-key/tools/pkey:latest
+podman pull pkg.plrs.im/polaris-key/tools/pkey:1.4.0
+crane pull --platform linux/arm64 pkg.plrs.im/polaris-key/tools/pkey:beta pkey.tar
+```
+
+**What it answers.** Pulls only, anonymous while the feed is public:
+
+| Request                                                    | Answer                                                                                                                                           |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET`/`HEAD /v2/<owner>/<repository>/manifests/<tag>`      | the manifest or image index the tag points to, with its own media type and `Docker-Content-Digest`; cached for 60 s                              |
+| `GET`/`HEAD /v2/<owner>/<repository>/manifests/sha256:<…>` | the same bytes by digest, immutable                                                                                                              |
+| `GET`/`HEAD /v2/<owner>/<repository>/blobs/sha256:<…>`     | a config or layer, immutable, with `Range` (206) and `If-Range`; only digests this repository published                                          |
+| `GET /v2/<owner>/<repository>/tags/list[?n=&last=]`        | the tags in lexical order; with `n`, a `Link: …; rel="next"` header names the next page                                                          |
+| anything else under `/v2/`                                 | OCI's error JSON (`NAME_UNKNOWN`, `MANIFEST_UNKNOWN`, `BLOB_UNKNOWN`); push methods are 405 `UNSUPPORTED`; `/v2/token` is 404 until tokens exist |
+
+Every answer carries `Docker-Distribution-API-Version: registry/2.0`. A feed that is not public
+answers 401 with OCI's `Bearer` challenge; registry credentials are not issued yet.
+
+**Tags.** Each version is a tag of its own name, and it never moves. Each channel is a moving tag:
+`stable` is `latest`, and every other channel (`beta`, a manual channel) a tag of its own name,
+pointing at the newest version the channel serves. A channel spelled like an existing version is
+not tagged, because the version tag wins.
+
+**Yanks and deprecations.** OCI has neither, so a **yanked** version loses its tag (it leaves the
+tag list and `pull <name>:<version>` fails) but still pulls **by digest**, so a deployment pinned
+to `name@sha256:…` keeps working. A **deprecated** version is served exactly like a live one.
+
+**Publishing.** Declare the package in `.pkey/release` and publish an
+[OCI image layout](https://github.com/opencontainers/image-spec/blob/main/image-layout.md) with
+`pkey release publish`; the version is also the image's tag, so it has no `+`:
+
+```jsonc
+"deliverables": {
+  "oci.pkey": { "kind": "package", "ecosystem": "oci", "name": "tools/pkey",
+                "artifacts": { "layout": { "match": "image/**" } } }
+}
+```
+
+```sh
+docker buildx build --platform linux/amd64,linux/arm64 --output type=oci,tar=false,dest=image .
+pkey release publish --product polaris-key --deliverable oci.pkey --dir image --version 1.4.0 --channel stable
+```
+
+The CLI reads the layout's `index.json` (exactly one entry: a multi-arch image is one image
+index), walks every manifest it references, and uploads each blob once through the upload ticket.
+Each blob is at most the feed's ceiling (5 GiB by default), a release is at most 4,096 objects,
+and its descriptor at most 64 KiB, which in practice bounds an image to a few hundred blobs.
+
+**Setup snippet.** The console's Setup tab and `pkey feeds setup` (F-12) render this feed from
+three values: the registry host (`pkg.plrs.im`, or the environment's), the owner and the
+repository; the fully qualified reference `<host>/<owner>/<repository>:<tag>` is the whole
+setup, because an OCI client never falls back to another registry for a qualified name.
+
 ## Local testing
 
 `pnpm --filter @polaris-key/worker registry:clients` stands up a seeded local Worker on the

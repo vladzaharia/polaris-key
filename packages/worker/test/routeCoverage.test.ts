@@ -232,6 +232,15 @@ const REGISTRY_PATHS: Array<[string, string[], string]> = [
     ["get", "head"],
     "mavenFile",
   ],
+  // F-08: OCI pull. `/v2/token` is the dispatcher's OCI not-found until F-21 issues tokens.
+  ["/v2/token", ["get", "head"], "host"],
+  [
+    "/v2/{owner}/{repository}/manifests/{reference}",
+    ["get", "head"],
+    "oci.manifests",
+  ],
+  ["/v2/{owner}/{repository}/blobs/{digest}", ["get", "head"], "oci.blobs"],
+  ["/v2/{owner}/{repository}/tags/list", ["get", "head"], "oci.tags"],
 ];
 
 function specMethods(path: string): string[] {

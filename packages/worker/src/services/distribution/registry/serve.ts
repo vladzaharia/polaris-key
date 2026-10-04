@@ -5,7 +5,8 @@
  *
  *   1. `feedPrincipal` and `authorizeFeedRead` decide, from the 30-second settings cache;
  *   2. a refusal answers `feedRefusal` (the not-found or the native 401), `no-store`;
- *   3. a `public` decision goes through the Cache API (`cachedRegistryAnswer`);
+ *   3. a `public` decision goes through the Cache API (`cachedRegistryAnswer`), unless the route
+ *      opts out with `cacheApi: false` (F-08's OCI blobs: ranged, up to 5 GiB);
  *   4. a `private` decision computes every time and forces `private, no-store` on the answer.
  *
  * Because step 1 runs before step 3, a disabled feed or a tightened mode stops even an
@@ -37,6 +38,13 @@ export interface FeedReadOptions {
   readonly repository?: string;
   /** Tests only: a settings source other than D1. */
   readonly settings?: RegistrySettingsSource;
+  /**
+   * F-08: `false` keeps a PUBLIC answer out of the Cache API: large content-addressed bytes (OCI
+   * blobs, up to 5 GiB) that must honour `Range` and may exceed the Cache API's object limit. The
+   * access check still runs first; the answer carries its own immutable headers and handles its
+   * own conditionals (`core/blobs.ts` `blobResponse`).
+   */
+  readonly cacheApi?: false;
 }
 
 /**
@@ -67,6 +75,8 @@ export async function serveFeedRead(
       owner: ctx.product.slug,
       ...(opts.repository !== undefined ? { repository: opts.repository } : {}),
     });
+  if (decision.cache === "public" && opts.cacheApi === false)
+    return compute("public");
   if (decision.cache === "public")
     return cachedRegistryAnswer(
       req,
