@@ -26,6 +26,7 @@ import {
 import { qk } from "../console/data/queries.js";
 import { fetchProduct } from "../console/data/hooks.js";
 import { mutate } from "../console/data/mutations.js";
+import { DeleteProductDialog } from "../console/components/DeleteProductDialog.js";
 
 /**
  * PLATFORM settings — what is left of this view after spec §8 dissolved the grab-bag.
@@ -331,54 +332,33 @@ function DangerCard({
   slug: string;
   product: ProductDetail;
 }): React.ReactElement {
-  const toast = useToast();
   const { me } = useAdmin();
   const [confirm, setConfirm] = React.useState(false);
-  const [deleting, setDeleting] = React.useState(false);
-
-  const onDelete = async (): Promise<void> => {
-    setDeleting(true);
-    try {
-      await mutate("deleteProduct", slug);
-      toast.success(
-        "Product disabled",
-        `“${product.name}” was tombstoned in the registry.`,
-      );
-      // Leave the now-defunct product route; head to the next product or the dashboard.
-      const next = me.products.find((prod) => prod.slug !== slug);
-      window.location.hash = next ? r.overview(next.slug) : r.home();
-    } catch (err) {
-      toast.error(
-        "Couldn’t disable the product",
-        err instanceof Error ? err.message : undefined,
-      );
-      setDeleting(false);
-    }
-  };
 
   return (
     <Card className="border-destructive/40">
       <CardHeader>
         <CardTitle className="text-destructive">Danger zone</CardTitle>
         <CardDescription>
-          Disabling a product tombstones it, disables licenses, deauthorizes
-          devices, revokes hot credentials, and preserves audit history.
+          Deleting a product tombstones it: its licenses are disabled, its
+          devices lose their tokens, and its audit history is kept.
         </CardDescription>
       </CardHeader>
       <CardFooter>
         <Button variant="destructive" onClick={() => setConfirm(true)}>
           <Trash2 aria-hidden />
-          Disable product
+          Delete product…
         </Button>
       </CardFooter>
-      <ConfirmDialog
+      <DeleteProductDialog
+        product={product}
         open={confirm}
         onOpenChange={setConfirm}
-        title={`Disable “${product.name}”?`}
-        description="This leaves audit/runtime data in place while removing the product from active administration and runtime use."
-        confirmLabel="Disable product"
-        loading={deleting}
-        onConfirm={onDelete}
+        onDeleted={() => {
+          // Leave the now-defunct product route; head to the next product or Home.
+          const next = me.products.find((prod) => prod.slug !== slug);
+          window.location.hash = next ? r.overview(next.slug) : r.home();
+        }}
       />
     </Card>
   );

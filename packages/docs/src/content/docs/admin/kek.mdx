@@ -16,6 +16,12 @@ every product's public routes are dark. Read the rotation procedure below before
 and if products are 404ing at once with nothing else broken, start at _Troubleshooting_ at the
 bottom of this page.
 
+In the console, **Platform → Deployment** (`#/platform/deployment`) shows the build this instance
+runs, the D1 migrations it has applied against the build's newest, the required indexes, which
+bindings are present, and the **Platform activity** log, where every re-seal sweep is recorded with
+who ran it and how many values it re-sealed. Check it first when every product goes dark after a
+deploy. The re-seal sweep itself is the `POST /manage/api/products/kek` call in the runbook below.
+
 What follows is the operations runbook for an already-deployed instance, rendered here in full
 from `docs/RUNBOOK.md` so it can never drift from what this page says. For first-time production
 bootstrap, see [Deploying to production](/docs/admin/deploy/) instead.

@@ -28,13 +28,16 @@
 import {
   Activity,
   AppWindow,
+  Archive,
   Blocks,
   Box,
   Boxes,
+  CloudUpload,
   FilePen,
   FileStack,
   Fingerprint,
   FlaskConical,
+  Gauge,
   Grid3x3,
   HeartPulse,
   House,
@@ -50,10 +53,12 @@ import {
   Package,
   PackageOpen,
   Plug,
+  PlugZap,
   Plus,
   Rocket,
   Rss,
   Server,
+  ServerCog,
   Settings,
   ShieldCheck,
   SlidersHorizontal,
@@ -73,8 +78,21 @@ export type ServiceAccent = "core" | ServiceAccentToken;
 /** A sidebar section's key: `core`, or the service slug that gates it. */
 export type SectionKey = "core" | ServiceSlug;
 
+/** A collapsible sidebar group: a product section, or the Platform section. */
+export type NavGroupKey = SectionKey | "platform";
+
 /** Pages that exist outside any product. */
-export type GlobalPageId = "home" | "products" | "product-new" | "platform";
+export type GlobalPageId =
+  | "home"
+  | "products"
+  | "product-new"
+  | "platform"
+  // the Platform section (notes/S-13 §9.1)
+  | "platform-settings"
+  | "platform-deployment"
+  | "platform-operations"
+  | "platform-stores"
+  | "platform-feeds";
 
 /** Pages scoped to one product (`#/p/<slug>/…`). */
 export type ProductPageId =
@@ -150,6 +168,8 @@ export interface NavPage {
   record?: NavRecord;
   /** The `g <key>` shortcut (ADMIN.md §5.5), product pages only. */
   shortcut?: string;
+  /** A global page drawn inside a sidebar group rather than as a top-level link. */
+  group?: "platform";
 }
 
 export interface NavSection {
@@ -541,7 +561,74 @@ export const SECTIONS: NavSection[] = [
   },
 ];
 
-/** The global pages: the platform links of the sidebar, plus the new-product wizard. */
+/**
+ * The Platform section's pages (notes/S-13 §9.1, owner decision 3 of 2026-10-04): instance-wide
+ * pages that belong to no product. The sidebar draws them as one group, like a product section
+ * (no header icon, an icon on every item, only the active group open, the `core` accent and no
+ * section bit), whether or not a product is in scope. `#/platform` itself is not a page: it
+ * redirects to Settings, and a page that is not built yet redirects on to Deployment.
+ */
+const PLATFORM_PAGES: NavPage[] = [
+  {
+    page: "platform-settings",
+    label: "Settings",
+    path: "platform/settings",
+    icon: ServerCog,
+    docs: "/docs/admin/kek/",
+    inNav: true,
+    // The settings store (A-13) and its page (4P-1) land later; until then, Deployment.
+    ready: false,
+    host: "platform-deployment",
+    group: "platform",
+  },
+  {
+    page: "platform-deployment",
+    label: "Deployment",
+    path: "platform/deployment",
+    icon: CloudUpload,
+    docs: "/docs/admin/deploy/",
+    inNav: true,
+    ready: true,
+    group: "platform",
+  },
+  {
+    page: "platform-operations",
+    label: "Operations",
+    path: "platform/operations",
+    icon: Gauge,
+    docs: "/docs/admin/deploy/",
+    inNav: true,
+    // Self-reported operations data (A-14) and its page (4P-3) land later.
+    ready: false,
+    host: "platform-deployment",
+    group: "platform",
+  },
+  {
+    page: "platform-stores",
+    label: "Store connections",
+    path: "platform/store-connections",
+    icon: PlugZap,
+    docs: "/docs/services/distribution/",
+    inNav: true,
+    ready: false,
+    host: "platform-deployment",
+    group: "platform",
+  },
+  {
+    page: "platform-feeds",
+    label: "Package feeds",
+    path: "platform/feeds",
+    icon: Archive,
+    docs: "/docs/services/distribution/feeds/",
+    inNav: true,
+    // S-12 owns the page and its API.
+    ready: false,
+    host: "platform-deployment",
+    group: "platform",
+  },
+];
+
+/** The global pages: the sidebar's platform links, the new-product wizard and the Platform section. */
 export const GLOBAL_PAGES: NavPage[] = [
   {
     page: "home",
@@ -568,22 +655,36 @@ export const GLOBAL_PAGES: NavPage[] = [
     icon: Plus,
     docs: "/docs/admin/products/",
     inNav: false,
-    // The wizard is chunk 4; today a dialog on Products creates a product.
-    ready: false,
-    host: "products",
+    ready: true,
   },
   {
+    // The section root: always a redirect to the section's first page.
     page: "platform",
     label: "Platform",
     path: "platform",
     icon: Server,
-    docs: "/docs/admin/kek/",
-    inNav: true,
-    // A new page (the KEK keyring has no console UI yet); chunk 4 builds it.
+    docs: "/docs/admin/deploy/",
+    inNav: false,
     ready: false,
-    host: "home",
+    host: "platform-settings",
   },
+  ...PLATFORM_PAGES,
 ];
+
+/** The Platform section, as the sidebar and the palette draw it. */
+export const PLATFORM_GROUP = {
+  key: "platform",
+  label: "Platform",
+  accent: "core",
+  docs: "/docs/admin/deploy/",
+  items: PLATFORM_PAGES,
+} as const satisfies {
+  key: NavGroupKey;
+  label: string;
+  accent: ServiceAccent;
+  docs: string;
+  items: NavPage[];
+};
 
 /** Every product page, in nav order. */
 export const PRODUCT_PAGES: NavPage[] = SECTIONS.flatMap((s) => s.items);
@@ -664,9 +765,24 @@ export function navItems(section: NavSection): NavPage[] {
   return section.items.filter((i) => i.inNav && i.ready);
 }
 
-/** The global pages the sidebar lists. */
+/** The global pages the sidebar lists at the top level: Home and Products. */
 export function platformLinks(): NavPage[] {
-  return GLOBAL_PAGES.filter((p) => p.inNav && p.ready);
+  return GLOBAL_PAGES.filter((p) => p.inNav && p.ready && !p.group);
+}
+
+/** The Platform section's pages the sidebar and palette list: in nav and built. */
+export function platformItems(): NavPage[] {
+  return PLATFORM_GROUP.items.filter((p) => p.inNav && p.ready);
+}
+
+/** Is this one of the Platform section's pages? */
+export function isPlatformPage(id: PageId): boolean {
+  return pageOf(id).group === "platform";
+}
+
+/** The sidebar group a page belongs to: its product section, `platform`, or none. */
+export function groupOf(id: PageId): NavGroupKey | null {
+  return sectionOf(id)?.key ?? (isPlatformPage(id) ? "platform" : null);
 }
 
 /**

@@ -9,7 +9,7 @@ import type {
   ProductSetupState,
   ProductSigningBundle,
   RotateKeyResult,
-} from "../../api.js";
+} from "../api.js";
 
 /** The release source of a product, preferably supplied by the backend. */
 export type ReleaseSource = "github" | "manual";

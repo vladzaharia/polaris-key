@@ -33,12 +33,15 @@ From left to right:
 | **Search or jump to…** | The command palette (`⌘K` or `Ctrl+K`, or `/` outside a text field): every page of the current product's sections, plus every product. Recent choices come first.                                                                                      |
 | **Docs**               | Opens the docs page for the page you are on, in a new tab.                                                                                                                                                                                             |
 | **Theme**              | System (the default, which follows your OS live), Dark or Light. The choice is remembered in this browser.                                                                                                                                             |
-| **Account menu**       | Your name and email, when the session ends, the keyboard shortcut sheet (`?`), the docs home, and **Sign out**.                                                                                                                                        |
+| **Account menu**       | Your name and email, when the session ends, the running version (a link to Platform → Deployment), the keyboard shortcut sheet (`?`), the docs home, and **Sign out**.                                                                                 |
 
 ## The sidebar
 
-**Home** and **Products** always come first. On Home and Products no product is in scope, so
-nothing else is shown. Inside a product, one section follows per service:
+**Home** and **Products** always come first, then the **Platform** section: pages about this
+instance as a whole rather than any product, such as **Deployment** (the build it runs, its deploy
+history, database migrations, bindings and the platform activity log). On Home, Products and the
+Platform pages no product is in scope, so nothing else is shown. Inside a product, one section
+follows per service:
 
 - **Core** first. It has no owning service and is never hidden: you must always be able to reach
   **Services** to turn something back on.

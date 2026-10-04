@@ -224,8 +224,10 @@ export function parseLocation(hash: string): ParsedLocation {
   return { route: { kind: "not-found", path: rawPath, query } };
 }
 
+/** Redirect to `hash`, following on when it redirects too (`#/platform` → Settings → Deployment). */
 function redirectTo(hash: string): ParsedLocation {
-  return { route: parseLocation(hash).route, redirect: hash };
+  const next = parseLocation(hash);
+  return { route: next.route, redirect: next.redirect ?? hash };
 }
 
 // ── Building ───────────────────────────────────────────────────────────────────────────────────
@@ -307,6 +309,11 @@ export const r = {
   products: (query?: QueryInit) => globalPage("products", query),
   productNew: (query?: QueryInit) => globalPage("product-new", query),
   platform: () => globalPage("platform"),
+  platformSettings: () => globalPage("platform-settings"),
+  platformDeployment: () => globalPage("platform-deployment"),
+  platformOperations: () => globalPage("platform-operations"),
+  platformStores: () => globalPage("platform-stores"),
+  platformFeeds: () => globalPage("platform-feeds"),
   page: (slug: string, page: ProductPageId, query?: QueryInit) =>
     productPage(slug, page, { query }),
   overview: (slug: string) => productPage(slug, "overview"),
