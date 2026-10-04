@@ -4,7 +4,13 @@
 // browser. The adapter is built once per {mode, productSlug, baseUrl, bridge} identity and
 // disposed on unmount, so credential/session state is stable across renders.
 
-import { useEffect, useMemo, type CSSProperties, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useSyncExternalStore,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import type { JSONValue } from "@polaris-key/protocol/core";
 import { browserAdapter } from "../browser/browserAdapter.js";
 import { desktopAdapter } from "../desktop/desktopAdapter.js";
@@ -20,6 +26,9 @@ import {
   mergeTheme,
   themeVars,
   type PartialTheme,
+  type PolarisBranding,
+  type PolarisColorScheme,
+  type PolarisResolvedScheme,
 } from "../components/theme.js";
 import { PolarisContext } from "./context.js";
 
@@ -32,8 +41,19 @@ export interface PolarisKeyProviderProps {
   mode?: "browser" | "desktop" | "auto";
   /** An explicit desktop bridge (otherwise `window.polarisKey`). */
   bridge?: PolarisBridge;
-  /** Brand theme tokens/copy/logo. */
+  /** Theme tokens/copy/logo, merged over the base theme of the chosen `branding`. */
   theme?: PartialTheme;
+  /**
+   * "neutral" (default): a host-friendly theme with no Polaris Key branding. "polaris-key":
+   * the Polaris Key design system and marks. Shorthand for `theme.branding`, and wins over it.
+   */
+  branding?: PolarisBranding;
+  /**
+   * "system" (the default) follows `prefers-color-scheme`, dark when the OS states no
+   * preference (BRAND.md §3: dark first); "dark" and "light" pin it. Persisting a user's
+   * choice is the host's job: pass it back in here.
+   */
+  colorScheme?: PolarisColorScheme;
   /**
    * The services this app EXPECTS the product to run, used only until discovery (browser) or
    * the bridge (desktop) reports the real map. D-21's fail-closed fallback: on a discovery
@@ -60,6 +80,42 @@ export interface PolarisKeyProviderProps {
   children?: ReactNode;
 }
 
+const LIGHT_QUERY = "(prefers-color-scheme: light)";
+
+function lightQuery(): MediaQueryList | null {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function")
+    return null;
+  return window.matchMedia(LIGHT_QUERY);
+}
+
+function subscribeScheme(onChange: () => void): () => void {
+  const mql = lightQuery();
+  if (!mql) return () => undefined;
+  // Safari < 14 has only the deprecated listener API.
+  if (typeof mql.addEventListener === "function") {
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }
+  mql.addListener(onChange);
+  return () => mql.removeListener(onChange);
+}
+
+const prefersLight = (): boolean => lightQuery()?.matches ?? false;
+const serverPrefersLight = (): boolean => false;
+
+/** The scheme `colorScheme` resolves to now, following the OS while it is "system". */
+function useResolvedScheme(
+  requested: PolarisColorScheme,
+): PolarisResolvedScheme {
+  const light = useSyncExternalStore(
+    subscribeScheme,
+    prefersLight,
+    serverPrefersLight,
+  );
+  if (requested === "dark" || requested === "light") return requested;
+  return light ? "light" : "dark";
+}
+
 /** Resolve the concrete mode from the requested mode + bridge availability. */
 function resolveMode(
   requested: "browser" | "desktop" | "auto",
@@ -78,6 +134,8 @@ export function PolarisKeyProvider(
     mode = "auto",
     bridge,
     theme: themeProp,
+    colorScheme = "system",
+    branding,
     expectServices,
     localOverrides,
     adapter: injected,
@@ -89,7 +147,11 @@ export function PolarisKeyProvider(
     children,
   } = props;
 
-  const theme = useMemo(() => mergeTheme(themeProp), [themeProp]);
+  const scheme = useResolvedScheme(colorScheme);
+  const theme = useMemo(
+    () => mergeTheme(branding ? { ...themeProp, branding } : themeProp, scheme),
+    [themeProp, scheme, branding],
+  );
 
   // Serialize the expectation list so a caller passing an inline array literal does not
   // rebuild (and re-authenticate) the adapter on every render.
@@ -154,6 +216,10 @@ export function PolarisKeyProvider(
 
   const value = useMemo(() => ({ adapter, theme }), [adapter, theme]);
   const vars = useMemo(() => themeVars(theme), [theme]);
+  const rootStyle = useMemo<CSSProperties>(
+    () => ({ ...(vars as CSSProperties), colorScheme: scheme }),
+    [vars, scheme],
+  );
 
   /**
    * The tokens are published TWICE, on purpose.
@@ -176,7 +242,12 @@ export function PolarisKeyProvider(
 
   return (
     <PolarisContext.Provider value={value}>
-      <div data-polaris-key-root="" style={vars as CSSProperties}>
+      <div
+        data-polaris-key-root=""
+        data-theme={scheme}
+        data-branding={theme.branding ?? "neutral"}
+        style={rootStyle}
+      >
         {children}
       </div>
     </PolarisContext.Provider>

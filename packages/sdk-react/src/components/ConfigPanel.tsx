@@ -19,7 +19,8 @@ import type { JSONValue } from "@polaris-key/protocol/core";
 import type { ConfigSource } from "@polaris-key/client-core";
 import { useManagedConfig, usePolarisTheme } from "../react/hooks.js";
 import { Button } from "./primitives/buttons.js";
-import { Panel, mutedText } from "./primitives/card.js";
+import { FONT } from "@polaris-key/brand";
+import { Panel, chipStyle, mutedText, titleText } from "./primitives/card.js";
 import { MessageScreen } from "./primitives/MessageScreen.js";
 import { TextField } from "./primitives/input.js";
 import type { PolarisTheme } from "./theme.js";
@@ -69,15 +70,7 @@ function badgeFor(theme: PolarisTheme, source: ConfigSource): string {
   }
 }
 
-const badgeStyle = {
-  display: "inline-block",
-  padding: "2px 8px",
-  borderRadius: "999px",
-  border: "1px solid var(--pk-border)",
-  color: "var(--pk-text-muted)",
-  fontSize: "11px",
-  letterSpacing: "0.02em",
-} as const;
+const badgeStyle = { ...chipStyle, display: "inline-block" } as const;
 
 const rowStyle = {
   display: "flex",
@@ -122,7 +115,7 @@ export function ConfigPanel(props: ConfigPanelProps): JSX.Element {
       aria-labelledby={titleId}
     >
       <div>
-        <h2 id={titleId} style={{ margin: "0 0 4px", fontSize: "20px" }}>
+        <h2 id={titleId} style={titleText}>
           {theme.copy.configTitle}
         </h2>
         <p style={mutedText}>{theme.copy.configSubtitle}</p>
@@ -181,7 +174,7 @@ function ConfigEntryRow(props: {
   return (
     <>
       <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-        <span style={{ fontSize: "14px", fontWeight: 600 }}>{row.key}</span>
+        <span style={{ fontSize: "14px", fontWeight: 700 }}>{row.key}</span>
         <span
           style={badgeStyle}
           data-polaris-config-source={row.source}
@@ -210,14 +203,14 @@ function ConfigEntryRow(props: {
           <Button
             variant="secondary"
             type="submit"
-            style={{ fontSize: "13px" }}
+            style={{ fontSize: "14px" }}
           >
             {theme.copy.configOverrideLabel}
           </Button>
         </form>
       ) : (
         <span
-          style={{ ...mutedText, fontSize: "13px", fontFamily: "monospace" }}
+          style={{ ...mutedText, fontSize: "14px", fontFamily: FONT.mono }}
           data-polaris-config-value={row.key}
         >
           {stringify(row.value)}

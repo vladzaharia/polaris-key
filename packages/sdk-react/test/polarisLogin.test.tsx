@@ -109,7 +109,7 @@ describe("PolarisLogin — key card visibility", () => {
     browser.dispose();
   });
 
-  it("places OIDC sign-in and key activation side by side when key entry is available", async () => {
+  it("stacks OIDC sign-in above key activation, divided, in one centred column", async () => {
     const adapter = desktopAdapter({
       bridge: makeFakeBridge(emptyBridgeState()),
       now: () => 2000,
@@ -120,10 +120,22 @@ describe("PolarisLogin — key card visibility", () => {
       () => container.querySelector("[data-polaris-oidc]") as HTMLElement,
     );
     const form = container.querySelector("form") as HTMLFormElement;
-    const grid = oidc.parentElement?.parentElement as HTMLElement;
-    expect(grid).toBe(form.parentElement);
-    expect(grid.style.display).toBe("grid");
-    expect(grid.style.gridTemplateColumns).toContain("minmax(220px, 1fr)");
+    const column = oidc.parentElement?.parentElement as HTMLElement;
+    expect(column).toBe(form.parentElement);
+    expect(column.style.display).toBe("flex");
+    expect(column.style.flexDirection).toBe("column");
+    // The sign-in button comes first, then an "or" divider (decorative), then the form.
+    const children = [...column.children];
+    expect(children.indexOf(oidc.parentElement!)).toBeLessThan(
+      children.indexOf(form),
+    );
+    const divider = children[1] as HTMLElement;
+    expect(divider.getAttribute("aria-hidden")).toBe("true");
+    expect(divider.textContent).toBe("or");
+    // The card is a narrow, centred column.
+    const card = container.querySelector("[data-polaris-login]") as HTMLElement;
+    expect(card.style.margin).toBe("auto");
+    expect(card.style.width).toBe("min(440px, 100%)");
     adapter.dispose();
   });
 

@@ -13,28 +13,39 @@
 // `aria-describedby`; errors are `role="alert"`; busy/disabled states are announced with
 // `aria-busy`. The whole card carries an accessible name (`aria-labelledby` → the title).
 
-import { useId, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useId,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { usePolarisAuth, usePolarisTheme } from "../react/hooks.js";
 import { Button } from "./primitives/buttons.js";
 import {
   Panel,
-  actionGrid,
   actionPanel,
   dangerText,
   mutedText,
+  titleText,
 } from "./primitives/card.js";
 import { TextField } from "./primitives/input.js";
+import { screenLogo, themePoweredBy } from "./brand.js";
 
 export interface PolarisLoginProps {
   /** Hide the typed-key card. */
   hideKeyEntry?: boolean;
   /** Extra className on the root. */
   className?: string;
-  /** A node rendered above the card (overrides the theme logo for this instance). */
+  /** A node rendered above the card (overrides the theme logo for this instance; `null`
+   *  renders none). */
   logo?: ReactNode;
   /** Auto-focus the primary action on mount (default true). Disable when several login
    *  cards share a screen, to avoid focus fights. */
   autoFocus?: boolean;
+  /** Drop the card chrome (border, background, padding) when the form sits inside another
+   *  card, such as the gate's "license expired" screen. */
+  bare?: boolean;
 }
 
 /** Map a `PolarisError` to a clearer, user-facing message when the adapter handed us a
@@ -61,6 +72,31 @@ function describeAuthError(err: { code?: string; message: string }): string {
   return msg || "Sign-in failed. Please try again.";
 }
 
+/** The sign-in card: narrow, so the form reads as one centred column. */
+const loginCard: CSSProperties = { width: "min(440px, 100%)" };
+
+const bareCard: CSSProperties = {
+  width: "100%",
+  padding: 0,
+  border: "none",
+  background: "transparent",
+  textAlign: "left",
+};
+
+const divider: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "12px",
+  color: "var(--pk-text-muted)",
+  fontSize: "14px",
+};
+
+const dividerRule: CSSProperties = {
+  flex: 1,
+  height: "1px",
+  background: "var(--pk-border)",
+};
+
 export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
   const theme = usePolarisTheme();
   const auth = usePolarisAuth();
@@ -74,7 +110,7 @@ export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
   const showOidcLogin = auth.supportsOidcLogin;
   const showKeyEntry = auth.supportsKeyEntry && !props.hideKeyEntry;
   const showNoMethods = !showOidcLogin && !showKeyEntry;
-  const logo = props.logo ?? theme.logo;
+  const logo = props.logo !== undefined ? props.logo : screenLogo(theme);
   const autoFocus = props.autoFocus ?? true;
 
   async function onSubmitKey(e: FormEvent): Promise<void> {
@@ -97,20 +133,21 @@ export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
   return (
     <Panel
       className={props.className}
+      style={props.bare ? bareCard : loginCard}
       data-polaris-login=""
       aria-labelledby={titleId}
     >
       {logo ? (
         <div style={{ display: "flex", justifyContent: "center" }}>{logo}</div>
       ) : null}
-      <div>
-        <h2 id={titleId} style={{ margin: "0 0 4px", fontSize: "20px" }}>
+      <div style={{ textAlign: "center" }}>
+        <h2 id={titleId} style={titleText}>
           {theme.copy.signInTitle}
         </h2>
         <p style={mutedText}>{theme.copy.signInSubtitle}</p>
       </div>
 
-      <div style={showOidcLogin && showKeyEntry ? actionGrid : actionPanel}>
+      <div style={{ ...actionPanel, gap: "16px" }}>
         {showOidcLogin ? (
           <div style={actionPanel}>
             <Button
@@ -126,6 +163,14 @@ export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
             >
               {auth.busy ? "..." : theme.copy.oidcButtonLabel}
             </Button>
+          </div>
+        ) : null}
+
+        {showOidcLogin && showKeyEntry ? (
+          <div style={divider} aria-hidden="true">
+            <span style={dividerRule} />
+            <span>{theme.copy.orDivider}</span>
+            <span style={dividerRule} />
           </div>
         ) : null}
 
@@ -165,6 +210,8 @@ export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
           {errorText}
         </p>
       ) : null}
+
+      {themePoweredBy(theme)}
     </Panel>
   );
 }

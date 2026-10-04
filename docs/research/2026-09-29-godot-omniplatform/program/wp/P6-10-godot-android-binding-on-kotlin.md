@@ -1,16 +1,16 @@
 # P6-10 Godot Android binding rebuilt on the Kotlin SDK platform module
 
-| Field       | Value |
-| ----------- | ----- |
-| Phase       | P6: Commerce, ops, web |
-| Size | 1–1.5 engineer-weeks |
-| Depends on | [P6-09](P6-09-kotlin-platform-module.md), [P5-08](P5-08-platform-pack-transports.md) |
-| Unblocks | [P6-05](P6-05-kotlin-sdk.md) |
-| Role | `pkey-godot-engineer` |
-| Plan mode   | no |
+| Field       | Value                                                                                                                                                       |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P6: Commerce, ops, web                                                                                                                                      |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                        |
+| Depends on  | [P6-09](P6-09-kotlin-platform-module.md), [P5-08](P5-08-platform-pack-transports.md)                                                                        |
+| Unblocks    | [P6-05](P6-05-kotlin-sdk.md)                                                                                                                                |
+| Role        | `pkey-godot-engineer`                                                                                                                                       |
+| Plan mode   | no                                                                                                                                                          |
 | Gates       | `ci:android`, headless Godot suites (`native_android`, `update`), `sdks/godot/native/android/export_check.sh`, `sdks/godot/parity.json` unchanged in status |
-| Human input | test devices and the Play Console internal test track to re-run the P5-06 owner checklist |
-| Repo        | `vladzaharia/polaris-key` |
+| Human input | test devices and the Play Console internal test track to re-run the P5-06 owner checklist                                                                   |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                   |
 
 Slice e of [P6-05](P6-05-kotlin-sdk.md).
 

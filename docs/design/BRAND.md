@@ -134,7 +134,7 @@ when an adjacent visible label already names it. An icon alone never labels an i
 | Admin console / portal (React)        | `tokens.css` + `theme.css` (Tailwind v4) + `fonts.css`; `@polaris-key/brand/react` components                    |
 | Docs (Astro Starlight)                | `tokens.css` + `theme.css` + `fonts.css` in `customCss`; map Starlight's `--sl-color-*` onto `--pk-*`            |
 | Worker HTML pages, emails, dl.plrs.im | `tokens.css` (inline the few variables you need in emails); `@polaris-key/brand/svg` strings; kit PNGs for email |
-| React SDK UI                          | `@polaris-key/brand/react` + `THEME_TOKENS` (do not require consumers to load tokens.css)                        |
+| React SDK UI (opt-in branding)        | `@polaris-key/brand/react` + `THEME_TOKENS` (do not require consumers to load tokens.css)                        |
 | Godot UI kit                          | `sdks/godot/addons/polaris_key/ui/theme/brand_tokens_generated.gd` (`PKeyBrand`)                                 |
 | SwiftUI gate                          | `sdks/swift/Sources/PolarisKeyUI/BrandTokens.generated.swift` (`PolarisBrand`)                                   |
 | Any other generator                   | `@polaris-key/brand/tokens.json`                                                                                 |
@@ -808,3 +808,14 @@ or when the options do not reach a scene; the `ui` suite checks the centring at 
 - **No "Powered by Polaris Key" badge on Polaris Key's own surfaces** (console, portal, docs,
   dl.plrs.im). The badge belongs to integrators' surfaces: SDK credit screens, the Godot addon's
   credits and integrator websites.
+
+- **SDK UI branding is optional (2026-10-04).** The React SDK's built-in screens (gate,
+  activation, sign-in, offline grace, update prompts, settings, devices) are **neutral by
+  default**: a greyscale, host-friendly theme that inherits the app's font and shows no Polaris
+  Key mark, name or badge. Integrators opt in to this design system with one option
+  (`branding: "polaris-key"` on `<PolarisKeyProvider>`, or the `polarisKeyTheme` preset); only
+  then do the §7.1 marks (the Pinned K without a bit; the Star Cut on update screens) and the
+  brand tokens apply. The "Powered by Polaris Key" badge (§7.2) is a separate opt-in, off by
+  default under both. Every SDK surface is a centred, max-width card (centred vertically when
+  full-window), responsive from 320 px, in dark and light. The §2 row "React SDK UI" describes
+  the opt-in branding.
