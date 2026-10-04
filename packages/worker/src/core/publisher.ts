@@ -1110,6 +1110,28 @@ export interface R2Parent {
  * not-found, exactly as a Worker without the blob store does. Secrets: `R2_ACCOUNT_ID`,
  * `R2_PARENT_ACCESS_KEY_ID`, `R2_PARENT_SECRET_ACCESS_KEY`; var: `BLOBS_BUCKET_NAME`.
  */
+/**
+ * What the uploads route still lacks in this environment, by NAME (never a value): the `BLOBS`
+ * binding and each piece `r2Parent` needs. Empty means `POST /<p>/release/publish/uploads` can
+ * issue tickets. The deploy hook reports it so deploy.yml fails loudly instead of every SDK
+ * publish meeting an unexplained 404 (the route itself stays indistinguishable from absent).
+ */
+export function uploadsMissing(env: Env): string[] {
+  const missing: string[] = [];
+  if (!env.BLOBS) missing.push("BLOBS (R2 binding)");
+  const accountId = secret(env, "R2_ACCOUNT_ID");
+  if (!accountId) missing.push("R2_ACCOUNT_ID");
+  else if (!/^[0-9a-f]{32}$/.test(accountId))
+    missing.push("R2_ACCOUNT_ID (not a 32-hex account id)");
+  for (const name of [
+    "R2_PARENT_ACCESS_KEY_ID",
+    "R2_PARENT_SECRET_ACCESS_KEY",
+    "BLOBS_BUCKET_NAME",
+  ] as const)
+    if (!secret(env, name)) missing.push(name);
+  return missing;
+}
+
 export function r2Parent(env: Env): R2Parent | null {
   const accountId = secret(env, "R2_ACCOUNT_ID");
   const accessKeyId = secret(env, "R2_PARENT_ACCESS_KEY_ID");

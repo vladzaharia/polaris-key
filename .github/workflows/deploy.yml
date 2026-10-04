@@ -241,3 +241,10 @@ jobs:
       contents: read
       id-token: write
     uses: ./.github/workflows/publish-sdks.yml
+    # Required for the `package-registry` environment's secrets (the Swift signing key, cert and
+    # chain) to reach publish-sdks.yml's swift-sign job: that job declares the environment, but a
+    # called workflow resolves `secrets.*` only from what its caller passes, and without this line
+    # every SWIFT_REGISTRY_* expanded empty on the v0.8.15 tag run while the same job, started by a
+    # push to main, read them. The repository holds no repository-level secret, so nothing else
+    # is handed over.
+    secrets: inherit

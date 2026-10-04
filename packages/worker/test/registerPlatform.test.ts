@@ -43,7 +43,12 @@ describe("register-platform.mjs", () => {
   it("asks for the hook's audience, posts the manifest with the token, and masks it", async () => {
     const { impl, calls } = fakeFetch({
       status: 200,
-      body: { ok: true, slug: "polaris-key", packages: ["npm.node"] },
+      body: {
+        ok: true,
+        slug: "polaris-key",
+        packages: ["npm.node"],
+        uploads: { ready: true, missing: [] },
+      },
     });
     const out: string[] = [];
     const r = await registerPlatform({
@@ -98,6 +103,48 @@ describe("register-platform.mjs", () => {
     ).rejects.toThrow(
       "the deploy hook refused the registration (403): policy_mismatch: the job must run in the production environment",
     );
+  });
+
+  it("fails the deploy, by name, when the Worker cannot issue upload tickets", async () => {
+    const { impl } = fakeFetch({
+      status: 200,
+      body: {
+        ok: true,
+        slug: "polaris-key",
+        packages: ["npm.node"],
+        uploads: {
+          ready: false,
+          missing: ["R2_ACCOUNT_ID", "R2_PARENT_ACCESS_KEY_ID"],
+        },
+      },
+    });
+    await expect(
+      registerPlatform({
+        origin: "https://key.example.test",
+        root: ROOT,
+        env: ENV,
+        fetchImpl: impl,
+        out: { write: () => undefined },
+      }),
+    ).rejects.toThrow(
+      /cannot issue upload tickets.*\/polaris-key\/release\/publish\/uploads.*Missing Worker configuration: R2_ACCOUNT_ID, R2_PARENT_ACCESS_KEY_ID/,
+    );
+  });
+
+  it("fails when the answering Worker has no readiness report (an older version)", async () => {
+    const { impl } = fakeFetch({
+      status: 200,
+      body: { ok: true, slug: "polaris-key", packages: [] },
+    });
+    await expect(
+      registerPlatform({
+        origin: "https://key.example.test",
+        root: ROOT,
+        env: ENV,
+        fetchImpl: impl,
+        out: { write: () => undefined },
+      }),
+    ).rejects.toThrow(/answered without `uploads`/);
   });
 
   it("needs id-token: write", async () => {
