@@ -25806,10 +25806,6 @@ ${DISTRIBUTION_CI_USAGE}`
     `${String(r.deliverableId)} ${String(r.releaseId)} on ${String(r.outletId)}/${String(r.channel)}: ${String(r.state)} at ${Number(r.rolloutBp) / 100}%
 `
   );
-  if (opts.command === "halt")
-    opts.stderr.write(
-      "Note: until the signed feed carries halts, legacy feeds keep serving; yank or pin to stop downloads now.\n"
-    );
   return body;
 }
 

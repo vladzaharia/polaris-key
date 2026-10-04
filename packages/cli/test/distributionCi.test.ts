@@ -399,7 +399,7 @@ describe("pkey distribution rollout|pause|resume|halt|complete", () => {
         releaseId: "v1.1.0",
         deliverable: "app",
       });
-      if (verb === "halt") expect(r.err()).toContain("legacy feeds");
+      expect(r.err()).not.toContain("legacy feeds");
     }
   });
 

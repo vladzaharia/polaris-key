@@ -2485,9 +2485,9 @@ paths:
         `invalid_transition`). The bucket is evaluated ON THE DEVICE,
         `u32(sha256(salt ‖ installId)[0..4]) mod 10000`, so the Worker never evaluates it. A
         yanked release is refused (409 `release_yanked`); a row a store connector mirrors refuses
-        every direct edit (409 `rollout_mirrored`). Until P3-03 composes the signed feed, a
-        rollout and a halt are recorded, audited and shown, but legacy feeds keep serving; a yank
-        or a channel pin is today's emergency stop. Requires a `pkeyci_` token with the opt-in
+        every direct edit (409 `rollout_mirrored`). The signed channel feed, the app-updater feeds,
+        the storefront feeds and the download page read the row, so a pause or halt stops offering
+        the release there at once. Requires a `pkeyci_` token with the opt-in
         `distribution:rollout` scope; audited as `ci:<subject>`. No CORS. Errors are LEGACY FLAT
         with a machine-readable `reason` (`unknown_outlet`, `unknown_channel`,
         `unknown_deliverable`, `unknown_release`, `no_rollout`, `invalid_body`).
@@ -2775,7 +2775,7 @@ paths:
       tags: [distribution]
       summary: Halt an outlet rollout (CI)
       description: >
-        P2b-04. `active` or `paused` → `halted`. Recorded, audited and shown; until P3-03 composes the signed feed, legacy feeds keep serving — yank or pin to stop downloads now. Same token, scope, audit and error shape as `ciSetRollout`; an optional
+        P2b-04. `active` or `paused` → `halted`: the signed channel feed, the app-updater feeds, the storefront feeds and the download page stop offering the release on that outlet. Same token, scope, audit and error shape as `ciSetRollout`; an optional
         `releaseId` must match the rollout's release (409 `stale_release`).
       security: [{ ciToken: [] }]
       parameters:

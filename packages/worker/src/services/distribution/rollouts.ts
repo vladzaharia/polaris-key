@@ -29,11 +29,11 @@
  * an optional `releaseId`; when given it must be the row's release (409 `stale_release`), so a CI
  * job that halts "v1.4.0" never halts the v1.5.0 rollout that replaced it.
  *
- * ── WHAT A HALT DOES TODAY ──────────────────────────────────────────────────────────────────
+ * ── WHAT A HALT DOES ────────────────────────────────────────────────────────────────────────
  *
- * Until P3-03 composes the signed feed from these rows, a halt is RECORDED, AUDITED and SHOWN,
- * but the legacy feeds (the Sparkle appcast, `/update/version`, `/release/dl`) keep serving.
- * Today's emergency stop is a yank or a channel pin (P2-05). The docs and the console say so.
+ * The signed channel feed (P3-03), the app-updater feeds (P3-09), the storefront feeds and the
+ * download page all read these rows, so a pause or halt stops offering the release there at
+ * once. Moving download URLs apply yanks and pins (P2-05), not holds.
  *
  * Every change is audited with its actor (`admin:<sub>` via the session, `ci:<subject>`, or
  * `system:auto-halt` — P6-03's telemetry auto-halt, which may only halt), as
@@ -285,9 +285,6 @@ export interface RolloutInput {
   bp?: unknown;
 }
 
-const HALT_CAVEAT =
-  "until the signed feed (P3-03) carries halts, legacy feeds keep serving; yank or pin to stop downloads now";
-
 /**
  * Apply one rollout verb. Validates the outlet (a live declared outlet), the channel, the
  * deliverable and release (through Release's catalog hook), the percentage and the transition;
@@ -505,8 +502,7 @@ export async function applyRollout(
     `distribution.rollout.${verb}`,
     targetId,
     `${verbs[verb]} the ${deliverable} rollout of ${existing.release_id} on ${outlet}/${channel}` +
-      (actor.kind === "system" ? `: ${actor.reason}` : "") +
-      (verb === "halt" ? ` (${HALT_CAVEAT})` : ""),
+      (actor.kind === "system" ? `: ${actor.reason}` : ""),
   );
   const row = await getRollout(db, product, deliverable, outlet, channel);
   return { ok: true, rollout: rolloutRecord(row!) };

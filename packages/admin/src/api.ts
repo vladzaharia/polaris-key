@@ -586,8 +586,6 @@ export interface Rollout {
 
 export interface RolloutsResponse {
   rollouts: Rollout[];
-  /** What a rollout or halt does today: recorded and shown, not yet in the signed feed (P3-03). */
-  effect: { reachesDevices: boolean; note: string };
 }
 
 // ── distribution: the matrix (P2b-06) ────────────────────────────────────────
@@ -676,7 +674,6 @@ export interface DistributionMatrix {
   }>;
   cells: MatrixCellDto[];
   states: { availability: string[]; submission: string[]; rollout: string[] };
-  effect: { reachesDevices: string; note: string };
 }
 
 // ── distribution: update health (P6-03) ───────────────────────────────────────
