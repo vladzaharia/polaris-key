@@ -562,7 +562,9 @@ describe("the delta menu under the payload cap (plans/P4-29.md §6.2)", () => {
       "update.feed.deltas_omitted",
     ]);
     expect(over.ok).toBe(true);
-  });
+    // Two linear searches that sign the document at every step: seconds locally, past the 20 s
+    // default on a shared CI runner (main's CI timed out here after P4-29).
+  }, 120_000);
 
   it("appTargetNearCap with a full menu: the menu is trimmed, never the document choice or a P4-13 member", async () => {
     const base = await composed({
