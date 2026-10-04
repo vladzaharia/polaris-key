@@ -142,11 +142,12 @@ function view(over: Record<string, unknown> = {}) {
     deployTime: [
       { name: "PKEY_ENVIRONMENT", area: "deployment", value: "prod" },
       { name: "PLATFORM_ADMIN_GROUP", area: "identity", value: "pk-admins" },
+      { name: "ADMIN_OIDC_ISSUER", area: "identity", value: null },
+      { name: "ADMIN_OIDC_CLIENT_ID", area: "identity", value: null },
       {
         name: "PLATFORM_OIDC_ISSUER",
         area: "identity",
         value: "https://login.example.com",
-        legacyName: "ADMIN_OIDC_ISSUER",
       },
       {
         name: "PLATFORM_OIDC_CLIENT_ID",
@@ -204,6 +205,12 @@ function view(over: Record<string, unknown> = {}) {
       },
     ],
     warnings: [
+      {
+        code: "console_oidc_shared",
+        message:
+          "The console signs in through the shared platform identity-provider client, the one customers use.",
+        names: ["ADMIN_OIDC_ISSUER", "ADMIN_OIDC_CLIENT_ID"],
+      },
       {
         code: "portal_session_secret_unset",
         message:
@@ -689,13 +696,16 @@ describe("Background jobs", () => {
 });
 
 describe("the read-only inventory", () => {
-  it("shows deploy-time values, the legacy-name flag and the warnings", async () => {
+  it("shows deploy-time values, the console-client fallback and the warnings", async () => {
     boot("#/platform/settings", { extra: routes() });
     const identity = await section("Identity & access");
     expect(within(identity).getByText("pk-admins")).toBeTruthy();
     expect(
-      within(identity).getByText("From legacy ADMIN_OIDC_ISSUER"),
-    ).toBeTruthy();
+      within(identity).getAllByText(
+        "Not set: the console uses the platform client",
+      ),
+    ).toHaveLength(2);
+    expect(within(identity).getByText("https://login.example.com")).toBeTruthy();
     expect(within(identity).getByText("auth.acme.dev")).toBeTruthy();
     expect(within(identity).getByText("8 hours")).toBeTruthy();
     const delivery = await section("Delivery");
@@ -704,6 +714,11 @@ describe("the read-only inventory", () => {
     const warnings = within(main()).getByRole("region", { name: "Warnings" });
     expect(
       within(warnings).getByText("Portal sessions share the admin secret"),
+    ).toBeTruthy();
+    expect(
+      within(warnings).getByText(
+        "The console shares the customer sign-in client",
+      ),
     ).toBeTruthy();
   });
 

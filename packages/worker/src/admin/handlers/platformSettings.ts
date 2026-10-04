@@ -31,6 +31,7 @@ import type { AdminSession } from "../session.js";
 import { ADMIN_SESSION_TTL_SECONDS } from "../session.js";
 import { platformAuditStatementFor } from "../audit.js";
 import { adminJson, err, notFound, readBody } from "../lib/respond.js";
+import { adminOidcIsDedicated } from "../../platformOidc.js";
 import {
   deletePlatformSetting,
   invalidatePlatformSettings,
@@ -56,7 +57,8 @@ import {
 
 /**
  * Secrets the page reports as present or absent. Presence only. `ADMIN_OIDC_CLIENT_SECRET` is the
- * legacy name of `PLATFORM_OIDC_CLIENT_SECRET`.
+ * console's own client secret (I-03); `PLATFORM_OIDC_CLIENT_SECRET` is the shared platform
+ * client's.
  */
 export const SECRET_NAMES = [
   "PLATFORM_KEK",
@@ -79,8 +81,6 @@ interface DeployValue {
   area: Area;
   /** The value, or `null` when unset. A list for the parsed issuer allowlist. */
   value: string | string[] | null;
-  /** When a legacy name supplied the value, that name. */
-  legacyName?: string;
 }
 
 interface Warning {
@@ -92,21 +92,6 @@ interface Warning {
 function str(env: Env, name: string): string | null {
   const v = env[name];
   return typeof v === "string" && v !== "" ? v : null;
-}
-
-/** A value with a legacy fallback name (`platformOidc.ts`): which name resolved. */
-function withLegacy(
-  env: Env,
-  name: string,
-  legacy: string,
-  area: Area,
-): DeployValue {
-  const current = str(env, name);
-  if (current !== null) return { name, area, value: current };
-  const old = str(env, legacy);
-  return old !== null
-    ? { name, area, value: old, legacyName: legacy }
-    : { name, area, value: null };
 }
 
 function deployValues(env: Env): DeployValue[] {
@@ -122,13 +107,29 @@ function deployValues(env: Env): DeployValue[] {
       area: "identity",
       value: str(env, "PLATFORM_ADMIN_GROUP"),
     },
-    withLegacy(env, "PLATFORM_OIDC_ISSUER", "ADMIN_OIDC_ISSUER", "identity"),
-    withLegacy(
-      env,
-      "PLATFORM_OIDC_CLIENT_ID",
-      "ADMIN_OIDC_CLIENT_ID",
-      "identity",
-    ),
+    // The console's own client (I-03), then the shared platform client the portal and
+    // `provider: platform` products use. No fallback between them is reported here: the
+    // `console_oidc_shared` warning says when the console is borrowing the platform client.
+    {
+      name: "ADMIN_OIDC_ISSUER",
+      area: "identity",
+      value: str(env, "ADMIN_OIDC_ISSUER"),
+    },
+    {
+      name: "ADMIN_OIDC_CLIENT_ID",
+      area: "identity",
+      value: str(env, "ADMIN_OIDC_CLIENT_ID"),
+    },
+    {
+      name: "PLATFORM_OIDC_ISSUER",
+      area: "identity",
+      value: str(env, "PLATFORM_OIDC_ISSUER"),
+    },
+    {
+      name: "PLATFORM_OIDC_CLIENT_ID",
+      area: "identity",
+      value: str(env, "PLATFORM_OIDC_CLIENT_ID"),
+    },
     {
       name: "OIDC_ISSUER_ALLOWLIST",
       area: "identity",
@@ -181,19 +182,15 @@ function deployValues(env: Env): DeployValue[] {
 /** The S-13 §5.1 warnings. Exported for the tests. */
 export function settingsWarnings(env: Env): Warning[] {
   const out: Warning[] = [];
-  const legacy = (["ISSUER", "CLIENT_ID", "CLIENT_SECRET"] as const)
-    .filter(
-      (s) =>
-        str(env, `PLATFORM_OIDC_${s}`) === null &&
-        str(env, `ADMIN_OIDC_${s}`) !== null,
-    )
-    .map((s) => `ADMIN_OIDC_${s}`);
-  if (legacy.length > 0)
+  // I-03: the console falls back to the shared platform client until its own is set.
+  if (!adminOidcIsDedicated(env))
     out.push({
-      code: "legacy_oidc_names",
+      code: "console_oidc_shared",
       message:
-        "The admin identity provider is configured under legacy names. Rename them to PLATFORM_OIDC_*.",
-      names: legacy,
+        "The console signs in through the shared platform identity-provider client, the one customers use. Create a console-only client and set ADMIN_OIDC_ISSUER, ADMIN_OIDC_CLIENT_ID and ADMIN_OIDC_CLIENT_SECRET in one deploy.",
+      names: (["ISSUER", "CLIENT_ID"] as const)
+        .map((s) => `ADMIN_OIDC_${s}`)
+        .filter((n) => str(env, n) === null),
     });
   if (str(env, "PLATFORM_KEK_ID") !== null)
     out.push({
