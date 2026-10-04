@@ -491,7 +491,7 @@ None of this changes behaviour until an operator turns it on.
    `PATCH /manage/api/platform/settings/LAZY_DELTAS`), with no deploy: both scripts read the same
    `platform_settings` row within 30 seconds. Then opt the product in (RUNBOOK "Lazy deltas").
    `LAZY_DELTAS = "off"` in a script's `[env.<env>.vars]` is the deploy-time hard off that no
-   console value can override.
+   console value can override; so is any value that is not `on`, `off` or `runtime`.
 
 ## 4. Worker secrets
 

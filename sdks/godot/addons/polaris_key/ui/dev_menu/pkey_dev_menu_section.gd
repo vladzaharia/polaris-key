@@ -45,6 +45,7 @@ func _build() -> void:
 	_title = label(box, "Title", "PKeyTitle")
 	var ch := hbox(box, "ChannelRow")
 	_channel_label = label(ch, "ChannelLabel")
+	_channel_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_channel = OptionButton.new()
 	_channel.name = "Channel"
 	_channel.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED

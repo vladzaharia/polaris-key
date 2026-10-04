@@ -192,7 +192,10 @@ sdks/godot/
                               one scene each (`.tscn` + view script) with a headless controller
                               (PKeyGateController, PKeyActivationController, …)
     ui/copy/pkey_ui_copy.gd   PKeyUiCopy: every string, English defaults, through tr()
-    ui/theme/pkey_theme.tres  the default Theme (written by tools/gen_theme.gd)
+    ui/theme/                 PKeyUiTheme (pkey_ui_theme.gd): the neutral look (pkey_theme.tres,
+                              the stock theme every scene references) and the opt-in Polaris Key
+                              theme (pkey_brand_{dark,light}.tres), written by tools/gen_theme.gd;
+                              PKeyBrand and PKeyBrandMarks (generated); fonts/ holds Rubik (OFL 1.1)
   tests/
     runner.gd                 PKeyTestRunner
     support/test_context.gd   PKeyTestContext: check() and info()
@@ -237,8 +240,8 @@ sdks/godot/
     fetch_godot.sh            CI: download and hash-check the official editor (Linux, macOS,
                               Windows) and the Linux template
     godot.sha512              upstream SHA-512 pins for those downloads
-    gen_theme.gd              writes ui/theme/pkey_theme.tres (`--script`, editor only)
-    ui_screenshots.gd         one PNG per pinned UI state, for review (needs a display)
+    gen_theme.gd              writes the ui/theme/*.tres themes (`--script`, editor only)
+    ui_screenshots.gd         PNGs of every scene per look and size, for review (needs a display)
 ````
 
 `PolarisKey.boot()` configures from `res://polaris_key.tres` when nothing has configured yet,
@@ -367,18 +370,65 @@ controller: `PKeyBoot`, `PKeyGate` (class `PKeyGateView`), `PKeyActivationPanel`
 Every one is operable with ui_up, ui_down, ui_accept and ui_cancel alone, so it works on a
 gamepad or a TV remote.
 
-- **Theme.** The scenes use `addons/polaris_key/ui/theme/pkey_theme.tres`. Assign your own Theme
-  to a scene or any ancestor to restyle it, or style the type variations `PKeyTitle`, `PKeyMuted`,
-  `PKeyCode`, `PKeyError`, `PKeyBadge`, `PKeyBanner`, `PKeyCard` and `PKeyPrimary`. `PKeyQrRect`
-  reads the colours `dark` and `light`. `PKeyBoot`'s `theme` option applies a Theme a mounted pack
-  provides. `PKeyBrand` (generated from the Polaris Key design system) has the brand's colours
-  if you want to match them.
+- **Layout.** Every scene centres itself: a full-screen scene (`PKeyGate`, `PKeyBoot`) centres
+  its card horizontally and vertically, and a dialog or panel centres its content at a comfortable
+  width (`max_content_width`, 520 px by default, 640 for the settings panel), never wider than the
+  viewport less a 16 px gutter on each side. It holds from a phone in portrait to 4K and under the
+  `canvas_items` and `viewport` stretch modes. A scene nested in another fills the space its parent
+  gives it; set `max_content_width = 0` to make a standalone one fill its rect instead (a sidebar,
+  say). The status banner and the entitlement badge centre their lines and chips across the width
+  they are given.
+- **Look: neutral by default.** Out of the box the scenes carry no Polaris Key branding. They take
+  your game's own theme and font, as the scene's place in the tree resolves them (a Theme on an
+  ancestor, else the project's `gui/theme/custom` and `gui/theme/custom_font`, else the engine's),
+  and add only a type hierarchy (title, muted and code sizes derived from your font size, a bold
+  face derived from your font), padded cards and centring. A QR code stays black on white.
+- **Polaris Key branding is opt-in.** One option on your `PKeyOptions` (applied by
+  `PolarisKey.configure()`):
+
+  ```gdscript
+  options.ui_branding = "polaris-key"   # the Polaris Key theme: its palette, Rubik, the Pinned K
+  options.ui_brand_scheme = "light"     # its light theme (default "dark")
+  options.ui_accent = Color("#39d075")  # your accent for the primary action and chips (optional)
+  options.ui_theme = preload("res://ui/my_theme.tres")  # or your whole Theme, whatever the branding
+  options.ui_powered_by = true          # the "Powered by Polaris Key" badge (off by default)
+  ```
+
+  The same switches exist on `PKeyUiTheme` (`branding`, `scheme`, `accent`, `override`,
+  `powered_by`) for a game that shows the scenes without `configure()`; `configure()` applies the
+  options' values (resetting every static the options leave unset), so set the statics after it.
+  Kit scenes already on screen re-theme when `configure()` applies the options. A game that only
+  calls `PolarisKey.boot()` gets its UI options from `res://polaris_key.tres`, which boot
+  configures from once its view is showing: put `ui_branding`, `ui_powered_by` and the rest in
+  that resource (the setup dock's file), not in statics set before `boot()`. With branding on, the gate card and the boot screen show the Pinned K (the display cut, never the
+  terminal bit) and the kit uses the design system's dark or light palette, the platform violet
+  (or your accent), Rubik, and a 2 px violet focus ring on every control. With `ui_powered_by`,
+  the gate, boot and settings scenes end with the compact "Powered by Polaris Key" badge, at its
+  kit minimum of 232 × 88 or larger and never cropped; it is off unless you turn it on, with or
+  without branding.
+
+- **Your own theme.** A scene given a Theme of its own (in the inspector or in code) keeps it; only
+  a scene still on the kit's stock theme follows the options. A replacement Theme should style the
+  type variations `PKeyTitle`, `PKeyMuted`, `PKeyCode`, `PKeyError`, `PKeyBadge`, `PKeyBanner`,
+  `PKeyCard` and `PKeyPrimary`; `PKeyQrRect` reads the colours `dark` and `light`. `PKeyBoot`'s
+  `theme` option applies a Theme a mounted pack provides. `PKeyUiTheme.build(dark, accent, font,
+bold_font)` makes the Polaris Key theme with your accent or fonts if you want a starting point.
+- **Font.** With branding on, Rubik (Regular for text, Bold for titles and codes) ships in
+  `ui/theme/fonts/` under the SIL Open Font License 1.1: keep `fonts/OFL.txt` with your game's
+  licences or credits. A `.txt` file is not exported by default; to ship the licence inside the
+  game, add `addons/polaris_key/ui/theme/fonts/OFL.txt` to the export preset's "Filters to export
+  non-resource files/folders" (`include_filter`). Rubik falls back to the system font for scripts it lacks. The neutral look
+  uses your font and never loads Rubik.
 - **Copy.** Every string goes through `PKeyUiCopy` and `tr()`: translate the English defaults with
   an ordinary Translation, or rename anything with `overrides`
   (`copy.overrides = {"activation_title": "Unlock Diceroll"}`) without forking a scene.
 - **Credits.** `addons/polaris_key/brand/` holds the "Powered by Polaris Key" credit screens
   (1920×1080, dark and light) and compact badges for your credits or about screen. The folder is
-  never imported (`.gdignore`); copy the file you need into your project.
+  never imported (`.gdignore`); copy the file you need into your project. (The kit scenes show
+  the compact badge only with `ui_powered_by`.) Where you place one yourself: compact for app UI, the credit screen for credits; the
+  dark file on a dark ground and the light file on a light one; never cropped, never recoloured,
+  and never smaller than the kit minimum (`PKeyUiTheme.powered_by_size("compact", wanted)` raises
+  a smaller size to 232 × 88, keeping the proportions).
 
 ## Supported engines
 

@@ -8,13 +8,17 @@
 package im.plrs.key.conformance
 
 import im.plrs.key.core.Ed25519
+import im.plrs.key.core.Ed25519Verifier
 import im.plrs.key.core.JcaEd25519Verifier
 import im.plrs.key.core.JsonText
 import im.plrs.key.core.TinkEd25519Verifier
 import java.io.File
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.BeforeClass
 import org.junit.Assert.fail
 
 object Corpus {
@@ -29,17 +33,47 @@ object Corpus {
     /** `conformance/corpus/v2/<name>`, parsed. */
     fun v2(name: String): JsonObject = JsonText.parse(File(repoRoot, "conformance/corpus/v2/$name").readText()) as JsonObject
 
-    /** The backend this run forces (`-Dpkey.ed25519=jca|tink`), installed process-wide. */
+    /** The backend this run forces (`-Dpkey.ed25519=jca|tink`). */
     val backend: String by lazy {
         val wanted = System.getProperty("pkey.ed25519") ?: "jca"
-        Ed25519.verifier = when (wanted) {
-            "tink" -> TinkEd25519Verifier.also { check(it.isAvailable) { "Tink is not on the test classpath" } }
-            "jca" -> JcaEd25519Verifier.also { check(it.isAvailable) { "this JDK has no Ed25519" } }
-            else -> error("unknown -Dpkey.ed25519=$wanted")
-        }
-        println("[conformance-kotlin] ed25519 ${Ed25519.verifier.name} · java ${System.getProperty("java.version")} · " +
+        println("[conformance-kotlin] ed25519 $wanted · java ${System.getProperty("java.version")} · " +
             "${System.getProperty("os.name")} ${System.getProperty("os.arch")}")
         wanted
+    }
+
+    /** The verifier [backend] names. */
+    val verifier: Ed25519Verifier by lazy {
+        when (backend) {
+            "tink" -> TinkEd25519Verifier.also { check(it.isAvailable) { "Tink is not on the test classpath" } }
+            "jca" -> JcaEd25519Verifier.also { check(it.isAvailable) { "this JDK has no Ed25519" } }
+            else -> error("unknown -Dpkey.ed25519=$backend")
+        }
+    }
+
+    /** Install [verifier] process-wide (idempotent) and prove it is the one in use. */
+    fun forceBackend() {
+        Ed25519.verifier = verifier
+        check(Ed25519.verifier === verifier) { "the Ed25519 backend did not install" }
+    }
+}
+
+/**
+ * The base of every conformance suite: before a suite's first test, install the Ed25519 backend
+ * the Gradle task names (`test` → JCA, `testTink` → Tink), so a suite never inherits whatever an
+ * earlier suite or a test left installed, and the Tink pass really verifies on Tink.
+ */
+abstract class ConformanceSuite {
+    companion object {
+        @BeforeClass
+        @JvmStatic
+        fun forceEd25519Backend() = Corpus.forceBackend()
+    }
+
+    @Before
+    fun assertEd25519Backend() {
+        // A test that swapped the backend and failed to restore it fails the NEXT test loudly.
+        Corpus.forceBackend()
+        assertEquals("backend ${Corpus.backend}", Corpus.verifier.name, Ed25519.verifier.name)
     }
 }
 

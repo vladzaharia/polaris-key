@@ -20,6 +20,8 @@ is recorded in the [platform trail](/docs/admin/activity/#the-platform-trail).
 | `BLOB_GC_GRACE_DAYS`   | How long an object stays unreferenced before the collector may delete it.      | 1 to 365 days (default 30)                 |
 
 32 MiB is the measured ceiling of the delta consumer, so a runtime size cap can only lower it.
+"Lower" is measured against that 32 MiB ceiling, not against the deploy-time `LAZY_DELTA_MAX_BYTES`
+in `[vars]`: a deploy-time cap of 8 MiB does not stop the console storing 16 MiB, which then wins.
 The collector's grace never bounds deletion on its own: the bucket's 180-day age lock still
 applies.
 
@@ -40,7 +42,9 @@ The two on/off switches add one rule: a deploy-time `off` is a **hard off**. Wit
 `LAZY_DELTAS = "off"` or `BLOB_GC_MODE = "off"` in `[vars]`, no runtime value can turn the job on.
 That is the break-glass that still works if a console session is compromised, because it needs a
 deploy. The committed value of `LAZY_DELTAS` in both TOML files is `"runtime"`, which means the
-console decides.
+console decides. Any other value that is not `on`, `off` or `runtime` (`false`, `0`, `disabled`, a
+typo) is also a hard off, and the settings page warns about it: a mistyped kill switch never reads
+as permission for the console to turn the job on.
 
 A stored value that fails validation is never applied: the setting falls through to the next
 source, and the settings list shows the stored value as invalid.
@@ -96,7 +100,9 @@ DELETE /manage/api/platform/settings/<key>?expectedVersion=3
 ```
 
 Removes the runtime value, so the setting reverts to the deploy-time value or the code default.
-It is version-guarded in the same way, and answers `404` when there is no runtime value.
+It is version-guarded in the same way, and answers `404` when there is no runtime value. The row
+is kept as a tombstone and its version keeps counting up, so a version you loaded before the
+delete can never be accepted afterwards; the next write carries the version the list reports.
 
 ## Reference
 

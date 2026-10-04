@@ -9,7 +9,6 @@ Center/Card/Body/Actions/Retry: Button "Try again" [focus 1]
 == revoked ==
 Center/Card/Body/Title: Label "Signed out"
 Center/Card/Body/Message: Label "This device was signed out. Sign in or activate again to continue."
-Center/Card/Body/PKeyActivationPanel/Stack/Main/Title: Label "Activate"
 Center/Card/Body/PKeyActivationPanel/Stack/Main/Subtitle: Label "Enter a license key or sign in to continue."
 Center/Card/Body/PKeyActivationPanel/Stack/Main/KeyLabel: Label "License key"
 Center/Card/Body/PKeyActivationPanel/Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
@@ -49,7 +48,6 @@ Center/Card/Body/Message: Label "Checking your license…"
 Center/Card/Body/Title: Label "Couldn't check your license"
 Center/Card/Body/Message: Label "Check your connection and try again."
 Center/Card/Body/Error: Label "That license key wasn't accepted."
-Center/Card/Body/PKeyActivationPanel/Stack/Main/Title: Label "Activate"
 Center/Card/Body/PKeyActivationPanel/Stack/Main/Subtitle: Label "Enter a license key or sign in to continue."
 Center/Card/Body/PKeyActivationPanel/Stack/Main/KeyLabel: Label "License key"
 Center/Card/Body/PKeyActivationPanel/Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]

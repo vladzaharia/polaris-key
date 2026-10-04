@@ -2565,7 +2565,8 @@ is no new privilege level and no outbound call.
   is never applied (the resolver falls through to `[vars]` or the code default). Each is a
   background job's kill switch or tunable. The worst a hostile session can do with them is waste
   delta CPU (bounded by each product's daily cap and the 32 MiB ceiling, which the size cap can
-  only lower), stop the collector (it costs storage), or restart it with a one-day grace (the
+  only lower: "lower" is enforced against that 32 MiB constant, not against the deploy-time
+  `[vars]` value, so a deploy-time 8 MiB cap does not stop a console write of 16 MiB), stop the collector (it costs storage), or restart it with a one-day grace (the
   180-day R2 age lock still bounds every deletion, and the collector deletes only unreferenced
   objects; see "Readiness holds, pack gates and the blob collector"). None changes what a device
   is offered or what is signed.
@@ -2580,13 +2581,17 @@ is no new privilege level and no outbound call.
   `test/platformSettings.test.ts` refuses any of those names (or a `*_SECRET`, `*_KEY*`,
   `*_TTL*`, `*_ORIGIN` or `*_PEPPER` name) in the registry.
 - **A deploy-time off survives a compromised session.** Kill switches use `ceiling` precedence:
-  `[vars]` = `off` is a hard off that no D1 value overrides, and the resolver answers it without
-  reading the table. The committed value is `"runtime"` (the console decides, default off for
+  `[vars]` = `off`, or any string that is neither a recognised value nor `runtime` (`false`, `0`,
+  `disabled`), is a hard off that no D1 value overrides (a typo fails closed, and the inventory
+  warns), and the resolver answers it without reading the table. The committed value is `"runtime"` (the console decides, default off for
   lazy deltas, on for the collector). An unreadable store resolves a kill switch to off, never on.
 - **Auditable, race-free writes.** Every `PATCH` and `DELETE` carries `expectedVersion` and is
-  one conditional statement (409 on a mismatch), so two operators cannot silently overwrite each
-  other, and each appends a `platform_audit` row (actor from the verified session) with the stored
-  and effective value before and after. `before_json` / `after_json` are safe because no secret
+  one conditional statement (409 on a mismatch, also when the version moved before the audit
+  snapshot was read), so two operators cannot silently overwrite each other. A `DELETE` leaves a
+  tombstone row so the version never goes backwards and a stale `expectedVersion` cannot pass.
+  Each write commits in ONE batch with its `platform_audit` row (actor from the verified session)
+  carrying the stored and effective value before and after: a failed audit insert rolls the
+  write back. `before_json` / `after_json` are safe because no secret
   can be in the registry.
 - **The inventory never reveals a secret.** `GET …/settings` reports deploy-time values that are
   not credentials (the environment, the admin group name, the IdP issuer and client id, the

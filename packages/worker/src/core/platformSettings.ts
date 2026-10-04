@@ -14,9 +14,12 @@
  *
  *   - `runtime` (tunables): a valid D1 row, else a valid `[vars]` value, else the code default.
  *   - `ceiling` (kill switches): `[vars]` = `off` is a HARD off that no D1 row can override (the
- *     deploy-time break-glass that survives a compromised console session). Otherwise the same
- *     order as `runtime`. The committed `[vars]` value is `"runtime"`, which is not a value at all:
- *     it means "the console decides", and with no row the code default applies. An unreadable
+ *     deploy-time break-glass that survives a compromised console session). So is any other
+ *     string that is neither a recognised value (`on`, `off`) nor `runtime` (`false`, `0`,
+ *     `disabled`): an operator who typed one meant "off", and a typo must never read as "the
+ *     console may turn it on". Otherwise the same order as `runtime`. The committed `[vars]`
+ *     value is `"runtime"`, which is not a value at all: it means "the console decides", and with
+ *     no row the code default applies. An unreadable
  *     store resolves a kill switch to its off value (fail safe), and a tunable to `[vars]` or the
  *     default.
  *
@@ -29,14 +32,16 @@
  * Product-less, Core-owned, no outbound call.
  */
 
-import type { Db } from "../db/types.js";
+import type { Db, DbStatement } from "../db/types.js";
 
 /** How long an isolate trusts its copy of the table (notes/S-13 §6.3: "within 30 seconds"). */
 export const SETTINGS_CACHE_MS = 30_000;
 
 /**
  * The lazy-delta consumer's per-side ceiling: 32 MiB, measured (notes/S-08 §4.2) against the
- * consumer's 128 MB isolate. A runtime value may only lower it.
+ * consumer's 128 MB isolate. A runtime value may only lower it, and "lower" is measured against
+ * THIS constant, not against the deploy-time `[vars]` value: a `[vars]` cap of 8 MiB does not stop
+ * the console storing 16 MiB.
  */
 export const LAZY_DELTA_MAX_BYTES_CEILING = 33_554_432;
 /** The lowest runtime per-side cap (1 MiB): below it no delta could save `MIN_SAVING_BYTES`. */
@@ -225,9 +230,18 @@ export function settingConfirmLevel(
 
 // ── Storage ──────────────────────────────────────────────────────────────────────────────────
 
+/**
+ * The `value_json` of a tombstone: what `DELETE` leaves behind so the row's `version` keeps
+ * counting up. A reuse of version numbers after a delete would let a stale `expectedVersion` from
+ * before the delete pass. `null` is never a valid stored value, so no validator can accept it.
+ */
+export const TOMBSTONE_JSON = "null";
+
 export interface StoredSetting {
   /** The parsed `value_json` (`undefined` when it is not JSON at all). */
   value: unknown;
+  /** A tombstone: the runtime value was removed, only the version survives. */
+  deleted?: boolean;
   version: number;
   updatedAt: number;
   updatedBy: string;
@@ -280,6 +294,7 @@ async function readStore(db: Db): Promise<StoreRead> {
       }
       out.set(r.key, {
         value,
+        deleted: r.value_json === TOMBSTONE_JSON,
         version: r.version,
         updatedAt: r.updated_at,
         updatedBy: r.updated_by,
@@ -331,10 +346,41 @@ export interface ResolvedSetting {
   source: SettingSource;
   /** A `ceiling` setting whose `[vars]` value is `off`: no runtime value can turn it on. */
   forcedOff: boolean;
-  /** The stored row, if any, and whether its value is applicable. */
+  /** The stored row, if any, and whether its value is applicable. `null` for a tombstone. */
   stored: (StoredSetting & { valid: boolean }) | null;
+  /**
+   * The `expectedVersion` the next write must carry: the row's version, a tombstone's included,
+   * and 0 only when the key never had a row.
+   */
+  version: number;
   /** The raw `[vars]` string, `null` when unset. Never a secret: no secret is in the registry. */
   deployValue: string | null;
+}
+
+/**
+ * A ceiling setting's `[vars]` value is a hard off when it is `off`, or a string that is neither a
+ * recognised value nor `runtime` (`false`, `0`, `disabled`, a typo). Unset is not an off.
+ */
+export function isHardOffVar(
+  def: PlatformSettingDef,
+  varRaw: unknown,
+): boolean {
+  if (def.precedence !== "ceiling" || typeof varRaw !== "string") return false;
+  const parsed = parseVarValue(def, varRaw);
+  if (parsed === "off") return true;
+  return parsed === undefined && varRaw.trim().toLowerCase() !== "runtime";
+}
+
+/** Ceiling settings whose `[vars]` value is an unrecognised string (a hard off), for the inventory. */
+export function unrecognisedCeilingVars(env: SettingsEnv): string[] {
+  return PLATFORM_SETTINGS.filter((d) => {
+    const raw = env[d.varName];
+    return (
+      isHardOffVar(d, raw) &&
+      typeof raw === "string" &&
+      parseVarValue(d, raw) === undefined
+    );
+  }).map((d) => d.varName);
 }
 
 /** Resolve one setting from its `[vars]` value and its stored row (pure; exported for tests). */
@@ -346,11 +392,13 @@ export function resolveSetting(
 ): ResolvedSetting {
   const deployValue = typeof varRaw === "string" ? varRaw : null;
   const fromVar = parseVarValue(def, varRaw);
+  const version = row?.version ?? 0;
+  if (row?.deleted) row = undefined;
   const storedValid =
     row !== undefined && validateSettingValue(def, row.value) !== undefined;
   const stored = row ? { ...row, valid: storedValid } : null;
-  const base = { key: def.key, stored, deployValue };
-  if (def.precedence === "ceiling" && fromVar === "off")
+  const base = { key: def.key, stored, deployValue, version };
+  if (isHardOffVar(def, varRaw))
     return { ...base, value: "off", source: "deploy", forcedOff: true };
   if (def.precedence === "ceiling" && !storeOk)
     return { ...base, value: "off", source: "failsafe", forcedOff: false };
@@ -399,10 +447,7 @@ export async function platformSetting<K extends PlatformSettingKey>(
   key: K,
 ): Promise<PlatformSettingValues[K]> {
   const def = BY_KEY.get(key)!;
-  if (
-    def.precedence === "ceiling" &&
-    parseVarValue(def, env[def.varName]) === "off"
-  )
+  if (isHardOffVar(def, env[def.varName]))
     return "off" as PlatformSettingValues[K];
   const read = await loadStore(env, db);
   return resolveSetting(def, env[def.varName], read.rows.get(key), read.ok)
@@ -424,8 +469,43 @@ async function currentVersion(db: Db, key: string): Promise<number> {
 }
 
 /**
- * Store `value` for `key` if the row is still at `expectedVersion` (0: no row). One conditional
- * statement, so two concurrent writers cannot both succeed.
+ * Run one guarded settings statement and, when given, its audit statement in ONE batch: the audit
+ * insert only fires after a change (`changes()`), and if it fails the write rolls back with it.
+ * Answers whether the guarded statement changed its row.
+ */
+async function applyGuarded(
+  db: Db,
+  guarded: DbStatement,
+  audit: DbStatement | undefined,
+): Promise<boolean> {
+  if (!audit)
+    return (await db.runChanges(guarded.sql, ...guarded.params)) === 1;
+  if (db.batchChanges)
+    return (await db.batchChanges([guarded, audit]))[0] === 1;
+  // A database without per-statement counts (a test double): the write, then its audit row.
+  const changed = await db.runChanges(guarded.sql, ...guarded.params);
+  if (changed === 1) await db.run(audit.sql, ...audit.params);
+  return changed === 1;
+}
+
+/**
+ * Turn an `INSERT ... VALUES (...)` audit statement into one that only inserts when the statement
+ * just before it in the batch changed a row (`changes()`).
+ */
+export function onlyAfterAChange(stmt: DbStatement): DbStatement {
+  return {
+    sql: stmt.sql.replace(
+      /VALUES\s*\(([^)]*)\)\s*$/,
+      "SELECT $1 WHERE changes() > 0",
+    ),
+    params: stmt.params,
+  };
+}
+
+/**
+ * Store `value` for `key` if the row is still at `expectedVersion` (0: no row at all; a tombstone
+ * is a row). One conditional statement, so two concurrent writers cannot both succeed; `audit`
+ * (an INSERT of the `platform_audit` row) commits or rolls back with it.
  */
 export async function writePlatformSetting(
   db: Db,
@@ -434,43 +514,47 @@ export async function writePlatformSetting(
   expectedVersion: number,
   now: number,
   by: string,
+  audit?: DbStatement,
 ): Promise<SettingWrite> {
   const json = JSON.stringify(value);
-  const changed =
+  const guarded: DbStatement =
     expectedVersion === 0
-      ? await db.runChanges(
-          `INSERT INTO platform_settings (key, value_json, version, updated_at, updated_by)
+      ? {
+          sql: `INSERT INTO platform_settings (key, value_json, version, updated_at, updated_by)
              VALUES (?, ?, 1, ?, ?) ON CONFLICT(key) DO NOTHING`,
-          key,
-          json,
-          now,
-          by,
-        )
-      : await db.runChanges(
-          `UPDATE platform_settings
+          params: [key, json, now, by],
+        }
+      : {
+          sql: `UPDATE platform_settings
               SET value_json = ?, version = version + 1, updated_at = ?, updated_by = ?
             WHERE key = ? AND version = ?`,
-          json,
-          now,
-          by,
-          key,
-          expectedVersion,
-        );
-  if (changed === 1) return { ok: true, version: expectedVersion + 1 };
+          params: [json, now, by, key, expectedVersion],
+        };
+  if (await applyGuarded(db, guarded, audit && onlyAfterAChange(audit)))
+    return { ok: true, version: expectedVersion + 1 };
   return { ok: false, currentVersion: await currentVersion(db, key) };
 }
 
-/** Delete `key`'s row if it is still at `expectedVersion`, reverting to `[vars]` or the default. */
+/**
+ * Remove `key`'s runtime value if the row is still at `expectedVersion`, reverting to `[vars]` or
+ * the default. The row stays as a tombstone (`TOMBSTONE_JSON`) with the version bumped, so the
+ * version never goes backwards and an `expectedVersion` from before the delete cannot pass.
+ */
 export async function deletePlatformSetting(
   db: Db,
   key: PlatformSettingKey,
   expectedVersion: number,
+  now: number,
+  by: string,
+  audit?: DbStatement,
 ): Promise<SettingWrite> {
-  const changed = await db.runChanges(
-    "DELETE FROM platform_settings WHERE key = ? AND version = ?",
-    key,
-    expectedVersion,
-  );
-  if (changed === 1) return { ok: true, version: 0 };
+  const guarded: DbStatement = {
+    sql: `UPDATE platform_settings
+             SET value_json = ?, version = version + 1, updated_at = ?, updated_by = ?
+           WHERE key = ? AND version = ? AND value_json <> ?`,
+    params: [TOMBSTONE_JSON, now, by, key, expectedVersion, TOMBSTONE_JSON],
+  };
+  if (await applyGuarded(db, guarded, audit && onlyAfterAChange(audit)))
+    return { ok: true, version: expectedVersion + 1 };
   return { ok: false, currentVersion: await currentVersion(db, key) };
 }

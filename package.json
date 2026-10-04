@@ -10,7 +10,7 @@
   "scripts": {
     "build": "turbo run build",
     "test": "turbo run test --filter=!@polaris-key/conformance-browser",
-    "test:all": "turbo run test --filter=!@polaris-key/conformance-browser && (cd sdks/python && .venv/bin/python -m pytest -q) && (cd sdks/swift && swift test) && sdks/godot/tools/run_tests.sh && (cd sdks/kotlin && ./gradlew -q -Ppkey.jvmOnly=true :core:test :conformance:test)",
+    "test:all": "turbo run test --filter=!@polaris-key/conformance-browser && (cd sdks/python && .venv/bin/python -m pytest -q) && (cd sdks/swift && swift test) && sdks/godot/tools/run_tests.sh && (cd sdks/kotlin && ./gradlew -q -Ppkey.jvmOnly=true :core:test :license:test :config:test :identity:test :release:test :sdk:test :conformance:test)",
     "test:browser": "turbo run test --filter=@polaris-key/conformance-browser",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
