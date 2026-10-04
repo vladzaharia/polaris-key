@@ -2813,7 +2813,7 @@
       "optional": false,
       "refs": ["notes/S-12 §7.2", "plans/F-01.md §6.6"],
       "brief": "wp/F-20-registry-credentials-plan.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "F-21",
