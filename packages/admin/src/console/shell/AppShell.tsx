@@ -222,6 +222,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
 
   useGlobalShortcuts({
     openPalette: () => setPaletteOpen(true),
+    togglePalette: () => setPaletteOpen((o) => !o),
     openSheet: () => setSheetOpen(true),
     toggleSidebar: toggleRail,
     go: (k) => {
