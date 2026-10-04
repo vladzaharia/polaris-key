@@ -31,7 +31,7 @@ import {
   Sha256,
   formatBytes,
   isSidecar,
-} from "../releases/ReleaseBuilds.js";
+} from "./releaseArtifacts.js";
 import { qk } from "../../console/data/queries.js";
 import { mutate } from "../../console/data/mutations.js";
 

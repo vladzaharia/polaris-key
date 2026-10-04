@@ -450,10 +450,18 @@ export interface RotateKeyResult {
   activateAfter?: number;
 }
 
+/** `POST …/release/resync` (worker `release/admin.ts`): what the resync re-applied. */
 export interface ResyncResult {
   ok: true;
   slug: string;
-  updated?: unknown;
+  /** The manifest sections the resync wrote (`catalog`, `channels`, `services`, …). */
+  updated?: string[];
+  /** Parts the resync refused while applying the rest (P3-03), each with its manifest path. */
+  refused?: { code: string; path: string; message: string }[];
+  /** The pack-set re-resolution the resync triggered (P4-12), when it resolved any. */
+  packSets?:
+    | { ok: true; sets: number }
+    | { ok: false; reason: string; message: string };
 }
 
 // ── services (per-product enablement) ─────────────────────────────────────────
@@ -821,6 +829,12 @@ export interface ReleaseDto {
   contentApi?: number | null;
   /** P4-09: the exact pack release each pack is pinned to (a mirror of the signed `content`). */
   pins?: AppPinDto[];
+  /**
+   * Who signed the release record: the CI release key (AGENTS rule 2), with the record's hash.
+   * `null` for a release no signed record describes (a legacy GitHub-synced release); absent from
+   * a Worker that predates the field.
+   */
+  signer?: { kind: "release"; kid: string; recordSha256: string } | null;
 }
 
 /** One pin of an app release (worker `release_pins`, P4-02). */
@@ -1080,6 +1094,8 @@ export interface SimulateParams {
   device?: string;
   /** A device's reported packSetId, to compare. */
   packSetId?: string;
+  /** The binary update methods the device supports (`BINARY_METHODS`, `,`-separated). */
+  methods?: string;
 }
 
 export interface SimulatedReleaseDto {
@@ -1211,6 +1227,13 @@ export interface ChannelPolicyDto {
   resolved: string | null;
   /** Platform → the release the channel resolves to there (`null`: nothing qualifies). */
   byPlatform: Record<string, string | null>;
+  /** A pack's floors per contentApi line on this channel (P4-12); absent for the app. */
+  packFloors?: {
+    contentApi: number;
+    minSupported: string;
+    modifiedAt: number;
+    modifiedBy: string | null;
+  }[];
 }
 
 export interface ReleaseChannelsResponse {
@@ -1230,6 +1253,11 @@ export interface ChannelPolicyBody {
   pinned?: boolean;
   minSupported?: string | null;
   critical?: boolean;
+  /**
+   * A pack's floor for one contentApi line (P4-12): with `minSupported` (a version, or `null` to
+   * clear) and `deliverable`, and nothing else.
+   */
+  contentApi?: number;
 }
 
 /** `POST …/release/channels/<channel>/floor`: lower to a version, or clear. Never raises. */
@@ -1874,7 +1902,12 @@ const rawApi = {
     call<DeliveryAccess>(`${p(slug)}/distribution/access`),
   saveDeliveryAccess: (
     slug: string,
-    body: { mode: ReleaseAccess; deliverable?: string },
+    body: {
+      mode: ReleaseAccess;
+      deliverable?: string;
+      /** A pack's delivery gate: the license flag a device needs (`null` clears it). */
+      entitlement?: string | null;
+    },
   ) =>
     call<DeliveryAccess>(`${p(slug)}/distribution/access`, {
       method: "PUT",

@@ -68,17 +68,47 @@ export const qk = {
     deliverable === undefined
       ? product(slug, "release", "packReleases")
       : product(slug, "release", "packReleases", deliverable),
+  /** One pack variant's files index (immutable per release; cached so reopening is free). */
+  packFiles: (
+    slug: string,
+    deliverable: string,
+    releaseId: string,
+    variant: string,
+  ) =>
+    product(
+      slug,
+      "release",
+      "packReleases",
+      deliverable,
+      "files",
+      releaseId,
+      variant,
+    ),
   delegations: (slug: string) => product(slug, "release", "delegations"),
   compat: (slug: string, offset?: number) =>
     offset === undefined
       ? product(slug, "release", "compat")
       : product(slug, "release", "compat", offset),
+  /**
+   * One update simulation, keyed on its inputs. It sits under `release.compat`, so every write
+   * that changes what a device would get (channel policy, yanks, rollouts, readiness) makes it
+   * stale with the matrix.
+   */
+  simulate: (slug: string, inputs: string) =>
+    product(slug, "release", "compat", "simulate", inputs),
 
   // distribution
   matrix: (slug: string, variant?: string) =>
     variant === undefined
       ? product(slug, "distribution", "matrix")
       : product(slug, "distribution", "matrix", variant),
+  /**
+   * The app's newest releases × outlets, as the Release pages read it: the Compatibility overlay
+   * and a release record's Distribution tab (`limit` = the matrix maximum). Under the matrix
+   * prefix, so every rollout and readiness write refreshes it with the Matrix (CMP-4).
+   */
+  matrixOverlay: (slug: string) =>
+    product(slug, "distribution", "matrix", "overlay"),
   rollouts: (slug: string) => product(slug, "distribution", "rollouts"),
   health: (slug: string) => product(slug, "distribution", "health"),
   access: (slug: string) => product(slug, "distribution", "access"),

@@ -306,12 +306,30 @@ describe("pages that are not built yet redirect to their host", () => {
     expect(parseLocation("#/p/djdl/license/tiers/t1").redirect).toBe(
       "#/p/djdl/license/tiers",
     );
-    expect(
-      parseLocation("#/p/djdl/release/releases/rel_1/builds").redirect,
-    ).toBe("#/p/djdl/release/releases");
     expect(parseLocation("#/p/djdl/devices/dev_1").redirect).toBe(
       "#/p/djdl/devices",
     );
+  });
+
+  it("a built record keeps its id and tab (the release record, chunk 8)", () => {
+    const parsed = parseLocation("#/p/djdl/release/releases/rel_1/builds");
+    expect(parsed.redirect).toBeUndefined();
+    expect(parsed.route).toMatchObject({
+      kind: "product",
+      page: "releases",
+      id: "rel_1",
+      tab: "builds",
+    });
+    // The Release section's pages are all built: none redirects to a host any more.
+    for (const path of [
+      "channels",
+      "content-keys",
+      "compatibility/simulator",
+    ]) {
+      expect(
+        parseLocation(`#/p/djdl/release/${path}`).redirect,
+      ).toBeUndefined();
+    }
   });
 
   it("every host is a built page in the same scope", () => {
