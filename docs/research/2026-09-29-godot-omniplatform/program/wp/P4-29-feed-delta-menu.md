@@ -5,7 +5,7 @@
 | Phase       | P4: Packs (v3)                                                                                                                                   |
 | Size        | 1–1.5 engineer-weeks                                                                                                                             |
 | Depends on  | [P4-17](P4-17-lazy-deltas.md), [P4-13](P4-13-revocation-floors-decision.md), [P4-18](P4-18-web-dcz.md)                                           |
-| Unblocks | [P4-30](P4-30-feed-delta-menu-python-swift.md), [P4-31](P4-31-feed-delta-menu-godot.md), [P6-08](P6-08-kotlin-update-packs.md) |
+| Unblocks    | [P4-30](P4-30-feed-delta-menu-python-swift.md), [P4-31](P4-31-feed-delta-menu-godot.md), [P6-08](P6-08-kotlin-update-packs.md)                   |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                            |
 | Plan mode   | yes: `program/plans/P4-29.md` is written and approved before any code                                                                            |
 | Gates       | plan mode; corpus (`feedContentCases`, a new `plan-matrix.json` section, mirrors); drift gates; every SDK; threat model; generated docs; workerd |

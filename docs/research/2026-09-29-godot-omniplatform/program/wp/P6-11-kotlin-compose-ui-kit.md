@@ -1,16 +1,16 @@
 # P6-11 Kotlin SDK Jetpack Compose UI kit
 
-| Field       | Value |
-| ----------- | ----- |
-| Phase       | P6: Commerce, ops, web |
-| Size | 2–3 engineer-weeks |
-| Depends on | [P6-07](P6-07-kotlin-license-config-identity.md), [P6-08](P6-08-kotlin-update-packs.md) |
-| Unblocks | [P6-05](P6-05-kotlin-sdk.md) |
-| Role | `pkey-implementer` |
-| Plan mode   | no |
+| Field       | Value                                                                                                                                                      |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P6: Commerce, ops, web                                                                                                                                     |
+| Size        | 2–3 engineer-weeks                                                                                                                                         |
+| Depends on  | [P6-07](P6-07-kotlin-license-config-identity.md), [P6-08](P6-08-kotlin-update-packs.md)                                                                    |
+| Unblocks    | [P6-05](P6-05-kotlin-sdk.md)                                                                                                                               |
+| Role        | `pkey-implementer`                                                                                                                                         |
+| Plan mode   | no                                                                                                                                                         |
 | Gates       | `gen:brand -- --check` (Kotlin token emitter), Compose snapshot tests, accessibility checks, `parity:check` (`ui.kit`), the `kotlin` and `android` CI jobs |
-| Human input | none (screenshots for review are taken by the agent from the snapshot run) |
-| Repo        | `vladzaharia/polaris-key` |
+| Human input | none (screenshots for review are taken by the agent from the snapshot run)                                                                                 |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                  |
 
 Slice f of [P6-05](P6-05-kotlin-sdk.md).
 
@@ -67,7 +67,7 @@ no Polaris Key colours, and flipping the single switch produces the branded vari
   (RFC 8628 device code with the code, QR and countdown), settings (config values and entitlement
   badge), devices (list, rename, deauthorise), update banner and update prompt, pack progress.
 - Theme: `PolarisTheme(branding = PolarisBranding.None, showPoweredBy = false, copy = PolarisCopy(),
-  logo = null)`. With `None` every colour, shape and text style reads from the host's
+logo = null)`. With `None` every colour, shape and text style reads from the host's
   `MaterialTheme`; the logo slot is empty unless the host supplies one. With `PolarisKey` it applies
   the generated brand tokens (dark first, light supported, per-service accents) and the glyph.
 - Copy: every string lives in `PolarisCopy` (and Android string resources with the English default
