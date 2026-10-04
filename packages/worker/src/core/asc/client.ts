@@ -1,11 +1,20 @@
 /**
  * The App Store Connect API client (P5-02; notes/E1 §A1). Every later ASC call goes through
- * this (P5-08's asset-pack housekeeping included).
+ * this (P5-08's asset-pack housekeeping included). A-17a moved it into Core (`core/asc/`) beside
+ * the write gate, the operation ledger and the budget meter, so Distribution's connector and the
+ * platform's provisioning share one client.
  *
- *   - **Fixed host.** Requests go to `https://api.appstoreconnect.apple.com/v1/…` and nowhere
- *     else. A path is built from validated segments (`ascPath`), never from a string a webhook,
+ *   - **The write gate (A-17a).** Every request is admitted by `checkAscRequest`
+ *     (`writeGate.ts`) BEFORE the token thunk runs: a write outside the deny-by-default allow
+ *     table, a read of user records, or a typed-confirmation operation sent without the handler's
+ *     assertion throws `AscWriteDenied`, so no token is minted and nothing is sent. The gate is
+ *     the only barrier between the Worker's Admin team key and Apple's user, certificate and
+ *     delete operations (S-14 §12 decision 1).
+ *
+ *   - **Fixed host.** Requests go to `https://api.appstoreconnect.apple.com/v1/…` (or `/v2/…`,
+ *     where Apple serves IAPs and availability) and nowhere else. A path is built from validated segments (`ascPath`), never from a string a webhook,
  *     a manifest or an operator supplied whole, and a JSON:API `links.next` is followed only when
- *     it names that same origin and a `/v1/` path. That is the SSRF control: a forged payload or
+ *     it names that same origin and a `/v1/` or `/v2/` path. That is the SSRF control: a forged payload or
  *     a hostile `next` link cannot make the Worker send the bearer token anywhere.
  *   - **Token.** `Authorization: Bearer <ascToken>` from P5-01 (`core/outletTokens.ts`), passed
  *     in as a thunk so the client never sees the credential, only the ≤ 20-minute JWT.
@@ -19,12 +28,20 @@
  *     A body is read through `readCappedText` (at most `MAX_RESPONSE_BYTES`); an oversized or
  *     non-object body is `AscError(502)`, the same "unreadable answer" as malformed JSON.
  *   - **Errors carry a status line only** (`AscError.message`), never a response body: the
- *     message may end up in `outlet_credentials.last_error` and on the console page.
+ *     message may end up in `outlet_credentials.last_error` and on the console page. Apple's
+ *     `errors[0].code` token is kept apart (`AscError.code`) for the A-17 ledger.
  *
  * `fetchImpl` and `sleep` are injectable; the tests drive the client against a fake ASC server.
  */
 
-import { isRedirect, readCappedText } from "../../../../core/readCapped.js";
+import { isRedirect, readCappedText } from "../readCapped.js";
+import {
+  AscWriteDenied,
+  checkAscRequest,
+  type AscGateContext,
+} from "./writeGate.js";
+
+export { AscWriteDenied, type AscGateContext } from "./writeGate.js";
 
 /** A fetch with the platform `fetch` shape, injectable for tests. */
 export type FetchImpl = (
@@ -67,15 +84,39 @@ export interface AscRate {
   remaining: number;
 }
 
-/** A failed ASC call. The message is a status line this module composed. */
+/**
+ * A failed ASC call. The message is a status line this module composed. `code` is Apple's first
+ * `errors[].code` when the error body carried one (an enum-like token such as
+ * `ENTITY_ERROR.ATTRIBUTE.INVALID`, A-17h), never the body's free text (`title`, `detail`).
+ */
 export class AscError extends Error {
   constructor(
     readonly status: number,
     readonly method: string,
     readonly path: string,
+    readonly code: string | null = null,
   ) {
     super(`App Store Connect ${method} ${path}: HTTP ${status}`);
     this.name = "AscError";
+  }
+}
+
+/** Apple's error codes are dotted upper-case tokens; anything else is dropped. */
+const ERROR_CODE = /^[A-Z][A-Z0-9_]{0,40}(\.[A-Z0-9_]{1,40}){0,6}$/;
+
+/** The most of an error body read, to find its `errors[0].code`. */
+const MAX_ERROR_BYTES = 64 * 1024;
+
+/** `errors[0].code` of an error response, or null. Never throws; the body is never kept. */
+async function errorCode(res: Response): Promise<string | null> {
+  try {
+    const text = await readCappedText(res, MAX_ERROR_BYTES, () => new Error());
+    const parsed = JSON.parse(text) as { errors?: { code?: unknown }[] };
+    const code = Array.isArray(parsed.errors) ? parsed.errors[0]?.code : null;
+    return typeof code === "string" && ERROR_CODE.test(code) ? code : null;
+  } catch {
+    await res.body?.cancel().catch(() => undefined);
+    return null;
   }
 }
 
@@ -89,15 +130,23 @@ export class AscError extends Error {
 export const MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
 
 /** A path segment: a resource type (`appStoreVersions`) or an id (UUID, digits). */
-const SEGMENT = /^[A-Za-z0-9][A-Za-z0-9-]{0,127}$/;
+const SEGMENT = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 
 /** `/v1/<seg>/<seg>…`, refusing any segment that is not a plain type or id. */
 export function ascPath(...segments: string[]): string {
+  return ascPathV("v1", ...segments);
+}
+
+/** `/<version>/<seg>…`: Apple serves a few resources only under `/v2/` (IAPs, availability). */
+export function ascPathV(version: "v1" | "v2", ...segments: string[]): string {
   for (const s of segments) {
     if (!SEGMENT.test(s)) throw new Error("invalid App Store Connect path");
   }
-  return `/v1/${segments.join("/")}`;
+  return `/${version}/${segments.join("/")}`;
 }
+
+/** An API path the client sends to: `/v1/…` or `/v2/…`. */
+const isApiPath = (p: string): boolean => /^\/v[12]\//.test(p);
 
 /** Parse `X-Rate-Limit: user-hour-lim:3500;user-hour-rem:500;`. */
 export function parseRateLimit(header: string | null): AscRate | null {
@@ -165,28 +214,46 @@ export class AscClient {
     return token;
   }
 
-  /** Send one request (with 429 retries). Answers the parsed JSON, or `null` for 204/empty. */
+  /**
+   * Send one request (with 429 retries). Answers the parsed JSON, or `null` for 204/empty.
+   * `gate` carries what the handler asserts (a typed confirmation, a first-time set) to the
+   * write gate; it is never sent.
+   */
   async request(
     method: "GET" | "POST" | "PATCH" | "DELETE",
     path: string,
-    opts: { query?: Record<string, string>; body?: unknown } = {},
+    opts: {
+      query?: Record<string, string>;
+      body?: unknown;
+      gate?: AscGateContext;
+    } = {},
   ): Promise<AscDocument | null> {
-    if (!path.startsWith("/v1/"))
-      throw new Error("invalid App Store Connect path");
+    if (!isApiPath(path)) throw new Error("invalid App Store Connect path");
     const url = new URL(path, ASC_ORIGIN);
     for (const [k, v] of Object.entries(opts.query ?? {}))
       url.searchParams.set(k, v);
-    return this.send(method, url, opts.body);
+    return this.send(method, url, opts.body, opts.gate);
   }
 
   private async send(
     method: string,
     url: URL,
     body: unknown,
+    gate?: AscGateContext,
   ): Promise<AscDocument | null> {
     // Defence in depth: whatever built the URL, it must still be the one host.
-    if (url.origin !== ASC_ORIGIN || !url.pathname.startsWith("/v1/"))
+    if (url.origin !== ASC_ORIGIN || !isApiPath(url.pathname))
       throw new Error("refusing a request outside App Store Connect");
+    // Serialise once, and gate what will actually be sent: the gate checks the parsed form of the
+    // exact string the request carries, so a `toJSON` or a getter cannot send something other
+    // than what was checked. A body that does not serialise to JSON is refused outright.
+    const serialised = body === undefined ? undefined : JSON.stringify(body);
+    if (body !== undefined && typeof serialised !== "string")
+      throw new AscWriteDenied(method, url.pathname, "invalid_body");
+    const sent: unknown =
+      serialised === undefined ? undefined : JSON.parse(serialised);
+    // The write gate, BEFORE the token: a refused request mints nothing and sends nothing.
+    checkAscRequest(method, url.pathname, sent, gate);
     const token = await this.bearer(method, url.pathname);
     const init: RequestInit = {
       method,
@@ -195,9 +262,11 @@ export class AscClient {
       headers: {
         authorization: `Bearer ${token}`,
         accept: "application/json",
-        ...(body !== undefined ? { "content-type": "application/json" } : {}),
+        ...(serialised !== undefined
+          ? { "content-type": "application/json" }
+          : {}),
       },
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      ...(serialised !== undefined ? { body: serialised } : {}),
     };
     for (let attempt = 0; ; attempt++) {
       this.calls++;
@@ -209,10 +278,17 @@ export class AscClient {
         await this.sleep(backoffMillis(res, attempt));
         continue;
       }
-      if (!res.ok || isRedirect(res)) {
+      if (isRedirect(res)) {
         await res.body?.cancel().catch(() => undefined);
         throw new AscError(res.status, method, url.pathname);
       }
+      if (!res.ok)
+        throw new AscError(
+          res.status,
+          method,
+          url.pathname,
+          await errorCode(res),
+        );
       const unreadable = () => new AscError(502, method, url.pathname);
       if (res.status === 204) {
         await res.body?.cancel().catch(() => undefined);
@@ -277,18 +353,26 @@ export class AscClient {
         break;
       }
       // Only ever the same host and API: a hostile `next` is dropped, not followed.
-      if (url.origin !== ASC_ORIGIN || !url.pathname.startsWith("/v1/")) break;
+      if (url.origin !== ASC_ORIGIN || !isApiPath(url.pathname)) break;
       doc = await this.send("GET", url, undefined);
     }
     return { data, included };
   }
 
-  patch(path: string, body: unknown): Promise<AscDocument | null> {
-    return this.request("PATCH", path, { body });
+  patch(
+    path: string,
+    body: unknown,
+    gate?: AscGateContext,
+  ): Promise<AscDocument | null> {
+    return this.request("PATCH", path, { body, ...(gate ? { gate } : {}) });
   }
 
-  post(path: string, body: unknown): Promise<AscDocument | null> {
-    return this.request("POST", path, { body });
+  post(
+    path: string,
+    body: unknown,
+    gate?: AscGateContext,
+  ): Promise<AscDocument | null> {
+    return this.request("POST", path, { body, ...(gate ? { gate } : {}) });
   }
 }
 

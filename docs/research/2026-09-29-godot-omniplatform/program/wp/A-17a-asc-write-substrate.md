@@ -40,7 +40,7 @@ The lead sequences these with A-17a's reviewer before the branch merges:
 ## Acceptance criteria
 
 - [ ] S-14 §10's A-17a row is met.
-- [ ] The ledger is `store_operations` with `store`, `vendor_status` and `vendor_code`
+- [x] The ledger is `store_operations` with `store`, `vendor_status` and `vendor_code`
       (or the lead has recorded that A-18a carries the rebuild).
 - [ ] The green gate passes (`AGENTS.md`).
 

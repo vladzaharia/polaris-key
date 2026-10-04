@@ -27,6 +27,10 @@
  *          own through the existing audited pin path — or release it. Refused (409
  *          `app_assigned_elsewhere`) while another product holds the app, by platform pin or by
  *          its own credential's pin.
+ *   …      /api/platform/store-connections/app-store/{capability-types,bundle-ids[/<id>/capabilities],
+ *          apps/lookup,signing,operations}
+ *          A-17b's team provisioning on App Store Connect (`platformStoreProvisioning.ts`): every
+ *          write through A-17a's write gate and operation ledger, audited `platform.asc.<op>`.
  *
  * Every write is audited: platform-level events through `core/platformEvents.ts` (A-12's
  * `platform_audit`), and an assignment also in the product's own trail
@@ -96,6 +100,7 @@ import {
   readBody,
 } from "../lib/respond.js";
 import { planOwnRepins } from "./outletCredentials.js";
+import { routeAscProvisioning } from "./platformStoreProvisioning.js";
 
 const STORE_LABELS: Record<PlatformStore, string> = {
   "app-store": "App Store",
@@ -169,6 +174,23 @@ async function route(
     });
   }
   if (!isPlatformStore(store)) return notFound();
+
+  // A-17b: the App Store's team provisioning routes (bundle ids, capabilities, app lookup,
+  // signing expiry, the team ledger).
+  if (store === "app-store") {
+    const provisioning = routeAscProvisioning(
+      {
+        req,
+        env,
+        db,
+        session,
+        now,
+        holderOf: (appId, bundleId) => ascHolderOf(db, appId, bundleId),
+      },
+      rest.slice(1),
+    );
+    if (provisioning) return provisioning;
+  }
 
   if (sub === undefined)
     return credentialWrite(
@@ -359,6 +381,29 @@ async function holders(
     if (!out.has(c.pin))
       out.set(c.pin, { product: c.product, via: "own-credential" });
   return out;
+}
+
+/**
+ * Which product holds an App Store app or its bundle id (A-17b's shared-bundle confirmation):
+ * the app's holder (platform pin, then a product's own key pin), else the holder of the In-App
+ * Purchase key's bundle-id pin (platform pin, then a product's own key pin).
+ */
+async function ascHolderOf(
+  db: Db,
+  appId: string | null,
+  bundleId: string,
+): Promise<string | null> {
+  if (appId !== null) {
+    const h = (await holders(db, "app-store")).get(appId);
+    if (h) return h.product;
+  }
+  const iap: PlatformCredentialId = "app-store.in-app-purchase-key";
+  const pinned = await platformPinHolder(db, iap, bundleId);
+  if (pinned !== null) return pinned;
+  const own = (
+    await listOutletCredentialPins(db, PLATFORM_CREDENTIALS[iap].kind)
+  ).find((c) => c.pin === bundleId);
+  return own?.product ?? null;
 }
 
 async function listing(

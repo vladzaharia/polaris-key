@@ -51,6 +51,9 @@ const SPEC: Record<0 | 1 | 2 | 3, ActionId[]> = {
     "signing.breakGlassActivate",
     "kek.reseal",
     "portalAccount.delete",
+    "connector.releaseVersion",
+    "connector.phasedComplete",
+    "connector.iapAvailability",
   ],
 };
 
@@ -96,6 +99,9 @@ describe("destructive-action levels (ADMIN.md §5.2)", () => {
     expect(confirmFor("signing.revoke").typed).toBe("kid");
     expect(confirmFor("kek.reseal").typed).toBe("reseal");
     expect(confirmFor("portalAccount.delete").typed).toBe("delete");
+    expect(confirmFor("connector.releaseVersion").typed).toBe("appName");
+    expect(confirmFor("connector.phasedComplete").typed).toBe("appName");
+    expect(confirmFor("connector.iapAvailability").typed).toBe("appName");
   });
 
   it("visual weight follows severity: pause is not danger, halt is (MTX-10)", () => {

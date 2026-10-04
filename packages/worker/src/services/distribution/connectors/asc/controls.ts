@@ -6,9 +6,10 @@
  *
  *     phased-release/pause     PATCH /v1/appStoreVersionPhasedReleases/{id}  PAUSED
  *     phased-release/resume    PATCH …                                       ACTIVE
- *     phased-release/complete  PATCH …                                       COMPLETE
+ *     phased-release/complete  PATCH …                                       COMPLETE (typed)
  *     release                  POST  /v1/appStoreVersionReleaseRequests  (a version held in
- *                                                                         PENDING_DEVELOPER_RELEASE)
+ *                                                                         PENDING_DEVELOPER_RELEASE;
+ *                                                                         typed confirmation, A-17a)
  *     testflight/public-link   PATCH /v1/betaGroups/{id}  publicLinkEnabled
  *     webhook                  POST  /v1/webhooks (all 12 event types), then POST /v1/webhookPings
  *
@@ -25,11 +26,16 @@
  * version, which no later re-read can undo. The public-link control proves its beta group the
  * same way.
  *
+ * **The write gate (A-17a).** Every request goes through Core's client, whose deny-by-default gate
+ * (`core/asc/writeGate.ts`) admits exactly these writes and refuses the release request unless the
+ * control asserts the typed confirmation it checked (`confirm` = the app's name).
+ *
  * Every control sends exactly the documented request, writes ONE audit row with the session's
  * subject (`distribution.asc.<control>`), and then RE-READS the object from the API, so what the
  * console shows afterwards is Apple's answer, not the request's intent. Apple refusing a request
  * (an invalid transition, a version not held) is relayed as 409 `store_refused` with the status
- * Apple gave and nothing of its body. Submitting for review is not here (a follow-up).
+ * Apple gave and nothing of its body but its `errors[0].code` token (`appleCode`). The Distribute
+ * flow (builds, TestFlight, versions, submit for review) is `distribute.ts` (A-17d).
  *
  * "Register webhook" uses a secret stored beforehand as an `asc-webhook-secret` outlet
  * credential — generated server-side by the Core admin handler (`PUT …/outlet-credentials/<id>`
@@ -50,12 +56,13 @@ import {
 } from "./apply.js";
 import {
   AscError,
+  AscWriteDenied,
   ascPath,
   attr,
   relId,
   single,
   type FetchImpl,
-} from "./client.js";
+} from "../../../../core/asc/client.js";
 import { ASC_WEBHOOK_EVENT_TYPES } from "./map.js";
 import { ascRun, finishRun } from "./run.js";
 import { ASC_CONNECTOR, resolveAscSetup, type AscSetup } from "./setup.js";
@@ -69,6 +76,12 @@ export interface ControlContext {
   session: AdminSession;
   /** The origin the console was reached on: the webhook URL is built from it. */
   origin: string;
+  /**
+   * The request's `Idempotency-Key` header (one per user intent; S-14 §7.3), or null. The
+   * ledger-backed controls (A-17c's setup controls in `provision.ts`, A-17d's Distribute writes)
+   * require it and key their ledger steps by it; the P5-02 controls ignore it.
+   */
+  idempotencyKey?: string | null;
   fetchImpl?: FetchImpl;
   sleep?: (ms: number) => Promise<void>;
 }
@@ -81,6 +94,8 @@ export type ControlResult =
       reason: string;
       message: string;
       fields?: string[];
+      /** Apple's `errors[0].code` token on a `store_refused` (never its free text). */
+      appleCode?: string;
     };
 
 export type ConnectorControl = (
@@ -88,7 +103,13 @@ export type ConnectorControl = (
   body: Record<string, unknown>,
 ) => Promise<ControlResult>;
 
-const refuse = (
+/** A connector read under `GET …/connectors/<kind>/<path>` (A-17d's Distribute reads). */
+export type ConnectorRead = (
+  c: ControlContext,
+  query: URLSearchParams,
+) => Promise<ControlResult>;
+
+export const refuse = (
   status: 404 | 409 | 422 | 502,
   reason: string,
   message: string,
@@ -102,7 +123,7 @@ const refuse = (
 });
 
 /** Run `fn` against a fresh connector run; Apple's refusals become `store_refused`. */
-async function withRun(
+export async function withRun(
   c: ControlContext,
   fn: (run: AscRun, setup: AscSetup) => Promise<ControlResult>,
 ): Promise<ControlResult> {
@@ -135,8 +156,11 @@ async function withRun(
     return await fn(run, setup);
   } catch (e) {
     error = e;
-    if (e instanceof AscError)
-      return refuse(
+    // The write gate refused before anything was minted or sent (core/asc/writeGate.ts).
+    if (e instanceof AscWriteDenied)
+      return refuse(409, "write_denied", e.message);
+    if (e instanceof AscError) {
+      const refused = refuse(
         e.status === 404
           ? 404
           : e.status >= 500 || e.status === 429
@@ -145,6 +169,11 @@ async function withRun(
         "store_refused",
         e.message,
       );
+      // Apple's enum-like code (`ENTITY_ERROR.ATTRIBUTE.INVALID`, A-17h), never its body.
+      return e.code && !refused.ok
+        ? { ...refused, appleCode: e.code }
+        : refused;
+    }
     throw e;
   } finally {
     await finishRun(run, error);
@@ -211,6 +240,9 @@ const PHASED_TARGET = {
   complete: "COMPLETE",
 } as const;
 
+/** What the typed confirmation of `phased-release/complete` names in its refusal. */
+const COMPLETE_ACTION = "release the version to every user";
+
 function phasedControl(verb: keyof typeof PHASED_TARGET): ConnectorControl {
   return (c, body) =>
     withRun(c, async (run, setup) => {
@@ -219,6 +251,19 @@ function phasedControl(verb: keyof typeof PHASED_TARGET): ConnectorControl {
         return refuse(422, "invalid_body", "releaseId is required", [
           "releaseId",
         ]);
+      // Completing releases the version to every user at once, so it is a release: typed like
+      // `release` (owner decision (b), 2026-10-04). Pause and resume stay plain.
+      const typed = verb === "complete";
+      if (
+        typed &&
+        (typeof body.confirm !== "string" || body.confirm.trim() === "")
+      )
+        return refuse(
+          422,
+          "confirmation_required",
+          `type the app's name in confirm to ${COMPLETE_ACTION}`,
+          ["confirm"],
+        );
       const known = await proveVersion(run, setup, releaseId);
       if (!known)
         return refuse(
@@ -233,6 +278,15 @@ function phasedControl(verb: keyof typeof PHASED_TARGET): ConnectorControl {
           "no_phased_release",
           `the App Store version of ${releaseId} has no phased release`,
         );
+      if (typed) {
+        const unconfirmed = await checkTypedConfirmation(
+          run,
+          setup,
+          body.confirm,
+          COMPLETE_ACTION,
+        );
+        if (unconfirmed) return unconfirmed;
+      }
       const state = PHASED_TARGET[verb];
       await run.client.patch(
         ascPath("appStoreVersionPhasedReleases", phasedId),
@@ -243,6 +297,8 @@ function phasedControl(verb: keyof typeof PHASED_TARGET): ConnectorControl {
             attributes: { phasedReleaseState: state },
           },
         },
+        // Asserted only after the comparison above; the gate refuses COMPLETE without it.
+        typed ? { typedConfirmation: true } : {},
       );
       await auditControl(
         c,
@@ -275,6 +331,42 @@ function phasedControl(verb: keyof typeof PHASED_TARGET): ConnectorControl {
 
 // ── Release a held version ───────────────────────────────────────────────────────────────────
 
+/**
+ * A-17a: releasing is irreversible, so it takes a TYPED confirmation (owner decision,
+ * 2026-10-04; ADMIN.md §5.2): the body's `confirm` must equal the app's name as App Store Connect
+ * reports it now. Only after that comparison does the control assert `typedConfirmation` to the
+ * write gate, which refuses the release request without it. A-17d's submit for review uses the
+ * same check (`action` names what is being confirmed in the refusal).
+ */
+export async function checkTypedConfirmation(
+  run: AscRun,
+  setup: AscSetup,
+  typed: unknown,
+  action = "release",
+): Promise<ControlResult | null> {
+  if (typeof typed !== "string" || typed.trim() === "")
+    return refuse(
+      422,
+      "confirmation_required",
+      `type the app's name in confirm to ${action}`,
+      ["confirm"],
+    );
+  const app = single(
+    await run.client.get(ascPath("apps", setup.appleId), {
+      "fields[apps]": "name",
+    }),
+  );
+  const name = attr(app, "name");
+  if (!name || typed.trim() !== name.trim())
+    return refuse(
+      422,
+      "confirmation_mismatch",
+      "confirm does not match the app's name in App Store Connect",
+      ["confirm"],
+    );
+  return null;
+}
+
 const releaseHeld: ConnectorControl = (c, body) =>
   withRun(c, async (run, setup) => {
     const releaseId = releaseIdOf(body);
@@ -282,6 +374,13 @@ const releaseHeld: ConnectorControl = (c, body) =>
       return refuse(422, "invalid_body", "releaseId is required", [
         "releaseId",
       ]);
+    if (typeof body.confirm !== "string" || body.confirm.trim() === "")
+      return refuse(
+        422,
+        "confirmation_required",
+        "type the app's name in confirm to release",
+        ["confirm"],
+      );
     // Apple's answer, not the stored one, decides whether the version is held.
     const known = await proveVersion(run, setup, releaseId);
     if (!known)
@@ -296,16 +395,22 @@ const releaseHeld: ConnectorControl = (c, body) =>
         "not_held",
         `the App Store version of ${releaseId} is ${known.storeState ?? "in an unknown state"}, not PENDING_DEVELOPER_RELEASE`,
       );
-    await run.client.post(ascPath("appStoreVersionReleaseRequests"), {
-      data: {
-        type: "appStoreVersionReleaseRequests",
-        relationships: {
-          appStoreVersion: {
-            data: { type: "appStoreVersions", id: known.versionId },
+    const unconfirmed = await checkTypedConfirmation(run, setup, body.confirm);
+    if (unconfirmed) return unconfirmed;
+    await run.client.post(
+      ascPath("appStoreVersionReleaseRequests"),
+      {
+        data: {
+          type: "appStoreVersionReleaseRequests",
+          relationships: {
+            appStoreVersion: {
+              data: { type: "appStoreVersions", id: known.versionId },
+            },
           },
         },
       },
-    });
+      { typedConfirmation: true },
+    );
     await auditControl(
       c,
       "release",
@@ -425,21 +530,26 @@ const registerWebhook: ConnectorControl = (c) =>
       );
     const url = webhookUrl(c.origin, c.product);
     const created = single(
-      await run.client.post(ascPath("webhooks"), {
-        data: {
-          type: "webhooks",
-          attributes: {
-            enabled: true,
-            eventTypes: [...ASC_WEBHOOK_EVENT_TYPES],
-            name: `Polaris Key (${c.product})`,
-            secret: secret.value.secret,
-            url,
-          },
-          relationships: {
-            app: { data: { type: "apps", id: setup.appleId } },
+      await run.client.post(
+        ascPath("webhooks"),
+        {
+          data: {
+            type: "webhooks",
+            attributes: {
+              enabled: true,
+              eventTypes: [...ASC_WEBHOOK_EVENT_TYPES],
+              name: `Polaris Key (${c.product})`,
+              secret: secret.value.secret,
+              url,
+            },
+            relationships: {
+              app: { data: { type: "apps", id: setup.appleId } },
+            },
           },
         },
-      }),
+        // The gate admits the callback URL only on the origin this request arrived at.
+        { hookOrigin: c.origin },
+      ),
     );
     if (!created)
       return refuse(

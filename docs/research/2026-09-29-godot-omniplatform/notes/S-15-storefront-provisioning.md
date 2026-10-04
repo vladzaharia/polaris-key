@@ -205,7 +205,7 @@ other storefront, and asks what they share:
    - the package-feeds renderer contract (`distribution/registry/materialise.ts`, `plans/F-01.md`
      §6.8 and §6.9);
    - A-17a's branch (`core/asc/{writeGate,writeGateDenied,ledger,budget,audit,client}.ts`,
-     `migrations/0059_asc_operations.sql`).
+     `migrations/0060_asc_operations.sql`).
 2. Read vendor documentation on 2026-10-04 [V]. Exa was unavailable (server not found), so pages
    were fetched with WebFetch, WebSearch and curl. Epic's developer pages render only with
    JavaScript, so every Epic statement is from search excerpts and tagged [S]. The URLs are in §14.
@@ -1349,6 +1349,6 @@ Also `https://partner.steamgames.com/steamdirect` and `https://steamcommunity.co
 - console: `A/console/pages/platformStores.tsx`;
 - A-17a, branch `wp/A-17a-asc-write-gate` at `f1fbdb94`:
   `W/src/core/asc/{writeGate,writeGateDenied,ledger,budget,audit,client}.ts`,
-  `W/migrations/0059_asc_operations.sql`.
+  `W/migrations/0060_asc_operations.sql`.
 
 **Owner:** the storefront setup guide (last updated 2026-10-04), not in the repo.
