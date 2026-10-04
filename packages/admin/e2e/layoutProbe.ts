@@ -9,15 +9,21 @@
  *                   page's bottom padding. The report names the elements that reach past the
  *                   content, with the height rules (min-height, height, padding, margin, flex-grow)
  *                   that put them there.
- *   equal-height    Cards that sit side by side in one grid/flex row differ in outer height, or their
- *                   footers (the last block holding an action) do not share a bottom edge.
+ *   equal-height    Cards that sit side by side in one grid/flex row differ in outer height (a cell
+ *                   that opens with its card and follows it with an actions row counts by its card),
+ *                   their footers (a short closing block holding an action) do not share a bottom
+ *                   edge, or a card stretched to its row's height leaves more than a row of empty
+ *                   space under its content (stretch-gap: pair cards of close natural heights).
  *   right-align     A settings-style row (label left, control or value right) whose control/value
  *                   does not end at the row's content edge, rows in one card that end at different
  *                   x, a switch that is not flush right in its row, a numeric/date/count table column
- *                   that is not right-aligned with tabular figures, or page-header actions that do
- *                   not end at the header's right edge.
- *   overflow        The page or a scroll container scrolls sideways, or a text box clips or spills
- *                   its text without an intended scroller or a way to read the whole text.
+ *                   that is not right-aligned with tabular figures, page-header actions that do
+ *                   not end at the header's right edge, a grid of form fields capped short of its
+ *                   card's content edge, or a switch whose help line describes the other state.
+ *   overflow        The page or a scroll container scrolls sideways, a table scrolls sideways inside
+ *                   its own wrapper (at desktop width; on a phone, a DataTable not drawn as cards),
+ *                   or a text box clips or spills its text without an intended scroller or a way to
+ *                   read the whole text.
  */
 
 export interface LayoutViolation {
@@ -396,6 +402,93 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
     }
   }
 
+  // A table that scrolls sideways inside its own wrapper: at desktop width every column must fit
+  // (truncate a long cell, hide a low-priority column); on a phone a DataTable draws as cards.
+  // `data-scroll-x` marks a wrapper whose sideways scroll is the design (a wide matrix).
+  for (const root of roots) {
+    for (const e of Array.from(root.querySelectorAll("*"))) {
+      if (!(e instanceof HTMLElement) || hidden(e) || !isScroller(e, "x"))
+        continue;
+      if (e.scrollWidth <= e.clientWidth + 1) continue;
+      const table = e.querySelector("table,[role=table],[role=grid]");
+      if (!table || e.closest("[data-scroll-x]")) continue;
+      const dataTable = e.closest("[data-table-id]");
+      if (W < 1024 && !dataTable) continue;
+      const er = e.getBoundingClientRect();
+      const cut = Array.from(
+        table.querySelectorAll("th,[role=columnheader]"),
+      ).filter(
+        (h) => !hidden(h) && h.getBoundingClientRect().right > er.right + 1,
+      );
+      const widest = Array.from(table.querySelectorAll("td,[role=cell]"))
+        .filter((td) => !hidden(td))
+        .sort(
+          (a, b) =>
+            b.getBoundingClientRect().width - a.getBoundingClientRect().width,
+        )[0];
+      out.push({
+        rule: "overflow",
+        kind: W < 1024 ? "table-x-scroll-phone" : "table-x-scroll",
+        where: where(e),
+        detail: `${dataTable ? `DataTable "${dataTable.getAttribute("data-table-id")}"` : "table"} scrolls ${e.scrollWidth - e.clientWidth}px sideways inside its wrapper (scrollWidth ${e.scrollWidth}, clientWidth ${e.clientWidth})${cut.length ? `; columns past the edge: ${cut.map((h) => `"${(h.textContent || "").trim()}"`).join(", ")}` : ""}`,
+        cause:
+          W < 1024
+            ? `a phone draws a DataTable as cards: set mobile="cards"`
+            : `widest cell ${widest ? `${short(widest)} w:${Math.round(widest.getBoundingClientRect().width)} "${(widest.textContent || "").trim().slice(0, 40)}"` : "?"}: cap it (block max-w-[…] truncate + title)`,
+        html: snip(widest),
+      });
+    }
+    // A grid of form fields that stops short of its card's content edge (a max-width cap) while
+    // the rows around it run edge to edge.
+    for (const g of Array.from(root.querySelectorAll("*"))) {
+      if (hidden(g) || cs(g).display !== "grid") continue;
+      const tracks = cs(g).gridTemplateColumns.trim().split(/\s+/).length;
+      if (tracks < 2) continue;
+      const kids = Array.from(g.children).filter((k) => !hidden(k));
+      if (
+        kids.length < 2 ||
+        !kids.every(
+          (k) =>
+            k.querySelector(
+              "input:not([type=checkbox]):not([type=radio]),select,textarea,[role=combobox]",
+            ) !== null,
+        )
+      )
+        continue;
+      const parent = g.parentElement;
+      if (!parent || !g.closest("section,[class*=rounded-lg]")) continue;
+      const gap = contentRight(parent) - g.getBoundingClientRect().right;
+      if (gap > 8)
+        out.push({
+          rule: "right-align",
+          kind: "field-grid-short",
+          where: where(g),
+          detail: `a ${tracks}-column field grid ends ${Math.round(gap)}px short of its card's content edge`,
+          cause: `grid {${short(g)} max-width:${cs(g).maxWidth} width:${Math.round(g.getBoundingClientRect().width)}} parent content edge x=${Math.round(contentRight(parent))}`,
+          html: snip(g),
+        });
+    }
+    // A switch's help line that describes the other state ("Off, …" beside a switch that is on).
+    for (const sw of Array.from(root.querySelectorAll("[role=switch]"))) {
+      if (hidden(sw)) continue;
+      const row = sw.closest("[data-align]");
+      if (!row) continue;
+      const on = sw.getAttribute("aria-checked") === "true";
+      for (const p of Array.from(row.querySelectorAll("p"))) {
+        const t = (p.textContent || "").trim();
+        const says = /^Off\b/.test(t) ? false : /^On\b/.test(t) ? true : null;
+        if (says !== null && says !== on)
+          out.push({
+            rule: "right-align",
+            kind: "switch-help-state",
+            where: where(row),
+            detail: `switch is ${on ? "on" : "off"} but its help reads "${t.slice(0, 70)}"`,
+            cause: "choose the help line from the switch's value",
+          });
+      }
+    }
+  }
+
   // ── 2 · equal-height rows ──────────────────────────────────────────────────────────────────
   const cardLike = (e: Element) => {
     if (hidden(e)) return false;
@@ -425,11 +518,39 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
     for (let i = 0; n && i < 4; i++) {
       if (cardLike(n)) return n;
       const kids: Element[] = Array.from(n.children).filter((k) => !hidden(k));
-      if (kids.length !== 1) return null;
+      if (kids.length === 0) return null;
+      if (kids.length !== 1) {
+        // A cell that opens with its one card and follows it with plain blocks (an actions row,
+        // a note): the card is what sits beside the neighbouring cell's card, so it is the card
+        // that must share their edges.
+        const boxed = kids.filter((k) => cardLike(k) || hasBox(k));
+        return boxed.length === 1 && boxed[0] === kids[0] && cardLike(kids[0]!)
+          ? kids[0]!
+          : null;
+      }
       n = kids[0]!;
     }
     return null;
   };
+  /**
+   * Empty px between a card's last text or control and its bottom edge. Content centred in its
+   * box (a placeholder's one line, as much space above as below) is a deliberate empty state, not
+   * trailing space: it counts as 0.
+   */
+  const emptyBelow = (card: Element): number => {
+    const r = card.getBoundingClientRect();
+    let top = r.bottom;
+    let bottom = r.top;
+    for (const x of ink(card)) {
+      top = Math.min(top, x.top);
+      bottom = Math.max(bottom, x.bottom);
+    }
+    const below = r.bottom - px(cs(card).borderBottomWidth) - bottom;
+    const above = top - r.top - px(cs(card).borderTopWidth);
+    return Math.abs(above - below) <= 24 ? 0 : below;
+  };
+  /** Max px a stretched card may leave empty under its content (its own padding plus a row). */
+  const STRETCH_GAP = 96;
   if (opts.rows) {
     for (const root of roots) {
       for (const c of Array.from(root.querySelectorAll("*"))) {
@@ -475,12 +596,31 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
             });
             continue;
           }
+          // Equal heights bought by stretching: a card whose content ends far above its bottom
+          // edge is the "page runs on past the content" look drawn inside a card. Pair cards of
+          // close natural heights, or give the taller one its own row.
+          const empties = row.map(emptyBelow);
+          const worst = Math.max(...empties);
+          if (worst > STRETCH_GAP) {
+            const i = empties.indexOf(worst);
+            out.push({
+              rule: "equal-height",
+              kind: "stretch-gap",
+              where: where(row[i]!),
+              detail: `a card stretched to its row's height leaves ${Math.round(worst)}px empty under its content (row heights ${hs.map((h) => Math.round(h)).join("/")}px; empty ${empties.map((e) => Math.round(e)).join("/")}px)`,
+              cause: `container {${short(c)}} stretched card {${short(row[i]!)}}`,
+            });
+          }
           // Footers: the last block of each card holding an action shares one bottom edge.
+          // A footer is a short closing block (an actions row), not a card's whole body.
           const feet = row.map((card) => {
-            const last = Array.from(card.children)
-              .filter((k) => !hidden(k))
-              .pop();
-            return last && last.querySelector("button,a[href]") ? last : null;
+            const kids = Array.from(card.children).filter((k) => !hidden(k));
+            const last = kids.length > 1 ? kids[kids.length - 1] : undefined;
+            return last &&
+              last.getBoundingClientRect().height <= 80 &&
+              last.querySelector("button,a[href]")
+              ? last
+              : null;
           });
           if (feet.every((f) => f !== null)) {
             const bs = feet.map((f) => f!.getBoundingClientRect().bottom);
