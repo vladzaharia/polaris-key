@@ -24,22 +24,26 @@ to the machine.
 
 ## The console dialog
 
-From a license's detail page, **Offline bundle**:
+From a license record, **More actions → Mint offline bundle…**:
 
 | Field                 | Notes                                                                                                                                                                                                                                                                                                 |
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Device ID             | The 32-character request code, pasted exactly. A mistyped code is refused locally as a form error rather than becoming a bundle no machine can import.                                                                                                                                                |
 | Grace days            | 1–365, defaulting to the ceiling (365) — this is for the machine least able to come back for a fresh one.                                                                                                                                                                                             |
 | Include configuration | Shown only when the product runs Config; ships the signed config document alongside the license document. The checkbox disappears rather than greying out on a product without Config — there's no "reachable but off" state to represent, because the product has no config document to ship at all. |
-| License               | Implicit — whichever license's detail page you opened the dialog from. There's no authenticated device on this path to infer one from, so the server requires it explicitly whenever License is enabled.                                                                                              |
+| License               | Implicit — whichever license record you opened the dialog from. There's no authenticated device on this path to infer one from, so the server requires it explicitly whenever License is enabled.                                                                                                     |
 
-The result is shown once, but **without** the "never again" ceremony a minted key gets. That's
-deliberate: a key is shown once because the server keeps only its hash and truly cannot show it
-again, but a bundle is a signed artifact — nothing is lost by losing the file, and minting a
-replacement for the same device costs one more request. The bundle id (a ULID) is shown
-prominently and worth copying onto a support ticket regardless: it's the audit anchor, and the
+The result shows the bundle id (a ULID) with a copy button, a **Download** button for the
+`.pkeybundle` file, and the bundle itself, so it can be copied when a browser refuses to save the
+file. The bundle id is worth copying onto a support ticket: it's the audit anchor, and the
 importing client reports the same id back on import, so it's the one string that ties a "did this
 actually get imported" question to both ends.
+
+The dialog asks you to copy the bundle or confirm you've stored it before Done, as it does for a
+minted key, but for a different reason. A key is shown once because the server keeps only its
+hash and truly cannot show it again; a bundle is a signed artifact, so nothing is lost by losing
+the file, and minting a replacement for the same device costs one more request. The check is
+there so the file actually leaves the console before the dialog does.
 
 ## The `pkey bundle` CLI
 
