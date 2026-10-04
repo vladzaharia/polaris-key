@@ -1,6 +1,6 @@
 /**
  * The Platform section's admin API (notes/S-13 §9.2): instance-wide, product-less, read-only so
- * far. Platform-admin gated here (403 otherwise), on top of the dispatcher's session gate,
+ * far except the settings store. Platform-admin gated here (403 otherwise), on top of the dispatcher's session gate,
  * limiter and CSRF check.
  *
  *   GET /api/platform/version     — build identity (A-11). Cheap: the SPA's skew check calls it.
@@ -9,6 +9,9 @@
  *                                   build's newest, missing required indexes, binding presence
  *                                   (A-11).
  *   GET /api/platform/activity    — `platform_audit`, keyset-paginated, newest first (A-12).
+ *   GET/PATCH/DELETE /api/platform/settings[/:key]
+ *                                 — the platform settings store and the read-only inventory
+ *                                   (A-13, `platformSettings.ts`).
  *
  * Admin routes are narrative-only under AGENTS.md rule 10 (`adminApi` in routeCoverage's
  * NARRATIVE_ONLY): no OpenAPI entry. Nothing here is secret (THREAT-MODEL "Platform settings and
@@ -19,7 +22,14 @@ import type { Env } from "../../env.js";
 import type { Db } from "../../db/types.js";
 import { isPlatformAdmin } from "../authz.js";
 import type { AdminSession } from "../session.js";
-import { adminJson, err, forbidden, notFound } from "../lib/respond.js";
+import {
+  AdminBodyError,
+  adminJson,
+  err,
+  forbidden,
+  notFound,
+} from "../lib/respond.js";
+import { handlePlatformSettings } from "./platformSettings.js";
 import {
   appliedMigrations,
   deployIdentity,
@@ -158,9 +168,26 @@ export async function handlePlatform(
   db: Db,
   session: AdminSession,
   rest: string[],
+  now: number = Math.floor(Date.now() / 1000),
 ): Promise<Response> {
   if (!isPlatformAdmin(env, session))
     return forbidden("platform admin required");
+  if (rest[0] === "settings") {
+    try {
+      return await handlePlatformSettings(
+        req,
+        env,
+        db,
+        session,
+        rest.slice(1),
+        now,
+      );
+    } catch (e) {
+      if (e instanceof AdminBodyError)
+        return err(e.status, e.code, e.message, e.extra);
+      throw e;
+    }
+  }
   if (rest.length !== 1) return notFound();
   const [resource] = rest;
   if (

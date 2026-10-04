@@ -324,6 +324,12 @@ There are two precedence modes:
   Shipping this means changing the committed `LAZY_DELTAS = "off"` to `"runtime"` in both TOML
   files. Until then nothing changes in behaviour: owner decision 2.
 
+  _As built (A-13):_ a valid `[vars]` value other than `off` still counts below a D1 row, so
+  `[vars]` = `on` with no row means on (the test lanes and a hand deploy rely on it) and
+  `"runtime"` with no row is the code default. An unreadable store resolves a kill switch to
+  off. `LAZY_DELTA_MAX_BYTES` and `BLOB_GC_GRACE_DAYS` keep their pre-A-13 `[vars]` parsing;
+  the [1 MiB, 32 MiB] and [1, 365] bounds apply to runtime values.
+
 `lazyDeltasOn(env)` (`core/deltaDemand.ts:130`) and `blobGcSettings(env)`
 (`core/blobGc.ts:165-170`) become `…(env, settings)`. The consumer (`src/deltasEntry.ts`) reads
 the same rows: it already binds `DB`. One D1 row then replaces two deploys. [I]

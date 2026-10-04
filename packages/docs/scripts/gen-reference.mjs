@@ -335,6 +335,7 @@ const TABLE_OWNERS = {
     "platform_credential_pins",
     "platform_store_settings",
     "platform_audit",
+    "platform_settings",
   ],
   license: [
     "licenses",

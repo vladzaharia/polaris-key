@@ -18,8 +18,11 @@
 # `gated/blobs/sha256/`, to pkey-deltas-<env>) are created by the operator AFTER the first
 # deploy of this script: a rule needs a queue with a consumer.
 #
-# `LAZY_DELTAS = "off"` here as in wrangler.toml: the consumer acknowledges every message without
-# work until an operator turns it on (both scripts) and opts a product in.
+# `LAZY_DELTAS = "runtime"` here as in wrangler.toml (A-13): the console's platform settings store
+# decides, through the same `platform_settings` rows the request Worker reads, and it defaults to
+# off, so the consumer acknowledges every message without work until an operator turns it on in
+# Platform → Settings and opts a product in. `"off"` is the deploy-time hard off.
+# `LAZY_DELTA_MAX_BYTES` is the deploy-time cap; a console value may only lower it below 32 MiB.
 
 name = "polaris-key-deltas"
 main = "src/deltasEntry.ts"
@@ -67,7 +70,7 @@ queue = "pkey-deltas-prod"
 [env.prod.version_metadata]
 binding = "CF_VERSION_METADATA"
 [env.prod.vars]
-LAZY_DELTAS = "off"
+LAZY_DELTAS = "runtime"
 LAZY_DELTA_MAX_BYTES = "33554432"
 
 [env.staging]
@@ -95,7 +98,7 @@ queue = "pkey-deltas-staging"
 [env.staging.version_metadata]
 binding = "CF_VERSION_METADATA"
 [env.staging.vars]
-LAZY_DELTAS = "off"
+LAZY_DELTAS = "runtime"
 LAZY_DELTA_MAX_BYTES = "33554432"
 
 [env.dev]
@@ -123,5 +126,5 @@ queue = "pkey-deltas-dev"
 [env.dev.version_metadata]
 binding = "CF_VERSION_METADATA"
 [env.dev.vars]
-LAZY_DELTAS = "off"
+LAZY_DELTAS = "runtime"
 LAZY_DELTA_MAX_BYTES = "33554432"

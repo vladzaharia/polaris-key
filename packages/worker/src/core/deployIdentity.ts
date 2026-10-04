@@ -15,7 +15,7 @@ import { DISCOVERY_VERSION } from "./discovery.js";
  * `*_index_assertion.sql`), so adding a migration without bumping this fails the suite. Compared
  * with `d1_migrations` to say whether the database has caught up with the code.
  */
-export const LATEST_MIGRATION = "0055_platform_store_connections.sql";
+export const LATEST_MIGRATION = "0056_platform_settings.sql";
 
 /** A release tag as `deploy.yml` accepts it (its "Select target" step). */
 const RELEASE_TAG = /^v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/;

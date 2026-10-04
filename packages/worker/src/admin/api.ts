@@ -325,7 +325,8 @@ export async function handleAdminApi(
       rest.slice(1),
       now,
     );
-  if (head === "platform") return handlePlatform(req, env, db, session, rest);
+  if (head === "platform")
+    return handlePlatform(req, env, db, session, rest, now);
   if (head === "logout") {
     // R1-03: logout clears the session, so it is a mutation and must go through the CSRF
     // check above — which `isMutation` only applies to non-GET methods. As a GET it was a

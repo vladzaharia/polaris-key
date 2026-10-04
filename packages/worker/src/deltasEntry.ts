@@ -14,6 +14,7 @@
 import { patchFrom } from "@polaris-key/zstd-wasm/encoder";
 import type { Env } from "./env.js";
 import { D1Db } from "./db/d1.js";
+import { refreshPlatformSettings } from "./core/platformSettings.js";
 import {
   handleDeltaBatch,
   type DeltaConsumerDeps,
@@ -42,6 +43,9 @@ export function consumerDeps(env: DeltasEnv, now: number): DeltaConsumerDeps {
 
 export default {
   async queue(batch: MessageBatch<unknown>, env: DeltasEnv): Promise<void> {
+    // A-13: `LAZY_DELTAS` and `LAZY_DELTA_MAX_BYTES` resolve through the platform settings store
+    // (the same `platform_settings` rows the request Worker reads), read fresh per invocation.
+    await refreshPlatformSettings(env, new D1Db(env.DB));
     await handleDeltaBatch(batch, (now) => consumerDeps(env, now));
   },
 } satisfies ExportedHandler<DeltasEnv>;
