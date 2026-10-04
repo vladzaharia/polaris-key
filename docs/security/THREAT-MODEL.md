@@ -30,7 +30,7 @@ and what binary it installs next.
 | A3   | **The release channel**                                                              | GitHub App key, webhook secret, `release_config`                                                      | Ship arbitrary code to every installed client. Equal to A1 in practical severity.                                                                                                                                                                                                                                        |
 | A4   | **`ADMIN_SESSION_SECRET`**                                                           | Worker secret                                                                                         | Forge admin sessions → reach A2, A3, A5, A6 through the API.                                                                                                                                                                                                                                                             |
 | A5   | **Product secrets** (OIDC client secrets, edge-mint signing keys)                    | `product_secrets`, sealed under A1                                                                    | Impersonate the product to its IdP; mint third-party tokens (e.g. Apple MusicKit) at the operator's cost.                                                                                                                                                                                                                |
-| A6   | **Customer PII**                                                                     | `licenses`, `customers`, `portal_accounts`, `audit` — plaintext                                       | Email, name, OIDC subject, device user-agents, hardware-derived digests. Regulatory and reputational.                                                                                                                                                                                                                    |
+| A6   | **Customer PII**                                                                     | `licenses`, `portal_accounts` (+ emails, identities), `audit` — plaintext                             | Email, name, OIDC subject, device user-agents, hardware-derived digests. Regulatory and reputational.                                                                                                                                                                                                                    |
 | A7   | **Licensing revenue**                                                                | The whole enforcement path                                                                            | The thing the system nominally exists to protect. Deliberately ranked _below_ A1–A5.                                                                                                                                                                                                                                     |
 | A8   | **Service availability**                                                             | Worker, D1, KV, DO                                                                                    | A licensing outage can block paying customers from software they already bought.                                                                                                                                                                                                                                         |
 | A9   | **The ability to recover**                                                           | Rotation and revocation machinery                                                                     | Not an asset in the usual sense, but its absence converts any A1/A2 loss from an incident into a permanent condition.                                                                                                                                                                                                    |
@@ -2228,7 +2228,8 @@ in a code's 600-second life: with N codes live at once it hits one with probabil
 
 That per-network figure is not the whole bound. An attacker holding an IPv6 /48 (65,536 /64s,
 a common end-site assignment) or a botnet multiplies it by the networks it controls, and the
-ceiling is then the product's single `RateLimitDO` (R10-04a), of the order of 1,000 checks a
+ceiling is then the product's single `RateLimitDO` (a product's own limiter is still one object;
+I-02 sharded only the platform-global `_portal` and `_admin` ones), of the order of 1,000 checks a
 second shared with every other bucket of that product. At that ceiling — which also degrades
 the product's other rate-limited routes, a visible attack in its own right — 1,000 live flows
 give about 6 × 10⁵ guesses per 600 s and one hit roughly every 7 hours; at a more sustainable
@@ -2243,7 +2244,8 @@ either. Before that fix, one hit every 7 hours at the ceiling was one captured a
 every 7 hours. There is
 deliberately no product-wide bucket: one attacker could exhaust it and lock every player of a
 product out of sign-in. Residuals, unowned: aggregating the other per-IP buckets to /64 in
-`clientIp`, and sharding the rate-limit Durable Object (R10-04a).
+`clientIp`, and sharding a product's own rate-limit Durable Object (R10-04a is fixed for the
+platform-global `_portal` and `_admin` limiters only; see the single-use store section below).
 
 **Remote phishing (RFC 8628 §5.4) — open: R1-07, rooted in R8-03.** The flow's starter can
 complete the confirmation step without a browser and forward the resulting IdP sign-in to a
@@ -2325,6 +2327,62 @@ flight across the deploy. Confirmation on both routes is one function: the Fetch
 `Origin` check above, a single-use CSRF token, and a `303` to the IdP with `no-referrer` and
 `no-store`. The confirmation
 page's CSP widens `form-action` by exactly the IdP origin that `303` goes to.
+
+### The single-use store, sharded sign-in limiters and email limits (I-02)
+
+**Asset.** Every single-use sign-in artefact: product, portal and console OIDC flow records
+(`state` with its PKCE `verifier` and `nonce`), RFC 8628 device-code records and the user-code
+index, portal magic links (which name the recipient's email), and the email codes and recipient
+strike counters I-08 will use. A record replayed or redeemed twice is a sign-in an attacker did not
+earn.
+
+**What changed (S-16 G15).** These records lived in KV, consumed with `get` then `delete` (or
+`get`, check, `put`). KV is eventually consistent and those steps are not atomic, so two requests
+racing on one artefact could both read it before either write landed: two clicks on one magic
+link both signed in, two callbacks on one `state` could both pass the R8-04 `consumedAt` check,
+two polls of a ready flow could both mint a device token. They now live in `SingleUseDO`
+(`src/singleUseDo.ts`, client `src/core/singleUse.ts`), a Durable Object whose input gate
+serialises every operation on one object, so each of these is one atomic step:
+
+- `consume` (read and delete together): portal and console callbacks, `/magic/verify`, and the
+  poll's final redemption, which takes the flow before minting (a failed mint puts it back);
+- a compare-and-set `update`: the product callback's claim of a `state`, a device confirmation's
+  spend of its CSRF token, and the device poll's `lastPollAt` slot (so the deferred activation of
+  a device-code flow never runs twice side by side);
+- `put … ifAbsent`: the user-code index, so two flows can never claim one live user code;
+- `redeem` with a per-artefact attempt cap, and `strike` (a sliding-window counter with a
+  lockout), for email codes.
+
+Updates never create a record, so a late write cannot resurrect an artefact another request
+consumed. The store is addressed by `(kind, id)` where `id` is the product plus the secret's
+peppered hash (R12-04 holds: a storage listing yields nothing usable), and spread over 64 objects
+by a hash of the address, so it is not a global chokepoint. Records carry their own expiry and an
+alarm sweep deletes expired ones (storage is bounded by the live set, as in R10-04b). It fails
+closed: a read that cannot reach the store answers "absent" (an expired link, an unknown `state`,
+a locked recipient), a write throws, so no flow is handed out that could not be recorded.
+`test-workerd/singleUse.test.ts` proves the concurrent double-consume on the real object.
+
+**Sharded platform limiters (R10-04a, partly fixed).** `_portal` and `_admin` were literal
+`RateLimitDO` names, so every customer's and every operator's interactive sign-in serialised
+through two objects, reachable with no credentials. Each is now 32 objects; a counter's object is
+chosen by a hash of its `(bucket, id)`, so one counter still lives in exactly one object and every
+limit stays exact. The email buckets are sharded the same way in every limiter. **Residual:** a
+product's own limiter is still one object per product (tenant-scoped, so a flood degrades only that
+product), and an attacker can still pick ids that land in one shard; that concentrates load on one
+of 32 objects instead of one of one.
+
+**Email limits (S-16 §5.4 item 4), primitives only.** `src/core/emailLimits.ts` holds the send
+and verify limits as named constants: per recipient (peppered hash) 5 an hour and 20 a day, per
+client address 10 an hour, per network (IPv4 /24, IPv6 /48) 30 an hour, per device 3 starts an
+hour, a per-product daily cap (default 1,000 until I-21 sets the operational value); codes of 6
+digits, 10 minutes, dead after 5 wrong attempts, replaced (so invalidated) by a new code for the
+same recipient and flow; 10 wrong attempts across codes in an hour lock the recipient out of new
+codes for 15 minutes. Every limit is per product, so one tenant's traffic can neither drain
+another's budget nor lock a person out of another product. Both primitives answer without a
+reason (`{ send }`, `{ ok }`), so a caller that echoes them leaks nothing. **Open until I-08:** no
+route uses them yet; the enumeration-safe answers (a refused or locked send answered exactly like a
+sent one), the flow binding and Turnstile belong to I-08, and the operational cap and
+`email_unavailable` to I-21. Today's portal `/api/magic/start` keeps its per-IP limit only.
 
 ### Release keys, the strict verifier and the signed feed (wire contract v4, P3-02)
 
@@ -2849,8 +2907,9 @@ is no new privilege level and no outbound call.
   not credentials (the environment, the admin group name, the IdP issuer and client id, the
   parsed issuer allowlist, the origins, the bucket, the account and GitHub App ids, kid names)
   and every secret as `{ name, set }` only: never a value, a length, a prefix or a hash. It warns
-  when the legacy `ADMIN_OIDC_*` names are what resolved, when `PLATFORM_KEK_ID` is set, and
-  when `PORTAL_SESSION_SECRET` is unset (the portal then signs with `ADMIN_SESSION_SECRET`).
+  when the console still borrows the platform IdP client (`ADMIN_OIDC_*` unset, I-03), when
+  `PLATFORM_KEK_ID` is set, and when `PORTAL_SESSION_SECRET` is unset (the portal then signs with
+  `ADMIN_SESSION_SECRET`).
 - **Propagation.** Each isolate caches the table for 30 s; the cron handler and the lazy-delta
   consumer re-read it at the start of each invocation. A setting that must take effect instantly
   does not belong in this store.
@@ -3641,6 +3700,33 @@ sideloaded builds, which cannot attest and stay `basic` by design.
   unless the operator sets `playIntegrity.allowTestingResponses: true` for internal testing; the
   flag is recorded in the verdict summary either way.
 
+### The console's own IdP client (I-03)
+
+Operators sign in to the console through their own Pocket ID client (`ADMIN_OIDC_*`); the
+customer portal and every `provider: platform` product sign in through the platform client
+(`PLATFORM_OIDC_*`). Before I-03 one client served all three, so a leaked client secret or a
+group-assignment mistake on that client crossed from customer to operator (notes/S-16 §5.4 item
+1).
+
+- **The split is one-way by construction.** `platformOidcConfig` reads `PLATFORM_OIDC_*` only;
+  it no longer falls back to the `ADMIN_OIDC_*` names. A customer sign-in therefore never goes
+  through the operators' client, whatever the deploy sets.
+- **The console falls back whole.** `adminOidcConfig` takes the admin trio when both its issuer
+  and client id are set, and its secret only from `ADMIN_OIDC_CLIENT_SECRET`; otherwise the whole
+  platform trio. No field is mixed across clients, so a half-set admin trio is ignored rather than
+  pairing one client's id with the other's secret.
+- **The fallback is visible.** While the console borrows the platform client, Platform → Settings
+  shows `console_oidc_shared`, naming the admin variables still unset. Until the owner sets them
+  the pre-I-03 exposure stands: the residual this package closes only once the secrets are set
+  and `/manage/callback` is removed from the platform client (DEPLOYMENT §2).
+- **Authorisation is unchanged.** Console access is still `PLATFORM_ADMIN_GROUP` (or a product
+  admin group) in the ID token's `groups` (§5). A separate client narrows who can obtain a token
+  for the console's audience; it does not change what the token grants. Where Pocket ID can
+  restrict a client to user groups, allowing only the admin group on the console client adds a
+  second check at the IdP.
+- **Residual.** Both clients live in one Pocket ID directory: a compromise of Pocket ID itself, or
+  of its admin account, still reaches both. Moving end users out of Pocket ID is I-09.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The
@@ -3696,16 +3782,16 @@ sideloaded builds, which cannot attest and stay `basic` by design.
 
 ## 4. Adversaries
 
-| ID  | Adversary                             | Capability                                                                           | Motivation                                                                  | Priority                                           |
-| --- | ------------------------------------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- | -------------------------------------------------- |
-| T1  | **Unauthenticated internet attacker** | HTTP to `key.plrs.im`, can read public discovery/JWKS, can register nothing          | Control-plane takeover                                                      | **Highest**                                        |
-| T2  | **Release-channel attacker**          | Holds the webhook secret, or write access to a linked repo, or GitHub App compromise | Ship code to end users                                                      | **Highest**                                        |
-| T3  | **Malicious tenant / customer**       | Valid license, device token, portal account; possibly a product operator             | Cross-tenant data, tier escalation, extra seats                             | High                                               |
-| T4  | **License pirate**                    | Full control of their own machine, can patch binaries and edit files                 | Use software without paying                                                 | Medium — bounded by §6                             |
-| T5  | **Malicious or compromised IdP**      | Controls claims presented to the Worker                                              | Privilege escalation via `groups`, identity confusion via `email`/`sub`     | High                                               |
-| T6  | **Supply-chain attacker**             | Publishes a malicious dependency, or compromises a GitHub Action                     | Reach CI secrets and published artifacts                                    | High                                               |
-| T7  | **Insider / compromised admin**       | Valid admin session                                                                  | Anything the admin API permits — which today is everything, on every tenant | High                                               |
-| T8  | **Network attacker**                  | On-path between client and `key.plrs.im`                                             | Downgrade, MITM                                                             | Low (TLS), but no SDK enforces HTTPS or pins certs |
+| ID  | Adversary                                                                                               | Capability                                                                           | Motivation                                                                                                                                                                    | Priority                                           |
+| --- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| T1  | **Unauthenticated internet attacker**                                                                   | HTTP to `key.plrs.im`, can read public discovery/JWKS, can register nothing          | Control-plane takeover                                                                                                                                                        | **Highest**                                        |
+| T2  | **Release-channel attacker**                                                                            | Holds the webhook secret, or write access to a linked repo, or GitHub App compromise | Ship code to end users                                                                                                                                                        | **Highest**                                        |
+| T3  | **Malicious tenant / customer**                                                                         | Valid license, device token, portal account; possibly a product operator             | Cross-tenant data, tier escalation, extra seats                                                                                                                               | High                                               |
+| T4  | **License pirate**                                                                                      | Full control of their own machine, can patch binaries and edit files                 | Use software without paying                                                                                                                                                   | Medium — bounded by §6                             |
+| T5  | **Malicious or compromised IdP**: the platform IdP, or a product's own upstream IdP (tenant-controlled) | Controls claims presented to the Worker                                              | Privilege escalation via `groups`, identity confusion via `email`/`sub`; a product's IdP asserting subjects or emails that collide with another issuer's users (R5-01, R5-02) | High                                               |
+| T6  | **Supply-chain attacker**                                                                               | Publishes a malicious dependency, or compromises a GitHub Action                     | Reach CI secrets and published artifacts                                                                                                                                      | High                                               |
+| T7  | **Insider / compromised admin**                                                                         | Valid admin session                                                                  | Anything the admin API permits — which today is everything, on every tenant                                                                                                   | High                                               |
+| T8  | **Network attacker**                                                                                    | On-path between client and `key.plrs.im`                                             | Downgrade, MITM                                                                                                                                                               | Low (TLS), but no SDK enforces HTTPS or pins certs |
 
 ## 5. Semi-trusted inputs — the ones that decide authorization
 
@@ -3715,8 +3801,8 @@ originating outside the trust boundary.
 | Input                           | Trusted for                                                                       | Actual origin        | Control                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | ------------------------------- | --------------------------------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | OIDC `groups`                   | **Platform admin authority**                                                      | The IdP              | Any IdP feature that lets a user influence group membership grants platform admin. A single claim string is the entire decision.                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| OIDC `sub`                      | License identity                                                                  | The IdP              | Admin and portal require it non-empty; the **product flow does not**, so an omitted `sub` converges distinct identities onto one license.                                                                                                                                                                                                                                                                                                                                                                                                              |
-| OIDC `email`                    | Portal license linking, cross-product                                             | The IdP              | Portal requires `email_verified`; the **product flow does not**, and admins may set `licenses.email` to any unverified string.                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| OIDC `sub`                      | License identity                                                                  | The IdP              | Admin, portal and the product flow all require it non-empty (R8-05a); an ID token without `sub` is refused with a generic 401. Portal identities are keyed by (issuer, `sub`), never by `sub` alone (I-01).                                                                                                                                                                                                                                                                                                                                            |
+| OIDC `email`                    | Portal license linking, cross-product                                             | The IdP              | Portal and the product flow both require `email_verified: true`; the product flow stores no email otherwise (R8-05b). Admins may still set `licenses.email` to any unverified string, and portal auto-linking trusts only emails the portal itself verified.                                                                                                                                                                                                                                                                                           |
 | `.pkey/` manifest               | Tiers, OIDC issuer, artifact policy, admin group, binary name                     | A linked GitHub repo | Applied on webhook-triggered resync. The repo effectively writes its own security policy — except edge-mint recipes, which are inert until an operator approves them column for column and sign only with an operator-marked `edge-mint` secret. Its tag regexes are length-capped only: R10-09.                                                                                                                                                                                                                                                       |
 | `.pkey/distribution`            | Outlet store identities, listings, transports (`dist_outlets`, `dist_transports`) | A linked GitHub repo | Applied on resync by Distribution's ingest hook. Cannot express outlet capabilities (`capabilities_not_manifest_writable`); those are operator-owned, narrow-only and clamped on read (P2b-02). The `appleId` identity must equal the operator's pin on the `asc-api-key` (P5-02f), or the App Store Connect connector is inert; it can no longer pick the app the team key acts on ("Who picks the outlet's app"). Likewise the Play `packageName` must equal the pin on the `google-service-account` (P5-03), or the Google Play connector is inert. |
 | `web.origins` (`.pkey/product`) | Which browser origins may read a product's device-facing responses (CORS)         | A linked GitHub repo | Exact origins only (no wildcard, `null`, path or non-loopback `http`), capped at 16, re-checked when the row is read. Never `Allow-Credentials`, so a listed page gains nothing a non-browser client lacks. Applied in dispatch after the handler, so the edge cache stays origin-free. The console, portal, docs, webhook and cookie-bearing identity routes never answer CORS (R1-09).                                                                                                                                                               |

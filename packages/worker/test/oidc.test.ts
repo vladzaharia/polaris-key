@@ -82,6 +82,24 @@ describe("OIDC activation", () => {
     expect(r2).toEqual(r1);
   });
 
+  it("records origin 'oidc' on a freshly inserted license (S-16 G14)", async () => {
+    const db = makeTestDb();
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    await seedOidc(db);
+    const product = (await loadProduct(env, db, "djdl"))!;
+
+    const r = await activateFromIdentity(db, product, identity(), NOW);
+    if (!("licenseId" in r)) throw new Error("expected license");
+    const row = await db.first<{ origin: string; modified_by: string }>(
+      "SELECT origin, modified_by FROM licenses WHERE product = ? AND id = ?",
+      "djdl",
+      r.licenseId,
+    );
+    expect(row?.origin).toBe("oidc");
+    expect(row?.modified_by).toBe("oidc");
+  });
+
   it("refreshes OIDC-owned license metadata and provisioning on reuse", async () => {
     const db = makeTestDb();
     const env = makeEnv(new KvMock(), ["djdl"]);

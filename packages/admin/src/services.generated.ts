@@ -142,7 +142,7 @@ export const SERVICE_TABLE: readonly ServiceTableRow[] = [
     slug: "identity",
     label: "Identity",
     summary:
-      "OIDC sign-in, browser sessions, and the customer portal for this product.",
+      "OIDC sign-in and browser sessions for this product. The customer portal is platform-wide and runs either way.",
     accent: "identity",
     icon: "UserRound",
     docs: "/docs/services/identity/",

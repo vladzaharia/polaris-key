@@ -18,10 +18,12 @@ with `jose`, asymmetric algorithms only.
 
 - **`platform`** (the default when the column is unset) — the operator-configured IdP shared by
   every product that has not linked its own, read from the `PLATFORM_OIDC_ISSUER` /
-  `PLATFORM_OIDC_CLIENT_ID` / `PLATFORM_OIDC_CLIENT_SECRET` Worker secrets (falling back to the
-  older `ADMIN_OIDC_*` names). This is the **same** IdP client the customer portal's root
-  `/login` uses — see [Customer portal](/docs/services/identity/portal/) — so a
-  platform-issuer product and the portal share one trust boundary.
+  `PLATFORM_OIDC_CLIENT_ID` / `PLATFORM_OIDC_CLIENT_SECRET` Worker secrets. This is the **same**
+  IdP client the customer portal's root `/login` uses — see
+  [Customer portal](/docs/services/identity/portal/) — so a platform-issuer product and the
+  portal share one trust boundary. The console signs operators in through its own client
+  (`ADMIN_OIDC_*`, falling back to `PLATFORM_OIDC_*` until it is set); a product or the portal
+  never reads the `ADMIN_OIDC_*` names.
 - **`custom`** — a provider the product links itself: `issuer`, `client_id`, and a
   product-secret-sealed `client_secret`, fed by `.pkey/product`'s `oidc:` block through repo link
   and resync. `redirect_uris_json`, when set, is an allowlist the computed redirect URI must
@@ -47,7 +49,11 @@ Three routes, all under `/<product>/identity/auth`:
 
 **`/auth/start`** generates `state` and `nonce` (16 random bytes each, base64url) and a PKCE pair
 — a 32-byte random `verifier` and its SHA-256 `challenge`, method `S256` — and stores them in a
-KV flow record for 600 seconds, keyed by `state`. `return_to`, when present, must be same-origin
+flow record for 600 seconds, keyed by the peppered hash of `state`. Flow records, device-code
+records and the user-code index live in the Worker's atomic single-use store (a sharded Durable
+Object), not KV, so every step that must happen once (the callback's claim of a `state`, a
+confirmation's CSRF token, the final redemption at the poll) is one atomic operation: two racing
+requests can never both pass it. `return_to`, when present, must be same-origin
 with the request or the call is refused outright (`400 bad_request`); it is what turns the
 callback into a cookie-issuing redirect rather than a bare confirmation page — see
 [Identity](/docs/services/identity/) for the two shapes a completed sign-in can take. The

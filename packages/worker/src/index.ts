@@ -7,6 +7,7 @@ import { handleScheduled } from "./scheduled.js";
 
 export { RateLimitDO } from "./rateLimitDo.js";
 export { UpdateHealthDO } from "./updateHealthDo.js";
+export { SingleUseDO } from "./singleUseDo.js";
 
 /**
  * P4-18: the payload URL sends bytes that are ALREADY encoded (the stored zstd frame, or a dcz

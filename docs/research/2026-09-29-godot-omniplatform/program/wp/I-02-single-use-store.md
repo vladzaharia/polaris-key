@@ -57,14 +57,35 @@ KV `get` then `delete` is not atomic across regions (G15), and the `_portal` sha
 3. Shard the rate-limit buckets.
 4. Email limiter primitives with tests.
 
+## Corrections from the code (implementation, 2026-10-04)
+
+- **The console's OIDC flow moved too.** `admin/auth.ts` consumed its `admin:flow:` record with
+  the same KV `get` then `delete`, so it is an "OIDC flow record" in the sense of G15 and moved
+  with the portal and product flows (kind `admin-flow`).
+- **The product flows are state machines, not plain single-use records.** A product flow is
+  written by `/auth/start`, claimed by the callback (`consumedAt`), confirmed, polled and finally
+  redeemed; a device-code record is re-written by every render and poll. So the store has, beside
+  `put`, `consume` and `attempt`, an atomic compare-and-set `update` (which never creates a record,
+  so nothing can be resurrected), `put … ifAbsent` (the user-code index), `redeem` (a code checked
+  against its stored hash, counting a wrong one as an attempt) and `strike` (the recipient
+  lockout's sliding window). The API is `(env, ref, …)` where `ref = artefactRef(kind, id)`
+  (`src/core/singleUse.ts`); the object is `src/singleUseDo.ts`, binding `SINGLE_USE`, migration
+  tag `v3`, 64 shards.
+- **Per-IP and per-network send numbers** are not in S-16; the defaults chosen are 10 an hour per
+  client address and 30 an hour per network (IPv4 /24, IPv6 /48), named constants in
+  `src/core/emailLimits.ts`. The per-product daily cap defaults to 1,000 until I-21 sets it.
+- **Rate-limit sharding** keeps a product's own limiter as one object (tenant-scoped already) and
+  splits `_portal`, `_admin` and every `email*` bucket over 32 objects by a hash of
+  `(bucket, id)`.
+
 ## Acceptance criteria
 
-- [ ] Two concurrent `consume` calls for one artefact: exactly one succeeds (test).
-- [ ] Portal magic links, OIDC flows and device codes no longer use KV get-then-delete.
-- [ ] The `_portal` and `_admin` buckets are sharded; the rate-limit and portal suites pass.
-- [ ] The send and verify limits exist with the S-16 default numbers as named constants and are unit-tested.
-- [ ] `test:workerd` passes.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] Two concurrent `consume` calls for one artefact: exactly one succeeds (test).
+- [x] Portal magic links, OIDC flows and device codes no longer use KV get-then-delete.
+- [x] The `_portal` and `_admin` buckets are sharded; the rate-limit and portal suites pass.
+- [x] The send and verify limits exist with the S-16 default numbers as named constants and are unit-tested.
+- [x] `test:workerd` passes.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 

@@ -152,7 +152,7 @@ describe("R11-01 missing foreign keys / no ON DELETE anywhere", () => {
     await linkLicense(db, acct.id, "acme", "lic-1", "admin", NOW);
     await db.run(
       `INSERT INTO portal_account_identities (provider, subject, account_id, created_at, last_seen_at)
-       VALUES ('oidc', 'sub-1', ?, ?, ?)`,
+       VALUES ('https://id.example', 'sub-1', ?, ?, ?)`,
       acct.id,
       NOW,
       NOW,

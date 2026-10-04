@@ -975,3 +975,6 @@ Where the build departs from §7, §8.3 and §10 above, the code is the fact:
   localizations from the listing model (A-18b) is not applied, A-18b not having landed.
 - **Unverified live:** Apple's price point ids are taken as opaque URL-safe tokens; one carrying a
   character outside the gate's identifier set would be refused (`write_denied`), not sent.
+- **Migration renumbered.** Main took `0059` (`0059_portal_identity_issuer.sql`, I-01) before
+  A-17a merged, so A-17a's ledger migration is `0060_asc_operations.sql` on this branch
+  (`LATEST_MIGRATION` and the generated data model follow). It has not reached production.

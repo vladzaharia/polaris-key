@@ -2279,7 +2279,7 @@
         "notes/S-16 §10 D7 D10"
       ],
       "brief": "wp/I-01-identity-hygiene.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "I-02",
@@ -2302,7 +2302,7 @@
         "notes/S-16 §8 I-02"
       ],
       "brief": "wp/I-02-single-use-store.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "I-03",
@@ -2327,7 +2327,7 @@
         "notes/S-16 §8 I-03"
       ],
       "brief": "wp/I-03-console-oidc-client.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "I-04",
@@ -2775,17 +2775,17 @@
     },
     {
       "id": "I-20",
-      "title": "Provider kinds that are not generic OIDC: apple and discord",
+      "title": "Apple provider kind (not generic OIDC)",
       "phase": "I",
       "stage": "phase-1",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.6, 0.85],
+      "estimateWeeks": [0.4, 0.55],
       "deps": ["I-05", "I-06"],
       "planMode": false,
       "gates": ["rule-9", "threat-model", "rule-10"],
       "humanInputs": [
-        "an Apple Services ID, .p8 key and registered return URL; a Discord application (live checks only; fixtures otherwise)"
+        "an Apple Services ID, .p8 key and registered return URL (live checks only; fixtures otherwise)"
       ],
       "repo": "polaris-key",
       "optional": false,
@@ -2793,7 +2793,7 @@
         "notes/S-16 §5.2 (Not every social provider is generic OIDC; App Review 4.8)",
         "notes/S-16 §8 I-20"
       ],
-      "brief": "wp/I-20-apple-discord-kinds.md",
+      "brief": "wp/I-20-apple-kind.md",
       "status": "todo"
     },
     {
