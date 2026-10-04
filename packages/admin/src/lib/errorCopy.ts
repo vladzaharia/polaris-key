@@ -98,6 +98,46 @@ export const DISTRIBUTION_ERROR_MESSAGES: Record<string, string> = {
     "This action needs its confirmation. Fill in what the dialog asks for and try again.",
   confirmation_mismatch:
     "The name you typed doesn't match the app's name in App Store Connect. Type it exactly as App Store Connect shows it.",
+  // A-17g: the App Store Distribute flow and App Store products (A-17d, A-17e refusals).
+  idempotency_key_required:
+    "The console didn't send its retry key. Reload the page and try again.",
+  idempotency_conflict:
+    "This step was already sent with different values. Close the dialog and start the step again.",
+  unknown_build:
+    "App Store Connect has no such build for this app. The list has been refreshed.",
+  build_expired:
+    "This build has expired in App Store Connect. Choose a newer build.",
+  build_not_ready:
+    "App Store Connect hasn't finished processing this build. Wait until it is valid.",
+  already_answered:
+    "This build already has an export compliance answer, and it can't be changed.",
+  version_not_editable:
+    "This App Store version can't be changed in its current state.",
+  no_build: "Attach a build to the App Store version before submitting it.",
+  unknown_submission:
+    "App Store Connect has no such review submission for this app.",
+  not_cancelable:
+    "This review submission can't be cancelled in its current state.",
+  unmapped_product:
+    "This product id isn't mapped to the App Store in Commerce.",
+  iap_missing:
+    "This In-App Purchase doesn't exist in App Store Connect yet. Create it first.",
+  iap_type_mismatch:
+    "App Store Connect has this product id as another type of In-App Purchase. Resolve it in App Store Connect.",
+  unknown_price_point:
+    "App Store Connect doesn't offer that price for this In-App Purchase. Choose a price from the list.",
+  iap_not_ready:
+    "This In-App Purchase isn't ready to submit. Finish its metadata in App Store Connect.",
+  first_iap_portal:
+    "An app's first In-App Purchase is submitted with an app version in App Store Connect.",
+  unknown_iap_version:
+    "App Store Connect has no such In-App Purchase version for this app.",
+  unknown_background_asset_version:
+    "App Store Connect has no such Background Asset version for this app.",
+  background_asset_not_ready:
+    "This Background Asset version isn't ready to submit.",
+  write_denied:
+    "Polaris Key doesn't send this kind of change to App Store Connect.",
   // A-9: the 404s keep their reason.
   unknown_outlet:
     "That outlet isn't declared any more. The page has been refreshed.",

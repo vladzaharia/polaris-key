@@ -1372,6 +1372,177 @@ export interface ConnectorsResponse {
   connectors: ConnectorStatusDto[];
 }
 
+// ── distribution: App Store Distribute and in-app purchases (A-17d, A-17e; console A-17g) ──
+// Reads under `GET …/distribution/connectors/asc/<path>` (worker `connectors/asc/distribute.ts`,
+// `commerce/appleCatalog.ts`). Every Apple field is passed through as Apple states it.
+
+/** A note on a build upload (`{ code, description }`, Apple's text bounded by the Worker). */
+export interface AscUploadNote {
+  code: string;
+  description: string;
+}
+
+/** One unexpired build of the pinned app (`distribute/builds`). */
+export interface AscBuildDto {
+  id: string;
+  buildNumber: string | null;
+  version: string | null;
+  platform: string | null;
+  /** `PROCESSING`, `FAILED`, `INVALID` or `VALID`. */
+  processingState: string | null;
+  usesNonExemptEncryption: boolean | null;
+  exportComplianceNeeded: boolean;
+  uploadedDate: string | null;
+  expirationDate: string | null;
+  internalBuildState: string | null;
+  externalBuildState: string | null;
+  upload: {
+    id: string;
+    state: string | null;
+    warnings: AscUploadNote[];
+    errors: AscUploadNote[];
+    uploadedDate: string | null;
+  } | null;
+  /** The Polaris Key release the connector linked the build to, when it did. */
+  releaseId: string | null;
+}
+
+export interface AscBuildsResponse {
+  ok: true;
+  appleId: string;
+  builds: AscBuildDto[];
+}
+
+export interface AscBetaGroupDto {
+  id: string;
+  name: string | null;
+  isInternalGroup: boolean;
+  hasAccessToAllBuilds: boolean;
+  publicLinkEnabled: boolean;
+}
+
+export interface AscBetaGroupsResponse {
+  ok: true;
+  betaGroups: AscBetaGroupDto[];
+}
+
+/** One App Store version (`distribute/versions`). */
+export interface AscVersionDto {
+  id: string;
+  platform: string | null;
+  versionString: string | null;
+  state: string | null;
+  appStoreState: string | null;
+  releaseType: string | null;
+  earliestReleaseDate: string | null;
+  /** Metadata, build and release type can still change. */
+  editable: boolean;
+  buildId: string | null;
+  phasedReleaseId: string | null;
+  phasedReleaseState: string | null;
+}
+
+/** A review submission that is open or with Apple. */
+export interface AscSubmissionDto {
+  id: string;
+  platform: string | null;
+  state: string | null;
+  submittedDate: string | null;
+  cancelable: boolean;
+}
+
+export interface AscVersionsResponse {
+  ok: true;
+  versions: AscVersionDto[];
+  submissions: AscSubmissionDto[];
+}
+
+/** One preflight line; `ok: null` is a portal step the API cannot see. */
+export interface AscPreflightCheck {
+  id: string;
+  ok: boolean | null;
+  detail?: string;
+  missing?: string[];
+}
+
+export interface AscPreflightResponse {
+  ok: true;
+  versionId: string;
+  state: string | null;
+  ready: boolean;
+  checks: AscPreflightCheck[];
+}
+
+/** What can ride the next review submission (`distribute/submission-items`). */
+export interface AscSubmissionItemsResponse {
+  ok: true;
+  platform: string;
+  firstInAppPurchase: boolean;
+  firstInAppPurchaseNote?: string;
+  inAppPurchaseVersions: {
+    inAppPurchaseVersionId: string;
+    productId: string;
+    iapId: string;
+    name: string | null;
+    state: string | null;
+    versionState: string | null;
+  }[];
+  backgroundAssetVersions: {
+    backgroundAssetVersionId: string;
+    assetPackIdentifier: string | null;
+    version: string | null;
+    appStoreReleaseState: string | null;
+  }[];
+}
+
+/** One `app-store` commerce mapping beside Apple's state (`iap/products`). */
+export interface AscIapProductDto {
+  storeProductId: string;
+  flag: string;
+  deliverableId: string;
+  /** `missing`, or Apple's state (`MISSING_METADATA`, `READY_TO_SUBMIT`, `APPROVED`, …). */
+  status: string;
+  typeMismatch: boolean;
+  iap: {
+    id: string;
+    name: string | null;
+    inAppPurchaseType: string | null;
+    state: string | null;
+    familySharable: boolean;
+  } | null;
+}
+
+export interface AscIapProductsResponse {
+  ok: true;
+  appleId: string;
+  firstInAppPurchase: boolean;
+  firstInAppPurchaseNote?: string;
+  priceChangeWarning: string;
+  products: AscIapProductDto[];
+}
+
+export interface AscPricePointDto {
+  id: string;
+  customerPrice: string | null;
+  proceeds: string | null;
+}
+
+export interface AscPricePointsResponse {
+  ok: true;
+  productId: string;
+  iapId: string;
+  territory: string;
+  current: {
+    baseTerritory: string | null;
+    pricePointId: string | null;
+    customerPrice: string | null;
+  } | null;
+  /** A change of an existing price: typed. */
+  priceChange: boolean;
+  priceChangeWarning: string;
+  pricePoints: AscPricePointDto[];
+}
+
 /** A readiness refresh: how many rows it recomputed. */
 export interface ReadinessRefreshResult {
   refreshed: number;
@@ -3121,20 +3292,46 @@ const rawApi = {
   // ── distribution: store connectors (P5-02 to P5-04) ─────────────────────────
   connectors: (slug: string) =>
     call<ConnectorsResponse>(`${p(slug)}/distribution/connectors`),
-  /** One connector control (`phased-release/pause`, `rollout/fraction`, `settings`, …). */
+  /**
+   * One connector control (`phased-release/pause`, `rollout/fraction`, `settings`, …). The App
+   * Store Connect flows (A-17c to A-17e) also take `idempotencyKey`, one per operator intent: the
+   * Worker's ledger answers a retry under the same key from what it already did.
+   */
   connectorControl: (
     slug: string,
     connector: string,
     control: string,
     body: Record<string, unknown>,
+    opts?: { idempotencyKey?: string } | null,
   ) =>
     call<Record<string, unknown> & { ok: true }>(
       `${p(slug)}/distribution/connectors/${enc(connector)}/${control
         .split("/")
         .map(enc)
         .join("/")}`,
-      { method: "POST", body: JSON.stringify(body) },
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+        ...(opts?.idempotencyKey
+          ? { headers: { "Idempotency-Key": opts.idempotencyKey } }
+          : {}),
+      },
     ),
+  /** One connector read (`distribute/builds`, `iap/products`, …; A-17d, A-17e). */
+  connectorRead: <T>(
+    slug: string,
+    connector: string,
+    path: string,
+    query?: Record<string, string> | null,
+  ) => {
+    const qs = new URLSearchParams(query ?? {}).toString();
+    return call<T>(
+      `${p(slug)}/distribution/connectors/${enc(connector)}/${path
+        .split("/")
+        .map(enc)
+        .join("/")}${qs ? `?${qs}` : ""}`,
+    );
+  },
 
   // ── distribution: update health (P6-03) ─────────────────────────────────────
   updateHealth: (slug: string, windowHours?: number) =>

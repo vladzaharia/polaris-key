@@ -180,6 +180,39 @@ export function useConnectors(
   );
 }
 
+/** One connector read (A-17g), by its path under the connector and its query. */
+export function fetchConnectorRead<T>(
+  slug: string,
+  kind: string,
+  path: string,
+  query: Record<string, string>,
+): Promise<T> {
+  return api.connectorRead<T>(slug, kind, path, query);
+}
+
+/**
+ * A connector read (A-17g: `distribute/builds`, `iap/products`, …). `poll` refetches while the
+ * page is open (a build that is still processing); `enabled` waits for what the query needs.
+ */
+export function useConnectorRead<T>(
+  slug: string,
+  kind: string,
+  path: string,
+  query: Record<string, string> = {},
+  opts: { enabled?: boolean; poll?: number | false } = {},
+): UseQueryResult<T> {
+  const qs = new URLSearchParams(query).toString();
+  return useQuery(
+    {
+      queryKey: qk.connectorRead(slug, kind, path, qs),
+      queryFn: () => fetchConnectorRead<T>(slug, kind, path, query),
+      enabled: opts.enabled ?? true,
+      refetchInterval: opts.poll ?? false,
+    },
+    queryClient,
+  );
+}
+
 /** Release's deliverables (the same fetcher as the Release pages). */
 export function useDeliverables(
   slug: string,

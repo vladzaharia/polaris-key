@@ -452,6 +452,22 @@ export const CONNECTORS = {
         "release",
         "testflight/public-link",
         "webhook",
+        // A-17d and A-17e: the Distribute flow and App Store products.
+        "distribute/export-compliance",
+        "distribute/beta-localization",
+        "distribute/testflight/groups",
+        "distribute/testflight/beta-review",
+        "distribute/version",
+        "distribute/version/build",
+        "distribute/version/release-type",
+        "distribute/version/phased-release",
+        "distribute/version-localization",
+        "distribute/submit",
+        "distribute/submission/cancel",
+        "iap/create",
+        "iap/localization",
+        "iap/price",
+        "iap/availability",
       ],
     },
     {
@@ -700,6 +716,240 @@ export const CATALOG = {
   ],
 };
 
+// ── App Store Distribute and App Store products (A-17g) ───────────────────────────────────
+
+export const ASC_BUILDS = {
+  ok: true,
+  appleId: "1234567890",
+  builds: [
+    {
+      id: "b-53",
+      buildNumber: "53",
+      version: "2.4.1",
+      platform: "IOS",
+      processingState: "PROCESSING",
+      usesNonExemptEncryption: null,
+      exportComplianceNeeded: true,
+      uploadedDate: "2026-10-04T09:40:00Z",
+      expirationDate: null,
+      internalBuildState: "PROCESSING",
+      externalBuildState: "PROCESSING",
+      upload: {
+        id: "u-53",
+        state: "PROCESSING",
+        warnings: [
+          {
+            code: "ITMS-90725",
+            description: "SDK version issue: built with an older SDK.",
+          },
+        ],
+        errors: [],
+        uploadedDate: "2026-10-04T09:40:00Z",
+      },
+      releaseId: null,
+    },
+    {
+      id: "b-52",
+      buildNumber: "52",
+      version: "2.4.0",
+      platform: "IOS",
+      processingState: "VALID",
+      usesNonExemptEncryption: null,
+      exportComplianceNeeded: true,
+      uploadedDate: "2026-10-03T16:12:00Z",
+      expirationDate: "2027-01-01T16:12:00Z",
+      internalBuildState: "IN_BETA_TESTING",
+      externalBuildState: "READY_FOR_BETA_SUBMISSION",
+      upload: {
+        id: "u-52",
+        state: "COMPLETE",
+        warnings: [],
+        errors: [],
+        uploadedDate: "2026-10-03T16:12:00Z",
+      },
+      releaseId: "rel_240",
+    },
+    {
+      id: "b-48",
+      buildNumber: "48",
+      version: "2.3.9",
+      platform: "IOS",
+      processingState: "VALID",
+      usesNonExemptEncryption: false,
+      exportComplianceNeeded: false,
+      uploadedDate: "2026-09-20T10:00:00Z",
+      expirationDate: "2026-12-19T10:00:00Z",
+      internalBuildState: "IN_BETA_TESTING",
+      externalBuildState: "BETA_APPROVED",
+      upload: null,
+      releaseId: "rel_239",
+    },
+  ],
+};
+
+export const ASC_GROUPS = {
+  ok: true,
+  betaGroups: [
+    {
+      id: "g-int",
+      name: "Studio team",
+      isInternalGroup: true,
+      hasAccessToAllBuilds: true,
+      publicLinkEnabled: false,
+    },
+    {
+      id: "g-ext",
+      name: "Public beta",
+      isInternalGroup: false,
+      hasAccessToAllBuilds: false,
+      publicLinkEnabled: true,
+    },
+  ],
+};
+
+export const ASC_VERSIONS = {
+  ok: true,
+  versions: [
+    {
+      id: "v-240",
+      platform: "IOS",
+      versionString: "2.4.0",
+      state: "PREPARE_FOR_SUBMISSION",
+      appStoreState: "PREPARE_FOR_SUBMISSION",
+      releaseType: "AFTER_APPROVAL",
+      earliestReleaseDate: null,
+      editable: true,
+      buildId: "b-52",
+      phasedReleaseId: null,
+      phasedReleaseState: null,
+    },
+    {
+      id: "v-239",
+      platform: "IOS",
+      versionString: "2.3.9",
+      state: "READY_FOR_SALE",
+      appStoreState: "READY_FOR_SALE",
+      releaseType: "MANUAL",
+      earliestReleaseDate: null,
+      editable: false,
+      buildId: "b-48",
+      phasedReleaseId: "pr-239",
+      phasedReleaseState: "ACTIVE",
+    },
+  ],
+  submissions: [
+    {
+      id: "s-1",
+      platform: "IOS",
+      state: "UNRESOLVED_ISSUES",
+      submittedDate: "2026-10-02T12:00:00Z",
+      cancelable: true,
+    },
+  ],
+};
+
+export const ASC_PREFLIGHT = {
+  ok: true,
+  versionId: "v-240",
+  state: "PREPARE_FOR_SUBMISSION",
+  ready: false,
+  checks: [
+    { id: "build", ok: true, detail: "build b-52 is VALID" },
+    { id: "exportCompliance", ok: true },
+    { id: "screenshots", ok: false, missing: ["de-DE"] },
+    { id: "ageRating", ok: true },
+    { id: "reviewContact", ok: true },
+    { id: "price", ok: true },
+    { id: "availability", ok: true },
+    {
+      id: "betaReviewDetails",
+      ok: false,
+      detail: "needed for external TestFlight groups only",
+    },
+    {
+      id: "betaLocalizations",
+      ok: true,
+      detail: "needed for external TestFlight groups only",
+    },
+    {
+      id: "appPrivacy",
+      ok: null,
+      detail: "portal-only: confirm App Privacy in App Store Connect",
+    },
+  ],
+};
+
+export const ASC_SUBMISSION_ITEMS = {
+  ok: true,
+  platform: "IOS",
+  firstInAppPurchase: false,
+  inAppPurchaseVersions: [
+    {
+      inAppPurchaseVersionId: "iv-1",
+      productId: "gg.acme.djdl.pro",
+      iapId: "iap-1",
+      name: "DJDL Pro",
+      state: "READY_TO_SUBMIT",
+      versionState: "PREPARE_FOR_SUBMISSION",
+    },
+  ],
+  backgroundAssetVersions: [],
+};
+
+export const ASC_IAP_PRODUCTS = {
+  ok: true,
+  appleId: "1234567890",
+  firstInAppPurchase: false,
+  priceChangeWarning:
+    "Once a price increase goes into effect, the change can't be reverted (App Store Connect).",
+  products: [
+    {
+      storeProductId: "gg.acme.djdl.pro",
+      flag: "pro-content",
+      deliverableId: "app",
+      status: "READY_TO_SUBMIT",
+      typeMismatch: false,
+      iap: {
+        id: "iap-1",
+        name: "DJDL Pro",
+        inAppPurchaseType: "NON_CONSUMABLE",
+        state: "READY_TO_SUBMIT",
+        familySharable: false,
+      },
+    },
+    {
+      storeProductId: "gg.acme.djdl.stems",
+      flag: "stems-pack",
+      deliverableId: "stems",
+      status: "missing",
+      typeMismatch: false,
+      iap: null,
+    },
+  ],
+};
+
+export const ASC_PRICE_POINTS = {
+  ok: true,
+  productId: "gg.acme.djdl.pro",
+  iapId: "iap-1",
+  territory: "USA",
+  current: {
+    baseTerritory: "USA",
+    pricePointId: "pp-499",
+    customerPrice: "4.99",
+  },
+  priceChange: true,
+  priceChangeWarning:
+    "Once a price increase goes into effect, the change can't be reverted (App Store Connect).",
+  pricePoints: [
+    { id: "pp-099", customerPrice: "0.99", proceeds: "0.84" },
+    { id: "pp-499", customerPrice: "4.99", proceeds: "4.24" },
+    { id: "pp-999", customerPrice: "9.99", proceeds: "8.49" },
+  ],
+};
+
+const ASC = (path: string) => P(`/distribution/connectors/asc/${path}`);
+
 /** Every read the chunk 9 pages make, keyed by path. */
 export const DISTRIBUTION_ROUTES: Record<string, unknown> = {
   [P("/distribution/matrix")]: MATRIX,
@@ -707,6 +957,13 @@ export const DISTRIBUTION_ROUTES: Record<string, unknown> = {
   [P("/distribution/outlets")]: OUTLETS,
   [P("/distribution/keys")]: KEYS,
   [P("/distribution/connectors")]: CONNECTORS,
+  [ASC("distribute/builds")]: ASC_BUILDS,
+  [ASC("distribute/beta-groups")]: ASC_GROUPS,
+  [ASC("distribute/versions")]: ASC_VERSIONS,
+  [ASC("distribute/preflight")]: ASC_PREFLIGHT,
+  [ASC("distribute/submission-items")]: ASC_SUBMISSION_ITEMS,
+  [ASC("iap/products")]: ASC_IAP_PRODUCTS,
+  [ASC("iap/price-points")]: ASC_PRICE_POINTS,
   [P("/distribution/update-health")]: HEALTH,
   [P("/distribution/access")]: ACCESS,
   [P("/outlet-credentials")]: CREDENTIALS,

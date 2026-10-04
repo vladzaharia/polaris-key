@@ -1,5 +1,7 @@
 import * as React from "react";
 import { AccessPage } from "../areas/distribution/AccessPage.js";
+import { AppStorePage } from "../areas/distribution/AppStorePage.js";
+import { CommercePage } from "../areas/distribution/CommercePage.js";
 import { CredentialsPage } from "../areas/distribution/CredentialsPage.js";
 import { HealthPage } from "../areas/distribution/HealthPage.js";
 import { MatrixPage } from "../areas/distribution/MatrixPage.js";
@@ -20,6 +22,10 @@ export default function DistributionPages({
       return <RolloutsPage slug={slug} />;
     case "outlets":
       return <OutletsPage slug={slug} />;
+    case "app-store":
+      return <AppStorePage slug={slug} />;
+    case "commerce":
+      return <CommercePage slug={slug} />;
     case "access":
       return <AccessPage slug={slug} />;
     case "health":

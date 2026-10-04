@@ -197,6 +197,37 @@ const PAGES: { hash: string; title: string; file: string }[] = [
     title: "Outlet credentials",
     file: "credentials",
   },
+  // A-17g: the App Store Distribute flow (its steps) and Commerce's App Store products.
+  {
+    hash: "#/p/djdl/distribution/app-store",
+    title: "App Store",
+    file: "app-store",
+  },
+  {
+    hash: "#/p/djdl/distribution/app-store?build=b-52&step=compliance",
+    title: "App Store",
+    file: "app-store-compliance",
+  },
+  {
+    hash: "#/p/djdl/distribution/app-store?build=b-48&step=notes",
+    title: "App Store",
+    file: "app-store-notes",
+  },
+  {
+    hash: "#/p/djdl/distribution/app-store?build=b-48&step=testflight",
+    title: "App Store",
+    file: "app-store-testflight",
+  },
+  {
+    hash: "#/p/djdl/distribution/app-store?build=b-48&version=v-240&step=version",
+    title: "App Store",
+    file: "app-store-version",
+  },
+  {
+    hash: "#/p/djdl/distribution/commerce",
+    title: "Commerce",
+    file: "commerce",
+  },
   { hash: "#/p/djdl/update/feed", title: "Feed", file: "feed" },
 ];
 
@@ -285,6 +316,79 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
     expect(errors).toEqual([]);
     await page.context().close();
   });
+
+  it("app store: the typed submit dialog and an IAP price change open cleanly", async () => {
+    const { page, errors } = await open(
+      "#/p/djdl/distribution/app-store?build=b-48&version=v-239&step=version",
+    );
+    await title(page, "App Store");
+    await overlay(page, "release to everyone", async () => {
+      await page
+        .getByRole("button", { name: "Release to everyone…" })
+        .first()
+        .click();
+      await page.getByRole("alertdialog").waitFor();
+      await page.getByLabel(/App name/).waitFor();
+    });
+    await overlay(page, "cancel submission", async () => {
+      await page.getByRole("button", { name: "Cancel submission…" }).click();
+      await page.getByRole("alertdialog").waitFor();
+    });
+    expect(errors).toEqual([]);
+    await page.context().close();
+
+    const c = await open("#/p/djdl/distribution/commerce");
+    await title(c.page, "Commerce");
+    await overlay(c.page, "price change", async () => {
+      await c.page
+        .getByRole("button", { name: "Actions for gg.acme.djdl.pro" })
+        .click();
+      await c.page.getByRole("menuitem", { name: "Set price…" }).click();
+      await c.page.getByRole("alertdialog").waitFor();
+      await c.page.getByLabel(/App name/).waitFor();
+    });
+    expect(c.errors).toEqual([]);
+    await c.page.context().close();
+  });
+
+  for (const p of [
+    {
+      hash: "#/p/djdl/distribution/app-store",
+      title: "App Store",
+      file: "app-store",
+    },
+    {
+      hash: "#/p/djdl/distribution/app-store?build=b-48&version=v-240&step=version",
+      title: "App Store",
+      file: "app-store-version",
+    },
+    {
+      hash: "#/p/djdl/distribution/commerce",
+      title: "Commerce",
+      file: "commerce",
+    },
+  ]) {
+    it(`${p.file}: is usable at phone width`, async () => {
+      for (const theme of ["dark", "light"] as const) {
+        const { page, errors } = await open(p.hash, { theme, width: 390 });
+        await title(page, p.title);
+        await page.waitForTimeout(500);
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+          ),
+        ).toBe(true);
+        expect(await violations(page)).toEqual([]);
+        expect(errors).toEqual([]);
+        if (SHOTS)
+          await page.screenshot({
+            path: `${SHOTS}/${p.file}-phone-${theme}.png`,
+            fullPage: true,
+          });
+        await page.context().close();
+      }
+    });
+  }
 
   it("is usable at phone width: the matrix becomes release cards", async () => {
     const { page, errors } = await open("#/p/djdl/distribution/matrix", {
