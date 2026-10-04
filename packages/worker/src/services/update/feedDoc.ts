@@ -28,7 +28,8 @@
  * `scanStrictJson` before signing. A document that fails, or a per-platform document over the
  * 65 536-byte payload cap, is not signed: `500 feed_not_composable`. Every SDK would refuse it.
  * P4-13's content members are checked with `feedContent` first and shed before the 500 in the
- * fixed order of `documentFor`, so content alone never makes a feed uncomposable.
+ * fixed order of `documentFor`, so content alone never makes a feed uncomposable. P4-29's delta
+ * menu (`feedDeltas.ts`) is added last, only into the room left under the cap.
  *
  * ── access ──────────────────────────────────────────────────────────────────────────────────
  *
@@ -71,6 +72,12 @@ import {
   composeChannelFeed,
   type ComposedFeed,
 } from "./compose.js";
+import {
+  deltasHashPart,
+  menuEntries,
+  menuMember,
+  menuRecords,
+} from "./feedDeltas.js";
 
 /** A stored document older than this is re-signed (half the 900 s TTL). */
 export const RESIGN_AFTER_SECONDS = 450;
@@ -289,6 +296,59 @@ function usableContent(
   return out;
 }
 
+/**
+ * P4-29 (plans/P4-29.md §6.2): add the delta menu to a document already chosen and shed, in rank
+ * order while the payload stays within the cap, trimming the lowest-ranked entries first
+ * (`update.feed.deltas_trimmed`, or `update.feed.deltas_omitted` when none fit). The menu is read
+ * back with `feedContent` before signing; one that would read as unusable is omitted and audited.
+ * It never changes which document is signed and never sheds a P4-13 member.
+ */
+function withDeltaMenu(
+  doc: ChannelFeedDoc,
+  composed: ComposedFeed,
+  platform: string | null,
+  audits: FeedAudit[],
+): ChannelFeedDoc {
+  const d = composed.deltas;
+  if (!d || d.candidates.length === 0) return doc;
+  const list = menuEntries(d, menuRecords(doc, d, platform));
+  if (list.length === 0) return doc;
+  const build = (n: number): ChannelFeedDoc => ({
+    ...doc,
+    deltas: menuMember(list.slice(0, n)),
+  });
+  const where = platform === null ? "" : ` for ${platform}`;
+  // The payload grows with every entry: the largest prefix that fits, by bisection.
+  let lo = 0;
+  let hi = list.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (fits(build(mid))) lo = mid;
+    else hi = mid - 1;
+  }
+  if (lo === 0) {
+    audits.push({
+      action: "update.feed.deltas_omitted",
+      summary: `The ${composed.channel} feed${where} has no room under ${MAX_FEED_PAYLOAD_BYTES} bytes for its ${list.length} delta menu entries; the menu was left out.`,
+    });
+    return doc;
+  }
+  if (lo < list.length)
+    audits.push({
+      action: "update.feed.deltas_trimmed",
+      summary: `The ${composed.channel} feed${where} lists ${lo} of ${list.length} delta menu entries; the lowest-ranked were left out to stay under ${MAX_FEED_PAYLOAD_BYTES} bytes.`,
+    });
+  const out = build(lo);
+  if (feedContent(JSON.parse(JSON.stringify(out)) as unknown).deltas === null) {
+    audits.push({
+      action: "update.feed.deltas_omitted",
+      summary: `The ${composed.channel} feed's delta menu would read as unusable (feedContent) and was left out.`,
+    });
+    return doc;
+  }
+  return out;
+}
+
 /** The per-platform content part: its rows, only the sets and releases they reference, every
  *  floor and revocation, and the outlets of its own target (with only the gates its rows' releases
  *  key, and their fallbacks). */
@@ -361,7 +421,12 @@ export function documentFor(
     feedPayload(product, composed, null, composed.targets, seq, now, content),
     audits,
   );
-  if (fits(wide)) return { doc: wide, platform: null, audits };
+  if (fits(wide))
+    return {
+      doc: withDeltaMenu(wide, composed, null, audits),
+      platform: null,
+      audits,
+    };
   const targets = composed.targets.filter((t) => t.platform === platform);
   const part = platformContent(content, platform, targets[0]);
   const build = (): ChannelFeedDoc =>
@@ -406,7 +471,11 @@ export function documentFor(
       `The ${composed.channel} feed for ${platform} is over ${MAX_FEED_PAYLOAD_BYTES} bytes; revocations was left out (devices keep the revocations they stored).`,
     );
   }
-  return { doc, platform, audits };
+  return {
+    doc: withDeltaMenu(doc, composed, platform, audits),
+    platform,
+    audits,
+  };
 }
 
 function notComposable(): Response {
@@ -455,7 +524,7 @@ export async function handleFeedRoute(
   const gated = accessModeFor(artifactPolicy(cfg), "feed") !== "public";
 
   const composed = await composeChannelFeed(
-    { db, product: product.slug, hooks: ctx.hooks, cfg },
+    { db, product: product.slug, hooks: ctx.hooks, cfg, env },
     requested,
   );
   if (!composed) return null;
@@ -502,6 +571,8 @@ export async function handleFeedRoute(
       ...(c.packSets ? { packSets: c.packSets } : {}),
       ...(c.packFloors ? { packFloors: c.packFloors } : {}),
       ...(c.revocations ? { revocations: c.revocations } : {}),
+      // P4-29: the menu's candidates, as a set (absent with no menu, so the hash is unchanged).
+      ...(composed.deltas ? { deltas: deltasHashPart(composed.deltas) } : {}),
     }),
   );
   const state = await feedSeqFor(

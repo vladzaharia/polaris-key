@@ -87,6 +87,8 @@ __all__ = [
     "MAX_RECORD_JWS_BYTES",
     "MAX_FEED_REVOCATIONS",
     "REVOCATION_REASON_MAX_BYTES",
+    "MAX_FEED_DELTAS",
+    "MAX_FEED_DELTAS_PER_TARGET",
     "MAX_DELEGATION_TTL_SECONDS",
     "MAX_DELEGATION_TYPES",
     "DATA_ONLY_HEAD_BYTES",
@@ -604,6 +606,7 @@ class Feature:
     PACKS_RECORD: Final = "packs.record"
     PACKS_REVOKE: Final = "packs.revoke"
     PACKS_DELEGATION: Final = "packs.delegation"
+    PACKS_DELTA_FEED: Final = "packs.delta.feed"
     PACKS_PLAN: Final = "packs.plan"
     PACKS_INDEX_FILES: Final = "packs.index.files"
     PACKS_INDEX_CHUNKS: Final = "packs.index.chunks"
@@ -675,6 +678,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "packs.record",
     "packs.revoke",
     "packs.delegation",
+    "packs.delta.feed",
     "packs.plan",
     "packs.index.files",
     "packs.index.chunks",
@@ -1339,6 +1343,14 @@ MAX_FEED_REVOCATIONS: Final[int] = 64
 REVOCATION_REASON_MAX_BYTES: Final[int] = 512
 
 
+#: Wire contract v4 limit `MAX_FEED_DELTAS` (`@polaris-key/protocol/core`).
+MAX_FEED_DELTAS: Final[int] = 64
+
+
+#: Wire contract v4 limit `MAX_FEED_DELTAS_PER_TARGET` (`@polaris-key/protocol/core`).
+MAX_FEED_DELTAS_PER_TARGET: Final[int] = 4
+
+
 #: Wire contract v4 limit `MAX_DELEGATION_TTL_SECONDS` (`@polaris-key/protocol/core`).
 MAX_DELEGATION_TTL_SECONDS: Final[int] = 31622400
 
@@ -1564,6 +1576,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "packs.record": CapabilityRow("implemented", "release", ()),
         "packs.revoke": CapabilityRow("implemented", "release", ()),
         "packs.delegation": CapabilityRow("implemented", "release", ()),
+        "packs.delta.feed": CapabilityRow("planned", "release", ()),
         "packs.plan": CapabilityRow("implemented", "release", ()),
         "packs.index.files": CapabilityRow("implemented", "release", ()),
         "packs.index.chunks": CapabilityRow("implemented", "release", ()),
@@ -1591,4 +1604,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "ae448cac7056d24db97decd82fb3bc45b673fd9222544d6e4ab163ed5494fac7"
+CAPABILITY_DIGEST: Final[str] = "3c8033e62f070d11b5bb86834849ac1d9159f7728a9c5abacc769c95a9d9ed2e"

@@ -26,6 +26,9 @@ import {
   selectNodeZstd,
 } from "../src/packs/index.js";
 import {
+  PROBE_BASE,
+  PROBE_FRAME,
+  PROBE_TARGET,
   PRODUCT,
   PRODUCT_TRUST,
   RELEASE_KEYS,
@@ -248,6 +251,8 @@ async function client(o: {
   token?: boolean;
   dataDir?: string;
   handlers?: PackHandler[];
+  /** A store of the caller's (its cache survives into the next client). */
+  store?: MemStore;
 }) {
   work ??= await mkdtemp(join(tmpdir(), "pkey-packs-"));
   const stampPath = join(
@@ -261,7 +266,7 @@ async function client(o: {
       ...(o.stampDoc ?? stampFor(...o.stamp)),
     }),
   );
-  const store = new MemStore("dev_packs");
+  const store = o.store ?? new MemStore("dev_packs");
   if (o.token !== false) store.token = "pkeyt_test";
   return PolarisKeyClient.create({
     productSlug: PRODUCT,
@@ -1035,5 +1040,199 @@ describe("client.update.packs and chunk sync (P4-11)", () => {
       srv.blobRequests().some((s) => s.path.endsWith(sha(v2.payload))),
     ).toBe(true);
     c.close();
+  });
+});
+
+// @pkey-feature packs.delta.feed
+describe("client.update.packs and the feed's delta menu (plans/P4-29.md §2.4)", () => {
+  const PACK = "djdl.levels";
+  const BLOB: PackHandler = {
+    type: "custom.blob",
+    layout: "container",
+    activation: "hot",
+    supports: (v) => v === 1,
+  };
+  /** A one-file container release over `payload`, with no record delta. */
+  async function container(version: string, seq: number, payload: Uint8Array) {
+    const index = new TextEncoder().encode(
+      JSON.stringify({
+        format: "pkey-files/1",
+        layout: "container",
+        payload: { size: payload.byteLength, sha256: sha(payload) },
+        files: [
+          {
+            path: "data.bin",
+            offset: 0,
+            size: payload.byteLength,
+            sha256: sha(payload),
+            blob: {
+              sha256: sha(payload),
+              bytes: payload.byteLength,
+              codec: "none",
+            },
+          },
+        ],
+      }),
+    );
+    const gaps = new Uint8Array();
+    const jws = await signReleaseDoc({
+      schemaVersion: 1,
+      aud: PRODUCT,
+      deliverable: PACK,
+      kind: "pack",
+      version,
+      seq,
+      issuedAt: 1759300000 + seq,
+      type: "custom.blob",
+      formatVersion: 1,
+      handler: { activation: "hot" },
+      variants: [
+        {
+          variant: {},
+          payload: { size: payload.byteLength, sha256: sha(payload) },
+          full: {
+            sha256: sha(payload),
+            bytes: payload.byteLength,
+            size: payload.byteLength,
+            codec: "none",
+          },
+          files: {
+            format: "pkey-files/1",
+            layout: "container",
+            sha256: sha(index),
+            bytes: index.byteLength,
+            size: index.byteLength,
+            codec: "none",
+            gaps: { sha256: sha(gaps), bytes: 0, size: 0, codec: "none" },
+          },
+        },
+      ],
+    });
+    return {
+      packId: PACK,
+      version,
+      seq,
+      jws,
+      recordSha256: sha(jws),
+      objects: new Map<string, Uint8Array>([
+        [sha(payload), payload],
+        [sha(index), index],
+        [sha(gaps), gaps],
+      ]),
+    };
+  }
+  async function feedWithMenu(): Promise<string> {
+    const now = Math.floor(Date.now() / 1000);
+    const platform = { darwin: "macos", win32: "windows", linux: "linux" }[
+      process.platform as "darwin" | "win32" | "linux"
+    ];
+    return signFeedDoc({
+      schemaVersion: 1,
+      iss: "key.plrs.im",
+      aud: PRODUCT,
+      channel: "stable",
+      selector: {},
+      seq: 1,
+      issuedAt: now - 10,
+      expiresAt: now + 800,
+      app: {
+        deliverable: "app",
+        versionScheme: "semver",
+        targets: [
+          {
+            platform,
+            release: { sha256: "a".repeat(64), seq: 10, version: "1.0.0" },
+            floor: null,
+            critical: false,
+            outlets: {
+              direct: {
+                kind: "direct",
+                live: { version: "1.0.0", seq: 10 },
+                halted: false,
+              },
+            },
+          },
+        ],
+      },
+      deltas: {
+        [sha(PROBE_TARGET)]: [
+          {
+            from: sha(PROBE_BASE),
+            method: "zstd-patch-from",
+            scope: "payload",
+            memBytes: PROBE_BASE.byteLength + PROBE_TARGET.byteLength,
+            artifact: {
+              sha256: sha(PROBE_FRAME),
+              bytes: PROBE_FRAME.byteLength,
+            },
+          },
+        ],
+      },
+    });
+  }
+  async function setup() {
+    work = await mkdtemp(join(tmpdir(), "pkey-packs-"));
+    const v1 = await container("1.0.0", 1, PROBE_BASE);
+    const v2 = await container("1.1.0", 2, PROBE_TARGET);
+    v2.objects.set(sha(PROBE_FRAME), PROBE_FRAME);
+    srv.packs = [v1, v2] as unknown as TreePack[];
+    srv.feed = await feedWithMenu();
+    const stampDoc = {
+      contentApi: 1,
+      pins: [
+        {
+          pack: PACK,
+          release: { sha256: v1.recordSha256, seq: 1, version: "1.0.0" },
+        },
+      ],
+      expects: [{ pack: PACK, required: true, delivery: "essential" }],
+    };
+    const v2Target = {
+      pack: PACK,
+      release: { sha256: v2.recordSha256, seq: 2, version: "1.1.0" },
+    };
+    return { stampDoc, v2Target };
+  }
+  const blobPaths = () =>
+    srv.blobRequests().map((s) => s.path.split("/").pop());
+
+  it("plans the committed feed's lazy delta after update.feed() and installs it", async () => {
+    const { stampDoc, v2Target } = await setup();
+    const c = await client({ stamp: [], stampDoc, handlers: [BLOB] });
+    await c.update.packs.ensure([PACK]);
+    await c.update.feed();
+    srv.seen = [];
+    const [install] = await c.update.packs.ensureReleases([v2Target]);
+    expect(install!.payloadSha256).toBe(sha(PROBE_TARGET));
+    expect(blobPaths()).toEqual([sha(PROBE_FRAME)]);
+    c.close();
+    srv.feed = null;
+  });
+
+  it("reads the committed feed's menu from the cache when the engine starts, before any check (offline)", async () => {
+    const { stampDoc, v2Target } = await setup();
+    const store = new MemStore("dev_packs");
+    const first = await client({
+      stamp: [],
+      stampDoc,
+      handlers: [BLOB],
+      store,
+    });
+    await first.update.packs.ensure([PACK]);
+    await first.update.feed();
+    first.close();
+    // The Worker is gone; the next process has only the committed feed.
+    srv.feed = null;
+    srv.seen = [];
+    const again = await client({
+      stamp: [],
+      stampDoc,
+      handlers: [BLOB],
+      store,
+    });
+    const [install] = await again.update.packs.ensureReleases([v2Target]);
+    expect(install!.payloadSha256).toBe(sha(PROBE_TARGET));
+    expect(blobPaths()).toEqual([sha(PROBE_FRAME)]);
+    again.close();
   });
 });

@@ -206,6 +206,11 @@
       "status": "implemented",
       "note": "P4-08: zstd --patch-from frames decoded by the ENGINE's own GDDL delta decoder (a PACK_FILE_DELTA helper pack over a private-namespace prefix: a trailer appended to the installed store pack and truncated back, or a copy host), after the window check; advertised (zstd-patch-from) only on the pinned engines PKeyPackZstd.PATCH_FROM_ENGINES (4.6, 4.7) whose start-up probe decodes. On the 4.4 floor the planner never chooses a delta and the corpus's decode cases fail closed (delta-apply-failed)."
     },
+    "packs.delta.feed": {
+      "status": "planned",
+      "wp": "P4-31",
+      "note": "P4-31 ports the reader, the merge and the one-feed-delta rule, the native payload port path included (plans/P4-29.md §5 order 3)."
+    },
     "packs.state": {
       "status": "implemented",
       "note": "P4-08: packs/state.gd and PKeyPackEngine (client-core's PackEngine) over PKeyPackStorage in user://pkey (staging, store/<sha256>.pck, trees/<sha256>/, content/state.json): journal, Range/If-Range resume, read-back before every rename, torn-state quarantine with its saved snapshot, unreadable-state refusal, deferred installs, GC roots, embedded baselines from res://pkey_packs/; packSetId on devices/report; the shared boot guard rolls a failed pack set back with the binary and holds each rolled-back record (held, with a count) until the stamp pins another (pack-rolled-back on ensure)."

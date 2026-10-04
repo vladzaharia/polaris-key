@@ -511,6 +511,14 @@ evidence for a Container tier, P4-17b). Setup is DEPLOYMENT §3 "Lazy deltas".
 
 - **Turn it off.** `enabled = 0` for one product (counting and generation stop at once), or
   `LAZY_DELTAS = "off"` and deploy for everything. Stored deltas stay until they go cold.
+- **Withdraw the menu (P4-29).** The channel feed lists a product's `ready` lazy deltas in its
+  `deltas` member, and the blob route and the payload URL serve them, only while both switches
+  are on. Either switch withdraws the menu at the next feed request (the feed's `seq` moves) and
+  stops serving the frames at once; a device holding an older feed gets a 404 for a listed delta
+  and falls back to another strategy. No deploy is needed for the per-product switch. The audit
+  log records `update.feed.deltas_trimmed` (the menu did not fully fit under the feed's
+  65,536-byte cap) and `update.feed.deltas_omitted` (none fitted, or the menu read was unusable);
+  both are informational.
 - **What it did.** `release_lazy_deltas` (`ready`, `refused` with a reason, `cold`), the nightly
   aggregate in `delta_demand`, and the maintenance cron's `lazyDeltas:<slug>` step (failures
   surface in the cron's aggregate error). Refusals worth acting on: `over-worker-cap` (a pack

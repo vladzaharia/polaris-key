@@ -481,6 +481,7 @@ export const Feature = {
   packsRecord: "packs.record",
   packsRevoke: "packs.revoke",
   packsDelegation: "packs.delegation",
+  packsDeltaFeed: "packs.delta.feed",
   packsPlan: "packs.plan",
   packsIndexFiles: "packs.index.files",
   packsIndexChunks: "packs.index.chunks",
@@ -553,6 +554,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "packs.record",
   "packs.revoke",
   "packs.delegation",
+  "packs.delta.feed",
   "packs.plan",
   "packs.index.files",
   "packs.index.chunks",
@@ -1174,6 +1176,12 @@ export const MAX_FEED_REVOCATIONS = 64;
 /** Wire contract v4 limit `REVOCATION_REASON_MAX_BYTES` (`@polaris-key/protocol/core`). */
 export const REVOCATION_REASON_MAX_BYTES = 512;
 
+/** Wire contract v4 limit `MAX_FEED_DELTAS` (`@polaris-key/protocol/core`). */
+export const MAX_FEED_DELTAS = 64;
+
+/** Wire contract v4 limit `MAX_FEED_DELTAS_PER_TARGET` (`@polaris-key/protocol/core`). */
+export const MAX_FEED_DELTAS_PER_TARGET = 4;
+
 /** Wire contract v4 limit `MAX_DELEGATION_TTL_SECONDS` (`@polaris-key/protocol/core`). */
 export const MAX_DELEGATION_TTL_SECONDS = 31622400;
 
@@ -1366,6 +1374,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "packs.record": { status: "implemented", service: "release", na: [] },
   "packs.revoke": { status: "implemented", service: "release", na: [] },
   "packs.delegation": { status: "implemented", service: "release", na: [] },
+  "packs.delta.feed": { status: "implemented", service: "release", na: [] },
   "packs.plan": { status: "implemented", service: "release", na: [] },
   "packs.index.files": { status: "implemented", service: "release", na: [] },
   "packs.index.chunks": { status: "implemented", service: "release", na: [] },
@@ -1429,4 +1438,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "9611191d03e4a8f267b6b3c1c34403f472850bd7a51e34229ea4b953bb7c9d97";
+  "2d48e4d3b5df2512b8de34b2e130f808a546ea181e70b8eb00ef956d121474a3";

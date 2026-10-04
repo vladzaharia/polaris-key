@@ -81,7 +81,7 @@ const FLOORS := {
 	"pointerSets": 539,
 	"feedCases": 80,
 	"releaseRecordCases": 49,
-	"feedContentCases": 48,
+	"feedContentCases": 76,
 	"revocationCases": 27,
 	"contentRows": 44,
 	"delegationCases": 46,

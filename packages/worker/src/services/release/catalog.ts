@@ -131,7 +131,7 @@ export function releaseCatalog(ctx: HookContext): ReleaseCatalog {
   let cfgRead: ReturnType<typeof getReleaseConfig> | undefined;
   const config = () => (cfgRead ??= getReleaseConfig(db, slug));
   return {
-    ...packCatalog({ db, env: ctx.env, slug }),
+    ...packCatalog({ db, env: ctx.env, slug, now: ctx.now }),
     async deliverables(): Promise<CatalogDeliverable[]> {
       return (await listDeliverables(db, slug)).map((d) => ({
         id: d.deliverable_id,

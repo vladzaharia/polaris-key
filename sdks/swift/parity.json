@@ -120,6 +120,11 @@
       "status": "implemented",
       "note": "libzstd 1.5.7 (facebook/zstd SwiftPM package): ZSTD_DCtx_refPrefix with ZSTD_d_windowLogMax; the window check runs in the applier before every prefix decode, macOS and iOS alike."
     },
+    "packs.delta.feed": {
+      "status": "planned",
+      "wp": "P4-30",
+      "note": "P4-30 ports feedContent's deltas, withFeedDeltas and the one-feed-delta rule (plans/P4-29.md §5 order 2)."
+    },
     "packs.state": {
       "status": "implemented",
       "note": "PackEngine over DirPackStorage in the platform data directory (excluded from backups): journal, resume with Range/If-Range, atomic pointer swap with F_FULLFSYNC, confirm, rollback, GC roots, embedded baselines, a torn state.json held aside, an unreadable one refusing every write; packSetId on devices/report."

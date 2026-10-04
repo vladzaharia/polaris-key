@@ -15520,6 +15520,69 @@ function p13PackSets(
   };
 }
 
+/**
+ * plans/P4-29.md §2.2: the delta menu, from first principles. Null when absent or unusable;
+ * otherwise target → the kept `payload` entries (known members only). Both caps and both
+ * uniqueness rules count dropped entries too.
+ */
+const P29_MAX_FEED_DELTAS = 64;
+const P29_MAX_PER_TARGET = 4;
+function refFeedDeltas(
+  doc: Record<string, any>,
+  ctx: ClaimCtx | null,
+): Record<string, unknown[]> | null {
+  if (!hasOwn(doc, "deltas")) return null;
+  const m = doc.deltas;
+  if (!isObj(m)) return null;
+  const out: Record<string, unknown[]> = {};
+  const artifacts: string[] = [];
+  let total = 0;
+  for (const to of Object.keys(m)) {
+    if (!REF_SHA256_RE.test(to)) return null;
+    const list = m[to];
+    if (!Array.isArray(list)) return null;
+    if (list.length < 1 || list.length > P29_MAX_PER_TARGET) return null;
+    total += list.length;
+    if (total > P29_MAX_FEED_DELTAS) return null;
+    const pairs: string[] = [];
+    const kept: unknown[] = [];
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!isObj(e)) return null;
+      if (typeof e.from !== "string" || !REF_SHA256_RE.test(e.from))
+        return null;
+      if (e.from === to) return null;
+      if (typeof e.method !== "string" || !REF_VOCAB_RE.test(e.method))
+        return null;
+      if (typeof e.scope !== "string" || !REF_VOCAB_RE.test(e.scope))
+        return null;
+      if (!p13Int(ctx, e.memBytes, `/deltas/${to}/${i}/memBytes`, 1))
+        return null;
+      const a = e.artifact;
+      if (!isObj(a)) return null;
+      if (typeof a.sha256 !== "string" || !REF_SHA256_RE.test(a.sha256))
+        return null;
+      if (!p13Int(ctx, a.bytes, `/deltas/${to}/${i}/artifact/bytes`, 1))
+        return null;
+      if (artifacts.includes(a.sha256)) return null;
+      artifacts.push(a.sha256);
+      const pair = `${e.from} ${e.method}`;
+      if (pairs.includes(pair)) return null;
+      pairs.push(pair);
+      if (e.scope !== "payload") continue;
+      kept.push({
+        from: e.from,
+        method: e.method,
+        scope: "payload",
+        memBytes: e.memBytes,
+        artifact: { sha256: a.sha256, bytes: a.bytes },
+      });
+    }
+    if (kept.length > 0) out[to] = kept;
+  }
+  return out;
+}
+
 const P13_SALT = "0f1e2d3c4b5a69788796a5b4c3d2e1f0";
 
 /** The `feedContentCases` base: FC's two platforms. */
@@ -15598,6 +15661,8 @@ interface FeedContentCase {
   expect: {
     verify: "ok";
     content: { packSets: unknown; packFloors: unknown; revocations: unknown };
+    /** plans/P4-29.md §4.1: the delta menu, on the appended cases only (absent means null). */
+    deltas?: unknown;
   };
 }
 
@@ -15617,6 +15682,8 @@ async function buildFeedContentCases(): Promise<FeedContentCase[]> {
       props: string[];
       /** Which parsed members must differ from the base's (the rest must equal it). */
       changes: ("packSets" | "packFloors" | "revocations")[];
+      /** plans/P4-29.md §4.2: an appended case, and whether its menu is usable. */
+      deltas?: "usable" | "unusable";
     },
   ): Promise<void> => {
     const doc = structuredClone(base) as Record<string, any>;
@@ -15661,6 +15728,16 @@ async function buildFeedContentCases(): Promise<FeedContentCase[]> {
           `feedContentCases ${id}: ${m} ${same ? "unchanged" : "changed"}`,
         );
     }
+    // plans/P4-29.md §4.1: an older case carries no menu; an appended one pins its own.
+    const deltas = refFeedDeltas(v.payload, ctxOf(v.text));
+    if (
+      o.deltas === undefined
+        ? deltas !== null
+        : (deltas === null) !== (o.deltas === "unusable")
+    )
+      throw new Error(
+        `feedContentCases ${id}: deltas ${deltas === null ? "null" : "usable"}`,
+      );
     const nonWire = refNonWire(v.text);
     const c: FeedContentCase = {
       id,
@@ -15672,7 +15749,11 @@ async function buildFeedContentCases(): Promise<FeedContentCase[]> {
       platform: "macos",
       now: FEED_NOW,
       checkFreshness: true,
-      expect: { verify: "ok", content },
+      expect: {
+        verify: "ok",
+        content,
+        ...(o.deltas !== undefined ? { deltas } : {}),
+      },
     };
     cases.push(
       placeNonWire(nonWire.length > 0 ? { ...c, nonWireIntegers: nonWire } : c),
@@ -16060,6 +16141,243 @@ async function buildFeedContentCases(): Promise<FeedContentCase[]> {
     0,
   );
 
+  // ── plans/P4-29.md §4.2: 28 appended cases, each the base plus one `deltas` mutation ──────
+  const T = (n: string): string => sha256Hex(`p4-29 payload ${n}`);
+  const A = (n: string): string => sha256Hex(`p4-29 artifact ${n}`);
+  const entry = (
+    from: string,
+    art: string,
+    bytes: number,
+    memBytes = 10515192,
+  ): Record<string, unknown> => ({
+    from: T(from),
+    method: "zstd-patch-from",
+    scope: "payload",
+    memBytes,
+    artifact: { sha256: A(art), bytes },
+  });
+  const menu = (): Record<string, any> => ({
+    [T("foes@2.0.1")]: [
+      entry("foes@1.3.4", "foes 1.3.4-2.0.1", 325258),
+      entry("foes@2.0.0", "foes 2.0.0-2.0.1", 120000),
+    ],
+    [T("tex@1.1.0")]: [entry("tex@1.0.0", "tex 1.0.0-1.1.0", 4096, 2097152)],
+  });
+  const k0 = T("foes@2.0.1");
+  const k1 = T("tex@1.1.0");
+  /** 16 targets × 4 entries: `MAX_FEED_DELTAS` with 4 on every key. */
+  const atCaps = (): Record<string, any> => {
+    const m: Record<string, any> = {};
+    for (let t = 0; t < 16; t++) {
+      const list: unknown[] = [];
+      for (let e = 0; e < 4; e++)
+        list.push(
+          entry(`cap ${t} base ${e}`, `cap ${t}-${e}`, 1000 + t * 4 + e),
+        );
+      m[T(`cap ${t}`)] = list;
+    }
+    return m;
+  };
+  const dm = async (
+    id: string,
+    description: string,
+    patch: Patch,
+    deltas: "usable" | "unusable",
+    raw = false,
+  ): Promise<void> =>
+    mk(id, description, {
+      patch: (d) => {
+        d.deltas = menu();
+        patch(d);
+      },
+      props: ["/deltas"],
+      changes: [],
+      deltas,
+      raw,
+    });
+
+  // Valid (8).
+  await dm(
+    "feed-deltas-valid",
+    "The delta menu (plans/P4-29.md §2.2): two target payloads, one with two `payload` entries; the three content members stay parsed.",
+    () => {},
+    "usable",
+  );
+  await mk(
+    "feed-deltas-alone",
+    "Only `deltas`: the three content members parse as null and the menu stands on its own.",
+    {
+      patch: (d) => {
+        delete d.packSets;
+        delete d.packFloors;
+        delete d.revocations;
+        d.deltas = menu();
+      },
+      props: ["/packSets", "/packFloors", "/revocations", "/deltas"],
+      changes: ["packSets", "packFloors", "revocations"],
+      deltas: "usable",
+    },
+  );
+  await dm(
+    "feed-deltas-empty-object",
+    "`deltas: {}` is usable and offers nothing.",
+    (d) => void (d.deltas = {}),
+    "usable",
+  );
+  await dm(
+    "feed-deltas-unknown-members-ignored",
+    "Unknown members on an entry and on its `artifact` are ignored; the parsed entries carry the known members only.",
+    (d) => {
+      d.deltas[k0][0].size = 5256232;
+      d.deltas[k0][0].windowLog = 23;
+      d.deltas[k1][0].artifact.later = "x";
+    },
+    "usable",
+  );
+  await dm(
+    "feed-deltas-unknown-method-kept",
+    "An entry whose `method` is an unknown vocabulary token (`hdiffpatch`) is kept: the planner's `caps.patchMethods` decides.",
+    (d) => void (d.deltas[k1][0].method = "hdiffpatch"),
+    "usable",
+  );
+  await dm(
+    "feed-deltas-files-scope-dropped",
+    "An entry of a forward scope (`files`) is dropped alone; its sibling on the same key is kept.",
+    (d) => void (d.deltas[k0][1].scope = "files"),
+    "usable",
+  );
+  await dm(
+    "feed-deltas-all-dropped-key-omitted",
+    "A key whose only entry is of a forward scope is left out of the parsed menu; the other key stays.",
+    (d) => void (d.deltas[k1][0].scope = "files"),
+    "usable",
+  );
+  await dm(
+    "feed-deltas-at-caps",
+    "`MAX_FEED_DELTAS` (64) entries, `MAX_FEED_DELTAS_PER_TARGET` (4) on every key: usable.",
+    (d) => void (d.deltas = atCaps()),
+    "usable",
+  );
+
+  // Unusable (16): the three content members stay parsed in each.
+  const ud = (id: string, description: string, patch: Patch, raw = false) =>
+    dm(id, description, patch, "unusable", raw);
+  await ud("feed-deltas-null", "A present `deltas: null` is unusable.", (d) => {
+    d.deltas = null;
+  });
+  await ud("feed-deltas-array", "`deltas` is an array.", (d) => {
+    d.deltas = [d.deltas[k0][0]];
+  });
+  await ud(
+    "feed-deltas-bad-key",
+    "A key that is not 64 lowercase hex (upper case).",
+    (d) => {
+      d.deltas[k1.toUpperCase()] = d.deltas[k1];
+      delete d.deltas[k1];
+    },
+  );
+  await ud("feed-deltas-empty-value", "A key whose list is empty.", (d) => {
+    d.deltas[k1] = [];
+  });
+  await ud(
+    "feed-deltas-over-per-target",
+    "Five entries on one key, over `MAX_FEED_DELTAS_PER_TARGET`.",
+    (d) => {
+      for (let e = 2; e < 5; e++)
+        d.deltas[k0].push(entry(`foes base ${e}`, `foes extra ${e}`, 2000 + e));
+    },
+  );
+  await ud(
+    "feed-deltas-over-total",
+    "65 entries in all, over `MAX_FEED_DELTAS` (each key within its own cap).",
+    (d) => {
+      d.deltas = atCaps();
+      d.deltas[k1] = [entry("tex@1.0.0", "tex 1.0.0-1.1.0", 4096, 2097152)];
+    },
+  );
+  await ud(
+    "feed-deltas-entry-not-object",
+    "An entry that is a string.",
+    (d) => {
+      d.deltas[k1][0] = "delta";
+    },
+  );
+  await ud("feed-deltas-from-missing", "An entry without `from`.", (d) => {
+    delete d.deltas[k1][0].from;
+  });
+  await ud(
+    "feed-deltas-from-malformed",
+    "An entry whose `from` is 63 hex digits.",
+    (d) => void (d.deltas[k1][0].from = T("tex@1.0.0").slice(1)),
+  );
+  await ud(
+    "feed-deltas-from-is-target",
+    "An entry whose `from` equals its own key.",
+    (d) => void (d.deltas[k1][0].from = k1),
+  );
+  await ud(
+    "feed-deltas-bad-method",
+    '`method: "Zstd-patch-from"`, outside `VOCAB_TOKEN_PATTERN`.',
+    (d) => void (d.deltas[k1][0].method = "Zstd-patch-from"),
+  );
+  await ud(
+    "feed-deltas-bad-scope",
+    '`scope: "Payload"`, outside `VOCAB_TOKEN_PATTERN`.',
+    (d) => void (d.deltas[k1][0].scope = "Payload"),
+  );
+  await ud(
+    "feed-deltas-bad-artifact",
+    "An entry whose `artifact.sha256` is not 64 lowercase hex (upper case).",
+    (d) =>
+      void (d.deltas[k1][0].artifact.sha256 =
+        A("tex 1.0.0-1.1.0").toUpperCase()),
+  );
+  await ud(
+    "feed-deltas-duplicate-artifact",
+    "One `artifact.sha256` listed under two keys.",
+    (d) =>
+      void (d.deltas[k1][0].artifact.sha256 = d.deltas[k0][0].artifact.sha256),
+  );
+  await ud(
+    "feed-deltas-duplicate-pair",
+    "Two entries with one (`from`, `method`) on a key.",
+    (d) => void (d.deltas[k0][1].from = d.deltas[k0][0].from),
+  );
+  await ud(
+    "feed-deltas-duplicate-with-dropped",
+    "A (`from`, `method`) duplicate whose first entry is of a forward scope: dropped entries count toward uniqueness.",
+    (d) => {
+      d.deltas[k0][0].scope = "files";
+      d.deltas[k0][1].from = d.deltas[k0][0].from;
+    },
+  );
+
+  // The token rule and the minimum at the two integer pointers (4).
+  const memAt = `/deltas/${k1}/0/memBytes`;
+  const bytesAt = `/deltas/${k1}/0/artifact/bytes`;
+  await ud(
+    "feed-deltas-mem-bytes-token",
+    `V4 §3.1: \`${memAt}\` written as the token \`3.0\`.`,
+    (d) => void (d.deltas[k1][0].memBytes = raw("3.0")),
+    true,
+  );
+  await ud(
+    "feed-deltas-mem-bytes-minimum",
+    `\`${memAt}\` 0, below its minimum.`,
+    (d) => void (d.deltas[k1][0].memBytes = 0),
+  );
+  await ud(
+    "feed-deltas-artifact-bytes-token",
+    `V4 §3.1: \`${bytesAt}\` written as the token \`1.0\`.`,
+    (d) => void (d.deltas[k1][0].artifact.bytes = raw("1.0")),
+    true,
+  );
+  await ud(
+    "feed-deltas-artifact-bytes-minimum",
+    `\`${bytesAt}\` 0, below its minimum.`,
+    (d) => void (d.deltas[k1][0].artifact.bytes = 0),
+  );
+
   // Every set key is the `packSetId` of its members, in every case whose `packSets` parses.
   for (const c of cases) {
     const p = c.expect.content.packSets as Record<string, any> | null;
@@ -16077,12 +16395,22 @@ async function buildFeedContentCases(): Promise<FeedContentCase[]> {
     throw new Error(
       `feedContentCases: ${cases.length} != ${P13_COUNTS.feedContentCases}`,
     );
+  // plans/P4-29.md §4.2: the menu's cases are appended; the at-caps payload stays in the cap.
+  const appended = cases.filter((c) => c.expect.deltas !== undefined);
+  if (appended.length !== 28 || cases.indexOf(appended[0]!) !== 48)
+    throw new Error("feedContentCases: the 28 P4-29 cases must follow the 48");
+  const capCase = cases.find((c) => c.id === "feed-deltas-at-caps")!;
+  if (Buffer.from(capCase.jws.split(".")[1]!, "base64url").byteLength > 65536)
+    throw new Error(
+      "feedContentCases: feed-deltas-at-caps is over 65,536 bytes",
+    );
   return cases;
 }
 
-/** The exact counts of plans/P4-13.md's new sections (the self-check's "counts are exact"). */
+/** The exact counts of plans/P4-13.md's new sections (the self-check's "counts are exact"),
+ *  with plans/P4-29.md §4.2's 28 appended `feedContentCases`. */
 const P13_COUNTS = {
-  feedContentCases: 48,
+  feedContentCases: 76,
   revocationCases: 27,
   contentRows: 44,
 };

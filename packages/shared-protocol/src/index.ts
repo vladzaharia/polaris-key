@@ -120,6 +120,8 @@ export {
   BLOCKED_REASONS,
   BINARY_METHODS,
   MAX_FEED_REVOCATIONS,
+  MAX_FEED_DELTAS,
+  MAX_FEED_DELTAS_PER_TARGET,
 } from "./update.js";
 export type {
   UpdateArch,
@@ -150,6 +152,8 @@ export type {
   FeedPackFloor,
   FeedRevocation,
   FeedContent,
+  FeedDelta,
+  FeedDeltas,
   ContentBlock,
   ContentRevocationInput,
   UpdateContentInput,

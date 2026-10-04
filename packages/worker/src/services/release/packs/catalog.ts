@@ -24,6 +24,7 @@ import { decode as zstdDecode } from "@polaris-key/zstd-wasm";
 import type {
   CatalogHold,
   CatalogBuildEmbeds,
+  CatalogLazyDelta,
   CatalogPackChunk,
   CatalogPackDeliverable,
   CatalogPackFile,
@@ -48,6 +49,13 @@ import { blobKey } from "../../../core/blobs.js";
 import { readPackDeliverables } from "./deliverables.js";
 import { packObjects, storedRecordPayload, variantBuildId } from "./ingest.js";
 import { readAllRevocations } from "./revocations.js";
+import {
+  HOT_WINDOW_SECONDS,
+  installedBase,
+  lazyDeltasEnabled,
+} from "../../../core/deltaDemand.js";
+import { menuEntryOf, readyLazyDeltas } from "./deltas/menu.js";
+import { readyDeltasTo } from "./deltas/store.js";
 
 type PackCatalog = Pick<
   ReleaseCatalog,
@@ -56,6 +64,7 @@ type PackCatalog = Pick<
   | "packFiles"
   | "packChunks"
   | "packPayload"
+  | "lazyDeltas"
   | "pins"
   | "pinnedBy"
   | "embeds"
@@ -304,12 +313,18 @@ function payloadView(
   };
 }
 
+/** How many payloads `installedBase` ranks per pack for the menu (P4-29). */
+const MENU_BASE_SCAN = 1000;
+
 export function packCatalog(ctx: {
   db: Db;
   env: Env;
   slug: string;
+  /** Epoch seconds (the request's); the menu's installed-base window ends here. */
+  now?: number;
 }): PackCatalog {
   const { db, env, slug } = ctx;
+  const now = (): number => ctx.now ?? Math.floor(Date.now() / 1000);
   return {
     async packDeliverables(): Promise<CatalogPackDeliverable[]> {
       // Discovery lists what reads back; a publish refuses while any declaration does not.
@@ -432,11 +447,99 @@ export function packCatalog(ctx: {
           const view = found
             ? payloadView(found, buildId, payloadSha256)
             : null;
-          if (view) return view;
+          if (view) {
+            // P4-29 (plans/P4-29.md §6.3): the payload's ready lazy deltas too, under P4-17's
+            // two switches, after the record's own (a record delta of the same base wins).
+            if (await lazyDeltasEnabled(env, db, slug)) {
+              const bases = new Set(view.deltas.map((d) => d.from));
+              const ids = new Set(view.deltas.map((d) => d.artifact.sha256));
+              for (const r of await readyDeltasTo(db, slug, payloadSha256)) {
+                if (r.deliverableId !== deliverableId) continue;
+                const e = menuEntryOf(r);
+                if (!e || e.method !== "zstd-patch-from") continue;
+                if (bases.has(e.from) || ids.has(e.artifact.sha256)) continue;
+                bases.add(e.from);
+                ids.add(e.artifact.sha256);
+                view.deltas.push({ from: e.from, artifact: e.artifact });
+              }
+            }
+            return view;
+          }
         }
         if (rows.length < PAYLOAD_SCAN_PAGE) break;
       }
       return null;
+    },
+
+    async lazyDeltas(recordSha256s): Promise<CatalogLazyDelta[]> {
+      // P4-29 (plans/P4-29.md §6.1): nothing while either P4-17 switch is off.
+      if (recordSha256s.length === 0) return [];
+      if (!(await lazyDeltasEnabled(env, db, slug))) return [];
+      const ready = await readyLazyDeltas(db, slug);
+      if (ready.length === 0) return [];
+      const byTo = new Map<string, typeof ready>();
+      for (const r of ready) {
+        const list = byTo.get(r.to);
+        if (list) list.push(r);
+        else byTo.set(r.to, [r]);
+      }
+      const devicesOf = new Map<string, Promise<Map<string, number>>>();
+      const devices = async (deliverable: string, from: string) => {
+        let m = devicesOf.get(deliverable);
+        if (!m) {
+          m = installedBase(
+            db,
+            slug,
+            deliverable,
+            1,
+            now() - HOT_WINDOW_SECONDS,
+            MENU_BASE_SCAN,
+          ).then((rows) => new Map(rows.map((x) => [x.payload, x.devices])));
+          devicesOf.set(deliverable, m);
+        }
+        return (await m).get(from) ?? 0;
+      };
+      const out: CatalogLazyDelta[] = [];
+      for (const ids of chunked(recordSha256s)) {
+        const rows = await db.all<PackRecordRow>(
+          `${PACK_RECORD_SELECT}
+            WHERE r.product = ? AND r.kind = 'pack'
+              AND r.record_sha256 IN (${ids.map(() => "?").join(", ")})
+            ORDER BY r.record_sha256`,
+          slug,
+          ...ids,
+        );
+        for (const row of rows) {
+          const found = foundOf(row);
+          if (!found) continue;
+          const deliverable = found.release.deliverableId;
+          for (const v of found.record.variants) {
+            if (v.files?.layout !== "container") continue;
+            const to = v.payload?.sha256;
+            for (const r of byTo.get(to) ?? []) {
+              if (r.deliverableId !== deliverable) continue;
+              const entry = menuEntryOf(r);
+              if (!entry) continue;
+              const covered = (v.deltas ?? []).some(
+                (d) =>
+                  d.scope === "payload" &&
+                  d.from === entry.from &&
+                  d.method === entry.method,
+              );
+              if (covered) continue;
+              out.push({
+                recordSha256: found.sha256,
+                deliverableId: deliverable,
+                to,
+                entry,
+                devices: await devices(deliverable, entry.from),
+                createdAt: r.createdAt,
+              });
+            }
+          }
+        }
+      }
+      return out;
     },
 
     async pins(appReleaseId) {
