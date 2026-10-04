@@ -112,3 +112,37 @@ The Kotlin SDK ([P6-05](P6-05-kotlin-sdk.md) and its children P6-06 to P6-12) ad
 `publishAllPublicationsToLocalRepository` and `release-kotlin.yml` cover whatever modules exist when
 this package lands, and the rest as they land. Kotlin artifacts go **only** to Polaris Key's Maven
 feed: no Maven Central, no Sonatype, no `signing` plugin.
+
+## Corrections (F-10 implementation, 2026-10-04: the code is the fact)
+
+- **Maven coordinates are per module and per flavour.** P6-06 to P6-10 already gave every JVM
+  module (`:core`, `:license`, `:config`, `:identity`, `:release`, `:update`, `:packs`, `:sdk`) a
+  `maven-publish` publication with sources and `.module`, and `:platform` and `:godot` publish one
+  coordinate per flavour (`polaris-key-platform-{play,direct}`, `polaris-key-godot-{play,direct}`),
+  all into `sdks/kotlin/build/repo`. So `.pkey/release` declares twelve `maven.<artifact>`
+  deliverables (`im.plrs.key:polaris-key-<artifact>`), not `maven.platform` and `maven.godot`, and
+  `release-kotlin.yml` fails when `build/repo` holds an artifact the release does not publish
+  (the amendment's `:android` and `:ui` join both lists as they land).
+- **Deliverable ids** match `^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$`, so the Godot addon is
+  `godot.polaris-key` (its package name stays `polaris_key`).
+- **`artifacts.match` is a file-name glob** (the base name under `--dir`), never a path such as
+  `dist-pkg/…`. The Godot feed gets the canonical zip staged alone, because the `-assetlib` zip
+  matches the same glob.
+- **One trusted publisher per product.** `ci_publishers` holds one workflow and one environment,
+  so every release workflow calls the reusable `.github/workflows/publish-package.yml` (GitHub
+  names the called workflow in `job_workflow_ref`), in the `package-registry` environment. The
+  OCI image has its own `release-image.yml` on the `@polaris-key/cli@<version>` tag; its name on
+  the feed is `pkey` (`pkg.plrs.im/polaris-key/pkey`).
+- **npm releases are tags, not merges.** The owner ruled that nothing publishes yet and that the
+  Changesets "Version Packages" PR stays open: `release.yml` keeps the version PR (with no
+  `publish` input) and publishes one package per `@polaris-key/<name>@<version>` tag
+  (`pnpm changeset tag`).
+- **Verify:** `packages/cli/dist/pkey.mjs` does not exist; the standalone CLI is
+  `node actions/publish/dist/index.js validate` (or `packages/cli/dist/bin/pkey.js`).
+- **Gap (not F-10's to fix): the system product cannot take the root `.pkey/`.** A package publish
+  is checked against `release_deliverables`, which only a repository link or resync writes, and
+  `linkRepo` refuses the reserved slug while `resyncRepo` needs `release_source = 'github'`, which
+  the bootstrap never sets. Until a follow-up lets the bootstrap link the system product to
+  `vladzaharia/polaris-key` (F-03's area), every package publish is refused as
+  `invalid_descriptor`. The trusted publisher can be registered meanwhile by claiming it
+  (`PUT /manage/api/products/polaris-key/ci-publisher`; DEPLOYMENT §2).
