@@ -121,8 +121,43 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   account's own devices. Ownership is checked _before_ the rate-limit charge is spent, so a
   caller who owns nothing on that product cannot spend a budget at all, and the budget it does
   spend is scoped to that one product rather than shared platform-wide (`R5-05`).
-- **`POST /api/claim/license-key`** — link a license by presenting a typed `pkey_…` key,
-  rate-limited to 10 per minute on the account's budget.
+- **`PATCH /api/licenses/<product>/<licenseId>/devices/<deviceId>`** — rename one of the
+  account's own devices: `{ "label": "Studio PC" }`, or `null` / `""` to clear the name. Plain text
+  only: at most 64 characters after trimming, no control or format characters (so no
+  bidirectional overrides). Ownership first, then 30 per minute in that product's shard; audited
+  as `portal.device.rename`.
+- **`POST /api/licenses/<product>/<licenseId>/keys`** — "Get a new key". Only for products whose
+  operator turned on `keyReissueEnabled` (otherwise `404`, the same answer as a license that is not
+  yours; the license detail says which with `canGetNewKey`). The sign-in must be at most 5 minutes
+  old, otherwise `401 { "error": "step_up_required", "maxAgeSeconds": 300 }` and the customer signs
+  in again. Every active key of the license is revoked and the new one inserted in one batch;
+  the response (`201`, `no-store`) carries the raw key once, `{ key, hash, revokedKeys, createdAt }`,
+  and it is never readable again. Devices already activated keep working; the old key only stops
+  activating new ones. 5 per hour in the product's shard; the account and the license's own email
+  get a notice.
+- **`POST /api/activate/preview`** — what adding a key would do, before it is added. Takes
+  `{ "key": "pkey_…" }`; a string that is not exactly `pkey_<slug>_` plus 22 base64url characters
+  is a `422`. Otherwise `200` with a `verdict`:
+
+  | `verdict`         | Also carries                                                       | Meaning                                                                        |
+  | ----------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+  | `addable`         | `license` (tier, label, status, expiry, device limit), `platforms` | The key can be added.                                                          |
+  | `already_yours`   | the same, plus `license.id`                                        | Already in this account.                                                       |
+  | `owned_elsewhere` | nothing else                                                       | In another account; a license never moves by its key.                          |
+  | `email_mismatch`  | `maskedEmail` (`m•••@proton.me`)                                   | Carries an email this account has not verified, and the product needs it.      |
+  | `portal_off`      | nothing else                                                       | The product manages this license elsewhere (portal or key claim switched off). |
+  | `unknown`         | nothing else                                                       | No such key (or it was replaced), or no such product.                          |
+
+  Every answer carries `product` (`slug`, `name`, `branding`; `developerName`, `iconUrl` and
+  `headerUrl` are reserved for the library presentation) and `entries`, which is `null` until key
+  entries are counted. Nothing is written. A refusal never names the other account or the license.
+
+- **`POST /api/claim/license-key`** — link a license by presenting a typed `pkey_…` key. It acts
+  on the same evaluation as the preview, so the two never disagree: `401` for an unknown key,
+  `404` when the product's portal or key claim is off, `409 owned_elsewhere`, and
+  `403 email_mismatch` with `maskedEmail`; a license already yours answers `200` without writing or
+  emailing again. A new link emails the account and, when it is a different address, the
+  license's own email. The preview and the claim share one budget: 10 per minute per account.
 - **`GET /api/releases`** and **`POST /api/releases/<product>/<releaseId>/artifacts/<artifactId>/token`**
   — the downloads surface, gated by _three_ independent things at once: the portal's own
   `releasesEnabled` toggle, whether the product runs the Release service at all
@@ -148,6 +183,13 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
 `portal_product_settings`, edited at `GET`/`PATCH /manage/api/products/<slug>/identity/portal`.
 Five plain booleans, all defaulting **on** for a product that has never written a settings row:
 `portalEnabled`, `oidcEnabled`, `magicEnabled`, `licenseKeyClaimEnabled`, `releasesEnabled`.
+
+Two more default **off** (PX-W5, migration `0062`):
+
+- `keyReissueEnabled` — customers may replace a license's key from the portal ("Get a new key").
+- `claimByKey` — a license that carries an email may be added by anyone holding its key. Off is
+  the S-16 safety default: such a license joins only an account that verified that email. A
+  license already in an account never moves by its key either way.
 
 `autoLinkEnabled` is **tri-state**, not boolean — `true`/`false` is an explicit operator
 override; `null` ("auto") derives from the product's _own_ OIDC provider: on for a
