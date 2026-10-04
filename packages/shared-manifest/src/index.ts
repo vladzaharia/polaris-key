@@ -1179,6 +1179,7 @@ export const RESERVED_PRODUCT_SLUGS: readonly string[] = [
   "download",
   "webhooks",
   "well-known",
+  "activate",
 ];
 const SECRET_DELIVERY_VALUES = [
   "serverOnly",

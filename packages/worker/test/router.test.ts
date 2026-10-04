@@ -30,6 +30,10 @@ describe("matchRoute — platform + manage + portal (matched before product slug
   it("matches root customer portal routes", () => {
     expect(matchRoute("/").kind).toBe("portalSpa");
     expect(matchRoute("/index.html").kind).toBe("portalSpa");
+    // The Activate license deep link's path form (PORTAL.md §3.3): the SPA shell, never a
+    // product's public download page.
+    expect(matchRoute("/activate").kind).toBe("portalSpa");
+    expect(matchRoute("/activate/").kind).toBe("portalSpa");
     expect(matchRoute("/assets/portal.js").kind).toBe("portalSpa");
     expect(matchRoute("/api").kind).toBe("portalApi");
     expect(matchRoute("/api/me").kind).toBe("portalApi");

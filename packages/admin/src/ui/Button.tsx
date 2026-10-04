@@ -44,6 +44,18 @@ export const buttonVariants = cva(
         destructive:
           "bg-danger text-danger-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:brightness-110",
         link: "h-auto px-0 text-accent-fg underline-offset-4 hover:underline",
+        /**
+         * The customer portal's outlined quick action (PORTAL.md §5.2): transparent, a
+         * `border-strong` outline, a `text-strong` label and the icon in `accent-fg`.
+         */
+        quiet:
+          "border border-border-strong bg-transparent font-bold text-fg-strong [&_svg]:text-accent-fg hover:not-disabled:not-aria-disabled:bg-hover",
+        /**
+         * The portal header's Activate license (PORTAL.md §5.2): `surface-raised`, a
+         * `border-strong` outline, the key glyph in `accent-fg`.
+         */
+        action:
+          "border border-border-strong bg-surface-raised font-bold text-fg-strong [&_svg]:text-accent-fg hover:not-disabled:not-aria-disabled:bg-hover",
       },
       size: {
         xs: "h-7 min-w-7 px-2 text-xs [&_svg]:size-3.5",
