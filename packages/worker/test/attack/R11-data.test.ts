@@ -595,6 +595,10 @@ describe("R11-05 product scoping", () => {
       // product (the KEK sweep, A-13's settings). Read only by the platform-admin activity
       // endpoint; product-scoped actions still go to `audit`, which is product-first.
       "platform_audit",
+      // 0056 (A-13) — the platform settings store: instance-wide runtime values for the keys of
+      // the typed `PLATFORM_SETTINGS` registry (background-job switches and tunables, no tenant
+      // data). Written and read only by the platform-admin settings endpoint and the resolver.
+      "platform_settings",
     ]);
     const offenders: string[] = [];
     for (const t of tables.map((r) => r.name)) {
