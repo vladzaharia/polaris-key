@@ -50,7 +50,7 @@ import {
   sha,
   type Obj,
 } from "./packFixture.js";
-import type { Db } from "../src/db/types.js";
+import type { Db, DbParam } from "../src/db/types.js";
 import type { Env } from "../src/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import { issueStaticCiToken } from "../src/core/publisher.js";
@@ -556,6 +556,29 @@ async function lazyDelta(
   return { frame, sha256, key };
 }
 
+/** `n` devices last seen on `payload` of `pack` (P4-17's demand table), at `at`. */
+async function seen(
+  pack: string,
+  payload: string,
+  n: number,
+  prefix = "dev",
+  at = NOW,
+): Promise<void> {
+  for (let i = 0; i < n; i++)
+    await db.run(
+      `INSERT OR REPLACE INTO delta_demand_devices
+         (product, deliverable_id, from_sha256, to_sha256, device_id, strategy, seen_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      SLUG,
+      pack,
+      sha(`from:${prefix}:${i}`),
+      payload,
+      `${prefix}-${i}`,
+      "chunk",
+      at,
+    );
+}
+
 async function catalog() {
   const product = (await loadProduct(env, db, SLUG))!;
   return buildHooks(SERVICES, product.services, {
@@ -620,7 +643,6 @@ describe("ReleaseCatalog.lazyDeltas (plans/P4-29.md §6.1)", () => {
           memBytes: v1.payload.length + v2.payload.length,
           artifact: { sha256: lazy.sha256, bytes: lazy.frame.length },
         },
-        devices: 0,
         createdAt: NOW,
       },
     ]);
@@ -669,6 +691,26 @@ describe("ReleaseCatalog.lazyDeltas (plans/P4-29.md §6.1)", () => {
         (r) => r.entry.artifact.sha256,
       ),
     ).toEqual([ok.sha256]);
+  });
+});
+
+describe("ReleaseCatalog.lazyDeltaDevices (the menu's rank, P4-29 follow-up)", () => {
+  it("counts the devices last seen on each base in the hot window, aligned with the bases", async () => {
+    const { v1, v2 } = await coreWorld();
+    await seen(CORE, v1.payloadSha256, 3);
+    await seen(CORE, v2.payloadSha256, 1, "other");
+    // A device seen before the hot window does not count.
+    await seen(CORE, v1.payloadSha256, 1, "stale", NOW - 40 * 86_400);
+    expect(
+      await (
+        await catalog()
+      ).lazyDeltaDevices!([
+        { deliverableId: CORE, from: v1.payloadSha256 },
+        { deliverableId: CORE, from: sha("nobody") },
+        { deliverableId: VAULT, from: v1.payloadSha256 },
+        { deliverableId: CORE, from: v2.payloadSha256 },
+      ]),
+    ).toEqual([3, 0, 0, 1]);
   });
 });
 
@@ -753,6 +795,51 @@ describe("the composed feed's delta menu (plans/P4-29.md §6.1, §6.2)", () => {
     const after = await feed();
     expect(Object.keys(after.deltas)).toEqual([g2.payloadSha256]);
     expect(after.seq).toBe(doc.seq + 1);
+  });
+
+  it("ranks by the devices on each base, read only when a document is signed (never on the hash path)", async () => {
+    await access(CORE, "public");
+    const v0 = await publish(CORE, "0.9.0", 1, {
+      variant: { texture: "s3tc" },
+    });
+    const v1 = await publish(CORE, "1.0.0", 2, {
+      variant: { texture: "s3tc" },
+    });
+    const v2 = await publish(CORE, "1.1.0", 3, {
+      variant: { texture: "s3tc" },
+    });
+    await submitApp("1.0.0", 1, [{ pack: CORE, version: "1.1.0" }]);
+    await optIn();
+    // The newer delta would rank first on generation time; v0's installed base outranks it.
+    const newer = await lazyDelta(CORE, v1, v2, { createdAt: NOW });
+    const older = await lazyDelta(CORE, v0, v2, { createdAt: NOW - 60 });
+    await seen(CORE, v0.payloadSha256, 2);
+    const reads: string[] = [];
+    const all = db.all.bind(db);
+    vi.spyOn(db, "all").mockImplementation(((
+      sql: string,
+      ...args: DbParam[]
+    ) => {
+      if (sql.includes("delta_demand_devices")) reads.push(sql);
+      return all(sql, ...args);
+    }) as typeof db.all);
+    const signed = await feed();
+    expect(
+      signed.deltas[v2.payloadSha256].map(
+        (e: { artifact: { sha256: string } }) => e.artifact.sha256,
+      ),
+    ).toEqual([older.sha256, newer.sha256]);
+    expect(reads.length).toBeGreaterThan(0);
+    // The stored copy is current: the request hashes the candidate set and reads no device count.
+    reads.length = 0;
+    const again = await feed();
+    expect(again.seq).toBe(signed.seq);
+    expect(again.deltas).toEqual(signed.deltas);
+    expect(reads).toEqual([]);
+    // Device counts moving never re-sign: the rank is outside the hash.
+    await seen(CORE, v1.payloadSha256, 5, "more");
+    expect((await feed()).seq).toBe(signed.seq);
+    expect(reads).toEqual([]);
   });
 
   it("omits the member, and keeps the seq, with no ready delta or with the switch off", async () => {
