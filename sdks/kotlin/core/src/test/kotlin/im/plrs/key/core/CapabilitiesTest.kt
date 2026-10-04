@@ -40,7 +40,7 @@ class CapabilitiesTest {
     fun anUnknownFeatureIsVersion() = assertEquals(UnsupportedReason.version, reason(jvm.supports("core.teleport", DEFAULT_SERVICES)))
 
     @Test
-    fun aPlannedFeatureIsVersion() = assertEquals(UnsupportedReason.version, reason(jvm.supports(Feature.uiKit, DEFAULT_SERVICES)))
+    fun aPlannedFeatureIsVersion() = assertEquals(UnsupportedReason.version, reason(jvm.supports(Feature.identityOidc, DEFAULT_SERVICES)))
 
     @Test
     fun aRuntimeNaIsRuntimeOnEveryListedRuntime() {
@@ -105,15 +105,15 @@ class CapabilitiesTest {
         assertEquals(caps, FEATURE_VALUES.filter { it in caps })
         assertTrue(Feature.coreSync in caps)
         assertTrue(Feature.devicesFingerprint in caps)
-        assertFalse(Feature.uiKit in caps)
+        assertFalse(Feature.identityOidc in caps)
         assertFalse("core.store is dependency on the JVM", Feature.coreStore in caps)
     }
 
     @Test
     fun anUnsupportedCallThrowsTheRegistryCode() {
-        val u = (jvm.supports(Feature.uiKit, DEFAULT_SERVICES) as Support.Unavailable).unsupported
+        val u = (jvm.supports(Feature.identityOidc, DEFAULT_SERVICES) as Support.Unavailable).unsupported
         val e = UnsupportedException(u)
         assertEquals(ErrorCode.unsupported, e.code)
-        assertTrue(e.message!!.contains(Feature.uiKit))
+        assertTrue(e.message!!.contains(Feature.identityOidc))
     }
 }
