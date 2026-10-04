@@ -11,12 +11,22 @@
 //                        "deltas"?: [ { "file", "sig"?, "deltaFrom"? } ] } ],
 //         "feedName": "appcast.xml" }
 import { createHash } from "node:crypto";
-import { readFileSync, writeFileSync, createReadStream, statSync } from "node:fs";
+import {
+  readFileSync,
+  writeFileSync,
+  createReadStream,
+  statSync,
+} from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-const REPO = process.env.REPO ?? (() => { throw new Error("set REPO to a polaris-key checkout"); })();
-const W = (p: string) => pathToFileURL(join(REPO, "packages/worker/src", p)).href;
+const REPO =
+  process.env.REPO ??
+  (() => {
+    throw new Error("set REPO to a polaris-key checkout");
+  })();
+const W = (p: string) =>
+  pathToFileURL(join(REPO, "packages/worker/src", p)).href;
 const R = await import(W("services/update/updaterRender.ts"));
 const S = await import(W("services/release/sparkle.ts"));
 
@@ -45,7 +55,10 @@ function stream(file: string): ReadableStream<Uint8Array> {
 }
 
 const log: unknown[] = [];
-async function verified(file: string, sig?: string): Promise<string | undefined> {
+async function verified(
+  file: string,
+  sig?: string,
+): Promise<string | undefined> {
   if (!sig) return undefined;
   const sigText = readFileSync(sig, "utf8").trim();
   const size = statSync(file).size;
@@ -57,7 +70,12 @@ async function verified(file: string, sig?: string): Promise<string | undefined>
     expectedSize: size,
     open: async () => stream(file),
   });
-  log.push({ file: basename(file), size, verified: ok, ms: Math.round(performance.now() - t0) });
+  log.push({
+    file: basename(file),
+    size,
+    verified: ok,
+    ms: Math.round(performance.now() - t0),
+  });
   return ok ? sigText : undefined; // the Worker leaves out an enclosure whose signature fails
 }
 
@@ -92,10 +110,19 @@ if (spec.kind === "sparkle") {
     const deltas = [];
     for (const d of r.deltas ?? []) {
       const sig = await verified(d.file, d.sig);
-      deltas.push({ url: `${spec.baseUrl}/${basename(d.file)}`, size: statSync(d.file).size, deltaFrom: d.deltaFrom, ...(sig ? { edSignature: sig } : {}) });
+      deltas.push({
+        url: `${spec.baseUrl}/${basename(d.file)}`,
+        size: statSync(d.file).size,
+        deltaFrom: d.deltaFrom,
+        ...(sig ? { edSignature: sig } : {}),
+      });
     }
     const sig = await verified(r.file, r.sig);
-    sources.push({ entry: entry(r, r.file, i), ...(sig ? { edSignature: sig } : {}), deltas });
+    sources.push({
+      entry: entry(r, r.file, i),
+      ...(sig ? { edSignature: sig } : {}),
+      deltas,
+    });
   }
   body = R.renderSparkleAppcast({
     channelTitle: `${spec.productName} stable`,
@@ -109,9 +136,17 @@ if (spec.kind === "sparkle") {
   const sources = [];
   for (const [i, r] of spec.releases.entries()) {
     const sig = await verified(r.file, r.sig);
-    sources.push({ entry: entry(r, r.file, i), ...(sig ? { edSignature: sig } : {}) });
+    sources.push({
+      entry: entry(r, r.file, i),
+      ...(sig ? { edSignature: sig } : {}),
+    });
   }
-  body = R.renderWinSparkleAppcast({ channelTitle: `${spec.productName} stable`, link: spec.baseUrl, productName: spec.productName, sources });
+  body = R.renderWinSparkleAppcast({
+    channelTitle: `${spec.productName} stable`,
+    link: spec.baseUrl,
+    productName: spec.productName,
+    sources,
+  });
 } else {
   // As updaterFeeds.ts: the newest release's -full.nupkg, then every listed release's deltas.
   const assets = [];
@@ -120,13 +155,38 @@ if (spec.kind === "sparkle") {
     const packageId = R.velopackPackageId(e.name, e.version);
     const notes = R.velopackNotes(e.notes);
     // spec.fileNameMode "basename": the proposed fix (FileName relative to the feed's base URL).
-    const fname = (u: string) => (spec.fileNameMode === "basename" ? basename(new URL(u).pathname) : u);
+    const fname = (u: string) =>
+      spec.fileNameMode === "basename" ? basename(new URL(u).pathname) : u;
     if (i === 0)
-      assets.push({ PackageId: packageId, Version: e.version, Type: "Full", FileName: fname(e.url), SHA1: digest(r.file, "sha1").toUpperCase(), SHA256: e.sha256.toUpperCase(), Size: e.size, ...notes });
+      assets.push({
+        PackageId: packageId,
+        Version: e.version,
+        Type: "Full",
+        FileName: fname(e.url),
+        SHA1: digest(r.file, "sha1").toUpperCase(),
+        SHA256: e.sha256.toUpperCase(),
+        Size: e.size,
+        ...notes,
+      });
     for (const d of r.deltas ?? [])
-      assets.push({ PackageId: packageId, Version: e.version, Type: "Delta", FileName: fname(`${spec.baseUrl}/${basename(d.file)}`), SHA1: digest(d.file, "sha1").toUpperCase(), SHA256: digest(d.file, "sha256").toUpperCase(), Size: statSync(d.file).size, ...notes });
+      assets.push({
+        PackageId: packageId,
+        Version: e.version,
+        Type: "Delta",
+        FileName: fname(`${spec.baseUrl}/${basename(d.file)}`),
+        SHA1: digest(d.file, "sha1").toUpperCase(),
+        SHA256: digest(d.file, "sha256").toUpperCase(),
+        Size: statSync(d.file).size,
+        ...notes,
+      });
   }
   body = R.renderVelopackFeed(assets);
 }
 writeFileSync(join(spec.outDir, spec.feedName), body);
-console.log(JSON.stringify({ feed: join(spec.outDir, spec.feedName), bytes: body.length, signatures: log }));
+console.log(
+  JSON.stringify({
+    feed: join(spec.outDir, spec.feedName),
+    bytes: body.length,
+    signatures: log,
+  }),
+);
