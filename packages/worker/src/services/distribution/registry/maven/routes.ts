@@ -299,6 +299,9 @@ export function mavenRoutes(renderer: () => RegistryRenderer): RegistryRoute[] {
           if (!v) return registryNotFound("maven");
           const files = v.files.filter((f) => f.type === "maven-file");
           const exact = files.find((f) => f.name === name);
+          // A digest that cannot name a blob (a hand-edited row) is the not-found, not a throw.
+          if (exact && !/^[0-9a-f]{64}$/.test(exact.sha256))
+            return registryNotFound("maven");
           if (exact)
             return blobResponse(
               cache === "public" ? forCache(req) : req,

@@ -550,6 +550,25 @@ describe("a version's files (the static layout)", () => {
   });
 });
 
+describe("defensive reads", () => {
+  it("a file row whose digest cannot name a blob is the not-found, not a 500", async () => {
+    await db.run(
+      `UPDATE release_packages SET files_json = json_set(files_json, '$[0].sha256', 'zz')
+        WHERE product = ? AND version = '1.0.0'`,
+      OWNER,
+    );
+    const first = JSON.parse(
+      (await db.first<{ f: string }>(
+        "SELECT files_json AS f FROM release_packages WHERE product = ? AND version = '1.0.0'",
+        OWNER,
+      ))!.f,
+    )[0].name as string;
+    const res = await get(`${DIR}/1.0.0/${first}`);
+    expect(res.status).toBe(404);
+    expectHardened(res, first);
+  });
+});
+
 describe("the access ladder in front of the feed", () => {
   it("a disabled feed, packageFeeds off or Distribution off reads as absent", async () => {
     await setFeed({ enabled: 0 });
