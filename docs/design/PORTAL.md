@@ -1,63 +1,81 @@
 # Polaris Key customer portal: design specification
 
-**Status:** draft for owner approval · **Scope:** the customer portal: the SPA at
-`packages/admin/src/portal` (served at `/` on `key.plrs.im`) and the Worker routes it calls in
-`packages/worker/src/services/identity/portal` · **Builds on:** [BRAND.md](BRAND.md),
-`@polaris-key/brand`, the console kit described in [ADMIN.md](ADMIN.md) · **Baseline:** `ece22812`
-· **Mockups:** [portal/](portal/) (17 screens × desktop and phone × dark and light)
+**Status:** draft for owner approval, revised with the owner decisions of 2026-10-04 (Appendix C)
+· **Scope:** the customer-facing site at `key.plrs.im`: the SPA at `packages/admin/src/portal`
+(served at `/`), the hosted login card every sign-in goes through, and the Worker routes they call
+in `packages/worker/src/services/identity/portal` · **Builds on:** [BRAND.md](BRAND.md),
+`@polaris-key/brand`, the console kit described in [ADMIN.md](ADMIN.md), the Identity service in
+S-16 (`docs/research/2026-09-29-godot-omniplatform/notes/S-16-identity-service.md`) ·
+**Baseline:** `ece22812` · **Mockups:** [portal/](portal/) (42 screens × desktop and phone × dark
+and light)
 
 This document **supersedes** the portal parts of ADMIN.md: §2.7 (portal IA), §6.10 (portal
 screens) and Chunk 12 (§7.2). Chunk 12's scope is replaced by the PX work packages in §11. The rest
 of ADMIN.md is unchanged.
 
+**Naming.** The product is called **Polaris Key**, everywhere: the header lockup, page titles
+("Library · Polaris Key"), emails, sign-in copy and this document's UI strings. Never "Polaris Key
+Portal". "Customer portal" survives only as an internal and glossary term for this surface.
+
 Terminology follows the glossary (`packages/docs/src/content/docs/start/concepts.md`, AGENTS.md
 rule 4): **license** (US spelling, in UI copy too), **device**, **product**, **tier**, **customer
-portal**. The S-16 nouns are **user** (product-scoped) and **portal account** (the one
-cross-product record).
+portal**. The S-16 nouns are **user** (product-scoped), **portal account** (the one cross-product
+record, called "your account" in the UI) and **identity link** (called a **sign-in method** in the
+UI).
 
 ---
 
-## 0. What the portal is for
+## 0. What Polaris Key is for
 
-The portal is where someone who bought a game or app from a developer that uses Polaris Key goes
-to **see what they own and get to it**. It is not the developer's console, and it is not a store.
+Polaris Key is where someone who got a game or app from a developer that uses Polaris Key goes to
+**see what they own, get to it, and add more**. Think of it as a small Steam: a **library** first, a
+**Discover** shelf of things they can add for free, and one account with many ways to sign in. It
+is not the developer's console, and it does not sell anything.
 
 ### 0.1 What "done" looks like
 
-1. **Ownership at a glance.** The first screen after sign-in is the library: one tile per product,
-   never one per order or license. A person with one product, three, or forty can see everything
-   they own and its state without scrolling past anything else.
-2. **One obvious next action per product,** chosen from the license model and the device in hand:
+1. **Ownership at a glance.** The Library is the default page, on load and after every deep link
+   that doesn't name another page: one tile per product, never one per order or license. A person
+   with one product, three or forty can see everything they own and its state without scrolling
+   past anything else.
+2. **Free things are one tap away.** Discover lists every product the signed-in person is eligible
+   for (auto-issue policy, tier, group membership, email domain) without issuing anything; **Add to
+   library** mints the license on the spot.
+3. **One obvious next action per product,** chosen from the license model and the device in hand:
    _Download for macOS_, _Get it on the App Store_, _Activate on Steam_, _Free up a device_,
    _Open Quill_, _Set up package access_.
-3. **Every product has one complete page:** get it, what's new, license, devices, package access,
-   help. Nothing about a product lives anywhere else.
-4. **The top reason a gamer visits, a device limit, takes under a minute,** from the app's error
+4. **Every product has one complete page:** get it, Cloud Sync (when the product has it), what's
+   new, license, devices, package access, help. Nothing about a product lives anywhere else.
+5. **One login card for every sign-in.** Signing in to Polaris Key, signing in to an app through
+   Polaris Key, and approving a TV all use the same card. When an app asked, the card says so in a
+   persistent header from the first step to the last.
+6. **A person, not a login.** The account is the person; Apple, Google, Steam, email and passkeys
+   are keys to it, connected and disconnected any time from Account → Sign-in methods.
+7. **The top reason a gamer visits, a device limit, takes under a minute,** from the app's error
    to "Try again".
-5. **Honest everywhere.** No guessed CPU architecture, no fact only in a tooltip, no
-   "this tab will update" that doesn't, no dead-end "Needs attention".
-6. **Ready for S-16 and F-21.** The IA already has homes for product-scoped users, many sign-in
-   methods, connected products, sessions, export and registry tokens. Until those land, each
-   screen degrades gracefully (§10.3).
-7. **Modern and on-brand.** Dark-first with full light parity, Rubik 400/700, neutral violet
+8. **Honest everywhere.** No guessed CPU architecture, no fact only in a tooltip, no
+   "this tab will update" that doesn't, no dead-end "Needs attention", no sync status for a
+   product that doesn't sync.
+9. **Modern and on-brand.** Dark-first with full light parity, Rubik 400/700, neutral violet
    chrome, colour from the developers' own art. Works at 360 px with no horizontal scroll.
    WCAG 2.2 AA.
 
 ### 0.2 Design principles
 
-| Principle                                 | In practice                                                                                                                                  |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Products, not paperwork**               | Licenses, keys, orders and releases are details of a product, never top-level navigation.                                                    |
-| **One lead per view**                     | Exactly one solid violet button per region: the hero, the attention shelf, the product header. Tiles and rows use the outlined quick action. |
-| **Developer identity is content**         | Key art, icon, name and "by developer" carry the product's identity. The portal is never re-themed per product (S-16 §5.6).                  |
-| **Say why, then what to do**              | Every non-active status carries its reason and the action that fixes it, in visible text.                                                    |
-| **The device in hand decides the action** | Desktop: download for the detected OS. Phone: store link, or email the desktop link to yourself.                                             |
-| **Progressive scale**                     | Search, filters, sort, list view and the ⌘K palette appear only when the library is big enough to need them.                                 |
-| **Nothing guessed, nothing hidden**       | Universal builds are named as such; checksums are visible; gated builds say "Not included" and why.                                          |
+| Principle                                 | In practice                                                                                                                                                                                |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Products, not paperwork**               | Licenses, keys, orders, releases and Cloud Sync are details of a product, never top-level navigation. The top level is Library and Discover only.                                          |
+| **One lead per view**                     | Exactly one solid violet button per region: the hero, the attention shelf, the product header, the login card. Tiles, rows and header actions are outlined.                                |
+| **Developer identity is content**         | Key art, icon, name and "by developer" carry the product's identity, inside a fixed Polaris Key frame. The site is never re-themed per product (S-16 §5.6).                                |
+| **Say why, then what to do**              | Every non-active status carries its reason and the action that fixes it, in visible text. Every Discover offer says why you can add it.                                                    |
+| **The device in hand decides the action** | Desktop: download for the detected OS. Phone: store link, or email the desktop link to yourself.                                                                                           |
+| **Progressive scale**                     | Search, filters, sort, list view and the ⌘K palette appear only when the library is big enough to need them.                                                                               |
+| **Nothing guessed, nothing hidden**       | Universal builds are named as such; checksums are visible; gated builds say "Not included" and why; a product without Cloud Sync shows no sync anything.                                   |
+| **Storefront-easy sign-in**               | Identifier-first, one primary per step, three providers at most, the method you used last offered first, never a password. Modelled on Nintendo, Steam, PlayStation, Xbox, Epic and Apple. |
 
 ### 0.3 The brand contract
 
-The portal is a **core** surface (BRAND §6 rule 0): the Pinned K with **no section bit**, the core
+The site is a **core** surface (BRAND §6 rule 0): the Pinned K with **no section bit**, the core
 violet accent, no `data-service` attribute. Specifically:
 
 - **Header:** 64 px, `surface-page` with a `border-subtle` bottom edge, the kit's compact lockup
@@ -65,14 +83,15 @@ violet accent, no `data-service` attribute. Specifically:
   64 px height. Phones: 56 px. No "Powered by Polaris Key" badge anywhere (BRAND owner decision
   2026-10-03).
 - **Type:** Rubik 400 and 700 only (`font-synthesis: none`). Mono is the platform stack for keys,
-  hashes, versions and token prefixes only.
+  codes, hashes, versions and token prefixes only.
 - **Colour:** neutral chrome; `--pk-accent` (core violet) only for primary buttons, the active nav
-  underline, selection and focus. Gold (`--pk-signed`) only on _Signed_ chips. Status colours always
-  with an icon and a word.
+  underline, selection, focus and small counts. Gold (`--pk-signed`) only on _Signed_ chips.
+  Status colours always with an icon and a word.
 - **Illustration:** the stationary star (BRAND §7.7) is the only illustration, on empty, error and
-  no-context screens. It never animates.
-- **No gradients** in portal chrome or fallback art. Developer key art is the developer's content
-  and is shown as supplied.
+  no-context screens. A sparse static star field sits behind the login card on wide screens. Nothing
+  animates.
+- **No gradients** in chrome or fallback art. Developer key art is the developer's content and is
+  shown as supplied.
 - **Theme:** dark first, following the system, with a persisted "Match my device / Dark / Light"
   choice in Account (BRAND §3, §9.6), applied by an inline `<head>` script before first paint.
 
@@ -83,21 +102,21 @@ violet accent, no `data-service` attribute. Specifically:
 The audit of `main` (88 captures, axe on each) found a stripped-down console rather than a
 customer surface. The findings that shape this design, most severe first:
 
-| ID    | Finding                                                                                                                                                    | Answered by               |
-| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
-| PA-1  | **P0.** Every signed-in screen scrolls horizontally at 390 px; the header does not fit and sign-out is off-screen. No mobile nav.                          | §8, the tab bar           |
-| PA-2  | **P0.** The only device action (Disconnect) is off-screen on phones inside a scrolling table.                                                              | §4.9, device rows         |
-| PA-3  | **P1.** No product-first view: products are only group headings; downloads are one global chronological list, unlinked from licenses.                      | §3, §4.5–4.9              |
-| PA-4  | **P1.** Downloads: no platform detection, no latest-vs-older, no channel grouping, inconsistent version prefixes, SHA-256 returned but never shown.        | §4.9 Get it               |
-| PA-5  | **P1.** Expired and disabled licenses show only "Needs attention"; past expiry dates read "Expires …"; no "expires in 9 days".                             | §5.3 status model         |
-| PA-6  | **P1.** Why a download is blocked lives only in a `title` tooltip.                                                                                         | §4.9, "Not included" rows |
-| PA-7  | **P1.** Licensed builds hosted on R2 (`dl.plrs.im`) can never be downloaded from the portal.                                                               | Gap G3, PX-W3             |
-| PA-8  | **P1.** Raw "portal api 404" errors with no retry or way back.                                                                                             | §4.16, §6.4               |
-| PA-9  | **P1.** "This tab will update after you use it" is false; no resend, no change-email.                                                                      | §4.2                      |
-| PA-10 | **P2.** Jargon: "Continue with OIDC", "Refresh session", "Keys 1 / 2", "authorized/deauthorized", slugs and raw ids in notice emails.                      | §6                        |
-| PA-11 | Data returned but never shown: `productBranding`, `activatedAt`, `maxOfflineDays`, `minVersion/maxVersion`, device platform/arch/firstSeen, release notes. | §4.9                      |
-| PA-12 | `DELETE /api/me` works and has no UI; profile is read-only; no theme control.                                                                              | §4.13                     |
-| PA-13 | axe: icon-only profile link with no name, heading order, empty table header, no `h1` on sign-in and boot; 32 px touch targets with 12 px text.             | §9                        |
+| ID    | Finding                                                                                                                                                    | Answered by                |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| PA-1  | **P0.** Every signed-in screen scrolls horizontally at 390 px; the header does not fit and sign-out is off-screen. No mobile nav.                          | §8, the bottom bar         |
+| PA-2  | **P0.** The only device action (Disconnect) is off-screen on phones inside a scrolling table.                                                              | §4.22, device rows         |
+| PA-3  | **P1.** No product-first view: products are only group headings; downloads are one global chronological list, unlinked from licenses.                      | §3, §4.13–4.20             |
+| PA-4  | **P1.** Downloads: no platform detection, no latest-vs-older, no channel grouping, inconsistent version prefixes, SHA-256 returned but never shown.        | §4.20 Get it               |
+| PA-5  | **P1.** Expired and disabled licenses show only "Needs attention"; past expiry dates read "Expires …"; no "expires in 9 days".                             | §5.3 status model          |
+| PA-6  | **P1.** Why a download is blocked lives only in a `title` tooltip.                                                                                         | §4.20, "Not included" rows |
+| PA-7  | **P1.** Licensed builds hosted on R2 (`dl.plrs.im`) can never be downloaded from the portal.                                                               | Gap G3, PX-W3              |
+| PA-8  | **P1.** Raw "portal api 404" errors with no retry or way back.                                                                                             | §4.28, §6.4                |
+| PA-9  | **P1.** "This tab will update after you use it" is false; no resend, no change-email.                                                                      | §4.4                       |
+| PA-10 | **P2.** Jargon: "Continue with OIDC", "Refresh session", "Keys 1 / 2", "authorized/deauthorized", slugs and raw ids in notice emails.                      | §6                         |
+| PA-11 | Data returned but never shown: `productBranding`, `activatedAt`, `maxOfflineDays`, `minVersion/maxVersion`, device platform/arch/firstSeen, release notes. | §4.20                      |
+| PA-12 | `DELETE /api/me` works and has no UI; profile is read-only; no theme control.                                                                              | §4.26                      |
+| PA-13 | axe: icon-only profile link with no name, heading order, empty table header, no `h1` on sign-in and boot; 32 px touch targets with 12 px text.             | §9                         |
 
 Today the SPA is four files (`App.tsx` at 1,118 lines, `main.tsx`, `api.ts`, `format.ts`), so this
 is a rebuild on the console kit rather than a restyle.
@@ -131,25 +150,30 @@ a secret shown in full (A11).
 
 ---
 
+---
+
 ## 3. Information architecture
 
 ### 3.1 Model
 
 ```
-Portal account (global, Polaris-branded; one per person)
- ├─ emails (verified ones auto-attach purchases)
- ├─ passkeys, linked accounts (Steam, Google, Discord, Game Center …)
- ├─ sessions (browsers signed in to the portal)
+Account (one per person; "portal account" in S-16)
+ ├─ sign-in methods (S-16 identity links): Apple · Google · Steam · Game Center / Play Games (in-app only)
+ │                                          · email addresses (code or link) · passkeys
+ ├─ sessions (browsers and apps signed in to the account)
  └─ connected products ─┐
                         ▼
    Product (developer's)          ← one library tile, one product page
     ├─ product user (S-16; how that product knows the person)
     ├─ license(s)                  ← usually one; a base license plus a store grant is possible
-    │   ├─ key (only the end is shown) · tier · update window · offline days
-    │   ├─ devices (seats)         ← product devices, not portal sessions
+    │   ├─ key (only the end is shown) · tier · update window · offline days · key entries (S-16)
+    │   ├─ devices (seats)         ← product devices, not account sessions
     │   └─ registry tokens (F-21)
+    ├─ Cloud Sync (its own service, per product; S-17) ← only when the product turns it on
     ├─ releases → builds per platform, extras, release notes
     └─ store listings (App Store, Play, Steam, Microsoft Store, Flathub …)
+
+Discover = products whose license policy would auto-issue to this account (evaluated, not issued)
 ```
 
 The library aggregates by **product**. When a person holds several licenses for one product, the
@@ -159,45 +183,60 @@ switcher.
 
 ### 3.2 Global elements
 
-| Element               | Desktop (≥ 761 px)                                                                                       | Phone (≤ 760 px)                                                |
-| --------------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| Header                | Compact lockup · Library (count) · Account · ⌘K trigger (8+ products) · Add a license key · account chip | Compact lockup · search icon (8+ products) · avatar             |
-| Primary navigation    | Header nav with a 2 px violet underline on the current item                                              | Bottom tab bar: Library · Add key · Account (safe-area padding) |
-| Footer                | "Polaris Key · key.plrs.im" · Help · Privacy · Terms                                                     | Same, above the tab bar                                         |
-| Account chip / avatar | Initials and email; opens Account                                                                        | Initials; opens Account                                         |
-| Focused flows (§4.12) | Minimal header: lockup and a back-to-app link; no nav                                                    | Same                                                            |
+| Element               | Desktop (≥ 761 px)                                                                                                                                    | Phone (≤ 760 px)                                                                                                                                               |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Header                | Compact lockup · **Library** (count) · **Discover** (count of offers) · spacer · ⌘K trigger (8+ products) · **Activate license** · account menu       | Compact lockup · search icon (8+ products) · avatar (account menu)                                                                                             |
+| Primary navigation    | Library and Discover only, with a 2 px violet underline on the current one. Library is the default route.                                             | Bottom bar: **Library** · **Activate** (an outlined pill button in the middle, not a tab) · **Discover** (with a dot when there are offers); safe-area padding |
+| Activate license      | Right-aligned, next to the account menu, separate from the nav: an outlined button with the key glyph in `accent-fg`. Always opens the modal (§4.17). | The middle pill of the bottom bar                                                                                                                              |
+| Account menu          | Avatar, email (truncated), chevron. Menu: Account · Sign-in methods · Approve a new device · Appearance · Help · Sign out                             | Avatar opens the same menu as a sheet                                                                                                                          |
+| Footer                | "Polaris Key · key.plrs.im" · Help · Privacy · Terms                                                                                                  | Same, above the bottom bar                                                                                                                                     |
+| Focused flows (§4.25) | Minimal header: lockup and a back-to-app link; no nav                                                                                                 | Same                                                                                                                                                           |
+| The login card (§4.1) | Centred 456 px card on the star field, lockup above, footer below; no nav                                                                             | Full-width card under a 56 px lockup row                                                                                                                       |
+
+Account is not a top-level page: it lives behind the account menu.
 
 ### 3.3 Routes
 
-Hash routing stays (ADMIN.md lead decision Q2). Product ids in URLs are product **slugs**.
+Hash routing stays for the signed-in SPA (ADMIN.md lead decision Q2). Product ids in URLs are product
+**slugs**. The login card lives on real paths because apps and emails link to it.
 
-| Route                              | Screen                                      | Notes                                                                             |
-| ---------------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------- |
-| `#/`                               | Library                                     | `?view=grid\|list`, `?q=`, `?filter=attention\|games\|apps`, `?sort=recent\|name` |
-| `#/p/:product`                     | Product page                                | `?license=<id>` picks a license when there are several                            |
-| `#/p/:product/:section`            | Product page scrolled to a section          | `get`, `new`, `license`, `devices`, `package`, `help`                             |
-| `#/p/:product/free-device`         | Focused flow: device limit                  | `?for=<label>&return=<url>`; target of G15 `manageUrl`                            |
-| `#/p/:product/download`            | Focused flow: one download                  | `?platform=macos\|windows\|linux…`; for email links and in-app "Download update"  |
-| `#/claim`                          | Add a license key (dialog over the library) | `?key=` pre-fills; also opened by the header button and the tab bar               |
-| `#/account` / `#/account/:section` | Account                                     | `emails`, `passkeys`, `linked`, `products`, `sessions`, `appearance`, `data`      |
-| signed out, any route              | Sign in (§4.1–4.3)                          | `?product=<slug>` gives product context; the route is kept as `returnTo`          |
+| Route                                  | Screen                                                       | Notes                                                                                                       |
+| -------------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `#/`                                   | **Library** (default)                                        | `?view=grid\|list`, `?q=`, `?filter=attention\|games\|apps`, `?sort=recent\|name`                           |
+| `#/discover`                           | Discover                                                     | `?added=<product>` shows the just-added state after a reload                                                |
+| `/activate?key=…` → `#/?activate=…`    | **Library with the Activate license modal open, key filled** | Path form for apps and emails (short, printable); signed out → login card, then here. Never a separate page |
+| `#/p/:product`                         | Product page                                                 | `?license=<id>` picks a license when there are several                                                      |
+| `#/p/:product/:section`                | Product page scrolled to a section                           | `get`, `sync` (only when the product has Cloud Sync), `new`, `license`, `devices`, `package`, `help`        |
+| `#/p/:product/free-device`             | Focused flow: device limit                                   | `?for=<label>&return=<url>`; target of G15 `manageUrl`                                                      |
+| `#/p/:product/download`                | Focused flow: one download                                   | `?platform=macos\|windows\|linux…`; for email links and in-app "Download update"                            |
+| `#/account` / `#/account/:section`     | Account                                                      | `methods`, `products`, `sessions`, `appearance`, `data`                                                     |
+| `#/account/link`                       | Link an existing account (login card, §4.12)                 | Proof of both identities in one session                                                                     |
+| `#/account/approve?code=`              | Approve a new device (dialog over Account, §4.24)            | Target of the QR code; the code is typed when absent                                                        |
+| `/signin`                              | The login card                                               | `?product=<slug>` gives product context; `returnTo` kept                                                    |
+| `/authorize?…` (S-16 broker / I-16 OP) | **The login card with the app header** (passthrough)         | The app's identity comes from its registered client (§10.5), never from query parameters                    |
+| `/tv` (and `/device`)                  | Device-code entry → login card with the app header and code  | RFC 8628 `verification_uri`; `verification_uri_complete` pre-fills the code                                 |
+| `/signin/device`                       | Sign in with another device: QR and code (§4.23)             | Polled; completes when a signed-in session approves                                                         |
 
 **Redirects (stable links, anti-pattern A10):** `#/licenses` → `#/`; `#/licenses/:p/:id` →
-`#/p/:p/license?license=:id`; `#/downloads` → `#/`; `#/profile` → `#/account`.
+`#/p/:p/license?license=:id`; `#/downloads` → `#/`; `#/profile` → `#/account`; `#/claim?key=` →
+`#/?activate=<key>`; `#/account/emails|passkeys|linked` → `#/account/methods`.
 
-**Return URLs** (`return=`) are accepted only when they match a scheme or origin the product
-declares (S-16 manifest redirect allowlist); otherwise the flow ends on the product page.
+**Return URLs** (`return=`, `redirect_uri`) are accepted only when they match a scheme or origin the
+product declares (S-16 manifest redirect allowlist); otherwise the flow ends on the product page.
 
 ### 3.4 Entry points
 
-| From                                      | Lands on                                                  |
-| ----------------------------------------- | --------------------------------------------------------- |
-| App: `device_limit` error (needs G15)     | `#/p/:product/free-device?for=<this device>&return=<app>` |
-| App: key refused, entries used up (S-16)  | `#/p/:product?upgrade=1` (sign-in with product context)   |
-| Developer's "Manage your license" link    | `/?product=<slug>` → sign-in with context → product page  |
-| "License added" / "Device removed" emails | `#/p/:product` or `#/p/:product/devices`                  |
-| "Email me the download" email             | `#/p/:product/download?platform=…`                        |
-| Typed `key.plrs.im`                       | Library                                                   |
+| From                                              | Lands on                                                                                                |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| App: `device_limit` error (needs G15)             | `#/p/:product/free-device?for=<this device>&return=<app>`                                               |
+| App: key refused, no key entries left (S-16, G21) | `/activate?key=<key>&product=<slug>` → login card with product context → Library with the modal (§4.18) |
+| App: "Sign in" (web, native, Godot)               | `/authorize…` → login card with the app header (§4.7)                                                   |
+| TV or console: device code                        | `/tv` → login card with the app header and the code (§4.9)                                              |
+| Developer's "Manage your license" link            | `/signin?product=<slug>` → login card with context → product page                                       |
+| "License added" / "Device removed" emails         | `#/p/:product` or `#/p/:product/devices`                                                                |
+| "Sign-in method added/removed" emails             | `#/account/methods`                                                                                     |
+| "Email me the download" email                     | `#/p/:product/download?platform=…`                                                                      |
+| Typed `key.plrs.im`                               | Library                                                                                                 |
 
 ---
 
@@ -205,330 +244,530 @@ declares (S-16 manifest redirect allowlist); otherwise the flow ends on the prod
 
 Each screen lists its purpose, layout, states and data. Images are the dark renders at desktop
 width and on a phone; light renders sit beside them in [portal/](portal/) with the `-light`
-suffix. The mockup data is invented (Mara Fennick and twelve fictional products).
+suffix. The mockup data is invented (Mara Fennick, Sam Okafor and twelve fictional products).
 
-### 4.1 Sign in
+### 4.1 The login card
 
 ![Sign in, desktop](portal/01-signin-desktop-dark.png)
 
 <img src="portal/01-signin-mobile-dark.png" alt="Sign in, phone" width="260">
 
-**Purpose:** get a person into their library with the least effort, and make clear whose product
-sent them here.
+**One card for every sign-in.** Signing in to Polaris Key, signing in to an app through Polaris
+Key, a device code from a TV, the account upgrade after a license key, adding a method and joining
+accounts all render inside the same `LoginCard`: lockup above, card, footer below, on the static
+star field (`surface-page`, no art behind it). The card has three slots:
 
-- **Layout:** two columns at ≥ 761 px. Left: the product's key art with a context card ("Nightfall
-  · Lanternworks sent you here to manage your copy"). Right: lockup, form, footer. On phones the art
-  becomes a 200 px strip above the form with the context card overlapping it.
-- **Order of methods:**
-  1. **Sign in with a passkey** (secondary button). The email field also carries
-     `autocomplete="username webauthn"`, so the browser offers saved passkeys as you type
-     (conditional UI, shown in the desktop render).
-  2. **Email** and **Email me a code** (the one primary button).
-  3. **The product's own providers** under "Nightfall also lets you sign in with" (Steam, Discord,
-     Google, Apple, the developer's own IdP). Shown only with product context and only for methods
-     the product enables.
-  4. **Have a license key? Sign in with it** (link).
-- **No product context** (`key.plrs.im` typed directly): the left column shows the stationary star
-  on `service-core-subtle` instead of art; providers are the portal's own (Google, Discord) when
-  enabled.
-- **States:** default; email invalid (inline error under the field, `aria-invalid`); sending
-  (button busy, disabled); rate-limited ("Too many codes. Try again in 4 minutes."); method
-  unavailable (`email_unavailable`: "We can't send email right now. Try another way to sign in.");
-  no sign-in method enabled ("Sign-in is turned off for this product. Contact Lanternworks." with
-  the support link, never an empty card); network error ("Can't reach Polaris Key" with Retry,
-  distinct from signed-out).
-- **Data:** `GET /api/capabilities?product=` (methods, product presentation from G1), session
-  check `GET /api/me`.
-- **Before S-16:** the methods are the platform IdP, labelled with its display name ("Continue with
-  Polaris ID", never "OIDC"), and the email link. Passkey, code and product providers are hidden
-  until their dependency lands (§10.2).
+1. **Card header** (optional, persistent): product context (§4.2) or an app's request (§4.7). It
+   stays identical through every step of that flow.
+2. **Body:** one step at a time; exactly one primary button.
+3. **Card footer** (passthrough only): "Polaris Key signs you in for <App>. <Developer> never
+   sees your codes or passkeys." with a lock glyph.
 
-### 4.2 Enter the code
+**The first step (identifier-first):**
 
-![Code entry, desktop](portal/02-signin-code-desktop-dark.png)
+- `h1` "Sign in to Polaris Key", one line of lede.
+- **Email** (`autocomplete="username webauthn"`), so the browser offers saved passkeys as you type
+  (conditional UI, drawn on desktop), then **Continue** (the one primary).
+- "or", then provider buttons, full width and equal weight (App Review 4.8): **Continue with
+  Apple**, **Continue with Google**, **Continue with Steam**. **No other providers; no Discord.**
+- **Sign in with a passkey** (ghost button) for people whose browser didn't offer one.
+- Quiet links under a rule: **Have a license key?** (§4.5) and **Sign in with another device**
+  (§4.23).
+
+**Which providers appear** follows where the product ships (S-16 owner decision): Apple whenever
+the product ships on iOS or macOS App Store and offers any social sign-in (always, on the hosted
+card, for iOS products); Google for Android/Play and as a general option; Steam for products sold
+on Steam. Without product context, all three. Steam sign-in is a **web login** (OpenID on
+`steamcommunity.com`), so it is offered on the hosted card on every platform; native Steam ticket
+sign-in exists only inside Steam builds. Game Center and Play Games are never buttons on the web:
+they connect only from inside an app.
+
+- **States:** default; email invalid (inline under the field, `aria-invalid`); sending (button
+  busy); rate-limited ("Too many codes. Try again in 4 minutes."); `email_unavailable` ("We can't
+  send email right now. Try another way to sign in."); no method enabled ("Sign-in is turned off for
+  this product. Contact Lanternworks.", never an empty card); network error ("Can't reach Polaris
+  Key" with Retry, distinct from signed-out).
+- **Phone:** the card goes edge to edge under a 56 px lockup row; the star field and the autofill
+  drawing are dropped.
+- **Data:** `GET /api/capabilities?product=` (methods, providers for the product, presentation from
+  G1), session check `GET /api/me`.
+
+### 4.2 Product context
+
+![Sign in with product context](portal/02-signin-product-desktop-dark.png)
+
+From a developer's "Manage your license" link (`/signin?product=nightfall`): the card header shows
+the product icon, "Manage your copy of **Nightfall**" and "Lanternworks · downloads, license and
+devices". The title becomes "Sign in or create an account", the lede says to use the email the
+product was bought with, and the providers are Nightfall's (Google and Steam: Nightfall doesn't
+ship on iOS).
+
+### 4.3 Known account: "You usually sign in with Steam"
+
+![Known account](portal/03-signin-known-desktop-dark.png)
+
+After **Continue**, a person this browser has seen before gets an identity chip (avatar, email,
+**Change**), "Welcome back, Mara", a hint card **You usually sign in with Steam** ("on this browser,
+last time 2 days ago"), that method as the primary, and the generic alternatives **Email me a code**
+and **Use a passkey**.
+
+- **No enumeration.** The hint comes from a first-party `pk_last_method` cookie written on this
+  browser at the last successful sign-in (method kind and a hash of the email), not from a server
+  lookup of the typed address. Typing someone else's email always leads to the generic step (email
+  code, passkey, providers), whether or not an account exists, and the hint never lists the account's
+  other methods.
+- **Unknown or new email:** straight to the code step (§4.4); a new address creates the account
+  after the code (§4.10).
+
+### 4.4 Enter the code
+
+![Code entry, desktop](portal/04-signin-code-desktop-dark.png)
 
 - Six one-digit cells (`inputmode="numeric"`, `autocomplete="one-time-code"`, paste fills all
   cells); **Sign in** enables at six digits and submits automatically on the sixth.
 - Echoes the address, says how long the code works, and offers **Use a different email**.
-- "The email also has a sign-in button. If you open it on this device, this page signs you in by
-  itself." This is **true by construction**: the page re-checks `GET /api/me` on `focus` and
+- "The email also has a sign-in button. Open it on this device and this page signs you in by
+  itself." **True by construction**: the page re-checks `GET /api/me` on `focus` and
   `visibilitychange`, and every 5 s for 10 minutes while visible (ADMIN.md POR-1), and listens on a
   `BroadcastChannel` that the link-verify page posts to.
-- **States:** wrong code (cells marked invalid, "That code didn't work. 3 tries left."); expired
-  ("That code has expired. Send a new one."); too many tries (send-new only); resend countdown
-  ("resend in 0:42", then a **Resend** link).
-- **Before the code route lands (PX-W4):** the same screen without the cells: "Check your email.
-  Open the link on this device and this page signs you in by itself." with resend and change-email.
+- **States:** wrong code ("That code didn't work. 3 tries left."); expired; too many tries;
+  resend countdown, then **Resend**.
 
-### 4.3 Sign in with a license key, and the account upgrade
+### 4.5 Use a license key
 
-![License-key sign-in](portal/03-signin-key-desktop-dark.png)
+![License-key sign-in](portal/05-signin-key-desktop-dark.png)
 
-![Upgrade to an account](portal/17-key-upgrade-desktop-dark.png)
+The quiet path from **Have a license key?**: one mono field that is tolerant of dashes, spaces and
+case and **validates the format as you type** ("12 of 16"), **Continue** (disabled until the
+format is valid), and "Lost your key? Sign in with the email you bought with." Each successful use
+is a **key entry** (S-16) and leads to §4.6.
 
-- **Key sign-in:** one mono field ("Paste it or type it. Dashes and spaces don't matter."),
-  **Continue**, and a "Lost your key?" notice explaining that email sign-in finds licenses without
-  the key. Validates format client-side before submit; a wrong key says so inline.
-- **Upgrade prompt (S-16 owner decision 2026-10-04, key entries):** after every successful key
-  entry the portal shows **Keep <product> in an account**: the product and the key's last
-  characters, a warning notice with the entries left ("2 of 5 key entries left. After that,
-  Nightfall only accepts this key through an account."), the email field with **Create account
-  with a code**, the product's providers, and **Skip for now**.
-- **Entries used up:** the same screen without **Skip for now**, the notice becomes `danger`:
-  "This key has no entries left. Create an account or sign in to keep using Nightfall." The license
-  then attaches to the account under the S-16 claim rules (an owned license never moves by key).
-- **Passkeys are not offered here:** S-16 registers passkeys only after an email is verified.
-- **Data:** `POST /identity/session/license`-equivalent for the portal, extended with
-  `entriesLeft` and `entriesLimit` (gap G21).
+### 4.6 Key entry: the account upgrade (skippable, then forced)
 
-### 4.4 First run (empty library)
+![Upgrade, skippable](portal/06-key-upgrade-desktop-dark.png)
 
-![Empty library](portal/04-empty-desktop-dark.png)
+![Upgrade, forced](portal/07-key-upgrade-forced-desktop-dark.png)
+
+S-16 owner decision (2026-10-04): a license key has a limited, product-configurable number of
+**entries** (5, 10, 25 …), counted across the portal and apps.
+
+- **While entries remain:** a key card (product icon, name, tier, key ending, **Key works**), "Keep
+  Nightfall in an account", a segmented **entries meter** ("2 of 5 key entries left · This was entry
+  3", used segments in `warning`), email with **Create account**, the product's providers, and
+  **Skip for now and open Nightfall** (ghost). "Already have an account? Sign in".
+- **Entries used up:** the key card shows **No entries left**; "Create an account to keep
+  Nightfall"; a `danger` notice "This key has used all 5 entries. From now on Nightfall is opened
+  through an account. It takes a minute, and your license moves in with you."; **no skip**; "Sign in
+  to add Nightfall" for existing accounts; and the reassurance "Nightfall keeps working on the
+  devices it's already on. Only typing the key again needs an account."
+- The license then attaches under the S-16 claim rules (an owned license never moves by key; an
+  email-bound license attaches only to that verified email).
+- **Apps** refuse the key at the limit and deep-link to `/activate?key=…` (§3.4). Existing licensed
+  installs are never affected: device tokens, refresh, offline grace and the signed license document
+  keep working.
+- Passkeys are not offered here: S-16 registers passkeys only after an email is verified.
+
+### 4.7 App sign-in: the card header
+
+![Web app](portal/08-app-web-desktop-dark.png)
+
+When an app starts sign-in (S-16 broker, I-13 native redirect, I-16 per-product issuer, or RFC 8628
+device code), the same card gains a **persistent card header**: the app's icon, "**<App>** wants you
+to sign in", and "<Developer> · <where>":
+
+| Variant     | Where line                                 | Example                                      |
+| ----------- | ------------------------------------------ | -------------------------------------------- |
+| Web app     | Globe glyph and the registered origin      | Quill · Inkwell Labs · quill.inkwell.app     |
+| Native app  | Device glyph and "on <device name>"        | Tidewater Studio · on Mara's MacBook Pro     |
+| Device code | TV glyph, "on <device name>", and the code | Drift Kart · on Living room TV · `WDJB-MJHT` |
+
+- The header stays through **every** step: method choice, code, registration, confirm and the
+  return screen.
+- **App branding is data only:** icon, name, developer, origin and device label, rendered by Polaris
+  Key inside a fixed frame. No custom HTML, CSS, colours or copy. Names are checked against a
+  reserved list (Polaris, Polaris Key, Apple, Google, Steam, Valve …) at registration; the origin
+  shown is the registered redirect origin, never a query parameter.
+- The card footer names who handles the sign-in (§4.1).
+
+### 4.8 App sign-in: native app steps
+
+![Known account in an iPhone app](portal/09-app-native-known-desktop-dark.png)
+
+![Code](portal/10-app-native-code-desktop-dark.png)
+
+![Register](portal/11-app-native-register-desktop-dark.png)
+
+![Confirm](portal/12-app-native-confirm-desktop-dark.png)
+
+![Return](portal/13-app-native-return-desktop-dark.png)
+
+- **Method choice** is the §4.1/§4.3 body. The Saltwind render shows the case S-16 cares about:
+  an iPhone user who registered through Steam signs in with **Continue with Steam** on the hosted
+  card ("Opens Steam's sign-in page. You don't need the Steam app.").
+- **Code** is §4.4 with "Continue".
+- **Register** (new account after a verified code): "Create your account", a `success` line
+  "mara@fennick.studio is verified", **Your name** ("Shown to you and in emails. Developers see it
+  only when you continue to their app."), an opt-in checkbox "Add a passkey after this, so next time
+  is one tap", **Create account and continue**, and the terms line naming both Polaris Key's terms
+  and the developer's.
+- **Confirm** (every first sign-in to an app, and whenever what it gets changes): the person row
+  (avatar, name, email, **Not you?**), "Continue to Tidewater Studio as Mara?", and **what it
+  gets** as a list: its license ("Your Tidewater Pro license · Lifetime · this Mac becomes device 3
+  of 3"), **Cloud Sync** (only when the product has the service on; what it syncs), and name and
+  email. "It won't see your other products or how you sign in." **Continue to Tidewater Studio**
+  and **Cancel**. Later sign-ins skip this step.
+- **Return:** a success mark, "You're signed in to Tidewater Studio", **Return to Tidewater
+  Studio** (re-fires the redirect / app link), "You can close this tab. Open your library".
+
+### 4.9 App sign-in: device code (TV, console)
+
+![Device code](portal/14-app-device-desktop-dark.png)
+
+![TV signed in](portal/15-app-device-done-desktop-dark.png)
+
+- Reached from `/tv` (type the code) or the TV's QR (`verification_uri_complete`). The header adds a
+  code panel, "Code from your TV · WDJB-MJHT · Check it matches the screen".
+- Body: "Sign in to finish on your TV · Use your phone or computer here. The TV signs in by itself
+  when you're done." then the §4.1 methods (Drift Kart: Steam and Google), and "Didn't start this on
+  a TV? Cancel it. Someone may be trying to use your account."
+- Signed in already: straight to the confirm step (§4.8) with the device name.
+- Done: "Drift Kart is signed in on Living room TV · Look at your TV: it continues by itself", the
+  person row with the method used, and **Sign the TV out** for the wrong account.
+
+### 4.10 Add another way to sign in (nudge)
+
+![Add another method](portal/16-add-method-desktop-dark.png)
+
+After a first sign-in with a platform identity (Steam, Apple, Google, Game Center), a skippable
+card: "Signed in with Steam · marafox · Done", "Add another way to sign in · If you ever can't get
+into Steam, a second way in keeps your library yours", rows for **Add your email** (recommended:
+purchases with it join the library and it unlocks passkeys), **Add a passkey** ("Asks for your
+email first"), **Apple**, **Google**; **Skip for now**; "You can add these any time in Account →
+Sign-in methods". Shown once per account and again only if the account still has a single method
+after 30 days.
+
+### 4.11 Link an existing account
+
+![Join two accounts](portal/17-link-account-desktop-dark.png)
+
+For a person who ends up with two accounts, typically after **Sign in with Apple** with Hide My
+Email (a `privaterelay.appleid.com` address that can never match their real email). Reached from
+Account → Sign-in methods → **Link an existing account**, the nudge, and the claim error "owned by
+another account" (§4.19).
+
+- The person signs in to the other account **in the same session** (any of its methods); only then
+  does the join screen appear: both accounts as cards with their identity, **how each was proven**
+  ("Proven by Apple just now", "Proven by email code") and what each holds; the consequences (all
+  13 products in one library; every method from both keeps working; which email stays primary; both
+  addresses are emailed); **Join into one account** and **Cancel**.
+- **Never by email match.** Accounts join only with proof of both identities in one session (S-16
+  linking policy: explicit linking, block on conflict). Joining is audited, emailed to both, and
+  undoable for 72 hours from either account.
+
+### 4.12 Library: empty
+
+![Empty library](portal/18-library-empty-desktop-dark.png)
 
 - One `text-strong` line naming the signed-in email ("Nothing here for mara@fennick.studio yet"),
-  one `text-muted` line, and one primary action: an **inline license-key field** with **Add to
-  library**. A link adds another email. The stationary star fills the right half (top strip on
-  phones).
-- Three cards explain the other ways in: bought with an email (verify it in Account), bought on
-  Steam (link Steam), got a key from a store (add it above).
-- **States:** claim success navigates to the new product page with a toast "Nightfall is in your
-  library"; claim errors are inline (§4.15).
+  one `text-muted` line, the primary **Activate a license** (opens the modal) and **See 4 in
+  Discover**. "Bought with a different email or on Steam? Add it in Account → Sign-in methods." The
+  stationary star fills the right half (top strip on phones).
+- **Ready to add:** up to three Discover offers as rows (thumb, name, why) with **See all**. Hidden
+  when Discover is empty.
 
-### 4.5 Library: one product
+### 4.13 Library: one product
 
-![Library with one product](portal/05-library-1-desktop-dark.png)
+![Library with one product](portal/19-library-1-desktop-dark.png)
 
 - A full-width **hero**: key art (left, 1.45 fr) and a side panel with icon, name, developer,
-  status and tier, the **primary download** as a two-line button ("Download for macOS" over
-  "Version 1.4.2 · Universal · 2.1 GB"), an **Also yours on** row (Activate on Steam, Other
-  platforms), a short summary (license, devices, includes, plays on) and a link to the product
-  page.
-- A closing line: "That's everything linked to <email>. Bought something else? Add a license key."
-- **Phone:** the art becomes a 16:9 strip; the primary action becomes the phone action ("Email me
-  the download · It's a desktop game. We'll send the link to your inbox.").
+  status and tier, the **primary download** as a two-line button, an **Also yours on** row, a short
+  summary (license, devices, includes, plays on) and a link to the product page.
+- A closing line: "That's everything linked to <email>. There are 4 more you can add in Discover."
+- **Phone:** the art becomes a 16:9 strip; the primary action becomes the phone action.
 
-### 4.6 Library: a few products (2–7)
+### 4.14 Library: a few products (2–7)
 
-![Library with three products](portal/06-library-3-desktop-dark.png)
+![Library with three products](portal/20-library-3-desktop-dark.png)
 
-- A 3-column grid of large **library tiles** (§5.1). No toolbar: there is nothing to search yet.
-- Every tile's action is the **outlined quick action** (the critique's fix for flat hierarchy);
-  solid violet is reserved for the hero, the attention shelf and the product header.
+- A 3-column grid of large **library tiles** (§5.2). No toolbar.
+- Every tile's action is the **outlined quick action**; solid violet is reserved for the hero, the
+  attention shelf and the product header.
 
-### 4.7 Library: many products (8+)
+### 4.15 Library: many products (8+), grid and list
 
-![Library with twelve products](portal/07-library-12-desktop-dark.png)
+![Library with twelve products](portal/21-library-12-desktop-dark.png)
 
-<img src="portal/07-library-12-mobile-dark.png" alt="Library with twelve products, phone" width="260">
+![Library list view](portal/22-library-12-list-desktop-dark.png)
+
+<img src="portal/21-library-12-mobile-dark.png" alt="Library with twelve products, phone" width="260">
 
 - **Toolbar:** search ("Search 12 products", `/` focuses it), filter chips with counts (All,
-  Needs attention, Games, Apps & tools; a chip with a zero count is hidden), sort (Recently added,
-  Name), and a Grid/List toggle. The toolbar is in the URL (§3.3), so a filter never silently
-  hides products (A4): a non-"All" filter shows "Showing 3 of 12 · Show all".
+  Needs attention, Games, Apps & tools; a zero-count chip is hidden), sort (Recently added, Name),
+  and a Grid/List toggle, all in the URL (§3.3); a non-"All" filter shows "Showing 3 of 12 · Show
+  all" (A4).
 - **Needs attention shelf:** only items the person can act on, each with a solid primary action:
-  device limit reached → **Free up a device**; expires within 14 days → **Renew with <developer>**
-  (needs G16, else "Contact <developer>"); Steam key not activated → **Activate on Steam**; expired
-  with a newer version out → **Renew**. Never news or updates (A5). Hidden when empty.
-- **All products:** the 4-column grid of compact tiles (3 columns at 761–1179 px).
-- **⌘K trigger** in the header (§4.14).
-- **Products without art** use the fallback (§5.2): Hollow Pines (icon only) and Pixel Forge SDK
-  (no icon, no art) in the render.
-- **Phone:** search and the view toggle share a row; chips scroll sideways. **Phones default to
-  List view above 6 products** (the remembered choice wins), because twelve full tiles is a long
-  scroll.
+  device limit → **Free up a device**; expires within 14 days → **Renew with <developer>** (G16, else
+  "Contact"); Steam key not activated → **Activate on Steam**; expired with a newer version →
+  **Renew**. Never news. Hidden when empty.
+- **All products:** 4-column compact grid (3 at 761–1179 px), or the **list**: icon · Product ·
+  Status · Latest · Devices · **Quick action for this Mac** · chevron; 72 px rows; the whole row
+  opens the product page.
+- **⌘K trigger** in the header (§4.27). Products without art use the fallback (§5.2).
+- **Phone:** search and view toggle share a row, chips scroll; **List by default above 6
+  products** (the remembered choice wins); list rows keep a status pill under the name.
 
-### 4.8 Library: list view
+### 4.16 Discover
 
-![Library list view](portal/08-library-12-list-desktop-dark.png)
+![Discover](portal/23-discover-desktop-dark.png)
 
-- A table (`role="table"`): icon · Product (name and developer) · Status · Latest (mono version, or
-  plain text such as "On Steam") · Devices ("2 of 3", red and bold when full, "Any device", or "—")
-  · **Quick action for this Mac** (outlined, without "for macOS") · open chevron. Rows are 72 px;
-  the whole row opens the product page, the quick action is its own target.
-- The attention shelf stays above the table.
-- **Phone:** icon, name, developer and a small status pill, plus the chevron. Quick actions move to
-  the product page.
+![Just added](portal/24-discover-added-desktop-dark.png)
 
-### 4.9 Product page
+![Nothing to add](portal/25-discover-empty-desktop-dark.png)
 
-![Product page, desktop](portal/09-product-desktop-dark.png)
+**Purpose:** show every product the signed-in person could add right now for free, so nothing they
+are entitled to sits unclaimed.
 
-<img src="portal/09-product-mobile-dark.png" alt="Product page, phone" width="260">
+- **Who sees what.** Discover lists a product when its license policy **would auto-issue** a license
+  to this account on first load: the product's auto-issue rule, `groupRoleMap` (a group the account
+  belongs to through a connected identity), the tier rules, or an auto-link policy such as a
+  verified email domain. Eligibility is **evaluated without issuing** (§10.2, G24).
+  **Purchase-only and operator-issued products never appear**, nor do products already in the
+  library or ones whose developer turned Discover off.
+- **Layout:** `h1` "Discover", one lede ("Products their developers offer to your account. Adding
+  one gives you its license straight away, at no cost."), a 4-column grid of **Discover tiles**:
+  art, icon, name, developer, **what you'd get** (tier and terms, from the same policy: "Lifetime ·
+  5 devices", "Beta · 90 days · 2 devices"), platform glyphs, **why you can add it** ("Free with a
+  Polaris Key account", "Free for everyone with an account", "Open beta for Aperture Seven
+  customers", "For everyone with a fennick.studio email"), and **Add to library** (outlined).
+  Footnote: "Only products you can add for free appear here. Anything you buy shows up in your
+  library by itself."
+- **Add to library** mints the license on the spot through the same path as auto-issue (same tier,
+  limits and entitlements). The tile turns green-edged with **In your library** on the art and
+  **Open <product>**; a toast "Mossgarden is in your library · Open"; the Library count goes up and
+  the Discover count down. Errors are inline on the tile ("Aperture Seven stopped this offer.").
+- **Empty:** the star, "Nothing to add right now", "When a developer offers something to your
+  account, like a free game, a beta or an app your team gets, it appears here.", **Back to your
+  library**.
+- **Nav count:** Discover shows the number of offers as a small violet count (a dot on the phone
+  bar). It never nags beyond that: no badges on the library, no emails about offers.
+
+### 4.17 Activate license: the modal
+
+![Enter a key](portal/26-activate-key-desktop-dark.png)
+
+![Confirm](portal/27-activate-confirm-desktop-dark.png)
+
+![Done](portal/28-activate-done-desktop-dark.png)
+
+Opened by the header action, the phone bar pill, ⌘K, the empty library, the not-found page, and
+`/activate?key=`. **Always a modal over the Library** (a bottom sheet on phones); there is no redeem
+page.
+
+1. **Enter:** "Activate a license", one line ("Type or paste a key from a store, a developer or an
+   email. The product joins your library and stays there, even if you lose the key."), the mono key
+   field: dashes, spaces and case don't matter; it is normalised and grouped as you type, the format
+   is validated live ("14 of 16"; a character outside the alphabet is flagged at once), **Continue**
+   enables when the format is valid.
+2. **Confirm:** the product's key art across the top of the modal, the icon overlapping it, "Key
+   recognised · Mossgarden · Little Fern", `h2` **Add Mossgarden to your account?**, the tier tag,
+   the terms ("Lifetime · up to 5 devices") and platforms, the key echoed with **Change key**, and
+   **Back** / **Add Mossgarden**.
+3. **Done:** the art with **In your library**, "Mossgarden is in your library · Download it, see
+   your license and manage devices on its page. You won't need the key again.", **Activate another**
+   and **Open Mossgarden** (the product page; focus lands on its `h1`).
+
+### 4.18 Activate license: deep link
+
+![Deep link](portal/30-activate-link-desktop-dark.png)
+
+`/activate?key=…` (from an app at its entry limit, an email, a printed card) opens **Library** with
+the modal open and the key filled in and checked. With `product=` from an app, a notice names it:
+"Mossgarden sent you here. This key has no entries left in the game. Add it to your account and the
+game signs you in instead." The help line reads "Filled in from your link. Check it matches the key
+you have." Signed out, the login card (with product context) runs first and returns here.
+
+### 4.19 Activate license: errors
+
+![Error states](portal/29-activate-errors-desktop-dark.png)
+
+Inline under the field (S-16 claim rules), never a toast:
+
+| Case                         | Copy and action                                                                                                                                                                                        |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Not a key (format)           | Live while typing: "That doesn't look like a license key. Check for missing characters."                                                                                                               |
+| **Unknown key**              | "We couldn't find that key. Check it against your receipt: 0 and O, 1 and I are easy to mix up."                                                                                                       |
+| **Owned by another account** | "This Nightfall license is already in another Polaris Key account. A license never moves by its key." Notice: "If that account is yours too, sign in to it and join the two. Link an existing account" |
+| **Verified-email mismatch**  | "Lumen RAW was bought with m•••@proton.me. It joins only the account with that email verified." **Add and verify that email** (unless the product sets `claimByKey`)                                   |
+| **No key entries left**      | A `warning` notice, not a block, when signed in: "This key has used all 5 entries. Add it here and Ember Tactics signs you in instead of asking for the key." **Continue** stays enabled.              |
+| Already yours                | "Mossgarden is already in your library." **Open it**                                                                                                                                                   |
+| Product portal off           | "Little Fern manages this license elsewhere."                                                                                                                                                          |
+
+The masked email shows the first character and the domain only. All lookups share the claim rate
+bucket (THREAT-MODEL: enumeration).
+
+### 4.20 Product page
+
+![Product page with Cloud Sync](portal/31-product-sync-desktop-dark.png)
+
+![Product page without Cloud Sync](portal/32-product-no-sync-desktop-dark.png)
+
+<img src="portal/31-product-sync-mobile-dark.png" alt="Product page, phone" width="260">
 
 **Header:** back link to Library, the 320 px key-art banner (16:9, full-bleed on phones), the
-112 px icon overlapping its lower edge, the name as `h1`, "by <developer>" (links to the developer
-website when known), status pill and tier, and the **primary action** with an overflow menu
-(Copy link, Contact developer, Remove from library).
+112 px icon overlapping its lower edge, the name as `h1`, "by <developer>", status pill and tier,
+and the **primary action** with an overflow menu (Copy link, Contact developer, Remove from
+library).
 
 **Layout:** at ≥ 1180 px three columns: a sticky **in-page table of contents** (148 px: Get it,
-What's new, License, Devices 2/3, Package access, Help; the current section gets a violet left
-rule), the main column (Get it, What's new, Package access) and a 384 px side column (License,
-product sign-in, Devices, Help). At 761–1179 px the TOC hides and the two columns remain. On phones
-one column in task order (Get it, License, Devices, product sign-in, What's new, Package access,
-Help) under **sticky pill tabs**. Sections that don't apply are **omitted**, and so is their TOC
-entry (P14): no Package access without a non-public feed, no Devices for an account-bound product.
+Cloud Sync, What's new, License, Devices 2/3, Package access, Help), the main column (Get it,
+**Cloud Sync**, What's new, Package access) and a 384 px side column (License, product sign-in,
+Devices, Help). At 761–1179 px the TOC hides. On phones one column in task order (Get it, License,
+Devices, Cloud Sync, product sign-in, What's new, Package access, Help) under **sticky pill tabs**.
+Sections that don't apply are **omitted**, with their TOC entry (P14).
 
-**Get it** (the most important card):
+**Get it:** the recommended panel (honest platform detection: a Universal build is named as such;
+both Mac builds otherwise, Apple silicon first), **Change platform**, **Also yours on** store pills
+(App Store, Google Play, **Steam: Activate key** with the `registerkey` link, Microsoft Store,
+Flathub), **All platforms** grouped by OS then **Extras**, each file with a copyable middle-truncated
+SHA-256, and "Download links are made fresh when you click". Phone: "On this iPhone" with the store
+action and **Email me the desktop links**.
 
-- **Recommended panel** on `service-core-subtle`: OS glyph, "Recommended for this Mac", "macOS ·
-  Universal", "Runs on Apple silicon and Intel · .dmg · 184 MB · macOS 13 or later", the gold
-  **Signed** chip when the build is signed, and **Download**.
-- **Honest detection.** Server-side UA detection (reuse `distribution/page/detect.ts` through a
-  Core hook) plus `navigator.userAgentData` where available. Browsers can't tell Apple silicon from
-  Intel, so: a Universal build is recommended as such; otherwise both Mac builds are offered with
-  Apple silicon first and a "Not sure which Mac you have?" hint. Never guess silently (A8).
-- **Not on this Mac? Change platform** discloses a platform picker; the choice is remembered per
-  viewer.
-- **Also yours on:** store handoffs as pills: App Store, Google Play, **Steam: Activate key** (the
-  `registerkey?key=` deep link with the key filled in, only when the portal holds a Steam key),
-  Microsoft Store, Flathub. A store link never looks like the product's own installer (A3).
-- **All platforms:** file rows grouped by OS (macOS, Windows, Linux) then **Extras** (soundtrack,
-  sample pack, manual), each with OS glyph, variant, version, format, size, a copyable middle-
-  truncated **SHA-256**, and **Download** (or **Open** for store-hosted channels such as Flathub).
-- "Download links are made fresh when you click, so they never go stale." Each click mints the
-  token (`POST …/token`) and navigates; there is no "link used" state.
-- **Phone:** the recommended panel becomes "On this iPhone" with the phone build or companion app
-  (**Get it on the App Store**) and **Email me the desktop links**. A desktop-only product shows
-  only the email action.
+**Cloud Sync** (only when the product has the Cloud Sync service turned on, S-17):
 
-**What's new:** the latest version's notes with date, channel and Signed chip; **Earlier
-versions** (three shown, "Show all 14"). A build the license does not cover is listed but
-disabled, with a visible **Not included** label and the reason inline ("Beta builds aren't part of
-Tidewater Pro", "Version 3.0 isn't covered by 2.x licenses · Renew with Harbor Audio"). Never a
-tooltip.
+- What it keeps in step, in the developer's words ("Tidewater keeps your presets, templates and
+  preferences the same on every device you sign in on").
+- **Storage used** as a figure and a bar ("142 MB of 1 GB used").
+- **What's synced:** one row per data class the product declares (Presets · 128 items · 38 MB;
+  Project templates · 14 items · 96 MB; Preferences · Audio, MIDI, keyboard shortcuts · 8 MB).
+- **Last sync per device:** device, "This device", when, and state ("Up to date", "Preferences
+  only", "Waiting to upload", "Conflict: open Tidewater to choose").
+- **Export synced data** (a zip, emailed link for large exports) and **Delete synced data**
+  (inline confirmation with step-up; "Deleting clears the copy in Cloud Sync. Files already on your
+  devices stay there.").
+- **Products without the service show no sync status or setting anywhere:** not on the page, not in
+  the TOC, not in the library, not in the list view, not in ⌘K. The confirm step of app sign-in
+  mentions Cloud Sync only for products that have it.
 
-**License:** tier as the card title, "Bought from <developer> with <email>" (or "Owned via Steam"
-when G8 lands), status and model tags, a 2-column fact grid (Updates included until · Covers
-versions · Activated · Works offline for), the **license key** box showing only the last
-characters with **Get a new key** (G7; hidden when the product doesn't allow self-service), the
-plain explanation "Only the end of a key is kept, so it can't be shown in full", and the
-**Included** list as check tags. Several licenses: a switcher at the top of the card.
+**What's new**, **License**, **"<Product> knows you as …"** (the identity this product uses, with
+**Manage sign-in methods**), **Devices** (seat meter, rows with **Remove**, dormant rows), **Package
+access** and **Help** are unchanged from the converged design: every non-covered build is listed
+with **Not included** and its reason as text; the key shows only its end with **Get a new key**
+(G7); devices show "+1 not using a seat"; package tokens show prefix, last used, expiry and the
+amber "Expires in 6 days" pill.
 
-**Signed in to <product> as …** (S-16): one small card naming the identity this product uses
-("mara@fennick.studio · with an email code", "nightowl_alex · Steam", "License key only, no
-sign-in") and a link to change it in Account → Connected products. Hidden before I-15.
+**States:** loading (skeleton header and two skeleton cards); not found (§4.28); load error
+(`ErrorState` with Retry); license expired (a `danger` callout with **Renew with <developer>**);
+suspended by the developer; account-bound product (Get it becomes **Open Quill** plus store links;
+no key, no Devices).
 
-**Devices:** a segmented seat meter (one segment per seat), "2 of 3 in use", "+1 not using a seat"
-for dormant devices; rows with platform glyph, label (or "Unnamed device · Windows 11"), "This
-device" badge where known, OS · app version · last seen; dormant rows are muted with **Not using a
-seat** and "last seen 94 days ago". Each row has **Remove** (36 px, always on-screen). The footnote
-explains removal and dormancy. Disconnected devices collapse under "2 removed devices".
+### 4.21 Package token created
 
-**Package access** (F-20/F-21; only when the product has an enabled non-public feed the license
-covers): what the feed contains and that tokens are read-only and stop with the license; the feed
-URL with copy; **Your tokens** (name, `pkeyr_` prefix, last used, expiry, an amber "Expires in
-6 days" pill inside 14 days, **Renew** and **Revoke**); **Create token**; snippet tabs for the
-feed's ecosystems (from the F-12 renderer) with `${PKEY_TOKEN}` as the placeholder.
+![Token created](portal/33-product-token-desktop-dark.png)
 
-**Help:** "<Developer> handles licenses and downloads for <product>." **Contact <developer>** and
-the website (G16). Hidden when neither is known.
+A dialog (bottom sheet on phones) that cannot be dismissed by scrim click or Escape until the token
+is copied or **I've saved it** is pressed (`OneTimeSecretPanel`): the token with **Copy**, its name,
+scope and expiry, and the snippet with the real token inlined.
 
-**States:** loading (skeleton header and two skeleton cards; never zeros); not found (§4.16); load
-error (`ErrorState` with Retry, keeps the header if it loaded); license expired (a `danger` callout
-under the header: "Updates ended at 1.8. Version 2.0 isn't covered." with **Renew with <developer>**;
-Get it recommends the newest **covered** build); disabled by developer ("Suspended by Kiln Games.
-Contact them to find out why." with Contact; downloads disabled with that reason); account-bound
-product (Get it becomes **Open Quill** plus store links; no License key, no Devices).
+### 4.22 Remove a device (inline)
 
-### 4.10 Package token created
+![Remove a device](portal/34-product-remove-device-desktop-dark.png)
 
-![Token created](portal/10-product-token-created-desktop-dark.png)
+**Remove** expands the row in place into a `danger-subtle` panel with the consequences (the seat is
+free straight away with the new count; the app on that device asks to activate next time; an email
+confirms it), **Remove Studio PC** and **Keep it**. Focus moves to the panel heading.
 
-- A dialog (bottom sheet on phones) that **cannot be dismissed by scrim click or Escape** until the
-  token is copied or **I've saved it** is pressed (ADMIN.md 0.1.3, `OneTimeSecretPanel`).
-- "Copy your token now. This is the only time you'll see it." The token name, scope, product and
-  expiry; the token with **Copy**; the snippet with the real token inlined and **Copy snippet**.
-- **Create token** form (before this state, not drawn): name (required), expiry (30 / 90 / 365 days;
-  default 90; Godot URL tokens max 30, per F-20 §6.5).
+### 4.23 Sign in with another device
 
-### 4.11 Remove a device (inline)
+![QR and code](portal/39-other-device-desktop-dark.png)
 
-![Remove a device](portal/11-product-remove-device-desktop-dark.png)
+On a new device, **Sign in with another device** shows a QR code and an 8-character code ("Works for
+4:52"), with two ways to approve it: scan with a phone where you're signed in (the phone camera opens
+`#/account/approve?code=`), or on that device open Account → **Approve a new device** and type the
+code. "Waiting for you to approve it on the other device" polls until approved, denied or expired.
 
-- **Remove** expands the row in place (no modal) into a `danger-subtle` panel: "Remove Studio PC?"
-  and the consequences as a list: the seat is free straight away (with the new count), the app on
-  that device asks to activate next time it opens, an email confirms it. **Remove Studio PC**
-  (solid danger) and **Keep it**. Focus moves to the panel heading; Escape or **Keep it** collapses
-  it and returns focus to **Remove**.
-- On success the row leaves with a toast "Studio PC removed · 1 of 3 in use" and the meter updates.
+### 4.24 Approve a new device
 
-### 4.12 Device limit: focused flow
+![Approve](portal/40-other-device-approve-desktop-dark.png)
 
-![Device limit flow](portal/12-device-limit-desktop-dark.png)
+On the signed-in session: "Approve a new device? · Code K7QP-2MXD asks to sign in to your account",
+the requesting device (browser and OS, coarse location, when), a `warning` notice "Only approve if
+you started this yourself, on a device in front of you. Nobody from Polaris Key or a developer will
+ever ask you for this.", **Deny** and **Approve and sign it in**. Approval is audited, emailed, and
+the new session appears in "Where you're signed in".
 
-- Opened from the app (G15) or an email. Minimal chrome: lockup and **Back to Orbit Survey without
-  changes** (the return URL, or the product page).
-- A 720 px card: product art strip, icon, "Orbit Survey · Parallax Nine", **Your license is on 2 of
-  2 devices** with a full red meter, "To use Orbit Survey on **Mara's Steam Deck**, remove one of
-  these" (the device name from `?for=`, else "on a new device").
-- Devices as radio cards, **the least recently used preselected** with a "Least recent" tag; dormant
-  devices don't appear (they don't hold seats).
-- A consequences notice; **Remove Work laptop and continue** (the label follows the selection) and
-  **Cancel**; then "Go back to Orbit Survey and press **Try again**", and "Need more devices? Ask
-  Parallax Nine" (G16).
-- **Success state:** "Done. Orbit Survey can start on Mara's Steam Deck now." with **Back to Orbit
-  Survey** (the return URL) as the primary action.
+### 4.25 Device limit: focused flow
 
-### 4.13 Account
+![Device limit flow](portal/35-device-limit-desktop-dark.png)
 
-![Account](portal/13-account-desktop-dark.png)
+Unchanged: minimal chrome with **Back to Orbit Survey without changes**; "Your license is on 2 of 2
+devices" with a full red meter; devices as radio cards with the least recently used preselected;
+consequences; **Remove Work laptop and continue**; then "Go back to Orbit Survey and press Try
+again".
 
-A sticky section nav (pills scrolling sideways on phones) and one card per section:
+### 4.26 Account
 
-| Section                    | Content                                                                                                                                                                                                | Depends on       |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
-| **Emails**                 | Each address with Primary / Verified / "11 products"; **Add email** (verify by code); Make primary; Remove (not the last one). "Purchases made with a verified email join your library by themselves." | G10, I-15        |
-| **Passkeys**               | One card per passkey: provider name, added date, last used and where; **Rename**, **Remove** (inline confirm). **Add a passkey** is the section's primary when there are none.                         | I-14             |
-| **Linked accounts**        | Steam, Game Center, Google, Discord, Apple: account name, when linked, which products use it; **Link** / **Unlink**. Game Center links only from inside an app (no web button).                        | I-12, I-20, I-15 |
-| **Connected products**     | One row per product user: icon, product, developer, **the identity it uses** ("Steam (marafox)", "email code", "license key only, no sign-in"); **Disconnect** (or **Remove** for key-only).           | I-15             |
-| **Where you're signed in** | Browser sessions only (never product devices): browser, OS, coarse location, last active, "This browser"; **Sign out**; **Sign out everywhere else**.                                                  | G12, I-15        |
-| **Appearance**             | Match my device / Dark / Light radio cards, persisted.                                                                                                                                                 | none             |
-| **Your data**              | **Download my data** (`GET /api/me/export`) and **Delete account** (typed confirmation `delete`; explains licenses stay with each developer and can be claimed again).                                 | export: I-15     |
+![Account](portal/36-account-desktop-dark.png)
 
-Before the dependencies land, Account shows Emails (the one sign-in email, read-only),
-Appearance, Your data (delete only) and **Sign out**.
+![Disconnect with step-up](portal/37-account-disconnect-desktop-dark.png)
 
-### 4.14 Jump to a product (⌘K)
+![Last method guard](portal/38-account-last-method-desktop-dark.png)
 
-![Command palette](portal/14-switcher-desktop-dark.png)
+Reached from the account menu. A sticky section nav (pills on phones) and one card per section:
 
-- Available everywhere from 8 products (⌘K / Ctrl K, the header trigger, the phone search icon).
-  Built on `cmdk` (approved in ADMIN.md Q3).
-- Groups: **Products** (name and developer match, status pill on the right), **Actions** scoped to
-  the top match ("Manage devices for Tidewater Studio", "Create a package token for …", "Add a
-  license key"), **Recent**. Matches are highlighted in `accent-fg` bold.
-- Desktop: a 640 px dialog near the top. Phone: a full-screen sheet with a close button.
-- ARIA combobox and listbox pattern; arrow keys move, Enter opens, Escape closes and returns focus.
+**Sign-in methods** (S-16: an account is a person; sign-in methods are keys to it). "Each one is a
+key to this account. Connect or disconnect them any time; you need at least one." with **Link an
+existing account** in the header. Three groups of rows, each row with the provider glyph, the
+**connected identity** (Google address, Steam persona, Game Center alias, "Sam's Apple Account ·
+Hide My Email"), when it was connected and **last used**, and its action:
 
-### 4.15 Add a license key
+| Group    | Rows                                                                                                                             | Actions                                                                   |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Accounts | Apple, Google, Steam always listed; Game Center / Play Games only once connected ("connect only from inside a game")             | **Connect** (secondary) or **Disconnect** (ghost)                         |
+| Email    | Each verified address: Primary, products it brought in, last used to sign in. **Add an email** (verify by code)                  | **Make primary**, **Remove** (not the primary while it is the only email) |
+| Passkeys | One row per passkey: provider name, added, last used and where. **Add a passkey** (disabled with a reason until an email exists) | **Rename**, **Remove**                                                    |
 
-![Add a license key](portal/15-add-key-desktop-dark.png)
+- **Disconnect and remove ask for step-up:** the row expands into a `danger-subtle` panel ("Disconnect
+  Steam?"), lists the consequences (you won't sign in with Steam; which other methods remain; which
+  products know you through Steam and will ask you to sign in another way; the change is recorded and
+  emailed), then "Confirm it's you first" and **Use your passkey to disconnect** (or an email code
+  when there's no passkey) next to **Keep Steam**.
+- **The last method can't be removed.** When only one method exists its row says **Only method**,
+  **Disconnect** is disabled, and a `warning` line explains: "This is your only way to sign in.
+  Connect another one first, then you can remove Apple." (S-16 "never orphan").
+- **Hide My Email accounts** get a notice at the top: "Already have a Polaris Key account? Hide My
+  Email gave us a private address, so we can't match it to your real email. Sign in to the other
+  account to join them. Link an existing account".
+- Footnote: "Removing a method asks you to confirm it's you. Every change is recorded and emailed to
+  <primary email>."
 
-- A dialog (bottom sheet on phones) from the header, the tab bar or `#/claim?key=`.
-- Mono key field, dash- and space-insensitive, upper-cased as typed; when the key's product can be
-  previewed, a **Found** panel shows the product, tier and terms before anything is attached; the
-  primary names the product (**Add Mossgarden**).
-- **Errors, inline under the field:** not a key ("That doesn't look like a license key. Check for
-  missing characters."); unknown ("We couldn't find that key."); already yours ("Mossgarden is
-  already in your library" with **Open it**); owned by another account ("This license is already
-  in another account. Sign in with the email it was bought with." per S-16 claim rules); email-bound
-  ("This license can only be added by signing in with the email it was bought with."); entries used
-  up (§4.3); product portal off ("Little Fern manages this license elsewhere.").
-- **Success:** navigates to the product page; toast "Mossgarden is in your library".
-- **Preview data:** a new read-only lookup (gap G22) that reveals only name, developer, tier and
-  terms, rate-limited like claim. Without it, the dialog goes straight to claim.
+**Connected products:** one row per product user with **the identity it uses** and, when the product
+has it, "Cloud Sync on"; **Disconnect** ("signs that product out; its license stays in your
+library").
 
-### 4.16 Not found and errors
+**Where you're signed in:** browsers and apps signed in to the account (never product devices), with
+**Approve a new device** and **Sign out everywhere else**.
 
-![Not in your library](portal/16-not-found-desktop-dark.png)
+**Appearance** and **Your data** (Download my data; Delete account with typed confirmation) are
+unchanged.
 
-- **Product not in your library:** the stationary star, "That product isn't in your library",
-  who you're signed in as, **Back to your library**, **Add a license key**, and links to add another
-  email or switch account. Never "portal api 404".
-- **Can't reach Polaris Key** (network): the same template with **Try again**; the shell stays.
-- **Something went wrong** (5xx): **Try again** and a reference id in mono for support.
-- **Signed out mid-session:** a toast "You've been signed out" and the sign-in screen with the
-  current route as `returnTo`.
+### 4.27 Jump to a product (⌘K)
+
+![Command palette](portal/41-switcher-desktop-dark.png)
+
+From 8 products (⌘K / Ctrl K, the header trigger, the phone search icon), on `cmdk`: **Products**,
+**Actions** scoped to the top match ("Manage devices for …", "Cloud Sync for …" only when the
+product has it, "Activate a license"), **Recent**. Desktop: a 640 px dialog near the top; phone:
+full-screen.
+
+### 4.28 Not found and errors
+
+![Not in your library](portal/42-not-found-desktop-dark.png)
+
+- **Product not in your library:** the star, "That product isn't in your library", who you're
+  signed in as, **Back to your library**, **Activate a license**, and links to add another email or
+  link an existing account. Never "portal api 404".
+- **Can't reach Polaris Key**, **Something went wrong** (with a reference id), and **Signed out
+  mid-session** (a toast and the login card with `returnTo`).
 
 ---
 
@@ -536,14 +775,14 @@ Appearance, Your data (delete only) and **Sign out**.
 
 ### 5.1 Reuse first
 
-The portal is built on the console kit in `packages/admin/src/ui/` and `@polaris-key/brand/react`.
+The site is built on the console kit in `packages/admin/src/ui/` and `@polaris-key/brand/react`.
 New components live in `packages/admin/src/portal/components/` unless the console can use them too.
 
 | Need                   | Use                                                                                              |
 | ---------------------- | ------------------------------------------------------------------------------------------------ |
 | Lockup in the header   | `PolarisLockup` (`@polaris-key/brand/react`), compact, theme-driven                              |
 | Buttons, icon buttons  | `ui/Button`, `ui/IconButton` (add the `quiet` outlined variant, §5.2)                            |
-| Status pills           | `ui/StatusPill` with the portal status map (§5.3)                                                |
+| Status pills           | `ui/StatusPill` with the status map (§5.3)                                                       |
 | Signed chip            | `ui/SignedBadge`                                                                                 |
 | Copy, hashes, versions | `ui/CopyButton`, `ui/Hash` (middle-truncated SHA-256), `ui/Version`                              |
 | Key display            | `ui/KeyDisplay` (last characters only)                                                           |
@@ -557,37 +796,36 @@ New components live in `packages/admin/src/portal/components/` unless the consol
 | Kbd hints              | `ui/Kbd`                                                                                         |
 | Data table (list view) | `ui/data-table` in client mode                                                                   |
 
-### 5.2 New portal components
+### 5.2 New components
 
-| Component             | Contract                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PortalShell`         | Header, tab bar, footer, skip link, `main` landmark; collapses the header at ≤ 760 px.                                                                                                                                                                                                                                                                                                                                                                            |
-| `ProductArt`          | Props: `product`, `variant: "banner" \| "tile" \| "thumb" \| "icon"`. Renders the proxied `headerUrl`/`iconUrl` (G1). **Fallbacks:** icon but no art → a flat tint field (tint darkened toward the page in OKLCH to L ≤ 0.30 in both themes) with the icon centred in a rounded square; neither → the same field with the first letter in Rubik 700 at tint L ≥ 0.85. No gradients. `alt` is the product name on banners, empty elsewhere (the name is adjacent). |
-| `LibraryTile`         | Art 16:9 with the status pill on a solid overlay plate at bottom-right, icon overlapping the art, name (`h3`), developer, meta line, platform glyphs (labelled as one image: "Available for Windows, macOS…"), optional note, **quick action** (`quiet`) and an overflow menu. Variants: large (2–7) and compact (8+).                                                                                                                                            |
-| `LibraryHero`         | The one-product layout (§4.5).                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `LibraryList`         | The list view (§4.8) on `ui/data-table`.                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| `AttentionShelf`      | Up to 6 cards (thumb, name, reason, solid action); "Show all 9" beyond that.                                                                                                                                                                                                                                                                                                                                                                                      |
-| `LibraryToolbar`      | Search, chips with counts, sort, view toggle; URL-synced.                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `JumpPalette`         | ⌘K (§4.14).                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `QuickAction`         | Resolves the one action for a product and device (§5.4); returns label, icon, href or handler, and the phone variant.                                                                                                                                                                                                                                                                                                                                             |
-| `ProductHeader`       | Banner, icon, title, by-line, status, primary action, overflow.                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `SectionNav`          | Sticky TOC (desktop) and sticky pill tabs (phone), driven by an `IntersectionObserver`; omits absent sections.                                                                                                                                                                                                                                                                                                                                                    |
-| `GetItPanel`          | Recommended build, platform change, Also yours on, file groups, extras, phone variant.                                                                                                                                                                                                                                                                                                                                                                            |
-| `FileRow`             | Glyph, variant, meta, `Hash`, Download/Open; the disabled variant with **Not included** and its reason.                                                                                                                                                                                                                                                                                                                                                           |
-| `StoreHandoff`        | Pill per store; Steam activation builds the `registerkey` link.                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `LicenseCard`         | §4.9 License; license switcher.                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `SeatMeter`           | Segmented, one segment per seat (a continuous bar above 10 seats), `role="img"` with "2 of 3 seats in use"; `full` variant in danger.                                                                                                                                                                                                                                                                                                                             |
-| `DeviceRow`           | Row with inline removal confirmation (§4.11).                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `PackageAccessCard`   | §4.9 Package access, create form, token dialog.                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `ProductIdentityCard` | "Signed in to <product> as …".                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `FocusedFlow`         | Minimal chrome and return-URL handling for `free-device` and `download`.                                                                                                                                                                                                                                                                                                                                                                                          |
-| `SignIn`              | Context panel and the method stack; `CodeEntry`; `KeySignIn`; `AccountUpgrade`.                                                                                                                                                                                                                                                                                                                                                                                   |
-| `ClaimDialog`         | §4.15.                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `AccountSections`     | §4.13, one component per section.                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Component                                                                                                                                                   | Contract                                                                                                                                                                                                                                                                                         |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `PortalShell`                                                                                                                                               | Header (lockup, Library/Discover nav, ⌘K, **Activate license** action, account menu), phone bottom bar (Library · Activate pill · Discover), footer, skip link, `main`.                                                                                                                          |
+| `AccountMenu`                                                                                                                                               | Avatar chip and menu (Account, Sign-in methods, Approve a new device, Appearance, Help, Sign out); a sheet on phones.                                                                                                                                                                            |
+| `LoginCard`                                                                                                                                                 | The one sign-in frame: lockup, card with `header` / `body` / `footer` slots, legal footer, star field. Owns step transitions and focus (each step's `h1` receives focus).                                                                                                                        |
+| `CardHeader`                                                                                                                                                | `variant: "context" \| "app" \| "device"`. Props are **data only**: `icon`, `name`, `developer`, `where` (origin or device label), `code`. No children, no HTML, no colours. Reserved-name check happens server-side at client registration.                                                     |
+| `MethodStack`                                                                                                                                               | Email (identifier-first) with conditional UI, providers filtered by `capabilities` (Apple, Google, Steam only), passkey button, quiet links.                                                                                                                                                     |
+| `UsualMethodHint`                                                                                                                                           | Reads `pk_last_method` and renders "You usually sign in with …"; renders nothing without the cookie.                                                                                                                                                                                             |
+| `CodeEntry`                                                                                                                                                 | Six cells, paste, auto-submit, resend countdown, BroadcastChannel and re-check.                                                                                                                                                                                                                  |
+| `KeyField`                                                                                                                                                  | Mono, normalises dashes/spaces/case, groups as you type, live format validation with a count, `aria-invalid` and error slot. Used by key sign-in and the Activate modal.                                                                                                                         |
+| `AccountUpgrade`                                                                                                                                            | Key card, entries meter, method stack; `forced` removes the skip and switches the notice to danger.                                                                                                                                                                                              |
+| `AppConsent`                                                                                                                                                | The confirm step: person row, "what it gets" list (license, Cloud Sync when present, profile), Continue/Cancel.                                                                                                                                                                                  |
+| `AddMethodNudge`                                                                                                                                            | Rows of methods to add, recommended first, skip.                                                                                                                                                                                                                                                 |
+| `LinkAccounts`                                                                                                                                              | Two proven account cards, consequences, join.                                                                                                                                                                                                                                                    |
+| `DeviceApproval`                                                                                                                                            | New-device side (QR, code, poll) and approving side (dialog with device details, deny/approve).                                                                                                                                                                                                  |
+| `ProductArt`                                                                                                                                                | `variant: "banner" \| "tile" \| "thumb" \| "icon"`; proxied art (G1) with the flat tint-and-icon / tint-and-letter fallback. No gradients.                                                                                                                                                       |
+| `LibraryTile`, `LibraryHero`, `LibraryList`, `AttentionShelf`, `LibraryToolbar`, `QuickAction`                                                              | As in the converged design: art with the status pill on a solid plate, icon overlapping, name, developer, meta, platform glyphs, note, outlined quick action and overflow; the one-product hero; the list on `ui/data-table`; the shelf; the URL-synced toolbar; quick-action resolution (§5.4). |
+| `DiscoverTile`                                                                                                                                              | Art, icon, name, developer, offer terms, platforms, "why you can add it", **Add to library** → added state (green edge, **In your library**, **Open**).                                                                                                                                          |
+| `ActivateDialog`                                                                                                                                            | Steps enter → confirm (art header, product, tier, terms, key echo) → done; inline errors (§4.19); `prefill` and `fromProduct` props for the deep link. Mounted once in `PortalShell`, opened from anywhere.                                                                                      |
+| `JumpPalette`                                                                                                                                               | ⌘K (§4.27).                                                                                                                                                                                                                                                                                      |
+| `ProductHeader`, `SectionNav`, `GetItPanel`, `FileRow`, `StoreHandoff`, `LicenseCard`, `SeatMeter`, `DeviceRow`, `PackageAccessCard`, `ProductIdentityCard` | As in the converged design. `SectionNav` omits absent sections, including Cloud Sync.                                                                                                                                                                                                            |
+| `CloudSyncCard`                                                                                                                                             | Storage bar, data classes, per-device last sync, export, delete with step-up. Rendered only when the product's `services.cloudSync` is on.                                                                                                                                                       |
+| `SignInMethods`                                                                                                                                             | The Account section: grouped rows, connect flows (provider redirect or code), disconnect with inline step-up, last-method guard, audit footnote.                                                                                                                                                 |
+| `FocusedFlow`                                                                                                                                               | Minimal chrome and return-URL handling for `free-device` and `download`.                                                                                                                                                                                                                         |
 
-`Button` gains one variant, **quiet**: transparent background, `border-strong` outline,
-`text-strong` label, the icon in `accent-fg`. It is the library's quick action and the console may
-use it for row actions.
+`Button` gains two variants: **quiet** (transparent, `border-strong` outline, `text-strong` label,
+icon in `accent-fg`; the library's quick action) and **action** (`surface-raised`, `border-strong`,
+key glyph in `accent-fg`; the header's Activate license).
 
 ### 5.3 Status model
 
@@ -623,59 +861,65 @@ Expiry inside 14 days uses relative days; otherwise "until 14 Mar 2027".
 
 ---
 
+---
+
 ## 6. Copy
 
 ### 6.1 Rules
 
 1. **Plain words.** Never "OIDC", "entitlement", "artifact", "deliverable", "authorized",
-   "deauthorized", "session refresh", "claim" (in UI; "add" instead), "account id" as a headline.
-2. **No redundant subtitles.** A heading is not followed by a sentence that restates it ("Devices"
-   is not followed by "Manage your devices"). A subtitle earns its place only by saying something
-   the heading can't: a rule ("Purchases made with a verified email join your library by
-   themselves"), a consequence, or who is responsible ("Harbor Audio handles licenses and
-   downloads").
-3. **Name the developer.** "Renew with Kiln Games", "Contact Harbor Audio", never "contact your
-   provider".
-4. **Buttons say what happens to what.** "Remove Work laptop and continue", "Add Mossgarden",
-   "Email me a code". No "Submit", "OK", "Confirm".
-5. **Say why, then what to do.** "Version 2.0 isn't covered. Renew with Kiln Games to get it."
-6. **Sentence case** everywhere; status words capitalised as labels ("Active", "Expires in 9 days").
-7. **Glossary nouns:** license (US), device, product, tier. "Key" for the license key in running
-   text after first use. "Package access" and "token" for registry credentials.
-8. **Numbers and dates:** "2 of 3", "Expires in 9 days", "until 14 Mar 2027", "last seen 94 days
-   ago", "active 12 min ago". Dates as `d MMM yyyy`, dropping the year inside the current year in
-   meta lines only. Versions without a leading "v", in mono.
-9. **Product names, not slugs,** in UI and email (fixes PA-10's "A license for nightfall").
-10. **Don't over-promise.** Only say a page "signs you in by itself" when it does.
+   "deauthorized", "session refresh", "claim" or "redeem" (in UI; "add" and "activate" instead),
+   "identity link" ("sign-in method"), "merge" ("join"), "account id" as a headline.
+2. **Name it "Polaris Key".** Never "Polaris Key Portal", "the portal" or "PK" in UI or email.
+3. **No redundant subtitles.** A subtitle earns its place only by saying something the heading
+   can't: a rule, a consequence, or who is responsible.
+4. **Name the developer.** "Renew with Kiln Games", "Harbor Audio never sees your codes".
+5. **Buttons say what happens to what.** "Add Mossgarden", "Continue to Tidewater Studio",
+   "Use your passkey to disconnect", "Join into one account". No "Submit", "OK", "Confirm".
+6. **Say why, then what to do.** "This is your only way to sign in. Connect another one first, then
+   you can remove Apple."
+7. **Sentence case** everywhere; status words capitalised as labels.
+8. **Providers by their own names:** "Continue with Apple / Google / Steam". No other providers.
+9. **Numbers and dates:** "2 of 3", "2 of 5 key entries left", "Expires in 9 days", "until 14 Mar
+   2027", "last used 3 weeks ago". Versions without a leading "v", in mono.
+10. **Product names, not slugs,** in UI and email.
+11. **Don't over-promise.** Only say a page "signs you in by itself" when it does; only mention
+    Cloud Sync for products that have it.
 
 ### 6.2 Voice samples
 
-| Moment             | Copy                                                                                                    |
-| ------------------ | ------------------------------------------------------------------------------------------------------- |
-| Library, signed in | "12 products from 12 developers · signed in as mara@fennick.studio"                                     |
-| Empty              | "Nothing here for mara@fennick.studio yet"                                                              |
-| Key hint           | "Dashes and spaces don't matter."                                                                       |
-| Lost key           | "Lost your key? Sign in with the email you bought with. Licenses are found by email."                   |
-| Key storage        | "Only the end of a key is kept, so it can't be shown in full. A new key replaces this one."             |
-| Dormant device     | "Not using a seat · last seen 94 days ago"                                                              |
-| Device removal     | "Its seat is free straight away: 1 of 3 in use."                                                        |
-| Download links     | "Download links are made fresh when you click, so they never go stale."                                 |
-| Token              | "Copy your token now. This is the only time you'll see it."                                             |
-| Delete account     | "Deleting it doesn't cancel your licenses: they stay with each developer and you can claim them again." |
+| Moment              | Copy                                                                                                  |
+| ------------------- | ----------------------------------------------------------------------------------------------------- |
+| Sign in             | "Sign in to Polaris Key"                                                                              |
+| Known account       | "Welcome back, Mara · You usually sign in with Steam"                                                 |
+| App header          | "Tidewater Studio wants you to sign in · Harbor Audio · on Mara's MacBook Pro"                        |
+| App confirm         | "Continue to Tidewater Studio as Mara? · It won't see your other products or how you sign in."        |
+| Key upgrade         | "Keep Nightfall in an account · 2 of 5 key entries left"                                              |
+| Key upgrade, forced | "This key has used all 5 entries. From now on Nightfall is opened through an account."                |
+| Discover            | "Products their developers offer to your account. Adding one gives you its license straight away."    |
+| Activate confirm    | "Add Mossgarden to your account?"                                                                     |
+| Nudge               | "If you ever can't get into Steam, a second way in keeps your library yours."                         |
+| Join accounts       | "We never join accounts just because emails look alike."                                              |
+| Approve a device    | "Only approve if you started this yourself, on a device in front of you."                             |
+| Cloud Sync delete   | "Deleting clears the copy in Cloud Sync. Files already on your devices stay there."                   |
+| Key storage         | "Only the end of a key is kept, so it can't be shown in full. A new key replaces this one."           |
+| Delete account      | "Deleting it doesn't cancel your licenses: they stay with each developer and you can add them again." |
 
-### 6.3 Notice emails
+### 6.3 Emails
 
-Every portal email names the product (not the slug), names the device by label, and deep-links to
-the exact section (§3.4). Subjects: "Nightfall is in your library", "Studio PC was removed from
-Tidewater Studio", "Your Polaris Key sign-in code: 481 920". The emails use the kit PNG lockup
-(BRAND §2, email) and no "Powered by" badge.
+Every email is from "Polaris Key", names the product (not the slug) and the device by label, and
+deep-links to the exact section (§3.4). Subjects: "Nightfall is in your library", "Studio PC was
+removed from Tidewater Studio", "Your Polaris Key sign-in code: 481 920", "Steam was disconnected
+from your Polaris Key account", "A new device signed in to Polaris Key", "Your two Polaris Key
+accounts were joined". Security emails (method added or removed, device approved, accounts joined)
+always go to every verified email on the account and carry "Wasn't you? Secure your account". The
+emails use the kit PNG lockup and no "Powered by" badge.
 
 ### 6.4 Error copy
 
-Errors say what happened, in the user's terms, and the next step. Map every flat error code the
-portal API returns (`W/core/errors.ts`) to a sentence; unknown codes fall back to "Something went
-wrong. Try again." with the reference id. Never render the HTTP status or an internal code as the
-message.
+Errors say what happened, in the user's terms, and the next step. Map every flat error code the API
+returns (`W/core/errors.ts`) to a sentence; unknown codes fall back to "Something went wrong. Try
+again." with the reference id. Never render the HTTP status or an internal code as the message.
 
 ---
 
@@ -694,7 +938,7 @@ message.
 - **Motion:** only the duration tokens (`fast` for hover, `base` for disclosure and the inline
   confirm, `slow` for sheets). Nothing loops. The star never moves.
 - **Images:** all developer images are served **same-origin** through the media proxy (G1) because
-  the portal CSP is `img-src 'self' data:`; sizes 1280 × 720 banner, 640 × 360 tile, 256 × 256 icon,
+  the site's CSP is `img-src 'self' data:`; sizes 1280 × 720 banner, 640 × 360 tile, 256 × 256 icon,
   WebP with PNG fallback.
 
 ## 8. Responsive rules
@@ -718,7 +962,7 @@ message.
 
 WCAG 2.2 AA in both themes (BRAND §9), plus:
 
-1. **Landmarks and headings:** a skip link, one `banner`, `nav` (labelled "Portal"), `main`, and
+1. **Landmarks and headings:** a skip link, one `banner`, `nav` (labelled "Main"), `main`, and
    `contentinfo`; exactly one `h1` per screen (sign-in, boot and error screens included); cards use
    `h2`, tiles `h3` (fixes PA-13 heading order).
 2. **Names:** every icon-only control has an accessible name ("More for Nightfall", "Copy SHA-256",
@@ -727,8 +971,8 @@ WCAG 2.2 AA in both themes (BRAND §9), plus:
 3. **Status** is always icon plus word; the seat meter is `role="img"` with a text label; the
    "Not included" reason is visible text.
 4. **Focus:** the violet 2 px ring with 2 px offset everywhere; dialogs trap focus and return it to
-   the opener; the inline device confirm moves focus to its heading; after a claim, focus lands on
-   the new product's `h1`.
+   the opener; the inline device confirm moves focus to its heading; after adding a product, focus lands
+   on the new product's `h1`.
 5. **Forms:** visible labels; errors inline with `aria-invalid` and `aria-describedby`; the code
    cells are one labelled group and accept paste; no information only in placeholders.
 6. **Live regions:** search result counts, toasts and download start ("Downloading Tidewater Studio
@@ -752,68 +996,77 @@ WCAG 2.2 AA in both themes (BRAND §9), plus:
 `DELETE /api/licenses/:p/:id/devices/:deviceId`, `GET /api/releases`,
 `POST /api/releases/:p/:r/artifacts/:a/token`, `GET /download/<token>`, plus `/login`,
 `/callback`, `/logout`, `/magic/verify` and `POST /api/magic/start`. All are root paths on
-`key.plrs.im`; the portal routes are in the OpenAPI spec and `routeCoverage` (`portalApi`,
-`portalDownload`, …), so **rule 10 applies to every new portal route**.
+`key.plrs.im`; the routes are in the OpenAPI spec and `routeCoverage` (`portalApi`,
+`portalDownload`, …), so **rule 10 applies to every new route**.
 
 ### 10.2 Gaps the Worker must close
 
-Ids G1–G20 follow the journey research; G21–G23 are new here. "Fallback" is what the UI does until
-the gap closes.
+Ids G1–G20 follow the journey research; G21–G23 were added by the converged design; **G24–G30 are
+new with the owner decisions of 2026-10-04**. "Fallback" is what the UI does until the gap closes.
 
-| Id      | Need                                                                         | Proposed shape                                                                                                                                                                                                                                                                                                     | Fallback until then                                                                  | Gates                                                                                       | WP                |
-| ------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- | ----------------- |
-| **G1**  | Product presentation: display name, developer, icon, hero art, tint, website | From `.pkey/distribution` `ManifestListing` (`name`, `developerName`, `iconUrl`, **`headerUrl`**, `tintColor`, `website`; all exist). Expose sanitised `product{…}` on a new `GET /api/library`. Same-origin media proxy `GET /media/:product/:asset` (fetch, validate type and size, cache in R2/KV, serve WebP). | Name only; letter-and-tint fallback with a neutral tint                              | Rule 10; CSP test; THREAT-MODEL (SSRF on fetch)                                             | PX-W1             |
-| **G2**  | Store links per product and platform                                         | `stores[]` `{kind, platform, url, live}` via a Core hook over `listingUrlFor()` and the download-page outlet logic; TestFlight/Play testing only for entitled licenses                                                                                                                                             | "Also yours on" hidden                                                               | Rule 6 (Core hook); rule 10 if new route                                                    | PX-W2             |
-| **G3**  | Licensed builds hosted on R2 (`dl.plrs.im`)                                  | Portal-minted short-lived signed bytes URL for an account whose license passes `accountMayDownload`, or `/download/<token>` streaming from R2. Agree with Distribution's `blobAccess` rule.                                                                                                                        | Such builds show "Not available here yet · Contact <developer>"                      | **Plan mode advisable**; THREAT-MODEL; rule 10                                              | PX-W3             |
-| **G4**  | Downloads shaped per product                                                 | `GET /api/products/:p/downloads`: latest per platform, older versions, filtered by the license's channels and version window, with min OS, signer, notes summary, `covered` + `reason`; reuse `page/model.ts` and `page/detect.ts` through a Core hook                                                             | Client groups `GET /api/releases` by product; shows reasons from today's gate fields | Rule 6; rule 10                                                                             | PX-W2             |
-| **G5**  | Seat limit and dormancy                                                      | `deviceLimit` (`licenseDeviceLimit`), `activeSeatCount`, per-device `dormant`                                                                                                                                                                                                                                      | Seat meter hidden; "2 devices" without "of 3"                                        | none (response shape)                                                                       | PX-W1             |
-| **G6**  | Device rename                                                                | `PATCH /api/licenses/:p/:id/devices/:deviceId {label}`, audited                                                                                                                                                                                                                                                    | No rename                                                                            | Rule 10                                                                                     | PX-W5             |
-| **G7**  | Get a new key                                                                | `POST /api/licenses/:p/:id/keys` (shown once, step-up, rate-limited, notice) and revoke-old; per-product opt-in `portal_product_settings.key_self_service`                                                                                                                                                         | "Get a new key" hidden                                                               | Rule 10; D1 migration; `TABLE_OWNERS`                                                       | PX-W5             |
-| **G8**  | Purchase source and store grants                                             | "Owned via Steam / App Store / Play" and DLC grants, via a Core descriptor hook                                                                                                                                                                                                                                    | "Bought from <developer> with <email>" only                                          | Rule 6                                                                                      | PX-W6             |
-| **G10** | Emails, identity links, connected products                                   | S-16 I-15                                                                                                                                                                                                                                                                                                          | Account shows the one sign-in email                                                  | I-15's gates                                                                                | (I-15)            |
-| **G11** | Sign-in methods beyond OIDC and link                                         | Portal email code; passkeys (I-14); product providers through product users (I-12, I-20, I-15)                                                                                                                                                                                                                     | IdP display name + email link                                                        | per S-16 WP                                                                                 | PX-W4, S-16       |
-| **G12** | Server-side sessions, sessions list, export                                  | S-16 I-15 (`GET /api/me/export`, revocable sessions, sign out everywhere)                                                                                                                                                                                                                                          | "Where you're signed in" and export hidden; Sign out only                            | I-15's gates                                                                                | (I-15)            |
-| **G13** | Registry tokens (Package access)                                             | F-21 `GET\|POST …/registry-tokens`, `DELETE …/:tokenId`, plus per-product feed info (feeds, mode, ecosystems) for card visibility and snippets                                                                                                                                                                     | Card hidden                                                                          | F-21's gates                                                                                | (F-21)            |
-| **G14** | F-20 path mismatch                                                           | F-20 names `/portal/api/…` and Cargo `login_url="https://key.plrs.im/portal/"`; the portal is at `/api/*` and `/`. **Decide before F-21:** fix the plan to `/api/…` and `https://key.plrs.im/#/p/<product>/package`, or add a `/portal` alias                                                                      | n/a                                                                                  | F-21 plan                                                                                   | owner             |
-| **G15** | Deep links from apps and emails                                              | (a) SPA routes (§3.3); (b) optional `manageUrl` on `device_limit` (and on the new key-entries refusal) pointing at `#/p/<p>/free-device`; (c) links in notice emails                                                                                                                                               | (a) and (c) work alone; apps show their own copy                                     | **(b) is a wire change: plan mode, contract → errors.json → corpus/transcripts → six SDKs** | PX-W8 (with I-04) |
-| **G16** | Developer support and renewal links                                          | `supportUrl`/`supportEmail` per product (manifest) plus `website` from the listing                                                                                                                                                                                                                                 | Help card hidden; "Renew with" becomes "Contact" only when known                     | Rule 9 if validated in `.pkey/product`                                                      | PX-W1             |
-| **G18** | Notice copy                                                                  | Product names, device labels, deep links                                                                                                                                                                                                                                                                           | n/a                                                                                  | none                                                                                        | PX-W7             |
-| **G19** | Public products                                                              | Link out to `dl.plrs.im/<product>`; don't duplicate                                                                                                                                                                                                                                                                | n/a                                                                                  | none                                                                                        | PX-09             |
-| **G21** | Key-entry limits (S-16 owner decision)                                       | Key sign-in and claim responses carry `entriesLeft`/`entriesLimit`; a refusal when none are left                                                                                                                                                                                                                   | Upgrade prompt always skippable, no count                                            | Part of the I-04 contract (plan mode)                                                       | (I-04), PX-12     |
-| **G22** | Key preview before claim                                                     | `POST /api/claim/preview` → name, developer, tier, terms; never ownership or email; same rate bucket as claim                                                                                                                                                                                                      | Dialog claims directly                                                               | Rule 10; THREAT-MODEL (enumeration)                                                         | PX-W5             |
-| **G23** | "Email me the download"                                                      | `POST /api/products/:p/email-download {platform}` → an email with `#/p/<p>/download?platform=` (per-account rate limit)                                                                                                                                                                                            | Phone shows "Open this page on your computer"                                        | Rule 10                                                                                     | PX-W7             |
+| Id      | Need                                                   | Proposed shape                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Fallback until then                                                        | Gates                                                                                                            | WP                  |
+| ------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------- |
+| **G1**  | Product presentation                                   | From `ManifestListing` (`name`, `developerName`, `iconUrl`, `headerUrl`, `tintColor`, `website`) on `GET /api/library`; same-origin media proxy `GET /media/:product/:asset`                                                                                                                                                                                                                                                                                                                                                                                                                             | Name only; letter-and-tint fallback                                        | Rule 10; CSP test; THREAT-MODEL (SSRF)                                                                           | PX-W1               |
+| **G2**  | Store links per product and platform                   | `stores[]` `{kind, platform, url, live}` via a Core hook                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | "Also yours on" hidden                                                     | Rule 6                                                                                                           | PX-W2               |
+| **G3**  | Licensed builds hosted on R2                           | Signed short-lived bytes URL or streaming through `/download/<token>`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | "Not available here yet · Contact <developer>"                             | **Plan mode**; THREAT-MODEL; rule 10                                                                             | PX-W3               |
+| **G4**  | Downloads shaped per product                           | `GET /api/products/:p/downloads` through a Core hook over `page/model.ts` and `page/detect.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Client groups `GET /api/releases`                                          | Rule 6; rule 10                                                                                                  | PX-W2               |
+| **G5**  | Seat limit and dormancy                                | `deviceLimit`, `activeSeatCount`, per-device `dormant`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | "2 devices" without "of 3"                                                 | none                                                                                                             | PX-W1               |
+| **G6**  | Device rename                                          | `PATCH /api/licenses/:p/:id/devices/:deviceId {label}`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | No rename                                                                  | Rule 10                                                                                                          | PX-W5               |
+| **G7**  | Get a new key                                          | `POST /api/licenses/:p/:id/keys` (shown once, step-up, notice); per-product opt-in                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Hidden                                                                     | Rule 10; D1 migration; `TABLE_OWNERS`                                                                            | PX-W5               |
+| **G8**  | Purchase source and store grants                       | Core descriptor hook                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | "Bought from <developer>" only                                             | Rule 6                                                                                                           | PX-W6               |
+| **G10** | Emails, sign-in methods, connected products            | S-16 I-06 / I-15, shaped as in G27                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Account shows the one sign-in email                                        | I-15's gates                                                                                                     | (I-15)              |
+| **G11** | Sign-in methods beyond OIDC and link                   | Email code (I-08), passkeys (I-14), Apple (I-20), Google (I-05 discovery), Steam (I-12 web OpenID)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | IdP display name + email link                                              | per S-16 WP                                                                                                      | PX-W4, S-16         |
+| **G12** | Server-side sessions, sessions list, export            | I-15                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Sign out only                                                              | I-15's gates                                                                                                     | (I-15)              |
+| **G13** | Registry tokens                                        | F-21                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Card hidden                                                                | F-21's gates                                                                                                     | (F-21)              |
+| **G14** | F-20 path mismatch                                     | Decide `/api/…` vs a `/portal` alias before F-21                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | n/a                                                                        | F-21 plan                                                                                                        | owner               |
+| **G15** | Deep links from apps and emails                        | (a) SPA routes; (b) `manageUrl` on `device_limit` **and on the key-entries refusal** (pointing at `/activate?key=`); (c) email links                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | (a) and (c) work alone                                                     | **(b) is a wire change: plan mode, contract → errors.json → corpus → six SDKs**                                  | PX-W8 (with I-04)   |
+| **G16** | Developer support and renewal links                    | `supportUrl`/`supportEmail` per product                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Help card hidden                                                           | Rule 9 if validated                                                                                              | PX-W1               |
+| **G18** | Notice copy                                            | Product names, device labels, deep links, "Polaris Key" sender                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | n/a                                                                        | none                                                                                                             | PX-W7               |
+| **G19** | Public products                                        | Link out to `dl.plrs.im/<product>`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | n/a                                                                        | none                                                                                                             | PX-09               |
+| **G21** | **Key-entry counting** (S-16)                          | Per license key: `entriesLimit` (product setting, default from the product's policy), `entriesUsed`, incremented atomically on every successful key entry in the portal **and** in apps (activation by key); responses carry `entriesLeft`/`entriesLimit`; at zero, apps get a new refusal with `manageUrl` (G15b) and the portal forces the upgrade                                                                                                                                                                                                                                                     | Upgrade always skippable, no count                                         | Part of the I-04 contract (**plan mode**); D1 migration; `TABLE_OWNERS`; corpus                                  | (I-04), PX-W9       |
+| **G22** | Key preview before adding                              | `POST /api/activate/preview` → product name, developer, art, tier, terms; or a typed refusal (`unknown`, `owned_elsewhere`, `email_mismatch` with masked email, `already_yours`, `portal_off`) and `entriesLeft`; never ownership details; same rate bucket as add                                                                                                                                                                                                                                                                                                                                       | Modal adds directly, errors after                                          | Rule 10; THREAT-MODEL (enumeration)                                                                              | PX-W5               |
+| **G23** | "Email me the download"                                | `POST /api/products/:p/email-download {platform}`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | "Open this page on your computer"                                          | Rule 10                                                                                                          | PX-W7               |
+| **G24** | **Discover eligibility listing**                       | `GET /api/discover` → for each product with a policy that **would auto-issue** to this account (auto-issue rule, `groupRoleMap` over the account's connected identities, tier rules, verified-email-domain auto-link): presentation (G1), the tier, limits and terms that would be issued, and a `reason` (`free_with_account`, `group:<label>`, `email_domain:<domain>`, `beta`). Evaluated by the same policy function as first-load auto-issue, in **dry-run** mode: no rows written. Excludes purchase-only and operator-issued products, products already held, and products with `discover: false` | Discover hidden from the nav                                               | Rule 10; rule 6 (policy through a Core hook if it lives in License); unit tests asserting dry-run writes nothing | PX-W10              |
+| **G25** | **Discover claim**                                     | `POST /api/discover/:product/claim` re-evaluates eligibility server-side and mints through the **auto-issue path** (identical tier, limits, entitlements, audit `source: discover`); idempotent per account and product; `409 not_eligible` when the offer changed                                                                                                                                                                                                                                                                                                                                       | n/a (with G24)                                                             | Rule 10; audit; rate limit in the `_portal` buckets                                                              | PX-W10              |
+| **G26** | **Cloud Sync per product**                             | Cloud Sync is its **own service with its own toggle** (S-17, depends on user-level managed config and product users from S-16 I-06). The portal needs `services.cloudSync` on `GET /api/products/:p` and `GET /api/products/:p/sync` → `{quota, used, classes[{key,label,items,bytes}], devices[{deviceId,label,lastSyncAt,state}]}`, `POST …/sync/export`, `DELETE …/sync` (step-up)                                                                                                                                                                                                                    | Section absent (it is absent for every product without the service anyway) | S-17's gates; rule 10; THREAT-MODEL (export, delete); step-up                                                    | PX-W11 (after S-17) |
+| **G27** | **Identity linking endpoints** (S-16 §5.1, I-06, I-15) | `GET /api/me/methods` → links `{id, kind, display, connectedAt, lastUsedAt, canRemove}` plus emails and passkeys; `POST /api/me/methods/:kind/start` (provider redirect, or email code) and its callback; `DELETE /api/me/methods/:id` with a fresh step-up assertion (≤ 5 min), refused with `last_method` when it would orphan the account; `POST /api/me/link/start` and `POST /api/me/link/confirm` for joining two accounts with proof of both in one session (block on conflict; 72 h undo); every change audited and emailed to all verified addresses                                            | Account shows the one sign-in email                                        | I-06/I-15 gates; rule 10; THREAT-MODEL (account takeover via linking); audit                                     | PX-W12 (with I-15)  |
+| **G28** | **Passthrough request metadata** (I-04)                | Every app-initiated sign-in (broker, I-13 redirect, I-16 authorize, RFC 8628) resolves a server-side **client record**: `appName`, `developerName`, `iconUrl` (proxied), `kind: web\|native\|device`, registered origins, `services` (license, Cloud Sync) for the consent list; plus request-time `deviceLabel` (from the SDK, length-limited, sanitised) and `user_code` for device flow. Names checked against a reserved list at registration. The login card reads it by an opaque `request` handle, never from display query parameters                                                            | Card header shows the product name only (from `capabilities?product=`)     | Part of the **I-04** contract (**plan mode**): the SDKs send `deviceLabel`; corpus and transcripts               | PX-W13 (with I-04)  |
+| **G29** | **Approve a new device**                               | `POST /api/device-login/start` → `{code, qr, expiresIn}` (single-use store, I-02); `POST /api/device-login/approve {code}` from a signed-in session with step-up for new locations; poll `GET /api/device-login/:id`; audited and emailed                                                                                                                                                                                                                                                                                                                                                                | "Sign in with another device" hidden                                       | Rule 10; THREAT-MODEL (phishing: short expiry, location shown, never auto-approve)                               | PX-W14              |
+| **G30** | **Last-used method hint**                              | Set `pk_last_method` (HttpOnly not required: kind and a salted email hash, no PII) on successful sign-in; never derived from a server lookup                                                                                                                                                                                                                                                                                                                                                                                                                                                             | No hint                                                                    | THREAT-MODEL note (no enumeration)                                                                               | PX-12               |
 
 Notes:
 
-- **Rule 6.** Identity (where the portal lives) may not import Distribution or Update. G2, G4 and
-  G8 go through descriptor hooks in `src/core/hooks.ts`.
-- **One library call.** `GET /api/library` returns, per product: presentation (G1), status and
-  reason (§5.3), best license summary with `deviceLimit`/`activeSeatCount` (G5), quick-action
-  inputs (has build for each platform, Steam key held, account-bound, feed present), and support
-  links (G16). It replaces the client-side grouping and makes the library one request. The
-  per-product page adds `GET /api/products/:p` (licenses, devices, downloads, stores, feeds).
+- **Rule 6.** Identity (where the portal lives) may not import Distribution, Update or License
+  internals. G2, G4, G8, G24 and G25 go through descriptor hooks in `src/core/hooks.ts`.
+- **One library call.** `GET /api/library` returns, per product: presentation, status and reason,
+  best license summary with seats, quick-action inputs and support links, plus the Discover count.
+  `GET /api/products/:p` adds licenses, devices, downloads, stores, feeds and `services`.
 - **`GET /api/me` stops re-running `syncAccountLicenseLinks` on every call** once `GET /api/library`
-  exists; linking moves to sign-in, email verification and claim.
-- **Rate limits** stay per-product sharded (R5-05); the new routes join the `_portal` buckets that
-  S-16 I-02 shards.
+  exists; linking moves to sign-in, email verification and adding.
+- **Rate limits** stay per-product sharded; the new routes join the `_portal` buckets that S-16 I-02
+  shards. Preview (G22), add, and Discover claim share one bucket per account.
 
-### 10.3 S-16 dependencies, in the order they unlock UI
+### 10.3 S-16 and S-17 dependencies, in the order they unlock UI
 
-| S-16 WP    | Unlocks in the portal                                                                                                           |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| I-01       | Portal identities keyed by issuer (no UI change; prerequisite for linked accounts)                                              |
-| I-02       | Atomic single-use codes: prerequisite for the portal email code (PX-W4)                                                         |
-| I-04       | The contract for key-entry limits (G21) and `manageUrl` (G15b)                                                                  |
-| I-06       | Product users and `licenses.user_id`: "Connected products" has something to list                                                |
-| I-12, I-20 | Steam, Game Center, Apple, Discord as methods: product providers on sign-in, linked accounts                                    |
-| I-14       | Passkeys (`rp_id = key.plrs.im`): passkey button, conditional UI, passkey cards                                                 |
-| I-15       | Links to product users, server-side sessions, sessions list, export, F-21 revocation hook: Account v2, the product sign-in card |
+| WP       | Unlocks                                                                                                                   |
+| -------- | ------------------------------------------------------------------------------------------------------------------------- |
+| I-01     | Identities keyed by issuer (prerequisite for sign-in methods)                                                             |
+| I-02     | Atomic single-use codes: email code (PX-W4), device approval codes (G29)                                                  |
+| I-04     | The contract for key-entry limits (G21), `manageUrl` (G15b) and passthrough request metadata (G28)                        |
+| I-05     | Google through discovery as a provider                                                                                    |
+| I-06     | Product users and links: Connected products, the linking model behind Sign-in methods (G27)                               |
+| I-08     | Email login for products: code step inside the app card header                                                            |
+| I-12     | Steam (web OpenID on the hosted card; ticket in Steam builds), Game Center and Play Games links                           |
+| I-13     | Native redirect: the "native app" card header                                                                             |
+| I-14     | Passkeys (`rp_id = key.plrs.im`): passkey button, conditional UI, passkey rows, step-up                                   |
+| I-15     | Sessions, export, links to product users, the F-21 revocation hook: Account v2, the product identity card                 |
+| I-16     | Per-product issuer ("Sign in with <Product>"): the web-app card header and consent step                                   |
+| I-20     | Apple as its own kind (Hide My Email relay handled): Apple button, the Link an existing account notice                    |
+| **S-17** | **Cloud Sync as a service and user-level managed config:** the product page Cloud Sync section (G26) and the consent line |
 
-**Open S-16 question the portal needs answered (Q-3 in §12):** whether signing in to the
-_portal_ with a product's provider (Steam on Nightfall's sign-in) signs in the product user and
-then links or creates the portal account, or whether the portal only offers its own methods and
-product providers appear only under Linked accounts. This design assumes the former, with product
-context.
+Q-3 of the converged draft (product providers on portal sign-in) is settled by the owner decisions:
+**one login card**; providers are Apple, Google and Steam, chosen per product by where it ships; a
+platform identity signs in the account and links the product user.
 
 ---
 
@@ -824,122 +1077,175 @@ gate: `mise exec node@22 -- pnpm build`, `pnpm typecheck`, `pnpm test`, `pnpm li
 `pnpm --filter @polaris-key/admin build`, `pnpm --filter @polaris-key/worker assemble`,
 `pnpm --filter @polaris-key/docs check:links`, and the pre-commit hook. Worker WPs also run
 `typecheck:workerd` and `test:workerd`, and `gen:transcripts -- --check` must stay green unless the
-WP is the wire change.
+WP is a wire change.
 
 ### 11.1 Phase A: rebuild on today's API (no Worker changes)
 
-| ID        | Work package                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Deps  | Size | Extra gates                                                                          |
-| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | ---- | ------------------------------------------------------------------------------------ |
-| **PX-01** | **Shell and data layer.** Split `portal/App.tsx` into `portal/pages/*` and `portal/components/*`; TanStack Query; hash router with the §3.3 routes and redirects; `PortalShell` (64 px header with `PolarisLockup`, phone tab bar, footer, skip link); theme persistence with the pre-paint script; `document.title` per route; network-vs-signed-out distinction; error mapping (§6.4); the `quiet` Button variant                                                                                                     | none  | M    | Adapt `portal.test.tsx`; redirect tests; no horizontal scroll at 360 px (Playwright) |
-| **PX-02** | **Library on today's data.** Group `GET /api/licenses` by product client-side; status model (§5.3) from existing fields; `ProductArt` with letter-and-tint fallback (neutral tint until G1); `LibraryTile`, `LibraryHero`, the 1 / 2–7 / 8+ layouts, `AttentionShelf`; `QuickAction` (§5.4) on today's release data; the empty state with inline claim                                                                                                                                                                  | PX-01 | M    | Unit tests for status precedence and quick-action resolution                         |
-| **PX-03** | **Scale features.** `LibraryToolbar` (URL-synced search, chips with counts, sort, Grid/List with per-viewer memory and the phone default), `LibraryList` on `ui/data-table`, `JumpPalette` (cmdk) from 8 products                                                                                                                                                                                                                                                                                                       | PX-02 | M    | Keyboard tests (`/`, ⌘K, arrows); axe on palette                                     |
-| **PX-04** | **Product page on today's data.** `#/p/:product[/:section]`; `ProductHeader`; `SectionNav` (TOC and pill tabs); `LicenseCard` (tier, expiry, activated, offline days, version window, included, key end, license switcher); Devices with `DeviceRow` inline confirm (existing DELETE) and counts without a limit; What's new and a first `GetItPanel` from `GET /api/releases` filtered to the product (SHA-256 shown, reasons visible, client platform detection with the honest Mac rule); not-found and error states | PX-01 | L    | Tests: disconnect consequences and focus; reasons as text; not-found copy            |
-| **PX-05** | **Sign-in on today's auth.** Context panel from `capabilities?product=` (name from `productBranding` until G1); IdP display-name button; email link with the honest sent screen (focus/visibility/interval re-check, BroadcastChannel from `/magic/verify`), resend countdown, change email; no-method and network states                                                                                                                                                                                               | PX-01 | M    | Tests: magic-link sent state and re-check; network error vs signed out               |
-| **PX-06** | **Add a license key.** `ClaimDialog` and `#/claim?key=` on `POST /api/claim/license-key`; inline errors; navigate and focus on success                                                                                                                                                                                                                                                                                                                                                                                  | PX-02 | S    | Test: claim navigates to the product                                                 |
-| **PX-07** | **Account v1.** Sign-in email, Appearance, Delete account (typed `delete`, `DELETE /api/me`), Sign out; section nav scaffold for v2                                                                                                                                                                                                                                                                                                                                                                                     | PX-01 | S    | Test: typed confirm                                                                  |
-
-Phase A alone fixes PA-1 to PA-6, PA-8 to PA-13 and ships the new look; only PA-7 (R2 downloads)
-needs the Worker.
+| ID        | Work package                                                                                                                                                                                                                                                                                                                                                                                                                | Deps  | Size | Extra gates                                                                          |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | ---- | ------------------------------------------------------------------------------------ |
+| **PX-01** | **Shell and data layer.** Split `portal/App.tsx` into pages and components; TanStack Query; hash router with the §3.3 routes and redirects (Library default; `/activate` path handler); `PortalShell` (Library/Discover nav, **Activate license** action, `AccountMenu`, phone bar with the Activate pill); theme persistence; `document.title` "<Page> · Polaris Key"; error mapping; `quiet` and `action` Button variants | none  | M    | Adapt `portal.test.tsx`; redirect tests; no horizontal scroll at 360 px (Playwright) |
+| **PX-02** | **Library on today's data.** Client grouping of `GET /api/licenses`; status model; `ProductArt` fallback; `LibraryTile`, `LibraryHero`, 1 / 2–7 / 8+ layouts, `AttentionShelf`; `QuickAction`; the empty state (Activate + Discover teaser hidden until G24)                                                                                                                                                                | PX-01 | M    | Status precedence and quick-action unit tests                                        |
+| **PX-03** | **Scale features.** `LibraryToolbar`, `LibraryList`, `JumpPalette` from 8 products                                                                                                                                                                                                                                                                                                                                          | PX-02 | M    | Keyboard tests; axe on palette                                                       |
+| **PX-04** | **Product page on today's data.** `ProductHeader`, `SectionNav` (omits absent sections), `LicenseCard`, Devices with inline confirm, What's new and a first `GetItPanel`; not-found and error states                                                                                                                                                                                                                        | PX-01 | L    | Disconnect consequences and focus; reasons as text                                   |
+| **PX-05** | **`LoginCard` on today's auth.** The card frame with the header slot (context variant from `capabilities?product=`), IdP display-name button, email link with the honest sent screen, resend and change-email; no-method and network states                                                                                                                                                                                 | PX-01 | M    | Magic-link re-check tests; network vs signed out                                     |
+| **PX-06** | **Activate license modal.** `KeyField`, `ActivateDialog` (enter → done; confirm step appears with G22), mounted in the shell, opened from header, bar, ⌘K, empty state and `/activate?key=` (prefill, signed-out round trip); inline errors from today's claim codes                                                                                                                                                        | PX-01 | M    | Deep-link test (signed in and out); focus to the product `h1` after adding           |
+| **PX-07** | **Account v1.** Sign-in email, Appearance, Delete account, Sign out; section scaffold for Sign-in methods                                                                                                                                                                                                                                                                                                                   | PX-01 | S    | Typed-confirm test                                                                   |
 
 ### 11.2 Phase W: Worker additions
 
-| ID          | Work package                                                                                                                                                                                                                                                                                                                       | Deps      | Size | Gates                                                                                                                                                                                 |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **PX-W1**   | **Library API and media.** `GET /api/library` and `GET /api/products/:p` (G1 presentation from `ManifestListing`, G5 seats and dormancy, §5.3 status and reason, quick-action inputs, G16 support links); same-origin media proxy `GET /media/:product/:asset`; `supportUrl`/`supportEmail` manifest fields if not already present | none      | L    | Rule 10 (OpenAPI + `routeCoverage`); rule 9 for any new manifest validation (mutation table); THREAT-MODEL (SSRF, image validation); CSP browser test; `TABLE_OWNERS` if cached in D1 |
-| **PX-W2**   | **Downloads and stores.** `GET /api/products/:p/downloads` (G4) and `stores[]` (G2) through Core hooks over `distribution/page/{model,detect}.ts` and `listingUrlFor()`; license channel and version-window filtering with reasons                                                                                                 | PX-W1     | L    | Rule 6 (`boundaries.test.ts`); rule 10                                                                                                                                                |
-| **PX-W3** ⚑ | **Licensed R2 downloads (G3).** Plan first: signed short-lived bytes URL vs streaming through `/download/<token>`; agree with `blobAccess`; then build                                                                                                                                                                             | PX-W2     | M    | Plan approval; THREAT-MODEL entry; rule 10 if a new bytes route; `test:workerd`                                                                                                       |
-| **PX-W4**   | **Portal email code.** `POST /api/magic/start` gains a 6-digit code alongside the link; `POST /api/magic/verify-code` with attempt caps on the I-02 atomic store; BroadcastChannel ping from `/magic/verify`                                                                                                                       | S-16 I-02 | M    | Rule 10; rate-limit tests; enumeration-safe responses                                                                                                                                 |
-| **PX-W5**   | **Device rename, new key, claim preview.** G6 `PATCH` device label; G7 key self-service with per-product opt-in column and step-up; G22 claim preview                                                                                                                                                                              | PX-W1     | M    | Rule 10; D1 migration + `TABLE_OWNERS`; audit rows; THREAT-MODEL (enumeration, key mint)                                                                                              |
-| **PX-W6**   | **Purchase source (G8).** "Owned via …" and store grants via a Core descriptor hook                                                                                                                                                                                                                                                | PX-W1     | M    | Rule 6                                                                                                                                                                                |
-| **PX-W7**   | **Emails.** Notice copy with product names and device labels, deep links (G15c, G18); "Email me the download" (G23)                                                                                                                                                                                                                | PX-01     | S    | Rule 10 for G23; email snapshot tests                                                                                                                                                 |
-| **PX-W8** ⚑ | **`manageUrl` (G15b)** on `device_limit` and on the key-entries refusal (G21), owned jointly with S-16 I-04: contract → `errors.json` → corpus and transcripts (`gen:corpus`, `gen:transcripts`) → client-core, Node, React, Python, Swift, Godot, Kotlin, and the SDK UI kits' activation screens                                 | S-16 I-04 | L    | **Plan mode** (CLAUDE.md); `gen:corpus -- --check`; `gen:constants -- --check`; `parity:check`; every SDK's replayer                                                                  |
+| ID           | Work package                                                                                                                                                                                                               | Deps             | Size | Gates                                                                                                                                    |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| **PX-W1**    | **Library API and media** (G1, G5, G16): `GET /api/library`, `GET /api/products/:p` (with `services`), media proxy                                                                                                         | none             | L    | Rule 10; rule 9; THREAT-MODEL (SSRF); CSP browser test                                                                                   |
+| **PX-W2**    | **Downloads and stores** (G2, G4) through Core hooks                                                                                                                                                                       | PX-W1            | L    | Rule 6; rule 10                                                                                                                          |
+| **PX-W3** ⚑  | **Licensed R2 downloads** (G3)                                                                                                                                                                                             | PX-W2            | M    | Plan approval; THREAT-MODEL; `test:workerd`                                                                                              |
+| **PX-W4**    | **Email code** for the account sign-in on the I-02 store                                                                                                                                                                   | S-16 I-02        | M    | Rule 10; rate limits; enumeration-safe responses                                                                                         |
+| **PX-W5**    | **Device rename, new key, activate preview** (G6, G7, G22 with typed refusals and masked email)                                                                                                                            | PX-W1            | M    | Rule 10; D1 migration + `TABLE_OWNERS`; THREAT-MODEL (enumeration)                                                                       |
+| **PX-W6**    | **Purchase source** (G8)                                                                                                                                                                                                   | PX-W1            | M    | Rule 6                                                                                                                                   |
+| **PX-W7**    | **Emails** (G15c, G18, G23): "Polaris Key" sender and naming, security-notice templates for method and device changes                                                                                                      | PX-01            | S    | Rule 10; email snapshot tests                                                                                                            |
+| **PX-W8** ⚑  | **`manageUrl`** (G15b) on `device_limit` and on the key-entries refusal, jointly with I-04: contract → `errors.json` → corpus and transcripts → client-core, Node, React, Python, Swift, Godot, Kotlin and the SDK UI kits | S-16 I-04        | L    | **Plan mode**; `gen:corpus -- --check`; `gen:constants -- --check`; `parity:check`; every SDK's replayer                                 |
+| **PX-W9** ⚑  | **Key-entry counting** (G21): limit setting, atomic counter for portal and app entries, portal responses, the app refusal (wire part rides PX-W8)                                                                          | S-16 I-04        | M    | Plan mode; D1 migration + `TABLE_OWNERS`; concurrency test on the counter; installs unaffected (regression on refresh and offline grace) |
+| **PX-W10**   | **Discover** (G24, G25): dry-run evaluation of the auto-issue policy, listing, claim through the auto-issue path, `discover` opt-out per product                                                                           | PX-W1            | M    | Rule 6 (Core hook); rule 10; test that listing writes nothing; parity test: Discover claim ≡ first-load auto-issue                       |
+| **PX-W11**   | **Cloud Sync API for the portal** (G26) on top of the S-17 service                                                                                                                                                         | S-17, I-06       | M    | S-17 gates; rule 10; step-up on delete; THREAT-MODEL (export)                                                                            |
+| **PX-W12**   | **Sign-in methods and linking API** (G27): methods list, connect flows, disconnect with step-up and the last-method refusal, join-accounts with proof of both and 72 h undo, audit and notices                             | I-06, I-14, I-15 | L    | Rule 10; THREAT-MODEL (takeover via linking); audit; never-orphan tests                                                                  |
+| **PX-W13** ⚑ | **Passthrough request metadata** (G28): client records with presentation and reserved-name check, the request handle, `deviceLabel` from the SDKs (wire), consent data                                                     | S-16 I-04        | M    | **Plan mode** (SDKs send `deviceLabel`); corpus and transcripts; THREAT-MODEL (spoofed app names)                                        |
+| **PX-W14**   | **Approve a new device** (G29) on the I-02 store                                                                                                                                                                           | S-16 I-02        | M    | Rule 10; THREAT-MODEL (phishing)                                                                                                         |
 
-### 11.3 Phase B: features on the new API and S-16
+### 11.3 Phase B: features on the new API, S-16 and S-17
 
-| ID        | Work package                                                                                                                                                                                                                                             | Deps                               | Size | Extra gates                                                                     |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | ---- | ------------------------------------------------------------------------------- |
-| **PX-08** | **Library on `GET /api/library`:** real art and tints through the proxy, seat meters, store-aware quick actions, server status reasons; drop client grouping                                                                                             | PX-02, PX-W1                       | S    | CSP test with real images                                                       |
-| **PX-09** | **Get it, complete:** recommended build from server detection, Change platform, file groups and Extras, Also yours on (Steam `registerkey`), phone actions, Email me the download, public-product link-out (G19), R2 builds                              | PX-04, PX-W2, PX-W3, PX-W7         | M    | Downloads platform-grouping tests                                               |
-| **PX-10** | **Focused flows:** `#/p/:p/free-device` (radio cards, least-recent preselect, success, return URL allowlist) and `#/p/:p/download`                                                                                                                       | PX-04, PX-W1                       | M    | Return-URL allowlist tests                                                      |
-| **PX-11** | **Package access:** card, create form, token dialog (`OneTimeSecretPanel`), renew, revoke, snippets from F-12                                                                                                                                            | PX-04, F-21, G14 decided           | M    | F-21 regression; non-dismissable dialog test                                    |
-| **PX-12** | **Sign-in v2:** code entry, passkey button and conditional UI, product providers, license-key sign-in, account upgrade with entry counts                                                                                                                 | PX-05, PX-W4, I-14, I-12/I-20, G21 | M    | WebAuthn mocks; upgrade forced-state test                                       |
-| **PX-13** | **Account v2:** emails, passkeys, linked accounts, connected products, sessions, export; product sign-in card on the product page                                                                                                                        | PX-07, I-15, I-14                  | M    | I-15 API contract tests                                                         |
-| **PX-14** | **Docs:** rewrite `users/portal.md` and `services/identity/portal.md` (fix the drift: R2 redirects, self-service delete), developer guidance for listing art (safe corner for the status pill, sizes); mark ADMIN.md §2.7, §6.10 and Chunk 12 superseded | PX-09                              | S    | `check:links`; docs drift gates if routes are documented in generated reference |
-| **PX-15** | **Quality bar:** first portal Playwright e2e (all §4 states, both themes, 1440 and 390 px), axe on every state, a CSP browser test, a visual baseline; horizontal-scroll assertion                                                                       | PX-08 … PX-13 (rolling)            | M    | Runs in CI                                                                      |
+| ID        | Work package                                                                                                                                                                                                                    | Deps                                  | Size | Extra gates                                                  |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- | ---- | ------------------------------------------------------------ |
+| **PX-08** | **Library on `GET /api/library`:** real art, seat meters, store-aware quick actions, server reasons, Discover count in the nav                                                                                                  | PX-02, PX-W1                          | S    | CSP test with real images                                    |
+| **PX-09** | **Get it, complete** (server detection, Change platform, Extras, Also yours on, phone actions, Email me the download, public link-out, R2)                                                                                      | PX-04, PX-W2, PX-W3, PX-W7            | M    | Platform-grouping tests                                      |
+| **PX-10** | **Focused flows:** free-device and download                                                                                                                                                                                     | PX-04, PX-W1                          | M    | Return-URL allowlist tests                                   |
+| **PX-11** | **Package access**                                                                                                                                                                                                              | PX-04, F-21, G14                      | M    | Non-dismissable dialog test                                  |
+| **PX-12** | **Login card v2:** identifier-first with `UsualMethodHint` (G30), code entry, passkey button and conditional UI, Apple/Google/Steam per product, license-key path, `AccountUpgrade` skippable and forced with the entries meter | PX-05, PX-W4, PX-W9, I-14, I-12, I-20 | M    | WebAuthn mocks; forced-upgrade test; no-enumeration test     |
+| **PX-13** | **Account v2:** `SignInMethods` (connect, disconnect with step-up, last-method guard, Hide My Email notice), connected products, sessions, export; product identity card                                                        | PX-07, PX-W12, I-15                   | M    | Last-method test; step-up test; I-15 contract tests          |
+| **PX-14** | **Passthrough card header:** `CardHeader` app and device variants, `AppConsent`, return screen, across broker, native redirect, issuer and device code                                                                          | PX-12, PX-W13, I-13, I-16             | M    | Header persists through every step (e2e); reserved-name test |
+| **PX-15** | **After sign-in:** `AddMethodNudge`, `LinkAccounts`, `DeviceApproval` (both sides)                                                                                                                                              | PX-12, PX-W12, PX-W14                 | M    | Join requires both proofs (e2e)                              |
+| **PX-16** | **Discover page:** `DiscoverTile`, add, just-added state, empty; teaser on the empty library                                                                                                                                    | PX-08, PX-W10                         | S    | Add mints once (double-click test)                           |
+| **PX-17** | **Activate confirm step and deep link from apps:** art confirm (G22), entries notice, `product=` context                                                                                                                        | PX-06, PX-W5, PX-W8                   | S    | Error-state tests for all §4.19 cases                        |
+| **PX-18** | **Cloud Sync section:** `CloudSyncCard` on the product page, TOC entry, ⌘K action, export and delete; absent everywhere for products without the service                                                                        | PX-04, PX-W11                         | M    | Test: no sync UI when `services.cloudSync` is off            |
+| **PX-19** | **Docs:** rewrite `users/portal.md` and `services/identity/portal.md` (naming, Library/Discover, Activate, sign-in methods, Cloud Sync), developer guidance for listing art and app branding data; mark ADMIN.md superseded     | PX-09, PX-14                          | S    | `check:links`; docs drift gates if routes are documented     |
+| **PX-20** | **Quality bar:** Playwright e2e over all §4 states in both themes at 1440 and 390 px, axe on every state, CSP browser test, visual baseline, horizontal-scroll assertion                                                        | rolling                               | M    | Runs in CI                                                   |
 
 ### 11.4 Order
 
 ```
 PX-01 ─┬─ PX-02 ─┬─ PX-03
-       │         └─ PX-06
-       ├─ PX-04 ──────────────┬─ PX-09 (needs W2, W3, W7)
-       ├─ PX-05 ── PX-12 (needs W4, S-16)
-       └─ PX-07 ── PX-13 (needs I-15)
+       │         └─ PX-08 ── PX-16 (needs W10)
+       ├─ PX-04 ──┬─ PX-09 (needs W2, W3, W7)
+       │          └─ PX-18 (needs W11 ← S-17)
+       ├─ PX-05 ── PX-12 ─┬─ PX-14 (needs W13, I-13, I-16)
+       │                  └─ PX-15 (needs W12, W14)
+       ├─ PX-06 ── PX-17 (needs W5, W8)
+       └─ PX-07 ── PX-13 (needs W12, I-15)
 PX-W1 ─┬─ PX-W2 ── PX-W3 ⚑
-       ├─ PX-W5, PX-W6
-       └─ PX-08, PX-10
-PX-W8 ⚑ with S-16 I-04          PX-11 after F-21 + G14
+       ├─ PX-W5, PX-W6, PX-W10
+PX-W8 ⚑, PX-W9 ⚑, PX-W13 ⚑ with S-16 I-04 (one contract plan)
+PX-W11 after S-17 · PX-W12 after I-06/I-14/I-15 · PX-W14 after I-02
 ```
 
 Phase A (PX-01 to PX-07) and PX-W1/PX-W2 can run in parallel lanes. The first shippable cut is
-**Phase A + PX-W1 + PX-08**: the new library with real art, seats and statuses on today's auth.
+**Phase A + PX-W1 + PX-08**: the new Library with real art, seats and statuses, the Activate modal,
+on today's auth. Discover (PX-W10, PX-16) is the next cut and needs no S-16 work.
 
 ## 12. Open questions for the owner
 
-1. **Q-1 · G14 path.** Fix F-20 to the existing `/api/…` and a `#/p/<product>/package` login URL,
-   or add a `/portal` alias? _Recommended: fix the plan; no alias._
-2. **Q-2 · Hero art field.** Use the existing `ManifestListing.headerUrl` as the portal banner, or
-   add a dedicated 16:9 `heroUrl`? _Recommended: `headerUrl`, documented as 16:9 with a safe
-   bottom-right corner._
-3. **Q-3 · Product providers on portal sign-in** (§10.3): sign in through the product user and link
-   the portal account, or portal-own methods only? _Recommended: through the product user, with
-   product context only._
-4. **Q-4 · Phone default view.** List view by default above 6 products on phones? _Recommended:
-   yes._
-5. **Q-5 · Media proxy storage.** Cache proxied developer images in R2 (`dl` bucket, `media/`
-   prefix) or KV? _Recommended: R2, content-addressed, re-fetched on manifest sync._
+1. **Q-1 · G14 path.** Fix F-20 to `/api/…` and a `#/p/<product>/package` login URL, or add a
+   `/portal` alias? _Recommended: fix the plan; no alias._
+2. **Q-2 · Hero art field.** `ManifestListing.headerUrl` as the banner, or a dedicated 16:9
+   `heroUrl`? _Recommended: `headerUrl`, documented as 16:9 with a safe bottom-right corner._
+3. **Q-3 · Phone default view.** List by default above 6 products on phones? _Recommended: yes._
+4. **Q-4 · Media proxy storage.** R2 or KV? _Recommended: R2, content-addressed._
+5. **Q-5 · Out of entries while signed in.** A key with no entries left can still be added by a
+   signed-in account (that is the upgrade the decision asks for), so the modal shows a warning, not
+   a block (§4.19). _Recommended: as drawn._
+6. **Q-6 · Discover reasons.** Show the reason line ("For everyone with a fennick.studio email")
+   on every offer, or let a product hide it? _Recommended: always shown; it explains why the offer
+   exists and why it may go away._
+7. **Q-7 · App consent frequency.** Show the confirm step on every first sign-in to an app and
+   when what it gets changes (as drawn), or only for third-party web apps? _Recommended: as drawn._
 
 ---
 
 ## Appendix A · Mockup inventory
 
 All files are in [portal/](portal/) as `NN-name-{desktop|mobile}-{dark|light}.png` (1440 px and
-390 px wide, full page except dialogs). PNGs are palette-quantised for the repo.
+390 px wide, full page except dialogs). PNGs are palette-quantised (128 colours) for the repo.
 
-| NN  | Screen                                     | §    |
-| --- | ------------------------------------------ | ---- |
-| 01  | Sign in, product context, passkey autofill | 4.1  |
-| 02  | Enter the code                             | 4.2  |
-| 03  | Sign in with a license key, no context     | 4.3  |
-| 04  | First run, empty library                   | 4.4  |
-| 05  | Library, one product (hero)                | 4.5  |
-| 06  | Library, three products                    | 4.6  |
-| 07  | Library, twelve products, grid             | 4.7  |
-| 08  | Library, twelve products, list             | 4.8  |
-| 09  | Product page                               | 4.9  |
-| 10  | Package token created                      | 4.10 |
-| 11  | Remove a device, inline confirmation       | 4.11 |
-| 12  | Device limit, focused flow                 | 4.12 |
-| 13  | Account                                    | 4.13 |
-| 14  | Jump to a product (⌘K)                     | 4.14 |
-| 15  | Add a license key, key recognised          | 4.15 |
-| 16  | Product not in your library                | 4.16 |
-| 17  | License-key entry, upgrade to an account   | 4.3  |
+| NN  | Screen                                             | §    |
+| --- | -------------------------------------------------- | ---- |
+| 01  | Login card, no context, passkey autofill           | 4.1  |
+| 02  | Login card with product context                    | 4.2  |
+| 03  | Known account: "You usually sign in with Steam"    | 4.3  |
+| 04  | Enter the code                                     | 4.4  |
+| 05  | Use a license key                                  | 4.5  |
+| 06  | Key entry: account upgrade, skippable              | 4.6  |
+| 07  | Key entry: account upgrade, forced                 | 4.6  |
+| 08  | App sign-in: web app, method choice                | 4.7  |
+| 09  | App sign-in: iPhone app, known Steam account       | 4.8  |
+| 10  | App sign-in: native app, code                      | 4.8  |
+| 11  | App sign-in: native app, create account            | 4.8  |
+| 12  | App sign-in: native app, confirm                   | 4.8  |
+| 13  | App sign-in: native app, return to the app         | 4.8  |
+| 14  | App sign-in: device code, method choice            | 4.9  |
+| 15  | App sign-in: device code, TV signed in             | 4.9  |
+| 16  | Add another way to sign in                         | 4.10 |
+| 17  | Link an existing account: join                     | 4.11 |
+| 18  | Library, empty, with Discover teaser               | 4.12 |
+| 19  | Library, one product                               | 4.13 |
+| 20  | Library, three products                            | 4.14 |
+| 21  | Library, twelve products, grid                     | 4.15 |
+| 22  | Library, twelve products, list                     | 4.15 |
+| 23  | Discover, four offers                              | 4.16 |
+| 24  | Discover, just added                               | 4.16 |
+| 25  | Discover, nothing to add                           | 4.16 |
+| 26  | Activate license: enter key                        | 4.17 |
+| 27  | Activate license: confirm                          | 4.17 |
+| 28  | Activate license: done                             | 4.17 |
+| 29  | Activate license: error states                     | 4.19 |
+| 30  | Activate license: deep link, key prefilled         | 4.18 |
+| 31  | Product page with Cloud Sync                       | 4.20 |
+| 32  | Product page without Cloud Sync                    | 4.20 |
+| 33  | Package token created                              | 4.21 |
+| 34  | Remove a device, inline confirmation               | 4.22 |
+| 35  | Device limit, focused flow                         | 4.25 |
+| 36  | Account: sign-in methods                           | 4.26 |
+| 37  | Account: disconnect with step-up                   | 4.26 |
+| 38  | Account: last-method guard (Hide My Email account) | 4.26 |
+| 39  | Sign in with another device: QR and code           | 4.23 |
+| 40  | Approve a new device                               | 4.24 |
+| 41  | Jump to a product (⌘K)                             | 4.27 |
+| 42  | Product not in your library                        | 4.28 |
 
 The mockups are static HTML/CSS with `@polaris-key/brand` `tokens.css` and the kit's Rubik files
-inlined; developer key art is stand-in SVG. They were generated and rendered with Playwright from
-a scratch build script outside the repo; they are references for layout, hierarchy and copy, not
-pixel specifications. Where this document and a mockup disagree, this document wins.
+inlined; developer key art is stand-in SVG and the QR code is decorative. They were generated and
+rendered with Playwright from a scratch build script outside the repo; they are references for
+layout, hierarchy and copy, not pixel specifications. Where this document and a mockup disagree,
+this document wins.
 
-## Appendix B · Fixed from the three-direction critique
+## Appendix B · Fixed from the three-direction critique (kept)
 
 - 12 identical solid violet buttons → outlined quick actions; solid only for hero, shelf, product
   header.
-- No fallback for missing art → `ProductArt` tint field with icon or letter (Hollow Pines, Pixel
-  Forge SDK).
-- Status chip over the Orbit Survey title → art text kept clear of the bottom-right corner; listing
-  guidance in PX-14.
+- No fallback for missing art → `ProductArt` tint field with icon or letter.
+- Status chip over the Orbit Survey title → art text kept clear of the bottom-right corner.
 - Glyphsmith title clipped → art fully inside the 16:9 frame.
 - One Apple glyph for macOS and iOS → macOS uses the Apple glyph, iPhone & iPad a phone glyph, the
   web a globe.
 - App Store action with a download icon → the App Store glyph.
+
+## Appendix C · Owner decisions applied (2026-10-04)
+
+| #   | Decision                                                                                                                                                                | Where                                       |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| 1   | Proto-Steam framing; top-level nav is Library (default) and Discover only; Cloud Sync is not a page                                                                     | §0, §3.2, §3.3                              |
+| 2   | Discover: eligible products evaluated without issuing; Add to library mints like auto-issue                                                                             | §4.16, G24, G25                             |
+| 3   | Activate license: right-aligned header action; always a modal; confirm step; inline errors; `/activate?key=`                                                            | §3.2, §4.17–4.19, G22                       |
+| 4   | Legacy keys: limited entries; skippable then forced upgrade; apps refuse and deep-link; installs unaffected                                                             | §4.6, §4.18, G21, G15                       |
+| 5   | Cloud Sync is its own service; only a product-page section, only when on; nothing anywhere otherwise                                                                    | §4.20, G26, S-17                            |
+| 6   | "Polaris Key", never "Polaris Key Portal"                                                                                                                               | Naming, §6.1                                |
+| 7   | One storefront-style login card; identifier-first; passkeys; Apple, Google, Steam only; no Discord                                                                      | §4.1–4.5, §6.1                              |
+| 8   | App passthrough: persistent card header through every step, confirm and return; data-only branding                                                                      | §4.7–4.9, G28                               |
+| 9   | Account linking: sign-in methods connect/disconnect with step-up, last-method guard, nudge, join with proof of both, approve another device, Steam web login everywhere | §4.10, §4.11, §4.23, §4.24, §4.26, G27, G29 |
+| 10  | Keep the critique fixes and the library, shelf, product TOC, device-limit flow, package card and ⌘K                                                                     | Appendix B, §4.13–4.15, §4.20–4.27          |
