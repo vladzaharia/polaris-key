@@ -313,6 +313,10 @@ the tickets' `present` answers, for which it mints one upload ticket per 256 obj
 expire within the hour). A published pack version is never rewritten: publish a new
 version.
 
+Store builds take packs through the store's own transport (Background Assets, Play Asset
+Delivery, Steam depots): after the publish, a `transport` step packages the cached release for
+it. See [Platform pack transports](/docs/build/pack-transports/).
+
 ## App releases with packs
 
 When `.pkey/release` declares packs, every app release states which pack releases it pins. The

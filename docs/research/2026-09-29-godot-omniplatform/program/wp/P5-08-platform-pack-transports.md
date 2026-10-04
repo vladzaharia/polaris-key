@@ -185,3 +185,191 @@ GODOT_BIN=godot-4.7.2 sdks/godot/tools/run_tests.sh   # P1-01's runner; add suit
 
 The approved [`plans/P4-13.md`](../plans/P4-13.md) changes this package; its §8.5 bullet for this
 package, and every decision in §8.1 that names it as owner, override this brief where they differ.
+
+## Corrections from implementation
+
+Recorded by the implementer on 2026-10-03. Where this brief and the code disagree, the code is
+the fact.
+
+- **Paths.** The Godot transports follow P4-08's layout, not `content/transports/`. They are
+  `addons/polaris_key/packs/transport_platform.gd` (`PKeyPackPlatformTransport`, the shared base)
+  and `transport_apple_ba.gd`, `transport_play_pad.gd` and `transport_steam.gd`. The CLI is
+  `packages/cli/src/transport.ts`, `transportAppleBa.ts`, `transportPlayPad.ts` and
+  `transportSteam.ts`.
+- **One mapping for CLI and Worker.** `@polaris-key/manifest` `transportIds.ts` holds the
+  mappings: `assetPackId`/`resolveAssetPackIds` (`.` → `-`, `<base>-c<contentApi>`, the grammar,
+  64 characters, product-wide collisions, typed `TransportIdError`), and the Play asset-pack names
+  (`resolvePadPackNames`, `.` and `-` → `_`, collisions refused). P4-14's readiness mapped the
+  pack id's last segment only (`<pack leaf>-c<n>`). It now uses the brief's full-id convention
+  (`djdl.foes` → `djdl-foes-c4`).
+- **CLI surface.** Each command takes `--deliverable <packId> --release <version>`. Commands that
+  write payloads also take `--from <dir>`: the `--out` cache of `pkey release publish
+--deliverable`. The payload is re-hashed against the cached record and P4-03's lint runs again,
+  before anything is written, so a pack with scripts never reaches a store transport. The steps
+  are:
+  - `apple-ba package` (default `--out build/pkey-transport/apple-ba`, `--content-api` defaulting
+    to the app's `content.contentApi` and checked against the pack's `requires.contentApi`,
+    `--no-archive` off macOS);
+  - `apple-ba upload` (`--dir`, `--expect-resource`, `--lock`, `--wait`);
+  - `play-pad modules` (`--project`, `--delivery`, `--default-texture`);
+  - `steam-depot vdf` (`--depot`, `--branch` or `--channel`, `--setlive`, `--app`).
+
+  A pack that `.pkey/distribution` does not route through the transport is refused.
+
+- **Recording the asset pack's resource id.** It is recorded in the repository, in
+  `.pkey/asset-packs.json` (`pkey-asset-packs/1`), which the first upload writes and the operator
+  commits. A server-side record would need a CI read route, a wire addition this brief did not
+  plan. An upload is refused in three cases: the asset pack found by identifier is another
+  resource (`asset-pack-resource-mismatch`); one exists that nothing records
+  (`asset-pack-unrecorded`, adopted only with `--expect-resource`); or the recorded one is gone
+  (`asset-pack-missing`). App Store Connect credentials come from `ASC_KEY_ID`, `ASC_ISSUER_ID`,
+  `ASC_PRIVATE_KEY` or `ASC_KEY_PATH`. The app is the `apple-ba` outlets' `appleId`, or
+  `ASC_APP_ID`.
+- **Reports.** `apple-ba package` reports `pending` with `{assetPackIdentifier, contentApi}`.
+  `apple-ba upload` reports `processing` on `testflight` outlets and `pending` on `app-store`
+  outlets, with `{assetPackIdentifier, ascBackgroundAssetId, ascBackgroundAssetVersionId,
+ascVersion, contentApi}`. `play-pad modules` reports `pending` with `{padPack, deliveryType}`,
+  and `steam-depot vdf` reports `pending` with `{steamAppId, steamDepotId, steamBranch}`. Each
+  step takes `--no-report`. The upload does not wait for processing by default (`--wait <minutes>`
+  polls), because the connector follows the states.
+- **Device layouts.** These are the directories the CLI writes and the Godot transports read:
+  - Apple: `pkey/<assetPackId>/` inside the asset pack, one file selector.
+  - Play: `src/main/assets/pkey/` for the default variant, `pkey#tcf_<alias>/` for each other
+    texture variant (`etc2` is the default when published).
+  - Steam: `<depot root>/pkey_packs/<packId>/`.
+
+  Each directory holds one container with its `X.pkey.json` marker (named `<assetPackId>`,
+  `<padName>` or `<packId>` plus `.pck`/`.zip`), or a tree with `.pkey/pack.json`. Two markers in
+  one directory are refused as ambiguous.
+
+- **The Godot engine.**
+  - **Boot.** A platform copy is verified like an embedded baseline: the marker, then the payload
+    or treeDigest against the signed record. The stamp pin check is replaced by a platform pin
+    rule: the copy must be the pinned release, or, when the transport floats (`apple-ba`,
+    `steam-depot`, CONTENT §6.6), a higher `seq` of the same pack. Play copies must be exactly the
+    pin. An accepted copy replaces the pack's `res://` baseline and is never written to the state
+    document, because its path is re-resolved at every boot.
+  - **Planning.** A pack the platform carries gets a target bound to the platform's transport,
+    and caps list that transport only while the platform is available. The result is `noop`,
+    `platform` or `plan-transport-unsupported`, never a CDN fallback.
+  - **Delivery.** The `platform` strategy asks the transport to deliver, re-reads the copy and
+    accepts it under the float rule above (`record-mismatch` otherwise; a bad marker or payload is
+    `marker-rejected` with the step).
+  - **`noop` onto a platform copy** returns early and commits nothing to the state document
+    (fixed in review round 1).
+- **Distribution.** `connectors/asc/apply.ts` `resolveBackgroundAssetRelease` links a Background
+  Asset object to a pack release. It looks, in order, at the upload report's
+  `ascBackgroundAssetVersionId`, then at an already-linked object with that version, then at
+  `assetPackIdentifier` + `ascVersion`. It accepts only a pack release whose `assetPackBase` is the
+  identifier's base, and never links when two releases claim the same version. A CI report also
+  links objects that arrived before it (`availability.ts` `linkBackgroundAssetObjects`). The
+  connector's next read writes their availability. The new console-only read `GET
+…/distribution/asset-packs` (`assetPacks.ts`) lists asset packs with their level, newest
+  version, states, `live` and `retireCandidate`, plus the 200-pack and 200 GB quotas. It never
+  archives. There is no migration, no wire change and no public route (rule 10 is not
+  triggered).
+- **Action.** The `polaris-key/publish` inputs added are `transport` (`apple-ba-package`,
+  `apple-ba-upload`, `play-pad-modules`, `steam-depot-vdf`), `content-api`, `variant`,
+  `transport-out`, `gradle-project`, `pad-delivery`, `steam-depot`, `steam-branch`,
+  `steam-setlive`, `asc-expect-resource` and `transport-report`. With `transport`, `dir` is the
+  publish cache, or the package output for the upload, and publish-only inputs are refused.
+- **CI.** The `apple` job now runs `pkey transport apple-ba package` against the real `xcrun
+ba-package` (`PKEY_REAL_BA_PACKAGE=1`). It also runs `suite_transports` beside the PKeyApple
+  stubs, and the `android` job runs it beside the PKeyAndroid stubs. The suite is in the `ci` set,
+  so the `godot` job runs it too. No secrets are used. The generated Gradle modules are not built
+  in CI, because that needs a full Godot Android export; this is owner checklist row 3.
+- **Parity (Godot).** `packs.transport.apple`, `.play` and `.steam` are `implemented`, keeping
+  their runtime `except` entries. Each note says the proof is stub-based and the device run is the
+  owner's. Apple on macOS answers `unsupported` (`runtime`): no package owns a macOS binding
+  (P5-05 Out), and the registry allows no N/A there. No other SDK had a row planned under P5-08.
+- **Timings (`suite_transports`, 82 checks).** 985 ms on the 4.7.2 editor, 824 ms on the 4.7.2
+  macOS release template, and 949 ms on the 4.4.1 editor. After review round 1 and the merge of
+  main (90 checks, full `ci` set green on each): 1376 ms on the 4.7.2 editor, 1003 ms on the
+  4.7.2 macOS release template, and 2010 ms on the 4.4.1 editor.
+- **Not done here, with owners.**
+  - **Holding a store release through a connector** (`PENDING_DEVELOPER_RELEASE`). P4-14's Out
+    points here, but this brief's scope does not include it. The docs now tell the operator to set
+    a manual release. Follow-up: P5-02's controls plus readiness. Lead to schedule.
+  - **The chunk HTTP transcript** (P4-11 follow-up). The platform transports make no ranged
+    requests, and they declare `supports_range()` false. The work is a Worker scenario for the
+    `pkey-cdn` bundle route, a `transcript` proof on `packs.apply.chunk` in `features.json` (a
+    registry change), and replayers in Node, Python, Swift and Godot. None of that overlaps this
+    package. It stays a lead-scheduled follow-up.
+  - **P4-18 dcz.** This package does not touch the web transport, so there was nothing to confirm
+    on the payload URL.
+  - **Steam.** It is not verified that an app build listing only the pack's depot leaves the other
+    depots' manifests on the branch unchanged. This is owner checklist row 4.
+  - **PAD texture suffix stripping** is not configured. The transport reads `pkey/` and any
+    `pkey#tcf_*` directory, so it works either way.
+
+- **Review round 1.**
+  - **A copy that floated in is current.** A platform copy that `load_state` accepted under the
+    float rule against the stamp's pin counts as current for that pin, so `ensure()` succeeds when
+    Apple has auto-updated an installed asset pack. `_ensure_platform` applies the same platform pin
+    rule when the target is the stamp's pin. A decision's exact target still takes only that
+    release. An older copy, or a float the rule refused (Play, or a revoked release), fails closed
+    with `record-mismatch`. The `noop` edge is closed: a `noop` onto a platform copy returns that
+    copy and commits nothing.
+  - **One availability row per asset pack.** An apple-ba row's `build_id` is now its asset-pack
+    id, from both the connector (`syncBackgroundAsset`) and the CI report.
+    - The CI report keeps its request shape. The Worker keys a pack report on an outlet whose
+      transport for that pack is `apple-ba`, and whose `platformRef.assetPackIdentifier` maps back
+      to the pack. The OpenAPI description of `POST /{product}/distribution/report` says so.
+    - Readiness and the asset-pack listing find a level's row by that key. A whole-release row
+      (`''`) still counts when it names the level's asset pack, or names none.
+    - No migration: production holds no pack releases, so no existing apple-ba row needed re-keying.
+  - **`apple-ba upload` re-hashes the packaged content** against the package step's
+    `payloadSha256`. With `--from <cache>` it also checks the content against the signed record:
+    the record hash, the variant's payload and the marker. Any mismatch is refused with
+    `asset-pack-inputs-mismatch` before any request.
+  - **Docs and threat model.**
+    - THREAT-MODEL.md has a "Platform pack transports (P5-08)" section, and platform copies are
+      listed among the release-key surfaces.
+    - `transport.ts` explains why the CLI does not verify the cached record's JWS.
+    - The adopter docs say collisions are checked only among the current apple-ba packs, and that
+      `.pkey/asset-packs.json` is the guard across time.
+    - D-05's brief notes the full-id convention.
+
+- **What "supported" means.** `SUPPORTED_TRANSPORTS` (`outlets.ts`) means "Polaris Key acts on
+  it", and now lists `pkey-cdn`, `web`, `embedded`, `apple-ba`, `play-pad` and `steam-depot`.
+  - `DERIVED_TRANSPORTS` (`availability.ts`) is its own list, `pkey-cdn`, `web` and `embedded`,
+    with a test keeping it a subset. Availability is still derived only for transports Polaris Key
+    delivers. The store transports get theirs from CI reports and the connector.
+  - `msix-optional` and `flatpak-ext` stay unsupported.
+  - The device's `plan-transport-unsupported` does not depend on this list. It applies whenever
+    the build has no transport for a pack's binding.
+  - `Matrix.tsx` is untouched (a separate branch rewords its label). Only the `supported` comment
+    in `admin/src/api.ts` changed.
+
+### Owner checklist (device, accounts; not run)
+
+1. **Apple.** Use an app with Apple-hosted asset packs enabled and a CI App Store Connect key with
+   the Developer role. Steps:
+   1. Set `ASC_KEY_ID`, `ASC_ISSUER_ID` and `ASC_PRIVATE_KEY`.
+   2. Run `pkey transport apple-ba package` on macOS, then `upload`.
+   3. Commit `.pkey/asset-packs.json`.
+   4. Confirm the connector shows the version going through `PROCESSING`, then `COMPLETE`, then
+      internal `READY_FOR_TESTING`.
+   5. Install the TestFlight build (P5-05's store export, iOS 26.4 or later). Confirm the
+      transport's `installed()` holds the pack, and that the marker is verified and the pack is
+      mounted.
+   6. Record the timeline (S-01 §4 table).
+2. **App Store review.** Add the pack version to a review submission with the app build. Confirm
+   readiness turns `ready` at `READY_FOR_DISTRIBUTION`, and that `GET …/asset-packs` lists the old
+   level as a retire candidate.
+3. **Play.** Use an app on the internal track. Steps:
+   1. Run `pkey transport play-pad modules` into `android/build`.
+   2. Export the AAB and build it with Gradle.
+   3. Check the modules with `bundletool build-apks --local-testing`, then upload to the internal
+      track.
+   4. Install from Play. Confirm the fast-follow pack reaches `COMPLETED` and that its
+      `assetsPath()` holds `pkey/<name>.pck`, or the `#tcf` variant on an ASTC device.
+   5. Confirm the marker is verified and the pack is mounted.
+   6. Confirm the cellular confirmation dialog for a pack over 200 MB.
+4. **Steam.** Use a build account and a test branch. Steps:
+   1. Run `pkey transport steam-depot vdf --setlive` on the test branch, then `steamcmd
++run_app_build`.
+   2. Confirm the other depots keep their manifests.
+   3. Confirm the game with GodotSteam reads `pkey_packs/<packId>/`, verifies it and mounts it,
+      and that `build_id()` and `beta_name()` report the branch.
+5. **Record each run in the PR** (acceptance criterion 4).

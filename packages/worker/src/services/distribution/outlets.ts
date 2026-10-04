@@ -153,17 +153,33 @@ export function manifestIngestStatements(
 export const TRANSPORT_ROWS_PER_INSERT = 25;
 
 /**
- * The transports Polaris Key acts on in v1 (P4-05): its own CDN (`pkey-cdn`), the web build
- * (`web`) and embedded baselines (`embedded`). Any other transport a manifest names (`apple-ba`,
- * `play-pad`, `steam-depot`, …; P5-08's) is still STORED in `dist_transports` and listed, marked
- * unsupported: no availability is derived for it and no byte is routed for it. A device whose
- * outlet names one plans nothing for it (`plan.transport_unsupported`), never a silent CDN
- * fallback.
+ * The transports Polaris Key ACTS ON: it either delivers the bytes itself, or tracks a store's
+ * delivery end to end. Two kinds:
+ *
+ *   - delivered by Polaris Key (P4-05; `DERIVED_TRANSPORTS` in `availability.ts`): `pkey-cdn`,
+ *     `web` and embedded baselines (`embedded`). Availability on a self-hosted outlet is derived
+ *     from Release's truth, with no report;
+ *   - store transports P5-08 implements: `apple-ba` (Apple-hosted Background Assets), `play-pad`
+ *     (Play Asset Delivery) and `steam-depot` (Steam depots). The store moves the bytes; Polaris
+ *     Key packages them (`pkey transport …`), takes their availability from CI reports and the
+ *     App Store Connect connector, gates readiness on it, and the Godot SDK plans the `platform`
+ *     strategy through the store's plugin and verifies the marker and bytes before mounting. No
+ *     availability is DERIVED for them and no byte is routed for them.
+ *
+ * Any other transport a manifest names (`msix-optional`, `flatpak-ext`: no work package implements
+ * them yet) is still STORED in `dist_transports` and listed, marked unsupported: nothing is
+ * derived or routed for it, readiness reads only reported availability, and a device has no
+ * transport for it, so a pack bound to it plans nothing (`plan.transport_unsupported`), never a
+ * silent CDN fallback. That device rule is the SDK's and holds whatever this list says: a
+ * platform transport the build does not carry is unsupported there too.
  */
 export const SUPPORTED_TRANSPORTS: readonly string[] = [
   "pkey-cdn",
   "web",
   "embedded",
+  "apple-ba",
+  "play-pad",
+  "steam-depot",
 ];
 
 export function transportSupported(transport: string): boolean {

@@ -66,6 +66,9 @@ A **pack release** derives by its own rule, per its transport on the outlet:
   each unyanked app release that pins the pack release and has a build the outlet carries that
   embeds the pack (its `embeds`, or every `baseline: embedded` pack when it says nothing), with
   `detail: {appReleaseId, buildIds}`. The SDK still verifies the marker and hash on the device.
+- `apple-ba`, `play-pad`, `steam-depot`: nothing derived; the store moves the bytes, so only CI
+  reports (`pkey transport …`) and the App Store Connect connector say where a pack release
+  stands ([Platform pack transports](/docs/build/pack-transports/)).
 - any other transport: nothing; it is stored and shown "not delivered by Polaris Key".
 
 Every other kind — `app-store`, `testflight`, `play`, `steam`, `itch`, … — shows **nothing until
@@ -98,7 +101,26 @@ Key controls (`direct`, `web`, `altstore`, `altstore-pal`, `obtainium`, `fdroid-
 `app-installer`, `flathub`) a `pending` or `blocked` release is **held**: its `live` records read
 `pending`, so the signed feed's per-outlet `live` stays on the previous release and the storefront
 feeds skip it. On a store outlet it cannot hold, readiness records the blocker and a **warning**;
-hold the release in the store yourself (P5-08 adds connector holds).
+hold the release in the store yourself (set the App Store version to a manual release; Polaris
+Key does not place that hold through the connector yet).
+
+**Asset packs (`apple-ba`).** A pack's asset pack is `<pack>-c<contentApi>`, with every `.` in the
+pack id written as `-` (`diceroll.foes` at level 4 is `diceroll-foes-c4`), because a live
+asset-pack version switches every installed app version. `pkey transport apple-ba upload`
+([Platform pack transports](/docs/build/pack-transports/)) reports the uploaded version with
+`platformRef` `{assetPackIdentifier, ascBackgroundAssetId, ascBackgroundAssetVersionId,
+ascVersion, contentApi}`; the App Store Connect connector links the Background Asset events it
+receives to that pack release by those ids (only when the asset pack's name maps back to the
+release's pack id), so an App Store release reaching `READY_FOR_DISTRIBUTION` becomes `live` and
+readiness turns `ready`, while `REJECTED` leaves it `blocked`. An event that arrives before the
+upload's report is linked by the report and applied on the connector's next read.
+Each asset pack keeps its own availability row (its `buildId` is the asset-pack id, from the CI
+report and the connector alike), so one pack release bound at two content levels on one outlet
+keeps a state per level.
+`GET …/asset-packs` lists the product's asset packs with their level, newest version and states,
+marks those whose level no app channel has live as **retire candidates**, and shows Apple's
+quotas (200 asset packs, 200 GB per app). Archiving is irreversible and an archived id can never
+be reused, so Polaris Key only lists candidates: archive them in App Store Connect.
 
 The hold is computed on every read, so a new app release is held from its first request.
 `dist_readiness` keeps the snapshot the console reads: an availability report refreshes the app
@@ -210,6 +232,7 @@ Narrative-only (not in the wire spec), under `/manage/api/products/<slug>/distri
 | `GET`    | `readiness[?release=<id>]`                     | the readiness snapshot, or one app release's readiness computed now, per outlet                                                                  |
 | `POST`   | `readiness/refresh`                            | recompute the snapshot                                                                                                                           |
 | `POST`   | `readiness/<id>/<outlet>/override` · `…/clear` | `{ reason }` — release the hold (audited), or hand it back to the computation                                                                    |
+| `GET`    | `asset-packs`                                  | the product's Background Assets asset packs: level, pack, newest version and states, `live`, `retireCandidate`, and the 200-pack / 200 GB quotas |
 
 Availability and submissions are read-only in the console: CI reports them, and store connectors
 write them (`source: asc` for App Store Connect).
