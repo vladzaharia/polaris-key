@@ -7,15 +7,15 @@
     "sdks/kotlin/conformance/src/test"
   ],
   "features": {
-    "core.verify": { "status": "planned", "wp": "P6-06" },
-    "core.cache": { "status": "planned", "wp": "P6-06" },
-    "core.bundle": { "status": "planned", "wp": "P6-06" },
-    "core.discover": { "status": "planned", "wp": "P6-06" },
-    "core.sync": { "status": "planned", "wp": "P6-06" },
-    "core.local": { "status": "planned", "wp": "P6-06" },
-    "core.headers": { "status": "planned", "wp": "P6-06" },
-    "core.errors": { "status": "planned", "wp": "P6-06" },
-    "core.caps": { "status": "planned", "wp": "P6-06" },
+    "core.verify": { "status": "implemented" },
+    "core.cache": { "status": "implemented" },
+    "core.bundle": { "status": "implemented" },
+    "core.discover": { "status": "implemented" },
+    "core.sync": { "status": "implemented" },
+    "core.local": { "status": "implemented" },
+    "core.headers": { "status": "implemented" },
+    "core.errors": { "status": "implemented" },
+    "core.caps": { "status": "implemented" },
     "core.store": {
       "status": "planned",
       "wp": "P6-12",
@@ -132,8 +132,7 @@
       "reason": "runtime"
     },
     "ui.stages": {
-      "status": "planned",
-      "wp": "P6-06",
+      "status": "implemented",
       "note": ":core's bootTransition; every stage-matrix.json row, probe, guard and confirm case in :conformance."
     },
     "ui.kit": { "status": "planned", "wp": "P6-11" },

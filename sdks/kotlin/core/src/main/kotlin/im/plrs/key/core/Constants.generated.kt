@@ -1270,15 +1270,15 @@ public val CAPABILITY_RUNTIMES: List<String> = listOf("android", "jvm")
 
 /** This SDK's capability table, generated from its parity manifest (tools/capabilities.ts): per feature, the manifest's status, the owning service and every declared (runtime, reason) N/A. `supports()` reads it (P1b-10, PARITY §2.2). */
 public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
-    "core.verify" to CapabilityRow("planned", "core", listOf()),
-    "core.cache" to CapabilityRow("planned", "core", listOf()),
-    "core.bundle" to CapabilityRow("planned", "core", listOf()),
-    "core.discover" to CapabilityRow("planned", "core", listOf()),
-    "core.sync" to CapabilityRow("planned", "core", listOf()),
-    "core.local" to CapabilityRow("planned", "core", listOf()),
-    "core.headers" to CapabilityRow("planned", "core", listOf()),
-    "core.errors" to CapabilityRow("planned", "core", listOf()),
-    "core.caps" to CapabilityRow("planned", "core", listOf()),
+    "core.verify" to CapabilityRow("implemented", "core", listOf()),
+    "core.cache" to CapabilityRow("implemented", "core", listOf()),
+    "core.bundle" to CapabilityRow("implemented", "core", listOf()),
+    "core.discover" to CapabilityRow("implemented", "core", listOf()),
+    "core.sync" to CapabilityRow("implemented", "core", listOf()),
+    "core.local" to CapabilityRow("implemented", "core", listOf()),
+    "core.headers" to CapabilityRow("implemented", "core", listOf()),
+    "core.errors" to CapabilityRow("implemented", "core", listOf()),
+    "core.caps" to CapabilityRow("implemented", "core", listOf()),
     "core.store" to CapabilityRow("planned", "core", listOf(CapabilityNa("jvm", "dependency"))),
     "license.gate" to CapabilityRow("planned", "license", listOf()),
     "license.activate" to CapabilityRow("planned", "license", listOf()),
@@ -1335,10 +1335,10 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "packs.transport.steam" to CapabilityRow("planned", "distribution", listOf(CapabilityNa("android", "runtime"))),
     "packs.transport.msix" to CapabilityRow("na", "distribution", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
     "packs.transport.flatpak" to CapabilityRow("na", "distribution", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
-    "ui.stages" to CapabilityRow("planned", "sdk", listOf()),
+    "ui.stages" to CapabilityRow("implemented", "sdk", listOf()),
     "ui.kit" to CapabilityRow("planned", "sdk", listOf()),
     "commerce.receipt" to CapabilityRow("planned", "license", listOf()),
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "a2c7072cd29d9e2b369a77f1d004fca39af1fee0f617eb4fab45839a81fa3185"
+public const val CAPABILITY_DIGEST: String = "b7b3ae2a19bbbfa8bf322e11b7f5e028ad7c5a1eda1f795695175ee02b2a9949"
