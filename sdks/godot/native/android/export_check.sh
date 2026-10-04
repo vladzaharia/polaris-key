@@ -190,6 +190,16 @@ check_apk() { # check_apk <apk> <flavor>
   manifest="$("$BT/aapt2" dump xmltree "$apk" --file AndroidManifest.xml)"
   echo "$manifest" | grep -q 'org.godotengine.plugin.v2.PolarisKeyAndroid' && ok "$flavor: v2 plugin meta-data" || fail "$flavor: no PolarisKeyAndroid meta-data"
   [ "$(dex_has "$apk" "Class descriptor *: 'Lim/plrs/key/godot/PolarisKeyAndroidPlugin;'")" = 1 ] && ok "$flavor: plugin class packaged" || fail "$flavor: plugin class missing"
+  # P6-10: the binding is one thin layer over polaris-key-platform. No other SDK module (:core,
+  # :license, :update, :packs, :sdk) is in the game: Godot verifies in its own GDScript core.
+  local sdk_all sdk_ours
+  sdk_all="$(dex_has "$apk" "Class descriptor *: 'Lim/plrs/key/")"
+  sdk_ours="$(dex_has "$apk" "Class descriptor *: 'Lim/plrs/key/(godot|platform)/")"
+  if [ "$sdk_ours" -gt 0 ] && [ "$sdk_all" = "$sdk_ours" ]; then
+    ok "$flavor: only im.plrs.key.godot and im.plrs.key.platform classes from the SDK ($sdk_ours)"
+  else
+    fail "$flavor: an SDK class outside the binding and the platform module is packaged"
+  fi
   if [ "$flavor" = direct ]; then
     for p in REQUEST_INSTALL_PACKAGES UPDATE_PACKAGES_WITHOUT_USER_ACTION; do
       echo "$perms" | grep -q "android.permission.$p" && ok "direct: $p" || fail "direct: no $p"
@@ -204,6 +214,7 @@ check_apk() { # check_apk <apk> <flavor>
     [ "$(dex_has "$apk" 'PackageInstaller;\.createSession|PackageInstaller\$Session;\.commit')" = 0 ] && ok "play: no session creation or commit" || fail "play: session code present"
     [ "$(dex_has "$apk" "Class descriptor *: 'Lim/plrs/key/platform/direct/")" = 0 ] && ok "play: no direct class" || fail "play: direct class present"
     [ "$(dex_has "$apk" "Class descriptor *: 'Lim/plrs/key/platform/play/InAppUpdates;'")" = 1 ] && ok "play: In-App Updates packaged" || fail "play: In-App Updates missing"
+    [ "$(dex_has "$apk" "Class descriptor *: 'Lcom/google/android/play/core/integrity/StandardIntegrityManager;'")" = 1 ] && ok "play: the Play Integrity library packaged" || fail "play: the Play Integrity library missing (PlayIntegrity would not link)"
   fi
 }
 

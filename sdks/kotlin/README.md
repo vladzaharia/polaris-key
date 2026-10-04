@@ -17,7 +17,7 @@ docs' parity page renders it.
 | `:sdk`         | JVM library (JAR)     | `PolarisKeyClient`, the umbrella; re-exports `:core` and every service module (`api`)                                                                                     |
 | `:conformance` | tests only            | the corpus and HTTP-transcript runner (never published)                                                                                                                   |
 | `:platform`    | Android library (AAR) | install source, Keystore, Play Integrity, Play In-App Updates / Play Asset Delivery or PackageInstaller self-update (flavours `play`, `direct`); standalone               |
-| `:godot`       | Android library (AAR) | the Godot Android plugin (v2) over `:platform`, singleton `PolarisKeyAndroid` (`../godot/native/android/`)                                                                |
+| `:godot`       | Android library (AAR) | the Godot Android plugin (v2) over `:platform` ONLY, singleton `PolarisKeyAndroid` (`../godot/native/android/`); `checkPlatformOnly`                                      |
 | `:boundary`    | Android app (probe)   | an empty app per flavour; `tools/check_flavours.sh` proves the flavour boundary on its release                                                                            |
 
 Planned modules: `:update` and `:packs` (JVM, P6-08), `:android` (the only module that sees both
@@ -27,12 +27,17 @@ place they meet) and `:platform` depends on no SDK module: `./gradlew checkModul
 otherwise, in CI.
 
 Coordinates are `im.plrs.key:polaris-key-<module>`, except `:platform`, which publishes one
-artifact per flavour: `polaris-key-platform-play` and `polaris-key-platform-direct` (see below).
+artifact per flavour: `polaris-key-platform-play` and `polaris-key-platform-direct` (see below),
+and `:godot`, likewise `polaris-key-godot-play` and `polaris-key-godot-direct`, each depending on
+the platform artifact of the same flavour and on no other SDK module (P6-10: Godot keeps its
+verifier, licence client, updater and pack engine in GDScript, as Godot on iOS links only Swift's
+`PolarisKeyPlatform`).
 Kotlin artifacts reach adopters only through Polaris Key's own Maven feed (F-07, F-10); there is
 no Maven Central publication, no signing configuration and no remote repository in this build. `maven-publish` writes to
 `build/repo` only (`./gradlew :core:publishCorePublicationToLocalRepository` and the same task
 per JVM module, e.g. `:sdk:publishSdkPublicationToLocalRepository`,
-`./gradlew :platform:publishAllPublicationsToLocalRepository`).
+`./gradlew :platform:publishAllPublicationsToLocalRepository`,
+`./gradlew :godot:publishAllPublicationsToLocalRepository`).
 
 Versions follow Godot 4.7.2's Android build template (AGP 8.6.1, Gradle 8.11.1, Kotlin 2.1.21,
 compile and target SDK 36, min SDK 24, Java 17 bytecode), so the AARs drop into a Godot Gradle
@@ -213,8 +218,9 @@ cd sdks/kotlin
           :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest
 ./gradlew :platform:assembleRelease :godot:assembleRelease :boundary:assembleRelease
 tools/check_flavours.sh        # the boundary on the release AARs and APKs
-./gradlew :platform:checkStandalone :platform:publishAllPublicationsToLocalRepository
-tools/check_publication.sh     # both flavours in build/repo with POM, sources and .module
+./gradlew :platform:checkStandalone :godot:checkPlatformOnly \
+          :platform:publishAllPublicationsToLocalRepository :godot:publishAllPublicationsToLocalRepository
+tools/check_publication.sh     # both flavours of both in build/repo with POM, sources and .module
 ```
 
 `:conformance` reads `conformance/corpus/v2/` and `conformance/transcripts/` from the repository
