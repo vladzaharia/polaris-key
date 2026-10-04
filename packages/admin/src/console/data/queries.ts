@@ -7,7 +7,7 @@
  *   ["products"]                                 the registry list
  *   ["product", slug]                            one product's detail (exact)
  *   ["product", slug, <area>, <resource>, …]     everything else about that product
- *   ["platform", <resource>]                     instance-wide, product-less (A-11, A-12)
+ *   ["platform", <resource>]                     instance-wide, product-less (A-11 to A-13)
  *
  * Invalidating `["product", slug]` without `exact` therefore refreshes everything about one
  * product (resync), `["product", slug, "license", "licenses"]` refreshes the list AND every
@@ -35,6 +35,11 @@ export const qk = {
   platformVersion: (): QueryKey => ["platform", "version"],
   platformDeployment: (): QueryKey => ["platform", "deployment"],
   platformActivity: (): QueryKey => ["platform", "activity"],
+  platformSettings: (): QueryKey => ["platform", "settings"],
+  /** The KEK keyring status (`GET /products/kek`): instance-wide, so under `platform`. */
+  platformKek: (): QueryKey => ["platform", "kek"],
+  /** Settings → History: the settings writes of the platform trail (under `platformActivity`). */
+  platformSettingsHistory: (): QueryKey => ["platform", "activity", "settings"],
   /** The product detail row. Match it with `exact: true`; as a prefix it is the whole product. */
   product: (slug: string): QueryKey => product(slug),
 

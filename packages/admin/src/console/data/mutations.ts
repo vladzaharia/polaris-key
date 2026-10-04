@@ -34,6 +34,8 @@ const exact = (key: QueryKey): Target => ({ key, exact: true });
 /** The API methods that write. Kept in step with `api.ts` by `test/mutations.test.ts`. */
 export type WriteMethod =
   | "logout"
+  | "patchPlatformSetting"
+  | "revertPlatformSetting"
   | "createManualProduct"
   | "linkRepo"
   | "updateProduct"
@@ -143,6 +145,22 @@ export const MUTATIONS: MutationTable = {
     label: "sign out",
     invalidates: () => [],
     why: "The page leaves for the sign-in screen; nothing cached is shown again.",
+  },
+  patchPlatformSetting: {
+    label: "platform setting set",
+    // The settings list (effective value, source, version) and the platform trail, which the
+    // write appends to (Settings → History, Deployment → Platform activity).
+    invalidates: () => [
+      exact(qk.platformSettings()),
+      prefix(qk.platformActivity()),
+    ],
+  },
+  revertPlatformSetting: {
+    label: "platform setting revert",
+    invalidates: () => [
+      exact(qk.platformSettings()),
+      prefix(qk.platformActivity()),
+    ],
   },
   createManualProduct: {
     label: "product create (manual)",
