@@ -77,6 +77,25 @@ The owner decided on 2026-10-04 that Identity is two layers, with layer 1 (one a
 - I-05 creates the binding column ([S-16 §8.1](../../notes/S-16-identity-service.md#81-briefs-that-change)); U-02 builds on it and adds no second migration.
 - `portalUrl` and `signInUrl` are built by the Worker, never carry the key, and are never treated as auth failures by the SDKs.
 
+## Corrections (plan, 2026-10-04)
+
+Departures recorded by [`plans/I-04.md`](../plans/I-04.md) §8, each pending the plan's approval:
+
+- The device-code poll already returns `attachable` (`oidc.ts:1866`); only `ready.subject` is new.
+- Plain licence detach does not clear `devices.subject` (S-17 §5.8 item 2); S-16 §5.1's table listed it.
+- The plan adds `GET /<p>/identity/subject`, `POST /<p>/identity/signout` and `devices.bound_by`,
+  so `subject()` and `signOut()` have a server side (owner question Q3).
+- `account_required` (403, S-17's code) is registered by I-09 for attach without a sign-in, and
+  `license_email_bound` (403) for the email-bound claim rule; both join the brief's code list.
+- No outbound developer webhook channel exists, so `subject.merged` and `subject.deleted` are a
+  pull feed (`subject_events`) in layer 1 (owner question Q8).
+- `portal_license_links` allows several accounts per licence; the migration picks one owner
+  (owner question Q1).
+- Identity on currently requires an `oidc` block in `.pkey/product`; the plan relaxes
+  `invalid_oidc` to fire only when the block is present.
+- Tables land with their first writer: `license_key_entries` and `identity_product_settings` in
+  I-09, the account tables in I-05.
+
 ## Steps
 
 1. Draft `plans/I-04.md` against the code; correct S-16 or S-17 where the code disagrees, and say so.
