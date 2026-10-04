@@ -11,6 +11,7 @@
 
 import Foundation
 import PolarisKeyCore
+@testable import PolarisKeyPacks
 
 // ── The format ─────────────────────────────────────────────────────────────────────────────
 
@@ -411,5 +412,29 @@ struct ReplayTransport: PolarisTransport {
         }
         return PolarisResponse(
             status: item.response.status, body: body, headers: item.response.headers)
+    }
+}
+
+/// The pack object transport a `chunkRange` step hands `PacksClient.fetchObject` (P4-32): the
+/// same replay server behind the `PackObjectTransport` seam, as `ReplayTransport` is behind
+/// `PolarisTransport`. It reports bounded ranges (as `URLSessionPackObjectTransport` does), and
+/// the recorded `Content-Range` and `ETag`.
+struct ReplayPackObjectTransport: PackObjectTransport {
+    let server: ReplayServer
+
+    var supportsRange: Bool { true }
+
+    func get(_ url: URL, headers: [String: String], timeoutSeconds: Double) async throws -> ObjectResponse {
+        let r = try await ReplayTransport(server: server).send(
+            PolarisRequest(url: url, method: "GET", headers: headers, timeoutSeconds: timeoutSeconds))
+        var lower: [String: String] = [:]
+        for (k, v) in r.headers { lower[k.lowercased()] = v }
+        let bytes = [UInt8](r.body)
+        return ObjectResponse(
+            status: r.status, contentRange: lower["content-range"], etag: lower["etag"],
+            chunks: AsyncThrowingStream { c in
+                if !bytes.isEmpty { c.yield(bytes) }
+                c.finish()
+            })
     }
 }

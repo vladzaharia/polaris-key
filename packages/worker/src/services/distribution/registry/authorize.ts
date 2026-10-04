@@ -7,6 +7,7 @@
  * (`settings.ts`).
  *
  * THE LADDER, in order; the first failure decides:
+ *   0. the owner product's `status` is not `active` (deleted, …) → not-found;
  *   1. the platform kill switch for the ecosystem (`dist_registry_policy.enabled`) → not-found;
  *   2. the owner's Distribution, its `packageFeeds` and the feed's `enabled` → not-found;
  *   3. the mode: `stricter(feed.access_mode, dist_access(deliverable).mode)` on Distribution's
@@ -159,10 +160,14 @@ export async function authorizeFeedRead(
   const source = ctx.settings ?? d1RegistrySettings(ctx.db);
   const nowMs = ctx.nowMs ?? Date.now();
   const {
+    productStatus,
     policy,
     owner: ownerRow,
     feed,
   } = await cachedRegistrySettings(source, owner, ecosystem, nowMs);
+  // 0. A deleted (or otherwise not active) product serves nothing, whatever its feed rows say.
+  if (productStatus !== undefined && productStatus !== "active")
+    return notFound;
   // 1. The platform kill switch.
   if (!policy?.enabled) return notFound;
   // 2. Distribution, packageFeeds, the feed.

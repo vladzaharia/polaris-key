@@ -1,0 +1,3 @@
+import SmokeKit
+
+print(smokeGreeting())

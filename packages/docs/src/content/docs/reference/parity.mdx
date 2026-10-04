@@ -24,7 +24,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | Python | `python` | 55 | 6 | 0 | 7 |
 | Swift | `macos`, `ios` | 56 | 5 | 0 | 7 |
 | Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 63 | 1 | 0 | 4 |
-| Kotlin | `android`, `jvm` | 31 | 5 | 28 | 4 |
+| Kotlin | `android`, `jvm` | 53 | 5 | 6 | 4 |
 
 ## Core
 
@@ -84,37 +84,37 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `release.changelog` | Changelog | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `release.download` | Download and install URLs | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `release.record` | Verify pkey-release+jws against pinned release keys | `cases.json` `releaseRecordCases` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `update.check` | Today's version check | transcripts (not recorded) | ✓ | ✓ | ✓ | ✓ | ✓ | planned (P6-08) | — |
-| `update.feed` | Verify pkey-feed+jws: freshness, seq | `cases.json` `feedCases` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | planned (P6-08) | — |
-| `update.decide` | The update decision | `update-matrix.json` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | planned (P6-08) | — |
-| `update.content` | The content decision: feed pack sets, floors and revocations, packs and prestage | `update-matrix.json` `contentRows` + `cases.json` `feedContentCases` | ✓ | ✓ | ✓ | ✓ | ✓ | planned (P6-08) | — |
+| `update.check` | Today's version check | transcripts (not recorded) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `update.feed` | Verify pkey-feed+jws: freshness, seq | `cases.json` `feedCases` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `update.decide` | The update decision | `update-matrix.json` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `update.content` | The content decision: feed pack sets, floors and revocations, packs and prestage | `update-matrix.json` `contentRows` + `cases.json` `feedContentCases` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.driver` | Hand off to the native updater, or a store link | device tests | planned (unowned) | planned (unowned) | planned (unowned) | ✓; N/A (ios: outlet) | ✓; N/A (ios: outlet) | planned (P6-12); N/A (jvm: runtime) | ios: outlet; jvm: runtime |
-| `update.bootguard` | Confirm a boot, roll back after N failures | `stage-matrix.json` | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | ✓ | planned (P6-08) | — |
+| `update.bootguard` | Confirm a boot, roll back after N failures | `stage-matrix.json` | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | ✓ | ✓ | — |
 | `outlet.detect` | Outlet detection | `outlet-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | planned (P6-12) | — |
 
 ## Packs
 
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Kotlin | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `packs.record` | Verify kind: pack records, app content and embeds, and embedded-pack markers | `cases.json` `packRecordCases` + `cases.json` `markerCases` | ✓ | ✓ | ✓ | ✓ | ✓ | planned (P6-08) | — |
-| `packs.revoke` | Revocation records: verify, supersede, persist, refuse revoked mounts | `cases.json` `revocationCases` + unit | ✓ | ✓ | ✓ | ✓ | ✓ | planned (P6-08) | — |
-| `packs.delegation` | Content-key delegation: delegated pack records, the data-only rule, delegation revocations | `cases.json` `delegationCases` + `content/` + unit | ✓ | ✓ | ✓ | ✓ | ✓ | planned (P6-08) | — |
-| `packs.delta.feed` | Feed-offered deltas: the menu, the merge, one feed delta per install | `cases.json` `feedContentCases` + `plan-matrix.json` `feedDeltaCases` + `content/` `feedDeltaApplyCases` (P4-29) + unit | ✓ | ✓ | ✓ | ✓ | ✓ | planned (P6-08) | — |
-| `packs.plan` | The install planner | `plan-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | planned (P6-08) | — |
-| `packs.index.files` | Files index parsing (`pkey-files/1`), path rules, `treeDigest` | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | planned (P6-08) | — |
-| `packs.index.chunks` | Chunk index parsing | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | planned (P6-08) | — |
-| `packs.apply.full` | Full apply | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | planned (P6-08) | — |
-| `packs.apply.file` | File apply with type-neutral container rebuild | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | planned (P6-08) | — |
-| `packs.apply.chunk` | Chunk sync from seeds, request runs | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | planned (P6-08) | — |
-| `packs.apply.delta` | Raw-prefix delta | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | planned (P6-08) | any: dependency; any: version |
-| `packs.state` | Install state, journal, atomic switch, confirm, GC roots | `stage-matrix.json` + `content/` `packSetIdCases` (P4-04) + unit | ✓ | ✓ | ✓ | ✓ | ✓ | planned (P6-08) | — |
-| `packs.handlers` | Handler contract; registerHandler for custom types | unit | ✓ | ✓ | ✓ | ✓ | ✓ | planned (P6-08) | — |
+| `packs.record` | Verify kind: pack records, app content and embeds, and embedded-pack markers | `cases.json` `packRecordCases` + `cases.json` `markerCases` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `packs.revoke` | Revocation records: verify, supersede, persist, refuse revoked mounts | `cases.json` `revocationCases` + unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `packs.delegation` | Content-key delegation: delegated pack records, the data-only rule, delegation revocations | `cases.json` `delegationCases` + `content/` + unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `packs.delta.feed` | Feed-offered deltas: the menu, the merge, one feed delta per install | `cases.json` `feedContentCases` + `plan-matrix.json` `feedDeltaCases` + `content/` `feedDeltaApplyCases` (P4-29) + unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `packs.plan` | The install planner | `plan-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `packs.index.files` | Files index parsing (`pkey-files/1`), path rules, `treeDigest` | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `packs.index.chunks` | Chunk index parsing | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `packs.apply.full` | Full apply | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `packs.apply.file` | File apply with type-neutral container rebuild | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `packs.apply.chunk` | Chunk sync from seeds, request runs | `content/` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `packs.apply.delta` | Raw-prefix delta | `content/` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓; N/A (android: dependency); N/A (jvm: dependency) | any: dependency; any: version |
+| `packs.state` | Install state, journal, atomic switch, confirm, GC roots | `stage-matrix.json` + `content/` `packSetIdCases` (P4-04) + unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `packs.handlers` | Handler contract; registerHandler for custom types | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.type.godot.zip` | `godot.zip` packs: a stored-entry zip checked by the godot.pck admission list and mounted at boot | unit | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | ✓ | N/A (android, jvm: runtime) | node, python, web, desktop-bridge, macos, ios, android, jvm: runtime |
-| `packs.type.l10n.table` | `l10n.table` packs: PO, CSV or JSON tables parsed (never evaluated), the BCP-47 locale matched to the variant, hot activation | unit | ✓ | ✓ | ✓ | ✓ | ✓ | planned (P6-08) | — |
-| `packs.type.data.json` | `data.json` packs: strict-JSON documents, the formatVersion the handler lists, hot activation | unit | ✓ | ✓ | ✓ | ✓ | ✓ | planned (P6-08) | — |
+| `packs.type.l10n.table` | `l10n.table` packs: PO, CSV or JSON tables parsed (never evaluated), the BCP-47 locale matched to the variant, hot activation | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `packs.type.data.json` | `data.json` packs: strict-JSON documents, the formatVersion the handler lists, hot activation | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.type.audio.bank` | `audio.bank` packs: the bank descriptor's middleware and version against the host's, hot reload through the host's middleware | unit | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | ✓ | N/A (android, jvm: runtime) | node, python, web, desktop-bridge, macos, ios, android, jvm: runtime |
-| `packs.type.ml.model` | `ml.model` packs: the model descriptor's runtime, quantisation and RAM/VRAM needs against the host's budget, a host load test before the path swaps | unit | ✓ | ✓ | ✓ | ✓ | N/A (linux, macos, windows, android, ios, web: runtime) | planned (P6-08) | linux, macos, windows, android, ios, web: runtime |
-| `packs.provides` | isAvailable(contentId) from provides | unit | ✓ | ✓ | ✓ | ✓ | ✓ | planned (P6-08) | — |
+| `packs.type.ml.model` | `ml.model` packs: the model descriptor's runtime, quantisation and RAM/VRAM needs against the host's budget, a host load test before the path swaps | unit | ✓ | ✓ | ✓ | ✓ | N/A (linux, macos, windows, android, ios, web: runtime) | ✓ | linux, macos, windows, android, ios, web: runtime |
+| `packs.provides` | isAvailable(contentId) from provides | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `packs.transport.apple` | Apple Background Assets | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (unowned) | ✓; N/A (linux: runtime); N/A (windows: runtime); N/A (android: runtime); N/A (web: runtime) | N/A (android, jvm: runtime) | node, python, web, desktop-bridge, windows, linux, android, jvm, tauri: runtime |
 | `packs.transport.play` | Play Asset Delivery | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | ✓; N/A (linux: runtime); N/A (macos: runtime); N/A (windows: runtime); N/A (ios: runtime); N/A (web: runtime) | planned (P6-12); N/A (jvm: runtime) | node, python, web, desktop-bridge, macos, ios, windows, linux, jvm, tauri: runtime |
 | `packs.transport.steam` | Steam depots | device tests | planned (unowned) | N/A (web, desktop-bridge: runtime) | planned (unowned) | planned (unowned); N/A (ios: runtime) | ✓; N/A (android: runtime); N/A (ios: runtime); N/A (web: runtime) | planned (unowned); N/A (android: runtime) | web, desktop-bridge, ios, android: runtime |

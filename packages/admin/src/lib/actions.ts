@@ -110,6 +110,20 @@ export const ACTION_LEVELS = {
   "channel.setPackFloor": 1,
   "channel.lowerFloor": 2,
   "channel.clearFloor": 2,
+
+  // Package feeds (F-11). A rebuild re-renders what is already true (L0). Turning a feed, a
+  // product's package feeds or the platform's feeds on or off changes what clients can install
+  // and can be undone (L1); so do an unyank and a deprecation. A yank is §5.2's yank (L2), and so
+  // is the platform kill switch: it stops every owner's feed of that ecosystem at once.
+  "feed.rebuild": 0,
+  "feed.disable": 1,
+  "feed.bootstrap": 1,
+  "packageFeeds.disable": 1,
+  "package.unyank": 1,
+  "package.deprecate": 1,
+  "package.undeprecate": 1,
+  "package.yank": 2,
+  "feed.policyOff": 2,
 } as const satisfies Record<string, ActionLevel>;
 
 export type ActionId = keyof typeof ACTION_LEVELS;

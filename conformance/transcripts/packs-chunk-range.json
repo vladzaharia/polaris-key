@@ -1,0 +1,242 @@
+{
+  "transcriptVersion": 1,
+  "id": "packs-chunk-range",
+  "description": "The chunk-bundle fetch (WIRE-CONTRACT-V4 §11.4): one single-range request per run on the blob route, with If-Range set to the bundle's own strong ETag. A 206 with the exact Content-Range, and a 206 clipped at the end of the object, satisfy the run. The 200 the Worker answers when If-Range misses (recorded with a stale validator, which no content-addressed client can send, so its if-range is asserted by presence only) is \"any other answer\" and must fail the strategy.",
+  "features": ["packs.apply.chunk"],
+  "requires": [],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": ["release", "distribution"]
+  },
+  "steps": [
+    {
+      "action": "discover",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/.well-known/polaris.json",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "public, max-age=300",
+                "content-type": "application/json"
+              },
+              "body": {
+                "version": 2,
+                "protocolVersion": 4,
+                "schemaVersion": 1,
+                "product": "djdl",
+                "slug": "djdl",
+                "name": "djdl",
+                "baseUrl": "https://key.plrs.im",
+                "core": {
+                  "registration": "open",
+                  "compat": { "min": "0.0.0", "max": "99.0.0" },
+                  "endpoints": {
+                    "discovery": "https://key.plrs.im/djdl/.well-known/polaris.json",
+                    "jwks": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                    "trustManifest": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                    "devices": "https://key.plrs.im/djdl/devices",
+                    "report": "https://key.plrs.im/djdl/devices/report",
+                    "register": "https://key.plrs.im/djdl/devices/register"
+                  }
+                },
+                "trust": {
+                  "jwksUrl": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                  "trustManifestUrl": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                  "cacheSeconds": 300,
+                  "pinnedKeys": {
+                    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+                  },
+                  "signingKid": "pkey-test-prod-2026",
+                  "signingPub": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                  "keys": [
+                    {
+                      "kid": "pkey-test-prod-2026",
+                      "alg": "EdDSA",
+                      "kty": "OKP",
+                      "crv": "Ed25519",
+                      "publicKey": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                      "status": "active",
+                      "active": true
+                    }
+                  ]
+                },
+                "services": {
+                  "license": { "enabled": false },
+                  "config": { "enabled": false },
+                  "release": {
+                    "enabled": true,
+                    "configured": true,
+                    "binaryName": "djdl",
+                    "repository": { "owner": "acme", "name": "djdl" },
+                    "endpoints": {
+                      "changelog": "https://key.plrs.im/djdl/release/changelog",
+                      "install": "https://key.plrs.im/djdl/release/install.sh",
+                      "download": "https://key.plrs.im/djdl/release/dl",
+                      "builds": "https://key.plrs.im/djdl/release/builds/{selector}/{buildId}",
+                      "blobs": "https://key.plrs.im/djdl/release/blobs/sha256/{sha256}",
+                      "record": "https://key.plrs.im/djdl/release/records/{sha256}"
+                    },
+                    "releaseKeyFingerprints": [
+                      "9620da0240de5acb352c3e4392f4b216122d94bca9ea1efa08b1941333897f93"
+                    ],
+                    "packs": true,
+                    "chunks": true,
+                    "revocations": true,
+                    "delegations": true
+                  },
+                  "distribution": {
+                    "enabled": true,
+                    "configured": true,
+                    "endpoints": {
+                      "download": "https://key.plrs.im/djdl/distribution/dl",
+                      "install": "https://key.plrs.im/djdl/distribution/install.sh",
+                      "builds": "https://key.plrs.im/djdl/distribution/builds/{selector}/{buildId}",
+                      "blobs": "https://key.plrs.im/djdl/distribution/blobs/sha256/{sha256}"
+                    }
+                  },
+                  "update": { "enabled": false },
+                  "identity": { "enabled": false }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "services": {
+          "license": false,
+          "config": false,
+          "release": true,
+          "distribution": true,
+          "update": false,
+          "identity": false
+        }
+      }
+    },
+    {
+      "action": "chunkRange",
+      "note": "The exact 206: bytes 16-39 of the 64-byte bundle.",
+      "args": {
+        "bundle": "0b77a6be1159a43296411a8cdedd40b1082005e3454be9d084a5d2e46cc01dc6",
+        "offset": 16,
+        "length": 24
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/distribution/blobs/sha256/0b77a6be1159a43296411a8cdedd40b1082005e3454be9d084a5d2e46cc01dc6",
+              "headers": {
+                "range": "bytes=16-39",
+                "if-range": "\"0b77a6be1159a43296411a8cdedd40b1082005e3454be9d084a5d2e46cc01dc6\""
+              },
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 206,
+              "headers": {
+                "cache-control": "public, max-age=31536000, immutable, no-transform",
+                "content-range": "bytes 16-39/64",
+                "content-type": "application/octet-stream",
+                "etag": "\"0b77a6be1159a43296411a8cdedd40b1082005e3454be9d084a5d2e46cc01dc6\""
+              },
+              "body": "ghijklmnopqrstuvwxyzABCD"
+            }
+          }
+        ]
+      },
+      "expect": { "range": "ok", "bytes": "ghijklmnopqrstuvwxyzABCD" }
+    },
+    {
+      "action": "chunkRange",
+      "note": "A run past the end of the object: the 206 is clipped to bytes 48-63.",
+      "args": {
+        "bundle": "0b77a6be1159a43296411a8cdedd40b1082005e3454be9d084a5d2e46cc01dc6",
+        "offset": 48,
+        "length": 32
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/distribution/blobs/sha256/0b77a6be1159a43296411a8cdedd40b1082005e3454be9d084a5d2e46cc01dc6",
+              "headers": {
+                "range": "bytes=48-79",
+                "if-range": "\"0b77a6be1159a43296411a8cdedd40b1082005e3454be9d084a5d2e46cc01dc6\""
+              },
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 206,
+              "headers": {
+                "cache-control": "public, max-age=31536000, immutable, no-transform",
+                "content-range": "bytes 48-63/64",
+                "content-type": "application/octet-stream",
+                "etag": "\"0b77a6be1159a43296411a8cdedd40b1082005e3454be9d084a5d2e46cc01dc6\""
+              },
+              "body": "MNOPQRSTUVWXYZ-_"
+            }
+          }
+        ]
+      },
+      "expect": { "range": "ok", "bytes": "MNOPQRSTUVWXYZ-_" }
+    },
+    {
+      "action": "chunkRange",
+      "note": "If-Range misses (the recorder sent a stale validator): the Worker answers 200 with the whole object, which fails the strategy.",
+      "args": {
+        "bundle": "0b77a6be1159a43296411a8cdedd40b1082005e3454be9d084a5d2e46cc01dc6",
+        "offset": 16,
+        "length": 24
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/distribution/blobs/sha256/0b77a6be1159a43296411a8cdedd40b1082005e3454be9d084a5d2e46cc01dc6",
+              "headers": { "range": "bytes=16-39" },
+              "requiredHeaders": ["if-range"],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "public, max-age=31536000, immutable, no-transform",
+                "content-type": "application/octet-stream",
+                "etag": "\"0b77a6be1159a43296411a8cdedd40b1082005e3454be9d084a5d2e46cc01dc6\""
+              },
+              "body": "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_"
+            }
+          }
+        ]
+      },
+      "expect": { "range": "refused" }
+    }
+  ]
+}

@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
 import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/securityHeaders.js";
+import { feedRoutes } from "../test/feedsFixture.js";
 
 /**
  * Every overlay of the console under the Worker's real CSP (`style-src 'self'`, no inline style).
@@ -39,8 +40,11 @@ const row = (slug: string, name: string) => ({
   effectiveRegistration: "requires-license",
   servicesSource: "manifest",
   setup: { status: "ok", healthy: true, nextActions: [] },
+  // F-11: Distribution → Package feeds is listed while the product has package feeds on.
+  packageFeeds: true,
 });
 const ROUTES: Record<string, unknown> = {
+  ...feedRoutes(),
   "/manage/api/me": {
     sub: "u1",
     name: "Ada Lovelace",
@@ -417,6 +421,42 @@ describe("overlays under the Worker's CSP", () => {
         .getByRole("button", { name: "Actions for Godot Demo" })
         .click();
       await page.getByRole("menuitem", { name: "Assign to product…" }).click();
+      await page.getByRole("alertdialog").waitFor();
+    });
+    await page.context().close();
+  });
+
+  it("Package feeds in both scopes: the overview, feed pages, a package record and its dialogs", async () => {
+    const page = await open({ width: 1440, height: 900 });
+    await violations(page);
+    for (const [hash, title] of [
+      ["#/platform/feeds", "Package feeds"],
+      ["#/platform/feeds/npm", "npm"],
+      ["#/platform/feeds/npm/setup", "npm"],
+      ["#/platform/feeds/oci/settings", "Docker / OCI"],
+      ["#/platform/feeds/npm/activity", "npm"],
+      [
+        "#/platform/feeds/npm/packages/polaris-key/%40polaris-key%2Fnode",
+        "@polaris-key/node",
+      ],
+      ["#/p/djdl/distribution/feeds", "Package feeds"],
+      ["#/p/djdl/distribution/feeds/npm", "npm"],
+      ["#/p/djdl/distribution/feeds/maven/settings", "Maven / Gradle"],
+      ["#/p/djdl/distribution/feeds/oci/packages/djdl-server", "djdl-server"],
+    ] as const) {
+      await page.evaluate((h) => {
+        location.hash = h;
+      }, hash);
+      await page
+        .locator("[data-page-title]", { hasText: title })
+        .first()
+        .waitFor();
+      await page.waitForTimeout(200);
+      expect(await violations(page), `${hash}: CSP violations`).toEqual([]);
+    }
+    await check(page, "package yank dialog", async () => {
+      await page.getByRole("button", { name: "Actions for 0.9.2" }).click();
+      await page.getByRole("menuitem", { name: "Yank…" }).click();
       await page.getByRole("alertdialog").waitFor();
     });
     await page.context().close();

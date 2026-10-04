@@ -1,0 +1,14 @@
+{
+  "releases": {
+    "2.0.0-beta.1": {},
+    "1.2.0": {},
+    "1.1.0": {
+      "problem": {
+        "status": 410,
+        "title": "Gone",
+        "detail": "this release was yanked from the registry"
+      }
+    },
+    "1.0.0": {}
+  }
+}

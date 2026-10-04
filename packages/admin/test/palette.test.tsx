@@ -50,7 +50,20 @@ describe("the sources", () => {
     expect(labels).not.toContain("Releases");
     // Sign-in is built (chunk 10); not-built pages are not offered: they would only redirect.
     expect(labels).toContain("Sign-in");
-    expect(labels).not.toContain("Package feeds");
+    // F-11: Distribution → Package feeds is offered while the product has package feeds on.
+    const off = navigationSource(
+      "djdl",
+      "DJDL",
+      { ...ALL_ON },
+      { packageFeeds: false },
+    );
+    expect(
+      off.filter((i) => i.href.startsWith("#/p/")).map((i) => i.label),
+    ).not.toContain("Package feeds");
+    const on = navigationSource("djdl", "DJDL", ALL_ON, { packageFeeds: true });
+    expect(
+      on.find((i) => i.href === "#/p/djdl/distribution/feeds"),
+    ).toBeTruthy();
     expect(items.find((i) => i.label === "Licenses")!.href).toBe(
       "#/p/djdl/license/licenses",
     );
@@ -66,6 +79,7 @@ describe("the sources", () => {
       "Deployment",
       "Operations",
       "Store connections",
+      "Package feeds",
     ]);
   });
 

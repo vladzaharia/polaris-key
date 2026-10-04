@@ -18,7 +18,7 @@ import {
   issueSession,
 } from "../src/admin/session.js";
 import { getProduct } from "../src/repo.js";
-import { parseServices } from "../src/core/services.js";
+import { parseServices, serializeServices } from "../src/core/services.js";
 import { SYSTEM_FEEDS } from "../src/admin/systemProduct.js";
 import { open } from "../src/keyvault.js";
 
@@ -161,13 +161,31 @@ describe("the package-feeds bootstrap (F-03)", () => {
     expect(JSON.parse(npm!.namespace_json)).toEqual({
       scope: "@polaris-key-next",
     });
-    // packageFeeds is re-asserted on.
+    // An operator's packageFeeds off stays off.
     expect(
       await db.first(
         "SELECT enabled FROM dist_registry_owners WHERE product = ?",
         SYSTEM_PRODUCT_SLUG,
       ),
-    ).toEqual({ enabled: 1 });
+    ).toEqual({ enabled: 0 });
+  });
+
+  it("a second run does not turn back on a service an operator turned off", async () => {
+    await admin("POST", "/platform/feeds/bootstrap");
+    const row = await getProduct(db, SYSTEM_PRODUCT_SLUG);
+    const services = parseServices(row!.services_json ?? null);
+    services.services.release = { enabled: false };
+    await db.run(
+      "UPDATE products SET services_json = ? WHERE slug = ?",
+      serializeServices(services),
+      SYSTEM_PRODUCT_SLUG,
+    );
+    await admin("POST", "/platform/feeds/bootstrap");
+    const after = parseServices(
+      (await getProduct(db, SYSTEM_PRODUCT_SLUG))!.services_json ?? null,
+    );
+    expect(after.services.release?.enabled).toBe(false);
+    expect(after.services.distribution?.enabled).toBe(true);
   });
 
   it("is platform-admin only, and POST only", async () => {

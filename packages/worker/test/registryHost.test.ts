@@ -12,6 +12,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it } from "vitest";
+import { feedRoute } from "../src/services/distribution/registry/serve.js";
 import worker from "../src/index.js";
 import { REGISTRY_ROUTES } from "../src/mount.js";
 import {
@@ -19,12 +20,14 @@ import {
   REGISTRY_CSP,
   REGISTRY_ECOSYSTEMS,
   REGISTRY_HOST_TYPES,
+  RESERVED_ECOSYSTEMS,
   dispatchRegistryHost,
   isRegistryHost,
   refusedRegistryType,
   registryEcosystemOf,
   registryHostname,
   registryOrigin,
+  FEED_READ_ROUTE,
   type RegistryRoute,
 } from "../src/core/registryHost.js";
 import { inertDocumentPolicy } from "../src/core/bytesHost.js";
@@ -220,12 +223,15 @@ describe("registry host: configuration", () => {
     }
   });
 
-  it("registers no ecosystem routes yet; every route is Distribution's and names a known ecosystem", () => {
+  it("every registry route is Distribution's, names a known live ecosystem and has a unique name", () => {
     // F-04 to F-09 add theirs; routeCoverage's REGISTRY_PATHS follows them (rule 10).
-    expect(REGISTRY_ROUTES).toEqual([]);
+    expect(REGISTRY_ROUTES.length).toBeGreaterThan(0);
+    const names = REGISTRY_ROUTES.map((r) => r.name);
+    expect(new Set(names).size).toBe(names.length);
     for (const r of REGISTRY_ROUTES) {
       expect(r.service).toBe("distribution");
       expect(REGISTRY_ECOSYSTEMS).toContain(r.ecosystem);
+      expect(RESERVED_ECOSYSTEMS.has(r.ecosystem), r.name).toBe(false);
     }
   });
 
@@ -381,24 +387,31 @@ describe("registry host: isolation", () => {
       "/cargo/djdl/index/config.json",
       "/go/djdl/example.com/m/@v/list",
       "/nuget/djdl/v3/index.json",
-      "/npm/djdl/@djdl%2fsdk",
-      "/pypi/djdl/simple/",
-      "/maven/djdl/im/plrs/key/sdk/maven-metadata.xml",
-      "/godot/djdl/index.json",
+      // No D1 here, so only paths no route matches: F-04's npm routes load the owner for a
+      // scoped name (test/registry/npm.test.ts pins their not-found with a database).
+      "/npm/djdl/sdk",
+      // `/pypi/…` has routes since F-05 (its unknown owners: test/registry/pypi.test.ts).
+      // Maven has routes (F-07): its unknown owners and repositories are pinned, with a
+      // database, in test/registry/maven.test.ts.
+      // No Godot route matches this path (F-09's routes are pinned in test/registry/godot.test.ts).
+      "/godot/djdl/no-such-document.json",
     ]) {
       const res = await worker.fetch(new Request(PKG + path), env(PKG));
       expect(res.status, path).toBe(404);
       expect(await res.json(), path).toEqual({ error: "not_found" });
       expectHardened(res, path);
     }
+    // A path no Swift route matches (F-06's routes read D1, which this env does not seed).
     const swift = await worker.fetch(
-      new Request(`${PKG}/swift/djdl/acme/sdk`),
+      new Request(`${PKG}/swift/djdl/acme`),
       env(PKG),
     );
     expect(swift.status).toBe(404);
     expect(swift.headers.get("content-type")).toBe("application/problem+json");
     const oci = await worker.fetch(
-      new Request(`${PKG}/v2/djdl/app/manifests/1.0.0`),
+      // F-08's routes answer repository paths (with a database: test/registryOci.test.ts); a
+      // path no OCI route matches, like the catalog (not served in tier 1), is the not-found.
+      new Request(`${PKG}/v2/_catalog`),
       env(PKG),
     );
     expect(oci.status).toBe(404);
@@ -567,6 +580,34 @@ describe("registry host: the landing page at /", () => {
 });
 
 // ── Dispatch through fake routes ─────────────────────────────────────────────────────────────
+
+describe("registry host: the access ladder cannot be skipped", () => {
+  it("every REGISTRY_ROUTES entry is built by feedRoute (serveFeedRead around its work)", () => {
+    for (const route of REGISTRY_ROUTES)
+      expect(route[FEED_READ_ROUTE], `${route.name} skips the ladder`).toBe(
+        true,
+      );
+  });
+
+  it("feedRoute marks its routes and a hand-written route is not marked", () => {
+    const built = feedRoute({
+      name: "x",
+      ecosystem: "npm",
+      match: () => null,
+      deliverableId: () => null,
+      serve: async () => new Response(""),
+    });
+    expect(built[FEED_READ_ROUTE]).toBe(true);
+    const handWritten: RegistryRoute = {
+      name: "y",
+      service: "distribution",
+      ecosystem: "npm",
+      match: () => null,
+      handle: async () => new Response(""),
+    };
+    expect(handWritten[FEED_READ_ROUTE]).toBeUndefined();
+  });
+});
 
 describe("registry host: dispatch", () => {
   const SLUG = "djdl";

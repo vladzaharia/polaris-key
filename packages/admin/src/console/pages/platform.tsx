@@ -3,7 +3,8 @@
  * loaded when the operator opens the section. Deployment is built here (A-11's identity and deploy
  * history, A-12's platform activity), Settings in `platformSettings.tsx` (4P-1, on A-13),
  * Operations in `platformOperations.tsx` (4P-3, on A-14) and Store connections in
- * `platformStores.tsx` (A-16); Package feeds redirects to Deployment until its page lands (`nav.ts`).
+ * `platformStores.tsx` (A-16) and Package feeds in `../areas/feeds/` (F-11, shared with the
+ * product scope).
  */
 
 import * as React from "react";
@@ -40,6 +41,9 @@ import { qk } from "../data/queries.js";
 import { StoreConnections } from "./platformStores.js";
 import { queryClient } from "../data/queryClient.js";
 import type { GlobalPageId } from "../nav.js";
+import type { Route } from "../routes.js";
+import { FeedsArea } from "../areas/feeds/FeedsArea.js";
+import { PLATFORM_SCOPE } from "../areas/feeds/model.js";
 import { Operations } from "./platformOperations.js";
 import {
   AttentionList,
@@ -59,9 +63,20 @@ export function fetchPlatformActivity() {
 /** The section's page for a route. A page that is not built redirects before here. */
 export default function PlatformPages({
   page,
+  route,
 }: {
   page: GlobalPageId;
+  route?: Extract<Route, { kind: "global" }>;
 }): React.ReactElement | null {
+  if (page === "platform-feeds")
+    return (
+      <FeedsArea
+        scope={PLATFORM_SCOPE}
+        eco={route?.id}
+        tab={route?.tab}
+        child={route?.child}
+      />
+    );
   if (page === "platform-deployment") return <Deployment />;
   if (page === "platform-settings") return <PlatformSettingsPage />;
   if (page === "platform-operations") return <Operations />;
@@ -603,6 +618,8 @@ const ACTION_VERBS: Record<string, string> = {
   "kek.reseal": "re-sealed values under KEK",
   "platform.setting.set": "changed platform setting",
   "platform.setting.revert": "reverted platform setting",
+  "feed.bootstrap": "set up the platform's package feeds",
+  "feed.policy.update": "changed the platform policy of feed",
 };
 
 /**

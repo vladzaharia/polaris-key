@@ -125,6 +125,7 @@ export type ProductPageId =
   | "rollouts"
   | "outlets"
   | "access"
+  | "package-feeds"
   | "health"
   | "credentials"
   // update
@@ -146,7 +147,25 @@ export interface NavRecord {
   tabs?: readonly string[];
   /** Is the record page built? A record that is not redirects to its collection. */
   ready: boolean;
+  /**
+   * A record nested under this one: `<path>/:id/<segment>/:childId…[/:childTab]` (a package under
+   * a feed). `ids` is how many path segments name the child (`:owner/:name` is two).
+   */
+  child?: NavChildRecord;
 }
+
+export interface NavChildRecord {
+  segment: string;
+  noun: string;
+  ids: 1 | 2;
+  tabs?: readonly string[];
+}
+
+/** What a nav item needs beyond its section's service (F-11: a Distribution sub-capability). */
+export type NavRequirement = "packageFeeds";
+
+/** The product facts a `requires` reads; `null` while the product is loading. */
+export type NavFeatures = Partial<Record<NavRequirement, boolean>> | null;
 
 export interface NavPage {
   page: PageId;
@@ -171,6 +190,8 @@ export interface NavPage {
   shortcut?: string;
   /** A global page drawn inside a sidebar group rather than as a top-level link. */
   group?: "platform";
+  /** Shown only while the product has this on (the page still answers a deep link). */
+  requires?: NavRequirement;
 }
 
 export interface NavSection {
@@ -189,6 +210,11 @@ export interface NavSection {
   docs: string;
   items: NavPage[];
 }
+
+/** A feed page's route tabs (F-11), the first the default. */
+export const FEED_TABS = ["packages", "setup", "settings", "activity"] as const;
+/** A package record's route tabs (F-11). */
+export const PACKAGE_TABS = ["versions", "setup", "history"] as const;
 
 export const SECTIONS: NavSection[] = [
   {
@@ -479,6 +505,29 @@ export const SECTIONS: NavSection[] = [
         ready: true,
       },
       {
+        // F-11: the product's package feeds on pkg.plrs.im, shown while `packageFeeds` is on.
+        // "Package feeds", so it does not collide with "Outlets & feeds" (storefront feeds).
+        page: "package-feeds",
+        label: "Package feeds",
+        path: "distribution/feeds",
+        icon: Archive,
+        docs: "/docs/admin/feeds/",
+        inNav: true,
+        ready: true,
+        requires: "packageFeeds",
+        record: {
+          noun: "Feed",
+          tabs: FEED_TABS,
+          ready: true,
+          child: {
+            segment: "packages",
+            noun: "Package",
+            ids: 1,
+            tabs: PACKAGE_TABS,
+          },
+        },
+      },
+      {
         page: "health",
         label: "Health",
         path: "distribution/health",
@@ -596,16 +645,27 @@ const PLATFORM_PAGES: NavPage[] = [
     group: "platform",
   },
   {
+    // F-11: the platform's own package feeds (the system product's: our SDKs) and the policy.
     page: "platform-feeds",
     label: "Package feeds",
     path: "platform/feeds",
     icon: Archive,
-    docs: "/docs/services/distribution/feeds/",
+    docs: "/docs/admin/feeds/",
     inNav: true,
-    // S-12 owns the page and its API.
-    ready: false,
-    host: "platform-deployment",
+    ready: true,
     group: "platform",
+    record: {
+      noun: "Feed",
+      tabs: FEED_TABS,
+      ready: true,
+      // Platform scope lists every owner's packages: a package is `:owner/:name`.
+      child: {
+        segment: "packages",
+        noun: "Package",
+        ids: 2,
+        tabs: PACKAGE_TABS,
+      },
+    },
   },
 ];
 
@@ -741,9 +801,30 @@ export function isPageEnabled(
   return section ? isSectionEnabled(section, services) : true;
 }
 
-/** The pages a section lists in the sidebar and the palette: in nav and built. */
-export function navItems(section: NavSection): NavPage[] {
-  return section.items.filter((i) => i.inNav && i.ready);
+/**
+ * Does the product have what a page `requires`? While the product loads (`null`) a page shows,
+ * like a section does (`isSectionEnabled`), and an affordance filter is all this is: the worker
+ * answers every one of these endpoints itself.
+ */
+export function meetsRequirement(
+  page: NavPage,
+  features: NavFeatures,
+): boolean {
+  if (!page.requires || features === null) return true;
+  return features[page.requires] === true;
+}
+
+/**
+ * The pages a section lists in the sidebar and the palette: in nav, built, and (with `features`)
+ * meeting their requirement.
+ */
+export function navItems(
+  section: NavSection,
+  features: NavFeatures = null,
+): NavPage[] {
+  return section.items.filter(
+    (i) => i.inNav && i.ready && meetsRequirement(i, features),
+  );
 }
 
 /** The global pages the sidebar lists at the top level: Home and Products. */

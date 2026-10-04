@@ -9,15 +9,20 @@
 // Nothing here does I/O or throws.
 //
 // It lives in :core (as in Swift) because both the release service (`release.record`, P6-07) and
-// the update engine (P6-08) verify records, and service modules never depend on one another. The
-// delegated path of plans/P4-19.md (a `pkd1-` kid, `delegationCases`) is the pack engine's and is
-// added by P6-08; a record whose kid is not a pinned release key is refused at step `jws` here.
+// the update and pack engines (P6-08) verify records, and service modules never depend on one
+// another. P6-08 added the delegated path of plans/P4-19.md §2.3 (a `pkd1-` kid verified through
+// one delegation from the pinned release keys, step 16's scope; `delegationCases`): it is taken
+// only when the caller passes the delegation's compact JWS, so a release-key-only caller (the
+// release service) still refuses any other kid at step `jws`.
 
 package im.plrs.key.core
 
 import java.security.MessageDigest
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 
 /** P2-04's `BUILD_ID_RE`: ASCII, so build-id uniqueness compares bytes. */
 public const val BUILD_ID_PATTERN: String = "[a-z0-9][a-z0-9._-]{0,63}"
@@ -227,6 +232,11 @@ public data class VerifyReleaseRecordOptions(
     val expectedHash: String,
     /** The pin to cross-check against (step 15). Null verifies only. */
     val pin: ReleaseRecordPin? = null,
+    /**
+     * The compact JWS of the delegation a `pkd1-` kid names (plans/P4-19.md §2.3), fetched by the
+     * caller by [delegationHashOf]. Only the surfaces of §2.4 pass it. Null: no delegated path.
+     */
+    val delegation: String? = null,
 )
 
 /** Why [verifyReleaseRecord] refused, by client step (`releaseRecordCases` `expect.step`). */
@@ -235,16 +245,57 @@ public enum class ReleaseRecordStep(public val wire: String) {
     jws("jws"),
     claims("claims"),
     crossCheck("cross-check"),
+    /** The delegated path: the delegation did not verify, or its key is a release or product key. */
+    delegation("delegation"),
+    /** The delegated path: the record is outside the delegation's scope (step 16). */
+    scope("scope"),
+}
+
+/** The delegation a delegated record verified through (plans/P4-19.md §2.3). */
+public data class RecordDelegation(
+    /** The delegation's record hash (the kid's hex). */
+    val sha256: String,
+    /** The scope root, a pack id. */
+    val deliverable: String,
+    /** The effective types (`types ∩ DELEGABLE_PACK_TYPES`), in the delegation's order. */
+    val types: List<String>,
+    val issuedAt: Long,
+    val expiresAt: Long,
+) {
+    /** `{sha256, deliverable, types, issuedAt, expiresAt}` (`delegationCases`' `expect.delegation`). */
+    public val json: JsonObject
+        get() = buildJsonObject {
+            put("sha256", JsonPrimitive(sha256))
+            put("deliverable", JsonPrimitive(deliverable))
+            put("types", JsonArray(types.map { JsonPrimitive(it) }))
+            put("issuedAt", jsonInt(issuedAt))
+            put("expiresAt", jsonInt(expiresAt))
+        }
 }
 
 public sealed interface VerifyReleaseRecordResult {
     public data class Ok(val record: ReleaseRecordDoc) : VerifyReleaseRecordResult
+
+    /** A record a delegated content key signed, with the delegation it verified through. */
+    public data class Delegated(val record: ReleaseRecordDoc, val delegation: RecordDelegation) : VerifyReleaseRecordResult
     public data class Refused(val step: ReleaseRecordStep) : VerifyReleaseRecordResult
 }
 
-/** The verified record, or null when refused. */
+/** The verified record (a release key's or a delegated one), or null when refused. */
 public val VerifyReleaseRecordResult.record: ReleaseRecordDoc?
-    get() = (this as? VerifyReleaseRecordResult.Ok)?.record
+    get() = when (this) {
+        is VerifyReleaseRecordResult.Ok -> record
+        is VerifyReleaseRecordResult.Delegated -> record
+        is VerifyReleaseRecordResult.Refused -> null
+    }
+
+/** The delegation a content key's record verified through; null for a release key's. */
+public val VerifyReleaseRecordResult.delegation: RecordDelegation?
+    get() = (this as? VerifyReleaseRecordResult.Delegated)?.delegation
+
+/** The refusing step, or null. */
+public val VerifyReleaseRecordResult.step: ReleaseRecordStep?
+    get() = (this as? VerifyReleaseRecordResult.Refused)?.step
 
 /** The protected header's `kid`, read without trusting anything else in it. */
 private fun headerKid(jws: String): String? {
@@ -273,21 +324,41 @@ public fun verifyReleaseRecord(jws: String, options: VerifyReleaseRecordOptions)
     if (bytes.size > MAX_RECORD_JWS_BYTES || bytes.any { it < 0 }) return VerifyReleaseRecordResult.Refused(ReleaseRecordStep.hash)
     if (recordHash(jws) != options.expectedHash) return VerifyReleaseRecordResult.Refused(ReleaseRecordStep.hash)
 
-    // 13. The pinned release keys only, and never a product key.
+    // 13. The pinned release keys only, and never a product key; or one delegation from them.
     val kid = headerKid(jws) ?: return VerifyReleaseRecordResult.Refused(ReleaseRecordStep.jws)
-    val releaseKey = options.releaseKeys[kid] ?: return VerifyReleaseRecordResult.Refused(ReleaseRecordStep.jws)
-    val raw = Base64Url.decode(releaseKey)
-    if (raw == null || raw.size != 32 || inTrust(raw, options.productTrust)) {
-        return VerifyReleaseRecordResult.Refused(ReleaseRecordStep.jws)
+    val key: String
+    var verified: VerifiedDelegation? = null
+    val releaseKey = options.releaseKeys[kid]
+    if (releaseKey != null) {
+        val raw = Base64Url.decode(releaseKey)
+        if (raw == null || raw.size != 32 || inTrust(raw, options.productTrust)) {
+            return VerifyReleaseRecordResult.Refused(ReleaseRecordStep.jws)
+        }
+        key = releaseKey
+    } else {
+        val delegationJws = options.delegation ?: return VerifyReleaseRecordResult.Refused(ReleaseRecordStep.jws)
+        val hash = delegationHashOf(jws) ?: return VerifyReleaseRecordResult.Refused(ReleaseRecordStep.jws)
+        val d = (
+            verifyDelegation(
+                delegationJws,
+                VerifyDelegationOptions(options.releaseKeys, options.productTrust, options.expectedAud, hash),
+            ) as? VerifyDelegationResult.Ok
+            )?.delegation ?: return VerifyReleaseRecordResult.Refused(ReleaseRecordStep.delegation)
+        val raw = Base64Url.decode(d.publicKey) ?: return VerifyReleaseRecordResult.Refused(ReleaseRecordStep.delegation)
+        if (inTrust(raw, options.releaseKeys) || inTrust(raw, options.productTrust)) {
+            return VerifyReleaseRecordResult.Refused(ReleaseRecordStep.delegation)
+        }
+        verified = d
+        key = d.publicKey
     }
-    val verified = JwsVerifier.verify(jws, mapOf(kid to releaseKey), JwsTyp.release, requireTyp = true)
+    val verifiedJws = JwsVerifier.verify(jws, mapOf(kid to key), JwsTyp.release, requireTyp = true)
         ?: return VerifyReleaseRecordResult.Refused(ReleaseRecordStep.jws)
 
     // 14. The claims.
-    if (!releaseRecordClaims(verified.payload, options.expectedAud, verified.nonWireIntegers)) {
+    if (!releaseRecordClaims(verifiedJws.payload, options.expectedAud, verifiedJws.nonWireIntegers)) {
         return VerifyReleaseRecordResult.Refused(ReleaseRecordStep.claims)
     }
-    val record = ReleaseRecordDoc.from(verified.payload, verified.nonWireIntegers)
+    val record = ReleaseRecordDoc.from(verifiedJws.payload, verifiedJws.nonWireIntegers)
         ?: return VerifyReleaseRecordResult.Refused(ReleaseRecordStep.claims)
 
     // 15. The cross-check against the pin.
@@ -296,5 +367,181 @@ public fun verifyReleaseRecord(jws: String, options: VerifyReleaseRecordOptions)
             return VerifyReleaseRecordResult.Refused(ReleaseRecordStep.crossCheck)
         }
     }
-    return VerifyReleaseRecordResult.Ok(record)
+
+    // 16. The delegation's scope.
+    val d = verified ?: return VerifyReleaseRecordResult.Ok(record)
+    if (!inScope(record, d)) return VerifyReleaseRecordResult.Refused(ReleaseRecordStep.scope)
+    return VerifyReleaseRecordResult.Delegated(record, RecordDelegation(d.sha256, d.deliverable, d.types, d.issuedAt, d.expiresAt))
 }
+
+/** Step 16 (plans/P4-19.md §2.3) over a record whose claims passed. */
+private fun inScope(record: ReleaseRecordDoc, d: VerifiedDelegation): Boolean {
+    val o = record.json
+    if (record.kind != "pack") return false
+    if (!coversPack(d.deliverable, record.deliverable)) return false
+    val type = o["type"].stringValue ?: return false
+    if (type !in d.types) return false
+    val variants = o["variants"].arrayValue ?: return false
+    for (v in variants) {
+        if (v.objectValue?.get("files").objectValue?.get("layout").stringValue != "tree") return false
+    }
+    return d.issuedAt <= record.issuedAt && record.issuedAt <= d.expiresAt
+}
+
+/**
+ * Whether pack id [pack] is the scope root [root] or under it by whole segments (plans/P4-19.md
+ * §2.3 step 16): `djdl.events` covers `djdl.events.halloween`, never `djdl.eventsx`.
+ */
+public fun coversPack(root: String, pack: String): Boolean = pack == root || pack.startsWith("$root.")
+
+/** One record that survived the reload path. */
+public data class CommittedRecord(val jws: String, val record: ReleaseRecordDoc)
+
+/**
+ * The reload path for the `releaseRecords` slice (plans/P3-01.md §2.5): each `records[h]` goes
+ * through steps 12–14 with `h` as the pin, and is kept only when [pinned] holds `h`. Never throws.
+ */
+public fun reloadReleaseRecords(
+    cached: Map<String, String>,
+    releaseKeys: TrustSet,
+    productTrust: TrustSet,
+    expectedAud: String,
+    pinned: Set<String>,
+): Map<String, CommittedRecord> {
+    val out = LinkedHashMap<String, CommittedRecord>()
+    for ((h, jws) in cached) {
+        if (h !in pinned) continue
+        val r = verifyReleaseRecord(jws, VerifyReleaseRecordOptions(releaseKeys, productTrust, expectedAud, h))
+        r.record?.let { out[h] = CommittedRecord(jws, it) }
+    }
+    return out
+}
+
+// ── P4-19: content-key delegation (plans/P4-19.md §2.2–§2.6, WIRE-CONTRACT-V4 §2.5.4) ──────────
+
+/** `DELEGATED_KID_PATTERN` (`@polaris-key/protocol/release`), restated: `pkd1-` and the delegation's hash. */
+public const val DELEGATED_KID_PATTERN: String = "pkd1-[0-9a-f]{64}"
+
+/** 32 raw bytes in strict base64url (V4 §1): 43 characters, no padding, zero trailing bits. */
+private const val KEY_B64URL_PATTERN = "[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]"
+
+/** The delegation hash a delegated record's header names: the hex of a `pkd1-<sha256>` kid, else null. */
+public fun delegationHashOf(jws: String): String? {
+    val kid = headerKid(jws) ?: return null
+    if (!packMatch(DELEGATED_KID_PATTERN, kid)) return null
+    return kid.substring(5)
+}
+
+/** The delegated kid of a delegation record hash: `pkd1-<sha256>`. */
+public fun delegatedKid(delegationSha256: String): String = "pkd1-$delegationSha256"
+
+/** A usable delegation body, as [delegationOf] reads it. */
+public data class DelegationBody(
+    /** The scope root, a pack id. */
+    val deliverable: String,
+    val seq: Long,
+    /** The content key: base64url of its 32 raw Ed25519 bytes. */
+    val publicKey: String,
+    /** The effective types: `types ∩ DELEGABLE_PACK_TYPES`, in the record's order (never empty). */
+    val types: List<String>,
+    /** The record's `types` as listed. */
+    val listedTypes: List<String>,
+    val issuedAt: Long,
+    val expiresAt: Long,
+)
+
+/**
+ * The delegation body (plans/P4-19.md §2.2), read beside the claims: usable when `kind` is
+ * `delegation`, `deliverable` is a pack id, `delegate.publicKey` is strict base64url of 32 bytes,
+ * `types` is 1–`MAX_DELEGATION_TYPES` unique pack types meeting `DELEGABLE_PACK_TYPES`, and
+ * `issuedAt < expiresAt ≤ issuedAt + MAX_DELEGATION_TTL_SECONDS` (integers by token).
+ */
+public fun delegationOf(doc: JsonElement?, nonWire: NonWireIntegers = NonWireIntegers()): DelegationBody? {
+    val o = doc.objectValue ?: return null
+    if (o["kind"].stringValue != "delegation") return null
+    val deliverable = o["deliverable"].stringValue ?: return null
+    if (!isPackId(deliverable)) return null
+    val delegate = o["delegate"].objectValue ?: return null
+    val publicKey = delegate["publicKey"].stringValue ?: return null
+    if (!packMatch(KEY_B64URL_PATTERN, publicKey)) return null
+    val types = o["types"].arrayValue ?: return null
+    if (types.isEmpty() || types.size > MAX_DELEGATION_TYPES) return null
+    val listed = ArrayList<String>()
+    val seen = HashSet<String>()
+    for (t in types) {
+        val s = t.stringValue ?: return null
+        if (!packMatch(PackPatterns.packType, s) || !seen.add(s)) return null
+        listed += s
+    }
+    val effective = listed.filter { it in DELEGABLE_PACK_TYPE_VALUES }
+    if (effective.isEmpty()) return null
+    val expiresAt = o["expiresAt"].longValue
+    val issuedAt = o["issuedAt"].longValue
+    val seq = o["seq"].longValue
+    if (!wireInteger(expiresAt, "/expiresAt", 1, nonWire) || !wireInteger(issuedAt, "/issuedAt", 0, nonWire) ||
+        !wireInteger(seq, "/seq", 1, nonWire)
+    ) {
+        return null
+    }
+    if (issuedAt!! >= expiresAt!! || expiresAt > issuedAt + MAX_DELEGATION_TTL_SECONDS) return null
+    return DelegationBody(deliverable, seq!!, publicKey, effective, listed, issuedAt, expiresAt)
+}
+
+/** A verified delegation: its body and its record hash. */
+public data class VerifiedDelegation(val body: DelegationBody, val sha256: String) {
+    val deliverable: String get() = body.deliverable
+    val seq: Long get() = body.seq
+    val publicKey: String get() = body.publicKey
+    val types: List<String> get() = body.types
+    val issuedAt: Long get() = body.issuedAt
+    val expiresAt: Long get() = body.expiresAt
+}
+
+public data class VerifyDelegationOptions(
+    /** The PINNED release keys only: never the Worker's trust set, never a delegated key. */
+    val releaseKeys: TrustSet,
+    /** The effective product trust set: a release key whose bytes are in it is refused. */
+    val productTrust: TrustSet,
+    val expectedAud: String,
+    /** The delegation's hash: the delegated record's kid hex, or a feed entry's target. */
+    val expectedHash: String,
+)
+
+public sealed interface VerifyDelegationResult {
+    public data class Ok(val delegation: VerifiedDelegation) : VerifyDelegationResult
+
+    /** A [verifyReleaseRecord] step, or `delegation`. */
+    public data class Refused(val step: ReleaseRecordStep) : VerifyDelegationResult
+}
+
+/**
+ * Verify a delegation record (plans/P4-19.md §2.3 step 13.1): steps 12–14 against the pinned release
+ * keys only, then `kind == "delegation"` and [delegationOf]. A delegation is never verified through
+ * another delegation, so a content key cannot re-delegate.
+ */
+public fun verifyDelegation(jws: String, options: VerifyDelegationOptions): VerifyDelegationResult {
+    val r = verifyReleaseRecord(
+        jws,
+        VerifyReleaseRecordOptions(options.releaseKeys, options.productTrust, options.expectedAud, options.expectedHash),
+    )
+    val record = r.record ?: return VerifyDelegationResult.Refused(r.step ?: ReleaseRecordStep.jws)
+    if (record.kind != "delegation") return VerifyDelegationResult.Refused(ReleaseRecordStep.delegation)
+    val body = delegationOf(record.json, record.nonWireIntegers) ?: return VerifyDelegationResult.Refused(ReleaseRecordStep.delegation)
+    return VerifyDelegationResult.Ok(VerifiedDelegation(body, options.expectedHash))
+}
+
+/** What revoked a release (plans/P4-19.md §2.3). */
+public enum class RecordRevokedBy(public val wire: String) { record("record"), delegation("delegation") }
+
+/**
+ * The one rule for applying revocations to a release: `record` when the release's own hash is
+ * revoked, else `delegation` when the delegation it was signed under is, else null.
+ */
+public fun recordRevoked(recordSha256: String, delegationSha256: String?, revoked: Set<String>): RecordRevokedBy? {
+    if (recordSha256 in revoked) return RecordRevokedBy.record
+    if (delegationSha256 != null && delegationSha256 in revoked) return RecordRevokedBy.delegation
+    return null
+}
+
+/** A delegated release the engine knows (plans/P4-19.md §2.7): its pack and its delegation's hash. */
+public data class DelegatedRelease(val pack: String, val delegation: String)

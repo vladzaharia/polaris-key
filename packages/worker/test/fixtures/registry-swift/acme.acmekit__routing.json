@@ -1,0 +1,110 @@
+{
+  "id": "acme.AcmeKit",
+  "latest": "1.2.0",
+  "versions": {
+    "2.0.0-beta.1": {
+      "state": "live",
+      "archive": {
+        "sha256": "8ad09f0b57e4220f26675a3548050f5ec85ec992e3fb8fb85be29d4572bee67e",
+        "size": 50
+      },
+      "signature": {
+        "format": "cms-1.0.0",
+        "base64": "Q01TIHNpZ25hdHVyZSBieXRlcyBmb3IgMi4wLjAtYmV0YS4x"
+      },
+      "manifests": {
+        "": {
+          "filename": "Package.swift",
+          "sha256": "28f386403253901bfdfa61d6dc4e802fb138fb830076df00af50e258fcf209a7",
+          "size": 153
+        },
+        "6.0": {
+          "filename": "Package@swift-6.0.swift",
+          "sha256": "973e033decbba0a3e28d37230c920cbf8ebf7dc4c6bffa351062270843b2d494",
+          "size": 153,
+          "toolsVersion": "6.0"
+        }
+      },
+      "predecessor": "1.2.0",
+      "successor": null
+    },
+    "1.2.0": {
+      "state": "deprecated",
+      "archive": {
+        "sha256": "362153b4e26ce96da0898db76be63869429cbd70edd3db100fb5ae7a5d0082c9",
+        "size": 43
+      },
+      "signature": {
+        "format": "cms-1.0.0",
+        "base64": "Q01TIHNpZ25hdHVyZSBieXRlcyBmb3IgMS4yLjA="
+      },
+      "manifests": {
+        "": {
+          "filename": "Package.swift",
+          "sha256": "57fb0ad2b1fdadb6f884ab3815bc31561398383f4c1208b5b1bc82b36ee31a94",
+          "size": 139
+        },
+        "6.0": {
+          "filename": "Package@swift-6.0.swift",
+          "sha256": "b75f3333515401cdcbece3e73a17b5189249347e3d5e1ad22289da83f4dc484a",
+          "size": 139,
+          "toolsVersion": "6.0"
+        }
+      },
+      "predecessor": "1.0.0",
+      "successor": "2.0.0-beta.1"
+    },
+    "1.1.0": {
+      "state": "yanked",
+      "archive": {
+        "sha256": "9f156aca76560d8cb9d1a73db27bb77c2b9a0ad0f17352a1b924f3322cb214ca",
+        "size": 43
+      },
+      "signature": {
+        "format": "cms-1.0.0",
+        "base64": "Q01TIHNpZ25hdHVyZSBieXRlcyBmb3IgMS4xLjA="
+      },
+      "manifests": {
+        "": {
+          "filename": "Package.swift",
+          "sha256": "eb68913250e35aa1fa231e0692fe58dc9c6c9f305c47336be05fbeb809b8748b",
+          "size": 139
+        },
+        "6.0": {
+          "filename": "Package@swift-6.0.swift",
+          "sha256": "7d1f7ebed6d4e2424b4212f62fdbe964ea82dffdf8d690350586116ae0af4b63",
+          "size": 139,
+          "toolsVersion": "6.0"
+        }
+      },
+      "predecessor": "1.0.0",
+      "successor": "1.2.0"
+    },
+    "1.0.0": {
+      "state": "live",
+      "archive": {
+        "sha256": "a25fd85dbdedd9b5b326ab7024ae30b13bac7fb1de8da332ed8f471a8869bd57",
+        "size": 43
+      },
+      "signature": {
+        "format": "cms-1.0.0",
+        "base64": "Q01TIHNpZ25hdHVyZSBieXRlcyBmb3IgMS4wLjA="
+      },
+      "manifests": {
+        "": {
+          "filename": "Package.swift",
+          "sha256": "ffef5b19b47b40865ebfe492597d33476935cd6cba2fe667d4addb6ef09c2137",
+          "size": 139
+        },
+        "6.0": {
+          "filename": "Package@swift-6.0.swift",
+          "sha256": "9891663e83812b8e0259b3cb068a688e7454a6000f9044a84544811f98279409",
+          "size": 139,
+          "toolsVersion": "6.0"
+        }
+      },
+      "predecessor": null,
+      "successor": "1.2.0"
+    }
+  }
+}

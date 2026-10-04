@@ -25,6 +25,10 @@ coroutines = "1.10.2"
 serialization = "1.8.1"
 okhttp = "4.12.0"
 tink = "1.17.0"
+# zstd for pack deltas, chunks and zstd-coded objects (P6-08, notes/E9): the JNI binding to libzstd
+# 1.5.7. The JAR carries the desktop natives; the Android AAR of the same version (16 KB page
+# aligned, tools/check_16k_alignment.py) is what the :android glue links (P6-12).
+zstdJni = "1.5.7-21"
 
 [libraries]
 godot = { module = "org.godotengine:godot", version.ref = "godot" }
@@ -40,6 +44,7 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 okhttp-mockwebserver = { module = "com.squareup.okhttp3:mockwebserver", version.ref = "okhttp" }
 tink = { module = "com.google.crypto.tink:tink", version.ref = "tink" }
+zstd-jni = { module = "com.github.luben:zstd-jni", version.ref = "zstdJni" }
 
 [plugins]
 android-library = { id = "com.android.library", version.ref = "agp" }

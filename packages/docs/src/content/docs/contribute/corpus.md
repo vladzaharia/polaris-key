@@ -45,12 +45,16 @@ gate-matrix-only runner); the ones a contributor touches most:
   `sdks/godot/tools/run_tests.sh` on an editor and an exported release template.
 - **Kotlin** — `sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/`: `CorpusV2Test.kt`
   (the JWS, document, trust, clock-floor and bundle families and their pointer sets),
-  `ReleaseRecordTest.kt` (`releaseRecordCases`), `GateMatrixTest.kt`, `ConfigMatrixTest.kt`,
-  `HeadersTest.kt`, `FingerprintTest.kt`, `StageMatrixTest.kt` and `OutletMatrixTest.kt`, reading
-  `conformance/corpus/v2/` in place (no mirror). `( cd sdks/kotlin && ./gradlew :conformance:test )`
-  runs every suite on the JCA Ed25519 backend and again with Tink forced (each suite extends
-  `ConformanceSuite`, which installs the backend first); P6-08 adds the update and pack families
-  to the same module.
+  `ReleaseRecordTest.kt` (`releaseRecordCases`), `FeedCasesTest.kt` (`feedCases`),
+  `ContentDecisionTest.kt` (`feedContentCases`, `revocationCases`, `update-matrix.json`'s
+  `contentRows`), `PackRecordTest.kt` (`packRecordCases`, `markerCases`), `DelegationTest.kt`
+  (`delegationCases`, `content/`'s `dataOnlyCases`), `UpdateMatrixTest.kt`, `PlanMatrixTest.kt`,
+  `ContentCorpusTest.kt` (every `content/` section, under both zstd paths), `GateMatrixTest.kt`,
+  `ConfigMatrixTest.kt`, `HeadersTest.kt`, `FingerprintTest.kt`, `StageMatrixTest.kt` and
+  `OutletMatrixTest.kt`, reading `conformance/corpus/v2/` in place (no mirror).
+  `( cd sdks/kotlin && ./gradlew :conformance:test )` runs every suite on the JCA Ed25519 backend
+  and again with Tink forced (each suite extends `ConformanceSuite`, which installs the backend
+  first).
 - **The Worker** — three slices. `packages/worker/test/headersCorpus.test.ts` runs every
   `headers.json` row through the normaliser that stores the client metadata headers. `packages/worker/test/fingerprintCorpus.test.ts` covers the
   fingerprint/device-id vectors: the Worker recomputes a submitted device's `hwid` server-side
@@ -305,19 +309,19 @@ requests a client must send and the Worker's real answers — recorded through t
 router by the Worker's own scenario tests and replayed by every SDK against a fake server that
 serves the recorded responses and asserts each request.
 
-| Piece                  | Where                                                                                   |
-| ---------------------- | --------------------------------------------------------------------------------------- |
-| Format (documented)    | `packages/worker/test/transcripts/format.ts`                                            |
-| Recorder and scenarios | `packages/worker/test/transcripts/` (`recorder.ts`, `determinism.ts`, `scenarios/`)     |
-| Drift check            | `packages/worker/test/transcripts.test.ts`, wrapped by `pnpm gen:transcripts`           |
-| Swift mirror           | `sdks/swift/Tests/PolarisKeyTests/Resources/transcripts/` (generator-owned, like `v2/`) |
-| Godot mirror           | `sdks/godot/tests/transcripts/` (generator-owned; an exported pack reads only `res://`) |
-| Node replayer          | `conformance/runners/node/transcripts.test.ts` over `transcriptReplay.ts`               |
-| React replayer         | `packages/sdk-react/test/transcripts.test.ts` (the same engine; discovery only)         |
-| Python replayer        | `sdks/python/tests/test_transcripts.py` over `transcript_replay.py`                     |
-| Swift replayer         | `sdks/swift/Tests/PolarisKeyTests/TranscriptTests.swift` over `TranscriptReplay.swift`  |
-| Godot replayer         | `sdks/godot/tests/suite_transcripts.gd` over `support/transcript_replay.gd`             |
-| Kotlin replayer        | `sdks/kotlin/conformance/…/TranscriptTest.kt` over `TranscriptReplay.kt` (in place)     |
+| Piece                  | Where                                                                                              |
+| ---------------------- | -------------------------------------------------------------------------------------------------- |
+| Format (documented)    | `packages/worker/test/transcripts/format.ts`                                                       |
+| Recorder and scenarios | `packages/worker/test/transcripts/` (`recorder.ts`, `determinism.ts`, `scenarios/`)                |
+| Drift check            | `packages/worker/test/transcripts.test.ts`, wrapped by `pnpm gen:transcripts`                      |
+| Swift mirror           | `sdks/swift/Tests/PolarisKeyTests/Resources/transcripts/` (generator-owned, like `v2/`)            |
+| Godot mirror           | `sdks/godot/tests/transcripts/` (generator-owned; an exported pack reads only `res://`)            |
+| Node replayer          | `conformance/runners/node/transcripts.test.ts` over `transcriptReplay.ts`                          |
+| React replayer         | `packages/sdk-react/test/transcripts.test.ts` (the same engine; discovery, update and chunk range) |
+| Python replayer        | `sdks/python/tests/test_transcripts.py` over `transcript_replay.py`                                |
+| Swift replayer         | `sdks/swift/Tests/PolarisKeyTests/TranscriptTests.swift` over `TranscriptReplay.swift`             |
+| Godot replayer         | `sdks/godot/tests/suite_transcripts.gd` over `support/transcript_replay.gd`                        |
+| Kotlin replayer        | `sdks/kotlin/conformance/…/TranscriptTest.kt` over `TranscriptReplay.kt` (in place)                |
 
 **Recording.** A scenario seeds a product, builds each request exactly as a wire-contract client
 would, sends it through `dispatchWith` (the router with the request clock injected), asserts

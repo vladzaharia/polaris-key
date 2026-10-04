@@ -8,6 +8,7 @@ import {
   platformLinks,
   PLATFORM_GROUP,
   visibleSections,
+  type NavFeatures,
   type NavGroupKey,
   type NavPage,
   type PageId,
@@ -60,6 +61,8 @@ export interface SidebarProps {
   /** The product in scope; `null` on the global pages, which show platform links only (SH-10). */
   slug: string | null;
   services: ServiceState;
+  /** The product facts a `requires` reads (Package feeds needs `packageFeeds`). */
+  features?: NavFeatures;
   activePage: PageId | null;
   /** The group holding the current page: a product section, `platform`, or none (Home). */
   activeSection: NavGroupKey | null;
@@ -93,6 +96,7 @@ export interface SidebarProps {
 export function Sidebar({
   slug,
   services,
+  features = null,
   activePage,
   activeSection,
   expanded,
@@ -152,7 +156,7 @@ export function Sidebar({
           groupKey={section.key}
           label={section.label}
           accent={section.accent}
-          items={navItems(section).map((p) => ({
+          items={navItems(section, features).map((p) => ({
             page: p,
             to: productPage(slug!, p.page as ProductPageId),
           }))}
