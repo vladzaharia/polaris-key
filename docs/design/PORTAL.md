@@ -150,8 +150,6 @@ a secret shown in full (A11).
 
 ---
 
----
-
 ## 3. Information architecture
 
 ### 3.1 Model
@@ -210,7 +208,7 @@ Hash routing stays for the signed-in SPA (ADMIN.md lead decision Q2). Product id
 | `#/p/:product/free-device`             | Focused flow: device limit                                   | `?for=<label>&return=<url>`; target of G15 `manageUrl`                                                      |
 | `#/p/:product/download`                | Focused flow: one download                                   | `?platform=macos\|windows\|linux…`; for email links and in-app "Download update"                            |
 | `#/account` / `#/account/:section`     | Account                                                      | `methods`, `products`, `sessions`, `appearance`, `data`                                                     |
-| `#/account/link`                       | Link an existing account (login card, §4.12)                 | Proof of both identities in one session                                                                     |
+| `#/account/link`                       | Link an existing account (login card, §4.11)                 | Proof of both identities in one session                                                                     |
 | `#/account/approve?code=`              | Approve a new device (dialog over Account, §4.24)            | Target of the QR code; the code is typed when absent                                                        |
 | `/signin`                              | The login card                                               | `?product=<slug>` gives product context; `returnTo` kept                                                    |
 | `/authorize?…` (S-16 broker / I-16 OP) | **The login card with the app header** (passthrough)         | The app's identity comes from its registered client (§10.5), never from query parameters                    |
@@ -308,8 +306,15 @@ ship on iOS).
 
 After **Continue**, a person this browser has seen before gets an identity chip (avatar, email,
 **Change**), "Welcome back, Mara", a hint card **You usually sign in with Steam** ("on this browser,
-last time 2 days ago"), that method as the primary, and the generic alternatives **Email me a code**
-and **Use a passkey**.
+last time 2 days ago"), that method as the primary, the generic alternatives **Email me a code**
+and **Use a passkey**, and a quiet **Other ways to sign in** link (with the remaining provider glyphs)
+that returns to the full method list for this context.
+
+- **Every provider stays reachable.** The known-account step never strands someone on the hinted
+  method: **Other ways to sign in** opens the §4.1 body with the providers for this product (all
+  three without product context). For an iOS product that means **Continue with Apple** is always
+  one tap away (S-16 decision 7), even when the hint says Steam. The link lists the _product's_
+  providers, never the account's other methods.
 
 - **No enumeration.** The hint comes from a first-party `pk_last_method` cookie written on this
   browser at the last successful sign-in (method kind and a hash of the email), not from a server
@@ -317,7 +322,7 @@ and **Use a passkey**.
   code, passkey, providers), whether or not an account exists, and the hint never lists the account's
   other methods.
 - **Unknown or new email:** straight to the code step (§4.4); a new address creates the account
-  after the code (§4.10).
+  after the code (registration, §4.8).
 
 ### 4.4 Enter the code
 
@@ -403,7 +408,10 @@ to sign in", and "<Developer> · <where>":
 
 - **Method choice** is the §4.1/§4.3 body. The Saltwind render shows the case S-16 cares about:
   an iPhone user who registered through Steam signs in with **Continue with Steam** on the hosted
-  card ("Opens Steam's sign-in page. You don't need the Steam app.").
+  card ("Opens Steam's sign-in page. You don't need the Steam app."). Because Saltwind ships on iOS,
+  **Other ways to sign in** (Apple and Google glyphs) sits under the alternatives and leads to
+  **Continue with Apple**: Apple is always offered for iOS products with any social login, on the
+  known-account step too.
 - **Code** is §4.4 with "Continue".
 - **Register** (new account after a verified code): "Create your account", a `success` line
   "mara@fennick.studio is verified", **Your name** ("Shown to you and in emails. Developers see it
@@ -442,8 +450,10 @@ After a first sign-in with a platform identity (Steam, Apple, Google, Game Cente
 card: "Signed in with Steam · marafox · Done", "Add another way to sign in · If you ever can't get
 into Steam, a second way in keeps your library yours", rows for **Add your email** (recommended:
 purchases with it join the library and it unlocks passkeys), **Add a passkey** ("Asks for your
-email first"), **Apple**, **Google**; **Skip for now**; "You can add these any time in Account →
-Sign-in methods". Shown once per account and again only if the account still has a single method
+email first"), **Apple**, **Google**; a quiet dashed link row **Already have a Polaris Key
+account? Link an existing account** (§4.11; the way out for an Apple Hide My Email first sign-in whose
+relay address can never match an existing account); **Skip for now**; "You can add these any time in
+Account → Sign-in methods". Shown once per account and again only if the account still has a single method
 after 30 days.
 
 ### 4.11 Link an existing account
@@ -452,8 +462,8 @@ after 30 days.
 
 For a person who ends up with two accounts, typically after **Sign in with Apple** with Hide My
 Email (a `privaterelay.appleid.com` address that can never match their real email). Reached from
-Account → Sign-in methods → **Link an existing account**, the nudge, and the claim error "owned by
-another account" (§4.19).
+Account → Sign-in methods → **Link an existing account**, the nudge's link row (§4.10), and the
+claim error "owned by another account" (§4.19).
 
 - The person signs in to the other account **in the same session** (any of its methods); only then
   does the join screen appear: both accounts as cards with their identity, **how each was proven**
@@ -499,7 +509,7 @@ another account" (§4.19).
 
 ![Library list view](portal/22-library-12-list-desktop-dark.png)
 
-<img src="portal/21-library-12-mobile-dark.png" alt="Library with twelve products, phone" width="260">
+<img src="portal/21-library-12-mobile-dark.png" alt="Library with twelve products, phone: the list view, the phone default above 6 products" width="260">
 
 - **Toolbar:** search ("Search 12 products", `/` focuses it), filter chips with counts (All,
   Needs attention, Games, Apps & tools; a zero-count chip is hidden), sort (Recently added, Name),
@@ -514,7 +524,9 @@ another account" (§4.19).
   opens the product page.
 - **⌘K trigger** in the header (§4.27). Products without art use the fallback (§5.2).
 - **Phone:** search and view toggle share a row, chips scroll; **List by default above 6
-  products** (the remembered choice wins); list rows keep a status pill under the name.
+  products** (the remembered choice wins, so someone who picked Grid keeps the desktop's compact
+  grid in one column); list rows keep a status pill under the name. The 21 and 22 phone renders both
+  show this default list.
 
 ### 4.16 Discover
 
@@ -609,7 +621,7 @@ bucket (THREAT-MODEL: enumeration).
 
 ![Product page with Cloud Sync](portal/31-product-sync-desktop-dark.png)
 
-![Product page without Cloud Sync](portal/32-product-no-sync-desktop-dark.png)
+![Product page without Cloud Sync (Nightfall)](portal/32-product-no-sync-desktop-dark.png)
 
 <img src="portal/31-product-sync-mobile-dark.png" alt="Product page, phone" width="260">
 
@@ -622,8 +634,10 @@ library).
 Cloud Sync, What's new, License, Devices 2/3, Package access, Help), the main column (Get it,
 **Cloud Sync**, What's new, Package access) and a 384 px side column (License, product sign-in,
 Devices, Help). At 761–1179 px the TOC hides. On phones one column in task order (Get it, License,
-Devices, Cloud Sync, product sign-in, What's new, Package access, Help) under **sticky pill tabs**.
-Sections that don't apply are **omitted**, with their TOC entry (P14).
+Devices, Cloud Sync, product sign-in, What's new, Package access, Help) under **sticky pill tabs**
+that list the sections **in that same phone order** (Get it, License, Devices, Cloud Sync, What's
+new, Package access, Help) and highlight the section on screen (**Get it** on load). Sections that
+don't apply are **omitted**, with their TOC entry and pill (P14).
 
 **Get it:** the recommended panel (honest platform detection: a Universal build is named as such;
 both Mac builds otherwise, Apple silicon first), **Change platform**, **Also yours on** store pills
@@ -647,6 +661,12 @@ action and **Email me the desktop links**.
 - **Products without the service show no sync status or setting anywhere:** not on the page, not in
   the TOC, not in the library, not in the list view, not in ⌘K. The confirm step of app sign-in
   mentions Cloud Sync only for products that have it.
+- **The two renders use two products.** 31 is Tidewater Studio, which has the service (as in the
+  12 confirm step, Connected products and ⌘K). 32 is **Nightfall**, which doesn't: its TOC and
+  pills go Get it, What's new, License, Devices, Help; its license chips are the Deluxe Edition
+  contents (Base game, Original soundtrack, Digital art book, Steam key); it has no package feed, so
+  Package access is omitted too; and on an iPhone, where Nightfall doesn't ship, Get it says so and
+  offers **Email me the download**.
 
 **What's new**, **License**, **"<Product> knows you as …"** (the identity this product uses, with
 **Manage sign-in methods**), **Devices** (seat meter, rows with **Remove**, dormant rows), **Package
@@ -742,7 +762,8 @@ Hide My Email"), when it was connected and **last used**, and its action:
 
 **Connected products:** one row per product user with **the identity it uses** and, when the product
 has it, "Cloud Sync on"; **Disconnect** ("signs that product out; its license stays in your
-library").
+library"). Always present when the account has a product, so the section nav never points at a
+missing card: Sam's Hide My Email account (38) shows its one row, Saltwind · Apple (Hide My Email).
 
 **Where you're signed in:** browsers and apps signed in to the account (never product devices), with
 **Approve a new device** and **Sign out everywhere else**.
@@ -861,8 +882,6 @@ Expiry inside 14 days uses relative days; otherwise "until 14 Mar 2027".
 
 ---
 
----
-
 ## 6. Copy
 
 ### 6.1 Rules
@@ -956,6 +975,9 @@ again." with the reference id. Never render the HTTP status or an internal code 
 - **Tables become rows:** the list view drops columns and keeps status as a pill under the name.
 - **Phone actions** replace desktop downloads (§5.4); dialogs become bottom sheets; the palette is
   full-screen.
+- **Sheet buttons:** two short actions sit side by side with the primary last (right); when they
+  don't fit, they stack **full width**, still primary last (bottom, nearest the thumb), never
+  right-aligned at mixed widths (28 Activate license: done).
 - Safe-area insets pad the tab bar and sheets (`env(safe-area-inset-bottom)`).
 
 ## 9. Accessibility
@@ -1195,7 +1217,7 @@ All files are in [portal/](portal/) as `NN-name-{desktop|mobile}-{dark|light}.pn
 | 18  | Library, empty, with Discover teaser               | 4.12 |
 | 19  | Library, one product                               | 4.13 |
 | 20  | Library, three products                            | 4.14 |
-| 21  | Library, twelve products, grid                     | 4.15 |
+| 21  | Library, twelve products, grid (phone: list)       | 4.15 |
 | 22  | Library, twelve products, list                     | 4.15 |
 | 23  | Discover, four offers                              | 4.16 |
 | 24  | Discover, just added                               | 4.16 |
@@ -1206,7 +1228,7 @@ All files are in [portal/](portal/) as `NN-name-{desktop|mobile}-{dark|light}.pn
 | 29  | Activate license: error states                     | 4.19 |
 | 30  | Activate license: deep link, key prefilled         | 4.18 |
 | 31  | Product page with Cloud Sync                       | 4.20 |
-| 32  | Product page without Cloud Sync                    | 4.20 |
+| 32  | Product page without Cloud Sync (Nightfall)        | 4.20 |
 | 33  | Package token created                              | 4.21 |
 | 34  | Remove a device, inline confirmation               | 4.22 |
 | 35  | Device limit, focused flow                         | 4.25 |
@@ -1249,3 +1271,16 @@ this document wins.
 | 8   | App passthrough: persistent card header through every step, confirm and return; data-only branding                                                                      | §4.7–4.9, G28                               |
 | 9   | Account linking: sign-in methods connect/disconnect with step-up, last-method guard, nudge, join with proof of both, approve another device, Steam web login everywhere | §4.10, §4.11, §4.23, §4.24, §4.26, G27, G29 |
 | 10  | Keep the critique fixes and the library, shelf, product TOC, device-limit flow, package card and ⌘K                                                                     | Appendix B, §4.13–4.15, §4.20–4.27          |
+
+## Appendix D · Design QA fixes (2026-10-04)
+
+| #   | Miss                                                                | Fix                                                                                 | Where        |
+| --- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------ |
+| 1   | The nudge had no way to link an existing account                    | Dashed link row "Already have a Polaris Key account? Link an existing account" (16) | §4.10, §4.11 |
+| 2   | The "without Cloud Sync" page used Tidewater, which has the service | 32 re-rendered as Nightfall; no sync in its TOC, pills, chips or copy               | §4.20        |
+| 3   | The known-account step had no route to Continue with Apple          | "Other ways to sign in" link on 03 and 09                                           | §4.3, §4.8   |
+| 4   | Phone pill tabs were in desktop order with Cloud Sync highlighted   | Pills in phone task order, Get it highlighted (31, 32, 34)                          | §4.20        |
+| 5   | Sam's account nav listed Connected products with no card            | Card rendered with Saltwind · Apple (38)                                            | §4.26        |
+| 6   | 21 phone showed the grid against "List by default above 6"          | 21 phone renders the default list                                                   | §4.15, §8    |
+| 7   | Activate done sheet buttons right-aligned at mixed widths           | Stacked full width, primary last                                                    | §4.17, §8    |
+| 8   | Wrong cross-references (§4.12, §4.10) and doubled separators        | §4.11 and §4.8; single separators                                                   | §3.3, §4.3   |
