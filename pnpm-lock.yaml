@@ -124,6 +124,9 @@ importers:
       '@codemirror/view':
         specifier: ^6.43.13
         version: 6.43.13
+      '@lezer/highlight':
+        specifier: ^1.2.5
+        version: 1.2.5
       '@polaris-key/brand':
         specifier: workspace:*
         version: link:../brand

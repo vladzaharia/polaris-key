@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { cleanup, render } from "@testing-library/react";
 import * as React from "react";
 import { configureAxe } from "vitest-axe";
@@ -16,6 +16,16 @@ const axe = configureAxe({
     "color-contrast": { enabled: false },
     region: { enabled: false },
   },
+});
+
+// jsdom has no ResizeObserver; Radix's size hook (Switch, Checkbox, RadioCards) needs one.
+beforeAll(() => {
+  (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver ??=
+    class {
+      observe(): void {}
+      unobserve(): void {}
+      disconnect(): void {}
+    };
 });
 
 afterEach(() => {

@@ -1,6 +1,9 @@
 import { Copy, Plus, Trash2 } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { IconButton } from "../../ui/IconButton.js";
+import { ActionMenu } from "../../ui/ActionMenu.js";
+import { CopyButton } from "../../ui/CopyButton.js";
+import { Pin, Rocket } from "lucide-react";
 import { SERVICE_TABLE } from "../../services.generated.js";
 import type { Story } from "../types.js";
 
@@ -96,6 +99,79 @@ export const stories: Story[] = [
           label="Delete secret"
           icon={<Trash2 />}
           disabledReason="Required by .pkey/product"
+        />
+      </div>
+    ),
+  },
+  {
+    id: "action-menu",
+    group: "Actions",
+    title: "ActionMenu",
+    description:
+      "Disabled items stay visible with their reason; destructive items come last, after a separator.",
+    render: () => (
+      <div className="flex items-center gap-6">
+        <ActionMenu
+          label="Actions for release 2.4.0"
+          items={[
+            {
+              label: "Promote to stable…",
+              icon: <Rocket />,
+              onSelect: () => undefined,
+            },
+            {
+              label: "Pin on beta…",
+              icon: <Pin />,
+              description: "Freezes the channel at this release",
+              onSelect: () => undefined,
+            },
+            { type: "separator" },
+            {
+              label: "Yank…",
+              tone: "danger",
+              disabledReason: "Already yanked",
+              onSelect: () => undefined,
+            },
+            {
+              label: "Delete draft…",
+              tone: "danger",
+              onSelect: () => undefined,
+            },
+          ]}
+        />
+        <ActionMenu
+          label="More actions"
+          trigger={<Button variant="outline">More actions</Button>}
+          items={[
+            { label: "Edit holder…", onSelect: () => undefined },
+            { label: "Mint offline bundle…", onSelect: () => undefined },
+            { type: "separator" },
+            {
+              label: "Disable license…",
+              tone: "danger",
+              onSelect: () => undefined,
+            },
+          ]}
+        />
+      </div>
+    ),
+  },
+  {
+    id: "copy-button",
+    group: "Actions",
+    title: "CopyButton",
+    description:
+      "Announces \u201cCopied\u201d; when the clipboard refuses, the value appears selected with the copy chord.",
+    render: () => (
+      <div className="flex flex-wrap items-center gap-4">
+        <span className="inline-flex items-center gap-2 font-mono text-xs text-fg">
+          MCowBQYDK2VwAyEA…Qa
+          <CopyButton value="MCowBQYDK2VwAyEAexample" label="Copy public key" />
+        </span>
+        <CopyButton
+          value="https://key.plrs.im/djdl/.well-known/jwks.json"
+          label="Copy JWKS URL"
+          showLabel
         />
       </div>
     ),
