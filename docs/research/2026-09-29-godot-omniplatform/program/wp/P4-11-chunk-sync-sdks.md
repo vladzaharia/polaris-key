@@ -5,7 +5,7 @@
 | Phase       | P4: Packs (v2)                                                                                                                                                                                             |
 | Size        | 1.5–2 engineer-weeks                                                                                                                                                                                       |
 | Depends on  | [P4-10](P4-10-chunk-indexes.md), [P4-06](P4-06-client-core-packs.md), [P4-07](P4-07-python-swift-packs.md), [P4-08](P4-08-godot-packs.md), [S-02](S-02-r2-range.md), [P4-05](P4-05-pack-transports-cdn.md) |
-| Unblocks    | [P4-18](P4-18-web-dcz.md), [P6-08](P6-08-kotlin-update-packs.md), [X-01](X-01-dotnet-sdk.md)                                                                                                               |
+| Unblocks    | [P4-18](P4-18-web-dcz.md), [P4-32](P4-32-chunk-range-transcript.md), [P6-08](P6-08-kotlin-update-packs.md), [X-01](X-01-dotnet-sdk.md)                                                                     |
 | Role        | `pkey-sdk-porter`                                                                                                                                                                                          |
 | Plan mode   | no: the format and vectors were approved in P4-10's plan                                                                                                                                                   |
 | Gates       | corpus (content corpus v2 chunk sections in every runner); all SDKs                                                                                                                                        |
@@ -288,6 +288,7 @@ requests, seedChunks, selfChunks, repairedChunks}`.
   `features.json`, and replay it in the Node, Python, Swift and Godot replayers. Suggested owner:
   P5-08, which already touches every SDK's transport layer; otherwise a lead-scheduled follow-up
   package.
+  Scheduled as [P4-32](P4-32-chunk-range-transcript.md) ([plan](../plans/P4-32.md)).
 - **Range support is declared by the transport.** client-core's `rangeRequests: false`, Python's
   `supports_range` (read from the fetch's signature when not given), Swift's and Godot's transport
   capability keep `chunk` unplanned (and skip the seed backfill) for a transport that cannot send
