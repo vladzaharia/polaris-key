@@ -395,18 +395,18 @@ describe("Godot 4.7+: the Asset Store API", () => {
     expect((await get(`${STORE}/assets/${PUBLISHER}/nope/`)).status).toBe(404);
   });
 
-  it("releases/… lists the listed versions newest first, without the yanked one", async () => {
+  it("releases/… leads with the stable releases (the 4.7 editor preselects the first), without the yanked one", async () => {
     const all = (await golden(
       "store-releases",
       `${STORE}/releases/${PUBLISHER}/${NAME}/`,
     )) as Array<Record<string, unknown>>;
     expect(all.map((r) => r.version)).toEqual([
-      "1.2.0-beta.1",
       "1.1.0",
       "1.0.0",
+      "1.2.0-beta.1",
     ]);
-    expect(all.map((r) => r.stable)).toEqual([false, true, true]);
-    expect(all[2]!.notes).toBe("Deprecated: use 1.1.0");
+    expect(all.map((r) => r.stable)).toEqual([true, true, false]);
+    expect(all[1]!.notes).toBe("Deprecated: use 1.1.0");
     const stable = (await getJson(
       `${STORE}/releases/${PUBLISHER}/${NAME}/?stable_only=true`,
     )) as Array<Record<string, unknown>>;
