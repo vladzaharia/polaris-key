@@ -365,7 +365,7 @@ tools/check_flavours.sh        # the boundary on the release AARs and APKs
 ./gradlew :platform:checkStandalone :godot:checkPlatformOnly checkModuleBoundaries \
           :platform:publishAllPublicationsToLocalRepository :godot:publishAllPublicationsToLocalRepository \
           :android:publishAllPublicationsToLocalRepository :ui:publishAllPublicationsToLocalRepository
-tools/check_publication.sh     # both flavours of each in build/repo with POM, sources and .module
+tools/check_publication.sh     # platform, godot, android in build/repo with POM, sources and .module (not :ui)
 ```
 
 `:conformance` reads `conformance/corpus/v2/` and `conformance/transcripts/` from the repository
