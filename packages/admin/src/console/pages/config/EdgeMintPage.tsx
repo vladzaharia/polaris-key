@@ -198,7 +198,7 @@ export function EdgeMintPage({ slug }: { slug: string }): React.ReactElement {
         meta: { priority: 1, primary: true, mono: true, alwaysVisible: true },
         cell: ({ getValue }) => (
           <span
-            className="block max-w-[16rem] truncate"
+            className="block max-w-[12rem] truncate"
             title={getValue() as string}
           >
             {getValue() as string}
@@ -227,7 +227,8 @@ export function EdgeMintPage({ slug }: { slug: string }): React.ReactElement {
           <span className="flex flex-col items-start gap-1">
             <Link
               to={r.keys(slug)}
-              className="font-mono text-xs text-accent-fg underline-offset-4 hover:underline"
+              title={row.original.signingKeySecret}
+              className="block max-w-[14rem] truncate font-mono text-xs text-accent-fg underline-offset-4 hover:underline"
             >
               {row.original.signingKeySecret}
             </Link>
@@ -245,7 +246,7 @@ export function EdgeMintPage({ slug }: { slug: string }): React.ReactElement {
           row.original.changedFields.length ? (
             // One line per row: the count, with the reasons on hover and for AT.
             <span
-              className="block max-w-[16rem] truncate text-xs"
+              className="block max-w-[11rem] truncate text-xs"
               title={row.original.changedFields.map(changedLabel).join(", ")}
             >
               {row.original.changedFields.map(changedLabel).join(", ")}
@@ -364,6 +365,7 @@ export function EdgeMintPage({ slug }: { slug: string }): React.ReactElement {
       <DataTable<EdgeMintRecipe>
         id="edge-mint"
         caption="Edge-mint recipes"
+        mobile="cards"
         data={recipes}
         columns={columns}
         getRowId={(e) => e.id}

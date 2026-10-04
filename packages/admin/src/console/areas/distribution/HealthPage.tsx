@@ -142,7 +142,6 @@ export function HealthPage({ slug }: { slug: string }): React.ReactElement {
         <>
           <PageHeader
             title="Health"
-            description={`Over the last ${windowHours} ${windowHours === 1 ? "hour" : "hours"}.`}
             freshness={
               data
                 ? {
@@ -320,6 +319,7 @@ function RolloutFunnel({
               outlet={ro.outletId}
               label={`${ro.outletId} / ${ro.channel}`}
             />
+            {` · last ${windowHours} h`}
           </span>
         </span>
         <StatusPill domain="rollout" state={ro.state} size="sm">
@@ -329,6 +329,7 @@ function RolloutFunnel({
       {d ? (
         <Funnel
           label={`${version} on ${ro.outletId} / ${ro.channel}, last ${windowHours} h`}
+          labelHidden
           steps={[
             { label: "Offered", value: d.update_offered },
             { label: "Downloaded", value: d.update_downloaded },
@@ -488,7 +489,7 @@ function AutoHaltPanel({
               <NumberInput {...field} percent min={0} max={100} step="any" />
             )}
           </FormField>
-          <Button size="sm" variant="ghost" onClick={resetToDefaults}>
+          <Button size="sm" variant="link" onClick={resetToDefaults}>
             Reset to defaults
           </Button>
           <SubmitError

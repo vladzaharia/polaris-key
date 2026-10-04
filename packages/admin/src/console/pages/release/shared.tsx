@@ -21,6 +21,7 @@ import type {
   PackReleaseDto,
   ReleaseDto,
 } from "../../../api.js";
+import { cn } from "../../../lib/cn.js";
 import { label, PLATFORM_LABELS } from "../../../lib/labels.js";
 import { Popover } from "../../../ui/Popover.js";
 import { SignedBadge } from "../../../ui/SignedBadge.js";
@@ -51,25 +52,38 @@ const PLATFORM_ICON: Record<string, LucideIcon> = {
 export function PlatformGlyphs({
   platforms,
   label: listLabel,
+  iconsOnly = false,
 }: {
   platforms: (string | null)[];
   label: string;
+  /** A table cell: one icon per platform, named in its tooltip and for AT. */
+  iconsOnly?: boolean;
 }): React.ReactElement {
   const unique = [...new Set(platforms.map((p) => p ?? "any"))];
   if (unique.length === 0)
     return <span className="text-xs text-fg-muted">No builds</span>;
   return (
-    <ul aria-label={listLabel} className="flex flex-wrap items-center gap-1">
+    <ul
+      aria-label={listLabel}
+      className={cn(
+        "flex items-center gap-1",
+        iconsOnly ? "flex-nowrap" : "flex-wrap",
+      )}
+    >
       {unique.map((p) => {
         const Icon = PLATFORM_ICON[p] ?? HelpCircle;
         const name = p === "any" ? "Any platform" : platformName(p);
         return (
           <li
             key={p}
-            className="inline-flex items-center gap-1 rounded-sm border border-border px-1.5 py-0.5 text-xs text-fg"
+            title={iconsOnly ? name : undefined}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-sm border border-border py-0.5 text-xs text-fg",
+              iconsOnly ? "px-1" : "px-1.5",
+            )}
           >
             <Icon aria-hidden className="size-3.5 text-fg-muted" />
-            <span>{name}</span>
+            <span className={iconsOnly ? "sr-only" : undefined}>{name}</span>
           </li>
         );
       })}
@@ -175,8 +189,11 @@ export function buildSummary(b: {
 /** An app release's signer, in gold; "Unsigned" (muted) for a legacy release with no record. */
 export function ReleaseSigner({
   signer,
+  truncateKid = false,
 }: {
   signer: ReleaseDto["signer"];
+  /** In a table column: the kid truncates, whole in its tooltip. */
+  truncateKid?: boolean;
 }): React.ReactElement {
   if (!signer)
     return (
@@ -184,7 +201,13 @@ export function ReleaseSigner({
         {signer === null ? "No signed record" : "—"}
       </span>
     );
-  return <SignedBadge kid={signer.kid} by="the release key" />;
+  return (
+    <SignedBadge
+      kid={signer.kid}
+      by="the release key"
+      truncateKid={truncateKid}
+    />
+  );
 }
 
 /** A pack release's signer (PKD-4): the release key, or a delegated content key. */

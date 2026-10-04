@@ -174,6 +174,7 @@ export function ProfilesPage({ slug }: { slug: string }): React.ReactElement {
       <DataTable<ProfileSummary>
         id="profiles"
         caption="Profiles"
+        mobile="cards"
         data={rows}
         columns={columns}
         getRowId={(p) => p.id}

@@ -344,11 +344,7 @@ export function PlatformSettingsPage(): React.ReactElement {
       ) : null}
 
       {showDelivery ? (
-        <SettingsSection
-          id="platform-delivery"
-          title="Delivery"
-          description="Deploy-time."
-        >
+        <SettingsSection id="platform-delivery" title="Delivery">
           {DELIVERY_VARS.map((n) => (
             <DeployRow key={n} item={deploy.get(n)} />
           ))}
@@ -1272,11 +1268,7 @@ function KeyringSection({
           </Callout>
         </div>
       ) : null}
-      <SettingsRow
-        label="Key configuration"
-        align="stretch"
-        help="Presence only."
-      >
+      <SettingsRow label="Key configuration" align="block">
         <ul className="space-y-1.5">
           <PresenceItem name="PLATFORM_KEK_KEYS" set={ring} />
           <PresenceItem name="PLATFORM_KEK" set={single} />
@@ -1312,17 +1304,10 @@ function KeyringSection({
         </div>
       ) : (
         <>
-          <SettingsRow
-            label="Active key"
-            help="New values are sealed under it."
-          >
+          <SettingsRow label="Active key">
             <span className="font-mono text-xs">{k.active}</span>
           </SettingsRow>
-          <SettingsRow
-            label="Keys in the ring"
-            align="stretch"
-            help="Every key the Worker can open values with."
-          >
+          <SettingsRow label="Keys in the ring" align="block">
             <ul className="space-y-1.5" aria-label="Keys in the ring">
               {[...new Set([...k.kids, ...perKid.keys()])].map((kid) => {
                 const inRing = k.kids.includes(kid);
@@ -1355,10 +1340,7 @@ function KeyringSection({
               })}
             </ul>
           </SettingsRow>
-          <SettingsRow
-            label="Re-seal progress"
-            help="Values still sealed under an older key."
-          >
+          <SettingsRow label="Re-seal progress">
             {k.unopenable > 0 ? (
               <Callout tone="danger" title="Values cannot be opened">
                 {formatCount(k.unopenable)} sealed{" "}
@@ -1376,11 +1358,7 @@ function KeyringSection({
             )}
           </SettingsRow>
           {groups.length > 0 ? (
-            <SettingsRow
-              label="Sealed values"
-              align="stretch"
-              help="Per kind of value, per key."
-            >
+            <SettingsRow label="Sealed values" align="block">
               <ul className="space-y-1.5">
                 {groups.map(([group, counts]) => (
                   <li
@@ -1587,11 +1565,7 @@ function HistorySection({
     return `${formatSettingValue(s, before)} → ${formatSettingValue(s, after)}`;
   };
   return (
-    <SettingsSection
-      id="platform-history"
-      title="History"
-      description="Background-job setting changes, newest first."
-    >
+    <SettingsSection id="platform-history" title="History">
       <div className="px-5 py-4">
         {history.isPending ? (
           <div

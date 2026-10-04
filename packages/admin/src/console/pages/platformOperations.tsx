@@ -815,8 +815,8 @@ function StoragePanel({ op }: { op: PlatformOperations }) {
             </ul>
           ) : null}
         </div>
-        <div className="min-w-0">
-          {r2 && r2.byKind.length > 0 ? (
+        {r2 && r2.byKind.length > 0 ? (
+          <div className="min-w-0">
             <table className="w-full text-sm">
               <caption className="pb-2 text-left text-sm font-bold text-fg-strong">
                 Committed bytes by kind
@@ -853,8 +853,8 @@ function StoragePanel({ op }: { op: PlatformOperations }) {
                 ))}
               </tbody>
             </table>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </div>
     </Panel>
   );
@@ -991,7 +991,10 @@ function ConnectorsPanel({
 function RefusalsPanel({ op }: { op: PlatformOperations }) {
   const refusals = op.recentErrors.lazyDeltaRefusals;
   return (
-    <Panel title="Delta refusals" description="Last 7 days, by reason.">
+    <Panel
+      title="Delta refusals"
+      description={refusals?.length ? "Last 7 days, by reason." : undefined}
+    >
       {refusals === null ? (
         <Unavailable what="The refusal counts" />
       ) : refusals.length === 0 ? (

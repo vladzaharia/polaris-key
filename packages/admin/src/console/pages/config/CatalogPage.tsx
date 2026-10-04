@@ -144,7 +144,7 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
         id: "state",
         header: "Management",
         accessorFn: stateOf,
-        meta: { priority: 2 },
+        meta: { priority: 1 },
         cell: ({ row }) => (
           <StatusPill
             tone={STATE_TONE[stateOf(row.original) as keyof typeof STATE_TONE]}
@@ -297,6 +297,7 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
       <DataTable<ConfigEntry>
         id="catalog"
         caption="Catalog keys"
+        mobile="cards"
         data={entries}
         columns={columns}
         getRowId={(e) => e.key}

@@ -358,8 +358,8 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     writeStorage(columnsKey(id), JSON.stringify(next));
   };
 
-  const isMobileCards =
-    useMediaQuery("(max-width: 767px)") && mobile === "cards";
+  const isPhone = useMediaQuery("(max-width: 767px)");
+  const isMobileCards = isPhone && mobile === "cards";
 
   const serverSide =
     pagination.mode === "cursor" ||
@@ -685,7 +685,8 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     .filter((c) => !c.columnDef.meta?.alwaysVisible && c.id !== primaryId);
 
   const csvEnabled = (props.exportCsv ?? true) && pagination.mode === "client";
-  // Columns and density earn their row only on a table big enough to tune, and never over cards.
+  // Columns and density earn their row only on a table big enough to tune, and never on a phone
+  // (cards or a scrolled table: a phone is no place to tune a table).
   // A table with a hidden column keeps Columns, or that column could never come back.
   const minimalChrome =
     chrome === "minimal" ||
@@ -693,7 +694,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       pagination.mode === "client" &&
       data.length < 10 &&
       hidden.length === 0);
-  const showViewControls = !minimalChrome && !isMobileCards;
+  const showViewControls = !minimalChrome && !isPhone;
   const exportCsv = (): void => {
     const visibleDefs = columns.filter((c) => !hidden.includes(columnId(c)));
     const sorted = allRows.map((r) => r.original);

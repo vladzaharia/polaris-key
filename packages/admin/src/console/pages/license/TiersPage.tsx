@@ -77,7 +77,7 @@ export function TiersPage({ slug }: { slug: string }): React.ReactElement {
         meta: { priority: 1, primary: true },
         cell: ({ getValue }) => (
           <span
-            className="block max-w-[18rem] truncate"
+            className="block max-w-[11rem] truncate"
             title={getValue() as string}
           >
             {getValue() as string}
@@ -91,7 +91,7 @@ export function TiersPage({ slug }: { slug: string }): React.ReactElement {
         meta: { priority: 2, mono: true },
         cell: ({ getValue }) => (
           <span
-            className="block max-w-[14rem] truncate"
+            className="block max-w-[8rem] truncate"
             title={getValue() as string}
           >
             {getValue() as string}
@@ -105,12 +105,14 @@ export function TiersPage({ slug }: { slug: string }): React.ReactElement {
         meta: { priority: 2 },
         cell: ({ row }) =>
           row.original.profile ? (
-            <EntityLink
-              slug={slug}
-              kind="profile"
-              id={row.original.profile}
-              label={profileName(row.original.profile)}
-            />
+            <span className="whitespace-nowrap">
+              <EntityLink
+                slug={slug}
+                kind="profile"
+                id={row.original.profile}
+                label={profileName(row.original.profile)}
+              />
+            </span>
           ) : (
             <span className="text-fg-muted">None</span>
           ),
@@ -148,7 +150,16 @@ export function TiersPage({ slug }: { slug: string }): React.ReactElement {
         accessorFn: (t) => t.channels.join(", "),
         meta: { priority: 3 },
         cell: ({ getValue }) =>
-          (getValue() as string) || <span className="text-fg-muted">—</span>,
+          (getValue() as string) ? (
+            <span
+              className="block max-w-[9rem] truncate"
+              title={getValue() as string}
+            >
+              {getValue() as string}
+            </span>
+          ) : (
+            <span className="text-fg-muted">—</span>
+          ),
       },
       {
         id: "versions",
@@ -160,7 +171,7 @@ export function TiersPage({ slug }: { slug: string }): React.ReactElement {
         meta: { priority: 3 },
         cell: ({ getValue }) =>
           (getValue() as string) ? (
-            <span className="whitespace-nowrap font-mono">
+            <span className="whitespace-nowrap tabular-nums">
               {getValue() as string}
             </span>
           ) : (

@@ -207,17 +207,15 @@ function AccessSection({
           </>
         }
       >
-        <SettingsRow
-          label="Who may read it"
-          align="block"
-          help={
-            locked
-              ? "Read-only until the product has a release configuration."
-              : admin
-                ? "Set in the console: it survives a resync until it is reverted."
-                : undefined
-          }
-        >
+        {/* The section title names the choice; the radio group keeps its own label for AT. */}
+        <div className="space-y-3 px-5 py-4">
+          {locked || admin ? (
+            <p className="text-sm text-fg-muted">
+              {locked
+                ? "Read-only until the product has a release configuration."
+                : "Set in the console: it survives a resync until it is reverted."}
+            </p>
+          ) : null}
           <FormField<Mode>
             name="metadataAccess"
             label="Who may read it"
@@ -238,7 +236,7 @@ function AccessSection({
               />
             )}
           </FormField>
-        </SettingsRow>
+        </div>
         <SettingsRow label="Artifact access">
           {access.isPending ? (
             <Skeleton className="h-5 w-40" />

@@ -789,7 +789,7 @@ function KeysSection({
   return (
     <Panel
       title="Distribution keys"
-      description="The signing keys your builds and stores are expected to carry. CI reports the keys it sees; one that matches no entry is flagged until you add or dismiss it."
+      description="CI flags any key it sees that matches no entry here."
       action={
         <Button
           size="sm"
@@ -858,6 +858,7 @@ function KeysSection({
         <DataTable<DistributionKeyDto>
           id="keys"
           caption="Distribution keys"
+          mobile="cards"
           data={keys.data?.keys ?? []}
           columns={columns}
           getRowId={(k) => `${k.purpose}:${k.sha256}`}

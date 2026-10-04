@@ -46,6 +46,8 @@ export interface SignedBadgeProps {
   variant?: "badge" | "chip";
   /** A verified signature ("Signature verified") rather than a signed record. */
   verified?: boolean;
+  /** Truncate a long kid (a table column); the full kid stays in the tooltip. */
+  truncateKid?: boolean;
   className?: string;
 }
 
@@ -54,6 +56,7 @@ export function SignedBadge({
   by,
   variant = "badge",
   verified = false,
+  truncateKid = false,
   className,
 }: SignedBadgeProps): React.ReactElement {
   const word = verified ? "Signature verified" : "Signed";
@@ -72,12 +75,21 @@ export function SignedBadge({
       ) : (
         <SignedGlyph size={12} />
       )}
-      <span>
+      <span className={cn(truncateKid && "inline-flex min-w-0 items-baseline")}>
         {word}
         {kid ? (
           <>
-            {" · "}
-            <span className="font-mono">{kid}</span>
+            {"\u00a0·\u00a0"}
+            <span
+              className={cn(
+                "font-mono",
+                truncateKid &&
+                  "inline-block max-w-[8rem] truncate align-bottom",
+              )}
+              title={truncateKid ? kid : undefined}
+            >
+              {kid}
+            </span>
           </>
         ) : null}
         {by ? <span className="sr-only"> by {by}</span> : null}

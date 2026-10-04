@@ -173,11 +173,12 @@ export function ReleasesPage({ slug }: { slug: string }): React.ReactElement {
       cell: ({ row }) => {
         const on = servingChannels(row.original.releaseId, appChannels);
         return on.length ? (
-          <span className="flex flex-wrap gap-x-2 gap-y-0.5 text-sm">
-            {on.map((c) => (
-              <span key={c} className="whitespace-nowrap">
-                {c}
-              </span>
+          <span className="whitespace-nowrap text-sm">
+            {on.map((c, i) => (
+              <React.Fragment key={c}>
+                {i > 0 ? ", " : null}
+                <span>{c}</span>
+              </React.Fragment>
             ))}
           </span>
         ) : (
@@ -208,12 +209,11 @@ export function ReleasesPage({ slug }: { slug: string }): React.ReactElement {
       },
       cell: ({ row }) =>
         row.original.builds.length ? (
-          <span className="block min-w-[15rem]">
-            <PlatformGlyphs
-              platforms={row.original.builds.map((b) => b.platform)}
-              label={`Builds of ${row.original.version}`}
-            />
-          </span>
+          <PlatformGlyphs
+            iconsOnly
+            platforms={row.original.builds.map((b) => b.platform)}
+            label={`Builds of ${row.original.version}`}
+          />
         ) : (
           <span className="text-xs text-fg-muted">
             {row.original.artifacts.length}{" "}
@@ -244,7 +244,9 @@ export function ReleasesPage({ slug }: { slug: string }): React.ReactElement {
         label: "Signed",
         csv: (x) => x.signer?.kid ?? "",
       },
-      cell: ({ row }) => <ReleaseSigner signer={row.original.signer} />,
+      cell: ({ row }) => (
+        <ReleaseSigner signer={row.original.signer} truncateKid />
+      ),
     },
   ];
 
