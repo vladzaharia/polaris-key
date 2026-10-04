@@ -9,6 +9,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { afterEach, describe, expect, it } from "vitest";
+import { parse as parseYaml } from "yaml";
 import {
   ACTION_INPUTS,
   actionInput,
@@ -30,6 +31,7 @@ import {
   SLUG,
   tempDir,
 } from "./publishFixture.js";
+import { npmPackage, PACKAGES_RELEASE_YAML } from "./packageFixtures.js";
 
 const run = promisify(execFile);
 const pkgDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -152,6 +154,116 @@ describe("the Action entry", () => {
     });
     expect(code).toBe(1);
     expect(io.err()).toContain("dry-run must be true or false");
+  });
+});
+
+/**
+ * The step's environment as the GitHub runner builds it from action.yml: every input the workflow
+ * sets in `with:`, plus every input action.yml gives a `default:`, whether the workflow set it or
+ * not. A defaulted input is therefore always non-empty, which a refusal of "inputs that do not
+ * apply" must survive (the v0.8.13 publish failure: `source` defaulted to r2 and every package
+ * publish was refused).
+ */
+async function githubStepEnv(withInputs: Record<string, string>) {
+  const yml = parseYaml(
+    await readFile(path.join(repoRoot, "actions/publish/action.yml"), "utf8"),
+  ) as { inputs: Record<string, { default?: string }> };
+  const env: Record<string, string> = {};
+  for (const [name, decl] of Object.entries(yml.inputs)) {
+    const value = withInputs[name] ?? decl.default;
+    if (value !== undefined) env[`INPUT_${name.toUpperCase()}`] = String(value);
+  }
+  for (const name of Object.keys(withInputs))
+    if (!(name in yml.inputs))
+      throw new Error(`action.yml has no input ${name}`);
+  return env;
+}
+
+describe("the Action under action.yml's defaults, as GitHub runs it", () => {
+  it("publishes a package deliverable (no app-only input defaults reach it)", async () => {
+    const cwd = await repo(npmPackage(), PACKAGES_RELEASE_YAML);
+    const output = path.join(cwd, "gh_output");
+    await writeFile(output, "");
+    const server = fakeServer();
+    const io = capture();
+    // publish-package.yml's `with:` block.
+    const env = await githubStepEnv({
+      product: SLUG,
+      deliverable: "npm.sdk",
+      version: "1.4.0",
+      channel: "stable",
+      dir: "dist",
+      "base-url": BASE,
+    });
+    // The defaults are applied: dry-run and transport-report arrive though the job never set them.
+    expect(env["INPUT_DRY-RUN"]).toBe("false");
+    expect(env["INPUT_TRANSPORT-REPORT"]).toBe("true");
+    const code = await runAction({
+      env: { ...actionsEnv({ GITHUB_OUTPUT: output }), ...env },
+      cwd,
+      stdout: io.stdout,
+      stderr: io.stderr,
+      fetchImpl: server.fetchImpl,
+      sleep: instant,
+    });
+    expect(code, io.err()).toBe(0);
+    const final = server.to("/release/publish/submit")[1]!.body as {
+      descriptor: { kind: string };
+    };
+    expect(final.descriptor.kind).toBe("package");
+    // A source the workflow sets explicitly is still refused for a package.
+    const refused = capture();
+    const bad = await runAction({
+      env: {
+        ...actionsEnv(),
+        ...(await githubStepEnv({
+          product: SLUG,
+          deliverable: "npm.sdk",
+          dir: "dist",
+          source: "r2",
+          "base-url": BASE,
+        })),
+      },
+      cwd,
+      stdout: refused.stdout,
+      stderr: refused.stderr,
+      fetchImpl: fakeServer().fetchImpl,
+      sleep: instant,
+    });
+    expect(bad).toBe(1);
+    expect(refused.err()).toMatch(
+      /^source do not apply to a package deliverable/,
+    );
+  });
+
+  it("still publishes the app from r2 when source is not set", async () => {
+    const cwd = await repo();
+    const output = path.join(cwd, "gh_output");
+    await writeFile(output, "");
+    const server = fakeServer();
+    const io = capture();
+    const env = await githubStepEnv({
+      product: SLUG,
+      tag: "v0.3.0",
+      dir: "dist",
+      "base-url": BASE,
+    });
+    expect(env.INPUT_SOURCE).toBeUndefined();
+    const code = await runAction({
+      env: { ...actionsEnv({ GITHUB_OUTPUT: output }), ...env },
+      cwd,
+      stdout: io.stdout,
+      stderr: io.stderr,
+      fetchImpl: server.fetchImpl,
+      sleep: instant,
+    });
+    expect(io.err()).toBe("");
+    expect(code).toBe(0);
+    expect(await readFile(output, "utf8")).toBe(
+      "release-id=v0.3.0\noutcome=created\n",
+    );
+    // r2: the bytes are uploaded to Polaris Key (`github` would upload nothing).
+    expect(server.calls.filter((c) => c.method === "PUT")).toHaveLength(8);
   });
 });
 
