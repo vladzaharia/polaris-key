@@ -8,30 +8,7 @@ import type { ProductDetail, ProductRef } from "../../api.js";
 import { SERVICE_TABLE } from "../../services.generated.js";
 import { cn } from "../../lib/cn.js";
 
-/** A keyboard hint, e.g. `⌘K` or `g o`. Decorative: the action's name carries the meaning. */
-export function Kbd({
-  keys,
-  className,
-}: {
-  keys: string;
-  className?: string;
-}): React.ReactElement {
-  return (
-    <span
-      aria-hidden
-      className={cn("ml-auto flex shrink-0 items-center gap-1", className)}
-    >
-      {keys.split(" ").map((k, i) => (
-        <kbd
-          key={i}
-          className="rounded-xs border border-border bg-surface-sunken px-1.5 font-sans text-[0.6875rem] leading-4 text-fg-muted"
-        >
-          {k}
-        </kbd>
-      ))}
-    </span>
-  );
-}
+export { Kbd } from "../../ui/Kbd.js";
 
 /** A product as the switcher and palette see it: the registry row when loaded, else the session's. */
 export type ProductLike = ProductRef | ProductDetail;
@@ -88,17 +65,4 @@ export function ServiceDots({
   );
 }
 
-/** A polite live region; the text is announced whenever it changes. */
-export function LiveRegion({
-  message,
-  id,
-}: {
-  message: string;
-  id?: string;
-}): React.ReactElement {
-  return (
-    <div id={id} role="status" aria-live="polite" className="sr-only">
-      {message}
-    </div>
-  );
-}
+export { LiveRegion } from "../../ui/LiveRegion.js";

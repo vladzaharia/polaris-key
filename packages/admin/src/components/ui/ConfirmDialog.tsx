@@ -1,84 +1,32 @@
 import * as React from "react";
-import { Button, type ButtonProps } from "./Button.js";
 import {
-  Dialog,
-  DialogActionBar,
-  DialogBody,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "./Dialog.js";
-
-export interface ConfirmDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  title: React.ReactNode;
-  description?: React.ReactNode;
-  confirmLabel?: string;
-  cancelLabel?: string;
-  confirmVariant?: ButtonProps["variant"];
-  loading?: boolean;
-  /** Keeps the confirm button disabled (an input in `children` is not valid yet). */
-  confirmDisabled?: boolean;
-  /** Inputs the confirmation needs (a reason, a version), rendered below the description. */
-  children?: React.ReactNode;
-  onConfirm: () => void | Promise<void>;
-}
+  ConfirmDialog as BaseConfirmDialog,
+  type ConfirmDialogProps as BaseProps,
+} from "../../ui/ConfirmDialog.js";
 
 /**
- * A focus-trapped confirmation modal (Radix Dialog with `role="alertdialog"` semantics via
- * the description wiring). Returns nothing — drive it with controlled `open` state and an
- * async `onConfirm`; the dialog stays mounted while `loading` so the spinner is visible.
+ * Re-export (ADMIN.md §7.2 chunk 3): the confirmation lives in `src/ui/ConfirmDialog.tsx`.
+ *
+ * The legacy views were written against a dialog whose confirm button was destructive by default
+ * and which they close themselves, so this layer keeps those two defaults (`confirmVariant`
+ * "destructive", no close on success). Everything else (the inline error, the busy guard against
+ * outside clicks) is the new component's. Deleted in chunk 11, as each area chunk moves its
+ * confirmations onto `intent`.
  */
+export type ConfirmDialogProps = BaseProps;
+
 export function ConfirmDialog({
-  open,
-  onOpenChange,
-  title,
-  description,
-  confirmLabel = "Confirm",
-  cancelLabel = "Cancel",
-  confirmVariant = "destructive",
-  loading = false,
-  confirmDisabled = false,
-  children,
-  onConfirm,
+  confirmVariant,
+  intent,
+  closeOnSuccess = false,
+  ...props
 }: ConfirmDialogProps): React.ReactElement {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="max-w-md"
-        role="alertdialog"
-        onEscapeKeyDown={(e) => loading && e.preventDefault()}
-      >
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
-        {description || children ? (
-          <DialogBody className="space-y-4">
-            {description ? (
-              <DialogDescription>{description}</DialogDescription>
-            ) : null}
-            {children}
-          </DialogBody>
-        ) : null}
-        <DialogActionBar>
-          <DialogClose asChild>
-            <Button variant="outline" disabled={loading}>
-              {cancelLabel}
-            </Button>
-          </DialogClose>
-          <Button
-            variant={confirmVariant}
-            loading={loading}
-            disabled={confirmDisabled || loading}
-            onClick={() => void onConfirm()}
-          >
-            {confirmLabel}
-          </Button>
-        </DialogActionBar>
-      </DialogContent>
-    </Dialog>
+    <BaseConfirmDialog
+      {...props}
+      intent={intent}
+      confirmVariant={confirmVariant ?? (intent ? undefined : "destructive")}
+      closeOnSuccess={closeOnSuccess}
+    />
   );
 }
