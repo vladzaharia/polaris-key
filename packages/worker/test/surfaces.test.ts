@@ -291,7 +291,6 @@ describe("worker surfaces", () => {
         sessionLicense: "https://key.plrs.im/djdl/identity/session/license",
         authStart: "https://key.plrs.im/djdl/identity/auth/start",
         authCallback: "https://key.plrs.im/djdl/identity/auth/callback",
-        authPoll: "https://key.plrs.im/djdl/identity/auth/poll",
         authLogout: "https://key.plrs.im/djdl/identity/auth/logout",
         authDeviceStart: "https://key.plrs.im/djdl/identity/auth/device/start",
         authDeviceEntry: "https://key.plrs.im/djdl/identity/auth/device",
@@ -309,6 +308,10 @@ describe("worker surfaces", () => {
     // retired alias stops being advertised first.
     expect(
       (identity.endpoints as Record<string, unknown>).authLogin,
+    ).toBeUndefined();
+    // I-01: `/auth/poll` still answers but is no longer advertised (I-13 retires the route).
+    expect(
+      (identity.endpoints as Record<string, unknown>).authPoll,
     ).toBeUndefined();
 
     // `modules` is gone outright — pre-launch, no compatibility alias (wire v3 §9).

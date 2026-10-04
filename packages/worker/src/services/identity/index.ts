@@ -57,6 +57,10 @@ export const identityService: ServiceDescriptor = {
    *
    * `/auth/login` is not advertised, and no longer exists: §R1 removes it as a redundant alias
    * of `/auth/start`.
+   *
+   * `/auth/poll` is not advertised either (I-01, S-16 §5.3): no SDK reads it, and it completes
+   * only device-bound flows that nothing starts any more. The route keeps answering until I-13
+   * replaces it with the native redirect token route.
    */
   discoveryFragment: async ({ db, product, base }: DiscoveryContext) => {
     const row = await db.first<{ product: string }>(
@@ -71,7 +75,6 @@ export const identityService: ServiceDescriptor = {
         sessionLicense: `${base}/identity/session/license`,
         authStart: `${base}/identity/auth/start`,
         authCallback: `${base}/identity/auth/callback`,
-        authPoll: `${base}/identity/auth/poll`,
         authLogout: `${base}/identity/auth/logout`,
         authDeviceStart: `${base}/identity/auth/device/start`,
         authDeviceEntry: `${base}/identity/auth/device`,

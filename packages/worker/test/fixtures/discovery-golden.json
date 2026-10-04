@@ -200,7 +200,6 @@
           "sessionLicense": "https://key.plrs.im/full/identity/session/license",
           "authStart": "https://key.plrs.im/full/identity/auth/start",
           "authCallback": "https://key.plrs.im/full/identity/auth/callback",
-          "authPoll": "https://key.plrs.im/full/identity/auth/poll",
           "authLogout": "https://key.plrs.im/full/identity/auth/logout",
           "authDeviceStart": "https://key.plrs.im/full/identity/auth/device/start",
           "authDeviceEntry": "https://key.plrs.im/full/identity/auth/device",
