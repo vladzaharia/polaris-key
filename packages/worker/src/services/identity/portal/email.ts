@@ -213,7 +213,7 @@ export async function sendNotice(
  *
  * A failed send is caught per recipient and never fails the change it reports (a device is
  * already removed, an account is about to be erased); the others still go out. Returns how many
- * were sent. The log line carries counts only, never an address.
+ * were sent.
  */
 export async function sendSecurityNotice(
   env: Env,
@@ -230,13 +230,9 @@ export async function sendSecurityNotice(
       await sendNotice(env, to, message);
       sent += 1;
     } catch {
-      // counted below
+      // Swallowed on purpose: the change already happened (or is about to); the worker has no
+      // console logging (test/attack/R12-secrets.test.ts), so the shortfall is the return value.
     }
-  }
-  if (sent < recipients.length) {
-    console.warn(
-      `security notice: ${recipients.length - sent} of ${recipients.length} sends failed`,
-    );
   }
   return sent;
 }

@@ -3845,8 +3845,8 @@ PORTAL.md G23). Assets: the account (A6) and the shared sender's reputation and 
   to every address in `portal_account_emails` with `verified_at > 0`, one message each, so no
   recipient learns the others. Someone who has taken over one inbox, or a live session, cannot
   make a change the account's other addresses do not hear about. Account deletion does the same,
-  reading the recipients before the rows are erased. A failed send is caught per recipient and
-  logged as a count (no address), so mail trouble never fails the removal or deletion it reports.
+  reading the recipients before the rows are erased. A failed send is caught per recipient (the
+  worker has no console logging; the helper returns how many went out), so mail trouble never fails the removal or deletion it reports.
   Residual: the session's own address is also mailed, and after an IdP sign-in that address may
   not be a verified `portal_account_emails` row (a brand-new account may have none yet), so an
   unverified address can receive a security notice, as before this change.
