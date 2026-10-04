@@ -625,6 +625,33 @@ describe("confirmation levels", () => {
     ).toBe("value_not_allowed");
   });
 
+  it("every IAP availability write is typed, an empty territory list included (owner decision (c))", () => {
+    const p = "/v1/inAppPurchaseAvailabilities";
+    const avail = (territories: string[]) => ({
+      data: {
+        type: "inAppPurchaseAvailabilities",
+        attributes: { availableInNewTerritories: false },
+        relationships: {
+          inAppPurchase: { data: { type: "inAppPurchases", id: "I1" } },
+          availableTerritories: {
+            data: territories.map((id) => ({ type: "territories", id })),
+          },
+        },
+      },
+    });
+    for (const list of [["USA", "GBR"], []]) {
+      expect(denial("POST", p, avail(list))).toBe(
+        "typed_confirmation_required",
+      );
+      expect(denial("POST", p, avail(list), { initial: true })).toBe(
+        "typed_confirmation_required",
+      );
+      expect(
+        denial("POST", p, avail(list), { typedConfirmation: true }),
+      ).toBeNull();
+    }
+  });
+
   it("app availability is a first-time set only", () => {
     const avail = {
       data: {

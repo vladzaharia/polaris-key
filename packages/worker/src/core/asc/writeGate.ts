@@ -618,8 +618,10 @@ export const ASC_WRITE_ALLOW: readonly AscAllowRule[] = [
       inAppPurchase: "inAppPurchases",
       availableTerritories: "territories",
     },
-    confirm: "plain",
-    why: "where an IAP is sold",
+    // Every availability write is typed (owner decision (c), 2026-10-04): it decides where the IAP
+    // is sold, and an empty territory list takes it off sale everywhere.
+    confirm: "typed",
+    why: "where an IAP is sold (typed: an empty list takes it off sale)",
   },
   // ── P5-02's webhook (unchanged) ──
   {

@@ -53,6 +53,7 @@ const SPEC: Record<0 | 1 | 2 | 3, ActionId[]> = {
     "portalAccount.delete",
     "connector.releaseVersion",
     "connector.phasedComplete",
+    "connector.iapAvailability",
   ],
 };
 
@@ -100,6 +101,7 @@ describe("destructive-action levels (ADMIN.md §5.2)", () => {
     expect(confirmFor("portalAccount.delete").typed).toBe("delete");
     expect(confirmFor("connector.releaseVersion").typed).toBe("appName");
     expect(confirmFor("connector.phasedComplete").typed).toBe("appName");
+    expect(confirmFor("connector.iapAvailability").typed).toBe("appName");
   });
 
   it("visual weight follows severity: pause is not danger, halt is (MTX-10)", () => {

@@ -613,7 +613,10 @@ describe("A-17e: price (first set plain, change typed) and availability", () => 
       customerPrice: "4.99",
     });
     w.fake.requests.length = 0;
-    const r = await post(w, "iap/availability", { productId: FULL });
+    const r = await post(w, "iap/availability", {
+      productId: FULL,
+      confirm: "djdl",
+    });
     expect(r.status).toBe(200);
     expect(writes(w)).toEqual([
       {
@@ -641,8 +644,31 @@ describe("A-17e: price (first set plain, change typed) and availability", () => 
       "READY_TO_SUBMIT",
     );
     w.fake.requests.length = 0;
-    const again = await post(w, "iap/availability", { productId: FULL });
+    const again = await post(w, "iap/availability", {
+      productId: FULL,
+      confirm: "djdl",
+    });
     expect(again.json.outcome).toBe("existing");
+    expect(writes(w)).toEqual([]);
+  });
+
+  it("availability is typed (owner decision (c)): no confirm is refused before Apple, a wrong name sends nothing", async () => {
+    const w = await world();
+    await created(w);
+    w.fake.requests.length = 0;
+    const bare = await post(w, "iap/availability", { productId: FULL });
+    expect(bare.status).toBe(422);
+    expect(bare.json).toMatchObject({
+      reason: "confirmation_required",
+      fields: ["confirm"],
+    });
+    expect(w.fake.requests).toEqual([]);
+    const wrong = await post(w, "iap/availability", {
+      productId: FULL,
+      confirm: "DJDL!",
+    });
+    expect(wrong.status).toBe(422);
+    expect(wrong.json.reason).toBe("confirmation_mismatch");
     expect(writes(w)).toEqual([]);
   });
 });

@@ -368,7 +368,8 @@ There are two scopes, and they map onto the existing layers.
   - submit for App Store review;
   - release;
   - an IAP price change;
-  - completing a phased release (added at integration, see the last Corrections section);
+  - completing a phased release and every IAP availability write (added at integration, see the
+    last Corrections section);
   - enabling a capability on a bundle id that another product's app uses.
 
   Everything else uses a plain confirm.
@@ -1091,3 +1092,10 @@ way. Where they depart from the sections above, the code is the fact:
   as Apple reports it now (`checkTypedConfirmation`, 422 `confirmation_mismatch`) and only then
   asserts it. Pause and resume stay plain. The console's **Release to everyone…** is L3
   (`connector.phasedComplete`) and its dialog asks for the app's name.
+- **Every In-App Purchase availability write is typed** (owner decision, 2026-10-04): availability
+  decides where an IAP is sold, and an empty territory list takes it off sale everywhere. The
+  gate's `POST /v1/inAppPurchaseAvailabilities` rule is `confirm: "typed"` (the first availability
+  included; `initial` does not satisfy it). A-17e's `iap/availability` requires `confirm`, checks
+  it the same way before the ledger step, and asserts `typedConfirmation` on the write. The console
+  has no IAP surface yet (A-17g); its action `connector.iapAvailability` is registered as L3 with
+  the typed app name, so A-17g's dialog inherits the rule.

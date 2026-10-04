@@ -110,9 +110,11 @@ export const ACTION_LEVELS = {
   // A-17a (owner decision, 2026-10-04): releasing a held App Store version is typed. The Worker
   // compares `confirm` with the app's name in App Store Connect.
   "connector.releaseVersion": 3,
-  // Owner decision (b), 2026-10-04: completing a phased release releases the version to every
-  // user, so it is a release: typed like one; the Worker compares.
+  // Owner decisions (b) and (c), 2026-10-04: completing a phased release releases the version to
+  // every user, so it is a release; and every In-App Purchase availability change decides where it
+  // is sold (an empty list takes it off sale). Both are typed like a release; the Worker compares.
   "connector.phasedComplete": 3,
+  "connector.iapAvailability": 3,
 
   // Release · channels and yanks (ADMIN.md §6.3), levelled by §5.2's definitions: an unyank and a
   // pack floor change what devices are offered and can be undone (L1); lowering or clearing a
@@ -148,6 +150,7 @@ const TYPED: Partial<Record<ActionId, ActionPolicy["typed"]>> = {
   "portalAccount.delete": "delete",
   "connector.releaseVersion": "appName",
   "connector.phasedComplete": "appName",
+  "connector.iapAvailability": "appName",
 };
 
 const INTENT: Record<ActionLevel, ConfirmIntent> = {

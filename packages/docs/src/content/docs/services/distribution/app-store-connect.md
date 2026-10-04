@@ -352,7 +352,7 @@ priced or made available (`unmapped_product`): what exists at Apple follows your
 | `iap/create`       | `{ productId, referenceName, reviewNote?, familySharable?, localizations }` | `POST /v2/inAppPurchases` (`NON_CONSUMABLE`), a version, then `POST /v2/inAppPurchaseLocalizations` per locale   |
 | `iap/localization` | `{ productId, locale, name, description? }`                                 | `POST` or `PATCH /v2/inAppPurchaseLocalizations` on the purchase's editable version                              |
 | `iap/price`        | `{ productId, baseTerritory, pricePointId` or `customerPrice, confirm? }`   | `POST /v1/inAppPurchasePriceSchedules`: one price in the base territory, effective now; Apple derives the others |
-| `iap/availability` | `{ productId }`                                                             | `POST /v1/inAppPurchaseAvailabilities`: every territory, and new ones (only while none is set)                   |
+| `iap/availability` | `{ productId, confirm }`                                                    | `POST /v1/inAppPurchaseAvailabilities`: every territory, and new ones (only while none is set)                   |
 
 `localizations` lists one to ten `{ locale, name, description? }` (display name up to 35
 characters, description up to 55). The same `Idempotency-Key` rules as Distribute apply: an
@@ -364,6 +364,10 @@ not let a product id change type or be reused.
 any other price needs `confirm` set to the app's name exactly as App Store Connect shows it
 (otherwise 422 `confirmation_required` or `confirmation_mismatch`, nothing sent), because once a
 price increase takes effect it cannot be reverted. Setting the same price again sends nothing.
+
+**Availability is typed.** Every `iap/availability` request needs `confirm` set to the app's name,
+checked the same way: availability decides where the purchase is sold, and a write with no
+territories would take it off sale everywhere.
 
 **Submitting.** Pass the ids from `distribute/submission-items` to `distribute/submit` as
 `inAppPurchaseVersionIds` and `backgroundAssetVersionIds`. Each is re-read and must be the pinned

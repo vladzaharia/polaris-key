@@ -23,7 +23,8 @@
  *   POST iap/localization  { productId, locale, name, description? }   add or edit one locale
  *   POST iap/price         { productId, baseTerritory, pricePointId | customerPrice, confirm? }
  *                          the first price, or a price change: TYPED (`confirm` = the app's name)
- *   POST iap/availability  { productId }   every territory, and new ones (only while none is set)
+ *   POST iap/availability  { productId, confirm }   every territory, and new ones (only while none
+ *                          is set): TYPED (`confirm` = the app's name), as every availability write
  *
  * The write discipline is S-14 §7's, through A-17a's substrate and A-17d's flow plumbing:
  *
@@ -908,12 +909,32 @@ const price: ConnectorControl = distributeControl(async (f, body) => {
   };
 });
 
+/** What the typed confirmation of `iap/availability` names in its refusal. */
+const AVAILABILITY_ACTION = "change where the In-App Purchase is sold";
+
 /** Territories an availability names at most (the gate's linkage bound). */
 const MAX_TERRITORIES = 200;
 
 const availability: ConnectorControl = distributeControl(async (f, body) => {
+  // Every availability write is typed (owner decision (c), 2026-10-04): it decides where the IAP
+  // is sold, and an empty territory list would take it off sale. `confirm` is the app's name,
+  // compared with Apple's before `typedConfirmation` is asserted to the gate.
+  if (typeof body.confirm !== "string" || body.confirm.trim() === "")
+    stop(
+      422,
+      "confirmation_required",
+      `type the app's name in confirm to ${AVAILABILITY_ACTION}`,
+      ["confirm"],
+    );
   const { productId } = await mappedProductId(f, body.productId);
   const iap = await requireIap(f, productId);
+  const unconfirmed = await checkTypedConfirmation(
+    f.run,
+    f.setup,
+    body.confirm,
+    AVAILABILITY_ACTION,
+  );
+  if (unconfirmed) return unconfirmed;
   const path = ascPathV(
     "v2",
     "inAppPurchases",
@@ -938,21 +959,28 @@ const availability: ConnectorControl = distributeControl(async (f, body) => {
           "App Store Connect listed no usable territories",
         );
       return single(
-        await f.run.client.post(ascPath("inAppPurchaseAvailabilities"), {
-          data: {
-            type: "inAppPurchaseAvailabilities",
-            attributes: { availableInNewTerritories: true },
-            relationships: {
-              inAppPurchase: { data: { type: "inAppPurchases", id: iap.id } },
-              availableTerritories: {
-                data: territories.map((t) => ({
-                  type: "territories",
-                  id: t.id,
-                })),
+        await f.run.client.post(
+          ascPath("inAppPurchaseAvailabilities"),
+          {
+            data: {
+              type: "inAppPurchaseAvailabilities",
+              attributes: { availableInNewTerritories: true },
+              relationships: {
+                inAppPurchase: {
+                  data: { type: "inAppPurchases", id: iap.id },
+                },
+                availableTerritories: {
+                  data: territories.map((t) => ({
+                    type: "territories",
+                    id: t.id,
+                  })),
+                },
               },
             },
           },
-        }),
+          // Asserted only after the comparison above; the gate refuses the write without it.
+          { typedConfirmation: true },
+        ),
       );
     },
     reread: async (id) =>
