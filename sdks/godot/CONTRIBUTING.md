@@ -166,7 +166,10 @@ sdks/godot/
                               one scene each (`.tscn` + view script) with a headless controller
                               (PKeyGateController, PKeyActivationController, …)
     ui/copy/pkey_ui_copy.gd   PKeyUiCopy: every string, English defaults, through tr()
-    ui/theme/pkey_theme.tres  the default Theme (written by tools/gen_theme.gd)
+    ui/theme/                 PKeyUiTheme (pkey_ui_theme.gd): the neutral look (pkey_theme.tres,
+                              the stock theme every scene references) and the opt-in Polaris Key
+                              theme (pkey_brand_{dark,light}.tres), written by tools/gen_theme.gd;
+                              PKeyBrand and PKeyBrandMarks (generated); fonts/ holds Rubik (OFL 1.1)
   tests/
     runner.gd                 PKeyTestRunner
     support/test_context.gd   PKeyTestContext: check() and info()
@@ -213,8 +216,8 @@ sdks/godot/
     fetch_godot.sh            CI: download and hash-check the official editor (Linux, macOS,
                               Windows) and the Linux template
     godot.sha512              upstream SHA-512 pins for those downloads
-    gen_theme.gd              writes ui/theme/pkey_theme.tres (`--script`, editor only)
-    ui_screenshots.gd         one PNG per pinned UI state, for review (needs a display)
+    gen_theme.gd              writes the ui/theme/*.tres themes (`--script`, editor only)
+    ui_screenshots.gd         PNGs of every scene per look and size, for review (needs a display)
 ```
 
 ## Running the tests

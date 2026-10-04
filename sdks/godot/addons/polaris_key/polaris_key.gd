@@ -93,6 +93,7 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	if not r.ok:
 		return r
 	_stop_timer()
+	PKeyUiTheme.apply_options(opts)
 	core = r.detail
 	core.store_error.connect(_on_store_error)
 	config.attach(core)

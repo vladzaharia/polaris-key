@@ -62,6 +62,7 @@ func _build() -> void:
 	box.add_child(_qr)
 	_expires = label(box, "Expires", "PKeyMuted")
 	var links := hbox(box, "Links")
+	links.alignment = BoxContainer.ALIGNMENT_CENTER
 	_open = button(links, "OpenBrowser", _on_open)
 	_copy = button(links, "CopyLink", _on_copy)
 	_confirm_body = label(box, "ConfirmBody")
@@ -70,6 +71,7 @@ func _build() -> void:
 	_attach.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	box.add_child(_attach)
 	var actions := hbox(box, "Actions")
+	actions.alignment = BoxContainer.ALIGNMENT_CENTER
 	_continue = button(actions, "Continue", _on_continue, "PKeyPrimary")
 	_try_again = button(actions, "TryAgain", begin, "PKeyPrimary")
 	_cancel_btn = button(actions, "Cancel", _on_cancel)
