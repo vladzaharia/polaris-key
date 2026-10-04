@@ -62,6 +62,35 @@ const ROUTES: Record<string, unknown> = {
   "/manage/api/products/djdl/license/tiers": { tiers: [] },
   "/manage/api/products/djdl/config/profiles": { profiles: [] },
   "/manage/api/products/djdl/release/releases": { releases: [] },
+  "/manage/api/platform/version": {
+    releaseTag: "v0.8.6",
+    gitSha: "0123456789abcdef0123456789abcdef01234567",
+    cloudflare: null,
+    protocolVersion: 4,
+    discoveryVersion: 2,
+    latestMigration: "0054_b_platform_audit.sql",
+    environment: "staging",
+  },
+  "/manage/api/platform/deployment": {
+    current: {
+      releaseTag: "v0.8.6",
+      gitSha: "0123456789abcdef0123456789abcdef01234567",
+      cloudflare: null,
+      protocolVersion: 4,
+      discoveryVersion: 2,
+      latestMigration: "0054_b_platform_audit.sql",
+      environment: "staging",
+    },
+    deploys: { items: [], nextCursor: null },
+    migrations: {
+      latest: "0054_b_platform_audit.sql",
+      applied: null,
+      upToDate: null,
+    },
+    indexes: { missing: [] },
+    bindings: { DB: true, HOT: true },
+  },
+  "/manage/api/platform/activity": { items: [], nextCursor: null },
 };
 
 let server: PreviewServer;
@@ -190,6 +219,28 @@ describe("overlays under the Worker's CSP", () => {
     const v = await violations(page);
     report["product switcher"] = { violations: v.length, locked: false };
     expect(v).toEqual([]);
+    await page.context().close();
+  });
+
+  it("Home, Products, the new-product wizard and Deployment load with no violations", async () => {
+    const page = await open({ width: 1440, height: 900 });
+    await violations(page);
+    for (const [hash, title] of [
+      ["#/", "Home"],
+      ["#/products", "Products"],
+      ["#/products/new?via=manual&step=basics", "New product"],
+      ["#/platform", "Deployment"],
+    ] as const) {
+      await page.evaluate((h) => {
+        location.hash = h;
+      }, hash);
+      await page.locator("[data-page-title]", { hasText: title }).waitFor();
+      await page.waitForTimeout(200);
+      expect(await violations(page), `${hash}: CSP violations`).toEqual([]);
+    }
+    expect(await page.evaluate(() => location.hash)).toBe(
+      "#/platform/deployment",
+    );
     await page.context().close();
   });
 

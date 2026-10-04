@@ -837,9 +837,12 @@ describe("the request Worker cannot encode", () => {
       );
       expect(consumer).toContain(`bucket_name = "polaris-key-blobs-${env}"`);
     }
-    // Off everywhere until an operator turns it on; no consumer in the request Worker.
-    expect(main.match(/^LAZY_DELTAS = "off"$/gm)).toHaveLength(3);
-    expect(consumer.match(/^LAZY_DELTAS = "off"$/gm)).toHaveLength(3);
+    // A-13: the console decides everywhere (default off, never `on` at deploy time); no consumer
+    // in the request Worker.
+    expect(main.match(/^LAZY_DELTAS = "runtime"$/gm)).toHaveLength(3);
+    expect(consumer.match(/^LAZY_DELTAS = "runtime"$/gm)).toHaveLength(3);
+    expect(main).not.toMatch(/^LAZY_DELTAS = "on"$/m);
+    expect(consumer).not.toMatch(/^LAZY_DELTAS = "on"$/m);
     expect(main).not.toMatch(/queues\.consumers/);
     expect(consumer).toMatch(/^main = "src\/deltasEntry\.ts"$/m);
     expect(consumer).toMatch(/^cpu_ms = 60000$/m);

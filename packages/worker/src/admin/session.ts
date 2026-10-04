@@ -46,8 +46,10 @@ export const ADMIN_COOKIE = "__Host-pkey_admin";
 /** The CSRF header the SPA must echo on every mutation (double-submit). */
 export const CSRF_HEADER = "X-PKey-CSRF";
 
-/** Admin session lifetime (seconds). Short — re-auth is one redirect away. */
-const SESSION_TTL_SECONDS = 8 * 60 * 60;
+/** Admin session lifetime (seconds). Short — re-auth is one redirect away. Code, never a
+ *  runtime setting (A-13: a longer session would widen a session compromise). */
+export const ADMIN_SESSION_TTL_SECONDS = 8 * 60 * 60;
+const SESSION_TTL_SECONDS = ADMIN_SESSION_TTL_SECONDS;
 
 /** The verified, server-trusted session claims. */
 export interface AdminSession {

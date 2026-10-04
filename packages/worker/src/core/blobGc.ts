@@ -125,6 +125,7 @@ import { blobKey, parseKey } from "./blobs.js";
 import type { CatalogRelease, ReleaseCatalog, ServiceHooks } from "./hooks.js";
 import { adminJson, adminNotFound, err } from "./adminApi.js";
 import { ErrorCode } from "./errors.js";
+import { platformSettings } from "./platformSettings.js";
 
 // ── Settings ─────────────────────────────────────────────────────────────────────────────────
 
@@ -162,10 +163,14 @@ export interface BlobGcSettings {
 }
 
 /**
- * The deployment's settings: `BLOB_GC_MODE` (`on`, the default, or `off`) and `BLOB_GC_GRACE_DAYS`
+ * The settings as given: `BLOB_GC_MODE` (`on`, the default, or `off`) and `BLOB_GC_GRACE_DAYS`
  * (default 30, at least 1). An unparseable value falls back to the default, never to "no grace".
+ * Callers that act on the deployment use `effectiveBlobGcSettings`, which resolves both through
+ * the platform settings store first.
  */
-export function blobGcSettings(env: Env): BlobGcSettings {
+export function blobGcSettings(
+  env: Pick<Env, "BLOB_GC_MODE" | "BLOB_GC_GRACE_DAYS">,
+): BlobGcSettings {
   const mode = env.BLOB_GC_MODE;
   const days = Number(env.BLOB_GC_GRACE_DAYS);
   const grace =
@@ -173,6 +178,22 @@ export function blobGcSettings(env: Env): BlobGcSettings {
       ? Math.max(MIN_GC_GRACE_SECONDS, Math.floor(days * 24 * 60 * 60))
       : DEFAULT_GC_GRACE_SECONDS;
   return { enabled: mode !== "off", graceSeconds: grace };
+}
+
+/**
+ * The deployment's effective settings (A-13): both values resolved through the platform settings
+ * store (`core/platformSettings.ts`), so a console value applies unless the `[vars]` value of
+ * `BLOB_GC_MODE` is a hard `off`, and an unreadable store stops the collector rather than run it.
+ */
+export async function effectiveBlobGcSettings(
+  env: Env,
+  db: Db,
+): Promise<BlobGcSettings> {
+  const s = await platformSettings(env, db);
+  return blobGcSettings({
+    BLOB_GC_MODE: String(s.BLOB_GC_MODE.value),
+    BLOB_GC_GRACE_DAYS: String(s.BLOB_GC_GRACE_DAYS.value),
+  });
 }
 
 // ── Liveness ─────────────────────────────────────────────────────────────────────────────────
@@ -1225,7 +1246,7 @@ export async function handleBlobGcAdmin(
   if (sub === "bundles")
     return adminJson(await bundleLiveness(db, slug, hooks));
   if (sub !== undefined) return adminNotFound();
-  const settings = blobGcSettings(env);
+  const settings = await effectiveBlobGcSettings(env, db);
   const plan = await planProductGc({
     db,
     product: slug,

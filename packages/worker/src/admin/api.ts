@@ -6,8 +6,9 @@
  *   /api/me                                  — the signed-in identity + CSRF + grants
  *   /api/products                            — PLATFORM registry CRUD (platform admins only)
  *   /api/products/<slug>/...                 — per-product admin (platform admins only)
- *   /api/platform/{version,deployment,activity} — instance-wide, product-less (platform admins
- *                                              only; A-11/A-12, `handlers/platform.ts`)
+ *   /api/platform/{version,deployment,activity,operations} — instance-wide, product-less
+ *                                              (platform admins only; A-11/A-12/A-14,
+ *                                              `handlers/platform.ts`)
  *   /api/platform/store-connections/...      — team-level store connections (platform admins
  *                                              only; A-16, `handlers/platformStoreConnections.ts`)
  *
@@ -325,7 +326,8 @@ export async function handleAdminApi(
       rest.slice(1),
       now,
     );
-  if (head === "platform") return handlePlatform(req, env, db, session, rest);
+  if (head === "platform")
+    return handlePlatform(req, env, db, session, rest, now);
   if (head === "logout") {
     // R1-03: logout clears the session, so it is a mutation and must go through the CSRF
     // check above — which `isMutation` only applies to non-GET methods. As a GET it was a

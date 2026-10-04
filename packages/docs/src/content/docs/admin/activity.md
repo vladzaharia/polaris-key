@@ -99,8 +99,10 @@ names the product whose ref it dropped), and it carries storage keys, never pers
 Actions on the platform as a whole, which belong to no product, are recorded in a separate
 table, `platform_audit` (A-12). The KEK re-seal sweep writes one row there per run, with the
 remaining-row counts before and after as JSON; it still writes its per-product `kek.reseal` row
-into each product it touched, so a product's own log keeps showing it. The runtime platform
-settings (A-13) will write there too. Each row has the same actor, action, target and summary
+into each product it touched, so a product's own log keeps showing it. Every change to a
+[runtime platform setting](/docs/admin/platform-settings/) writes a `platform.setting.set` or
+`platform.setting.revert` row there too, with the stored and effective value before and after.
+Each row has the same actor, action, target and summary
 fields as `audit`, plus `before` and `after` values, which never hold a secret. The same
 **180-day** sweep prunes it.
 

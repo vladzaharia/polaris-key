@@ -72,7 +72,6 @@ import {
   PERMANENT_REFUSALS,
   baseRefusal,
   lazyDescriptor,
-  maxBytesFrom,
   maxWorthwhileFrame,
   shouldQueue,
   worthKeeping,
@@ -94,6 +93,7 @@ import {
   recordRefused,
   type PairKey,
 } from "./store.js";
+import { platformSetting } from "../../../../core/platformSettings.js";
 
 /** Pair jobs one R2 event fans out into, at most. */
 export const EVENT_FANOUT = 3;
@@ -243,7 +243,7 @@ async function runPair(
     await pairDemand(db, m.product, m.deliverable, m.from, m.to, since),
     await payloadDevices(db, m.product, m.deliverable, m.from, since),
   );
-  const maxBytes = maxBytesFrom(env.LAZY_DELTA_MAX_BYTES);
+  const maxBytes = await platformSetting(env, db, "LAZY_DELTA_MAX_BYTES");
   const verdict = shouldQueue({
     from: {
       sha256: m.from,
@@ -364,7 +364,7 @@ async function runBlobEvent(
   deps: DeltaConsumerDeps,
 ): Promise<DeltaOutcome> {
   const { env, db, now, queue } = deps;
-  if (!lazyDeltasOn(env)) return ack("disabled");
+  if (!(await lazyDeltasOn(env, db))) return ack("disabled");
   // Most objects under the payload prefixes are file blobs and indexes. A `full` object of at
   // most 1 MiB can never be beaten by 1 MiB (`MIN_SAVING_BYTES`), so a small object is not
   // worth a lookup, let alone the retries that wait for a record's ingest.

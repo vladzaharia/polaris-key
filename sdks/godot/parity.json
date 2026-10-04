@@ -245,9 +245,7 @@
       "note": "P4-16: Godot has no ML runtime; a game that adds one registers its own handler."
     },
     "packs.transport.apple": {
-      "status": "planned",
-      "wp": "P5-08",
-      "note": "iOS goes through P5-05's plugin: PKeyApple (native/pkey_apple.gd) exposes AssetPackManager (ensure, status, checkForUpdates, remove, url(for:), pack_progress / pack_ready / pack_failed), Unsupported below iOS 26.4 (version) and in builds without the extension (outlet); P5-08 wires it as the apple-ba transport. No work package owns a macOS binding (program README §9).",
+      "status": "implemented",
       "except": [
         {
           "runtime": "linux",
@@ -265,11 +263,11 @@
           "runtime": "web",
           "reason": "runtime"
         }
-      ]
+      ],
+      "note": "P5-08: packs/transport_apple_ba.gd (PKeyPackAppleBaTransport) over P5-05's PKeyApple: the level's asset pack <pack>-c<contentApi> (dots to hyphens), files under pkey/<asset pack>/ resolved with url(for:) every call and never persisted, ensure_packs with progress forwarded; the engine verifies the marker and the payload or treeDigest against the signed record before activation, floats a later release at boot, and plans a carried pack only through the platform (plan-transport-unsupported while it is unavailable). Stub-proven in suite_transports against the fake PolarisKeyApple native; the TestFlight device run is the owner's (P5-08 owner checklist). macOS answers Unsupported (runtime): no work package owns a macOS binding (P5-05 Out)."
     },
     "packs.transport.play": {
-      "status": "planned",
-      "wp": "P5-08",
+      "status": "implemented",
       "except": [
         {
           "runtime": "linux",
@@ -292,11 +290,10 @@
           "reason": "runtime"
         }
       ],
-      "note": "P5-06's PKeyAndroid carries the Play Asset Delivery client (pack_status, pack_fetch, pack_location with the absolute .pck path re-read every launch, pack_remove, pack_cancel, pack_confirm for WAITING_FOR_WIFI and REQUIRES_USER_CONFIRMATION; one pack per call; pack_progress from the listener), Unsupported (outlet) on a direct build; P5-08 generates the asset-pack modules and wires it as the play-pad transport."
+      "note": "P5-08: packs/transport_play_pad.gd (PKeyPackPlayPadTransport) over P5-06's PKeyAndroid: the Play asset pack named by the pack id with dots and hyphens as underscores, its assetsPath re-read every launch (pkey/ or a pkey#tcf_* directory), pack_fetch to COMPLETED, a host confirm_hook before Play's dialog for WAITING_FOR_WIFI / REQUIRES_USER_CONFIRMATION, Unsupported (outlet) on the direct build; a delivered copy must be the pinned release (Play asset packs ship with the bundle). Stub-proven in suite_transports against the fake PolarisKeyAndroid plugin; the internal-track device run is the owner's (P5-08 owner checklist)."
     },
     "packs.transport.steam": {
-      "status": "planned",
-      "wp": "P5-08",
+      "status": "implemented",
       "except": [
         {
           "runtime": "android",
@@ -310,7 +307,8 @@
           "runtime": "web",
           "reason": "runtime"
         }
-      ]
+      ],
+      "note": "P5-08: packs/transport_steam.gd (PKeyPackSteamTransport) over GodotSteam when present: <install dir>/pkey_packs/<pack id>/ read only (never written), DLC packs gated on isDLCInstalled and installed with installDLC / dlc_installed, build id and beta branch for diagnostics, Unsupported (dependency) without GodotSteam; a content-only build's later release floats at boot. Stub-proven in suite_transports against a fake GodotSteam; the test-branch device run is the owner's (P5-08 owner checklist)."
     },
     "packs.transport.msix": {
       "status": "planned",

@@ -29,7 +29,7 @@ import type {
   FeedPackSets,
 } from "@polaris-key/protocol/update";
 import type { CatalogLazyDelta, ServiceHooks } from "../../core/hooks.js";
-import type { Env } from "../../core/platform.js";
+import type { Db, Env } from "../../core/platform.js";
 import { lazyDeltasOn } from "../../core/deltaDemand.js";
 
 /** What the composer read for a channel's menu: the candidate set, and each target's records.
@@ -72,15 +72,17 @@ export function rankLazyDeltas(
 
 /**
  * Read a channel's menu candidates (the set the seq hash covers; no device counts). Null (no menu)
- * while the deployment's `LAZY_DELTAS` is off — checked before any read — or when Release lists
+ * while the deployment's `LAZY_DELTAS` is off — checked before any read but the platform settings
+ * store's (cached, and skipped when the `[vars]` value is a hard `off`) — or when Release lists
  * nothing for the channel's records.
  */
 export async function composeFeedDeltas(
-  ctx: { env?: Pick<Env, "LAZY_DELTAS">; hooks: ServiceHooks },
+  ctx: { env?: Pick<Env, "LAZY_DELTAS">; db: Db; hooks: ServiceHooks },
   apps: readonly { platform: string; appReleaseId: string }[],
   packSets: FeedPackSets | null,
 ): Promise<ComposedFeedDeltas | null> {
-  if (!ctx.env || !lazyDeltasOn(ctx.env) || apps.length === 0) return null;
+  if (!ctx.env || apps.length === 0 || !(await lazyDeltasOn(ctx.env, ctx.db)))
+    return null;
   const catalog = ctx.hooks.releaseCatalog();
   if (!catalog?.lazyDeltas) return null;
   const pinnedBy: Record<string, string[]> = {};

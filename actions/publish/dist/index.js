@@ -3109,17 +3109,17 @@ var require_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    function visit_(key, node, visitor, path13) {
-      const ctrl = callVisitor(key, node, visitor, path13);
+    function visit_(key, node, visitor, path17) {
+      const ctrl = callVisitor(key, node, visitor, path17);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path13, ctrl);
-        return visit_(key, ctrl, visitor, path13);
+        replaceNode(key, path17, ctrl);
+        return visit_(key, ctrl, visitor, path17);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path13 = Object.freeze(path13.concat(node));
+          path17 = Object.freeze(path17.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = visit_(i, node.items[i], visitor, path13);
+            const ci = visit_(i, node.items[i], visitor, path17);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -3130,13 +3130,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path13 = Object.freeze(path13.concat(node));
-          const ck = visit_("key", node.key, visitor, path13);
+          path17 = Object.freeze(path17.concat(node));
+          const ck = visit_("key", node.key, visitor, path17);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = visit_("value", node.value, visitor, path13);
+          const cv = visit_("value", node.value, visitor, path17);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -3157,17 +3157,17 @@ var require_visit = __commonJS({
     visitAsync.BREAK = BREAK;
     visitAsync.SKIP = SKIP;
     visitAsync.REMOVE = REMOVE;
-    async function visitAsync_(key, node, visitor, path13) {
-      const ctrl = await callVisitor(key, node, visitor, path13);
+    async function visitAsync_(key, node, visitor, path17) {
+      const ctrl = await callVisitor(key, node, visitor, path17);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path13, ctrl);
-        return visitAsync_(key, ctrl, visitor, path13);
+        replaceNode(key, path17, ctrl);
+        return visitAsync_(key, ctrl, visitor, path17);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path13 = Object.freeze(path13.concat(node));
+          path17 = Object.freeze(path17.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = await visitAsync_(i, node.items[i], visitor, path13);
+            const ci = await visitAsync_(i, node.items[i], visitor, path17);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -3178,13 +3178,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path13 = Object.freeze(path13.concat(node));
-          const ck = await visitAsync_("key", node.key, visitor, path13);
+          path17 = Object.freeze(path17.concat(node));
+          const ck = await visitAsync_("key", node.key, visitor, path17);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = await visitAsync_("value", node.value, visitor, path13);
+          const cv = await visitAsync_("value", node.value, visitor, path17);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -3211,23 +3211,23 @@ var require_visit = __commonJS({
       }
       return visitor;
     }
-    function callVisitor(key, node, visitor, path13) {
+    function callVisitor(key, node, visitor, path17) {
       if (typeof visitor === "function")
-        return visitor(key, node, path13);
+        return visitor(key, node, path17);
       if (identity.isMap(node))
-        return visitor.Map?.(key, node, path13);
+        return visitor.Map?.(key, node, path17);
       if (identity.isSeq(node))
-        return visitor.Seq?.(key, node, path13);
+        return visitor.Seq?.(key, node, path17);
       if (identity.isPair(node))
-        return visitor.Pair?.(key, node, path13);
+        return visitor.Pair?.(key, node, path17);
       if (identity.isScalar(node))
-        return visitor.Scalar?.(key, node, path13);
+        return visitor.Scalar?.(key, node, path17);
       if (identity.isAlias(node))
-        return visitor.Alias?.(key, node, path13);
+        return visitor.Alias?.(key, node, path17);
       return void 0;
     }
-    function replaceNode(key, path13, node) {
-      const parent = path13[path13.length - 1];
+    function replaceNode(key, path17, node) {
+      const parent = path17[path17.length - 1];
       if (identity.isCollection(parent)) {
         parent.items[key] = node;
       } else if (identity.isPair(parent)) {
@@ -3846,10 +3846,10 @@ var require_Collection = __commonJS({
     var createNode = require_createNode();
     var identity = require_identity();
     var Node = require_Node();
-    function collectionFromPath(schema, path13, value) {
+    function collectionFromPath(schema, path17, value) {
       let v = value;
-      for (let i = path13.length - 1; i >= 0; --i) {
-        const k = path13[i];
+      for (let i = path17.length - 1; i >= 0; --i) {
+        const k = path17[i];
         if (typeof k === "number" && Number.isInteger(k) && k >= 0) {
           const a = [];
           a[k] = v;
@@ -3868,7 +3868,7 @@ var require_Collection = __commonJS({
         sourceObjects: /* @__PURE__ */ new Map()
       });
     }
-    var isEmptyPath = (path13) => path13 == null || typeof path13 === "object" && !!path13[Symbol.iterator]().next().done;
+    var isEmptyPath = (path17) => path17 == null || typeof path17 === "object" && !!path17[Symbol.iterator]().next().done;
     var Collection = class extends Node.NodeBase {
       constructor(type, schema) {
         super(type);
@@ -3898,11 +3898,11 @@ var require_Collection = __commonJS({
        * be a Pair instance or a `{ key, value }` object, which may not have a key
        * that already exists in the map.
        */
-      addIn(path13, value) {
-        if (isEmptyPath(path13))
+      addIn(path17, value) {
+        if (isEmptyPath(path17))
           this.add(value);
         else {
-          const [key, ...rest] = path13;
+          const [key, ...rest] = path17;
           const node = this.get(key, true);
           if (identity.isCollection(node))
             node.addIn(rest, value);
@@ -3916,8 +3916,8 @@ var require_Collection = __commonJS({
        * Removes a value from the collection.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path13) {
-        const [key, ...rest] = path13;
+      deleteIn(path17) {
+        const [key, ...rest] = path17;
         if (rest.length === 0)
           return this.delete(key);
         const node = this.get(key, true);
@@ -3931,8 +3931,8 @@ var require_Collection = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path13, keepScalar) {
-        const [key, ...rest] = path13;
+      getIn(path17, keepScalar) {
+        const [key, ...rest] = path17;
         const node = this.get(key, true);
         if (rest.length === 0)
           return !keepScalar && identity.isScalar(node) ? node.value : node;
@@ -3950,8 +3950,8 @@ var require_Collection = __commonJS({
       /**
        * Checks if the collection includes a value with the key `key`.
        */
-      hasIn(path13) {
-        const [key, ...rest] = path13;
+      hasIn(path17) {
+        const [key, ...rest] = path17;
         if (rest.length === 0)
           return this.has(key);
         const node = this.get(key, true);
@@ -3961,8 +3961,8 @@ var require_Collection = __commonJS({
        * Sets a value in this collection. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path13, value) {
-        const [key, ...rest] = path13;
+      setIn(path17, value) {
+        const [key, ...rest] = path17;
         if (rest.length === 0) {
           this.set(key, value);
         } else {
@@ -5928,8 +5928,8 @@ var require_int2 = __commonJS({
     var stringifyNumber = require_stringifyNumber();
     var intIdentify = (value) => typeof value === "bigint" || Number.isInteger(value);
     function intResolve(str, offset, radix, { intAsBigInt }) {
-      const sign = str[0];
-      if (sign === "-" || sign === "+")
+      const sign2 = str[0];
+      if (sign2 === "-" || sign2 === "+")
         offset += 1;
       str = str.substring(offset).replace(/_/g, "");
       if (intAsBigInt) {
@@ -5945,10 +5945,10 @@ var require_int2 = __commonJS({
             break;
         }
         const n2 = BigInt(str);
-        return sign === "-" ? BigInt(-1) * n2 : n2;
+        return sign2 === "-" ? BigInt(-1) * n2 : n2;
       }
       const n = parseInt(str, radix);
-      return sign === "-" ? -1 * n : n;
+      return sign2 === "-" ? -1 * n : n;
     }
     function intStringify(node, radix, prefix) {
       const { value } = node;
@@ -6097,11 +6097,11 @@ var require_timestamp = __commonJS({
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var stringifyNumber = require_stringifyNumber();
     function parseSexagesimal(str, asBigInt) {
-      const sign = str[0];
-      const parts = sign === "-" || sign === "+" ? str.substring(1) : str;
+      const sign2 = str[0];
+      const parts = sign2 === "-" || sign2 === "+" ? str.substring(1) : str;
       const num = (n) => asBigInt ? BigInt(n) : Number(n);
       const res = parts.replace(/_/g, "").split(":").reduce((res2, p) => res2 * num(60) + num(p), num(0));
-      return sign === "-" ? num(-1) * res : res;
+      return sign2 === "-" ? num(-1) * res : res;
     }
     function stringifySexagesimal(node) {
       let { value } = node;
@@ -6110,9 +6110,9 @@ var require_timestamp = __commonJS({
         num = (n) => BigInt(n);
       else if (isNaN(value) || !isFinite(value))
         return stringifyNumber.stringifyNumber(node);
-      let sign = "";
+      let sign2 = "";
       if (value < 0) {
-        sign = "-";
+        sign2 = "-";
         value *= num(-1);
       }
       const _60 = num(60);
@@ -6127,7 +6127,7 @@ var require_timestamp = __commonJS({
           parts.unshift(value);
         }
       }
-      return sign + parts.map((n) => String(n).padStart(2, "0")).join(":").replace(/000000\d*$/, "");
+      return sign2 + parts.map((n) => String(n).padStart(2, "0")).join(":").replace(/000000\d*$/, "");
     }
     var intTime = {
       identify: (value) => typeof value === "bigint" || Number.isInteger(value),
@@ -6512,9 +6512,9 @@ var require_Document = __commonJS({
           this.contents.add(value);
       }
       /** Adds a value to the document. */
-      addIn(path13, value) {
+      addIn(path17, value) {
         if (assertCollection(this.contents))
-          this.contents.addIn(path13, value);
+          this.contents.addIn(path17, value);
       }
       /**
        * Create a new `Alias` node, ensuring that the target `node` has the required anchor.
@@ -6589,14 +6589,14 @@ var require_Document = __commonJS({
        * Removes a value from the document.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path13) {
-        if (Collection.isEmptyPath(path13)) {
+      deleteIn(path17) {
+        if (Collection.isEmptyPath(path17)) {
           if (this.contents == null)
             return false;
           this.contents = null;
           return true;
         }
-        return assertCollection(this.contents) ? this.contents.deleteIn(path13) : false;
+        return assertCollection(this.contents) ? this.contents.deleteIn(path17) : false;
       }
       /**
        * Returns item at `key`, or `undefined` if not found. By default unwraps
@@ -6611,10 +6611,10 @@ var require_Document = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path13, keepScalar) {
-        if (Collection.isEmptyPath(path13))
+      getIn(path17, keepScalar) {
+        if (Collection.isEmptyPath(path17))
           return !keepScalar && identity.isScalar(this.contents) ? this.contents.value : this.contents;
-        return identity.isCollection(this.contents) ? this.contents.getIn(path13, keepScalar) : void 0;
+        return identity.isCollection(this.contents) ? this.contents.getIn(path17, keepScalar) : void 0;
       }
       /**
        * Checks if the document includes a value with the key `key`.
@@ -6625,10 +6625,10 @@ var require_Document = __commonJS({
       /**
        * Checks if the document includes a value at `path`.
        */
-      hasIn(path13) {
-        if (Collection.isEmptyPath(path13))
+      hasIn(path17) {
+        if (Collection.isEmptyPath(path17))
           return this.contents !== void 0;
-        return identity.isCollection(this.contents) ? this.contents.hasIn(path13) : false;
+        return identity.isCollection(this.contents) ? this.contents.hasIn(path17) : false;
       }
       /**
        * Sets a value in this document. For `!!set`, `value` needs to be a
@@ -6645,13 +6645,13 @@ var require_Document = __commonJS({
        * Sets a value in this document. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path13, value) {
-        if (Collection.isEmptyPath(path13)) {
+      setIn(path17, value) {
+        if (Collection.isEmptyPath(path17)) {
           this.contents = value;
         } else if (this.contents == null) {
-          this.contents = Collection.collectionFromPath(this.schema, Array.from(path13), value);
+          this.contents = Collection.collectionFromPath(this.schema, Array.from(path17), value);
         } else if (assertCollection(this.contents)) {
-          this.contents.setIn(path13, value);
+          this.contents.setIn(path17, value);
         }
       }
       /**
@@ -8631,9 +8631,9 @@ var require_cst_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    visit.itemAtPath = (cst, path13) => {
+    visit.itemAtPath = (cst, path17) => {
       let item = cst;
-      for (const [field, index] of path13) {
+      for (const [field, index] of path17) {
         const tok = item?.[field];
         if (tok && "items" in tok) {
           item = tok.items[index];
@@ -8642,23 +8642,23 @@ var require_cst_visit = __commonJS({
       }
       return item;
     };
-    visit.parentCollection = (cst, path13) => {
-      const parent = visit.itemAtPath(cst, path13.slice(0, -1));
-      const field = path13[path13.length - 1][0];
+    visit.parentCollection = (cst, path17) => {
+      const parent = visit.itemAtPath(cst, path17.slice(0, -1));
+      const field = path17[path17.length - 1][0];
       const coll = parent?.[field];
       if (coll && "items" in coll)
         return coll;
       throw new Error("Parent collection not found");
     };
-    function _visit(path13, item, visitor) {
-      let ctrl = visitor(item, path13);
+    function _visit(path17, item, visitor) {
+      let ctrl = visitor(item, path17);
       if (typeof ctrl === "symbol")
         return ctrl;
       for (const field of ["key", "value"]) {
         const token = item[field];
         if (token && "items" in token) {
           for (let i = 0; i < token.items.length; ++i) {
-            const ci = _visit(Object.freeze(path13.concat([[field, i]])), token.items[i], visitor);
+            const ci = _visit(Object.freeze(path17.concat([[field, i]])), token.items[i], visitor);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -8669,10 +8669,10 @@ var require_cst_visit = __commonJS({
             }
           }
           if (typeof ctrl === "function" && field === "key")
-            ctrl = ctrl(item, path13);
+            ctrl = ctrl(item, path17);
         }
       }
-      return typeof ctrl === "function" ? ctrl(item, path13) : ctrl;
+      return typeof ctrl === "function" ? ctrl(item, path17) : ctrl;
     }
     exports.visit = visit;
   }
@@ -10434,8 +10434,8 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 
 // src/index.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { readFile as readFile11 } from "node:fs/promises";
-import path12 from "node:path";
+import { readFile as readFile14 } from "node:fs/promises";
+import path16 from "node:path";
 
 // ../shared-manifest/dist/index.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -10485,33 +10485,33 @@ var LINE_TERMINATORS = [
   [13, 13],
   [8232, 8233]
 ];
-function inRanges(cp2, ranges) {
+function inRanges(cp3, ranges) {
   for (const [lo, hi] of ranges)
-    if (cp2 >= lo && cp2 <= hi)
+    if (cp3 >= lo && cp3 <= hi)
       return true;
   return false;
 }
-function matchesShorthand(cp2, name) {
+function matchesShorthand(cp3, name) {
   switch (name) {
     case "d":
-      return inRanges(cp2, DIGIT_RANGES);
+      return inRanges(cp3, DIGIT_RANGES);
     case "D":
-      return !inRanges(cp2, DIGIT_RANGES);
+      return !inRanges(cp3, DIGIT_RANGES);
     case "w":
-      return inRanges(cp2, WORD_RANGES);
+      return inRanges(cp3, WORD_RANGES);
     case "W":
-      return !inRanges(cp2, WORD_RANGES);
+      return !inRanges(cp3, WORD_RANGES);
     case "s":
-      return inRanges(cp2, SPACE_RANGES);
+      return inRanges(cp3, SPACE_RANGES);
     default:
-      return !inRanges(cp2, SPACE_RANGES);
+      return !inRanges(cp3, SPACE_RANGES);
   }
 }
-function matchesSet(cp2, set) {
-  let hit = inRanges(cp2, set.ranges);
+function matchesSet(cp3, set) {
+  let hit = inRanges(cp3, set.ranges);
   if (!hit) {
     for (const name of set.shorthand)
-      if (matchesShorthand(cp2, name)) {
+      if (matchesShorthand(cp3, name)) {
         hit = true;
         break;
       }
@@ -10540,8 +10540,8 @@ var Parser = class {
   peek() {
     return this.cps[this.i];
   }
-  eat(cp2) {
-    if (this.cps[this.i] === cp2) {
+  eat(cp3) {
+    if (this.cps[this.i] === cp3) {
       this.i++;
       return true;
     }
@@ -10565,8 +10565,8 @@ var Parser = class {
   parseSeq() {
     const items = [];
     for (; ; ) {
-      const cp2 = this.peek();
-      if (cp2 === void 0 || cp2 === 124 || cp2 === 41)
+      const cp3 = this.peek();
+      if (cp3 === void 0 || cp3 === 124 || cp3 === 41)
         break;
       items.push(this.parseQuantified());
     }
@@ -10584,22 +10584,22 @@ var Parser = class {
     return { k: "rep", node: atom, min: q.min, max: q.max };
   }
   parseQuantifier() {
-    const cp2 = this.peek();
+    const cp3 = this.peek();
     let min;
     let max;
-    if (cp2 === 42) {
+    if (cp3 === 42) {
       this.i++;
       min = 0;
       max = Infinity;
-    } else if (cp2 === 43) {
+    } else if (cp3 === 43) {
       this.i++;
       min = 1;
       max = Infinity;
-    } else if (cp2 === 63) {
+    } else if (cp3 === 63) {
       this.i++;
       min = 0;
       max = 1;
-    } else if (cp2 === 123) {
+    } else if (cp3 === 123) {
       const braced = this.parseBraces();
       if (!braced)
         return null;
@@ -10654,33 +10654,33 @@ var Parser = class {
     return { min, max };
   }
   parseAtom() {
-    const cp2 = this.peek();
-    if (cp2 === void 0)
+    const cp3 = this.peek();
+    if (cp3 === void 0)
       this.fail("unexpected end of pattern");
-    if (cp2 === 40)
+    if (cp3 === 40)
       return this.parseGroup();
-    if (cp2 === 91)
+    if (cp3 === 91)
       return this.parseClass();
-    if (cp2 === 46) {
+    if (cp3 === 46) {
       this.i++;
       return { k: "any" };
     }
-    if (cp2 === 94) {
+    if (cp3 === 94) {
       this.i++;
       return { k: "start" };
     }
-    if (cp2 === 36) {
+    if (cp3 === 36) {
       this.i++;
       return { k: "end" };
     }
-    if (cp2 === 92)
+    if (cp3 === 92)
       return this.parseEscape(false);
-    if (cp2 === 42 || cp2 === 43 || cp2 === 63)
+    if (cp3 === 42 || cp3 === 43 || cp3 === 63)
       this.fail("a quantifier with nothing to repeat");
-    if (cp2 === 125 || cp2 === 93)
+    if (cp3 === 125 || cp3 === 93)
       this.fail("an unescaped `}` or `]` is not valid in `u` mode");
     this.i++;
-    return literal(cp2);
+    return literal(cp3);
   }
   parseGroup() {
     this.i++;
@@ -10718,10 +10718,10 @@ var Parser = class {
   /** `inClass` selects character-class escape rules (where `\b` means backspace). */
   parseEscape(inClass) {
     this.i++;
-    const cp2 = this.peek();
-    if (cp2 === void 0)
+    const cp3 = this.peek();
+    if (cp3 === void 0)
       this.fail("trailing `\\`");
-    const ch = String.fromCodePoint(cp2);
+    const ch = String.fromCodePoint(cp3);
     if ("dDwWsS".includes(ch)) {
       this.i++;
       return { k: "set", set: { negate: false, ranges: [], shorthand: [ch] } };
@@ -10732,7 +10732,7 @@ var Parser = class {
       this.i++;
       return literal(8);
     }
-    if (cp2 >= 49 && cp2 <= 57)
+    if (cp3 >= 49 && cp3 <= 57)
       this.fail("backreferences are not supported (they require backtracking)");
     if (ch === "k")
       this.fail("named backreferences are not supported");
@@ -10773,24 +10773,24 @@ var Parser = class {
       return literal(SIMPLE_ESCAPES[ch]);
     }
     this.i++;
-    return literal(cp2);
+    return literal(cp3);
   }
-  hexDigit(cp2) {
-    if (cp2 >= 48 && cp2 <= 57)
-      return cp2 - 48;
-    if (cp2 >= 97 && cp2 <= 102)
-      return cp2 - 97 + 10;
-    if (cp2 >= 65 && cp2 <= 70)
-      return cp2 - 65 + 10;
+  hexDigit(cp3) {
+    if (cp3 >= 48 && cp3 <= 57)
+      return cp3 - 48;
+    if (cp3 >= 97 && cp3 <= 102)
+      return cp3 - 97 + 10;
+    if (cp3 >= 65 && cp3 <= 70)
+      return cp3 - 65 + 10;
     return this.fail("bad hex escape");
   }
   hex(n) {
     let out = 0;
     for (let k = 0; k < n; k++) {
-      const cp2 = this.cps[this.i];
-      if (cp2 === void 0)
+      const cp3 = this.cps[this.i];
+      if (cp3 === void 0)
         this.fail("truncated hex escape");
-      out = out * 16 + this.hexDigit(cp2);
+      out = out * 16 + this.hexDigit(cp3);
       this.i++;
     }
     return out;
@@ -10845,17 +10845,17 @@ var Parser = class {
         return { kind: "shorthand", name };
       return { kind: "cp", cp: node.set.ranges[0][0] };
     }
-    const cp2 = this.peek();
-    if (cp2 === void 0)
+    const cp3 = this.peek();
+    if (cp3 === void 0)
       this.fail("unterminated character class");
     this.i++;
-    return { kind: "cp", cp: cp2 };
+    return { kind: "cp", cp: cp3 };
   }
 };
-function literal(cp2) {
+function literal(cp3) {
   return {
     k: "set",
-    set: { negate: false, ranges: [[cp2, cp2]], shorthand: [] }
+    set: { negate: false, ranges: [[cp3, cp3]], shorthand: [] }
   };
 }
 var Program = class {
@@ -11003,12 +11003,12 @@ var CompiledPattern = class {
         return true;
       if (pos === len)
         break;
-      const cp2 = cps[pos];
+      const cp3 = cps[pos];
       next = [];
       this.generation++;
       for (const pc of cur) {
         const inst = this.insts[pc];
-        const hit = inst.op === "any" ? !inRanges(cp2, LINE_TERMINATORS) : inst.op === "set" && matchesSet(cp2, inst.set);
+        const hit = inst.op === "any" ? !inRanges(cp3, LINE_TERMINATORS) : inst.op === "set" && matchesSet(cp3, inst.set);
         if (hit && this.addThread(next, pc + 1, pos + 1, len))
           return true;
       }
@@ -11166,20 +11166,20 @@ function numberInWireRange(n) {
 function representabilityIssue(value) {
   return walk(value, "", 0);
 }
-function walk(value, path13, depth) {
+function walk(value, path17, depth) {
   if (typeof value === "string") {
-    return hasLoneSurrogate(value) ? { rule: "lone-surrogate", path: path13 } : null;
+    return hasLoneSurrogate(value) ? { rule: "lone-surrogate", path: path17 } : null;
   }
   if (typeof value === "number") {
-    return numberInWireRange(value) ? null : { rule: "number-out-of-range", path: path13 };
+    return numberInWireRange(value) ? null : { rule: "number-out-of-range", path: path17 };
   }
   if (value === null || typeof value !== "object")
     return null;
   if (depth + 1 > MAX_VALUE_DEPTH)
-    return { rule: "too-deep", path: path13 };
+    return { rule: "too-deep", path: path17 };
   if (Array.isArray(value)) {
     for (let k = 0; k < value.length; k++) {
-      const issue = walk(value[k], `${path13}/${k}`, depth + 1);
+      const issue = walk(value[k], `${path17}/${k}`, depth + 1);
       if (issue)
         return issue;
     }
@@ -11187,7 +11187,7 @@ function walk(value, path13, depth) {
   }
   const seen = /* @__PURE__ */ new Map();
   for (const [name, member] of Object.entries(value)) {
-    const memberPath = `${path13}/${escapePointer(name)}`;
+    const memberPath = `${path17}/${escapePointer(name)}`;
     if (hasLoneSurrogate(name))
       return { rule: "lone-surrogate", path: memberPath };
     if (name.includes("\0"))
@@ -11745,11 +11745,11 @@ function validateDistribution(errors, doc, ctx) {
       "apiVersion must be pkey.dev/v1 when present."
     );
   }
-  for (const path13 of capabilityPaths(doc)) {
+  for (const path17 of capabilityPaths(doc)) {
     add(
       errors,
       "distribution",
-      path13,
+      path17,
       "capabilities_not_manifest_writable",
       "outlet capabilities are operator-owned and cannot be set in .pkey/distribution; they default per outlet kind and an operator narrows them in the console."
     );
@@ -11923,13 +11923,13 @@ function validateTransports(errors, transports, ctx, kinds) {
       );
     }
   }
-  const checkMap = (path13, raw) => {
+  const checkMap = (path17, raw) => {
     if (raw === void 0) return;
     if (!isRecord(raw)) {
       add(
         errors,
         "distribution",
-        path13,
+        path17,
         "invalid_transport",
         "a transport map must be an object keyed by outlet id."
       );
@@ -11940,7 +11940,7 @@ function validateTransports(errors, transports, ctx, kinds) {
         add(
           errors,
           "distribution",
-          `${path13}/${outletId}`,
+          `${path17}/${outletId}`,
           "invalid_transport",
           `transports must be one of ${TRANSPORTS.join(", ")}.`
         );
@@ -11951,7 +11951,7 @@ function validateTransports(errors, transports, ctx, kinds) {
         add(
           errors,
           "distribution",
-          `${path13}/${outletId}`,
+          `${path17}/${outletId}`,
           "unknown_outlet_ref",
           `transport maps may only name outlets declared under outlets.`
         );
@@ -11959,7 +11959,7 @@ function validateTransports(errors, transports, ctx, kinds) {
         add(
           errors,
           "distribution",
-          `${path13}/${outletId}`,
+          `${path17}/${outletId}`,
           "transport_not_allowed",
           `transport ${transport} cannot carry a deliverable on a ${kind} outlet.`
         );
@@ -11999,11 +11999,11 @@ function capabilityPaths(doc) {
     { node: doc, path: "" }
   ];
   while (stack.length) {
-    const { node, path: path13 } = stack.pop();
+    const { node, path: path17 } = stack.pop();
     if (node === null || typeof node !== "object") continue;
     const entries = Array.isArray(node) ? node.map((v, i) => [String(i), v]) : Object.entries(node);
     for (const [key, child] of entries) {
-      const childPath = `${path13}/${key}`;
+      const childPath = `${path17}/${key}`;
       if (!Array.isArray(node) && key === "capabilities") found.push(childPath);
       stack.push({ node: child, path: childPath });
     }
@@ -12158,8 +12158,8 @@ function sortedRecord(v) {
   for (const key of Object.keys(v).sort(compare)) out[key] = v[key];
   return out;
 }
-function add(list, file, path13, code, message) {
-  list.push({ file, path: path13, code, message });
+function add(list, file, path17, code, message) {
+  list.push({ file, path: path17, code, message });
 }
 var DESCRIPTOR_VERSION = 1;
 var MAX_DESCRIPTOR_BYTES = 64 * 1024;
@@ -12422,7 +12422,7 @@ function versionFitsScheme(version, scheme) {
 }
 function validateReleaseDescriptor(descriptor, manifest) {
   const errors = [];
-  const err = (path13, code, message) => errors.push({ path: path13, code, message });
+  const err = (path17, code, message) => errors.push({ path: path17, code, message });
   if (!isRecord2(descriptor)) {
     err(
       "/",
@@ -12954,6 +12954,109 @@ function buildLabel(input, opts = {}) {
   const long = [platform, archLong, present(input.format) ? input.format : null].filter((p) => p !== null).join(" · ");
   return { platform, arch, short, long };
 }
+var ASSET_PACK_ID_PATTERN = /^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$/;
+var ASSET_PACK_ID_MAX = 64;
+var PAD_PACK_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_]*$/;
+var PAD_PACK_NAME_MAX = 64;
+var TransportIdError = class extends Error {
+  problems;
+  code;
+  constructor(problems) {
+    super(problems.map((p) => `${p.code}: ${p.message}`).join("\n"));
+    this.name = "TransportIdError";
+    this.problems = problems;
+    this.code = problems[0].code;
+  }
+};
+function assetPackBase(packId) {
+  if (!/^[a-z0-9.-]+$/.test(packId)) return null;
+  return packId.replaceAll(".", "-");
+}
+function resolveAssetPackIds(packIds, contentApi) {
+  if (!Number.isSafeInteger(contentApi) || contentApi < 0)
+    throw new Error(
+      `contentApi must be a whole number (got ${String(contentApi)}).`
+    );
+  const ids = [...new Set(packIds)].sort();
+  const problems = [];
+  const out = /* @__PURE__ */ new Map();
+  const byBase = /* @__PURE__ */ new Map();
+  for (const packId of ids) {
+    const base = assetPackBase(packId);
+    const mapped = `${base ?? packId}-c${contentApi}`;
+    if (base === null || !ASSET_PACK_ID_PATTERN.test(mapped)) {
+      problems.push({
+        code: "asset-pack-id-invalid",
+        packId,
+        mapped,
+        message: `${packId} maps to asset pack ${mapped}, which App Store Connect refuses (alphanumerics and single hyphens only; a segment starting or ending with "-" doubles a hyphen).`
+      });
+      continue;
+    }
+    if (mapped.length > ASSET_PACK_ID_MAX) {
+      problems.push({
+        code: "asset-pack-id-too-long",
+        packId,
+        mapped,
+        message: `${packId} maps to asset pack ${mapped}, ${mapped.length} characters; at most ${ASSET_PACK_ID_MAX} (the pack id itself may have at most ${ASSET_PACK_ID_MAX - `-c${contentApi}`.length} at level ${contentApi}).`
+      });
+      continue;
+    }
+    const prior = byBase.get(base);
+    if (prior !== void 0) {
+      problems.push({
+        code: "asset-pack-id-collision",
+        packId,
+        mapped,
+        other: prior,
+        message: `${packId} and ${prior} both map to asset pack ${mapped}; an upload would land in the other pack's asset pack, permanently. Rename one of them.`
+      });
+      out.delete(prior);
+      continue;
+    }
+    byBase.set(base, packId);
+    out.set(packId, mapped);
+  }
+  if (problems.length) throw new TransportIdError(problems);
+  return out;
+}
+function padPackName(packId) {
+  return packId.replace(/[.-]/g, "_");
+}
+function resolvePadPackNames(packIds) {
+  const ids = [...new Set(packIds)].sort();
+  const problems = [];
+  const out = /* @__PURE__ */ new Map();
+  const byName = /* @__PURE__ */ new Map();
+  for (const packId of ids) {
+    const mapped = padPackName(packId);
+    if (!/^[a-z0-9.-]+$/.test(packId) || !PAD_PACK_NAME_PATTERN.test(mapped) || mapped.length > PAD_PACK_NAME_MAX) {
+      problems.push({
+        code: "pad-pack-name-invalid",
+        packId,
+        mapped,
+        message: `${packId} maps to Play asset pack ${mapped}, which is not a valid asset-pack name (a letter, then letters, digits and underscores; at most ${PAD_PACK_NAME_MAX}).`
+      });
+      continue;
+    }
+    const prior = byName.get(mapped);
+    if (prior !== void 0) {
+      problems.push({
+        code: "pad-pack-name-collision",
+        packId,
+        mapped,
+        other: prior,
+        message: `${packId} and ${prior} both map to Play asset pack ${mapped}. Rename one of them.`
+      });
+      out.delete(prior);
+      continue;
+    }
+    byName.set(mapped, packId);
+    out.set(packId, mapped);
+  }
+  if (problems.length) throw new TransportIdError(problems);
+  return out;
+}
 var REGISTRATION_POLICIES = [
   "open",
   "requires-identity",
@@ -13106,6 +13209,31 @@ var PACK_CHANNELS_KEY_PATTERN = /^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*(\.\*)?$/;
 var MAX_PACK_CONFLICTS = 64;
 var MAX_PACK_CHANNEL_MAP = 64;
 var MAX_PACK_CHANNELS = 32;
+function parseRange(range, pattern2) {
+  if (typeof range !== "string" || !pattern2.test(range)) return null;
+  return range.split(" ").map((part) => {
+    const m = /^(>=|<=|>|<|=)?(.+)$/.exec(part);
+    return { op: m[1] ?? "=", value: m[2] };
+  });
+}
+function contentApiInRange(cmp, level) {
+  return cmp.every((c) => {
+    const v = Number(c.value);
+    if (!Number.isSafeInteger(v)) return false;
+    switch (c.op) {
+      case ">=":
+        return level >= v;
+      case "<=":
+        return level <= v;
+      case ">":
+        return level > v;
+      case "<":
+        return level < v;
+      default:
+        return level === v;
+    }
+  });
+}
 function packChannelFor(map, packId) {
   if (!map) return null;
   if (Object.hasOwn(map, packId)) return map[packId] ?? null;
@@ -13362,7 +13490,7 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
     GROUP_NAME_RE,
     "product.adminGroup must be a plain group name (^[A-Za-z0-9][A-Za-z0-9 ._:@/-]{0,127}$)."
   );
-  for (const [key, path13] of [
+  for (const [key, path17] of [
     [productNode.compatMin ?? productRoot.compatMin, "/compatMin"],
     [productNode.compatMax ?? productRoot.compatMax, "/compatMax"]
   ]) {
@@ -13370,13 +13498,13 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
       add2(
         errors,
         "product",
-        path13,
+        path17,
         "invalid_semver",
         "Version bounds must be semver strings."
       );
     }
   }
-  for (const [key, path13] of [
+  for (const [key, path17] of [
     [
       productNode.defaultDeviceLimit ?? productRoot.defaultDeviceLimit ?? licensing.defaultDeviceLimit,
       "/licensing/defaultDeviceLimit"
@@ -13390,7 +13518,7 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
       add2(
         errors,
         "product",
-        path13,
+        path17,
         "invalid_number",
         "Value must be a non-negative integer."
       );
@@ -14707,8 +14835,8 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
       `delivery must be one of ${PACK_DELIVERIES.join(", ")}.`
     );
   if (def.contentPolicy !== void 0) {
-    const cp2 = def.contentPolicy;
-    if (!isRecord3(cp2) || cp2.dataOnly !== void 0 && cp2.dataOnly !== true)
+    const cp3 = def.contentPolicy;
+    if (!isRecord3(cp3) || cp3.dataOnly !== void 0 && cp3.dataOnly !== true)
       add2(
         errors,
         "release",
@@ -15025,14 +15153,14 @@ function isAttachableEntry(s) {
   }
   if (!s.startsWith("res://")) return false;
   const rest = s.slice(6);
-  const path13 = rest.endsWith("/") ? rest.slice(0, -1) : rest;
-  if (path13 === "" || path13.includes("..") || path13.includes("./")) return false;
-  for (let i = 0; i < path13.length; i++) {
-    const c = path13.charCodeAt(i);
-    if (c < 32 || c > 126 || ATTACHABLE_BAD_CHARS.has(path13[i]))
+  const path17 = rest.endsWith("/") ? rest.slice(0, -1) : rest;
+  if (path17 === "" || path17.includes("..") || path17.includes("./")) return false;
+  for (let i = 0; i < path17.length; i++) {
+    const c = path17.charCodeAt(i);
+    if (c < 32 || c > 126 || ATTACHABLE_BAD_CHARS.has(path17[i]))
       return false;
   }
-  const segments = path13.split("/");
+  const segments = path17.split("/");
   if (segments[0].toLowerCase() === ".pkey") return false;
   for (const seg of segments) {
     if (seg === "" || seg === "." || seg === "..") return false;
@@ -15967,36 +16095,36 @@ function validateCatalogShape(catalog) {
   }
   return issues;
 }
-function constrained(errors, file, value, path13, code, re, message) {
+function constrained(errors, file, value, path17, code, re, message) {
   if (value === void 0 || value === null || value === "") return;
   if (typeof value !== "string" || !re.test(value)) {
-    add2(errors, file, path13, code, message);
+    add2(errors, file, path17, code, message);
   }
 }
-function releaseString(errors, value, path13, code, re, message) {
-  constrained(errors, "release", value, path13, code, re, message);
+function releaseString(errors, value, path17, code, re, message) {
+  constrained(errors, "release", value, path17, code, re, message);
 }
-function boundedText(errors, file, value, path13, code, max, label) {
+function boundedText(errors, file, value, path17, code, max, label) {
   if (value === void 0 || value === null || value === "") return;
   if (typeof value !== "string") {
-    add2(errors, file, path13, code, `${label} must be a string.`);
+    add2(errors, file, path17, code, `${label} must be a string.`);
     return;
   }
   if (value.length > max || CONTROL_CHAR_RE.test(value)) {
     add2(
       errors,
       file,
-      path13,
+      path17,
       code,
       `${label} must be at most ${max} characters and free of control characters.`
     );
   }
 }
-function constrainedList(errors, file, values, path13, code, re, message) {
+function constrainedList(errors, file, values, path17, code, re, message) {
   if (!Array.isArray(values)) return;
   for (const [i, value] of values.entries()) {
     if (typeof value !== "string" || !re.test(value)) {
-      add2(errors, file, `${path13}/${i}`, code, message);
+      add2(errors, file, `${path17}/${i}`, code, message);
     }
   }
 }
@@ -16204,8 +16332,8 @@ function isOneOf(value, allowed) {
 function notNull(v) {
   return v !== null;
 }
-function add2(list, file, path13, code, message) {
-  list.push({ file, path: path13, code, message });
+function add2(list, file, path17, code, message) {
+  list.push({ file, path: path17, code, message });
 }
 
 // src/bundle.ts
@@ -16741,9 +16869,9 @@ function ciClient(opts) {
   const f = opts.fetchImpl ?? fetch;
   const sleep = opts.sleep ?? defaultSleep;
   const maxAttempts = opts.maxAttempts ?? MAX_ATTEMPTS;
-  const url = (path13) => `${baseUrl}/${encodeURIComponent(product)}/${path13.replace(/^\/+/, "")}`;
-  async function postJson(path13, p) {
-    const target = url(path13);
+  const url = (path17) => `${baseUrl}/${encodeURIComponent(product)}/${path17.replace(/^\/+/, "")}`;
+  async function postJson(path17, p) {
+    const target = url(path17);
     const auth = p.auth !== false;
     if (auth && !opts.token)
       throw new Error(`${p.what}: no CI token (this is a bug in pkey).`);
@@ -16783,8 +16911,8 @@ function ciClient(opts) {
       await sleep(wait);
     }
   }
-  async function getJson(path13, p) {
-    const target = url(path13);
+  async function getJson(path17, p) {
+    const target = url(path17);
     if (!opts.token)
       throw new Error(`${p.what}: no CI token (this is a bug in pkey).`);
     let res;
@@ -17052,8 +17180,8 @@ function signV4(input) {
 }
 function objectUrl(creds, key) {
   const base = creds.endpoint.replace(/\/+$/, "");
-  const path13 = [creds.bucket, ...key.split("/")].map(encodeSegment).join("/");
-  return new URL(`${base}/${path13}`);
+  const path17 = [creds.bucket, ...key.split("/")].map(encodeSegment).join("/");
+  return new URL(`${base}/${path17}`);
 }
 var TRANSIENT = /* @__PURE__ */ new Set([408, 429, 500, 502, 503, 504]);
 async function putFile(opts) {
@@ -17386,9 +17514,9 @@ function u64(buf, at) {
   return Number(v);
 }
 var ZipReader = class _ZipReader {
-  constructor(fh, path13, fileSize, entries, centralDirectoryOffset) {
+  constructor(fh, path17, fileSize, entries, centralDirectoryOffset) {
     this.fh = fh;
-    this.path = path13;
+    this.path = path17;
     this.fileSize = fileSize;
     this.entries = entries;
     this.centralDirectoryOffset = centralDirectoryOffset;
@@ -17398,8 +17526,8 @@ var ZipReader = class _ZipReader {
   fileSize;
   entries;
   centralDirectoryOffset;
-  static async open(path13) {
-    const fh = await open(path13, "r");
+  static async open(path17) {
+    const fh = await open(path17, "r");
     try {
       const { size } = await fh.stat();
       const tailLen = Math.min(size, 65557);
@@ -17412,32 +17540,32 @@ var ZipReader = class _ZipReader {
           break;
         }
       }
-      if (eocd < 0) throw new ZipError(`${path13} is not a ZIP archive`);
+      if (eocd < 0) throw new ZipError(`${path17} is not a ZIP archive`);
       let count = tail.readUInt16LE(eocd + 10);
       let cdSize = tail.readUInt32LE(eocd + 12);
       let cdOffset = tail.readUInt32LE(eocd + 16);
       if (count === 65535 || cdSize === 4294967295 || cdOffset === 4294967295) {
         const loc = eocd - 20;
         if (loc < 0 || tail.readUInt32LE(loc) !== ZIP64_LOCATOR_SIG)
-          throw new ZipError(`${path13}: ZIP64 locator missing`);
+          throw new ZipError(`${path17}: ZIP64 locator missing`);
         const recOffset = u64(tail, loc + 8);
         const rec = Buffer.alloc(56);
         await fh.read(rec, 0, 56, recOffset);
         if (rec.readUInt32LE(0) !== ZIP64_EOCD_SIG)
-          throw new ZipError(`${path13}: ZIP64 end record missing`);
+          throw new ZipError(`${path17}: ZIP64 end record missing`);
         count = u64(rec, 32);
         cdSize = u64(rec, 40);
         cdOffset = u64(rec, 48);
       }
       if (cdOffset + cdSize > size)
-        throw new ZipError(`${path13}: the central directory runs past the end`);
+        throw new ZipError(`${path17}: the central directory runs past the end`);
       const cd = Buffer.alloc(cdSize);
       await fh.read(cd, 0, cdSize, cdOffset);
       const entries = [];
       let p = 0;
       for (let i = 0; i < count; i++) {
         if (p + 46 > cd.length || cd.readUInt32LE(p) !== CDH_SIG)
-          throw new ZipError(`${path13}: a central directory entry is malformed`);
+          throw new ZipError(`${path17}: a central directory entry is malformed`);
         const flags = cd.readUInt16LE(p + 8);
         const method = cd.readUInt16LE(p + 10);
         const crc322 = cd.readUInt32LE(p + 16);
@@ -17478,7 +17606,7 @@ var ZipReader = class _ZipReader {
         });
         p = xEnd + commentLen;
       }
-      return new _ZipReader(fh, path13, size, entries, cdOffset);
+      return new _ZipReader(fh, path17, size, entries, cdOffset);
     } catch (e) {
       await fh.close();
       throw e;
@@ -17516,8 +17644,8 @@ var ZipReader = class _ZipReader {
     return this.fh.close();
   }
 };
-async function withZip(path13, fn) {
-  const zip = await ZipReader.open(path13);
+async function withZip(path17, fn) {
+  const zip = await ZipReader.open(path17);
   try {
     return await fn(zip);
   } finally {
@@ -19408,16 +19536,16 @@ var DEVICES = /* @__PURE__ */ new Set([
   ..."123456789".split("").flatMap((d) => [`com${d}`, `lpt${d}`])
 ]);
 var asciiLower = (s) => s.replace(/[A-Z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 32));
-function pathSafe(path13) {
-  const n = utf8Length(path13);
+function pathSafe(path17) {
+  const n = utf8Length(path17);
   if (n < 1 || n > MAX_PACK_PATH_BYTES)
     return false;
-  for (let i = 0; i < path13.length; i++) {
-    const c = path13.charCodeAt(i);
-    if (c < 32 || c > 126 || BAD_CHARS.has(path13[i]))
+  for (let i = 0; i < path17.length; i++) {
+    const c = path17.charCodeAt(i);
+    if (c < 32 || c > 126 || BAD_CHARS.has(path17[i]))
       return false;
   }
-  const segments = path13.split("/");
+  const segments = path17.split("/");
   if (asciiLower(segments[0]) === ".pkey")
     return false;
   for (const s of segments) {
@@ -19434,21 +19562,21 @@ function checkPaths(paths) {
   const seen = /* @__PURE__ */ new Set();
   const lower = /* @__PURE__ */ new Set();
   const dirs = /* @__PURE__ */ new Set();
-  for (const path13 of paths) {
-    if (typeof path13 !== "string" || !pathSafe(path13))
-      return { ok: false, error: "files-unsafe-path", path: String(path13) };
-    if (seen.has(path13))
-      return { ok: false, error: "files-duplicate-path", path: path13 };
-    const lp = asciiLower(path13);
+  for (const path17 of paths) {
+    if (typeof path17 !== "string" || !pathSafe(path17))
+      return { ok: false, error: "files-unsafe-path", path: String(path17) };
+    if (seen.has(path17))
+      return { ok: false, error: "files-duplicate-path", path: path17 };
+    const lp = asciiLower(path17);
     if (lower.has(lp))
-      return { ok: false, error: "files-case-collision", path: path13 };
+      return { ok: false, error: "files-case-collision", path: path17 };
     const parts = lp.split("/");
     const prefixes = [];
     for (let k = 1; k < parts.length; k++)
       prefixes.push(parts.slice(0, k).join("/"));
     if (dirs.has(lp) || prefixes.some((x) => lower.has(x)))
-      return { ok: false, error: "files-path-conflict", path: path13 };
-    seen.add(path13);
+      return { ok: false, error: "files-path-conflict", path: path17 };
+    seen.add(path17);
     lower.add(lp);
     for (const x of prefixes)
       dirs.add(x);
@@ -19827,23 +19955,23 @@ function dataOnlyTextRefusal(bytes) {
       return "content";
   return null;
 }
-function dataOnlyExtension(path13) {
-  const last = path13.slice(path13.lastIndexOf("/") + 1);
+function dataOnlyExtension(path17) {
+  const last = path17.slice(path17.lastIndexOf("/") + 1);
   const dot = last.lastIndexOf(".");
   if (dot < 0)
     return null;
   return last.slice(dot + 1).replace(/[A-Z]/g, (c) => c.toLowerCase());
 }
-function dataOnlyPathRefusal(path13) {
-  if (typeof path13 !== "string" || !pathSafe(path13))
+function dataOnlyPathRefusal(path17) {
+  if (typeof path17 !== "string" || !pathSafe(path17))
     return "extension";
-  const ext = dataOnlyExtension(path13);
+  const ext = dataOnlyExtension(path17);
   if (ext === null || !DATA_ONLY_EXTENSIONS.includes(ext))
     return "extension";
   return null;
 }
-function dataOnlyRefusal(path13, head, tail, full) {
-  const p = dataOnlyPathRefusal(path13);
+function dataOnlyRefusal(path17, head, tail, full) {
+  const p = dataOnlyPathRefusal(path17);
   if (p !== null)
     return p;
   const h = head.subarray(0, DATA_ONLY_HEAD_BYTES);
@@ -19873,12 +20001,12 @@ function dataOnlyRefusal(path13, head, tail, full) {
   for (let k = 0; k + 4 <= t.length; k++)
     if (t[k] === 80 && startsWith(t, k, ZIP_EOCD))
       return "content";
-  if (DATA_ONLY_TEXT_EXTENSIONS.includes(dataOnlyExtension(path13)))
+  if (DATA_ONLY_TEXT_EXTENSIONS.includes(dataOnlyExtension(path17)))
     return full === void 0 ? "content" : dataOnlyTextRefusal(full);
   return null;
 }
-function dataOnlyFileRefusal(path13, bytes) {
-  return dataOnlyRefusal(path13, bytes.subarray(0, DATA_ONLY_HEAD_BYTES), bytes.subarray(Math.max(0, bytes.length - DATA_ONLY_TAIL_BYTES)), bytes);
+function dataOnlyFileRefusal(path17, bytes) {
+  return dataOnlyRefusal(path17, bytes.subarray(0, DATA_ONLY_HEAD_BYTES), bytes.subarray(Math.max(0, bytes.length - DATA_ONLY_TAIL_BYTES)), bytes);
 }
 
 // ../client-core/dist/packs/stamp.js
@@ -19995,7 +20123,7 @@ function sameLocale(a, b) {
   return asciiLower2(a.replace(/_/g, "-")) === asciiLower2(b.replace(/_/g, "-"));
 }
 var fail3 = { ok: false, detail: "table" };
-function parseL10nFile(path13, bytes) {
+function parseL10nFile(path17, bytes) {
   let text;
   try {
     text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
@@ -20024,7 +20152,7 @@ function parseL10nFile(path13, bytes) {
     const locale = bcp47Canonical(t.locale);
     if (locale === null)
       return { ok: false, detail: "locale" };
-    tables.push({ path: path13, locale, messages: t.messages });
+    tables.push({ path: path17, locale, messages: t.messages });
   }
   return { ok: true, tables };
 }
@@ -20306,9 +20434,9 @@ function parseCsv(text) {
 var DEFAULT_MAX_TYPE_FILE_BYTES = 16 * 1024 * 1024;
 var MAX_DESCRIPTOR_BYTES2 = 65536;
 var TYPE_TOKEN_PATTERN = /^[a-z][a-z0-9-]{0,31}$/;
-var refuse = (detail, path13, message) => ({
+var refuse = (detail, path17, message) => ({
   detail,
-  ...path13 !== void 0 ? { path: path13 } : {},
+  ...path17 !== void 0 ? { path: path17 } : {},
   ...message !== void 0 ? { message } : {}
 });
 var formatsOf = (v) => new Set(v ?? [1]);
@@ -21803,16 +21931,16 @@ ${local.errors.map((e) => `  ${e.path} ${e.code}: ${e.message}`).join("\n")}`
     );
   const pem = opts.releaseKeyPem ?? opts.env[RELEASE_KEY_ENV] ?? void 0;
   const declared = context.releaseKeys;
-  let sign = null;
+  let sign2 = null;
   if (!opts.noRecord && !opts.dryRun) {
-    if (opts.signRecord) sign = opts.signRecord;
-    else if (pem) sign = recordSigner(pem, declared);
+    if (opts.signRecord) sign2 = opts.signRecord;
+    else if (pem) sign2 = recordSigner(pem, declared);
     else if (declared.length > 0)
       throw new Error(
         `.pkey/release declares releaseKeys, so pkey signs a release record: set ${RELEASE_KEY_ENV} (the release-key input of polaris-key/publish) or --release-key-file, or pass --no-record.`
       );
   }
-  const wantsRecord = !opts.noRecord && (sign !== null || opts.dryRun === true && (pem || declared.length > 0));
+  const wantsRecord = !opts.noRecord && (sign2 !== null || opts.dryRun === true && (pem || declared.length > 0));
   const result = {
     descriptor,
     releaseId: local.releaseId,
@@ -21962,8 +22090,8 @@ Release record (unsigned; a dry run signs nothing):
 ${JSON.stringify(record, null, 2)}
 `
       );
-    } else if (sign) {
-      recordJws = await sign(record);
+    } else if (sign2) {
+      recordJws = await sign2(record);
       await checkSignedRecord(recordJws, record, declared);
       result.recordJws = recordJws;
       out.write(
@@ -22298,24 +22426,24 @@ function readPck(b, name = "the payload") {
       const md5 = Buffer.from(b.subarray(p + 16, p + 32)).toString("hex");
       const flags = dv.getUint32(p + 32, true);
       p += 36;
-      const path13 = rawPath.startsWith("res://") ? rawPath.slice("res://".length) : rawPath;
+      const path17 = rawPath.startsWith("res://") ? rawPath.slice("res://".length) : rawPath;
       if (flags & PACK_FILE_ENCRYPTED)
         throw new PckError(
-          `${path13}: an encrypted entry; a published pack is never encrypted.`
+          `${path17}: an encrypted entry; a published pack is never encrypted.`
         );
       if (flags & (PACK_FILE_REMOVAL | PACK_FILE_DELTA))
         throw new PckError(
-          `${path13}: a patch pack's ${flags & PACK_FILE_REMOVAL ? "removal" : "delta"} entry (flags ${flags}); a published pack stands alone.`
+          `${path17}: a patch pack's ${flags & PACK_FILE_REMOVAL ? "removal" : "delta"} entry (flags ${flags}); a published pack stands alone.`
         );
       if (flags !== 0)
-        throw new PckError(`${path13}: unknown entry flags ${flags}.`);
-      if (!pckPathOk(path13))
+        throw new PckError(`${path17}: unknown entry flags ${flags}.`);
+      if (!pckPathOk(path17))
         throw new PckError(
-          `${path13}: an unsafe path (a \`..\`, \`.\` or empty segment, or a character the path rules refuse).`
+          `${path17}: an unsafe path (a \`..\`, \`.\` or empty segment, or a character the path rules refuse).`
         );
       if (offset + size > b.byteLength)
-        throw new PckError(`${path13}: its bytes run past the end of the file.`);
-      entries.push({ rawPath, path: path13, offset, size, md5, flags });
+        throw new PckError(`${path17}: its bytes run past the end of the file.`);
+      entries.push({ rawPath, path: path17, offset, size, md5, flags });
     }
     const all = checkPaths(entries.map((e) => e.path));
     if (!all.ok)
@@ -22331,9 +22459,9 @@ function readPck(b, name = "the payload") {
     );
   }
 }
-function pckPathOk(path13) {
-  if (!checkPaths([path13]).ok) return false;
-  return !(path13.includes("..") || path13.includes("./") || path13.includes("//") || path13.endsWith("/") || path13.endsWith("/."));
+function pckPathOk(path17) {
+  if (!checkPaths([path17]).ok) return false;
+  return !(path17.includes("..") || path17.includes("./") || path17.includes("//") || path17.endsWith("/") || path17.endsWith("/."));
 }
 function pad(n, align) {
   const r = n % align;
@@ -22379,11 +22507,11 @@ function writePck(src, header, keep) {
   dv.setUint32(p, keep.length, true);
   p += 4;
   for (const [i, e] of keep.entries()) {
-    const path13 = paths[i];
-    dv.setUint32(p, path13.byteLength, true);
+    const path17 = paths[i];
+    dv.setUint32(p, path17.byteLength, true);
     p += 4;
-    out.set(path13, p);
-    p += path13.byteLength;
+    out.set(path17, p);
+    p += path17.byteLength;
     dv.setBigUint64(p, BigInt(rel[i]), true);
     dv.setBigUint64(p + 8, BigInt(e.size), true);
     out.set(Buffer.from(e.md5, "hex"), p + 16);
@@ -22791,11 +22919,11 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     throw new Error(
       "--public-key is a declared release key; a content key is a separate key (pkey release keys generate --content)."
     );
-  let sign = null;
+  let sign2 = null;
   if (!opts.dryRun) {
     const pem = opts.releaseKeyPem ?? opts.env[RELEASE_KEY_ENV] ?? void 0;
-    sign = opts.signRecord ?? (pem ? recordSigner(pem, ctx.releaseKeys) : null);
-    if (!sign)
+    sign2 = opts.signRecord ?? (pem ? recordSigner(pem, ctx.releaseKeys) : null);
+    if (!sign2)
       throw new Error(
         `A delegation is a signed release record: set ${RELEASE_KEY_ENV} (the release key) or --release-key-file.`
       );
@@ -22876,7 +23004,7 @@ Dry run: nothing signed or submitted.
     );
     return { record, jws: null, sha256: null, kid: null, server: null };
   }
-  const jws = await sign(record);
+  const jws = await sign2(record);
   const sha2564 = sha256Hex3(jws);
   if (!opts.signRecord) {
     const v = await verifyJws(jws, trustOf(ctx.releaseKeys), {
@@ -23172,8 +23300,8 @@ function attachableEntryProblem(s) {
     return canonicalUid(s) === null ? "not a canonical uid://" : null;
   if (!s.startsWith("res://")) return "neither res:// nor uid://";
   const rest = s.slice(6);
-  const path13 = rest.endsWith("/") ? rest.slice(0, -1) : rest;
-  return pckPathOk(path13) ? null : "not a normal res:// path";
+  const path17 = rest.endsWith("/") ? rest.slice(0, -1) : rest;
+  return pckPathOk(path17) ? null : "not a normal res:// path";
 }
 function parseAttachable(list = []) {
   const paths = /* @__PURE__ */ new Set();
@@ -23354,27 +23482,27 @@ function binaryRefs(b, start) {
     const next = u32();
     for (let i = 0; i < next; i++) {
       const type = text(str());
-      const path13 = text(str());
+      const path17 = text(str());
       let uid = null;
       if (flags & FLAG_UIDS) {
         need(8);
         uid = dv.getBigInt64(pos, true);
         pos += 8;
       }
-      refs.push({ type, path: path13, uid });
+      refs.push({ type, path: path17, uid });
     }
     const nint = u32();
     const offsets = [];
     let tableEnd = 0;
     for (let i = 0; i < nint; i++) {
-      const path13 = text(str());
+      const path17 = text(str());
       need(8);
       const lo = dv.getUint32(pos, true);
       const hi = dv.getUint32(pos + 4, true);
       pos += 8;
-      if (i < nint - 1 && !path13.startsWith("local://"))
+      if (i < nint - 1 && !path17.startsWith("local://"))
         return {
-          why: `has a sub-resource path that is not local:// (${path13})${AMBIGUOUS}`
+          why: `has a sub-resource path that is not local:// (${path17})${AMBIGUOUS}`
         };
       offsets.push(hi > 2097151 ? -1 : hi * 4294967296 + lo);
     }
@@ -23613,9 +23741,9 @@ function isScript(p, kinds) {
 }
 var NATIVE_RE = /\.(so|dll|dylib|wasm|gdextension)$|\.so\.\d+(\.\d+)*$/i;
 var NATIVE_DIR_RE = /\.(framework|xcframework)$/i;
-function isNative(path13) {
-  if (NATIVE_RE.test(path13)) return true;
-  return path13.split("/").some((s) => NATIVE_DIR_RE.test(s));
+function isNative(path17) {
+  if (NATIVE_RE.test(path17)) return true;
+  return path17.split("/").some((s) => NATIVE_DIR_RE.test(s));
 }
 function resPath(p) {
   return p.startsWith("res://") ? p.slice("res://".length) : null;
@@ -24726,11 +24854,11 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
           chunked.set(v.key, chunkContainer(v.payload.bytes, v.payload.files));
       }
     const pem = opts.releaseKeyPem ?? opts.env[RELEASE_KEY_ENV] ?? void 0;
-    let sign = null;
+    let sign2 = null;
     let content = null;
     if (!opts.dryRun && !delegated) {
-      if (opts.signRecord) sign = opts.signRecord;
-      else if (pem) sign = recordSigner(pem, ctx.releaseKeys);
+      if (opts.signRecord) sign2 = opts.signRecord;
+      else if (pem) sign2 = recordSigner(pem, ctx.releaseKeys);
       else
         throw new Error(
           `A pack release is a signed release record: set ${RELEASE_KEY_ENV} (the release-key input of polaris-key/publish) or --release-key-file.`
@@ -24786,7 +24914,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
           now: issuedNow,
           warn
         });
-        sign = opts.signRecord ?? content.sign;
+        sign2 = opts.signRecord ?? content.sign;
         out.write(
           `Delegation ${opts.delegation.slice(0, 12)}…: ${content.delegation.deliverable} for ${content.delegation.types.join(", ")}; signing as ${content.kid.slice(0, 17)}…
 `
@@ -25148,7 +25276,7 @@ ${JSON.stringify(seq === void 0 ? shown : record, null, 2)}
       out.write("Dry run: nothing uploaded, signed or written.\n");
       return result;
     }
-    const jws = await sign(record);
+    const jws = await sign2(record);
     if (jws.length > MAX_RECORD_JWS_BYTES)
       throw new Error(
         `The signed pack record is ${jws.length} bytes; at most ${MAX_RECORD_JWS_BYTES}.`
@@ -25460,8 +25588,8 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
       `${pack} is not a pack .pkey/release declares; only a pack release can be revoked (an app build is retired by License's compatibility window).`
     );
   const pem = opts.releaseKeyPem ?? opts.env[RELEASE_KEY_ENV] ?? void 0;
-  const sign = opts.signRecord ?? (pem ? recordSigner(pem, ctx.releaseKeys) : null);
-  if (!sign)
+  const sign2 = opts.signRecord ?? (pem ? recordSigner(pem, ctx.releaseKeys) : null);
+  if (!sign2)
     throw new Error(
       `A revocation is a signed release record: set ${RELEASE_KEY_ENV} (the release key pkey release publish uses) or --release-key-file.`
     );
@@ -25494,7 +25622,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     reason: opts.reason,
     issuedAt: opts.now ? opts.now() : Math.floor(Date.now() / 1e3)
   });
-  const jws = await sign(record);
+  const jws = await sign2(record);
   const trust = {};
   for (const k of ctx.releaseKeys) trust[k.kid] = k.publicKey;
   if (!opts.signRecord) await checkSignedRevocation(jws, record, trust);
@@ -25554,8 +25682,8 @@ ${REVOKE_DELEGATION_USAGE}`
     }
   }
   const pem = opts.releaseKeyPem ?? opts.env[RELEASE_KEY_ENV] ?? void 0;
-  const sign = opts.signRecord ?? (pem ? recordSigner(pem, ctx.releaseKeys) : null);
-  if (!sign)
+  const sign2 = opts.signRecord ?? (pem ? recordSigner(pem, ctx.releaseKeys) : null);
+  if (!sign2)
     throw new Error(
       `A revocation is a signed release record: set ${RELEASE_KEY_ENV} (the release key) or --release-key-file.`
     );
@@ -25603,7 +25731,7 @@ ${REVOKE_DELEGATION_USAGE}`
     reason: opts.reason,
     issuedAt: opts.now ? opts.now() : Math.floor(Date.now() / 1e3)
   });
-  const signed = await sign(record);
+  const signed = await sign2(record);
   const trust = {};
   for (const k of ctx.releaseKeys) trust[k.kid] = k.publicKey;
   if (!opts.signRecord) await checkSignedRevocation(signed, record, trust);
@@ -25792,8 +25920,8 @@ ${DISTRIBUTION_CI_USAGE}`
   }
   const client = await clientFor2(opts);
   const base = `distribution/rollouts/${encodeURIComponent(opts.outlet)}/${encodeURIComponent(opts.channel)}`;
-  const path13 = opts.command === "rollout" ? base : `${base}/${opts.command}`;
-  const body = await client.postJson(path13, {
+  const path17 = opts.command === "rollout" ? base : `${base}/${opts.command}`;
+  const body = await client.postJson(path17, {
     what: opts.command === "rollout" ? `Rolling out ${opts.releaseId} on ${opts.outlet}/${opts.channel}` : `${opts.command[0].toUpperCase()}${opts.command.slice(1)} on ${opts.outlet}/${opts.channel}`,
     body: {
       ...opts.releaseId ? { releaseId: opts.releaseId } : {},
@@ -25836,28 +25964,998 @@ async function writeManifestSchemas(outDir) {
   return written;
 }
 
-// src/feeds.ts
+// src/transport.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { createHash as createHash10 } from "node:crypto";
+import { cp as cp2, mkdir as mkdir4, readFile as readFile10, writeFile as writeFile8 } from "node:fs/promises";
+import path11 from "node:path";
+var TRANSPORT_USAGE = "Usage: pkey transport apple-ba package --deliverable <packId> --release <v> --from <dir> [--content-api n]\n              [--variant key] [--out dir] [--platforms iOS[,macOS]] [--no-archive] [--no-report]\n       pkey transport apple-ba upload --deliverable <packId> --release <v> --dir <package out> [--from <dir>] [--content-api n]\n              [--expect-resource id] [--lock file] [--wait minutes] [--no-report]\n       pkey transport play-pad modules --deliverable <packId> --release <v> --from <dir> --project <gradle dir>\n              [--delivery fast-follow|on-demand] [--default-texture fmt] [--variant key] [--no-report]\n       pkey transport steam-depot vdf --deliverable <packId> --release <v> --from <dir> --depot <id>\n              (--branch <name> | --channel <c>) [--setlive] [--app <id>] [--out dir] [--no-report]\n  (each also takes --product slug, --base-url url; reports need distribution:report, the default CI grant)";
+var sha256Hex5 = (b) => createHash10("sha256").update(b).digest("hex");
+function jwsPayload(jws) {
+  const parts = jws.split(".");
+  if (parts.length !== 3) throw new Error("record.jws is not a compact JWS.");
+  return JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
+}
+async function loadTransportProduct(common) {
+  const loaded = await loadManifest(common.cwd);
+  const validation = validateLoadedManifest(loaded);
+  if (!validation.ok)
+    throw new Error(
+      `.pkey/ is invalid; run pkey validate:
+${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}`
+    );
+  const files = {};
+  for (const [name, doc] of Object.entries({
+    product: loaded.product,
+    schema: loaded.schema,
+    release: loaded.release,
+    distribution: loaded.distribution
+  }))
+    if (doc !== void 0) files[name] = JSON.stringify(doc);
+  const parsed = parseManifest(files);
+  if (!parsed.ok)
+    throw new Error(`.pkey/ does not parse:
+  ${parsed.errors.join("\n  ")}`);
+  const m = parsed.manifest;
+  if (common.product && common.product !== m.product.slug)
+    throw new Error(
+      `--product ${common.product} does not match .pkey/product's slug ${m.product.slug}.`
+    );
+  const packs = m.release?.packDeliverables ?? [];
+  const pack = packs.find((p) => p.id === common.deliverable);
+  if (!pack)
+    throw new Error(
+      `--deliverable ${common.deliverable} is not a pack .pkey/release declares (declared: ${packs.map((p) => p.id).join(", ") || "none"}).`
+    );
+  return {
+    slug: m.product.slug,
+    pack,
+    app: m.release?.app ?? null,
+    distribution: m.distribution
+  };
+}
+async function loadTransportPack(common, from) {
+  const { slug, pack, app, distribution } = await loadTransportProduct(common);
+  const root = path11.resolve(common.cwd, from, pack.id, common.version);
+  let recordJws;
+  try {
+    recordJws = (await readFile10(path11.join(root, "record.jws"), "utf8")).trim();
+  } catch {
+    throw new Error(
+      `No cached release at ${path11.relative(common.cwd, root) || root}: run pkey release publish --deliverable ${pack.id} --version ${common.version} --out ${from} first (or restore that cache).`
+    );
+  }
+  const record = jwsPayload(recordJws);
+  if (record?.kind !== "pack" || record.deliverable !== pack.id || record.version !== common.version)
+    throw new Error(
+      `${path11.join(root, "record.jws")} is not ${pack.id}@${common.version}'s pack record.`
+    );
+  const variants = [];
+  for (const v of declaredVariants(pack)) {
+    const key = variantKey(v);
+    const signed = record.variants.find((x) => variantKey(x.variant) === key);
+    if (!signed) continue;
+    const lv = await loadVariant(pack, v, root, {
+      ...app?.content?.attachable ? { attachable: app.content.attachable } : {}
+    });
+    if (lv.lintErrors.length)
+      throw new Error(
+        `${pack.id}@${common.version} fails the data-only lint, so it never reaches a store transport:
+  ${lv.lintErrors.join("\n  ")}`
+      );
+    let payload;
+    if (lv.payload.layout === "container") {
+      payload = {
+        sha256: sha256Hex5(lv.payload.bytes),
+        size: lv.payload.bytes.byteLength
+      };
+    } else {
+      payload = {
+        sha256: await treeDigest(lv.payload.files),
+        size: lv.payload.files.reduce((n, f) => n + f.size, 0)
+      };
+    }
+    if (payload.sha256 !== signed.payload.sha256 || payload.size !== signed.payload.size)
+      throw new Error(
+        `${path11.relative(common.cwd, lv.location) || lv.location} is not the payload ${pack.id}@${common.version}'s record pins for variant ${variantDirName(v)} (sha256 ${payload.sha256.slice(0, 12)}…, want ${signed.payload.sha256.slice(0, 12)}…).`
+      );
+    variants.push({
+      variant: v,
+      key,
+      layout: lv.payload.layout,
+      location: lv.location,
+      ext: lv.payload.layout === "container" ? path11.extname(lv.location) : "",
+      payload
+    });
+  }
+  if (variants.length === 0)
+    throw new Error(
+      `${pack.id}@${common.version}'s record names no variant .pkey/release declares.`
+    );
+  return {
+    slug,
+    pack,
+    app,
+    distribution,
+    root,
+    recordJws,
+    recordSha256: sha256Hex5(recordJws),
+    record,
+    variants,
+    marker: markerJson(pack.id, common.version, recordJws)
+  };
+}
+function outletsFor(loaded, transport) {
+  return (loaded.distribution?.routes ?? []).filter(
+    (r) => r.deliverableId === loaded.pack.id && r.transport === transport
+  ).map((r) => r.outletId);
+}
+function packsOn(loaded, transport) {
+  return [
+    ...new Set(
+      (loaded.distribution?.routes ?? []).filter((r) => r.transport === transport && r.deliverableId !== "app").map((r) => r.deliverableId)
+    )
+  ];
+}
+function requireRouted(loaded, transport) {
+  const outlets = outletsFor(loaded, transport);
+  if (!outlets.length)
+    throw new Error(
+      `${loaded.pack.id} is not bound to ${transport} on any outlet: add it under transports in .pkey/distribution (transports.packs.<outlet> or transports.deliverables.${loaded.pack.id}.<outlet>) and resync.`
+    );
+  return outlets;
+}
+function pickVariants(loaded, wanted, fixed = []) {
+  if (wanted !== void 0) {
+    const want = wanted === "default" ? "" : wanted;
+    const hit = loaded.variants.filter((v) => {
+      if (!fixed.length) return v.key === want;
+      const rest = Object.fromEntries(
+        Object.entries(v.variant).filter(([a]) => !fixed.includes(a))
+      );
+      return variantKey(rest) === want;
+    });
+    if (!hit.length)
+      throw new Error(
+        `--variant ${wanted} is not a published variant of ${loaded.pack.id} (published: ${loaded.variants.map((v) => v.key || "default").join(", ")}).`
+      );
+    return hit;
+  }
+  const otherAxes = new Set(
+    loaded.variants.flatMap(
+      (v) => Object.keys(v.variant).filter((a) => !fixed.includes(a))
+    )
+  );
+  if (otherAxes.size)
+    throw new Error(
+      `${loaded.pack.id} varies by ${[...otherAxes].join(", ")}, which this transport cannot target: choose one with --variant (published: ${loaded.variants.map((v) => v.key || "default").join(", ")}).`
+    );
+  return loaded.variants;
+}
+function contentLevel(loaded, given) {
+  const level = given !== void 0 ? Number(given) : loaded.app?.content?.contentApi;
+  if (level === void 0)
+    throw new Error(
+      "--content-api is required: .pkey/release declares no deliverables.app.content.contentApi."
+    );
+  if (!Number.isSafeInteger(level) || level < 1)
+    throw new Error(
+      `--content-api must be a whole number of at least 1 (got ${String(given)}).`
+    );
+  const range = loaded.pack.requires.contentApi?.app;
+  if (range !== void 0) {
+    const cmp = parseRange(range, CONTENT_API_RANGE_PATTERN);
+    if (cmp && !contentApiInRange(cmp, level))
+      throw new Error(
+        `${loaded.pack.id} requires contentApi ${range}; it cannot be bound to content level ${level}.`
+      );
+  }
+  return level;
+}
+async function placePayload(loaded, v, dir, name) {
+  await mkdir4(dir, { recursive: true });
+  if (v.layout === "container") {
+    const file = `${name}${v.ext}`;
+    await cp2(v.location, path11.join(dir, file));
+    await writeFile8(path11.join(dir, `${file}${MARKER_SUFFIX}`), loaded.marker);
+    return [file, `${file}${MARKER_SUFFIX}`];
+  }
+  await cp2(v.location, dir, { recursive: true });
+  const marker2 = path11.join(dir, ...TREE_MARKER_PATH.split("/"));
+  await mkdir4(path11.dirname(marker2), { recursive: true });
+  await writeFile8(marker2, loaded.marker);
+  return [".", TREE_MARKER_PATH];
+}
+async function reportTransport(common, loaded, outlets, state, platformRef) {
+  if (common.report === false) {
+    common.stdout.write(
+      `Not reporting ${state} on ${outlets.join(", ")} (--no-report)
+`
+    );
+    return;
+  }
+  for (const outlet of outlets)
+    await reportDistribution({
+      type: "availability",
+      product: loaded.slug,
+      baseUrl: common.baseUrl,
+      env: common.env,
+      stdout: common.stdout,
+      stderr: common.stderr,
+      fetchImpl: common.fetchImpl,
+      sleep: common.sleep,
+      outlet,
+      version: common.version,
+      deliverable: loaded.pack.id,
+      state,
+      platformRef: JSON.stringify(platformRef)
+    });
+}
+function prettyJson(v) {
+  return `${JSON.stringify(v, null, 2)}
+`;
+}
+
+// src/transportAppleBa.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { createPrivateKey as createPrivateKey2, sign } from "node:crypto";
+import { execFileSync as execFileSync2 } from "node:child_process";
+import { mkdir as mkdir5, readFile as readFile11, rm, stat as stat4, writeFile as writeFile9 } from "node:fs/promises";
+import path12 from "node:path";
+var ASC_API = "https://api.appstoreconnect.apple.com";
+var DEFAULT_BA_OUT = "build/pkey-transport/apple-ba";
+var DEFAULT_ASSET_PACK_LOCK = ".pkey/asset-packs.json";
+var ASSET_PACK_LOCK_FORMAT = "pkey-asset-packs/1";
+var BA_INPUTS_FORMAT = "pkey-ba-inputs/1";
+var AscUploadError = class extends Error {
+  code;
+  constructor(code, message) {
+    super(`${code}: ${message}`);
+    this.name = "AscUploadError";
+    this.code = code;
+  }
+};
+function assetPackIdFor(product, level) {
+  const all = resolveAssetPackIds(
+    [...packsOn(product, "apple-ba"), product.pack.id],
+    level
+  );
+  return all.get(product.pack.id);
+}
+function downloadPolicy(delivery) {
+  const events = {
+    installationEventTypes: ["firstInstallation", "subsequentUpdate"]
+  };
+  if (delivery === "essential") return { essential: events };
+  if (delivery === "prefetch") return { prefetch: events };
+  return { onDemand: {} };
+}
+async function baPackage(o) {
+  const loaded = await loadTransportPack(o, o.from);
+  const outlets = requireRouted(loaded, "apple-ba");
+  const level = contentLevel(loaded, o.contentApi);
+  const assetPackId = assetPackIdFor(loaded, level);
+  const [v, ...more] = pickVariants(loaded, o.variant);
+  if (more.length || !v)
+    throw new Error(
+      `${loaded.pack.id} has ${loaded.variants.length} variants; an asset pack carries one: choose it with --variant.`
+    );
+  const out = path12.resolve(o.cwd, o.out ?? DEFAULT_BA_OUT);
+  const dir = path12.join(out, assetPackId);
+  await rm(dir, { recursive: true, force: true });
+  const contentDir = path12.join(dir, "pkey", assetPackId);
+  await placePayload(loaded, v, contentDir, assetPackId);
+  const manifest = {
+    assetPackID: assetPackId,
+    downloadPolicy: downloadPolicy(loaded.pack.delivery),
+    fileSelectors: [{ directory: `pkey/${assetPackId}` }],
+    platforms: o.platforms?.length ? o.platforms : ["iOS"]
+  };
+  const manifestText = prettyJson(manifest);
+  await writeFile9(path12.join(dir, "Manifest.json"), manifestText);
+  const inputs = {
+    format: BA_INPUTS_FORMAT,
+    assetPackId,
+    packId: loaded.pack.id,
+    version: o.version,
+    contentApi: level,
+    variant: v.key,
+    recordSha256: loaded.recordSha256,
+    payloadSha256: v.payload.sha256,
+    manifestSha256: sha256Hex5(manifestText)
+  };
+  await writeFile9(
+    path12.join(out, `${assetPackId}.inputs.json`),
+    prettyJson(inputs)
+  );
+  o.stdout.write(
+    `Wrote asset pack ${assetPackId} (${loaded.pack.id}@${o.version}, ${Object.keys(manifest.downloadPolicy)[0]}) at ${path12.relative(o.cwd, dir) || dir}
+`
+  );
+  let aar = null;
+  if (o.archive !== false) {
+    if ((o.platform ?? process.platform) !== "darwin")
+      throw new Error(
+        "xcrun ba-package runs on macOS (Xcode 26 or later). Apple's Linux tools are unverified; run this step on a macOS runner, or pass --no-archive to write the manifest and files only."
+      );
+    aar = path12.join(out, `${assetPackId}.aar`);
+    await rm(aar, { force: true });
+    const exec = o.exec ?? ((cmd, args, cwd) => {
+      execFileSync2(cmd, args, { cwd, stdio: ["ignore", "pipe", "pipe"] });
+    });
+    exec("xcrun", ["ba-package", "package", "Manifest.json", "-o", aar], dir);
+    o.stdout.write(`Archived ${path12.relative(o.cwd, aar) || aar}
+`);
+  }
+  await reportTransport(o, loaded, outlets, "pending", {
+    assetPackIdentifier: assetPackId,
+    contentApi: level
+  });
+  return { assetPackId, dir, manifest, aar, inputs };
+}
+async function ascCredentials(o) {
+  const keyId = o.env.ASC_KEY_ID?.trim();
+  const issuerId = o.env.ASC_ISSUER_ID?.trim();
+  let pem = o.env.ASC_PRIVATE_KEY?.trim();
+  if (!pem && o.env.ASC_KEY_PATH?.trim())
+    pem = await readFile11(
+      path12.resolve(o.cwd, o.env.ASC_KEY_PATH.trim()),
+      "utf8"
+    );
+  if (!keyId || !issuerId || !pem)
+    throw new AscUploadError(
+      "asc-credentials-missing",
+      "set ASC_KEY_ID, ASC_ISSUER_ID and ASC_PRIVATE_KEY (or ASC_KEY_PATH) from CI secrets: an App Store Connect API key with the Developer role or higher."
+    );
+  return { keyId, issuerId, pem };
+}
+function ascToken(c, now = Date.now()) {
+  const b64 = (v) => Buffer.from(JSON.stringify(v)).toString("base64url");
+  const iat = Math.floor(now / 1e3);
+  const head = b64({ alg: "ES256", kid: c.keyId, typ: "JWT" });
+  const body = b64({
+    iss: c.issuerId,
+    iat,
+    exp: iat + 1200,
+    aud: "appstoreconnect-v1"
+  });
+  const sig = sign("sha256", Buffer.from(`${head}.${body}`), {
+    key: createPrivateKey2(c.pem),
+    dsaEncoding: "ieee-p1363"
+  });
+  return `${head}.${body}.${sig.toString("base64url")}`;
+}
+var AscApi = class {
+  constructor(creds, fetchImpl, sleep) {
+    this.creds = creds;
+    this.fetchImpl = fetchImpl;
+    this.sleep = sleep;
+  }
+  creds;
+  fetchImpl;
+  sleep;
+  async call(method, p, body) {
+    for (let attempt = 0; ; attempt += 1) {
+      const r = await this.fetchImpl(`${ASC_API}${p}`, {
+        method,
+        headers: {
+          authorization: `Bearer ${ascToken(this.creds)}`,
+          ...body !== void 0 ? { "content-type": "application/json" } : {}
+        },
+        ...body !== void 0 ? { body: JSON.stringify(body) } : {}
+      });
+      const text = await r.text();
+      if ((r.status === 429 || r.status >= 500) && attempt < 4) {
+        await this.sleep(2 ** attempt * 5e3);
+        continue;
+      }
+      if (!r.ok)
+        throw new AscUploadError(
+          "asc-http-error",
+          `${method} ${p} answered ${r.status}: ${text.slice(0, 500)}`
+        );
+      return text ? JSON.parse(text) : {};
+    }
+  }
+};
+async function readLock(file) {
+  try {
+    const v = JSON.parse(await readFile11(file, "utf8"));
+    if (v?.format !== ASSET_PACK_LOCK_FORMAT || typeof v.assetPacks !== "object")
+      throw new Error(`${file} is not a ${ASSET_PACK_LOCK_FORMAT} document.`);
+    return v;
+  } catch (e) {
+    if (e.code === "ENOENT")
+      return { format: ASSET_PACK_LOCK_FORMAT, assetPacks: {} };
+    throw e;
+  }
+}
+function appIdOf(product, outlets, env) {
+  const fromEnv = env.ASC_APP_ID?.trim();
+  if (fromEnv) return fromEnv;
+  const ids = new Set(
+    (product.distribution?.outlets ?? []).filter((o) => outlets.includes(o.id) && o.identity.appleId).map((o) => o.identity.appleId)
+  );
+  if (ids.size !== 1)
+    throw new AscUploadError(
+      "asc-app-unknown",
+      ids.size ? `the apple-ba outlets name different apps (${[...ids].join(", ")}); set ASC_APP_ID.` : "no apple-ba outlet in .pkey/distribution has an appleId; add it or set ASC_APP_ID."
+    );
+  return [...ids][0];
+}
+async function baUpload(o) {
+  const product = await loadTransportProduct(o);
+  const outlets = requireRouted(product, "apple-ba");
+  const level = contentLevel(product, o.contentApi);
+  const assetPackId = assetPackIdFor(product, level);
+  const dir = path12.resolve(o.cwd, o.dir ?? DEFAULT_BA_OUT);
+  const aar = path12.join(dir, `${assetPackId}.aar`);
+  const manifestFile = path12.join(dir, assetPackId, "Manifest.json");
+  const inputs = JSON.parse(
+    await readFile11(path12.join(dir, `${assetPackId}.inputs.json`), "utf8").catch(
+      () => {
+        throw new AscUploadError(
+          "asset-pack-inputs-mismatch",
+          `no ${assetPackId}.inputs.json under ${path12.relative(o.cwd, dir) || dir}: run pkey transport apple-ba package first.`
+        );
+      }
+    )
+  );
+  if (inputs.packId !== product.pack.id || inputs.version !== o.version || inputs.contentApi !== level || inputs.manifestSha256 !== sha256Hex5(await readFile11(manifestFile)))
+    throw new AscUploadError(
+      "asset-pack-inputs-mismatch",
+      `${path12.relative(o.cwd, dir) || dir} holds ${String(inputs.packId)}@${String(inputs.version)} at level ${String(inputs.contentApi)}, not ${product.pack.id}@${o.version} at level ${level} (or its Manifest.json changed since packaging).`
+    );
+  await stat4(aar).catch(() => {
+    throw new AscUploadError(
+      "asset-pack-inputs-mismatch",
+      `${path12.relative(o.cwd, aar)} is missing: package on macOS (without --no-archive) first.`
+    );
+  });
+  const content = path12.join(dir, assetPackId, "pkey", assetPackId);
+  const packaged = await packagedPayload(content, assetPackId);
+  if (packaged.sha256 !== inputs.payloadSha256)
+    throw new AscUploadError(
+      "asset-pack-inputs-mismatch",
+      `the packaged content under ${path12.relative(o.cwd, content) || content} hashes to ${packaged.sha256.slice(0, 12)}…, not the payload ${String(inputs.payloadSha256).slice(0, 12)}… the package step recorded: package again.`
+    );
+  if (o.from !== void 0) {
+    const loaded = await loadTransportPack(o, o.from);
+    const variant = loaded.variants.find((v2) => v2.key === inputs.variant);
+    if (inputs.recordSha256 !== loaded.recordSha256 || !variant || variant.payload.sha256 !== packaged.sha256 || packaged.marker !== loaded.marker)
+      throw new AscUploadError(
+        "asset-pack-inputs-mismatch",
+        `the packaged content of ${assetPackId} is not ${product.pack.id}@${o.version}'s signed record in ${o.from} (record, payload or marker differ): package again from that cache.`
+      );
+  }
+  const appId = appIdOf(product, outlets, o.env);
+  const lockFile = path12.resolve(o.cwd, o.lock ?? DEFAULT_ASSET_PACK_LOCK);
+  const lock = await readLock(lockFile);
+  const recorded = lock.assetPacks[assetPackId];
+  if (recorded && recorded.packId !== product.pack.id)
+    throw new AscUploadError(
+      "asset-pack-resource-mismatch",
+      `${path12.relative(o.cwd, lockFile)} records asset pack ${assetPackId} for ${recorded.packId}, not ${product.pack.id}.`
+    );
+  if (recorded && o.expectResource && recorded.resource !== o.expectResource)
+    throw new AscUploadError(
+      "asset-pack-resource-mismatch",
+      `--expect-resource ${o.expectResource} differs from the recorded resource ${recorded.resource} of ${assetPackId}.`
+    );
+  const expected = recorded?.resource ?? o.expectResource;
+  const creds = await ascCredentials(o);
+  const api = new AscApi(creds, o.fetchImpl ?? fetch, o.sleep ?? defaultSleep);
+  const found = await api.call(
+    "GET",
+    `/v1/apps/${encodeURIComponent(appId)}/backgroundAssets?filter[assetPackIdentifier]=${encodeURIComponent(assetPackId)}`
+  );
+  const hit = (Array.isArray(found.data) ? found.data : []).filter(
+    (r) => r.attributes?.assetPackIdentifier === assetPackId
+  );
+  let resource;
+  let created = false;
+  if (hit.length) {
+    resource = hit[0].id;
+    if (expected === void 0)
+      throw new AscUploadError(
+        "asset-pack-unrecorded",
+        `App Store Connect already has asset pack ${assetPackId} (resource ${resource}), but ${path12.relative(o.cwd, lockFile)} records none. Confirm in App Store Connect that it is ${product.pack.id}'s, then pass --expect-resource ${resource}.`
+      );
+    if (resource !== expected)
+      throw new AscUploadError(
+        "asset-pack-resource-mismatch",
+        `asset pack ${assetPackId} is resource ${resource}, but ${expected} is recorded: refusing to upload into another pack's asset pack.`
+      );
+  } else {
+    if (expected !== void 0)
+      throw new AscUploadError(
+        "asset-pack-missing",
+        `resource ${expected} is recorded for ${assetPackId}, but App Store Connect has no asset pack by that identifier (archived ids are never reused): refusing to create a new one.`
+      );
+    const r = await api.call("POST", "/v1/backgroundAssets", {
+      data: {
+        type: "backgroundAssets",
+        attributes: { assetPackIdentifier: assetPackId },
+        relationships: { app: { data: { type: "apps", id: appId } } }
+      }
+    });
+    resource = r.data.id;
+    created = true;
+    o.stdout.write(
+      `Created asset pack ${assetPackId} (resource ${resource})
+`
+    );
+  }
+  if (!recorded) {
+    lock.assetPacks[assetPackId] = {
+      packId: product.pack.id,
+      resource,
+      app: appId,
+      recordedAt: new Date(o.now?.() ?? Date.now()).toISOString()
+    };
+    lock.assetPacks = Object.fromEntries(
+      Object.entries(lock.assetPacks).sort(([a], [b]) => a < b ? -1 : 1)
+    );
+    await mkdir5(path12.dirname(lockFile), { recursive: true });
+    await writeFile9(lockFile, prettyJson(lock));
+    o.stdout.write(
+      `Recorded ${assetPackId} → ${resource} in ${path12.relative(o.cwd, lockFile)}: commit it, so later uploads can prove the asset pack is this pack's.
+`
+    );
+  }
+  const v = await api.call("POST", "/v1/backgroundAssetVersions", {
+    data: {
+      type: "backgroundAssetVersions",
+      relationships: {
+        backgroundAsset: { data: { type: "backgroundAssets", id: resource } }
+      }
+    }
+  });
+  const version = v.data;
+  const ascVersion = typeof version.attributes?.version === "number" ? version.attributes.version : typeof version.attributes?.version === "string" && /^[0-9]+$/.test(version.attributes.version) ? Number(version.attributes.version) : null;
+  o.stdout.write(
+    `Created version ${ascVersion ?? "?"} of ${assetPackId} (${version.id})
+`
+  );
+  await uploadFile(api, o, version.id, manifestFile, "MANIFEST");
+  await uploadFile(api, o, version.id, aar, "ASSET");
+  let state = null;
+  const until = (o.now?.() ?? Date.now()) + (o.waitMinutes ?? 0) * 6e4;
+  while ((o.waitMinutes ?? 0) > 0) {
+    const r = await api.call(
+      "GET",
+      `/v1/backgroundAssetVersions/${version.id}`
+    );
+    state = String(r.data.attributes?.state ?? "");
+    if (state === "COMPLETE" || state === "FAILED") break;
+    if ((o.now?.() ?? Date.now()) >= until) break;
+    await (o.sleep ?? defaultSleep)(3e4);
+  }
+  if (state) o.stdout.write(`Version ${version.id}: ${state}
+`);
+  if (state === "FAILED")
+    throw new AscUploadError(
+      "asc-http-error",
+      `App Store Connect failed to process ${assetPackId} version ${version.id}; see its stateDetails in App Store Connect.`
+    );
+  const ref = {
+    assetPackIdentifier: assetPackId,
+    ascBackgroundAssetId: resource,
+    ascBackgroundAssetVersionId: version.id,
+    ...ascVersion !== null ? { ascVersion } : {},
+    contentApi: level
+  };
+  const kinds = new Map(
+    (product.distribution?.outlets ?? []).map((x) => [x.id, x.kind])
+  );
+  const testflight = outlets.filter((id) => kinds.get(id) === "testflight");
+  const store = outlets.filter((id) => kinds.get(id) !== "testflight");
+  if (testflight.length)
+    await reportTransport(o, product, testflight, "processing", ref);
+  if (store.length) await reportTransport(o, product, store, "pending", ref);
+  o.stdout.write(
+    "Next: internal TestFlight testers get the version once it is processed. External TestFlight review is submitted in App Store Connect (no API); App Store review goes with a review submission.\n"
+  );
+  return {
+    assetPackId,
+    resource,
+    created,
+    versionId: version.id,
+    ascVersion,
+    state
+  };
+}
+async function packagedPayload(content, name) {
+  for (const ext of [".pck", ".zip"]) {
+    const file = path12.join(content, `${name}${ext}`);
+    const bytes = await readFile11(file).catch(() => null);
+    if (bytes)
+      return {
+        sha256: sha256Hex5(bytes),
+        marker: await readFile11(`${file}${MARKER_SUFFIX}`, "utf8").catch(
+          () => null
+        )
+      };
+  }
+  const tree = await readTree(content).catch(() => null);
+  if (!tree || tree.errors.length || !tree.files.length)
+    throw new AscUploadError(
+      "asset-pack-inputs-mismatch",
+      `no packaged payload under ${content}: run pkey transport apple-ba package first.`
+    );
+  return {
+    sha256: await treeDigest(tree.files),
+    marker: await readFile11(
+      path12.join(content, ...TREE_MARKER_PATH.split("/")),
+      "utf8"
+    ).catch(() => null)
+  };
+}
+async function uploadFile(api, o, versionId, file, assetType) {
+  const bytes = new Uint8Array(await readFile11(file));
+  const r = await api.call("POST", "/v1/backgroundAssetUploadFiles", {
+    data: {
+      type: "backgroundAssetUploadFiles",
+      attributes: {
+        assetType,
+        fileName: path12.basename(file),
+        fileSize: bytes.byteLength
+      },
+      relationships: {
+        backgroundAssetVersion: {
+          data: { type: "backgroundAssetVersions", id: versionId }
+        }
+      }
+    }
+  });
+  const upload = r.data;
+  const ops = upload.attributes?.uploadOperations ?? [];
+  const fetchImpl = o.fetchImpl ?? fetch;
+  for (const op of ops) {
+    const part = bytes.subarray(op.offset, op.offset + op.length);
+    if (part.byteLength !== op.length)
+      throw new AscUploadError(
+        "asc-http-error",
+        `upload operation at ${op.offset}+${op.length} is outside ${path12.basename(file)} (${bytes.byteLength} bytes).`
+      );
+    const put = await fetchImpl(op.url, {
+      method: op.method,
+      headers: Object.fromEntries(
+        (op.requestHeaders ?? []).map((h) => [h.name, h.value])
+      ),
+      body: part
+    });
+    if (!put.ok)
+      throw new AscUploadError(
+        "asc-http-error",
+        `uploading ${path12.basename(file)} at ${op.offset}+${op.length} answered ${put.status}.`
+      );
+  }
+  await api.call("PATCH", `/v1/backgroundAssetUploadFiles/${upload.id}`, {
+    data: {
+      type: "backgroundAssetUploadFiles",
+      id: upload.id,
+      attributes: { uploaded: true }
+    }
+  });
+  o.stdout.write(
+    `Uploaded ${assetType.toLowerCase()} ${path12.basename(file)} (${bytes.byteLength} bytes, ${ops.length} part${ops.length === 1 ? "" : "s"})
+`
+  );
+}
+
+// src/transportPlayPad.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { mkdir as mkdir6, readFile as readFile12, rm as rm2, writeFile as writeFile10 } from "node:fs/promises";
+import path13 from "node:path";
+var TCF_ALIASES = {
+  astc: "astc",
+  etc2: "etc2",
+  etc: "etc1",
+  etc1: "etc1",
+  s3tc: "s3tc",
+  dxt1: "dxt1",
+  pvrtc: "pvrtc",
+  atc: "atc",
+  latc: "latc",
+  "3dc": "3dc",
+  paletted: "paletted"
+};
+function padModuleGradle(name, delivery) {
+  return `// Written by pkey transport play-pad modules (Polaris Key). Regenerated on every run.
+plugins {
+    id 'com.android.asset-pack'
+}
+
+assetPack {
+    packName = "${name}"
+    dynamicDelivery {
+        deliveryType = "${delivery}"
+    }
+}
+`;
+}
+var TEXTURE_BLOCK_MARK = "// pkey transport play-pad: texture compression format targeting";
+var TEXTURE_BLOCK = `
+${TEXTURE_BLOCK_MARK} (#tcf_ directories).
+android {
+    bundle {
+        texture {
+            enableSplit true
+        }
+    }
+}
+`;
+function patchSettingsGradle(text, name) {
+  const line = `include ':${name}'`;
+  if (text.split(/\r?\n/).some((l) => l.trim() === line)) return text;
+  const lines2 = text.split("\n");
+  let at = -1;
+  lines2.forEach((l, i) => {
+    if (/^\s*include\s+['"]:/.test(l)) at = i;
+  });
+  if (at < 0) {
+    const sep = text.endsWith("\n") ? "" : "\n";
+    return `${text}${sep}${line}
+`;
+  }
+  lines2.splice(at + 1, 0, line);
+  return lines2.join("\n");
+}
+function patchAppGradle(text, name, textureSplit) {
+  const re = /^(\s*assetPacks\s*=\s*\[)([^\]]*)(\])/m;
+  const m = re.exec(text);
+  if (!m)
+    throw new Error(
+      'build.gradle declares no assetPacks = [...] list: --project must be a Godot Android Gradle build (android/build, from "Install Android Build Template").'
+    );
+  const items = m[2].split(",").map((s) => s.trim()).filter(Boolean);
+  let out = text;
+  if (!items.some((s) => s === `":${name}"` || s === `':${name}'`)) {
+    const next = [...items, `":${name}"`].join(", ");
+    out = out.replace(re, `$1${next}$3`);
+  }
+  if (textureSplit && !out.includes(TEXTURE_BLOCK_MARK))
+    out = `${out}${out.endsWith("\n") ? "" : "\n"}${TEXTURE_BLOCK}`;
+  return out;
+}
+function padDirectories(variants, defaultTexture) {
+  const out = /* @__PURE__ */ new Map();
+  const textured = variants.filter((v) => v.variant.texture !== void 0);
+  if (!textured.length) {
+    if (variants.length !== 1)
+      throw new Error("a Play asset pack carries one untargeted variant.");
+    out.set(variants[0], "pkey");
+    return out;
+  }
+  const values = textured.map((v) => v.variant.texture);
+  const def = defaultTexture ?? (values.includes("etc2") ? "etc2" : values[0]);
+  if (!values.includes(def))
+    throw new Error(
+      `--default-texture ${def} is not a published texture variant (published: ${values.join(", ")}).`
+    );
+  for (const v of textured) {
+    const t = v.variant.texture;
+    if (t === def) {
+      out.set(v, "pkey");
+      continue;
+    }
+    const alias = TCF_ALIASES[t];
+    if (!alias)
+      throw new Error(
+        `texture variant ${t} has no Play texture-compression-format alias (${Object.keys(TCF_ALIASES).join(", ")}); make it the default with --default-texture or leave it to pkey-cdn.`
+      );
+    out.set(v, `pkey#tcf_${alias}`);
+  }
+  return out;
+}
+async function padModules(o) {
+  const loaded = await loadTransportPack(o, o.from);
+  const outlets = requireRouted(loaded, "play-pad");
+  const names = resolvePadPackNames([
+    ...packsOn(loaded, "play-pad"),
+    loaded.pack.id
+  ]);
+  const name = names.get(loaded.pack.id);
+  const delivery = o.delivery ?? (loaded.pack.delivery === "essential" || loaded.pack.delivery === "prefetch" ? "fast-follow" : "on-demand");
+  if (delivery !== "fast-follow" && delivery !== "on-demand")
+    throw new Error(
+      `--delivery must be fast-follow or on-demand (install-time content is Godot's own assetPackInstallTime, an embedded baseline).`
+    );
+  const variants = pickVariants(loaded, o.variant, ["texture"]);
+  const dirs = padDirectories(variants, o.defaultTexture);
+  const project = path13.resolve(o.cwd, o.project);
+  const settingsFile = path13.join(project, "settings.gradle");
+  const appFile = path13.join(project, "build.gradle");
+  const settings = await readFile12(settingsFile, "utf8").catch(() => {
+    throw new Error(
+      `${path13.relative(o.cwd, settingsFile)} is missing: --project must be a Godot Android Gradle build (android/build).`
+    );
+  });
+  const app = await readFile12(appFile, "utf8");
+  const textured = [...dirs.values()].some((d) => d !== "pkey");
+  const nextApp = patchAppGradle(app, name, textured);
+  const nextSettings = patchSettingsGradle(settings, name);
+  const moduleDir = path13.join(project, name);
+  await rm2(moduleDir, { recursive: true, force: true });
+  const assets = path13.join(moduleDir, "src", "main", "assets");
+  const written = [];
+  for (const [v, d] of [...dirs.entries()].sort(
+    ([, a], [, b]) => a < b ? -1 : 1
+  )) {
+    const target = v.layout === "container" ? path13.join(assets, d) : path13.join(assets, d, name);
+    await placePayload(loaded, v, target, name);
+    written.push(v.layout === "container" ? d : `${d}/${name}`);
+  }
+  await mkdir6(moduleDir, { recursive: true });
+  await writeFile10(
+    path13.join(moduleDir, "build.gradle"),
+    padModuleGradle(name, delivery)
+  );
+  const patched = [];
+  if (nextSettings !== settings) {
+    await writeFile10(settingsFile, nextSettings);
+    patched.push("settings.gradle");
+  }
+  if (nextApp !== app) {
+    await writeFile10(appFile, nextApp);
+    patched.push("build.gradle");
+  }
+  o.stdout.write(
+    `Wrote Play asset pack :${name} (${delivery}; ${written.join(", ")}) for ${loaded.pack.id}@${o.version}${patched.length ? `; patched ${patched.join(", ")}` : ""}
+`
+  );
+  await reportTransport(o, loaded, outlets, "pending", {
+    padPack: name,
+    deliveryType: delivery
+  });
+  return { name, delivery, directories: written, patched };
+}
+
+// src/transportSteam.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { mkdir as mkdir7, rm as rm3, writeFile as writeFile11 } from "node:fs/promises";
+import path14 from "node:path";
+var DEFAULT_STEAM_OUT = "build/pkey-transport/steam";
+var STEAM_PACK_DIR = "pkey_packs";
+function vdfString(s) {
+  if (/[\u0000-\u001f]/.test(s))
+    throw new Error(
+      `a VDF value cannot hold control characters (${JSON.stringify(s)}).`
+    );
+  return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+function appBuildVdf(o) {
+  return [
+    `"AppBuild"`,
+    `{`,
+    `	"AppID" ${vdfString(o.app)}`,
+    `	"Desc" ${vdfString(o.desc)}`,
+    `	"ContentRoot" ${vdfString("content/")}`,
+    `	"BuildOutput" ${vdfString("output/")}`,
+    ...o.setlive !== null ? [`	"SetLive" ${vdfString(o.setlive)}`] : [],
+    `	"Depots"`,
+    `	{`,
+    `		${vdfString(o.depot)} ${vdfString(`depot_build_${o.depot}.vdf`)}`,
+    `	}`,
+    `}`,
+    ``
+  ].join("\n");
+}
+function depotBuildVdf(o) {
+  return [
+    `"DepotBuild"`,
+    `{`,
+    `	"DepotID" ${vdfString(o.depot)}`,
+    `	"ContentRoot" ${vdfString(`content/${o.depot}/`)}`,
+    `	"FileMapping"`,
+    `	{`,
+    `		"LocalPath" ${vdfString("*")}`,
+    `		"DepotPath" ${vdfString(".")}`,
+    `		"Recursive" ${vdfString("1")}`,
+    `	}`,
+    `}`,
+    ``
+  ].join("\n");
+}
+async function steamVdf(o) {
+  if (!/^[0-9]{1,10}$/.test(o.depot))
+    throw new Error(
+      `--depot must be a numeric Steam depot id (got ${o.depot}).`
+    );
+  const loaded = await loadTransportPack(o, o.from);
+  const outlets = requireRouted(loaded, "steam-depot");
+  const steam = (loaded.distribution?.outlets ?? []).filter(
+    (x) => outlets.includes(x.id) && x.kind === "steam"
+  );
+  const app = o.app ?? steam.find((x) => x.identity.appId)?.identity.appId;
+  if (!app || !/^[0-9]{1,10}$/.test(app))
+    throw new Error(
+      "--app is required (a numeric Steam app id): no steam outlet the pack is routed through declares appId."
+    );
+  let branch = o.branch;
+  if (!branch && o.channel)
+    branch = steam.map((x) => x.identity.branches?.[o.channel]).find(Boolean);
+  if (!branch)
+    throw new Error(
+      `--branch is required${o.channel ? ` (no steam outlet maps channel ${o.channel} to a branch)` : " (or --channel with the outlet's branches map)"}.`
+    );
+  if (!/^[A-Za-z0-9_.-]{1,64}$/.test(branch))
+    throw new Error(`--branch ${branch} is not a Steam branch name.`);
+  const isDefault = branch === "default" || branch === "public";
+  if (o.setlive && isDefault)
+    throw new Error(
+      `--setlive cannot target the ${branch} branch: Steam's default branch is set live in Steamworks by a person (SetLive applies to named branches only).`
+    );
+  const [v, ...more] = pickVariants(loaded, o.variant);
+  if (more.length || !v)
+    throw new Error(
+      `${loaded.pack.id} has ${loaded.variants.length} variants; a depot carries one: choose it with --variant.`
+    );
+  const out = path14.resolve(o.cwd, o.out ?? DEFAULT_STEAM_OUT);
+  const contentRoot = path14.join(out, "content", o.depot);
+  await rm3(contentRoot, { recursive: true, force: true });
+  await placePayload(
+    loaded,
+    v,
+    path14.join(contentRoot, STEAM_PACK_DIR, loaded.pack.id),
+    loaded.pack.id
+  );
+  await mkdir7(out, { recursive: true });
+  const appBuild = path14.join(out, `app_build_${app}.vdf`);
+  const depotBuild = path14.join(out, `depot_build_${o.depot}.vdf`);
+  const desc = `pkey ${loaded.pack.id}@${o.version} (${loaded.recordSha256.slice(0, 12)})`;
+  await writeFile11(
+    appBuild,
+    appBuildVdf({
+      app,
+      depot: o.depot,
+      desc,
+      setlive: o.setlive ? branch : null
+    })
+  );
+  await writeFile11(depotBuild, depotBuildVdf({ depot: o.depot }));
+  o.stdout.write(
+    `Wrote a content-only SteamPipe build of depot ${o.depot} (${loaded.pack.id}@${o.version}) for app ${app}${o.setlive ? `, set live on ${branch}` : `; set ${branch} live in Steamworks`}: steamcmd +login <account> +run_app_build ${path14.relative(o.cwd, appBuild) || appBuild} +quit
+`
+  );
+  await reportTransport(o, loaded, outlets, "pending", {
+    steamAppId: app,
+    steamDepotId: o.depot,
+    steamBranch: branch
+  });
+  return {
+    app,
+    depot: o.depot,
+    branch,
+    setlive: Boolean(o.setlive),
+    appBuild,
+    depotBuild
+  };
+}
+
+// src/feeds.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { createHash as createHash11 } from "node:crypto";
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import {
   lstat as lstat2,
-  mkdir as mkdir4,
+  mkdir as mkdir8,
   readdir as readdir6,
-  readFile as readFile10,
-  rm,
+  readFile as readFile13,
+  rm as rm4,
   rmdir,
-  writeFile as writeFile8
+  writeFile as writeFile12
 } from "node:fs/promises";
-import path11 from "node:path";
+import path15 from "node:path";
 import { promisify } from "node:util";
 var FEEDS_USAGE = "Usage: pkey feeds fdroid --product <slug> --channel <c> --out <dir>\n              [--keystore <path> --alias <alias>] [--ks-pass-env NAME] [--apksigner <path>]\n              [--icon <png>] [--base-url <url>] [--dry-run]";
 var FDROID_INDEX_VERSION = 3e4;
 var DEFAULT_KS_PASS_ENV = "PKEY_FDROID_KS_PASS";
 var LOCALE = "en-US";
 var SAFE_NAME = /^[A-Za-z0-9_~.-]+$/;
-var sha2563 = (b) => createHash10("sha256").update(b).digest("hex");
+var sha2563 = (b) => createHash11("sha256").update(b).digest("hex");
 function sortedJson(value) {
   return JSON.stringify(value, (_k, v) => {
     if (v && typeof v === "object" && !Array.isArray(v)) {
@@ -26123,13 +27221,13 @@ async function findApksigner(explicit, env) {
   if (explicit) return explicit;
   const sdk = env.ANDROID_HOME ?? env.ANDROID_SDK_ROOT;
   if (sdk) {
-    const bt = path11.join(sdk, "build-tools");
+    const bt = path15.join(sdk, "build-tools");
     try {
       const versions = (await readdir6(bt)).sort(
         (a, b) => a.localeCompare(b, void 0, { numeric: true })
       );
       for (const v of versions.reverse()) {
-        const p = path11.join(bt, v, "apksigner");
+        const p = path15.join(bt, v, "apksigner");
         if (existsSync(p)) return p;
       }
     } catch {
@@ -26144,7 +27242,7 @@ async function signEntryJar(jar, opts) {
       `The keystore password is not in $${opts.passEnv}; export it from the CI secret (never pass it on the command line).`
     );
   const unsigned = `${jar}.unsigned`;
-  await writeFile8(unsigned, await readFile10(jar));
+  await writeFile12(unsigned, await readFile13(jar));
   try {
     await promisify(execFile)(
       tool,
@@ -26176,7 +27274,7 @@ async function signEntryJar(jar, opts) {
     const err = e;
     throw new Error(`apksigner failed: ${(err.stderr || err.message).trim()}`);
   } finally {
-    await rm(unsigned, { force: true });
+    await rm4(unsigned, { force: true });
   }
 }
 var OUT_FILES = /* @__PURE__ */ new Set(["entry.jar", "entry.json", "index-v2.json"]);
@@ -26185,8 +27283,8 @@ var OUT_DIRS = {
   icons: /^[A-Za-z0-9_~.-]+\.(png|jpe?g|webp)$/
 };
 async function staleOutFiles(dir, cwd) {
-  const up = path11.relative(dir, path11.resolve(cwd));
-  if (up === "" || up.split(path11.sep)[0] !== ".." && !path11.isAbsolute(up))
+  const up = path15.relative(dir, path15.resolve(cwd));
+  if (up === "" || up.split(path15.sep)[0] !== ".." && !path15.isAbsolute(up))
     throw new Error(
       `--out ${dir} is the working directory or one of its parents; point it at a directory of its own (for example --out fdroid-repo).`
     );
@@ -26202,7 +27300,7 @@ async function staleOutFiles(dir, cwd) {
   const dirs = [];
   const foreign = [];
   for (const name of (await readdir6(dir)).sort()) {
-    const full = path11.join(dir, name);
+    const full = path15.join(dir, name);
     const st = await lstat2(full);
     if (OUT_FILES.has(name) && st.isFile()) {
       files.push(full);
@@ -26212,10 +27310,10 @@ async function staleOutFiles(dir, cwd) {
     if (pattern2 && st.isDirectory()) {
       let clean = true;
       for (const inner of (await readdir6(full)).sort()) {
-        const f = path11.join(full, inner);
+        const f = path15.join(full, inner);
         if (pattern2.test(inner) && (await lstat2(f)).isFile()) files.push(f);
         else {
-          foreign.push(path11.join(name, inner));
+          foreign.push(path15.join(name, inner));
           clean = false;
         }
       }
@@ -26253,7 +27351,7 @@ async function buildFdroidFeed(opts) {
   if (opts.keystore === void 0 !== (opts.alias === void 0))
     throw new Error(`--keystore and --alias go together.
 ${FEEDS_USAGE}`);
-  const dir = path11.resolve(opts.cwd, opts.out);
+  const dir = path15.resolve(opts.cwd, opts.out);
   await staleOutFiles(dir, opts.cwd);
   const token = await resolveCiToken({
     baseUrl: opts.baseUrl,
@@ -26289,8 +27387,8 @@ ${FEEDS_USAGE}`);
   const prevTs = previous?.repo?.timestamp ?? 0;
   const timestamp = Math.max(now, prevTs + 1);
   const icon = opts.icon ? {
-    name: path11.basename(opts.icon),
-    bytes: await readFile10(path11.resolve(opts.cwd, opts.icon))
+    name: path15.basename(opts.icon),
+    bytes: await readFile13(path15.resolve(opts.cwd, opts.icon))
   } : void 0;
   if (icon && !/^[A-Za-z0-9_~.-]+\.(png|jpe?g|webp)$/.test(icon.name))
     throw new Error(
@@ -26301,17 +27399,17 @@ ${FEEDS_USAGE}`);
     ...icon ? { icon } : {}
   });
   const stale = await staleOutFiles(dir, opts.cwd);
-  for (const f of stale.files) await rm(f, { force: true });
+  for (const f of stale.files) await rm4(f, { force: true });
   for (const d of stale.dirs) await rmdir(d);
   const written = {};
   for (const [p, bytes] of repo.files) {
-    const file = path11.join(dir, ...p.split("/"));
-    await mkdir4(path11.dirname(file), { recursive: true });
-    await writeFile8(file, bytes);
+    const file = path15.join(dir, ...p.split("/"));
+    await mkdir8(path15.dirname(file), { recursive: true });
+    await writeFile12(file, bytes);
     written[p] = file;
   }
-  const jar = path11.join(dir, "entry.jar");
-  await writeFile8(
+  const jar = path15.join(dir, "entry.jar");
+  await writeFile12(
     jar,
     zipStore([{ name: "entry.json", data: repo.files.get("entry.json") }])
   );
@@ -26327,13 +27425,13 @@ ${FEEDS_USAGE}`);
   };
   if (!opts.keystore || !opts.alias) {
     out.write(
-      `Wrote the unsigned repository to ${path11.relative(opts.cwd, dir) || "."}; pass --keystore and --alias to sign, upload and register it.
+      `Wrote the unsigned repository to ${path15.relative(opts.cwd, dir) || "."}; pass --keystore and --alias to sign, upload and register it.
 `
     );
     return result;
   }
   await (opts.sign ?? signEntryJar)(jar, {
-    keystore: path11.resolve(opts.cwd, opts.keystore),
+    keystore: path15.resolve(opts.cwd, opts.keystore),
     alias: opts.alias,
     passEnv: opts.ksPassEnv ?? DEFAULT_KS_PASS_ENV,
     env: opts.env,
@@ -26352,7 +27450,7 @@ ${FEEDS_USAGE}`);
   }
   const all = await Promise.all(
     Object.entries(written).map(async ([p, file]) => {
-      const bytes = await readFile10(file);
+      const bytes = await readFile13(file);
       return { path: p, file, sha256: sha2563(bytes), size: bytes.length };
     })
   );
@@ -26456,6 +27554,8 @@ async function runPkey(argv2, io = {}) {
         return await cmdManifest(parsed, cwd, stdout);
       case "feeds":
         return await cmdFeeds(parsed, cwd, stdout, stderr, ci);
+      case "transport":
+        return await cmdTransport(parsed, cwd, stdout, stderr, ci);
       default:
         stderr.write(`Unknown command "${parsed.command}".
 
@@ -26501,7 +27601,7 @@ function parseArgs(argv2) {
   return { command, flags, multi, bare, positional };
 }
 async function cmdInit(parsed, cwd, stdout) {
-  const basename = path12.basename(cwd).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "") || "my-product";
+  const basename = path16.basename(cwd).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "") || "my-product";
   const slug = flagString(parsed, "product") ?? flagString(parsed, "slug") ?? basename;
   const name = flagString(parsed, "name") ?? titleize(slug);
   const modules = normalizeModules2(flagString(parsed, "modules"));
@@ -26520,7 +27620,7 @@ async function cmdInit(parsed, cwd, stdout) {
 `
   );
   for (const file of result.files)
-    stdout.write(`- ${path12.relative(cwd, file)}
+    stdout.write(`- ${path16.relative(cwd, file)}
 `);
   stdout.write("\nNext: pkey validate\n");
   return 0;
@@ -26556,7 +27656,7 @@ function located(manifest, cwd, msg) {
     release: manifest.releasePath,
     distribution: manifest.distributionPath
   }[msg.file];
-  return `${msg.file}${msg.path}${file ? ` (${path12.relative(cwd, file)})` : ""}`;
+  return `${msg.file}${msg.path}${file ? ` (${path16.relative(cwd, file)})` : ""}`;
 }
 var DISTRIBUTION_USAGE = `Usage: pkey distribution outlet-ids --outlet <id>
 ${DISTRIBUTION_CI_USAGE}`;
@@ -26584,7 +27684,7 @@ async function cmdDistribution(parsed, cwd, stdout, stderr, ci) {
   const ids = outletIdsFor(manifest, outlet);
   if (!ids) {
     stderr.write(
-      `outlet ${JSON.stringify(outlet)} is not declared in ${path12.relative(cwd, manifest.distributionPath)}
+      `outlet ${JSON.stringify(outlet)} is not declared in ${path16.relative(cwd, manifest.distributionPath)}
 `
     );
     return 1;
@@ -26692,7 +27792,7 @@ async function cmdBundle(parsed, cwd, stdout) {
     force: flagBool(parsed, "force"),
     cookie: process.env[ADMIN_COOKIE_ENV]
   });
-  const rel = path12.relative(cwd, result.file);
+  const rel = path16.relative(cwd, result.file);
   stdout.write(`Minted bundle ${result.bundleId}
 `);
   stdout.write(`- File: ${rel}
@@ -26771,15 +27871,15 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
       const dir = flagString(parsed, "dir");
       if (!product || !dir) throw new Error(PUBLISH_USAGE);
       const deliverable = flagString(parsed, "deliverable");
-      const releaseKeyPem = flagString(parsed, "release-key-file") ? await readFile11(
-        path12.resolve(cwd, flagString(parsed, "release-key-file")),
+      const releaseKeyPem = flagString(parsed, "release-key-file") ? await readFile14(
+        path16.resolve(cwd, flagString(parsed, "release-key-file")),
         "utf8"
       ) : void 0;
       const minSupportedSeq = flagString(parsed, "min-supported-seq") !== void 0 ? Number(flagString(parsed, "min-supported-seq")) : void 0;
       if (parsed.bare.has("pin"))
         throw new Error("--pin needs a value: --pin <packId>@<version>.");
-      const contentKeyPem = flagString(parsed, "content-key-file") ? await readFile11(
-        path12.resolve(cwd, flagString(parsed, "content-key-file")),
+      const contentKeyPem = flagString(parsed, "content-key-file") ? await readFile14(
+        path16.resolve(cwd, flagString(parsed, "content-key-file")),
         "utf8"
       ) : void 0;
       const delegation = flagString(parsed, "delegation");
@@ -26904,8 +28004,8 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
           ["replacement"],
           "no release replaces a delegation"
         );
-        const pem = flagString(parsed, "release-key-file") ? await readFile11(
-          path12.resolve(cwd, flagString(parsed, "release-key-file")),
+        const pem = flagString(parsed, "release-key-file") ? await readFile14(
+          path16.resolve(cwd, flagString(parsed, "release-key-file")),
           "utf8"
         ) : void 0;
         await revokeDelegation({
@@ -26920,8 +28020,8 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
         return 0;
       }
       if (!product || !releaseId || !reason) throw new Error(REVOKE_USAGE);
-      const releaseKeyPem = flagString(parsed, "release-key-file") ? await readFile11(
-        path12.resolve(cwd, flagString(parsed, "release-key-file")),
+      const releaseKeyPem = flagString(parsed, "release-key-file") ? await readFile14(
+        path16.resolve(cwd, flagString(parsed, "release-key-file")),
         "utf8"
       ) : void 0;
       await revokePackRelease({
@@ -26943,8 +28043,8 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
       if (!product || !prefix || !types || !publicKey)
         throw new Error(DELEGATE_USAGE);
       const expires = flagString(parsed, "expires-in");
-      const pem = flagString(parsed, "release-key-file") ? await readFile11(
-        path12.resolve(cwd, flagString(parsed, "release-key-file")),
+      const pem = flagString(parsed, "release-key-file") ? await readFile14(
+        path16.resolve(cwd, flagString(parsed, "release-key-file")),
         "utf8"
       ) : void 0;
       await delegateContentKey({
@@ -26968,7 +28068,7 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
         if (parsed.positional[1] !== "generate" || !outFile || kid)
           throw new Error(CONTENT_KEYS_USAGE);
         const generated2 = await generateContentKey({
-          out: path12.resolve(cwd, outFile)
+          out: path16.resolve(cwd, outFile)
         });
         stdout.write(generatedContentKeyText(generated2));
         return 0;
@@ -26977,7 +28077,7 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
         throw new Error(KEYS_USAGE);
       const generated = await generateReleaseKey({
         kid,
-        out: path12.resolve(cwd, outFile),
+        out: path16.resolve(cwd, outFile),
         force: flagBool(parsed, "force")
       });
       stdout.write(generatedKeyText(generated));
@@ -27043,12 +28143,107 @@ async function cmdManifest(parsed, cwd, stdout) {
   const outDir = flagString(parsed, "out");
   if (parsed.positional[0] !== "schemas" || !outDir)
     throw new Error(MANIFEST_USAGE);
-  const written = await writeManifestSchemas(path12.resolve(cwd, outDir));
+  const written = await writeManifestSchemas(path16.resolve(cwd, outDir));
   stdout.write(`Wrote ${written.length} schemas:
 `);
-  for (const file of written) stdout.write(`- ${path12.relative(cwd, file)}
+  for (const file of written) stdout.write(`- ${path16.relative(cwd, file)}
 `);
   return 0;
+}
+async function cmdTransport(parsed, cwd, stdout, stderr, ci) {
+  const [transport, step] = parsed.positional;
+  const deliverable = flagString(parsed, "deliverable");
+  const version = flagString(parsed, "release");
+  if (!deliverable || !version) throw new Error(TRANSPORT_USAGE);
+  const common = {
+    cwd,
+    deliverable,
+    version,
+    product: flagString(parsed, "product"),
+    baseUrl: flagString(parsed, "base-url"),
+    env: ci.env,
+    stdout,
+    stderr,
+    fetchImpl: ci.fetchImpl,
+    sleep: ci.sleep,
+    report: !flagBool(parsed, "no-report")
+  };
+  const from = () => {
+    const f = flagString(parsed, "from");
+    if (!f)
+      throw new Error(
+        `--from is required: the --out directory of pkey release publish --deliverable ${deliverable}.
+${TRANSPORT_USAGE}`
+      );
+    return f;
+  };
+  const list = (name) => flagString(parsed, name)?.split(",").map((s) => s.trim()).filter(Boolean);
+  switch (`${transport ?? ""} ${step ?? ""}`) {
+    case "apple-ba package":
+      await baPackage({
+        ...common,
+        from: from(),
+        out: flagString(parsed, "out"),
+        contentApi: flagString(parsed, "content-api"),
+        variant: flagString(parsed, "variant"),
+        platforms: list("platforms"),
+        archive: !flagBool(parsed, "no-archive")
+      });
+      return 0;
+    case "apple-ba upload": {
+      const wait = flagString(parsed, "wait");
+      if (wait !== void 0 && !/^[0-9]{1,4}$/.test(wait))
+        throw new Error("--wait takes whole minutes.");
+      await baUpload({
+        ...common,
+        dir: flagString(parsed, "dir"),
+        from: flagString(parsed, "from"),
+        contentApi: flagString(parsed, "content-api"),
+        expectResource: flagString(parsed, "expect-resource"),
+        lock: flagString(parsed, "lock"),
+        ...wait !== void 0 ? { waitMinutes: Number(wait) } : {}
+      });
+      return 0;
+    }
+    case "play-pad modules": {
+      const project = flagString(parsed, "project");
+      if (!project)
+        throw new Error(
+          `--project is required: the Godot Android Gradle build (android/build).
+${TRANSPORT_USAGE}`
+        );
+      await padModules({
+        ...common,
+        from: from(),
+        project,
+        delivery: flagString(parsed, "delivery"),
+        defaultTexture: flagString(parsed, "default-texture"),
+        variant: flagString(parsed, "variant")
+      });
+      return 0;
+    }
+    case "steam-depot vdf": {
+      const depot = flagString(parsed, "depot");
+      if (!depot) throw new Error(`--depot is required.
+${TRANSPORT_USAGE}`);
+      await steamVdf({
+        ...common,
+        from: from(),
+        depot,
+        app: flagString(parsed, "app"),
+        branch: flagString(parsed, "branch"),
+        channel: flagString(parsed, "channel"),
+        setlive: flagBool(parsed, "setlive"),
+        out: flagString(parsed, "out"),
+        variant: flagString(parsed, "variant")
+      });
+      return 0;
+    }
+    default:
+      stderr.write(`${TRANSPORT_USAGE}
+`);
+      return 2;
+  }
 }
 function flagString(parsed, name) {
   const value = parsed.flags[name];
@@ -27117,6 +28312,14 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
               [--release id] [--deliverable id]
   pkey feeds fdroid --product slug --channel c --out dir [--keystore path --alias a]
               [--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]
+  pkey transport apple-ba package --deliverable packId --release v --from dir [--content-api n]
+              [--variant key] [--out dir] [--platforms iOS[,macOS]] [--no-archive] [--no-report]
+  pkey transport apple-ba upload --deliverable packId --release v [--dir dir] [--from dir] [--content-api n]
+              [--expect-resource id] [--lock file] [--wait minutes] [--no-report]
+  pkey transport play-pad modules --deliverable packId --release v --from dir --project dir
+              [--delivery fast-follow|on-demand] [--default-texture fmt] [--variant key] [--no-report]
+  pkey transport steam-depot vdf --deliverable packId --release v --from dir --depot id
+              (--branch b | --channel c) [--setlive] [--app id] [--out dir] [--no-report]
 
 pkey release publish matches the files under --dir against .pkey/release's
 deliverables.app.artifacts map (<file>.sig and <file>.sha256 ride along as sidecars), hashes
@@ -27183,6 +28386,19 @@ from Polaris Key's releases, signs entry.jar with apksigner and the CI-held repo
 password in $PKEY_FDROID_KS_PASS), uploads it and registers it; the token needs
 distribution:feeds. Without --keystore it writes the unsigned files and stops.
 
+pkey transport packages a published pack release (the --out cache of pkey release publish
+--deliverable <packId>, re-hashed against its record and linted again, so a pack with scripts
+never reaches a store) for the transport .pkey/distribution routes it through, writes the
+pkey-marker/1 marker beside the payload, and reports the transport's availability:
+apple-ba package writes Manifest.json for asset pack <pack>-c<contentApi> (dots become hyphens;
+every apple-ba pack is mapped at once and a collision, double hyphen or id over 64 characters is
+refused before anything is written) and runs xcrun ba-package (macOS); apple-ba upload sends it
+to App Store Connect with CI's key (ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY or ASC_KEY_PATH)
+and records the asset pack's resource id in .pkey/asset-packs.json (commit it; a later upload
+into any other resource is refused); play-pad modules writes com.android.asset-pack modules
+(a #tcf_ directory per texture variant) into a Godot Android Gradle build and patches it;
+steam-depot vdf writes a content-only SteamPipe build (SetLive on named branches only).
+
 pkey manifest schemas writes the .pkey/ JSON Schemas into a directory, for editors in a
 repository with no node_modules.
 
@@ -27214,8 +28430,14 @@ pass them last or as --no-config=true / --force=true / --dry-run=true.
 
 // src/action.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { execFileSync as execFileSync2 } from "node:child_process";
+import { execFileSync as execFileSync3 } from "node:child_process";
 import { appendFile as appendFile2 } from "node:fs/promises";
+var ACTION_TRANSPORT_STEPS = [
+  "apple-ba-package",
+  "apple-ba-upload",
+  "play-pad-modules",
+  "steam-depot-vdf"
+];
 function actionInput(env, name) {
   const value = env[`INPUT_${name.toUpperCase()}`]?.trim();
   return value ? value : void 0;
@@ -27230,7 +28452,7 @@ function pinsInput(value) {
   return value ? value.split(/[\s,]+/).filter(Boolean) : [];
 }
 function ensureZstd(io) {
-  const exec = io.exec ?? ((cmd, args) => execFileSync2(cmd, args, {
+  const exec = io.exec ?? ((cmd, args) => execFileSync3(cmd, args, {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"]
   }));
@@ -27293,6 +28515,29 @@ async function runAction(io) {
     if ((contentKeyPem || delegation) && (!deliverable || deliverable === "app"))
       throw new Error(
         "content-key and delegation apply only to a pack deliverable: a content key never signs an app record."
+      );
+    const transport = input("transport");
+    const given0 = (names) => names.filter((n) => input(n) !== void 0);
+    if (transport !== void 0) {
+      await runTransportStep(io, input, given0, product, dir, transport);
+      return 0;
+    }
+    const transportOnly = given0([
+      "content-api",
+      "variant",
+      "transport-out",
+      "gradle-project",
+      "pad-delivery",
+      "steam-depot",
+      "steam-branch",
+      "steam-setlive",
+      "asc-expect-resource"
+    ]);
+    if (input("transport-report") === "false")
+      transportOnly.push("transport-report");
+    if (transportOnly.length)
+      throw new Error(
+        `${transportOnly.join(", ")} ${transportOnly.length === 1 ? "applies" : "apply"} only with the transport input.`
       );
     const minSupportedSeq = input("min-supported-seq") !== void 0 ? Number(input("min-supported-seq")) : void 0;
     const given = (names) => names.filter((n) => input(n) !== void 0);
@@ -27374,6 +28619,123 @@ async function runAction(io) {
     io.stderr.write(`${e.message}
 `);
     return 1;
+  }
+}
+async function runTransportStep(io, input, given, product, dir, step) {
+  if (!ACTION_TRANSPORT_STEPS.includes(step))
+    throw new Error(
+      `transport must be one of ${ACTION_TRANSPORT_STEPS.join(", ")} (got ${JSON.stringify(step)}).`
+    );
+  const deliverable = input("deliverable");
+  const version = input("version");
+  if (!deliverable || deliverable === "app")
+    throw new Error(
+      "transport needs a pack deliverable: set deliverable to the pack id."
+    );
+  if (!version)
+    throw new Error("transport needs version: the pack release to package.");
+  const wrong = given([
+    "tag",
+    "source",
+    "meta",
+    "release-key",
+    "content-key",
+    "delegation",
+    "min-supported-seq",
+    "content-stamp",
+    "embedded",
+    "pins",
+    "out",
+    "bases",
+    "script-extensions",
+    "script-types"
+  ]);
+  if (wrong.length)
+    throw new Error(
+      `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to a transport step (${step}): it packages a release published earlier.`
+    );
+  const dryRun = input("dry-run");
+  if (dryRun !== void 0 && dryRun !== "false")
+    throw new Error("dry-run does not apply to a transport step.");
+  const report = input("transport-report");
+  if (report !== void 0 && report !== "true" && report !== "false")
+    throw new Error(
+      `transport-report must be true or false (got ${JSON.stringify(report)}).`
+    );
+  const setlive = input("steam-setlive");
+  if (setlive !== void 0 && setlive !== "true" && setlive !== "false")
+    throw new Error(
+      `steam-setlive must be true or false (got ${JSON.stringify(setlive)}).`
+    );
+  const common = {
+    cwd: io.cwd,
+    deliverable,
+    version,
+    product,
+    baseUrl: input("base-url"),
+    env: io.env,
+    stdout: io.stdout,
+    stderr: io.stderr,
+    fetchImpl: io.fetchImpl,
+    sleep: io.sleep,
+    report: report !== "false"
+  };
+  const platform = io.platform ?? process.platform;
+  switch (step) {
+    case "apple-ba-package":
+      await baPackage({
+        ...common,
+        from: dir,
+        out: input("transport-out"),
+        contentApi: input("content-api"),
+        variant: input("variant"),
+        platform
+      });
+      return;
+    case "apple-ba-upload":
+      if (input("transport-out") !== void 0)
+        throw new Error(
+          "apple-ba-upload reads the package step's output from dir; transport-out does not apply."
+        );
+      await baUpload({
+        ...common,
+        dir,
+        contentApi: input("content-api"),
+        expectResource: input("asc-expect-resource")
+      });
+      return;
+    case "play-pad-modules": {
+      const project = input("gradle-project");
+      if (!project)
+        throw new Error(
+          "play-pad-modules needs gradle-project: the Godot Android Gradle build (android/build)."
+        );
+      await padModules({
+        ...common,
+        from: dir,
+        project,
+        delivery: input("pad-delivery"),
+        variant: input("variant")
+      });
+      return;
+    }
+    default: {
+      const depot = input("steam-depot");
+      if (!depot)
+        throw new Error(
+          "steam-depot-vdf needs steam-depot: the pack's depot id."
+        );
+      await steamVdf({
+        ...common,
+        from: dir,
+        depot,
+        branch: input("steam-branch"),
+        channel: input("channel"),
+        setlive: setlive === "true",
+        out: input("transport-out"),
+        variant: input("variant")
+      });
+    }
   }
 }
 async function writeOutputs(io, releaseId, server) {

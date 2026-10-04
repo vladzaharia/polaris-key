@@ -289,7 +289,10 @@ CREATE TABLE IF NOT EXISTS platform_deploys (   -- written ONLY by deploy.yml (A
 );
 ```
 
-A-14 adds `platform_job_runs` and `platform_heartbeats` (§7.2).
+A-14 adds `platform_job_runs` and `platform_heartbeats` (§7.2). _A-14 as built_ (`migrations/0057_platform_operations.sql`): a run is a group of rows sharing
+`run_id` rather than one row with `counts_json`/`failures_json`: a `*` summary row, one row per
+successful step family (per-product steps folded, so a run stays about a dozen rows), and one row
+per failed step with its truncated reason. Step timings come from `step()` in `scheduled.ts`.
 
 `platform_audit` falls under the same 180-day retention as `audit`. The nightly sweep gains one
 step, and it is product-less by construction, which `scheduled.ts:15-20`'s "product-scoped"
@@ -323,6 +326,12 @@ There are two precedence modes:
 
   Shipping this means changing the committed `LAZY_DELTAS = "off"` to `"runtime"` in both TOML
   files. Until then nothing changes in behaviour: owner decision 2.
+
+  _As built (A-13):_ a valid `[vars]` value other than `off` still counts below a D1 row, so
+  `[vars]` = `on` with no row means on (the test lanes and a hand deploy rely on it) and
+  `"runtime"` with no row is the code default. An unreadable store resolves a kill switch to
+  off. `LAZY_DELTA_MAX_BYTES` and `BLOB_GC_GRACE_DAYS` keep their pre-A-13 `[vars]` parsing;
+  the [1 MiB, 32 MiB] and [1, 365] bounds apply to runtime values.
 
 `lazyDeltasOn(env)` (`core/deltaDemand.ts:130`) and `blobGcSettings(env)`
 (`core/blobGc.ts:165-170`) become `…(env, settings)`. The consumer (`src/deltasEntry.ts`) reads
@@ -644,6 +653,10 @@ production CI or add a credential.
 - **[U]** The token being read-only (§7.3 step 3) needs the owner's account.
 - **[U]** `Queue.metrics()` and `MessageBatch` metrics exist in the installed types and the April
   2026 changelog. Their behaviour on a producer-only binding to a consumerless DLQ is unmeasured.
+  _A-14 update:_ measured in the workerd lane (`test-workerd/operations.test.ts`, miniflare's
+  local queues): `metrics()` answers on a producer-only binding to a queue nothing consumes.
+  Hosted Queues is confirmed on the first deploy (DEPLOYMENT.md §7); if it refuses, the
+  Operations snapshot reports the reason and the backlog as unknown.
 - Not measured: the D1 write cost of heartbeats and job runs (estimated at about 3,000 job rows
   and a few hundred heartbeats a month, which is negligible).
 - S-12 was not read. The sibling page's name and route are placeholders.

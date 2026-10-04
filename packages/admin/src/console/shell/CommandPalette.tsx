@@ -5,6 +5,7 @@ import { Box, Search } from "lucide-react";
 import { cn } from "../../lib/cn.js";
 import {
   navItems,
+  platformItems,
   platformLinks,
   visibleSections,
   type GlobalPageId,
@@ -53,6 +54,18 @@ export function navigationSource(
       href: globalPage(p.page as GlobalPageId),
     };
   });
+  for (const p of platformItems()) {
+    const Icon = p.icon;
+    items.push({
+      id: `nav:${p.page}`,
+      group: "Navigation",
+      label: p.label,
+      detail: "Platform",
+      keywords: "platform",
+      icon: <Icon aria-hidden className="size-4" />,
+      href: globalPage(p.page as GlobalPageId),
+    });
+  }
   if (!slug) return items;
   for (const section of visibleSections(services)) {
     for (const p of navItems(section)) {
