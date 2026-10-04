@@ -333,7 +333,13 @@ export async function handleClaimKey(
     case "portal_off":
       return notFound();
     case "owned_elsewhere":
-      return err(409, "owned_elsewhere", "license is held by another account");
+      return portalJson(
+        {
+          error: "owned_elsewhere",
+          message: "license is held by another account",
+        },
+        409,
+      );
     case "email_mismatch":
       return portalJson(
         {
