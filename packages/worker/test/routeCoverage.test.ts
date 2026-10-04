@@ -23,11 +23,14 @@ import { describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
 import { matchRoute } from "../src/router.js";
 import { CORS_SERVICE_PATHS, isCorsCoveredRoute } from "../src/core/cors.js";
+import { REGISTRY_ROUTES } from "../src/mount.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const spec = parseYaml(
   readFileSync(join(here, "..", "openapi", "polaris-key.v3.yaml"), "utf8"),
-) as { paths: Record<string, Record<string, unknown>> };
+) as {
+  paths: Record<string, Record<string, unknown> & { servers?: unknown }>;
+};
 const routerSource = readFileSync(join(here, "..", "src", "router.ts"), "utf8");
 
 /** Browser/admin surfaces documented narratively on the docs site, not in the wire spec. */
@@ -179,6 +182,18 @@ const ALIAS_PATHS: Array<[string, string[]]> = [
   ["/{product}", ["get"]],
 ];
 
+/**
+ * The registry host's paths (F-02, plans/F-01.md §6.10): `pkg.plrs.im` answers only these, each
+ * documented under a path-level `servers` override with tag `registry`. The third column names
+ * what answers: `host` for the dispatcher's own fixed answers (the landing page, OCI's `/v2/`
+ * root), else the `REGISTRY_ROUTES` entry by name. F-04 to F-09 add a row per route.
+ */
+const REGISTRY_SERVER = "https://pkg.plrs.im";
+const REGISTRY_PATHS: Array<[string, string[], string]> = [
+  ["/", ["get"], "host"],
+  ["/v2/", ["get", "head"], "host"],
+];
+
 function specMethods(path: string): string[] {
   const entry = spec.paths[path];
   if (!entry) return [];
@@ -237,6 +252,7 @@ describe("spec → router", () => {
         ...Object.values(CORE_KIND_PATHS).flat(),
         ...SERVICE_PATHS,
         ...ALIAS_PATHS,
+        ...REGISTRY_PATHS,
       ].map(([path]) => path),
     );
     const phantom = Object.keys(spec.paths).filter(
@@ -259,6 +275,54 @@ describe("spec → router", () => {
       const target = op?.summary?.match(/→ (\/\S+)/)?.[1];
       expect(target, `${path} summary must name its target`).toBeTruthy();
       expect(spec.paths[target!], `${path} → ${target}`).toBeTruthy();
+    }
+  });
+});
+
+describe("registry host (F-02, rule 10)", () => {
+  it("every registry path is documented on the registry server with tag registry", () => {
+    for (const [path, methods] of REGISTRY_PATHS) {
+      expect(spec.paths[path]?.servers, path).toEqual([
+        expect.objectContaining({ url: REGISTRY_SERVER }),
+      ]);
+      expect(specMethods(path).sort(), path).toEqual([...methods].sort());
+      for (const method of methods) {
+        const op = spec.paths[path]![method] as { tags?: string[] };
+        expect(op.tags, `${method} ${path}`).toEqual(["registry"]);
+      }
+    }
+  });
+
+  it("only registry paths carry the registry server or the registry tag", () => {
+    const registry = new Set(REGISTRY_PATHS.map(([p]) => p));
+    for (const [path, entry] of Object.entries(spec.paths)) {
+      if (registry.has(path)) continue;
+      expect(entry.servers, path).toBeUndefined();
+      for (const method of specMethods(path)) {
+        const op = entry[method] as { tags?: string[] };
+        expect(op.tags ?? [], `${method} ${path}`).not.toContain("registry");
+      }
+    }
+  });
+
+  it("REGISTRY_PATHS and REGISTRY_ROUTES agree in both directions", () => {
+    const routeNames = REGISTRY_ROUTES.map((r) => r.name);
+    const documented = new Set(
+      REGISTRY_PATHS.map(([, , owner]) => owner).filter((o) => o !== "host"),
+    );
+    for (const name of routeNames)
+      expect(
+        documented.has(name),
+        `route ${name} has no REGISTRY_PATHS row`,
+      ).toBe(true);
+    for (const name of documented)
+      expect(routeNames, `REGISTRY_PATHS names ${name}`).toContain(name);
+  });
+
+  it("registry paths are outside the CORS surface and document no preflight", () => {
+    for (const [path] of REGISTRY_PATHS) {
+      expect(CORS_SERVICE_PATHS as readonly string[], path).not.toContain(path);
+      expect(spec.paths[path]?.options, path).toBeUndefined();
     }
   });
 });

@@ -20,11 +20,13 @@
 
 import type { ServiceRegistry } from "./core/registry.js";
 import type { ByteRoute } from "./core/bytesHost.js";
+import type { RegistryRoute } from "./core/registryHost.js";
 import { licenseService } from "./services/license/index.js";
 import { configService } from "./services/config/index.js";
 import { releaseService } from "./services/release/index.js";
 import {
   DISTRIBUTION_BYTE_ROUTES,
+  DISTRIBUTION_REGISTRY_ROUTES,
   DOWNLOAD_PAGE_ROUTE,
   distributionService,
 } from "./services/distribution/index.js";
@@ -60,4 +62,16 @@ export const SERVICES: ServiceRegistry = new Map([
 export const BYTE_ROUTES: readonly ByteRoute[] = [
   ...DISTRIBUTION_BYTE_ROUTES,
   DOWNLOAD_PAGE_ROUTE,
+];
+
+/**
+ * The registry-host allowlist (F-02, `core/registryHost.ts`, plans/F-01.md §6.1): the only routes
+ * that can answer on `PKG_ORIGIN` (`pkg.plrs.im`), beside the host's landing page and OCI's
+ * `/v2/` root. A route not listed here does not exist on that host. Every one is Distribution's
+ * (`service: "distribution"`) and belongs to one ecosystem; F-04 to F-09 add theirs to
+ * `DISTRIBUTION_REGISTRY_ROUTES`, and `test/routeCoverage.test.ts` checks this list against its
+ * `REGISTRY_PATHS` table in both directions (rule 10).
+ */
+export const REGISTRY_ROUTES: readonly RegistryRoute[] = [
+  ...DISTRIBUTION_REGISTRY_ROUTES,
 ];

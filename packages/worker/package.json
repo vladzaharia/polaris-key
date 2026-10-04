@@ -16,6 +16,7 @@
     "deploy": "wrangler deploy",
     "dryrun": "wrangler deploy --dry-run",
     "check:representable": "node scripts/check-representable.mjs",
+    "registry:clients": "node scripts/registry-clients/run.mjs",
     "clean": "rm -rf dist"
   },
   "dependencies": {

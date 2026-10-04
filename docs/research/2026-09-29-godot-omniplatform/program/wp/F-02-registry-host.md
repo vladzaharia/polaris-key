@@ -78,13 +78,15 @@ with the bytes host's compensations kept unchanged and its one widening reviewed
 
 ## Acceptance criteria
 
-- [ ] Every row of plan §6.1 has a test, including the console paths that 404 on the host and the
-      overridden `Set-Cookie`, HTML, SVG, XML and CORS answers.
-- [ ] A disabled feed or a tightened mode stops a cached immutable object from being served within
-      the settings TTL.
-- [ ] `routeCoverage` passes with `REGISTRY_PATHS`; `test:workerd` passes.
-- [ ] `registry-clients.yml` runs green on the smoke client.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] Every row of plan §6.1 has a test, including the console paths that 404 on the host and the
+      overridden `Set-Cookie`, HTML, SVG, XML and CORS answers (`test/registryHost.test.ts`).
+- [x] A disabled feed or a tightened mode stops a cached immutable object from being served within
+      the settings TTL (`test/registryFeeds.test.ts`, "access runs before the cache").
+- [x] `routeCoverage` passes with `REGISTRY_PATHS`; `test:workerd` passes.
+- [x] `registry-clients.yml` runs green on the smoke client: its runner
+      (`pnpm --filter @polaris-key/worker registry:clients -- --client curl`) was run green
+      locally; the workflow itself first runs on the PR.
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 
@@ -94,6 +96,58 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker typecheck:workerd
 mise exec node@22 -- pnpm --filter @polaris-key/worker test:workerd
 mise exec node@22 -- pnpm typecheck
 ```
+
+## Corrections from the code (recorded during implementation)
+
+- **Two test files, not one.** `test/registry.test.ts` already exists (Core's service registry),
+  so the framework's tests are `test/registryFeeds.test.ts`; `test/registryHost.test.ts` pins the
+  host. The Verify line's `registry` filter matches all three.
+- **The `/v2/` root is a host answer, not a route.** OCI's base endpoint is owner-less and the
+  same for everyone, so `core/registryHost.ts` answers it itself (like `/`), before any route and
+  regardless of the OCI kill switch: it discloses nothing, and challenges are made per repository
+  (§6.6). F-08 owns everything below it. `REGISTRY_PATHS` marks `/` and `/v2/` as `host` rows.
+- **Where each enablement step runs.** The dispatcher (Core) refuses a route whose service is off
+  for the owner, from the loaded product, as `dispatchBytesHost` does. The rest of the ladder
+  (kill switch, `packageFeeds`, the feed, the mode) reads `dist_*` state, which Core may not, so
+  it runs in Distribution's `authorizeFeedRead`, which every route reaches through
+  `registry/serve.ts` `serveFeedRead` before the cache. `authorizeFeedRead` re-checks
+  Distribution. Every step answers the identical not-found, so the order is unobservable.
+- **`ChallengeKind` includes `"not-found"`**, so the plan's `{ ok: false, challenge }` result also
+  carries ladder steps 1 and 2 without a third shape. The others are `"basic"` and
+  `"oci-bearer"`; `feedRefusal` builds each answer. The challenge realm is the deployment's own
+  registry host name (`pkg-dev.plrs.im` on dev), with `pkg.plrs.im` as the fallback.
+- **Settings before F-03.** `registry/settings.ts` reads `dist_registry_policy`,
+  `dist_registry_owners` and `dist_registry_feeds` with §6.4's column names. Until F-03's
+  migration creates them, "no such table" reads as no row, so every feed fails closed (the
+  not-found). `test/registryFeeds.test.ts` creates §6.4's DDL in-test to pin the reads; F-03 keeps
+  the column names or updates that test with its migration.
+- **The drain, the self-check and Release state sit behind interfaces.** `materialise.ts` ships
+  `PackageSource` (F-03 implements it over `releaseCatalog.packageVersions`), `RegistryQueue`
+  (F-03 implements it over `core/registryQueue.ts`), `drainRegistry` and `selfCheck`. Nothing is
+  wired into `dispatch.ts` or `scheduled.ts` yet, and the `registryMaterialiser` descriptor member
+  is F-03's, because the queue table does not exist.
+- **Render records.** Each render also writes `registry/<eco>/<owner>/.render/<deliverable>.json`
+  (its stamp and keys), which the self-check heads instead of re-rendering to compare.
+  `registry.render_miss` is a per-isolate counter (`registryCounters.renderMiss`): the Worker
+  has no metrics pipeline and logs no request data.
+- **Methods off the registry paths.** `OPTIONS` is 405 on every path of the host (no preflight is
+  ever answered). Other non-GET/HEAD methods are 405 under `/v2/` and `/<ecosystem>/`, and the
+  plain not-found elsewhere, as on the bytes host.
+- **Error shapes.** Not-found is the flat `{"error":"not_found"}`, `problem+json` for Swift and
+  OCI's `NAME_UNKNOWN` under `/v2/`; F-06 and F-08 may add their protocol headers
+  (`Content-Version`, `Docker-Distribution-API-Version`) on top.
+- **The harness needed a wrangler environment.** `wrangler.toml` had no `[env.test]`; F-02 adds a
+  local-only one (no routes, `workers_dev = false`, placeholder ids). `run.mjs` passes
+  `PKG_ORIGIN` with `--var` (it names the port) and an empty `--assets` root, so the harness does
+  not need the admin or docs builds. `seed.mjs` inserts the fixture owner with Distribution on;
+  creating feed rows and publishing fixture packages through `pkey release publish` is F-03's.
+- **`DigestStream` supports SHA-1, SHA-512 and MD5 on workerd** (`test-workerd/registry.test.ts`),
+  so F-03 needs no JS fallback.
+- **The landing page reuses the bytes host's art, stylesheet and policy** (`bytesLanding.ts` now
+  exports `landingArt` and `escapeHtml`), with the title "Polaris Key Delivery" (BRAND §8) and its
+  own two sentences; BRAND §8 gains "The registry host, pkg.plrs.im".
+- **The generated route table shows a registry path with its host** (`gen-reference.mjs` prefixes
+  a path-level `servers` URL), so `GET /` is never read as the console's root.
 
 ## Hand-off
 

@@ -10,7 +10,8 @@ The public API, one row per operation. The `aliases` rows are the permanent alia
 spellings — the four pre-namespace paths and Release's old byte paths (moved to Distribution
 in P2b-04) — exact rewrites of their canonical routes, kept forever because they are compiled
 into shipped app bundles, built by SDKs and printed in published curl lines. Removed v2 spellings
-(`/activate`, `/config`, `/auth/*`, `/cli/*`, `/dmg/*`, …) 404 outright.
+(`/activate`, `/config`, `/auth/*`, `/cli/*`, `/dmg/*`, …) 404 outright. The `registry`
+rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 
 | Method | Path | Service | Summary |
 | --- | --- | --- | --- |
@@ -87,6 +88,9 @@ into shipped app bundles, built by SDKs and printed in published curl lines. Rem
 | GET | `/{product}/license/document` | license | The signed license document (pkey-license+jws) |
 | POST | `/{product}/license/enroll` | license | Keyless enrollment (auto-issue policy) |
 | POST | `/{product}/license/token` | license | Rotate/re-acquire the device token |
+| GET | `https://pkg.plrs.im/` | registry | The registry host's landing page (registry host only) |
+| GET | `https://pkg.plrs.im/v2/` | registry | OCI distribution base endpoint (registry host only) |
+| HEAD | `https://pkg.plrs.im/v2/` | registry | OCI distribution base endpoint, headers only (registry host only) |
 | GET | `/{product}/release/changelog` | release | Release changelog |
 | POST | `/{product}/release/channels/{channel}/pin` | release | Pin a channel to a release (CI) |
 | POST | `/{product}/release/channels/{channel}/promote` | release | Promote a release to a channel (CI) |

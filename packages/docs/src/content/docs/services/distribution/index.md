@@ -65,6 +65,9 @@ switched on by a migration, so its stored state keeps serving while its manifest
 - **Storefront feeds** per channel — AltStore and SideStore sources, an AltStore PAL source,
   Obtainium configs, an F-Droid repository signed by CI and relayed here, a Scoop manifest and
   Flathub checker JSON; see [Storefront feeds](/docs/services/distribution/feeds/).
+- **Package feeds** on the registry host (`https://pkg.plrs.im`) for npm, PyPI, SwiftPM, Maven
+  and Gradle, OCI and Godot clients, with one access check before every cached answer; see
+  [Package feeds](/docs/services/distribution/package-feeds/).
 - **A public download page** per product on the bytes host (`https://dl.plrs.im/<product>`):
   one primary action for the visitor's platform, every other way to get the product with deep
   links and QR codes, every build with its SHA-256, and the signing-key fingerprints. It is

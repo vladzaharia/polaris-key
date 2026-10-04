@@ -363,6 +363,39 @@ curl -fsS https://key.plrs.im/djdl/appcast.xml >/dev/null
 Use the Releases view to inspect GitHub sync status, changed `.pkey/` paths, manifest
 validation errors, and release health. Use manual resync there when a webhook was missed.
 
+### Package feeds (F-02)
+
+The feeds answer on the registry host, `pkg.plrs.im` (`pkg-staging`, `pkg-dev`), the same
+Worker on a third custom domain (DEPLOYMENT §3, "Registry host and feeds"). Check the host after
+a deploy:
+
+```sh
+curl -sI https://pkg.plrs.im/v2/ | grep -i docker-distribution-api-version   # registry/2.0
+curl -sI https://pkg.plrs.im/manage | head -1                                 # 404
+```
+
+**Kill switches**, loosest scope last; each answers the plain not-found (the same as a feed that
+does not exist) and takes effect within the 30-second per-isolate settings window, even for
+bytes the edge has cached for a year, because the access check runs before the cache:
+
+1. the platform policy per ecosystem (`dist_registry_policy.enabled`);
+2. the owner's `packageFeeds` (Core → Services, under Distribution);
+3. the feed's `enabled`;
+4. Distribution itself for the owner.
+
+Tightening a feed's or a deliverable's access mode away from `public` answers clients `401`
+with their native challenge within the same window; tier 1 has no registry credentials, so
+such a feed is closed to everyone until F-21.
+
+**A missing or stale index object** heals itself: a read that misses renders the package from
+D1, writes it back under `registry/` and counts `registry.render_miss`. The cron's self-check
+re-renders up to 50 packages per run whose stored render stamp differs from D1. Never put an R2
+lock or lifecycle rule on `registry/`.
+
+Bootstrapping the system product, turning an owner's feeds on, yanks and deprecations, feed
+rebuilds, the Swift signing-certificate rotation and the forward-only migration note follow with
+F-03, F-06 and F-11.
+
 ### Recovering the update feeds after a signer compromise
 
 The signed update feed (`pkey-feed+jws`, `GET /<p>/update/<channel>/feed.jws`) carries a `seq`
@@ -602,6 +635,13 @@ polaris-key-deltas-<env>`).
 
 A red conformance job means the wire contract changed without regenerating and committing
 the corpus.
+
+`.github/workflows/registry-clients.yml` runs on PRs that touch the registry host, the
+Distribution registry module, the harness, `wrangler.toml` or the CLI's package publishing,
+and on demand. Each job stands up a seeded local Worker (`wrangler dev --env test`) and runs one
+real client against the registry host; run the same locally with
+`pnpm --filter @polaris-key/worker registry:clients -- --client curl`. Make it a required check
+for those paths in branch protection.
 
 ## Troubleshooting
 

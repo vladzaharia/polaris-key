@@ -282,12 +282,17 @@ function routeTable() {
   );
   const rows = [];
   for (const [path, entry] of Object.entries(spec.paths)) {
+    // A path-level `servers` override (the registry host, F-02) is shown as the full URL, so a
+    // registry path is never read as a console path.
+    const shown = entry.servers?.[0]?.url
+      ? `${entry.servers[0].url}${path}`
+      : path;
     for (const method of ["get", "head", "post", "put", "patch", "delete"]) {
       const op = entry[method];
       if (!op) continue;
       rows.push([
         method.toUpperCase(),
-        `\`${path}\``,
+        `\`${shown}\``,
         op.tags?.[0] ?? "",
         // MDX evaluates {…} in prose as JSX — path templates in plain cells must escape
         // their braces (inside the backticked path cell they are literal already).
@@ -303,7 +308,8 @@ function routeTable() {
 spellings — the four pre-namespace paths and Release's old byte paths (moved to Distribution
 in P2b-04) — exact rewrites of their canonical routes, kept forever because they are compiled
 into shipped app bundles, built by SDKs and printed in published curl lines. Removed v2 spellings
-(\`/activate\`, \`/config\`, \`/auth/*\`, \`/cli/*\`, \`/dmg/*\`, …) 404 outright.`,
+(\`/activate\`, \`/config\`, \`/auth/*\`, \`/cli/*\`, \`/dmg/*\`, …) 404 outright. The \`registry\`
+rows answer only on the registry host, \`pkg.plrs.im\`, and are shown with it.`,
     table(["Method", "Path", "Service", "Summary"], rows),
   );
 }
