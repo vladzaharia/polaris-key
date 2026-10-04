@@ -66,7 +66,7 @@ A **pack release** derives by its own rule, per its transport on the outlet:
   each unyanked app release that pins the pack release and has a build the outlet carries that
   embeds the pack (its `embeds`, or every `baseline: embedded` pack when it says nothing), with
   `detail: {appReleaseId, buildIds}`. The SDK still verifies the marker and hash on the device.
-- any other transport: nothing; it is stored and shown "not supported yet".
+- any other transport: nothing; it is stored and shown "not delivered by Polaris Key".
 
 Every other kind — `app-store`, `testflight`, `play`, `steam`, `itch`, … — shows **nothing until
 it is reported**, whatever its transport: every outlet's default transport is `pkey-cdn`, so the

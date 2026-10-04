@@ -446,7 +446,7 @@ describe("rollout semantics", () => {
 });
 
 describe("rollout controls in the console", () => {
-  it("lists rollouts with the halt caveat, and audits each verb with the session's subject", async () => {
+  it("lists rollouts, and audits each verb with the session's subject", async () => {
     const w = await setup();
     const started = await admin(w, "POST", "/rollouts/direct/beta", {
       releaseId: "v1.1.0",
@@ -455,7 +455,6 @@ describe("rollout controls in the console", () => {
     expect(started.status).toBe(200);
     expect(await started.json()).toMatchObject({
       rollout: { state: "active", source: "admin", updatedBy: "admin:u1" },
-      effect: { reachesDevices: false },
     });
     expect((await admin(w, "POST", "/rollouts/direct/beta/halt")).status).toBe(
       200,
@@ -468,7 +467,6 @@ describe("rollout controls in the console", () => {
     expect(list.status).toBe(200);
     const body = (await list.json()) as {
       rollouts: Array<Record<string, unknown>>;
-      effect: { reachesDevices: boolean; note: string };
     };
     expect(body.rollouts).toEqual([
       expect.objectContaining({
@@ -477,9 +475,8 @@ describe("rollout controls in the console", () => {
         state: "active",
       }),
     ]);
-    // Say what a halt does today (P3-03 composes the signed feed).
-    expect(body.effect.reachesDevices).toBe(false);
-    expect(body.effect.note).toMatch(/yank/);
+    // No implementation-status caveat rides along: the signed feed carries halts (P3-03).
+    expect(body).not.toHaveProperty("effect");
 
     const actions = (await auditRows(w.db))
       .filter((r) => r.action.startsWith("distribution.rollout"))

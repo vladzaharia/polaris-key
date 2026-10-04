@@ -49,22 +49,18 @@ the connector brings the new state back.
 
 ## What a pause or halt reaches
 
-The note above the grid says exactly what a control does today:
+A pause or halt stops offering the release on that outlet in the signed channel feed, the
+app-updater feeds (the Sparkle appcast, `/update/version` and the rest), the storefront feeds
+(AltStore, F-Droid, Scoop) and the public [download page](/docs/users/downloads/), which list
+the previous release instead. Moving download URLs apply yanks and pins, not holds: to take a
+release off every surface, yank it or pin the channel under **Release → Releases**. See
+[Rollouts and halts](/docs/services/distribution/rollouts/).
 
-- The **signed feed** carries rollouts and halts, so devices running a wire v4 SDK stop being
-  offered a halted release on that outlet.
-- The **storefront feeds** (AltStore, F-Droid, Scoop) and the public
-  [download page](/docs/users/downloads/) stop listing a release that is paused, halted or
-  partly rolled out on their outlet, and list the previous one instead.
-- The **legacy feeds** (the Sparkle appcast, `/update/version`) and direct download URLs keep
-  serving it. To stop a release everywhere at once, yank it or pin the channel under
-  **Release → Releases**.
+## Readiness and store mirrors
 
-## Not here yet
-
-Readiness holds (P4-14) are in the matrix API already: each app release's cell carries a
-`readiness` object with the blockers, whether Polaris Key holds the release on that outlet (its
-availability then reads `pending`) and, on a store outlet it cannot hold, a warning; see
-[Outlet readiness](/docs/services/distribution/availability/#outlet-readiness). The console renders
-it with the compatibility overlay (P4-15). Store-mirrored states for more stores arrive with the
-store connectors (P5-02 to P5-04); they appear in the same cells.
+Each app release's cell also carries a `readiness` object in the matrix API: the blockers,
+whether Polaris Key holds the release on that outlet (its availability then reads `pending`)
+and, on a store outlet it cannot hold, a warning; see
+[Outlet readiness](/docs/services/distribution/availability/#outlet-readiness). The console
+shows it on **Releases → Compatibility**. Rollout and review states mirrored from the store
+connectors (App Store, Google Play, Microsoft Store) appear in the same cells.

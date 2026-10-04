@@ -318,7 +318,6 @@ const MATRIX: DistributionMatrix = {
     mcell("app@1.4.0", "app-store", "live"),
   ],
   states: { availability: [], submission: [], rollout: [] },
-  effect: { reachesDevices: "", note: "" },
 };
 
 const RESULT: SimulateResponse = {
