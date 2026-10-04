@@ -4,7 +4,7 @@ import { api, type ProfileDetail as ProfileDetailDto } from "../../api.js";
 import { useResource } from "../../context.js";
 import { r } from "../../console/routes.js";
 import { absoluteTime, relativeTime } from "../format.js";
-import { MetaItem } from "../licenses/shared.js";
+import { MetaItem } from "../legacyBits.js";
 import {
   Badge,
   Button,

@@ -67,16 +67,26 @@ export function productRow(
 }
 
 export interface FetchLog {
-  calls: { path: string; method: string; query: string; body?: string }[];
+  /**
+   * Every request: its query string, and the body it sent as raw text (`body`) and parsed as JSON
+   * when it parses (`json`).
+   */
+  calls: {
+    path: string;
+    method: string;
+    query: string;
+    body?: string;
+    json?: unknown;
+  }[];
 }
 
 /** A route body that never answers: the page stays in its loading state. */
 export const PENDING = Symbol("pending");
 
 /**
- * A scripted fetch: exact path first, then the longest matching prefix; `{}` otherwise. A body
- * may be a `Response` (status, error shapes), `PENDING`, or a function of the request's query
- * (keyset pages).
+ * A scripted fetch: `"<METHOD> <path>"` first (a write's own response), then the exact path, then
+ * the longest matching prefix; `{}` otherwise. A body may be a `Response` (status, error shapes),
+ * `PENDING`, or a function of the request's query (keyset pages) and its parsed body.
  */
 export function mockFetch(routes: Record<string, unknown>): FetchLog {
   const log: FetchLog = { calls: [] };
@@ -92,23 +102,40 @@ export function mockFetch(routes: Record<string, unknown>): FetchLog {
       const [path = "", query = ""] = url
         .replace("http://localhost", "")
         .split("?");
+      const method = init?.method ?? "GET";
+      let sent: unknown;
+      if (typeof init?.body === "string") {
+        try {
+          sent = JSON.parse(init.body);
+        } catch {
+          sent = init.body;
+        }
+      }
       log.calls.push({
         path,
-        method: init?.method ?? "GET",
+        method,
         query,
-        ...(typeof init?.body === "string" ? { body: init.body } : {}),
+        ...(typeof init?.body === "string"
+          ? { body: init.body, json: sent }
+          : {}),
       });
+      const methodKey = `${method} ${path}`;
       const key =
-        path in routes
-          ? path
-          : (Object.keys(routes)
-              .filter((k) => path.startsWith(k))
-              .sort((a, b) => b.length - a.length)[0] ?? "");
+        methodKey in routes
+          ? methodKey
+          : path in routes
+            ? path
+            : (Object.keys(routes)
+                .filter((k) => !k.includes(" ") && path.startsWith(k))
+                .sort((a, b) => b.length - a.length)[0] ?? "");
       const raw = routes[key];
       if (raw === PENDING) return new Promise<Response>(() => undefined);
       const body =
         typeof raw === "function"
-          ? (raw as (q: URLSearchParams) => unknown)(new URLSearchParams(query))
+          ? (raw as (q: URLSearchParams, sent: unknown) => unknown)(
+              new URLSearchParams(query),
+              sent,
+            )
           : raw;
       if (body instanceof Response) return body.clone();
       return new Response(JSON.stringify(body ?? {}), {

@@ -38,6 +38,7 @@ export const ACTION_LEVELS = {
   "signing.activate": 1,
   "license.disable": 1,
   "license.enable": 1,
+  "device.resetBinding": 1,
   "rollout.pause": 1,
   "rollout.resume": 1,
   "channel.unpin": 1,
@@ -51,7 +52,6 @@ export const ACTION_LEVELS = {
   "repo.resync": 1,
   "sentry.dismiss": 1,
   "rollout.setPercentage": 1,
-  "device.resetBinding": 1,
 
   // L2 · irreversible or broad
   "key.revoke": 2,

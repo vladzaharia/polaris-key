@@ -307,10 +307,13 @@ export async function handleLicenses(
           name: typeof body.name === "string" ? body.name : undefined,
           email: typeof body.email === "string" ? body.email : undefined,
           expires_at: expiresAt,
+          // A-3: `null` clears the license's own value, so the tier or product default applies.
           max_offline_days:
-            typeof body.maxOfflineDays === "number"
-              ? body.maxOfflineDays
-              : undefined,
+            body.maxOfflineDays === null
+              ? null
+              : typeof body.maxOfflineDays === "number"
+                ? body.maxOfflineDays
+                : undefined,
           tier_id:
             body.tier === null
               ? null

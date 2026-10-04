@@ -11,7 +11,8 @@ export interface UnsavedChangesGuardOptions {
   onDiscard?: () => void;
   /**
    * Navigations that keep the draft and need no answer: a wizard's own `?step=` changes, which
-   * stay on the page. Return `true` to let `nextHash` through.
+   * stay on the page, or a record's own route tabs, whose panels stay mounted while dirty
+   * (`TabPanel`, LDT-4). Return `true` to let `nextHash` through.
    */
   allow?: (nextHash: string) => boolean;
 }

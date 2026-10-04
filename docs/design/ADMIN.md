@@ -2275,6 +2275,41 @@ deleted.
   confirm level, a URL round trip and an axe pass. `queryKeyShapes.test.ts` now requires the
   registry list to have exactly one reader, the shell's `useProducts`.
 
+#### Chunk 6 as built (2026-10-04)
+
+Where the License build differs from the text above:
+
+- **Where things live.** The pages are in `src/console/pages/license/` (`LicensesPage`,
+  `CreateLicenseDialog`, `LicenseRecord` with `LicenseTerms`, `LicenseKeys`, `LicenseDevices`,
+  `LicenseConfig` and `LicenseDialogs`, `TiersPage`, `TierRecord` with `TierForm`,
+  `EnrollmentPage`, and `shared.tsx`); `pages/license.tsx` routes between them. The tier record
+  is routed (`tiers/:id`, tabs `overview` and `used-by`).
+- **History tab.** A-2 is chunk 5's, so the license record ships with Overview, Keys, Devices and
+  Config overrides, and **More actions → View in activity** opens Activity with `?q=<license
+id>` (LDT-17). The History tab joins the record's `tabs` in `nav.ts` once A-2 lands.
+- **Device drawer.** The Devices tab uses chunk 3's `DeviceTable`; a row opens the routed device
+  drawer (`devices/:id`), which chunk 5 builds with the facts as visible text (LDT-15, DEV-3).
+  Until it lands that URL resolves to the Devices page.
+- **Config overrides** keep the current `ManagedPayloadEditor` (chunk 7 rebuilds it) with the
+  §6.5.2 failure states; once opened, the tab stays mounted so a draft survives a tab switch.
+- **Expiry on create** is explicit: the tier's term (the body omits `expiresAt`, so the server
+  derives it, R3-06), No expiry (`null`), or a date (the end of the local day, LIC-5).
+  `maxOfflineDays` is checked against the server's 1 to 365.
+- **Fingerprint mode.** Off is `enabled: false` (enforcement off for every tier); the other modes
+  are `enabled: true` with that `defaultMode`. A stored `enabled` with `defaultMode: "off"` reads
+  as Off with a note that tiers with their own mode still enforce it.
+- **Kit additions.** `DataTable` column `meta.defaultHidden`, and no action menu on a row without
+  a valid action; `OneTimeSecretPanel.actions`; `useUnsavedChangesGuard({ allow })` for a
+  record's own route tabs; `device.resetBinding` (L1) in `lib/actions.ts`.
+- **A-3** is in the Worker for the license and tier `PATCH` routes (product `adminGroup` is chunk
+  5's); A-3b is not built: the list stays in client mode.
+- **Temporary home.** `views/legacyBits.tsx` holds the three helpers the legacy `Devices.tsx`
+  and `profiles/ProfileDetail.tsx` imported from `licenses/shared.tsx`; it goes with them.
+- **Tests.** The four License suites (47 tests) are replaced by `licenses`, `licenseRecord`,
+  `tiers`, `enrollment` and `licenseModel` (94 tests; the admin package goes from 987 to 1,036). Two assertions moved to the device
+  drawer with the hardware and software columns: "shows the truncated hwid and the software
+  summary" and "marks a device that never sent a fingerprint as unverified".
+
 #### Chunk 11 · Docs, a11y sweep, visual baseline, cleanup
 
 **IDs closed.** DOC-1 to DOC-6.

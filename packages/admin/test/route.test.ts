@@ -318,9 +318,11 @@ describe("pages that are not built yet redirect to their host", () => {
   );
 
   it("a record that is not built yet goes to its collection", () => {
-    expect(parseLocation("#/p/djdl/license/tiers/t1").redirect).toBe(
-      "#/p/djdl/license/tiers",
-    );
+    // The tier record is built (chunk 6): it parses as a record and stays put.
+    expect(parseLocation("#/p/djdl/license/tiers/t1").redirect).toBeUndefined();
+    expect(
+      parseLocation("#/p/djdl/license/tiers/t1/used-by").route,
+    ).toMatchObject({ page: "tiers", id: "t1", tab: "used-by" });
     expect(
       parseLocation("#/p/djdl/release/releases/rel_1/builds").redirect,
     ).toBe("#/p/djdl/release/releases");

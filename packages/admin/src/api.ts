@@ -1673,7 +1673,8 @@ export interface LicenseDetail extends LicenseSummary {
 export interface CreateLicenseBody {
   name: string;
   email: string;
-  expiresAt?: number;
+  /** Omitted: the tier's term (`policyExpiryDays` from now). `null`: no expiry. */
+  expiresAt?: number | null;
   profile?: string;
   profiles?: string[];
   tier?: string;
@@ -1687,7 +1688,8 @@ export interface PatchLicenseBody {
   name?: string;
   email?: string;
   expiresAt?: number | null;
-  maxOfflineDays?: number;
+  /** `null` clears it, so the product default applies (A-3). */
+  maxOfflineDays?: number | null;
   profile?: string | null;
   profiles?: string[];
   tier?: string | null;
@@ -1748,12 +1750,13 @@ export interface TierSummary {
   maxVersion: string | null;
 }
 
+/** A tier create or patch. On a patch, `null` clears a nullable field (A-3). */
 export interface TierBody {
   id?: string;
   label?: string;
-  profile?: string;
-  policyExpiryDays?: number;
-  policyDeviceLimit?: number;
+  profile?: string | null;
+  policyExpiryDays?: number | null;
+  policyDeviceLimit?: number | null;
   channels?: string[];
   minVersion?: string | null;
   maxVersion?: string | null;

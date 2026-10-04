@@ -278,7 +278,7 @@ export const SECTIONS: NavSection[] = [
         shortcut: "l",
         record: {
           noun: "License",
-          tabs: ["overview", "keys", "devices", "config", "history"],
+          tabs: ["overview", "keys", "devices", "config"],
           ready: true,
         },
       },
@@ -290,7 +290,7 @@ export const SECTIONS: NavSection[] = [
         docs: "/docs/services/license/model/",
         inNav: true,
         ready: true,
-        record: { noun: "Tier", ready: false },
+        record: { noun: "Tier", tabs: ["overview", "used-by"], ready: true },
       },
       {
         page: "enrollment",
