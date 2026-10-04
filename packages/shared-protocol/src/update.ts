@@ -5,7 +5,11 @@ import type { OutletCapabilities, OutletKind } from "./distribution.js";
 import type { AppContent, ContentHold } from "./packs.js";
 import type { ReleaseRecordDoc } from "./release.js";
 
-export { MAX_FEED_REVOCATIONS } from "./core.js";
+export {
+  MAX_FEED_DELTAS,
+  MAX_FEED_DELTAS_PER_TARGET,
+  MAX_FEED_REVOCATIONS,
+} from "./core.js";
 
 /** Architectures the appcast can target (`?arch=` on `/update/appcast.xml`). The
  *  unparameterized feed serves `arm64` for continuity with shipped SUFeedURLs. */
@@ -93,6 +97,9 @@ export interface ChannelFeedDoc {
   packSets?: FeedPackSets;
   packFloors?: FeedPackFloor[];
   revocations?: FeedRevocation[];
+  /** The delta menu (plans/P4-29.md §2.2, V4 §2.4.2): read with `feedContent` like the members
+   *  above. Target payload SHA-256 → the lazy deltas to it. */
+  deltas?: FeedDeltas;
 }
 
 // ── The feed's content members (plans/P4-13.md §2.2, WIRE-CONTRACT-V4 §2.4.1) ────────────────
@@ -163,11 +170,34 @@ export interface FeedRevocation {
   kind?: "delegation";
 }
 
+/**
+ * One feed-offered delta (plans/P4-29.md §2.2): a `payload`-scope delta to the payload its key
+ * names. It adds no trust: the applier checks the artifact against this entry, the base against
+ * `from` and the output against the CI-signed record's `payload`.
+ */
+export interface FeedDelta {
+  /** The base payload's SHA-256 (never the key it is listed under). */
+  from: string;
+  /** A vocabulary token; the planner's `caps.patchMethods` decides. */
+  method: string;
+  /** `payload`: an entry of any other scope is dropped when the member is read. */
+  scope: "payload";
+  /** Base size plus target size: the decoder's window bound. */
+  memBytes: number;
+  artifact: { sha256: string; bytes: number };
+}
+
+/** The feed's `deltas` member: target payload SHA-256 → 1–`MAX_FEED_DELTAS_PER_TARGET` entries,
+ *  at most `MAX_FEED_DELTAS` in all. */
+export type FeedDeltas = Record<string, FeedDelta[]>;
+
 /** `feedContent`'s answer: each member parsed, or null when absent or unusable. */
 export interface FeedContent {
   packSets: FeedPackSets | null;
   packFloors: FeedPackFloor[] | null;
   revocations: FeedRevocation[] | null;
+  /** plans/P4-29.md §2.2. */
+  deltas: FeedDeltas | null;
 }
 
 // ── The update decision (plans/P3-01.md §2.8) ───────────────────────────────────────────────

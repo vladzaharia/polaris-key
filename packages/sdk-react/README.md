@@ -316,6 +316,13 @@ const strings = await packs.readFile("diceroll.l10n", "fr/strings.json");
 - Errors are client-core's `PackError` (`code`, `detail`, `path`), exported from
   `@polaris-key/react` and `@polaris-key/react/update`.
 - **Web deltas** (P4-18, see below).
+- **Feed-offered deltas** (P4-29). When the adapter's `update.packs` is this facet,
+  `decideUpdate()` hands it the decided feed's delta menu (`recordFeedDeltas`), and the next
+  installs plan those lazy deltas beside the records' own; `feedDeltas: () => menu` supplies a
+  menu of the host's own instead. The payload URL answers `dcz` from a lazy delta's base, and
+  without the dictionary the frame comes from the blob route and decodes in WASM. Every byte is
+  checked against the CI-signed record, any failure falls back, and at most one feed-offered
+  delta is tried per install. On desktop the host's `@polaris-key/node` client runs this.
 - **Delegated content** (P4-19). Content-key releases of compatible or standalone packs install
   through the same engine, on the web and through the desktop bridge: the delegation is fetched
   by the hash in the record's `pkd1-` kid and verified against `pinnedReleaseKeys` only, every

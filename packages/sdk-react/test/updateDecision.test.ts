@@ -415,6 +415,44 @@ describe("BrowserAdapter.decideUpdate() — the slices across a reload", () => {
   });
 });
 
+// @pkey-feature packs.delta.feed
+describe("BrowserAdapter.decideUpdate() — the feed's delta menu (plans/P4-29.md §2.4 step 1)", () => {
+  it("hands the decided feed's menu to the pack facet, and null for a feed without one", async () => {
+    const menu = {
+      ["b".repeat(64)]: [
+        {
+          from: "c".repeat(64),
+          method: "zstd-patch-from",
+          scope: "payload" as const,
+          memBytes: 2048,
+          artifact: { sha256: "d".repeat(64), bytes: 512 },
+        },
+      ],
+    };
+    const got: unknown[] = [];
+    const packs = {
+      contentInput: async () => null,
+      recordRevocations: async () => undefined,
+      recordFeedDeltas: (d: unknown) => void got.push(d),
+    };
+    for (const over of [{ deltas: menu }, {}]) {
+      const srv = server();
+      const { recordJws, hash, feedJws } = await signedPair(
+        over as Partial<ChannelFeedDoc>,
+      );
+      srv.feedBody = feedJws;
+      srv.records.set(hash, new Response(recordJws, { status: 200 }));
+      await adapterFor(srv, memoryStore({ deviceId: "dev_1" }), {
+        update: {
+          pinnedReleaseKeys: { [releaseKey.kid]: releaseKey.raw },
+          packs,
+        },
+      }).decideUpdate();
+    }
+    expect(got).toEqual([menu, null]);
+  });
+});
+
 describe("BrowserAdapter.decideUpdate() — the effective clock", () => {
   // plans/P3-01.md §2.5: `now` is max(system, highWaterMark) (V3 §4.2), so winding the system
   // clock back cannot revive an expired feed (§2.3). The floor here comes from a re-verified

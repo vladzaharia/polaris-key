@@ -137,6 +137,9 @@ export type RunUpdateCheckResult =
       boot: ReturnType<typeof bootDecision>;
       /** The verified feed and record the decision used. */
       feed: ChannelFeedDoc;
+      /** `feedContent` over `feed` with its own `nonWireIntegers` (the delta menu included,
+       *  plans/P4-29.md §2.4 step 1). */
+      content: FeedContent;
       record: ReleaseRecordDoc | null;
       /** The slices to write back (Core's read-modify-write). Only verified, committed
        *  artifacts: a cached entry that failed the reload path is gone. */
@@ -420,6 +423,7 @@ export async function runUpdateCheck(
     },
     boot: bootDecision(decision),
     feed,
+    content: content ?? feedContent(feed),
     record,
     cache: { feeds, releaseRecords },
     ...(revocations ? { revocations } : {}),

@@ -181,6 +181,10 @@
       "status": "implemented",
       "note": "@polaris-key/zstd-wasm's browser entry (wasm32, P = 30, memBudget at most 2^30); the window check runs in the applier. P4-18: a planned payload delta runs first as Compression Dictionary Transport (the target's payload URL with ?via=dcz; Content-Encoding: dcz, the artifact plus 40 bytes, applied by Chromium), output SHA-256 checked against the record; a 409 (no dictionary: evicted, chunk-assembled base, Firefox, Safari) or a failure falls back to the WASM delta, then the plan's remaining candidates. Never for a gated pack or a base over 100 MiB."
     },
+    "packs.delta.feed": {
+      "status": "implemented",
+      "note": "client-core's reader, merge and one-feed-delta rule (as Node); browserPacks wires feedDeltas to the committed feed, and the desktop bridge runs the Node engine. On the web, P4-18's payload URL answers dcz from a lazy delta's base; without it the WASM delta runs through the blob route."
+    },
     "packs.state": {
       "status": "implemented",
       "note": "createBrowserPacks (update.packs) over client-core's PackEngine: OPFS staging and store (or an explicit in-memory store), journal, Range/If-Range resume, re-verified reload, confirm, rollback, GC roots; packSetId() for the host (a browser cannot post devices/report)."
