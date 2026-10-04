@@ -13,6 +13,7 @@ import { resetConsole } from "./consoleHarness.js";
 import {
   apiError,
   bootWith,
+  CONNECTORS,
   CREDENTIALS,
   P,
   writes,
@@ -369,6 +370,32 @@ describe("Distribution → Outlet credentials", () => {
       const ms = screen.getByRole("region", { name: "Microsoft Store" });
       expect(within(ms).getByText(/Not running/)).toBeTruthy();
       expect(within(ms).getByText(/declare an ms-store outlet/)).toBeTruthy();
+    });
+
+    it("says when App Store Connect uses the platform's team key (A-16)", async () => {
+      bootWith(HASH, {
+        [P("/distribution/connectors")]: {
+          connectors: [
+            {
+              ...CONNECTORS.connectors[0],
+              setup: {
+                ...CONNECTORS.connectors[0]!.setup,
+                apiKeyCredential: null,
+                credentialSource: "platform",
+                platformSource: "console",
+              },
+            },
+          ],
+        },
+      });
+      await table();
+      const asc = await screen.findByRole("region", {
+        name: "App Store Connect",
+      });
+      expect(
+        within(asc).getByText("The platform's team key (set in the console)"),
+      ).toBeTruthy();
+      expect(within(asc).queryByText("API key credential")).toBeNull();
     });
 
     it("releases a held App Store version at L2", async () => {

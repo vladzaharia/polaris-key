@@ -787,7 +787,10 @@ export interface ConnectorStatusDto {
     priority?: { default?: number };
     vitals?: Record<string, unknown>;
   };
-  /** Where its key comes from: the product's own, or the platform's team key (A-16). */
+  /**
+   * Where its key comes from, `product` or `platform` (A-16). The App Store Connect connector
+   * reports it inside `setup` (with `platformSource`); this top-level field is the fallback.
+   */
   credentialSource?: string;
 }
 

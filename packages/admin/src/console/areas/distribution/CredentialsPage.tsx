@@ -478,9 +478,27 @@ export function CredentialsPage({
       />
 
       <section aria-labelledby="connectors-title" className="space-y-3">
-        <h2 id="connectors-title" className="text-lg font-bold text-fg-strong">
-          Store connectors
-        </h2>
+        <div className="space-y-1">
+          <h2
+            id="connectors-title"
+            className="text-lg font-bold text-fg-strong"
+          >
+            Store connectors
+          </h2>
+          <p className="text-sm text-fg-muted">
+            A connector uses this product's own key of its kind when there is
+            one; otherwise the platform's team key, for the one app assigned to
+            this product.{" "}
+            <a
+              className="text-accent-fg underline-offset-4 hover:underline"
+              href="/docs/admin/store-connections/"
+              target="_blank"
+              rel="noreferrer"
+            >
+              About store connections
+            </a>
+          </p>
+        </div>
         {connectors.isPending ? (
           <Skeleton className="h-32 w-full" />
         ) : connectors.isError ? (

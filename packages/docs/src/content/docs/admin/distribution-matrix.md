@@ -99,8 +99,9 @@ release off every surface, yank it or pin the channel under **Release → Releas
   rollout, the auto-halt and the Sentry halt candidates.
 - **Outlet credentials** holds the store keys the connectors use and the Sentry integration
   secret; see [Outlet credentials](/docs/admin/secrets-and-keys/#outlet-credentials). Its
-  **Store connectors** cards show each connector's state and its configuration actions: App Store
-  Connect **Release this version**, **TestFlight public link** and **Webhook setup**; Google Play
-  **Update priority** and **Settings**.
+  **Store connectors** cards show each connector's state, which key it uses (the product's own or
+  the platform's team key, see [Store connections](/docs/admin/store-connections/)) and its
+  configuration actions: App Store Connect **Release this version**, **TestFlight public link**
+  and **Webhook setup**; Google Play **Update priority** and **Settings**.
 
 The release × outlet readiness also appears on **Release → Compatibility**.

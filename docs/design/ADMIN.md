@@ -1395,8 +1395,9 @@ Cell drawer (2.4.0 × Google Play) ───────────────
 - **Outlet credentials.** Delete stays L2 (§5.2) with the confirm repeating the verb; OUT-7's
   "typed confirmation" is not added. The `asc-webhook-secret` kind offers **Generate the secret**
   (`generate: true`). A 409 `app_assigned_elsewhere` (the platform store connection, A-16) is
-  worded in the pin and set forms; the connector cards show `credentialSource` when the worker
-  sends it. The platform Store connections page itself is A-16's.
+  worded in the pin and set forms; the App Store Connect card shows whose key it uses
+  (`setup.credentialSource`, `platformSource`) and the connectors section links the store
+  connections docs. The platform Store connections page itself is A-16's (the Platform section).
 - **Access.** A pack's gate is a catalog-flag `Combobox` while Config is on, a text field
   otherwise; the app's `entitled` describes Release's channel and version window (the app row's
   `entitlement` is stored, not enforced, so it is not offered). `?deliverable=<pack>` focuses that

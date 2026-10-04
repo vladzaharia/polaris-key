@@ -353,6 +353,12 @@ const CREDENTIAL_SOURCE: Record<string, string> = {
   platform: "The platform's team key",
 };
 
+/** Where the platform's team key comes from (A-16 `platformSource`). */
+const PLATFORM_ORIGIN: Record<string, string> = {
+  console: "set in the console",
+  secret: "Worker secret",
+};
+
 /** The facts a connector's setup reports, in words (ids only, never a credential value). */
 function setupFacts(
   c: ConnectorStatusDto,
@@ -375,11 +381,18 @@ function setupFacts(
   add("Package name", s.packageName);
   add("Credential", s.credential);
   add("Store ID", s.productId);
-  if (c.credentialSource)
+  // A-16: the App Store Connect connector says whose key it uses (`setup.credentialSource`).
+  const source =
+    typeof s.credentialSource === "string"
+      ? s.credentialSource
+      : c.credentialSource;
+  if (source)
     facts.push({
       term: "Key in use",
       detail:
-        CREDENTIAL_SOURCE[c.credentialSource] ?? humanize(c.credentialSource),
+        source === "platform" && typeof s.platformSource === "string"
+          ? `${CREDENTIAL_SOURCE.platform} (${PLATFORM_ORIGIN[s.platformSource] ?? humanize(s.platformSource)})`
+          : (CREDENTIAL_SOURCE[source] ?? humanize(source)),
     });
   return facts;
 }
