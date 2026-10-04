@@ -5,7 +5,7 @@
 | Phase       | F: Package feeds (pkg.plrs.im) (tier-2)                                                                |
 | Size        | 2–3 engineer-weeks                                                                                     |
 | Depends on  | [F-20](F-20-registry-credentials-plan.md), [F-11](F-11-console-feeds.md)                               |
-| Unblocks    | [I-15](I-15-portal-convergence.md), [F-22](F-22-native-publish.md), [F-23](F-23-docker-push.md)        |
+| Unblocks    | [F-22](F-22-native-publish.md), [F-23](F-23-docker-push.md)                                            |
 | Role        | `pkey-implementer`                                                                                     |
 | Plan mode   | no separate plan: executes the approved `plans/F-20.md`                                                |
 | Gates       | D1 migration and `TABLE_OWNERS` (registry tokens); THREAT-MODEL; rule 10 (`/v2/token`, Swift `/login`) |
