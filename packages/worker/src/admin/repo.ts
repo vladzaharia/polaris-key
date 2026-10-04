@@ -5,6 +5,7 @@
 // unscoped ones, and they are gated on PLATFORM_ADMIN before they're reached.
 
 import { stmtRevokeProductCiTokens } from "../core/publisher.js";
+import { stmtRevokeProductRegistryTokens } from "../core/registryTokens.js";
 import type { Db } from "../db/types.js";
 import type {
   KeyRow,
@@ -121,6 +122,8 @@ export async function deleteProduct(
     // P2-02: no CI credential outlives its product (`lookupCiToken` also refuses a deleted
     // product's tokens; this makes the revocation visible in the token list too).
     stmtRevokeProductCiTokens(slug, now),
+    // F-21: nor any registry token (the lookup also joins `products.status <> 'deleted'`).
+    stmtRevokeProductRegistryTokens(slug, now),
   ]);
 }
 
