@@ -1011,13 +1011,15 @@ kill switch, the owner's Distribution and `packageFeeds`, the feed's `enabled` a
 (`stricter(feed, deliverable)`). Any "off" answers the same not-found as an unknown owner, so
 enablement is not an oracle. The check runs before the Cache API lookup, from a 30-second
 per-isolate settings cache, so turning a feed off or tightening a mode stops even an immutable
-answer cached at the edge for a year within 30 seconds. A missing settings table or row fails
-closed. Tier 1 admits only `public`; every other mode answers the client's native 401
+answer cached at the edge for a year within 30 seconds. Client-side caches (a browser, a package
+manager's local store, a proxy the client runs) that already hold an immutable object are outside
+the kill switch's reach: the server cannot recall bytes it has already served. A missing settings
+table or row fails closed. Tier 1 admits only `public`; every other mode answers the client's native 401
 (`Basic`, or OCI's `Bearer` challenge naming a token endpoint that 404s until F-21). The
 credential extractor parses every `Authorization` shape and never logs, stores or echoes it.
 
 **Cache poisoning.** Only a `public` decision reaches the Cache API, and only a 200 with a public
-`Cache-Control` is stored. The key is the normalised path, the query names the route reads and,
+`Cache-Control` answering a GET is stored; a HEAD may read the GET entry but never writes it. The key is the normalised path, the query names the route reads and,
 for npm and PyPI, `Accept`; any other parameter or header is ignored. Non-public answers are
 `private, no-store` and never stored; not-founds and refusals are `no-store`.
 

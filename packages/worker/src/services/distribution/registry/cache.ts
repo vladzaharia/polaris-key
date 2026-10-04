@@ -128,6 +128,10 @@ export function conditional(req: Request, res: Response): Response {
  * The answer for a PUBLIC read, from the Cache API when it holds one, else `compute()`'s,
  * stored when storable. HEAD reads the GET entry and drops the body; `If-None-Match` becomes a
  * 304. Call it only after `authorizeFeedRead` returned `cache: "public"`.
+ *
+ * Only a GET ever writes the entry. A HEAD may read it but never stores `compute()`'s answer,
+ * because a route may answer HEAD with an empty body, and storing that under the GET key would
+ * serve an empty 200 to every later GET for as long as the entry lives.
  */
 export async function cachedRegistryAnswer(
   req: Request,
@@ -143,7 +147,7 @@ export async function cachedRegistryAnswer(
     if (hit) return finish(hit);
   }
   const res = await compute();
-  if (cache && storable(res)) {
+  if (cache && req.method === "GET" && storable(res)) {
     await cache.put(keyReq, res.clone()).catch(() => undefined);
   }
   return finish(res);

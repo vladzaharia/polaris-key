@@ -7379,6 +7379,14 @@ paths:
           content:
             text/html:
               schema: { type: string }
+    head:
+      operationId: registryLandingHead
+      tags: [registry]
+      summary: The registry host's landing page, headers only (registry host only)
+      description: F-02. As `GET /`, with no body.
+      responses:
+        "200":
+          description: "`text/html; charset=utf-8`, `cache-control: public, max-age=3600`."
   /v2/:
     servers:
       - url: https://pkg.plrs.im

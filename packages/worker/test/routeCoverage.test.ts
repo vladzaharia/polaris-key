@@ -190,7 +190,7 @@ const ALIAS_PATHS: Array<[string, string[]]> = [
  */
 const REGISTRY_SERVER = "https://pkg.plrs.im";
 const REGISTRY_PATHS: Array<[string, string[], string]> = [
-  ["/", ["get"], "host"],
+  ["/", ["get", "head"], "host"],
   ["/v2/", ["get", "head"], "host"],
 ];
 

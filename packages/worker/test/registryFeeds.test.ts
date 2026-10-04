@@ -577,6 +577,50 @@ describe("the Cache API layer", () => {
     expect(cache.puts).toBe(1);
   });
 
+  it("a HEAD miss never stores: the following GET computes and gets the full body", async () => {
+    const cache = installCache();
+    const calls: string[] = [];
+    const sha = "c".repeat(64);
+    const answer = (method: string) => async () => {
+      calls.push(method);
+      // A route that answers HEAD with no body, the case that would poison the GET entry.
+      return new Response(method === "HEAD" ? null : '{"full":true}', {
+        headers: {
+          "content-type": "application/json",
+          ...registryCacheHeaders("public", "immutable", sha),
+        },
+      });
+    };
+    const key = `${PKG}/__pkey-registry-cache/h`;
+    const head = await cachedRegistryAnswer(
+      new Request(`${PKG}/h`, { method: "HEAD" }),
+      key,
+      answer("HEAD"),
+    );
+    expect(head.status).toBe(200);
+    expect(await head.text()).toBe("");
+    expect(cache.puts).toBe(0);
+    const get = await cachedRegistryAnswer(
+      new Request(`${PKG}/h`),
+      key,
+      answer("GET"),
+    );
+    expect(get.status).toBe(200);
+    expect(await get.text()).toBe('{"full":true}');
+    expect(calls).toEqual(["HEAD", "GET"]);
+    expect(cache.puts).toBe(1);
+    // A later HEAD now reads the GET entry rather than computing.
+    const head2 = await cachedRegistryAnswer(
+      new Request(`${PKG}/h`, { method: "HEAD" }),
+      key,
+      answer("HEAD"),
+    );
+    expect(head2.status).toBe(200);
+    expect(await head2.text()).toBe("");
+    expect(calls).toEqual(["HEAD", "GET"]);
+    expect(cache.puts).toBe(1);
+  });
+
   it("conditional answers 304 only for a matching ETag on a 200", () => {
     const res = () =>
       new Response("x", {
