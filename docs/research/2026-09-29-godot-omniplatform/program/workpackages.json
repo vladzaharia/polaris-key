@@ -4309,7 +4309,7 @@
       "optional": false,
       "refs": ["notes/S-12 §7.2"],
       "brief": "wp/F-21-registry-auth.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "F-22",
