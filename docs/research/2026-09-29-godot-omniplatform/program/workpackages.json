@@ -2279,7 +2279,7 @@
         "notes/S-16 §10 D7 D10"
       ],
       "brief": "wp/I-01-identity-hygiene.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "I-02",
@@ -2302,7 +2302,7 @@
         "notes/S-16 §8 I-02"
       ],
       "brief": "wp/I-02-single-use-store.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "I-03",
@@ -2327,7 +2327,7 @@
         "notes/S-16 §8 I-03"
       ],
       "brief": "wp/I-03-console-oidc-client.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "I-04",
