@@ -422,14 +422,15 @@ describe("License detail", () => {
 
     // The catalog-driven editor leads with the label and carries the dotted key beside it.
     expect(await screen.findByText("feature.timeout")).toBeTruthy();
-    expect(screen.getByText("enforced")).toBeTruthy(); // the secret's state
-    expect(screen.getByText("hidden")).toBeTruthy(); // the flag's state
+    // The secret's and the flag's states (a badge and the selected radio each).
+    expect(screen.getAllByText("Enforced").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("Hidden").length).toBeGreaterThanOrEqual(2);
 
     // Nothing pending ⇒ no action bar at all; a permanently-parked footer stops being read.
     expect(screen.queryByRole("button", { name: /Save overrides/ })).toBeNull();
 
     // Change the config value; that makes the form dirty and submits a batch.
-    const timeout = screen.getByLabelText("Timeout");
+    const timeout = screen.getByLabelText(/^Timeout/);
     await user.clear(timeout);
     await user.type(timeout, "60");
     const save = await screen.findByRole("button", { name: /Save overrides/ });
@@ -448,15 +449,16 @@ describe("License detail", () => {
   it("refuses to save a value the catalog rejects, with the server's own wording", async () => {
     const user = await renderDetail();
     await user.click(screen.getByRole("tab", { name: "Overrides" }));
-    const timeout = await screen.findByLabelText("Timeout");
+    const timeout = await screen.findByLabelText(/^Timeout/);
     await user.clear(timeout);
     await user.type(timeout, "500"); // maximum is 120
 
     expect(await screen.findByText(/must be <= 120/)).toBeTruthy();
-    const save = (await screen.findByRole("button", {
-      name: /Save overrides/,
-    })) as HTMLButtonElement;
-    expect(save.disabled).toBe(true);
+    // Save is refused while the changed row is invalid: it jumps to the error instead.
+    expect(screen.getByText(/fix 1 error to save/)).toBeTruthy();
+    await user.click(
+      await screen.findByRole("button", { name: /Save overrides/ }),
+    );
     expect(mockApi.putLicenseOverrides).not.toHaveBeenCalled();
   });
 
@@ -466,7 +468,7 @@ describe("License detail", () => {
     );
     const user = await renderDetail();
     await user.click(screen.getByRole("tab", { name: "Overrides" }));
-    const timeout = await screen.findByLabelText("Timeout");
+    const timeout = await screen.findByLabelText(/^Timeout/);
     await user.clear(timeout);
     await user.type(timeout, "60");
     await user.click(

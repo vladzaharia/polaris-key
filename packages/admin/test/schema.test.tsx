@@ -10,6 +10,8 @@ import userEvent from "@testing-library/user-event";
 import {
   ManagedField,
   SchemaField,
+  catalogDiagnostics,
+  catalogIssues,
   validate,
   validateEntry,
   widgetFor,
@@ -759,5 +761,106 @@ describe("ManagedField — secrets are write-only", () => {
     expect(
       (screen.getByLabelText(/^API token/) as HTMLInputElement).readOnly,
     ).toBe(false);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// The rebuild (ADMIN.md §6.6: SCF-1, SCF-3, CAT-4, CAT-5)
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe("SchemaField — the form layer wires every control (SCF-1, SCF-3)", () => {
+  it("labels an enum's select trigger and announces its error", () => {
+    render(
+      <SchemaField
+        entry={entry({ schema: { type: "string", enum: ["dark", "light"] } })}
+        value="dim"
+        onChange={vi.fn()}
+      />,
+    );
+    const trigger = screen.getByRole("combobox", { name: "A field" });
+    expect(trigger.getAttribute("aria-invalid")).toBe("true");
+    const describedBy = trigger.getAttribute("aria-describedby")!;
+    expect(
+      document.getElementById(describedBy.split(" ").pop()!)!.textContent,
+    ).toMatch(/must be one of/);
+  });
+
+  it("validates a switch's value instead of calling it valid (SCF-3)", () => {
+    const onChange = vi.fn<(r: FieldResult) => void>();
+    render(
+      <SchemaField
+        entry={entry({ schema: { type: "boolean", const: false } })}
+        value={false}
+        onChange={onChange}
+      />,
+    );
+    fireEvent.click(screen.getByRole("switch", { name: "A field" }));
+    expect(onChange.mock.calls.at(-1)![0]).toMatchObject({
+      value: true,
+      valid: false,
+    });
+  });
+
+  it("formats a JSON value on request (SCF-4)", () => {
+    const onChange = vi.fn<(r: FieldResult) => void>();
+    render(
+      <SchemaField
+        entry={entry({ schema: { type: "array" } })}
+        value={[1, 2]}
+        onChange={onChange}
+      />,
+    );
+    const box = screen.getByLabelText("A field") as HTMLTextAreaElement;
+    fireEvent.change(box, { target: { value: "[3,4]" } });
+    fireEvent.click(screen.getByRole("button", { name: "Format" }));
+    expect(box.value).toBe("[\n  3,\n  4\n]");
+  });
+});
+
+describe("catalogIssues and catalogDiagnostics — the editor's validator (CAT-4, CAT-5)", () => {
+  const good = { schemaVersion: 1, entries: [entry({ key: "a" })] };
+
+  it("accepts a catalog the publish route accepts", () => {
+    expect(catalogIssues(good)).toEqual([]);
+  });
+
+  it("names structural problems by entry", () => {
+    const issues = catalogIssues({
+      entries: [
+        entry({ key: "a" }),
+        entry({ key: "a" }),
+        { ...entry({ key: "b" }), kind: "setting" },
+        entry({ key: "c", schema: { type: "not-a-type" } }),
+      ],
+    });
+    expect(issues.map((i) => [i.index, i.field])).toEqual([
+      [1, "key"],
+      [2, "kind"],
+      [3, "schema"],
+    ]);
+    expect(catalogIssues({})).toEqual([
+      { field: "entries", message: "entries must be an array." },
+    ]);
+  });
+
+  it("puts a JSON syntax error at its line and column", () => {
+    const [d] = catalogDiagnostics('{\n  "entries": [,]\n}');
+    expect(d!.line).toBe(2);
+    expect(d!.message).toMatch(/Invalid JSON/);
+  });
+
+  it("puts an entry's problem on the line of its key", () => {
+    const text = JSON.stringify(
+      {
+        entries: [
+          entry({ key: "a" }),
+          entry({ key: "b", schema: { type: 5 } }),
+        ],
+      },
+      null,
+      2,
+    );
+    const [d] = catalogDiagnostics(text);
+    expect(text.split("\n")[d!.line - 1]).toContain('"key": "b"');
   });
 });

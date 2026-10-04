@@ -71,14 +71,14 @@ holds that capability today, so every link keeps working. Those pages are noted 
 
 ### Core
 
-| Page               | URL        | What it's for                                                                                                                                                                                                         |
-| ------------------ | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Overview**       | (root)     | Setup health at a glance: a "needs attention" strip, a guided checklist, the SDK trust key and trust set, and a starter snippet. See [Products](/docs/admin/products/#setup-health).                                  |
-| **Services**       | `services` | Which services the product runs, and its device-registration policy. See [Services & enablement](/docs/admin/services-enablement/).                                                                                   |
-| **Devices**        | `devices`  | Every device of the product, including those that hold no license. See [Licenses & devices](/docs/admin/licenses-and-devices/#devices-product-wide).                                                                  |
-| **Keys & secrets** | `keys`     | Write-only product secrets and the required-secrets checklist. Edge-mint recipes and outlet credentials are here too until they move to Config and Distribution. See [Secrets & keys](/docs/admin/secrets-and-keys/). |
-| **Activity**       | `activity` | The product's audit log. See [Activity](/docs/admin/activity/).                                                                                                                                                       |
-| **Settings**       | `settings` | Registry fields, per-license defaults, signing-key preparation, and deleting the product. See [Products](/docs/admin/products/).                                                                                      |
+| Page               | URL        | What it's for                                                                                                                                                                        |
+| ------------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Overview**       | (root)     | Setup health at a glance: a "needs attention" strip, a guided checklist, the SDK trust key and trust set, and a starter snippet. See [Products](/docs/admin/products/#setup-health). |
+| **Services**       | `services` | Which services the product runs, and its device-registration policy. See [Services & enablement](/docs/admin/services-enablement/).                                                  |
+| **Devices**        | `devices`  | Every device of the product, including those that hold no license. See [Licenses & devices](/docs/admin/licenses-and-devices/#devices-product-wide).                                 |
+| **Keys & secrets** | `keys`     | Write-only product secrets and the required-secrets checklist. Outlet credentials are here too until they move to Distribution. See [Secrets & keys](/docs/admin/secrets-and-keys/). |
+| **Activity**       | `activity` | The product's audit log. See [Activity](/docs/admin/activity/).                                                                                                                      |
+| **Settings**       | `settings` | Registry fields, per-license defaults, signing-key preparation, and deleting the product. See [Products](/docs/admin/products/).                                                     |
 
 ### License
 
@@ -94,11 +94,11 @@ Shown when the product runs **License**.
 
 Shown when the product runs **Config**.
 
-| Page          | URL                                  | What it's for                                                                   |
-| ------------- | ------------------------------------ | ------------------------------------------------------------------------------- |
-| **Catalog**   | `config/catalog`                     | The product's config schema, and publishing a new version.                      |
-| **Profiles**  | `config/profiles`, `…/profiles/<id>` | Named managed payloads a tier or license inherits, each edited on its own page. |
-| **Edge mint** | `config/edge-mint`                   | Edge-mint recipe approval. Until it moves here, this URL opens Keys & secrets.  |
+| Page          | URL                                     | What it's for                                                                                                                                            |
+| ------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Catalog**   | `config/catalog`, `config/catalog/edit` | The product's config keys, their history, and the editor that publishes a new version. See [The catalog](/docs/services/config/catalog/#in-the-console). |
+| **Profiles**  | `config/profiles`, `…/profiles/<id>`    | Named managed payloads a tier or license inherits, each edited on its own page. See [Profiles](/docs/services/config/profiles/#in-the-console).          |
+| **Edge mint** | `config/edge-mint`                      | Edge-mint recipe approval. See [Edge mint](/docs/services/config/edge-mint/#approving-a-recipe).                                                         |
 
 ### Release
 

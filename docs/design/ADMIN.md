@@ -2209,6 +2209,36 @@ capability reachable, whatever order 5, 7 and 9 merge in.
 - **Cross-area components** (DeviceTable, EntityLink) are built in chunk 3, never inside an area
   chunk, so parallel area chunks touch disjoint files.
 
+**Notes (chunk 7 as built, 2026-10-04).** Config: Catalog, the catalog editor, Profiles, the
+profile record, the payload editor and Edge mint, at `src/console/pages/config/`. Where the build
+differs from the text above:
+
+- **Where things live.** `SchemaForm.tsx` is split into `src/schema/` (`entry.ts`: the validator,
+  entry helpers and the one set of kind/state tables; `SchemaField`, `ManagementStateControl`,
+  `ManagedField`; `catalogValidation.ts`: the editor's whole-catalog checks and JSON lint).
+  `ManagedPayloadEditor.tsx` is rebuilt in place, so the license override tab keeps its import;
+  its `onSubmit` may resolve or reject, and the draft stays until the refetch shows the server
+  holding it (a swallowed failure never loses the draft). `OverridesEditor.tsx` changed one import
+  line, and three `licenses.test.tsx` assertions follow the new row copy.
+- **Used by (PRF-2, PRF-8)** is the server's, not computed from cached queries: the profile list
+  carries `usedBy` counts and the profile detail the tiers and licenses (`GET …/config/profiles`).
+  The license list's fetcher is chunk 6's, and the delete guard needs exact counts.
+- **Profile History** is not a tab yet: it needs A-2 (activity filtered by target), which is
+  chunk 5's. The record's tabs are Payload and Used by; `nav.ts` declares only those.
+- **Create (PRF-5).** The server now refuses a taken id (`409 profile_exists`): `POST` used to
+  upsert, so a duplicate id silently replaced that profile's payload. "Publish a catalog first" is
+  the New profile button's disabled reason when the catalog is missing.
+- **A-7b** (catalog usage) is built: the key drawer's "Overridden by" and the review's breaking
+  removals read it. Catalog ownership (CAT-3) is `From manifest` for a repo-linked product
+  (`releaseSource: "github"`), whose next resync re-applies `.pkey/schema`.
+- **The payload JSON control** is a mono textarea with Format; CodeMirror is the catalog editor's
+  JSON mode only.
+- **Temporary mount.** Edge mint left Keys & secrets (`views/Secrets.tsx` no longer mounts it);
+  the shell and palette tests that used Edge mint as their not-ready page now use Sign-in.
+- **API additions** are admin routes (narrative-only under rule 10), covered by
+  `packages/worker/test/configAdmin.test.ts`, audited where they write (`profile.update`); no
+  migration.
+
 #### Chunk 11 · Docs, a11y sweep, visual baseline, cleanup
 
 **IDs closed.** DOC-1 to DOC-6.

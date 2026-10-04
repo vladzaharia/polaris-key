@@ -121,6 +121,36 @@ function lineOfKey(
   return m ? lineCol(text, m.index) : { line: 1, column: 1 };
 }
 
+/**
+ * Where a JSON syntax error is. Engines word the error differently (V8 no longer says
+ * "position N"), so the position is found by bisection: a prefix that ends before the error fails
+ * as "unexpected end"; one that includes the offending character fails differently.
+ */
+function syntaxErrorOffset(text: string, message: string): number {
+  const pos = /position (\d+)/.exec(message);
+  if (pos) return Number(pos[1]);
+  const fails = (k: number): boolean => {
+    try {
+      JSON.parse(text.slice(0, k));
+      return false;
+    } catch (e) {
+      // A prefix cut inside a string or a literal fails as "unterminated" or "end of input".
+      return !/end of (JSON )?(input|data)|unterminated/i.test(
+        e instanceof Error ? e.message : "",
+      );
+    }
+  };
+  let lo = 1;
+  let hi = text.length;
+  if (!fails(hi)) return Math.max(0, text.length - 1);
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (fails(mid)) hi = mid;
+    else lo = mid + 1;
+  }
+  return lo - 1;
+}
+
 /** JSON-mode lint markers: a parse error at its position, else each catalog issue on its line. */
 export function catalogDiagnostics(text: string): CodeDiagnostic[] {
   let doc: unknown;
@@ -128,8 +158,7 @@ export function catalogDiagnostics(text: string): CodeDiagnostic[] {
     doc = JSON.parse(text);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Invalid JSON";
-    const pos = /position (\d+)/.exec(message);
-    const at = pos ? lineCol(text, Number(pos[1])) : { line: 1, column: 1 };
+    const at = lineCol(text, syntaxErrorOffset(text, message));
     return [{ ...at, message: `Invalid JSON: ${message}`, severity: "error" }];
   }
   return catalogIssues(doc).map((issue) => ({

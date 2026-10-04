@@ -412,6 +412,20 @@ export function ManagedPayloadEditor({
     });
   }, [dirtyKeys]);
 
+  // A server message belongs to the value it refused: once the operator edits that row, the
+  // message no longer describes it (and must not keep blocking the save).
+  const [refused, setRefused] = React.useState<Record<string, string>>({});
+  React.useEffect(() => {
+    const mapped = mapServerFields(serverFields, entries);
+    setRefused(
+      Object.fromEntries(
+        Object.keys(mapped.byKey).map((k) => [k, JSON.stringify(draft[k])]),
+      ),
+    );
+    // Snapshot the draft only when a new set of server messages arrives.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverFields, entries]);
+
   const server = React.useMemo(() => {
     const mapped = mapServerFields(serverFields, entries);
     // A message for a row the operator has since unset has no control to sit under: show it at
@@ -419,11 +433,13 @@ export function ManagedPayloadEditor({
     const rest = [...mapped.rest];
     const byKey: Record<string, string> = {};
     for (const [key, message] of Object.entries(mapped.byKey)) {
+      if (key in refused && refused[key] !== JSON.stringify(draft[key]))
+        continue;
       if (draft[key]?.set) byKey[key] = message;
       else rest.push(`${key} ${message}`);
     }
     return { byKey, rest };
-  }, [serverFields, entries, draft]);
+  }, [serverFields, entries, draft, refused]);
 
   /** Every row's problem (shown) and the changed rows' problems (blocking, MPE-2). */
   const { shown, blocking } = React.useMemo(() => {
@@ -667,7 +683,7 @@ export function ManagedPayloadEditor({
             ).length;
             return (
               <section key={group.category} className="space-y-3">
-                <h3>
+                <h2>
                   <button
                     type="button"
                     aria-expanded={open}
@@ -702,7 +718,7 @@ export function ManagedPayloadEditor({
                       </StatusPill>
                     ) : null}
                   </button>
-                </h3>
+                </h2>
                 <div id={bodyId} hidden={!open} className="space-y-3">
                   {group.entries.map((entry) => {
                     const base = baseline.get(entry.key)!;

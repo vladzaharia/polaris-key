@@ -1982,7 +1982,8 @@ const rawApi = {
   /** The profiles, tiers and licenses that set each key (A-7b). */
   catalogUsage: (slug: string, keys: readonly string[]) =>
     call<{ keys: Record<string, CatalogKeyUsage> }>(
-      `${p(slug)}/config/catalog/usage?${keys
+      `${p(slug)}/config/catalog/usage?${([] as string[])
+        .concat(keys)
         .map((k) => `key=${enc(k)}`)
         .join("&")}`,
     ),
