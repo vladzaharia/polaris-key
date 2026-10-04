@@ -128,25 +128,108 @@ async function writeSlot(
 }
 
 /**
- * What is left of a store key's budget now, or null when nothing is known. A stop past its end,
- * or an observation older than the window, says nothing.
+ * One budget slot under one `RateSpec`: what every store's meter does, independent of which store
+ * (the store-level functions below resolve the spec and slot from the adapter).
  */
-export async function readRate(
+export interface BudgetMeter {
+  /** What is left now, or null when nothing is known (a lifted stop, a stale observation). */
+  read(now: number): Promise<StoredRate | null>;
+  /** Keep a `header` observation. */
+  observe(rate: StoreRate | null, now: number): Promise<void>;
+  /** Count one call against a `per-minute` or `per-day` budget (a no-op for other kinds). */
+  spend(now: number): Promise<void>;
+  /** The store stopped the Worker: for `seconds`, or until the window ends. */
+  stop(now: number, seconds?: number): Promise<void>;
+}
+
+export function budgetMeter(
+  env: Env,
+  slot: string,
+  spec: RateSpec,
+): BudgetMeter {
+  const window = rateWindow(spec);
+  return {
+    async read(now) {
+      const v = await readSlot(env, slot);
+      if (!v) return null;
+      if (v.stopped && typeof v.until === "number" && now >= v.until)
+        return null;
+      if (now - v.at > window) return null;
+      return v;
+    },
+    async observe(rate, now) {
+      if (!rate) return;
+      await writeSlot(
+        env,
+        slot,
+        { limit: rate.limit, remaining: rate.remaining, at: now },
+        window,
+      );
+    },
+    async spend(now) {
+      if (
+        (spec.kind !== "per-minute" && spec.kind !== "per-day") ||
+        !spec.limit
+      )
+        return;
+      const v = await readSlot(env, slot);
+      const fresh = !v || now - v.at >= window;
+      const next: StoredRate = fresh
+        ? { limit: spec.limit, remaining: spec.limit - 1, at: now }
+        : {
+            limit: spec.limit,
+            remaining: Math.max(0, v.remaining - 1),
+            at: v.at,
+            ...(v.stopped && typeof v.until === "number"
+              ? { stopped: true, until: v.until }
+              : {}),
+          };
+      await writeSlot(env, slot, next, window - (now - next.at));
+    },
+    async stop(now, seconds) {
+      const hold =
+        seconds !== undefined && Number.isFinite(seconds) && seconds > 0
+          ? Math.min(seconds, window)
+          : window;
+      await writeSlot(
+        env,
+        slot,
+        {
+          limit: spec.limit ?? 1,
+          remaining: 0,
+          stopped: true,
+          at: now,
+          until: now + hold,
+        },
+        hold,
+      );
+    },
+  };
+}
+
+/** A store key's meter: the adapter's `RateSpec` on the key's slot. */
+export function storeMeter(
+  env: Env,
+  store: StorefrontId,
+  product: string,
+  key: BudgetKey,
+): BudgetMeter {
+  return budgetMeter(env, rateSlot(store, product, key), specOf(store));
+}
+
+/** What is left of a store key's budget now, or null when nothing is known. */
+export function readRate(
   env: Env,
   store: StorefrontId,
   product: string,
   key: BudgetKey,
   now: number,
 ): Promise<StoredRate | null> {
-  const v = await readSlot(env, rateSlot(store, product, key));
-  if (!v) return null;
-  if (v.stopped && typeof v.until === "number" && now >= v.until) return null;
-  if (now - v.at > rateWindow(specOf(store))) return null;
-  return v;
+  return storeMeter(env, store, product, key).read(now);
 }
 
 /** Keep a `header` observation (the client parsed it from the store's response). */
-export async function writeRate(
+export function writeRate(
   env: Env,
   store: StorefrontId,
   product: string,
@@ -154,14 +237,7 @@ export async function writeRate(
   rate: StoreRate | null,
   now: number,
 ): Promise<void> {
-  if (!rate) return;
-  const window = rateWindow(specOf(store));
-  await writeSlot(
-    env,
-    rateSlot(store, product, key),
-    { limit: rate.limit, remaining: rate.remaining, at: now },
-    window,
-  );
+  return storeMeter(env, store, product, key).observe(rate, now);
 }
 
 /** Keep a store's team-key budget after a team-wide call (the apps listing, provisioning). */
@@ -172,66 +248,6 @@ export function recordTeamRate(
   now: number,
 ): Promise<void> {
   return writeRate(env, store, "", { source: "platform" }, rate, now);
-}
-
-/**
- * Count one call against a `per-minute` or `per-day` budget (a no-op for other kinds). The window
- * is fixed from the first call in it.
- */
-export async function recordSpend(
-  env: Env,
-  store: StorefrontId,
-  product: string,
-  key: BudgetKey,
-  now: number,
-): Promise<void> {
-  const spec = specOf(store);
-  if ((spec.kind !== "per-minute" && spec.kind !== "per-day") || !spec.limit)
-    return;
-  const slot = rateSlot(store, product, key);
-  const window = rateWindow(spec);
-  const v = await readSlot(env, slot);
-  const fresh = !v || now - v.at >= window;
-  const next: StoredRate = fresh
-    ? { limit: spec.limit, remaining: spec.limit - 1, at: now }
-    : {
-        limit: spec.limit,
-        remaining: Math.max(0, v.remaining - 1),
-        at: v.at,
-        ...(v.stopped ? { stopped: true, until: v.until } : {}),
-      };
-  await writeSlot(env, slot, next, window - (now - next.at));
-}
-
-/**
- * The store stopped the Worker: a 403 under `stopOn403` (until the window ends), or a
- * `Retry-After` of `seconds`. Every spend class waits until it lifts.
- */
-export async function recordStop(
-  env: Env,
-  store: StorefrontId,
-  product: string,
-  key: BudgetKey,
-  now: number,
-  seconds?: number,
-): Promise<void> {
-  const spec = specOf(store);
-  const hold =
-    seconds !== undefined && Number.isFinite(seconds) && seconds > 0
-      ? Math.min(seconds, rateWindow(spec))
-      : rateWindow(spec);
-  await writeSlot(
-    env,
-    rateSlot(store, product, key),
-    {
-      limit: spec.limit ?? 1,
-      remaining: 0,
-      stopped: true,
-      at: now,
-      until: now + hold,
-    },
-    hold,
-  );
 }
 
 /** Whether a store's response should stop the meter (`stopOn403`), with its hold in seconds. */
