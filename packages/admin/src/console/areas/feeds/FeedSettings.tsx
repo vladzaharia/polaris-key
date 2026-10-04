@@ -165,7 +165,7 @@ function GeneralSection({
         }
       >
         <SettingsRow
-          label="Enabled"
+          label="Serving"
           help="Off, every client gets the registry's not-found, the same answer as a feed that does not exist."
         >
           <FormField<boolean> name="enabled" label="Enabled">
@@ -247,8 +247,8 @@ function AccessSection({
           </>
         }
       >
-        <SettingsRow label="Access mode">
-          <FormField<string> name="accessMode" label="Access mode" group>
+        <SettingsRow label="Who may install">
+          <FormField<string> name="accessMode" label="Mode" group>
             {(field) => (
               <RadioCards<string> {...field} columns={2} options={options} />
             )}
@@ -373,7 +373,7 @@ function NamespaceSection({
             <span className="font-mono text-sm">{owner}/…</span>
           </SettingsRow>
         ) : eco === "npm" || eco === "swift" ? (
-          <SettingsRow label="Scope" help={NAMESPACE_HELP[eco]}>
+          <SettingsRow label="Package scope" help={NAMESPACE_HELP[eco]}>
             <FormField<string> name="scope" label="Scope">
               {(field) => (
                 <Input
@@ -387,7 +387,7 @@ function NamespaceSection({
             </FormField>
           </SettingsRow>
         ) : eco === "godot" ? (
-          <SettingsRow label="Publisher" help={NAMESPACE_HELP[eco]}>
+          <SettingsRow label="Addon publisher" help={NAMESPACE_HELP[eco]}>
             <FormField<string> name="publisher" label="Publisher">
               {(field) => (
                 <Input
@@ -401,7 +401,7 @@ function NamespaceSection({
             </FormField>
           </SettingsRow>
         ) : eco === "maven" ? (
-          <SettingsRow label="Group prefixes" help={NAMESPACE_HELP[eco]}>
+          <SettingsRow label="Maven groups" help={NAMESPACE_HELP[eco]}>
             <FormField<string> name="groupPrefixes" label="Group prefixes">
               {(field) => (
                 <Textarea
@@ -416,7 +416,7 @@ function NamespaceSection({
           </SettingsRow>
         ) : (
           <>
-            <SettingsRow label="Names" help={NAMESPACE_HELP.pypi}>
+            <SettingsRow label="Project names" help={NAMESPACE_HELP.pypi}>
               <FormField<string> name="names" label="Names">
                 {(field) => (
                   <Textarea
@@ -429,7 +429,7 @@ function NamespaceSection({
                 )}
               </FormField>
             </SettingsRow>
-            <SettingsRow label="Prefixes" help="One per line.">
+            <SettingsRow label="Name prefixes" help="One per line.">
               <FormField<string> name="prefixes" label="Prefixes">
                 {(field) => (
                   <Textarea
@@ -495,7 +495,7 @@ function LimitsSection({
           label="Largest package"
           help={`The platform's ceiling for this ecosystem is ${formatBytes(ceiling)}.`}
         >
-          <FormField<number | null> name="mib" label="Largest package">
+          <FormField<number | null> name="mib" label="Size">
             {(field) => (
               <NumberInput
                 {...field}
@@ -568,7 +568,7 @@ function YankSection({
             label="Hide yanked versions"
             help="Leave a yanked version out of maven-metadata.xml, so version ranges stop resolving to it. Exact coordinates still download."
           >
-            <FormField<boolean> name="hide" label="Hide yanked versions">
+            <FormField<boolean> name="hide" label="Hide">
               {(field) => (
                 <Switch
                   id={field.id}
@@ -639,7 +639,7 @@ function PolicySection({
           label="Serve this ecosystem"
           help="Off, every owner's feed of this ecosystem answers not-found, whatever its own settings say."
         >
-          <FormField<boolean> name="enabled" label="Serve this ecosystem">
+          <FormField<boolean> name="enabled" label="Served">
             {(field) => (
               <Switch
                 id={field.id}
@@ -654,7 +654,7 @@ function PolicySection({
           label="Size ceiling"
           help="No feed of this ecosystem may accept a larger package, whatever its own limit."
         >
-          <FormField<number | null> name="mib" label="Size ceiling">
+          <FormField<number | null> name="mib" label="Ceiling">
             {(field) => (
               <NumberInput {...field} unit="MiB" min={0.01} step="any" />
             )}

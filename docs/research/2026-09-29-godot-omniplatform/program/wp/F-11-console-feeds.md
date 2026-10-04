@@ -69,11 +69,55 @@ scopes ([S-12 §10.1](../../notes/S-12-package-feeds.md#101-console-design-f-11-
 
 ## Acceptance criteria
 
-- [ ] Both scopes render from the same components. The product scope hides Owner and appears only
+- [x] Both scopes render from the same components. The product scope hides Owner and appears only
       with `packageFeeds` on.
-- [ ] Every mutation writes its audit action from plan §6.9. Yank is refused with
+- [x] Every mutation writes its audit action from plan §6.9. Yank is refused with
       `unsupported_by_ecosystem` where the protocol has no such state.
-- [ ] `adminCspParity` and `check:links` pass. The green gate passes (`AGENTS.md`).
+- [x] `adminCspParity` and `check:links` pass. The green gate passes (`AGENTS.md`).
+
+## Corrections (recorded while implementing, against the code)
+
+Where the code disagreed with the brief or plans/F-01.md §6.9, the code was the fact. No wire shape,
+corpus or `PROTOCOL_VERSION` changes.
+
+1. **No `platformAdmin` descriptor seam.** The plan sketched product routes as a Distribution
+   `adminHandle` plus a `platformAdmin?: AdminRoute[]` member registered in `mount.ts`. A yank,
+   unyank and deprecation write Release's `release_packages` (with `release_yanks` and the pack-set
+   invalidation) while the settings are Distribution's tables, and a service may not call another
+   (rule 6). The one place both compose is the admin layer, which already composes them for the
+   system-product bootstrap (`admin/systemProduct.ts`) and imports services elsewhere. So one handler
+   set, `packages/worker/src/admin/handlers/feeds.ts`, serves both scopes: `handlePlatform` routes
+   `/platform/feeds/*` (bootstrap stays where F-03 put it), and `admin/api.ts` routes
+   `/products/:slug/distribution/feeds/*` before the Distribution descriptor. Core still imports no
+   service.
+2. **Audit actions through Release.** Release's `yank`, `unyank` and `setPackageDeprecation` take an
+   optional `auditAs` so the console's verbs audit `package.version.{yank,unyank,deprecate,undeprecate}`
+   against `{kind: "package", id: "<eco>:<name>@<version>"}` through the same write. `undeprecate`
+   is added beside the plan's three (lifting a deprecation is the npm protocol's inverse).
+3. **Capabilities per protocol** (notes/S-12 §8.2): npm deprecate only (yank refused); PyPI, Swift,
+   Maven, OCI and Godot yank only (deprecate refused). `yankHidesFromIndex` applies to Maven only.
+4. **Platform scope is the system product's feeds** (owner requirement): settings write the system
+   product's feed; the packages list opens on `owner=polaris-key` with an "All owners" toggle (the
+   API lists every owner by default, per the plan); an Owners panel lists every product with a
+   `packageFeeds` row. Before the bootstrap the overview offers **Set up platform feeds** (L1).
+5. **Access copy.** Modes other than Public render as "Unavailable" with the reason (the registry
+   issues no credentials), not "Available when registry auth ships" (owner: no implementation-status
+   copy). The server refuses them with `access_mode_unavailable`.
+6. **No Claims section.** The plan's "Public-name claims" section is omitted: we never publish to
+   public registries and nothing in the UI suggests it. `claims_json` is untouched (and refused as a
+   settings field).
+7. **Setup snippets** are a basic per-ecosystem renderer in the SPA (`areas/feeds/model.ts`
+   `setupSnippets`), because the owner asked for a setup snippet per feed now; F-12 replaces it with
+   `renderFeedSetup` in `@polaris-key/manifest` and registers ecosystem panels in
+   `FEED_PANELS` (`areas/feeds/FeedSettings.tsx`), which renders after the common sections.
+8. **Routing.** Global routes gain records (`#/platform/feeds/:eco[/:tab]`) and both scopes gain a
+   nested record (`NavRecord.child`: `…/:eco/packages/:name` in product scope, `:owner/:name` in
+   platform scope). The product nav item carries `requires: "packageFeeds"`, read from a new
+   `packageFeeds` field on the product row. Platform → Package feeds flips to `ready: true`; each
+   feed is its own page, linked from a per-feed nav row above the overview and every feed page.
+9. **Docs page and help links.** `admin/feeds.md` (the nav's docs for both pages, `docsLinks`
+   `packageFeeds`/`packageFeedsHost`); `services-enablement.md`, `console-tour.md` and
+   `services/distribution/package-feeds.md` link it.
 
 ## Verify
 
