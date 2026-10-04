@@ -146,3 +146,11 @@ feed: no Maven Central, no Sonatype, no `signing` plugin.
   `vladzaharia/polaris-key` (F-03's area), every package publish is refused as
   `invalid_descriptor`. The trusted publisher can be registered meanwhile by claiming it
   (`PUT /manage/api/products/polaris-key/ci-publisher`; DEPLOYMENT §2).
+- **Acceptance criterion 1 waits on that gap and on real R2.** No tagged pre-release can land on a
+  staging feed until the system product holds `release_deliverables`; the lead either accepts F-10
+  without it or holds `done` until the F-03 follow-up lands and a staging run of each SDK succeeds.
+- **Also removed:** the root `.npmrc`'s `@polaris-key:registry = https://npm.pkg.github.com`, the
+  last of the GitHub Packages setup (`plans/F-01.md` §5), now guarded by `releaseWorkflows.test.ts`.
+- **Follow-ups to file:** link the system product to the monorepo (F-03's area, above); delete
+  `sdks/godot/store/CHECKLIST.md` and `LISTING.md`, which describe the store submission the owner
+  ruled out; the pip dependency route for the Python SDK (F-12).

@@ -267,6 +267,18 @@ describe("no publishing anywhere else (owner decision 2026-10-04, feeds only)", 
     }
   });
 
+  it("the root .npmrc routes no scope to a public registry", () => {
+    // A `@polaris-key:registry` line would send a manual `pnpm publish` (and the resolution of
+    // any non-workspace @polaris-key package) to that registry instead of the feed.
+    const npmrc = readFileSync(path.join(ROOT, ".npmrc"), "utf8")
+      .split("\n")
+      .filter((line) => !/^\s*[#;]/.test(line))
+      .join("\n");
+    expect(npmrc).not.toMatch(/registry\s*=/);
+    for (const [re, what] of FORBIDDEN)
+      expect(re.test(npmrc), `.npmrc names ${what}`).toBe(false);
+  });
+
   it("merging the Version Packages PR publishes nothing", () => {
     const wf = workflow("release.yml");
     const versionPr = wf.jobs["version-pr"]!;
