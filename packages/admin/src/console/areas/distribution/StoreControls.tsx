@@ -412,6 +412,7 @@ export function ConnectorCard({
 }): React.ReactElement {
   const [pending, setPending] = React.useState<PendingControl | null>(null);
   const [releaseId, setReleaseId] = React.useState<string | null>(null);
+  const [appName, setAppName] = React.useState("");
   const [groupId, setGroupId] = React.useState("");
   const [linkOn, setLinkOn] = React.useState(true);
   const [track, setTrack] = React.useState<string | null>(null);
@@ -433,7 +434,8 @@ export function ConnectorCard({
     if (has("release"))
       actions.push({
         label: "Release this version…",
-        open: () =>
+        open: () => {
+          setAppName("");
           setPending({
             action: "connector.releaseVersion",
             control: "release",
@@ -445,7 +447,8 @@ export function ConnectorCard({
             confirmLabel: "Release version",
             body: {},
             done: "Released the version on the App Store",
-          }),
+          });
+        },
       });
     if (has("testflight/public-link"))
       actions.push({
@@ -536,7 +539,8 @@ export function ConnectorCard({
 
   const control = pending?.control;
   const extra = (): Record<string, unknown> => {
-    if (control === "release") return { releaseId };
+    // L3 (A-17a): the typed name goes as `confirm`; the Worker compares it with Apple's.
+    if (control === "release") return { releaseId, confirm: appName.trim() };
     if (control === "testflight/public-link")
       return { betaGroupId: groupId.trim(), enabled: linkOn };
     if (control === "priority") return { track, releaseId, priority };
@@ -545,7 +549,7 @@ export function ConnectorCard({
   };
   const disabled =
     control === "release"
-      ? !releaseId
+      ? !releaseId || appName.trim() === ""
       : control === "testflight/public-link"
         ? groupId.trim() === ""
         : control === "priority"
@@ -630,6 +634,27 @@ export function ConnectorCard({
                 searchPlaceholder="Search versions"
                 emptyText="No release matches."
                 options={releaseOptions}
+              />
+            )}
+          </FormField>
+        ) : null}
+        {control === "release" ? (
+          <FormField<string>
+            name="connector-app-name"
+            label="App name"
+            required
+            help="Type the app's name exactly as App Store Connect shows it. Polaris Key checks it against App Store Connect before releasing."
+            value={appName}
+            onChange={setAppName}
+          >
+            {(field) => (
+              <Input
+                id={field.id}
+                value={appName}
+                autoComplete="off"
+                spellCheck={false}
+                onValueChange={setAppName}
+                aria-describedby={field["aria-describedby"]}
               />
             )}
           </FormField>
