@@ -39,6 +39,7 @@ import {
   type DataTableProps,
   type Density,
   type Facet,
+  type RowActionItem,
   type TableState,
 } from "./types.js";
 
@@ -193,6 +194,25 @@ export function tableCsv<T>(rows: T[], columns: DataColumn<T>[]): string {
   );
 }
 
+/** A row's action menu; none at all when the row has no valid action (a deauthorized device). */
+function RowMenu({
+  label,
+  items,
+}: {
+  label: string;
+  items: RowActionItem[];
+}): React.ReactElement | null {
+  if (!items.some((i) => !("type" in i && i.type === "separator"))) return null;
+  return (
+    <ActionMenu
+      label={`Actions for ${label}`}
+      items={items}
+      size="sm"
+      align="end"
+    />
+  );
+}
+
 const ROW_LINK = "a[data-row-link], [data-row-link-wrap] a";
 
 const INTERACTIVE =
@@ -307,7 +327,8 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     props.onDensityChange?.(d);
   };
 
-  // Column visibility: persisted per table id; priority 3 hidden by default below 1280 px.
+  // Column visibility: persisted per table id; `defaultHidden` columns, and priority 3 below
+  // 1280 px, start hidden.
   const hasMatchMedia =
     typeof window !== "undefined" && typeof window.matchMedia === "function";
   const [hidden, setHidden] = React.useState<string[]>(() => {
@@ -322,9 +343,11 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     }
     const narrow =
       hasMatchMedia && !window.matchMedia("(min-width: 1280px)").matches;
-    return narrow
-      ? columns.filter((c) => c.meta?.priority === 3).map(columnId)
-      : [];
+    return columns
+      .filter(
+        (c) => c.meta?.defaultHidden || (narrow && c.meta?.priority === 3),
+      )
+      .map(columnId);
   });
   const setColumnHidden = (colId: string, hide: boolean): void => {
     const next = hide
@@ -571,12 +594,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
         ))}
         {rowActions ? (
           <td className="w-12 px-2 text-right">
-            <ActionMenu
-              label={`Actions for ${label}`}
-              items={rowActions(row.original)}
-              size="sm"
-              align="end"
-            />
+            <RowMenu label={label} items={rowActions(row.original)} />
           </td>
         ) : null}
       </tr>
@@ -999,12 +1017,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                 {primary ? cellContent(primary) : label}
               </div>
               {rowActions ? (
-                <ActionMenu
-                  label={`Actions for ${label}`}
-                  items={rowActions(row.original)}
-                  size="sm"
-                  align="end"
-                />
+                <RowMenu label={label} items={rowActions(row.original)} />
               ) : null}
             </div>
             {rest.length > 0 ? (

@@ -9,6 +9,11 @@ export interface UnsavedChangesGuardOptions {
   consequences?: string[];
   /** Runs before the navigation proceeds on Discard (e.g. `form.discard`). */
   onDiscard?: () => void;
+  /**
+   * Navigations that keep the draft and so need no confirm: a record's own route tabs, whose
+   * panels stay mounted while dirty (`TabPanel`, LDT-4).
+   */
+  allow?: (nextHash: string) => boolean;
 }
 
 export interface UnsavedChangesGuard {
@@ -33,11 +38,14 @@ export function useUnsavedChangesGuard(
   const bypass = React.useRef(false);
   const dirty = React.useRef(isDirty);
   dirty.current = isDirty;
+  const allow = React.useRef(opts.allow);
+  allow.current = opts.allow;
 
   React.useEffect(() => {
     if (!isDirty) return;
     const unblock = blockNavigation((hash) => {
       if (bypass.current || !dirty.current) return true;
+      if (allow.current?.(hash)) return true;
       setNext(hash);
       return false;
     });
