@@ -836,3 +836,43 @@ send only these requests). The full redacted log is `S-14-asc-provisioning/out/a
 | Restore HockeyDrills' previous values                                    | `PATCH` **200**; `GET` shows `null`/`null` — **restored**                       | Nothing left changed on the app.                                                                                                                                                   |
 
 Still unmeasured: the 429 response shape (no rate limit was hit).
+
+## Corrections (A-17a as built, 2026-10-04)
+
+A-17a landed the substrate in `packages/worker/src/core/asc/`. Where the build departs from §6,
+§7 and §9 above, the code is the fact:
+
+- **The client moved here (A-16 had not moved it).** `core/asc/client.ts`; only P5-02's connector
+  files and their tests changed imports. It now also serves `/v2/` paths (IAPs, availability) and
+  keeps Apple's `errors[0].code` token on `AscError.code` (A-17h's `ENTITY_ERROR.ATTRIBUTE.INVALID`).
+- **No `DELETE` in the allow table.** §7.5 allowed `POST`/`DELETE …/relationships/{builds,betaTesters}`;
+  the owner's decision ("never any DELETE") wins, so only the `POST` linkages are allowed. Removing
+  a build or tester from a group is a portal step.
+- **Typed and first-time assertions are enforced by the gate**, not only by handlers:
+  `confirm: "typed"` (release request; review submission `submitted: true`), `"initial"`
+  (`/v2/appAvailabilities`: a change could take the app off sale) and `"typed-or-initial"` (both
+  price schedules). The handler passes `{ typedConfirmation: true }` or `{ initial: true }` after
+  its own check. The "shared-bundle capability" typed confirmation (§7.1) stays a handler check in
+  A-17b, because the gate cannot know who holds a bundle id.
+- **The spec is pinned as an extract.** The 7 MB document is not committed; `scripts/asc-spec-writes.mjs`
+  writes its 468 write operations (method, template, body type, attribute and relationship keys)
+  to `test/fixtures/asc/openapi-writes.json`, refusing any spec whose SHA-256 is not the pinned
+  one unless `--accept` is passed. The deny side is an explicit list grouped by reason
+  (`writeGateDenied.ts`), so a new spec operation fails CI even where a family rule would have
+  denied it.
+- **Ledger.** `asc_operations` (migration `0059`) gained `before_json`, `after_json`,
+  `apple_status` and `apple_code`, because the product `audit` table has no before/after columns:
+  the projections live on the ledger row and the product audit summary names the `op_id`. Only a
+  `done` row replays; a `failed`, `ambiguous` or `pending` row is retried under the same key, and
+  a failed pre-read leaves the row `pending` (nothing reached Apple).
+- **Testers' emails are not stored at all** (§7.4 proposed a salted hash plus a count): a
+  `betaTesters` projection keeps `inviteType` and `state` only; the caller's summary carries the
+  count.
+- **Budget.** The meter moved to `core/asc/budget.ts` with the same KV slots; A-16's apps listing
+  now feeds the team key's slot too, and `budgetAllows` adds the `background` class (stops at 20 %
+  left) beside the poller and the operator.
+- **P5-02's `release` control** now requires `confirm` (the app's name, compared with Apple's
+  current value): 422 `confirmation_required` / `confirmation_mismatch`, nothing sent.
+- **The gate's capability types** (`GATE_CAPABILITY_TYPES`) are a superset for A-17b's wizard:
+  `IN_APP_PURCHASE`, `PUSH_NOTIFICATIONS`, `GAME_CENTER`, `ICLOUD`, `APP_GROUPS`,
+  `ASSOCIATED_DOMAINS`, `APPLE_ID_AUTH`, `DATA_PROTECTION`. There is no `APP_ATTEST` (A-17h).

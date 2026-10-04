@@ -199,9 +199,14 @@ In the console API, under `/manage/api/products/<slug>/distribution/connectors/a
 | `phased-release/pause`    | `{ releaseId }`            | `PATCH /v1/appStoreVersionPhasedReleases/{id}` → `PAUSED`         |
 | `phased-release/resume`   | `{ releaseId }`            | the same → `ACTIVE`                                               |
 | `phased-release/complete` | `{ releaseId }`            | the same → `COMPLETE` (everyone, now)                             |
-| `release`                 | `{ releaseId }`            | `POST /v1/appStoreVersionReleaseRequests` (a held version only)   |
+| `release`                 | `{ releaseId, confirm }`   | `POST /v1/appStoreVersionReleaseRequests` (a held version only)   |
 | `testflight/public-link`  | `{ betaGroupId, enabled }` | `PATCH /v1/betaGroups/{id}` `publicLinkEnabled`                   |
 | `webhook`                 | `{}`                       | `POST /v1/webhooks` (all 12 events), then `POST /v1/webhookPings` |
+
+**Releasing is typed.** `release` cannot be undone, so `confirm` must be the app's name exactly as
+App Store Connect shows it (the control reads it from Apple before sending). Without it the answer
+is 422 `confirmation_required`; with a different name, 422 `confirmation_mismatch`. Nothing is sent
+either way.
 
 **Only on the pinned app.** The controls act on the app whose `appleId` the setup shows in
 `GET …/distribution/connectors/asc`, which is always the app the key is pinned to. While the key
@@ -230,6 +235,10 @@ the objects the connector tracks, unresolved ones flagged, and the latest webhoo
 - Which app the key reads and the controls act on is the app you pinned it to. The repo's
   `.pkey/distribution` must name the same app, or the connector stops; it can never choose
   another one.
+- Every request goes through a deny-by-default write gate: only the writes these controls and the
+  App Store provisioning flows need are allowed, each with its exact body. Nothing can delete,
+  touch users, certificates, devices or profiles, or read user records, whatever role the key has.
+  A refused request answers 409 `write_denied` and sends nothing.
 - An App Manager key can change metadata, TestFlight and release timing, but it cannot sign a
   build. Keep a separate Developer-role key for CI uploads if you want the two apart.
 

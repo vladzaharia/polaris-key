@@ -23,22 +23,23 @@ and what binary it installs next.
 
 ## 2. Assets, ranked by what their loss costs
 
-| #   | Asset                                                             | Where it lives                                                                   | Loss impact                                                                                                                                 |
-| --- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| A1  | **`PLATFORM_KEK`**                                                | Worker secret                                                                    | Decrypts every tenant's signing key and every product secret. Total platform compromise. Cannot be rotated today (see A9).                  |
-| A2  | **Per-product Ed25519 signing keys**                              | `product_keys.enc_private_json`, sealed under A1                                 | Forge any config doc, entitlement, or secret for that product. **Unrevocable for already-provisioned clients** — see §6.                    |
-| A3  | **The release channel**                                           | GitHub App key, webhook secret, `release_config`                                 | Ship arbitrary code to every installed client. Equal to A1 in practical severity.                                                           |
-| A4  | **`ADMIN_SESSION_SECRET`**                                        | Worker secret                                                                    | Forge admin sessions → reach A2, A3, A5, A6 through the API.                                                                                |
-| A5  | **Product secrets** (OIDC client secrets, edge-mint signing keys) | `product_secrets`, sealed under A1                                               | Impersonate the product to its IdP; mint third-party tokens (e.g. Apple MusicKit) at the operator's cost.                                   |
-| A6  | **Customer PII**                                                  | `licenses`, `customers`, `portal_accounts`, `audit` — plaintext                  | Email, name, OIDC subject, device user-agents, hardware-derived digests. Regulatory and reputational.                                       |
-| A7  | **Licensing revenue**                                             | The whole enforcement path                                                       | The thing the system nominally exists to protect. Deliberately ranked _below_ A1–A5.                                                        |
-| A8  | **Service availability**                                          | Worker, D1, KV, DO                                                               | A licensing outage can block paying customers from software they already bought.                                                            |
-| A9  | **The ability to recover**                                        | Rotation and revocation machinery                                                | Not an asset in the usual sense, but its absence converts any A1/A2 loss from an incident into a permanent condition.                       |
-| A10 | **The blob store** (release bytes)                                | R2 bucket `polaris-key-blobs-<env>` (`BLOBS`) + `blob_objects`/`blob_refs` in D1 | Serve a wrong object under a trusted hash name to every client that downloads it, or lock one in place for 180 days. Equal to A3 in reach.  |
-| A11 | **Outlet credentials** (store API keys)                           | `outlet_credentials`, sealed under A1 (own AAD kind); minted tokens sealed in KV | Act as the operator in App Store Connect, Google Play or Partner Center: upload or release builds, change listings and prices. Equal to A3. |
-| A12 | **CI credentials** (`pkeyci_` tokens, upload tickets)             | `ci_tokens`/`ci_upload_tickets` (peppered hashes only); held by CI jobs          | Publish, promote (and, if granted, yank) releases of one product for up to 30 min (minted) or 90 days (static). A route into A3/A10.        |
-| A13 | **The R2 parent token** and the temporary credentials it mints    | Worker secrets `R2_PARENT_*`; temp credentials held by CI for ≤ 1 h              | The parent can write the whole bucket, locked prefixes included (subject to the age lock). A temp credential: one staging prefix.           |
-| A14 | **Delegated content keys** (P4-19)                                | CI: a GitHub Environment secret (`PKEY_CONTENT_KEY`) per content team            | Publish data-only pack releases in one scope (pack-id prefix and types) until the window closes or a CI revocation of the delegation lands. |
+| #    | Asset                                                                                | Where it lives                                                                                        | Loss impact                                                                                                                                                                                                                                                                                                              |
+| ---- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| A1   | **`PLATFORM_KEK`**                                                                   | Worker secret                                                                                         | Decrypts every tenant's signing key and every product secret. Total platform compromise. Cannot be rotated today (see A9).                                                                                                                                                                                               |
+| A2   | **Per-product Ed25519 signing keys**                                                 | `product_keys.enc_private_json`, sealed under A1                                                      | Forge any config doc, entitlement, or secret for that product. **Unrevocable for already-provisioned clients** — see §6.                                                                                                                                                                                                 |
+| A3   | **The release channel**                                                              | GitHub App key, webhook secret, `release_config`                                                      | Ship arbitrary code to every installed client. Equal to A1 in practical severity.                                                                                                                                                                                                                                        |
+| A4   | **`ADMIN_SESSION_SECRET`**                                                           | Worker secret                                                                                         | Forge admin sessions → reach A2, A3, A5, A6 through the API.                                                                                                                                                                                                                                                             |
+| A5   | **Product secrets** (OIDC client secrets, edge-mint signing keys)                    | `product_secrets`, sealed under A1                                                                    | Impersonate the product to its IdP; mint third-party tokens (e.g. Apple MusicKit) at the operator's cost.                                                                                                                                                                                                                |
+| A6   | **Customer PII**                                                                     | `licenses`, `customers`, `portal_accounts`, `audit` — plaintext                                       | Email, name, OIDC subject, device user-agents, hardware-derived digests. Regulatory and reputational.                                                                                                                                                                                                                    |
+| A7   | **Licensing revenue**                                                                | The whole enforcement path                                                                            | The thing the system nominally exists to protect. Deliberately ranked _below_ A1–A5.                                                                                                                                                                                                                                     |
+| A8   | **Service availability**                                                             | Worker, D1, KV, DO                                                                                    | A licensing outage can block paying customers from software they already bought.                                                                                                                                                                                                                                         |
+| A9   | **The ability to recover**                                                           | Rotation and revocation machinery                                                                     | Not an asset in the usual sense, but its absence converts any A1/A2 loss from an incident into a permanent condition.                                                                                                                                                                                                    |
+| A10  | **The blob store** (release bytes)                                                   | R2 bucket `polaris-key-blobs-<env>` (`BLOBS`) + `blob_objects`/`blob_refs` in D1                      | Serve a wrong object under a trusted hash name to every client that downloads it, or lock one in place for 180 days. Equal to A3 in reach.                                                                                                                                                                               |
+| A11  | **Outlet credentials** (store API keys)                                              | `outlet_credentials`, sealed under A1 (own AAD kind); minted tokens sealed in KV                      | Act as the operator in App Store Connect, Google Play or Partner Center: upload or release builds, change listings and prices. Equal to A3.                                                                                                                                                                              |
+| A11b | **The platform team App Store Connect key** (A-16's `app-store.api-key`, Admin role) | `platform_credentials` sealed under A1 (AAD `_platform`), or the `PLATFORM_ASC_API_KEY` Worker secret | Everything A11 lists for **every** app of the team, plus team membership (invite an Admin: a takeover that outlives revoking the key), signing identity (create or revoke certificates), deleting identifiers and changing prices. **Above A3.** Only the write gate (A-17a) stands between the Worker and those powers. |
+| A12  | **CI credentials** (`pkeyci_` tokens, upload tickets)                                | `ci_tokens`/`ci_upload_tickets` (peppered hashes only); held by CI jobs                               | Publish, promote (and, if granted, yank) releases of one product for up to 30 min (minted) or 90 days (static). A route into A3/A10.                                                                                                                                                                                     |
+| A13  | **The R2 parent token** and the temporary credentials it mints                       | Worker secrets `R2_PARENT_*`; temp credentials held by CI for ≤ 1 h                                   | The parent can write the whole bucket, locked prefixes included (subject to the age lock). A temp credential: one staging prefix.                                                                                                                                                                                        |
+| A14  | **Delegated content keys** (P4-19)                                                   | CI: a GitHub Environment secret (`PKEY_CONTENT_KEY`) per content team                                 | Publish data-only pack releases in one scope (pack-id prefix and types) until the window closes or a CI revocation of the delegation lands.                                                                                                                                                                              |
 
 **A5 is scoped by usage.** Every product secret carries a usage — general (stored `NULL`) or
 `edge-mint` — and `openProductSecret` opens a secret only for the usage its caller requires: the
@@ -1287,9 +1288,82 @@ store, outside the KEK and the console's rotation; prefer the console credential
 secret for bootstrap. The Play listing's opt-in track read (`?tracks=1`) opens short edits that share the service account's one-open-edit
 slot with that account's product connectors: a listing can invalidate an edit a poll holds at that
 moment (the poll fails and retries next tick). The Steam publisher key travels in query strings to
-Steam's publisher host by Steam's design. Least privilege per store (App Manager team key, the
+Steam's publisher host by Steam's design. Least privilege per store (the
 narrowest Play permissions, the Partner Center Manager role, a dedicated Steam publisher key) is
-the operator's to configure and cannot be verified by the Worker.
+the operator's to configure and cannot be verified by the Worker. For App Store Connect the owner
+chose to keep the Admin team key (2026-10-04), so the write gate of A-17a (below) is the control.
+
+### App Store Connect writes: the write gate, the ledger and the budget (A-17a)
+
+**What it is.** `core/asc/` is the substrate every App Store Connect call goes through (notes/S-14
+§7): the client (moved here from P5-02's connector), the **write gate** (`writeGate.ts`), the
+**operation ledger** (`ledger.ts`, table `asc_operations`), the **before-and-after projection and
+audit** (`audit.ts`) and the **budget meter** (`budget.ts`). A-17's provisioning and distribution
+flows (A-17b to A-17e) build on it; P5-02's controls already run through it.
+
+**Why it matters (owner decision 1, 2026-10-04).** The Worker holds the team key with the **Admin**
+role (A11b): the owner declined a narrower App Manager key. An Admin key can invite users and change
+their roles, create certificates (Developer ID included in the type enum) and revoke them, delete
+bundle ids, and change prices, for every app of the team. **The write gate is the only control
+between a compromised Worker path or a stolen console session and those powers.**
+
+**New outbound actions.** The Worker gains write calls to `api.appstoreconnect.apple.com` (the one
+fixed host, P5-02's SSRF rules: `redirect: "manual"`, bounded bodies, `links.next` followed only to
+the same origin and `/v1/` or `/v2/`), and A-17c adds test-notification calls to
+`api.storekit(-sandbox).apple.com` (P6-01's hosts).
+
+**Controls**, each enforced by a test (`test/ascWriteGate.test.ts`, `test/ascLedger.test.ts`,
+`test/ascControls.test.ts`):
+
+- **(a) Deny by default, before the token.** `AscClient` calls `checkAscRequest` before its token
+  thunk: a write passes only when an `ASC_WRITE_ALLOW` rule matches its method and path template
+  exactly and its JSON:API body (resource type, every attribute key, every relationship name and
+  identifier type, `included` types, the rule's value checks: non-consumable IAPs only, the gate's
+  capability types, export compliance but never `expired`, the notification and webhook URLs fixed
+  to the product's own hook shape). Anything else throws `AscWriteDenied`: no token is minted and
+  nothing is sent. **No rule is a `DELETE`**, and none touches users, invitations, certificates,
+  devices or profiles; reads of `/v1/users*` and `/v1/userInvitations*` are refused too (personal
+  data). The approved surface is S-14 §7.5 with the owner's corrections (no relationship
+  `DELETE`s).
+- **(a′) Every spec write classified, in CI.** A pinned copy of the write operations of Apple's
+  OpenAPI document 4.5 (`test/fixtures/asc/openapi-writes.json`, generated from the spec with
+  SHA-256 `ASC_SPEC_PIN`) must be classified exactly once, allowed or denied with a reason
+  (`writeGateDenied.ts`); every denied operation is exercised against the gate. A spec bump fails
+  until every new write is classified.
+- **(b) No generic proxy.** Each operation is a named handler; no route forwards a method, path or
+  body from a request.
+- **(c) Pin and ownership.** Product-scope writes resolve the app from the product's pin and
+  re-read an existing object's app before writing (P5-02's `proveVersion`, S-14 §7.2).
+- **(d) Typed confirmation.** Release, submit for review and price changes require the operator to
+  type the app's name; the handler compares it with Apple's current value and only then asserts
+  `typedConfirmation` to the gate, which refuses those operations without it. A first price
+  schedule or availability needs the handler's `initial` assertion (its pre-read found none).
+  P5-02's `release` control takes `confirm` since A-17a.
+- **(e) Ledger and audit.** Every A-17 step is an `asc_operations` row keyed by
+  `sha256(scope, product, op, natural key, Idempotency-Key)`: a replay returns the stored result
+  without calling Apple, a reused key with another body is refused, a 5xx or timeout after a write
+  is `ambiguous` and the next attempt re-reads the natural key first. Before and after are Apple's
+  own reads projected through a per-type allow-list; passwords, secrets, emails, phone numbers,
+  testers' names and contact fields are never stored, nor any request or Apple error body (only the
+  status and Apple's `errors[].code` token). One audit row per write: `distribution.asc.<op>` in
+  the product's trail, `platform.asc.<op>` in `platform_audit` for team scope.
+- **(f) Budget meter.** Apple meters per key (3,600 per hour, measured). The team key has one
+  platform-wide KV slot fed by the poller, the apps listing and A-17's flows; background work stops
+  at 20 % left and the poller at 5 %, while an operator's control is never refused, so one
+  product's flow cannot starve every other product's poller.
+
+**Attack tree: stolen admin session → Apple account.** With the gate in place a stolen session
+stays inside A-17's surface: it CAN register bundle ids and enable the gate's capability types,
+create TestFlight groups and add testers, create non-consumable IAPs, submit and release (typing the
+app's name, which it can read), and point the notification URL and webhook at the product's own
+`/<slug>/distribution/hooks/…` path on a Worker host. It CANNOT add or change users, mint or revoke
+certificates, register devices, delete anything, or send any request the allow table does not name.
+
+**Residual risk.** The gate is code in the same Worker that holds the key: a compromise of the
+Worker's code or of `PLATFORM_KEK` (A1) bypasses it, and then A11b is lost in full. The owner
+accepted this instead of a second, App Manager key. The value checks bound the hook URLs' shape, not
+their host (the host is the Worker's own origin, built server-side). The 429 response shape has not
+been observed (A-17h).
 
 ### Store connectors: App Store Connect (P5-02)
 
@@ -3692,6 +3766,19 @@ Poison the release channel
 └── Anywhere upstream of install.sh (no checksum, no signature verification at all)
 ```
 
+### AT-4 — Take the Apple developer account through the Worker (A-17a)
+
+```
+Use the Worker's Admin App Store Connect key (A11b)
+├── Steal an admin session (AT-2)
+│   ├── CAN submit, release (typing the app's name), add testers, create non-consumable IAPs, register bundle ids
+│   ├── CAN point the notification URL and webhook only at /<slug>/distribution/hooks/… on a Worker host
+│   └── CANNOT invite users, mint or revoke certificates, register devices, delete anything (write gate, deny by default)
+├── Add a route or handler that forwards a request ──► refused in review: no generic proxy; the gate checks every write anyway
+├── Widen ASC_WRITE_ALLOW ──────────────────────────► a §9 review trigger; CI classifies every spec write
+└── Compromise the Worker's code or PLATFORM_KEK ───► bypasses the gate: A11b lost in full (accepted residual risk)
+```
+
 ## 8. Out of scope for this model
 
 Physical access to Cloudflare infrastructure; compromise of Cloudflare itself; compromise of the
@@ -3739,7 +3826,11 @@ record naming the caller's binding, or a sandbox path open by default;
 a new product-secret usage or sealed kind is introduced (it must say which paths may open it,
 and that no manifest can grant it); an outlet-credential kind is added, or a file is added to an
 allowlist in `test/outletCredentialReach.test.ts` (it must say why that file needs a store
-credential, and the open must stay audited); a platform store credential (A-16) is added, used
+credential, and the open must stay audited); an entry is added to
+`ASC_WRITE_ALLOW` in `core/asc/writeGate.ts` or moved out of `writeGateDenied.ts`, a rule's
+attributes, relationships, value checks or confirmation level are loosened, a new App Store Connect
+OpenAPI spec version is adopted (`ASC_SPEC_PIN`), anything but `core/asc/client.ts` sends a request
+to App Store Connect, or a field joins an A-17 projection (A-17a); a platform store credential (A-16) is added, used
 without the product's platform pin matching at setup, token and open, cached in a way a hit can
 skip the pin, allowed to fall through from a mis-pinned own credential, or written or opened by a
 file outside its allowlists; the device trust level starts being carried in a signed document or token, an operation trusts `attested` without going through `trustRefusal`, the trust policy becomes writable by anything but the platform-admin `trust-policy` resource, the App Attest root stops being the pinned constant, or a path other than a token rotation keeps the level across a new device token (P6-02); or a new way to obtain a device token or licence without an
