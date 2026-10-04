@@ -331,7 +331,13 @@ const TABLE_OWNERS = {
     "delta_demand_devices",
     "delta_demand",
   ],
-  license: ["licenses", "keys_index", "tiers", "license_profiles"],
+  license: [
+    "licenses",
+    "keys_index",
+    "tiers",
+    "license_profiles",
+    "license_store_grants",
+  ],
   config: [
     "product_schema",
     "profiles",
@@ -374,6 +380,9 @@ const TABLE_OWNERS = {
     "dist_feed_files",
     "dist_connector_settings",
     "dist_readiness",
+    "dist_store_products",
+    "dist_purchase_bindings",
+    "dist_purchases",
   ],
   update: ["update_feed_state", "update_feed_ceiling", "update_feed_docs"],
   identity: [

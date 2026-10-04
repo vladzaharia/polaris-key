@@ -977,8 +977,8 @@ static func capabilities() -> Dictionary:
 		"packs.transport.flatpak": {"status": "planned", "service": "distribution", "na": [{"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"ui.stages": {"status": "implemented", "service": "sdk", "na": []},
 		"ui.kit": {"status": "implemented", "service": "sdk", "na": []},
-		"commerce.receipt": {"status": "planned", "service": "license", "na": []},
+		"commerce.receipt": {"status": "implemented", "service": "license", "na": []},
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "b5120b6567bd82ce236ff59435b1063e4c13e6fd4c070a64196aacb505536626"
+const CAPABILITY_DIGEST := "5801211693a36886f489a61a7d733a678de4c12ff6b91dca7d5a76e0cc46932c"

@@ -77,6 +77,14 @@ const VALUES: Record<OutletCredentialKind, Record<string, unknown>> = {
   },
   // P6-03: a placeholder, never a real Sentry client secret.
   "sentry-integration": { clientSecret: "sentry-test-only-0000" },
+  // P6-01: an In-App Purchase key has the App Store Connect key's shape; a throwaway P-256 key.
+  "app-store-server-key": {
+    keyId: "IAP123DEFG",
+    issuerId: "69a6de7f-0000-47e3-e053-5b8c7c11a4d1",
+    p8: P8,
+  },
+  // P6-01: a placeholder 32-hex Steamworks publisher key, never a real one.
+  "steam-publisher-key": { key: "0123456789ABCDEF0123456789ABCDEF" },
 };
 
 /** The secret part of each value: none of it may ever appear in metadata or a response. */
@@ -86,6 +94,8 @@ const SECRET_PARTS: Record<OutletCredentialKind, string[]> = {
   "google-service-account": [RSA.split("\n")[1]!],
   "ms-partner-center": ["test-client-secret~000"],
   "sentry-integration": ["sentry-test-only-0000"],
+  "app-store-server-key": [P8.split("\n")[1]!],
+  "steam-publisher-key": ["0123456789ABCDEF0123456789ABCDEF"],
 };
 
 const ADMIN_SECRET = "test-admin-session-secret";
@@ -236,13 +246,15 @@ describe("outlet credentials: the admin API", () => {
       expect(list.raw).not.toContain(part);
     const creds = list.body.credentials as Array<Record<string, unknown>>;
     expect(creds.map((c) => c.id)).toEqual([
+      "app-store-server-key-1",
       "asc-api-key-1",
       "asc-webhook-secret-1",
       "google-service-account-1",
       "ms-partner-center-1",
       "sentry-integration-1",
+      "steam-publisher-key-1",
     ]);
-    expect(creds[0]).toMatchObject({
+    expect(creds.find((c) => c.id === "asc-api-key-1")).toMatchObject({
       kind: "asc-api-key",
       outletId: "app-store",
       meta: { keyId: "ABC123DEFG" },
@@ -476,7 +488,9 @@ describe("outlet credentials: openOutletCredential", () => {
       at: NOW + 5,
     });
     expect(rows[0]!.summary).toBe("asc:poll: opened");
-    const [info] = await listOutletCredentials(db, "djdl");
+    const info = (await listOutletCredentials(db, "djdl")).find(
+      (c) => c.kind === "asc-api-key",
+    );
     expect(info!.lastUsedAt).toBe(NOW + 5);
   });
 

@@ -18,6 +18,7 @@ import type {
 } from "../../core/registry.js";
 import { handleLicenseRoutes } from "./routes.js";
 import { handleLicenseAdmin } from "./admin/index.js";
+import { applyStoreGrant } from "./storeGrants.js";
 
 export const licenseService: ServiceDescriptor = {
   slug: "license",
@@ -36,6 +37,8 @@ export const licenseService: ServiceDescriptor = {
       document: `${base}/license/document`,
     },
   }),
+  /** P6-01: a verified store purchase's flag on the buyer's licence (`storeGrants.ts`). */
+  applyStoreGrant,
 };
 
 // ── Compat surface for the not-yet-carved modules ────────────────────────────────────────────
