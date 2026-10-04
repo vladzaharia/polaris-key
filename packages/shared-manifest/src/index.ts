@@ -36,6 +36,16 @@ import {
   sameKeyBytes,
   type ManifestReleaseKey,
 } from "./releaseKeys.js";
+import {
+  MAX_PACKAGE_ARTIFACT_ENTRIES,
+  MAX_PACKAGE_DELIVERABLES,
+  PACKAGE_ECOSYSTEMS,
+  PACKAGE_REFUSED_FIELDS,
+  isPackageEcosystem,
+  isPackageName,
+  packageNameNorm,
+  type PackageEcosystem,
+} from "./packages.js";
 
 import {
   DEFAULT_ENABLED_SERVICES,
@@ -270,6 +280,24 @@ export interface ManifestRelease {
    * {@link MAX_PACK_DELIVERABLES}.
    */
   packDeliverables: ManifestPackDeliverable[];
+  /**
+   * `deliverables.<id>` with `kind: package` (F-03, plans/F-01.md §3.1), by id. `[]` when none is
+   * declared. Resync writes one `release_deliverables` row per package (kind `package`, with its
+   * ecosystem and name), at most {@link MAX_PACKAGE_DELIVERABLES}. The manifest DECLARES packages;
+   * it never enables a feed (that is operator-owned, `dist_registry_*`).
+   */
+  packageDeliverables: ManifestPackageDeliverable[];
+}
+
+/** `deliverables.<id>` with `kind: package` (F-03): what a package feed serves. */
+export interface ManifestPackageDeliverable {
+  kind: "package";
+  id: string;
+  ecosystem: PackageEcosystem;
+  /** The package name as declared, in the ecosystem's grammar. */
+  name: string;
+  /** Each artifact the CLI publishes, by entry id: a file-name glob over the packed output. */
+  artifacts: Record<string, { match: string }>;
 }
 
 /** `publishing.trustedPublisher` as persisted to `ci_publishers` (workflow, environment). */
@@ -668,8 +696,8 @@ export const ARTIFACT_ROLES = [
 ] as const;
 export type ArtifactRole = (typeof ARTIFACT_ROLES)[number];
 
-/** Something a product releases: its `app`, or a pack. */
-export const DELIVERABLE_KINDS = ["app", "pack"] as const;
+/** Something a product releases: its `app`, a pack, or (F-03) a package a feed serves. */
+export const DELIVERABLE_KINDS = ["app", "pack", "package"] as const;
 export type DeliverableKind = (typeof DELIVERABLE_KINDS)[number];
 
 // ── Pack deliverables (P4-02, plans/P4-01.md §3 and §6) ──────────────────────
@@ -2560,7 +2588,7 @@ function distributionDeliverables(
 
 /**
  * The deliverables that get a transport route (`dist_transports` rows): every declared
- * deliverable, the app and each pack (P4-05). Routing packs is safe because P4-02 bounds their
+ * deliverable, the app and each pack (P4-05), never a package (F-03). Routing packs is safe because P4-02 bounds their
  * count (`too_many_pack_deliverables`, MAX_PACK_DELIVERABLES): at most (1 + 64) × MAX_OUTLETS
  * (32) = 2,080 rows per ingest, which Distribution writes as multi-row inserts of at most 25 rows,
  * instead of the tens of thousands an unbounded 64 KiB release.yaml of `{kind: pack}` entries
@@ -2569,7 +2597,8 @@ function distributionDeliverables(
 function routedDeliverables(
   relRoot: Record<string, unknown> | null,
 ): DistributionDeliverable[] {
-  return distributionDeliverables(relRoot);
+  // A package (F-03) is served only by its feed, so it gets no transport row.
+  return distributionDeliverables(relRoot).filter((d) => d.kind !== "package");
 }
 
 /** A `stableTagPattern` value: a string the manual-channel safety rule compiles. One rule for
@@ -2794,6 +2823,23 @@ function validateDeliverables(
       `a product declares at most ${MAX_PACK_DELIVERABLES} pack deliverables (each one costs transport rows and a deliverable row in every resync).`,
     );
   }
+  // Packages (F-03) are counted the same way, against their own bound.
+  const packageCount = Object.entries(raw).filter(
+    ([id, def]) =>
+      id !== APP_DELIVERABLE_ID && isRecord(def) && def.kind === "package",
+  ).length;
+  const tooManyPackages = packageCount > MAX_PACKAGE_DELIVERABLES;
+  if (tooManyPackages) {
+    add(
+      errors,
+      "release",
+      "/release/deliverables",
+      "too_many_package_deliverables",
+      `a product declares at most ${MAX_PACKAGE_DELIVERABLES} package deliverables.`,
+    );
+  }
+  // Each valid package's (ecosystem, normalised name), for the collision rule below.
+  const packageKeys = new Map<string, string>();
   const packIds = new Set<string>();
   // Every declared pack and its binding, for the cross-references below (P4-12: `requires.packs`,
   // `conflicts`, `content.packChannels`).
@@ -2844,6 +2890,20 @@ function validateDeliverables(
         validatePackDeliverable(errors, id, def, flagKeys, declaredPacks);
       continue;
     }
+    if (kind === "package" && !tooManyPackages) {
+      const key = validatePackageDeliverable(errors, id, def);
+      if (key === null) continue;
+      const other = packageKeys.get(key);
+      if (other !== undefined)
+        add(
+          errors,
+          "release",
+          `/release/deliverables/${id}/name`,
+          "package_name_collision",
+          `${id} and ${other} declare the same ${def.ecosystem as string} package name (names compare case-insensitively, and PyPI names after PEP 503 normalisation).`,
+        );
+      else packageKeys.set(key, id);
+    }
   }
   const app = raw[APP_DELIVERABLE_ID];
   if (isRecord(app) && app.kind === "app")
@@ -2858,6 +2918,84 @@ function validateDeliverables(
     );
   }
 }
+
+/**
+ * A `deliverables.<id>` entry of kind `package` (F-03, plans/F-01.md §3.1): an ecosystem, a name
+ * in that ecosystem's grammar, an `artifacts` map of `{ match }` globs, and none of the app's or a
+ * pack's fields. Answers the collision key `<ecosystem>:<normalised name>` when the entry is
+ * valid enough to have one, else null. A package never needs `deliverables.app`: the system
+ * product declares packages and no app.
+ */
+function validatePackageDeliverable(
+  errors: ValidationMessage[],
+  id: string,
+  def: Record<string, unknown>,
+): string | null {
+  const at = `/release/deliverables/${id}`;
+  for (const field of PACKAGE_REFUSED_FIELDS) {
+    if (def[field] !== undefined)
+      add(
+        errors,
+        "release",
+        `${at}/${field}`,
+        "invalid_package_field",
+        `${field} is an app or pack field; a package deliverable declares only kind, ecosystem, name and artifacts.`,
+      );
+  }
+  const artifacts = def.artifacts;
+  if (
+    !isRecord(artifacts) ||
+    Object.keys(artifacts).length === 0 ||
+    Object.keys(artifacts).length > MAX_PACKAGE_ARTIFACT_ENTRIES ||
+    !Object.entries(artifacts).every(
+      ([k, v]) =>
+        ARTIFACT_ENTRY_ID_PATTERN.test(k) &&
+        isRecord(v) &&
+        Object.keys(v).every((f) => f === "match") &&
+        isArtifactMatch(v.match),
+    )
+  )
+    add(
+      errors,
+      "release",
+      `${at}/artifacts`,
+      "invalid_package_field",
+      `artifacts maps 1 to ${MAX_PACKAGE_ARTIFACT_ENTRIES} entry ids (${ARTIFACT_ENTRY_ID_PATTERN.source}) to { match: a file-name glob of at most ${MAX_ARTIFACT_MATCH_LENGTH} characters }.`,
+    );
+  const ecosystem = def.ecosystem;
+  if (!isPackageEcosystem(ecosystem)) {
+    add(
+      errors,
+      "release",
+      `${at}/ecosystem`,
+      "invalid_package_ecosystem",
+      `ecosystem must be one of ${PACKAGE_ECOSYSTEMS.join(", ")}.`,
+    );
+    return null;
+  }
+  if (!isPackageName(ecosystem, def.name)) {
+    add(
+      errors,
+      "release",
+      `${at}/name`,
+      "invalid_package_name",
+      `name must be a ${ecosystem} package name: ${PACKAGE_NAME_RULES[ecosystem]}.`,
+    );
+    return null;
+  }
+  return `${ecosystem}:${packageNameNorm(ecosystem, def.name)}`;
+}
+
+/** Each ecosystem's name grammar, in words, for `invalid_package_name`. */
+const PACKAGE_NAME_RULES: Readonly<Record<PackageEcosystem, string>> = {
+  npm: "a scoped @scope/name in lower case, at most 214 characters",
+  pypi: "a PEP 508 name (letters, digits, '.', '_' and '-', starting and ending with a letter or digit)",
+  swift:
+    "scope.Name (SE-0292: a scope of 1-39 letters, digits or '-', a name of 1-100 letters, digits, '_' or '-')",
+  maven: "groupId:artifactId",
+  oci: "an OCI repository path of lower-case components joined by '/'",
+  godot: "1-64 of a-z, 0-9 and '_'",
+};
 
 /** A `deliverables.<packId>` entry against plans/P4-01.md §3's v1 subset. */
 function validatePackDeliverable(
@@ -3334,7 +3472,7 @@ function validatePackDeliverable(
 }
 
 /** `record` with its keys in byte order (a stable `def_json`). */
-function sortedRecord(record: Record<string, string>): Record<string, string> {
+function sortedRecord<T>(record: Record<string, T>): Record<string, T> {
   return Object.fromEntries(
     Object.entries(record).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
   );
@@ -4035,6 +4173,73 @@ function normalizeRelease(rel: Record<string, unknown>): ManifestRelease {
     trustedPublisher: normalizeTrustedPublisher(rel.publishing),
     releaseKeys: normalizeReleaseKeys(rel.releaseKeys),
     packDeliverables: normalizePackDeliverables(rel.deliverables),
+    packageDeliverables: normalizePackageDeliverables(rel.deliverables),
+  };
+}
+
+/**
+ * `deliverables.<id>` entries with `kind: package`, by id (F-03). Entries the validator refuses
+ * are dropped, and so is the whole set past {@link MAX_PACKAGE_DELIVERABLES}.
+ */
+function normalizePackageDeliverables(
+  raw: unknown,
+): ManifestPackageDeliverable[] {
+  const declared = asRecord(raw);
+  const ids = Object.keys(declared)
+    .filter(
+      (id) =>
+        id !== APP_DELIVERABLE_ID &&
+        isDeliverableId(id) &&
+        asRecord(declared[id]).kind === "package",
+    )
+    .sort();
+  if (ids.length > MAX_PACKAGE_DELIVERABLES) return [];
+  const out: ManifestPackageDeliverable[] = [];
+  for (const id of ids) {
+    const pkg = parseManifestPackageDeliverable(declared[id], id);
+    if (pkg) out.push(pkg);
+  }
+  return out;
+}
+
+/**
+ * One package declaration (or its persisted `release_deliverables.def_json`, parsed), or null
+ * when it is not a valid package deliverable.
+ */
+export function parseManifestPackageDeliverable(
+  raw: unknown,
+  id: string,
+): ManifestPackageDeliverable | null {
+  let def = raw;
+  if (typeof raw === "string") {
+    try {
+      def = JSON.parse(raw) as unknown;
+    } catch {
+      return null;
+    }
+  }
+  if (!isRecord(def) || def.kind !== "package") return null;
+  if (!isPackageEcosystem(def.ecosystem)) return null;
+  if (!isPackageName(def.ecosystem, def.name)) return null;
+  if (PACKAGE_REFUSED_FIELDS.some((f) => def[f] !== undefined)) return null;
+  const artifacts: Record<string, { match: string }> = {};
+  for (const [k, v] of Object.entries(asRecord(def.artifacts))) {
+    const match = asRecord(v).match;
+    if (!ARTIFACT_ENTRY_ID_PATTERN.test(k) || !isArtifactMatch(match))
+      return null;
+    artifacts[k] = { match };
+  }
+  if (
+    Object.keys(artifacts).length === 0 ||
+    Object.keys(artifacts).length > MAX_PACKAGE_ARTIFACT_ENTRIES
+  )
+    return null;
+  return {
+    kind: "package",
+    id,
+    ecosystem: def.ecosystem,
+    name: def.name,
+    artifacts: sortedRecord(artifacts),
   };
 }
 
@@ -5137,6 +5342,7 @@ function add(
 
 // The release descriptor (P2-04): its contract, validator and helpers.
 export * from "./descriptor.js";
+export * from "./packages.js";
 // `.pkey/distribution` (P2b-02): outlets, identities, transports and listing.
 export * from "./distribution.js";
 export * from "./releaseKeys.js";

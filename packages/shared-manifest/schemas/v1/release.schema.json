@@ -309,7 +309,7 @@
       }
     },
     "deliverables": {
-      "description": "The product's deliverables (P2-04, README §3.4). `app` is the product's application; any other id is a pack (kind: pack, P4-02), with the types of CONTENT §4.2 (godot.pck, godot.zip, files.tree, l10n.table, data.json, audio.bank, ml.model, custom.<name>), data-only. At most 64 packs (the validator's too_many_pack_deliverables; maxProperties counts app, which every document declaring a pack has). Absent means an implicit app deliverable whose release files are classified by legacy filename sniffing.",
+      "description": "The product's deliverables (P2-04, README §3.4). `app` is the product's application; any other id is a pack (kind: pack, P4-02), with the types of CONTENT §4.2 (godot.pck, godot.zip, files.tree, l10n.table, data.json, audio.bank, ml.model, custom.<name>), data-only. At most 64 packs (the validator's too_many_pack_deliverables) and, since F-03, at most 64 package deliverables (kind: package, too_many_package_deliverables), each counted by the validator; maxProperties bounds the whole map at app + 64 + 64. Absent means an implicit app deliverable whose release files are classified by legacy filename sniffing.",
       "type": "object",
       "propertyNames": {
         "type": "string",
@@ -322,9 +322,22 @@
         }
       },
       "additionalProperties": {
-        "$ref": "#/$defs/packDeliverable"
+        "if": {
+          "properties": {
+            "kind": {
+              "const": "package"
+            }
+          },
+          "required": ["kind"]
+        },
+        "then": {
+          "$ref": "#/$defs/packageDeliverable"
+        },
+        "else": {
+          "$ref": "#/$defs/packDeliverable"
+        }
       },
-      "maxProperties": 65
+      "maxProperties": 129
     },
     "packDeliverable": {
       "description": "A pack deliverable (P4-02, P4-12, plans/P4-01.md §3). The validator additionally requires, which JSON Schema does not express here: a required pack has delivery essential and no entitlement; a godot.pck or godot.zip pack declares handler.prefixes, activates on restart and declares requires.engine; any other type takes no handler.prefixes or mountOrder; formatVersion is required for data.json and refused for godot.pck, godot.zip and files.tree; an l10n.table pack's locale variants are BCP-47 tags; at most 32 variants (the product of the axes' value counts); entitlement names a flag entry of .pkey/schema; requires.contentApi is keyed by the app deliverable (app); requires.packs names other declared compatible or standalone packs; conflicts names other declared packs.",
@@ -532,7 +545,9 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "required": { "type": "boolean" },
+            "required": {
+              "type": "boolean"
+            },
             "from": {
               "type": "string",
               "maxLength": 256,
@@ -769,6 +784,181 @@
           }
         }
       }
+    },
+    "packageDeliverable": {
+      "description": "A package deliverable (F-03, plans/F-01.md §3.1): one package a package feed on pkg.plrs.im serves, in one ecosystem, under a name in that ecosystem's grammar (expressed below per ecosystem). Its artifacts map entry ids to the file-name globs pkey release publish packs. It takes none of the app's or a pack's fields. A product may declare packages without deliverables.app. The validator additionally requires, which JSON Schema does not express here: no two package deliverables share an ecosystem and a normalised name (PEP 503 for PyPI, case-insensitive for npm, Swift and Maven: package_name_collision), and at most 64 package deliverables (too_many_package_deliverables). Declaring a package never enables a feed: feed settings are operator-owned.",
+      "type": "object",
+      "required": ["kind", "ecosystem", "name", "artifacts"],
+      "properties": {
+        "kind": {
+          "const": "package"
+        },
+        "ecosystem": {
+          "enum": ["npm", "pypi", "swift", "maven", "oci", "godot"]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "artifacts": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 16,
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "required": ["match"],
+            "properties": {
+              "match": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "not": {
+        "anyOf": [
+          {
+            "required": ["platform"]
+          },
+          {
+            "required": ["arch"]
+          },
+          {
+            "required": ["format"]
+          },
+          {
+            "required": ["content"]
+          },
+          {
+            "required": ["binding"]
+          },
+          {
+            "required": ["type"]
+          },
+          {
+            "required": ["packType"]
+          }
+        ]
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "ecosystem": {
+                "const": "npm"
+              }
+            },
+            "required": ["ecosystem"]
+          },
+          "then": {
+            "properties": {
+              "name": {
+                "pattern": "^@[a-z0-9][a-z0-9._~-]*/[a-z0-9][a-z0-9._~-]*$",
+                "maxLength": 214
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "ecosystem": {
+                "const": "pypi"
+              }
+            },
+            "required": ["ecosystem"]
+          },
+          "then": {
+            "properties": {
+              "name": {
+                "pattern": "^[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?$",
+                "maxLength": 128
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "ecosystem": {
+                "const": "swift"
+              }
+            },
+            "required": ["ecosystem"]
+          },
+          "then": {
+            "properties": {
+              "name": {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}\\.[A-Za-z0-9][A-Za-z0-9_-]{0,99}$",
+                "maxLength": 140
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "ecosystem": {
+                "const": "maven"
+              }
+            },
+            "required": ["ecosystem"]
+          },
+          "then": {
+            "properties": {
+              "name": {
+                "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*:[A-Za-z0-9_][A-Za-z0-9_.-]*$",
+                "maxLength": 255
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "ecosystem": {
+                "const": "oci"
+              }
+            },
+            "required": ["ecosystem"]
+          },
+          "then": {
+            "properties": {
+              "name": {
+                "pattern": "^[a-z0-9]+((\\.|_|__|-+)[a-z0-9]+)*(/[a-z0-9]+((\\.|_|__|-+)[a-z0-9]+)*)*$",
+                "maxLength": 255
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "ecosystem": {
+                "const": "godot"
+              }
+            },
+            "required": ["ecosystem"]
+          },
+          "then": {
+            "properties": {
+              "name": {
+                "pattern": "^[a-z0-9_]{1,64}$",
+                "maxLength": 64
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }

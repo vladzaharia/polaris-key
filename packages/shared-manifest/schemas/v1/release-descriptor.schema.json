@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://key.plrs.im/docs/schemas/v1/release-descriptor.schema.json",
   "title": "Polaris Key release descriptor (pkey-release.json)",
-  "description": "The unsigned body of one release of one deliverable: its builds, every build's files with sizes and SHA-256s, and where their bytes live. Attached to a GitHub release as pkey-release.json, or submitted by CI. Mirrors the structural half of validateReleaseDescriptor in @polaris-key/manifest, which is authoritative; the cross-checks against the product's .pkey/release artifact map (declared build ids, platform/arch/format, match globs, declared channel, content-addressed r2 keys) are validator-only. The $id URL is an identifier, not a fetchable locator.",
+  "description": "The unsigned body of one release of one deliverable: an app release's builds (or, kind: package, F-03, a package release's files and extracted metadata), every build's files with sizes and SHA-256s, and where their bytes live. Attached to a GitHub release as pkey-release.json, or submitted by CI. Mirrors the structural half of validateReleaseDescriptor in @polaris-key/manifest, which is authoritative; the cross-checks against the product's .pkey/release artifact map (declared build ids, platform/arch/format, match globs, declared channel, content-addressed r2 keys) are validator-only. The $id URL is an identifier, not a fetchable locator.",
   "type": "object",
   "properties": {
     "descriptorVersion": {
@@ -18,8 +18,8 @@
       "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$"
     },
     "kind": {
-      "description": "Always app: a pack release is submitted as a signed record (kind: pack), never a descriptor.",
-      "const": "app"
+      "description": "app, or (F-03) package: a version of a kind: package deliverable, which carries package instead of builds, no tag and no content, and is never signed. A pack release is submitted as a signed record (kind: pack), never a descriptor.",
+      "enum": ["app", "package"]
     },
     "version": {
       "type": "string",
@@ -83,6 +83,9 @@
       "items": {
         "$ref": "#/$defs/build"
       }
+    },
+    "package": {
+      "$ref": "#/$defs/packageBlock"
     }
   },
   "required": [
@@ -90,8 +93,7 @@
     "product",
     "deliverable",
     "kind",
-    "version",
-    "builds"
+    "version"
   ],
   "$defs": {
     "build": {
@@ -576,6 +578,169 @@
         }
       },
       "required": ["pack", "release"]
+    },
+    "packageBlock": {
+      "description": "A package release's block (F-03, plans/F-01.md §3.2): the declared ecosystem and name, the files (r2 locations only, role payload, a type from the ecosystem's vocabulary) and the CLI extractor's metadata (at most 16 KiB, its name and version equal to the declaration and the descriptor). The validator additionally requires, which JSON Schema does not express here: each file's type belongs to its ecosystem's vocabulary and the files compose a release of it (one npm tarball, one Swift source archive, one Godot zip, …); a Maven file names its extension and only a Maven file a classifier; an OCI object names its mediaType; names are unique; an npm or Swift version is semver and an OCI version has no '+'; the metadata carries only its ecosystem's keys; and the ecosystem and name equal the deliverable's declaration in .pkey/release.",
+      "type": "object",
+      "required": ["ecosystem", "name", "files", "metadata"],
+      "properties": {
+        "ecosystem": {
+          "enum": ["npm", "pypi", "swift", "maven", "oci", "godot"]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4096,
+          "items": {
+            "$ref": "#/$defs/packageFile"
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "required": ["name", "version"]
+        }
+      },
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "ecosystem": {
+            "const": "oci"
+          }
+        },
+        "required": ["ecosystem"]
+      },
+      "then": {},
+      "else": {
+        "properties": {
+          "files": {
+            "maxItems": 64
+          }
+        }
+      }
+    },
+    "packageFile": {
+      "type": "object",
+      "required": ["name", "role", "type", "sha256", "size", "locations"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[^/\\\\\\u0000-\\u001f\\u007f]+$"
+        },
+        "role": {
+          "const": "payload"
+        },
+        "type": {
+          "enum": [
+            "npm-tarball",
+            "wheel",
+            "sdist",
+            "core-metadata",
+            "source-archive",
+            "manifest",
+            "source-archive-signature",
+            "maven-file",
+            "oci-blob",
+            "oci-manifest",
+            "oci-index",
+            "godot-zip",
+            "godot-icon"
+          ]
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "contentType": {
+          "type": "string",
+          "maxLength": 127,
+          "pattern": "^[a-z0-9][a-z0-9.+-]*/[a-z0-9][a-z0-9.+-]*$"
+        },
+        "classifier": {
+          "description": "Maven only.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
+        },
+        "extension": {
+          "description": "Maven only, and required there.",
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9.]{0,15}$"
+        },
+        "mediaType": {
+          "description": "OCI only, and required there.",
+          "type": "string",
+          "maxLength": 127,
+          "pattern": "^[a-z0-9][a-z0-9.+-]*/[a-z0-9][a-z0-9.+-]*$"
+        },
+        "locations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/packageLocation"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "packageLocation": {
+      "description": "Package bytes are always ours to serve under the feed prefix: r2 only.",
+      "type": "object",
+      "required": ["provider", "key"],
+      "properties": {
+        "provider": {
+          "const": "r2"
+        },
+        "key": {
+          "type": "string",
+          "pattern": "^(gated/)?blobs/sha256/[0-9a-f]{64}$"
+        }
+      },
+      "additionalProperties": false
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "package"
+          }
+        },
+        "required": ["kind"]
+      },
+      "then": {
+        "required": ["package"],
+        "not": {
+          "anyOf": [
+            {
+              "required": ["builds"]
+            },
+            {
+              "required": ["tag"]
+            },
+            {
+              "required": ["content"]
+            }
+          ]
+        }
+      },
+      "else": {
+        "required": ["builds"],
+        "not": {
+          "required": ["package"]
+        }
+      }
+    }
+  ]
 }
