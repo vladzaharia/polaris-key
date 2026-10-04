@@ -2,6 +2,12 @@
 # compile/target SDK 36, min SDK 24, Java 17 bytecode; notes/S-10 §Environment), so the AARs drop
 # into a Godot Gradle export unchanged. Play Core versions: the latest on 2026-10-03.
 [versions]
+# The shared Android conventions every module reads (P6-09): compile and target SDK, min SDK and the
+# JVM bytecode level. Change them here, never in a module's build file.
+androidCompileSdk = "36"
+androidTargetSdk = "36"
+androidMinSdk = "24"
+jvmTarget = "17"
 agp = "8.6.1"
 kotlin = "2.1.21"
 godot = "4.7.2.stable"

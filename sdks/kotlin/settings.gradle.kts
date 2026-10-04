@@ -1,6 +1,7 @@
-// The Polaris Key Kotlin build (P5-06). One published module now:
-//   :platform  polaris-key-platform, the shared Android backend (install source, Keystore, and per
-//              flavour Play In-App Updates + Play Asset Delivery, or PackageInstaller self-update)
+// The Polaris Key Kotlin build (P5-06; the SDK structure from P6-05). One published module now:
+//   :platform  polaris-key-platform-{play,direct}, the STANDALONE Android platform module (install
+//              source, Keystore, Play Integrity, and per flavour Play In-App Updates + Play Asset
+//              Delivery, or PackageInstaller self-update); P6-09
 // and two build-only modules:
 //   :godot     the Godot Android plugin (v2) binding it, kept with the Godot SDK in
 //              sdks/godot/native/android (singleton PolarisKeyAndroid)
