@@ -819,3 +819,20 @@ The options as originally proposed:
   `W/migrations/0055_platform_store_connections.sql`, `W/src/core/platformCredentials.ts`.
 - **Secondary** [S]: App Store Connect Help on IAP product-id reuse and on export compliance; the
   community practice of creating app records through an Apple ID web session.
+
+## A-17h results (run 2026-10-04 by the lead, owner-approved)
+
+The approved writes were run from `S-14-asc-provisioning/a17h-writes.mjs` (an allow-listed script that can
+send only these requests). The full redacted log is `S-14-asc-provisioning/out/a17h-log.json` (git-ignored).
+
+| Check | Result | Consequence for A-17 |
+|---|---|---|
+| Register bundle id `im.plrs.key.pkeyprobe.20261004` | **201**, resource id `HPA5436NK7` | Verified. Owner to delete it in the portal (deletes are denied to the Worker). |
+| Register the same identifier again | **409** `ENTITY_ERROR.ATTRIBUTE.INVALID` ("…is not available") | Duplicate = 409 with this code: treat it as "already exists", then read by identifier. |
+| Enable `IN_APP_PURCHASE`, `PUSH_NOTIFICATIONS` | **201** each; ids `HPA5436NK7_IN_APP_PURCHASE`, `HPA5436NK7_PUSH_NOTIFICATIONS` | Confirms the predictable `<bundleId>_<TYPE>` id. |
+| Enable `IN_APP_PURCHASE` again | **201** (no error) | Capability creation is idempotent at Apple's side. |
+| Invalid capability type | **409** `ENTITY_ERROR.ATTRIBUTE.TYPE`, with the full live enum | **No `APP_ATTEST` capability type exists**: App Attest needs no App ID step; the wizard only reminds the developer to add the entitlement in the app target. |
+| Set `subscriptionStatusUrl` (V2) on HockeyDrills (no IAPs/subscriptions) | `PATCH` **200** echoing the URL, but an immediate `GET` returned **null** | Not reliably persisted. Ship the **deep link + copyable URL** fallback, plus a verification read (and the App Store Server API test notification) once the operator has pasted it. |
+| Restore HockeyDrills' previous values | `PATCH` **200**; `GET` shows `null`/`null` — **restored** | Nothing left changed on the app. |
+
+Still unmeasured: the 429 response shape (no rate limit was hit).
