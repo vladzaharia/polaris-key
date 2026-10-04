@@ -3,6 +3,8 @@ plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.kotlin.jvm) apply false
+    alias(libs.plugins.kotlin.compose) apply false
+    alias(libs.plugins.roborazzi) apply false
 }
 
 allprojects {
@@ -42,6 +44,7 @@ val checkModuleBoundaries by tasks.registering {
     val jvmProjects = jvmModules.map { project(it) }
     val serviceProjects = serviceModules.map { project(it) }
     val platformProject = findProject(":platform")
+    val uiProject = findProject(":ui")
     doLast {
         val problems = mutableListOf<String>()
         val forbiddenPlugins = listOf("com.android.library", "com.android.application")
@@ -85,13 +88,24 @@ val checkModuleBoundaries by tasks.registering {
                 }
             }
         }
+        // :ui (P6-11) renders SDK state: it sees :sdk (and through it :core, :update, :packs), never
+        // the Android platform backend or its glue.
+        if (uiProject != null) {
+            val forbidden = setOf("platform", "android", "godot", "boundary", "conformance")
+            for (config in uiProject.configurations) {
+                for (dep in config.dependencies.withType(ProjectDependency::class.java)) {
+                    if (dep.name in forbidden) problems += ":ui ${config.name} depends on project :${dep.name}"
+                }
+            }
+        }
         if (problems.isNotEmpty()) {
             throw GradleException("module boundary violations:\n  " + problems.joinToString("\n  "))
         }
         logger.lifecycle(
             "module boundaries hold: no JVM module has an Android dependency; each service module sees :core only" +
                 (if (platformProject != null) "; :platform depends on no SDK module" else
-                    " (:platform not included in this build)"),
+                    " (:platform not included in this build)") +
+                (if (uiProject != null) "; :ui reaches neither :platform nor :android" else ""),
         )
     }
 }

@@ -70,4 +70,5 @@ if (!jvmOnly && androidSdk) {
     include(":godot")
     project(":godot").projectDir = file("../godot/native/android")
     include(":boundary")
+    include(":ui")
 }

@@ -12,15 +12,15 @@ SDKs, and a CLI built from the same core as a seventh. Whichever one your produc
 it verifies the identical signed documents, exposes the identical `core` +
 per-service-sub-client shape, and fails closed the same way when a capability is not on.
 
-| Surface | Package                                                     | Page                                           |
-| ------- | ----------------------------------------------------------- | ---------------------------------------------- |
-| Node    | `@polaris-key/node`                                         | [Node](/docs/build/sdks/node/)                 |
-| React   | `@polaris-key/react`                                        | [React](/docs/build/sdks/react/)               |
-| Python  | `polaris-key` (PyPI)                                        | [Python](/docs/build/sdks/python/)             |
-| Swift   | `PolarisKey` (SwiftPM)                                      | [Swift](/docs/build/sdks/swift/)               |
-| Godot   | the `addons/polaris_key` addon (GitHub Release zip)         | [Godot](/docs/build/sdks/godot/)               |
-| Kotlin  | `sdks/kotlin` (`polaris-key-sdk`; Polaris Key's Maven feed) | `sdks/kotlin/README.md` (in progress, P6-05)   |
-| CLI     | `@polaris-key/node/cli`, `polaris-key`'s console script     | shipped inside the Node and Python pages above |
+| Surface | Package                                                     | Page                                                                                                           |
+| ------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Node    | `@polaris-key/node`                                         | [Node](/docs/build/sdks/node/)                                                                                 |
+| React   | `@polaris-key/react`                                        | [React](/docs/build/sdks/react/)                                                                               |
+| Python  | `polaris-key` (PyPI)                                        | [Python](/docs/build/sdks/python/)                                                                             |
+| Swift   | `PolarisKey` (SwiftPM)                                      | [Swift](/docs/build/sdks/swift/)                                                                               |
+| Godot   | the `addons/polaris_key` addon (GitHub Release zip)         | [Godot](/docs/build/sdks/godot/)                                                                               |
+| Kotlin  | `sdks/kotlin` (`polaris-key-sdk`; Polaris Key's Maven feed) | `sdks/kotlin/README.md` (in progress, P6-05); the Compose UI kit: [Kotlin UI kit](/docs/build/sdks/kotlin-ui/) |
+| CLI     | `@polaris-key/node/cli`, `polaris-key`'s console script     | shipped inside the Node and Python pages above                                                                 |
 
 Node and React additionally share one isomorphic implementation of the verification, gate,
 trust, config-resolution and boot-stage logic, `@polaris-key/client-core`, rather than each reimplementing

@@ -10,6 +10,7 @@
     "sdks/kotlin/release/src/test",
     "sdks/kotlin/update/src/test",
     "sdks/kotlin/packs/src/test",
+    "sdks/kotlin/ui/src/test",
     "sdks/kotlin/sdk/src/test",
     "sdks/kotlin/conformance/src/test"
   ],
@@ -305,8 +306,8 @@
       "note": ":core's bootTransition; every stage-matrix.json row, probe, guard and confirm case in :conformance."
     },
     "ui.kit": {
-      "status": "planned",
-      "wp": "P6-11"
+      "status": "implemented",
+      "note": "P6-11's :ui (polaris-key-ui, Jetpack Compose + Material 3, Android): PolarisBoot over :core's stage machine, the gate (every terminal state and the grace banner), activation, sign-in with QR, settings, devices, the update banner and prompt and pack progress, each with a StateFlow state holder; neutral over the host's MaterialTheme by default, Polaris Key branding behind PolarisBranding.PolarisKey and the Powered-by badge behind showPoweredBy. Proof: every screen's Roborazzi snapshots (light, dark, 200 % font, phone, tablet; neutral and branded) plus the branding, contrast and TalkBack suites."
     },
     "commerce.receipt": {
       "status": "planned",
