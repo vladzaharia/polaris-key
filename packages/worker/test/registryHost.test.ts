@@ -220,9 +220,8 @@ describe("registry host: configuration", () => {
     }
   });
 
-  it("registers no ecosystem routes yet; every route is Distribution's and names a known ecosystem", () => {
+  it("every registered ecosystem route is Distribution's and names a known ecosystem", () => {
     // F-04 to F-09 add theirs; routeCoverage's REGISTRY_PATHS follows them (rule 10).
-    expect(REGISTRY_ROUTES).toEqual([]);
     for (const r of REGISTRY_ROUTES) {
       expect(r.service).toBe("distribution");
       expect(REGISTRY_ECOSYSTEMS).toContain(r.ecosystem);
@@ -383,7 +382,8 @@ describe("registry host: isolation", () => {
       "/nuget/djdl/v3/index.json",
       "/npm/djdl/@djdl%2fsdk",
       "/pypi/djdl/simple/",
-      "/maven/djdl/im/plrs/key/sdk/maven-metadata.xml",
+      // Maven has routes (F-07): its unknown owners and repositories are pinned, with a
+      // database, in test/registry/maven.test.ts.
       "/godot/djdl/index.json",
     ]) {
       const res = await worker.fetch(new Request(PKG + path), env(PKG));

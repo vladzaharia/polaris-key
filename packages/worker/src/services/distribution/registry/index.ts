@@ -13,10 +13,11 @@ import type {
   RegistryRoute,
 } from "../../../core/registryHost.js";
 import type { RegistryRenderer } from "./materialise.js";
+import { MAVEN_RENDERER } from "./maven/index.js";
 
 /** Every renderer this build carries, one per ecosystem. */
 export const RENDERERS: ReadonlyMap<RegistryEcosystem, RegistryRenderer> =
-  new Map<RegistryEcosystem, RegistryRenderer>([]);
+  new Map<RegistryEcosystem, RegistryRenderer>([["maven", MAVEN_RENDERER]]);
 
 /** Every registry route, in renderer order. */
 export const DISTRIBUTION_REGISTRY_ROUTES: readonly RegistryRoute[] = [

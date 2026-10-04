@@ -51,7 +51,10 @@ import {
   type RegistryRenderer,
 } from "../src/services/distribution/registry/materialise.js";
 import { serveFeedRead } from "../src/services/distribution/registry/serve.js";
-import { DISTRIBUTION_REGISTRY_ROUTES } from "../src/services/distribution/registry/index.js";
+import {
+  DISTRIBUTION_REGISTRY_ROUTES,
+  RENDERERS,
+} from "../src/services/distribution/registry/index.js";
 import {
   dispatchRegistryHost,
   type RegistryEcosystem,
@@ -823,8 +826,9 @@ function deps(source: Map<string, RegistryPackage>): TestDeps {
 }
 
 describe("the materialiser", () => {
-  it("ships no renderer and no route in F-02", () => {
-    expect(DISTRIBUTION_REGISTRY_ROUTES).toEqual([]);
+  it("every route comes from a registered renderer of its own ecosystem", () => {
+    for (const r of DISTRIBUTION_REGISTRY_ROUTES)
+      expect(RENDERERS.get(r.ecosystem)?.routes, r.name).toContain(r);
   });
 
   it("writes every object under registry/<ecosystem>/<owner>/ with its stamp, type and hash, then the render record", async () => {
