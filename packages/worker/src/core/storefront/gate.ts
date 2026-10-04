@@ -123,7 +123,13 @@ export interface GateRuleSet<R extends GateRule = GateRule> {
   readonly validPath: (path: string) => boolean;
   /** Paths refused for every method, reads included (`personal_data`). */
   readonly forbidden?: (path: string) => boolean;
-  readonly match: BodyMatcher<R>;
+  /** The body matcher (method syntax: a rule set of a narrower rule type is still a rule set). */
+  match(
+    rule: R,
+    path: string,
+    body: unknown,
+    ctx: GateContext,
+  ): DenyReason | null;
   /** The adapter's refusal, so a message names the store (`AscWriteDenied`). */
   readonly deny: (
     method: string,
@@ -178,7 +184,12 @@ export interface CompiledGate<R extends GateRule> {
    * Admit or refuse one request. Throws the adapter's `StoreWriteDenied`; returns the matched rule
    * for a write (null for an admitted read). Pure: no I/O, no token.
    */
-  check(method: string, path: string, body: unknown, ctx?: GateContext): R | null;
+  check(
+    method: string,
+    path: string,
+    body: unknown,
+    ctx?: GateContext,
+  ): R | null;
 }
 
 /**
@@ -191,7 +202,10 @@ export function compileGate<R extends GateRule>(
   const ids = new Set<string>();
   const denied = new Set(Object.values(set.denied).flat());
   for (const rule of set.allow) {
-    if ((rule.method as string) === "DELETE" || (rule.method as string) === "GET")
+    if (
+      (rule.method as string) === "DELETE" ||
+      (rule.method as string) === "GET"
+    )
       throw new Error(
         `${set.store} gate: a rule may not allow ${rule.method} (${rule.path})`,
       );
@@ -201,7 +215,10 @@ export function compileGate<R extends GateRule>(
       throw new Error(`${set.store} gate: ${id} is both allowed and denied`);
     ids.add(id);
   }
-  const compiled = set.allow.map((rule) => ({ rule, re: templateRegex(rule.path) }));
+  const compiled = set.allow.map((rule) => ({
+    rule,
+    re: templateRegex(rule.path),
+  }));
   const find = (method: string, path: string): R | null => {
     for (const { rule, re } of compiled)
       if (rule.method === method && re.test(path)) return rule;

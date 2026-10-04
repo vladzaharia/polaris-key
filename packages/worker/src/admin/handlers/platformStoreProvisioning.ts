@@ -46,13 +46,13 @@ import {
 import {
   isIdempotencyKey,
   listStoreOperations,
-  type AscWriteResult,
-} from "../../core/asc/ledger.js";
+  type StoreWriteResult,
+} from "../../core/storefront/ledger.js";
 import {
   budgetAllows,
   readRate,
   recordTeamRate,
-} from "../../core/asc/budget.js";
+} from "../../core/storefront/budget.js";
 import {
   appView,
   BUNDLE_PLATFORMS,
@@ -173,7 +173,7 @@ async function withClient(
     if (mapped) return mapped;
     throw e;
   } finally {
-    await recordTeamRate(c.env, client.lastRate, c.now);
+    await recordTeamRate(c.env, "app-store", client.lastRate, c.now);
   }
 }
 
@@ -206,7 +206,7 @@ function idempotencyKeyOf(req: Request): string | Response {
 }
 
 /** One step's result in the shape every write answers. */
-function stepView(r: Exclude<AscWriteResult, { outcome: "conflict" }>) {
+function stepView(r: Exclude<StoreWriteResult, { outcome: "conflict" }>) {
   if (r.outcome === "replayed")
     return {
       outcome: "replayed" as const,
@@ -470,7 +470,7 @@ async function lookup(c: ProvisioningContext): Promise<Response> {
     });
   // The wizard's every-10-seconds detection is background spending: it yields to the pollers.
   if (/^(1|true)$/.test(q.get("poll") ?? "")) {
-    const rate = await readRate(c.env, "", { source: "platform" }, c.now);
+    const rate = await readRate(c.env, "app-store", "", { source: "platform" }, c.now);
     if (!budgetAllows(rate, "background"))
       return err(
         429,

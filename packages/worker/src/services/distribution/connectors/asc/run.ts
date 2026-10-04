@@ -16,7 +16,7 @@ import {
   AscWriteDenied,
   type FetchImpl,
 } from "../../../../core/asc/client.js";
-import { writeRate } from "../../../../core/asc/budget.js";
+import { writeRate } from "../../../../core/storefront/budget.js";
 import type { AscRun } from "./apply.js";
 import { ASC_PLATFORM_CREDENTIAL, type AscSetup } from "./setup.js";
 
@@ -70,7 +70,14 @@ export function ascRun(o: AscRunOptions): AscRun {
 /** Record a run's outcome on the credential's health columns and keep its rate budget. */
 export async function finishRun(run: AscRun, error: unknown): Promise<void> {
   const cred = run.setup.credential;
-  await writeRate(run.env, run.product, cred, run.client.lastRate, run.now);
+  await writeRate(
+    run.env,
+    "app-store",
+    run.product,
+    cred,
+    run.client.lastRate,
+    run.now,
+  );
   // A write-gate refusal is the Worker's own decision, not the credential's health.
   if (run.client.calls === 0 && (!error || error instanceof AscWriteDenied))
     return;

@@ -25,7 +25,7 @@
  * assigns the app). Any manifest that names an app still wins, and a mismatch stays refused.
  * A beta group a request names is re-read with `include=app` and must be this app's.
  *
- * **Idempotent and audited (A-17a).** Each Apple write is one `performAscWrite` step under the
+ * **Idempotent and audited (A-17a).** Each Apple write is one `performStoreWrite` step under the
  * request's `Idempotency-Key` header: natural-key read first (the four URL attributes, the group
  * name, the tester, the existing availability or price schedule), the gated write, a re-read, one
  * audit row (`distribution.asc.<op>`) and the ledger row with Apple's before and after.
@@ -39,7 +39,7 @@
  * configured URL and the hook stores it (`commerce/index.ts`, `APP_STORE_EVENTS`).
  *
  * **Testers' emails are sent to Apple once and never stored.** A tester's natural key and request
- * hash carry `ascTesterDigest` (keyed with the pepper and the never-stored Idempotency-Key), the
+ * hash carry `testerDigest` (keyed with the pepper and the never-stored Idempotency-Key), the
  * ledger projection keeps the tester's state only, and neither the answer nor the audit row
  * names an email.
  *
@@ -47,6 +47,7 @@
  * Distribution's connector settings (`asc-setup`), audited.
  */
 
+import { renderDeepLink } from "../../../../core/storefront/deeplinks.js";
 import type { Db, Env } from "../../../../core/platform.js";
 import { audit } from "../../../../core/adminApi.js";
 import { listOutletCredentials } from "../../../../core/outletCredentials.js";
@@ -66,13 +67,13 @@ import {
   type AscResource,
 } from "../../../../core/asc/client.js";
 import {
-  ascTesterDigest,
+  testerDigest,
   isIdempotencyKey,
   listStoreOperations,
-  performAscWrite,
-  type AscWriteResult,
-} from "../../../../core/asc/ledger.js";
-import type { AscProjection } from "../../../../core/asc/audit.js";
+  performStoreWrite,
+  type StoreWriteResult,
+} from "../../../../core/storefront/ledger.js";
+import type { StoreProjection } from "../../../../core/storefront/audit.js";
 import { readConnectorSettings, writeConnectorSettings } from "../settings.js";
 import { APP_STORE_EVENTS } from "../../commerce/index.js";
 import {
@@ -101,20 +102,19 @@ import {
 // ── Deep links (undocumented by Apple: S-14 §4 [I]) ──────────────────────────────────────────
 
 /**
- * App Store Connect and developer-portal pages for the portal-only steps. Apple documents none
- * of these URL shapes, so they live in this one table: a moved page is a one-line fix. A-17f's
- * wizard reads them from the answers, never builds its own.
+ * App Store Connect and developer-portal pages for the portal-only steps, rendered from the one
+ * deep-link table every store shares (`core/storefront/deeplinks.ts`, A-18a): a moved page is a
+ * one-line fix there. A-17f's wizard reads them from the answers, never builds its own.
  */
 export const ASC_DEEP_LINKS = {
   appInformation: (appleId: string) =>
-    `https://appstoreconnect.apple.com/apps/${appleId}/distribution/info`,
+    renderDeepLink("app-store.app-information", { appId: appleId }),
   appPrivacy: (appleId: string) =>
-    `https://appstoreconnect.apple.com/apps/${appleId}/distribution/privacy`,
+    renderDeepLink("app-store.app-privacy", { appId: appleId }),
   appStoreVersion: (appleId: string) =>
-    `https://appstoreconnect.apple.com/apps/${appleId}/distribution`,
-  agreements: () => "https://appstoreconnect.apple.com/business",
-  identifiers: () =>
-    "https://developer.apple.com/account/resources/identifiers/list",
+    renderDeepLink("app-store.version", { appId: appleId }),
+  agreements: () => renderDeepLink("app-store.agreements"),
+  identifiers: () => renderDeepLink("app-store.identifiers"),
 } as const;
 
 // ── The portal checklist (S-14 §8.1 step 10) ─────────────────────────────────────────────────
@@ -264,10 +264,10 @@ function parseIds(json: string | null): Record<string, string> {
   }
 }
 
-function parseProjection(json: string | null): AscProjection | null {
+function parseProjection(json: string | null): StoreProjection | null {
   if (!json) return null;
   try {
-    const v = JSON.parse(json) as AscProjection;
+    const v = JSON.parse(json) as StoreProjection;
     return v && typeof v === "object" ? v : null;
   } catch {
     return null;
@@ -390,18 +390,18 @@ function idempotencyKeyOf(c: ControlContext): string | ControlResult {
   return isIdempotencyKey(c.idempotencyKey)
     ? c.idempotencyKey
     : refuse(
-        422,
+        428,
         "idempotency_key_required",
         "send an Idempotency-Key header (a UUID per intent): a retry with the same key replays instead of writing twice",
       );
 }
 
 /** A ledger step's outcome as an answer (a replay answers what the done row stored). */
-function stepAnswer(r: Exclude<AscWriteResult, { outcome: "conflict" }>): {
+function stepAnswer(r: Exclude<StoreWriteResult, { outcome: "conflict" }>): {
   outcome: "written" | "existing" | "replayed";
   opId: string;
   resultIds: Record<string, string>;
-  after: AscProjection | null;
+  after: StoreProjection | null;
 } {
   if (r.outcome === "replayed")
     return {
@@ -511,8 +511,9 @@ const setNotificationsUrl: ConnectorControl = (c) => {
     const want = asnWanted(url);
     // The re-read after the write is the verification read; a failed one is "not verified".
     let verified: AscResource | null = null;
-    const r = await performAscWrite(c.db, {
+    const r = await performStoreWrite(c.db, {
       key: {
+        store: "app-store",
         scope: "product",
         product: c.product,
         op: "app.notifications_url",
@@ -759,8 +760,9 @@ const createBetaGroup: ConnectorControl = (c, body) => {
   if (typeof key !== "string") return Promise.resolve(key);
   const internal = kind === "internal";
   return withSetupRun(c, async (run, setup) => {
-    const r = await performAscWrite(c.db, {
+    const r = await performStoreWrite(c.db, {
       key: {
+        store: "app-store",
         scope: "product",
         product: c.product,
         op: "testflight.group.create",
@@ -886,7 +888,12 @@ const addBetaTesters: ConnectorControl = (c, body) => {
       appleCode?: string | null;
     }> = [];
     for (const email of emails) {
-      const digest = await ascTesterDigest(c.env.KEY_HASH_PEPPER, key, email);
+      const digest = await testerDigest(
+        "app-store",
+        c.env.KEY_HASH_PEPPER,
+        key,
+        email,
+      );
       const findInGroup = async () =>
         firstOf(
           await run.client.get(ascPath("betaTesters"), {
@@ -897,8 +904,9 @@ const addBetaTesters: ConnectorControl = (c, body) => {
           }),
         );
       try {
-        const r = await performAscWrite(c.db, {
+        const r = await performStoreWrite(c.db, {
           key: {
+            store: "app-store",
             scope: "product",
             product: c.product,
             op: "testflight.tester.add",
@@ -1014,8 +1022,9 @@ const setDefaultAvailability: ConnectorControl = (c) => {
         ),
       );
     let territories = 0;
-    const r = await performAscWrite(c.db, {
+    const r = await performStoreWrite(c.db, {
       key: {
+        store: "app-store",
         scope: "product",
         product: c.product,
         op: "app.availability",
@@ -1125,8 +1134,9 @@ const setFreePrice: ConnectorControl = (c, body) => {
         ? schedule
         : null;
     };
-    const r = await performAscWrite(c.db, {
+    const r = await performStoreWrite(c.db, {
       key: {
+        store: "app-store",
         scope: "product",
         product: c.product,
         op: "app.price",

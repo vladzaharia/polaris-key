@@ -227,7 +227,7 @@ describe("A-17e: create a non-consumable IAP", () => {
       { productId: FULL, referenceName: "Full", localizations: LOCS },
       null,
     );
-    expect(noKey.status).toBe(422);
+    expect(noKey.status).toBe(428);
     expect(noKey.json.reason).toBe("idempotency_key_required");
     const unmapped = await post(w, "iap/create", {
       productId: "gg.acme.djdl.unmapped",

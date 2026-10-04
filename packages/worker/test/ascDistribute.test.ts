@@ -114,6 +114,22 @@ function preparedVersion(w: World, opts: { build?: boolean } = {}): void {
   });
 }
 
+describe("A-18a: connector reads and controls are own keys only", () => {
+  it("a prototype member's name is not a control or a read (404, nothing sent)", async () => {
+    const w = await world();
+    for (const path of [
+      "constructor",
+      "__proto__",
+      "toString",
+      "hasOwnProperty",
+    ]) {
+      expect((await post(w, path, {})).status).toBe(404);
+      expect((await get(w, path)).status).toBe(404);
+    }
+    expect(w.fake.requests).toEqual([]);
+  });
+});
+
 describe("A-17d: every Distribute write needs an Idempotency-Key", () => {
   it("refuses without one, before any request to Apple", async () => {
     const w = await world();
@@ -123,7 +139,7 @@ describe("A-17d: every Distribute write needs an Idempotency-Key", () => {
       { platform: "IOS", versionString: "1.2.0" },
       null,
     );
-    expect(r.status).toBe(422);
+    expect(r.status).toBe(428);
     expect(r.json.reason).toBe("idempotency_key_required");
     expect(w.fake.requests).toEqual([]);
   });

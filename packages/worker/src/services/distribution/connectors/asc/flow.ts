@@ -20,9 +20,9 @@ import {
 } from "../../../../core/asc/client.js";
 import {
   isIdempotencyKey,
-  performAscWrite,
-} from "../../../../core/asc/ledger.js";
-import type { AscWriteStep } from "../../../../core/asc/ledger.js";
+  performStoreWrite,
+} from "../../../../core/storefront/ledger.js";
+import type { StoreWriteStep } from "../../../../core/storefront/ledger.js";
 import type { AscRun } from "./apply.js";
 import {
   refuse,
@@ -69,7 +69,7 @@ export function distributeControl(
     if (!isIdempotencyKey(key))
       return Promise.resolve(
         refuse(
-          422,
+          428,
           "idempotency_key_required",
           "send an Idempotency-Key header (a UUID per operator intent)",
         ),
@@ -113,11 +113,12 @@ export async function step<T extends AscResource>(
   f: Flow,
   op: string,
   naturalKey: string,
-  s: Omit<AscWriteStep<T>, "key" | "session" | "now">,
+  s: Omit<StoreWriteStep<T>, "key" | "session" | "now">,
 ): Promise<StepResult> {
-  const r = await performAscWrite(f.c.db, {
+  const r = await performStoreWrite(f.c.db, {
     ...s,
     key: {
+      store: "app-store",
       scope: "product",
       product: f.c.product,
       op,

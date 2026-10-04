@@ -47,11 +47,7 @@ import {
   type GateRuleSet,
 } from "../gate.js";
 import { StoreWriteDenied } from "../errors.js";
-import {
-  attrs,
-  matchJsonApi,
-  type JsonApiRule,
-} from "../match/jsonapi.js";
+import { attrs, matchJsonApi, type JsonApiRule } from "../match/jsonapi.js";
 import { ASC_DENY_REASONS, ASC_WRITE_DENIED } from "./appStoreDenied.js";
 
 /** The App Store Connect OpenAPI document the gate is classified against (S-14 §13). */
@@ -579,7 +575,9 @@ export const APP_STORE_GATE: GateRuleSet<AscAllowRule> = {
   deny: (method, target, reason) => new AscWriteDenied(method, target, reason),
 };
 
-const GATE = compileGate(APP_STORE_GATE);
+/** The compiled App Store gate: what `AscClient` and the Apple adapter consult. */
+export const APP_STORE_COMPILED_GATE = compileGate(APP_STORE_GATE);
+const GATE = APP_STORE_COMPILED_GATE;
 
 /** The allow rule for one method and request path, or null. */
 export function findAllowRule(
