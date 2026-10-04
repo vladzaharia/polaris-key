@@ -1064,6 +1064,104 @@ export interface Delivery {
    * implement it; Core's attest route treats a missing method like a missing setup.
    */
   attestationTargets?(): Promise<AttestationTargets>;
+  /**
+   * PX-W2 (portal gaps G2, G4): the app deliverable's downloads on `channel`, shaped for a person
+   * who already holds the product: per platform and release, the files and the recommended
+   * picks (`page/model.ts`'s arch preference: a universal build alone, else every arch, Apple
+   * silicon first), the platform-free extras, and every store outlet's link with whether a
+   * channel release is reported live there. ACCOUNT-FREE by design: the deliverable's delivery
+   * access is not applied here (the portal decides per release whether the account is covered,
+   * and per file whether it can be served), and nothing about the visitor's device is read.
+   * `null` when Release is off, the product has no release configuration, or the channel does
+   * not exist. Optional so a test double need not implement it; the portal then offers none.
+   */
+  customerDownloads?(
+    q: CustomerDownloadsQuery,
+  ): Promise<CustomerDownloads | null>;
+}
+
+// ── customerDownloads (Distribution, PX-W2) ─────────────────────────────────────────────────
+
+export interface CustomerDownloadsQuery {
+  /** The channel the releases come from (`stable` for the product page). */
+  channel: string;
+  /** How many of the channel's newest releases to read (yanked ones skipped, not counted). */
+  limit: number;
+}
+
+/**
+ * One file a customer may be offered. A RECORD: whether it can be downloaded is the consumer's
+ * decision (`release_artifacts` by `artifactId`, the portal's token mint).
+ */
+export interface CustomerFile {
+  releaseId: string;
+  artifactId: string;
+  version: string;
+  name: string;
+  buildId: string | null;
+  /** One of `PAGE_PLATFORMS` (`core/platformDetect.ts`), or `null` for an extra. */
+  platform: string | null;
+  arch: string | null;
+  /** The archive format the name ends in (`dmg`, `msix`, `tar.gz`, …), or `null`. */
+  format: string | null;
+  role: string | null;
+  sizeBytes: number | null;
+  /** Lowercase hex, or `null` when absent or malformed. */
+  sha256: string | null;
+  minOs: string | null;
+}
+
+/** What to offer first on one platform for one release. */
+export interface CustomerPick {
+  /** Every recommended file, best first; one entry when `universal`. */
+  artifactIds: string[];
+  /** The first pick runs on every arch of the platform (a `universal` or `any` build). */
+  universal: boolean;
+}
+
+export interface CustomerRelease {
+  releaseId: string;
+  version: string;
+  title: string | null;
+  publishedAt: number | null;
+  /** The channel the release was published to (`null` = derived from GitHub, i.e. stable). */
+  channel: string | null;
+  /** User-facing files only (payloads, and untyped files from a GitHub sync); no deltas, chunk
+   *  indexes, signatures or checksums. */
+  files: CustomerFile[];
+  /** Per platform that has a payload in this release. */
+  picks: Partial<Record<string, CustomerPick>>;
+}
+
+/** A store outlet's link (G2). Every URL is built by the Worker from a validated identity. */
+export interface CustomerStoreLink {
+  /** `<kind>:<outletId>`. */
+  id: string;
+  kind: string;
+  outletId: string;
+  platforms: string[];
+  /** A fixed Worker string ("App Store", "Steam", …). */
+  label: string;
+  /** An `https:` store page, or `null` (winget has none). */
+  url: string | null;
+  /** A custom-scheme link (`steam://`, `ms-windows-store://`), or `null`. */
+  deepLink: string | null;
+  /** A command to paste (Flathub, Snap, winget), or `null`. */
+  command: string | null;
+  /** Steam only: the key-activation page a held Steam key is handed to (`?key=` appended by the
+   *  consumer). `null` for every other store. */
+  activateUrl: string | null;
+  /** A non-yanked release of the channel is reported live there and not held by a rollout. */
+  live: boolean;
+  /** That release's version, when `live`. */
+  version: string | null;
+}
+
+export interface CustomerDownloads {
+  channel: string;
+  /** Newest first, at most `limit`. */
+  releases: CustomerRelease[];
+  stores: CustomerStoreLink[];
 }
 
 /** P6-02: the store identities a device attestation must match (`Delivery.attestationTargets`). */

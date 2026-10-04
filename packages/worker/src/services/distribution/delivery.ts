@@ -31,6 +31,9 @@
  *
  *   - `packageFeed` (F-03, `registryFeeds.ts`): one ecosystem's package-feed settings under the
  *     owner switch and the platform policy — what Release's package ingest holds a publish to.
+ *   - `customerDownloads` (PX-W2, `page/customer.ts`): the app's files per platform and release
+ *     with the recommended picks, and every store outlet's link and liveness — what the customer
+ *     portal's product page reads (portal gaps G2, G4), account-free.
  *
  * Read-only by contract: a hook never writes.
  */
@@ -54,6 +57,7 @@ import { feedStateStamp } from "./feeds/cache.js";
 import { readinessReader, type ReadinessReader } from "./readiness.js";
 import { packageFeedOf } from "./registryFeeds.js";
 import { resolvePlaySetup } from "./connectors/play/setup.js";
+import { customerDownloads } from "./page/customer.js";
 
 /** A reverse-DNS bundle id, re-checked before it becomes part of an App Attest RP ID. */
 const APPLE_BUNDLE_ID = /^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/;
@@ -181,6 +185,9 @@ export function delivery(ctx: HookContext): Delivery {
     },
 
     entitlement: (deliverable: string) => entitlementOf(db, slug, deliverable),
+
+    // PX-W2: the customer portal's per-platform downloads and store links (`page/customer.ts`).
+    customerDownloads: (q) => customerDownloads(ctx, q),
 
     packageFeed: (ecosystem: string) => packageFeedOf(db, slug, ecosystem),
 
