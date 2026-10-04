@@ -435,7 +435,10 @@ describe("overlays under the Worker's CSP", () => {
       ["#/platform/feeds/npm/setup", "npm"],
       ["#/platform/feeds/oci/settings", "Docker / OCI"],
       ["#/platform/feeds/npm/activity", "npm"],
-      ["#/platform/feeds/npm/packages/polaris-key/%40polaris-key%2Fnode", "@polaris-key/node"],
+      [
+        "#/platform/feeds/npm/packages/polaris-key/%40polaris-key%2Fnode",
+        "@polaris-key/node",
+      ],
       ["#/p/djdl/distribution/feeds", "Package feeds"],
       ["#/p/djdl/distribution/feeds/npm", "npm"],
       ["#/p/djdl/distribution/feeds/maven/settings", "Maven / Gradle"],
@@ -444,7 +447,10 @@ describe("overlays under the Worker's CSP", () => {
       await page.evaluate((h) => {
         location.hash = h;
       }, hash);
-      await page.locator("[data-page-title]", { hasText: title }).first().waitFor();
+      await page
+        .locator("[data-page-title]", { hasText: title })
+        .first()
+        .waitFor();
       await page.waitForTimeout(200);
       expect(await violations(page), `${hash}: CSP violations`).toEqual([]);
     }
