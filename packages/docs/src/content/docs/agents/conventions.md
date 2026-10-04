@@ -141,11 +141,11 @@ generators.
 
 ### 6. Docs slugs ↔ console help links
 
-|             |                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Catches** | A console help link pointing at a page that stopped existing — and, from the other side, a docs restructure that renamed a page the console still links                                                                                                                                                                                                                                                                                              |
-| **How**     | The docs build writes `packages/docs/dist/docs-slugs.json` (every route the worker can serve as a page). `packages/worker/test/docsLinks.test.ts` sweeps the two declaration sources — `packages/admin/src/route.ts` (`NavItem.docs`) and `packages/admin/src/lib/docsLinks.ts` (`DOCS_LINKS`) — and asserts each `/docs/...` path is in that manifest. `packages/admin/test/docsLinks.test.ts` separately pins the console-side resolution contract |
-| **Command** | `pnpm --filter @polaris-key/docs build && pnpm --filter @polaris-key/worker test docsLinks`                                                                                                                                                                                                                                                                                                                                                          |
+|             |                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Catches** | A console help link pointing at a page that stopped existing — and, from the other side, a docs restructure that renamed a page the console still links                                                                                                                                                                                                                                                                                                    |
+| **How**     | The docs build writes `packages/docs/dist/docs-slugs.json` (every route the worker can serve as a page). `packages/worker/test/docsLinks.test.ts` sweeps the two declaration sources — `packages/admin/src/console/nav.ts` (`NavPage.docs`) and `packages/admin/src/lib/docsLinks.ts` (`DOCS_LINKS`) — and asserts each `/docs/...` path is in that manifest. `packages/admin/test/docsLinks.test.ts` separately pins the console-side resolution contract |
+| **Command** | `pnpm --filter @polaris-key/docs build && pnpm --filter @polaris-key/worker test docsLinks`                                                                                                                                                                                                                                                                                                                                                                |
 
 Also skips cleanly when the slug manifest is absent.
 
@@ -158,6 +158,15 @@ Also skips cleanly when the slug manifest is absent.
 | **Command** | `pnpm --filter @polaris-key/admin test theme`, then `pnpm --filter @polaris-key/admin build && pnpm --filter @polaris-key/worker test adminCspParity`                                                                                                                                                          |
 
 The worker half skips cleanly when the admin `dist` is absent; the admin half always runs.
+
+**No inline styles at runtime either.** The SPA CSP is `style-src 'self'`, so a library that
+injects a `<style>` element is blocked in production. Radix's scroll lock does exactly that
+through `react-style-singleton`; `packages/admin/vite.config.ts` aliases that package to
+`packages/admin/src/lib/styleSingleton.ts`, which keeps its API and applies the CSS through a
+constructable stylesheet (`adoptedStyleSheets`), never a `<style>` element. A new dependency that
+injects styles needs the same treatment. `pnpm --filter @polaris-key/admin build && pnpm --filter
+@polaris-key/admin test:e2e` opens every console overlay in Chromium under the Worker's real
+policy and fails on any violation or a missing scroll lock; CI runs it in the browser job.
 
 ## Two structural gates that are not about drift
 
@@ -178,5 +187,5 @@ Worth knowing because they fail for reasons that look mysterious:
 - Never leave a bare brace in MDX prose — MDX evaluates it as JSX. Inside backticked code spans
   braces are literal and need no escaping.
 - Internal links are absolute and end in a slash: `/docs/services/config/catalog/`.
-- Renaming a page means updating `route.ts` and `docsLinks.ts` in the same change, or gate 6
+- Renaming a page means updating `console/nav.ts` and `docsLinks.ts` in the same change, or gate 6
   fails.

@@ -4,6 +4,7 @@ import { api, type KeyStatus, type LicenseStatus } from "../../api.js";
 import { Badge, Button } from "../../components/ui/index.js";
 import { useResource } from "../../context.js";
 import { channelOptions } from "../../lib/channels.js";
+import { qk } from "../../console/data/queries.js";
 
 /**
  * Cross-cutting helpers for the licenses views: epoch formatting, status → badge mapping,
@@ -91,7 +92,7 @@ export function DeviceStatusBadge({
  */
 export function useManualChannels(slug: string): string[] {
   // `async`, so a synchronous throw from the client is a rejection the cache records.
-  const res = useResource(`releases:${slug}`, async () => api.releases(slug));
+  const res = useResource(qk.releases(slug), async () => api.releases(slug));
   return React.useMemo(
     () => (res.data?.channels ?? []).map((c) => c.channel),
     [res.data],

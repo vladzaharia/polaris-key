@@ -1,0 +1,226 @@
+/**
+ * State pages (ADMIN.md §3 T8): not found, unknown product, service off and boot. Each one says
+ * what is missing and offers the way out, rather than falling back to some other page in silence
+ * (SH-8).
+ */
+
+import * as React from "react";
+import { AlertTriangle, Blocks, Compass, PackageSearch } from "lucide-react";
+import type { ProductRef } from "../../api.js";
+import { LogoMark } from "../../components/brand/Logo.js";
+import { Button, EmptyState, Spinner } from "../../components/ui/index.js";
+import type { NavSection } from "../nav.js";
+import { Link } from "../router.js";
+import { r } from "../routes.js";
+import { LiveRegion } from "./bits.js";
+
+/** A page title for a state page: an `<h1>` the route focus can land on. */
+function StateHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <h1
+      tabIndex={-1}
+      className="text-2xl font-bold tracking-tight text-fg-strong outline-hidden"
+    >
+      {children}
+    </h1>
+  );
+}
+
+/** Levenshtein distance, for "did you mean" on an unknown product slug. */
+export function editDistance(a: string, b: string): number {
+  const prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    let diag = prev[0]!;
+    prev[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const above = prev[j]!;
+      prev[j] = Math.min(
+        above + 1,
+        prev[j - 1]! + 1,
+        diag + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+      diag = above;
+    }
+  }
+  return prev[b.length]!;
+}
+
+/** The slugs within edit distance 2 of `slug`, closest first. */
+export function closestSlugs(
+  slug: string,
+  products: ProductRef[],
+): ProductRef[] {
+  return products
+    .map((p) => ({
+      p,
+      d: editDistance(slug.toLowerCase(), p.slug.toLowerCase()),
+    }))
+    .filter(({ d }) => d <= 2)
+    .sort((a, b) => a.d - b.d || a.p.slug.localeCompare(b.p.slug))
+    .map(({ p }) => p);
+}
+
+export function NotFoundPage({
+  path,
+  slug,
+  productName,
+  onOpenPalette,
+}: {
+  path: string;
+  slug?: string;
+  productName?: string;
+  onOpenPalette: () => void;
+}): React.ReactElement {
+  return (
+    <section className="space-y-6">
+      <StateHeading>Page not found</StateHeading>
+      <EmptyState
+        icon={<Compass aria-hidden />}
+        title={
+          <>
+            No page <code className="font-mono">{path || "/"}</code>
+            {productName ? ` in ${productName}` : ""}
+          </>
+        }
+        description="The link may be out of date, or the page may have moved. Search for it, or start from the overview."
+        action={
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button asChild variant="outline">
+              <Link to={slug ? r.overview(slug) : r.home()}>
+                {slug ? "Go to Overview" : "Go to Home"}
+              </Link>
+            </Button>
+            <Button onClick={onOpenPalette}>Search or jump to…</Button>
+          </div>
+        }
+      />
+    </section>
+  );
+}
+
+export function UnknownProductPage({
+  slug,
+  products,
+}: {
+  slug: string;
+  products: ProductRef[];
+}): React.ReactElement {
+  const close = closestSlugs(slug, products);
+  return (
+    <section className="space-y-6">
+      <StateHeading>Unknown product</StateHeading>
+      <EmptyState
+        icon={<PackageSearch aria-hidden />}
+        title={
+          <>
+            No product with the slug <code className="font-mono">{slug}</code>
+          </>
+        }
+        description={
+          close.length > 0 ? (
+            <span>
+              Did you mean{" "}
+              {close.map((p, i) => (
+                <React.Fragment key={p.slug}>
+                  {i > 0 ? ", " : null}
+                  <Link
+                    to={r.overview(p.slug)}
+                    className="font-mono text-accent-fg underline-offset-4 hover:underline"
+                  >
+                    {p.slug}
+                  </Link>
+                </React.Fragment>
+              ))}
+              ?
+            </span>
+          ) : (
+            "Products are addressed by their slug. Pick one from the registry."
+          )
+        }
+        action={
+          <Button asChild variant="outline">
+            <Link to={r.products()}>All products</Link>
+          </Button>
+        }
+      />
+    </section>
+  );
+}
+
+/**
+ * A deep link into a service this product does not run. The sidebar has already dropped the
+ * section, so the way here is a bookmark, a shared URL, or a service turned off in another tab.
+ * Rendering the view would fire requests the worker answers with 404s; this names the service and
+ * puts the fix (Core → Services) one click away. It explains, it does not guard: every endpoint
+ * gates itself on the worker.
+ */
+export function ServiceOffPage({
+  section,
+  slug,
+  productName,
+}: {
+  section: NavSection;
+  slug: string;
+  productName: string;
+}): React.ReactElement {
+  return (
+    <section className="space-y-6" data-service={section.accent}>
+      <StateHeading>{section.label}</StateHeading>
+      <EmptyState
+        icon={<Blocks aria-hidden />}
+        title={`The ${section.label} service isn’t enabled for ${productName}.`}
+        description={`${productName} doesn’t run ${section.label}, so there is nothing here to manage. Turn it on in Services and this page comes back.`}
+        action={
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button asChild>
+              <Link to={r.services(slug)}>Enable {section.label}</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <a href={section.docs} target="_blank" rel="noreferrer">
+                About {section.label}
+              </a>
+            </Button>
+          </div>
+        }
+      />
+    </section>
+  );
+}
+
+/** Before the session loads: the brand mark and a live "Loading console…". */
+export function BootScreen({
+  error,
+  onRetry,
+}: {
+  error?: boolean;
+  onRetry?: () => void;
+}): React.ReactElement {
+  return (
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-background px-4 text-foreground">
+      <LogoMark size={48} />
+      {error ? (
+        <div className="w-full max-w-md">
+          <EmptyState
+            icon={<AlertTriangle aria-hidden />}
+            title="Can’t load the console"
+            description="The admin session could not be loaded. Retry, or sign in again if your session ended."
+            action={
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button onClick={onRetry}>Retry</Button>
+                <Button asChild variant="outline">
+                  <a href="/manage/login">Sign in</a>
+                </Button>
+              </div>
+            }
+          />
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 text-fg-muted">
+          <Spinner className="size-5 text-fg-subtle" />
+          <LiveRegion message="Loading console…" />
+          <span aria-hidden>Loading console…</span>
+        </div>
+      )}
+    </div>
+  );
+}

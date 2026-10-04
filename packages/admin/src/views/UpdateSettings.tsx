@@ -10,7 +10,7 @@ import {
   type UpdateSettingsBlock,
   type UpdateSettingsBody,
 } from "../api.js";
-import { invalidate, useResource } from "../context.js";
+import { useResource } from "../context.js";
 import { docsUrl } from "../lib/docsLinks.js";
 import {
   Badge,
@@ -35,6 +35,8 @@ import {
   useToast,
   ConfirmDialog,
 } from "../components/ui/index.js";
+import { qk } from "../console/data/queries.js";
+import { mutate } from "../console/data/mutations.js";
 
 /**
  * Update settings — the answers to "which builds does this product offer, and to whom".
@@ -62,15 +64,12 @@ import {
  * a security control and asks for confirmation first.
  */
 export function UpdateSettings({ slug }: { slug: string }): React.ReactElement {
-  const { data, loading, error, reload } = useResource(
-    `update-settings:${slug}`,
-    () => api.updateSettings(slug),
+  const { data, loading, error, reload } = useResource(qk.feed(slug), () =>
+    api.updateSettings(slug),
   );
   // Distribution's delivery access (P2b-04). Loaded beside the settings; while it is loading or
   // unreadable the Artifact access control is disabled rather than guessed at.
-  const delivery = useResource(`delivery-access:${slug}`, () =>
-    api.deliveryAccess(slug),
-  );
+  const delivery = useResource(qk.access(slug), () => api.deliveryAccess(slug));
 
   return (
     <section aria-labelledby="update-settings-title" className="space-y-6">
@@ -231,7 +230,7 @@ function SettingsForm({
       // Two owners, two endpoints (P2b-04): the delivery access is Distribution's.
       if (artifacts !== null) {
         try {
-          await api.saveDeliveryAccess(slug, { mode: artifacts });
+          await mutate("saveDeliveryAccess", slug, { mode: artifacts });
         } catch (err) {
           // Attribute a refusal of the delivery-access save to its own control.
           if (err instanceof ApiError && err.fields?.length) {
@@ -245,14 +244,11 @@ function SettingsForm({
           }
           throw err;
         }
-        invalidate(`delivery-access:${slug}`);
       }
       if (Object.keys(body).length > 0)
-        await api.saveUpdateSettings(slug, body);
-      invalidate(`update-settings:${slug}`);
+        await mutate("saveUpdateSettings", slug, body);
       // The compat window lives on the product row, so anything showing the product (the
       // overview, the releases distribution card) is now stale.
-      invalidate(`product:${slug}`);
       toast.success("Update settings saved");
     } catch (err) {
       // Same split as `ServicesCard`: a 422 that NAMES the offending keys is rendered beside
@@ -318,11 +314,9 @@ function SettingsForm({
     setReverting(true);
     try {
       if (block === "delivery") {
-        await api.revertDeliveryAccess(slug);
-        invalidate(`delivery-access:${slug}`);
+        await mutate("revertDeliveryAccess", slug);
       } else {
-        await api.revertUpdateSettings(slug, [block]);
-        invalidate(`update-settings:${slug}`);
+        await mutate("revertUpdateSettings", slug, [block]);
       }
       toast.success(
         "Returned to manifest control",

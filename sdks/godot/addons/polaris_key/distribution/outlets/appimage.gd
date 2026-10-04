@@ -24,7 +24,7 @@ func is_available() -> bool:
 ## `appimageupdatetool -j` (exit 1: an update is available). A coroutine.
 func check_now() -> PKeyApplyResult:
 	if native != null:
-		return super()
+		return await super()
 	if not is_available():
 		return PKeyApplyResult.missing_dependency(id())
 	var code := await _run(PackedStringArray(["-j", env.env("APPIMAGE")]))
@@ -36,7 +36,7 @@ func check_now() -> PKeyApplyResult:
 ## Update the AppImage in place, then relaunch it. A coroutine.
 func install_and_relaunch() -> PKeyApplyResult:
 	if native != null:
-		return super()
+		return await super()
 	if not is_available():
 		return PKeyApplyResult.missing_dependency(id())
 	var image := env.env("APPIMAGE")

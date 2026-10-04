@@ -15,12 +15,12 @@ jobs:
     name: JS/TS (build · typecheck · test · conformance)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # No `version:` here — the action reads `packageManager` from package.json.
       # Specifying both makes v4 abort with "Multiple versions of pnpm specified",
       # which is why every CI run in this repo failed at step 2 until 2026-08-26.
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -85,9 +85,9 @@ jobs:
     name: Worker smoke (real workerd)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -117,7 +117,7 @@ jobs:
     name: Node floor (engines.node)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: floor
         run: |
           floors=$(jq -r '.engines.node' packages/sdk-node/package.json packages/client-core/package.json packages/sdk-react/package.json | sort -u)
@@ -128,8 +128,8 @@ jobs:
             echo "::error::engines.node must be '>=X.Y.Z', got '$floors'"; exit 1
           fi
           echo "version=${floors#>=}" >> "$GITHUB_OUTPUT"
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ steps.floor.outputs.version }}
           cache: pnpm
@@ -153,18 +153,22 @@ jobs:
     name: Browser conformance (Chromium)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
       - run: >-
           pnpm install --frozen-lockfile --filter=@polaris-key/conformance-browser...
-          --filter=@polaris-key/conformance-node...
+          --filter=@polaris-key/conformance-node... --filter=@polaris-key/admin...
       - run: pnpm --filter @polaris-key/conformance-browser exec playwright install --with-deps chromium
       - run: pnpm exec turbo run build --filter=@polaris-key/conformance-browser...
       - run: pnpm --filter @polaris-key/conformance-browser test
+      # The console's overlays under the Worker's exact CSP (style-src 'self'): zero violations and
+      # a real scroll lock behind every dialog, menu and drawer (packages/admin/e2e).
+      - run: pnpm exec turbo run build --filter=@polaris-key/admin...
+      - run: pnpm --filter @polaris-key/admin test:e2e
 
   # P1b-05 Part D: the same runner in Firefox 155.0, the build bundled with playwright 1.63.0 (the
   # engine S-04 measured), in Playwright's own image, which already carries that browser. Firefox
@@ -176,9 +180,9 @@ jobs:
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -201,9 +205,9 @@ jobs:
     name: Browser conformance (WebKit, macOS)
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -231,7 +235,7 @@ jobs:
           - os: macos-14
             python: "3.12"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
@@ -253,7 +257,7 @@ jobs:
     # 5.10.0" on every run. macos-15 ships Swift 6.x.
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Echo the toolchain so a future runner-image bump fails loudly and legibly rather
       # than looking like a source error.
       - run: swift --version
@@ -297,7 +301,7 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Xcode 26.6, Swift 6.3 or later
         run: |
           sudo xcode-select -s /Applications/Xcode_26.6.app
@@ -357,7 +361,7 @@ jobs:
           rm -rf sdks/godot/addons/polaris_key/native/ios
           GODOT_BIN="$HOME/.cache/pkey-godot/4.7.2-ios/godot" PKEY_TEST_SUITES=native_apple,update sdks/godot/tools/run_tests.sh
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: apple-logs
           path: |
@@ -385,7 +389,7 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Gradle wrapper validation
         uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
       - uses: actions/setup-java@v4
@@ -423,7 +427,7 @@ jobs:
           GODOT_BIN="$HOME/.cache/pkey-godot/4.7.2/godot" PKEY_TEST_SUITES=native_android,update
           sdks/godot/tools/run_tests.sh
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-logs
           path: |
@@ -493,7 +497,7 @@ jobs:
       # bash tools, the pin file and the corpus the suites verify reach the job as committed.
       # .gitattributes pins sdks/godot to LF as well.
       - run: git config --global core.autocrlf false
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/cache@v4
         with:
           path: ~/.cache/pkey-godot/${{ matrix.godot }}
@@ -510,7 +514,7 @@ jobs:
       # Import, export and runs must leave the tree as committed: no rewritten file, no new .uid.
       - run: git diff --exit-code -- sdks/godot && test -z "$(git status --porcelain -- sdks/godot)"
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: godot-logs-${{ matrix.godot }}-${{ matrix.os }}
           path: sdks/godot/build/logs/

@@ -41,6 +41,9 @@ sdks/godot/
   polaris_key.tres            the harness's PKeyOptions, as the setup dock writes it (product
                               pkey-harness, editor channel dev)
   parity.json                 the Godot parity manifest (conformance/parity/)
+  native/                     the native plugins' sources: ios/ (P5-05), and P5-07's macos/,
+                              windows/, build and signing scripts and e2e/ runs
+                              (native/README.md); .gdignore'd, never in a release
   addons/polaris_key/         the addon (the only directory a release ships)
     plugin.cfg, plugin.gd     editor shell: the autoload, the export plugin, the setup dock
     LICENSE, README.md        MIT, and the short readme the Asset Store wants in the plugin folder
@@ -74,7 +77,13 @@ sdks/godot/
     distribution/outlets/     PKeyOutletAdapter and one adapter per outlet kind (direct.gd,
                               app_store.gd, steam.gd, web.gd, …; adapters.gd maps kinds to them);
                               the native-updater bridges PKeyNativeBridge, PKeySparkleBridge,
-                              PKeyVelopackBridge, PKeyWinSparkleBridge, PKeyAppImageBridge
+                              PKeyVelopackBridge, PKeyWinSparkleBridge, PKeyStoreContextBridge,
+                              PKeyAppImageBridge
+    native/                   P5-07's facades over the optional desktop GDExtensions:
+                              PKeyNativeFacade, PKeySparkle, PKeyVelopack, PKeyWinSparkle,
+                              PKeyStoreContext; native/bin/ is where a game installs the binaries
+                              (git-ignored here)
+    export/native_export.gd   PKeyNativeExport: the macOS export's Sparkle switches
     updater/                  PKeyUpdater (PolarisKey.update.updater: the adapters' context,
                               methods, boot confirmation), PKeySlots (staged/current/previous),
                               PKeyBootGuard, PKeySidecarSwap, PKeyUpdaterEnv (every side effect),

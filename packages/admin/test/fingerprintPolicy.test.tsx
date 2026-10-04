@@ -247,7 +247,8 @@ describe("Enrollment & fingerprints — device registration is read-only here", 
     // Registration is derived from the ENABLED SERVICE SET, so it has exactly one editor. This
     // view shows it because a fingerprint is meaningless if a device can never register at all.
     expect(await screen.findByText("Device registration")).toBeTruthy();
-    expect(screen.getByText("requires-license")).toBeTruthy();
+    // The registration card fills in from its own query, after the heading renders.
+    expect(await screen.findByText("requires-license")).toBeTruthy();
     expect(screen.getByText("derived from services")).toBeTruthy();
 
     // A second control over one value is how two screens end up disagreeing. The only combobox on

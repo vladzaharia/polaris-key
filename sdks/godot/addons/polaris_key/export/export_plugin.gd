@@ -30,9 +30,21 @@ extends EditorExportPlugin
 ##
 ## An export plugin cannot fail an export, so a bad value is a dialog warning
 ## (`_get_export_option_warning`, editor only) and, at export, a push_warning a headless log shows.
+##
+## macOS presets also get P5-07's Sparkle options (`polaris_key/sparkle/*`, PKeyNativeExport): the
+## Info.plist keys, the Disable Library Validation entitlement, never an unsigned export, and the
+## executable bits Sparkle's helpers lose in Godot's copy. Windows exports take the plugins' DLLs and
+## the Velopack shim from the Windows GDExtension's [dependencies]; the plugin removes them again
+## from a Microsoft Store export (outlet kind ms-store), whose only updater is StoreContext.
 
 const S := preload("res://addons/polaris_key/core/build_stamp.gd")
 const Apple := preload("res://addons/polaris_key/native/apple_export.gd")
+const N := preload("res://addons/polaris_key/export/native_export.gd")
+
+var _export_path := ""
+var _export_macos := false
+var _export_windows_store := false
+var _store_before := {}
 
 
 func _get_name() -> String:
@@ -88,6 +100,8 @@ func _get_export_options(platform: EditorExportPlatform) -> Array[Dictionary]:
 			"default_value": "auto",
 			"update_visibility": true,
 		})
+	if p == "macos":
+		options.append_array(N.options())
 	return options
 
 
@@ -110,7 +124,42 @@ func _get_export_option_warning(_platform: EditorExportPlatform, option: String)
 			var raw = get_option(S.OPTION_OUTLET_IDS)
 			var parsed: Dictionary = S.parse_outlet_ids(raw)
 			return _join([S.outlet_ids_warning(raw)] + S.merge_bundle_id(parsed["ids"], _preset_bundle_id())["problems"])
+		N.OPTION_ENABLED, N.OPTION_PUBLIC_KEY, N.OPTION_FEED_URL:
+			var sp := _sparkle()
+			return _join(Array(N.problems(sp["key"], sp["feed_url"]))) if sp["enabled"] else ""
 	return ""
+
+
+## The Sparkle options of this macOS preset, environment over preset: {enabled, key, feed_url,
+## automatic_checks}.
+func _sparkle() -> Dictionary:
+	# A Mac App Store build never ships Sparkle: the switches stay off whatever the option says.
+	var app_store := _mac_app_store()
+	return {
+		"enabled": N.truthy(_get_or_env(N.OPTION_ENABLED, N.ENV_ENABLED, false)) and not app_store,
+		"app_store": app_store,
+		"key": N.public_key(_get_or_env(N.OPTION_PUBLIC_KEY, N.ENV_PUBLIC_KEY, "")),
+		"feed_url": str(_get_or_env(N.OPTION_FEED_URL, N.ENV_FEED_URL, "")).strip_edges(),
+		"automatic_checks": N.truthy(_get_or_env(N.OPTION_AUTOMATIC_CHECKS, "", false)),
+	}
+
+
+## Whether this macOS preset's outlet is the (Mac) App Store.
+func _mac_app_store() -> bool:
+	var v := _values("macos")
+	return _outlet_kind(v) == "app-store"
+
+
+func _get_export_options_overrides(platform: EditorExportPlatform) -> Dictionary:
+	var preset := get_export_preset()
+	if preset == null or S.platform_for(platform.get_os_name(), PackedStringArray()) != "macos":
+		return {}
+	var sp := _sparkle()
+	if not sp["enabled"]:
+		return {}
+	var existing := str(preset.get(N.PLIST)) if preset.has(N.PLIST) else ""
+	var codesign := int(preset.get(N.CODESIGN)) if preset.has(N.CODESIGN) else N.CODESIGN_BUILT_IN
+	return N.overrides(existing, codesign, sp["key"], sp["feed_url"], sp["automatic_checks"])
 
 
 func _get_export_features(platform: EditorExportPlatform, _debug: bool) -> PackedStringArray:
@@ -118,8 +167,22 @@ func _get_export_features(platform: EditorExportPlatform, _debug: bool) -> Packe
 	return S.feature_tags(v["outlet"], v["channel"], v["outlet_kind"])
 
 
-func _export_begin(features: PackedStringArray, is_debug: bool, _path: String, _flags: int) -> void:
+func _export_begin(features: PackedStringArray, is_debug: bool, path: String, _flags: int) -> void:
 	var platform := S.platform_for(get_export_platform().get_os_name() if get_export_platform() != null else "", features)
+	_export_path = path
+	_export_macos = platform == "macos" and _sparkle()["enabled"]
+	if platform == "macos" and _mac_app_store() and FileAccess.file_exists(N.SPARKLE_GDEXTENSION):
+		push_error("Polaris Key: a Mac App Store build must not ship Sparkle, but %s is installed and Godot exports it. Remove it (or export from a project without it) before submitting; the Sparkle switches are off for this preset." % N.SPARKLE_GDEXTENSION)
+	var store_values := _values(platform)
+	_export_windows_store = platform == "windows" and S.feature_tags(store_values["outlet"], "", store_values["outlet_kind"]).has("pkey_outlet_ms_store")
+	_store_before = N.snapshot(_absolute(path).get_base_dir()) if _export_windows_store and N.is_executable_export(path) else {}
+	if _export_macos:
+		var sp := _sparkle()
+		for problem in N.problems(sp["key"], sp["feed_url"]):
+			push_warning("Polaris Key Sparkle: %s" % problem)
+		var preset := get_export_preset()
+		if preset != null and preset.has(N.CODESIGN) and int(preset.get(N.CODESIGN)) == N.CODESIGN_DISABLED:
+			push_warning("Polaris Key Sparkle: codesign/codesign was Disabled; exporting with the built-in ad-hoc signature instead (Sparkle rejects updates to an unsigned export).")
 	var v := _values(platform)
 	for problem in v["problems"]:
 		push_warning("Polaris Key build stamp: %s" % problem)
@@ -174,6 +237,37 @@ func _preset_string(key: String) -> String:
 	if preset == null or not preset.has(key):
 		return ""
 	return str(preset.get(key))
+
+
+func _export_end() -> void:
+	if _export_windows_store:
+		_export_windows_store = false
+		_strip_store_export(_absolute(_export_path))
+	if not _export_macos:
+		return
+	_export_macos = false
+	var path := _export_path
+	if not path.ends_with(".app"):
+		push_warning("Polaris Key Sparkle: %s is not a .app, so Sparkle's helpers keep the non-executable mode Godot's copy gave them. Export the .app and package it with sdks/godot/native/macos/sign_and_notarize.sh." % path)
+		return
+	var failed := N.restore_executable_bits(ProjectSettings.globalize_path(path) if path.begins_with("res://") else path)
+	if not failed.is_empty():
+		push_warning("Polaris Key Sparkle: could not chmod 0755 %s (is Sparkle.framework listed in pkey_sparkle.gdextension's [dependencies]?)." % ", ".join(failed))
+
+
+## A Microsoft Store export keeps no updater but StoreContext (PKeyNativeExport): see the class doc.
+func _strip_store_export(path: String) -> void:
+	var r: Dictionary = N.strip_store_export(path, _store_before)
+	if not r["failed"].is_empty() or r["error"] != OK:
+		push_error("Polaris Key: could not remove the updater files from the Microsoft Store export %s (%s); a Store build must ship no updater but StoreContext. Do not ship it." % [path, ", ".join(r["failed"]) if not r["failed"].is_empty() else "error %d" % r["error"]])
+	for f in _store_before:
+		if r["removed"].has(path.get_base_dir().path_join(f)):
+			push_warning("Polaris Key: %s was already beside the Store export; the export overwrote it and it was removed. Give a Store export its own folder." % f)
+	_store_before = {}
+
+
+static func _absolute(path: String) -> String:
+	return ProjectSettings.globalize_path(path) if path.begins_with("res://") else path
 
 
 ## The effective values for this export (environment over preset), and every problem with them.

@@ -4,8 +4,7 @@ import type {
   ReleaseChannelFloorDto,
   ReleaseDto,
 } from "../../api.js";
-import { api, releasePolicyMessage } from "../../api.js";
-import { invalidate } from "../../context.js";
+import { releasePolicyMessage } from "../../api.js";
 import { docsUrl } from "../../lib/docsLinks.js";
 import {
   ConfirmDialog,
@@ -20,6 +19,7 @@ import {
   useToast,
   type ButtonProps,
 } from "../../components/ui/index.js";
+import { mutate } from "../../console/data/mutations.js";
 
 /**
  * Every operator change to release policy the console can make (P2-05's admin routes), one
@@ -43,13 +43,6 @@ export type PolicyAction =
   | { kind: "clearFloor"; channel: string; floor: ReleaseChannelFloorDto }
   | { kind: "yank"; release: ReleaseDto }
   | { kind: "unyank"; release: ReleaseDto };
-
-/** The cache keys a policy change can move: the store, the channels and release health. */
-export function invalidateReleaseViews(slug: string): void {
-  invalidate(`releases:${slug}`);
-  invalidate(`release-channels:${slug}`);
-  invalidate(`release-health:${slug}`);
-}
 
 export function PolicyActionDialog({
   slug,
@@ -104,7 +97,6 @@ export function PolicyActionDialog({
     try {
       await run(slug, action, { releaseId, text });
       toast.success(spec.done);
-      invalidateReleaseViews(slug);
       onClose();
     } catch (err) {
       toast.error(spec.failed, releasePolicyMessage(err));
@@ -402,48 +394,54 @@ async function run(
 ): Promise<unknown> {
   switch (action.kind) {
     case "promote":
-      return api.updateReleaseChannel(slug, action.channel.channel, {
+      return mutate("updateReleaseChannel", slug, action.channel.channel, {
         deliverable: action.channel.deliverable,
         pointer: input.releaseId,
       });
     case "pin":
-      return api.updateReleaseChannel(slug, action.channel.channel, {
+      return mutate("updateReleaseChannel", slug, action.channel.channel, {
         deliverable: action.channel.deliverable,
         pointer: input.releaseId,
         pinned: true,
       });
     case "unpin":
-      return api.updateReleaseChannel(slug, action.channel.channel, {
+      return mutate("updateReleaseChannel", slug, action.channel.channel, {
         deliverable: action.channel.deliverable,
         pinned: false,
       });
     case "minSupported": {
       const v = input.text.trim();
-      return api.updateReleaseChannel(slug, action.channel.channel, {
+      return mutate("updateReleaseChannel", slug, action.channel.channel, {
         deliverable: action.channel.deliverable,
         minSupported: v ? v : null,
       });
     }
     case "critical":
-      return api.updateReleaseChannel(slug, action.channel.channel, {
+      return mutate("updateReleaseChannel", slug, action.channel.channel, {
         deliverable: action.channel.deliverable,
         critical: !action.channel.critical,
       });
     case "revert":
-      return api.revertReleaseChannel(
+      return mutate(
+        "revertReleaseChannel",
         slug,
         action.channel.channel,
         action.channel.deliverable,
       );
     case "lowerFloor":
-      return api.setChannelFloor(slug, action.channel, {
+      return mutate("setChannelFloor", slug, action.channel, {
         version: input.text.trim(),
       });
     case "clearFloor":
-      return api.setChannelFloor(slug, action.channel, { clear: true });
+      return mutate("setChannelFloor", slug, action.channel, { clear: true });
     case "yank":
-      return api.yankRelease(slug, action.release.releaseId, input.text.trim());
+      return mutate(
+        "yankRelease",
+        slug,
+        action.release.releaseId,
+        input.text.trim(),
+      );
     case "unyank":
-      return api.unyankRelease(slug, action.release.releaseId);
+      return mutate("unyankRelease", slug, action.release.releaseId);
   }
 }

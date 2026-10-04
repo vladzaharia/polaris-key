@@ -6,9 +6,10 @@ import {
   type LicenseSummary,
   type ProfileSummary,
 } from "../api.js";
-import { invalidate, useResource } from "../context.js";
+import { useResource } from "../context.js";
 import { docsUrl } from "../lib/docsLinks.js";
-import { navigate } from "../route.js";
+import { r as routes } from "../console/routes.js";
+import { navigate } from "../console/router.js";
 import {
   Badge,
   Button,
@@ -45,6 +46,8 @@ import {
   LicenseStatusBadge,
   OneTimeKeyPanel,
 } from "./licenses/shared.js";
+import { qk } from "../console/data/queries.js";
+import { mutate } from "../console/data/mutations.js";
 
 /**
  * The per-product Licenses list. Loads the license summaries, renders them in a sortable +
@@ -53,7 +56,7 @@ import {
  * the new license's detail page.
  */
 export function Licenses({ slug }: { slug: string }): React.ReactElement {
-  const key = `licenses:${slug}`;
+  const key = qk.licenses(slug);
   const { data, loading, error, reload } = useResource(key, () =>
     api.licenses(slug),
   );
@@ -198,9 +201,7 @@ export function Licenses({ slug }: { slug: string }): React.ReactElement {
           loading={loading}
           filterable
           filterPlaceholder="Filter by name, email, status…"
-          onRowClick={(r) =>
-            navigate({ kind: "product", slug, view: "license", id: r.id })
-          }
+          onRowClick={(r) => navigate(routes.license(slug, r.id))}
           onRowClickLabel={(r) => `Open license ${r.name || r.id}`}
         />
       )}
@@ -210,7 +211,6 @@ export function Licenses({ slug }: { slug: string }): React.ReactElement {
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreated={() => {
-          invalidate(key);
           reload();
         }}
       />
@@ -230,9 +230,9 @@ function CreateLicenseDialog({
   onCreated: () => void;
 }): React.ReactElement {
   const toast = useToast();
-  const tiersRes = useResource(`tiers:${slug}`, () => api.tiers(slug));
+  const tiersRes = useResource(qk.tiers(slug), () => api.tiers(slug));
   const manualChannels = useManualChannels(slug);
-  const profilesRes = useResource(`profiles:${slug}`, () => api.profiles(slug));
+  const profilesRes = useResource(qk.profiles(slug), () => api.profiles(slug));
   const tiers = tiersRes.data?.tiers ?? [];
   const profiles = profilesRes.data?.profiles ?? [];
   const [name, setName] = React.useState("");
@@ -304,7 +304,7 @@ function CreateLicenseDialog({
       if (channels.length > 0) body.channels = channels;
       if (minVersion.trim()) body.minVersion = minVersion.trim();
       if (maxVersion.trim()) body.maxVersion = maxVersion.trim();
-      const res = await api.createLicense(slug, body);
+      const res = await mutate("createLicense", slug, body);
       setMintedKey(res.key);
       setCreatedId(res.licenseId);
       toast.success("License created", `${name.trim()} was added.`);
@@ -354,12 +354,7 @@ function CreateLicenseDialog({
                 <Button
                   onClick={() => {
                     onOpenChange(false);
-                    navigate({
-                      kind: "product",
-                      slug,
-                      view: "license",
-                      id: createdId,
-                    });
+                    navigate(routes.license(slug, createdId));
                   }}
                 >
                   Open license

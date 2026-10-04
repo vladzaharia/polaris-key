@@ -273,6 +273,6 @@ editing either output by hand fails CI.
 - Never leave a bare `{` or `}` in MDX prose — MDX evaluates it as JSX. Braces inside backticked
   code spans are literal and need no escape.
 - Internal links are absolute and end in a slash: `/docs/services/config/catalog/`.
-- Console help links live in exactly two tables (`packages/admin/src/route.ts` and
+- Console help links live in exactly two tables (`packages/admin/src/console/nav.ts` and
   `packages/admin/src/lib/docsLinks.ts`) and are gated against the built slug manifest. Renaming
   a page means updating those tables in the same change.

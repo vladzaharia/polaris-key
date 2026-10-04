@@ -3,7 +3,7 @@ import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { api, type SecretUsage } from "../api.js";
 import { EdgeMintRecipes } from "./EdgeMintRecipes.js";
 import { OutletCredentials } from "./OutletCredentials.js";
-import { invalidate, useResource } from "../context.js";
+import { useResource } from "../context.js";
 import {
   Badge,
   Button,
@@ -25,6 +25,8 @@ import {
   Skeleton,
   useToast,
 } from "../components/ui/index.js";
+import { qk } from "../console/data/queries.js";
+import { mutate } from "../console/data/mutations.js";
 
 /**
  * Product secrets. A write-only surface for sealed product secrets (OIDC client secrets,
@@ -48,7 +50,7 @@ export const USAGE_CHOICES: { value: UsageChoice; label: string }[] = [
   { value: "edge-mint", label: "Edge-mint signing key" },
 ];
 export function Secrets({ slug }: { slug: string }): React.ReactElement {
-  const { data, loading, error, reload } = useResource(`product:${slug}`, () =>
+  const { data, loading, error, reload } = useResource(qk.product(slug), () =>
     api.product(slug).then((r) => r.product),
   );
   const toast = useToast();
@@ -70,14 +72,13 @@ export function Secrets({ slug }: { slug: string }): React.ReactElement {
     setSaving(true);
     try {
       const secretName = name.trim();
-      await api.putProductSecret(
+      await mutate(
+        "putProductSecret",
         slug,
         secretName,
         value,
         usage === "keep" ? undefined : usage,
       );
-      invalidate(`product:${slug}`);
-      invalidate(`edge-mint:${slug}`);
       toast.success(
         "Secret saved",
         `“${secretName}” was stored. Its value is never shown again.`,

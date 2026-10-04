@@ -1,139 +1,123 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "../src/App.js";
-import { resetCache } from "../src/context.js";
-import { setLoginRedirectForTests } from "../src/api.js";
+import {
+  ALL_ON,
+  ME,
+  boot,
+  mockFetch,
+  productRow,
+  resetConsole,
+} from "./consoleHarness.js";
 
-// A scripted fetch: maps a path -> JSON body. These are SMOKE tests for the app shell — we
-// assert navigation + chrome (the views' own behavior is covered by their dedicated suites).
-function mockFetch(routes: Record<string, unknown>): void {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (input: RequestInfo | URL) => {
-      const url =
-        typeof input === "string"
-          ? input
-          : input instanceof URL
-            ? input.toString()
-            : input.url;
-      const path = url.replace("http://localhost", "").split("?")[0]!;
-      const body =
-        routes[path] ??
-        routes[Object.keys(routes).find((k) => path.startsWith(k)) ?? ""] ??
-        {};
-      return new Response(JSON.stringify(body), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      });
-    }),
-  );
-}
+/**
+ * Smoke tests for the console as a whole: boot, the session query, and a few pages through the
+ * real router. The shell's behaviour is shell.test.tsx's; each view's is its own suite's.
+ */
 
-const ME = {
-  sub: "u1",
-  name: "Ada Lovelace",
-  email: "ada@x.io",
-  csrf: "csrf-token",
-  platformAdmin: true,
-  products: [
-    { slug: "djdl", name: "DJDL", schemaVersion: 1 },
-    { slug: "acme", name: "Acme", schemaVersion: 1 },
-  ],
-};
-
-beforeEach(() => {
-  window.location.hash = "";
-  resetCache();
-  setLoginRedirectForTests(() => undefined);
-  // jsdom lacks these Radix-needed APIs.
-  (
-    Element.prototype as unknown as { hasPointerCapture: () => boolean }
-  ).hasPointerCapture = () => false;
-  (
-    Element.prototype as unknown as { scrollIntoView: () => void }
-  ).scrollIntoView = () => undefined;
-});
-
+beforeEach(resetConsole);
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
 
-describe("admin SPA shell", () => {
-  it("boots, shows the brand, and lands on the dashboard", async () => {
-    mockFetch({ "/manage/api/me": ME });
-    render(<App />);
-    // The dashboard greets the signed-in operator.
+describe("admin SPA", () => {
+  it("boots behind a live 'Loading console…' and lands on Home", async () => {
+    boot("#/");
+    expect(
+      screen
+        .getAllByRole("status")
+        .some((el) => el.textContent === "Loading console…"),
+    ).toBe(true);
     expect(await screen.findByText(/Welcome, Ada/)).toBeTruthy();
-    // The brand lockup is present (sidebar logo, label "Polaris Key").
-    expect(screen.getAllByLabelText("Polaris Key").length).toBeGreaterThan(0);
+    expect(screen.getByRole("link", { name: "Polaris Key home" })).toBeTruthy();
   });
 
-  it("exposes the account menu with the operator identity", async () => {
-    mockFetch({ "/manage/api/me": ME });
+  it("shows a retryable error with a way to sign in when the session can't load", async () => {
+    let fail = true;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        fail
+          ? new Response("{}", { status: 500 })
+          : new Response(JSON.stringify(ME), {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            }),
+      ),
+    );
     render(<App />);
-    await screen.findByText(/Welcome, Ada/);
-    await userEvent.click(screen.getByRole("button", { name: "Account menu" }));
-    const menu = await screen.findByRole("menu");
-    expect(within(menu).getByText("ada@x.io")).toBeTruthy();
-    expect(within(menu).getByText("Sign out")).toBeTruthy();
+    expect(await screen.findByText("Can’t load the console")).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Sign in" }).getAttribute("href"),
+    ).toBe("/manage/login");
+    fail = false;
+    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByText(/Welcome, Ada/)).toBeTruthy();
   });
 
-  it("navigates to a per-product tab via the hash", async () => {
-    mockFetch({
-      "/manage/api/me": ME,
-      "/manage/api/products/djdl": {
-        product: {
-          slug: "djdl",
-          name: "DJDL",
-          schemaVersion: 1,
-          compatMin: "0.1.0",
-          compatMax: "2.x",
-          defaultDeviceLimit: 5,
-          defaultMaxOfflineDays: 14,
-          releaseSource: "github",
-          signingKid: "pkey-djdl-prod",
-          signing: {
-            kid: "pkey-djdl-prod",
-            alg: "Ed25519",
-            publicKey: "pub_djdl",
-            trustKeys: { "pkey-djdl-prod": "pub_djdl" },
-          },
-          modules: {
-            licensing: { enabled: true, status: "configured" },
-            config: { enabled: true, status: "configured" },
-          },
-          setup: { status: "ok", healthy: true, nextActions: [] },
-        },
+  it("renders a product page at its new URL", async () => {
+    boot("#/p/djdl", { services: ALL_ON });
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Overview" }),
+    ).toBeTruthy();
+  });
+
+  it("shows the Products registry", async () => {
+    boot("#/products");
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Products" }),
+    ).toBeTruthy();
+  });
+
+  it("refreshes the session after a product is created, so the switcher sees it (SH-1, CC-1)", async () => {
+    boot("#/p/djdl", { services: ALL_ON });
+    await screen.findByRole("heading", { level: 1, name: "Overview" });
+    const { mutate } = await import("../src/console/data/mutations.js");
+    const log = mockFetch({
+      "/manage/api/me": {
+        ...ME,
+        products: [
+          ...ME.products,
+          { slug: "new", name: "New", schemaVersion: 0 },
+        ],
+      },
+      // Serves both the create (POST) and the registry refetch (GET).
+      "/manage/api/products": {
+        ok: true,
+        slug: "new",
+        kid: "k",
+        products: [
+          productRow("djdl", "DJDL", ALL_ON),
+          productRow("acme", "Acme", ALL_ON),
+          productRow("new", "New", ALL_ON),
+        ],
       },
     });
-    window.location.hash = "#/p/djdl/overview";
-    render(<App />);
-    // The shell title + the view header both name the tab, so assert at least one heading.
-    expect(
-      (await screen.findAllByRole("heading", { name: "Overview" })).length,
-    ).toBeGreaterThan(0);
-    expect(await screen.findByText("SDK trust key")).toBeTruthy();
-  });
-
-  it("shows the platform Products view for platform admins", async () => {
-    mockFetch({ "/manage/api/me": ME });
-    window.location.hash = "#/products";
-    render(<App />);
-    expect(
-      (await screen.findAllByRole("heading", { name: "Products" })).length,
-    ).toBeGreaterThan(0);
-  });
-
-  it("reports an unknown slug as unknown, not as an authorization failure", async () => {
-    // `handleMe` returns every product or none — there is no per-product grant that could be
-    // missing — so a slug outside `me.products` simply does not exist. The old copy ("You do
-    // not administer …") implied an ACL the operator could go and have fixed.
-    mockFetch({ "/manage/api/me": ME });
-    window.location.hash = "#/p/nope/licenses";
-    render(<App />);
-    expect(await screen.findByText("Unknown product")).toBeTruthy();
-    expect(screen.queryByText("Not authorized")).toBeNull();
+    await mutate("createManualProduct", { slug: "new" } as never);
+    await waitFor(() =>
+      expect(
+        log.calls.some(
+          (c) => c.path === "/manage/api/me" && c.method === "GET",
+        ),
+      ).toBe(true),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: /^Product: DJDL/ }),
+    );
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole("listbox", { name: "Products" }))
+          .getAllByRole("option")
+          .some((o) => o.textContent?.startsWith("New")),
+      ).toBe(true),
+    );
   });
 });
