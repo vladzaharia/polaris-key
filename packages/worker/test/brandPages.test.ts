@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { BRAND, THEME_TOKENS } from "@polaris-key/brand";
 import { makeTestDb } from "./helpers.js";
 import { KvMock, asKv } from "./kvMock.js";
-import { makeEnv, seedProduct } from "./seed.js";
+import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { loadProduct } from "../src/core/products.js";
 import {
   BRAND_FONT_PATH,
@@ -235,7 +235,9 @@ describe("the portal email", () => {
     const env = makeEnv(new KvMock(), []);
     const sent = capture(env);
     const link = `${ORIGIN}/magic/verify?token=magic_abc&return_to=%2F`;
-    expect(await sendMagicLink(env, "ada@example.com", link)).toBe(true);
+    expect(
+      await sendMagicLink(env, makeTestDb(), "ada@example.com", link, NOW),
+    ).toBe(true);
     const { text, html } = sent[0]!;
     // The plain-text part keeps the link as its first URL.
     expect(/https:\/\/\S+/.exec(text)?.[0]).toBe(link);
@@ -260,7 +262,14 @@ describe("the portal email", () => {
     const env = makeEnv(new KvMock(), []);
     env.CONSOLE_ORIGIN = undefined;
     const sent = capture(env);
-    await sendPortalNotice(env, "ada@example.com", "Device disconnected", "x");
+    await sendPortalNotice(
+      env,
+      makeTestDb(),
+      "ada@example.com",
+      "Device disconnected",
+      "x",
+      NOW,
+    );
     expect(sent[0]!.text).toBe("x");
     expect(sent[0]!.html).not.toContain("<img");
     expect(sent[0]!.html).toContain(">Polaris Key</td>");

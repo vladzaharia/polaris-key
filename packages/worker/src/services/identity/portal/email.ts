@@ -13,14 +13,15 @@
  *     the console origin's `/assets/branding/key/`; empty `alt`, because the wordmark beside it
  *     is text. With no usable origin the icon is left out and the wordmark stands alone;
  *   - every dynamic value escaped; links are only the ones the Worker built.
+ *
+ * Every message is platform mail, sent as "Polaris Key" through Core's one send choke point
+ * (`core/emailDelivery.ts`, I-18), which applies the suppression list, the Apple private-relay
+ * gate and the provider-error handling; platform mail is never counted against a product cap.
  */
 
 import { BRAND, FONT, THEME_TOKENS } from "@polaris-key/brand";
-import type { Env } from "../../../core/platform.js";
-
-function fromAddress(env: Env): string {
-  return env.PORTAL_EMAIL_FROM ?? "Polaris Key <noreply@plrs.im>";
-}
+import type { Db, Env } from "../../../core/platform.js";
+import { deliverEmail } from "../../../core/emailDelivery.js";
 
 export function portalEmailConfigured(env: Env): boolean {
   return Boolean(env.EMAIL);
@@ -151,54 +152,73 @@ export function renderEmail(c: EmailContent): string {
 const NOTICE_FOOTER =
   "You are receiving this because of a change to your Polaris Key account.";
 
+/**
+ * Mail a magic sign-in link. False only when email cannot be sent at all (`email_unavailable`);
+ * a suppressed recipient answers true, exactly like a sent message, so the response does not
+ * reveal that the address once bounced or complained.
+ */
 export async function sendMagicLink(
   env: Env,
+  db: Db,
   to: string,
   link: string,
+  now: number,
 ): Promise<boolean> {
-  const email = env.EMAIL;
-  if (!email) return false;
   const subject = "Sign in to Polaris Key";
-  await email.send({
-    from: fromAddress(env),
-    to,
-    subject,
-    text:
-      `Use this link to sign in to Polaris Key:\n\n${link}\n\n` +
-      `This link expires in 10 minutes and works once. If you did not ask to sign in, you can ignore this email.`,
-    html: renderEmail({
+  const result = await deliverEmail(
+    env,
+    db,
+    {
+      sender: { kind: "platform" },
+      to,
       subject,
-      heading: "Sign in to Polaris Key",
-      paragraphs: [
-        "Use the button below to sign in. The link expires in 10 minutes and works once.",
-      ],
-      action: { label: "Sign in", url: link },
-      footer:
-        "If you did not ask to sign in, you can ignore this email. Nothing changes until the link is used.",
-      origin: emailAssetOrigin(link, env.CONSOLE_ORIGIN),
-    }),
-  });
-  return true;
+      text:
+        `Use this link to sign in to Polaris Key:\n\n${link}\n\n` +
+        `This link expires in 10 minutes and works once. If you did not ask to sign in, you can ignore this email.`,
+      html: renderEmail({
+        subject,
+        heading: "Sign in to Polaris Key",
+        paragraphs: [
+          "Use the button below to sign in. The link expires in 10 minutes and works once.",
+        ],
+        action: { label: "Sign in", url: link },
+        footer:
+          "If you did not ask to sign in, you can ignore this email. Nothing changes until the link is used.",
+        origin: emailAssetOrigin(link, env.CONSOLE_ORIGIN),
+      }),
+    },
+    now,
+  );
+  return result.ok || result.reason === "suppressed";
 }
 
+/** Mail an account notice. Best effort: an unavailable or suppressed recipient is skipped and
+ *  never fails the action the notice reports. */
 export async function sendPortalNotice(
   env: Env,
+  db: Db,
   to: string | null | undefined,
   subject: string,
   text: string,
+  now: number,
 ): Promise<void> {
   if (!to || !env.EMAIL) return;
-  await env.EMAIL.send({
-    from: fromAddress(env),
-    to,
-    subject,
-    text,
-    html: renderEmail({
+  await deliverEmail(
+    env,
+    db,
+    {
+      sender: { kind: "platform" },
+      to,
       subject,
-      heading: subject,
-      paragraphs: [text],
-      footer: NOTICE_FOOTER,
-      origin: emailAssetOrigin(env.CONSOLE_ORIGIN),
-    }),
-  });
+      text,
+      html: renderEmail({
+        subject,
+        heading: subject,
+        paragraphs: [text],
+        footer: NOTICE_FOOTER,
+        origin: emailAssetOrigin(env.CONSOLE_ORIGIN),
+      }),
+    },
+    now,
+  );
 }

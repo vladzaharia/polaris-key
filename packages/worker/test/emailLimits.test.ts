@@ -368,55 +368,22 @@ describe("send side", () => {
     expect(sent).toBe(EMAIL_SEND_PER_DEVICE_HOUR);
   });
 
-  it("caps a product's daily sends at the configured value", async () => {
+  it("charges no product cap: the cap is I-18's, at send time, for passthrough mail only", async () => {
     const e = env();
     let sent = 0;
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 12; i++) {
       const r = await checkEmailSend(
         e,
         {
           product: "djdl",
           recipient: `u${i}@example.com`,
           req: reqFrom(`10.4.${i}.1`),
-          productDailyCap: 4,
         },
         T,
       );
       if (r.send) sent++;
     }
-    expect(sent).toBe(4);
-  });
-
-  it("a request refused early spends no later budget (the product cap is charged last)", async () => {
-    const e = env();
-    const req = reqFrom("198.51.100.200");
-    for (let i = 0; i < EMAIL_SEND_PER_IP_HOUR + 10; i++)
-      await checkEmailSend(
-        e,
-        {
-          product: "djdl",
-          recipient: `x${i}@example.com`,
-          req,
-          productDailyCap: 15,
-        },
-        T,
-      );
-    // Only the IP-limited ten reached the product cap, so five remain for others.
-    let sent = 0;
-    for (let i = 0; i < 8; i++) {
-      const r = await checkEmailSend(
-        e,
-        {
-          product: "djdl",
-          recipient: `y${i}@example.com`,
-          req: reqFrom(`10.5.${i}.1`),
-          productDailyCap: 15,
-        },
-        T,
-      );
-      if (r.send) sent++;
-    }
-    expect(sent).toBe(5);
+    expect(sent).toBe(12);
   });
 
   it("fails closed when the store is unreachable", async () => {

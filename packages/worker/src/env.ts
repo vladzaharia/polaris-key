@@ -172,7 +172,19 @@ export interface Env {
   ADMIN_OIDC_ISSUER?: string;
   ADMIN_OIDC_CLIENT_ID?: string;
   ADMIN_OIDC_CLIENT_SECRET?: string;
+  /** Older sender setting ("Name <addr>"). Only its ADDRESS is still honoured, and only while
+   *  `EMAIL_SENDER_ADDRESS` is unset; the display name is never configurable (I-18). */
   PORTAL_EMAIL_FROM?: string;
+  /** I-18: the one shared sender address (a bare `local@domain` on the auth sending subdomain,
+   *  `noreply@auth.plrs.im`, once the owner has onboarded it on Email Sending). Unset = the
+   *  legacy `noreply@plrs.im` (`core/emailSender.ts`). */
+  EMAIL_SENDER_ADDRESS?: string;
+  /** I-18: the deploy-wide daily cap on one product's passthrough sign-in mail (a positive
+   *  integer). A product's `email_product_caps` row wins; unset = the code default (500). */
+  EMAIL_PRODUCT_DAILY_CAP?: string;
+  /** I-18: `"registered"` once the owner has registered the sender domain and address for Apple's
+   *  private email relay; until then relay recipients get `email_unavailable`, not a bounce. */
+  EMAIL_APPLE_RELAY?: string;
   GITHUB_APP_ID?: string;
   GITHUB_APP_PRIVATE_KEY?: string;
   GITHUB_WEBHOOK_SECRET?: string;

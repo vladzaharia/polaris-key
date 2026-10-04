@@ -346,6 +346,8 @@ const TABLE_OWNERS = {
     "platform_job_runs",
     "platform_heartbeats",
     "store_operations",
+    "email_suppressions",
+    "email_product_caps",
   ],
   license: [
     "licenses",

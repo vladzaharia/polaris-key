@@ -516,11 +516,13 @@ async function handleMeDelete(
   if (limited) return limited;
   await sendPortalNotice(
     env,
+    db,
     account.primary_email ?? session.email,
     "Your Polaris Key account has been deleted",
     "Your Polaris Key portal account, its email addresses and its license links have been " +
       "erased at your request. Licenses issued to you by a product remain that product's " +
       "records; contact the product's support to have those erased.",
+    now,
   );
   await deletePortalAccount(db, session.accountId, now);
   return portalJson({ ok: true, deleted: session.accountId }, 200, {
@@ -637,9 +639,11 @@ async function handleClaimKey(
   });
   await sendPortalNotice(
     env,
+    db,
     session.email,
     "License added to your Polaris Key account",
     `A license for ${product} was added to your Polaris Key account.`,
+    now,
   );
   const portalRow = await getPortalLicense(
     db,
@@ -701,9 +705,11 @@ async function handleDeviceDelete(
   });
   await sendPortalNotice(
     env,
+    db,
     session.email,
     "Device disconnected",
     `Device ${deviceId} was disconnected from your ${product} license.`,
+    now,
   );
   return portalJson({ ok: true, deviceId });
 }
