@@ -26,6 +26,22 @@
  *      cache hit WITHOUT an audited open, so it is a custody boundary of its own: only the
  *      Distribution service (`src/services/distribution/**`) may import it.
  *
+ * A-16 adds the platform's TEAM-level store credentials (`core/platformCredentials.ts`, tables
+ * `platform_credentials` and `platform_credential_pins`, seal kind `"platform-credential"`) and
+ * guards them the same way, in five more directions:
+ *
+ *   6. **Importers.** Only the Distribution service, the token helpers and the two Core admin
+ *      handlers that write or check pins (`platformStoreConnections.ts`, `outletCredentials.ts`)
+ *      may import `core/platformCredentials`. It imports `core/outletCredentials` itself (reviewed:
+ *      it reuses the kinds' validators and pin specs, and neither writes nor opens a product
+ *      credential), and so does the store-connections handler (to read who holds an app).
+ *   7. **The tables.** Only the owner, the KEK re-seal sweep and `deleteProduct` name them.
+ *   8. **The AAD kind.** Only the vault, the owner and the sweep spell `"platform-credential"`.
+ *   9. **The writers.** Only the owner and the store-connections handler name
+ *      `putPlatformCredential`, `deletePlatformCredential`, `setPlatformPin` or `clearPlatformPin`.
+ *  10. **The opener.** Only the owner and the token helpers name `openPlatformCredential`: every
+ *      other path gets a token, minted after the product's pin is checked.
+ *
  * Adding an entry to any allowlist is a custody decision: it needs a review that says why, and
  * the threat model's review trigger (§9) applies. P6-02 is expected to add one reviewed entry.
  *
@@ -49,6 +65,9 @@ const IMPORT_ALLOW_PREFIXES = ["src/services/distribution/"];
 const IMPORT_ALLOW_FILES = [
   "src/core/outletTokens.ts",
   "src/admin/handlers/outletCredentials.ts",
+  // A-16 (reviewed): validators and pin specs only; neither file writes or opens a product key.
+  "src/core/platformCredentials.ts",
+  "src/admin/handlers/platformStoreConnections.ts",
 ];
 const TABLE_ALLOW_FILES = [
   "src/core/outletCredentials.ts",
@@ -65,6 +84,33 @@ const KIND_ALLOW_FILES = [
   "src/core/outletCredentials.ts",
   "src/core/outletTokens.ts",
   "src/admin/handlers/products.ts",
+];
+
+// ── A-16: the platform's team-level store credentials ─────────────────────────────────────────
+const PLATFORM_TARGET = "src/core/platformCredentials";
+const PLATFORM_IMPORT_ALLOW_PREFIXES = ["src/services/distribution/"];
+const PLATFORM_IMPORT_ALLOW_FILES = [
+  "src/core/outletTokens.ts",
+  "src/admin/handlers/platformStoreConnections.ts",
+  "src/admin/handlers/outletCredentials.ts",
+];
+const PLATFORM_TABLE_ALLOW_FILES = [
+  "src/core/platformCredentials.ts",
+  "src/admin/handlers/products.ts",
+  "src/admin/repo.ts",
+];
+const PLATFORM_KIND_ALLOW_FILES = [
+  "src/keyvault.ts",
+  "src/core/platformCredentials.ts",
+  "src/admin/handlers/products.ts",
+];
+const PLATFORM_WRITER_ALLOW_FILES = [
+  "src/core/platformCredentials.ts",
+  "src/admin/handlers/platformStoreConnections.ts",
+];
+const PLATFORM_OPENER_ALLOW_FILES = [
+  "src/core/platformCredentials.ts",
+  "src/core/outletTokens.ts",
 ];
 
 interface Source {
@@ -148,6 +194,35 @@ function reachViolations(sources: Source[]): string[] {
       src.file === `${TOKENS_TARGET}.ts`;
     if (!tokensOk && resolvedImports(src).includes(TOKENS_TARGET))
       out.push(`${src.file} imports core/outletTokens`);
+
+    const platformImportOk =
+      PLATFORM_IMPORT_ALLOW_FILES.includes(src.file) ||
+      PLATFORM_IMPORT_ALLOW_PREFIXES.some((p) => src.file.startsWith(p)) ||
+      src.file === `${PLATFORM_TARGET}.ts`;
+    if (!platformImportOk && resolvedImports(src).includes(PLATFORM_TARGET))
+      out.push(`${src.file} imports core/platformCredentials`);
+    if (
+      !PLATFORM_TABLE_ALLOW_FILES.includes(src.file) &&
+      /\bplatform_credential(?:s|_pins)\b/.test(body)
+    )
+      out.push(`${src.file} names a platform credential table`);
+    if (
+      !PLATFORM_KIND_ALLOW_FILES.includes(src.file) &&
+      /["'`]platform-credential["'`]/.test(body)
+    )
+      out.push(`${src.file} spells the "platform-credential" seal kind`);
+    if (
+      !PLATFORM_WRITER_ALLOW_FILES.includes(src.file) &&
+      /\b(?:putPlatformCredential|deletePlatformCredential|setPlatformPin|clearPlatformPin)\b/.test(
+        body,
+      )
+    )
+      out.push(`${src.file} names a platform-credential writer`);
+    if (
+      !PLATFORM_OPENER_ALLOW_FILES.includes(src.file) &&
+      /\bopenPlatformCredential\b/.test(body)
+    )
+      out.push(`${src.file} names the platform-credential opener`);
   }
   return out;
 }
@@ -163,6 +238,11 @@ describe("outlet-credential reach", () => {
       ...TABLE_ALLOW_FILES,
       ...KIND_ALLOW_FILES,
       ...WRITER_ALLOW_FILES,
+      ...PLATFORM_IMPORT_ALLOW_FILES,
+      ...PLATFORM_TABLE_ALLOW_FILES,
+      ...PLATFORM_KIND_ALLOW_FILES,
+      ...PLATFORM_WRITER_ALLOW_FILES,
+      ...PLATFORM_OPENER_ALLOW_FILES,
     ])
       expect(existsSync(join(WORKER_ROOT, f)), f).toBe(true);
   });
@@ -262,5 +342,38 @@ describe("outlet-credential reach", () => {
         },
       ]),
     ).toEqual([]);
+  });
+
+  it("A-16: the guard fires on the platform credentials' tables, kind, writers, opener and importers", () => {
+    expect(
+      reachViolations([
+        {
+          file: "src/services/config/mint.ts",
+          text: 'import { resolvePlatformCredential } from "../../core/platformCredentials.js";',
+        },
+        {
+          file: "src/services/release/sync.ts",
+          text: 'await db.run("UPDATE platform_credential_pins SET pin = ?", x);',
+        },
+        {
+          file: "src/core/ingest.ts",
+          text: 'await open(env, blob, { product: "_platform", kind: "platform-credential", id });',
+        },
+        {
+          file: "src/services/distribution/connectors/asc/setup.ts",
+          text: 'import { setPlatformPin } from "../../../../core/platformCredentials.js";\nawait setPlatformPin(db, input);',
+        },
+        {
+          file: "src/services/distribution/commerce/apple.ts",
+          text: 'import { openPlatformCredential } from "../../../core/platformCredentials.js";\nawait openPlatformCredential(env, db, id, use, p, now);',
+        },
+      ]),
+    ).toEqual([
+      "src/services/config/mint.ts imports core/platformCredentials",
+      "src/services/release/sync.ts names a platform credential table",
+      'src/core/ingest.ts spells the "platform-credential" seal kind',
+      "src/services/distribution/connectors/asc/setup.ts names a platform-credential writer",
+      "src/services/distribution/commerce/apple.ts names the platform-credential opener",
+    ]);
   });
 });

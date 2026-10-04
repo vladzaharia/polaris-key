@@ -25,7 +25,7 @@ export const ascConnector: DistributionConnector = {
   webhook: handleAscWebhook,
   controls: ASC_CONTROLS,
   async status({ env, db, product, now }) {
-    const { setup, inert } = await resolveAscSetup(db, product);
+    const { setup, inert } = await resolveAscSetup(env, db, product);
     const objects = await listObjects(db, product, ASC_CONNECTOR);
     return {
       configured: setup !== null,
@@ -39,11 +39,21 @@ export const ascConnector: DistributionConnector = {
             bundleId: setup.bundleId,
             appStoreOutlet: setup.appStoreOutlet,
             testflightOutlet: setup.testflightOutlet,
-            apiKeyCredential: setup.apiKeyId,
+            // The product's own key id, or null when it falls back to the platform team key
+            // (A-16: `credentialSource` says which; `platformSource` whether console or secret).
+            apiKeyCredential:
+              setup.credential.source === "product"
+                ? setup.credential.credentialId
+                : null,
+            credentialSource: setup.credential.source,
+            platformSource:
+              setup.credential.source === "platform"
+                ? setup.credential.origin
+                : null,
             webhookSecretCredential: setup.webhookSecretId,
           }
         : null,
-      rate: setup ? await readRate(env, product, setup.apiKeyId, now) : null,
+      rate: setup ? await readRate(env, product, setup.credential, now) : null,
       objects: objects.map(objectView),
       unresolved: objects.filter((o) => o.release_id === null).length,
       events: (await listEvents(db, product, ASC_CONNECTOR)).map(eventView),

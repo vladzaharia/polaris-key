@@ -289,6 +289,7 @@ async function appleContext(
 ): Promise<AppleContext | null> {
   if (!settings.appStore) return null;
   const credentialId = await appStoreCredential(
+    ctx.env,
     ctx.db,
     ctx.product.slug,
     settings.appStore.bundleId,

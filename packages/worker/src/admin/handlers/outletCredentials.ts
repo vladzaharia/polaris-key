@@ -22,6 +22,12 @@
  * `deleteOutletCredential` — and this one never opens a value: it seals, lists metadata and
  * deletes.
  *
+ * A-16: a pin naming an app that a platform admin assigned to ANOTHER product through the
+ * platform store connection (`platform_credential_pins`) is refused (409 `app_assigned_elsewhere`),
+ * so a product's own key cannot be aimed at an app the team key serves for another product.
+ * `repinOwnCredentials` is the same audited pin path, called by the platform store-connections
+ * handler when it assigns an app to a product that holds keys of its own.
+ *
  * The dispatcher has already required a platform-admin session (`canAdminProduct`). The check is
  * repeated here on purpose: "written only by a platform admin" is the custody rule, and it must
  * not quietly widen the day a product-level admin role exists.
@@ -40,8 +46,14 @@ import {
   OUTLET_CREDENTIAL_PINS,
   pinOutletCredential,
   putOutletCredential,
+  validateOutletCredentialPin,
+  type OutletCredentialKind,
   type OutletCredentialPinChange,
 } from "../../core/outletCredentials.js";
+import {
+  platformCredentialForKind,
+  platformPinHolder,
+} from "../../core/platformCredentials.js";
 import { audit } from "../audit.js";
 import { isPlatformAdmin } from "../authz.js";
 import type { AdminSession } from "../session.js";
@@ -131,6 +143,21 @@ export async function handleOutletCredentials(
       "expiresAt must be a unix time in seconds",
       { fields: ["expiresAt"] },
     );
+  }
+  // A-16: the app this pin names may already be served to another product by the platform key.
+  if (body.pin !== undefined) {
+    const platformId = platformCredentialForKind(body.kind);
+    const p = validateOutletCredentialPin(body.kind, body.pin);
+    if (platformId && p.ok) {
+      const holder = await platformPinHolder(db, platformId, p.value);
+      if (holder !== null && holder !== slug)
+        return err(
+          409,
+          "app_assigned_elsewhere",
+          `${p.value} is assigned to product ${holder} through the platform store connection; unassign it there first`,
+          { fields: ["pin"], product: holder },
+        );
+    }
   }
   const auditPin = (change: OutletCredentialPinChange | null) =>
     change
@@ -240,4 +267,43 @@ export async function handleOutletCredentials(
   await auditPin(result.pinChange);
   // NEVER echo the value, its metadata or anything derived from it — the id only.
   return adminJson({ ok: true, id });
+}
+
+/**
+ * Re-pin every active credential of `kind` the product holds of its own to `pin`, through the
+ * same audited path as a pin-only PUT (`pinOutletCredential`, one `outlet_credential.pin` row per
+ * change). Called by the platform store-connections handler when a platform admin assigns an app
+ * to a product (A-16), so the product's own key — which takes precedence over the team key — is
+ * pinned to the same app. Answers the ids whose pin changed.
+ */
+export async function repinOwnCredentials(
+  db: Db,
+  slug: string,
+  session: AdminSession,
+  now: number,
+  kind: OutletCredentialKind,
+  pin: string,
+): Promise<string[]> {
+  const changed: string[] = [];
+  for (const c of await listOutletCredentials(db, slug)) {
+    if (c.kind !== kind || c.status !== "active") continue;
+    const r = await pinOutletCredential(db, {
+      product: slug,
+      credentialId: c.id,
+      kind,
+      pin,
+    });
+    if (!r.ok || !r.pinChange) continue;
+    await audit(
+      db,
+      slug,
+      session,
+      now,
+      "outlet_credential.pin",
+      { kind: "outlet_credential", id: c.id },
+      `Pinned outlet credential ${c.id} (${kind}) to ${r.pinChange.field} ${r.pinChange.after} (was ${r.pinChange.before ?? "unpinned"}) by a platform store-connection assignment`,
+    );
+    changed.push(c.id);
+  }
+  return changed;
 }

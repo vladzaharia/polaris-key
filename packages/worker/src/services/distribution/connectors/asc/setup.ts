@@ -21,13 +21,28 @@
  * over an unbound one; ties go to the lowest id. The pin is checked on the credential chosen —
  * another credential's matching pin never stands in for it. Only metadata is read here — listing
  * never selects the sealed column — so resolving the setup opens nothing.
+ *
+ * **The platform fallback (A-16).** A product with NO active `asc-api-key` of its own falls back
+ * to the platform's team key (`app-store.api-key`: the console credential, else the
+ * `PLATFORM_ASC_API_KEY` Worker secret). The team key sees every app of the team, so the pin is
+ * just as mandatory: the product's PLATFORM pin (`platform_credential_pins`, set when a platform
+ * admin assigns the app to the product) must equal the manifest's `appleId`, or the connector is
+ * inert with the same reasons. A product's own key always takes precedence — an own key that is
+ * unpinned or mis-pinned is inert, it never falls through to the team key. The token is minted by
+ * `platformAscToken`, which re-checks the pin before its memo, and the open inside it checks it a
+ * third time; one app can hold at most one product's platform pin (a table constraint).
  */
 
-import type { Db } from "../../../../core/platform.js";
+import type { Db, Env } from "../../../../core/platform.js";
 import {
   checkOutletCredentialPin,
   listOutletCredentials,
 } from "../../../../core/outletCredentials.js";
+import {
+  platformPin,
+  resolvePlatformCredential,
+  type PlatformCredentialSource,
+} from "../../../../core/platformCredentials.js";
 import { listOutlets, parseJsonColumn } from "../../outlets.js";
 
 export const ASC_CONNECTOR = "asc";
@@ -43,10 +58,26 @@ export interface AscSetup {
   appStoreOutlet: string | null;
   /** The live `testflight`-kind outlet for the same app, if declared. */
   testflightOutlet: string | null;
-  /** The `asc-api-key` credential id. */
-  apiKeyId: string;
+  /** The API key the connector authenticates with: the product's own, or the platform's. */
+  credential: AscCredentialRef;
   /** The `asc-webhook-secret` credential id, if one is stored. */
   webhookSecretId: string | null;
+}
+
+/** Which `asc-api-key` a setup uses (A-16). */
+export type AscCredentialRef =
+  | { source: "product"; credentialId: string }
+  | { source: "platform"; origin: PlatformCredentialSource };
+
+/** The platform credential the fallback uses. */
+export const ASC_PLATFORM_CREDENTIAL = "app-store.api-key" as const;
+
+/** A stable, non-secret label for a credential ref: the product credential's id, or
+ *  `platform:app-store.api-key`. Rate budgets and the console key by it. */
+export function ascCredentialLabel(ref: AscCredentialRef): string {
+  return ref.source === "product"
+    ? ref.credentialId
+    : `platform:${ASC_PLATFORM_CREDENTIAL}`;
 }
 
 /** Why the connector does not run for a product. The pin reasons are the operator's to fix. */
@@ -66,6 +97,8 @@ export interface AscInert {
   apiKeyCredential: string | null;
   /** The app that credential is pinned to (`null`: not pinned). */
   pinnedAppleId: string | null;
+  /** Whose key the setup chose: the product's, the platform's team key (A-16), or none. */
+  credentialSource: "product" | "platform" | null;
 }
 
 export type AscSetupResolution =
@@ -76,10 +109,11 @@ const APPLE_ID = /^[0-9]{1,20}$/;
 
 /** The product's App Store Connect setup, or `null` when the connector does not run for it. */
 export async function ascSetup(
+  env: Env,
   db: Db,
   product: string,
 ): Promise<AscSetup | null> {
-  return (await resolveAscSetup(db, product)).setup;
+  return (await resolveAscSetup(env, db, product)).setup;
 }
 
 const inert = (
@@ -94,11 +128,13 @@ const inert = (
     manifestAppleId: rest.manifestAppleId ?? null,
     apiKeyCredential: rest.apiKeyCredential ?? null,
     pinnedAppleId: rest.pinnedAppleId ?? null,
+    credentialSource: rest.credentialSource ?? null,
   },
 });
 
 /** The product's App Store Connect setup, or why the connector does not run for it. */
 export async function resolveAscSetup(
+  env: Env,
   db: Db,
   product: string,
 ): Promise<AscSetupResolution> {
@@ -150,12 +186,50 @@ export async function resolveAscSetup(
   };
   const appleId = app.appleId!;
   const apiKey = pick("asc-api-key");
-  if (!apiKey)
-    return inert(
-      "no_api_key",
-      "a platform admin must store an asc-api-key outlet credential pinned to this app",
-      { manifestAppleId: appleId },
+  const setupFor = (credential: AscCredentialRef): AscSetupResolution => ({
+    setup: {
+      product,
+      appleId,
+      bundleId: app.bundleId,
+      appStoreOutlet: appStore?.id ?? null,
+      testflightOutlet: testflight?.id ?? null,
+      credential,
+      webhookSecretId: pick("asc-webhook-secret")?.id ?? null,
+    },
+    inert: null,
+  });
+  if (!apiKey) {
+    // A-16: no key of the product's own — fall back to the platform team key, pin required.
+    const platform = await resolvePlatformCredential(
+      env,
+      db,
+      ASC_PLATFORM_CREDENTIAL,
     );
+    if (!platform)
+      return inert(
+        "no_api_key",
+        "a platform admin must store an asc-api-key outlet credential pinned to this app, or configure the platform App Store Connect connection and assign this app to the product",
+        { manifestAppleId: appleId },
+      );
+    const pinned = await platformPin(db, ASC_PLATFORM_CREDENTIAL, product);
+    if (pinned === null)
+      return inert(
+        "pin_missing",
+        `the platform App Store Connect key is not assigned to an app for this product: a platform admin must assign app ${appleId} to ${product} (Platform → Store connections; PUT /manage/api/platform/store-connections/app-store/apps/${appleId}/product) after checking that this is the product's app`,
+        { manifestAppleId: appleId, credentialSource: "platform" },
+      );
+    if (pinned !== appleId)
+      return inert(
+        "pin_mismatch",
+        `.pkey/distribution names app ${appleId}, but the platform App Store Connect key is assigned to app ${pinned} for this product: nothing is read or changed until the manifest names the assigned app again, or a platform admin assigns app ${appleId} to ${product} after checking that this is the product's app`,
+        {
+          manifestAppleId: appleId,
+          pinnedAppleId: pinned,
+          credentialSource: "platform",
+        },
+      );
+    return setupFor({ source: "platform", origin: platform.source });
+  }
   const pin = checkOutletCredentialPin(apiKey, appleId);
   if (!pin.ok)
     return inert(
@@ -167,20 +241,10 @@ export async function resolveAscSetup(
         manifestAppleId: appleId,
         apiKeyCredential: apiKey.id,
         pinnedAppleId: pin.pinned,
+        credentialSource: "product",
       },
     );
-  return {
-    setup: {
-      product,
-      appleId,
-      bundleId: app.bundleId,
-      appStoreOutlet: appStore?.id ?? null,
-      testflightOutlet: testflight?.id ?? null,
-      apiKeyId: apiKey.id,
-      webhookSecretId: pick("asc-webhook-secret")?.id ?? null,
-    },
-    inert: null,
-  };
+  return setupFor({ source: "product", credentialId: apiKey.id });
 }
 
 /** The outlet id for an outlet kind under this setup. */

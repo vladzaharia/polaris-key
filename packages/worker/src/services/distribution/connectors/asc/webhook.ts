@@ -136,7 +136,7 @@ export async function handleAscWebhook(
   const { req, env, db, product, now } = ctx;
   if (req.method !== "POST") return null;
   const slug = product.slug;
-  const setup = await ascSetup(db, slug);
+  const setup = await ascSetup(env, db, slug);
   if (!setup || !setup.webhookSecretId) return null;
 
   const presented = parseSignature(req.headers.get("x-apple-signature"));

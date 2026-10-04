@@ -44,6 +44,13 @@ import {
   openOutletCredential,
   outletCredentialVersion,
 } from "./outletCredentials.js";
+import {
+  openPlatformCredential,
+  platformPin,
+  resolvePlatformCredential,
+  type PlatformCredentialId,
+  type PlatformOpenPurpose,
+} from "./platformCredentials.js";
 
 /** A fetch with the platform `fetch` shape, injectable for tests. */
 export type FetchImpl = (
@@ -377,4 +384,92 @@ export async function googleAccessToken(
     now,
   );
   return body.access_token;
+}
+
+// ── platform (team-level) credentials (A-16) ────────────────────────────────────────────────
+
+/**
+ * Whether `purpose` may use platform credential `id` at all, checked BEFORE any memo or cache: a
+ * cached team token is the same bearer for every product, so the per-product pin must gate the
+ * lookup itself — a memo hit must never stand in for the pin. A team purpose (no product) has no
+ * pin; the caller is the platform admin surface.
+ */
+async function platformPurposeAllowed(
+  db: Db,
+  id: PlatformCredentialId,
+  purpose: PlatformOpenPurpose,
+): Promise<boolean> {
+  if (!("product" in purpose)) return true;
+  return (await platformPin(db, id, purpose.product)) === purpose.pin;
+}
+
+/**
+ * The App Store Connect API token minted from the PLATFORM team key (`app-store.api-key`), for a
+ * product acting on its pinned app (`{product, pin: appleId}`) or a team-wide read (`{team}`).
+ * `null` when no platform key is usable or the product's pin is not `appleId`. Memoised per
+ * isolate by source and version like `ascToken`; only a miss opens (and audits) the key.
+ */
+export async function platformAscToken(
+  env: Env,
+  db: Db,
+  purpose: PlatformOpenPurpose,
+  use: string,
+  now: number,
+): Promise<string | null> {
+  const id = "app-store.api-key";
+  if (!(await platformPurposeAllowed(db, id, purpose))) return null;
+  const ref = await resolvePlatformCredential(env, db, id);
+  if (!ref) return null;
+  const hit = ascMemo.get(`platform:${id}:${ref.version}`);
+  if (hit && hit.exp - ASC_REUSE_MARGIN > now) return hit.token;
+  const cred = await openPlatformCredential(env, db, id, use, purpose, now);
+  if (!cred) return null;
+  const { keyId, issuerId, p8 } = cred.value;
+  const exp = now + ASC_TOKEN_LIFETIME;
+  const token = await signJwtEs256(
+    { iss: issuerId, iat: now, exp, aud: ASC_AUDIENCE },
+    p8,
+    keyId,
+  );
+  if (ascMemo.size >= ASC_MEMO_MAX) ascMemo.clear();
+  ascMemo.set(`platform:${id}:${cred.version}`, { token, exp });
+  return token;
+}
+
+/**
+ * The App Store Server API token minted from the PLATFORM In-App Purchase key
+ * (`app-store.in-app-purchase-key`) for `product`, whose platform pin must be `bundleId` (the
+ * token's `bid`). `null` otherwise, or when no platform key is usable.
+ */
+export async function platformAppStoreServerToken(
+  env: Env,
+  db: Db,
+  product: string,
+  bundleId: string,
+  use: string,
+  now: number,
+): Promise<string | null> {
+  const id = "app-store.in-app-purchase-key";
+  const purpose = { product, pin: bundleId };
+  if (!(await platformPurposeAllowed(db, id, purpose))) return null;
+  const ref = await resolvePlatformCredential(env, db, id);
+  if (!ref) return null;
+  const memoKey = `platform:${id}:${ref.version}:${bundleId}`;
+  const hit = appStoreMemo.get(memoKey);
+  if (hit && hit.exp - ASC_REUSE_MARGIN > now) return hit.token;
+  const cred = await openPlatformCredential(env, db, id, use, purpose, now);
+  if (!cred) return null;
+  const { keyId, issuerId, p8 } = cred.value;
+  const exp = now + APP_STORE_SERVER_TOKEN_LIFETIME;
+  const token = await signJwtEs256(
+    { iss: issuerId, iat: now, exp, aud: ASC_AUDIENCE, bid: bundleId },
+    p8,
+    keyId,
+  );
+  if (appStoreMemo.size >= ASC_MEMO_MAX) appStoreMemo.clear();
+  appStoreMemo.set(`platform:${id}:${cred.version}:${bundleId}`, {
+    token,
+    exp,
+  });
+  return token;
 }

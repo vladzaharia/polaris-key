@@ -87,7 +87,8 @@ async function setupOf(
   return {
     "app-store": await one(
       settings.appStore !== null,
-      () => appStoreCredential(ctx.db, slug, settings.appStore!.bundleId),
+      () =>
+        appStoreCredential(ctx.env, ctx.db, slug, settings.appStore!.bundleId),
       "app-store-server-key",
     ),
     play: await one(

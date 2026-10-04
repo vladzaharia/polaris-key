@@ -551,6 +551,30 @@ export async function listOutletCredentials(
   return rows.map(toInfo);
 }
 
+/** Every ACTIVE credential of `kind` across all products that carries a pin — metadata only.
+ *  The platform store connection (A-16) reads it to refuse assigning an app another product's
+ *  own credential is already pinned to, and to show who holds each app. */
+export async function listOutletCredentialPins(
+  db: Db,
+  kind: OutletCredentialKind,
+): Promise<Array<{ product: string; credentialId: string; pin: string }>> {
+  const rows = await db.all<{
+    product: string;
+    credential_id: string;
+    meta_json: string;
+  }>(
+    "SELECT product, credential_id, meta_json FROM outlet_credentials WHERE kind = ? AND status = 'active' ORDER BY product, credential_id",
+    kind,
+  );
+  const out: Array<{ product: string; credentialId: string; pin: string }> = [];
+  for (const r of rows) {
+    const pin = outletCredentialPin({ kind, meta: parseMeta(r.meta_json) });
+    if (pin !== null)
+      out.push({ product: r.product, credentialId: r.credential_id, pin });
+  }
+  return out;
+}
+
 // ── write ────────────────────────────────────────────────────────────────────────────────────
 
 export interface PutOutletCredentialInput {

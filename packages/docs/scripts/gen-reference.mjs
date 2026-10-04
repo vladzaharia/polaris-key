@@ -330,6 +330,9 @@ const TABLE_OWNERS = {
     "lazy_delta_settings",
     "delta_demand_devices",
     "delta_demand",
+    "platform_credentials",
+    "platform_credential_pins",
+    "platform_store_settings",
   ],
   license: [
     "licenses",

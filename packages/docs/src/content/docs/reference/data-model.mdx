@@ -34,6 +34,9 @@ this page or fails the freshness gate.
 | `lazy_delta_settings` | 0051_lazy_deltas.sql | `product`, `enabled`, `hot_devices`, `daily_cap`, `updated_at` |
 | `delta_demand_devices` | 0051_lazy_deltas.sql | `product`, `deliverable_id`, `from_sha256`, `to_sha256`, `device_id`, `strategy`, `seen_at` |
 | `delta_demand` | 0051_lazy_deltas.sql | `product`, `deliverable_id`, `from_sha256`, `to_sha256`, `devices`, `window_start`, `last_seen` |
+| `platform_credentials` | 0055_platform_store_connections.sql | `credential_id`, `store`, `slot`, `kind`, `enc_value_json`, `meta_json`, `status`, `created_at`, `created_by`, `rotated_at`, `last_used_at`, `last_ok_at`, `last_error` |
+| `platform_credential_pins` | 0055_platform_store_connections.sql | `credential_id`, `product`, `pin`, `pinned_at`, `pinned_by` |
+| `platform_store_settings` | 0055_platform_store_connections.sql | `store`, `key`, `value`, `updated_at`, `updated_by` |
 
 ## license
 
