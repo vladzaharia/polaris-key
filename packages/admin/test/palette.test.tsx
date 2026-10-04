@@ -50,7 +50,7 @@ describe("the sources", () => {
     expect(labels).not.toContain("Releases");
     // Sign-in is built (chunk 10); not-built pages are not offered: they would only redirect.
     expect(labels).toContain("Sign-in");
-    expect(labels).not.toContain("Operations");
+    expect(labels).not.toContain("Package feeds");
     expect(items.find((i) => i.label === "Licenses")!.href).toBe(
       "#/p/djdl/license/licenses",
     );
@@ -64,6 +64,7 @@ describe("the sources", () => {
       // The Platform section's built pages (notes/S-13 §9.1).
       "Settings",
       "Deployment",
+      "Operations",
     ]);
   });
 

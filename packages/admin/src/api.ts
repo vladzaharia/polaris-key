@@ -255,6 +255,148 @@ export interface PlatformKekStatus {
   unopenable: number;
 }
 
+// ── platform operations (A-14) ─────────────────────────────────────────────────
+
+/** One probe of a binding: presence, then whether it answered in time. */
+export interface OperationsProbe {
+  bound: boolean;
+  /** `null`: not bound, so not probed. */
+  ok: boolean | null;
+  latencyMs: number | null;
+  error?: string;
+}
+
+/** A queue's own backlog report; `ok: false` when its `metrics()` failed. */
+export interface OperationsQueue extends OperationsProbe {
+  backlogCount: number | null;
+  backlogBytes: number | null;
+  /** Epoch seconds of the oldest waiting message. */
+  oldestMessageAt: number | null;
+}
+
+/** One cron step of a run (a family of per-product steps is folded into `name:*`). */
+export interface OperationsStepRun {
+  step: string;
+  /** Epoch milliseconds. */
+  startedAt: number;
+  durationMs: number | null;
+  outcome: "ok" | "failed" | (string & {});
+  items: number;
+  rowsAffected: number | null;
+  error: string | null;
+}
+
+/** The newest run of a job, with its steps. */
+export interface OperationsJobRun {
+  runId: string;
+  job: string;
+  cron: string | null;
+  /** Epoch milliseconds. */
+  startedAt: number;
+  durationMs: number | null;
+  outcome: "ok" | "failed" | (string & {});
+  steps: OperationsStepRun[];
+}
+
+/** A script's heartbeat row (`main`: every cron tick; `deltas`: every consumer batch). */
+export interface OperationsHeartbeat {
+  script: string;
+  /** Epoch seconds. */
+  at: number;
+  versionTag: string | null;
+  cloudflareVersionId: string | null;
+  outcome: string | null;
+  backlogCount: number | null;
+  backlogBytes: number | null;
+  oldestMessageAt: number | null;
+}
+
+export interface OperationsConnector {
+  connector: string;
+  productsConfigured: number;
+  objectsTracked: number;
+  /** Epoch seconds. */
+  lastPolledAt: number | null;
+  lastEventAt: number | null;
+  failedEvents24h: number;
+}
+
+/** `GET /manage/api/platform/operations` (worker `core/operations.ts`). A section is `null` when it could not be read. */
+export interface PlatformOperations {
+  /** Epoch seconds. */
+  generatedAt: number;
+  probes: {
+    d1: OperationsProbe;
+    kv: OperationsProbe;
+    r2: OperationsProbe;
+    updateHealth: { bound: boolean };
+    email: { bound: boolean };
+  };
+  queues: {
+    deltas: OperationsQueue;
+    deadLetter: OperationsQueue;
+    consumer: {
+      maxBatchSize: number;
+      maxBatchTimeoutSeconds: number;
+      maxRetries: number;
+      maxConcurrency: number;
+    };
+  };
+  heartbeats: OperationsHeartbeat[] | null;
+  jobs: {
+    latest: {
+      maintenance: OperationsJobRun | null;
+      connectorPoll: OperationsJobRun | null;
+    };
+    recent: {
+      runId: string;
+      job: string;
+      cron: string | null;
+      startedAt: number;
+      durationMs: number | null;
+      outcome: "ok" | "failed" | (string & {});
+      steps: number;
+    }[];
+    failures: {
+      runId: string;
+      job: string;
+      step: string;
+      startedAt: number;
+      error: string | null;
+    }[];
+  } | null;
+  storage: {
+    d1: { sizeBytes: number | null };
+    r2: {
+      committedBytes: number;
+      objects: number;
+      byKind: {
+        kind: string;
+        gated: boolean;
+        bytes: number;
+        objects: number;
+      }[];
+    } | null;
+  };
+  indexes: { missing: string[] | null };
+  connectors: {
+    items: OperationsConnector[];
+    lastPollFailure: {
+      step: string;
+      /** Epoch milliseconds. */
+      at: number;
+      error: string | null;
+    } | null;
+    commerce: { available: boolean };
+  } | null;
+  recentErrors: {
+    jobFailures: unknown;
+    lazyDeltaRefusals:
+      | { reason: string; count: number; lastAt: number }[]
+      | null;
+  };
+}
+
 // ── products (platform registry) ──────────────────────────────────────────────
 type ProductReleaseSource = "manual" | "github" | (string & {});
 
@@ -2194,6 +2336,9 @@ const rawApi = {
     call<PlatformDeployment>(
       `/manage/api/platform/deployment${cursorQuery(cursor)}`,
     ),
+  /** The self-reported Operations snapshot (A-14): probes, queues, cron runs, storage, connectors. */
+  platformOperations: () =>
+    call<PlatformOperations>("/manage/api/platform/operations"),
   /** `platform_audit`, newest first (keyset `cursor`). */
   platformActivity: (cursor?: PlatformCursor | null) =>
     call<PlatformActivityPage>(

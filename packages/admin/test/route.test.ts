@@ -700,13 +700,15 @@ describe("global pages", () => {
     expect(platformItems().map((p) => p.page)).toEqual([
       "platform-settings",
       "platform-deployment",
+      "platform-operations",
     ]);
   });
 
   it("#/platform redirects to Settings; a page still to come follows on to Deployment", () => {
     expect(parseLocation("#/platform").redirect).toBe("#/platform/settings");
     expect(parseLocation("#/platform/settings").redirect).toBeUndefined();
-    expect(parseLocation("#/platform/operations").redirect).toBe(
+    expect(parseLocation("#/platform/operations").redirect).toBeUndefined();
+    expect(parseLocation("#/platform/feeds").redirect).toBe(
       "#/platform/deployment",
     );
     expect(r.platform()).toBe("#/platform");

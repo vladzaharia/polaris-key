@@ -40,6 +40,7 @@ export const qk = {
   platformKek: (): QueryKey => ["platform", "kek"],
   /** Settings → History: the settings writes of the platform trail (under `platformActivity`). */
   platformSettingsHistory: (): QueryKey => ["platform", "activity", "settings"],
+  platformOperations: (): QueryKey => ["platform", "operations"],
   /** The product detail row. Match it with `exact: true`; as a prefix it is the whole product. */
   product: (slug: string): QueryKey => product(slug),
 

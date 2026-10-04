@@ -39,7 +39,8 @@ From left to right:
 
 **Home** and **Products** always come first, then the **Platform** section: pages about this
 instance as a whole rather than any product, such as **Deployment** (the build it runs, its deploy
-history, database migrations, bindings and the platform activity log). On Home, Products and the
+history, database migrations, bindings and the platform activity log) and **Operations** (cron runs,
+queue backlog, storage and store connectors; see [Operations](/docs/admin/operations/)). On Home, Products and the
 Platform pages no product is in scope, so nothing else is shown. Inside a product, one section
 follows per service:
 

@@ -1,9 +1,9 @@
 /**
  * The Platform section's pages (notes/S-13 §9.1): instance-wide, product-less. One lazy chunk,
  * loaded when the operator opens the section. Deployment is built here (A-11's identity and deploy
- * history, A-12's platform activity) and Settings in `platformSettings.tsx` (4P-1, on A-13);
- * Operations, Store connections and Package feeds redirect to Deployment until their pages land
- * (`nav.ts`).
+ * history, A-12's platform activity), Settings in `platformSettings.tsx` (4P-1, on A-13) and
+ * Operations in `platformOperations.tsx` (4P-3, on A-14); Store connections and Package feeds
+ * redirect to Deployment until their pages land (`nav.ts`).
  */
 
 import * as React from "react";
@@ -39,6 +39,7 @@ import { PlatformSettingsPage } from "./platformSettings.js";
 import { qk } from "../data/queries.js";
 import { queryClient } from "../data/queryClient.js";
 import type { GlobalPageId } from "../nav.js";
+import { Operations } from "./platformOperations.js";
 import {
   AttentionList,
   DashboardTemplate,
@@ -62,6 +63,7 @@ export default function PlatformPages({
 }): React.ReactElement | null {
   if (page === "platform-deployment") return <Deployment />;
   if (page === "platform-settings") return <PlatformSettingsPage />;
+  if (page === "platform-operations") return <Operations />;
   return null;
 }
 

@@ -709,7 +709,7 @@ describe("old URLs and history", () => {
 
   it("sends a page that is not built yet to the page that holds it today", async () => {
     // Every product page is built (chunks 5 to 10); the Platform section still has some.
-    boot("#/platform/operations", { services: ALL_ON });
+    boot("#/platform/feeds", { services: ALL_ON });
     await screen.findByRole("navigation", { name: "Console" });
     await waitFor(() =>
       expect(window.location.hash).toBe("#/platform/deployment"),
