@@ -39,7 +39,56 @@ export default defineConfig({
       title: "Polaris Key",
       description:
         "Licensing, managed config, releases, distribution, updates, and identity for multi-product apps — one worker, six services, five SDKs.",
-      customCss: ["./src/styles/global.css"],
+      // The brand (docs/design/BRAND.md §2): tokens and Rubik from @polaris-key/brand, then the
+      // Starlight mapping in global.css. All three are bundled stylesheets (no inline style).
+      customCss: [
+        "@polaris-key/brand/tokens.css",
+        "@polaris-key/brand/fonts.css",
+        "./src/styles/global.css",
+      ],
+      // The launch kit's Pinned K web identity, copied into public/branding/key/ by
+      // scripts/copy-artifacts.mjs (no terminal bit on favicons; BRAND.md §6 rule 0).
+      favicon: "/branding/key/favicon.svg",
+      head: [
+        {
+          tag: "link",
+          attrs: {
+            rel: "icon",
+            type: "image/x-icon",
+            sizes: "16x16 24x24 32x32 48x48 64x64 128x128 256x256",
+            href: "/docs/branding/key/favicon.ico",
+          },
+        },
+        {
+          tag: "link",
+          attrs: {
+            rel: "apple-touch-icon",
+            sizes: "180x180",
+            href: "/docs/branding/key/app-icon-dark-180.png",
+          },
+        },
+        {
+          tag: "meta",
+          attrs: {
+            name: "theme-color",
+            content: "#060912",
+            media: "(prefers-color-scheme: dark)",
+          },
+        },
+        {
+          tag: "meta",
+          attrs: {
+            name: "theme-color",
+            content: "#f6f8ff",
+            media: "(prefers-color-scheme: light)",
+          },
+        },
+      ],
+      components: {
+        SiteTitle: "./src/components/SiteTitle.astro",
+        PageFrame: "./src/components/PageFrame.astro",
+        PageTitle: "./src/components/PageTitle.astro",
+      },
       sidebar: [
         {
           label: "Start here",
@@ -53,13 +102,41 @@ export default defineConfig({
         {
           label: "Services",
           items: [
-            { label: "Core", items: [{ autogenerate: { directory: "services/core" } }], collapsed: true },
-            { label: "License", items: [{ autogenerate: { directory: "services/license" } }], collapsed: true },
-            { label: "Config", items: [{ autogenerate: { directory: "services/config" } }], collapsed: true },
-            { label: "Release", items: [{ autogenerate: { directory: "services/release" } }], collapsed: true },
-            { label: "Distribution", items: [{ autogenerate: { directory: "services/distribution" } }], collapsed: true },
-            { label: "Update", items: [{ autogenerate: { directory: "services/update" } }], collapsed: true },
-            { label: "Identity", items: [{ autogenerate: { directory: "services/identity" } }], collapsed: true },
+            {
+              label: "Core",
+              items: [{ autogenerate: { directory: "services/core" } }],
+              collapsed: true,
+            },
+            {
+              label: "License",
+              items: [{ autogenerate: { directory: "services/license" } }],
+              collapsed: true,
+            },
+            {
+              label: "Config",
+              items: [{ autogenerate: { directory: "services/config" } }],
+              collapsed: true,
+            },
+            {
+              label: "Release",
+              items: [{ autogenerate: { directory: "services/release" } }],
+              collapsed: true,
+            },
+            {
+              label: "Distribution",
+              items: [{ autogenerate: { directory: "services/distribution" } }],
+              collapsed: true,
+            },
+            {
+              label: "Update",
+              items: [{ autogenerate: { directory: "services/update" } }],
+              collapsed: true,
+            },
+            {
+              label: "Identity",
+              items: [{ autogenerate: { directory: "services/identity" } }],
+              collapsed: true,
+            },
           ],
         },
         {
