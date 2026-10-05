@@ -1662,6 +1662,60 @@ or `PLATFORM_KEK` compromise bypasses every adapter's gate at once. The deep-lin
 undocumented by most stores (a broken link misleads, it grants nothing). Rows written before
 A-18a keep their old `op_id`; a replay of such an intent re-reads its natural key before sending.
 
+### Storefront adapter: Microsoft Store (A-18f)
+
+**What it is.** The second storefront adapter (`core/storefront/stores/microsoftStore.ts`, rule
+table `core/storefront/rules/microsoftStore.ts`), writing through its own client
+(`services/distribution/connectors/msstore/write.ts`) with the A-16 team credential
+`microsoft-store.partner-center`. P5-04's connector client stays GET-only and unchanged. Two APIs
+share one rule table, told apart by path: the classic API (`manage.devcenter.microsoft.com/v1.0/my/`,
+MSIX submissions, flights, gradual rollout) with an Entra v1 `resource` token, and the MSI/EXE API
+(`api.store.microsoft.com/submission/v1/product/{id}/`, metadata modules, packages by URL, listing
+assets, submit) with an Entra v2.0 `scope` token in its own sealed cache slot plus
+`X-Seller-Account-Id` from the credential's non-secret metadata.
+
+**Asset at risk.** A11c's Entra application holds Partner Center's **Manager** role, with no
+per-app scope: it can rewrite listings, price tiers and rollouts and DELETE submissions, flights
+and add-ons for every app of the seller account. The rule table is the barrier.
+
+**Controls.**
+
+- **Deny-by-default, before any token.** The client consults the gate before either token thunk;
+  a refusal mints nothing and sends nothing (conformance item 5). Paths outside the two API shapes
+  are refused for every method, reads included.
+- **No machine-readable spec**, so a hand-written operation list transcribed from Microsoft's
+  reference pages, pinned by fetch date and by the SHA-256 of the list (`MSSTORE_SPEC_PIN`): every
+  listed write is allowed or denied exactly once, and editing the list without re-pinning fails CI
+  (`test/storefront/msstore.test.ts`). Re-pinning is a §9 docs-drift review.
+- **Never.** All five DELETEs (submission, flight, flight submission, add-on, add-on submission)
+  are denied; add-on creation and submissions are denied (no P6-01 Microsoft row). Body checks
+  refuse a `PendingDelete` file status (images and packages stay), `listingsToRemove`, notes for
+  certification (test-account credentials), trailers, read-only fields such as `fileUploadUrl`,
+  non-https URLs and ZIP names with traversal. Partner Center users, payout and tax have no API.
+- **Typed confirmation** (Microsoft's `primaryName`): app and flight submission commit, MSI/EXE
+  submit, `finalizepackagerollout` (app and flight), and any pricing change (`pricing` in a
+  classic submission update; `availability.pricing` or `freeTrial` in a metadata patch, or any
+  `availability` in a full-module PUT). Replacing a language's listing asset set is an update with
+  a plain confirm (S-15 §8.4).
+- **Natural keys.** A pending submission is reused only if a done `submission.create` ledger row
+  created it; one created elsewhere, or edited in Partner Center (the API can then neither change
+  nor commit it), is never adopted: the step refuses and offers only the deep link, since deleting
+  is denied. `workerStagedDraft` lets A-18h refuse `msstore publish` (which deletes the pending
+  draft) over a Worker-staged draft.
+- **SAS uploads** (listing images only, decision 2): to `*.blob.core.windows.net` only, no bearer
+  token, the URL (it carries a signature) never logged, stored or echoed. The classic image ZIP is
+  stored-only with safe relative names.
+- **Redaction.** A submission's `fileUploadUrl` and `statusDetails` (certification report URLs
+  carry tokens) are dropped before the ledger projection; errors keep the HTTP status and an
+  enum-like Microsoft code only.
+- **Budget.** `Retry-After` is honoured (bounded retries, then the meter's `retry-after` stop);
+  otherwise a minimum interval between sends.
+
+**Residual risk.** The operation list is only as current as its fetch date: a write Microsoft adds
+later is refused (deny-by-default) but goes unclassified until the docs-drift review. Whether
+Microsoft fetches a redirecting `packageUrl`, whether a Developer role suffices and the real
+`Retry-After` values are [U] for A-18k. The Partner Center deep-link shapes are undocumented.
+
 ### App Store Connect writes: the write gate, the ledger and the budget (A-17a)
 
 **What it is.** The substrate every App Store Connect call goes through (notes/S-14 §7): the
@@ -4494,7 +4548,10 @@ new vendor spec pin is adopted (`ASC_SPEC_PIN` or another adapter's `specPin`), 
 allow-list (`core/storefront/ci.ts` type, A-18h's lists) gains or loosens a command, an adapter
 declares `api` for `uploadBuild` or empties a never-list category, a check of
 `test/storefront/conformance.test.ts` is relaxed, anything but `core/asc/client.ts` sends a request
-to App Store Connect, or a field joins a store's audit projection (A-17a, A-18a); a platform store credential (A-16) is added, used
+to App Store Connect, anything but `msstore/write.ts` sends a non-GET request to a Microsoft Store
+API or a SAS upload, Microsoft's hand-written operation list (`test/fixtures/msstore/operations.json`)
+is edited or its `MSSTORE_SPEC_PIN` re-dated (the docs-drift review: re-read every page it names and
+re-classify every write), or a field joins a store's audit projection (A-17a, A-18a, A-18f); a platform store credential (A-16) is added, used
 without the product's platform pin matching at setup, token and open, cached in a way a hit can
 skip the pin, allowed to fall through from a mis-pinned own credential, or written or opened by a
 file outside its allowlists; the device trust level starts being carried in a signed document or token, an operation trusts `attested` without going through `trustRefusal`, the trust policy becomes writable by anything but the platform-admin `trust-policy` resource, the App Attest root stops being the pinned constant, or a path other than a token rotation keeps the level across a new device token (P6-02); or a new way to obtain a device token or licence without an
