@@ -28,6 +28,11 @@
  *     `rollout_bp`, status → state. A track with only drafts mirrors nothing.
  *
  * Then, when an operator turned it on, the vitals auto-halt (`vitals.ts`).
+ *
+ * A-18e: the tick first takes the package's EDIT LEASE (`lease.ts`, purpose `poll`). While another
+ * caller holds it (a provisioning run's long edit, an operator's control) the tick is SKIPPED
+ * (`skipped: "edit-lease-held"`): no token, no edit, nothing written, so it can neither invalidate
+ * that edit nor mirror a half-made change. The next tick reads again.
  */
 
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
@@ -60,6 +65,11 @@ import {
   type PlayTrack,
 } from "./map.js";
 import { readPlaySettings } from "./policy.js";
+import {
+  acquirePlayEditLease,
+  isLeaseHeld,
+  releasePlayEditLease,
+} from "./lease.js";
 import { errorLine, finishRun, playRun, type PlayRun } from "./run.js";
 import {
   isPinReason,
@@ -396,6 +406,20 @@ export async function pollPlay(ctx: ConnectorContext): Promise<PollOutcome> {
       calls: 0,
       applied: 0,
     };
+  // The edit lease (A-18e): a held lease skips the tick before any token or edit.
+  const lease = await acquirePlayEditLease(ctx.db, {
+    packageName: setup.packageName,
+    purpose: "poll",
+    actor: `connector:${PLAY_CONNECTOR}`,
+    now: ctx.now,
+  });
+  if (isLeaseHeld(lease))
+    return {
+      connector: PLAY_CONNECTOR,
+      skipped: "edit-lease-held",
+      calls: 0,
+      applied: 0,
+    };
   const run = playRun({
     env: ctx.env,
     db: ctx.db,
@@ -429,6 +453,7 @@ export async function pollPlay(ctx: ConnectorContext): Promise<PollOutcome> {
       error: errorLine(e),
     };
   } finally {
+    await releasePlayEditLease(ctx.db, lease);
     await finishRun(run, error);
   }
 }

@@ -412,6 +412,7 @@ const TABLE_OWNERS = {
     "dist_listing_assets",
     "dist_listing_release_notes",
     "dist_listing_overrides",
+    "store_edit_leases",
   ],
   update: ["update_feed_state", "update_feed_ceiling", "update_feed_docs"],
   identity: [
