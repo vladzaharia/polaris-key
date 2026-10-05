@@ -17,8 +17,8 @@
  * visible edit here rather than an unnoticed new import inside a service.
  *
  * Nothing is defined here. Every symbol keeps its definition (and its comments) in `repo.ts`,
- * `admin/repo.ts` or `edgeMintApproval.ts`; adding behaviour to a re-export module is how a façade becomes a second
- * implementation.
+ * `admin/repo.ts`, `edgeMintApproval.ts`, `admin/lib/redact.ts` or `admin/lib/managedSecrets.ts`;
+ * adding behaviour to a re-export module is how a façade becomes a second implementation.
  */
 
 export {
@@ -52,3 +52,8 @@ export {
   listTiers,
   nextSchemaVersion,
 } from "../admin/repo.js";
+
+// R2: the resync reads a surviving profile's stored payload to carry its secret values forward.
+// Readers only; sealing stays with the console's write path.
+export { parsePayload } from "../admin/lib/redact.js";
+export { isSealedEnvelope } from "../admin/lib/managedSecrets.js";

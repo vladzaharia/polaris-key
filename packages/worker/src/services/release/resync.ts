@@ -21,9 +21,11 @@ import {
   getProduct,
   insertSchema,
   invalidateWidenedEdgeMintApprovals,
+  isSealedEnvelope,
   listProfiles,
   listTiers,
   nextSchemaVersion,
+  parsePayload,
   setAutoIssuePolicy,
   setFingerprintPolicy,
   setServices,
@@ -479,7 +481,8 @@ async function applyRepoManifest(
   updated.push("oidc");
 
   const nextProfileIds = new Set(manifest.profiles.map((p) => p.id));
-  for (const profile of await listProfiles(db, slug)) {
+  const currentProfiles = await listProfiles(db, slug);
+  for (const profile of currentProfiles) {
     if (!nextProfileIds.has(profile.id)) {
       const refs = await countLicensesUsingProfile(db, slug, profile.id);
       if (refs > 0)
@@ -489,6 +492,15 @@ async function applyRepoManifest(
         };
     }
   }
+  // Profiles are replaced from the manifest, with one carve-out: their SECRET VALUES. A manifest
+  // cannot express a secret value (a sealed envelope is minted by the console under
+  // `PLATFORM_KEK`, and a plaintext secret has no place in a repo), so an operator sets one on a
+  // profile in the console, and without this every `.pkey/` push wiped it (R2). The stored
+  // payloads are read before the DELETE below and carried into each profile the manifest still
+  // lists; a profile it no longer lists goes, secrets and all.
+  const storedPayloads = new Map(
+    currentProfiles.map((p) => [p.id, p.payload_json]),
+  );
   stmts.push({ sql: "DELETE FROM profiles WHERE product = ?", params: [slug] });
   for (const p of manifest.profiles) {
     stmts.push(
@@ -497,7 +509,9 @@ async function applyRepoManifest(
         id: p.id,
         name: p.name,
         description: p.description ?? null,
-        payloadJson: JSON.stringify(p.payload),
+        payloadJson: JSON.stringify(
+          withStoredSecrets(p.payload, storedPayloads.get(p.id)),
+        ),
         modifiedAt: now,
       }),
     );
@@ -675,6 +689,55 @@ async function applyRepoManifest(
     ...(refused.length > 0 ? { refused } : {}),
     ...(packSets && (!packSets.ok || packSets.sets > 0) ? { packSets } : {}),
   };
+}
+
+/**
+ * A manifest profile payload with the secret values its stored predecessor held carried forward
+ * (R2). What counts as a secret value:
+ *
+ *   - every `secrets` entry, since a `kind: "secret"` value only ever comes from the console;
+ *   - a `config` entry whose value is a sealed envelope, which is how the console stores a
+ *     `config` key flagged `secret: true` (R12-02). A plain config value is the manifest's to
+ *     replace, so it is left alone.
+ *
+ * An entry the manifest's own map declares under the same key wins: the manifest stays the last
+ * word on anything it actually says. Carried values are copied verbatim, never opened or
+ * re-sealed, so the stored ciphertext and its `updatedAt` are unchanged.
+ */
+function withStoredSecrets(
+  manifestPayload: Record<string, unknown>,
+  storedJson: string | undefined,
+): Record<string, unknown> {
+  if (storedJson === undefined) return manifestPayload;
+  const stored = parsePayload(storedJson);
+  const secrets = carried(stored.secrets, manifestPayload.secrets, () => true);
+  const config = carried(stored.config, manifestPayload.config, (entry) =>
+    isSealedEnvelope(entry?.value),
+  );
+  if (!secrets && !config) return manifestPayload;
+  return {
+    ...manifestPayload,
+    ...(secrets ? { secrets } : {}),
+    ...(config ? { config } : {}),
+  };
+}
+
+/** One bucket of `withStoredSecrets`: the stored entries `keep` selects and the manifest does
+ *  not declare, under the manifest's own entries. `null` when nothing is carried. */
+function carried(
+  stored: Record<string, { value?: unknown } | undefined>,
+  declared: unknown,
+  keep: (entry: { value?: unknown } | undefined) => boolean,
+): Record<string, unknown> | null {
+  const own: Record<string, unknown> =
+    declared && typeof declared === "object" && !Array.isArray(declared)
+      ? (declared as Record<string, unknown>)
+      : {};
+  const kept = Object.entries(stored).filter(
+    ([key, entry]) => !Object.hasOwn(own, key) && keep(entry),
+  );
+  if (kept.length === 0) return null;
+  return { ...Object.fromEntries(kept), ...own };
 }
 
 /** The audit row for a manifest-driven publisher change, in the resync's batch. */

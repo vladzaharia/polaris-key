@@ -96,6 +96,13 @@ A profile has two tabs:
 exact same batch function. A profile's payload and a license's own overrides are edited
 identically; only the storage location, and the layer each occupies, differ.
 
+On a repository-linked product the profiles come from `.pkey/product`, and each resync replaces
+them — except for their secret values. A manifest can't carry a secret value, so a secret you set
+on a profile here (a `secret` entry, or a `config` entry flagged `secret: true`) is carried
+forward, still sealed, as long as the manifest still lists the profile and its own payload doesn't
+declare that key. A plain config value or flag you edit here lasts only until the next push; see
+[What resync actually re-applies](/docs/admin/products/#what-resync-actually-re-applies).
+
 ## Redaction on read
 
 `GET` never echoes a stored secret value, on either resource. `redactPayload` reduces every

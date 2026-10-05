@@ -680,13 +680,21 @@ does not expose whether a product uses platform or custom OIDC.
 
 ### Admin override vs re-sync
 
-Admins set **management state + values** (per profile/tier/license/device) and operational
-runtime overrides in the admin SPA. Those values live in D1 and are **not** overwritten by a
-re-sync. A re-sync updates the manifest baseline from `.pkey/`: product metadata, service
-enablement + registration policy, fingerprint and auto-issue policy, catalog shape, OIDC
-baseline, release baseline, profiles, tiers, provisioning, and edge-mint recipes. The three
-operator-claimable blocks (`services_source`, `fingerprint_policy_source`, `auto_issue_source`)
-are skipped while an admin owns them, and so is the trusted-publisher policy once claimed. So the flow is:
+Admins set **management state + values** (per license/device) and operational runtime
+overrides in the admin SPA. Those values live in D1 and are **not** overwritten by a re-sync. A
+re-sync updates the manifest baseline from `.pkey/`: product metadata, service enablement +
+registration policy, fingerprint and auto-issue policy, catalog shape, OIDC baseline, release
+baseline, profiles, tiers, provisioning, and edge-mint recipes. The three operator-claimable
+blocks (`services_source`, `fingerprint_policy_source`, `auto_issue_source`) are skipped while an
+admin owns them, and so is the trusted-publisher policy once claimed.
+
+Profiles are the manifest's, with one exception: **secret values**. A manifest can't carry a
+secret value, so you set a profile's secrets (a `secret` entry, or a `config` entry flagged
+`secret: true`) in the console, and a re-sync carries them forward, still sealed, onto every
+profile the manifest still lists — unless the manifest's own profile payload declares that key.
+A profile's plain config values and flags follow the manifest, so declare those in
+`.pkey/product`; a console edit to one lasts only until the next push. A profile the manifest
+drops is removed with its secrets. So the flow is:
 
 1. Edit `.pkey/schema` in the product repo (add a key, tighten a schema, change a
    `managementDefault`); bump `schemaVersion` only on an incompatible shape change.
