@@ -12,6 +12,12 @@
 | Human input | a staging deploy for the OIDF Basic OP and Config OP conformance runs                                                                                                                                                                    |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/PX-W17.md`](../plans/PX-W17.md):** append `oauth/authorize` to the navigation entries; the ID token `sub` is the pairwise subject.
+
 ## Goal
 
 "Sign in with <Product>": a per-product OIDC issuer at `https://key.plrs.im/<p>/identity` that passes OIDF Basic OP and Config OP conformance, with a separate RS256 keyring, `sub` = the product's pairwise subject, `pkey:*` scopes and static clients.

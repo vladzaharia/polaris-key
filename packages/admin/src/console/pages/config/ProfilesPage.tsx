@@ -101,7 +101,7 @@ export function ProfilesPage({ slug }: { slug: string }): React.ReactElement {
         header: "Used by",
         accessorFn: (p) =>
           (p.usedBy?.tiers ?? 0) * 1_000_000 + (p.usedBy?.licenses ?? 0),
-        meta: { priority: 1, label: "Used by", csv: usedByText },
+        meta: { numeric: true, priority: 1, label: "Used by", csv: usedByText },
         cell: ({ row }) => (
           <span
             className={cn(
@@ -118,6 +118,7 @@ export function ProfilesPage({ slug }: { slug: string }): React.ReactElement {
         header: "Last modified",
         accessorFn: (p) => p.modifiedAt ?? 0,
         meta: {
+          numeric: true,
           priority: 3,
           csv: (p) =>
             p.modifiedAt
