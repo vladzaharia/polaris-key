@@ -46,7 +46,6 @@ import { APP_DELIVERABLE_ID, RELEASE_PLATFORMS } from "@polaris-key/manifest";
 import { OUTLET_KINDS } from "@polaris-key/protocol/distribution";
 import { BUILD_ID_PATTERN } from "@polaris-key/protocol/release";
 import type { ServiceContext } from "../../core/registry.js";
-import type { Env } from "../../env.js";
 import type {
   CatalogChannelPolicy,
   CatalogSourceArtifact,
@@ -880,7 +879,7 @@ async function ticketedPackageUrl(
  * the workerd lane (test-workerd/downloadTicket.test.ts).
  */
 export async function ticketedDeliveryUrl(
-  env: Env,
+  env: ServiceContext["env"],
   product: string,
   file: Pick<VelopackCandidate, "url" | "releaseId" | "name" | "sha256">,
   now: number,
