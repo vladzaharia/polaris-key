@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync, writeSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, firefox, webkit, type Browser, type Page } from "playwright";
@@ -220,11 +220,26 @@ afterAll(async () => {
   lines.push(
     `── ${total} violation(s) over ${Object.keys(report).length} page loads ──`,
   );
-  // Straight to stdout: the runner shows console output only for failing tests, and the report
-  // is wanted on a green run too.
-  process.stdout.write(`${lines.join("\n")}\n`);
+  printSync(`${lines.join("\n")}\n`);
   if (REPORT) writeFileSync(REPORT, JSON.stringify(report, null, 2));
 });
+
+/**
+ * Straight to stdout, synchronously: the runner shows console output only for failing tests, and
+ * an async write of a report this long is cut off when the worker exits. The report is wanted
+ * whole, on a green run too.
+ */
+function printSync(text: string): void {
+  const buf = Buffer.from(text);
+  let off = 0;
+  while (off < buf.length) {
+    try {
+      off += writeSync(1, buf, off);
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "EAGAIN") throw e;
+    }
+  }
+}
 
 async function open(
   c: Case,
