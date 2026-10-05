@@ -334,7 +334,7 @@ function CompatSection({
         }
       >
         <div className="px-5 py-4">
-          <div className="grid max-w-xl gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <FormField<string>
               name="compatMin"
               label="Lowest supported"

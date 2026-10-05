@@ -141,6 +141,8 @@ export function Button({
     <Slot.Root
       ref={ref}
       className={classes}
+      data-variant={variant ?? "primary"}
+      data-size={size ?? "md"}
       aria-disabled={softDisabled || hardDisabled || undefined}
       aria-busy={loading || undefined}
       onClick={guardedClick}
@@ -155,6 +157,8 @@ export function Button({
       // eslint-disable-next-line react/button-has-type -- the type is a typed prop with a default
       type={type}
       className={classes}
+      data-variant={variant ?? "primary"}
+      data-size={size ?? "md"}
       disabled={hardDisabled}
       aria-disabled={softDisabled || undefined}
       aria-busy={loading || undefined}

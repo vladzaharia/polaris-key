@@ -7,10 +7,16 @@
 | Depends on  | [I-05](I-05-accounts-core.md)                                                                |
 | Unblocks    | [LX-08](LX-08-licensing-expand.md), [LX-18](LX-18-licensing-wire.md)                         |
 | Role        | `pkey-wire-planner` (planning only)                                                          |
-| Plan mode   | yes: the plan [`plans/LX-01.md`](../plans/LX-01.md) needs human approval before code         |
+| Plan mode   | yes: planning only; [`plans/LX-01.md`](../plans/LX-01.md) was approved on 2026-10-05         |
 | Gates       | plan mode; owner approval of the plan                                                        |
 | Human input | plan approval (`plans/LX-01.md`)                                                             |
 | Repo        | `vladzaharia/polaris-key`                                                                    |
+
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/LX-01.md`](../plans/LX-01.md):** approved on 2026-10-05 with every recommendation accepted, so this package is done. LX-06, LX-08, LX-09, LX-10, LX-12, LX-13 and LX-16 execute the plan's sections.
 
 ## Goal
 

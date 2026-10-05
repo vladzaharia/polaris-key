@@ -9,8 +9,14 @@
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                 |
 | Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                                                                     |
 | Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; `wrangler.toml`                                               |
-| Human input | an R2 bucket for save blobs per environment                                                                                                                                                           |
+| Human input | a dedicated R2 bucket for save blobs per environment, binding `SYNC_SAVES`, no bucket lock (plans/U-01.md Q4), plus an EU twin if U-24 offers residency                                               |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                             |
+
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/U-01.md`](../plans/U-01.md):** a dedicated bucket, binding `SYNC_SAVES`, with no bucket lock (Q4), created by the owner before U-10 starts (plus an EU twin if U-24 offers residency); `PUT` in `CORS_ALLOW_METHODS`; `requiresFlag` through `syncAccess`.
 
 ## Goal
 

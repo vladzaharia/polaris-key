@@ -422,11 +422,21 @@ describe("accents and the section bit (BRAND.md §6)", () => {
         el.getAttribute("data-section"),
         el.getAttribute("data-service"),
       ]),
-    ).toEqual([
-      // The Platform section takes the core accent, like Home and Products.
-      ["platform", "core"],
-      ...SECTIONS.map((s) => [s.key, s.accent]),
-    ]);
+    ).toEqual(
+      // Inside a product the Platform section is hidden (owner, 2026-10-04).
+      SECTIONS.map((s) => [s.key, s.accent]),
+    );
+  });
+
+  it("gives the Platform section the core accent where it shows, off a product", async () => {
+    boot("#/", { services: ALL_ON });
+    await screen.findByRole("heading", { level: 1, name: "Home" });
+    expect(
+      [...nav().querySelectorAll("[data-section]")].map((el) => [
+        el.getAttribute("data-section"),
+        el.getAttribute("data-service"),
+      ]),
+    ).toEqual([["platform", "core"]]);
   });
 
   it("accents the content and <html> from the current route's section", async () => {
