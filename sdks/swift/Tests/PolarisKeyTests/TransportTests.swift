@@ -94,10 +94,10 @@ final class TransportTests: XCTestCase {
 
         // Activation surfaces the refusal as a code the host can render, rather than as an
         // indistinguishable transport failure.
-        guard case .error(let message) = await c.activate(key: "PKEY-XXXX") else {
+        guard case .error(let code, _, _) = await c.activate(key: "PKEY-XXXX") else {
             return XCTFail("activation must refuse")
         }
-        XCTAssertTrue(message.contains("local-only"))
+        XCTAssertEqual(code, PolarisError.localOnly)
 
         // Registration and discovery likewise.
         guard case .error = await c.register() else {

@@ -253,17 +253,7 @@ enum SwiftReplay {
         ])
     }
 
-    static func activationKind(_ r: ActivationResult) -> String {
-        switch r {
-        case .ok: return "ok"
-        case .deviceLimit: return "device-limit"
-        case .unauthorized: return "unauthorized"
-        case .fingerprintRequired: return "fingerprint-required"
-        case .hardwareMismatch: return "hardware-mismatch"
-        case .enrollDisabled: return "enroll-disabled"
-        case .error: return "error"
-        }
-    }
+    static func activationKind(_ r: ActivationResult) -> String { r.kind }
 
     /// Replay `t` step by step; throws on the first step whose traffic or outcome disagrees.
     static func replay(_ t: Transcript) async throws {

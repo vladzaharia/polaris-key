@@ -153,7 +153,7 @@ public actor LicenseClient {
         do {
             try await core.setToken(token, source: source)
         } catch {
-            return .error(message: "could not persist the device token: \(error)")
+            return .error(code: ErrorCode.storeFailed, message: "could not persist the device token: \(error)")
         }
         await onAcquired?(.token)
         return result

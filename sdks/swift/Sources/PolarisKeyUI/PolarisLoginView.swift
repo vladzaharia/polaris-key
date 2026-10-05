@@ -28,6 +28,11 @@ public final class PolarisGateModel: ObservableObject {
     @Published public private(set) var profile: DocProfile?
     @Published public private(set) var isWorking = false
     @Published public var lastError: String?
+    /// The last activation's typed outcome, so a host (or the kit) can branch on its kind — show
+    /// "Manage devices" on `.deviceLimit`, "Sign in" on `.enrollClaimed` — rather than on copy.
+    @Published public private(set) var lastResult: ActivationResult?
+    /// The copy activation outcomes are rendered with (`PolarisCopy.activationMessage`).
+    public var copy: PolarisCopy = PolarisCopy()
 
     private let client: LicenseClient
     private let syncAction: @Sendable () async -> Void
@@ -63,28 +68,8 @@ public final class PolarisGateModel: ObservableObject {
         isWorking = true
         defer { isWorking = false }
         let result = await client.activate(key: key)
-        switch result {
-        case .ok:
-            lastError = nil
-        case .deviceLimit:
-            lastError = "This license has reached its device limit."
-        case .unauthorized:
-            lastError = "That license key wasn't accepted."
-        case .fingerprintRequired:
-            lastError =
-                "This license tier requires a hardware fingerprint, which couldn't be read on "
-                + "this Mac."
-        case .hardwareMismatch(_, let changed):
-            let detail =
-                (changed?.isEmpty == false) ? " (\(changed!.joined(separator: ", ")))" : ""
-            lastError =
-                "This Mac's hardware changed\(detail). The previous authorization was released "
-                + "— activate again to re-bind."
-        case .enrollDisabled:
-            lastError = "This product doesn't offer keyless enrollment."
-        case .error(let message):
-            lastError = message.isEmpty ? "Activation failed." : message
-        }
+        lastResult = result
+        lastError = copy.activationMessage(result)
         await reload()
     }
 
@@ -97,7 +82,7 @@ public final class PolarisGateModel: ObservableObject {
         } catch {
             // The local wipe failing means the credential is STILL on this machine — the user
             // has to know, rather than seeing a sign-out that silently did nothing.
-            lastError = "Sign-out couldn't clear the stored license: \(error)"
+            lastError = "\(copy.signOutFailedMessage) \(error.localizedDescription)"
         }
         await reload()
     }
