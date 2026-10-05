@@ -43,6 +43,9 @@ import {
   MAX_LIVE_TOKENS_PER_LICENSE,
   MAX_LIVE_TOKENS_PER_OWNER,
   MINTABLE_REGISTRY_SCOPES,
+  REGISTRY_PUBLISH_ECOSYSTEMS,
+  REGISTRY_PUBLISH_TOKEN_DEFAULT_DAYS,
+  REGISTRY_PUBLISH_TOKEN_MAX_DAYS,
   REGISTRY_PULL_TOKEN_TTL_SECONDS,
   REGISTRY_TOKEN_DEFAULT_DAYS,
   REGISTRY_TOKEN_LABEL_MAX,
@@ -165,11 +168,13 @@ export interface MintRegistryTokenInput {
   readonly label: string;
   /** `null` (or absent) = every feed of the owner. Ignored for a URL token (always godot). */
   readonly ecosystems?: readonly string[] | null;
-  /** Default 90 (30 for a URL token); 1 to 365. */
+  /** Default 90 (30 for a URL token, 7 for a publish token); 1 to 365 (30 for a publish token). */
   readonly expiresInDays?: number;
   readonly binding: RegistryTokenBinding;
   readonly licenseId?: string | null;
   readonly presentation?: RegistryTokenPresentation;
+  /** `["read"]` (the default) or `["publish"]` / `["read", "publish"]` (F-22): `publish` implies
+   *  `read` and is stored as both. */
   readonly scopes?: readonly string[];
   /** `admin:<sub>` or `portal:<accountId>`. */
   readonly createdBy: string;
@@ -206,6 +211,11 @@ function refuse(
  * token); licence-bound tokens are `read` only; a URL token is `read` and `["godot"]`; at most
  * 10 live tokens per licence and 500 per owner. The licence must exist within the owner. Returns
  * the plaintext once. Drops this isolate's resolution cache.
+ *
+ * A PUBLISH token (F-22, plans/F-20.md §9: "owner-bound only, implies read") is held to more:
+ * owner-bound, presented in a header, narrowed to named publish ecosystems (never "every feed"),
+ * and short-lived (1 to 30 days, default 7), so a native client's publish secret is as narrow
+ * and as brief as a person's own machine needs.
  */
 export async function mintRegistryToken(
   env: Env,
@@ -219,36 +229,42 @@ export async function mintRegistryToken(
     fields.push("label");
   const presentation: RegistryTokenPresentation =
     input.presentation === "url" ? "url" : "header";
-  const days =
-    input.expiresInDays ??
-    (presentation === "url"
-      ? REGISTRY_URL_TOKEN_DEFAULT_DAYS
-      : REGISTRY_TOKEN_DEFAULT_DAYS);
+  const requested = [...new Set(input.scopes ?? ["read"])];
   if (
-    !Number.isSafeInteger(days) ||
-    days < REGISTRY_TOKEN_MIN_DAYS ||
-    days > REGISTRY_TOKEN_MAX_DAYS
-  )
-    fields.push("expiresInDays");
-  const scopes = [...new Set(input.scopes ?? ["read"])];
-  if (
-    scopes.length === 0 ||
-    scopes.some(
+    requested.length === 0 ||
+    requested.some(
       (s) => !(MINTABLE_REGISTRY_SCOPES as readonly string[]).includes(s),
     )
   )
     fields.push("scopes");
+  const publish = requested.includes("publish");
+  // `publish` implies `read`: stored as both, sorted, so the row says what the token can do.
+  const scopes = publish ? ["publish", "read"] : requested;
+  const days =
+    input.expiresInDays ??
+    (publish
+      ? REGISTRY_PUBLISH_TOKEN_DEFAULT_DAYS
+      : presentation === "url"
+        ? REGISTRY_URL_TOKEN_DEFAULT_DAYS
+        : REGISTRY_TOKEN_DEFAULT_DAYS);
+  if (
+    !Number.isSafeInteger(days) ||
+    days < REGISTRY_TOKEN_MIN_DAYS ||
+    days > (publish ? REGISTRY_PUBLISH_TOKEN_MAX_DAYS : REGISTRY_TOKEN_MAX_DAYS)
+  )
+    fields.push("expiresInDays");
   let ecosystems: string[] | null = null;
   if (presentation === "url") ecosystems = ["godot"];
   else if (input.ecosystems !== undefined && input.ecosystems !== null) {
     const list = [...new Set(input.ecosystems)];
-    if (
-      list.length === 0 ||
-      list.some((e) => !(PACKAGE_ECOSYSTEMS as readonly string[]).includes(e))
-    )
+    const allowed: readonly string[] = publish
+      ? REGISTRY_PUBLISH_ECOSYSTEMS
+      : PACKAGE_ECOSYSTEMS;
+    if (list.length === 0 || list.some((e) => !allowed.includes(e)))
       fields.push("ecosystems");
     else ecosystems = [...list].sort();
-  }
+  } else if (publish) fields.push("ecosystems");
+  if (publish && presentation === "url") fields.push("presentation");
   const binding = input.binding;
   if (binding !== "owner" && binding !== "license") fields.push("binding");
   const licenseId = binding === "license" ? (input.licenseId ?? null) : null;
@@ -517,11 +533,19 @@ export type ResolvedRegistryToken =
       readonly ecosystems: readonly string[] | null;
       /** Licence-bound only. `null` when the licence row is gone (refused by the ladder). */
       readonly license: LicenseRow | null;
+      /** The token's scopes (`read`; `publish` and `read`, F-22). */
+      readonly scopes: readonly string[];
     }
   | {
       readonly kind: "ci";
       readonly product: string;
       readonly tokenId: string;
+      /** The CI token's scopes (`release:publish`, …): F-22 publishes only with `release:publish`. */
+      readonly scopes: readonly string[];
+      /** `oidc` (trusted publishing) or `static` (an operator-issued token). */
+      readonly ciKind: "oidc" | "static";
+      /** The CI token's subject, audited as `ci:<subject>` (`ciActor`). */
+      readonly subject: string;
     };
 
 interface CacheEntry {
@@ -607,6 +631,7 @@ async function resolveRow(
     presentation: row.presentation === "url" ? "url" : "header",
     ecosystems: parseList(row.ecosystems_json),
     license,
+    scopes: parseList(row.scopes_json) ?? [],
   };
 }
 
@@ -636,7 +661,14 @@ export async function lookupRegistryCredential(
   if (isCi) {
     const ci = await lookupCiToken(env, db, token, now);
     const value: ResolvedRegistryToken | null = ci
-      ? { kind: "ci", product: ci.product, tokenId: ci.tokenId }
+      ? {
+          kind: "ci",
+          product: ci.product,
+          tokenId: ci.tokenId,
+          scopes: ci.scopes,
+          ciKind: ci.kind,
+          subject: ci.subject,
+        }
       : null;
     return { resolved: remember(key, value, nowMs), miss: value === null };
   }
@@ -674,8 +706,13 @@ export async function lookupRegistrySubject(
   const hit = cached(key, nowMs);
   if (hit) return hit.value;
   if (subject.startsWith("ci:")) {
-    const row = await db.first<{ token_id: string }>(
-      `SELECT t.token_id FROM ci_tokens t JOIN products p ON p.slug = t.product
+    const row = await db.first<{
+      token_id: string;
+      scopes_json: string | null;
+      kind: string | null;
+      subject: string;
+    }>(
+      `SELECT t.token_id, t.scopes_json, t.kind, t.subject FROM ci_tokens t JOIN products p ON p.slug = t.product
         WHERE t.product = ? AND t.token_id = ? AND t.revoked_at IS NULL AND t.expires_at > ?
           AND COALESCE(p.status, 'active') <> 'deleted'`,
       product,
@@ -684,7 +721,16 @@ export async function lookupRegistrySubject(
     );
     return remember(
       key,
-      row ? { kind: "ci", product, tokenId: row.token_id } : null,
+      row
+        ? {
+            kind: "ci",
+            product,
+            tokenId: row.token_id,
+            scopes: parseList(row.scopes_json) ?? [],
+            ciKind: row.kind === "static" ? "static" : "oidc",
+            subject: row.subject,
+          }
+        : null,
       nowMs,
     );
   }

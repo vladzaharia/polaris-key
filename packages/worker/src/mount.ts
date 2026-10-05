@@ -26,7 +26,10 @@ import type {
 } from "./core/registryHost.js";
 import { licenseService } from "./services/license/index.js";
 import { configService } from "./services/config/index.js";
-import { releaseService } from "./services/release/index.js";
+import {
+  RELEASE_PUBLISH_ROUTES,
+  releaseService,
+} from "./services/release/index.js";
 import {
   DISTRIBUTION_BYTE_ROUTES,
   DISTRIBUTION_OWNERLESS_ROUTES,
@@ -71,13 +74,16 @@ export const BYTE_ROUTES: readonly ByteRoute[] = [
 /**
  * The registry-host allowlist (F-02, `core/registryHost.ts`, plans/F-01.md §6.1): the only routes
  * that can answer on `PKG_ORIGIN` (`pkg.plrs.im`), beside the host's landing page and OCI's
- * `/v2/` root. A route not listed here does not exist on that host. Every one is Distribution's
- * (`service: "distribution"`) and belongs to one ecosystem; F-04 to F-09 add theirs to
- * `DISTRIBUTION_REGISTRY_ROUTES`, and `test/routeCoverage.test.ts` checks this list against its
- * `REGISTRY_PATHS` table in both directions (rule 10).
+ * `/v2/` root. A route not listed here does not exist on that host. Each belongs to one
+ * ecosystem. The reads and credential routes are Distribution's (`service: "distribution"`;
+ * F-04 to F-09 add theirs to `DISTRIBUTION_REGISTRY_ROUTES`); the native publish routes (F-22:
+ * `npm publish`, twine, `swift package-registry publish`, Maven `PUT`s) are Release's
+ * (`service: "release"`), because a publish is Release's ingest. `test/routeCoverage.test.ts`
+ * checks this list against its `REGISTRY_PATHS` table in both directions (rule 10).
  */
 export const REGISTRY_ROUTES: readonly RegistryRoute[] = [
   ...DISTRIBUTION_REGISTRY_ROUTES,
+  ...RELEASE_PUBLISH_ROUTES,
 ];
 
 /**

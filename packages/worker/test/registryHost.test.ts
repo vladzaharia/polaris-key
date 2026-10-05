@@ -28,6 +28,7 @@ import {
   registryHostname,
   registryOrigin,
   FEED_AUTH_ROUTE,
+  FEED_PUBLISH_ROUTE,
   FEED_READ_ROUTE,
   type RegistryRoute,
 } from "../src/core/registryHost.js";
@@ -224,13 +225,14 @@ describe("registry host: configuration", () => {
     }
   });
 
-  it("every registry route is Distribution's, names a known live ecosystem and has a unique name", () => {
+  it("every registry route is Distribution's (Release's for a native publish), names a known live ecosystem and has a unique name", () => {
     // F-04 to F-09 add theirs; routeCoverage's REGISTRY_PATHS follows them (rule 10).
     expect(REGISTRY_ROUTES.length).toBeGreaterThan(0);
     const names = REGISTRY_ROUTES.map((r) => r.name);
     expect(new Set(names).size).toBe(names.length);
     for (const r of REGISTRY_ROUTES) {
-      expect(r.service).toBe("distribution");
+      // F-22: a publish is Release's ingest; every read and credential route is Distribution's.
+      expect(r.service).toBe(r[FEED_PUBLISH_ROUTE] ? "release" : "distribution");
       expect(REGISTRY_ECOSYSTEMS).toContain(r.ecosystem);
       expect(RESERVED_ECOSYSTEMS.has(r.ecosystem), r.name).toBe(false);
     }
@@ -431,8 +433,10 @@ describe("registry host: isolation", () => {
 describe("registry host: methods and CORS", () => {
   it("GET and HEAD only: any other method on a registry path is 405, with OCI's body under /v2/", async () => {
     for (const method of ["POST", "PUT", "PATCH", "DELETE", "OPTIONS"]) {
+      // A tarball path: F-22's `npm publish` route answers PUT on the packument path, and only
+      // there (`registryPublish.test.ts`); every other write on an npm path stays 405.
       const npm = await worker.fetch(
-        new Request(`${PKG}/npm/djdl/@djdl%2fsdk`, { method }),
+        new Request(`${PKG}/npm/djdl/@djdl%2fsdk/-/sdk-1.0.0.tgz`, { method }),
         env(PKG),
       );
       expect(npm.status, method).toBe(405);
@@ -592,13 +596,30 @@ describe("registry host: the access ladder cannot be skipped", () => {
     }
   });
 
-  it("the only non-read routes are F-21's credential routes: built by feedAuthRoute, POST only", () => {
+  it("the only non-read routes are F-21's credential routes (feedAuthRoute, POST) and F-22's publish routes (publishRoute)", () => {
     const others = REGISTRY_ROUTES.filter((r) => r.methods !== undefined);
-    expect(others.map((r) => r.name)).toEqual(["swift.login"]);
+    expect(others.map((r) => r.name).sort()).toEqual(
+      [
+        "swift.login",
+        "npm.publish",
+        "pypi.upload",
+        "swift.publish",
+        "maven.deploy",
+      ].sort(),
+    );
     for (const route of others) {
-      expect(route[FEED_AUTH_ROUTE], route.name).toBe(true);
       expect(route[FEED_READ_ROUTE], route.name).toBeUndefined();
-      expect(route.methods, route.name).toEqual(["POST"]);
+      if (route.name === "swift.login") {
+        expect(route[FEED_AUTH_ROUTE], route.name).toBe(true);
+        expect(route.methods, route.name).toEqual(["POST"]);
+        continue;
+      }
+      expect(route[FEED_PUBLISH_ROUTE], route.name).toBe(true);
+      expect(route[FEED_AUTH_ROUTE], route.name).toBeUndefined();
+      expect(route.service, route.name).toBe("release");
+      expect(route.methods, route.name).toEqual([
+        route.name === "pypi.upload" ? "POST" : "PUT",
+      ]);
     }
   });
 

@@ -18,12 +18,38 @@ export const REGISTRY_TOKEN_SHAPE = /^pkeyr_[A-Za-z0-9_-]{43,}$/;
 /** The username every client that needs one sends beside the token (Basic, docker login). */
 export const REGISTRY_TOKEN_USERNAME = "__token__";
 
-/** The scope vocabulary. `publish` is reserved for F-22 and F-23 and refused at mint until then. */
+/** The scope vocabulary. `publish` (F-22) implies `read` and is stored as both. */
 export const REGISTRY_TOKEN_SCOPES = ["read", "publish"] as const;
 export type RegistryTokenScope = (typeof REGISTRY_TOKEN_SCOPES)[number];
 
-/** The scopes a mint accepts today. */
-export const MINTABLE_REGISTRY_SCOPES: readonly RegistryTokenScope[] = ["read"];
+/** The scopes a mint accepts. */
+export const MINTABLE_REGISTRY_SCOPES: readonly RegistryTokenScope[] = [
+  "read",
+  "publish",
+];
+
+/**
+ * The ecosystems a native client can publish to (F-22): `npm publish`, `twine upload`,
+ * `swift package-registry publish` and Maven/Gradle `PUT`s. OCI pushes are F-23's and Godot has
+ * no publish protocol, so a publish token never names either.
+ */
+export const REGISTRY_PUBLISH_ECOSYSTEMS = [
+  "npm",
+  "pypi",
+  "swift",
+  "maven",
+] as const;
+export type RegistryPublishEcosystem =
+  (typeof REGISTRY_PUBLISH_ECOSYSTEMS)[number];
+
+/**
+ * A publish token's expiry, in days (F-22): short-lived on purpose, because a long-lived
+ * publish secret in CI is exactly what trusted publishing exists to avoid. CI should present
+ * the 30-minute `pkeyci_` that `pkey auth github-oidc` exchanges instead; a `pkeyr_` publish token
+ * is for an operator's own machine. Any increase is a THREAT-MODEL §9 review trigger.
+ */
+export const REGISTRY_PUBLISH_TOKEN_MAX_DAYS = 30;
+export const REGISTRY_PUBLISH_TOKEN_DEFAULT_DAYS = 7;
 
 /** How a token is presented: in `Authorization` (every client), or in the Godot editor's URL. */
 export type RegistryTokenPresentation = "header" | "url";

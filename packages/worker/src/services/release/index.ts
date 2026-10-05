@@ -23,6 +23,7 @@ import { getReleaseConfig } from "./config.js";
 import { bytesHostname } from "../../core/bytesHost.js";
 import { releaseCatalog } from "./catalog.js";
 import { releaseKeyFingerprints } from "./records.js";
+import { sweepNativeSessions } from "./packages/native/index.js";
 
 export const releaseService: ServiceDescriptor = {
   slug: "release",
@@ -34,6 +35,12 @@ export const releaseService: ServiceDescriptor = {
    * that Distribution and later consumers read through Core instead of importing this service.
    */
   releaseCatalog,
+  /**
+   * F-22: the connector cron's sweep of native-client upload sessions (twine and Maven send a
+   * version as several requests): publish the sessions left idle, fail the abandoned ones, purge
+   * finished rows (`packages/native/sessions.ts`). One indexed read for a product with none.
+   */
+  scheduled: async (ctx) => ({ nativeUploads: await sweepNativeSessions(ctx) }),
   /**
    * Release's slice of `/.well-known/polaris.json` (design spec §4.3).
    *
@@ -99,6 +106,12 @@ export const releaseService: ServiceDescriptor = {
 };
 
 // ── The service's public face ────────────────────────────────────────────────
+/** F-22: the native publish routes on the registry host (`mount.ts` adds them to
+ *  `REGISTRY_ROUTES`), and their OpenAPI rows (`routeCoverage`). */
+export {
+  NATIVE_PUBLISH_ROUTES as RELEASE_PUBLISH_ROUTES,
+  NATIVE_PUBLISH_OPENAPI as RELEASE_PUBLISH_OPENAPI,
+} from "./packages/native/index.js";
 export { handleRelease, type ReleaseSurfaceKind } from "./surfaces.js";
 export {
   accessModeFor,
