@@ -21,11 +21,11 @@ const INDEX = join(HERE, "INDEX.md");
 // (A-17a…g from notes/S-14 §10, A-18a…m from notes/S-15 §11, I-10a/b from notes/S-16 §8,
 // U-11a…c, U-15a…c and U-24a…b from notes/S-17 §6, ST-01a…c from notes/S-18 §6.2, LX-05b from
 // notes/S-19 §9). Settings architecture (phase ST, notes/S-18) and the licensing model (phase LX,
-// notes/S-19) use two-letter prefixes.
+// notes/S-19) use two-letter prefixes, as do hosted assets (phase HA, notes/S-20).
 // The customer portal (phase PX, docs/design/PORTAL.md §11) keeps the spec's own ids: PX-01…PX-22
 // for the front end and PX-W1…PX-W17 for the Worker additions.
 const ID_RE =
-  /^(?:(?:P0|P1|P1b|P2|P2b|P3|P4|P5|P6|X|S|D|F|A|I|U|ST|LX)-\d{2}[a-z]?|PX-(?:\d{2}|W\d{1,2}))$/;
+  /^(?:(?:P0|P1|P1b|P2|P2b|P3|P4|P5|P6|X|S|D|F|A|I|U|ST|LX|HA)-\d{2}[a-z]?|PX-(?:\d{2}|W\d{1,2}))$/;
 const DONE = new Set(["done", "dropped"]);
 
 const raw = readFileSync(GRAPH, "utf8");
@@ -194,7 +194,7 @@ const fmtEst = ([a, b]) => (a === b ? `${a}` : `${a}–${b}`);
 
 // The header rows every brief carries that are derived from the graph (kept in sync by --sync-briefs).
 const ID_IN_TEXT =
-  /\b(?:(?:P0|P1b|P1|P2b|P2|P3|P4|P5|P6|X|S|D|F|A|I|U|ST|LX)-\d{2}[a-z]?|PX-(?:\d{2}|W\d{1,2}))\b/g;
+  /\b(?:(?:P0|P1b|P1|P2b|P2|P3|P4|P5|P6|X|S|D|F|A|I|U|ST|LX|HA)-\d{2}[a-z]?|PX-(?:\d{2}|W\d{1,2}))\b/g;
 function dependantsOf() {
   const m = new Map(wps.map((w) => [w.id, []]));
   for (const w of wps) for (const d of w.deps) m.get(d)?.push(w.id);
