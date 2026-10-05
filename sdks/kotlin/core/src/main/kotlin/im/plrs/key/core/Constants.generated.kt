@@ -617,7 +617,7 @@ public val UNSUPPORTED_REASON_VALUES: List<String> = listOf(
     "version",
 )
 
-/** OS family, the canonical `X-PKey-Platform` value (README §3.1). iPadOS is `ios`. */
+/** OS family, the canonical `X-PKey-Platform` value (README §3.1). iPadOS is `ios`. `tvos`, `visionos` and `watchos` are header values only; build targets are `RELEASE_PLATFORMS` (WIRE-CONTRACT-V4 §5.2 rule 5). */
 public object Platform {
     public const val macos: String = "macos"
     public const val ios: String = "ios"
@@ -625,6 +625,9 @@ public object Platform {
     public const val windows: String = "windows"
     public const val linux: String = "linux"
     public const val web: String = "web"
+    public const val tvos: String = "tvos"
+    public const val visionos: String = "visionos"
+    public const val watchos: String = "watchos"
 }
 
 /** Every `Platform` value, in source order. */
@@ -635,6 +638,9 @@ public val PLATFORM_VALUES: List<String> = listOf(
     "windows",
     "linux",
     "web",
+    "tvos",
+    "visionos",
+    "watchos",
 )
 
 /** CPU architecture, the canonical `X-PKey-Arch` value (README §3.1). `universal` and `any` are artifact values, not header values, and are not listed. */
@@ -1272,6 +1278,9 @@ public val PLATFORM_SPELLINGS: Map<String, String> = mapOf(
     "linux" to "linux",
     "web" to "web",
     "browser" to "web",
+    "tvos" to "tvos",
+    "visionos" to "visionos",
+    "watchos" to "watchos",
 )
 
 /** One declared N/A: on `runtime`, the feature is unsupported for `reason`. */

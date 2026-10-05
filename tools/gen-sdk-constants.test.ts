@@ -108,6 +108,9 @@ describe("the sources", () => {
       "windows",
       "linux",
       "web",
+      "tvos",
+      "visionos",
+      "watchos",
     ]);
     expect(byName.arch).toEqual(["arm64", "x86_64", "armv7", "wasm32"]);
   });

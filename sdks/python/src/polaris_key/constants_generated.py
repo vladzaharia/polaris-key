@@ -744,7 +744,7 @@ UNSUPPORTED_REASON_VALUES: Tuple[str, ...] = (
 
 
 class Platform:
-    """OS family, the canonical `X-PKey-Platform` value (README §3.1). iPadOS is `ios`."""
+    """OS family, the canonical `X-PKey-Platform` value (README §3.1). iPadOS is `ios`. `tvos`, `visionos` and `watchos` are header values only; build targets are `RELEASE_PLATFORMS` (WIRE-CONTRACT-V4 §5.2 rule 5)."""
 
     MACOS: Final = "macos"
     IOS: Final = "ios"
@@ -752,6 +752,9 @@ class Platform:
     WINDOWS: Final = "windows"
     LINUX: Final = "linux"
     WEB: Final = "web"
+    TVOS: Final = "tvos"
+    VISIONOS: Final = "visionos"
+    WATCHOS: Final = "watchos"
 
 
 #: Every ``Platform`` value, in source order.
@@ -762,6 +765,9 @@ PLATFORM_VALUES: Tuple[str, ...] = (
     "windows",
     "linux",
     "web",
+    "tvos",
+    "visionos",
+    "watchos",
 )
 
 
@@ -1522,6 +1528,9 @@ PLATFORM_SPELLINGS: Mapping[str, str] = MappingProxyType(
         "linux": "linux",
         "web": "web",
         "browser": "web",
+        "tvos": "tvos",
+        "visionos": "visionos",
+        "watchos": "watchos",
     }
 )
 

@@ -615,7 +615,7 @@ public let UNSUPPORTED_REASON_VALUES: [String] = [
     "version",
 ]
 
-/// OS family, the canonical `X-PKey-Platform` value (README §3.1). iPadOS is `ios`.
+/// OS family, the canonical `X-PKey-Platform` value (README §3.1). iPadOS is `ios`. `tvos`, `visionos` and `watchos` are header values only; build targets are `RELEASE_PLATFORMS` (WIRE-CONTRACT-V4 §5.2 rule 5).
 public enum Platform {
     public static let macos = "macos"
     public static let ios = "ios"
@@ -623,6 +623,9 @@ public enum Platform {
     public static let windows = "windows"
     public static let linux = "linux"
     public static let web = "web"
+    public static let tvos = "tvos"
+    public static let visionos = "visionos"
+    public static let watchos = "watchos"
 }
 
 /// Every `Platform` value, in source order.
@@ -633,6 +636,9 @@ public let PLATFORM_VALUES: [String] = [
     "windows",
     "linux",
     "web",
+    "tvos",
+    "visionos",
+    "watchos",
 ]
 
 /// CPU architecture, the canonical `X-PKey-Arch` value (README §3.1). `universal` and `any` are artifact values, not header values, and are not listed.
@@ -1232,6 +1238,9 @@ public let PLATFORM_SPELLINGS: [String: String] = [
     "linux": "linux",
     "web": "web",
     "browser": "web",
+    "tvos": "tvos",
+    "visionos": "visionos",
+    "watchos": "watchos",
 ]
 
 /// One declared N/A: on `runtime`, the feature is unsupported for `reason`.

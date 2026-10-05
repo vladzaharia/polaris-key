@@ -69,6 +69,9 @@ describe("@polaris-key/protocol layout", () => {
       linux: "linux",
       web: "web",
       browser: "web",
+      tvos: "tvos",
+      visionos: "visionos",
+      watchos: "watchos",
     });
     expect(core.ARCH_SPELLINGS).toEqual({
       arm64: "arm64",

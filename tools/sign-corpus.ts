@@ -4812,17 +4812,17 @@ const PLATFORM_CASES: HeaderCase[] = [
     expect: null,
   },
   {
-    id: "swift-visionos",
+    id: "swift-godot-visionos",
     description:
-      "Swift's os(visionOS): no value until a spelling and a case add one.",
+      "Swift's os(visionOS) and Godot OS.get_name() on visionOS (headersVersion 2: no value before).",
     raw: "visionOS",
-    expect: null,
+    expect: "visionos",
   },
   {
     id: "swift-tvos",
-    description: "Swift's os(tvOS): no value.",
+    description: "Swift's os(tvOS) (headersVersion 2: no value before).",
     raw: "tvOS",
-    expect: null,
+    expect: "tvos",
   },
   {
     id: "swift-legacy-unknown",
@@ -4854,6 +4854,30 @@ const PLATFORM_CASES: HeaderCase[] = [
     description: "The lookup reads the table's own entries only.",
     raw: "__proto__",
     expect: null,
+  },
+  {
+    id: "canonical-tvos",
+    description: "The canonical value maps to itself.",
+    raw: "tvos",
+    expect: "tvos",
+  },
+  {
+    id: "canonical-visionos",
+    description: "The canonical value maps to itself.",
+    raw: "visionos",
+    expect: "visionos",
+  },
+  {
+    id: "canonical-watchos",
+    description: "The canonical value maps to itself.",
+    raw: "watchos",
+    expect: "watchos",
+  },
+  {
+    id: "swift-watchos",
+    description: "Swift's os(watchOS) token.",
+    raw: "watchOS",
+    expect: "watchos",
   },
 ];
 
@@ -5120,7 +5144,7 @@ function buildHeadersCorpus(): unknown {
   );
   checkHeaderSection("archCases", ARCH_CASES, readParityEnum("arch"));
   return {
-    headersVersion: 1,
+    headersVersion: 2,
     description:
       "Client metadata header values (WIRE-CONTRACT-V3 §5.2). Each row is one spelling an OS or runtime reports (`raw`) and its canonical `X-PKey-Platform` (`platformCases`) or `X-PKey-Arch` (`archCases`) value. A runner looks `raw` up after ASCII case folding (A-Z only, never a locale-dependent lowercase), with no trimming, reading the table's own entries only. `expect: null` means the spelling has no value: an SDK omits the header rather than inventing one, and the Worker stores `raw` as sent (nothing, for an empty `raw`). The rows are the tables: `PLATFORM_SPELLINGS` and `ARCH_SPELLINGS` (`@polaris-key/protocol/core`, generated into every SDK) hold exactly the folded `raw` of the non-null rows, and every runner asserts that its table equals the map derived from them. Append-only: a new spelling (a row plus a table entry) keeps `headersVersion`; a changed row, or a change to folding or lookup, bumps it.",
     platformCases: PLATFORM_CASES,
