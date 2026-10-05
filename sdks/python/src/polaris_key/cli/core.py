@@ -90,9 +90,12 @@ KEY_ENV_VAR = "POLARIS_KEY_ACTIVATION_KEY"
 #: The verb → owning-service grouping the three adapters render in their help output.
 SERVICE_COMMANDS: Dict[str, tuple] = {
     "license": ("activate", "enroll", "deactivate", "status"),
-    "devices": ("register",),
-    "config": ("config",),
-    "core": ("import-bundle",),
+    "identity": ("sign-in", "sign-out"),
+    "devices": ("register", "devices"),
+    "config": ("config", "secret", "mint"),
+    "release": ("changelog",),
+    "update": ("update", "packs"),
+    "core": ("import-bundle", "offline-request", "boot", "doctor"),
 }
 
 
