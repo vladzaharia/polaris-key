@@ -204,6 +204,12 @@ the [App Store Connect connector](/docs/services/distribution/app-store-connect/
 [Google Play connector](/docs/services/distribution/google-play/) and the read-only
 [Microsoft Store connector](/docs/services/distribution/microsoft-store/).
 
+## The shared listing
+
+A product's store listing is kept once, in Distribution, and projected to every store's limits:
+see [Storefront listing](/docs/admin/storefront-listing/). The AltStore and Obtainium feeds read it,
+falling back to `.pkey/distribution` `listing` field by field.
+
 ## Vocabulary
 
 Distribution's nouns — **outlet**, **transport**, **availability**, **submission**, **rollout**,

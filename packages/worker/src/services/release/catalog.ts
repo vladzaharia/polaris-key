@@ -193,6 +193,29 @@ export function releaseCatalog(ctx: HookContext): ReleaseCatalog {
         : null;
     },
 
+    async releaseNotes(releaseId: string) {
+      const r = await db.first<{
+        release_id: string;
+        version: string;
+        title: string | null;
+        notes: string | null;
+      }>(
+        `SELECT m.release_id, m.version, m.title, m.notes
+           FROM release_metadata m
+          WHERE m.product = ? AND m.release_id = ? AND ${notPackageReleaseSql("m")}`,
+        slug,
+        releaseId,
+      );
+      return r
+        ? {
+            releaseId: r.release_id,
+            version: r.version,
+            title: r.title,
+            notes: r.notes,
+          }
+        : null;
+    },
+
     async builds(releaseId: string): Promise<CatalogBuild[]> {
       return (await listBuilds(db, slug, releaseId)).map(buildRecord);
     },

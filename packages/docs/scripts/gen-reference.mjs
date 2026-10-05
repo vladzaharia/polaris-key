@@ -404,6 +404,11 @@ const TABLE_OWNERS = {
     "dist_registry_owners",
     "dist_registry_feeds",
     "dist_registry_policy",
+    "dist_listings",
+    "dist_listing_locales",
+    "dist_listing_assets",
+    "dist_listing_release_notes",
+    "dist_listing_overrides",
   ],
   update: ["update_feed_state", "update_feed_ceiling", "update_feed_docs"],
   identity: [

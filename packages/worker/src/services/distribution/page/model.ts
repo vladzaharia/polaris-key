@@ -324,8 +324,9 @@ function stripComments(s: string): string {
 
 /** Light Markdown stripped to plain text. Every pattern here is linear in its input: no nested
  *  or adjacent unbounded quantifiers over overlapping classes, and line-start patterns match
- *  only spaces and tabs (a `\s` there would cross newlines and go quadratic). */
-function stripMarkdown(s: string): string {
+ *  only spaces and tabs (a `\s` there would cross newlines and go quadratic). Also the listing
+ *  model's store-notes default (A-18b, `listing/notes.ts`). */
+export function stripMarkdown(s: string): string {
   return stripComments(s)
     .replace(/\[([^\]\n]{1,200})\]\([^)\n]{0,500}\)/g, "$1")
     .replace(/[*_`]+/g, "")

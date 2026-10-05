@@ -20,6 +20,7 @@ import {
   withFetch,
   APPLE_ID,
   NOW,
+  SLUG,
   type AscWorld,
 } from "./ascWorld.js";
 
@@ -715,6 +716,123 @@ describe("the App Store version", () => {
     expect(tooLong.status).toBe(422);
   });
 
+  it("A-18b: given a releaseId, What's New and promotional text default from the shared listing model", async () => {
+    const w = await world();
+    preparedVersion(w);
+    await w.db.run(
+      `INSERT INTO release_metadata
+         (product, release_id, version, notes, published_at, created_at, modified_at, deliverable_id, seq, channel)
+       VALUES (?, 'listing-1.2.0', '1.2.0-listing', ?, ?, ?, ?, 'app', 9001, 'stable')`,
+      SLUG,
+      "## New\n\n- **Bosses** arrive.",
+      NOW,
+      NOW,
+      NOW,
+    );
+    // No model and no stored notes: the default is the release notes, Markdown stripped.
+    const a = await post(w, "distribute/version-localization", {
+      versionId: "asv-120",
+      locale: "en-US",
+      releaseId: "listing-1.2.0",
+    });
+    expect(a.status, JSON.stringify(a.json)).toBe(200);
+    // Stored per-locale notes and the model's promotional text win over the default.
+    await w.db.run(
+      `INSERT INTO dist_listings (product, default_locale, source, created_at, modified_at, modified_by)
+       VALUES (?, 'en-US', 'admin', ?, ?, 'u1')`,
+      SLUG,
+      NOW,
+      NOW,
+    );
+    await w.db.run(
+      `INSERT INTO dist_listing_locales (product, locale, promotional_text, source, modified_at, modified_by)
+       VALUES (?, 'en-US', 'Now with bosses', 'admin', ?, 'u1')`,
+      SLUG,
+      NOW,
+    );
+    await w.db.run(
+      `INSERT INTO dist_listing_release_notes (product, release_id, locale, text, source, modified_at, modified_by)
+       VALUES (?, 'listing-1.2.0', 'en-US', 'Bosses arrive, edited.', 'admin', ?, 'u1')`,
+      SLUG,
+      NOW,
+    );
+    const b = await post(w, "distribute/version-localization", {
+      versionId: "asv-120",
+      locale: "en-US",
+      releaseId: "listing-1.2.0",
+    });
+    expect(b.status, JSON.stringify(b.json)).toBe(200);
+    // What the request carries still wins.
+    const c = await post(w, "distribute/version-localization", {
+      versionId: "asv-120",
+      locale: "en-US",
+      releaseId: "listing-1.2.0",
+      whatsNew: "Typed here",
+    });
+    expect(c.status).toBe(200);
+    expect(
+      writes(w).map((q) => [
+        q.method,
+        (q.body as { data: { attributes: unknown } }).data.attributes,
+      ]),
+    ).toEqual([
+      ["POST", { locale: "en-US", whatsNew: "New\n\nBosses arrive." }],
+      [
+        "PATCH",
+        {
+          whatsNew: "Bosses arrive, edited.",
+          promotionalText: "Now with bosses",
+        },
+      ],
+      // The request's whatsNew; the promotional text still defaults from the model.
+      ["PATCH", { whatsNew: "Typed here", promotionalText: "Now with bosses" }],
+    ]);
+  });
+
+  it("A-18b: a listing value over Apple's limit is refused, never cut; an unknown release is refused", async () => {
+    const w = await world();
+    preparedVersion(w);
+    await w.db.run(
+      `INSERT INTO dist_listings (product, default_locale, source, created_at, modified_at, modified_by)
+       VALUES (?, 'en-US', 'admin', ?, ?, 'u1')`,
+      SLUG,
+      NOW,
+      NOW,
+    );
+    await w.db.run(
+      `INSERT INTO dist_listing_overrides (product, store, locale, field, value_json, source, modified_at, modified_by)
+       VALUES (?, 'app-store', '', 'promotionalText', ?, 'admin', ?, 'u1')`,
+      SLUG,
+      JSON.stringify("p".repeat(171)),
+      NOW,
+    );
+    await w.db.run(
+      `INSERT INTO release_metadata
+         (product, release_id, version, notes, published_at, created_at, modified_at, deliverable_id, seq, channel)
+       VALUES (?, 'listing-1.3.0', '1.3.0-listing', 'Fine.', ?, ?, ?, 'app', 9002, 'stable')`,
+      SLUG,
+      NOW,
+      NOW,
+      NOW,
+    );
+    const over = await post(w, "distribute/version-localization", {
+      versionId: "asv-120",
+      locale: "en-US",
+      releaseId: "listing-1.3.0",
+    });
+    expect(over.status).toBe(422);
+    expect(over.json).toMatchObject({ reason: "listing_does_not_fit" });
+    expect(String(over.json.message)).toContain("171");
+    const unknown = await post(w, "distribute/version-localization", {
+      versionId: "asv-120",
+      locale: "en-US",
+      releaseId: "nope",
+    });
+    expect(unknown.status).toBe(422);
+    expect(unknown.json).toMatchObject({ reason: "unknown_release" });
+    expect(writes(w)).toEqual([]);
+  });
+
   it("lists versions and the live review submissions", async () => {
     const w = await world();
     preparedVersion(w);
@@ -1026,6 +1144,8 @@ describe("preflight", () => {
     expect(checks.price).toMatchObject({ ok: true });
     expect(checks.availability).toMatchObject({ ok: false });
     expect(checks.appPrivacy).toMatchObject({ ok: null });
+    // A-18b: no shared listing yet, so its Apple fit is not graded.
+    expect(checks.listingFit).toMatchObject({ ok: null });
     expect(r.json.ready).toBe(false);
     const text = JSON.stringify(r.json);
     for (const secret of [
@@ -1035,6 +1155,31 @@ describe("preflight", () => {
       "Lovelace",
     ])
       expect(text).not.toContain(secret);
+    expect(writes(w)).toEqual([]);
+  });
+
+  it("A-18b: shows the shared listing's Apple fit report, advisory (it never blocks ready)", async () => {
+    const w = await world();
+    preparedVersion(w);
+    await w.db.run(
+      `INSERT INTO dist_listings (product, default_locale, name, source, created_at, modified_at, modified_by)
+       VALUES (?, 'en-US', 'Diceroll', 'admin', ?, ?, 'u1')`,
+      SLUG,
+      NOW,
+      NOW,
+    );
+    const r = await get(w, "distribute/preflight?versionId=asv-120");
+    expect(r.status).toBe(200);
+    const fit = (
+      r.json.checks as { id: string; ok: unknown; missing?: string[] }[]
+    ).find((c) => c.id === "listingFit")!;
+    expect(fit.ok).toBe(false);
+    expect(fit.missing).toEqual(
+      expect.arrayContaining([
+        "description (en-US): missing",
+        "supportUrl (en-US): missing",
+      ]),
+    );
     expect(writes(w)).toEqual([]);
   });
 
