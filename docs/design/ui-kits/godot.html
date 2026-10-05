@@ -8,8 +8,9 @@
     <style>
       /* 1280 × 720 game viewport (and 1280 × 800 Steam Deck). Games default to the dark scheme
          (theme.colorScheme "dark" for Godot); light is opt-in and shown for parity.
-         Drift Kart's accent #ff6a3d is light, so the resolver keeps the orange solid and flips
-         its label to ink in both schemes rather than darkening it to brick. */
+         Drift Kart's accent #ff6a3d is light, so the resolver keeps the orange and flips its label
+         to ink in both schemes rather than darkening it to brick; in light it deepens the solid
+         only to #ec592a, the least move that clears 3:1 on white (resolver output, §3.3). */
       .shot {
         width: 1280px;
         height: 720px;
@@ -21,19 +22,20 @@
         line-height: 26px;
         color: var(--pk-text-default);
         --kit-accent: #ff6a3d;
-        --kit-accent-on: #1a0b06;
-        --kit-accent-fg: #ff8a63;
-        --kit-accent-subtle: rgb(255 106 61 / 0.16);
-        --kit-focus: #ff8a63;
+        --kit-accent-on: #060912;
+        --kit-accent-fg: #ff987a;
+        --kit-accent-subtle: #241517;
+        --kit-focus: #ff987a;
         --g-glass: rgb(14 12 24 / 0.8);
         --g-tonal: rgb(255 255 255 / 0.1);
         --g-tonal-2: rgb(255 255 255 / 0.06);
         --g-scrim: rgb(0 0 0 / 0.42);
       }
       [data-theme="light"] .shot {
-        --kit-accent-fg: #c2410c;
-        --kit-focus: #e8551f;
-        --kit-accent-subtle: rgb(255 106 61 / 0.14);
+        --kit-accent: #ec592a;
+        --kit-accent-fg: #b73500;
+        --kit-focus: #ec592a;
+        --kit-accent-subtle: #f5e8ea;
         --g-glass: rgb(255 255 255 / 0.86);
         --g-tonal: rgb(6 9 18 / 0.07);
         --g-tonal-2: rgb(6 9 18 / 0.04);

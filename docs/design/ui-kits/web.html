@@ -499,15 +499,16 @@
       .mini .k-field .mono {
         font-size: 13px;
       }
+      /* accent: "core", resolved (§3.3): #9a5cff in dark, #7a2fff in light. */
       .p-core {
-        --kit-accent: #7a3df0;
-        --kit-accent-fg: #b688fe;
-        --kit-accent-subtle: #18132e;
-        --kit-focus: #9a5cff;
+        --kit-accent: #9051f3;
+        --kit-accent-fg: #c0a6ff;
+        --kit-accent-subtle: #17122d;
+        --kit-focus: #c0a6ff;
       }
       [data-theme="light"] .p-core {
         --kit-accent: #7a2fff;
-        --kit-accent-fg: #6a1fef;
+        --kit-accent-fg: #7321f6;
         --kit-accent-subtle: #eae4ff;
         --kit-focus: #7a2fff;
       }
@@ -534,10 +535,11 @@
           sans-serif;
         accent-color: #ea580c;
         --pk-font-sans: inherit;
-        --kit-accent: #c2410c;
-        --kit-accent-fg: #fb923c;
-        --kit-focus: #ea580c;
-        --kit-accent-subtle: #2a160b;
+        /* The host's accent-color, resolved for contrast (§3.3). */
+        --kit-accent: #cf4b00;
+        --kit-accent-fg: #ff9972;
+        --kit-focus: #ff9972;
+        --kit-accent-subtle: #1e1110;
         --kit-radius-card: 8px;
         --kit-radius-control: 6px;
         --kit-fill: Canvas;
@@ -547,7 +549,9 @@
         --kit-hairline: color-mix(in srgb, CanvasText 18%, Canvas);
       }
       [data-theme="light"] .p-native {
-        --kit-accent-fg: #c2410c;
+        --kit-accent-fg: #b03e00;
+        --kit-focus: #cf4b00;
+        --kit-accent-subtle: #f2e7e6;
         --pk-surface-raised: Canvas;
         --kit-fill: color-mix(in srgb, Canvas 96%, CanvasText);
       }

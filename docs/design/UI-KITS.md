@@ -367,25 +367,35 @@ inset, minimum 8.
 
 **New targets:**
 
-| Target                  | File (generated)                                                                             | Consumer                                                |
-| ----------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| CSS (exists) + kit vars | `packages/brand/css/kit.css` (`--pk-kit-*`)                                                  | React, elements, Vue, Svelte, Angular, Electron, Tauri  |
-| JS objects              | `packages/brand/src/generated/kit.ts`                                                        | ui-core theme resolver, React Native                    |
-| Swift (exists) + kit    | `sdks/swift/Sources/PolarisKeyUI/BrandTokens.generated.swift` + `KitTokens.generated.swift`  | SwiftUI, UIKit, AppKit                                  |
-| Kotlin (exists) + kit   | `sdks/kotlin/ui/src/commonMain/.../PolarisKitTokens.generated.kt`                            | Compose (all targets), Views interop                    |
-| Godot (exists) + themes | `PKeyBrand` + `pkey_brand_{dark,light}.tres` + `ui/theme/icons/*.svg` (engine control icons) | Godot kit                                               |
-| **Python (new)**        | `sdks/python/src/polaris_key/ui/_tokens.py`, Qt Quick `Theme.qml` + QSS                      | Qt, rich/Textual                                        |
-| **Terminal (new)**      | `packages/sdk-node/src/cli/tokens.generated.ts`, `polaris_key/ui/ansi.py`                    | Node and Python CLIs (ANSI-16 roles + truecolor accent) |
-| **C# (new)**            | `sdks/godot/addons/polaris_key/dotnet/PKeyBrand.generated.cs`                                | Godot .NET facade                                       |
+| Target                  | File (generated)                                                                            | Consumer                                                |
+| ----------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| CSS (exists) + kit vars | `packages/brand/css/kit.css` (`--pk-kit-*`)                                                 | React, elements, Vue, Svelte, Angular, Electron, Tauri  |
+| JS objects              | `packages/brand/src/generated/kit.ts`                                                       | ui-core theme resolver, React Native                    |
+| Swift (exists) + kit    | `sdks/swift/Sources/PolarisKeyUI/BrandTokens.generated.swift` + `KitTokens.generated.swift` | SwiftUI, UIKit, AppKit                                  |
+| Kotlin (exists) + kit   | `sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/brand/PolarisKitTokens.generated.kt` (¹)     | Compose (all targets), Views interop                    |
+| Godot (exists) + themes | `PKeyBrand` + `PKeyKitTokens` + `PKeyKitIcons` (engine control icons) (²)                   | Godot kit                                               |
+| **Python (new)**        | `sdks/python/src/polaris_key/ui/_tokens.py`, `ui/qt/Theme.qml` + `qmldir` + QSS per scheme  | Qt, rich/Textual                                        |
+| **Terminal (new)**      | `packages/sdk-node/src/cli/tokens.generated.ts`, `polaris_key/ui/ansi.py`                   | Node and Python CLIs (ANSI-16 roles + truecolor accent) |
+| **C# (new)**            | `sdks/godot/addons/polaris_key/dotnet/PKeyBrand.generated.cs`                               | Godot .NET facade                                       |
+
+(¹) The Compose kit is an Android library module today (`src/main`); the file moves to
+`commonMain` when UK-09/UK-10 make it Kotlin Multiplatform. (²) `pkey_brand_{dark,light}.tres`
+stay Godot-saved resources written by `tools/gen_theme.gd` from `PKeyUiTheme` and drift-checked by
+the `brand` suite; the engine control icons are SVG templates in `kit_icons_generated.gd`
+(rasterised at run time) rather than imported `.svg` files, because an import's parameters differ
+between engine versions. UK-01 implemented this table (2026-10-05); the design source is
+`packages/brand/src/tokens/{kit,terminal}.ts` and the renderers are `scripts/gen-kit.ts`.
 
 **Fonts per platform.** Rubik ships as a **variable font** (wght 300–900; about 35 KB as latin
 WOFF2), replacing today's 400 and 700 statics, which forced every non-body string to Bold. The
 kits also ship one **kit mono**, JetBrains Mono (OFL, 400–600 variable, latin, about 31 KB), as
 `--pk-font-mono` for keys, user codes and hashes, so a key looks the same on every OS.
 
-- Formats: WOFF2 for the web, TTFs for Swift, Compose Resources fonts for KMP (moving from
-  Android `R.font`), Godot `FontFile`s (MSDF, so focus scaling stays sharp), and TTFs with
-  `OFL.txt` in the Python wheel (`polaris_key/ui/fonts/`).
+- Formats: WOFF2 for the web (`packages/brand/fonts/`, with the unmodified variable TTFs in
+  `fonts/ttf/`), TTFs for Swift, Android resource fonts for Compose (Compose Resources once the kit
+  is KMP), Godot `FontFile`s (MSDF, so focus scaling stays sharp), and TTFs with the OFL texts in
+  the Python wheel (`polaris_key/ui/fonts/`). The SDKs keep the static 400/700 copies beside the
+  variable ones until each kit's typography moves over (UK-07, UK-09, UK-11).
 - Every web kit **loads its fonts itself** (an `@font-face` in the elements stylesheet and
   `@polaris-key/react/styles.css`), with `size-adjust` and `ascent-override` fallback faces so a
   host page does not shift when Rubik arrives (RE).
@@ -470,17 +480,38 @@ The focus ring takes the resolved accent (one learnable focus signal within the 
 colours never change with the accent; the danger `solid` behind white labels follows the same
 white-first rule.
 
-| Vector (input → scheme)      | `solid`               | `on`  | `fg`      | `subtle`  |
-| ---------------------------- | --------------------- | ----- | --------- | --------- |
-| Tidewater icon teal → dark   | `#0f8075`             | white | `#4fd8c4` | `#0c2628` |
-| Tidewater icon teal → light  | `#0d7268`             | white | `#0b6b62` | `#dff2ef` |
-| Core violet → dark           | `#7a3df0`             | white | `#b688fe` | `#18132e` |
-| Core violet → light          | `#7a2fff`             | white | `#6a1fef` | `#eae4ff` |
-| Drift Kart `#ff6a3d` → dark  | `#ff6a3d`             | ink   | `#ff8a63` | 16 % tint |
-| Drift Kart `#ff6a3d` → light | `#ff6a3d`             | ink   | `#c2410c` | 14 % tint |
-| Danger → dark / light        | `#c83b2c` / `#be2323` | white | token     | token     |
+| Vector (input → scheme)              | `solid`               | `on`  | `fg`      | `subtle`  |
+| ------------------------------------ | --------------------- | ----- | --------- | --------- |
+| Tidewater icon teal `#369186` → dark | `#26847a`             | white | `#72cabe` | `#0a181e` |
+| Tidewater icon teal → light          | `#26847a`             | white | `#14796f` | `#e1ecf2` |
+| Core violet `#9a5cff` → dark         | `#9051f3`             | white | `#c0a6ff` | `#17122d` |
+| Core violet `#7a2fff` → light        | `#7a2fff`             | white | `#7321f6` | `#eae4ff` |
+| Drift Kart `#ff6a3d` → dark          | `#ff6a3d`             | ink   | `#ff987a` | `#241517` |
+| Drift Kart `#ff6a3d` → light         | `#ec592a`             | ink   | `#b73500` | `#f5e8ea` |
+| Danger → dark / light                | `#db3a2b` / `#be2323` | white | token     | token     |
 
 A pinned test asserts that `on` is the same colour in both schemes for every vector.
+
+**As implemented (UK-01, 2026-10-05).** `packages/brand/src/accent.ts` is the reference; the
+Swift (`PolarisAccent`), Kotlin (`PolarisAccent`), GDScript (`PKeyAccent`) and Python
+(`polaris_key.ui.accent`) ports reproduce every vector in `packages/brand/fixtures/accent-vectors.json`
+exactly (generated by `pnpm gen:brand` from `src/tokens/accent-vectors.ts`, with the spec rows
+above plus edge cases). The table above is the resolver's output; the first draft's values were
+hand-tuned mockup colours and were replaced by it. The rules the draft left open are fixed as:
+
+- **deriveAccent:** opaque means alpha ≥ 128; a pixel is grey below OKLCH chroma 0.04; clusters are
+  30° hue bins; a cluster must cover ≥ 8 % of the opaque pixels; the highest mean chroma wins (ties:
+  the larger cluster, then the lower hue); the answer is the cluster's mean OKLab colour with its
+  lightness clamped to 0.45–0.60 (an icon colour is art, the accent is UI).
+- **solid:** white label → the smallest darkening that gives white 4.5:1, then (dark schemes only)
+  the smallest lift that clears 3:1 on every surface; ink label → the smallest lightening that
+  gives ink 4.5:1, then (light schemes only) the smallest darkening that clears 3:1 on every surface.
+  This is why Drift Kart's light solid is `#ec592a`, not the raw `#ff6a3d` (2.9:1 on white).
+- **fg:** from the input at lightness ≥ 0.78 (dark) or ≤ 0.52 (light), moved until it clears 4.5:1
+  on every surface. **subtle:** `solid` at 12 % (dark) or 10 % (light) over the page, flattened,
+  like the section accents. **focus:** `fg` in dark, `solid` in light.
+- Every search is a 32-step bisection on lightness, compared on the rounded hex, so the ports agree
+  bit for bit.
 
 ### 3.4 The `native` preset
 
