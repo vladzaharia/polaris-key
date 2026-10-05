@@ -425,7 +425,7 @@
         }
       ],
       "allowedNa": [],
-      "note": "Proven by activate-refusals.json (enroll_claimed, license_disabled, license_expired, hardware_mismatch, attestation_required, rate_limited), recorded beside activate-enroll-deactivate.json so the SDKs that implement license.activate keep replaying that one unchanged (plans/SP-00.md D2; SDK-PARITY-PASS §3.1)."
+      "note": "Proven by activate-refusals.json (enroll_claimed, license_disabled, an expired licence's key, hardware_mismatch, rate_limited, each with today's server body: the Worker answers an expired licence with 401 unauthorized and a rate limit without Retry-After, and activation is not a trust operation, so attestation_required has no step; see packages/worker/test/transcripts/format.ts), recorded beside activate-enroll-deactivate.json so the SDKs that implement license.activate keep replaying that one unchanged (plans/SP-00.md D2; SDK-PARITY-PASS §3.1)."
     },
     {
       "id": "config.resolve",
@@ -1701,7 +1701,7 @@
         }
       ],
       "allowedNa": [],
-      "note": "Proven by boot-cold-register.json, a cold boot with open registration, and the stage-matrix.json outcomes (SDK-PARITY-PASS §3.4)."
+      "note": "Proven by boot-cold-register.json, a cold boot with open registration (which exists only with License off, so it ends ready at not-applicable), and the stage-matrix.json outcomes (SDK-PARITY-PASS §3.4)."
     },
     {
       "id": "ui.kit",
