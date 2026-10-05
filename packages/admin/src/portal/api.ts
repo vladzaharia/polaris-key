@@ -379,6 +379,49 @@ export interface PortalKeyPreview {
   maskedEmail?: string;
 }
 
+// ── Discover (PX-W10; G24, G25) ─────────────────────────────────────────────────────────────
+
+/**
+ * Why the account can add a product (owner decision Q-6: always shown). An open set: today
+ * `free_with_account` or `group:<group>`; later policies add their own codes, which the page
+ * words generically until it knows them.
+ */
+export type PortalDiscoverReason = string;
+
+/** What adding the product would give the account, from the same policy as the claim. */
+export interface PortalDiscoverTerms {
+  tier: string | null;
+  tierLabel: string | null;
+  deviceLimit: number;
+  /** The expiry a licence minted now would carry; `null` = never expires. */
+  expiresAt: number | null;
+  /** The tier's policy length in days (`null` = lifetime). */
+  expiryDays: number | null;
+}
+
+/** One offer of `GET /api/discover`. */
+export interface PortalDiscoverOffer extends PortalPresentation {
+  product: string;
+  platforms: string[];
+  offer: PortalDiscoverTerms;
+  reason: PortalDiscoverReason;
+}
+
+/** `POST /api/discover/<p>/claim`: the licence, new (`added`) or already held. */
+export interface PortalDiscoverClaim {
+  added: boolean;
+  product: string;
+  license: {
+    id: string;
+    tier: string | null;
+    tierLabel: string | null;
+    status: string;
+    usable: boolean;
+    expiresAt: number | null;
+    deviceLimit: number;
+  };
+}
+
 export class PortalApiError extends Error {
   constructor(
     public readonly status: number,
@@ -469,6 +512,12 @@ export const portalApi = {
       { method: "DELETE" },
     ),
   library: () => call<PortalLibrary>("/api/library"),
+  discover: () => call<{ offers: PortalDiscoverOffer[] }>("/api/discover"),
+  /** "Add to library" (G25): mints through the auto-issue path; idempotent per product. */
+  claimDiscover: (product: string) =>
+    call<PortalDiscoverClaim>(`/api/discover/${enc(product)}/claim`, {
+      method: "POST",
+    }),
   product: (product: string) =>
     call<PortalProduct>(`/api/products/${enc(product)}`),
   downloads: (product: string) =>

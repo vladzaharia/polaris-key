@@ -161,7 +161,10 @@ const SCREENS: {
     name: "library-empty",
     scenario: "empty",
     path: "/",
-    ready: (p) => h1(p, "Your library"),
+    ready: async (p) => {
+      await h1(p, "Your library");
+      await p.getByRole("region", { name: /Ready to add/ }).waitFor();
+    },
   },
   {
     name: "library-1",
@@ -228,10 +231,36 @@ const SCREENS: {
     ready: (p) => h1(p, "Download Nightfall for Linux"),
   },
   {
-    name: "discover-empty",
+    name: "discover",
     scenario: "three",
     path: "/#/discover",
-    ready: (p) => h1(p, "Nothing to add right now"),
+    ready: async (p) => {
+      await h1(p, "Discover");
+      await p.getByRole("article", { name: "Pixel Forge SDK" }).waitFor();
+    },
+  },
+  {
+    name: "discover-added",
+    scenario: "three",
+    path: "/#/discover",
+    ready: async (p) => {
+      await h1(p, "Discover");
+      await p
+        .getByRole("button", { name: "Add to library: Mossgarden" })
+        .click();
+      await p.getByRole("link", { name: "Open Mossgarden" }).waitFor();
+    },
+  },
+  {
+    name: "discover-empty",
+    scenario: "twelve",
+    path: "/#/discover",
+    ready: async (p) => {
+      await h1(p, "Discover");
+      await p
+        .getByRole("heading", { level: 2, name: "Nothing to add right now" })
+        .waitFor();
+    },
   },
 ];
 
@@ -288,6 +317,39 @@ describe("Library on GET /api/library (PX-08)", () => {
       .getByRole("navigation", { name: "Main" })
       .getByRole("link", { name: /Discover/ })
       .waitFor();
+    expect(await o.violations()).toEqual([]);
+    await o.page.context().close();
+  });
+});
+
+describe("Discover (PX-16)", () => {
+  it("adds a product once on a double click and keeps the state after a reload", async () => {
+    const o = await open("three", "/#/discover");
+    await h1(o.page, "Discover");
+    await o.page
+      .getByRole("button", { name: "Add to library: Mossgarden" })
+      .dblclick();
+    await o.page.getByRole("link", { name: "Open Mossgarden" }).waitFor();
+    expect(
+      o.requests.filter((r) => r.startsWith("POST /api/discover/")),
+    ).toEqual(["POST /api/discover/mossgarden/claim"]);
+    await o.page.getByText("Mossgarden is in your library").waitFor();
+    expect(new URL(o.page.url()).hash).toBe("#/discover?added=mossgarden");
+    const nav = o.page.getByRole("navigation", { name: "Main" });
+    await expect
+      .poll(() => nav.getByRole("link", { name: /Discover/ }).textContent())
+      .toBe("Discover3");
+    await o.page.reload();
+    const tile = o.page.getByRole("article", { name: "Mossgarden" });
+    await tile.getByText("In your library").waitFor();
+    expect(await tile.getAttribute("data-state")).toBe("added");
+    // Lumen RAW's offer ended: said inline, and its Add is gone.
+    const lumen = o.page.getByRole("article", { name: "Lumen RAW" });
+    await lumen
+      .getByRole("button", { name: "Add to library: Lumen RAW" })
+      .click();
+    await lumen.getByText("Aperture Seven stopped this offer.").waitFor();
+    expect(await lumen.getByRole("button").count()).toBe(0);
     expect(await o.violations()).toEqual([]);
     await o.page.context().close();
   });
