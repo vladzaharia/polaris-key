@@ -31,6 +31,8 @@
  * Runtime behaviour (`connect`, `listApps`, `readListing`, `plan`, `runStep`, `status`) is
  * `StorefrontRuntime`, implemented per plane beside the existing connector
  * (`services/distribution/connectors/<store>/`); A-18c and A-18j add the first implementations.
+ * A FIRST-PARTY op (`polaris-key`, PS-01) has no connector: it names a handler in
+ * `firstParty.ts`, which works on Polaris Key's own tables through ports.
  */
 
 import type { OutletKind } from "@polaris-key/manifest";
@@ -44,6 +46,7 @@ import { GOOGLE_PLAY_ADAPTER } from "./stores/googlePlay.js";
 import { MICROSOFT_STORE_ADAPTER } from "./stores/microsoftStore.js";
 import { ITCH_ADAPTER } from "./stores/itch.js";
 import { SNAP_ADAPTER } from "./stores/snap.js";
+import { POLARIS_KEY_ADAPTER } from "./stores/polarisKey.js";
 
 export type { ListingProfile } from "./listing.js";
 
@@ -53,7 +56,9 @@ export type StorefrontId =
   | "google-play"
   | "microsoft-store"
   | "itch"
-  | "snap";
+  | "snap"
+  /** The first-party storefront: the portal's Discover and Library (PS-01, notes/S-21 §6.1). */
+  | "polaris-key";
 
 /** The operations a storefront declares support for (S-15 §6.1). */
 export const STOREFRONT_OPS = [
@@ -162,6 +167,7 @@ export const STOREFRONT_ADAPTERS: readonly StorefrontAdapter[] = [
   MICROSOFT_STORE_ADAPTER,
   ITCH_ADAPTER,
   SNAP_ADAPTER,
+  POLARIS_KEY_ADAPTER,
 ];
 
 /** An adapter by id, or null. */

@@ -31,6 +31,11 @@
  *  10. THE EDIT LEASE (A-18e): an adapter whose store has ONE shared, invalidating edit per account
  *      (`capabilities.limits.openEditsPerAccount`: Play) races its lease: a poll tick during a
  *      provisioning edit neither invalidates it nor runs, and the edit still commits.
+ *  11. FIRST-PARTY (PS-01; notes/S-21 §6.1, THREAT-MODEL S9): a `first-party` op is declared only
+ *      by an adapter with no credential and no gate (and so no spec pin and no `api` op); every
+ *      one names a registered handler; each handler, run with `fetch` replaced by a thrower, sends
+ *      nothing, writes no audit row for a read and exactly one for a write, and a typed op
+ *      refuses without the confirmation.
  *
  * A NEW STOREFRONT ALSO ADDS its rows to `SPEC_FIXTURES`, `CLIENTS` and `TYPED_SAMPLES` below (and
  * to `LEASE_RACES` when it declares a shared edit): without them the suite fails, by design.
@@ -39,7 +44,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { OUTLET_KINDS } from "@polaris-key/manifest";
 import {
   READ_OPS,
@@ -79,6 +84,12 @@ import {
   type CiStoreId,
 } from "../../src/core/storefront/ciPlane.js";
 import { fitListing } from "../../src/core/storefront/listing.js";
+import {
+  firstPartyHandler,
+  type FirstPartyAuditEntry,
+  type FirstPartyPorts,
+} from "../../src/core/storefront/firstParty.js";
+import { APP_STORE_ADAPTER } from "../../src/core/storefront/stores/appStore.js";
 import {
   budgetAllows,
   pollBudget,
@@ -530,6 +541,48 @@ const SESSION: AdminSession = {
   csrf: "c",
   exp: NOW + 3600,
 };
+
+/**
+ * Item 11's declaration rules, as problems (empty when the adapter keeps them). A function, so a
+ * test can show that a fake first-party op on an adapter with a credential fails the suite.
+ */
+function firstPartyProblems(a: StorefrontAdapter): string[] {
+  const ops = STOREFRONT_OPS.filter(
+    (op) => a.capabilities.ops[op].mode === "first-party",
+  );
+  if (ops.length === 0) return [];
+  const problems: string[] = [];
+  if (a.credential !== null)
+    problems.push(`${a.id} declares first-party ops but holds a credential`);
+  if (a.gate !== null)
+    problems.push(`${a.id} declares first-party ops but has a vendor gate`);
+  if (a.specPin !== undefined)
+    problems.push(`${a.id} declares first-party ops but pins a vendor spec`);
+  for (const op of STOREFRONT_OPS) {
+    const s = a.capabilities.ops[op];
+    if (s.mode === "api" || s.mode === "ci" || s.mode === "pr")
+      problems.push(`${a.id} mixes first-party with a vendor ${s.mode} op`);
+    if (s.mode === "first-party" && !firstPartyHandler(s.handler))
+      problems.push(`${a.id}.${op} names no handler (${s.handler})`);
+  }
+  return problems;
+}
+
+/** Ports that record every call and answer a token value; nothing else is reachable. */
+function recordingPorts() {
+  const calls: string[] = [];
+  const audits: FirstPartyAuditEntry[] = [];
+  const ports: FirstPartyPorts = {
+    readListing: async () => (calls.push("readListing"), { listing: true }),
+    writeListing: async (_p, part) => (calls.push(`writeListing:${part}`), {}),
+    setListing: async () => (calls.push("setListing"), {}),
+    status: async () => (calls.push("status"), { state: "auto" }),
+    audit: async (e) => {
+      audits.push(e);
+    },
+  };
+  return { ports, calls, audits };
+}
 
 // ── The storefront adapters ──────────────────────────────────────────────────────────────────
 
@@ -1059,6 +1112,68 @@ for (const a of STOREFRONT_ADAPTERS) {
       });
     });
 
+    // 11 ────────────────────────────────────────────────────────────────────────────────────
+    describe("11. first-party", () => {
+      const firstPartyOps = STOREFRONT_OPS.filter(
+        (op) => a.capabilities.ops[op].mode === "first-party",
+      );
+      afterEach(() => {
+        vi.unstubAllGlobals();
+      });
+
+      it("declares first-party ops only with no credential, no gate and a handler for each", () => {
+        expect(firstPartyProblems(a)).toEqual([]);
+      });
+
+      it("runs every first-party handler without a network call; reads audit nothing, writes once", async () => {
+        if (firstPartyOps.length === 0) return;
+        const fetch = vi.fn(async () => {
+          throw new Error("a first-party handler reached the network");
+        });
+        vi.stubGlobal("fetch", fetch);
+        for (const op of firstPartyOps) {
+          const s = a.capabilities.ops[op];
+          if (s.mode !== "first-party") continue;
+          const h = firstPartyHandler(s.handler)!;
+          if (READ_OPS.includes(op)) expect(h.writes, op).toBe(false);
+          const { ports, audits } = recordingPorts();
+          await h.run({
+            product: "diceroll",
+            input: {},
+            typedConfirmation: true,
+            ports,
+          });
+          if (!h.writes) expect(audits, op).toEqual([]);
+          else {
+            expect(audits.length, op).toBe(1);
+            expect(audits[0]).toMatchObject({ op, product: "diceroll" });
+          }
+        }
+        expect(fetch).not.toHaveBeenCalled();
+      });
+
+      it("a typed first-party op refuses without the confirmation and touches nothing", async () => {
+        for (const op of TYPED_OPS) {
+          const s = a.capabilities.ops[op];
+          if (s.mode !== "first-party") continue;
+          const { ports, calls, audits } = recordingPorts();
+          let reason: string | null = null;
+          try {
+            await firstPartyHandler(s.handler)!.run({
+              product: "diceroll",
+              input: {},
+              ports,
+            });
+          } catch (e) {
+            reason = e instanceof StoreWriteDenied ? e.reason : String(e);
+          }
+          expect(reason, op).toBe("typed_confirmation_required");
+          expect(calls).toEqual([]);
+          expect(audits).toEqual([]);
+        }
+      });
+    });
+
     // 10 ────────────────────────────────────────────────────────────────────────────────────
     describe("10. the edit lease", () => {
       it("a store with a shared edit races its lease: a poll tick during a provisioning edit neither invalidates it nor runs", async () => {
@@ -1075,6 +1190,56 @@ for (const a of STOREFRONT_ADAPTERS) {
     });
   });
 }
+
+describe("the first-party branch (PS-01) catches a vendor adapter declaring first-party", () => {
+  it("a fake first-party op on an adapter with a credential and a gate fails the suite", () => {
+    const fake: StorefrontAdapter = {
+      ...APP_STORE_ADAPTER,
+      capabilities: {
+        ...APP_STORE_ADAPTER.capabilities,
+        ops: {
+          ...APP_STORE_ADAPTER.capabilities.ops,
+          status: {
+            mode: "first-party",
+            plane: "worker",
+            handler: "polaris-key.status",
+          },
+        },
+      },
+    };
+    expect(fake.credential).not.toBeNull();
+    const problems = firstPartyProblems(fake);
+    expect(problems).toContain(
+      "app-store declares first-party ops but holds a credential",
+    );
+    expect(problems).toContain(
+      "app-store declares first-party ops but has a vendor gate",
+    );
+  });
+
+  it("a first-party op naming no handler fails the suite", () => {
+    const fake: StorefrontAdapter = {
+      ...APP_STORE_ADAPTER,
+      credential: null,
+      gate: null,
+      specPin: undefined,
+      capabilities: {
+        ...APP_STORE_ADAPTER.capabilities,
+        ops: Object.fromEntries(
+          STOREFRONT_OPS.map((op) => [
+            op,
+            op === "status"
+              ? { mode: "first-party", plane: "worker", handler: "nope.status" }
+              : { mode: "unsupported", reason: "not part of this fake store" },
+          ]),
+        ) as StorefrontAdapter["capabilities"]["ops"],
+      },
+    };
+    expect(firstPartyProblems(fake)).toEqual([
+      "app-store.status names no handler (nope.status)",
+    ]);
+  });
+});
 
 // ── The CI plane (A-18h): every store's command allow-list ───────────────────────────────────
 
