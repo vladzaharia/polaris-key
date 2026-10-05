@@ -3488,8 +3488,8 @@ credential and no outbound host.**
   dead-letter queue `pkey-deltas-dlq-<env>` as a producer so the Operations page can call
   `metrics()`; Cloudflare offers no read-only queue binding. A source check
   (`test/platformOperations.test.ts`) asserts no file calls `.send` or `.sendBatch` on it and
-  that only `env.ts`, `core/operations.ts` (which hands it straight to `queueStatus`) and the
-  binding-presence list name it. The residual risk, accepted: code running in the request Worker
+  that only `env.ts`, `core/operations.ts` (which hands it straight to `queueStatus`), the
+  binding-presence list and the generated platform inventory (ST-02, one data row) name it. The residual risk, accepted: code running in the request Worker
   could enqueue junk into a queue that has no consumer and whose messages expire after 4 days.
   It reaches no device and no signed document.
 - **Probes are bounded.** Each binding probe has a 3-second limit and is fault-isolated, so a
