@@ -131,7 +131,7 @@ const EDITABLE_VERSION_STATES = new Set([
   "METADATA_REJECTED",
   "INVALID_BINARY",
 ]);
-const SUBMITTABLE_VERSION_STATES = new Set([
+export const SUBMITTABLE_VERSION_STATES = new Set([
   ...EDITABLE_VERSION_STATES,
   "READY_FOR_REVIEW",
 ]);
@@ -170,7 +170,7 @@ async function proveValidBuild(
   return resource;
 }
 
-async function proveVersionId(
+export async function proveVersionId(
   f: Pick<Flow, "run" | "setup">,
   versionId: string,
   include: string[] = [],

@@ -5,8 +5,11 @@
  *   - Worker plane, behind the gate: bundle ids, pricing and availability defaults, TestFlight,
  *     versions, release notes, submission, release and phased release, non-consumable IAPs, the
  *     notification URL and P5-02's webhook;
+ *   - the listing (A-18m, S-15 owner decision 1): text into the version and app info
+ *     localizations, screenshots into a version localization's sets, from the shared listing
+ *     model and the blob store (`connectors/asc/listing.ts`);
  *   - deep links for what Apple's API cannot do (create the app record, App Information, the age
- *     rating, App Privacy) and, until A-18m widens the table, the listing's screenshots;
+ *     rating, App Privacy);
  *   - no build upload: binaries are uploaded by the release workflow's vendor CLI step, never by
  *     the Worker (README decision 7 as amended by S-15 decision 2).
  *
@@ -53,8 +56,16 @@ const OPS: Readonly<Record<StorefrontOp, Support>> = {
   writeListingText: api(
     "POST /v1/appStoreVersionLocalizations",
     "PATCH /v1/appStoreVersionLocalizations/{id}",
+    "POST /v1/appInfoLocalizations",
+    "PATCH /v1/appInfoLocalizations/{id}",
   ),
-  writeListingAssets: link("app-store.version"),
+  // Screenshots only (the icon ships in the build). Removing or reordering old screenshots stays
+  // in App Store Connect: the push answers the `app-store.version` deep link for it.
+  writeListingAssets: api(
+    "POST /v1/appScreenshotSets",
+    "POST /v1/appScreenshots",
+    "PATCH /v1/appScreenshots/{id}",
+  ),
   category: link("app-store.app-information"),
   contentRating: link("app-store.app-information"),
   privacyDeclarations: link("app-store.app-privacy"),
@@ -155,6 +166,10 @@ const PROJECTION: Readonly<Record<string, readonly string[]>> = {
     "reviewType",
   ],
   appStoreVersionLocalizations: ["locale"],
+  // A-18m: the listing's localizations and screenshots (no listing text: it is the model's).
+  appInfoLocalizations: ["locale"],
+  appScreenshotSets: ["screenshotDisplayType"],
+  appScreenshots: ["fileName", "fileSize", "sourceFileChecksum"],
   appStoreVersionPhasedReleases: [
     "phasedReleaseState",
     "currentDayNumber",
