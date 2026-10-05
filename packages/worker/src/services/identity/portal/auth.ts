@@ -394,7 +394,7 @@ function signInRefusal(result: SignInResult): Response | null {
     case "join_offer":
       return htmlError(
         409,
-        "A Polaris Key account already uses this email address. Sign in to that account first, then add this sign-in method from your account page.",
+        "A Polaris Key account already uses this email address. Sign in with the method you used before. Adding another sign-in method to an account is not available yet; until it is, contact the product's support if you can no longer use that method.",
       );
     case "refused":
       return result.reason === "account_disabled"

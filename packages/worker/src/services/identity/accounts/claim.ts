@@ -33,6 +33,7 @@ import { getProduct } from "../../../core/data.js";
 import { sendNotice } from "../portal/email.js";
 import { licenseAttachedNotice } from "../portal/notices.js";
 import { getPortalProductSettings, portalAudit } from "../portal/repo.js";
+import { endLicenseLinks } from "./legacy.js";
 import type { AccountContext } from "./links.js";
 import { normalizeEmail, verifiedAccountEmails } from "./repo.js";
 
@@ -188,6 +189,14 @@ export async function detachLicense(
   args: { accountId: string; product: string; licenseId: string },
 ): Promise<{ ok: boolean }> {
   const { db, env, now } = ctx;
+  if (
+    (await licenseAccountId(db, args.product, args.licenseId)) !==
+    args.accountId
+  )
+    return { ok: false };
+  // Every portal link to the licence ends BEFORE the pointer clears, so the scheduled catch-up
+  // can never re-point the floating licence at a not-yet-settled §8 Q1 loser.
+  await endLicenseLinks(ctx, args.product, args.licenseId, [args.accountId]);
   const moved = await moveLicenseAccount(
     db,
     args.product,
@@ -197,12 +206,6 @@ export async function detachLicense(
     now,
   );
   if (!moved) return { ok: false };
-  await db.run(
-    "DELETE FROM portal_license_links WHERE account_id = ? AND product = ? AND license_id = ?",
-    args.accountId,
-    args.product,
-    args.licenseId,
-  );
   await onLicenseOwnershipEnded(db, env, { ...args, reason: "detached", now });
   await portalAudit(db, {
     accountId: args.accountId,
@@ -242,6 +245,11 @@ export async function reassignLicense(
   const previous = license.account_id ?? null;
   if (previous === args.toAccountId)
     return { ok: true, previousAccountId: previous };
+  // As in detachLicense: no portal link to the licence survives the move (§8 Q1 losers settled).
+  await endLicenseLinks(ctx, args.product, args.licenseId, [
+    previous,
+    args.toAccountId,
+  ]);
   if (
     !(await moveLicenseAccount(
       db,
@@ -268,12 +276,6 @@ export async function reassignLicense(
       reason: "relinked",
       now,
     });
-    await db.run(
-      "DELETE FROM portal_license_links WHERE account_id = ? AND product = ? AND license_id = ?",
-      previous,
-      args.product,
-      args.licenseId,
-    );
   }
   if (args.toAccountId)
     await subjectFor(db, args.toAccountId, args.product, now);

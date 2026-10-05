@@ -28,7 +28,9 @@ export interface SubjectStoreContext {
  */
 export interface SubjectStore {
   /** Re-key `from`'s data to `to` for one product (an account merge, D21). A collision (both
-   *  hold data) is the store's to resolve and must never silently overwrite (S-16 §5.1). */
+   *  hold data) is the store's to resolve and must never silently overwrite (S-16 §5.1). Runs
+   *  BEFORE, and outside, the merge's atomic D1 batch, so it must be idempotent: a merge whose
+   *  batch failed is retried and calls it again with the same arguments. */
   merge(
     ctx: SubjectStoreContext,
     args: { product: string; from: string; to: string },

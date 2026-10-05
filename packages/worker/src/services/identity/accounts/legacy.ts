@@ -124,6 +124,89 @@ export async function catchUpLegacyAccount(
   return row !== null;
 }
 
+type LicenseLink = { account_id: string; product: string; license_id: string };
+
+/** One §8 Q1 loser: revoke its tokens for the licence, email it, audit it, drop its link. */
+async function settleLoser(
+  ctx: AccountContext,
+  loser: LicenseLink,
+): Promise<void> {
+  const { db, env, now } = ctx;
+  await onLicenseOwnershipEnded(db, env, {
+    product: loser.product,
+    licenseId: loser.license_id,
+    accountId: loser.account_id,
+    reason: "relinked",
+    now,
+  });
+  const product = await getProduct(db, loser.product);
+  await sendSecurityNotice(
+    env,
+    db,
+    loser.account_id,
+    null,
+    licenseLinkSupersededNotice({
+      productName: product?.name ?? null,
+      origin: ctx.origin,
+    }),
+    now,
+  ).catch(() => 0);
+  await portalAudit(db, {
+    accountId: loser.account_id,
+    action: "account.license.superseded",
+    product: loser.product,
+    targetKind: "license",
+    targetId: loser.license_id,
+    summary: "Another account owns this license (one owner per license)",
+    now,
+  });
+  await appendPlatformEvent(db, {
+    actor: { sub: "system:identity", name: "Identity service", email: null },
+    at: now,
+    action: "account.license.superseded",
+    target: { kind: "license", id: `${loser.product}/${loser.license_id}` },
+    summary:
+      "A second account lost its link to this license: a license has one owner (I-04 §8 Q1)",
+  });
+  await db.run(
+    "DELETE FROM portal_license_links WHERE account_id = ? AND product = ? AND license_id = ?",
+    loser.account_id,
+    loser.product,
+    loser.license_id,
+  );
+}
+
+/**
+ * Before a licence's owner pointer is cleared or moved (detach, relink, per-product removal,
+ * deletion), end EVERY `portal_license_links` row for it, not only the acting account's. A
+ * not-yet-settled §8 Q1 loser is settled here, inline (email, token revocation, audit), and the
+ * remaining rows go. Otherwise the scheduled catch-up, which copies a portal link onto any floating
+ * licence, would hand the licence to that loser without the claim rules. `exempt` lists the accounts
+ * the caller already handles (the acting or previous owner, the new owner): their rows are deleted
+ * without loser handling.
+ */
+export async function endLicenseLinks(
+  ctx: AccountContext,
+  product: string,
+  licenseId: string,
+  exempt: Array<string | null>,
+): Promise<void> {
+  const links = await ctx.db.all<LicenseLink>(
+    `SELECT account_id, product, license_id FROM portal_license_links
+      WHERE product = ? AND license_id = ? ORDER BY account_id`,
+    product,
+    licenseId,
+  );
+  for (const link of links) {
+    if (!exempt.includes(link.account_id)) await settleLoser(ctx, link);
+  }
+  await ctx.db.run(
+    "DELETE FROM portal_license_links WHERE product = ? AND license_id = ?",
+    product,
+    licenseId,
+  );
+}
+
 /**
  * §8 Q1: every account that held a portal link to a licence another account now owns loses it.
  * Bounded per run; answers how many links were settled.
@@ -132,12 +215,7 @@ export async function settleOwnershipConflicts(
   ctx: AccountContext,
   limit = 200,
 ): Promise<number> {
-  const { db, env, now } = ctx;
-  const losers = await db.all<{
-    account_id: string;
-    product: string;
-    license_id: string;
-  }>(
+  const losers = await ctx.db.all<LicenseLink>(
     `SELECT l.account_id, l.product, l.license_id
        FROM portal_license_links l
        JOIN licenses x ON x.product = l.product AND x.id = l.license_id
@@ -146,49 +224,6 @@ export async function settleOwnershipConflicts(
       LIMIT ?`,
     limit,
   );
-  for (const loser of losers) {
-    await onLicenseOwnershipEnded(db, env, {
-      product: loser.product,
-      licenseId: loser.license_id,
-      accountId: loser.account_id,
-      reason: "relinked",
-      now,
-    });
-    const product = await getProduct(db, loser.product);
-    await sendSecurityNotice(
-      env,
-      db,
-      loser.account_id,
-      null,
-      licenseLinkSupersededNotice({
-        productName: product?.name ?? null,
-        origin: ctx.origin,
-      }),
-      now,
-    ).catch(() => 0);
-    await portalAudit(db, {
-      accountId: loser.account_id,
-      action: "account.license.superseded",
-      product: loser.product,
-      targetKind: "license",
-      targetId: loser.license_id,
-      summary: "Another account owns this license (one owner per license)",
-      now,
-    });
-    await appendPlatformEvent(db, {
-      actor: { sub: "system:identity", name: "Identity service", email: null },
-      at: now,
-      action: "account.license.superseded",
-      target: { kind: "license", id: `${loser.product}/${loser.license_id}` },
-      summary:
-        "A second account lost its link to this license: a license has one owner (I-04 §8 Q1)",
-    });
-    await db.run(
-      "DELETE FROM portal_license_links WHERE account_id = ? AND product = ? AND license_id = ?",
-      loser.account_id,
-      loser.product,
-      loser.license_id,
-    );
-  }
+  for (const loser of losers) await settleLoser(ctx, loser);
   return losers.length;
 }

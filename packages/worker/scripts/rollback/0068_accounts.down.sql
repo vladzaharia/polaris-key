@@ -8,12 +8,14 @@
 --
 -- WHAT THE I-05 WORKER ALREADY KEEPS IN STEP. Removals are mirrored into `portal_*` at the time
 -- they happen, so a rollback never resurrects them: removing a sign-in method deletes its portal
--- row, a detach deletes the portal licence link, an account deletion deletes every portal row of
--- the account, and a merge re-points the absorbed account's portal rows to the survivor.
+-- row, a detach or relink deletes every portal link to that licence (every account's), an account
+-- deletion deletes every portal row of the account, a disable sets the portal status too, and a
+-- merge deletes the absorbed account's portal rows (this script then re-creates the survivor's
+-- from the moved links and licences).
 --
 -- HOW. Run once against the database with
 --   wrangler d1 execute <DATABASE> --env <ENV> --remote --file scripts/rollback/0068_accounts.down.sql
--- Every statement is idempotent (`INSERT OR IGNORE`), so a second run is a no-op. It leaves the
+-- Every statement is idempotent (`INSERT OR IGNORE`, one guarded `UPDATE`), so a second run is a no-op. It leaves the
 -- I-05 tables and columns in place (dropping them is not needed for the old Worker, and keeping
 -- them lets a roll-forward pick up where it stopped). It is exercised by
 -- test/accountsMigration.test.ts.
@@ -24,6 +26,10 @@ SELECT id, CASE WHEN status = 'disabled' THEN 'disabled' ELSE 'active' END, disp
        primary_email, created_at, modified_at
   FROM accounts
  WHERE status != 'deleted';
+
+-- A disable the I-05 Worker made (it mirrors it too; this covers a disable from before that fix).
+UPDATE portal_accounts SET status = 'disabled'
+ WHERE status != 'disabled' AND id IN (SELECT id FROM accounts WHERE status = 'disabled');
 
 -- OIDC sign-in methods (the old Worker knows only the platform issuer's).
 INSERT OR IGNORE INTO portal_account_identities

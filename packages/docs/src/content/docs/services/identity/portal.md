@@ -159,14 +159,14 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   `{ "key": "pkey_…" }`; a string that is not exactly `pkey_<slug>_` plus 22 base64url characters
   is a `422`. Otherwise `200` with a `verdict`:
 
-  | `verdict`         | Also carries                                                       | Meaning                                                                        |
-  | ----------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
-  | `addable`         | `license` (tier, label, status, expiry, device limit), `platforms` | The key can be added.                                                          |
-  | `already_yours`   | the same, plus `license.id`                                        | Already in this account.                                                       |
-  | `owned_elsewhere` | nothing else                                                       | In another account; a license never moves by its key.                          |
-  | `email_mismatch`  | `maskedEmail` (`m•••@proton.me`)                                   | Carries an email this account has not verified, and the product needs it.      |
-  | `portal_off`      | nothing else                                                       | The product manages this license elsewhere (portal or key claim switched off). |
-  | `unknown`         | nothing else                                                       | No such key (or it was replaced), or no such product.                          |
+  | `verdict`        | Also carries                                                       | Meaning                                                                                    |
+  | ---------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+  | `addable`        | `license` (tier, label, status, expiry, device limit), `platforms` | The key can be added.                                                                      |
+  | `already_yours`  | the same, plus `license.id`                                        | Already in this account.                                                                   |
+  | `license_owned`  | nothing else                                                       | In another account; a license never moves by its key (named `owned_elsewhere` until I-05). |
+  | `email_mismatch` | `maskedEmail` (`m•••@proton.me`)                                   | Carries an email this account has not verified, and the product needs it.                  |
+  | `portal_off`     | nothing else                                                       | The product manages this license elsewhere (portal or key claim switched off).             |
+  | `unknown`        | nothing else                                                       | No such key (or it was replaced), or no such product.                                      |
 
   Every answer carries `product` (`null` for `unknown`, so a guessed key never reveals whether a
   product exists; otherwise `slug`, `name`, `branding`; `developerName`, `iconUrl` and
@@ -175,7 +175,7 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
 
 - **`POST /api/claim/license-key`** — link a license by presenting a typed `pkey_…` key. It acts
   on the same evaluation as the preview, so the two never disagree: `401` for an unknown key,
-  `404` when the product's portal or key claim is off, `409 owned_elsewhere`, and
+  `404` when the product's portal or key claim is off, `403 license_owned` (a `409 owned_elsewhere` until I-05), and
   `403 email_mismatch` with `maskedEmail`; a license already yours answers `200` without writing or
   emailing again. A new link emails the account and, when it is a different address, the
   license's own email. The preview and the claim share one budget: 10 per minute per account.

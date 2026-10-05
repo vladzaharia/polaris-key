@@ -52,9 +52,9 @@ SELECT 'lnk_' || lower(hex(randomblob(12))), e.account_id, 'email', '', e.email,
 
 -- 4. portal_license_links → licenses.account_id, ONE owner per licence (§8 Q1, owner-approved):
 --    the strongest link wins, oidc > email > admin > license-key, then the earliest, then the
---    lowest account id so a replay picks the same owner. The losers keep their portal row (so a
---    rollback still shows it) and are reported, emailed and have their licence-bound registry
---    tokens revoked by the Worker (`settleOwnershipConflicts`). A licence's `sub` alone never
+--    lowest account id so a replay picks the same owner. The losers keep their portal row only
+--    until the Worker settles them (`settleOwnershipConflicts`): each is reported, emailed, has
+--    its licence-bound registry tokens revoked, and then its portal row is deleted. A licence's `sub` alone never
 --    attaches it here: it joins an account only through an existing link (I-17 claims the rest).
 UPDATE licenses
    SET account_id = (

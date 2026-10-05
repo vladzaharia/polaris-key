@@ -30,7 +30,16 @@ import {
   catchUpLegacyAccounts,
   settleOwnershipConflicts,
 } from "../src/services/identity/accounts/legacy.js";
-import { attachLicense } from "../src/services/identity/accounts/claim.js";
+import {
+  attachLicense,
+  detachLicense,
+  reassignLicense,
+} from "../src/services/identity/accounts/claim.js";
+import {
+  deleteAccount,
+  disableAccount,
+  removeProductData,
+} from "../src/services/identity/accounts/deletion.js";
 import type { Env } from "../src/env.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -47,6 +56,7 @@ const DOWN = readFileSync(
   "utf8",
 );
 const ISSUER = "https://id.plrs.example";
+type Ctx = { db: SqliteDb; env: Env; now: number; origin: string };
 
 function license(
   product: string,
@@ -496,6 +506,97 @@ describe("migrations 0068 on a production-shaped copy", () => {
     ).toBe(0);
   });
 
+  // Review fix: a removal path that clears the owner pointer must not leave another account's
+  // unsettled portal link behind, or the scheduled catch-up hands the floating licence to it.
+  for (const [name, clear] of [
+    [
+      "detach",
+      (ctx: Ctx) =>
+        detachLicense(ctx, {
+          accountId: "acct_1",
+          product: "acme",
+          licenseId: "lic-1",
+        }),
+    ],
+    [
+      "relink to nobody",
+      (ctx: Ctx) =>
+        reassignLicense(ctx, {
+          product: "acme",
+          licenseId: "lic-1",
+          toAccountId: null,
+          actor: "admin:test",
+        }),
+    ],
+    [
+      "per-product removal with detach",
+      (ctx: Ctx) =>
+        removeProductData(ctx, {
+          accountId: "acct_1",
+          product: "acme",
+          alsoDetachLicenses: true,
+        }),
+    ],
+    ["account deletion", (ctx: Ctx) => deleteAccount(ctx, "acct_1")],
+  ] as const) {
+    it(`after ${name}, the catch-up never re-points the floating licence at an unsettled Q1 loser`, async () => {
+      const { raw, db } = await productionShaped();
+      applyI05(raw);
+      const env = makeEnv(new KvMock(), ["acme"]) as Env;
+      const ctx: Ctx = { db, env, now: NOW, origin: "" };
+      const owner = () =>
+        raw
+          .prepare(
+            "SELECT account_id FROM licenses WHERE product = 'acme' AND id = 'lic-1'",
+          )
+          .get();
+      // The migration picked acct_1; acct_3's key link is not settled yet (no nightly run).
+      expect(owner()).toEqual({ account_id: "acct_1" });
+
+      await clear(ctx);
+      expect(owner()).toEqual({ account_id: null });
+      await catchUpLegacyAccounts(db);
+      expect(owner()).toEqual({ account_id: null });
+
+      // acct_3 got the loser handling inline: its link went, its token stopped, it was reported.
+      expect(
+        raw
+          .prepare(
+            "SELECT account_id FROM portal_license_links WHERE product = 'acme' AND license_id = 'lic-1'",
+          )
+          .all(),
+      ).toEqual([]);
+      expect(
+        raw
+          .prepare(
+            "SELECT revoked_at FROM registry_tokens WHERE token_id = 'rtok_loser'",
+          )
+          .get(),
+      ).toEqual({ revoked_at: NOW });
+      expect(
+        raw
+          .prepare(
+            "SELECT target_id FROM platform_audit WHERE action = 'account.license.superseded'",
+          )
+          .all(),
+      ).toEqual([{ target_id: "acme/lic-1" }]);
+    });
+  }
+
+  it("a disable reaches the portal tables, and the down script re-applies one", async () => {
+    const { raw, db } = await productionShaped();
+    applyI05(raw);
+    const env = makeEnv(new KvMock(), ["acme"]) as Env;
+    const status = (id: string) =>
+      raw.prepare("SELECT status FROM portal_accounts WHERE id = ?").get(id);
+    await disableAccount({ db, env, now: NOW, origin: "" }, "acct_1");
+    expect(status("acct_1")).toEqual({ status: "disabled" });
+    // A disable whose mirror is missing (written before the fix) is re-applied by the down script.
+    raw.exec("UPDATE accounts SET status = 'disabled' WHERE id = 'acct_2'");
+    raw.exec(DOWN);
+    expect(status("acct_2")).toEqual({ status: "disabled" });
+  });
+
   it("the down script copies back what the I-05 Worker created, so a rolled-back Worker sees it", async () => {
     const { raw, db } = await productionShaped();
     applyI05(raw);
@@ -552,7 +653,7 @@ describe("migrations 0068 on a production-shaped copy", () => {
         )
         .all(created.account.id),
     ).toEqual([{ product: "fresh", license_id: "lic-new" }]);
-    // Existing portal rows are unchanged by the down script (it only adds).
+    // Existing portal rows are unchanged by the down script (it adds, and re-applies a disable).
     expect(
       raw.prepare("SELECT COUNT(*) AS n FROM portal_accounts").get(),
     ).toEqual({ n: 4 });

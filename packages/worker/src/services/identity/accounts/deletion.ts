@@ -27,6 +27,7 @@ import {
 } from "../../../core/subjectHooks.js";
 import { portalAudit } from "../portal/repo.js";
 import { stmtSubjectEvent } from "./events.js";
+import { endLicenseLinks } from "./legacy.js";
 import type { AccountContext } from "./links.js";
 import { getAccountRow } from "./repo.js";
 
@@ -69,6 +70,8 @@ export async function removeProductData(
   const detached: string[] = [];
   if (args.alsoDetachLicenses) {
     for (const licenseId of licenses) {
+      // No portal link survives the detach (see endLicenseLinks): §8 Q1 losers settle here.
+      await endLicenseLinks(ctx, args.product, licenseId, [args.accountId]);
       if (
         await moveLicenseAccount(
           db,
@@ -87,12 +90,6 @@ export async function removeProductData(
           reason: "detached",
           now,
         });
-        await db.run(
-          "DELETE FROM portal_license_links WHERE account_id = ? AND product = ? AND license_id = ?",
-          args.accountId,
-          args.product,
-          licenseId,
-        );
       }
     }
   }
@@ -172,6 +169,9 @@ export async function deleteAccount(
     "account_deleted",
   );
   for (const l of licenses) {
+    // Every portal link to a licence that is about to float ends first, other accounts' too
+    // (§8 Q1 losers settled inline), so the scheduled catch-up cannot re-point it at one of them.
+    await endLicenseLinks(ctx, l.product, l.id, [accountId]);
     await onLicenseOwnershipEnded(db, env, {
       product: l.product,
       licenseId: l.id,
@@ -199,6 +199,14 @@ export async function deleteAccount(
     );
   }
   stmts.push(
+    // Belt and braces for a link a pre-I-05 Worker wrote since the loop above: none survives.
+    {
+      sql: `DELETE FROM portal_license_links
+             WHERE EXISTS (SELECT 1 FROM licenses x
+                            WHERE x.account_id = ? AND x.product = portal_license_links.product
+                              AND x.id = portal_license_links.license_id)`,
+      params: [accountId],
+    },
     stmtDetachAccountLicenses(accountId),
     {
       sql: "DELETE FROM account_links WHERE account_id = ?",
@@ -270,6 +278,12 @@ export async function disableAccount(
     accountId,
   );
   if (changes === 0) return { ok: false };
+  // Mirrored into the pre-I-05 table, so a Worker rollback does not re-enable the account.
+  await db.run(
+    "UPDATE portal_accounts SET status = 'disabled', modified_at = ? WHERE id = ?",
+    now,
+    accountId,
+  );
   await clearDeviceSubjects(
     db,
     env,

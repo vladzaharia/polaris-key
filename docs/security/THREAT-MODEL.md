@@ -4216,13 +4216,16 @@ rules and item 16's tenant-scoped lookup are enforced in the same code.
   and relink; a plain licence detach does not sign the device out (S-17 §5.8 item 2). Sign-out
   also deauthorizes a device only when the sign-in bound it (`bound_by = 'signin'`) to a licence of
   the signed-out account (§8 Q3).
-- **Migration.** The backfill (0068*e) keeps account ids and picks one owner per licence by link
+- **Migration.** The backfill (`0068_e`) keeps account ids and picks one owner per licence by link
   strength (oidc > email > admin > licence key, then earliest); every other account loses its link,
   is emailed, has its registry tokens for that licence revoked and is listed in the platform audit
-  log (`account.license.superseded`). The `portal*\*`tables stay untouched for a rollback, and every
-removal under I-05 (a method, a licence detach, a merge, a deletion) is mirrored into them, so a
-rolled-back Worker never resurrects what the person removed;`scripts/rollback/0068_accounts.down.sql`
-  copies forward only what the new Worker created.
+  log (`account.license.superseded`). The `portal_*` tables stay for a rollback, and every removal
+  under I-05 (a method, a licence detach or relink, a per-product removal, a merge, a deletion, a
+  disable) is mirrored into them, so a rolled-back Worker never resurrects what the person removed;
+  `scripts/rollback/0068_accounts.down.sql` copies forward only what the new Worker created. A
+  removal that leaves a licence floating first ends every account's portal link to it, settling a
+  not-yet-settled loser inline, so the scheduled catch-up (which copies a portal link onto a
+  floating licence) can never hand it to that loser.
 
 ### Boundaries that are weaker than they look
 

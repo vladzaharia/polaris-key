@@ -77,10 +77,24 @@ Where this brief and the code disagreed, the code was the fact:
   account by verified email match; that is gone (owner: never by email match).
 - **The operator report** for §8 Q1 is the platform audit log (`account.license.superseded`,
   written by `settleOwnershipConflicts` from the nightly job), which also emails the losing
-  account and revokes its registry tokens for that licence.
+  account and revokes its registry tokens for that licence. Every path that clears or moves a
+  licence's owner (detach, relink, per-product removal with detach, deletion) first ends EVERY
+  account's portal link to that licence (`endLicenseLinks`), settling a not-yet-settled loser
+  inline, so the scheduled catch-up can never re-point a floating licence at that loser (review
+  fix round 1).
 - **The down script** lives at `packages/worker/scripts/rollback/0068_accounts.down.sql` (outside
   `migrations/`, which wrangler applies whole). Removals made under I-05 are mirrored into
-  `portal_*` when they happen, so a rollback never resurrects them.
+  `portal_*` when they happen (a disable too), so a rollback never resurrects them.
+- **The join offer page** says plainly that adding a sign-in method is not available yet (it lands
+  with I-07's card and I-11's account page); until then an existing user who arrives through a new
+  identity signs in with the method they used before, or asks the product's support.
+- **Merge ordering (residual).** `mergeAccounts` runs the registered stores' merge hooks
+  (`runSubjectMerge`) before, and outside, the atomic D1 batch, as the brief allows (re-key while
+  both subjects still resolve). If the batch then fails, the stores are already keyed to the
+  survivor's subject while D1 still holds two accounts; the hooks must therefore be idempotent so a
+  retried merge replays them harmlessly. No store registers yet; the `SubjectStore.merge` contract
+  now says so, and U-03 (Config) and U-05 (Cloud Sync) must honour it. The batch's raw `UPDATE devices SET subject` leaves the KV token-record `subject` mirror
+  stale until the next activation; D1 is the authority, so this is cosmetic.
 - **The product-OIDC device flow** (`sub`-keyed licences) is unchanged apart from
   `bound_by = 'signin'`: it attaches no account (§8 Q6) and sets no subject; passthrough sign-in
   (I-08) does.
