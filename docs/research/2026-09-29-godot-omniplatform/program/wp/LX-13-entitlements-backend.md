@@ -5,7 +5,7 @@
 | Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only)              |
 | Size        | 0.6–0.85 engineer-weeks                                                                                   |
 | Depends on  | [LX-08](LX-08-licensing-expand.md), [LX-09](LX-09-entitlement-resolver.md), [I-05](I-05-accounts-core.md) |
-| Unblocks    | [LX-22](LX-22-licensing-closeout.md)                                                                      |
+| Unblocks    | [LX-22](LX-22-licensing-closeout.md), [CM-05](CM-05-checkout-fulfilment.md)                               |
 | Role        | `pkey-implementer`                                                                                        |
 | Plan mode   | no                                                                                                        |
 | Gates       | rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; privacy docs                                           |

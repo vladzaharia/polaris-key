@@ -1,16 +1,16 @@
 # PS-03 Obtain-path engine: dry-run `obtainPaths` beside Discover, the `open` path through `delivery().openAccess()`, listing modes and audience, Discover rebuilt on it byte-identical in `auto`
 
-| Field       | Value                                                                                                                                                |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | PS: Polaris Key storefront: the Library as a distribution channel (S-21) (phase 2: engine and portal)                                                |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                 |
-| Depends on  | [PS-02](PS-02-storefront-listing-settings.md)                                                                                                        |
-| Unblocks    | [PS-04](PS-04-storefront-portal-api.md), [PS-07](PS-07-store-owned-path.md), [PS-08](PS-08-product-idp-path.md), [PS-09](PS-09-email-domain-path.md) |
-| Role        | `pkey-implementer`                                                                                                                                   |
-| Plan mode   | no                                                                                                                                                   |
-| Gates       | rule 6 (boundaries test); THREAT-MODEL (Discover); workerd                                                                                           |
-| Human input | none                                                                                                                                                 |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                            |
+| Field       | Value                                                                                                                                                                                    |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | PS: Polaris Key storefront: the Library as a distribution channel (S-21) (phase 2: engine and portal)                                                                                    |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                     |
+| Depends on  | [PS-02](PS-02-storefront-listing-settings.md)                                                                                                                                            |
+| Unblocks    | [PS-04](PS-04-storefront-portal-api.md), [PS-07](PS-07-store-owned-path.md), [PS-08](PS-08-product-idp-path.md), [PS-09](PS-09-email-domain-path.md), [CM-04](CM-04-offers-catalogue.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                       |
+| Plan mode   | no                                                                                                                                                                                       |
+| Gates       | rule 6 (boundaries test); THREAT-MODEL (Discover); workerd                                                                                                                               |
+| Human input | none                                                                                                                                                                                     |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                |
 
 ## Goal
 
