@@ -37,7 +37,12 @@
  *     different email.
  */
 
-import { hashKey, type Db, type Env } from "../../../core/platform.js";
+import {
+  hashKey,
+  randomId,
+  type Db,
+  type Env,
+} from "../../../core/platform.js";
 import {
   artefactRef,
   consumeArtefact,
@@ -82,8 +87,8 @@ import {
   accountUsingEmail,
   findLink,
   getAccountRow,
-  insertAccount,
   insertLink,
+  normalizeEmail,
   resolveAccount,
   touchAccountSignIn,
   touchLink,
@@ -740,7 +745,13 @@ async function gatePass(
   return completeGate(req, env, db, gate, { accountId, linkId, created }, now);
 }
 
-/** Make the account a new provider identity gets, with the confirmed email as its first method. */
+/**
+ * Make the account a new provider identity gets, with the confirmed email as its first method.
+ * One atomic batch: the account, its email method and the provider link go in together or not at
+ * all. The links' UNIQUE key decides a race (another account taking the address, or the identity
+ * linked elsewhere meanwhile): the batch fails and leaves nothing behind, so no row is ever
+ * removed to undo it.
+ */
 async function createAccount(
   db: Db,
   gate: GateRecord,
@@ -748,60 +759,90 @@ async function createAccount(
   now: number,
 ): Promise<{ accountId: string; linkId: string } | null> {
   const id = gate.identity;
-  const account = await insertAccount(
-    db,
-    {
-      primaryEmail: email,
-      primaryEmailVerified: true,
-      displayName: gate.name ?? gate.profile.name ?? id.displayName,
-    },
-    now,
-  );
-  // The email first: its UNIQUE key decides a race with another account taking the address.
-  if (!(await addEmailMethod(db, account.id, email, now))) {
-    await db.run("DELETE FROM accounts WHERE id = ?", account.id);
-    return null;
-  }
-  // A provider address the person did not choose, already verified on another account, is kept
-  // on the link as unverified, so no address is verified on two accounts.
-  const providerEmailVerified =
-    id.emailVerified &&
-    id.email !== null &&
-    (id.email === email ||
-      !(await accountUsingEmail(db, id.email, account.id)));
   const key = {
     issuerKey: id.issuerKey,
     tenantScope: id.tenantScope,
     subject: id.subject,
   };
-  const inserted = await insertLink(
-    db,
-    account.id,
-    {
-      ...key,
-      kind: id.kind,
-      email: id.email,
-      emailVerified: providerEmailVerified,
-      displayName: id.displayName,
-      amr: id.amr,
-    },
-    now,
-  );
-  const link = await findLink(db, key);
-  if (!inserted || !link || link.account_id !== account.id) {
-    // The identity was linked elsewhere meanwhile: this attempt leaves nothing behind.
-    await db.run("DELETE FROM accounts WHERE id = ?", account.id);
+  if (await accountUsingEmail(db, email)) return null;
+  if (await findLink(db, key)) return null;
+  // A provider address the person did not choose, already verified on another account, is kept
+  // on the link as unverified, so no address is verified on two accounts.
+  const providerEmailVerified =
+    id.emailVerified &&
+    id.email !== null &&
+    (id.email === email || !(await accountUsingEmail(db, id.email)));
+  const accountId = randomId("acct");
+  const linkId = randomId("lnk");
+  const normalized = normalizeEmail(email);
+  const linkSql = `INSERT INTO account_links
+       (id, account_id, issuer_key, tenant_scope, subject, kind, email, email_verified,
+        display_name, amr_json, created_at, last_used_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  try {
+    await db.batch([
+      {
+        sql: `INSERT INTO accounts
+                (id, status, primary_email, primary_email_verified_at, display_name,
+                 created_at, modified_at, last_sign_in_at)
+              VALUES (?, 'active', ?, ?, ?, ?, ?, ?)`,
+        params: [
+          accountId,
+          normalized,
+          now,
+          gate.name ?? gate.profile.name ?? id.displayName ?? normalized,
+          now,
+          now,
+          now,
+        ],
+      },
+      {
+        sql: linkSql,
+        params: [
+          randomId("lnk"),
+          accountId,
+          EMAIL_ISSUER,
+          "",
+          normalized,
+          "email",
+          normalized,
+          1,
+          null,
+          null,
+          now,
+          now,
+        ],
+      },
+      {
+        sql: linkSql,
+        params: [
+          linkId,
+          accountId,
+          key.issuerKey,
+          key.tenantScope,
+          key.subject,
+          id.kind,
+          id.email ? normalizeEmail(id.email) : null,
+          providerEmailVerified ? 1 : 0,
+          id.displayName,
+          id.amr ? JSON.stringify(id.amr) : null,
+          now,
+          now,
+        ],
+      },
+    ]);
+  } catch {
     return null;
   }
   await portalAudit(db, {
-    accountId: account.id,
+    accountId,
     action: "account.create",
     targetKind: "account",
-    targetId: account.id,
+    targetId: accountId,
     summary: `Account created by a ${id.kind} sign-in`,
     now,
   });
-  return { accountId: account.id, linkId: link.id };
+  return { accountId, linkId };
 }
 
 /** Add `email` as an email sign-in method of `accountId`. False when another account holds it. */
