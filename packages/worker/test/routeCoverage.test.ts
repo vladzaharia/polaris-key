@@ -152,6 +152,8 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/distribution/scoop/{channel}.json", ["get"]],
   ["/{product}/distribution/flathub/{channel}.json", ["get"]],
   ["/{product}/distribution/feeds/fdroid/{channel}", ["get", "post"]],
+  // A-18d: the listing assets CI derived, registered into the listing model.
+  ["/{product}/distribution/listing/assets", ["post"]],
   // P2b-06: the public download page's model (console host) and the page (bytes host only).
   ["/{product}/distribution/download.json", ["get"]],
   ["/{product}/distribution/download", ["get"]],
@@ -430,6 +432,8 @@ const CORS_EXCLUDED = new Set([
   "/{product}/distribution/hooks/play-rtdn",
   // P2b-05: the F-Droid CI route, authenticated by a `pkeyci_` bearer.
   "/{product}/distribution/feeds/fdroid/{channel}",
+  // A-18d: the listing assets register, authenticated by a `pkeyci_` bearer.
+  "/{product}/distribution/listing/assets",
   // P2b-06: the download page and its alias — HTML on the bytes host, a top-level navigation.
   "/{product}/distribution/download",
   "/{product}",
