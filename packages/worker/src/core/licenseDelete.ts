@@ -15,9 +15,14 @@
  *   - `blockers` — reads only: why this owner refuses the deletion. License refuses a licence
  *     with store grants on it, Distribution one with recorded store purchases. A refused licence
  *     can still be disabled.
+ *   - `blockerCheck` — the same refusal as a sub-select. Every statement of the batch is guarded
+ *     with `NOT EXISTS` of each, so a purchase recorded between the read and the batch leaves the
+ *     licence untouched rather than deleting one a buyer just paid on (the caller sees the licence
+ *     still there and answers the refusal).
  *   - `statements` — the owner's DELETEs, run in the deletion's own batch: License its licence
- *     row, keys, profile stack and store grants; Distribution the purchase binding and the
- *     aliases that resolve to the licence; Identity the portal's licence links.
+ *     row, keys and profile stack; Distribution the purchase binding and the aliases that resolve
+ *     to the licence; Identity the portal's licence links. (Store grants and purchases are never
+ *     deleted: their presence is what refuses the deletion.)
  *
  * Core's own rows go through {@link coreLicenseDeleteStatements}: the devices (their facts,
  * fingerprints, delta-demand rows and any download token naming them, ahead of the devices
@@ -25,14 +30,15 @@
  * licence's registry tokens. The devices' bearer tokens live in KV and are purged by the caller
  * after the batch commits.
  *
- * Every table holding a `license_id` column is accounted for here or in a contributor;
+ * Every table holding a `license_id` column is accounted for here, in a contributor, or by a
+ * blocker;
  * `test/licenseDelete.test.ts` walks `sqlite_master` and fails when a new one appears unclaimed.
  * One is deliberately kept: a `dist_purchase_binding_aliases` row whose `from_license_id` is the
  * deleted licence belongs to the SURVIVOR of an earlier merge (its `license_id`), and keeps that
  * survivor's purchases resolving.
  */
 
-import type { Db, DbStatement } from "../db/types.js";
+import type { Db, DbParam, DbStatement } from "../db/types.js";
 import { SERVICE_SLUGS } from "./services.js";
 
 /** One deletion, as each owner's statements are asked about it. */
@@ -57,8 +63,24 @@ export interface LicenseDeleteContributor {
     product: string,
     licenseIds: readonly string[],
   ): Promise<Map<string, LicenseDeleteBlocker[]>>;
-  /** Statements only, idempotent, touching this owner's own tables. */
+  /**
+   * The same refusal as a sub-select for the batch: `SELECT 1 FROM … WHERE …`, a row meaning
+   * "blocked". Core guards every statement of the deletion with `NOT EXISTS (…)` of each owner's
+   * check, so a purchase recorded between the read and the batch turns the whole batch into a
+   * no-op instead of deleting a licence a buyer just paid on.
+   */
+  blockerCheck?(target: LicenseDeleteTarget): DbStatement;
+  /**
+   * Statements only, idempotent, touching this owner's own tables. Each must be a `DELETE … WHERE
+   * …` ending in its WHERE clause: Core appends the guard to it.
+   */
   statements?(target: LicenseDeleteTarget): DbStatement[];
+}
+
+/** A boolean SQL expression and its parameters. */
+export interface SqlCondition {
+  sql: string;
+  params: DbParam[];
 }
 
 /** Core's collector bound to one registry (`ServiceContext.licenseDelete`). */
@@ -68,6 +90,9 @@ export interface LicenseDelete {
     product: string,
     licenseIds: readonly string[],
   ): Promise<Map<string, LicenseDeleteBlocker[]>>;
+  /** True while no owner's blocker exists for the licence (`blockerCheck`). */
+  guard(target: LicenseDeleteTarget): SqlCondition;
+  /** Every owner's statements and Core's, each guarded by {@link LicenseDelete.guard}. */
   statements(target: LicenseDeleteTarget): DbStatement[];
 }
 
@@ -107,6 +132,9 @@ export function licenseDeleteFor(registry: DeleteRegistry): LicenseDelete {
       }
       return out;
     },
+    guard(target) {
+      return guardOf(registry, target);
+    },
     statements(target) {
       const out: DbStatement[] = [];
       // Core's first: the download tokens must go before the devices they reference.
@@ -115,9 +143,29 @@ export function licenseDeleteFor(registry: DeleteRegistry): LicenseDelete {
         const contribute = registry.get(slug)?.licenseDelete?.statements;
         if (contribute) out.push(...contribute(target));
       }
-      return out;
+      const guard = guardOf(registry, target);
+      return out.map((s) => ({
+        sql: `${s.sql} AND ${guard.sql}`,
+        params: [...s.params, ...guard.params],
+      }));
     },
   };
+}
+
+function guardOf(
+  registry: DeleteRegistry,
+  target: LicenseDeleteTarget,
+): SqlCondition {
+  const parts: string[] = [];
+  const params: DbParam[] = [];
+  for (const slug of SERVICE_SLUGS) {
+    const check = registry.get(slug)?.licenseDelete?.blockerCheck;
+    if (!check) continue;
+    const c = check(target);
+    parts.push(`NOT EXISTS (${c.sql})`);
+    params.push(...c.params);
+  }
+  return { sql: parts.length ? `(${parts.join(" AND ")})` : "1", params };
 }
 
 /** The licence's devices, as a sub-select (the batch cannot read). */

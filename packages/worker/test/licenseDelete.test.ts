@@ -27,6 +27,9 @@ import { loadProduct } from "../src/core/products.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { getTokenRecord, putTokenRecord } from "../src/kv.js";
 import { listAudit } from "../src/repo.js";
+import { licenseDeleteFor } from "../src/core/licenseDelete.js";
+import { SERVICES } from "../src/mount.js";
+import { auditStatementFor } from "../src/admin/audit.js";
 
 const SLUG = "djdl";
 const PLATFORM_GROUP = "admins";
@@ -34,9 +37,10 @@ const SUBJECT = `ps_${"s".repeat(22)}`;
 const DAY = 86_400;
 
 /**
- * Every table with a `license_id` column, and what a deletion does to it. A new table that holds
- * licence ids must be claimed here AND handled by a `licenseDelete` contributor; this list is
- * compared with `sqlite_master`, so an unclaimed table fails the suite.
+ * Every table with a `license_id` column. A new table that holds licence ids must be claimed here
+ * AND handled by a `licenseDelete` contributor (deleted, or — like `dist_purchases` and
+ * `license_store_grants` — a blocker that refuses the deletion); this list is compared with
+ * `sqlite_master`, so an unclaimed table fails the suite.
  */
 const LICENSE_KEYED = [
   "devices",
@@ -225,6 +229,52 @@ describe("licence deletion: the claimed tables", () => {
         WHERE m.type = 'table' AND p.name = 'license_id' ORDER BY m.name`,
     );
     expect(rows.map((r) => r.name).sort()).toEqual(LICENSE_KEYED);
+  });
+});
+
+describe("licence deletion: the batch guard", () => {
+  it("writes nothing when a store purchase lands between the verdict and the batch", async () => {
+    await seedLicense("lic_race", { origin: "oidc" });
+    const collector = licenseDeleteFor(SERVICES);
+    const target = { product: SLUG, licenseId: "lic_race", now: NOW };
+    // The verdict was read with no purchase; then a purchase is recorded.
+    expect((await collector.blockers(db, SLUG, ["lic_race"])).size).toBe(0);
+    await db.run(
+      `INSERT INTO dist_purchases (product, store, purchase_key_hash, store_product_id, license_id, state,
+         environment, first_seen, last_verified)
+       VALUES (?, 'play', 'h9', 'full', 'lic_race', 'active', 'production', ?, ?)`,
+      SLUG,
+      NOW,
+      NOW,
+    );
+    const session = { sub: "u1", name: "Ada", email: "ada@x.io" } as Parameters<
+      typeof auditStatementFor
+    >[1];
+    await db.batch([
+      ...collector.statements(target),
+      auditStatementFor(
+        SLUG,
+        session,
+        NOW,
+        "license.delete",
+        { kind: "license", id: "lic_race" },
+        "Deleted license lic_race",
+        collector.guard(target),
+      ),
+    ]);
+    expect(
+      await db.first(
+        "SELECT id FROM licenses WHERE product = ? AND id = 'lic_race'",
+        SLUG,
+      ),
+    ).not.toBeNull();
+    expect(await rowsFor("keys_index", "lic_race")).toBe(1);
+    expect(await rowsFor("dist_purchases", "lic_race")).toBe(1);
+    expect(
+      (await listAudit(db, SLUG, { limit: 50 })).some(
+        (a) => a.action === "license.delete",
+      ),
+    ).toBe(false);
   });
 });
 

@@ -4,9 +4,9 @@
  *   - blockers: a licence that holds store grants (`license_store_grants`, active OR revoked)
  *     carries a purchase history — a buyer paid for something on it — and is never deleted; the
  *     operator disables it instead.
- *   - statements: the licence row itself, its keys (`keys_index`), its profile stack
- *     (`license_profiles`) and its store grants (none, once the blocker passed; deleted anyway so
- *     the batch leaves nothing keyed by the licence whatever raced it).
+ *     `blockerCheck` is the same fact for the batch's guard.
+ *   - statements: the licence row itself, its keys (`keys_index`) and its profile stack
+ *     (`license_profiles`).
  */
 
 import type { Db, DbStatement } from "../../core/platform.js";
@@ -45,7 +45,7 @@ async function storeGrantBlockers(
 
 function licenseRowStatements(target: LicenseDeleteTarget): DbStatement[] {
   const { product, licenseId } = target;
-  return ["keys_index", "license_profiles", "license_store_grants"]
+  return ["keys_index", "license_profiles"]
     .map(
       (table): DbStatement => ({
         sql: `DELETE FROM ${table} WHERE product = ? AND license_id = ?`,
@@ -60,5 +60,9 @@ function licenseRowStatements(target: LicenseDeleteTarget): DbStatement[] {
 
 export const licenseDeleteContribution: LicenseDeleteContributor = {
   blockers: storeGrantBlockers,
+  blockerCheck: ({ product, licenseId }) => ({
+    sql: "SELECT 1 FROM license_store_grants WHERE product = ? AND license_id = ?",
+    params: [product, licenseId],
+  }),
   statements: licenseRowStatements,
 };

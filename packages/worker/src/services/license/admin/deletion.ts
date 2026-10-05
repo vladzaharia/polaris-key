@@ -108,16 +108,18 @@ interface Deleted {
 }
 
 /**
- * Delete one licence whose verdict allowed it: the batch, then the KV purge. `delete_` because
- * the collector is required; the caller has checked it.
+ * Delete one licence whose verdict allowed it: the guarded batch, then the KV purge. `null` when
+ * the guard held the batch back (a store purchase landed since the verdict was read): nothing was
+ * written, and the caller refuses with a fresh verdict.
  */
 async function deleteOne(
   ctx: LicenseAdminContext,
   collector: LicenseDelete,
   row: LicenseRow,
-): Promise<Deleted> {
+): Promise<Deleted | null> {
   const { db, env, product, session, now } = ctx;
   const slug = product.slug;
+  const target = { product: slug, licenseId: row.id, now };
   const devices = await listDevicesByLicense(db, slug, row.id);
   const authorized = devices.filter((d) => d.status === "authorized").length;
   // The pairwise subject, never the global account id (S-16 §5.1): the audit log is
@@ -131,7 +133,7 @@ async function deleteOne(
     `account ${account}, ${devices.length} ${devices.length === 1 ? "device" : "devices"}` +
     `${devices.length ? `, ${authorized} authorized` : ""})`;
   await db.batch([
-    ...collector.statements({ product: slug, licenseId: row.id, now }),
+    ...collector.statements(target),
     auditStatementFor(
       slug,
       session,
@@ -139,12 +141,33 @@ async function deleteOne(
       "license.delete",
       { kind: "license", id: row.id },
       summary,
+      collector.guard(target),
     ),
   ]);
+  if (await getLicense(db, slug, row.id)) return null;
   for (const d of devices)
     if (d.token_hash) await deleteTokenRecord(env, slug, d.token_hash);
   forgetRegistryTokens();
   return { id: row.id, devices: devices.length };
+}
+
+/** A fresh verdict for a licence the guard held back. */
+async function freshVerdict(
+  ctx: LicenseAdminContext,
+  row: LicenseRow,
+): Promise<DeletionVerdict> {
+  const verdict = (await deletionVerdicts(ctx, [row])).get(row.id)!;
+  return verdict.allowed
+    ? {
+        allowed: false,
+        reasons: [
+          {
+            code: "changed",
+            message: "It changed while it was being deleted. Try again.",
+          },
+        ],
+      }
+    : verdict;
 }
 
 function refusal(id: string, verdict: DeletionVerdict): Response {
@@ -175,6 +198,7 @@ export async function handleDeleteLicense(
   const verdict = (await deletionVerdicts(ctx, [row])).get(row.id)!;
   if (!verdict.allowed || !ctx.licenseDelete) return refusal(row.id, verdict);
   const deleted = await deleteOne(ctx, ctx.licenseDelete, row);
+  if (!deleted) return refusal(row.id, await freshVerdict(ctx, row));
   return adminJson({ ok: true, ...deleted });
 }
 
@@ -236,7 +260,13 @@ export async function handleDeletions(
     }
     // One batch per licence: each deletion is all-or-nothing on its own, and one licence's
     // failure does not hold the others back.
-    deleted.push(await deleteOne(ctx, ctx.licenseDelete, row));
+    const done = await deleteOne(ctx, ctx.licenseDelete, row);
+    if (done) deleted.push(done);
+    else
+      refused.push({
+        id: row.id,
+        reasons: (await freshVerdict(ctx, row)).reasons,
+      });
   }
   return adminJson({ ok: refused.length === 0, deleted, refused, notFound });
 }

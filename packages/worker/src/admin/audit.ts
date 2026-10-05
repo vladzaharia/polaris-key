@@ -13,7 +13,7 @@ import {
   platformAuditStatement,
   type PlatformAuditRow,
 } from "../repo.js";
-import type { DbStatement } from "../db/types.js";
+import type { DbParam, DbStatement } from "../db/types.js";
 import { randomId } from "../crypto.js";
 import type { AdminSession } from "./session.js";
 
@@ -41,7 +41,11 @@ export async function audit(
   });
 }
 
-/** `audit` as a statement, for a batch that commits the row with the change it records. */
+/**
+ * `audit` as a statement, for a batch that commits the row with the change it records. `when`, a
+ * boolean SQL condition, writes the row only while it holds (a guarded batch, such as a licence
+ * deletion, whose other statements carry the same condition).
+ */
 export function auditStatementFor(
   product: string,
   session: AdminSession,
@@ -49,8 +53,9 @@ export function auditStatementFor(
   action: string,
   target: { kind: string; id: string } | null,
   summary: string,
+  when?: { sql: string; params: DbParam[] },
 ): DbStatement {
-  return auditStatement({
+  const stmt = auditStatement({
     product,
     id: randomId("aud"),
     at: now,
@@ -63,6 +68,14 @@ export function auditStatementFor(
     parent_id: null,
     summary,
   });
+  if (!when) return stmt;
+  return {
+    sql: stmt.sql.replace(
+      /VALUES \(([^)]*)\)\s*$/,
+      (_m, marks: string) => `SELECT ${marks} WHERE ${when.sql}`,
+    ),
+    params: [...stmt.params, ...when.params],
+  };
 }
 
 /**

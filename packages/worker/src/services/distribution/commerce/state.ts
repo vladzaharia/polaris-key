@@ -261,7 +261,7 @@ export function commerceMergeStatements(
  *   - statements: the licence's purchase binding and the aliases that resolve TO it. An alias
  *     whose `from_license_id` is the licence is the survivor's (an earlier merge retired this
  *     licence into it) and is kept, so purchases made under the old binding still reach the
- *     survivor. `dist_purchases` is deleted too, so the batch is complete whatever raced it.
+ *     survivor. `dist_purchases` is never deleted: `blockerCheck` guards the batch with it.
  *
  * Run whatever Distribution's enablement: a purchase recorded while it was on still counts.
  */
@@ -287,12 +287,12 @@ export const commerceDeleteContribution: LicenseDeleteContributor = {
     }
     return out;
   },
+  blockerCheck: ({ product, licenseId }) => ({
+    sql: "SELECT 1 FROM dist_purchases WHERE product = ? AND license_id = ?",
+    params: [product, licenseId],
+  }),
   statements({ product, licenseId }) {
-    return [
-      "dist_purchase_bindings",
-      "dist_purchase_binding_aliases",
-      "dist_purchases",
-    ].map(
+    return ["dist_purchase_bindings", "dist_purchase_binding_aliases"].map(
       (table): DbStatement => ({
         sql: `DELETE FROM ${table} WHERE product = ? AND license_id = ?`,
         params: [product, licenseId],
