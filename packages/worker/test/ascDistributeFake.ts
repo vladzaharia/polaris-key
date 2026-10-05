@@ -34,6 +34,8 @@ const CHILDREN: Readonly<Record<string, [string, string]>> = {
   "apps/appStoreVersions": ["appStoreVersions", "app"],
   "apps/betaGroups": ["betaGroups", "app"],
   "apps/appInfos": ["appInfos", "app"],
+  // A-18c: the listing import reads each app info's localizations.
+  "appInfos/appInfoLocalizations": ["appInfoLocalizations", "appInfo"],
   "apps/betaAppLocalizations": ["betaAppLocalizations", "app"],
   "appStoreVersions/appStoreVersionLocalizations": [
     "appStoreVersionLocalizations",
@@ -43,8 +45,7 @@ const CHILDREN: Readonly<Record<string, [string, string]>> = {
     "appScreenshotSets",
     "appStoreVersionLocalization",
   ],
-  // A-18m: the listing push's app info localizations and a set's screenshots.
-  "appInfos/appInfoLocalizations": ["appInfoLocalizations", "appInfo"],
+  // A-18m: a screenshot set's screenshots (the push).
   "appScreenshotSets/appScreenshots": ["appScreenshots", "appScreenshotSet"],
   "reviewSubmissions/items": ["reviewSubmissionItems", "reviewSubmission"],
   // A-17e: in-app purchases (`/v1/apps/…/inAppPurchasesV2` and the `/v2/inAppPurchases/…` set)

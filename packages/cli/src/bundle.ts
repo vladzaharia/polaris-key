@@ -226,7 +226,7 @@ export async function mintBundle(
  * for the same reason: the token is bound to the session, so it cannot be derived from the
  * cookie alone, and a stale cookie surfaces HERE rather than as a confusing 403 on the mint.
  */
-async function readCsrf(
+export async function readCsrf(
   f: typeof fetch,
   baseUrl: string,
   cookie: string,
@@ -252,12 +252,15 @@ async function readCsrf(
 }
 
 /** The cookie header value, or an error that says exactly how to get one. */
-function adminCookie(raw: string | undefined): string {
+export function adminCookie(
+  raw: string | undefined,
+  command = "`pkey bundle` mints",
+): string {
   const value = raw?.trim();
   if (!value) {
     throw new Error(
       `${ADMIN_COOKIE_ENV} is not set.\n` +
-        "`pkey bundle` mints through the admin API, which is authenticated by the console's " +
+        `${command} through the admin API, which is authenticated by the console's ` +
         "browser session — there is no API token yet.\n" +
         "Sign in to the console, then in devtools: Application -> Cookies -> the console " +
         `origin -> copy the \`${ADMIN_COOKIE_NAME}\` cookie, and run:\n` +
@@ -272,7 +275,7 @@ function adminCookie(raw: string | undefined): string {
 }
 
 /** `fetch`, with transport failures named. Bare `fetch failed` tells an operator nothing. */
-async function request(
+export async function request(
   f: typeof fetch,
   url: string,
   init: RequestInit,
@@ -289,20 +292,24 @@ async function request(
  * `{error:{code,message,fields}, code, message, fields}` (`admin/lib/respond.ts`), so the
  * server's own words are always available — a bare status is never the best we can do.
  */
-async function httpError(res: Response, what: string): Promise<Error> {
+export async function httpError(
+  res: Response,
+  what: string,
+  hintFor: (status: number) => string | undefined = statusHint,
+): Promise<Error> {
   const detail = await errorDetail(res);
   const label = [String(res.status), detail.code].filter(Boolean).join(" ");
   const message = detail.message ? `: ${detail.message}` : "";
   const fields = detail.fields?.length
     ? ` (fields: ${detail.fields.join(", ")})`
     : "";
-  const hint = statusHint(res.status);
+  const hint = hintFor(res.status);
   return new Error(
     `${what} failed (${label})${message}${fields}${hint ? `\n${hint}` : ""}`,
   );
 }
 
-function statusHint(status: number): string | undefined {
+export function statusHint(status: number): string | undefined {
   if (status === 401) {
     return (
       `The admin session cookie in ${ADMIN_COOKIE_ENV} is missing or expired. Sign in to the ` +
@@ -353,7 +360,7 @@ async function errorDetail(res: Response): Promise<ErrorDetail> {
   return detail;
 }
 
-async function readJson(
+export async function readJson(
   res: Response,
   url: string,
 ): Promise<Record<string, unknown>> {

@@ -242,7 +242,7 @@ export async function handleEnroll(
     license,
     deviceId,
     now,
-    { ...deviceMetadata(req), fingerprint },
+    { ...deviceMetadata(req), fingerprint, boundBy: "enroll" },
   );
   if ("error" in authorized) return authorizationError(authorized);
 

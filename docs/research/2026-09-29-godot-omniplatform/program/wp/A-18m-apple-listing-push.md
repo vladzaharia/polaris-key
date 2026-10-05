@@ -32,7 +32,7 @@ appScreenshots` replaces the set and so drops screenshots; it stays in `uploads`
 >   those three on a version localization only. A-18b's Apple column gained the three image slots.
 > - **Where the push lives.** Two connector controls beside A-17d's Distribute,
 >   `listing/text` `{versionId, locale}` and `listing/screenshots` `{versionId, locale,
-sizeClass}` (`connectors/asc/listing.ts`), on A-17d's flow plumbing. The text push includes the
+sizeClass}` (`connectors/asc/listingPush.ts`), on A-17d's flow plumbing. The text push includes the
 >   model's promotional text (already allowed) but not What's New, which stays the release's
 >   (`distribute/version-localization`). The name, subtitle and privacy URL need an editable app
 >   information (`app_info_not_editable` otherwise).

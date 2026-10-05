@@ -296,7 +296,7 @@ describe("POST /api/activate/preview (G22)", () => {
     expect(body.license.id).toBe(licenseId);
   });
 
-  it("answers owned_elsewhere with no ownership details, and the claim refuses it too", async () => {
+  it("answers license_owned with no ownership details, and the claim refuses it too (I-05)", async () => {
     const db = makeTestDb();
     const env = portalEnv();
     await seedProduct(db, "djdl");
@@ -311,7 +311,7 @@ describe("POST /api/activate/preview (G22)", () => {
       unknown
     >;
     expect(body).toEqual({
-      verdict: "owned_elsewhere",
+      verdict: "license_owned",
       product: expect.objectContaining({ slug: "djdl" }),
       entries: null,
     });
@@ -321,8 +321,8 @@ describe("POST /api/activate/preview (G22)", () => {
     expect(text).not.toContain(licenseId);
 
     const refused = await claim(env, db, second, key);
-    expect(refused.status).toBe(409);
-    expect(await refused.json()).toMatchObject({ error: "owned_elsewhere" });
+    expect(refused.status).toBe(403);
+    expect(await refused.json()).toMatchObject({ error: "license_owned" });
     const list = await call(env, db, "GET", "/api/licenses", second);
     expect(((await list.json()) as { licenses: unknown[] }).licenses).toEqual(
       [],

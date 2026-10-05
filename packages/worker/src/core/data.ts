@@ -26,6 +26,7 @@
 
 export type {
   AuditRow,
+  DeviceBoundBy,
   DeviceRow,
   KeyRow,
   LicenseRow,

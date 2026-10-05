@@ -13,7 +13,11 @@
  *     /distribution/rollouts/:outlet/:channel                POST, `pkeyci_` + distribution:rollout
  *     /distribution/rollouts/:outlet/:channel/{pause,resume,halt,complete}   POST, same
  *     /distribution/report                                   POST, `pkeyci_` + distribution:report
- *                                                            (P2b-03, `availability.ts`)
+ *                                                            (P2b-03, `availability.ts`; A-18h's
+ *                                                            store steps, `storeSteps.ts`)
+ *     /distribution/listing/:store                           GET, `pkeyci_` + distribution:report:
+ *                                                            a CI-plane store's listing projection
+ *                                                            (A-18h, `listing/ci.ts`)
  *     /distribution/hooks/:connector                         POST, a store webhook, signed by
  *                                                            the store (P5-02, `connectors/`;
  *                                                            `asc` today)
@@ -62,6 +66,8 @@ import {
   type RolloutVerb,
 } from "./rollouts.js";
 import { applyReport } from "./availability.js";
+import { ciListingProjection, ciListingStore } from "./listing/ci.js";
+import type { ListingStore } from "../../core/storefront/listingProfiles.js";
 import { connectorOf } from "./connectors/index.js";
 import { handleSentryWebhook } from "./sentry.js";
 import { handleFeedRoutes } from "./feeds/index.js";
@@ -128,6 +134,14 @@ export async function handleDistributionRoutes(
   if (rest[0] === "report" && rest.length === 1) {
     if (req.method !== "POST") return null;
     return handleCiReport(ctx);
+  }
+
+  // A-18h: a CI-plane store's projection of the listing model (`listing/ci.ts`).
+  if (rest[0] === "listing" && rest.length === 2) {
+    if (req.method !== "GET") return null;
+    const store = ciListingStore(decodeSegment(rest[1] as string) ?? "");
+    if (!store) return null;
+    return handleCiListing(ctx, store);
   }
 
   // The download page's model (P2b-06). The page itself never answers here (see above).
@@ -226,4 +240,28 @@ async function handleCiReport(ctx: ServiceContext): Promise<Response> {
   );
   if (!result.ok) return rolloutRefusal(result);
   return json(result);
+}
+
+/**
+ * `GET /<p>/distribution/listing/<store>` — `distribution:report`. The store's projection of the
+ * listing model, for a CI-plane listing step (A-18h, `listing/ci.ts`).
+ */
+async function handleCiListing(
+  ctx: ServiceContext,
+  store: ListingStore,
+): Promise<Response> {
+  const { req, env, db, product, now } = ctx;
+  const principal = await requireCiScope(
+    req,
+    env,
+    db,
+    product.slug,
+    "distribution:report",
+    now,
+  );
+  if (principal instanceof Response) return principal;
+  return json({
+    ok: true,
+    listing: await ciListingProjection(db, product.slug, store),
+  });
 }

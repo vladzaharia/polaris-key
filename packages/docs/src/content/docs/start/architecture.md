@@ -67,16 +67,16 @@ interface ServiceDescriptor {
 }
 ```
 
-| Member                   | What it is                                                                                                                                                                                               |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `slug`                   | the one word used as the directory, the route namespace, the SDK sub-client and the console section.                                                                                                     |
-| `handle`                 | handles a product-scoped request. `ctx.rest` is the path _after_ `/<product>/<service>`, already split; the service owns its sub-routing from there.                                                     |
-| `discoveryFragment`      | this service's slice of `/<product>/.well-known/polaris.json`. **Only called when enabled** — Core emits `{"enabled": false}` and nothing else for the rest.                                             |
-| `adminHandle?`           | handles `/manage/api/products/<slug>/<service>/…`. Every service implements it.                                                                                                                          |
-| `manifestIngest?`        | rows this service wants written when a product manifest is ingested (link or resync). **Run only while the service is enabled.** Distribution implements it (P2b-02).                                    |
-| `manifestIngestAlways?`  | rows kept current on every ingest **whatever the enablement**, for a record that must already be right when the service is turned on. Distribution's `app` delivery-access row is its one user (P2b-04). |
-| `authorizeRegistration?` | may this caller be given a device credential? Only Identity implements it.                                                                                                                               |
-| descriptor hooks         | `releaseCatalog?` (Release), `delivery?` and `outletCapabilities?` (Distribution): read-only views another service reads through `ctx.hooks`, gated on the provider's enablement (`core/hooks.ts`).      |
+| Member                   | What it is                                                                                                                                                                                                                          |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `slug`                   | the one word used as the directory, the route namespace, the SDK sub-client and the console section.                                                                                                                                |
+| `handle`                 | handles a product-scoped request. `ctx.rest` is the path _after_ `/<product>/<service>`, already split; the service owns its sub-routing from there.                                                                                |
+| `discoveryFragment`      | this service's slice of `/<product>/.well-known/polaris.json`. **Only called when enabled** — Core emits `{"enabled": false}` and nothing else for the rest.                                                                        |
+| `adminHandle?`           | handles `/manage/api/products/<slug>/<service>/…`. Every service implements it.                                                                                                                                                     |
+| `manifestIngest?`        | rows this service wants written when a product manifest is ingested (link or resync). **Run only while the service is enabled.** Distribution implements it (P2b-02).                                                               |
+| `manifestIngestAlways?`  | rows kept current on every ingest **whatever the enablement**, for a record that must already be right when the service is turned on. Distribution's `app` delivery-access row is its one user (P2b-04).                            |
+| `authorizeRegistration?` | may this caller be given a device credential? Only Identity implements it.                                                                                                                                                          |
+| descriptor hooks         | `releaseCatalog?` (Release), `delivery?` and `outletCapabilities?` (Distribution), `licenseProvenance?` (License): read-only views another service reads through `ctx.hooks`, gated on the provider's enablement (`core/hooks.ts`). |
 
 Three details in that interface are load-bearing:
 

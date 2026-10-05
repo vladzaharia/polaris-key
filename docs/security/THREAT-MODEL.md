@@ -1668,7 +1668,7 @@ line.
   rule twice, or a rule also on the deny list; a client consults it before its token thunk.
 - **(b) A CI command allow-list** for the publish action: a vendor CLI runs only as one of its
   adapter's declared argv templates, with parameters matched by pattern (the type and its check
-  land here; A-18h declares the first lists).
+  land here; A-18h declares the lists: see "The CI plane" below).
 - **(c) The conformance suite as a required check** (a named step of the required JS/TS job): per
   adapter, every spec write classified; the never-list (deletes, users and permissions, signing
   keys, payments) refused by the gate for every method it names and absent from every CI
@@ -1680,15 +1680,17 @@ line.
   the app's name as the store reports it (the adapter's `confirmation`), compared by the shared
   `confirm.ts` before the handler asserts `typedConfirmation` to the gate.
 - **(e) The Play edit lease** (A-18e): a poll tick during a provisioning edit neither invalidates
-  it nor runs (a skipped conformance item until then).
+  it nor runs (conformance item 10, for every adapter that declares a shared edit). See "Google
+  Play writes" below.
 - **(f) Every callback URL fixed server-side to the Worker's origin** (`isOwnHookUrl` in the
   engine; A-17a's `hookOrigin` rule, generalised).
 - **(g) Imported listing text is data**: rendered escaped in the console, never as HTML (A-18b,
   A-18c, A-18j).
 
 **Boundaries.** `core/adapters/` imports nothing; `core/storefront/` imports no service, and its
-declaration modules import only the adapter layer, so the CLI's copy is a generated JSON (A-18h)
-and no store knowledge lives in the console.
+declaration modules import only the adapter layer, so the CLI's copy is generated
+(`packages/cli/src/storefronts/ciPlane.generated.ts`, A-18h) and no store knowledge lives in the
+console.
 
 **Listing assets, not binaries (S-15 decision 2).** The Worker may push listing images and
 screenshots from the blob store through an upload rule that fixes the content type and a byte
@@ -1698,6 +1700,203 @@ cap; no adapter declares `api` for `uploadBuild`, which the suite asserts.
 or `PLATFORM_KEK` compromise bypasses every adapter's gate at once. The deep-link shapes are
 undocumented by most stores (a broken link misleads, it grants nothing). Rows written before
 A-18a keep their old `op_id`; a replay of such an intent re-reads its natural key before sending.
+
+**Listing import (A-18c).** The shared listing fills itself from the stores' own listings, the
+Godot project and the manifest (`services/distribution/listing/{import,sources}.ts`, the planner in
+`core/storefront/listingImport.ts`). An import never writes to a store: Apple's `readListing`
+sends only GETs, which the App Store gate admits (personal data stays refused); Play's reads sit in
+one edit that is never patched or committed and is deleted before the request ends, opened only
+under A-18e's per-package edit lease (`import`; a held lease answers 409 `edit_lease_held` before
+any token is minted); Microsoft's
+goes through P5-04's client, which can send nothing but GET. Each store's setup and the operator's
+pin are resolved first, so an unconfigured store or a disagreeing pin mints no token. Tokens are
+minted under their own audited `use` (`<connector>:listing-import`). The Godot upload is
+operator-supplied data and is validated field by field (unknown keys refused; Godot's
+`config/description`, a tooltip, is never accepted). An import is a preview first and is written
+only when the operator echoes the preview's digest, so a diff that changed in between (a store
+edit, another operator) is refused, not applied blind. Values over the model's limits are refused,
+never cut; imported text is data (control (g)); store screenshot and icon URLs are reported, never
+fetched or stored (A-18d derives assets). Residual risk: an import trusts the store's own text as
+much as the store does, and an operator who confirms a diff without reading it applies it.
+
+### Google Play writes: the edit lease, the write gate and the adapter (A-18e)
+
+**What it is.** Google Play is the second storefront adapter (`core/storefront/stores/googlePlay.ts`,
+rule table `core/storefront/rules/googlePlay.ts`, runtime
+`services/distribution/connectors/play/storefront.ts`). It writes a product's Play listing
+(details, per-language text, listing images from the blob store), closed-testing tracks and their
+Google Groups, release notes on tracks, one-time products from the commerce map
+(`dist_store_products`, store `play`) and their prices, and commits the edit. AAB upload stays in
+CI and data safety in the Console (S-15 decisions 2 and 4).
+
+**Why it matters.** The Play service account has one OAuth scope (`androidpublisher`) that reaches
+every one of the API's 145 methods: Console users and grants, app signing enrolment and key
+rotation, refunds and cancellations, deletes of listings, images and products. Its Console
+permissions are the only vendor-side limit, and S-15 decision 4's "Manage store presence" also
+covers prices. Play's only write path is an **edit**: a service account may hold one, and any new
+edit, commit or Console change invalidates every other open one.
+
+**Controls.**
+
+- **The edit lease** (`connectors/play/lease.ts`, D1 `store_edit_leases`, migration 0070). Every
+  Play caller that opens an edit takes the package's lease first, in one atomic upsert that wins
+  only over an expired row: P5-03's poll (a held lease skips the tick, `edit-lease-held`), its
+  controls (409 `edit_lease_held`), A-16's `?tracks=1` lister (the app shows busy) and the adapter's
+  session (`provisioning`, or `import` for a read-only edit), all before any token is minted. The
+  holder renews before each step and after a long upload; a lost lease stops the session
+  (`PlayEditLeaseLost`); the poll renews before each vitals auto-halt and skips the halt when the
+  lease was lost. Every acquire, renew and read takes its time from one wall clock inside
+  `lease.ts`, never a caller's `now`: the cron's `now` is computed once per run and reused for
+  every product, so a late Play tick would otherwise write an already-expired lease and lose it to
+  provisioning mid-edit. TTLs are minutes, so a crashed holder blocks nobody for long. Tests:
+  `test/playLease.test.ts` (including a tick that starts five minutes after its cron fired),
+  conformance item 10.
+- **The write gate**, deny-by-default and consulted by every gated `GoogleApiClient` before its
+  token thunk: P5-03's poll and controls, A-16's lister and the adapter all build gated clients
+  (`PlayPublisher` refuses an ungated one). Twelve allow rules; the other 88 writes of the pinned
+  discovery document (revision `20261001`, SHA-256 over canonical JSON because Google reorders the
+  keys on every fetch) are denied by group, and a revision bump fails CI until each new write is
+  classified. Every `DELETE`, the Permissions API (refused for reads too), signing keys, payment
+  actions, binaries, policy declarations and subscriptions are refused. Bodies are matched key by
+  key; uploads by content type (PNG, JPEG) and the 15 MiB cap; the commit only with
+  `changesInReviewBehavior=ERROR_IF_IN_REVIEW`.
+- **Typed confirmation** (Play's default-language title, compared by `playTypedConfirmation`):
+  the commit of an edit that touched production (no adapter step changes a release status; halt,
+  resume, ramp and complete are P5-03's controls), a production release
+  `completed` or at a `userFraction` of 1.0, and a one-time product price after the initial one.
+  A commit carries no body, so the handler tells the gate what its edit holds
+  (`resourceState`: `PLAY_EDIT_SCOPE`), and a missing scope is treated as production.
+- **The ledger, budget and audit** of A-18a: every adapter write is one `performStoreWrite` step
+  with a natural-key pre-read (listing by language, image by hash with the ledger's own upload row
+  as fallback, track by name, product by id); each request spends the local 3,000-per-minute
+  counter, but the counter is checked only when a session begins: a spend that fails is not
+  retried and does not stop the session, so one session may run past the limit by its own steps
+  (Google's own quota still applies); tester groups are stored as a count, never an address.
+- **No image deletes in v1** (decision 6): a replacement is uploaded and the operator removes the
+  old image in the Console (`google-play.main-store-listing`).
+
+**Accepted exceptions, each pinned by a test.**
+
+- **`edits.delete` of a throwaway edit** is sent outside the gate (`GoogleApiClient.discardEdit`),
+  as P5-03 always has: no gate rule may allow a `DELETE`, and an open edit must not be left behind.
+  It is a fixed method that can address nothing but `edits/<editId>` (the id re-checked), and it
+  discards an uncommitted draft, never anything published.
+- **P5-03's rollout controls** (fraction, halt, resume, complete, priority, and the vitals
+  auto-halt) assert `PLAY_EDIT_SCOPE.rolloutControl`, the one scope the gate does not type: they
+  keep their own confirmations (`confirmRollback`) and their tests unchanged. A typed production
+  `complete`, as A-17a made Apple's, is a proposed follow-up.
+- **P6-01's purchase client** (`commerce/play.ts`) is not gated: it reads purchases and acknowledges
+  them, outside the storefront surface (the `commerceRuntime` deny group says so).
+
+**Residual risk.** As for every adapter, the gate is code in the Worker that holds the key. The
+lease serialises only Polaris Key's callers: an operator's Console change, or another tool using the
+same service account, still invalidates an open edit, which then fails cleanly at its next
+request. Permission sufficiency, edit expiry and quota behaviour are unverified until A-18k's live
+check.
+
+### Storefront adapter: Microsoft Store (A-18f)
+
+**What it is.** The third storefront adapter (`core/storefront/stores/microsoftStore.ts`, rule
+table `core/storefront/rules/microsoftStore.ts`), writing through its own client
+(`services/distribution/connectors/msstore/write.ts`) with the A-16 team credential
+`microsoft-store.partner-center`. P5-04's connector client stays GET-only and unchanged. Two APIs
+share one rule table, told apart by path: the classic API (`manage.devcenter.microsoft.com/v1.0/my/`,
+MSIX submissions, flights, gradual rollout) with an Entra v1 `resource` token, and the MSI/EXE API
+(`api.store.microsoft.com/submission/v1/product/{id}/`, metadata modules, packages by URL, listing
+assets, submit) with an Entra v2.0 `scope` token in its own sealed cache slot plus
+`X-Seller-Account-Id` from the credential's non-secret metadata.
+
+**Asset at risk.** A11c's Entra application holds Partner Center's **Manager** role, with no
+per-app scope: it can rewrite listings, price tiers and rollouts and DELETE submissions, flights
+and add-ons for every app of the seller account. The rule table is the barrier.
+
+**Controls.**
+
+- **Deny-by-default, before any token.** The client consults the gate before either token thunk;
+  a refusal mints nothing and sends nothing (conformance item 5). Paths outside the two API shapes
+  are refused for every method, reads included.
+- **No machine-readable spec**, so a hand-written operation list transcribed from Microsoft's
+  reference pages, pinned by fetch date and by the SHA-256 of the list (`MSSTORE_SPEC_PIN`): every
+  listed write is allowed or denied exactly once, and editing the list without re-pinning fails CI
+  (`test/storefront/msstore.test.ts`). Re-pinning is a §9 docs-drift review.
+- **Never.** All five DELETEs (submission, flight, flight submission, add-on, add-on submission)
+  are denied; add-on creation and submissions are denied (no P6-01 Microsoft row). Body checks
+  refuse a `PendingDelete` file status (images and packages stay), `listingsToRemove`, notes for
+  certification (test-account credentials), trailers, read-only fields such as `fileUploadUrl`,
+  non-https URLs and ZIP names with traversal. Partner Center users, payout and tax have no API.
+- **Typed confirmation** (Microsoft's `primaryName`): app and flight submission commit, MSI/EXE
+  submit, `finalizepackagerollout` (app and flight), and any pricing change (`pricing` in a
+  classic submission update; `availability.pricing` or `freeTrial` in a metadata patch, or any
+  `availability` in a full-module PUT). Replacing a language's listing asset set is an update with
+  a plain confirm (S-15 §8.4).
+- **Natural keys.** A pending submission is reused only if a done `submission.create` ledger row
+  created it; one created elsewhere, or edited in Partner Center (the API can then neither change
+  nor commit it), is never adopted: the step refuses and offers only the deep link, since deleting
+  is denied. `workerStagedDraft` lets A-18h refuse `msstore publish` (which deletes the pending
+  draft) over a Worker-staged draft.
+- **SAS uploads** (listing images only, decision 2): to `*.blob.core.windows.net` only, no bearer
+  token, the URL (it carries a signature) never logged, stored or echoed. The classic image ZIP is
+  stored-only with safe relative names.
+- **Redaction.** A submission's `fileUploadUrl` and `statusDetails` (certification report URLs
+  carry tokens) are dropped before the ledger projection; errors keep the HTTP status and an
+  enum-like Microsoft code only.
+- **Budget.** `Retry-After` is honoured (bounded retries, then the meter's `retry-after` stop);
+  otherwise a minimum interval between sends.
+
+**Residual risk.** The operation list is only as current as its fetch date: a write Microsoft adds
+later is refused (deny-by-default) but goes unclassified until the docs-drift review. Whether
+Microsoft fetches a redirecting `packageUrl`, whether a Developer role suffices and the real
+`Retry-After` values are [U] for A-18k. The Partner Center deep-link shapes are undocumented.
+
+### The CI plane: storefront command allow-lists and report-back (A-18h)
+
+**What it is.** itch.io and the Snap Store take builds only through vendor CLIs whose credentials
+live in CI (A15), so their adapters (`core/storefront/stores/{itch,snap}.ts`) run on the CI
+plane, and Steam's, Microsoft's and Epic's build tools are constrained the same way.
+`core/storefront/ciPlane.ts` declares one command allow-list per store; the CLI reads a generated
+copy (`pnpm gen:storefront-ci`, freshness-tested in the worker suite) and the publish action runs
+a tool only through `pkey storefront`:
+
+| Store     | Tool             | Allowed                                                                              | Never (asserted unreachable)                                                      |
+| --------- | ---------------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| `itch`    | `butler`         | `push <dir> <identity target>:<platform[-suffix]> --userversion <v>`                 | any other command; collections and page edits have no CLI                         |
+| `snap`    | `snapcraft`      | `upload <snap> --release=<channels the identity maps>`; `upload-metadata <snap>`     | `close`, `collaborate`, `release`, `register`, `promote`, `--acls package_manage` |
+| `steam`   | `steamcmd`       | `+login <account> +run_app_build <vdf> +quit`, the script's `setlive` a named branch | a `setlive` on `default` or `public`; `+app_set_config`                           |
+| `msstore` | `msstore`        | `publish <package> --appId <identity productId>`, never over a Worker-staged draft   | `submission delete`, `rollout halt` and `finalize`                                |
+| `epic`    | `BuildPatchTool` | `-mode=UploadBinary` with the secret by `-ClientSecretEnvVar`                        | `DeleteBinary`, `UnlabelBinary`, `LabelBinary`, `-ClientSecret=`                  |
+
+**Controls.**
+
+- **Two checks, neither trusting the other.** The CLI refuses a command line before the tool
+  starts; the Worker refuses it again when the step is reported back
+  (`POST /<p>/distribution/report`, `type: "store-step"`, `services/distribution/storeSteps.ts`),
+  so a `store_operations` row (`plane = 'ci'`) never records a command the allow-list refuses.
+- **Identity binding.** A bound parameter (itch's target, a snap's channels, the Microsoft Store
+  product id) must hold against the declared outlet's identity: a leaked report token cannot
+  record, and the CLI will not run, a push to another game or an undeclared channel.
+- **No shell, no secrets in argv.** Tools are spawned without a shell; every parameter pattern
+  refuses a leading `-`, a `..` segment and shell metacharacters; credentials reach the tools from
+  the job's environment (`BUTLER_API_KEY`, `SNAPCRAFT_STORE_CREDENTIALS`, the BuildPatchTool
+  secret by variable name), never the command line, so the ledger's command line holds none.
+- **The ledger guards the CI plane.** msstore `publish` opens its row with a `pending` report the
+  Worker refuses (409 `worker_draft_staged`) while the ledger shows a Worker-plane draft for the
+  product, and the CLI will not run it without report-back. A step already done in the same run
+  answers `replayed`, so a re-run attempt does not push twice.
+- **The conformance suite** runs every store's never-list command lines against its allow-list,
+  checks that no literal spells a never-token, that no value can smuggle an option or a path
+  escape, and that every command admits its sample.
+- **The listing read** (`GET /<p>/distribution/listing/<store>`, `distribution:report`) serves only
+  a store whose adapter writes listing text on the CI plane (Snap): product listing text, never a
+  secret, never another store's projection.
+
+**Residual risk.** The allow-list constrains what Polaris Key's own CLI runs and records; a
+workflow that calls a vendor tool directly bypasses it, and the butler key is unscoped. The
+backstop is A15's placement: one GitHub environment per store with required reviewers for
+production channels. A Steam build script is checked for `setlive` by the CLI only (the Worker
+never sees the file). The check reads KeyValues keys and values quoted or unquoted, skips
+comments, reads backslashes both ways a parser may, and refuses a script that uses `#include` or
+`#base`, since an included file is never checked. Steam itself also refuses `setlive` on
+`default`.
 
 ### App Store Connect writes: the write gate, the ledger and the budget (A-17a)
 
@@ -1862,7 +2061,7 @@ localization only (never a custom product page's or an experiment's); `POST appS
 classification (`uploads`, `listingOutsideSurface`), whose reasons were reworded; every spec write
 is still classified exactly once. Still denied: every `DELETE` (screenshots, sets, localizations),
 and the set's membership `PATCH …/relationships/appScreenshots`, which replaces the set and so
-drops screenshots. The handlers are `connectors/asc/listing.ts` (`listing/text`,
+drops screenshots. The handlers are `connectors/asc/listingPush.ts` (`listing/text`,
 `listing/screenshots`).
 
 **New outbound action: Apple's upload operations.** A reserved screenshot's bytes are PUT to the
@@ -4189,8 +4388,8 @@ CSRF header like every other portal mutation.
   lookup. Guessing a key through it is the same 2^128 search as guessing one anywhere else.
 - **Enumeration by a key holder is bounded to the design's list.** A holder learns the product's
   public presentation and, for a licence they could add, its tier, expiry, device limit and
-  platforms. Refusals carry no ownership details: `owned_elsewhere` says only that another account
-  holds the licence (no account, email or licence id), and `email_mismatch` shows the first
+  platforms. Refusals carry no ownership details: `license_owned` (named `owned_elsewhere` until
+  I-05) says only that another account holds the licence (no account, email or licence id), and `email_mismatch` shows the first
   character and the domain of the licence's address (`m•••@proton.me`). Residual: the masked form
   confirms the domain of the buyer's address to whoever holds the key; the design accepts it so
   the buyer can recognise their own address.
@@ -4198,7 +4397,7 @@ CSRF header like every other portal mutation.
   (`portalClaimKey`, 10 a minute per account and IP, charged before any lookup), and both act on one
   evaluator (`evaluateKeyClaim`), so the preview never promises an add the claim refuses.
 - **The claim now enforces the S-16 safety defaults.** An owned licence never moves by its key
-  (`owned_elsewhere`, 409), and a licence that carries an email attaches only to an account that
+  (`license_owned`, 403, since I-05), and a licence that carries an email attaches only to an account that
   verified that email (`email_mismatch`, 403) unless the product sets `claimByKey`. Every attach
   emails the licence's own address too. Residual (as S-16 §5.4 item 5): a licence with no email,
   leaked before its buyer adds it, goes to whoever adds it first; the buyer's remedy is the
@@ -4259,6 +4458,97 @@ PORTAL.md G23). Assets: the account (A6) and the shared sender's reputation and 
   answers each of those refusals with the same 404. Sends are limited to 5 an hour per account
   and product, charged after ownership is proven, in the `portalEmailDownload` bucket, which
   fails closed (a limiter outage refuses the send).
+
+### The Polaris Key account: links, merge and pairwise subjects (I-05)
+
+Layer 1 of the Identity design (S-16 §5.1, plans/I-04.md §6) replaced the portal account with one
+Polaris Key account per person (`accounts`), its sign-in methods (`account_links`), a stored
+random pairwise subject per (account, product) (`account_product_subjects`) and the licence owner
+pointer `licenses.account_id`. Every portal sign-in ends in one `signIn(verifiedIdentity)`
+(`services/identity/accounts/signIn.ts`). S-16 §5.4 items 3, 12 and 15 are I-05's; item 5's claim
+rules and item 16's tenant-scoped lookup are enforced in the same code.
+
+- **Linking takeover (item 3).** A sign-in method belongs to exactly one account (UNIQUE
+  `(issuer_key, tenant_scope, subject)`); linking one held elsewhere is refused with
+  `link_conflict` and nothing moves. Connecting and disconnecting need a sign-in no older than
+  5 minutes (`STEP_UP_MAX_AGE_SECONDS`), are audited, and email every verified address on the
+  account (the removed address too), so taking over one inbox is not enough to hide a change. The
+  last method cannot be removed (`last_link`; the guard is inside the DELETE, so two concurrent
+  removals cannot orphan the account). **Never by email match:** an unknown identity whose
+  provider-verified email another account already uses is a join offer that writes nothing; the
+  login card (I-07) joins only after the person proves the other account in the same session.
+  Residual: until I-07 the portal answers such a sign-in with a page that names nobody and asks
+  the person to sign in to the existing account first.
+- **Merge takeover (item 15).** `mergeAccounts` needs a live sign-in to EACH account, both fresh
+  (5 minutes); one stale proof refuses the whole merge. Links, licences, sessions, grants,
+  passkeys and registry tokens move in one atomic batch; the absorbed account becomes a tombstone
+  that redirects its sessions to the survivor for 30 days and then resolves to nothing; both
+  accounts' addresses are emailed. A merge cannot be started from one account alone.
+- **Cross-tenant correlation (item 12).** A developer sees a pairwise subject (`ps_` + 128 random
+  bits), different for every product and never derived from the account id; the account id stays
+  inside Identity and Core (a test reads every developer-facing route I-05 touched and finds no
+  account id). After a merge the absorbed subject is an alias of the survivor's, and the developer
+  is told through the `subject.merged` pull feed (`subject_events`), which carries subjects only.
+  Residual (S-16 §5.1, D25): per-product data removal ends the subject but is not unlinkability
+  while a licence of that product stays attached; the removal path offers detaching it too. Two
+  developers can still correlate a person by data they hold anyway (a buyer email).
+- **Tenant-scoped links (item 16).** A link from a tenant-scoped identity (Game Center, Play
+  Games, EOS, Apple's per-team id) is looked up exactly on its scope and recognised only inside a
+  product that lists that scope; another team's identity with the same subject string is a
+  different identity and resolves no account.
+- **Licence claim (item 5).** First attach only: the owner pointer is written by a conditional
+  `UPDATE … WHERE account_id IS NULL`, so an owned licence never moves by key, by the device's
+  enrolled licence or by an email match (`license_owned`), and of two concurrent claims exactly one
+  wins. An email-carrying licence attaches by key only to an account that verified that email,
+  unless the product sets `claimByKey`; each attach notifies the licence's own address when it is
+  not one of the account's. A licence's `sub` alone never attaches it; the platform `sub` joins an
+  account only through an existing link, and legacy `sub`-only licences of custom-issuer products
+  stay floating (§8 Q6).
+- **The device binding.** `devices.subject` holds the pairwise subject of an account signed in on
+  the device, never the account id, and is never signed. Key entry never sets it. Core's clearing
+  hook drops it on sign-out, sign out everywhere, account disable or deletion, per-product removal
+  and relink; a plain licence detach does not sign the device out (S-17 §5.8 item 2). Sign-out
+  also deauthorizes a device only when the sign-in bound it (`bound_by = 'signin'`) to a licence of
+  the signed-out account (§8 Q3).
+- **Migration.** The backfill (`0068_e`) keeps account ids and picks one owner per licence by link
+  strength (oidc > email > admin > licence key, then earliest); every other account loses its link,
+  is emailed, has its registry tokens for that licence revoked and is listed in the platform audit
+  log (`account.license.superseded`). The `portal_*` tables stay for a rollback, and every removal
+  under I-05 (a method, a licence detach or relink, a per-product removal, a merge, a deletion, a
+  disable) is mirrored into them, so a rolled-back Worker never resurrects what the person removed;
+  `scripts/rollback/0068_accounts.down.sql` copies forward only what the new Worker created. A
+  removal that leaves a licence floating first ends every account's portal link to it, settling a
+  not-yet-settled loser inline, so the scheduled catch-up (which copies a portal link onto a
+  floating licence) can never hand it to that loser.
+
+### Discover: free offers and "Add to library" (PX-W10)
+
+`GET /api/discover` lists the products whose licence policy would auto-issue to the signed-in
+account and `POST /api/discover/<p>/claim` mints one (docs/design/PORTAL.md §10.2 G24, G25). Both
+sit behind the portal session; the claim also needs the CSRF header.
+
+- **Discover grants nothing a sign-in would not.** The listing and the claim run the product
+  sign-in's own policy function (`identityTier`) and the claim mints through its own path
+  (`activateFromIdentity`), for the subject the account holds at the platform IdP. Anything the
+  claim can mint, the same person could already get by signing in to the product. Only products on
+  the platform issuer with auto-linking on are candidates, the same predicate the link sweep uses
+  (R5-01/R5-02), so a tenant-controlled issuer can neither be offered nor collide with a platform
+  subject.
+- **Group membership is the platform IdP's assertion, as of the last portal sign-in.** The portal
+  now keeps the `groups` claim (`account_links.groups_json`, on the link it signed in through). Residual: a group removed
+  at the IdP still yields offers until the account signs in to the portal again (the product
+  sign-in reads it fresh). The window is the portal session's lifetime, and a product that must
+  revoke on group removal does so through the licence, not through Discover.
+- **The listing writes nothing.** It is a dry run (a test runs it against a database that refuses
+  every write), so browsing Discover cannot mint, link or audit anything.
+- **The claim is not a product oracle and not a minting loop.** An unknown slug, a product that is
+  not a candidate, and a withdrawn offer all answer the same `409 not_eligible`. The claim is
+  idempotent per account and product (the `idx_licenses_sub` unique index decides a racing double
+  submit; the loser answers the winner's licence), it spends the one per-account bucket the
+  activate preview and the key claim share (`portalClaimKey`, charged before any lookup), and it is
+  audited twice: `portal.discover.claim` in `portal_audit` and `license.create` in the product's
+  `audit`, both with `source: discover`.
+- **Developers can withhold an offer without changing the policy** (`discover_enabled = 0`).
 
 ### Boundaries that are weaker than they look
 
@@ -4581,16 +4871,23 @@ record naming the caller's binding, or a sandbox path open by default;
 a new product-secret usage or sealed kind is introduced (it must say which paths may open it,
 and that no manifest can grant it); an outlet-credential kind is added, or a file is added to an
 allowlist in `test/outletCredentialReach.test.ts` (it must say why that file needs a store
-credential, and the open must stay audited); a change is made to any
+credential, and the open must stay audited); a Play caller opens an edit without the package's edit lease, a request is sent outside
+the Play gate other than `discardEdit`, or a caller asserts `PLAY_EDIT_SCOPE.rolloutControl` outside
+P5-03's controls (A-18e); a change is made to any
 `core/storefront/rules/*` table (an entry added to an allow table such as `ASC_WRITE_ALLOW` or moved
 out of a deny list such as `rules/appStoreDenied.ts`, a rule's attributes, relationships, value
 checks or confirmation level loosened), a storefront adapter is added to `STOREFRONT_ADAPTERS`, a
 new vendor spec pin is adopted (`ASC_SPEC_PIN` or another adapter's `specPin`), a CI command
-allow-list (`core/storefront/ci.ts` type, A-18h's lists) gains or loosens a command, an adapter
+allow-list (`core/storefront/ciPlane.ts`, the `ci.ts` check) gains or loosens a command, a pattern
+or an identity binding, a CI-plane step starts running without report-back, the store-step ingest
+stops re-checking the command, an adapter
 declares `api` for `uploadBuild` or empties a never-list category, a check of
 `test/storefront/conformance.test.ts` is relaxed, anything but `core/asc/client.ts` sends a request
 to App Store Connect (and anything but `core/asc/upload.ts`, gated by `checkAscUpload`, PUTs to an
-upload operation; `isAscUploadUrl` or `ASC_SCREENSHOT_UPLOAD` loosened, A-18m), or a field joins a store's audit projection (A-17a, A-18a); a platform store credential (A-16) is added, used
+upload operation; `isAscUploadUrl` or `ASC_SCREENSHOT_UPLOAD` loosened, A-18m), anything but `msstore/write.ts` sends a non-GET request to a Microsoft Store
+API or a SAS upload, Microsoft's hand-written operation list (`test/fixtures/msstore/operations.json`)
+is edited or its `MSSTORE_SPEC_PIN` re-dated (the docs-drift review: re-read every page it names and
+re-classify every write), or a field joins a store's audit projection (A-17a, A-18a, A-18f); a platform store credential (A-16) is added, used
 without the product's platform pin matching at setup, token and open, cached in a way a hit can
 skip the pin, allowed to fall through from a mis-pinned own credential, or written or opened by a
 file outside its allowlists; the device trust level starts being carried in a signed document or token, an operation trusts `attested` without going through `trustRefusal`, the trust policy becomes writable by anything but the platform-admin `trust-policy` resource, the App Attest root stops being the pinned constant, or a path other than a token rotation keeps the level across a new device token (P6-02); or a new way to obtain a device token or licence without an

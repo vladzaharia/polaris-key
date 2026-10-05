@@ -41,6 +41,22 @@ Targets of `manageUrl` and email links ([PORTAL.md §3.4](../../../../design/POR
 
 - **Return URLs** are accepted only when they match a declared scheme or origin; otherwise the flow ends on the product page (§3.3).
 
+## Corrections (verified against the code, PX-10)
+
+- **"The product's declared redirects" did not reach the portal.** The only return targets a
+  product declares today are its exact browser origins (`web.origins`, P0-05); app schemes arrive
+  with S-16 I-15 (native redirect), and the OIDC `redirectUris` are Polaris Key's own IdP
+  callbacks, not app returns. PX-10 adds `returnTo: { origins, schemes }` to
+  `GET /api/products/<p>` (origins from `web.origins`, schemes empty until the manifest can
+  declare them), documented on the docs site's portal page (rule 10 for portal routes is
+  narrative-only, PORTAL.md §10.1). No device-wire change.
+- **The allowlist is exact:** same scheme, host and port for web origins, exact scheme for app
+  links; `javascript:`, `data:` and the like are refused even when declared; credentials, control
+  characters, whitespace and values over 2,048 characters are dropped; without a match the way
+  back is the product page.
+- **The library's "Free up a device"** keeps opening the product page's Devices section (inline
+  remove); the focused flow is for apps and email links.
+
 ## Steps
 
 1. Re-read the PORTAL.md sections above and the matching mockups in `docs/design/portal/`; verify this brief against the code and record any correction here.

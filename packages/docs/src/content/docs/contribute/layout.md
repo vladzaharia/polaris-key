@@ -64,7 +64,8 @@ goes through a Core-mediated interface — a hook on `ServiceDescriptor` that Co
 service answers, never a direct import between services. The chain release ← distribution ←
 update is not a licence to import along it: Distribution reads Release, and Update reads
 Distribution, only through the **descriptor hooks** in `core/hooks.ts` (`releaseCatalog`,
-`delivery`, `outletCapabilities`). Core builds them per request from the registry and the
+`delivery`, `outletCapabilities`, and License's `licenseProvenance`, which Identity's portal reads).
+Core builds them per request from the registry and the
 product's enablement, and each answers `null` — without running the provider's code — while the
 service that provides it is off. Hooks are read-only, and each has exactly one provider.
 

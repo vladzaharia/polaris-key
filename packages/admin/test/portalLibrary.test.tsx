@@ -6,14 +6,23 @@ import {
   artifact,
   axeViolations,
   DAY,
+  dlFile,
+  downloadsView,
   fetchedRequests,
+  libraryFor,
+  libraryItem,
   license,
   mockFetch,
   NOW_S,
   release,
   renderPortal,
   signedIn,
+  storeLink,
 } from "./portalHarness.js";
+import { QuickActionButton } from "../src/portal/components/QuickAction.js";
+import { render } from "@testing-library/react";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { createPortalQueryClient } from "../src/portal/data.js";
 
 const MAC_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15";
@@ -199,7 +208,7 @@ describe("Library on today's data (PX-02)", () => {
   it("shows the error with Retry instead of an empty library", async () => {
     mockFetch(
       signedIn([], {
-        "/api/licenses": { status: 500, body: { error: "internal" } },
+        "/api/library": { status: 500, body: { error: "internal" } },
       }),
     );
     renderPortal();
@@ -215,5 +224,137 @@ describe("Library on today's data (PX-02)", () => {
     renderPortal();
     await screen.findByRole("article", { name: "Nightfall" });
     expect(fetchedRequests()).toContain("GET /api/releases");
+  });
+});
+
+describe("Library on GET /api/library (PX-08)", () => {
+  it("shows Discover with its count once the Worker counts offers", async () => {
+    mockFetch(
+      signedIn([nightfall], { "/api/library": libraryFor([nightfall], 4) }),
+    );
+    renderPortal();
+    const main = await screen.findByRole("navigation", { name: "Main" });
+    const link = await within(main).findByRole("link", { name: /Discover/ });
+    expect(link.getAttribute("href")).toBe("#/discover");
+    expect(link.textContent).toBe("Discover4");
+    const phone = screen.getByRole("navigation", { name: "Phone" });
+    expect(
+      within(phone).getByRole("link", { name: /^Discover\W+4 offers$/ }),
+    ).toBeTruthy();
+    expect(
+      await screen.findByRole("link", {
+        name: "4 more you can add in Discover",
+      }),
+    ).toBeTruthy();
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("keeps Discover out of the nav while the Worker can't list offers", async () => {
+    mockFetch(signedIn([nightfall]));
+    renderPortal();
+    await screen.findByRole("article", { name: "Nightfall" });
+    expect(screen.queryByRole("link", { name: /Discover/ })).toBeNull();
+  });
+
+  it("lists what the Worker lists, with its seats as a meter", async () => {
+    mockFetch(
+      signedIn([nightfall], {
+        "/api/library": {
+          products: [libraryItem(nightfall, { deviceLimit: 3 })],
+        },
+      }),
+    );
+    renderPortal();
+    const hero = await screen.findByRole("article", { name: "Nightfall" });
+    expect(within(hero).getByText("2 of 3 devices in use")).toBeTruthy();
+    expect(
+      within(hero).getByRole("img", { name: "2 of 3 devices in use" }),
+    ).toBeTruthy();
+  });
+
+  it("shows the art the media proxy serves, same-origin only", async () => {
+    mockFetch(
+      signedIn([nightfall], {
+        "/api/library": {
+          products: [
+            libraryItem(nightfall, {
+              headerUrl: "/media/nightfall/header?v=abc",
+              iconUrl: "https://cdn.example/icon.png",
+            }),
+          ],
+        },
+      }),
+    );
+    const { container } = renderPortal();
+    await screen.findByRole("article", { name: "Nightfall" });
+    const srcs = [...container.querySelectorAll("img")].map((i) =>
+      i.getAttribute("src"),
+    );
+    expect(srcs).toContain("/media/nightfall/header?v=abc");
+    expect(srcs.every((u) => u?.startsWith("/media/"))).toBe(true);
+  });
+
+  it("downloads the build the Worker picked and lists the live stores", async () => {
+    mockFetch(
+      signedIn([nightfall], {
+        "/api/products/nightfall/downloads": downloadsView(
+          "nightfall",
+          [dlFile({ artifactId: "n-mac", platform: "macos" })],
+          {
+            stores: [
+              storeLink({
+                kind: "steam",
+                label: "Steam",
+                platforms: ["macos", "windows"],
+              }),
+            ],
+          },
+        ),
+      }),
+    );
+    renderPortal();
+    const hero = await screen.findByRole("article", { name: "Nightfall" });
+    expect(
+      await within(hero).findByRole("button", {
+        name: /Download for macOS: Nightfall Version 1\.4\.2 · Universal/,
+      }),
+    ).toBeTruthy();
+    const steam = within(hero).getByRole("link", { name: /Steam/ });
+    expect(steam.getAttribute("href")).toBe("https://store.example/steam");
+    expect(steam.getAttribute("target")).toBe("_blank");
+    expect(within(hero).getByText("Also yours on")).toBeTruthy();
+  });
+
+  it("'Email me the download' sends the link to the account's own address", async () => {
+    const posted: unknown[] = [];
+    mockFetch({
+      "POST /api/products/nightfall/email-download": (init: RequestInit) => {
+        posted.push(JSON.parse(String(init.body)));
+        return { ok: true };
+      },
+    });
+    const client = createPortalQueryClient();
+    const product = {
+      slug: "nightfall",
+      name: "Nightfall",
+    } as Parameters<typeof QuickActionButton>[0]["product"];
+    render(
+      <QueryClientProvider client={client}>
+        <QuickActionButton
+          product={product}
+          action={{
+            kind: "email",
+            label: "Email me the download",
+            platform: "windows",
+          }}
+        />
+      </QueryClientProvider>,
+    );
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "Email me the download: Nightfall for Windows",
+      }),
+    );
+    await waitFor(() => expect(posted).toEqual([{ platform: "windows" }]));
   });
 });

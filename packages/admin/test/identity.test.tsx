@@ -72,6 +72,7 @@ const PORTAL: PortalProductSettings = {
   autoLinkEnabled: null,
   keyReissueEnabled: false,
   claimByKey: true,
+  discoverEnabled: true,
   branding: null,
   modifiedAt: 1_700_000_000,
 };
@@ -234,6 +235,22 @@ describe("Identity → Portal", () => {
     });
   });
 
+  it("renders the Discover switch (PX-W10), on by default, and saves turning it off", async () => {
+    portalSettings.mockResolvedValue({
+      settings: { ...PORTAL, discoverEnabled: undefined },
+    });
+    renderPortal();
+    await waitFor(() =>
+      expect(checked(toggle("Offer on Discover"))).toBe(true),
+    );
+    await userEvent.click(toggle("Offer on Discover"));
+    await userEvent.click(saveButton()!);
+    await waitFor(() => expect(updatePortalSettings).toHaveBeenCalledTimes(1));
+    expect(updatePortalSettings.mock.calls[0]![1]).toMatchObject({
+      discoverEnabled: false,
+    });
+  });
+
   it("reads the portal state through the identity endpoint, not the copy on the product row", async () => {
     // `identity/portal` OWNS the table. Seeding from the product row's embedded copy would show a
     // value a save does not round-trip against.
@@ -295,6 +312,7 @@ describe("Identity → Portal", () => {
       releasesEnabled: true,
       keyReissueEnabled: false,
       claimByKey: true,
+      discoverEnabled: true,
       autoLinkEnabled: null,
     });
     // `branding` is a blob this page only reads; sending it back could overwrite it.
@@ -407,6 +425,7 @@ describe("Identity → Portal", () => {
       "Release downloads",
       "Customers can get a new key",
       "Add by key without the purchase email",
+      "Offer on Discover",
     ]) {
       expect(toggle(name).hasAttribute("disabled"), name).toBe(true);
     }
@@ -417,7 +436,7 @@ describe("Identity → Portal", () => {
     ).toBe(true);
     expect(
       screen.getAllByText("Turn on the customer portal to change this.").length,
-    ).toBe(3);
+    ).toBe(4);
 
     // Turning the portal on in the draft unlocks them.
     await userEvent.click(toggle("Customer portal"));

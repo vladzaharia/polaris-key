@@ -42,6 +42,26 @@ Registry tokens are a license feature ([PORTAL.md §4.21](../../../../design/POR
 
 - G14 is an owner decision (Q-1), not a work package; the graph records it as a human input.
 
+## Corrections (verified against the code, PX-11)
+
+- **Q-1 / G14 is settled by the merged code:** F-21 serves the portal token API at
+  `GET|POST /api/licenses/<product>/<licenseId>/registry-tokens` and
+  `DELETE …/registry-tokens/<tokenId>` (the portal router strips `/api`; there is no `/portal`
+  alias, as PORTAL.md recommended). The `/portal/api/…` spelling in F-21's brief and in the
+  handler's comment is the plan's wording, not a served path. The card's deep link is
+  `#/p/<product>/package`, a product-page section. No owner input was needed to build on it; the
+  human-input line stays for the lead to close.
+- **What the API returns shapes the card:** `available` (a non-public feed exists; the card and
+  its TOC entry and pill show only then), `licenseUsable`, `registryOrigin`, the feeds (ecosystem,
+  access mode, base URL) and the account's tokens for the selected licence. It does not return
+  the feed's namespace, so the npm snippet keeps the `@scope` placeholder that
+  `renderFeedSetup` prints without one (follow-up for F-21: add the namespace to the `GET`).
+- **No "Renew"** on a token row (the mockup shows one): there is no renew route; a token near
+  expiry shows the amber pill and the person creates a new one.
+- The one-time dialog is `ui/OneTimeSecretDialog`: Escape, the close button and a scrim click
+  ask "Close without copying?" instead of closing; **Done** waits for Copy or the "I've stored
+  this token" tick.
+
 ## Steps
 
 1. Re-read the PORTAL.md sections above and the matching mockups in `docs/design/portal/`; verify this brief against the code and record any correction here.

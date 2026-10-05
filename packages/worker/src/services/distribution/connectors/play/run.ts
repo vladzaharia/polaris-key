@@ -59,6 +59,8 @@ export interface PlayRunOptions {
   use: string;
   fetchImpl?: FetchImpl;
   sleep?: (ms: number) => Promise<void>;
+  /** Called per Android Publisher request sent (the storefront adapter's budget meter). */
+  onSend?: () => Promise<void>;
 }
 
 export function playRun(o: PlayRunOptions): PlayRun {
@@ -97,6 +99,9 @@ export function playRun(o: PlayRunOptions): PlayRun {
       ...common,
       origin: ANDROID_PUBLISHER_ORIGIN,
       token: token(ANDROID_PUBLISHER_SCOPE, o.use),
+      // A-18e: the edits workflow is behind the Play write gate.
+      gated: true,
+      ...(o.onSend ? { onSend: o.onSend } : {}),
     }),
   );
   let reporting: GoogleApiClient | null = null;

@@ -8,10 +8,13 @@ import { ProductArt } from "./ProductArt.js";
 import { ProductIcon } from "./ProductIcon.js";
 import { ProductStatusPill } from "./ProductStatus.js";
 import { QuickActionButton } from "./QuickAction.js";
+import { SeatMeter } from "./SeatMeter.js";
+import { StorePills } from "./StorePills.js";
 
 /**
  * The one-product hero (§4.13): art (1.45 fr) and a side panel with the icon, name, status and
- * tier, the primary action (solid: the one lead), a short summary and the product-page link.
+ * tier, the primary action (solid: the one lead), "Also yours on" (live store links, G2), a short
+ * summary with the seat meter (G5) and the product-page link.
  * Phones: the art becomes a 16:9 strip above the panel.
  */
 export function LibraryHero({
@@ -75,12 +78,24 @@ export function LibraryHero({
           twoLine
           className="w-full"
         />
+        <StorePills stores={product.stores} />
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 border-t border-border pt-5 text-sm">
           <dt className="text-fg-muted">License</dt>
           <dd className="text-fg-strong">{product.status.note}</dd>
           <dt className="text-fg-muted">Devices</dt>
-          <dd className="text-fg-strong">
-            {devicesText(product.deviceCount, product.seats?.limit)} in use
+          <dd className="space-y-2 text-fg-strong">
+            <span className="block">
+              {product.status.kind === "signedInApp"
+                ? "Any device"
+                : `${devicesText(product.deviceCount, product.seats?.limit)} in use`}
+            </span>
+            {product.seats && product.status.kind !== "signedInApp" ? (
+              <SeatMeter
+                inUse={product.seats.inUse}
+                limit={product.seats.limit}
+                className="max-w-48"
+              />
+            ) : null}
           </dd>
           {includes.length ? (
             <>

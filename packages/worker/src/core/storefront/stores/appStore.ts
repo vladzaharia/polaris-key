@@ -7,7 +7,7 @@
  *     notification URL and P5-02's webhook;
  *   - the listing (A-18m, S-15 owner decision 1): text into the version and app info
  *     localizations, screenshots into a version localization's sets, from the shared listing
- *     model and the blob store (`connectors/asc/listing.ts`);
+ *     model and the blob store (`connectors/asc/listingPush.ts`);
  *   - deep links for what Apple's API cannot do (create the app record, App Information, the age
  *     rating, App Privacy);
  *   - no build upload: binaries are uploaded by the release workflow's vendor CLI step, never by
