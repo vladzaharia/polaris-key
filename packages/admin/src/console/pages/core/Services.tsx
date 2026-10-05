@@ -379,7 +379,7 @@ function ServicesForm({
       <SettingsSection
         id="services-enablement"
         title="Enabled services"
-        description="Each switch saves on its own. Turning a service on turns on what it needs; turning one off takes what needs it along."
+        description="Each switch saves on its own. Turning one on also turns on what it needs."
         source={
           <SourceBadge
             source={isAdmin ? "admin" : "manifest"}
