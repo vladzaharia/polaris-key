@@ -64,6 +64,7 @@ export type Route =
   | { kind: "portalLogout" }
   | { kind: "portalMagicVerify" }
   | { kind: "portalDownload"; token: string }
+  | { kind: "portalMedia" }
   | { kind: "products" }
   /** `/docs[/*]` — the platform-admin-gated documentation site (docs plan N7). A PLATFORM
    *  route reserved ahead of product slugs, like `/manage`: the gate + asset serving live in
@@ -128,13 +129,24 @@ export function matchRoute(pathname: string): Route {
   if (path === "/docs" || path.startsWith("/docs/")) return { kind: "docs" };
 
   // Root customer portal. These are reserved before product slugs.
-  if (path === "/" || path === "/index.html" || path.startsWith("/assets/"))
+  // `/activate?key=…` is the printable path form of the Activate license deep link (PORTAL.md
+  // §3.3): the SPA shell rewrites it to `#/?activate=…` before its first render.
+  if (
+    path === "/" ||
+    path === "/index.html" ||
+    path === "/activate" ||
+    path.startsWith("/assets/")
+  )
     return { kind: "portalSpa" };
   if (path === "/login") return { kind: "portalLogin" };
   if (path === "/callback") return { kind: "portalCallback" };
   if (path === "/logout") return { kind: "portalLogout" };
   if (path === "/magic/verify") return { kind: "portalMagicVerify" };
   if (path === "/api" || path.startsWith("/api/")) return { kind: "portalApi" };
+  // PX-W1: the portal's same-origin media proxy, `/media/<product>/<asset>` (`media` is a
+  // reserved slug). Any other depth under `/media` is the proxy's own not-found.
+  if (path === "/media" || path.startsWith("/media/"))
+    return { kind: "portalMedia" };
   const portalDownload = path.match(/^\/download\/([^/]+)$/);
   if (portalDownload?.[1])
     return {

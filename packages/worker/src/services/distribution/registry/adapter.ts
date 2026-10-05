@@ -34,6 +34,7 @@
  */
 
 import type {
+  FeedSetupDeclaration,
   PackageEcosystem,
   PackageEcosystemRules,
 } from "@polaris-key/manifest";
@@ -42,7 +43,10 @@ import type {
   Capabilities,
   Support,
 } from "../../../core/adapters/contract.js";
-import type { RegistryRoute } from "../../../core/registryHost.js";
+import type {
+  OwnerlessRegistryRoute,
+  RegistryRoute,
+} from "../../../core/registryHost.js";
 import type { ChallengeKind } from "./authorize.js";
 import type {
   RegistryPackage,
@@ -107,17 +111,11 @@ export interface FeedCapabilityView extends FeedProtocol {
 export type FeedExtCheck = (value: unknown) => boolean;
 
 /**
- * An input the setup snippet for this feed needs (F-12 renders them, from these declarations):
- * the feed's base URL, the bare registry host (docker), the owner slug, a namespace key the
- * ingest rules declare (`namespace.scope`), or the package and version being shown.
+ * An input the setup snippets for a feed read (`@polaris-key/manifest` `FeedSetupInput`, F-12): the
+ * feed's base URL, the bare registry host (docker), the owner slug, a namespace key the ingest
+ * rules declare (`namespace.scope`), or the package and version being shown.
  */
-export type FeedSetupInput =
-  | "baseUrl"
-  | "registryHost"
-  | "owner"
-  | "package.name"
-  | "package.version"
-  | `namespace.${string}`;
+export type { FeedSetupInput } from "@polaris-key/manifest";
 
 /** One OpenAPI path the feed answers: `[path, methods, owner]`, where `owner` is a route name of
  *  this adapter, or `host` for a fixed answer the dispatcher gives on the feed's behalf. */
@@ -152,19 +150,24 @@ export interface FeedAdapter<
   readonly hostPrefix: string;
   /** The feed's base path for one (already URL-encoded) owner, under `hostPrefix`. */
   feedPath(owner: string): string;
-  /** Every route, each built by `feedRoute`. */
+  /** Every read route, each built by `feedRoute`. */
   readonly routes: readonly RegistryRoute[];
+  /** The feed's credential routes (F-21: Swift's `POST …/login`), each built by `feedAuthRoute`. */
+  readonly authRoutes?: readonly RegistryRoute[];
+  /** The feed's owner-less routes (F-21: OCI's `GET /v2/token`), whose owners are in the query. */
+  readonly ownerlessRoutes?: readonly OwnerlessRegistryRoute[];
   readonly renderer: FeedRenderer;
   /** The ecosystem's one ingest declaration in `@polaris-key/manifest`. */
   readonly ingest: PackageEcosystemRules<E>;
   /** The extension settings an operator may set, and each one's check. */
   readonly settings: { readonly ext: Readonly<Record<string, FeedExtCheck>> };
   readonly capabilities: FeedCapabilities;
-  readonly setup: {
-    /** The clients the docs and the console name. */
-    readonly clients: readonly string[];
-    readonly inputs: readonly FeedSetupInput[];
-  };
+  /**
+   * The ecosystem's ONE setup declaration in `@polaris-key/manifest` (`FEED_SETUP[ecosystem]`):
+   * the clients the docs and the console name, the inputs its snippets read, and the snippets
+   * themselves (`renderFeedSetup`, shared by the console and `pkey feeds setup`).
+   */
+  readonly setup: FeedSetupDeclaration;
   /** The feed's OpenAPI paths; `routeCoverage` reads them as its registry table (rule 10). */
   readonly openapi: readonly FeedOpenApiRow[];
   /**
@@ -196,12 +199,6 @@ export interface FeedAdapterSpec<E extends PackageEcosystem> extends Omit<
   };
 }
 
-/** Tier 1 serves anonymous reads only; registry tokens are F-21's. */
-const TIER1_AUTH: Support = {
-  mode: "unsupported",
-  reason: "registry tokens arrive with F-21; tier 1 serves public feeds only",
-};
-
 function verbSupport(verb: FeedVerb): Support {
   return verb === true
     ? { mode: "api", plane: "worker", rules: [] }
@@ -210,8 +207,9 @@ function verbSupport(verb: FeedVerb): Support {
 
 /**
  * A feed adapter from its spec: `id` is the ecosystem; `ops` declares `serve` behind the access
- * ladder with the feed's route names as its rules, `render` and `setup` in the Worker, `auth` as
- * tier 1 leaves it, and the version verbs as the spec says; `limits` are the ingest rules' file
+ * ladder with the feed's read route names as its rules, `auth` (F-21: registry tokens, judged by
+ * the same ladder) with its credential routes as its rules, `render` and `setup` in the Worker,
+ * and the version verbs as the spec says; `limits` are the ingest rules' file
  * and name ceilings. Feeds have no upstream to rate-limit them.
  */
 export function defineFeedAdapter<E extends PackageEcosystem>(
@@ -231,7 +229,10 @@ export function defineFeedAdapter<E extends PackageEcosystem>(
       ops: {
         render: worker([]),
         serve: worker(spec.routes.map((r) => r.name)),
-        auth: TIER1_AUTH,
+        auth: worker([
+          ...(spec.authRoutes ?? []).map((r) => r.name),
+          ...(spec.ownerlessRoutes ?? []).map((r) => r.name),
+        ]),
         yank: verbSupport(yank),
         unyank: verbSupport(yank),
         deprecate: verbSupport(deprecate),

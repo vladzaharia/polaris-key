@@ -1,0 +1,25 @@
+# Route the scope to this feed and refuse an unsigned release (.swiftpm/configuration/registries.json)
+# The whole file, in place of swift package-registry set: SwiftPM needs version and registries beside security. For every project on the machine, ~/.swiftpm/configuration/registries.json. Unless the signer chains to a root SwiftPM already trusts, add trustedRootCertificatesPath under signing.
+{
+  "version": 1,
+  "registries": {
+    "acme": {
+      "url": "https://pkg.plrs.im/swift/acme"
+    }
+  },
+  "security": {
+    "default": {
+      "signing": {
+        "onUnsigned": "error",
+        "onUntrustedCertificate": "error"
+      }
+    }
+  }
+}
+
+# Sign in to the feed
+# After the file above: login adds its authentication entry to it.
+swift package-registry login https://pkg.plrs.im/swift/acme --token "$PKEY_REGISTRY_TOKEN" --no-confirm
+
+# Depend on the package (Package.swift)
+.package(id: "acme.<Package>", from: "1.0.0")

@@ -56,6 +56,7 @@ const HOOKS: readonly HookName[] = [
   "releaseCatalog",
   "delivery",
   "outletCapabilities",
+  "licenseProvenance",
 ];
 
 function servicesWith(on: readonly ServiceSlug[]): ServicesMap {
@@ -305,6 +306,7 @@ describe("hook providers", () => {
       releaseCatalog: "release",
       delivery: "distribution",
       outletCapabilities: "distribution",
+      licenseProvenance: "license",
     };
     for (const name of HOOKS) {
       const providers = [...SERVICES.values()].filter(
@@ -538,7 +540,8 @@ describe("releaseCatalog (Release)", () => {
     // P2b-05 added `channelReleases`, the feeds' history read. P4-02 added the six pack reads.
     // P6-03 added `knownChannels`, P4-12 the five pack-set reads, P4-13 `revocations`, P4-18
     // `packPayload` (the payload URL's read), P4-29 `lazyDeltas` and
-    // `lazyDeltaDevices` (the feed's delta menu and its rank), F-03 the three package reads.
+    // `lazyDeltaDevices` (the feed's delta menu and its rank), F-03 the three package reads,
+    // A-18b `releaseNotes` (the listing model's store-notes default).
     expect(Object.keys(catalog).sort()).toEqual([
       "accessSelector",
       "artifacts",
@@ -571,6 +574,7 @@ describe("releaseCatalog (Release)", () => {
       "pinnedByMany",
       "pins",
       "release",
+      "releaseNotes",
       "releases",
       "resolve",
       "revocations",

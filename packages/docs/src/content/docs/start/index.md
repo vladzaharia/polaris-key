@@ -99,8 +99,8 @@ byte-for-byte encoding is the subject of [the wire contract](/docs/build/wire/).
 
 ## 5. Six SDKs, one corpus, and it works offline
 
-The SDKs are **six packages — Node, React, Python, Swift, Godot, Kotlin** (Kotlin's verified core
-first; its service modules follow) — each composing Core with one
+The SDKs are **six packages — Node, React, Python, Swift, Godot, Kotlin** (Kotlin with a Compose
+UI kit) — each composing Core with one
 sub-client per service (`client.license`, `client.config`, `client.release`, `client.update`,
 `client.devices`). They do not agree on the wire by code review: the worker and all six SDKs
 drive the **same conformance corpus** (`conformance/corpus/v2/`), vector for vector, and

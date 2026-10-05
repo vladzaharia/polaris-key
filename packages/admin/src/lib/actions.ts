@@ -76,6 +76,21 @@ export const ACTION_LEVELS = {
   "connector.webhook": 1,
   "connector.priority": 1,
   "connector.settings": 1,
+  // App Store Distribute and App Store products (A-17g; notes/S-14 §7.1: "everything else uses a
+  // plain confirm"). Each is reversible in App Store Connect or by a later step.
+  "connector.betaNotes": 1,
+  "connector.testflightGroups": 1,
+  "connector.betaReview": 1,
+  "connector.versionCreate": 1,
+  "connector.versionBuild": 1,
+  "connector.versionNotes": 1,
+  "connector.releaseType": 1,
+  "connector.phasedReleaseCreate": 1,
+  "connector.cancelSubmission": 1,
+  "connector.iapCreate": 1,
+  "connector.iapLocalization": 1,
+  // The first price of a new In-App Purchase (the Worker's `initial`); a change is L3 below.
+  "connector.iapPrice": 1,
   // Store connections (A-16)
   "storeApp.assign": 1,
   "storeApp.release": 1,
@@ -99,6 +114,8 @@ export const ACTION_LEVELS = {
   // phased release's complete moved to L3 below.)
   "connector.storeHalt": 2,
   "connector.storeComplete": 2,
+  // A-17g: a build's export compliance answer cannot be changed through the API once given.
+  "connector.exportCompliance": 2,
   "update.signatureOff": 2,
 
   // L3 · catastrophic (typed confirmation)
@@ -115,6 +132,10 @@ export const ACTION_LEVELS = {
   // is sold (an empty list takes it off sale). Both are typed like a release; the Worker compares.
   "connector.phasedComplete": 3,
   "connector.iapAvailability": 3,
+  // A-17d/A-17e (notes/S-14 §7.1): submitting a version for App Review and changing an existing
+  // In-App Purchase price are typed with the app's name too; the Worker compares.
+  "connector.submitReview": 3,
+  "connector.iapPriceChange": 3,
 
   // Release · channels and yanks (ADMIN.md §6.3), levelled by §5.2's definitions: an unyank and a
   // pack floor change what devices are offered and can be undone (L1); lowering or clearing a
@@ -137,6 +158,11 @@ export const ACTION_LEVELS = {
   "package.undeprecate": 1,
   "package.yank": 2,
   "feed.policyOff": 2,
+  // F-21: leaving `public` refuses every anonymous client within 30 seconds and can be undone
+  // (L1); a registry token revocation cannot be undone, and revoking all is broad (both L2).
+  "feed.tighten": 1,
+  "registryToken.revoke": 2,
+  "registryToken.revokeAll": 2,
 } as const satisfies Record<string, ActionLevel>;
 
 export type ActionId = keyof typeof ACTION_LEVELS;
@@ -151,6 +177,8 @@ const TYPED: Partial<Record<ActionId, ActionPolicy["typed"]>> = {
   "connector.releaseVersion": "appName",
   "connector.phasedComplete": "appName",
   "connector.iapAvailability": "appName",
+  "connector.submitReview": "appName",
+  "connector.iapPriceChange": "appName",
 };
 
 const INTENT: Record<ActionLevel, ConfirmIntent> = {

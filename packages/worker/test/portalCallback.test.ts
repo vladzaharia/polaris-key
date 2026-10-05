@@ -143,43 +143,61 @@ describe("portal identities are keyed by issuer (I-01, S-16 G14)", () => {
     const db = makeTestDb();
     const res = await callbackWith(idClaims(), db);
     expect(res.status).toBe(302);
-    const rows = await db.all<{ provider: string; subject: string }>(
-      "SELECT provider, subject FROM portal_account_identities",
+    // I-05: the sign-in method is an `account_links` row keyed by (issuer, tenant scope, subject).
+    const rows = await db.all<{ issuer_key: string; subject: string }>(
+      "SELECT issuer_key, subject FROM account_links WHERE kind = 'oidc'",
     );
-    expect(rows).toEqual([{ provider: ISSUER, subject: "user-1" }]);
+    expect(rows).toEqual([{ issuer_key: ISSUER, subject: "user-1" }]);
   });
 
-  it("re-keys a pre-I-01 'oidc' row and signs into the same account", async () => {
+  it("re-keys a pre-I-01 'oidc' link and signs into the same account", async () => {
     const db = makeTestDb();
     const legacy = await getOrCreateAccountByEmail(
       db,
       "legacy@example.com",
       NOW,
     );
-    // A pre-0059 row. The insert trigger now refuses the literal, so write it keyed by issuer
-    // and rewrite it to the legacy key, which is the shape a production row has.
+    // A link the 0068 backfill copied verbatim from a pre-0059 portal identity row.
     await db.run(
-      `INSERT INTO portal_account_identities (provider, subject, account_id, created_at, last_seen_at)
-       VALUES (?, 'user-1', ?, ?, ?)`,
-      ISSUER,
+      `INSERT INTO account_links (id, account_id, issuer_key, tenant_scope, subject, kind,
+         created_at, last_used_at)
+       VALUES ('lnk_legacy', ?, 'oidc', '', 'user-1', 'oidc', ?, ?)`,
       legacy.id,
       NOW,
       NOW,
     );
-    await db.run(
-      "UPDATE portal_account_identities SET provider = 'oidc' WHERE subject = 'user-1'",
-    );
 
-    // email_verified: false, so the account can only be found through the identity row.
+    // email_verified: false, so the account can only be found through the link.
     const res = await callbackWith(idClaims({ email_verified: false }), db);
     expect(res.status).toBe(302);
-    const rows = await db.all<{ provider: string; account_id: string }>(
-      "SELECT provider, account_id FROM portal_account_identities",
+    const rows = await db.all<{ issuer_key: string; account_id: string }>(
+      "SELECT issuer_key, account_id FROM account_links WHERE kind = 'oidc'",
     );
-    expect(rows).toEqual([{ provider: ISSUER, account_id: legacy.id }]);
-    const accounts = await db.all<{ id: string }>(
-      "SELECT id FROM portal_accounts",
-    );
+    expect(rows).toEqual([{ issuer_key: ISSUER, account_id: legacy.id }]);
+    const accounts = await db.all<{ id: string }>("SELECT id FROM accounts");
     expect(accounts).toEqual([{ id: legacy.id }]);
+  });
+});
+
+describe("the portal callback ends in signIn (I-05)", () => {
+  it("an unknown identity whose verified email another account uses is a join offer: nothing is attached or created", async () => {
+    const db = makeTestDb();
+    const existing = await getOrCreateAccountByEmail(
+      db,
+      "ada@example.com",
+      NOW,
+    );
+    const res = await callbackWith(
+      idClaims({ email: "ada@example.com", email_verified: true }),
+      db,
+    );
+    expect(res.status).toBe(409);
+    expect(res.headers.get("set-cookie")).toBeNull();
+    expect(await db.all("SELECT id FROM accounts")).toEqual([
+      { id: existing.id },
+    ]);
+    expect(
+      await db.all("SELECT id FROM account_links WHERE kind = 'oidc'"),
+    ).toEqual([]);
   });
 });

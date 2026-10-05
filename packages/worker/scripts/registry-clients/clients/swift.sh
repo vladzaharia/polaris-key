@@ -11,7 +11,14 @@
 #   2. `exact: "1.1.0"` (yanked) fails to resolve;
 #   3. `exact: "2.0.0-beta.1"` (the beta channel) resolves and builds;
 #   4. with the throwaway root NOT trusted, resolution fails (`onUntrustedCertificate: error`);
-#   5. a few protocol details over plain HTTP (Content-Version, the login 501).
+#   5. a few protocol details over plain HTTP (Content-Version, the login, F-21).
+# Against an authenticated feed (run.mjs --auth, F-21): SwiftPM sends registry credentials only
+# over HTTPS (measured with SwiftPM 6.4: neither a token nor a basic credential, from a netrc or
+# registries.json, is ever sent to an http:// registry), and the harness is plain HTTP on loopback.
+# So steps 1 to 4 run against the public feed only, and the authenticated feed is checked here over
+# HTTP: the login endpoint, and the release list with and without the token. SwiftPM's own token
+# login is verified against pkg-staging over HTTPS (F-21's report). The configuration below is the
+# one users write (`"type": "token"` and the token in netrc), ready for an HTTPS harness.
 # Signing is always `onUnsigned: error`. REGISTRY, OWNER and STATE come from run.mjs.
 set -euo pipefail
 
@@ -26,6 +33,14 @@ ROOTS="$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv
 T="$(mktemp -d)"
 trap 'rm -rf "$T"' EXIT
 fail=0
+HOST="$(node -p "new URL('$REGISTRY').hostname")"
+AUTH='{}'
+NETRC=()
+if [ -n "${PKEY_REGISTRY_TOKEN:-}" ]; then
+  printf 'machine %s login token password %s\n' "$HOST" "$PKEY_REGISTRY_TOKEN" > "$T/netrc"
+  AUTH="{ \"$HOST\": { \"type\": \"token\" } }"
+  NETRC=(--netrc-file "$T/netrc" --disable-keychain)
+fi
 ok() { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
 
@@ -40,7 +55,7 @@ consumer() {
   [ "$trust" = yes ] || roots="$empty"
   cat > "$dir/.swiftpm/configuration/registries.json" <<EOF
 {
-  "authentication": {},
+  "authentication": $AUTH,
   "registries": {
     "smoke": { "supportsAvailability": false, "url": "$URL" }
   },
@@ -67,7 +82,7 @@ EOF
 spm() {
   local dir="$T/$1"
   shift
-  "$SWIFT" "$@" --package-path "$dir" --cache-path "$T/cache-$(basename "$dir")" \
+  "$SWIFT" "$@" ${NETRC[@]+"${NETRC[@]}"} --package-path "$dir" --cache-path "$T/cache-$(basename "$dir")" \
     --config-path "$T/config" --security-path "$T/security-$(basename "$dir")" \
     --scratch-path "$dir/.build"
 }
@@ -80,6 +95,7 @@ resolved_version() {
   ' "$T/$1/Package.resolved"
 }
 
+if [ -z "${REGISTRY_AUTH:-}" ]; then
 # 1. The stable requirement.
 consumer stable 'from: "1.0.0"' yes
 if spm stable package resolve && [ "$(resolved_version stable)" = "1.0.0" ]; then
@@ -125,6 +141,16 @@ else
   bad "the untrusted resolve failed for another reason"
 fi
 
+else
+  echo "skip SwiftPM resolution against the authenticated feed: SwiftPM sends credentials only over HTTPS"
+  code="$(curl -q -sS -o /dev/null -w '%{http_code}' -H 'Accept: application/vnd.swift.registry.v1+json' "$URL/smoke/SmokeKit")"
+  [ "$code" = 401 ] && ok "release list without a token: 401" || bad "release list without a token: $code"
+  code="$(curl -q -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $PKEY_REGISTRY_TOKEN" -H 'Accept: application/vnd.swift.registry.v1+json' "$URL/smoke/SmokeKit")"
+  [ "$code" = 200 ] && ok "release list with the token (Bearer, as SwiftPM sends it): 200" || bad "release list with the token: $code"
+  code="$(curl -q -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $PKEY_REGISTRY_TOKEN" "$URL/smoke/SmokeKit/1.0.0.zip")"
+  [ "$code" = 200 ] && ok "source archive with the token: 200" || bad "source archive with the token: $code"
+fi
+
 # 5. Protocol details over plain HTTP.
 h="$(curl -sS -D - -o /dev/null -H 'Accept: application/vnd.swift.registry.v1+json' "$URL/smoke/SmokeKit")"
 if grep -qi '^content-version: 1' <<<"$h" && grep -qi 'rel="latest-version"' <<<"$h"; then
@@ -132,8 +158,13 @@ if grep -qi '^content-version: 1' <<<"$h" && grep -qi 'rel="latest-version"' <<<
 else
   bad "list headers"
 fi
-code="$(curl -sS -o /dev/null -w '%{http_code}' -X POST "$URL/login")"
-[ "$code" = 501 ] && ok "POST /login answers 501 until F-21" || bad "POST /login answered $code"
+# F-21: login checks a registry token: 401 without one, 200 with a valid one (run.mjs --auth).
+code="$(curl -q -sS -o /dev/null -w '%{http_code}' -X POST "$URL/login")"
+[ "$code" = 401 ] && ok "POST /login without a token answers 401" || bad "POST /login answered $code"
+if [ -n "${PKEY_REGISTRY_TOKEN:-}" ]; then
+  code="$(curl -q -sS -o /dev/null -w '%{http_code}' -X POST -H "Authorization: Bearer $PKEY_REGISTRY_TOKEN" "$URL/login")"
+  [ "$code" = 200 ] && ok "POST /login with the registry token answers 200" || bad "POST /login with the token answered $code"
+fi
 code="$(curl -sS -o /dev/null -w '%{http_code}' -H 'Accept: application/vnd.swift.registry.v2+json' "$URL/smoke/SmokeKit")"
 [ "$code" = 415 ] && ok "Accept v2 answers 415" || bad "Accept v2 answered $code"
 

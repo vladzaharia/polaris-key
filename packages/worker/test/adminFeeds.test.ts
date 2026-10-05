@@ -272,11 +272,13 @@ describe("product scope", () => {
       },
       policy: { enabled: true, maxPackageBytesCeiling: 52428800 },
       capabilities: { yank: true, deprecate: false },
+      // F-12: the extension settings the ecosystem panel renders, from the adapter.
+      extensions: ["htmlFallback"],
       accessModes: [
         { mode: "public", available: true },
-        { mode: "authenticated", available: false },
-        { mode: "licensed", available: false },
-        { mode: "entitled", available: false },
+        { mode: "authenticated", available: true },
+        { mode: "licensed", available: true },
+        { mode: "entitled", available: true },
       ],
     });
     expect((await admin("GET", product("/cargo"))).status).toBe(404);
@@ -292,7 +294,7 @@ describe("product scope", () => {
     res = await put({
       expectedVersion: 0,
       namespace: { scope: "@acme" },
-      accessMode: "licensed",
+      accessMode: "private",
     });
     expect(res.status).toBe(422);
     expect(await res.json()).toMatchObject({
@@ -311,6 +313,68 @@ describe("product scope", () => {
     res = await put({ expectedVersion: 0, claims: [] });
     expect(await res.json()).toMatchObject({ error: { fields: ["claims"] } });
     expect(await auditActions(OWNER)).toEqual([]);
+  });
+
+  it("validates each ecosystem panel's extension settings against its adapter (F-12)", async () => {
+    const swift = (ext: unknown) =>
+      admin("PUT", product("/swift/settings"), { expectedVersion: 0, ext });
+    let res = await swift({
+      requireSigned: false,
+      repositoryUrls: {
+        "acme.Kit": [
+          "https://github.com/acme/kit.git",
+          "git@github.com:acme/kit",
+        ],
+      },
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      settings: {
+        version: 1,
+        ext: {
+          requireSigned: false,
+          repositoryUrls: {
+            "acme.Kit": [
+              "https://github.com/acme/kit.git",
+              "git@github.com:acme/kit",
+            ],
+          },
+        },
+      },
+    });
+    res = await admin("PUT", product("/swift/settings"), {
+      expectedVersion: 1,
+      ext: { repositoryUrls: { "not an id": ["https://x.test/a"] } },
+    });
+    expect(await res.json()).toMatchObject({
+      error: { fields: ["ext.repositoryUrls"] },
+    });
+    res = await admin("PUT", product("/godot/settings"), {
+      expectedVersion: 0,
+      ext: {
+        categoryId: 3,
+        supportLevel: "testing",
+        license: "MIT",
+        minGodotVersion: "4.4",
+      },
+    });
+    expect(res.status).toBe(200);
+    res = await admin("PUT", product("/godot/settings"), {
+      expectedVersion: 1,
+      ext: { minGodotVersion: "four" },
+    });
+    expect(await res.json()).toMatchObject({
+      error: { fields: ["ext.minGodotVersion"] },
+    });
+    const detail = (await (await admin("GET", product("/godot"))).json()) as {
+      extensions: string[];
+    };
+    expect(detail.extensions).toEqual([
+      "categoryId",
+      "supportLevel",
+      "license",
+      "minGodotVersion",
+    ]);
   });
 
   it("is optimistic: a stale expectedVersion is a 409 with the current settings", async () => {
@@ -698,5 +762,172 @@ describe("platform scope", () => {
     expect((await admin("GET", platform(), undefined, ["staff"])).status).toBe(
       403,
     );
+  });
+});
+
+describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", () => {
+  const tokens = (rest = "") => product(`/tokens${rest}`);
+  const platform = (rest = "") => `/platform/feeds${rest}`;
+
+  it("mints, lists, revokes and revokes all; the plaintext is in the mint answer only, every write audited", async () => {
+    let res = await admin("POST", tokens(), {
+      label: "CI pull",
+      binding: "owner",
+      ecosystems: ["npm", "oci"],
+      expiresInDays: 30,
+    });
+    expect(res.status).toBe(201);
+    const minted = await res.json();
+    expect(minted.token).toMatch(/^pkeyr_[A-Za-z0-9_-]{43}$/);
+    expect(minted.view).toMatchObject({
+      label: "CI pull",
+      binding: "owner",
+      ecosystems: ["npm", "oci"],
+      presentation: "header",
+      status: "active",
+      expiresAt: NOW + 30 * 86_400,
+      createdBy: "admin:ada@x.io",
+    });
+    await admin("POST", tokens(), {
+      label: "Editor",
+      binding: "owner",
+      presentation: "url",
+    });
+    res = await admin("GET", tokens());
+    expect(res.status).toBe(200);
+    const listed = await res.json();
+    expect(listed.tokens.map((t: { label: string }) => t.label).sort()).toEqual(
+      ["CI pull", "Editor"],
+    );
+    expect(JSON.stringify(listed)).not.toContain(minted.token);
+    expect(listed.username).toBe("__token__");
+    expect(listed.feeds).toHaveLength(6);
+    expect(listed.limits).toMatchObject({
+      defaultDays: 90,
+      urlDefaultDays: 30,
+    });
+    res = await admin("POST", tokens(`/${minted.view.tokenId}/revoke`));
+    expect((await res.json()).view.status).toBe("revoked");
+    expect((await admin("POST", tokens("/rtok_nope/revoke"))).status).toBe(404);
+    res = await admin("POST", tokens("/revoke-all"), {});
+    expect((await res.json()).revoked).toBe(1);
+    expect(
+      (
+        await db.all<{ action: string }>(
+          "SELECT action FROM audit WHERE product = ? AND action LIKE 'registry_token.%' ORDER BY at, id",
+          OWNER,
+        )
+      )
+        .map((r) => r.action)
+        .sort(),
+    ).toEqual(
+      [
+        "registry_token.create",
+        "registry_token.create",
+        "registry_token.revoke",
+        "registry_token.revoke_all",
+      ].sort(),
+    );
+  });
+
+  it("refuses bad input and narrows to one licence", async () => {
+    expect(
+      (
+        await admin("POST", tokens(), {
+          label: "x",
+          binding: "owner",
+          expiresInDays: 400,
+        })
+      ).status,
+    ).toBe(422);
+    expect(
+      (
+        await admin("POST", tokens(), {
+          label: "x",
+          binding: "owner",
+          secret: 1,
+        })
+      ).status,
+    ).toBe(422);
+    expect(
+      (
+        await admin("POST", tokens(), {
+          label: "x",
+          binding: "license",
+          licenseId: "lic_x",
+        })
+      ).status,
+    ).toBe(404);
+    await db.run(
+      `INSERT INTO licenses (product, id, status, activated_at, modified_at) VALUES (?, 'lic_1', 'active', ?, ?)`,
+      OWNER,
+      NOW,
+      NOW,
+    );
+    expect(
+      (
+        await admin("POST", tokens(), {
+          label: "seat",
+          binding: "license",
+          licenseId: "lic_1",
+        })
+      ).status,
+    ).toBe(201);
+    await admin("POST", tokens(), { label: "owner", binding: "owner" });
+    const one = await (await admin("GET", tokens("?license=lic_1"))).json();
+    expect(one.tokens.map((t: { label: string }) => t.label)).toEqual(["seat"]);
+    expect(
+      (
+        await (
+          await admin("POST", tokens("/revoke-all"), { licenseId: "lic_1" })
+        ).json()
+      ).revoked,
+    ).toBe(1);
+  });
+
+  it("every access mode can be set, and the feed lists the packages entitled would refuse", async () => {
+    await turnOnPackageFeeds();
+    await seedPackage(OWNER, "npm", "npm.sdk", "@acme/sdk", [
+      { version: "1.0.0", at: NOW },
+    ]);
+    let res = await admin("PUT", product("/npm/settings"), {
+      expectedVersion: 0,
+      enabled: true,
+      namespace: { scope: "@acme" },
+      accessMode: "licensed",
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).settings.accessMode).toBe("licensed");
+    const detail = await (await admin("GET", product("/npm"))).json();
+    expect(detail.ungatedPackages).toEqual([
+      { id: "npm.sdk", name: "@acme/sdk" },
+    ]);
+    res = await admin("PUT", product("/npm/settings"), {
+      expectedVersion: 1,
+      accessMode: "entitled",
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it("the platform's tokens live under the platform scope and audit to platform_audit", async () => {
+    expect((await admin("GET", platform("/tokens"))).status).toBe(409);
+    expect((await admin("POST", platform("/bootstrap"))).status).toBe(200);
+    const res = await admin("POST", platform("/tokens"), {
+      label: "mirror",
+      binding: "owner",
+    });
+    expect(res.status).toBe(201);
+    expect(
+      await db.all(
+        "SELECT action FROM platform_audit WHERE action LIKE 'registry_token.%'",
+      ),
+    ).toEqual([{ action: "registry_token.create" }]);
+    // The system product's access mode cannot change from a product scope.
+    const sys = `/products/${SYSTEM_PRODUCT_SLUG}/distribution/feeds/npm/settings`;
+    const put = await admin("PUT", sys, {
+      expectedVersion: 1,
+      accessMode: "licensed",
+    });
+    expect([403, 404]).toContain(put.status);
   });
 });

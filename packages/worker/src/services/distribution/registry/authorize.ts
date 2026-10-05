@@ -1,5 +1,6 @@
 /**
- * Who may read a feed (F-02, plans/F-01.md §6.6): `feedPrincipal` and `authorizeFeedRead`.
+ * Who may read a feed (F-02, plans/F-01.md §6.6; F-21, plans/F-20.md §6.2): the credential
+ * extractor, principal resolution and `authorizeFeedRead`.
  *
  * Every registry read goes through `authorizeFeedRead`, and it runs BEFORE the Cache API lookup
  * (`cache.ts`), so a disabled feed or a tightened mode stops a cached answer, even an
@@ -13,15 +14,26 @@
  *   3. the mode: `stricter(feed.access_mode, dist_access(deliverable).mode)` on Distribution's
  *      ladder `public < authenticated < licensed < entitled` (`access.ts`). A list document
  *      passes `deliverableId: null`, and only the feed's mode counts;
- *   4. `public` admits `anonymous`, `cache: "public"`;
- *   5. every other mode refuses `anonymous` in tier 1 with the client's native challenge.
+ *   4. `public` admits anyone, `cache: "public"`. A credential on a public read is never looked
+ *      up, so the public hot path reads no token;
+ *   5. every other mode resolves the credential, now and only now (lazily, through Core's
+ *      30-second cache, `core/registryTokens.ts`), and judges the principal:
+ *        - anonymous (no credential, or one that resolves to nothing: malformed, unknown,
+ *          expired, revoked, another owner's, outside its ecosystems, a URL token in a header
+ *          or the reverse) → the client's native challenge, 401;
+ *        - `owner` (a console token) or `ci` (any `pkeyci_` of the owner) → admit, every mode
+ *          (Q4);
+ *        - `license` → `licenseUsable` for `authenticated` and `licensed` (one strictness, as
+ *          `access.ts`); for `entitled`, also the deliverable's `dist_access.entitlement` flag,
+ *          held by the licence (`licenseHoldsFlags`). No gate fails closed. A list document
+ *          needs only a usable licence. A refusal here is 403, natively.
+ *      Every admit at step 5 is `cache: "private"`: `serve.ts` forces `private, no-store`, drops
+ *      the ETag and never touches the Cache API.
  * A missing row at steps 1 and 2 is "off" (fail closed). "Off" answers the host's not-found, so
  * it cannot be told apart from an owner or feed that does not exist.
  *
- * TIER 1 HAS NO CREDENTIALS. `feedPrincipal` parses every `Authorization` shape a registry
- * client sends (the extractor is built and tested now) and still returns `anonymous`. F-20 and
- * F-21 add token principals by extending `FeedPrincipal` and this ladder's step 5, without
- * changing either signature. The credential is never logged, stored or echoed.
+ * A token never widens past the mode: it is judged only where the mode is not `public`, and only
+ * for its own owner and ecosystems. The credential is never logged, stored or echoed.
  */
 
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
@@ -33,22 +45,39 @@ import {
   registryNotFound,
   type RegistryEcosystem,
 } from "../../../core/registryHost.js";
+import { licenseUsable } from "../../../core/devices.js";
+import { licenseHoldsFlags } from "../../../core/entitledAccess.js";
+import { rateLimitOk } from "../../../core/rateLimit.js";
+import {
+  ANONYMOUS,
+  REGISTRY_TOKEN_TTL_SECONDS,
+  isPullToken,
+  isRegistryToken,
+  lookupRegistryCredential,
+  lookupRegistrySubject,
+  principalOf,
+  verifyPullToken,
+  type FeedPrincipal,
+  type ResolvedRegistryToken,
+} from "../../../core/registryTokens.js";
 import { stricter } from "../access.js";
 import {
   cachedAccessMode,
+  cachedEntitlement,
   cachedRegistrySettings,
   d1RegistrySettings,
+  type RegistryFeed,
   type RegistrySettingsSource,
 } from "./settings.js";
 
-/** Who is reading. Tier 1 knows only `anonymous`; F-21 adds token principals here. */
-export type FeedPrincipal = { readonly kind: "anonymous" };
+export type { FeedPrincipal } from "../../../core/registryTokens.js";
 
 /** A credential as a registry client sent it. Never logged. */
 export interface FeedCredential {
-  /** `bearer` (`Authorization: Bearer <t>`), `basic` (`Basic base64(user:pass)`) or `raw`
-   *  (`Authorization: <t>`, Cargo's spelling). */
-  readonly scheme: "bearer" | "basic" | "raw";
+  /** `bearer` (`Authorization: Bearer <t>`), `basic` (`Basic base64(user:pass)`), `raw`
+   *  (`Authorization: <t>`, Cargo's spelling), or `path` (the Godot editor's `/t/<token>/` URL
+   *  segment, which only a URL token satisfies). */
+  readonly scheme: "bearer" | "basic" | "raw" | "path";
   readonly token: string;
   /** Basic only: the username, when the token is the password. */
   readonly username?: string;
@@ -117,35 +146,49 @@ export function extractFeedCredential(req: Request): FeedCredential | null {
   return null;
 }
 
-/**
- * The reader of `req`. Tier 1: always `anonymous`, whatever the header holds. The extractor
- * runs so its parsing is exercised in production paths too, and its result is dropped.
- */
-export function feedPrincipal(req: Request): FeedPrincipal {
-  void extractFeedCredential(req);
-  return { kind: "anonymous" };
+/** The `/t/<token>/` segment's credential (Godot's tokenised URLs, §6.3). */
+export function pathCredential(token: string): FeedCredential {
+  return { scheme: "path", token };
 }
 
 /** How a refused read is answered: the not-found, HTTP Basic, or OCI's bearer challenge. */
 export type ChallengeKind = "not-found" | "basic" | "oci-bearer";
 
+/** Every refusal: a challenge, a 403 (a valid credential the mode does not admit) or a 429. */
+export type RefusalKind = ChallengeKind | "forbidden" | "rate-limited";
+
 export type FeedReadDecision =
-  | { readonly ok: true; readonly cache: "public" | "private" }
-  | { readonly ok: false; readonly challenge: ChallengeKind };
+  | { readonly ok: true; readonly cache: "public" }
+  | {
+      readonly ok: true;
+      readonly cache: "private";
+      /** Who was admitted (never `anonymous`): the private-read budget keys on its token. */
+      readonly principal: Exclude<FeedPrincipal, { kind: "anonymous" }>;
+    }
+  | { readonly ok: false; readonly challenge: RefusalKind };
 
 /** What `authorizeFeedRead` reads. `settings` defaults to the D1 source over `db`. */
 export interface FeedReadContext {
   readonly db: Db;
+  /** For credential resolution (the pepper, the pull-token key, the limiter). Without it every
+   *  credential resolves to `anonymous`. */
+  readonly env?: Env;
   /** The owner's service map (`ProductPublic.services`). */
   readonly services: ServicesMap;
   readonly settings?: RegistrySettingsSource;
-  /** The clock the settings cache is judged by, in milliseconds. */
+  /** The clock the caches are judged by, in milliseconds. */
   readonly nowMs?: number;
+  /** OCI only: the repository read, which an OCI pull token must grant. */
+  readonly repository?: string;
+  /** The caller's IP, for the `registryCredentialMiss` budget. */
+  readonly ip?: string;
+  /** Finish background work (a token's `last_used_at`) after answering. */
+  readonly waitUntil?: (p: Promise<unknown>) => void;
 }
 
 /**
- * The challenge a non-public mode answers in tier 1, by ecosystem. Each feed adapter declares the
- * same value as `capabilities.authChallenge`, and the conformance suite
+ * The challenge a non-public mode answers an anonymous client with, by ecosystem. Each feed
+ * adapter declares the same value as `capabilities.authChallenge`, and the conformance suite
  * (`test/feedAdapters.test.ts`) pins the two together, so the console never claims a challenge
  * the ladder does not send.
  */
@@ -153,15 +196,144 @@ export function challengeFor(ecosystem: RegistryEcosystem): ChallengeKind {
   return ecosystem === "oci" ? "oci-bearer" : "basic";
 }
 
-/** May `principal` read `owner`'s `ecosystem` feed (one deliverable, or the list)? */
-export async function authorizeFeedRead(
+/** A resolution, or the miss budget spent (the caller answers 429). */
+type Resolution = FeedPrincipal | "rate-limited";
+
+/** Per credential object: one resolution per (owner, ecosystem, repository), so a list document
+ *  judging many packages resolves its credential once. */
+const resolutions = new WeakMap<
+  FeedCredential,
+  Map<string, Promise<Resolution>>
+>();
+
+/** `registryCredentialMiss` (plans/F-20.md §6.6): lookups that missed the cache AND D1. */
+const CREDENTIAL_MISS_LIMIT = { limit: 30, windowSec: 60 };
+
+async function resolveUncached(
   ctx: FeedReadContext,
-  principal: FeedPrincipal,
+  credential: FeedCredential,
   owner: string,
   ecosystem: RegistryEcosystem,
-  deliverableId: string | null,
-): Promise<FeedReadDecision> {
-  const notFound: FeedReadDecision = { ok: false, challenge: "not-found" };
+): Promise<Resolution> {
+  const env = ctx.env;
+  if (!env) return ANONYMOUS;
+  const opts = {
+    ...(ctx.nowMs !== undefined ? { nowMs: ctx.nowMs } : {}),
+    ...(ctx.waitUntil ? { waitUntil: ctx.waitUntil } : {}),
+  };
+  const nowMs = ctx.nowMs ?? Date.now();
+  // An OCI pull token (`/v2/token`'s): identity only, re-resolved on every request.
+  if (credential.scheme === "bearer" && isPullToken(credential.token)) {
+    if (ecosystem !== "oci" || ctx.repository === undefined) return ANONYMOUS;
+    const claims = await verifyPullToken(
+      env,
+      credential.token,
+      Math.floor(nowMs / 1000),
+    );
+    if (!claims || claims.sub === "anonymous" || claims.own !== owner)
+      return ANONYMOUS;
+    if (!claims.repos.includes(`${owner}/${ctx.repository}`)) return ANONYMOUS;
+    const resolved = await lookupRegistrySubject(
+      ctx.db,
+      owner,
+      claims.sub,
+      opts,
+    );
+    return resolved && headerPresented(resolved)
+      ? principalOf(resolved)
+      : ANONYMOUS;
+  }
+  // A URL token arrives only in Godot's path segment; a header token never does.
+  if (credential.scheme === "path" && !isRegistryToken(credential.token))
+    return ANONYMOUS;
+  const { resolved, miss } = await lookupRegistryCredential(
+    env,
+    ctx.db,
+    credential.token,
+    opts,
+  );
+  if (miss) {
+    const ok = await rateLimitOk(
+      env,
+      owner,
+      {
+        bucket: "registryCredentialMiss",
+        id: ctx.ip ?? "unknown",
+        ...CREDENTIAL_MISS_LIMIT,
+      },
+      Math.floor(nowMs / 1000),
+    );
+    if (!ok) return "rate-limited";
+  }
+  if (!resolved) return ANONYMOUS;
+  const presented =
+    credential.scheme === "path"
+      ? resolved.kind !== "ci" && resolved.presentation === "url"
+      : headerPresented(resolved);
+  return presented ? principalOf(resolved) : ANONYMOUS;
+}
+
+function headerPresented(resolved: ResolvedRegistryToken): boolean {
+  return resolved.kind === "ci" || resolved.presentation === "header";
+}
+
+/** Who `credential` is for `owner`'s `ecosystem` feed (anonymous when it is nobody). */
+export function resolveFeedPrincipal(
+  ctx: FeedReadContext,
+  credential: FeedCredential | null,
+  owner: string,
+  ecosystem: RegistryEcosystem,
+): Promise<Resolution> {
+  if (credential === null) return Promise.resolve(ANONYMOUS);
+  let byKey = resolutions.get(credential);
+  if (!byKey) {
+    byKey = new Map();
+    resolutions.set(credential, byKey);
+  }
+  const key = `${owner}\u0000${ecosystem}\u0000${ctx.repository ?? ""}`;
+  let p = byKey.get(key);
+  if (!p) {
+    p = resolveUncached(ctx, credential, owner, ecosystem);
+    byKey.set(key, p);
+  }
+  return p;
+}
+
+/** A licence's hold on one gate flag, per isolate for the token window. */
+const holds = new Map<string, { held: boolean; until: number }>();
+
+async function licenceHolds(
+  db: Db,
+  owner: string,
+  principal: Extract<FeedPrincipal, { kind: "license" }>,
+  flag: string,
+  nowMs: number,
+): Promise<boolean> {
+  const key = `${owner}\u0000${principal.license.id}\u0000${principal.license.modified_at}\u0000${flag}`;
+  const hit = holds.get(key);
+  if (hit && hit.until > nowMs) return hit.held;
+  const held = await licenseHoldsFlags(
+    db,
+    owner,
+    principal.license,
+    [flag],
+    Math.floor(nowMs / 1000),
+  );
+  if (holds.size >= 5_000) holds.clear();
+  holds.set(key, { held, until: nowMs + REGISTRY_TOKEN_TTL_SECONDS * 1000 });
+  return held;
+}
+
+/**
+ * Steps 0 to 2 of the ladder: the feed's settings when the owner is active, the ecosystem is not
+ * killed, and the owner's Distribution, `packageFeeds` and the feed are all on; else `null`
+ * (the host's not-found).
+ */
+export async function feedAnswering(
+  ctx: FeedReadContext,
+  owner: string,
+  ecosystem: RegistryEcosystem,
+): Promise<RegistryFeed | null> {
   const source = ctx.settings ?? d1RegistrySettings(ctx.db);
   const nowMs = ctx.nowMs ?? Date.now();
   const {
@@ -171,14 +343,29 @@ export async function authorizeFeedRead(
     feed,
   } = await cachedRegistrySettings(source, owner, ecosystem, nowMs);
   // 0. A deleted (or otherwise not active) product serves nothing, whatever its feed rows say.
-  if (productStatus !== undefined && productStatus !== "active")
-    return notFound;
+  if (productStatus !== undefined && productStatus !== "active") return null;
   // 1. The platform kill switch.
-  if (!policy?.enabled) return notFound;
+  if (!policy?.enabled) return null;
   // 2. Distribution, packageFeeds, the feed.
-  if (ctx.services.distribution?.enabled !== true) return notFound;
-  if (!ownerRow?.enabled) return notFound;
-  if (!feed?.enabled) return notFound;
+  if (ctx.services.distribution?.enabled !== true) return null;
+  if (!ownerRow?.enabled) return null;
+  if (!feed?.enabled) return null;
+  return feed;
+}
+
+/** May `credential`'s holder read `owner`'s `ecosystem` feed (one deliverable, or the list)? */
+export async function authorizeFeedRead(
+  ctx: FeedReadContext,
+  credential: FeedCredential | null,
+  owner: string,
+  ecosystem: RegistryEcosystem,
+  deliverableId: string | null,
+): Promise<FeedReadDecision> {
+  const notFound: FeedReadDecision = { ok: false, challenge: "not-found" };
+  const source = ctx.settings ?? d1RegistrySettings(ctx.db);
+  const nowMs = ctx.nowMs ?? Date.now();
+  const feed = await feedAnswering(ctx, owner, ecosystem);
+  if (feed === null) return notFound;
   // 3. The mode.
   let mode: ReleaseAccess = feed.accessMode;
   if (deliverableId !== null)
@@ -186,13 +373,48 @@ export async function authorizeFeedRead(
       mode,
       await cachedAccessMode(source, owner, deliverableId, nowMs),
     );
-  // 4. Public admits anyone.
+  // 4. Public admits anyone, and no credential is looked up.
   if (mode === "public") return { ok: true, cache: "public" };
-  // 5. Tier 1 has no credentialed principal, so every other mode refuses.
-  switch (principal.kind) {
-    case "anonymous":
-      return { ok: false, challenge: challengeFor(ecosystem) };
+  // 5. Resolve the credential now, and judge the principal.
+  const challenge: FeedReadDecision = {
+    ok: false,
+    challenge: challengeFor(ecosystem),
+  };
+  const principal = await resolveFeedPrincipal(
+    ctx,
+    credential,
+    owner,
+    ecosystem,
+  );
+  if (principal === "rate-limited")
+    return { ok: false, challenge: "rate-limited" };
+  if (principal.kind === "anonymous") return challenge;
+  // Another owner's token, or one narrowed away from this ecosystem, is no credential here.
+  if (principal.product !== owner) return challenge;
+  if (
+    principal.kind !== "ci" &&
+    principal.ecosystems !== null &&
+    !principal.ecosystems.includes(ecosystem)
+  )
+    return challenge;
+  if (principal.kind === "owner" || principal.kind === "ci")
+    return { ok: true, cache: "private", principal };
+  const forbidden: FeedReadDecision = { ok: false, challenge: "forbidden" };
+  if (!licenseUsable(principal.license, Math.floor(nowMs / 1000)))
+    return forbidden;
+  if (mode === "entitled" && deliverableId !== null) {
+    const flag = await cachedEntitlement(source, owner, deliverableId, nowMs);
+    // No gate fails closed, as packs do: an entitled package with no flag admits no licence.
+    if (flag === null) return forbidden;
+    if (!(await licenceHolds(ctx.db, owner, principal, flag, nowMs)))
+      return forbidden;
   }
+  return { ok: true, cache: "private", principal };
+}
+
+/** Drop this isolate's licence-hold cache (tests). */
+export function forgetLicenceHolds(): void {
+  holds.clear();
 }
 
 /** Where a refusal is answered from: the host name in the challenge, OCI's repository. */
@@ -209,14 +431,18 @@ function quoted(v: string): string {
   return `"${v.replace(/[^A-Za-z0-9._:/@+-]/g, "")}"`;
 }
 
+/** The `Retry-After` a rate-limited registry read answers with, in seconds. */
+const RETRY_AFTER = "60";
+
 /**
- * The answer for a refused read: the host's not-found, or a 401 with the client's native
- * challenge (`WWW-Authenticate: Basic realm="<host>"`; for OCI `Bearer realm=…/v2/token,
- * service=<host>, scope=repository:<owner>/<repo>:pull`, whose token endpoint 404s until F-21).
- * `no-store` on all of them: a refusal is never cached.
+ * The answer for a refused read: the host's not-found; a 401 with the client's native challenge
+ * (`WWW-Authenticate: Basic realm="<host>"`; for OCI `Bearer realm=…/v2/token, service=<host>,
+ * scope=repository:<owner>/<repo>:pull`); a 403 for a valid credential the mode does not admit
+ * (`forbidden`, OCI `DENIED`, Swift `problem+json`); or a 429 (`rate_limited`, OCI
+ * `TOOMANYREQUESTS`) with `Retry-After`. `no-store` on all of them: a refusal is never cached.
  */
 export function feedRefusal(
-  challenge: ChallengeKind,
+  challenge: RefusalKind,
   target: RefusalTarget,
 ): Response {
   if (challenge === "not-found") return registryNotFound(target.ecosystem);
@@ -225,6 +451,50 @@ export function feedRefusal(
     target.env.PKG_ORIGIN !== undefined && registryHostname(target.env)
       ? new URL(target.env.PKG_ORIGIN).origin
       : `https://${host}`;
+  const oci = target.ecosystem === "oci";
+  const swift = target.ecosystem === "swift";
+  const ociHeaders = { "docker-distribution-api-version": "registry/2.0" };
+  const swiftHeaders = {
+    "content-type": "application/problem+json",
+    "content-version": "1",
+  };
+  if (challenge === "forbidden") {
+    if (oci)
+      return json(
+        {
+          errors: [
+            {
+              code: "DENIED",
+              message: "requested access to the resource is denied",
+            },
+          ],
+        },
+        { status: 403, headers: ociHeaders },
+      );
+    if (swift)
+      return json(
+        { detail: "access to this package is not granted" },
+        { status: 403, headers: swiftHeaders },
+      );
+    return json(
+      { error: "forbidden", reason: "not_entitled" },
+      { status: 403 },
+    );
+  }
+  if (challenge === "rate-limited") {
+    const retry = { "retry-after": RETRY_AFTER };
+    if (oci)
+      return json(
+        { errors: [{ code: "TOOMANYREQUESTS", message: "too many requests" }] },
+        { status: 429, headers: { ...ociHeaders, ...retry } },
+      );
+    if (swift)
+      return json(
+        { detail: "too many requests" },
+        { status: 429, headers: { ...swiftHeaders, ...retry } },
+      );
+    return json({ error: "rate_limited" }, { status: 429, headers: retry });
+  }
   if (challenge === "oci-bearer") {
     const repo = target.repository
       ? `${target.owner}/${target.repository}`
@@ -236,19 +506,17 @@ export function feedRefusal(
       {
         status: 401,
         headers: {
+          ...ociHeaders,
           "www-authenticate": `Bearer realm=${quoted(`${origin}/v2/token`)},service=${quoted(host)},scope=${quoted(`repository:${repo}:pull`)}`,
         },
       },
     );
   }
   const headers = { "www-authenticate": `Basic realm=${quoted(host)}` };
-  if (target.ecosystem === "swift")
+  if (swift)
     return json(
       { detail: "authentication required" },
-      {
-        status: 401,
-        headers: { ...headers, "content-type": "application/problem+json" },
-      },
+      { status: 401, headers: { ...headers, ...swiftHeaders } },
     );
   return json({ error: "unauthorized" }, { status: 401, headers });
 }

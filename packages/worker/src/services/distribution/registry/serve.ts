@@ -3,24 +3,37 @@
  * The one way a registry route answers a read (F-02, plans/F-01.md §6.6 and §6.7): access
  * first, then the cache, then the route's own work.
  *
- *   1. `feedPrincipal` and `authorizeFeedRead` decide, from the 30-second settings cache;
+ *   1. `authorizeFeedRead` decides, from the 30-second settings cache, with the request's
+ *      credential (`requestCredential`: the `Authorization` header, or Godot's `/t/<token>/`
+ *      segment), which it resolves only when the mode is not `public`;
  *   2. a refusal answers `feedRefusal` (the not-found or the native 401), `no-store`;
  *   3. a `public` decision goes through the Cache API (`cachedRegistryAnswer`), unless the route
  *      opts out with `cacheApi: false` (F-08's OCI blobs: ranged, up to 5 GiB);
- *   4. a `private` decision computes every time and forces `private, no-store` on the answer.
+ *   4. a `private` decision (a credentialed read, F-21) spends the token's `registryPrivateRead`
+ *      budget, computes every time, forces `private, no-store` on the answer and never touches
+ *      the Cache API.
  *
  * Because step 1 runs before step 3, a disabled feed or a tightened mode stops even an
  * immutable answer held in the cache, within the settings window.
  */
 
 import {
+  FEED_AUTH_ROUTE,
   FEED_READ_ROUTE,
   type RegistryEcosystem,
   type RegistryRoute,
   type RegistryRouteContext,
   type RegistryRouteMatch,
 } from "../../../core/registryHost.js";
-import { authorizeFeedRead, feedPrincipal, feedRefusal } from "./authorize.js";
+import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
+import {
+  authorizeFeedRead,
+  extractFeedCredential,
+  feedRefusal,
+  pathCredential,
+  type FeedCredential,
+  type FeedReadContext,
+} from "./authorize.js";
 import {
   PRIVATE_CACHE_CONTROL,
   cachedRegistryAnswer,
@@ -28,6 +41,50 @@ import {
   registryCacheKey,
 } from "./cache.js";
 import type { RegistrySettingsSource } from "./settings.js";
+
+/** The route parameter a tokenised Godot URL's `/t/<token>/` segment is matched into (§6.3). */
+export const PATH_TOKEN_PARAM = "__token";
+
+const credentials = new WeakMap<Request, FeedCredential | null>();
+
+/**
+ * The credential `req` carries: the `/t/<token>/` path segment when the route matched one (only
+ * Godot's do), else the `Authorization` header. Memoised per request, so every ladder run of one
+ * request (a list judging each package) resolves the same credential once.
+ */
+export function requestCredential(
+  req: Request,
+  ctx: Pick<RegistryRouteContext, "params">,
+): FeedCredential | null {
+  if (credentials.has(req)) return credentials.get(req)!;
+  const segment = ctx.params[PATH_TOKEN_PARAM];
+  const credential =
+    segment !== undefined
+      ? pathCredential(segment)
+      : extractFeedCredential(req);
+  credentials.set(req, credential);
+  return credential;
+}
+
+/** The ladder's context for a request on a route: D1, the env, the owner's services, the IP. */
+export function feedReadContext(
+  req: Request,
+  ctx: RegistryRouteContext,
+  extra: Pick<FeedReadContext, "settings" | "repository"> = {},
+): FeedReadContext {
+  return {
+    db: ctx.db,
+    env: ctx.env,
+    services: ctx.product.services,
+    ip: clientIp(req),
+    ...(ctx.waitUntil ? { waitUntil: ctx.waitUntil } : {}),
+    ...(extra.settings ? { settings: extra.settings } : {}),
+    ...(extra.repository !== undefined ? { repository: extra.repository } : {}),
+  };
+}
+
+/** `registryPrivateRead` (plans/F-20.md §6.6): credentialed reads per token, a cost budget. */
+const PRIVATE_READ_LIMIT = { limit: 6_000, windowSec: 60 };
 
 export interface FeedReadOptions {
   /** The deliverable read, or `null` for a list document (only the feed's mode counts). */
@@ -45,6 +102,8 @@ export interface FeedReadOptions {
    * own conditionals (`core/blobs.ts` `blobResponse`).
    */
   readonly cacheApi?: false;
+  /** The request's credential, when the caller already took it (`feedRoute`). */
+  readonly credential?: FeedCredential | null;
 }
 
 /**
@@ -58,23 +117,24 @@ export async function serveFeedRead(
   compute: (cache: "public" | "private") => Promise<Response>,
 ): Promise<Response> {
   const decision = await authorizeFeedRead(
-    {
-      db: ctx.db,
-      services: ctx.product.services,
+    feedReadContext(req, ctx, {
       ...(opts.settings ? { settings: opts.settings } : {}),
-    },
-    feedPrincipal(req),
+      ...(opts.repository !== undefined ? { repository: opts.repository } : {}),
+    }),
+    opts.credential !== undefined
+      ? opts.credential
+      : requestCredential(req, ctx),
     ctx.product.slug,
     ctx.ecosystem,
     opts.deliverableId,
   );
-  if (!decision.ok)
-    return feedRefusal(decision.challenge, {
-      env: ctx.env,
-      ecosystem: ctx.ecosystem,
-      owner: ctx.product.slug,
-      ...(opts.repository !== undefined ? { repository: opts.repository } : {}),
-    });
+  const target = {
+    env: ctx.env,
+    ecosystem: ctx.ecosystem,
+    owner: ctx.product.slug,
+    ...(opts.repository !== undefined ? { repository: opts.repository } : {}),
+  };
+  if (!decision.ok) return feedRefusal(decision.challenge, target);
   if (decision.cache === "public" && opts.cacheApi === false)
     return compute("public");
   if (decision.cache === "public")
@@ -83,6 +143,20 @@ export async function serveFeedRead(
       registryCacheKey(req, ctx.ecosystem, opts.queryNames),
       () => compute("public"),
     );
+  // A credentialed read: its token's cost budget (fail open), never the Cache API.
+  if (
+    !(await rateLimitOk(
+      ctx.env,
+      ctx.product.slug,
+      {
+        bucket: "registryPrivateRead",
+        id: `${decision.principal.kind}:${decision.principal.tokenId}`,
+        ...PRIVATE_READ_LIMIT,
+      },
+      ctx.now,
+    ))
+  )
+    return feedRefusal("rate-limited", target);
   const res = await compute("private");
   const headers = new Headers(res.headers);
   headers.set("cache-control", PRIVATE_CACHE_CONTROL);
@@ -162,6 +236,7 @@ export function feedRoute<S = undefined>(def: FeedRouteDef<S>): RegistryRoute {
         def.resolve ? await def.resolve(req, ctx) : undefined
       ) as S;
       const repo = def.repository?.(ctx.params, state);
+      const credential = requestCredential(req, ctx);
       const res = await serveFeedRead(
         def.cacheRequest ? def.cacheRequest(req) : req,
         ctx,
@@ -171,10 +246,37 @@ export function feedRoute<S = undefined>(def: FeedRouteDef<S>): RegistryRoute {
           ...(repo !== undefined ? { repository: repo } : {}),
           ...(def.cacheApi === false ? { cacheApi: false as const } : {}),
           ...(def.settings ? { settings: def.settings } : {}),
+          credential,
         },
         (cache) => def.serve(req, ctx, cache, state),
       );
       return def.finish ? def.finish(res, req, ctx, state) : res;
     },
+  };
+}
+
+/** What a credential route declares (F-21): its name, ecosystem, method, path and answer. */
+export interface FeedAuthRouteDef {
+  readonly name: string;
+  readonly ecosystem: RegistryEcosystem;
+  readonly methods: readonly "POST"[];
+  match(pathname: string): RegistryRouteMatch | null;
+  handle(req: Request, ctx: RegistryRouteContext): Promise<Response>;
+}
+
+/**
+ * The only way to build a credential route (Swift's `POST …/login`): it reads no package and
+ * answers only whether a presented token is valid for its owner. Marked `FEED_AUTH_ROUTE`, which
+ * the structural test admits beside the feed-read routes.
+ */
+export function feedAuthRoute(def: FeedAuthRouteDef): RegistryRoute {
+  return {
+    [FEED_AUTH_ROUTE]: true,
+    name: def.name,
+    service: "distribution",
+    ecosystem: def.ecosystem,
+    methods: def.methods,
+    match: (p) => def.match(p),
+    handle: (req, ctx) => def.handle(req, ctx),
   };
 }

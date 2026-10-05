@@ -1,0 +1,18 @@
+# uv: an explicit index for this project only (pyproject.toml)
+# explicit = true keeps every other dependency on its usual index.
+[[tool.uv.index]]
+name = "polaris-key"
+url = "https://pkg.plrs.im/pypi/polaris-key/simple/"
+explicit = true
+
+[tool.uv.sources]
+"polaris-key" = { index = "polaris-key" }
+
+# Poetry 2: an explicit source
+poetry source add --priority=explicit polaris-key https://pkg.plrs.im/pypi/polaris-key/simple/
+poetry add --source polaris-key polaris-key
+
+# pip: the package alone, without its dependencies
+# Warning: Never add this feed with --extra-index-url. pip has no per-project routing: with two indexes it takes the highest version from either, so a public package with the same name could win.
+# pip cannot route one project to one index: install the dependencies from your usual index first, then this package from the feed.
+pip install --no-deps --index-url https://pkg.plrs.im/pypi/polaris-key/simple/ polaris-key

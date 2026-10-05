@@ -45,6 +45,12 @@ public object ErrorCode {
     public const val unavailable: String = "unavailable"
     public const val authMethodDisabled: String = "auth_method_disabled"
     public const val emailNotConfigured: String = "email_not_configured"
+    public const val licenseOwned: String = "license_owned"
+    public const val emailMismatch: String = "email_mismatch"
+    public const val linkConflict: String = "link_conflict"
+    public const val lastLink: String = "last_link"
+    public const val stepUpRequired: String = "step_up_required"
+    public const val notEligible: String = "not_eligible"
     public const val downloadAuthRequired: String = "download_auth_required"
     public const val deliveryGateMissing: String = "delivery_gate_missing"
     public const val upstreamRateLimited: String = "upstream_rate_limited"
@@ -187,6 +193,12 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "unavailable",
     "auth_method_disabled",
     "email_not_configured",
+    "license_owned",
+    "email_mismatch",
+    "link_conflict",
+    "last_link",
+    "step_up_required",
+    "not_eligible",
     "download_auth_required",
     "delivery_gate_missing",
     "upstream_rate_limited",
@@ -329,6 +341,12 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "unavailable" to "wire",
     "auth_method_disabled" to "wire",
     "email_not_configured" to "wire",
+    "license_owned" to "wire",
+    "email_mismatch" to "wire",
+    "link_conflict" to "wire",
+    "last_link" to "wire",
+    "step_up_required" to "wire",
+    "not_eligible" to "wire",
     "download_auth_required" to "wire",
     "delivery_gate_missing" to "wire",
     "upstream_rate_limited" to "wire",

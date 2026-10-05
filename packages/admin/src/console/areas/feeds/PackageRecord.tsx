@@ -22,7 +22,6 @@ import {
   truncateMiddle,
 } from "../../../lib/format.js";
 import { Button } from "../../../ui/Button.js";
-import { CodeBlock } from "../../../ui/CodeBlock.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import { CopyButton } from "../../../ui/CopyButton.js";
 import {
@@ -48,14 +47,14 @@ import { PACKAGE_TABS } from "../../nav.js";
 import { intentOf } from "../../pages/core/confirmGate.js";
 import type { ActionId } from "../../../lib/actions.js";
 import { useFeedDetail, useFeedPackage } from "./data.js";
-import { ActivityTab } from "./FeedPage.js";
+import { ActivityTab, SetupSnippets } from "./FeedPage.js";
 import {
   ECOSYSTEM_LABELS,
   YANK_EFFECTS,
   feedHref,
   overviewHref,
   packageHref,
-  setupSnippets,
+  feedSetupSnippets,
   type FeedScope,
 } from "./model.js";
 
@@ -574,28 +573,11 @@ function PackageSetup({
     scope.kind === "product" || data.owner === detail.data?.owner
       ? (detail.data?.settings.namespace ?? {})
       : {};
-  const snippets = setupSnippets(eco, {
-    baseUrl: data.baseUrl,
+  const snippets = feedSetupSnippets(eco, {
+    origin: data.baseUrl,
     owner: data.owner,
     namespace,
     pkg: { name: data.name, version: latest?.version ?? null },
   });
-  return (
-    <div className="space-y-4">
-      {snippets.map((s) => (
-        <section key={s.title} className="space-y-2">
-          <h2 className="text-sm font-bold text-fg-strong">{s.title}</h2>
-          {s.description ? (
-            <p className="text-sm text-fg-muted">{s.description}</p>
-          ) : null}
-          <CodeBlock
-            code={s.code}
-            language={s.language}
-            filename={s.filename}
-            copy
-          />
-        </section>
-      ))}
-    </div>
-  );
+  return <SetupSnippets snippets={snippets} />;
 }

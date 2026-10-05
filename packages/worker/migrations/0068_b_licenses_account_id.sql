@@ -1,0 +1,11 @@
+-- I-05 (plans/I-04.md §6.1): the owner pointer. `licenses.account_id` names the Polaris Key
+-- account a licence is attached to; NULL is a floating licence, which works on devices exactly as
+-- today. It replaces `portal_license_links` (many-to-one) and, for the platform issuer, the
+-- `licenses.sub` join; both stay in place until a contract-phase migration after I-17.
+--
+-- Written only through Core (`setLicenseAccount` in src/core/accountSubjects.ts). Never shown to a
+-- developer: the console and every device route answer the pairwise subject instead.
+--
+-- ONE statement per file (R11-04): a bare ADD COLUMN cannot be made idempotent in SQLite, so a
+-- replay fails here and strands nothing after it. The index and the backfill are in 0068_e.
+ALTER TABLE licenses ADD COLUMN account_id TEXT;

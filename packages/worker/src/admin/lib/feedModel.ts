@@ -43,6 +43,19 @@ export const FEED_CAPABILITIES: Readonly<
   Record<PackageEcosystem, FeedCapabilities>
 > = perEcosystem((e) => feedCapabilityView(requireFeedAdapter(e)));
 
+/**
+ * Every ecosystem's extension settings (`ext_json` keys its adapter accepts), which the console's
+ * ecosystem panel renders (F-12). `yankHidesFromIndex` is the Yank policy section's, not the
+ * panel's, so it is listed in `capabilities.yankPolicy` instead.
+ */
+export const FEED_EXTENSIONS: Readonly<
+  Record<PackageEcosystem, readonly string[]>
+> = perEcosystem((e) =>
+  Object.keys(requireFeedAdapter(e).settings.ext).filter(
+    (k) => k !== "yankHidesFromIndex",
+  ),
+);
+
 /** The version verbs the Feeds console offers. */
 export const VERSION_VERBS = [
   "yank",
@@ -92,14 +105,14 @@ export interface FeedSettingsView {
   updatedBy: string | null;
 }
 
-/** The access modes, in the ladder's order. Only `public` can be set until registry auth (F-21). */
+/** The access modes, in the ladder's order. Every one can be set since registry auth (F-21). */
 export const FEED_ACCESS_MODES = [
   "public",
   "authenticated",
   "licensed",
   "entitled",
 ] as const;
-export const SETTABLE_ACCESS_MODES: readonly string[] = ["public"];
+export const SETTABLE_ACCESS_MODES: readonly string[] = FEED_ACCESS_MODES;
 
 const MAX_LIST = 32;
 const MAX_ITEM = 128;

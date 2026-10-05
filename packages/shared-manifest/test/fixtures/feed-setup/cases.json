@@ -1,0 +1,136 @@
+{
+  "$comment": "F-12: the shared setup-snippet cases. The manifest test renders each against its golden (<id>.txt, formatFeedSetup's output); the CLI test runs `pkey feeds setup` on the same input and the console test renders the Setup tab on it, and both must equal the golden byte for byte.",
+  "origin": "https://pkg.plrs.im",
+  "cases": [
+    {
+      "id": "npm-feed",
+      "ecosystem": "npm",
+      "owner": "polaris-key",
+      "namespace": { "scope": "@polaris-key" }
+    },
+    {
+      "id": "npm-package",
+      "ecosystem": "npm",
+      "owner": "polaris-key",
+      "namespace": { "scope": "@polaris-key" },
+      "package": { "name": "@polaris-key/node", "version": "0.9.0" }
+    },
+    {
+      "id": "npm-env",
+      "ecosystem": "npm",
+      "owner": "acme",
+      "namespace": { "scope": "@acme" },
+      "credential": { "kind": "env", "name": "PKEY_REGISTRY_TOKEN" }
+    },
+    {
+      "id": "pypi-feed",
+      "ecosystem": "pypi",
+      "owner": "polaris-key",
+      "namespace": { "names": ["polaris-key"] }
+    },
+    {
+      "id": "pypi-package",
+      "ecosystem": "pypi",
+      "owner": "polaris-key",
+      "namespace": { "names": ["polaris-key"] },
+      "package": { "name": "polaris-key", "version": "0.9.0" }
+    },
+    {
+      "id": "pypi-env",
+      "ecosystem": "pypi",
+      "owner": "acme",
+      "namespace": { "prefixes": ["acme"] },
+      "package": { "name": "acme-sdk" },
+      "credential": { "kind": "env", "name": "PKEY_REGISTRY_TOKEN" }
+    },
+    {
+      "id": "pypi-token",
+      "ecosystem": "pypi",
+      "owner": "acme",
+      "package": { "name": "acme-sdk" },
+      "credential": {
+        "kind": "token",
+        "value": "pkeyr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      }
+    },
+    {
+      "id": "swift-feed",
+      "ecosystem": "swift",
+      "owner": "polaris-key",
+      "namespace": { "scope": "polaris-key" }
+    },
+    {
+      "id": "swift-package",
+      "ecosystem": "swift",
+      "owner": "polaris-key",
+      "namespace": { "scope": "polaris-key" },
+      "package": { "name": "polaris-key.PolarisKey", "version": "0.9.0" }
+    },
+    {
+      "id": "swift-env",
+      "ecosystem": "swift",
+      "owner": "acme",
+      "namespace": { "scope": "acme" },
+      "credential": { "kind": "env", "name": "PKEY_REGISTRY_TOKEN" }
+    },
+    {
+      "id": "maven-feed",
+      "ecosystem": "maven",
+      "owner": "polaris-key",
+      "namespace": { "groupPrefixes": ["im.plrs.key"] }
+    },
+    {
+      "id": "maven-package",
+      "ecosystem": "maven",
+      "owner": "polaris-key",
+      "namespace": { "groupPrefixes": ["im.plrs.key", "im.plrs.tools"] },
+      "package": { "name": "im.plrs.key:polaris-key-sdk", "version": "0.9.0" }
+    },
+    {
+      "id": "maven-env",
+      "ecosystem": "maven",
+      "owner": "acme-games",
+      "namespace": { "groupPrefixes": ["gg.acme"] },
+      "credential": { "kind": "env", "name": "PKEY_REGISTRY_TOKEN" }
+    },
+    {
+      "id": "maven-token",
+      "ecosystem": "maven",
+      "owner": "acme",
+      "namespace": { "groupPrefixes": ["gg.acme"] },
+      "credential": {
+        "kind": "token",
+        "value": "pkeyr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      }
+    },
+    { "id": "oci-feed", "ecosystem": "oci", "owner": "polaris-key" },
+    {
+      "id": "oci-package",
+      "ecosystem": "oci",
+      "owner": "acme",
+      "package": { "name": "server", "version": "1.2.3" }
+    },
+    {
+      "id": "oci-env",
+      "ecosystem": "oci",
+      "owner": "acme",
+      "package": { "name": "server" },
+      "credential": { "kind": "env", "name": "PKEY_REGISTRY_TOKEN" }
+    },
+    {
+      "id": "godot-feed",
+      "ecosystem": "godot",
+      "owner": "polaris-key",
+      "namespace": { "publisher": "polaris-key" }
+    },
+    {
+      "id": "godot-url",
+      "ecosystem": "godot",
+      "owner": "acme",
+      "credential": {
+        "kind": "godot-url",
+        "value": "pkeyr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      }
+    }
+  ]
+}

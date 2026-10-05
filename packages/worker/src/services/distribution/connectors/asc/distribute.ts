@@ -11,10 +11,11 @@
  *   GET  distribute/beta-groups     the app's TestFlight groups (to tick)
  *   GET  distribute/versions        the app's App Store versions (editable or not, build, phased
  *                                   release) and its open review submissions
- *   GET  distribute/preflight?versionId=
+ *   GET  distribute/preflight?versionId=[&releaseId=]
  *                                   what the API exposes about readiness: build, export
  *                                   compliance, screenshots, age rating, review contact (present,
- *                                   never its values), price, availability, beta review details
+ *                                   never its values), price, availability, beta review details,
+ *                                   and the shared listing's Apple fit report (A-18b; advisory)
  *
  *   POST distribute/export-compliance        { buildId, usesNonExemptEncryption }
  *   POST distribute/beta-localization        { buildId, locale, whatsNew }
@@ -24,7 +25,11 @@
  *   POST distribute/version/build            { versionId, buildId }
  *   POST distribute/version/release-type     { versionId, releaseType, earliestReleaseDate? }
  *   POST distribute/version/phased-release   { versionId }
- *   POST distribute/version-localization     { versionId, locale, whatsNew?, promotionalText? }
+ *   POST distribute/version-localization     { versionId, locale, whatsNew?, promotionalText?,
+ *                                              releaseId? }   (A-18b: with `releaseId`, what is
+ *                                              left out defaults from the shared listing model:
+ *                                              the release's store notes, the locale's
+ *                                              promotional text; `listing/apple.ts`)
  *   POST distribute/submit                   { versionId, confirm,         TYPED
  *                                              inAppPurchaseVersionIds?,
  *                                              backgroundAssetVersionIds? }
@@ -91,6 +96,11 @@ import {
   type StepResult,
 } from "./flow.js";
 import { ASC_CONNECTOR } from "./setup.js";
+import {
+  appleFit,
+  appleListingInput,
+  appleLocalizationDefault,
+} from "../../listing/apple.js";
 import {
   firstIapCheck,
   proveSubmissionExtras,
@@ -563,8 +573,35 @@ const preflight: ConnectorRead = distributeRead(async (f, q) => {
     detail: "portal-only: confirm App Privacy in App Store Connect",
   });
 
+  // A-18b: the shared listing model's Apple fit report. Advisory: App Store Connect's own listing
+  // is what review sees until A-18m pushes the model, so it never blocks `ready`.
+  const releaseParam = q.get("releaseId");
+  const listing = await appleListingInput(
+    f.c.db,
+    f.c.hooks,
+    f.c.product,
+    releaseParam && releaseParam.length <= 200 ? releaseParam : null,
+  );
+  const fit = listing.ok && listing.input ? appleFit(listing.input) : null;
+  checks.push({
+    id: "listingFit",
+    ok: fit ? fit.status !== "red" : null,
+    detail: !listing.ok
+      ? "unknown release: the fit report was computed without its notes"
+      : fit
+        ? `the shared listing's App Store fit is ${fit.status} (advisory until the listing is pushed)`
+        : "no shared listing yet (Distribution → Listing)",
+    ...(fit && fit.issues.length
+      ? {
+          missing: fit.issues.map(
+            (i) => `${i.field}${i.locale ? ` (${i.locale})` : ""}: ${i.issue}`,
+          ),
+        }
+      : {}),
+  });
+
   const blocking = checks.filter(
-    (k) => !k.id.startsWith("beta") && k.ok === false,
+    (k) => !k.id.startsWith("beta") && k.id !== "listingFit" && k.ok === false,
   );
   return {
     ok: true,
@@ -1038,8 +1075,45 @@ const versionLocalization: ConnectorControl = distributeControl(
   async (f, body) => {
     const versionId = idField(body, "versionId");
     const locale = localeField(body);
-    const whatsNew = textField(body, "whatsNew", WHATS_NEW_MAX);
-    const promotionalText = textField(body, "promotionalText", PROMO_MAX);
+    let whatsNew = textField(body, "whatsNew", WHATS_NEW_MAX);
+    let promotionalText = textField(body, "promotionalText", PROMO_MAX);
+    // A-18b: given the release being distributed, what the request leaves out defaults from the
+    // shared listing model (its store notes, its promotional text), refused if over Apple's limit.
+    if (body.releaseId !== undefined) {
+      const releaseId = body.releaseId;
+      if (
+        typeof releaseId !== "string" ||
+        releaseId === "" ||
+        releaseId.length > 200
+      )
+        stop(422, "invalid_body", "releaseId must be a release id", [
+          "releaseId",
+        ]);
+      const r = await appleListingInput(
+        f.c.db,
+        f.c.hooks,
+        f.c.product,
+        releaseId,
+      );
+      if (!r.ok)
+        stop(422, "unknown_release", `no release ${releaseId}`, ["releaseId"]);
+      if (r.input) {
+        for (const field of ["whatsNew", "promotionalText"] as const) {
+          if ((field === "whatsNew" ? whatsNew : promotionalText) !== undefined)
+            continue;
+          const d = appleLocalizationDefault(r.input, locale, field);
+          if (d.tooLong)
+            stop(
+              422,
+              "listing_does_not_fit",
+              `the listing's ${field} (${locale}) is ${d.tooLong.actual} characters; App Store Connect takes ${d.tooLong.limit}. Edit it in the listing, or send ${field}`,
+              [field],
+            );
+          if (field === "whatsNew") whatsNew = d.value;
+          else promotionalText = d.value;
+        }
+      }
+    }
     if (whatsNew === undefined && promotionalText === undefined)
       stop(422, "invalid_body", "whatsNew or promotionalText is required", [
         "whatsNew",

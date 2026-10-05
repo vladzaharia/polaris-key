@@ -1,16 +1,16 @@
 # I-02 Atomic single-use store (Durable Object), sharded portal and admin rate limits, email send limits
 
-| Field       | Value                                                                                    |
-| ----------- | ---------------------------------------------------------------------------------------- |
-| Phase       | I: Identity service (S-16) (phase-0, MVI)                                                |
-| Size        | 0.6–0.85 engineer-weeks                                                                  |
-| Depends on  | none                                                                                     |
-| Unblocks    | [I-07](I-07-login-card-email.md), [I-18](I-18-email-delivery.md)                         |
-| Role        | `pkey-implementer`                                                                       |
-| Plan mode   | no: follows the approved [`plans/I-04.md`](../plans/I-04.md) where it names this package |
-| Gates       | `test:workerd`; `wrangler.toml` bindings; THREAT-MODEL                                   |
-| Human input | none                                                                                     |
-| Repo        | `vladzaharia/polaris-key`                                                                |
+| Field       | Value                                                                                                                                                              |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | I: Identity service (S-16) (phase-0, MVI)                                                                                                                          |
+| Size        | 0.6–0.85 engineer-weeks                                                                                                                                            |
+| Depends on  | none                                                                                                                                                               |
+| Unblocks    | [I-07](I-07-login-card-email.md), [I-18](I-18-email-delivery.md), [PX-W4](PX-W4-email-code.md), [PX-W14](PX-W14-approve-device.md), [PX-W15](PX-W15-email-gate.md) |
+| Role        | `pkey-implementer`                                                                                                                                                 |
+| Plan mode   | no: follows the approved [`plans/I-04.md`](../plans/I-04.md) where it names this package                                                                           |
+| Gates       | `test:workerd`; `wrangler.toml` bindings; THREAT-MODEL                                                                                                             |
+| Human input | none                                                                                                                                                               |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                          |
 
 > Forward references re-mapped to the re-cut S-16 table on 2026-10-04 ([S-16 §8.1](../../notes/S-16-identity-service.md#81-briefs-that-change)); scope unchanged.
 

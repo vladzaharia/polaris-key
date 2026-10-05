@@ -1,5 +1,6 @@
 /**
- * The portal's email: the magic sign-in link and the account notices.
+ * Polaris Key account email: the branded renderer, the magic sign-in link and the transport for the
+ * account notices (whose copy lives in `notices.ts`).
  *
  * Every message carries a plain-text part (the canonical copy; clients that refuse HTML show
  * it) and a branded HTML part built by `renderEmail` to docs/design/BRAND.md §2 ("Emails"):
@@ -8,19 +9,23 @@
  *   - colours inlined from the brand theme tokens (light ground by default, the platform violet
  *     as the one accent), with a dark palette in a `prefers-color-scheme: dark` block for the
  *     clients that honour it, and `color-scheme` metadata so the rest can adapt it themselves;
- *   - the Pinned K as the kit's PNG app icon (no bit, on its own plate, so a client that inverts
- *     or replaces the background cannot lose it), the 180 px file shown at 40 px, linked from
- *     the console origin's `/assets/branding/key/`; empty `alt`, because the wordmark beside it
- *     is text. With no usable origin the icon is left out and the wordmark stands alone;
+ *   - the kit's horizontal PNG lockup (PORTAL.md §6.3; no "Powered by" badge), the 944 px 2x
+ *     file shown at 472 x 160, linked from the console origin's `/assets/branding/key/` (emitted
+ *     there by packages/admin/vite.config.ts) with `alt="Polaris Key"`. The `light` variant (for
+ *     light grounds) is the default; the dark palette swaps in the `dark` variant for the clients
+ *     that apply it. With no usable origin the lockup is left out and a text wordmark stands in;
  *   - every dynamic value escaped; links are only the ones the Worker built.
+ *
+ * Every message is platform mail, sent as "Polaris Key" through Core's one send choke point
+ * (`core/emailDelivery.ts`, I-18), which applies the suppression list, the Apple private-relay
+ * gate and the provider-error handling; platform mail is never counted against a product cap.
  */
 
 import { BRAND, FONT, THEME_TOKENS } from "@polaris-key/brand";
-import type { Env } from "../../../core/platform.js";
-
-function fromAddress(env: Env): string {
-  return env.PORTAL_EMAIL_FROM ?? "Polaris Key <noreply@plrs.im>";
-}
+import type { Db, Env } from "../../../core/platform.js";
+import { deliverEmail } from "../../../core/emailDelivery.js";
+import type { NoticeMessage } from "./notices.js";
+import { listVerifiedAccountEmails } from "./repo.js";
 
 export function portalEmailConfigured(env: Env): boolean {
   return Boolean(env.EMAIL);
@@ -35,7 +40,7 @@ function escapeHtml(input: string): string {
     .replace(/'/g, "&#x27;");
 }
 
-/** An `https:` origin (or `http:` on loopback, for local development) to load the icon from. */
+/** An `https:` origin (or `http:` on loopback, for local development) to load the lockup from. */
 export function emailAssetOrigin(
   ...candidates: (string | null | undefined)[]
 ): string | null {
@@ -71,6 +76,8 @@ function darkCss(): string {
     `.pk-btn{background-color:${DARK.accent.violet.solid} !important}`,
     `.pk-btn-a{color:${DARK.accent.violet.on} !important}`,
     `.pk-link{color:${DARK.accent.violet.fg} !important}`,
+    `.pk-logo-light{display:none !important}`,
+    `.pk-logo-dark{display:block !important;max-height:none !important}`,
   ];
   return (
     `@media (prefers-color-scheme: dark){${rules.join("")}}` +
@@ -87,9 +94,11 @@ export interface EmailContent {
   paragraphs: string[];
   /** One call to action, a URL the Worker built. */
   action?: { label: string; url: string };
+  /** A security notice's "Wasn't you? Secure your account" line, a URL the Worker built. */
+  secure?: { label: string; url: string };
   /** The small print under the card. Plain text. */
   footer: string;
-  /** The origin to load the icon from, or null to leave it out. */
+  /** The origin to load the lockup from, or null to use a text wordmark instead. */
   origin: string | null;
 }
 
@@ -103,10 +112,15 @@ export function renderEmail(c: EmailContent): string {
     color: string = LIGHT.text.default,
   ) =>
     `<p class="${cls}" style="margin:0 0 16px;font-family:${font};font-size:16px;line-height:24px;color:${color}">${escapeHtml(text).replace(/\n/g, "<br>")}</p>`;
-  const icon = c.origin
-    ? `<td width="40" style="width:40px;padding:0 12px 0 0;vertical-align:middle"><img src="${escapeHtml(`${c.origin}/assets/branding/key/app-icon-dark-180.png`)}" width="40" height="40" alt="" style="display:block;width:40px;height:40px;border:0;border-radius:9px"></td>`
-    : "";
-  const brand = `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>${icon}<td class="pk-strong" style="vertical-align:middle;font-family:${font};font-size:20px;line-height:28px;font-weight:700;letter-spacing:-0.01em;color:${BRAND.text.light}">Polaris Key</td></tr></table>`;
+  const lockup = (variant: "light" | "dark", style: string) =>
+    `<img class="pk-logo-${variant}" src="${escapeHtml(`${c.origin}/assets/branding/key/key-horizontal-${variant}-944.png`)}" width="472" height="160" alt="Polaris Key" style="${style}">`;
+  const imgStyle =
+    "width:472px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none";
+  const brand = c.origin
+    ? lockup("light", `display:block;${imgStyle}`) +
+      // Hidden unless the dark palette applies (`mso-hide` for Outlook on Windows).
+      `<!--[if !mso]><!-->${lockup("dark", `display:none;max-height:0;overflow:hidden;mso-hide:all;${imgStyle}`)}<!--<![endif]-->`
+    : `<p class="pk-strong" style="margin:0;font-family:${font};font-size:20px;line-height:28px;font-weight:700;letter-spacing:-0.01em;color:${BRAND.text.light}">Polaris Key</p>`;
   const action = c.action
     ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px"><tr><td class="pk-btn" bgcolor="${LIGHT.accent.violet.solid}" style="border-radius:6px;background-color:${LIGHT.accent.violet.solid}"><a class="pk-btn-a" href="${escapeHtml(c.action.url)}" style="display:inline-block;padding:12px 24px;font-family:${font};font-size:16px;line-height:20px;font-weight:700;color:${LIGHT.accent.violet.on};text-decoration:none;border-radius:6px">${escapeHtml(c.action.label)}</a></td></tr></table>` +
       para(
@@ -115,6 +129,9 @@ export function renderEmail(c: EmailContent): string {
         LIGHT.text.muted,
       ) +
       `<p style="margin:0;font-family:${mono};font-size:13px;line-height:20px;word-break:break-all"><a class="pk-link" href="${escapeHtml(c.action.url)}" style="color:${LIGHT.accent.violet.fg};text-decoration:underline">${escapeHtml(c.action.url)}</a></p>`
+    : "";
+  const secure = c.secure
+    ? `<p class="pk-text" style="margin:24px 0 0;font-family:${font};font-size:15px;line-height:22px;color:${LIGHT.text.default}"><strong>Wasn&#x27;t you?</strong> <a class="pk-link" href="${escapeHtml(c.secure.url)}" style="color:${LIGHT.accent.violet.fg};text-decoration:underline">${escapeHtml(c.secure.label)}</a></p>`
     : "";
   return [
     `<!doctype html>`,
@@ -131,11 +148,13 @@ export function renderEmail(c: EmailContent): string {
     `<table role="presentation" class="pk-bg" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${LIGHT.surface.page}" style="width:100%;background-color:${LIGHT.surface.page}">`,
     `<tr><td align="center" style="padding:32px 16px">`,
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:520px">`,
-    `<tr><td style="padding:0 0 24px">${brand}</td></tr>`,
+    // The lockup PNG carries its own clear space; the text wordmark needs the gap.
+    `<tr><td style="padding:0 0 ${c.origin ? 0 : 24}px">${brand}</td></tr>`,
     `<tr><td class="pk-card" bgcolor="${LIGHT.surface.raised}" style="padding:32px;background-color:${LIGHT.surface.raised};border:1px solid ${LIGHT.border.subtle};border-radius:10px">`,
     `<h1 class="pk-strong" style="margin:0 0 16px;font-family:${font};font-size:24px;line-height:32px;font-weight:700;letter-spacing:-0.01em;color:${LIGHT.text.strong}">${escapeHtml(c.heading)}</h1>`,
     ...c.paragraphs.map((t) => para(t)),
     action,
+    secure,
     `</td></tr>`,
     `<tr><td class="pk-muted" style="padding:24px 8px 0;font-family:${font};font-size:13px;line-height:20px;color:${LIGHT.text.muted}">${escapeHtml(c.footer)}</td></tr>`,
     `</table>`,
@@ -148,57 +167,114 @@ export function renderEmail(c: EmailContent): string {
     .join("\n");
 }
 
-const NOTICE_FOOTER =
-  "You are receiving this because of a change to your Polaris Key account.";
-
+/**
+ * Mail a magic sign-in link. False only when email cannot be sent at all (`email_unavailable`);
+ * a suppressed recipient answers true, exactly like a sent message, so the response does not
+ * reveal that the address once bounced or complained.
+ */
 export async function sendMagicLink(
   env: Env,
+  db: Db,
   to: string,
   link: string,
+  now: number,
 ): Promise<boolean> {
-  const email = env.EMAIL;
-  if (!email) return false;
   const subject = "Sign in to Polaris Key";
-  await email.send({
-    from: fromAddress(env),
-    to,
-    subject,
-    text:
-      `Use this link to sign in to Polaris Key:\n\n${link}\n\n` +
-      `This link expires in 10 minutes and works once. If you did not ask to sign in, you can ignore this email.`,
-    html: renderEmail({
+  const result = await deliverEmail(
+    env,
+    db,
+    {
+      sender: { kind: "platform" },
+      to,
       subject,
-      heading: "Sign in to Polaris Key",
-      paragraphs: [
-        "Use the button below to sign in. The link expires in 10 minutes and works once.",
-      ],
-      action: { label: "Sign in", url: link },
-      footer:
-        "If you did not ask to sign in, you can ignore this email. Nothing changes until the link is used.",
-      origin: emailAssetOrigin(link, env.CONSOLE_ORIGIN),
-    }),
-  });
-  return true;
+      text:
+        `Use this link to sign in to Polaris Key:\n\n${link}\n\n` +
+        `This link expires in 10 minutes and works once. If you did not ask to sign in, you can ignore this email.`,
+      html: renderEmail({
+        subject,
+        heading: "Sign in to Polaris Key",
+        paragraphs: [
+          "Use the button below to sign in. The link expires in 10 minutes and works once.",
+        ],
+        action: { label: "Sign in", url: link },
+        footer:
+          "If you did not ask to sign in, you can ignore this email. Nothing changes until the link is used.",
+        origin: emailAssetOrigin(link, env.CONSOLE_ORIGIN),
+      }),
+    },
+    now,
+  );
+  return result.ok || result.reason === "suppressed";
 }
 
-export async function sendPortalNotice(
+/**
+ * One notice to one address, through Core's send choke point (`deliverEmail`). No binding or no
+ * address: nothing is sent. True only when it went out; an unavailable or suppressed recipient
+ * answers false, and nothing here throws on a provider error.
+ */
+export async function sendNotice(
   env: Env,
+  db: Db,
   to: string | null | undefined,
-  subject: string,
-  text: string,
-): Promise<void> {
-  if (!to || !env.EMAIL) return;
-  await env.EMAIL.send({
-    from: fromAddress(env),
-    to,
-    subject,
-    text,
-    html: renderEmail({
-      subject,
-      heading: subject,
-      paragraphs: [text],
-      footer: NOTICE_FOOTER,
-      origin: emailAssetOrigin(env.CONSOLE_ORIGIN),
-    }),
-  });
+  message: NoticeMessage,
+  now: number,
+): Promise<boolean> {
+  if (!to || !env.EMAIL) return false;
+  const result = await deliverEmail(
+    env,
+    db,
+    { sender: { kind: "platform" }, to, ...message },
+    now,
+  );
+  return result.ok;
+}
+
+/**
+ * A security notice (PORTAL.md §6.3): one message per address, to every verified email on the
+ * account plus `alsoTo` (the session's address, which a brand-new account may not have verified
+ * a row for yet). Sent separately, so no recipient sees the others in the headers. (A notice
+ * whose subject IS an address, such as a sign-in email added, does show that address; render
+ * email methods generically when those notices are wired, PX-W12.)
+ *
+ * A recipient that is not sent to (unavailable, suppressed, or a failed send) never fails the
+ * change the notice reports (a device is already removed, an account is about to be erased); the
+ * others still go out. Returns how many were sent.
+ */
+export async function sendSecurityNotice(
+  env: Env,
+  db: Db,
+  accountId: string,
+  alsoTo: string | null | undefined,
+  message: NoticeMessage,
+  now: number,
+): Promise<number> {
+  if (!env.EMAIL) return 0;
+  const recipients = await securityNoticeRecipients(db, accountId, alsoTo);
+  let sent = 0;
+  for (const to of recipients) {
+    try {
+      if (await sendNotice(env, db, to, message, now)) sent += 1;
+    } catch {
+      // Swallowed on purpose: the change already happened (or is about to); the worker has no
+      // console logging (test/attack/R12-secrets.test.ts), so the shortfall is the return value.
+    }
+  }
+  return sent;
+}
+
+/** Every verified address on the account, plus `alsoTo`, de-duplicated case-insensitively. */
+export async function securityNoticeRecipients(
+  db: Db,
+  accountId: string,
+  alsoTo: string | null | undefined,
+): Promise<string[]> {
+  const seen = new Map<string, string>();
+  for (const email of [
+    ...(await listVerifiedAccountEmails(db, accountId)),
+    ...(alsoTo ? [alsoTo] : []),
+  ]) {
+    const key = email.trim().toLowerCase();
+    if (key && !seen.has(key)) seen.set(key, email.trim());
+  }
+  return [...seen.values()];
 }

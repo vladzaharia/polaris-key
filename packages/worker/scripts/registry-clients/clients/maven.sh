@@ -69,6 +69,25 @@ for entry in "pinned 1.0.0" "release RELEASE" "latest LATEST" "range [1.0,1.1.99
 done
 SH
 
+# F-21: against an authenticated feed (run.mjs --auth), a settings.xml server whose id matches the
+# repository's, Basic `__token__:<token>`.
+MVN_SETTINGS=""
+if [ -n "${PKEY_REGISTRY_TOKEN:-}" ]; then
+  cat > "$work/settings.xml" <<XML
+<settings>
+  <servers>
+    <server>
+      <id>polaris-key-fixture</id>
+      <username>__token__</username>
+      <password>$PKEY_REGISTRY_TOKEN</password>
+    </server>
+  </servers>
+</settings>
+XML
+  MVN_SETTINGS="-s /work/settings.xml"
+fi
+sed -i.bak "s#mvn -B -q -C #mvn -B -q -C $MVN_SETTINGS #" "$work/specs.sh"
+
 # As the invoking user (so the host can remove what it writes), with a home of its own.
 docker run --rm --network host --user "$(id -u):$(id -g)" -e HOME=/work \
   -e JAVA_TOOL_OPTIONS=-Djava.net.preferIPv4Stack=true \

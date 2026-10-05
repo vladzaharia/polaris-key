@@ -11,7 +11,35 @@ import {
 } from "./consoleHarness.js";
 import { feedDetail, feedRoutes } from "./feedsFixture.js";
 import { confirmFor } from "../src/lib/actions.js";
-import { setupSnippets } from "../src/console/areas/feeds/model.js";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  formatFeedSetup,
+  renderFeedSetup,
+  type PackageEcosystem,
+} from "@polaris-key/manifest";
+import {
+  ECOSYSTEM_LABELS,
+  feedSetupSnippets,
+} from "../src/console/areas/feeds/model.js";
+
+/** The shared setup-snippet cases and goldens (F-12), also run by the CLI's test. */
+const SHARED_FIXTURES = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../shared-manifest/test/fixtures/feed-setup",
+);
+const { origin: SHARED_ORIGIN, cases: SHARED_CASES } = JSON.parse(
+  readFileSync(join(SHARED_FIXTURES, "cases.json"), "utf8"),
+) as {
+  origin: string;
+  cases: {
+    id: string;
+    ecosystem: PackageEcosystem;
+    owner: string;
+    namespace?: Record<string, unknown>;
+  }[];
+};
 
 /**
  * Package feeds (F-11; plans/F-01.md §6.9): the overview, one page per feed and the package record,
@@ -49,6 +77,200 @@ function product(packageFeeds: boolean): Record<string, unknown> {
 async function heading(name: string | RegExp): Promise<HTMLElement> {
   return screen.findByRole("heading", { level: 1, name });
 }
+
+describe("registry auth (F-21)", () => {
+  it("leaving Public asks first (L1), and Entitled names the packages without a gate", async () => {
+    const log = boot("#/p/djdl/distribution/feeds/npm/settings", {
+      extra: {
+        ...feedRoutes(),
+        ...product(true),
+        "PUT /manage/api/products/djdl/distribution/feeds/npm/settings": {
+          ok: true,
+          settings: feedDetail("product", "npm").settings,
+        },
+      },
+    });
+    const access = await within(await mainReady()).findByRole("form", {
+      name: "Access",
+    });
+    await userEvent.click(
+      within(access).getByRole("radio", { name: /Entitled/ }),
+    );
+    expect(access.textContent).toContain("@djdl/sdk");
+    expect(
+      within(access).getByRole("link", { name: /Open Tokens/ }),
+    ).toBeTruthy();
+    await userEvent.click(
+      within(access).getByRole("button", { name: /^Save/ }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog.textContent).toContain("401");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /Switch to Entitled/ }),
+    );
+    await waitFor(() =>
+      expect(log.calls.find((c) => c.method === "PUT")?.json).toEqual({
+        expectedVersion: 3,
+        accessMode: "entitled",
+      }),
+    );
+  });
+
+  it("the Tokens page lists tokens, mints one and shows it once with every client's setup", async () => {
+    const minted = {
+      ok: true,
+      token: `pkeyr_${"k".repeat(43)}`,
+      view: {
+        ...(
+          feedRoutes()[
+            "/manage/api/products/djdl/distribution/feeds/tokens"
+          ] as { tokens: Record<string, unknown>[] }
+        ).tokens[0],
+        tokenId: "rtok_new",
+        label: "Build box",
+        ecosystems: null,
+      },
+    };
+    const log = boot("#/p/djdl/distribution/feeds/tokens", {
+      extra: {
+        ...feedRoutes(),
+        ...product(true),
+        "POST /manage/api/products/djdl/distribution/feeds/tokens": minted,
+      },
+    });
+    await heading("Registry tokens");
+    const table = await within(main()).findByRole("table", {
+      name: "Registry tokens",
+    });
+    expect(table.textContent).toContain("CI pull");
+    expect(table.textContent).toContain("Licensee, in the portal");
+    await userEvent.click(
+      within(main()).getByRole("button", { name: /New token/ }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "New registry token",
+    });
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: /Label/ }),
+      "Build box",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Create token" }),
+    );
+    await waitFor(() =>
+      expect(log.calls.find((c) => c.method === "POST")?.json).toEqual({
+        label: "Build box",
+        binding: "owner",
+        expiresInDays: 90,
+        ecosystems: null,
+      }),
+    );
+    const shown = await screen.findByRole("dialog", {
+      name: "Registry token created",
+    });
+    expect(shown.textContent).toContain(minted.token);
+    // The npm feed is enabled: its .npmrc carries the real token.
+    expect(shown.textContent).toContain(
+      `//pkg.plrs.im/npm/djdl/:_authToken=${minted.token}`,
+    );
+  });
+
+  it("revoking a token is L2", async () => {
+    const log = boot("#/platform/feeds/tokens", {
+      extra: {
+        ...feedRoutes(),
+        "POST /manage/api/platform/feeds/tokens/rtok_ci/revoke": {
+          ok: true,
+          view: {},
+        },
+      },
+    });
+    const table = await within(await mainReady()).findByRole("table", {
+      name: "Registry tokens",
+    });
+    await within(table).findByText("CI pull");
+    await userEvent.click(
+      within(table).getByRole("button", { name: "Actions for CI pull" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Revoke/ }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    expect(confirmFor("registryToken.revoke").level).toBe(2);
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Revoke token" }),
+    );
+    await waitFor(() =>
+      expect(
+        log.calls.some(
+          (c) =>
+            c.method === "POST" &&
+            c.path.endsWith("/manage/api/platform/feeds/tokens/rtok_ci/revoke"),
+        ),
+      ).toBe(true),
+    );
+  });
+
+  it("authenticated snippets name the token by env, or carry it; Godot needs a URL token", () => {
+    // The console's credential argument goes straight to the shared renderer (F-12), so the
+    // Setup tab and the shown-once dialog print what `pkey feeds setup --token-env` prints.
+    const ctx = {
+      origin: "https://pkg.plrs.im",
+      owner: "acme",
+      namespace: { scope: "@acme" },
+    };
+    const code = (
+      snippets: ReturnType<typeof feedSetupSnippets>,
+      id: string,
+    ): string => snippets!.find((x) => x.id === id)!.code;
+    const env = feedSetupSnippets("npm", ctx, {
+      kind: "env",
+      name: "PKEY_REGISTRY_TOKEN",
+    });
+    expect(code(env, "npmrc")).toBe(
+      "@acme:registry=https://pkg.plrs.im/npm/acme/\n//pkg.plrs.im/npm/acme/:_authToken=${PKEY_REGISTRY_TOKEN}",
+    );
+    const token = "pkeyr_" + "x".repeat(43);
+    const oci = feedSetupSnippets(
+      "oci",
+      { ...ctx, namespace: {} },
+      { kind: "token", value: token },
+    );
+    expect(code(oci, "pull")).toContain(
+      `echo ${token} | docker login pkg.plrs.im -u __token__ --password-stdin`,
+    );
+    const godotToken = "pkeyr_" + "g".repeat(43);
+    const godot = feedSetupSnippets(
+      "godot",
+      { ...ctx, namespace: { publisher: "acme" } },
+      { kind: "godot-url", value: godotToken },
+    );
+    expect(code(godot, "editor-4.6")).toBe(
+      `https://pkg.plrs.im/godot/acme/t/${godotToken}/asset-library/api`,
+    );
+    // A Godot feed takes only a URL token: an env credential renders the anonymous setup.
+    const godotEnv = feedSetupSnippets(
+      "godot",
+      { ...ctx, namespace: { publisher: "acme" } },
+      { kind: "env", name: "PKEY_REGISTRY_TOKEN" },
+    );
+    expect(code(godotEnv, "editor-4.6")).toBe(
+      "https://pkg.plrs.im/godot/acme/asset-library/api",
+    );
+    const maven = feedSetupSnippets(
+      "maven",
+      { ...ctx, namespace: { groupPrefixes: ["gg.acme"] } },
+      { kind: "env", name: "PKEY_REGISTRY_TOKEN" },
+    );
+    expect(code(maven, "maven-credentials")).toContain(
+      "<password>${env.PKEY_REGISTRY_TOKEN}</password>",
+    );
+    // A token a snippet cannot carry renders nothing rather than a broken line.
+    expect(
+      feedSetupSnippets("npm", ctx, { kind: "token", value: "bad token" }),
+    ).toBeNull();
+  });
+});
 
 describe("the Feeds overview", () => {
   it("platform scope: every feed with status, counts, access and registry URL, the owners, no caveats", async () => {
@@ -95,6 +317,7 @@ describe("the Feeds overview", () => {
       "Swift",
       "Maven / Gradle",
       "Godot",
+      "Tokens",
     ]);
     // Nothing suggests a public registry, and nothing is "coming soon".
     expect(main().textContent).not.toMatch(
@@ -283,32 +506,48 @@ describe("a feed page", () => {
     ).toBeTruthy();
   });
 
-  it("Setup: copy-paste snippets for the feed's own URL and namespace", async () => {
-    boot("#/platform/feeds/npm/setup", { extra: feedRoutes() });
-    await heading(/npm/);
-    await waitFor(() =>
-      expect(main().textContent).toContain(
-        "@polaris-key:registry=https://pkg.plrs.im/npm/polaris-key/",
-      ),
-    );
-    const maven = setupSnippets("maven", {
-      baseUrl: "https://pkg.plrs.im/maven/polaris-key/",
-      owner: "polaris-key",
-      namespace: { groupPrefixes: ["im.plrs.key"] },
-    });
-    expect(maven[0]!.code).toContain(
-      'includeGroupByRegex("im\\\\.plrs\\\\.key(\\\\..*)?")',
-    );
-    const oci = setupSnippets("oci", {
-      baseUrl: "https://pkg.plrs.im/v2/acme/",
-      owner: "acme",
-      namespace: {},
-      pkg: { name: "server", version: "1.2.3" },
-    });
-    expect(oci[0]!.code).toBe("docker pull pkg.plrs.im/acme/server:1.2.3");
+  it("Setup: renderFeedSetup's snippets, byte-identical to pkey feeds setup (the shared goldens)", async () => {
+    // Every platform feed is a shared case (packages/shared-manifest/test/fixtures/feed-setup):
+    // the CLI's test prints the same golden for the same input.
+    for (const c of SHARED_CASES.filter(
+      (c) => c.id.endsWith("-feed") && c.owner === "polaris-key",
+    )) {
+      cleanup();
+      resetConsole();
+      boot(`#/platform/feeds/${c.ecosystem}/setup`, { extra: feedRoutes() });
+      await heading(ECOSYSTEM_LABELS[c.ecosystem]);
+      const want = renderFeedSetup(c.ecosystem, {
+        origin: SHARED_ORIGIN,
+        owner: c.owner,
+        namespace: c.namespace,
+      });
+      expect(formatFeedSetup(want), c.id).toBe(
+        readFileSync(join(SHARED_FIXTURES, `${c.id}.txt`), "utf8"),
+      );
+      await waitFor(() =>
+        expect(main().querySelectorAll("pre").length, c.id).toBe(want.length),
+      );
+      const shown = [...main().querySelectorAll("pre")].map((pre) =>
+        [...pre.querySelectorAll("code > span")]
+          .map((line) =>
+            line.textContent === "\n" ? "" : (line.textContent ?? ""),
+          )
+          .join("\n"),
+      );
+      expect(shown, c.id).toEqual(want.map((s) => s.code));
+      if (c.ecosystem === "pypi")
+        // pip's warning against --extra-index-url is on the page, not only in the CLI.
+        expect(main().textContent).toContain(
+          "Never add this feed with --extra-index-url",
+        );
+      for (const s of want)
+        expect(
+          within(main()).getByRole("heading", { level: 2, name: s.title }),
+        ).toBeTruthy();
+    }
   });
 
-  it("Settings: each section saves with the version it read; access modes beyond Public are unavailable", async () => {
+  it("Settings: each section saves with the version it read; every access mode can be chosen (F-21)", async () => {
     const log = boot("#/p/djdl/distribution/feeds/npm/settings", {
       extra: {
         ...feedRoutes(),
@@ -330,8 +569,8 @@ describe("a feed page", () => {
           r.hasAttribute("disabled") ||
           r.getAttribute("data-disabled") !== null,
       ),
-    ).toEqual([false, true, true, true]);
-    expect(access.textContent).toContain("Unavailable");
+    ).toEqual([false, false, false, false]);
+    expect(access.textContent).not.toContain("Unavailable");
     expect(access.textContent).not.toMatch(/coming soon|ships/i);
     // The platform policy is the platform's: not in product scope.
     expect(
@@ -393,6 +632,110 @@ describe("a feed page", () => {
     expect(confirmFor("feed.policyOff").intent).toBe("danger");
   });
 
+  it("the ecosystem panel saves its own ext_json with the version it read (F-12)", async () => {
+    const put = "PUT /manage/api/platform/feeds/swift/settings";
+    const log = boot("#/platform/feeds/swift/settings", {
+      extra: {
+        ...feedRoutes(),
+        [put]: { ok: true, settings: feedDetail("platform", "swift").settings },
+      },
+    });
+    const panel = await within(await mainReady()).findByRole("form", {
+      name: "Signing and identifiers",
+    });
+    // Rendered from the adapter's declared extensions, never a switch on the ecosystem.
+    const signed = within(panel).getByRole("switch", {
+      name: "Require signed releases",
+    });
+    expect(signed.getAttribute("aria-checked")).toBe("true");
+    await userEvent.click(signed);
+    await userEvent.type(
+      within(panel).getByRole("textbox", { name: "Repository URLs" }),
+      "polaris-key.PolarisKey https://github.com/vladzaharia/polaris-key",
+    );
+    await userEvent.click(within(panel).getByRole("button", { name: /^Save/ }));
+    await waitFor(() =>
+      expect(log.calls.find((c) => c.method === "PUT")?.json).toEqual({
+        expectedVersion: 3,
+        ext: {
+          requireSigned: false,
+          repositoryUrls: {
+            "polaris-key.PolarisKey": [
+              "https://github.com/vladzaharia/polaris-key",
+            ],
+          },
+        },
+      }),
+    );
+  });
+
+  it("each ecosystem's panel, and none where the adapter declares no extensions", async () => {
+    const cases: [string, string | null][] = [
+      ["npm", null],
+      ["maven", null],
+      ["pypi", "Simple API"],
+      ["oci", "Retention"],
+      ["godot", "Asset listing"],
+    ];
+    for (const [eco, title] of cases) {
+      cleanup();
+      resetConsole();
+      boot(`#/platform/feeds/${eco}/settings`, { extra: feedRoutes() });
+      await within(await mainReady()).findByRole("form", { name: "General" });
+      const forms = within(main())
+        .getAllByRole("form")
+        .map((f) => f.getAttribute("aria-label"));
+      expect(forms, eco).toEqual(
+        [
+          "General",
+          "Access",
+          "Namespace",
+          "Limits",
+          "Yank policy",
+          title,
+          "Platform policy",
+        ].filter(Boolean),
+      );
+    }
+    const godot = within(main()).getByRole("form", { name: "Asset listing" });
+    expect(
+      within(godot).getByRole("combobox", { name: "Category" }),
+    ).toBeTruthy();
+    expect(
+      within(godot).getByRole("combobox", { name: "Support level" }),
+    ).toBeTruthy();
+    expect(
+      within(godot).getByRole("textbox", { name: "License" }),
+    ).toBeTruthy();
+    expect(
+      within(godot).getByRole("textbox", { name: "Oldest editor" }),
+    ).toBeTruthy();
+  });
+
+  it("the OCI retention and Godot listing panels validate before saving", async () => {
+    const put = "PUT /manage/api/platform/feeds/oci/settings";
+    const log = boot("#/platform/feeds/oci/settings", {
+      extra: {
+        ...feedRoutes(),
+        [put]: { ok: true, settings: feedDetail("platform", "oci").settings },
+      },
+    });
+    const panel = await within(await mainReady()).findByRole("form", {
+      name: "Retention",
+    });
+    const days = within(panel).getByRole("textbox", {
+      name: "Untagged manifests",
+    });
+    await userEvent.type(days, "30");
+    await userEvent.click(within(panel).getByRole("button", { name: /^Save/ }));
+    await waitFor(() =>
+      expect(log.calls.find((c) => c.method === "PUT")?.json).toEqual({
+        expectedVersion: 3,
+        ext: { retainUntaggedDays: 30 },
+      }),
+    );
+  });
+
   it("Activity: the feed's trail", async () => {
     boot("#/platform/feeds/npm/activity", { extra: feedRoutes() });
     expect(
@@ -409,12 +752,44 @@ describe("a feed page", () => {
     expect(within(main()).getByText("There is no cargo feed")).toBeTruthy();
   });
 
-  it("passes axe on Settings", async () => {
-    boot("#/platform/feeds/maven/settings", { extra: feedRoutes() });
-    await within(await mainReady()).findByRole("form", {
-      name: "Platform policy",
-    });
-    expect((await axe(main())).violations.map((v) => v.id)).toEqual([]);
+  it("passes axe on Settings, ecosystem panels included", async () => {
+    for (const eco of ["maven", "swift", "godot"]) {
+      cleanup();
+      resetConsole();
+      boot(`#/platform/feeds/${eco}/settings`, { extra: feedRoutes() });
+      await within(await mainReady()).findByRole("form", {
+        name: "Platform policy",
+      });
+      expect(
+        (await axe(main())).violations.map((v) => v.id),
+        eco,
+      ).toEqual([]);
+    }
+  });
+
+  it("the sub-navigation bar: Overview and Tokens apart, every feed a link, the current one marked", async () => {
+    boot("#/platform/feeds/pypi/setup", { extra: feedRoutes() });
+    await heading("PyPI");
+    const bar = screen.getByRole("navigation", { name: "Package feeds" });
+    const links = within(bar).getAllByRole("link");
+    expect(links.map((l) => l.textContent)).toEqual([
+      "Overview",
+      "npm",
+      "PyPI",
+      "Docker / OCI",
+      "Swift",
+      "Maven / Gradle",
+      "Godot",
+      "Tokens",
+    ]);
+    expect(
+      links.filter((l) => l.getAttribute("aria-current") === "page"),
+    ).toEqual([within(bar).getByRole("link", { name: "PyPI" })]);
+    // Every item carries its icon; the separators (after Overview, before Tokens) are
+    // decoration, not links.
+    for (const l of links) expect(l.querySelector("svg")).not.toBeNull();
+    expect(bar.querySelectorAll('li[aria-hidden="true"]').length).toBe(2);
+    expect((await axe(bar)).violations.map((v) => v.id)).toEqual([]);
   });
 });
 

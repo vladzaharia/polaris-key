@@ -27,6 +27,8 @@
  *                                                       protocol has no such state
  *   POST <base>/:eco/rebuild                            re-render the feed — `feed.rebuild`
  *   GET  <base>/:eco/activity                           the feed's audit trail
+ *   …    <base>/tokens…                                 registry tokens (F-21,
+ *                                                       `registryTokens.ts`)
  *
  * `POST /platform/feeds/bootstrap` (`feed.bootstrap`) stays in `platform.ts` (F-03).
  *
@@ -62,6 +64,7 @@ import {
   stmtEnqueuePackageRender,
 } from "../../core/registryQueue.js";
 import { packageFeedsOf } from "../../services/distribution/registryFeeds.js";
+import { handleRegistryTokensAdmin } from "./registryTokens.js";
 import { forgetRegistrySettings } from "../../services/distribution/registry/settings.js";
 import { packageCatalog } from "../../services/release/packages/catalog.js";
 import {
@@ -74,6 +77,7 @@ import {
   ECOSYSTEM_LABELS,
   FEED_ACCESS_MODES,
   FEED_CAPABILITIES,
+  FEED_EXTENSIONS,
   PACKAGE_ECOSYSTEMS,
   SETTABLE_ACCESS_MODES,
   applyExtPatch,
@@ -406,11 +410,34 @@ async function feedDetail(
     settings: settingsView(ctx.feeds.get(eco), policy),
     policy: policyView(policy),
     capabilities: FEED_CAPABILITIES[eco],
+    extensions: FEED_EXTENSIONS[eco],
     accessModes: FEED_ACCESS_MODES.map((mode) => ({
       mode,
       available: SETTABLE_ACCESS_MODES.includes(mode),
     })),
+    // F-21: under `entitled`, a licence token is refused every package with no delivery gate.
+    ungatedPackages: ctx.head.owner
+      ? await ungatedPackages(db, ctx.head.owner, eco)
+      : [],
   });
+}
+
+/** The ecosystem's package deliverables with no delivery gate (`dist_access.entitlement`). */
+async function ungatedPackages(
+  db: Db,
+  owner: string,
+  eco: PackageEcosystem,
+): Promise<{ id: string; name: string }[]> {
+  return db.all<{ id: string; name: string }>(
+    `SELECT d.deliverable_id AS id, COALESCE(d.package_name, d.deliverable_id) AS name
+       FROM release_deliverables d
+       LEFT JOIN dist_access a ON a.product = d.product AND a.deliverable_id = d.deliverable_id
+      WHERE d.product = ? AND d.kind = 'package' AND d.ecosystem = ?
+        AND (a.entitlement IS NULL OR a.entitlement = '')
+      ORDER BY name`,
+    owner,
+    eco,
+  );
 }
 
 function intOk(v: unknown, min: number, max: number): v is number {
@@ -490,10 +517,21 @@ async function putSettings(
     return err(
       422,
       "bad_request",
-      (FEED_ACCESS_MODES as readonly unknown[]).includes(body.accessMode)
-        ? "only public access can be set: the registry issues no credentials, so any other mode would refuse every client"
-        : "accessMode is one of public, authenticated, licensed, entitled",
+      "accessMode is one of public, authenticated, licensed, entitled",
       { fields: ["accessMode"], reason: "access_mode_unavailable" },
+    );
+  // The system product's feeds (our SDKs) change only from the platform scope (§6.5).
+  if (
+    scope.kind === "product" &&
+    owner.row.system === 1 &&
+    body.accessMode !== undefined &&
+    body.accessMode !== before.accessMode
+  )
+    return err(
+      403,
+      "forbidden",
+      "the platform's own feeds change only under Platform → Package feeds",
+      { reason: "platform_scope_only" },
     );
   const enabled =
     body.enabled === undefined ? before.enabled : (body.enabled as boolean);
@@ -1111,6 +1149,16 @@ export async function handleFeedsAdmin(
     if (method !== "GET") return notAllowed();
     return overview(env, db, scope);
   }
+  if (rest[0] === "tokens")
+    return handleRegistryTokensAdmin(
+      req,
+      env,
+      db,
+      session,
+      scope,
+      rest.slice(1),
+      now,
+    );
   const eco = rest[0]!;
   if (!isPackageEcosystem(eco)) return notFound();
   if (rest.length === 1) {

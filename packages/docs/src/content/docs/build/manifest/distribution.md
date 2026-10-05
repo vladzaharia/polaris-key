@@ -108,7 +108,7 @@ optional. A bad value is `invalid_outlet_identity`.
 | `steam`                    | `appId` (numeric), `branches` (channel → Steam branch)                                                                                    |
 | `itch`                     | `target` (the butler `user/game` slug), `gameId` (numeric)                                                                                |
 | `flathub`                  | `appId` (a Flatpak id such as `gg.vlad.Diceroll`)                                                                                         |
-| `snap`                     | `name`                                                                                                                                    |
+| `snap`                     | `name`, `channels` (channel → snap channel, `[<track>/]<risk>[/<branch>]`)                                                                |
 | `winget`                   | `packageIdentifier` (such as `Vlad.Diceroll`)                                                                                             |
 | `web`                      | none                                                                                                                                      |
 
@@ -137,8 +137,13 @@ optional. A bad value is `invalid_outlet_identity`.
 - **`flights`** maps a declared channel to a Microsoft Store package flight, named by its
   Partner Center friendly name or its flight id. The non-flighted submission is always the
   `stable` channel, so `flights` names only the others (`{ beta: "Beta testers" }`).
-- **`tracks`, `branches` and `flights`** keys must be declared channels — `stable`, `beta`, a manual
-  channel, or one of `deliverables.app.channels` — otherwise `unknown_channel_ref`.
+- **`snap.channels`** maps a declared channel to the snap channel `snapcraft upload --release`
+  releases to (`{ stable: "latest/stable", beta: "beta" }`). The publish action's allow-list
+  admits no other channel, so a snap step for a channel without an entry is refused (see
+  [Storefront steps](/docs/build/ci/#storefront-steps-itchio-and-snap)).
+- **`tracks`, `branches`, `flights` and `channels`** keys must be declared channels — `stable`,
+  `beta`, a manual channel, or one of `deliverables.app.channels` — otherwise
+  `unknown_channel_ref`.
 - **`packageFamilyName`** is the MSIX `<Name>_<PublisherId>`, the publisher id being 13
   characters. The Microsoft Store and App Installer entries may differ: a Store-signed and a
   self-signed package can have different publisher ids.
@@ -195,8 +200,17 @@ is served or derived for it ([Pack transports](/docs/services/distribution/deliv
 Store-page metadata, every field optional: `name`, `subtitle`, `category`, `developerName`
 (one line each, at most 200 characters), `description` (at most 4000, newlines allowed),
 `iconUrl`, `headerUrl`, `website` (https URLs), `screenshots` (up to 16 https URLs) and
-`tintColor` (`#rrggbb`). An outlet may carry its own `listing`, merged over the document's for
-that outlet. A malformed listing is `invalid_listing`.
+`tintColor` (`#rrggbb`), plus the two support links the customer portal shows: `supportUrl` (an
+https URL) and `supportEmail` (one address, at most 254 characters). An outlet may carry its own
+`listing`, merged over the document's for that outlet. A malformed listing is `invalid_listing`.
+
+The **document's** listing (not an outlet's) is also the product's presentation in the customer
+portal: `name`, `developerName`, `tintColor`, `website`, the support links, and `iconUrl` and
+`headerUrl` as art. The portal never loads that art from the developer's host: it serves it
+same-origin through its media proxy (`/media/<product>/icon` and `/media/<product>/header`), which
+fetches only from GitHub-hosted URLs (`github.com`, `*.githubusercontent.com`), only PNG, JPEG,
+WebP or GIF, and at most 1 MB for the icon and 5 MB for the header. Art hosted anywhere else is
+not shown; the portal falls back to the product's initial on its tint.
 
 ## Capabilities are not here
 

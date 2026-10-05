@@ -1,7 +1,7 @@
 /**
  * The in-page half of the console's layout lint (`layout.e2e.test.ts`): one self-contained
  * function, serialised into the page by `page.evaluate`, that measures the rendered console and
- * returns every breach of the four layout invariants. It imports nothing and closes over nothing,
+ * returns every breach of the five layout invariants. It imports nothing and closes over nothing,
  * so Playwright can ship its source text as-is.
  *
  *   trailing-space  A scroll container (the console's `main#content`, an open drawer's body, and
@@ -34,10 +34,24 @@
  *                   a text box clips or spills its text without an intended scroller or a way to
  *                   read the whole text, or a button's non-text child (an icon, a service dot)
  *                   ends past the button's border box (child-spill; the top bar included).
+ *                   text-crush: a text box squeezed narrower than about 4ch that wraps to more
+ *                   than three lines (a sibling that will not shrink took its width: the text
+ *                   is drawn a letter per line). card-spill: anything in a card that ends past
+ *                   the card's border box (a row's action pushed out by a long name).
+ *   rhythm          A card header (`[data-card-header]`) whose pieces on one line are not centred
+ *                   on each other (header-center), or that a control makes taller than its
+ *                   title (header-height: an sm button grows a 49px header to 57px beside its
+ *                   siblings); a menu's grid of actions that leaves an empty cell in its last row
+ *                   (grid-orphan: three links in two columns).
  */
 
 export interface LayoutViolation {
-  rule: "trailing-space" | "equal-height" | "right-align" | "overflow";
+  rule:
+    | "trailing-space"
+    | "equal-height"
+    | "right-align"
+    | "overflow"
+    | "rhythm";
   /** A finer key for grouping (`main`, `settings-row`, `table-numeric`…). */
   kind: string;
   /** A short, stable-ish CSS path to the offending element. */
@@ -273,6 +287,30 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
   if (main) roots.push(main);
   roots.push(...dialogs);
 
+  /** A card: a bordered (3+ sides), rounded box of some size that is not a control or a cell. */
+  const cardLike = (e: Element) => {
+    if (hidden(e)) return false;
+    const tag = e.tagName.toLowerCase();
+    if (
+      [
+        "button",
+        "input",
+        "select",
+        "textarea",
+        "table",
+        "tr",
+        "td",
+        "th",
+      ].includes(tag)
+    )
+      return false;
+    if (e.getAttribute("role") === "switch" || e.getAttribute("role") === "tab")
+      return false;
+    const r = e.getBoundingClientRect();
+    if (r.width < 120 || r.height < 40) return false;
+    if (px(cs(e).borderTopLeftRadius) < 2) return false;
+    return borderSides(e) >= 3;
+  };
   // ── 1 · trailing space ─────────────────────────────────────────────────────────────────────
   const doc = document.scrollingElement as HTMLElement;
   if (doc.scrollHeight > H + 1)
@@ -429,6 +467,92 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
     }
   }
 
+  // Text squeezed to a sliver: narrower than ~4ch and more than three lines tall, the letters of
+  // a reason drawn one per line because a sibling (a long name) would not shrink. A 0px-wide box
+  // counts as hidden elsewhere, so this check measures height and visibility on its own.
+  for (const root of roots) {
+    for (const e of Array.from(root.querySelectorAll("*"))) {
+      if (!(e instanceof HTMLElement)) continue;
+      if (e.closest(".cm-editor,pre,code,textarea,svg")) continue;
+      const own = Array.from(e.childNodes).some(
+        (n) => n.nodeType === 3 && n.textContent && n.textContent.trim(),
+      );
+      if (!own) continue;
+      const st = cs(e);
+      const r = e.getBoundingClientRect();
+      if (r.height <= 1 || st.display === "none" || st.visibility === "hidden")
+        continue;
+      if (clipped(e.parentElement) || e.closest("[hidden],[inert]")) continue;
+      const fs = px(st.fontSize) || 14;
+      const lh = px(st.lineHeight) || fs * 1.25;
+      const text = (e.textContent || "").trim();
+      if (
+        text.length > 4 &&
+        st.writingMode.startsWith("horizontal") &&
+        r.width < fs * 0.55 * 4 &&
+        r.height > lh * 3 + 1
+      )
+        out.push({
+          rule: "overflow",
+          kind: "text-crush",
+          where: where(e),
+          detail: `"${text.slice(0, 40)}" is squeezed to ${Math.round(r.width)}px wide and ${Math.round(r.height)}px tall (${Math.round(r.height / lh)} lines)`,
+          cause: `text {${short(e)} min-width:${st.minWidth} flex:${st.flex}} siblings: ${Array.from(
+            e.parentElement?.children ?? [],
+          )
+            .filter((k) => k !== e && !hidden(k))
+            .map(
+              (k) =>
+                `${short(k)} w:${Math.round(k.getBoundingClientRect().width)} flex-shrink:${cs(k).flexShrink}`,
+            )
+            .join(" | ")}`,
+          html: snip(e.parentElement),
+        });
+    }
+  }
+
+  // Anything in a card that ends past the card's border box: a row's action pushed out by a long
+  // name, a fixed-width child wider than a narrow card. Content of a sideways scroller inside the
+  // card, and positioned layers (a popover, a tooltip), are not the card's flow.
+  for (const root of roots) {
+    for (const card of Array.from(root.querySelectorAll("*"))) {
+      if (!cardLike(card) || cs(card).position === "fixed") continue;
+      if (card.matches("[role=dialog],[role=alertdialog]")) continue;
+      const cr = card.getBoundingClientRect();
+      for (const e of Array.from(card.querySelectorAll("*"))) {
+        if (hidden(e)) continue;
+        const r = e.getBoundingClientRect();
+        const past = Math.max(r.right - cr.right, cr.left - r.left);
+        if (past <= 1) continue;
+        let layered = false;
+        for (let n: Element | null = e; n && n !== card; n = n.parentElement) {
+          const ns = cs(n);
+          // A clipping ancestor (a truncated title, a sideways scroller) hides what runs past it;
+          // that ancestor is measured on its own.
+          if (
+            ns.position === "absolute" ||
+            ns.position === "fixed" ||
+            (n !== e &&
+              ["hidden", "clip", "auto", "scroll"].includes(ns.overflowX))
+          ) {
+            layered = true;
+            break;
+          }
+        }
+        if (layered) continue;
+        out.push({
+          rule: "overflow",
+          kind: "card-spill",
+          where: where(e),
+          detail: `ends ${Math.round(past)}px past its card's border box (${Math.round(r.left)}–${Math.round(r.right)} in a card ${Math.round(cr.left)}–${Math.round(cr.right)})`,
+          cause: `card {${short(card)}} child {${short(e)} w:${Math.round(r.width)} flex-shrink:${cs(e).flexShrink}} parent {${e.parentElement ? short(e.parentElement) : "?"}}`,
+          html: snip(e.parentElement),
+        });
+        break;
+      }
+    }
+  }
+
   // A button's non-text child (an icon, a row of service dots) that ends past the button's
   // border box: squeezed out of a shrinking trigger, it spills over its neighbour (or is cut off
   // by the button's own overflow clip). The top bar is checked too: the product switcher lives
@@ -550,29 +674,6 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
   }
 
   // ── 2 · equal-height rows ──────────────────────────────────────────────────────────────────
-  const cardLike = (e: Element) => {
-    if (hidden(e)) return false;
-    const tag = e.tagName.toLowerCase();
-    if (
-      [
-        "button",
-        "input",
-        "select",
-        "textarea",
-        "table",
-        "tr",
-        "td",
-        "th",
-      ].includes(tag)
-    )
-      return false;
-    if (e.getAttribute("role") === "switch" || e.getAttribute("role") === "tab")
-      return false;
-    const r = e.getBoundingClientRect();
-    if (r.width < 120 || r.height < 40) return false;
-    if (px(cs(e).borderTopLeftRadius) < 2) return false;
-    return borderSides(e) >= 3;
-  };
   const cardOf = (child: Element): Element | null => {
     let n: Element | null = child;
     for (let i = 0; n && i < 4; i++) {
@@ -1069,6 +1170,131 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
               : `the card header's pill cluster ends at x=${Math.round(right)}${edgeName()}, header content edge x=${Math.round(edge)} (${Math.round(edge - right)}px short)`,
           cause: `header {${short(h)} justify:${cs(h).justifyContent}} pill {${short(last)}}`,
           html: snip(h),
+        });
+    }
+  }
+  // ── 5 · rhythm ─────────────────────────────────────────────────────────────────────────────
+  // a. Card headers: one line of pieces centred on each other, at the height its title sets.
+  const CONTROLISH =
+    "button,a[href],[role=button],input,select,[role=combobox]";
+  for (const root of roots) {
+    for (const h of Array.from(root.querySelectorAll("[data-card-header]"))) {
+      if (hidden(h)) continue;
+      const kids = Array.from(h.children).filter(
+        (k) => !hidden(k) && !["absolute", "fixed"].includes(cs(k).position),
+      );
+      if (kids.length < 2) continue;
+      const rs = kids.map((k) => k.getBoundingClientRect());
+      // One line only: a header that wrapped (a phone) stacks its action under the title.
+      const first = rs[0]!;
+      if (!rs.every((r) => r.top < first.bottom && r.bottom > first.top))
+        continue;
+      // The title: the piece holding the heading (or the first piece). A title of one line sets
+      // the line every other piece centres on; a title over a description or a slug may carry a
+      // top-aligned pill instead, so only one-line titles are held to the centre.
+      const ti = Math.max(
+        0,
+        kids.findIndex(
+          (k) =>
+            k.matches("h1,h2,h3,h4,h5,h6") ||
+            k.querySelector("h1,h2,h3,h4,h5,h6") !== null,
+        ),
+      );
+      const tr = rs[ti]!;
+      const heading = kids[ti]!.matches("h1,h2,h3,h4,h5,h6")
+        ? kids[ti]!
+        : kids[ti]!.querySelector("h1,h2,h3,h4,h5,h6");
+      const oneLine =
+        heading === null ||
+        tr.height <= heading.getBoundingClientRect().height + 2;
+      const centre = (r: DOMRect) => (r.top + r.bottom) / 2;
+      const off = rs.map((r) => centre(r) - centre(tr));
+      const worst = off.reduce(
+        (a, b) => (Math.abs(b) > Math.abs(a) ? b : a),
+        0,
+      );
+      if (oneLine && Math.abs(worst) > 2)
+        out.push({
+          rule: "rhythm",
+          kind: "header-center",
+          where: where(h),
+          detail: `card header pieces are not centred on one line: centres ${off.map((o) => `${o >= 0 ? "+" : ""}${Math.round(o)}`).join("/")}px from the title's`,
+          cause: `header {${short(h)} align-items:${cs(h).alignItems}} pieces: ${kids.map((k, i) => `${short(k)} h:${Math.round(rs[i]!.height)}`).join(" | ")}`,
+          html: snip(h),
+        });
+      // The header's height is its title's (and any pill's): a control beside it hangs into the
+      // padding instead of growing the header past its siblings'.
+      const hs = cs(h);
+      const content =
+        h.getBoundingClientRect().height -
+        px(hs.paddingTop) -
+        px(hs.paddingBottom) -
+        px(hs.borderTopWidth) -
+        px(hs.borderBottomWidth);
+      const plain = kids
+        .map((k, i) => ({ k, r: rs[i]!, i }))
+        .filter(
+          ({ k, i }) =>
+            i === ti ||
+            (!k.matches(CONTROLISH) && k.querySelector(CONTROLISH) === null),
+        );
+      if (plain.length === 0 || plain.length === kids.length) continue;
+      const titleH = Math.max(...plain.map(({ r }) => r.height));
+      if (content > titleH + 2)
+        out.push({
+          rule: "rhythm",
+          kind: "header-height",
+          where: where(h),
+          detail: `a control makes the card header ${Math.round(content)}px tall inside its padding, its title ${Math.round(titleH)}px (header ${Math.round(h.getBoundingClientRect().height)}px)`,
+          cause: `header {${short(h)} padding:${hs.paddingTop}/${hs.paddingBottom}} controls: ${kids
+            .filter((k) => !plain.some((p) => p.k === k))
+            .map(
+              (k) =>
+                `${short(k)} h:${Math.round(k.getBoundingClientRect().height)} margin-block:${cs(k).marginTop}/${cs(k).marginBottom}`,
+            )
+            .join(" | ")}`,
+          html: snip(h),
+        });
+    }
+  }
+  // b. A menu's grid of actions fills its rows: three links in two columns leave one alone on a
+  //    row beside an empty cell, the look of an unfinished menu.
+  const menus = [
+    ...dialogs,
+    ...Array.from(
+      document.querySelectorAll(
+        "[role=menu],[data-radix-popper-content-wrapper]",
+      ),
+    ),
+  ].filter((m) => !hidden(m));
+  const orphanSeen = new Set<Element>();
+  for (const m of menus) {
+    for (const g of Array.from(m.querySelectorAll("*"))) {
+      if (orphanSeen.has(g) || hidden(g)) continue;
+      const gs = cs(g);
+      if (gs.display !== "grid" && gs.display !== "inline-grid") continue;
+      orphanSeen.add(g);
+      const cols = gs.gridTemplateColumns.trim().split(/\s+/).length;
+      if (cols < 2) continue;
+      const items = Array.from(g.children).filter((k) => !hidden(k));
+      if (
+        items.length < 2 ||
+        !items.every(
+          (k) =>
+            k.matches("a[href],button,[role=menuitem],[role=option]") ||
+            (k.children.length === 1 &&
+              k.firstElementChild!.matches("a[href],button,[role=menuitem]")),
+        )
+      )
+        continue;
+      if (items.length % cols !== 0)
+        out.push({
+          rule: "rhythm",
+          kind: "grid-orphan",
+          where: where(g),
+          detail: `${items.length} actions in ${cols} columns leave ${cols - (items.length % cols)} empty cell(s) in the last row`,
+          cause: `grid {${short(g)} grid-template-columns:${gs.gridTemplateColumns}}: one column, or as many columns as actions`,
+          html: snip(g),
         });
     }
   }

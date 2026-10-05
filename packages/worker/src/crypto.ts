@@ -70,14 +70,35 @@ export function mintOpaqueToken(): string {
   return b64url(randomBytes(32));
 }
 
+/**
+ * A pairwise subject (plans/I-04.md §2): `ps_` and 22 base64url characters, 128 random bits.
+ * Random and stored, never derived from the account id (S-16 §5.1), so ending it ends it.
+ */
+export function mintPairwiseSubject(): string {
+  return `ps_${b64url(randomBytes(16))}`;
+}
+
 /** A short opaque id with a typed prefix (lic_, dev_, flow_, …). */
 export function randomId(prefix: string): string {
   return `${prefix}_${b64url(randomBytes(9))}`;
 }
 
-/** Extract the product slug from a `pkey_<product>_…` license key (or null). */
+/**
+ * The exact shape of a license key: `pkey_`, a lower-case slug, `_`, then EXACTLY 22 base64url
+ * characters — `mintLicenseKey`'s 16 random bytes, unpadded (`ceil(16 * 8 / 6) = 22`).
+ *
+ * Exact, not a floor (owner decision, 2026-10-04): every key this deployment has ever issued came
+ * from `mintLicenseKey`, so every real key is 22 characters, and a shorter or longer string can
+ * only be a cut-off paste, a typo or a guess. Refusing it here stops it before the hash and the
+ * D1 lookup, and it is the same check the customer portal's key field runs before it sends
+ * anything (docs/design/PORTAL.md §4.17). The slug cannot contain `_`, so the split between slug
+ * and secret is unambiguous even though the secret may contain `_` and `-`.
+ */
+export const LICENSE_KEY_SHAPE = /^pkey_([a-z0-9-]+)_([A-Za-z0-9_-]{22})$/;
+
+/** Extract the product slug from a `pkey_<product>_<22 base64url>` license key (or null). */
 export function productFromKey(key: string): string | null {
-  const m = key.match(/^pkey_([a-z0-9-]+)_[A-Za-z0-9_-]{8,}$/);
+  const m = LICENSE_KEY_SHAPE.exec(key);
   return m ? (m[1] ?? null) : null;
 }
 

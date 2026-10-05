@@ -1,6 +1,6 @@
 /**
- * The Feeds area's model (F-11, plans/F-01.md §6.9): scopes, links, labels and the setup
- * snippets, shared by both scopes' pages.
+ * The Feeds area's model (F-11, F-12, plans/F-01.md §6.9): scopes, links, labels, the setup
+ * snippets and the ecosystem panels' extension fields, shared by both scopes' pages.
  *
  * One component set serves two places: Platform → Package feeds (the system product's feeds, our
  * SDKs, plus the platform policy) and a product's Distribution → Package feeds. `FeedScope` picks
@@ -17,6 +17,13 @@ import {
   Hexagon,
   type LucideIcon,
 } from "lucide-react";
+import {
+  FEED_SETUP,
+  feedSetupProblem,
+  renderFeedSetup,
+  type FeedSetupCredential,
+  type FeedSnippet,
+} from "@polaris-key/manifest";
 import type {
   FeedEcosystem,
   FeedOffReason,
@@ -55,15 +62,11 @@ export const ECOSYSTEM_LABELS: Record<FeedEcosystem, string> = {
   godot: "Godot",
 };
 
-/** The clients each feed answers, as the docs list them. */
-export const ECOSYSTEM_CLIENTS: Record<FeedEcosystem, string> = {
-  npm: "npm, pnpm, Yarn Berry, Bun",
-  pypi: "pip, uv, Poetry",
-  oci: "docker, podman, crane",
-  swift: "SwiftPM",
-  maven: "Gradle, Maven",
-  godot: "The Godot editor's asset library, GodotEnv",
-};
+/** The clients each feed answers: its setup declaration's (`@polaris-key/manifest` FEED_SETUP). */
+export const ECOSYSTEM_CLIENTS: Record<FeedEcosystem, string> =
+  Object.fromEntries(
+    ECOSYSTEMS.map((e) => [e, FEED_SETUP[e].clients.join(", ")]),
+  ) as Record<FeedEcosystem, string>;
 
 export const ECOSYSTEM_ICONS: Record<FeedEcosystem, LucideIcon> = {
   npm: Hexagon,
@@ -122,6 +125,13 @@ export function feedHref(
     : r.packageFeed(scope.slug, eco, tab);
 }
 
+/** The scope's registry tokens page (F-21). */
+export function tokensHref(scope: FeedScope): string {
+  return scope.kind === "platform"
+    ? r.platformFeed("tokens")
+    : r.packageFeed(scope.slug, "tokens");
+}
+
 /** The Feeds overview in this scope. */
 export function overviewHref(scope: FeedScope): string {
   return scope.kind === "platform"
@@ -142,152 +152,55 @@ export function packageHref(
     : r.packageFeedPackage(scope.slug, eco, name, tab);
 }
 
-export interface Snippet {
-  title: string;
-  description?: string;
-  filename?: string;
-  language: "sh" | "toml" | "text" | "json";
-  code: string;
-}
+export type { FeedSnippet };
 
-/** The registry host's hostname, for clients that take a host rather than a URL (docker). */
-function hostOf(baseUrl: string): string {
-  try {
-    return new URL(baseUrl).host;
-  } catch {
-    return baseUrl;
-  }
-}
+/** What the snippets authenticate with (plans/F-20.md §3): nothing; an environment variable
+ *  (docs, CI); the real token, only in the shown-once dialog; or a Godot URL token, which travels
+ *  in the editor's URL. `@polaris-key/manifest`'s `FeedSetupCredential`, the shape
+ *  `renderFeedSetup` and `pkey feeds setup --token-env` share. */
+export type FeedCredential = FeedSetupCredential;
+
+/** The environment variable the docs and the Setup tab name the token by. */
+export const TOKEN_ENV = "PKEY_REGISTRY_TOKEN";
+
+/** The username every client that needs one sends beside a registry token. */
+export const REGISTRY_USERNAME = "__token__";
 
 /**
- * The copy-paste setup for one feed, for its owner, optionally for one package. Basic per
- * ecosystem; F-12 replaces it with `renderFeedSetup` from `@polaris-key/manifest`, which the CLI's
- * `pkey feeds setup` shares, and adds each ecosystem's variants.
+ * The copy-paste setup for one feed, for its owner, optionally for one package, with or without a
+ * registry credential (F-21, plans/F-20.md §6.3): `@polaris-key/manifest` `renderFeedSetup`, the
+ * function `pkey feeds setup` prints, so the console and the CLI are byte-identical for the same
+ * input. The inputs each ecosystem's snippets read are its declaration
+ * (`FEED_SETUP[eco].inputs`), never a switch here. Answers `null` when the stored settings (or
+ * the token) cannot be rendered (a namespace ingest would refuse).
  */
-export function setupSnippets(
+export function feedSetupSnippets(
   eco: FeedEcosystem,
   ctx: {
-    baseUrl: string;
+    /** The registry host's origin (`registryOrigin`, or a package's base URL's origin). */
+    origin: string;
     owner: string;
     namespace: FeedSettings["namespace"];
     pkg?: { name: string; version?: string | null };
   },
-): Snippet[] {
-  const { baseUrl, owner, namespace, pkg } = ctx;
-  const ns = namespace as Record<string, unknown>;
-  const version = pkg?.version ?? null;
-  switch (eco) {
-    case "npm": {
-      const scope =
-        (typeof ns.scope === "string" && ns.scope) ||
-        (pkg?.name.startsWith("@") ? pkg.name.split("/")[0]! : "@scope");
-      return [
-        {
-          title: "Point the scope at this feed",
-          filename: ".npmrc",
-          language: "text",
-          code: `${scope}:registry=${baseUrl}`,
-        },
-        {
-          title: "Install",
-          language: "sh",
-          code: `npm install ${pkg ? `${pkg.name}${version ? `@${version}` : ""}` : `${scope}/<package>`}`,
-        },
-      ];
-    }
-    case "pypi": {
-      const name = pkg?.name ?? "<package>";
-      return [
-        {
-          title: "uv: an explicit index",
-          description:
-            "explicit = true keeps every other dependency on its usual index.",
-          filename: "pyproject.toml",
-          language: "toml",
-          code: `[[tool.uv.index]]\nname = "${owner}"\nurl = "${baseUrl}"\nexplicit = true\n\n[tool.uv.sources]\n${JSON.stringify(name)} = { index = "${owner}" }`,
-        },
-        {
-          title: "pip",
-          language: "sh",
-          code: `pip install --index-url ${baseUrl} ${name}${version ? `==${version}` : ""}`,
-        },
-      ];
-    }
-    case "oci": {
-      const repo = pkg?.name ?? "<repository>";
-      const tag = version ?? "latest";
-      return [
-        {
-          title: "Pull",
-          language: "sh",
-          code: `docker pull ${hostOf(baseUrl)}/${owner}/${repo}:${tag}`,
-        },
-      ];
-    }
-    case "swift": {
-      const scope =
-        (typeof ns.scope === "string" && ns.scope) ||
-        (pkg ? pkg.name.split(".")[0]! : "<scope>");
-      const id = pkg?.name ?? `${scope}.<Package>`;
-      return [
-        {
-          title: "Register the scope",
-          language: "sh",
-          code: `swift package-registry set --scope ${scope} ${baseUrl}`,
-        },
-        {
-          title: "Depend on the package",
-          filename: "Package.swift",
-          language: "text",
-          code: `.package(id: "${id}", from: "${version ?? "1.0.0"}")`,
-        },
-      ];
-    }
-    case "maven": {
-      const groups = Array.isArray(ns.groupPrefixes)
-        ? (ns.groupPrefixes as string[])
-        : [];
-      const group =
-        groups[0] ?? (pkg ? pkg.name.split(":")[0]! : "<group.prefix>");
-      const filters = (groups.length ? groups : [group])
-        .map(
-          (g) =>
-            `      includeGroupByRegex("${g.replace(/\./g, "\\\\.")}(\\\\..*)?")`,
-        )
-        .join("\n");
-      const coord = pkg
-        ? `${pkg.name}:${version ?? "<version>"}`
-        : `${group}:<artifact>:<version>`;
-      return [
-        {
-          title: "Gradle: this feed, for its groups only",
-          filename: "settings.gradle.kts",
-          language: "text",
-          code: `dependencyResolutionManagement {\n  repositories {\n    exclusiveContent {\n      forRepository { maven { url = uri("${baseUrl}") } }\n      filter {\n${filters}\n      }\n    }\n    mavenCentral()\n  }\n}`,
-        },
-        {
-          title: "Depend on the artifact",
-          filename: "build.gradle.kts",
-          language: "text",
-          code: `implementation("${coord}")`,
-        },
-      ];
-    }
-    case "godot":
-      return [
-        {
-          title:
-            "Godot 4.6 and earlier: Editor Settings → Asset Library → Available URLs",
-          language: "text",
-          code: `${baseUrl}asset-library/api`,
-        },
-        {
-          title: "Godot 4.7 and later: the asset store URL",
-          language: "text",
-          code: `${baseUrl}store/api/v1`,
-        },
-      ];
-  }
+  credential: FeedCredential = { kind: "none" },
+): FeedSnippet[] | null {
+  const context = {
+    origin: new URL(ctx.origin).origin,
+    owner: ctx.owner,
+    namespace: ctx.namespace,
+    ...(ctx.pkg
+      ? {
+          package: {
+            name: ctx.pkg.name,
+            ...(ctx.pkg.version ? { version: ctx.pkg.version } : {}),
+          },
+        }
+      : {}),
+    ...(credential.kind === "none" ? {} : { credential }),
+  };
+  if (feedSetupProblem(eco, context) !== null) return null;
+  return renderFeedSetup(eco, context);
 }
 
 /** A byte count as an operator types it: whole MiB when it divides evenly. */
@@ -298,3 +211,109 @@ export function bytesToMiB(bytes: number): number {
 export function mibToBytes(mib: number): number {
   return Math.round(mib * 1024 * 1024);
 }
+
+/**
+ * How the ecosystem panel (F-12) edits one extension setting, keyed by the setting's name, never
+ * by ecosystem: the panel renders the keys the feed's adapter declares (`FeedDetailDto.extensions`)
+ * and saves them into `ext_json`. A key the adapter declares but this table lacks is not shown.
+ */
+export type FeedExtensionInput =
+  | { kind: "switch"; default: boolean }
+  | { kind: "number"; min: number; max: number; unit: string }
+  | {
+      kind: "select";
+      options: readonly { value: string; label: string }[];
+      default: string;
+      /** The stored value is a number (`categoryId`). */
+      numeric?: boolean;
+    }
+  | { kind: "text"; placeholder: string; maxLength: number; pattern?: RegExp }
+  | { kind: "repositoryMap"; placeholder: string };
+
+export interface FeedExtensionField {
+  label: string;
+  help: string;
+  input: FeedExtensionInput;
+}
+
+export const FEED_EXTENSION_FIELDS: Record<string, FeedExtensionField> = {
+  htmlFallback: {
+    label: "HTML pages",
+    help: "Answer clients that cannot take PEP 691 JSON with the inert PEP 503 HTML page. Off, they get 406.",
+    input: { kind: "switch", default: true },
+  },
+  requireSigned: {
+    label: "Require signed releases",
+    help: "Ingest refuses a release without a SwiftPM signature. Always on for the platform's own packages.",
+    input: { kind: "switch", default: true },
+  },
+  repositoryUrls: {
+    label: "Repository URLs",
+    help: "Which source repositories are which package, for SwiftPM's identifier lookup. One per line: the identity, then the URL.",
+    input: {
+      kind: "repositoryMap",
+      placeholder: "acme.Kit https://github.com/acme/kit",
+    },
+  },
+  retainUntaggedDays: {
+    label: "Untagged manifests",
+    help: "Recorded with the feed: nothing removes an untagged image manifest, so every one is kept whatever this holds. A published version is never removed.",
+    input: { kind: "number", min: 0, max: 3650, unit: "days" },
+  },
+  categoryId: {
+    label: "Category",
+    help: "The asset library category every addon of this feed is listed under.",
+    input: {
+      kind: "select",
+      numeric: true,
+      default: "5",
+      options: [
+        { value: "1", label: "2D Tools" },
+        { value: "2", label: "3D Tools" },
+        { value: "3", label: "Shaders" },
+        { value: "4", label: "Materials" },
+        { value: "5", label: "Tools" },
+        { value: "6", label: "Scripts" },
+        { value: "7", label: "Misc" },
+      ],
+    },
+  },
+  supportLevel: {
+    label: "Support level",
+    help: "The support level the editor shows for every addon of this feed.",
+    input: {
+      kind: "select",
+      default: "community",
+      options: [
+        { value: "official", label: "Official" },
+        { value: "community", label: "Community" },
+        { value: "testing", label: "Testing" },
+      ],
+    },
+  },
+  license: {
+    label: "License",
+    help: "Shown as each addon's license. Empty shows Unspecified.",
+    input: { kind: "text", placeholder: "MIT", maxLength: 64 },
+  },
+  minGodotVersion: {
+    label: "Oldest editor",
+    help: "Editors older than this, or of another major version, see no addons. Empty lists them to every editor.",
+    input: {
+      kind: "text",
+      placeholder: "4.4",
+      maxLength: 8,
+      pattern: /^\d{1,2}\.\d{1,2}(?:\.\d{1,2})?$/,
+    },
+  },
+};
+
+/** The ecosystem panel's section title, per protocol. */
+export const FEED_PANEL_TITLES: Record<FeedEcosystem, string> = {
+  npm: "npm",
+  pypi: "Simple API",
+  swift: "Signing and identifiers",
+  maven: "Maven",
+  oci: "Retention",
+  godot: "Asset listing",
+};

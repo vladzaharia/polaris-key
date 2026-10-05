@@ -119,6 +119,13 @@ describe("R11-01 missing foreign keys / no ON DELETE anywhere", () => {
       "portal_account_identities",
       "portal_license_links",
       "portal_product_settings",
+      // I-05 (0068_a): the account's child tables cascade from `accounts`, for the same reason
+      // the portal ones do — an orphaned sign-in method or subject would be PII.
+      "account_links",
+      "account_product_subjects",
+      "account_sessions",
+      "account_product_grants",
+      "account_passkeys",
     ];
     for (const table of cascading) {
       const fks = await db.all<{ on_delete: string; table: string }>(
@@ -148,23 +155,58 @@ describe("R11-01 missing foreign keys / no ON DELETE anywhere", () => {
   it("deleting a portal account CASCADEs its emails, identities and license links", async () => {
     const db = makeTestDb();
     await seedProduct(db, "acme");
-    const acct = await getOrCreateAccountByEmail(db, "erase@example.com", NOW);
-    await linkLicense(db, acct.id, "acme", "lic-1", "admin", NOW);
+    // The pre-I-05 tables, as a Worker rolled back to before I-05 still writes them.
+    await db.run(
+      `INSERT INTO portal_accounts (id, status, created_at, modified_at)
+       VALUES ('acct_legacy', 'active', ?, ?)`,
+      NOW,
+      NOW,
+    );
+    await db.run(
+      `INSERT INTO portal_account_emails (email, account_id, verified_at, created_at)
+       VALUES ('erase@example.com', 'acct_legacy', ?, ?)`,
+      NOW,
+      NOW,
+    );
+    await db.run(
+      `INSERT INTO portal_license_links (account_id, product, license_id, source, created_at, last_seen_at)
+       VALUES ('acct_legacy', 'acme', 'lic-1', 'admin', ?, ?)`,
+      NOW,
+      NOW,
+    );
     await db.run(
       `INSERT INTO portal_account_identities (provider, subject, account_id, created_at, last_seen_at)
-       VALUES ('https://id.example', 'sub-1', ?, ?, ?)`,
-      acct.id,
+       VALUES ('https://id.example', 'sub-1', 'acct_legacy', ?, ?)`,
       NOW,
       NOW,
     );
 
-    await db.run("DELETE FROM portal_accounts WHERE id = ?", acct.id);
+    await db.run("DELETE FROM portal_accounts WHERE id = 'acct_legacy'");
 
     for (const table of [
       "portal_account_emails",
       "portal_account_identities",
       "portal_license_links",
     ]) {
+      const n = await db.first<{ n: number }>(
+        `SELECT COUNT(*) AS n FROM ${table} WHERE account_id = 'acct_legacy'`,
+      );
+      expect(n?.n).toBe(0);
+    }
+  });
+
+  // I-05: the same property for the account model — deleting the `accounts` row takes its
+  // sign-in methods and pairwise subjects with it.
+  it("deleting an account CASCADEs its sign-in methods and pairwise subjects", async () => {
+    const db = makeTestDb();
+    await seedProduct(db, "acme");
+    await insertLicense(db, lic("acme", "lic-1"));
+    const acct = await getOrCreateAccountByEmail(db, "erase@example.com", NOW);
+    await linkLicense(db, acct.id, "acme", "lic-1", "admin", NOW);
+
+    await db.run("DELETE FROM accounts WHERE id = ?", acct.id);
+
+    for (const table of ["account_links", "account_product_subjects"]) {
       const n = await db.first<{ n: number }>(
         `SELECT COUNT(*) AS n FROM ${table} WHERE account_id = ?`,
         acct.id,
@@ -252,7 +294,10 @@ describe("R11-01 missing foreign keys / no ON DELETE anywhere", () => {
     expect(row?.tier_id).toBe("pro"); // dangling reference survives
   });
 
-  it("portal_license_links can point at a license that does not exist (no FK to licenses)", async () => {
+  // FIXED (I-05): the owner pointer is a column ON the licence (`licenses.account_id`), so a
+  // link to a licence that does not exist cannot be written at all. (`portal_license_links`
+  // still has no FK to licenses; it is the pre-I-05 copy and nothing writes it any more.)
+  it("an account cannot be linked to a license that does not exist", async () => {
     const db = makeTestDb();
     await seedProduct(db, "acme");
     const acct = await getOrCreateAccountByEmail(db, "a@example.com", NOW);
@@ -260,8 +305,13 @@ describe("R11-01 missing foreign keys / no ON DELETE anywhere", () => {
     const n = await db.first<{ n: number }>(
       "SELECT COUNT(*) AS n FROM portal_license_links WHERE license_id='no-such-license'",
     );
-    expect(n?.n).toBe(1);
-    // The listing JOIN silently hides it, so the row is invisible-but-permanent.
+    expect(n?.n).toBe(0);
+    expect(
+      await db.first(
+        "SELECT 1 FROM account_product_subjects WHERE account_id = ?",
+        acct.id,
+      ),
+    ).toBeNull();
     expect(await listPortalLicenses(db, acct.id)).toHaveLength(0);
   });
 });
@@ -619,6 +669,28 @@ describe("R11-05 product scoping", () => {
       // One row per ecosystem, above every owner's own settings; written only by a platform
       // admin. Each owner's settings live in `dist_registry_feeds`, which IS product-first.
       "dist_registry_policy",
+      // 0062 (I-18) — the email suppression list. A bounce or a complaint hurts the ONE shared
+      // sender whichever product's mail caused it, so an entry belongs to no product: it is keyed
+      // by the recipient's peppered hash alone and read only by `core/emailDelivery.ts` before
+      // every send. The per-product caps (`email_product_caps`) ARE product-first (this loop).
+      "email_suppressions",
+      // 0068_a (I-05) — the Polaris Key account is PLATFORM-level (owner, 2026-10-04): one
+      // person across every product, so the account, its sign-in methods, sessions, passkeys,
+      // tombstones and per-product grants are keyed by the account, never by a product. Product-
+      // scoped reads of the pairwise subject go through UNIQUE (product, subject); the subject
+      // aliases and the developer feed (`subject_events`) ARE product-first (this loop).
+      "accounts",
+      "account_links",
+      "account_product_subjects",
+      "account_tombstones",
+      "account_sessions",
+      "account_product_grants",
+      "account_passkeys",
+      // 0070 (A-18e) — the Play edit lease: one row per (store, app) while a caller holds an edit
+      // on that app. An app id belongs to the store account, not a product (the platform service
+      // account serves every product pinned to it; A-16's lister is team-wide), and the row holds
+      // no tenant data: a caller kind, an actor id and two timestamps.
+      "store_edit_leases",
     ]);
     const offenders: string[] = [];
     for (const t of tables.map((r) => r.name)) {
@@ -755,7 +827,7 @@ describe("R11-06 unindexed hot queries", () => {
     await syncAccountLicenseLinks(db, acct.id, NOW);
 
     const links = await db.all<{ product: string; license_id: string }>(
-      "SELECT product, license_id FROM portal_license_links WHERE account_id = ?",
+      "SELECT product, id AS license_id FROM licenses WHERE account_id = ?",
       acct.id,
     );
     // `lower(email) = ?` matches the differently-cased row too: both products are linked.

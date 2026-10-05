@@ -178,6 +178,24 @@ release:
       name: "im.plrs.key:polaris-key-godot-direct"
       artifacts:
         files: { match: "polaris-key-godot-direct-*" }
+    maven.ui:
+      kind: package
+      ecosystem: maven
+      name: "im.plrs.key:polaris-key-ui"
+      artifacts:
+        files: { match: "polaris-key-ui-*" }
+    maven.android-play:
+      kind: package
+      ecosystem: maven
+      name: "im.plrs.key:polaris-key-android-play"
+      artifacts:
+        files: { match: "polaris-key-android-play-*" }
+    maven.android-direct:
+      kind: package
+      ecosystem: maven
+      name: "im.plrs.key:polaris-key-android-direct"
+      artifacts:
+        files: { match: "polaris-key-android-direct-*" }
     godot.polaris-key:
       kind: package
       ecosystem: godot

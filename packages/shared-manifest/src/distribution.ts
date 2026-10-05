@@ -154,6 +154,11 @@ export interface ManifestOutletIdentity {
   gameId?: string;
   /** `snap`: the snap name. */
   name?: string;
+  /**
+   * `snap`: declared channel → the snap channel(s) `snapcraft upload --release` may release to,
+   * `[<track>/]<risk>[/<branch>]` (A-18h). The CI allow-list admits no other channel.
+   */
+  channels?: Record<string, string>;
   /** `winget`: the package identifier. */
   packageIdentifier?: string;
   /** `direct`: the platforms the direct download offers. */
@@ -212,7 +217,7 @@ export const OUTLET_IDENTITY_FIELDS: Readonly<
   steam: ["appId", "branches"],
   itch: ["target", "gameId"],
   flathub: ["appId"],
-  snap: ["name"],
+  snap: ["name", "channels"],
   winget: ["packageIdentifier"],
   web: [],
 };
@@ -239,6 +244,9 @@ const ITCH_TARGET_RE = /^[A-Za-z0-9_-]{1,64}\/[A-Za-z0-9_-]{1,64}$/;
 const FLATPAK_ID_RE = /^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$/;
 const MAX_FLATPAK_ID_LENGTH = 255;
 const SNAP_NAME_RE = /^[a-z0-9](?:-?[a-z0-9]){0,39}$/;
+/** A snap channel: `[<track>/]<risk>[/<branch>]` (A-18h; the CI allow-list's pattern). */
+const SNAP_CHANNEL_RE =
+  /^(?:[a-z0-9][a-z0-9.-]{0,63}\/)?(?:stable|candidate|beta|edge)(?:\/[a-z0-9][a-z0-9-]{0,63})?$/;
 const WINGET_ID_RE =
   /^[A-Za-z0-9][A-Za-z0-9-]{0,31}(\.[A-Za-z0-9][A-Za-z0-9-]{0,31}){1,7}$/;
 /** A Homebrew cask token: lower-case letters, digits, `-`, `.` and `@`. */
@@ -352,6 +360,11 @@ function fieldCheck(kind: OutletKind, field: OutletIdentityField): FieldCheck {
       return pattern(ITCH_TARGET_RE, "a butler user/game target");
     case "name":
       return pattern(SNAP_NAME_RE, "a snap name");
+    case "channels":
+      return channelMap(
+        SNAP_CHANNEL_RE,
+        "snap channel ([<track>/]<risk>[/<branch>], risk stable, candidate, beta or edge)",
+      );
     case "packageIdentifier":
       return pattern(WINGET_ID_RE, "a winget package identifier");
     case "platforms":
@@ -467,6 +480,13 @@ export interface ManifestListing {
   screenshots?: string[];
   website?: string;
   developerName?: string;
+  /**
+   * Where a customer gets help with the product (PX-W1, the portal's Help card and its "Renew
+   * with <developer>" action). An https URL, like the other URL fields.
+   */
+  supportUrl?: string;
+  /** The product's support address (PX-W1), shown as text in the portal; at most 254 characters. */
+  supportEmail?: string;
 }
 
 const LISTING_TEXT_FIELDS = [
@@ -475,7 +495,12 @@ const LISTING_TEXT_FIELDS = [
   "category",
   "developerName",
 ] as const;
-const LISTING_URL_FIELDS = ["iconUrl", "headerUrl", "website"] as const;
+const LISTING_URL_FIELDS = [
+  "iconUrl",
+  "headerUrl",
+  "website",
+  "supportUrl",
+] as const;
 const MAX_LISTING_TEXT = 200;
 const MAX_LISTING_DESCRIPTION = 4000;
 const MAX_LISTING_URL = 2048;
@@ -486,6 +511,11 @@ const LINE_RE = /^[^\u0000-\u001f\u007f]+$/;
 /** No control characters but tab and newline (the description). */
 const PROSE_RE = /^[^\u0000-\u0008\u000b-\u001f\u007f]+$/;
 const HTTPS_URL_RE = /^https:\/\/[^\s\u0000-\u001f\u007f]+$/;
+/** RFC 5321's 254-character path limit. */
+const MAX_LISTING_EMAIL = 254;
+/** One `local@domain.tld` address: no whitespace, no control characters, no angle brackets, one `@`. */
+const LISTING_EMAIL_RE =
+  /^[^\s@<>\u0000-\u001f\u007f]+@[^\s@<>\u0000-\u001f\u007f]+\.[^\s@<>\u0000-\u001f\u007f]+$/;
 
 function isListingUrl(v: unknown): v is string {
   if (
@@ -529,6 +559,13 @@ function listingProblem(raw: unknown): string | null {
     (typeof raw.tintColor !== "string" || !TINT_COLOR_RE.test(raw.tintColor))
   )
     return "tintColor must be a #rrggbb colour";
+  if (
+    raw.supportEmail !== undefined &&
+    (typeof raw.supportEmail !== "string" ||
+      raw.supportEmail.length > MAX_LISTING_EMAIL ||
+      !LISTING_EMAIL_RE.test(raw.supportEmail))
+  )
+    return `supportEmail must be one email address of at most ${MAX_LISTING_EMAIL} characters`;
   const shots = raw.screenshots;
   if (
     shots !== undefined &&
@@ -753,7 +790,12 @@ function validateOutlet(
         `outlets.${id}.artifact must name an id in .pkey/release deliverables.app.artifacts.`,
       );
     }
-    if (field === "tracks" || field === "branches" || field === "flights") {
+    if (
+      field === "tracks" ||
+      field === "branches" ||
+      field === "flights" ||
+      field === "channels"
+    ) {
       for (const channel of Object.keys(value as Record<string, unknown>)) {
         if (!ctx.channels.has(channel)) {
           add(
@@ -1108,6 +1150,7 @@ function normalizeListing(raw: unknown): ManifestListing | null {
     "description",
     ...LISTING_URL_FIELDS,
     "tintColor",
+    "supportEmail",
   ] as const) {
     if (typeof r[f] === "string") out[f] = r[f] as string;
   }

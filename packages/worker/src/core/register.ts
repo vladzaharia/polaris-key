@@ -170,7 +170,12 @@ export async function handleRegister(
     product,
     deviceId,
     now,
-    { existing, presented, metadata: deviceMetadata(req) },
+    {
+      existing,
+      presented,
+      metadata: deviceMetadata(req),
+      boundBy: "register",
+    },
   );
 
   // `deviceId` is echoed even though the caller chose it: it is what the signed documents will

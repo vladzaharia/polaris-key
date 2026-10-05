@@ -31,6 +31,8 @@ export interface OneTimeSecretPanelProps {
   onConfirmClose?: () => void;
   /** More ways out beside Done ("Open license", "Create another"); gate them on `acknowledged`. */
   actions?: React.ReactNode;
+  /** Content shown under the value while it is on screen (a registry token's setup snippets). */
+  details?: React.ReactNode;
 }
 
 /** Save `value` as a file. Resolves false when the browser refused every method. */
@@ -77,6 +79,7 @@ export function OneTimeSecretPanel({
   onCancelClose,
   onConfirmClose,
   actions,
+  details,
 }: OneTimeSecretPanelProps): React.ReactElement {
   const [ackState, setAckState] = React.useState(false);
   const acknowledged = ackProp ?? ackState;
@@ -125,6 +128,7 @@ export function OneTimeSecretPanel({
           />
           I&apos;ve stored this {label.toLowerCase()}
         </label>
+        {details}
         {download ? (
           <div className="space-y-1">
             <Button

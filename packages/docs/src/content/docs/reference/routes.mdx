@@ -61,6 +61,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/{product}/distribution/hooks/play-rtdn` | distribution | Google Play real-time developer notifications over Pub/Sub push (Google → Worker) |
 | POST | `/{product}/distribution/hooks/sentry` | distribution | Sentry alert webhook — opens a halt candidate (Sentry → Worker) |
 | GET | `/{product}/distribution/install.sh` | distribution | The curl-pipe install script |
+| GET | `/{product}/distribution/listing/{store}` | distribution | A CI-plane store's projection of the listing model (CI) |
+| POST | `/{product}/distribution/listing/assets` | distribution | Register the listing assets CI derived and uploaded (CI) |
 | GET | `/{product}/distribution/obtainium/{channel}.json` | distribution | Obtainium app config for one channel |
 | GET | `/{product}/distribution/packs/{pack}/{variant}/payload/{sha256}` | distribution | Download a pack's decoded container payload (Compression Dictionary Transport) |
 | HEAD | `/{product}/distribution/packs/{pack}/{variant}/payload/{sha256}` | distribution | The headers of a pack payload answer |
@@ -88,6 +90,11 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/license/document` | license | The signed license document (pkey-license+jws) |
 | POST | `/{product}/license/enroll` | license | Keyless enrollment (auto-issue policy) |
 | POST | `/{product}/license/token` | license | Rotate/re-acquire the device token |
+| POST | `/api/discover/{product}/claim` | portal | Add a Discover product to the library |
+| GET | `/api/discover` | portal | The products the signed-in account could add for free |
+| GET | `/api/library` | portal | The signed-in account's library |
+| GET | `/api/products/{product}` | portal | One product in the signed-in account's library |
+| GET | `/media/{product}/{asset}` | portal | A product's listing art, served same-origin |
 | GET | `https://pkg.plrs.im/` | registry | The registry host's landing page (registry host only) |
 | HEAD | `https://pkg.plrs.im/` | registry | The registry host's landing page, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/godot/{owner}/asset-library/api/asset/{id}` | registry | Godot ≤ 4.6 Asset Library: one asset (registry host only) |
@@ -114,6 +121,30 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | HEAD | `https://pkg.plrs.im/godot/{owner}/store/api/v1/search/query/` | registry | Godot 4.7+ Asset Store: search, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/godot/{owner}/store/api/v1/tags/` | registry | Godot 4.7+ Asset Store: tags (registry host only) |
 | HEAD | `https://pkg.plrs.im/godot/{owner}/store/api/v1/tags/` | registry | Godot 4.7+ Asset Store: tags, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/t/{token}/asset-library/api/asset/{id}` | registry | As `/godot/\{owner\}/asset-library/api/asset/\{id\}`, through a Godot URL token (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/t/{token}/asset-library/api/asset/{id}` | registry | As `/godot/\{owner\}/asset-library/api/asset/\{id\}` through a Godot URL token, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/t/{token}/asset-library/api/asset` | registry | As `/godot/\{owner\}/asset-library/api/asset`, through a Godot URL token (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/t/{token}/asset-library/api/asset` | registry | As `/godot/\{owner\}/asset-library/api/asset` through a Godot URL token, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/t/{token}/asset-library/api/configure` | registry | As `/godot/\{owner\}/asset-library/api/configure`, through a Godot URL token (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/t/{token}/asset-library/api/configure` | registry | As `/godot/\{owner\}/asset-library/api/configure` through a Godot URL token, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/t/{token}/files/{sha256}/{file}` | registry | As `/godot/\{owner\}/files/\{sha256\}/\{file\}`, through a Godot URL token (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/t/{token}/files/{sha256}/{file}` | registry | As `/godot/\{owner\}/files/\{sha256\}/\{file\}` through a Godot URL token, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/t/{token}/icons/{sha256}.png` | registry | As `/godot/\{owner\}/icons/\{sha256\}.png`, through a Godot URL token (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/t/{token}/icons/{sha256}.png` | registry | As `/godot/\{owner\}/icons/\{sha256\}.png` through a Godot URL token, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/t/{token}/index.json` | registry | As `/godot/\{owner\}/index.json`, through a Godot URL token (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/t/{token}/index.json` | registry | As `/godot/\{owner\}/index.json` through a Godot URL token, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/t/{token}/store/api/v1/` | registry | As `/godot/\{owner\}/store/api/v1/`, through a Godot URL token (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/t/{token}/store/api/v1/` | registry | As `/godot/\{owner\}/store/api/v1/` through a Godot URL token, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/t/{token}/store/api/v1/assets/{publisher}/{asset}/` | registry | As `/godot/\{owner\}/store/api/v1/assets/\{publisher\}/\{asset\}/`, through a Godot URL token (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/t/{token}/store/api/v1/assets/{publisher}/{asset}/` | registry | As `/godot/\{owner\}/store/api/v1/assets/\{publisher\}/\{asset\}/` through a Godot URL token, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/t/{token}/store/api/v1/licenses/` | registry | As `/godot/\{owner\}/store/api/v1/licenses/`, through a Godot URL token (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/t/{token}/store/api/v1/licenses/` | registry | As `/godot/\{owner\}/store/api/v1/licenses/` through a Godot URL token, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/t/{token}/store/api/v1/releases/{publisher}/{asset}/` | registry | As `/godot/\{owner\}/store/api/v1/releases/\{publisher\}/\{asset\}/`, through a Godot URL token (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/t/{token}/store/api/v1/releases/{publisher}/{asset}/` | registry | As `/godot/\{owner\}/store/api/v1/releases/\{publisher\}/\{asset\}/` through a Godot URL token, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/t/{token}/store/api/v1/search/query/` | registry | As `/godot/\{owner\}/store/api/v1/search/query/`, through a Godot URL token (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/t/{token}/store/api/v1/search/query/` | registry | As `/godot/\{owner\}/store/api/v1/search/query/` through a Godot URL token, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/godot/{owner}/t/{token}/store/api/v1/tags/` | registry | As `/godot/\{owner\}/store/api/v1/tags/`, through a Godot URL token (registry host only) |
+| HEAD | `https://pkg.plrs.im/godot/{owner}/t/{token}/store/api/v1/tags/` | registry | As `/godot/\{owner\}/store/api/v1/tags/` through a Godot URL token, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/{version}/{file}` | registry | A file of a Maven publication, or its checksum sidecar (registry host only) |
 | HEAD | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/{version}/{file}` | registry | A file of a Maven publication, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml.{checksum}` | registry | A checksum sidecar of maven-metadata.xml (registry host only) |
@@ -144,7 +175,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | HEAD | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}` | registry | List a Swift package's releases, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/swift/{owner}/identifiers` | registry | Swift package identifiers for a repository URL (registry host only) |
 | HEAD | `https://pkg.plrs.im/swift/{owner}/identifiers` | registry | Swift package identifiers for a repository URL, headers only (registry host only) |
-| POST | `https://pkg.plrs.im/swift/{owner}/login` | registry | SwiftPM registry login, not supported yet (registry host only) |
+| POST | `https://pkg.plrs.im/swift/{owner}/login` | registry | SwiftPM registry login (registry host only) |
 | GET | `https://pkg.plrs.im/v2/{owner}/{repository}/blobs/{digest}` | registry | OCI blob by digest, with Range (registry host only) |
 | HEAD | `https://pkg.plrs.im/v2/{owner}/{repository}/blobs/{digest}` | registry | OCI blob existence and size (registry host only) |
 | GET | `https://pkg.plrs.im/v2/{owner}/{repository}/manifests/{reference}` | registry | OCI manifest or image index by tag or digest (registry host only) |
@@ -153,8 +184,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | HEAD | `https://pkg.plrs.im/v2/{owner}/{repository}/tags/list` | registry | OCI tag list, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/v2/` | registry | OCI distribution base endpoint (registry host only) |
 | HEAD | `https://pkg.plrs.im/v2/` | registry | OCI distribution base endpoint, headers only (registry host only) |
-| GET | `https://pkg.plrs.im/v2/token` | registry | OCI token endpoint, reserved (registry host only) |
-| HEAD | `https://pkg.plrs.im/v2/token` | registry | OCI token endpoint, reserved, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/v2/token` | registry | OCI token service (registry host only) |
+| HEAD | `https://pkg.plrs.im/v2/token` | registry | OCI token service, headers only (registry host only) |
 | GET | `/{product}/release/changelog` | release | Release changelog |
 | POST | `/{product}/release/channels/{channel}/pin` | release | Pin a channel to a release (CI) |
 | POST | `/{product}/release/channels/{channel}/promote` | release | Promote a release to a channel (CI) |

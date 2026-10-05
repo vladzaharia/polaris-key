@@ -8,19 +8,19 @@ DJDL onboarding, use [DEPLOYMENT.md](./DEPLOYMENT.md).
 
 ## Production shape
 
-| Item                 | Value                                          |
-| -------------------- | ---------------------------------------------- |
-| Cloudflare account   | `Polaris` / `07a2eb0d4916b220da1f9c1387b5f6d8` |
-| Worker env           | `prod`                                         |
-| Public origin        | `https://key.plrs.im`                          |
-| Admin                | `https://key.plrs.im/manage`                   |
-| Customer portal      | `https://key.plrs.im`                          |
-| D1 database          | `polaris_key_prod`                             |
-| KV namespace         | `POLARIS_HOT_prod`                             |
-| PocketID issuer      | `https://id.plrs.im`                           |
-| Platform admin group | `admins`                                       |
-| GitHub App           | `polaris-key`                                  |
-| Email sender         | `Polaris Key <noreply@plrs.im>`                |
+| Item                 | Value                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------ |
+| Cloudflare account   | `Polaris` / `07a2eb0d4916b220da1f9c1387b5f6d8`                                       |
+| Worker env           | `prod`                                                                               |
+| Public origin        | `https://key.plrs.im`                                                                |
+| Admin                | `https://key.plrs.im/manage`                                                         |
+| Customer portal      | `https://key.plrs.im`                                                                |
+| D1 database          | `polaris_key_prod`                                                                   |
+| KV namespace         | `POLARIS_HOT_prod`                                                                   |
+| PocketID issuer      | `https://id.plrs.im`                                                                 |
+| Platform admin group | `admins`                                                                             |
+| GitHub App           | `polaris-key`                                                                        |
+| Email sender         | `Polaris Key <noreply@auth.plrs.im>` (I-18; `noreply@plrs.im` until the switch-over) |
 
 Reserved platform routes:
 
@@ -121,6 +121,7 @@ ADMIN_OIDC_CLIENT_SECRET
 GITHUB_APP_ID
 GITHUB_APP_PRIVATE_KEY
 GITHUB_WEBHOOK_SECRET
+REGISTRY_TOKEN_KEY           # F-21: the OCI pull-token HMAC key (32 random bytes, base64)
 ```
 
 Rotate or set a Worker secret:
@@ -400,7 +401,9 @@ Worker on a third custom domain (DEPLOYMENT §3, "Registry host and feeds"). Che
 a deploy:
 
 ```sh
-curl -sI https://pkg.plrs.im/v2/ | grep -i docker-distribution-api-version   # registry/2.0
+curl -sI https://pkg.plrs.im/v2/ | grep -iE '^(HTTP|docker-distribution-api-version|www-authenticate)'
+# HTTP/2 401, registry/2.0, Bearer realm=".../v2/token" (200 if REGISTRY_TOKEN_KEY is unset)
+curl -s 'https://pkg.plrs.im/v2/token?service=pkg.plrs.im' | head -c 60      # {"token":"v1.…
 curl -sI https://pkg.plrs.im/manage | head -1                                 # 404
 ```
 
@@ -413,9 +416,9 @@ bytes the edge has cached for a year, because the access check runs before the c
 3. the feed's `enabled`;
 4. Distribution itself for the owner.
 
-Tightening a feed's or a deliverable's access mode away from `public` answers clients `401`
-with their native challenge within the same window; tier 1 has no registry credentials, so
-such a feed is closed to everyone until F-21.
+Tightening a feed's or a deliverable's access mode away from `public` answers clients without a
+registry token `401` with their native challenge within the same window (see "Registry tokens
+(F-21)" below).
 
 **A missing or stale index object** heals itself: a read that misses renders the package from
 D1, writes it back under `registry/` and counts `registry.render_miss`. The cron's self-check
@@ -425,6 +428,42 @@ lock or lifecycle rule on `registry/`.
 Bootstrapping the system product, turning an owner's feeds on, yanks and deprecations, feed
 rebuilds, the Swift signing-certificate rotation and the forward-only migration note follow with
 F-03, F-06 and F-11.
+
+### Registry tokens (F-21)
+
+Clients of a non-public feed present a registry token (`pkeyr_…`): minted in the console
+(**Distribution → Package feeds → Tokens**, or a licence's **Keys** tab) or by a licensee in the
+portal. Every token expires (at most 365 days). The store is `registry_tokens` (Core's).
+
+**Switching a feed's mode.** In the feed's **Settings → Access**. Leaving `public` answers every
+client without a token `401` within 30 seconds, so mint the tokens and hand out the authenticated
+setup (the Tokens page's shown-once dialog, or `/docs/build/install-from-feeds/#private-feeds`)
+first. Switching back to `public` reopens the feed within 30 seconds. A rollback to a Worker older
+than F-21 with a non-public feed refuses every read of that feed (it fails closed); switch the
+feed back to `public` to reopen it. The platform's own feeds stay `public`.
+
+**A leaked token.** Revoke it on the Tokens page (or the licence's panel); it stops within 30
+seconds on every isolate. If you cannot tell which token leaked, **Revoke all** on the Tokens page
+revokes every active token of the product, including licensee-minted ones; tell licensees to mint
+new ones in the portal. Revocations are audited (`registry_token.revoke`,
+`registry_token.revoke_all`; `portal.registry_token.revoke` for a licensee's own).
+
+**Rotating `REGISTRY_TOKEN_KEY`** (the OCI pull-token HMAC key). Pull tokens live five minutes, so
+a rotation is two deploys apart by at least that long:
+
+```sh
+cd packages/worker
+openssl rand -base64 32 > /tmp/new-key
+npx wrangler secret bulk --env prod <<EOF
+{"REGISTRY_TOKEN_KEY_PREVIOUS": "<the current key>", "REGISTRY_TOKEN_KEY": "$(cat /tmp/new-key)"}
+EOF
+# wait at least 5 minutes, then:
+npx wrangler secret delete REGISTRY_TOKEN_KEY_PREVIOUS --env prod
+rm /tmp/new-key
+```
+
+Without `REGISTRY_TOKEN_KEY`, `/v2/token` answers 503 and `/v2/` stays a plain 200, so OCI clients
+can pull public images but no non-public OCI feed can be reached.
 
 ### Recovering the update feeds after a signer compromise
 
@@ -649,6 +688,82 @@ bytes by chance, about 1.5e-5 per file (65,557 positions × 2^-32). It fails clo
 reports the file by path before anything is signed. The remedy is to re-encode the file (any
 change of the compressed bytes moves the match).
 
+## Sign-in email (I-18)
+
+Every sign-in and account email leaves ONE shared sender, `noreply@auth.plrs.im`, on the
+dedicated auth sending subdomain `auth.plrs.im`, so its reputation is every product's (S-16 §9
+risk 9). Platform mail is sent as `Polaris Key`; mail for sign-in started through a product as
+`<App> via Polaris Key`, where `<App>` is the product's display name after the reserved-name
+validator (`src/core/emailSender.ts`; a refused name falls back to the slug). Every send goes
+through `deliverEmail` (`src/core/emailDelivery.ts`): binding, sender, Apple private relay, the
+hashed suppression list, the per-product daily cap (passthrough mail only), then the send.
+Throttling, quota, an unverified sender and provider outages answer `email_unavailable`; the
+login card then offers another sign-in method.
+
+Until the owner steps below are done the Worker keeps sending from `noreply@plrs.im`
+(`EMAIL_SENDER_ADDRESS` unset in prod) and staging answers `email_unavailable`.
+
+### Owner setup (DNS and Apple; agents never touch either)
+
+1. **Onboard the subdomain on Email Sending.** Cloudflare dashboard → Compute → Email Service →
+   Email Sending → Onboard Domain → `auth.plrs.im` → Add records and onboard (or
+   `npx wrangler email sending enable auth.plrs.im`). Onboarding publishes, and locks:
+
+   | Type | Name                                | Value                                                                                                             |
+   | ---- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+   | MX   | `cf-bounce.auth.plrs.im`            | `route1.mx.cloudflare.net`, `route2.mx.cloudflare.net`, `route3.mx.cloudflare.net` (priorities set by Cloudflare) |
+   | TXT  | `cf-bounce.auth.plrs.im`            | `v=spf1 include:_spf.mx.cloudflare.net ~all`                                                                      |
+   | TXT  | `cf-bounce._domainkey.auth.plrs.im` | `v=DKIM1; h=sha256; k=rsa; p=<public key Cloudflare generates>`                                                   |
+   | TXT  | `_dmarc.auth.plrs.im`               | `v=DMARC1; p=reject;`                                                                                             |
+
+   `npx wrangler email sending dns get auth.plrs.im` prints the exact values. Leave
+   **Drop suppressed recipients** (Email Sending → `auth.plrs.im` → Settings) **off**, the
+   default: with it on, Cloudflare drops a suppressed recipient silently and the Worker never
+   learns to stop trying.
+
+2. **Add one SPF record on the subdomain itself** (for Apple's sender check, step 4):
+
+   | Type | Name           | Value                                        |
+   | ---- | -------------- | -------------------------------------------- |
+   | TXT  | `auth.plrs.im` | `v=spf1 include:_spf.mx.cloudflare.net ~all` |
+
+3. **Check the records:** `pnpm --filter @polaris-key/worker email:dns-check` must print
+   `auth.plrs.im: aligned` (bounce MX, SPF on `cf-bounce.auth.plrs.im` with Cloudflare's include,
+   the `cf-bounce` DKIM key, an enforcing DMARC policy that allows relaxed SPF alignment).
+   `-- plrs.im` checks the apex the same way.
+4. **Register the sender with Apple's private email relay.** developer.apple.com → Certificates,
+   Identifiers & Profiles → Services → Sign in with Apple for Email Communication → Configure →
+   add the domains `auth.plrs.im` and `cf-bounce.auth.plrs.im` and the address
+   `noreply@auth.plrs.im`, then confirm Apple shows each domain as SPF-verified.
+5. **Switch the Worker over** (one reviewed commit to `packages/worker/wrangler.toml`): in
+   `[env.prod.vars]` uncomment `EMAIL_SENDER_ADDRESS = "noreply@auth.plrs.im"` and
+   `EMAIL_APPLE_RELAY = "registered"`, add `EMAIL_APPLE_RELAY = "registered"` to
+   `[env.staging.vars]`, and deploy staging first.
+6. **Staging deliverability check.** On `key-staging.plrs.im` request a portal magic link to a
+   Gmail address you control, then Gmail → Show original: `SPF: PASS` (domain
+   `cf-bounce.auth.plrs.im`), `DKIM: PASS` (domain `auth.plrs.im`), `DMARC: PASS`, `From:
+Polaris Key <noreply@auth.plrs.im>`. Repeat to a Hide-My-Email (`@privaterelay.appleid.com`)
+   address of a test Apple account and confirm it arrives. Paste both Authentication-Results
+   headers into the I-18 PR, then deploy prod.
+7. **Quota.** `GET /accounts/<id>/email/sending/limits` gives the account's daily quota. The
+   per-product default cap is 500 a day (`EMAIL_SEND_PRODUCT_DAILY_DEFAULT`); raise or lower it
+   for the deployment with `EMAIL_PRODUCT_DAILY_CAP`, or per product (below).
+
+### Operating it
+
+- **A product is capped** (its users see "We can't send email right now"): its own cap is a row,
+  `wrangler d1 execute polaris_key_prod --remote --command "INSERT INTO email_product_caps (product, daily_cap, modified_at) VALUES ('<slug>', <n>, unixepoch()) ON CONFLICT(product) DO UPDATE SET daily_cap = excluded.daily_cap, modified_at = excluded.modified_at"`.
+  Delete the row to return to the deployment value. The day is a sliding 24 hours.
+- **Suppression list** (`email_suppressions`): keyed by the peppered hash of the address, never
+  the address. A hard bounce suppresses for 90 days, a complaint, a Cloudflare suppression
+  (`E_RECIPIENT_SUPPRESSED`) or an operator entry permanently. A suppressed recipient is answered
+  exactly like a sent one. To clear one, remove it from Cloudflare's list too (Email Sending →
+  Suppressions) or the next send re-adds it.
+- **Bounce and complaint events:** Cloudflare pushes none to a Worker. The Worker learns of them
+  through `E_RECIPIENT_SUPPRESSED` on a later send; the dashboard's Analytics tab and the GraphQL
+  `emailSendingAdaptive` dataset show the rest (delivery rate over 95 %, hard bounces under 2 %,
+  complaints under 0.1 %).
+
 ## The blob collector (P4-14)
 
 The nightly maintenance cron (`17 3 * * *`) runs Core's blob collector after the retention steps:
@@ -774,7 +889,8 @@ Portal magic links are hidden:
 
 - Confirm at least one product has portal and magic links enabled.
 - Confirm prod deployed with the `EMAIL` send binding.
-- Confirm Cloudflare Email Service allows `noreply@plrs.im`.
+- Confirm Cloudflare Email Service allows the sender (`EMAIL_SENDER_ADDRESS`, else
+  `noreply@plrs.im`); "Sign-in email (I-18)" above has the setup and the DNS check.
 
 DJDL OIDC activation fails with `platform oidc is not configured`:
 

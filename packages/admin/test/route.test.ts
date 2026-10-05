@@ -519,6 +519,8 @@ describe("the nav model (nav.ts)", () => {
       "matrix",
       "rollouts",
       "outlets",
+      "app-store",
+      "commerce",
       "access",
       "health",
       "credentials",

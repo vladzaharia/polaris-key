@@ -186,6 +186,14 @@ it cannot ship code and cannot change a key. A store's connector writes these re
 is audited with its writer; a connector re-reads the store on its next poll, so a stale CI report
 on a connector-run outlet does not last.
 
+The same route takes the **store steps** `pkey storefront` runs (`type: "store-step"`): a
+CI-plane store command (`butler push`, `snapcraft upload`, …) reported before and after it runs.
+Polaris Key checks the command against the store's CI allow-list and the outlet's identity again
+and writes the step into the store's operation ledger with `plane = ci`, so CI steps show beside
+the console's; refusals add `command_not_allowed`, `worker_draft_staged` and `step_conflict`. A
+store step changes no availability record: report `live` as above once the store shows it. See
+[Storefront steps](/docs/build/ci/#storefront-steps-itchio-and-snap).
+
 ## The key inventory
 
 Per product, the signing keys by **purpose**, each with the lower-case hex SHA-256 fingerprint of

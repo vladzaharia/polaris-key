@@ -1179,6 +1179,13 @@ export const RESERVED_PRODUCT_SLUGS: readonly string[] = [
   "download",
   "webhooks",
   "well-known",
+  // PX-W1: the customer portal's same-origin media proxy, `/media/<product>/<asset>`.
+  "media",
+  // PX-01: the portal's `/activate?key=` deep link.
+  "activate",
+  // PX-W16 (G33): avatars will be served at `/media/avatar/<asset>`, which the media proxy's
+  // `/media/<product>/<asset>` would read as a product slugged `avatar`; reserved now.
+  "avatar",
 ];
 const SECRET_DELIVERY_VALUES = [
   "serverOnly",
@@ -5343,6 +5350,7 @@ function add(
 // The release descriptor (P2-04): its contract, validator and helpers.
 export * from "./descriptor.js";
 export * from "./packages.js";
+export * from "./feedSetup.js";
 // `.pkey/distribution` (P2b-02): outlets, identities, transports and listing.
 export * from "./distribution.js";
 export * from "./releaseKeys.js";

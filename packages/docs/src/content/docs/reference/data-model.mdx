@@ -19,7 +19,7 @@ this page or fails the freshness gate.
 | `product_keys` | 0003_keyvault.sql | `product`, `kid`, `alg`, `public_b64url`, `enc_private_json`, `status`, `created_at`, `rotated_at`, `revoked_at (0021)` |
 | `product_secrets` | 0003_keyvault.sql | `product`, `name`, `enc_value_json`, `created_at`, `modified_at`, `usage (0025)` |
 | `outlet_credentials` | 0034_outlet_credentials.sql | `product`, `credential_id`, `kind`, `outlet_id`, `enc_value_json`, `meta_json`, `status`, `created_at`, `created_by`, `rotated_at`, `expires_at`, `last_used_at`, `last_ok_at`, `last_error` |
-| `devices` | 0001_init.sql | `product`, `device_id`, `customer_id`, `license_id`, `status`, `first_seen`, `last_seen`, `ua`, `label`, `platform`, `arch`, `app_version`, `sdk_name`, `sdk_version`, `overrides_json`, `reported_json`, `token_hash`, `seat_no (0014)`, `trust_level (0053)`, `attested_at (0053)`, `attestation_json (0053)` |
+| `devices` | 0001_init.sql | `product`, `device_id`, `customer_id`, `license_id`, `status`, `first_seen`, `last_seen`, `ua`, `label`, `platform`, `arch`, `app_version`, `sdk_name`, `sdk_version`, `overrides_json`, `reported_json`, `token_hash`, `seat_no (0014)`, `trust_level (0053)`, `attested_at (0053)`, `attestation_json (0053)`, `subject (0068)`, `bound_by (0068)` |
 | `device_fingerprints` | 0010_fingerprint.sql | `product`, `device_id`, `hwid`, `components_json`, `anchor_hash`, `status`, `first_seen`, `last_seen`, `last_drift_at`, `last_drift_count` |
 | `device_facts` | 0010_fingerprint.sql | `product`, `device_id`, `os_name`, `os_version`, `os_build`, `kernel`, `cpu_model`, `cpu_cores`, `ram_mb`, `machine_model`, `locale`, `timezone`, `runtime_name`, `runtime_version`, `probes_json`, `updated_at` |
 | `audit` | 0001_init.sql | `product`, `id`, `at`, `actor_sub`, `actor_name`, `actor_email`, `action`, `target_kind`, `target_id`, `parent_id`, `summary` |
@@ -40,16 +40,19 @@ this page or fails the freshness gate.
 | `platform_store_settings` | 0055_platform_store_connections.sql | `store`, `key`, `value`, `updated_at`, `updated_by` |
 | `platform_audit` | 0054_b_platform_audit.sql | `id`, `at`, `actor_sub`, `actor_name`, `actor_email`, `action`, `target_kind`, `target_id`, `summary`, `before_json`, `after_json` |
 | `registry_render_queue` | 0058_d_registry.sql | `product`, `deliverable_id`, `reason`, `enqueued_at`, `generation`, `attempts (0060)` |
+| `registry_tokens` | 0067_registry_tokens.sql | `product`, `token_id`, `token_hash`, `hint`, `label`, `scopes_json`, `ecosystems_json`, `binding`, `license_id`, `presentation`, `created_by`, `portal_account_id`, `created_at`, `expires_at`, `last_used_at`, `revoked_at`, `revoked_by`, `revoke_reason` |
 | `platform_settings` | 0056_platform_settings.sql | `key`, `value_json`, `version`, `updated_at`, `updated_by` |
 | `platform_job_runs` | 0057_platform_operations.sql | `id`, `run_id`, `job`, `cron`, `step`, `started_at`, `duration_ms`, `outcome`, `items`, `rows_affected`, `error_summary` |
 | `platform_heartbeats` | 0057_platform_operations.sql | `script`, `at`, `version_tag`, `cf_version_id`, `outcome`, `backlog_count`, `backlog_bytes`, `oldest_at` |
 | `store_operations` | 0061_store_operations.sql | `op_id`, `store`, `scope`, `product`, `op`, `natural_key`, `state`, `request_hash`, `result_ids_json`, `before_json`, `after_json`, `vendor_status`, `vendor_code`, `actor`, `created_at`, `finished_at`, `plane (0062)` |
+| `email_suppressions` | 0066_email_delivery.sql | `address_hash`, `reason`, `created_at`, `expires_at` |
+| `email_product_caps` | 0066_email_delivery.sql | `product`, `daily_cap`, `modified_at` |
 
 ## license
 
 | Table | Since | Columns (ALTERs annotated with their migration) |
 | --- | --- | --- |
-| `licenses` | 0001_init.sql | `product`, `id`, `status`, `sub`, `name`, `email`, `groups_json`, `tier_id`, `activated_at`, `expires_at`, `max_offline_days`, `overrides_json`, `modified_by`, `modified_at`, `channels_json (0002)`, `min_version (0002)`, `max_version (0002)`, `origin (0011)`, `enroll_hwid (0011)` |
+| `licenses` | 0001_init.sql | `product`, `id`, `status`, `sub`, `name`, `email`, `groups_json`, `tier_id`, `activated_at`, `expires_at`, `max_offline_days`, `overrides_json`, `modified_by`, `modified_at`, `channels_json (0002)`, `min_version (0002)`, `max_version (0002)`, `origin (0011)`, `enroll_hwid (0011)`, `account_id (0068)` |
 | `keys_index` | 0001_init.sql | `product`, `key_hash`, `license_id`, `status`, `label`, `created_at`, `created_by`, `last_used_at` |
 | `tiers` | 0001_init.sql | `product`, `id`, `label`, `profile_id`, `policy_expiry_days`, `policy_device_limit`, `modified_by`, `modified_at`, `policy_fingerprint (0010)` |
 | `license_profiles` | 0004_license_profiles.sql | `product`, `license_id`, `profile_id`, `sort_order` |
@@ -96,6 +99,7 @@ this page or fails the freshness gate.
 | Table | Since | Columns (ALTERs annotated with their migration) |
 | --- | --- | --- |
 | `dist_outlets` | 0036_distribution_outlets.sql | `product`, `outlet_id`, `kind`, `identity_json`, `capabilities_json`, `listing_json`, `capabilities_source`, `removed_at`, `created_at`, `modified_at` |
+| `dist_listing` | 0063_dist_listing.sql | `product`, `listing_json`, `modified_at` |
 | `dist_transports` | 0036_distribution_outlets.sql | `product`, `deliverable_id`, `outlet_id`, `transport`, `config_json` |
 | `dist_rollouts` | 0038_distribution_rollouts_access.sql | `product`, `deliverable_id`, `outlet_id`, `channel`, `release_id`, `rollout_bp`, `rollout_salt`, `state`, `mirrored`, `source`, `started_at`, `updated_at`, `updated_by` |
 | `dist_access` | 0038_distribution_rollouts_access.sql | `product`, `deliverable_id`, `mode`, `entitlement`, `source`, `modified_at` |
@@ -113,6 +117,12 @@ this page or fails the freshness gate.
 | `dist_registry_owners` | 0058_d_registry.sql | `product`, `enabled`, `version`, `updated_at`, `updated_by` |
 | `dist_registry_feeds` | 0058_d_registry.sql | `product`, `ecosystem`, `enabled`, `access_mode`, `namespace_json`, `max_package_bytes`, `upstream`, `claims_json`, `ext_json`, `version`, `updated_at`, `updated_by` |
 | `dist_registry_policy` | 0058_d_registry.sql | `ecosystem`, `enabled`, `max_package_bytes_ceiling`, `version`, `updated_at`, `updated_by` |
+| `dist_listings` | 0065_dist_listing_model.sql | `product`, `default_locale`, `name`, `developer_name`, `category`, `content_descriptors_json`, `iarc_certificate_id`, `urls_json`, `contact_email`, `copyright`, `tint`, `tint_dark`, `precedence_json`, `source`, `created_at`, `modified_at`, `modified_by`, `provenance_json (0069)` |
+| `dist_listing_locales` | 0065_dist_listing_model.sql | `product`, `locale`, `name`, `subtitle`, `short_description`, `description`, `keywords_json`, `features_json`, `promotional_text`, `source`, `modified_at`, `modified_by`, `provenance_json (0069)` |
+| `dist_listing_assets` | 0065_dist_listing_model.sql | `product`, `slot`, `locale`, `blob`, `sha256`, `width`, `height`, `alpha`, `derived_from`, `text_allowed`, `source`, `modified_at`, `modified_by` |
+| `dist_listing_release_notes` | 0065_dist_listing_model.sql | `product`, `release_id`, `locale`, `text`, `short`, `source`, `modified_at`, `modified_by` |
+| `dist_listing_overrides` | 0065_dist_listing_model.sql | `product`, `store`, `locale`, `field`, `value_json`, `source`, `modified_at`, `modified_by` |
+| `store_edit_leases` | 0070_store_edit_leases.sql | `store`, `app`, `holder`, `purpose`, `actor`, `acquired_at`, `expires_at` |
 
 ## update
 
@@ -128,9 +138,18 @@ this page or fails the freshness gate.
 | --- | --- | --- |
 | `oidc_config` | 0001_init.sql | `product`, `issuer`, `client_id`, `client_secret_secret`, `redirect_uris_json`, `group_role_map_json`, `provider (0009)` |
 | `provisioning_config` | 0001_init.sql | `product`, `claim`, `entitlement_key`, `entitlement_value_json`, `secret_key`, `secret_url_template`, `allowed_hosts_json` |
+| `accounts` | 0068_a_accounts.sql | `id`, `status`, `primary_email`, `primary_email_verified_at`, `display_name`, `avatar_key`, `locale`, `details_source_json`, `terms_json`, `created_at`, `modified_at`, `last_sign_in_at`, `deleted_at` |
+| `account_links` | 0068_a_accounts.sql | `id`, `account_id`, `issuer_key`, `tenant_scope`, `subject`, `kind`, `email`, `email_verified`, `display_name`, `amr_json`, `created_at`, `last_used_at`, `groups_json (0071)` |
+| `account_product_subjects` | 0068_a_accounts.sql | `account_id`, `product`, `subject`, `created_at` |
+| `account_product_subject_aliases` | 0068_a_accounts.sql | `product`, `alias`, `subject`, `merged_at` |
+| `account_tombstones` | 0068_a_accounts.sql | `id`, `email_hash`, `merged_into`, `deleted_at` |
+| `subject_events` | 0068_a_accounts.sql | `product`, `id`, `type`, `subject`, `payload_json`, `created_at` |
+| `account_sessions` | 0068_a_accounts.sql | `id_hash`, `account_id`, `created_at`, `last_seen_at`, `expires_at`, `revoked_at`, `user_agent`, `amr_json` |
+| `account_product_grants` | 0068_a_accounts.sql | `account_id`, `product`, `claims_json`, `granted_at`, `modified_at` |
+| `account_passkeys` | 0068_a_accounts.sql | `credential_id`, `account_id`, `public_key`, `sign_count`, `transports_json`, `rp_id`, `user_handle`, `created_at`, `last_used_at` |
 | `portal_accounts` | 0008_portal.sql | `id`, `status`, `display_name`, `primary_email`, `created_at`, `modified_at` |
 | `portal_account_emails` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `email`, `account_id`, `verified_at`, `created_at` |
 | `portal_account_identities` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `provider`, `subject`, `account_id`, `email`, `display_name`, `created_at`, `last_seen_at` |
 | `portal_license_links` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `account_id`, `product`, `license_id`, `source`, `created_at`, `last_seen_at` |
-| `portal_product_settings` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `product`, `portal_enabled`, `oidc_enabled`, `magic_enabled`, `license_key_claim_enabled`, `releases_enabled`, `branding_json`, `created_at`, `modified_at`, `auto_link_enabled` |
+| `portal_product_settings` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `product`, `portal_enabled`, `oidc_enabled`, `magic_enabled`, `license_key_claim_enabled`, `releases_enabled`, `branding_json`, `created_at`, `modified_at`, `auto_link_enabled`, `key_reissue_enabled (0064)`, `claim_by_key (0064)`, `discover_enabled (0071)` |
 | `portal_audit` | 0008_portal.sql | `id`, `account_id`, `at`, `action`, `product`, `target_kind`, `target_id`, `summary` |

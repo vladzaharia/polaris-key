@@ -1110,6 +1110,28 @@ export interface R2Parent {
  * not-found, exactly as a Worker without the blob store does. Secrets: `R2_ACCOUNT_ID`,
  * `R2_PARENT_ACCESS_KEY_ID`, `R2_PARENT_SECRET_ACCESS_KEY`; var: `BLOBS_BUCKET_NAME`.
  */
+/**
+ * What the uploads route still lacks in this environment, by NAME (never a value): the `BLOBS`
+ * binding and each piece `r2Parent` needs. Empty means `POST /<p>/release/publish/uploads` can
+ * issue tickets. The deploy hook reports it so deploy.yml fails loudly instead of every SDK
+ * publish meeting an unexplained 404 (the route itself stays indistinguishable from absent).
+ */
+export function uploadsMissing(env: Env): string[] {
+  const missing: string[] = [];
+  if (!env.BLOBS) missing.push("BLOBS (R2 binding)");
+  const accountId = secret(env, "R2_ACCOUNT_ID");
+  if (!accountId) missing.push("R2_ACCOUNT_ID");
+  else if (!/^[0-9a-f]{32}$/.test(accountId))
+    missing.push("R2_ACCOUNT_ID (not a 32-hex account id)");
+  for (const name of [
+    "R2_PARENT_ACCESS_KEY_ID",
+    "R2_PARENT_SECRET_ACCESS_KEY",
+    "BLOBS_BUCKET_NAME",
+  ] as const)
+    if (!secret(env, name)) missing.push(name);
+  return missing;
+}
+
 export function r2Parent(env: Env): R2Parent | null {
   const accountId = secret(env, "R2_ACCOUNT_ID");
   const accessKeyId = secret(env, "R2_PARENT_ACCESS_KEY_ID");
@@ -1136,10 +1158,18 @@ export function ticketPrefix(product: string, ticketId: string): string {
 
 /**
  * Mint R2 temporary credentials locally (Cloudflare "client-side signing"): an HS256 JWT signed
- * with the parent secret, naming exactly one bucket, the `UPLOAD_CREDENTIAL_ACTIONS` and exactly
- * one prefix. The temporary secret is the SHA-256 hex of the JWT; the session token is
+ * with the parent secret access key (the SHA-256 hex of the parent token value, i.e. the S3
+ * secret, not the token value itself), naming exactly one bucket, the `UPLOAD_CREDENTIAL_ACTIONS`
+ * and exactly one prefix. The temporary secret is the SHA-256 hex of the JWT; the session token is
  * `base64("jwt/" + jwt)`; the access key id is the parent's. Nothing is fetched, and the parent
  * secret never leaves the Worker.
+ *
+ * The claims carry `actions` and NO `scope`. Cloudflare's docs show both together, but real R2
+ * refuses a session token that names both: every PUT then fails with 400 `InvalidArgument` /
+ * `X-Amz-Security-Token` (measured against the prod bucket, 2026-10-04, after the v0.8.17
+ * deploy's SDK publish failed that way). With `actions` alone R2 accepts the token and enforces
+ * it: PutObject and HeadObject inside the prefix succeed, while GetObject, DeleteObject and a PUT
+ * outside the prefix are 403 AccessDenied.
  */
 export async function mintUploadCredentials(
   parent: R2Parent,
@@ -1154,7 +1184,7 @@ export async function mintUploadCredentials(
   const endpoint = `https://${parent.accountId}.r2.cloudflarestorage.com`;
   const claims = {
     bucket: parent.bucket,
-    scope: "object-read-write",
+    // No `scope`: R2 rejects a token that names `scope` and `actions` together (see above).
     actions: [...UPLOAD_CREDENTIAL_ACTIONS],
     paths: { prefixPaths: [prefix], objectPaths: [] },
     sub: parent.accountId,

@@ -13,7 +13,11 @@
  *     /distribution/rollouts/:outlet/:channel                POST, `pkeyci_` + distribution:rollout
  *     /distribution/rollouts/:outlet/:channel/{pause,resume,halt,complete}   POST, same
  *     /distribution/report                                   POST, `pkeyci_` + distribution:report
- *                                                            (P2b-03, `availability.ts`)
+ *                                                            (P2b-03, `availability.ts`; A-18h's
+ *                                                            store steps, `storeSteps.ts`)
+ *     /distribution/listing/:store                           GET, `pkeyci_` + distribution:report:
+ *                                                            a CI-plane store's listing projection
+ *                                                            (A-18h, `listing/ci.ts`)
  *     /distribution/hooks/:connector                         POST, a store webhook, signed by
  *                                                            the store (P5-02, `connectors/`;
  *                                                            `asc` today)
@@ -34,6 +38,10 @@
  *     /distribution/fdroid/:channel/repo/:path…              GET, the F-Droid repository relay
  *     /distribution/feeds/fdroid/:channel                    GET|POST, `pkeyci_` +
  *                                                            distribution:feeds
+ *     /distribution/listing/assets                           POST, `pkeyci_` +
+ *                                                            distribution:listing: register the
+ *                                                            listing assets CI derived (A-18d,
+ *                                                            `listing/assets.ts`)
  *     /distribution/download.json                            GET, the public download page's
  *                                                            model (P2b-06, `page/`)
  *
@@ -58,11 +66,17 @@ import {
   type RolloutVerb,
 } from "./rollouts.js";
 import { applyReport } from "./availability.js";
+import { ciListingProjection, ciListingStore } from "./listing/ci.js";
+import type { ListingStore } from "../../core/storefront/listingProfiles.js";
 import { connectorOf } from "./connectors/index.js";
 import { handleSentryWebhook } from "./sentry.js";
 import { handleFeedRoutes } from "./feeds/index.js";
 import { handleDownloadModel } from "./page/index.js";
 import { handleCommerceRoutes, isCommerceRoute } from "./commerce/index.js";
+import {
+  MAX_LISTING_ASSETS_BODY_BYTES,
+  registerListingAssets,
+} from "./listing/assets.js";
 
 /** A rollout body is tiny (`{deliverable?, releaseId?, bp?}`); a report carries at most two small
  *  JSON objects (`platformRef`, `detail`). */
@@ -97,9 +111,37 @@ export async function handleDistributionRoutes(
     return webhook ? webhook(ctx) : null;
   }
 
+  // The listing assets `pkey listing assets` derived and uploaded (A-18d).
+  if (rest.length === 2 && rest[0] === "listing" && rest[1] === "assets") {
+    if (req.method !== "POST") return null;
+    const principal = await requireCiScope(
+      req,
+      env,
+      db,
+      product.slug,
+      "distribution:listing",
+      now,
+    );
+    if (principal instanceof Response) return principal;
+    const body = await readCiJson(req, MAX_LISTING_ASSETS_BODY_BYTES);
+    if (body instanceof Response) return body;
+    return registerListingAssets(
+      { env, db, product: product.slug, now, principal },
+      body,
+    );
+  }
+
   if (rest[0] === "report" && rest.length === 1) {
     if (req.method !== "POST") return null;
     return handleCiReport(ctx);
+  }
+
+  // A-18h: a CI-plane store's projection of the listing model (`listing/ci.ts`).
+  if (rest[0] === "listing" && rest.length === 2) {
+    if (req.method !== "GET") return null;
+    const store = ciListingStore(decodeSegment(rest[1] as string) ?? "");
+    if (!store) return null;
+    return handleCiListing(ctx, store);
   }
 
   // The download page's model (P2b-06). The page itself never answers here (see above).
@@ -198,4 +240,28 @@ async function handleCiReport(ctx: ServiceContext): Promise<Response> {
   );
   if (!result.ok) return rolloutRefusal(result);
   return json(result);
+}
+
+/**
+ * `GET /<p>/distribution/listing/<store>` — `distribution:report`. The store's projection of the
+ * listing model, for a CI-plane listing step (A-18h, `listing/ci.ts`).
+ */
+async function handleCiListing(
+  ctx: ServiceContext,
+  store: ListingStore,
+): Promise<Response> {
+  const { req, env, db, product, now } = ctx;
+  const principal = await requireCiScope(
+    req,
+    env,
+    db,
+    product.slug,
+    "distribution:report",
+    now,
+  );
+  if (principal instanceof Response) return principal;
+  return json({
+    ok: true,
+    listing: await ciListingProjection(db, product.slug, store),
+  });
 }

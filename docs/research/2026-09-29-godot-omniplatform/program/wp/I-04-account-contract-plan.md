@@ -1,16 +1,16 @@
 # I-04 Plan the layer 1 account contract: decision record replacing D-14, glossary, accounts/links/pairwise-subject data model and migrations, key-entry and attach wire, passthrough and web redirect routes, errors, parity ids, manifest schema, threat-model deltas
 
-| Field       | Value                                                                                                                                                                                                                                                                   |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-0)                                                                                                                                                                                   |
-| Size        | 0.8–1.1 engineer-weeks                                                                                                                                                                                                                                                  |
-| Depends on  | none                                                                                                                                                                                                                                                                    |
-| Unblocks    | [I-05](I-05-accounts-core.md), [I-06](I-06-login-providers.md), [I-08](I-08-app-passthrough.md), [I-09](I-09-key-entry-attach.md), [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md), [U-01](U-01-cloud-sync-plan.md) |
-| Role        | `pkey-wire-planner` (planning only)                                                                                                                                                                                                                                     |
-| Plan mode   | yes: planning only; writes `plans/I-04.md`, which needs human approval (merging the plan PR)                                                                                                                                                                            |
-| Gates       | plan mode; human approval                                                                                                                                                                                                                                               |
-| Human input | a legal review of the DPA wording for S-16 §10 D27 (D17–D25 and D27 accepted by the owner on 2026-10-04, D27 pending that review; D26 superseded)                                                                                                                       |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                               |
+| Field       | Value                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-0)                                                                                                                                                                                                                                                                                                                                           |
+| Size        | 0.8–1.1 engineer-weeks                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Depends on  | none                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Unblocks    | [I-05](I-05-accounts-core.md), [I-06](I-06-login-providers.md), [I-08](I-08-app-passthrough.md), [I-09](I-09-key-entry-attach.md), [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md), [U-01](U-01-cloud-sync-plan.md), [PX-W8](PX-W8-manage-url.md), [PX-W9](PX-W9-key-entry-counting.md), [PX-W13](PX-W13-passthrough-metadata.md), [PX-W17](PX-W17-identity-per-product.md) |
+| Role        | `pkey-wire-planner` (planning only)                                                                                                                                                                                                                                                                                                                                                                                             |
+| Plan mode   | yes: planning only; writes `plans/I-04.md`, which needs human approval (merging the plan PR)                                                                                                                                                                                                                                                                                                                                    |
+| Gates       | plan mode; human approval                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Human input | a legal review of the DPA wording for S-16 §10 D27 (D17–D25 and D27 accepted by the owner on 2026-10-04, D27 pending that review; D26 superseded)                                                                                                                                                                                                                                                                               |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 ## Goal
 
@@ -76,6 +76,25 @@ The owner decided on 2026-10-04 that Identity is two layers, with layer 1 (one a
 - **Reconcile the two notes (correction recorded here, 2026-10-04).** S-16 §5.1 first named the device binding `devices.account_id` (since corrected in the note to `devices.subject`); S-17's later revision ([S-17 §5.2](../../notes/S-17-user-data-sync.md#52-data-model)) stores the pairwise subject instead, as `devices.subject`, so no product-tenant row S-17 adds carries the global id. Default to S-17: `devices.subject`. Reword S-16's "the global account id never leaves the Identity service and the portal" to "never leaves the Worker's Identity and Core code", which admits `licenses.account_id`. S-16 names the web code-exchange route `POST /<p>/identity/redirect/token`; S-17 used `/identity/web/token`. Default to S-16's name, which I-15 reuses for native redirects.
 - I-05 creates the binding column ([S-16 §8.1](../../notes/S-16-identity-service.md#81-briefs-that-change)); U-02 builds on it and adds no second migration.
 - `portalUrl` and `signInUrl` are built by the Worker, never carry the key, and are never treated as auth failures by the SDKs.
+
+## Corrections (plan, 2026-10-04)
+
+Departures recorded by [`plans/I-04.md`](../plans/I-04.md) §8, each pending the plan's approval:
+
+- The device-code poll already returns `attachable` (`oidc.ts:1866`); only `ready.subject` is new.
+- Plain licence detach does not clear `devices.subject` (S-17 §5.8 item 2); S-16 §5.1's table listed it.
+- The plan adds `GET /<p>/identity/subject`, `POST /<p>/identity/signout` and `devices.bound_by`,
+  so `subject()` and `signOut()` have a server side (owner question Q3).
+- `account_required` (403, S-17's code) is registered by I-09 for attach without a sign-in, and
+  `license_email_bound` (403) for the email-bound claim rule; both join the brief's code list.
+- No outbound developer webhook channel exists, so `subject.merged` and `subject.deleted` are a
+  pull feed (`subject_events`) in layer 1 (owner question Q8).
+- `portal_license_links` allows several accounts per licence; the migration picks one owner
+  (owner question Q1).
+- Identity on currently requires an `oidc` block in `.pkey/product`; the plan relaxes
+  `invalid_oidc` to fire only when the block is present.
+- Tables land with their first writer: `license_key_entries` and `identity_product_settings` in
+  I-09, the account tables in I-05.
 
 ## Steps
 

@@ -57,6 +57,43 @@ Every sign-in email for every developer leaves one Polaris sender, so its reputa
 - [ ] Staging mail passes SPF, DKIM and DMARC alignment (recorded in the PR).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
+## Corrections (as built, 2026-10-04)
+
+- **No `plans/I-04.md` yet.** The header says this package follows the approved I-04 plan where it
+  names I-18, but I-04 (plan mode) is still `todo` and no plan exists. Nothing here needed it:
+  `email_unavailable` is built as a `reason` in `deliverEmail`'s return value, not as a wire error
+  code, so no `conformance/parity/errors.json` entry, SDK constant or route changes. The route that
+  answers it (the login card, I-07) adds the wire code under I-04's error-code list.
+- **The cap moved.** I-02 charged the per-product daily cap last inside `checkEmailSend`, which
+  answers only `{ send }`. It now lives at the send choke point (`deliverEmail`, passthrough mail
+  only, after suppression), so a capped product can answer `email_unavailable` (a product-level
+  fact naming no recipient), platform mail is never capped, and a suppressed recipient spends no
+  budget. `EmailSendRequest.productDailyCap` is gone; the value resolves from the product's
+  `email_product_caps` row, then the `EMAIL_PRODUCT_DAILY_CAP` var, then the code default, which
+  is 500 (was the 1,000 placeholder).
+- **Stale package numbers in the code.** `emailLimits.ts` and THREAT-MODEL named "I-21" for this
+  package and "I-08" for the email flows (pre-renumbering); they now say I-18 and I-07.
+- **Sender name source.** No `branding_json` field for an app name exists yet, so `<App>` is
+  `products.name`, the product's display name, through the validator; a refused name falls back to
+  the slug and then to no mail, never to "Polaris Key". The validator is exported for the
+  Branding page to reuse at write time.
+- **Reserved names extended.** Beyond S-16's list (Polaris, Polaris Key, plrs, portal, console,
+  admin), whole names that read as the platform's mailboxes (support, security, noreply,
+  postmaster, abuse, billing, account) are refused, and `@` and `\` join the forbidden characters.
+- **Subdomain choice.** The auth sending subdomain is `auth.plrs.im`, sender `noreply@auth.plrs.im`.
+  Staging sends from the same address, so the staging check proves production's records. Prod keeps
+  `noreply@plrs.im` until the owner sets `EMAIL_SENDER_ADDRESS` after onboarding (RUNBOOK
+  "Sign-in email (I-18)").
+- **Bounce events [U resolved].** Cloudflare Email Service pushes no bounce or complaint events to
+  a Worker (docs checked 2026-10-04). The Worker records `E_RECIPIENT_SUPPRESSED` on send;
+  `recordDeliveryEvent` is the hook a poller of the REST suppression list or the GraphQL
+  `emailSendingAdaptive` dataset would call (follow-up; needs an API token).
+- **Apple private relay** is gated by `EMAIL_APPLE_RELAY = "registered"`: until the owner records
+  the registration, relay recipients get `email_unavailable` instead of a send that would bounce.
+- **No console change.** The per-product cap is set with `wrangler d1 execute` (RUNBOOK) until a
+  console page owns it; the console's read-only deploy-variable list does not yet show the three
+  new vars.
+
 ## Verify
 
 ```sh
@@ -66,6 +103,13 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test -- email
 ## Hand-off
 
 - I-07 sends through this; I-06's Apple relay addresses receive mail once the registration is done.
+
+**Integration note (2026-10-04, wave integration `integ/wave-big`).** Merged with the rest of its
+wave; its migration is now `0066_email_delivery.sql` (renumbered after main's `0062` and the
+wave's `0063`–`0065`), and portal wave 1's notice templates send through `deliverEmail`. I-18
+stays `in-review`: acceptance criterion 3 (staging SPF, DKIM and DMARC alignment, recorded in the
+PR) needs the owner's DNS onboarding and Apple registration (RUNBOOK "Sign-in email (I-18)"). Set
+it `done` once both Authentication-Results headers are recorded.
 
 The role agent sets `--set I-18 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:

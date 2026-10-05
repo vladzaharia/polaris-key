@@ -49,6 +49,7 @@ import {
 } from "./select.js";
 import { fdroidInputs, registerFdroid, serveFdroidRelay } from "./fdroid.js";
 import { cachedFeedText, feedCacheKey, feedStateStamp } from "./cache.js";
+import { feedListing } from "../listing/feed.js";
 
 /** The first path segments this module answers (after `/<p>/distribution`). */
 export const FEED_AREAS = [
@@ -252,7 +253,13 @@ async function renderArea(
           outletParam ? `.${sel.outlet.id}` : ""
         }`,
         productName: product.name,
-        listing: sel.outlet.listing,
+        // A-18b: the shared listing model, falling back to the manifest's listing per field.
+        listing: await feedListing(
+          fctx.db,
+          product.slug,
+          "altstore",
+          sel.outlet.listing,
+        ),
         bundleId:
           typeof sel.outlet.identity.bundleId === "string"
             ? sel.outlet.identity.bundleId
@@ -339,7 +346,14 @@ export async function obtainiumConfig(
       ? head.metadata.packageName
       : null);
   if (!packageName) return null;
-  const listing = sel.outlet.listing ?? {};
+  // A-18b: the shared listing model, falling back to the manifest's listing per field.
+  const listing =
+    (await feedListing(
+      fctx.db,
+      fctx.product.slug,
+      "obtainium",
+      sel.outlet.listing,
+    )) ?? {};
   const name = listing.name ?? fctx.product.name;
   const author = listing.developerName ?? name;
   // A live F-Droid repository on this channel is the better source: real version codes,

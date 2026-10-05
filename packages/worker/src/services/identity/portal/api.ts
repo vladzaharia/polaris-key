@@ -1,14 +1,10 @@
-import { Catalog } from "@polaris-key/catalog";
-import type { ConfigEntry } from "@polaris-key/catalog";
-import { platformFromFileName } from "@polaris-key/manifest";
+import { RELEASE_PLATFORMS, platformFromFileName } from "@polaris-key/manifest";
 import { CHANNEL_STABLE } from "@polaris-key/protocol";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import {
   deleteTokenRecord,
-  hashKey,
   isAllowedDownloadRedirectHost,
   isAllowedStorageHost,
-  productFromKey,
   type Db,
   type Env,
 } from "../../../core/platform.js";
@@ -19,18 +15,22 @@ import {
 } from "../../../core/products.js";
 import { licenseEntitled } from "../../../core/entitledAccess.js";
 import { ErrorCode } from "../../../core/errors.js";
-import {
-  getActiveSchema,
-  getDevice,
-  getKey,
-  getLicense,
-  getProduct,
-  setDeviceStatus,
-} from "../../../core/data.js";
-import { resolveEffective } from "../../../core/authz.js";
+import { getDevice, getProduct, setDeviceStatus } from "../../../core/data.js";
 import { licenseUsable } from "../../../core/devices.js";
-import { tighterMax, tighterMin } from "../../../core/entitlements.js";
 import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
+import { registryOrigin } from "../../../core/registryHostname.js";
+import {
+  MAX_LIVE_TOKENS_PER_LICENSE,
+  REGISTRY_TOKEN_DEFAULT_DAYS,
+  REGISTRY_TOKEN_MAX_DAYS,
+  REGISTRY_TOKEN_MIN_DAYS,
+  REGISTRY_TOKEN_USERNAME,
+  REGISTRY_URL_TOKEN_DEFAULT_DAYS,
+  listRegistryTokens,
+  mintRegistryToken,
+  revokeRegistryToken,
+} from "../../../core/registryTokens.js";
+import { PACKAGE_ECOSYSTEMS } from "@polaris-key/manifest";
 import {
   getPortalAccount,
   getPortalArtifact,
@@ -38,7 +38,6 @@ import {
   getPortalLicense,
   getPortalProductSettings,
   getPortalReleaseFacts,
-  linkLicense,
   listLinkedProducts,
   listPortalArtifacts,
   listPortalLicenses,
@@ -64,11 +63,34 @@ import {
   type PortalSession,
 } from "./session.js";
 import { handleMagicStart } from "./auth.js";
-import { portalEmailConfigured, sendPortalNotice } from "./email.js";
+import { entitlementView } from "./entitlements.js";
+import { libraryView, productView } from "./library.js";
+import {
+  handleActivatePreview,
+  handleClaimKey,
+  handleDeviceRename,
+  handleKeyReissue,
+} from "./selfService.js";
+import {
+  portalEmailConfigured,
+  sendNotice,
+  sendSecurityNotice,
+} from "./email.js";
+import {
+  accountDeletedNotice,
+  deviceRemovedNotice,
+  downloadLinkEmail,
+} from "./notices.js";
 import { platformOidcConfig } from "../../../core/platform.js";
 import { portalSecurityHeaders } from "./headers.js";
+import { handleProductDownloads } from "./downloads.js";
+import {
+  discoverCount,
+  handleDiscover,
+  handleDiscoverClaim,
+} from "./discover.js";
 
-function portalJson(
+export function portalJson(
   body: unknown,
   status = 200,
   extra?: Record<string, string>,
@@ -85,7 +107,7 @@ function portalJson(
   });
 }
 
-function err(status: number, code: string, message?: string): Response {
+export function err(status: number, code: string, message?: string): Response {
   return portalJson({ error: code, ...(message ? { message } : {}) }, status);
 }
 
@@ -97,7 +119,7 @@ function forbidden(message?: string): Response {
   return err(403, ErrorCode.Forbidden, message);
 }
 
-function notFound(): Response {
+export function notFound(): Response {
   return err(404, ErrorCode.NotFound);
 }
 
@@ -105,7 +127,7 @@ function isMutation(method: string): boolean {
   return method !== "GET" && method !== "HEAD";
 }
 
-async function readBody(req: Request): Promise<Record<string, unknown>> {
+export async function readBody(req: Request): Promise<Record<string, unknown>> {
   const raw = await req.text();
   if (!raw.trim()) return {};
   try {
@@ -128,52 +150,6 @@ function parseJson<T>(value: string | null, fallback: T): T {
   }
 }
 
-async function visibleCatalogFlags(
-  db: Db,
-  product: string,
-): Promise<Map<string, ConfigEntry>> {
-  const row = await getActiveSchema(db, product);
-  if (!row) return new Map();
-  try {
-    const catalog = new Catalog(JSON.parse(row.catalog_json));
-    return new Map(
-      catalog.entries
-        .filter((entry) => entry.kind === "flag" && entry.userGrant === true)
-        .map((entry) => [entry.key, entry]),
-    );
-  } catch {
-    return new Map();
-  }
-}
-
-async function entitlementView(
-  db: Db,
-  license: PortalLicenseRow,
-  now: number,
-): Promise<Array<{ key: string; label: string; value: unknown }>> {
-  const payload = await resolveEffective(
-    db,
-    license.product,
-    license,
-    null,
-    now,
-    { tighterMin, tighterMax },
-  );
-  const flags = await visibleCatalogFlags(db, license.product);
-  const out: Array<{ key: string; label: string; value: unknown }> = [];
-  for (const [key, entry] of flags) {
-    const managed = payload.entitlements[key];
-    const value = managed?.value ?? entry.default ?? false;
-    if (value === false || value == null) continue;
-    out.push({ key, label: entry.grantLabel ?? entry.label ?? key, value });
-  }
-  const channels = parseJson<string[]>(license.channels_json, []);
-  if (channels.length > 0) {
-    out.push({ key: "channels", label: "Release channels", value: channels });
-  }
-  return out;
-}
-
 function licenseBase(row: PortalLicenseRow): Record<string, unknown> {
   return {
     id: row.id,
@@ -194,7 +170,7 @@ function licenseBase(row: PortalLicenseRow): Record<string, unknown> {
   };
 }
 
-async function shapeLicenseSummary(
+export async function shapeLicenseSummary(
   db: Db,
   row: PortalLicenseRow,
   now: number,
@@ -251,12 +227,14 @@ async function requireSession(
 ): Promise<{ session: PortalSession } | Response> {
   const session = await portalSessionFromRequest(env, req, now);
   if (!session) return unauthorized();
-  const account = await getPortalAccount(db, session.accountId);
+  // I-05: the id resolves through a merge tombstone (30 days), so a cookie of an absorbed
+  // account acts as the survivor, and every handler below reads the resolved id.
+  const account = await getPortalAccount(db, session.accountId, now);
   if (!account || account.status !== "active") return unauthorized();
-  return { session };
+  return { session: { ...session, accountId: account.id } };
 }
 
-async function hasLinkedProductLicense(
+export async function hasLinkedProductLicense(
   db: Db,
   accountId: string,
   product: string,
@@ -285,7 +263,7 @@ export type PortalHooksFor = (
   now: number,
 ) => ServiceHooks;
 
-interface DeliveryGate {
+export interface DeliveryGate {
   product: ProductPublic;
   delivery: Delivery;
 }
@@ -295,7 +273,7 @@ interface DeliveryGate {
  * the product is gone, or Distribution is off for it (byte delivery is Distribution's, and a
  * product with it off serves no downloads anywhere).
  */
-async function deliveryGate(
+export async function deliveryGate(
   db: Db,
   hooksFor: PortalHooksFor | undefined,
   product: string,
@@ -308,13 +286,13 @@ async function deliveryGate(
   return delivery ? { product: loaded, delivery } : null;
 }
 
-type ReleaseFacts = Pick<
+export type ReleaseFacts = Pick<
   PortalReleaseRow,
   "deliverable_id" | "version" | "channel"
 >;
 
 /** May this account download a release under `mode`? (A linked licence is checked by callers.) */
-async function accountMayDownload(
+export async function accountMayDownload(
   db: Db,
   accountId: string,
   gate: DeliveryGate,
@@ -347,7 +325,7 @@ async function accountMayDownload(
  * non-public deliverable is never redirected to the bytes host: the browser holds no device
  * token, so the redirect could only end in a refusal.
  */
-async function downloadTarget(
+export async function downloadTarget(
   env: Env,
   artifact: PortalArtifactRow,
   gate: DeliveryGate,
@@ -427,7 +405,7 @@ function redirectableSourceUrl(artifact: PortalArtifactRow): string | null {
  * — pass `undefined` and keep the account-wide budget, which for a brute-force guard on the
  * caller's OWN account is strictly the stronger choice.
  */
-async function requireActionRateLimit(
+export async function requireActionRateLimit(
   req: Request,
   env: Env,
   session: PortalSession,
@@ -514,15 +492,23 @@ async function handleMeDelete(
     5,
   );
   if (limited) return limited;
-  await sendPortalNotice(
+  // Every verified address hears about it, like any security change (PORTAL.md §6.3): the
+  // recipients are read here, while the rows that name them still exist.
+  await sendSecurityNotice(
     env,
+    db,
+    session.accountId,
     account.primary_email ?? session.email,
-    "Your Polaris Key account has been deleted",
-    "Your Polaris Key portal account, its email addresses and its license links have been " +
-      "erased at your request. Licenses issued to you by a product remain that product's " +
-      "records; contact the product's support to have those erased.",
+    accountDeletedNotice({ origin: new URL(req.url).origin }),
+    now,
   );
-  await deletePortalAccount(db, session.accountId, now);
+  await deletePortalAccount(
+    db,
+    session.accountId,
+    now,
+    env,
+    new URL(req.url).origin,
+  );
   return portalJson({ ok: true, deleted: session.accountId }, 200, {
     "set-cookie": buildPortalClearCookie(),
   });
@@ -580,77 +566,205 @@ async function handleLicenses(
   if (!row) return notFound();
   const settings = await getPortalProductSettings(db, product);
   if (settings.portal_enabled !== 1) return notFound();
-  return portalJson(await shapeLicenseDetail(db, row, now));
+  return portalJson({
+    ...(await shapeLicenseDetail(db, row, now)),
+    // PX-W5 (G7): whether "Get a new key" is offered for this licence — the product's opt-in.
+    canGetNewKey: settings.key_reissue_enabled === 1 && row.status === "active",
+  });
 }
 
-async function handleClaimKey(
+/** One non-public feed a licensee may mint a token for (Q3). */
+interface PackageAccessFeed {
+  ecosystem: string;
+  accessMode: string;
+  baseUrl: string | null;
+}
+
+/**
+ * The product's enabled feeds that are not public, through Distribution's delivery hook (rule 6:
+ * the settings are Distribution's): what the portal's Package access card lists, and the
+ * condition for a licensee to mint at all (Q3: no extra opt-in).
+ */
+async function nonPublicFeeds(
+  db: Db,
+  hooksFor: PortalHooksFor | undefined,
+  product: string,
+  now: number,
+): Promise<PackageAccessFeed[]> {
+  const gate = await deliveryGate(db, hooksFor, product, now);
+  if (!gate) return [];
+  const out: PackageAccessFeed[] = [];
+  for (const eco of PACKAGE_ECOSYSTEMS) {
+    const feed = await gate.delivery.packageFeed(eco);
+    if (
+      !feed ||
+      !feed.enabled ||
+      !feed.ownerEnabled ||
+      !feed.policyEnabled ||
+      (feed.accessMode ?? "public") === "public"
+    )
+      continue;
+    out.push({
+      ecosystem: eco,
+      accessMode: feed.accessMode!,
+      baseUrl: feed.baseUrl ?? null,
+    });
+  }
+  return out;
+}
+
+/**
+ * Package access (F-21, plans/F-20.md §6.5, PORTAL.md's "Package access" card): a licensee's own
+ * registry tokens for one linked licence.
+ *
+ *   GET    /portal/api/licenses/:product/:licenseId/registry-tokens           the card's state:
+ *          `available` (an enabled non-public feed exists), those feeds with their base URLs,
+ *          the tokens this account minted for this licence, the username and the limits
+ *   POST   …/registry-tokens  {label, ecosystem?, presentation?, expiresInDays?}   mint a
+ *          licence-bound read token; the plaintext is in this answer only
+ *   DELETE …/registry-tokens/:tokenId                                         revoke one
+ *
+ * Minting needs the session, the CSRF header (checked for every mutation by the router), a
+ * usable linked licence and an available feed; it spends `portalRegistryToken` (per account,
+ * fail closed). Audited `portal.registry_token.create` and `.revoke`.
+ */
+async function handleRegistryTokens(
   req: Request,
   env: Env,
   db: Db,
   session: PortalSession,
+  product: string,
+  licenseId: string,
+  tokenId: string | undefined,
   now: number,
+  hooksFor: PortalHooksFor | undefined,
 ): Promise<Response> {
+  const settings = await getPortalProductSettings(db, product);
+  if (settings.portal_enabled !== 1) return notFound();
+  const license = await getPortalLicense(
+    db,
+    session.accountId,
+    product,
+    licenseId,
+  );
+  if (!license) return notFound();
+  const filter = { licenseId, portalAccountId: session.accountId };
+  const by = `portal:${session.accountId}`;
+  if (tokenId !== undefined) {
+    if (req.method !== "DELETE") return err(405, "method_not_allowed");
+    const view = await revokeRegistryToken(
+      db,
+      product,
+      tokenId,
+      by,
+      "manual",
+      now,
+      filter,
+    );
+    if (!view) return notFound();
+    await portalAudit(db, {
+      accountId: session.accountId,
+      action: "portal.registry_token.revoke",
+      product,
+      targetKind: "registry_token",
+      targetId: tokenId,
+      summary: `Revoked registry token “${view.label}” (…${view.hint})`,
+      now,
+    });
+    return portalJson({ ok: true, view });
+  }
+  const feeds = await nonPublicFeeds(db, hooksFor, product, now);
+  if (req.method === "GET")
+    return portalJson({
+      available: feeds.length > 0,
+      licenseUsable: licenseUsable(license, now),
+      registryOrigin: registryOrigin(env),
+      username: REGISTRY_TOKEN_USERNAME,
+      feeds,
+      tokens: await listRegistryTokens(db, product, now, filter),
+      limits: {
+        minDays: REGISTRY_TOKEN_MIN_DAYS,
+        maxDays: REGISTRY_TOKEN_MAX_DAYS,
+        defaultDays: REGISTRY_TOKEN_DEFAULT_DAYS,
+        urlDefaultDays: REGISTRY_URL_TOKEN_DEFAULT_DAYS,
+        perLicense: MAX_LIVE_TOKENS_PER_LICENSE,
+      },
+    });
   if (req.method !== "POST") return err(405, "method_not_allowed");
   const limited = await requireActionRateLimit(
     req,
     env,
     session,
-    "portalClaimKey",
+    "portalRegistryToken",
     now,
-    10,
+    20,
+    product,
+    3600,
   );
   if (limited) return limited;
+  if (!licenseUsable(license, now))
+    return err(403, ErrorCode.Forbidden, "this licence is not active");
+  if (feeds.length === 0)
+    return err(
+      409,
+      ErrorCode.BadRequest,
+      "this product has no private package feed",
+    );
   const body = await readBody(req);
-  const key = typeof body.key === "string" ? body.key.trim() : "";
-  const product = productFromKey(key);
-  if (!product) return err(422, ErrorCode.BadRequest, "invalid license key");
-  const settings = await getPortalProductSettings(db, product);
+  const presentation = body.presentation === "url" ? "url" : "header";
+  const ecosystem =
+    body.ecosystem === undefined || body.ecosystem === null
+      ? null
+      : body.ecosystem;
+  const offered = feeds.map((f) => f.ecosystem);
   if (
-    settings.portal_enabled !== 1 ||
-    settings.license_key_claim_enabled !== 1
-  ) {
-    return notFound();
-  }
-  const keyHash = await hashKey(key, env.KEY_HASH_PEPPER);
-  const keyRow = await getKey(db, product, keyHash);
-  if (!keyRow || keyRow.status !== "active") {
-    return err(401, ErrorCode.Unauthorized, "license key not found");
-  }
-  const license = await getLicense(db, product, keyRow.license_id);
-  if (!license) return err(401, ErrorCode.Unauthorized, "license unavailable");
-  await linkLicense(
+    (ecosystem !== null &&
+      (typeof ecosystem !== "string" || !offered.includes(ecosystem))) ||
+    (presentation === "url" && !offered.includes("godot"))
+  )
+    return err(
+      422,
+      ErrorCode.BadRequest,
+      "choose one of the product's private feeds",
+    );
+  const res = await mintRegistryToken(
+    env,
     db,
-    session.accountId,
-    product,
-    license.id,
-    "license-key",
+    {
+      product,
+      label: typeof body.label === "string" ? body.label : "",
+      ecosystems: ecosystem === null ? null : [ecosystem as string],
+      ...(typeof body.expiresInDays === "number"
+        ? { expiresInDays: body.expiresInDays }
+        : {}),
+      binding: "license",
+      licenseId,
+      presentation,
+      createdBy: by,
+      portalAccountId: session.accountId,
+    },
     now,
   );
+  if (!res.ok)
+    return portalJson(
+      {
+        error: res.status === 404 ? ErrorCode.NotFound : ErrorCode.BadRequest,
+        message: res.message,
+        reason: res.reason,
+        ...(res.fields ? { fields: res.fields } : {}),
+      },
+      res.status,
+    );
   await portalAudit(db, {
     accountId: session.accountId,
-    action: "portal.license.claim",
+    action: "portal.registry_token.create",
     product,
-    targetKind: "license",
-    targetId: license.id,
-    summary: "Claimed license with a license key",
+    targetKind: "registry_token",
+    targetId: res.view.tokenId,
+    summary: `Created registry token “${res.view.label}” (…${res.view.hint}) for licence ${licenseId}`,
     now,
   });
-  await sendPortalNotice(
-    env,
-    session.email,
-    "License added to your Polaris Key account",
-    `A license for ${product} was added to your Polaris Key account.`,
-  );
-  const portalRow = await getPortalLicense(
-    db,
-    session.accountId,
-    product,
-    license.id,
-  );
-  return portalJson({
-    ok: true,
-    license: portalRow ? await shapeLicenseSummary(db, portalRow, now) : null,
-  });
+  return portalJson({ ok: true, token: res.token, view: res.view }, 201);
 }
 
 async function handleDeviceDelete(
@@ -699,11 +813,20 @@ async function handleDeviceDelete(
     summary: `Disconnected device ${deviceId}`,
     now,
   });
-  await sendPortalNotice(
+  // A security notice (PORTAL.md §6.3): every verified address, the device by its label and
+  // the product by its name, never the ids.
+  await sendSecurityNotice(
     env,
+    db,
+    session.accountId,
     session.email,
-    "Device disconnected",
-    `Device ${deviceId} was disconnected from your ${product} license.`,
+    deviceRemovedNotice({
+      deviceLabel: device.label,
+      productName: (await getProduct(db, product))?.name,
+      productSlug: product,
+      origin: new URL(req.url).origin,
+    }),
+    now,
   );
   return portalJson({ ok: true, deviceId });
 }
@@ -883,6 +1006,80 @@ async function handleReleases(
   return portalJson({ url: `/download/${encodeURIComponent(token)}` }, 201);
 }
 
+/**
+ * `POST /api/products/<product>/email-download` `{ platform }` — G23, "Email me the download".
+ *
+ * Someone browsing on a phone asks for the desktop build; the Worker mails the account's own
+ * address a deep link to `#/p/<product>/download?platform=<platform>`. The link is the app
+ * route, not a download token: it carries no credential, works only for whoever signs in, and
+ * so cannot be replayed from a forwarded or leaked email.
+ *
+ * Gated like the downloads it points at — portal on, release downloads on, the product running
+ * Release, a license for it linked to the account — and every refusal before the send is the
+ * same 404, so the route says nothing about products the caller has no license for. The rate
+ * limit lands after ownership is proven (R5-05), in the product's shard, and is small and
+ * hourly: it is a mail-sending surface, so its bucket fails closed (`core/rateLimit.ts`).
+ */
+async function handleEmailDownload(
+  req: Request,
+  env: Env,
+  db: Db,
+  session: PortalSession,
+  product: string,
+  now: number,
+): Promise<Response> {
+  if (req.method !== "POST") return err(405, "method_not_allowed");
+  const body = await readBody(req);
+  const platform = typeof body.platform === "string" ? body.platform : "";
+  if (!(RELEASE_PLATFORMS as readonly string[]).includes(platform)) {
+    return err(422, ErrorCode.BadRequest, "unknown platform");
+  }
+  const productRow = await getProduct(db, product);
+  if (!productRow) return notFound();
+  const settings = await getPortalProductSettings(db, product);
+  if (
+    settings.portal_enabled !== 1 ||
+    settings.releases_enabled !== 1 ||
+    !releaseServiceEnabled(productRow.services_json)
+  ) {
+    return notFound();
+  }
+  if (!(await hasLinkedProductLicense(db, session.accountId, product))) {
+    return notFound();
+  }
+  if (!portalEmailConfigured(env)) {
+    return err(503, "email_not_configured", "email is not configured");
+  }
+  const limited = await requireActionRateLimit(
+    req,
+    env,
+    session,
+    "portalEmailDownload",
+    now,
+    EMAIL_DOWNLOAD_PER_HOUR,
+    product,
+    3600,
+  );
+  if (limited) return limited;
+  const account = await getPortalAccount(db, session.accountId);
+  await sendNotice(
+    env,
+    db,
+    account?.primary_email ?? session.email,
+    downloadLinkEmail({
+      productName: productRow.name,
+      productSlug: product,
+      platform,
+      origin: new URL(req.url).origin,
+    }),
+    now,
+  );
+  return portalJson({ ok: true }, 202);
+}
+
+/** "Email me the download" sends per account, per product, per hour. */
+export const EMAIL_DOWNLOAD_PER_HOUR = 5;
+
 export async function handlePortalApi(
   req: Request,
   env: Env,
@@ -929,6 +1126,35 @@ export async function handlePortalApi(
     rest[2] === "devices" &&
     rest[0] &&
     rest[1] &&
+    rest[3] &&
+    rest.length === 4 &&
+    req.method === "PATCH"
+  ) {
+    return handleDeviceRename(
+      req,
+      env,
+      db,
+      session,
+      rest[0],
+      rest[1],
+      rest[3],
+      now,
+    );
+  }
+  if (
+    head === "licenses" &&
+    rest[2] === "keys" &&
+    rest[0] &&
+    rest[1] &&
+    rest.length === 3
+  ) {
+    return handleKeyReissue(req, env, db, session, rest[0], rest[1], now);
+  }
+  if (
+    head === "licenses" &&
+    rest[2] === "devices" &&
+    rest[0] &&
+    rest[1] &&
     rest[3]
   ) {
     return handleDeviceDelete(
@@ -942,12 +1168,84 @@ export async function handlePortalApi(
       now,
     );
   }
+  if (
+    head === "licenses" &&
+    rest[2] === "registry-tokens" &&
+    rest[0] &&
+    rest[1] &&
+    rest.length <= 4
+  )
+    return handleRegistryTokens(
+      req,
+      env,
+      db,
+      session,
+      rest[0],
+      rest[1],
+      rest[3],
+      now,
+      hooksFor,
+    );
   if (head === "licenses") return handleLicenses(db, session, rest, now);
   if (head === "claim" && rest[0] === "license-key") {
     return handleClaimKey(req, env, db, session, now);
   }
+  if (head === "activate" && rest[0] === "preview" && rest.length === 1) {
+    return handleActivatePreview(req, env, db, session, now, hooksFor);
+  }
   if (head === "releases")
     return handleReleases(req, env, db, session, rest, now, hooksFor);
+  // PX-W1: the library and the product page (`library.ts`). Reads only.
+  if (head === "library" && rest.length === 0) {
+    if (req.method !== "GET") return err(405, "method_not_allowed");
+    return portalJson({
+      ...(await libraryView(db, session.accountId, now, hooksFor)),
+      // PX-W10: the Discover count in the nav (§4.16); the offers themselves are `GET /api/discover`.
+      discoverCount: await discoverCount(env, db, session.accountId, now),
+    });
+  }
+  // PX-W10 (G24, G25): Discover's offers and "Add to library" (`discover.ts`).
+  if (head === "discover" && rest.length === 0) {
+    return handleDiscover(req, env, db, session, now, hooksFor);
+  }
+  if (
+    head === "discover" &&
+    rest.length === 2 &&
+    rest[0] &&
+    rest[1] === "claim"
+  ) {
+    return handleDiscoverClaim(req, env, db, session, rest[0], now);
+  }
+  if (head === "products" && rest.length === 1 && rest[0]) {
+    if (req.method !== "GET") return err(405, "method_not_allowed");
+    const view = await productView(
+      db,
+      session.accountId,
+      rest[0],
+      now,
+      hooksFor,
+    );
+    return view ? portalJson(view) : notFound();
+  }
+  // PX-W2 (G2, G4): one product's downloads and store links, per platform (`downloads.ts`).
+  if (head === "products" && rest.length === 2 && rest[1] === "downloads")
+    return handleProductDownloads(
+      req,
+      env,
+      db,
+      session,
+      rest[0]!,
+      now,
+      hooksFor,
+    );
+  if (
+    head === "products" &&
+    rest.length === 2 &&
+    rest[0] &&
+    rest[1] === "email-download"
+  ) {
+    return handleEmailDownload(req, env, db, session, rest[0], now);
+  }
   return notFound();
 }
 
@@ -994,23 +1292,12 @@ export async function handlePortalDownload(
   }
   const scope = parseJson<{ portalAccountId?: string }>(row.scope_json, {});
   if (!scope.portalAccountId) return notFound();
-  const account = await getPortalAccount(db, scope.portalAccountId);
+  const account = await getPortalAccount(db, scope.portalAccountId, now);
   if (!account || account.status !== "active") return notFound();
-  if (
-    !(await hasLinkedProductLicense(db, scope.portalAccountId, row.product))
-  ) {
+  if (!(await hasLinkedProductLicense(db, account.id, row.product))) {
     return notFound();
   }
-  if (
-    !(await accountMayDownload(
-      db,
-      scope.portalAccountId,
-      gate,
-      mode,
-      facts,
-      now,
-    ))
-  ) {
+  if (!(await accountMayDownload(db, account.id, gate, mode, facts, now))) {
     return notFound();
   }
   // R9-05b: the conditional UPDATE IS the single-use gate. A concurrent redemption of the same

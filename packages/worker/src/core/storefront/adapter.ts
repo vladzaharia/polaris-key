@@ -24,8 +24,9 @@
  * WHERE THE CLI READS IT (S-15 §6.1 left the choice to A-18a): the declarations here are plain,
  * dependency-free data (`test/boundaries.test.ts` keeps `core/adapters` and `core/storefront` free
  * of service imports, and the capability, CI and deep-link parts free of any import but each
- * other), so the CLI's copy is a GENERATED JSON, emitted when the CLI first needs it (A-18h, the
- * first CI-plane adapter). No new package and nothing in `shared-protocol`, which is wire.
+ * other), so the CLI's copy is GENERATED: `packages/cli/src/storefronts/ciPlane.generated.ts`
+ * (A-18h, `pnpm gen:storefront-ci`), a straight serialise of the CI plane and the CI-plane
+ * adapters. No new package and nothing in `shared-protocol`, which is wire.
  *
  * Runtime behaviour (`connect`, `listApps`, `readListing`, `plan`, `runStep`, `status`) is
  * `StorefrontRuntime`, implemented per plane beside the existing connector
@@ -39,11 +40,20 @@ import type { ConfirmationPhrase } from "./confirm.js";
 import type { CompiledGate, GateRule } from "./gate.js";
 import type { ListingProfile } from "./listing.js";
 import { APP_STORE_ADAPTER } from "./stores/appStore.js";
+import { GOOGLE_PLAY_ADAPTER } from "./stores/googlePlay.js";
+import { MICROSOFT_STORE_ADAPTER } from "./stores/microsoftStore.js";
+import { ITCH_ADAPTER } from "./stores/itch.js";
+import { SNAP_ADAPTER } from "./stores/snap.js";
 
 export type { ListingProfile } from "./listing.js";
 
 /** The storefront adapters. Worker-internal ids; each maps onto existing outlet kinds. */
-export type StorefrontId = "app-store";
+export type StorefrontId =
+  | "app-store"
+  | "google-play"
+  | "microsoft-store"
+  | "itch"
+  | "snap";
 
 /** The operations a storefront declares support for (S-15 §6.1). */
 export const STOREFRONT_OPS = [
@@ -119,7 +129,7 @@ export interface StorefrontAdapter extends Adapter<StorefrontId, StorefrontOp> {
   /** The Worker-plane gate; null when the adapter has no Worker plane. */
   readonly gate: CompiledGate<GateRule> | null;
   readonly never: NeverList;
-  /** The CI-plane command allow-list; null when it has no CI plane (A-18h fills the first). */
+  /** The CI-plane command allow-list (`ciPlane.ts`); null when it has no CI plane. */
   readonly ci: CiAllowList | null;
   readonly listing: ListingProfile;
   readonly confirmation: ConfirmationPhrase;
@@ -148,6 +158,10 @@ export interface StorefrontRuntime<Ctx, PinnedCtx> {
 /** THE REGISTRY: one line per storefront. */
 export const STOREFRONT_ADAPTERS: readonly StorefrontAdapter[] = [
   APP_STORE_ADAPTER,
+  GOOGLE_PLAY_ADAPTER,
+  MICROSOFT_STORE_ADAPTER,
+  ITCH_ADAPTER,
+  SNAP_ADAPTER,
 ];
 
 /** An adapter by id, or null. */

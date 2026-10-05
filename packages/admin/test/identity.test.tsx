@@ -70,6 +70,9 @@ const PORTAL: PortalProductSettings = {
   licenseKeyClaimEnabled: false,
   releasesEnabled: true,
   autoLinkEnabled: null,
+  keyReissueEnabled: false,
+  claimByKey: true,
+  discoverEnabled: true,
   branding: null,
   modifiedAt: 1_700_000_000,
 };
@@ -217,6 +220,37 @@ describe("Identity → Portal", () => {
     expect(checked(toggle("Release downloads"))).toBe(true);
   });
 
+  it("renders the two license-key switches (PX-W5) and saves a change to them", async () => {
+    renderPortal();
+    await waitFor(() =>
+      expect(checked(toggle("Customers can get a new key"))).toBe(false),
+    );
+    expect(checked(toggle("Add by key without the purchase email"))).toBe(true);
+    await userEvent.click(toggle("Customers can get a new key"));
+    await userEvent.click(saveButton()!);
+    await waitFor(() => expect(updatePortalSettings).toHaveBeenCalledTimes(1));
+    expect(updatePortalSettings.mock.calls[0]![1]).toMatchObject({
+      keyReissueEnabled: true,
+      claimByKey: true,
+    });
+  });
+
+  it("renders the Discover switch (PX-W10), on by default, and saves turning it off", async () => {
+    portalSettings.mockResolvedValue({
+      settings: { ...PORTAL, discoverEnabled: undefined },
+    });
+    renderPortal();
+    await waitFor(() =>
+      expect(checked(toggle("Offer on Discover"))).toBe(true),
+    );
+    await userEvent.click(toggle("Offer on Discover"));
+    await userEvent.click(saveButton()!);
+    await waitFor(() => expect(updatePortalSettings).toHaveBeenCalledTimes(1));
+    expect(updatePortalSettings.mock.calls[0]![1]).toMatchObject({
+      discoverEnabled: false,
+    });
+  });
+
   it("reads the portal state through the identity endpoint, not the copy on the product row", async () => {
     // `identity/portal` OWNS the table. Seeding from the product row's embedded copy would show a
     // value a save does not round-trip against.
@@ -276,6 +310,9 @@ describe("Identity → Portal", () => {
       magicEnabled: true,
       licenseKeyClaimEnabled: false,
       releasesEnabled: true,
+      keyReissueEnabled: false,
+      claimByKey: true,
+      discoverEnabled: true,
       autoLinkEnabled: null,
     });
     // `branding` is a blob this page only reads; sending it back could overwrite it.
@@ -386,6 +423,9 @@ describe("Identity → Portal", () => {
       "Email magic links",
       "License-key claim",
       "Release downloads",
+      "Customers can get a new key",
+      "Add by key without the purchase email",
+      "Offer on Discover",
     ]) {
       expect(toggle(name).hasAttribute("disabled"), name).toBe(true);
     }
@@ -396,7 +436,7 @@ describe("Identity → Portal", () => {
     ).toBe(true);
     expect(
       screen.getAllByText("Turn on the customer portal to change this.").length,
-    ).toBe(2);
+    ).toBe(4);
 
     // Turning the portal on in the draft unlocks them.
     await userEvent.click(toggle("Customer portal"));

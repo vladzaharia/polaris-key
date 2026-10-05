@@ -20,7 +20,12 @@ import { corsPreflight, isCorsCoveredRoute, withCors } from "./core/cors.js";
 import { handleDiscovery } from "./core/discovery.js";
 import { handleJwks, handleTrustManifest } from "./core/trust.js";
 import { dispatchService } from "./core/registry.js";
-import { BYTE_ROUTES, REGISTRY_ROUTES, SERVICES } from "./mount.js";
+import {
+  BYTE_ROUTES,
+  REGISTRY_OWNERLESS_ROUTES,
+  REGISTRY_ROUTES,
+  SERVICES,
+} from "./mount.js";
 import { handleAdmin } from "./admin/index.js";
 import { handleDocs } from "./docs.js";
 // The root customer portal is a PLATFORM surface implemented by the Identity service: one
@@ -102,7 +107,15 @@ export async function dispatchWith(
   // root. With `PKG_ORIGIN` unset (or equal to the bytes host, checked above) this is always
   // false, and routing is exactly what it was before the registry host existed.
   if (isRegistryHost(url, env))
-    return dispatchRegistryHost(req, env, db, REGISTRY_ROUTES, SERVICES, exec);
+    return dispatchRegistryHost(
+      req,
+      env,
+      db,
+      REGISTRY_ROUTES,
+      SERVICES,
+      exec,
+      REGISTRY_OWNERLESS_ROUTES,
+    );
   const route = matchRoute(url.pathname);
   // The portal is one account across every product, so it has no product to dispatch on; when
   // it reaches a product's downloads it asks for that product's hooks (P2b-04: the delivery
@@ -149,6 +162,7 @@ export async function dispatchWith(
     case "portalCallback":
     case "portalLogout":
     case "portalMagicVerify":
+    case "portalMedia":
       return handlePortal(req, env, db, url.pathname, { hooksFor });
     case "portalDownload":
       return handlePortal(

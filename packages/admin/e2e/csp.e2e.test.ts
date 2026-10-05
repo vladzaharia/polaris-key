@@ -434,6 +434,9 @@ describe("overlays under the Worker's CSP", () => {
       ["#/platform/feeds/npm", "npm"],
       ["#/platform/feeds/npm/setup", "npm"],
       ["#/platform/feeds/oci/settings", "Docker / OCI"],
+      ["#/platform/feeds/pypi/setup", "PyPI"],
+      ["#/platform/feeds/swift/settings", "Swift"],
+      ["#/platform/feeds/godot/settings", "Godot"],
       ["#/platform/feeds/npm/activity", "npm"],
       [
         "#/platform/feeds/npm/packages/polaris-key/%40polaris-key%2Fnode",
@@ -459,6 +462,54 @@ describe("overlays under the Worker's CSP", () => {
       await page.getByRole("menuitem", { name: "Yank…" }).click();
       await page.getByRole("alertdialog").waitFor();
     });
+    await page.context().close();
+  });
+
+  it("Registry tokens (F-21): the new-token dialog, the revoke confirmation and the access switch", async () => {
+    const page = await open({ width: 1440, height: 900 });
+    await violations(page);
+    await page.evaluate(() => {
+      location.hash = "#/platform/feeds/tokens";
+    });
+    await page
+      .locator("[data-page-title]", { hasText: "Registry tokens" })
+      .first()
+      .waitFor();
+    expect(await violations(page), "platform tokens: CSP violations").toEqual(
+      [],
+    );
+    await page.evaluate(() => {
+      location.hash = "#/p/djdl/distribution/feeds/tokens";
+    });
+    await page
+      .locator("[data-page-title]", { hasText: "Registry tokens" })
+      .first()
+      .waitFor();
+    await check(page, "new registry token dialog", async () => {
+      await page.getByRole("button", { name: "New token…" }).click();
+      await page.getByRole("dialog", { name: "New registry token" }).waitFor();
+    });
+    await check(page, "registry token revoke", async () => {
+      await page.getByRole("button", { name: "Actions for CI pull" }).click();
+      await page.getByRole("menuitem", { name: "Revoke…" }).click();
+      await page.getByRole("alertdialog").waitFor();
+    });
+    await page.evaluate(() => {
+      location.hash = "#/p/djdl/distribution/feeds/npm/settings";
+    });
+    await page
+      .locator("[data-page-title]", { hasText: "npm" })
+      .first()
+      .waitFor();
+    await check(page, "leaving public access", async () => {
+      const access = page.getByRole("form", { name: "Access" });
+      await access.getByRole("radio", { name: /Licensed/ }).click();
+      await access.getByRole("button", { name: /^Save/ }).click();
+      await page.getByRole("alertdialog").waitFor();
+    });
+    expect(await violations(page), "registry tokens: CSP violations").toEqual(
+      [],
+    );
     await page.context().close();
   });
 

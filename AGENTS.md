@@ -34,8 +34,10 @@ sdks/
   kotlin/            Gradle build              :core (JVM: verify, cache, sync, stages, devices),
                                                the :license :config :identity :release services,
                                                :update and :packs, the umbrella :sdk + the
-                                               :conformance runner;
-                                               :platform Android backend
+                                               :conformance runner; Android: the standalone
+                                               :platform backend, the :android glue, the
+                                               Compose :ui kit and :godot (the Godot binding,
+                                               in sdks/godot/native/android, on :platform only)
 conformance/         corpus/v2 ONLY (one signer's golden vectors) + the Node and browser runners
                      + parity/ (features.json registry, errors.json + enums.json; each SDK
                        keeps its own parity.json)
@@ -136,7 +138,8 @@ pnpm format                      # prettier check over md/json too (format:fix t
 ```
 
 `pnpm test:all` runs turbo test + Python pytest + Swift `swift test` + the Godot runner + the
-Kotlin `:core` and `:conformance` tests in one shot. Note that
+Kotlin JVM module and `:conformance` tests in one shot (the Android modules need an Android SDK;
+see `sdks/kotlin/README.md`). Note that
 `pnpm build` does **not** typecheck the worker (esbuild strips types), so `pnpm typecheck` is not
 redundant with it — that gap once hid five broken type-only imports.
 
@@ -177,21 +180,23 @@ a deliberate, all-languages event: contract → catalog → corpus → SDKs, in 
 feature is not done until every implementation passes (client-core, Node, React, Python, Swift,
 Godot, and Kotlin for the features its parity manifest has implemented).
 
-**3. Generated files carry a GENERATED banner — regenerate, never hand-edit.** Six families:
+**3. Generated files carry a GENERATED banner — regenerate, never hand-edit.** Seven families:
 
-| File(s)                                                                                                                                                                          | Written by                                                                                                                    |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `packages/worker/src/docsCsp.generated.ts`                                                                                                                                       | the docs build (`scripts/collect-csp-hashes.mjs`)                                                                             |
-| `packages/docs/src/content/docs/reference/*.mdx`                                                                                                                                 | `pnpm --filter @polaris-key/docs gen`                                                                                         |
-| `*services.generated.ts`, `_services.py`, `ServiceSlug.generated.swift`, `services_generated.gd`, `ServiceSlug.generated.kt`                                                     | `pnpm gen:services` from `tools/services.json`                                                                                |
-| `constants.generated.ts`, `constants_generated.py`, `Constants.generated.swift`, `constants_generated.gd`, `Constants.generated.kt`                                              | `pnpm gen:constants` from `conformance/parity/` (errors, enums, features), the service table and `@polaris-key/protocol/core` |
-| `actions/publish/dist/index.js`                                                                                                                                                  | `pnpm --filter @polaris-key/cli bundle:action` (esbuild) from `@polaris-key/cli` and the built workspace packages it imports  |
-| `packages/brand/{css/tokens.css,css/theme.css,tokens.json,src/generated/*}`, `brand_tokens_generated.gd`, `BrandTokens.generated.swift`, `sdks/godot/addons/polaris_key/brand/*` | `pnpm gen:brand` from `packages/brand/src/tokens/` and the launch-kit copy in `packages/brand/kit/`                           |
+| File(s)                                                                                                                                                                          | Written by                                                                                                                                          |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/worker/src/docsCsp.generated.ts`                                                                                                                                       | the docs build (`scripts/collect-csp-hashes.mjs`)                                                                                                   |
+| `packages/docs/src/content/docs/reference/*.mdx`                                                                                                                                 | `pnpm --filter @polaris-key/docs gen`                                                                                                               |
+| `*services.generated.ts`, `_services.py`, `ServiceSlug.generated.swift`, `services_generated.gd`, `ServiceSlug.generated.kt`                                                     | `pnpm gen:services` from `tools/services.json`                                                                                                      |
+| `constants.generated.ts`, `constants_generated.py`, `Constants.generated.swift`, `constants_generated.gd`, `Constants.generated.kt`                                              | `pnpm gen:constants` from `conformance/parity/` (errors, enums, features), the service table and `@polaris-key/protocol/core`                       |
+| `actions/publish/dist/index.js`                                                                                                                                                  | `pnpm --filter @polaris-key/cli bundle:action` (esbuild) from `@polaris-key/cli` and the built workspace packages it imports                        |
+| `packages/cli/src/storefronts/ciPlane.generated.ts`                                                                                                                              | `pnpm gen:storefront-ci` from the Worker's CI plane (`packages/worker/src/core/storefront/ciPlane.ts`) and its CI-plane storefront adapters (A-18h) |
+| `packages/brand/{css/tokens.css,css/theme.css,tokens.json,src/generated/*}`, `brand_tokens_generated.gd`, `BrandTokens.generated.swift`, `sdks/godot/addons/polaris_key/brand/*` | `pnpm gen:brand` from `packages/brand/src/tokens/` and the launch-kit copy in `packages/brand/kit/`                                                 |
 
 All are committed on purpose (reviewable diffs; the site and packages build without running
 generators) and all have a freshness check (`pnpm gen:services -- --check` for the service
 table, `pnpm gen:constants -- --check` for the SDK constants, `pnpm gen:brand -- --check` for the
-brand tokens, `pnpm --filter @polaris-key/cli bundle:action -- --check` for the Action bundle), so a hand edit fails CI rather than shipping. The
+brand tokens, `pnpm --filter @polaris-key/cli bundle:action -- --check` for the Action bundle,
+`pnpm gen:storefront-ci -- --check` and the worker suite's `ciPlaneGenerated` test for the CI plane), so a hand edit fails CI rather than shipping. The
 Action bundle inlines `@polaris-key/manifest`, `@polaris-key/catalog` and `@polaris-key/protocol`
 from their built `dist/`, so a change to any of them, or to the CLI, rebundles after `pnpm build`. A new error code needs an entry in `conformance/parity/errors.json` first: the
 constants generator refuses a Worker code it lacks (and a boot-stage code pinned in
@@ -225,7 +230,7 @@ companion apps. See `docs/PRIVACY.md`.
 
 **8. The naming is Polaris Key.** Packages `@polaris-key/*`, PyPI `polaris-key`, SwiftPM
 `PolarisKey`, CLI bin `pkey`, manifest dir `.pkey/`, license keys `pkey_`, device tokens `pkeyt_`,
-headers `X-PKey-*`, env `PKEY_CONFIG_*`, issuer `key.plrs.im`. The `@plrs` / `polaris-suite` /
+CI tokens `pkeyci_`, registry tokens `pkeyr_`, headers `X-PKey-*`, env `PKEY_CONFIG_*`, issuer `key.plrs.im`. The `@plrs` / `polaris-suite` /
 `plrs` / `.polaris/` states that appear in mid-branch history and in
 `docs/superpowers/plans/2026-08-26-polaris-suite-services.md` are **dead** — Amendment A1 reverted
 the naming layer. Read the spec's closeout, not that plan, for final state.

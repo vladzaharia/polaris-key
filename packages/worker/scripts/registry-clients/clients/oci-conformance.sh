@@ -17,6 +17,10 @@ fi
 manifest="$(digest_of 1.1.0-beta.1)"
 blob="$(curl -fsS "$REGISTRY/v2/$NAME/manifests/1.1.0-beta.1" | json_field config.digest)"
 mkdir -p "$work/report"
+# F-21: against an authenticated feed, the suite authenticates with the registry token.
+if [ -n "${REGISTRY_AUTH:-}" ]; then
+  export OCI_USERNAME=__token__ OCI_PASSWORD="$PKEY_REGISTRY_TOKEN"
+fi
 OCI_ROOT_URL="$REGISTRY" OCI_NAMESPACE="$NAME" OCI_TEST_PULL=1 \
   OCI_TAG_NAME=1.1.0-beta.1 OCI_MANIFEST_DIGEST="$manifest" OCI_BLOB_DIGEST="$blob" \
   OCI_HIDE_SKIPPED_WORKFLOWS=1 OCI_REPORT_DIR="$work/report" "$bin"

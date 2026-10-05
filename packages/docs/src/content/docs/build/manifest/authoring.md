@@ -7,7 +7,7 @@ description: "The .pkey/ files and the ConfigEntry shape — schema, product, an
 
 A Polaris Key product is **data, not code**. Its catalog, metadata, and release coordinates
 live in a `.pkey/` directory in the product's own repo. The Worker, the admin SPA, and all
-five SDKs read that data;
+six SDKs read that data;
 adding or changing a product never requires a Worker redeploy.
 
 This doc is the source of truth for the `.pkey/` files and the `ConfigEntry` shape, using
@@ -594,8 +594,8 @@ publishing:
 - Nothing else is a field. Link and resync add the repository's numeric id and owner id from
   GitHub; the checks that the ref is protected, the runner is GitHub-hosted and the event is
   `push`, `release` or `workflow_dispatch` are fixed; the scopes (default `release:publish`,
-  `release:promote`, `distribution:report`; `release:yank` and `distribution:rollout` are
-  opt-in) are an operator setting. A repository cannot
+  `release:promote`, `distribution:report`; `release:yank`, `distribution:rollout`,
+  `distribution:feeds` and `distribution:listing` are opt-in) are an operator setting. A repository cannot
   loosen its own policy.
 - The ref the workflow runs on must be covered by a branch or tag ruleset, or GitHub reports
   `ref_protected: false` and the exchange is refused. Give the environment required reviewers

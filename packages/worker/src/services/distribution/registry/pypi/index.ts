@@ -4,7 +4,7 @@
  * PyPI-specific stays in this directory; `registry/index.ts` lists it in `FEED_ADAPTERS`.
  */
 
-import { PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
+import { FEED_SETUP, PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
 import {
   extBoolean,
   rendererOf,
@@ -36,10 +36,7 @@ export const PYPI_ADAPTER: FeedAdapter<"pypi"> = defineFeedAdapter({
     search: false,
     authChallenge: "basic",
   },
-  setup: {
-    clients: ["pip", "uv", "Poetry"],
-    inputs: ["baseUrl", "owner", "package.name", "package.version"],
-  },
+  setup: FEED_SETUP.pypi,
   openapi: [
     ["/pypi/{owner}/simple/", ["get", "head"], "pypi.simple.index"],
     ["/pypi/{owner}/simple/{project}/", ["get", "head"], "pypi.simple.project"],

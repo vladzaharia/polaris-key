@@ -21,13 +21,16 @@ import {
  * dark and the light theme, over realistic data (`layoutFixtures.ts`): a populated product, a
  * product with a long name and an empty product. `probeLayout` (`layoutProbe.ts`) then measures
  * the page inside the console's own scroll container (`main#content`), every open drawer's scroller
- * and the document, and fails on any breach of the four invariants:
+ * and the document, and fails on any breach of the five invariants:
  *
  *   1. no trailing space below the last visible content (beyond the page's bottom padding);
  *   2. side-by-side cards share their outer height and footer edge, and no card runs far past its
  *      own content, whatever sits beside it (from 1024px);
  *   3. settings-style rows, switches, numeric/date table columns and header actions are flush right;
- *   4. no sideways scroll, no clipped or spilled text.
+ *   4. no sideways scroll, no clipped or spilled text, no text crushed to a sliver, nothing past
+ *      its card's edge;
+ *   5. card headers keep their title's height and centre line; a menu's action grid has no
+ *      empty cell.
  *
  * A per-page report is printed, and written as JSON to `PK_LAYOUT_REPORT` when set. With
  * `PK_SHOTS_DIR` set it also saves a screenshot of every page (the top, and the bottom of the
@@ -129,6 +132,33 @@ function cases(): Case[] {
       act: async (page) => {
         await page.getByRole("button", { name: "Set secret" }).first().click();
         await page.getByRole("dialog").first().waitFor();
+      },
+    },
+    {
+      // The product switcher's menu: the product list and its one-column footer.
+      name: "menu:product-switcher",
+      hash: "#/p/djdl",
+      act: async (page) => {
+        await page.locator('button[aria-label^="Product:"]').first().click();
+        await page.locator("[cmdk-root]").first().waitFor();
+      },
+    },
+    {
+      // A finished setup checklist reopened from the header's "Setup checklist" action: its
+      // header (All done · Hide) keeps the sibling panels' height.
+      name: "complete:overview+setup",
+      hash: "#/p/acme",
+      act: async (page) => {
+        const inline = page.getByRole("button", { name: "Setup checklist" });
+        if (await inline.count()) await inline.first().click();
+        else {
+          await page
+            .getByRole("button", { name: "More actions" })
+            .first()
+            .click();
+          await page.getByRole("menuitem", { name: "Setup checklist" }).click();
+        }
+        await page.getByRole("heading", { name: "Setup" }).waitFor();
       },
     },
     {

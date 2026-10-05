@@ -23,7 +23,7 @@ import { describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
 import { matchRoute } from "../src/router.js";
 import { CORS_SERVICE_PATHS, isCorsCoveredRoute } from "../src/core/cors.js";
-import { REGISTRY_ROUTES } from "../src/mount.js";
+import { REGISTRY_OWNERLESS_ROUTES, REGISTRY_ROUTES } from "../src/mount.js";
 import { FEED_ADAPTERS } from "../src/services/distribution/registry/index.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -47,6 +47,8 @@ const NARRATIVE_ONLY = new Set([
   "portalLogout",
   "portalMagicVerify",
   "portalDownload",
+  // `portalApi` stays narrative as a kind: its PX-W1 library and product routes are pinned in
+  // PORTAL_KIND_PATHS below; the rest of `/api/*` is documented on the docs site.
   "products",
   "githubWebhook",
   "deployHook",
@@ -67,6 +69,23 @@ const CORE_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
   register: [["/{product}/devices/register", ["post"]]],
   attestChallenge: [["/{product}/devices/attest/challenge", ["post"]]],
   attest: [["/{product}/devices/attest", ["post"]]],
+};
+
+/**
+ * Root portal routes the spec documents (PX-W1, rule 10), by route kind. `portalMedia` is
+ * documented whole; `portalApi` is narrative as a kind, and only the routes listed here are in
+ * the spec. None of them is product-scoped or CORS-covered: they share this origin with the
+ * portal session cookie.
+ */
+const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
+  portalMedia: [["/media/{product}/{asset}", ["get"]]],
+  portalApi: [
+    ["/api/library", ["get"]],
+    ["/api/products/{product}", ["get"]],
+    // PX-W10 (G24, G25): Discover's offers and "Add to library".
+    ["/api/discover", ["get"]],
+    ["/api/discover/{product}/claim", ["post"]],
+  ],
 };
 
 /**
@@ -118,6 +137,8 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/distribution/rollouts/{outlet}/{channel}/complete", ["post"]],
   // P2b-03: the CI report of availability, submissions and signing keys.
   ["/{product}/distribution/report", ["post"]],
+  // A-18h: a CI-plane store's projection of the listing model.
+  ["/{product}/distribution/listing/{store}", ["get"]],
   // P5-02: the App Store Connect webhook (Apple → Worker, HMAC-signed).
   ["/{product}/distribution/hooks/asc", ["post"]],
   // P6-03: the Sentry alert webhook (Sentry → Worker, HMAC-signed); opens halt candidates.
@@ -136,6 +157,8 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/distribution/scoop/{channel}.json", ["get"]],
   ["/{product}/distribution/flathub/{channel}.json", ["get"]],
   ["/{product}/distribution/feeds/fdroid/{channel}", ["get", "post"]],
+  // A-18d: the listing assets CI derived, registered into the listing model.
+  ["/{product}/distribution/listing/assets", ["post"]],
   // P2b-06: the public download page's model (console host) and the page (bytes host only).
   ["/{product}/distribution/download.json", ["get"]],
   ["/{product}/distribution/download", ["get"]],
@@ -188,7 +211,8 @@ const ALIAS_PATHS: Array<[string, string[]]> = [
  * The registry host's paths (F-02, plans/F-01.md §6.10): `pkg.plrs.im` answers only these, each
  * documented under a path-level `servers` override with tag `registry`. The third column names
  * what answers: `host` for the dispatcher's own fixed answers (the landing page, OCI's `/v2/`
- * root, Swift's login, OCI's token endpoint), else the `REGISTRY_ROUTES` entry by name.
+ * root), else the `REGISTRY_ROUTES` or `REGISTRY_OWNERLESS_ROUTES` entry by name (F-21: Swift's
+ * login and OCI's token service are routes now).
  *
  * The feed rows are each feed adapter's own `openapi` declaration (`FeedAdapter.openapi`, the
  * feed-adapter contract): a feed adds its paths there, in its own directory, and every check
@@ -222,7 +246,11 @@ describe("router → spec", () => {
       (m) => m[1]!,
     );
     expect(kinds.length).toBeGreaterThan(15);
-    const documented = new Set([...Object.keys(CORE_KIND_PATHS), "service"]);
+    const documented = new Set([
+      ...Object.keys(CORE_KIND_PATHS),
+      ...Object.keys(PORTAL_KIND_PATHS),
+      "service",
+    ]);
     const unhandled = [...new Set(kinds)].filter(
       (kind) => !documented.has(kind) && !NARRATIVE_ONLY.has(kind),
     );
@@ -238,6 +266,22 @@ describe("router → spec", () => {
         for (const method of methods) {
           expect(specMethods(path), `${method} ${path}`).toContain(method);
         }
+      }
+    });
+  }
+
+  for (const [kind, paths] of Object.entries(PORTAL_KIND_PATHS)) {
+    it(`portal kind "${kind}" routes are documented, tagged portal, and route there`, () => {
+      for (const [path, methods] of paths) {
+        expect(specMethods(path).sort(), path).toEqual([...methods].sort());
+        for (const method of methods) {
+          const op = spec.paths[path]![method] as { tags?: string[] };
+          expect(op.tags, `${method} ${path}`).toEqual(["portal"]);
+        }
+        expect(spec.paths[path]?.options, path).toBeUndefined();
+        const route = matchRoute(concrete(path));
+        expect(route.kind, path).toBe(kind);
+        expect(isCorsCoveredRoute(route), path).toBe(false);
       }
     });
   }
@@ -267,6 +311,7 @@ describe("spec → router", () => {
         ...SERVICE_PATHS,
         ...ALIAS_PATHS,
         ...REGISTRY_PATHS,
+        ...Object.values(PORTAL_KIND_PATHS).flat(),
       ].map(([path]) => path),
     );
     const phantom = Object.keys(spec.paths).filter(
@@ -319,8 +364,11 @@ describe("registry host (F-02, rule 10)", () => {
     }
   });
 
-  it("REGISTRY_PATHS and REGISTRY_ROUTES agree in both directions", () => {
-    const routeNames = REGISTRY_ROUTES.map((r) => r.name);
+  it("REGISTRY_PATHS and the registry routes (owned and owner-less) agree in both directions", () => {
+    const routeNames = [
+      ...REGISTRY_ROUTES.map((r) => r.name),
+      ...REGISTRY_OWNERLESS_ROUTES.map((r) => r.name),
+    ];
     const documented = new Set(
       REGISTRY_PATHS.map(([, , owner]) => owner).filter((o) => o !== "host"),
     );
@@ -374,6 +422,8 @@ const CORS_EXCLUDED = new Set([
   "/{product}/distribution/rollouts/{outlet}/{channel}/complete",
   // P2b-03: the CI report route, authenticated by a `pkeyci_` bearer.
   "/{product}/distribution/report",
+  // A-18h: the CI listing read, authenticated by a `pkeyci_` bearer.
+  "/{product}/distribution/listing/{store}",
   // P5-02: a store webhook, called server-to-server by App Store Connect.
   "/{product}/distribution/hooks/asc",
   // P6-02: device attestation — only a native iOS or Android build can attest, never a page.
@@ -389,6 +439,8 @@ const CORS_EXCLUDED = new Set([
   "/{product}/distribution/hooks/play-rtdn",
   // P2b-05: the F-Droid CI route, authenticated by a `pkeyci_` bearer.
   "/{product}/distribution/feeds/fdroid/{channel}",
+  // A-18d: the listing assets register, authenticated by a `pkeyci_` bearer.
+  "/{product}/distribution/listing/assets",
   // P2b-06: the download page and its alias — HTML on the bytes host, a top-level navigation.
   "/{product}/distribution/download",
   "/{product}",
@@ -429,6 +481,7 @@ function concrete(template: string): string {
     fileName: "Acme-1.2.3-full.nupkg",
     pack: "acme.core",
     variant: "default",
+    store: "snap",
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];
@@ -497,6 +550,8 @@ describe("CORS preflight (P0-05)", () => {
       "/docs/",
       "/webhooks/github",
       "/download/tok",
+      "/media/acme/icon",
+      "/api/library",
     ]) {
       expect(isCorsCoveredRoute(matchRoute(path)), path).toBe(false);
     }

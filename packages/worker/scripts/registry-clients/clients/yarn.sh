@@ -19,6 +19,10 @@ npmScopes:
   $OWNER:
     npmRegistryServer: "$FEED"
 YML
+  # F-21: an authenticated feed (run.mjs --auth).
+  if [ -n "${PKEY_REGISTRY_TOKEN:-}" ]; then
+    printf '    npmAuthToken: "%s"\n    npmAlwaysAuth: true\n' "$PKEY_REGISTRY_TOKEN" >> "$1/.yarnrc.yml"
+  fi
   touch "$1/yarn.lock"
 }
 add() { (cd "$1" && YARN_ENABLE_IMMUTABLE_INSTALLS=false yarn_cli add "$2"); }

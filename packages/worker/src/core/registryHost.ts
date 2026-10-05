@@ -27,8 +27,15 @@
  *     `application/octet-stream` attachments; `text/x-swift` always leaves as an attachment;
  *   - error answers are the platform's JSON, `application/problem+json` (Swift) or the OCI
  *     error JSON, never HTML, and a throw becomes the JSON 500;
- *   - `GET` and `HEAD` only (tier 1). Any other method on a registry path is 405, with OCI's
- *     error body under `/v2/`.
+ *   - `GET` and `HEAD`, plus the one `POST` a route declares (`methods`, F-21: Swift's
+ *     `POST /swift/<owner>/login`), decided from the path before any owner loads. Any other
+ *     method on a registry path is 405, with OCI's error body under `/v2/`.
+ *
+ * CREDENTIALS (F-21, plans/F-20.md §6.4). The host admits one owner-less route,
+ * `GET /v2/token` (OCI's token service, `OwnerlessRegistryRoute`), and `GET /v2/` answers the
+ * standard Bearer challenge to a request without a valid pull token once `REGISTRY_TOKEN_KEY`
+ * is set (Q1). The pull token's HMAC lives in Core (`registryTokens.ts`), so this file can check
+ * it without importing Distribution.
  *
  * SERVICE AND FEED ENABLEMENT. Every registry route names `service: "distribution"`, and the
  * dispatcher refuses a route whose service is off for the owner with the same not-found as an
@@ -60,6 +67,12 @@ import {
   type DescriptorHooks,
   type ServiceHooks,
 } from "./hooks.js";
+import {
+  registryTokenKeyConfigured,
+  verifyPullToken,
+} from "./registryTokens.js";
+
+import { registryHostname, registryOrigin } from "./registryHostname.js";
 
 export {
   isRegistryHost,
@@ -205,10 +218,24 @@ export const FEED_READ_ROUTE: unique symbol = Symbol.for(
   "polaris-key.registry.feedRead",
 ) as never;
 
+/**
+ * The mark Distribution's credential routes carry (F-21: Swift's `POST …/login`). Such a route
+ * reads no package: it only says whether a presented token is valid for its owner. The
+ * structural test admits exactly these, beside the feed-read routes, in `REGISTRY_ROUTES`.
+ */
+export const FEED_AUTH_ROUTE: unique symbol = Symbol.for(
+  "polaris-key.registry.feedAuth",
+) as never;
+
 /** One route that may answer on the registry host. */
 export interface RegistryRoute {
   /** Set by `feedRoute` only (see {@link FEED_READ_ROUTE}). */
   readonly [FEED_READ_ROUTE]?: true;
+  /** Set by Distribution's credential routes only (see {@link FEED_AUTH_ROUTE}). */
+  readonly [FEED_AUTH_ROUTE]?: true;
+  /** The methods beyond GET and HEAD the route answers (F-21: Swift's login `POST`). A route
+   *  that declares methods answers only those. */
+  readonly methods?: readonly "POST"[];
   /** For logs, tests and `routeCoverage`'s `REGISTRY_PATHS`. */
   readonly name: string;
   /** Every registry route is Distribution's; with it off for the owner the route never runs. */
@@ -220,6 +247,33 @@ export interface RegistryRoute {
   /** The owner and parameters when the route handles `pathname`, else `null`. */
   match(pathname: string): RegistryRouteMatch | null;
   handle(req: Request, ctx: RegistryRouteContext): Promise<Response>;
+}
+
+/** What an owner-less route's handler receives: no owner, a way to load one. */
+export interface OwnerlessRouteContext {
+  readonly env: Env;
+  readonly db: Db;
+  readonly now: number;
+  /** An owner's route context, as the dispatcher builds it for an owned route: `null` for an
+   *  unknown owner or one whose Distribution is off (the same not-found either way). */
+  ownerContext(
+    owner: string,
+    ecosystem: RegistryEcosystem,
+    params?: Record<string, string>,
+  ): Promise<RegistryRouteContext | null>;
+  readonly waitUntil?: (p: Promise<unknown>) => void;
+}
+
+/**
+ * A route with no owner in its path (F-21: OCI's `GET /v2/token`, whose scopes name the owners).
+ * GET and HEAD only. Its handler loads each owner it needs through `ownerContext`.
+ */
+export interface OwnerlessRegistryRoute {
+  readonly ownerless: true;
+  readonly name: string;
+  readonly ecosystem: RegistryEcosystem;
+  matches(pathname: string): boolean;
+  handle(req: Request, ctx: OwnerlessRouteContext): Promise<Response>;
 }
 
 /** The registry, as far as building hooks needs it (structural, so Core imports no service). */
@@ -270,25 +324,13 @@ const SWIFT_PROBLEM_HEADERS = {
   "content-version": "1",
 } as const;
 
-/** `POST /swift/<owner>/login` (`Registry.md` §3.2, SwiftPM's `package-registry login`). */
-const SWIFT_LOGIN = /^\/swift\/[^/]+\/login$/;
-
-/** 405 for any method but GET and HEAD on a registry path (OCI's error JSON under `/v2/`,
- *  Swift's `problem+json` under `/swift/`), and Swift's `POST …/login` 501 (F-06). */
+/** 405 for a method a registry path does not answer (OCI's error JSON under `/v2/`, Swift's
+ *  `problem+json` under `/swift/`). */
 export function registryMethodNotAllowed(
   ecosystem: RegistryEcosystem | null,
-  method: string = "",
-  pathname: string = "",
 ): Response {
   const allow = { allow: "GET, HEAD" };
   if (ecosystem === "swift") {
-    // F-06: SwiftPM's login answers 501 until registry credentials exist (F-21). Decided from
-    // the path's shape alone, before any owner is loaded, so it can never probe an owner.
-    if (method === "POST" && SWIFT_LOGIN.test(pathname))
-      return json(
-        { detail: "registry login is not supported yet" },
-        { status: 501, headers: SWIFT_PROBLEM_HEADERS },
-      );
     return json(
       { detail: "method not allowed" },
       { status: 405, headers: { ...SWIFT_PROBLEM_HEADERS, ...allow } },
@@ -315,19 +357,49 @@ export function registryMethodNotAllowed(
 }
 
 /**
- * OCI's base endpoint (`GET /v2/`, distribution-spec "end-1"): 200 and
- * `Docker-Distribution-API-Version: registry/2.0`, which is how a client learns this is a v2
- * registry. Fixed, owner-less and the same for everyone: every registry answers it, so it
- * discloses nothing, and authentication challenges are made per repository (§6.6).
+ * OCI's base endpoint (`GET /v2/`, distribution-spec "end-1"). Before `REGISTRY_TOKEN_KEY` is
+ * set: 200 and `Docker-Distribution-API-Version: registry/2.0` for everyone. Once it is set (Q1,
+ * plans/F-20.md §6.4): 200 only to a request bearing a valid pull token, else the standard 401
+ * Bearer challenge naming `/v2/token`, as Docker Hub and GHCR answer. Anonymous pull tokens keep
+ * public pulls working, and `docker login` then checks its credentials at once. Owner-less and
+ * the same for everyone, so it discloses nothing.
  */
-function ociBase(req: Request): Response {
+async function ociBase(req: Request, env: Env): Promise<Response> {
+  const headers = {
+    "content-type": "application/json",
+    "docker-distribution-api-version": "registry/2.0",
+    "cache-control": "no-store",
+  };
+  if (registryTokenKeyConfigured(env)) {
+    const auth = req.headers.get("authorization") ?? "";
+    const m = /^bearer\s+(\S+)\s*$/i.exec(auth);
+    const claims = m
+      ? await verifyPullToken(env, m[1]!, Math.floor(Date.now() / 1000))
+      : null;
+    if (!claims) {
+      const host = registryHostname(env) ?? "pkg.plrs.im";
+      const origin = registryOrigin(env) ?? `https://${host}`;
+      return new Response(
+        req.method === "HEAD"
+          ? null
+          : JSON.stringify({
+              errors: [
+                { code: "UNAUTHORIZED", message: "authentication required" },
+              ],
+            }),
+        {
+          status: 401,
+          headers: {
+            ...headers,
+            "www-authenticate": `Bearer realm="${origin}/v2/token",service="${host}"`,
+          },
+        },
+      );
+    }
+  }
   return new Response(req.method === "HEAD" ? null : "{}", {
     status: 200,
-    headers: {
-      "content-type": "application/json",
-      "docker-distribution-api-version": "registry/2.0",
-      "cache-control": "no-store",
-    },
+    headers,
   });
 }
 
@@ -442,8 +514,9 @@ export interface RegistryExecution {
 }
 
 /**
- * Dispatch a request that arrived on the registry host. Only `routes` can answer
- * (`dispatch.ts` passes `mount.ts`'s `REGISTRY_ROUTES`), plus `/` and `/v2/`; anything else, an
+ * Dispatch a request that arrived on the registry host. Only `routes` and `ownerless` can answer
+ * (`dispatch.ts` passes `mount.ts`'s `REGISTRY_ROUTES` and `REGISTRY_OWNERLESS_ROUTES`), plus `/`
+ * and `/v2/`; anything else, an
  * unknown owner, a route whose service is off for the owner, and any answer whose type breaks
  * the host's rule, becomes the not-found. Every answer is hardened, a throw included.
  */
@@ -454,10 +527,11 @@ export async function dispatchRegistryHost(
   routes: readonly RegistryRoute[],
   registry: RegistryHookRegistry = new Map(),
   exec?: RegistryExecution,
+  ownerless: readonly OwnerlessRegistryRoute[] = [],
 ): Promise<Response> {
   let answered: Answer;
   try {
-    answered = await answer(req, env, db, routes, registry, exec);
+    answered = await answer(req, env, db, routes, registry, exec, ownerless);
   } catch {
     // As on the bytes host (P2-05): a throw would otherwise become Cloudflare's own HTML error
     // page, without `nosniff` or the sandbox. Nothing about the failure is disclosed (R12).
@@ -477,7 +551,8 @@ async function answer(
   db: Db,
   routes: readonly RegistryRoute[],
   registry: RegistryHookRegistry,
-  exec?: RegistryExecution,
+  exec: RegistryExecution | undefined,
+  ownerless: readonly OwnerlessRegistryRoute[],
 ): Promise<Answer> {
   const plain = (res: Response): Answer => ({ res, documentCsp: null });
   const pathname = new URL(req.url).pathname;
@@ -507,38 +582,83 @@ async function answer(
       req.method === "OPTIONS" ? registryMethodNotAllowed(null) : notFound(),
     );
   }
-  // GET and HEAD only, decided from the path's ecosystem alone (the list is public), before any
-  // owner is loaded, so a 405 can never probe an owner.
-  if (!readOnly)
-    return plain(registryMethodNotAllowed(ecosystem, req.method, pathname));
+  // GET and HEAD, plus a method a route of this ecosystem declares and whose path it matches
+  // (Swift's login `POST`), decided from the path alone (the lists are public), before any owner
+  // is loaded, so a 405 can never probe an owner.
+  const declared = readOnly
+    ? null
+    : routes.find(
+        (r) =>
+          r.ecosystem === ecosystem &&
+          (r.methods as readonly string[] | undefined)?.includes(req.method) &&
+          r.match(pathname) !== null,
+      );
+  if (!readOnly && !declared) return plain(registryMethodNotAllowed(ecosystem));
   if (ecosystem === "oci" && (pathname === "/v2" || pathname === "/v2/"))
-    return plain(ociBase(req));
+    return plain(await ociBase(req, env));
   if (RESERVED_ECOSYSTEMS.has(ecosystem))
     return plain(registryNotFound(ecosystem));
 
-  for (const route of routes) {
-    if (route.ecosystem !== ecosystem) continue;
-    const matched = route.match(pathname);
-    if (!matched) continue;
-    const product = await loadProductPublic(db, matched.owner);
-    if (!product) return plain(registryNotFound(ecosystem));
+  const waitUntil = exec
+    ? { waitUntil: (p: Promise<unknown>) => exec.waitUntil(p) }
+    : {};
+  /** An owner's context: `null` for an unknown owner or a service that is off for it. */
+  const ownerContext = async (
+    owner: string,
+    eco: RegistryEcosystem,
+    service: ServiceSlug,
+    params: Record<string, string>,
+  ): Promise<RegistryRouteContext | null> => {
+    const product = await loadProductPublic(db, owner);
+    if (!product) return null;
     // `dispatchService`'s rule: a service off for the owner never runs a line of its code, and
     // answers the same not-found as an unknown owner.
-    if (!product.services[route.service]?.enabled)
-      return plain(registryNotFound(ecosystem));
+    if (!product.services[service]?.enabled) return null;
     const now = Math.floor(Date.now() / 1000);
-    const res = await route.handle(withoutCookies(req), {
+    return {
       env,
       db,
       product,
-      ecosystem,
-      params: matched.params,
+      ecosystem: eco,
+      params,
       now,
       hooks: buildHooks(registry, product.services, { env, db, product, now }),
-      ...(exec
-        ? { waitUntil: (p: Promise<unknown>) => exec.waitUntil(p) }
-        : {}),
-    });
+      ...waitUntil,
+    };
+  };
+
+  if (readOnly)
+    for (const route of ownerless) {
+      if (route.ecosystem !== ecosystem || !route.matches(pathname)) continue;
+      const res = await route.handle(withoutCookies(req), {
+        env,
+        db,
+        now: Math.floor(Date.now() / 1000),
+        ownerContext: (owner, eco, params = {}) =>
+          ownerContext(owner, eco, "distribution", params),
+        ...waitUntil,
+      });
+      if (refusedRegistryType(res)) {
+        await res.body?.cancel().catch(() => undefined);
+        return plain(registryNotFound(ecosystem));
+      }
+      return plain(policed(res));
+    }
+
+  for (const route of declared ? [declared] : routes) {
+    if (route.ecosystem !== ecosystem) continue;
+    // A route that declares methods answers only those; a read route never answers a POST.
+    if (readOnly && route.methods !== undefined) continue;
+    const matched = route.match(pathname);
+    if (!matched) continue;
+    const ctx = await ownerContext(
+      matched.owner,
+      ecosystem,
+      route.service,
+      matched.params,
+    );
+    if (!ctx) return plain(registryNotFound(ecosystem));
+    const res = await route.handle(withoutCookies(req), ctx);
     if (route.inertDocument) {
       const csp = pypiDocumentPolicy(res);
       if (csp !== null) return { res: policed(res), documentCsp: csp };

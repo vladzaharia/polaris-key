@@ -41,8 +41,8 @@ import {
   type RegistryRoute,
   type RegistryRouteContext,
 } from "../../../../core/registryHost.js";
-import { authorizeFeedRead, feedPrincipal } from "../authorize.js";
-import { registryCacheHeaders } from "../cache.js";
+import { authorizeFeedRead } from "../authorize.js";
+import { PRIVATE_CACHE_CONTROL, registryCacheHeaders } from "../cache.js";
 import {
   readFreshRegistryObject,
   renderedObjectResponse,
@@ -50,7 +50,12 @@ import {
   type PackageFile,
   type RegistryPackage,
 } from "../materialise.js";
-import { feedRoute } from "../serve.js";
+import {
+  PATH_TOKEN_PARAM,
+  feedReadContext,
+  feedRoute,
+  requestCredential,
+} from "../serve.js";
 import { cachedRegistrySettings, d1RegistrySettings } from "../settings.js";
 import {
   LEGACY_QUERY_NAMES,
@@ -176,8 +181,8 @@ async function listedPackages(
   const out: ListedPackage[] = [];
   for (const pkg of pkgs) {
     const decision = await authorizeFeedRead(
-      { db: ctx.db, services: ctx.product.services },
-      feedPrincipal(req),
+      feedReadContext(req, ctx),
+      requestCredential(req, ctx),
       ctx.product.slug,
       ECO,
       pkg.deliverableId,
@@ -220,6 +225,64 @@ function keyRequest(
 
 // ── Route builders ───────────────────────────────────────────────────────────────────────────
 
+/**
+ * A tokenised Godot URL (F-21, plans/F-20.md §6.3): the Godot editor sends no credentials, so a
+ * non-public feed is reached through `https://pkg.plrs.im/godot/<owner>/t/<url-token>/…`, where
+ * `<url-token>` is a registry token minted with `presentation = 'url'`. The segment sits after the
+ * owner; every route answers with or without it.
+ */
+const TOKENISED = /^\/godot\/([a-z0-9-]{1,64})\/t\/([^/]+)(\/.*)$/;
+
+/** `pathname` without a `/t/<token>` segment, and the token when there was one. */
+function untokenised(pathname: string): { path: string; token?: string } {
+  const t = TOKENISED.exec(pathname);
+  return t
+    ? { path: `/godot/${t[1]}${t[3]}`, token: t[2]! }
+    : { path: pathname };
+}
+
+/** The request without its `/t/<token>` segment: what the Cache API keys on, never a token. */
+function withoutToken(req: Request): Request {
+  const url = new URL(req.url);
+  const { path, token } = untokenised(url.pathname);
+  if (token === undefined) return req;
+  url.pathname = path;
+  return new Request(url.toString(), req);
+}
+
+/**
+ * A tokenised request's answer: every absolute URL into this owner's feed in a JSON body
+ * (`download_url`, icons, the store's links) carries the same `/t/<token>/` segment, so the
+ * editor's follow-up requests stay authorised. Rewritten at serve time, so renderers and stored
+ * objects never hold a token, and always `private, no-store` without an ETag.
+ */
+async function tokenisedAnswer(
+  res: Response,
+  req: Request,
+  ctx: RegistryRouteContext,
+): Promise<Response> {
+  const token = ctx.params[PATH_TOKEN_PARAM];
+  if (token === undefined) return res;
+  const headers = new Headers(res.headers);
+  headers.set("cache-control", PRIVATE_CACHE_CONTROL);
+  headers.delete("etag");
+  const type = (res.headers.get("content-type") ?? "").toLowerCase();
+  if (res.status !== 200 || !type.startsWith("application/json") || !res.body)
+    return new Response(res.body, {
+      status: res.status,
+      statusText: res.statusText,
+      headers,
+    });
+  const base = `${originOf(req, ctx)}/godot/${ctx.product.slug}/`;
+  const body = (await res.text()).split(base).join(`${base}t/${token}/`);
+  headers.delete("content-length");
+  return new Response(req.method === "HEAD" ? null : body, {
+    status: res.status,
+    statusText: res.statusText,
+    headers,
+  });
+}
+
 /** One Godot route: the pattern's groups after the owner become `params`, in order. */
 function route<S = undefined>(
   name: string,
@@ -238,21 +301,28 @@ function route<S = undefined>(
     ) => Promise<Response>;
   },
 ): RegistryRoute {
+  const key = def.cacheRequest;
   return feedRoute<S>({
     name,
     ecosystem: ECO,
     match(pathname) {
-      const m = pattern.exec(pathname);
+      const { path, token } = untokenised(pathname);
+      const m = pattern.exec(path);
       if (!m) return null;
       const out: Record<string, string> = {};
       params.forEach((p, i) => (out[p] = m[i + 2]!));
+      if (token !== undefined) out[PATH_TOKEN_PARAM] = token;
       return { owner: m[1]!, params: out };
     },
     ...(def.resolve ? { resolve: def.resolve } : {}),
     deliverableId: def.deliverableId,
     ...(def.queryNames ? { queryNames: def.queryNames } : {}),
-    ...(def.cacheRequest ? { cacheRequest: def.cacheRequest } : {}),
+    cacheRequest: (req) => {
+      const plain = withoutToken(req);
+      return key ? key(plain) : plain;
+    },
     serve: def.serve,
+    finish: (res, req, ctx) => tokenisedAnswer(res, req, ctx),
   });
 }
 

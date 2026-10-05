@@ -163,6 +163,12 @@ class ErrorCode:
     UNAVAILABLE: Final = "unavailable"
     AUTH_METHOD_DISABLED: Final = "auth_method_disabled"
     EMAIL_NOT_CONFIGURED: Final = "email_not_configured"
+    LICENSE_OWNED: Final = "license_owned"
+    EMAIL_MISMATCH: Final = "email_mismatch"
+    LINK_CONFLICT: Final = "link_conflict"
+    LAST_LINK: Final = "last_link"
+    STEP_UP_REQUIRED: Final = "step_up_required"
+    NOT_ELIGIBLE: Final = "not_eligible"
     DOWNLOAD_AUTH_REQUIRED: Final = "download_auth_required"
     DELIVERY_GATE_MISSING: Final = "delivery_gate_missing"
     UPSTREAM_RATE_LIMITED: Final = "upstream_rate_limited"
@@ -305,6 +311,12 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "unavailable",
     "auth_method_disabled",
     "email_not_configured",
+    "license_owned",
+    "email_mismatch",
+    "link_conflict",
+    "last_link",
+    "step_up_required",
+    "not_eligible",
     "download_auth_required",
     "delivery_gate_missing",
     "upstream_rate_limited",
@@ -449,6 +461,12 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "unavailable": "wire",
         "auth_method_disabled": "wire",
         "email_not_configured": "wire",
+        "license_owned": "wire",
+        "email_mismatch": "wire",
+        "link_conflict": "wire",
+        "last_link": "wire",
+        "step_up_required": "wire",
+        "not_eligible": "wire",
         "download_auth_required": "wire",
         "delivery_gate_missing": "wire",
         "upstream_rate_limited": "wire",

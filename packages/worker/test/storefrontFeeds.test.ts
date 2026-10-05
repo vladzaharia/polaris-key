@@ -78,6 +78,7 @@ import {
   type FeedSpec,
 } from "../src/services/distribution/feeds/select.js";
 import { buildHooks } from "../src/core/hooks.js";
+import { feedStateStamp } from "../src/services/distribution/feeds/cache.js";
 import { loadProduct } from "../src/core/products.js";
 import { SERVICES } from "../src/mount.js";
 
@@ -1680,5 +1681,108 @@ describe("build metadata", () => {
       SLUG,
     );
     expect(none!.metadata_json).toBeNull();
+  });
+});
+
+// ── A-18b: the shared listing model ──────────────────────────────────────────────────────────
+
+describe("storefront feeds: AltStore and Obtainium read the shared listing model (A-18b)", () => {
+  /** A model over the manifest listing: some fields set, others left to the manifest. */
+  async function seedModel(w: World): Promise<void> {
+    await w.db.run(
+      `INSERT INTO dist_listings
+         (product, default_locale, name, developer_name, urls_json, tint, source, created_at, modified_at, modified_by)
+       VALUES (?, 'en-US', 'Diceroll Deluxe', 'Ada', ?, '#112233', 'admin', ?, ?, 'u1')`,
+      SLUG,
+      JSON.stringify({ website: "https://deluxe.example.test" }),
+      NOW,
+      NOW,
+    );
+    await w.db.run(
+      `INSERT INTO dist_listing_locales
+         (product, locale, subtitle, source, modified_at, modified_by)
+       VALUES (?, 'en-US', 'From the model', 'admin', ?, 'u1')`,
+      SLUG,
+      NOW,
+    );
+  }
+
+  it("a product with only a manifest listing has no model, so the golden files hold its bytes", async () => {
+    const w = await setup({ blobOrigin: BYTES });
+    expect(await w.db.all("SELECT * FROM dist_listings")).toEqual([]);
+    const { body } = await feed(w, "altstore/stable/source.json");
+    expect(body).toBe(
+      readFileSync(join(GOLDEN_DIR, "altstore-stable.json"), "utf8"),
+    );
+  });
+
+  it("AltStore: the model's fields win, field by field; the rest (icon, description) stay the manifest's", async () => {
+    const w = await setup({ blobOrigin: BYTES });
+    await seedModel(w);
+    const { doc } = await feed(w, "altstore/stable/source.json");
+    expect(doc).toMatchObject({
+      name: "Diceroll Deluxe",
+      subtitle: "From the model",
+      description: "Roll, reroll, repeat.",
+      iconURL: "https://cdn.example.test/diceroll/icon.png",
+      website: "https://deluxe.example.test",
+      tintColor: "112233",
+    });
+    expect(doc.apps[0]).toMatchObject({
+      name: "Diceroll Deluxe",
+      developerName: "Ada",
+      category: "games",
+    });
+    // A feed override beats the model (the PAL source shares AltStore's).
+    await w.db.run(
+      `INSERT INTO dist_listing_overrides
+         (product, store, locale, field, value_json, source, modified_at, modified_by)
+       VALUES (?, 'altstore', 'en-US', 'subtitle', '"Only on AltStore"', 'admin', ?, 'u1')`,
+      SLUG,
+      NOW,
+    );
+    expect((await feed(w, "altstore/stable/source.json")).doc.subtitle).toBe(
+      "Only on AltStore",
+    );
+    expect(
+      (await feed(w, "altstore-pal/stable/source.json")).doc.subtitle,
+    ).toBe("Only on AltStore");
+  });
+
+  it("Obtainium: the name and author come from the model", async () => {
+    const w = await setup({ blobOrigin: BYTES });
+    await seedModel(w);
+    const { doc } = await feed(w, "obtainium/stable.json");
+    expect(doc).toMatchObject({ name: "Diceroll Deluxe", author: "Ada" });
+  });
+
+  it("Scoop and Flathub do not read the model (out of A-18b's scope): their bytes are unchanged", async () => {
+    const w = await setup({ blobOrigin: BYTES });
+    await seedModel(w);
+    for (const [path, file] of [
+      ["scoop/stable.json", "scoop-stable.json"],
+      ["flathub/stable.json", "flathub-stable.json"],
+    ] as const)
+      expect((await feed(w, path)).body).toBe(
+        readFileSync(join(GOLDEN_DIR, file), "utf8"),
+      );
+  });
+
+  it("the cache stamp follows the model, so an edit takes effect at once", async () => {
+    const w = await setup();
+    const catalog = (await hooksFor(w)).releaseCatalog()!;
+    const stamp = () => feedStateStamp(w.db, SLUG, catalog, true);
+    const before = await stamp();
+    await seedModel(w);
+    const withModel = await stamp();
+    expect(withModel).not.toBe(before);
+    await w.db.run(
+      `INSERT INTO dist_listing_overrides
+         (product, store, locale, field, value_json, source, modified_at, modified_by)
+       VALUES (?, 'obtainium', '', 'name', '"Dice"', 'admin', ?, 'u1')`,
+      SLUG,
+      NOW,
+    );
+    expect(await stamp()).not.toBe(withModel);
   });
 });

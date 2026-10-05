@@ -1,0 +1,18 @@
+# npm and pnpm: route the scope to this feed (.npmrc)
+# Only @acme packages are looked up here; every other package stays on its usual registry.
+@acme:registry=https://pkg.plrs.im/npm/acme/
+//pkg.plrs.im/npm/acme/:_authToken=${PKEY_REGISTRY_TOKEN}
+
+# Yarn Berry (.yarnrc.yml)
+npmScopes:
+  acme:
+    npmRegistryServer: "https://pkg.plrs.im/npm/acme/"
+    npmAuthToken: "${PKEY_REGISTRY_TOKEN}"
+    npmAlwaysAuth: true
+
+# Bun (bunfig.toml)
+[install.scopes]
+"@acme" = { url = "https://pkg.plrs.im/npm/acme/", token = "$PKEY_REGISTRY_TOKEN" }
+
+# Install
+npm install @acme/<package>

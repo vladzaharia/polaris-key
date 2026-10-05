@@ -18,6 +18,8 @@ export interface Call {
   query: string;
   method: string;
   body: unknown;
+  /** The `Idempotency-Key` header, when the call sent one (A-17g). */
+  idempotencyKey?: string | null;
 }
 
 /** A route answer: a body, a `Response`, or a function of the call. */
@@ -67,6 +69,7 @@ export function bootWith(
         query: url.search,
         method,
         body: raw ? JSON.parse(raw) : undefined,
+        idempotencyKey: new Headers(init?.headers).get("Idempotency-Key"),
       };
       calls.push(call);
       const keyed = (k: string) => (k in table ? k : null);

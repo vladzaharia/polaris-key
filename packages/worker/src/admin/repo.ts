@@ -5,6 +5,7 @@
 // unscoped ones, and they are gated on PLATFORM_ADMIN before they're reached.
 
 import { stmtRevokeProductCiTokens } from "../core/publisher.js";
+import { stmtRevokeProductRegistryTokens } from "../core/registryTokens.js";
 import type { Db } from "../db/types.js";
 import type {
   KeyRow,
@@ -76,7 +77,7 @@ export async function deleteProduct(
       sql: `UPDATE licenses
                SET status = 'disabled',
                    email = NULL, name = NULL, sub = NULL, groups_json = NULL,
-                   enroll_hwid = NULL, modified_at = ?
+                   enroll_hwid = NULL, account_id = NULL, modified_at = ?
              WHERE product = ?`,
       params: [now, slug],
     },
@@ -84,8 +85,22 @@ export async function deleteProduct(
       sql: "DELETE FROM portal_license_links WHERE product = ?",
       params: [slug],
     },
+    // I-05: the product's pairwise subjects, their aliases and its "Continue to" grants go with
+    // it; no account keeps a link to a product that no longer exists.
     {
-      sql: "UPDATE devices SET status = 'deauthorized' WHERE product = ?",
+      sql: "DELETE FROM account_product_subject_aliases WHERE product = ?",
+      params: [slug],
+    },
+    {
+      sql: "DELETE FROM account_product_subjects WHERE product = ?",
+      params: [slug],
+    },
+    {
+      sql: "DELETE FROM account_product_grants WHERE product = ?",
+      params: [slug],
+    },
+    {
+      sql: "UPDATE devices SET status = 'deauthorized', subject = NULL WHERE product = ?",
       params: [slug],
     },
     {
@@ -121,6 +136,8 @@ export async function deleteProduct(
     // P2-02: no CI credential outlives its product (`lookupCiToken` also refuses a deleted
     // product's tokens; this makes the revocation visible in the token list too).
     stmtRevokeProductCiTokens(slug, now),
+    // F-21: nor any registry token (the lookup also joins `products.status <> 'deleted'`).
+    stmtRevokeProductRegistryTokens(slug, now),
   ]);
 }
 

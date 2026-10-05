@@ -1,0 +1,24 @@
+# uv: an explicit index for this project only (pyproject.toml)
+# explicit = true keeps every other dependency on its usual index.
+[[tool.uv.index]]
+name = "acme"
+url = "https://pkg.plrs.im/pypi/acme/simple/"
+explicit = true
+authenticate = "always"
+
+[tool.uv.sources]
+"acme-sdk" = { index = "acme" }
+
+# uv: the index credentials
+export UV_INDEX_ACME_USERNAME=__token__
+export UV_INDEX_ACME_PASSWORD=pkeyr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
+# Poetry 2: an explicit source
+poetry source add --priority=explicit acme https://pkg.plrs.im/pypi/acme/simple/
+poetry config http-basic.acme __token__ pkeyr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+poetry add --source acme acme-sdk
+
+# pip: the package alone, without its dependencies
+# Warning: Never add this feed with --extra-index-url. pip has no per-project routing: with two indexes it takes the highest version from either, so a public package with the same name could win.
+# pip cannot route one project to one index: install the dependencies from your usual index first, then this package from the feed.
+pip install --no-deps --index-url https://__token__:pkeyr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA@pkg.plrs.im/pypi/acme/simple/ acme-sdk

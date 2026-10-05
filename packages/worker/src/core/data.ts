@@ -26,6 +26,7 @@
 
 export type {
   AuditRow,
+  DeviceBoundBy,
   DeviceRow,
   KeyRow,
   LicenseRow,
@@ -59,9 +60,11 @@ export {
   listKeysByLicense,
   listLicenseProfiles,
   moveDevices,
+  replaceLicenseKeys,
   revertAutoIssueToManifest,
   revertFingerprintPolicyToManifest,
   seatActiveSince,
+  setDeviceLabel,
   setAutoIssuePolicy,
   setDeviceStatus,
   setFingerprintPolicy,

@@ -15,6 +15,7 @@ import {
   type PackageEcosystem,
 } from "@polaris-key/manifest";
 import type { PackageFeedSettings } from "../../core/hooks.js";
+import { isAccessMode } from "./access.js";
 import type { Db, DbStatement } from "../../core/platform.js";
 
 function parseObject(json: string | null | undefined): Record<string, unknown> {
@@ -38,6 +39,7 @@ export async function packageFeedOf(
   if (!isPackageEcosystem(ecosystem)) return null;
   const row = await db.first<{
     enabled: number;
+    access_mode: string;
     namespace_json: string;
     max_package_bytes: number;
     ext_json: string;
@@ -45,7 +47,7 @@ export async function packageFeedOf(
     policy_enabled: number | null;
     ceiling: number | null;
   }>(
-    `SELECT f.enabled, f.namespace_json, f.max_package_bytes, f.ext_json,
+    `SELECT f.enabled, f.access_mode, f.namespace_json, f.max_package_bytes, f.ext_json,
             o.enabled AS owner_enabled, p.enabled AS policy_enabled,
             p.max_package_bytes_ceiling AS ceiling
        FROM dist_registry_feeds f
@@ -66,6 +68,7 @@ export async function packageFeedOf(
     maxPackageBytes:
       row.ceiling === null ? 0 : Math.min(row.max_package_bytes, row.ceiling),
     ext: parseObject(row.ext_json),
+    accessMode: isAccessMode(row.access_mode) ? row.access_mode : "entitled",
   };
 }
 

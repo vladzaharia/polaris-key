@@ -22,7 +22,7 @@
 
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { Db } from "../../../core/platform.js";
-import { accessModeOf, isAccessMode } from "../access.js";
+import { accessModeOf, entitlementOf, isAccessMode } from "../access.js";
 
 /** How long an isolate keeps a settings answer, in seconds. */
 export const REGISTRY_SETTINGS_TTL_SECONDS = 30;
@@ -68,6 +68,9 @@ export interface RegistrySettingsSource {
   settings(product: string, ecosystem: string): Promise<RegistrySettings>;
   /** The delivery access mode of one deliverable (`dist_access`, `access.ts`). */
   accessMode(product: string, deliverableId: string): Promise<ReleaseAccess>;
+  /** The delivery gate of one deliverable (`dist_access.entitlement`), read only for an
+   *  `entitled` read by a licence-bound token (F-21). Absent from a fake = no gate (refuse). */
+  entitlement?(product: string, deliverableId: string): Promise<string | null>;
 }
 
 const NONE: RegistrySettings = { policy: null, owner: null, feed: null };
@@ -159,6 +162,8 @@ export function d1RegistrySettings(db: Db): RegistrySettingsSource {
     },
     accessMode: (product, deliverableId) =>
       accessModeOf(db, product, deliverableId),
+    entitlement: (product, deliverableId) =>
+      entitlementOf(db, product, deliverableId),
   };
 }
 
@@ -169,6 +174,7 @@ interface Entry<T> {
 
 const settingsCache = new Map<string, Entry<RegistrySettings>>();
 const modeCache = new Map<string, Entry<ReleaseAccess>>();
+const gateCache = new Map<string, Entry<string | null>>();
 
 function remember<T>(
   map: Map<string, Entry<T>>,
@@ -225,6 +231,26 @@ export async function cachedAccessMode(
   );
 }
 
+/** One deliverable's delivery gate flag (`null` = none), from this isolate's cache. */
+export async function cachedEntitlement(
+  source: RegistrySettingsSource,
+  product: string,
+  deliverableId: string,
+  nowMs: number = Date.now(),
+): Promise<string | null> {
+  const key = `${product}\u0000${deliverableId}`;
+  const hit = fresh(gateCache, key, nowMs);
+  if (hit !== undefined) return hit;
+  return remember(
+    gateCache,
+    key,
+    source.entitlement
+      ? await source.entitlement(product, deliverableId)
+      : null,
+    nowMs,
+  );
+}
+
 /**
  * Drop this isolate's cached settings for `product` (every ecosystem and deliverable), or all
  * of them. A settings write calls it so its own isolate sees the change at once; other isolates
@@ -234,10 +260,14 @@ export function forgetRegistrySettings(product?: string): void {
   if (product === undefined) {
     settingsCache.clear();
     modeCache.clear();
+    gateCache.clear();
     return;
   }
   const prefix = `${product}\u0000`;
-  for (const map of [settingsCache, modeCache] as Map<string, unknown>[])
+  for (const map of [settingsCache, modeCache, gateCache] as Map<
+    string,
+    unknown
+  >[])
     for (const key of [...map.keys()])
       if (key.startsWith(prefix)) map.delete(key);
 }

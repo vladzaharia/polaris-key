@@ -419,6 +419,66 @@ describe("link and resync write dist_outlets and dist_transports", () => {
   });
 });
 
+describe("the document's own listing (PX-W1, dist_listing and delivery().listing())", () => {
+  const listingRow = (db: Db) =>
+    db.first<{ listing_json: string; modified_at: number }>(
+      "SELECT listing_json, modified_at FROM dist_listing WHERE product = ?",
+      SLUG,
+    );
+
+  it("link stores the ROOT listing, never an outlet's override, and the hook reads it", async () => {
+    const yaml = DISTRIBUTION_YAML.replace(
+      "  web: {}\n",
+      "  web:\n    listing: { subtitle: Play in the browser }\n",
+    ).replace(
+      '  tintColor: "#3b1f1f"\n',
+      '  tintColor: "#3b1f1f"\n  supportUrl: https://dice.example/help\n  supportEmail: help@dice.example\n',
+    );
+    const { db, env } = await linked({ ".pkey/distribution.yaml": yaml });
+    const root = {
+      name: "Dice",
+      subtitle: "A cozy dice-rolling roguelite",
+      tintColor: "#3b1f1f",
+      supportUrl: "https://dice.example/help",
+      supportEmail: "help@dice.example",
+    };
+    expect(JSON.parse((await listingRow(db))!.listing_json)).toEqual(root);
+    // The outlet keeps its merged copy; the product's listing is untouched by the override.
+    const web = (await outlets(db)).find((r) => r.outlet_id === "web")!;
+    expect(JSON.parse(web.listing_json!).subtitle).toBe("Play in the browser");
+    expect(await (await hooksFor(env, db)).delivery()!.listing()).toEqual(root);
+  });
+
+  it("an identical resync leaves the row alone; a removed listing deletes it", async () => {
+    const { db, env } = await linked();
+    const ok = await resyncRepo(
+      env,
+      db,
+      SLUG,
+      NOW + 10,
+      github(files()),
+      INGEST,
+    );
+    expect(ok.ok).toBe(true);
+    expect((await listingRow(db))!.modified_at).toBe(NOW);
+    const bare = DISTRIBUTION_YAML.slice(
+      0,
+      DISTRIBUTION_YAML.indexOf("listing:"),
+    );
+    const gone = await resyncRepo(
+      env,
+      db,
+      SLUG,
+      NOW + 20,
+      github(files({ ".pkey/distribution.yaml": bare })),
+      INGEST,
+    );
+    expect(gone.ok, JSON.stringify(gone)).toBe(true);
+    expect(await listingRow(db)).toBeNull();
+    expect(await (await hooksFor(env, db)).delivery()!.listing()).toBeNull();
+  });
+});
+
 describe("enablement gates the ingest and the hook", () => {
   it("with Distribution disabled its manifestIngest does not run (spy) and the hook answers null", async () => {
     const spy = vi.fn(distributionService.manifestIngest!);
@@ -817,9 +877,10 @@ describe("the ingest's cost is bounded for untrusted input (R10)", () => {
     expect(parsed.ok, JSON.stringify(parsed)).toBe(true);
     if (!parsed.ok) return;
     const stmts = distributionIngestStatements(parsed.manifest, SLUG, NOW);
-    // 32 outlet upserts + 1 removal sweep + 1 transport delete + the (1 + 64) × 32 = 2,080
-    // transport rows P4-05 routes, 25 to an INSERT (four parameters each, inside D1's 100): 84.
-    expect(stmts).toHaveLength(32 + 1 + 1 + 84);
+    // 32 outlet upserts + 1 removal sweep + 1 listing write (PX-W1: upsert, or delete when the
+    // document declares none) + 1 transport delete + the (1 + 64) × 32 = 2,080 transport rows
+    // P4-05 routes, 25 to an INSERT (four parameters each, inside D1's 100): 84.
+    expect(stmts).toHaveLength(32 + 1 + 1 + 1 + 84);
     const inserts = stmts.filter((s) =>
       s.sql.includes("INSERT INTO dist_transports"),
     );

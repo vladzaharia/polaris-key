@@ -11,6 +11,7 @@
  */
 
 import type {
+  OwnerlessRegistryRoute,
   RegistryEcosystem,
   RegistryRoute,
 } from "../../../core/registryHost.js";
@@ -56,9 +57,13 @@ export const RENDERERS: ReadonlyMap<RegistryEcosystem, RegistryRenderer> =
     FEED_ADAPTERS.map((a) => [a.ecosystem, rendererOf(a)]),
   );
 
-/** Every registry route, in adapter order. */
+/** Every registry route (reads, then credential routes), in adapter order. */
 export const DISTRIBUTION_REGISTRY_ROUTES: readonly RegistryRoute[] =
-  FEED_ADAPTERS.flatMap((a) => a.routes);
+  FEED_ADAPTERS.flatMap((a) => [...a.routes, ...(a.authRoutes ?? [])]);
+
+/** Every owner-less registry route (F-21: OCI's token service), in adapter order. */
+export const DISTRIBUTION_OWNERLESS_ROUTES: readonly OwnerlessRegistryRoute[] =
+  FEED_ADAPTERS.flatMap((a) => a.ownerlessRoutes ?? []);
 
 export { feedCapabilityView } from "./adapter.js";
 export type {
@@ -73,10 +78,13 @@ export type {
 export {
   authorizeFeedRead,
   extractFeedCredential,
-  feedPrincipal,
+  pathCredential,
+  resolveFeedPrincipal,
   feedRefusal,
   type ChallengeKind,
+  type FeedCredential,
   type FeedPrincipal,
+  type RefusalKind,
   type FeedReadDecision,
 } from "./authorize.js";
 export {
@@ -91,4 +99,12 @@ export {
   type RegistryRenderer,
   type RenderFeed,
 } from "./materialise.js";
-export { feedRoute, serveFeedRead, type FeedRouteDef } from "./serve.js";
+export {
+  PATH_TOKEN_PARAM,
+  feedAuthRoute,
+  feedReadContext,
+  feedRoute,
+  requestCredential,
+  serveFeedRead,
+  type FeedRouteDef,
+} from "./serve.js";

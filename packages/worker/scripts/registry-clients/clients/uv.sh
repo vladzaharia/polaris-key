@@ -21,6 +21,7 @@ dependencies = ["$spec"]
 name = "polaris"
 url = "$INDEX"
 explicit = true
+$([ -z "${PKEY_REGISTRY_TOKEN:-}" ] || echo 'authenticate = "always"')
 
 [tool.uv.sources]
 $PROJECT = { index = "polaris" }

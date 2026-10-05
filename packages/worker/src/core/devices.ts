@@ -73,6 +73,7 @@ import {
   upsertDeviceFacts,
   upsertFingerprint,
   resetDeviceTrust,
+  type DeviceBoundBy,
   type DeviceFactsRow,
   type DeviceRow,
   type FingerprintRow,
@@ -388,6 +389,11 @@ export async function bindDevice(
       sdkName?: string | null;
       sdkVersion?: string | null;
     };
+    /** I-05: how this bind happened (`devices.bound_by`). Omitted = keep the stored value. */
+    boundBy?: DeviceBoundBy;
+    /** I-05: the pairwise subject of the account signing in on this device — passed ONLY by an
+     *  account sign-in through Identity, never by key entry (plans/I-04.md §6.2). */
+    subject?: string | null;
   },
 ): Promise<{ token: string; device: DeviceRow }> {
   const { existing, presented, hwid, mode, drift } = opts;
@@ -417,8 +423,14 @@ export async function bindDevice(
     app_version: meta.appVersion ?? existing?.app_version ?? null,
     sdk_name: meta.sdkName ?? existing?.sdk_name ?? null,
     sdk_version: meta.sdkVersion ?? existing?.sdk_version ?? null,
+    bound_by: opts.boundBy ?? existing?.bound_by ?? null,
+    subject: existing?.subject ?? null,
   };
   await upsertDevice(db, device);
+  if (opts.subject) {
+    await writeDeviceSubject(db, product.slug, deviceId, opts.subject);
+    device.subject = opts.subject;
+  }
   // P6-02: a new credential minted without the old one is not the attested install.
   if (existing) await resetDeviceTrust(db, product.slug, deviceId);
 
@@ -479,6 +491,7 @@ export async function bindDevice(
     product: product.slug,
     deviceId: deviceId,
     licenseId: license.id,
+    ...(device.subject ? { subject: device.subject } : {}),
   });
   return { token, device };
 }
@@ -517,6 +530,11 @@ export async function registerDeviceBinding(
     existing: DeviceRow | null;
     presented: PresentedFingerprint | null;
     metadata: PresentedDeviceMetadata;
+    /** I-05: `register` for `POST /<p>/devices/register`, `signin` for a licence-less device an
+     *  account signs in on (an Identity-only product needs no licence row; S-16 §5.1). */
+    boundBy?: DeviceBoundBy;
+    /** I-05: the signed-in pairwise subject (account sign-in only, never key entry). */
+    subject?: string | null;
   },
 ): Promise<{ token: string; device: DeviceRow }> {
   const { existing, presented, metadata: meta } = opts;
@@ -545,8 +563,14 @@ export async function registerDeviceBinding(
     app_version: meta.appVersion ?? existing?.app_version ?? null,
     sdk_name: meta.sdkName ?? existing?.sdk_name ?? null,
     sdk_version: meta.sdkVersion ?? existing?.sdk_version ?? null,
+    bound_by: opts.boundBy ?? existing?.bound_by ?? null,
+    subject: existing?.subject ?? null,
   };
   await upsertDevice(db, device);
+  if (opts.subject) {
+    await writeDeviceSubject(db, product.slug, deviceId, opts.subject);
+    device.subject = opts.subject;
+  }
   // P6-02: a new credential minted without the old one is not the attested install.
   if (existing) await resetDeviceTrust(db, product.slug, deviceId);
 
@@ -570,8 +594,27 @@ export async function registerDeviceBinding(
     product: product.slug,
     deviceId,
     licenseId: NO_LICENSE_ID,
+    ...(device.subject ? { subject: device.subject } : {}),
   });
   return { token, device };
+}
+
+/**
+ * I-05: write the device binding (`devices.subject`). The one statement every setter shares; the
+ * public entry points are `setDeviceSubject` and the clearing hook in `core/accountSubjects.ts`.
+ */
+export async function writeDeviceSubject(
+  db: Db,
+  product: string,
+  deviceId: string,
+  subject: string | null,
+): Promise<void> {
+  await db.run(
+    "UPDATE devices SET subject = ? WHERE product = ? AND device_id = ?",
+    subject,
+    product,
+    deviceId,
+  );
 }
 
 export async function validateDeviceToken(
@@ -655,6 +698,7 @@ export async function rotateDeviceToken(
     // already asserted the two agree, and reading it here keeps rotation working for a device
     // that holds no licence row at all (§6).
     licenseId: valid.device.license_id,
+    ...(valid.device.subject ? { subject: valid.device.subject } : {}),
   });
   return token;
 }

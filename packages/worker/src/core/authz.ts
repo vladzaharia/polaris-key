@@ -52,6 +52,7 @@ import {
   countActiveDevices,
   getTier,
   seatActiveSince,
+  type DeviceBoundBy,
   type DeviceRow,
   type LicenseRow,
   type TierRow,
@@ -233,10 +234,13 @@ function resolveDeviceLimit(
 
 /** The seat limit `authorizeDevice` enforces on `license`: its resolved `deviceLimit`
  *  entitlement, else the product default. Exported for the identity attach (P1-07), which must
- *  not move more devices onto a licence than this allows. */
+ *  not move more devices onto a licence than this allows, and for the portal's seat meter
+ *  (PX-W1), which must show the same "of N" this enforces. */
 export async function licenseDeviceLimit(
   db: Db,
-  product: Product,
+  // Only the slug and the product default are read, so a caller holding the public projection
+  // (`ProductPublic`, no signing key — the portal's activate preview, PX-W5) can ask too.
+  product: Pick<Product, "slug" | "defaultDeviceLimit">,
   license: LicenseRow,
   now: number,
 ): Promise<number> {
@@ -283,6 +287,11 @@ export async function authorizeDevice(
     sdkVersion?: string | null;
     /** Validated hardware components, when the client supplied any. */
     fingerprint?: PresentedFingerprint | null;
+    /** I-05: how this activation binds the device (`devices.bound_by`). */
+    boundBy?: DeviceBoundBy;
+    /** I-05: the pairwise subject of an ACCOUNT sign-in activating this device. Key entry, enrol
+     *  and every licence-only path never pass it (plans/I-04.md §6.2). */
+    subject?: string | null;
   } = {},
 ): Promise<{ token: string; device: DeviceRow } | AuthzError> {
   if (!licenseUsable(license, now)) return { error: "unauthorized" };
@@ -371,5 +380,7 @@ export async function authorizeDevice(
     mode,
     drift: reconciled.drift,
     metadata: opts,
+    ...(opts.boundBy ? { boundBy: opts.boundBy } : {}),
+    ...(opts.subject ? { subject: opts.subject } : {}),
   });
 }

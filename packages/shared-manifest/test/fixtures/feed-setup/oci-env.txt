@@ -1,0 +1,4 @@
+# Pull by the fully qualified reference
+# podman pull and crane pull take the same reference; it never resolves on another registry.
+echo "$PKEY_REGISTRY_TOKEN" | docker login pkg.plrs.im -u __token__ --password-stdin
+docker pull pkg.plrs.im/acme/server:latest

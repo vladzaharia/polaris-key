@@ -4,7 +4,7 @@
  * (`routes.ts`). `registry/index.ts` lists it in `FEED_ADAPTERS`.
  */
 
-import { PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
+import { FEED_SETUP, PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
 import {
   extBoolean,
   rendererOf,
@@ -12,8 +12,36 @@ import {
   type FeedAdapter,
 } from "../adapter.js";
 import type { RegistryRenderer } from "../materialise.js";
+import { normaliseRepositoryUrl } from "./protocol.js";
 import { renderSwift } from "./render.js";
+import { SWIFT_LOGIN_ROUTE } from "./login.js";
 import { SWIFT_ROUTES } from "./routes.js";
+
+const MAX_REPOSITORY_IDS = 64;
+const MAX_URLS_PER_ID = 8;
+
+/**
+ * `ext.repositoryUrls`: `{"<scope>.<Name>": [url, …]}`, each identity of the ingest name grammar,
+ * each URL one `/identifiers` normalises (`protocol.ts` `normaliseRepositoryUrl`).
+ */
+function swiftRepositoryUrls(v: unknown): boolean {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return false;
+  const entries = Object.entries(v as Record<string, unknown>);
+  if (entries.length > MAX_REPOSITORY_IDS) return false;
+  return entries.every(
+    ([id, urls]) =>
+      PACKAGE_ECOSYSTEM_RULES.swift.name.pattern.test(id) &&
+      Array.isArray(urls) &&
+      urls.length > 0 &&
+      urls.length <= MAX_URLS_PER_ID &&
+      urls.every(
+        (u) =>
+          typeof u === "string" &&
+          u.length <= 2048 &&
+          normaliseRepositoryUrl(u) !== null,
+      ),
+  );
+}
 
 export const SWIFT_ADAPTER: FeedAdapter<"swift"> = defineFeedAdapter({
   ecosystem: "swift",
@@ -21,9 +49,17 @@ export const SWIFT_ADAPTER: FeedAdapter<"swift"> = defineFeedAdapter({
   hostPrefix: "/swift/",
   feedPath: (owner) => `/swift/${owner}/`,
   routes: SWIFT_ROUTES,
+  // F-21: `swift package-registry login` checks a registry token here.
+  authRoutes: [SWIFT_LOGIN_ROUTE],
   renderer: { render: renderSwift, stamp: "package" },
   ingest: PACKAGE_ECOSYSTEM_RULES.swift,
-  settings: { ext: { requireSigned: extBoolean } },
+  settings: {
+    ext: {
+      requireSigned: extBoolean,
+      // §4.5 `GET /identifiers?url=`: which repository URLs map to which package identity.
+      repositoryUrls: swiftRepositoryUrls,
+    },
+  },
   capabilities: {
     // A yanked version leaves the release list and stays fetchable for existing pins.
     yank: true,
@@ -36,10 +72,7 @@ export const SWIFT_ADAPTER: FeedAdapter<"swift"> = defineFeedAdapter({
     search: false,
     authChallenge: "basic",
   },
-  setup: {
-    clients: ["SwiftPM"],
-    inputs: ["baseUrl", "namespace.scope", "package.name", "package.version"],
-  },
+  setup: FEED_SETUP.swift,
   openapi: [
     ["/swift/{owner}/{scope}/{name}", ["get", "head"], "swift.releases"],
     [
@@ -58,8 +91,8 @@ export const SWIFT_ADAPTER: FeedAdapter<"swift"> = defineFeedAdapter({
       "swift.archive",
     ],
     ["/swift/{owner}/identifiers", ["get", "head"], "swift.identifiers"],
-    // Login is the host dispatcher's 501 (SwiftPM Registry.md §4).
-    ["/swift/{owner}/login", ["post"], "host"],
+    // F-21: SwiftPM's login (Registry.md §4.1), a credential route.
+    ["/swift/{owner}/login", ["post"], "swift.login"],
   ],
   harness: { clients: ["swift", "swift-compat", "swift-linux"] },
 });

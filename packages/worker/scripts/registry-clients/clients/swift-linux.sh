@@ -18,6 +18,12 @@ URL="$REGISTRY/swift/$OWNER"
 T="$(mktemp -d)"
 trap 'rm -rf "$T"' EXIT
 cp -R "$STATE/swift/ca/trusted" "$T/roots"
+# F-21: SwiftPM sends registry credentials only over HTTPS, and the harness is plain HTTP, so the
+# authenticated feed is covered by swift.sh's HTTP checks; this Linux build runs on the public feed.
+if [ -n "${REGISTRY_AUTH:-}" ]; then
+  echo "skip the Linux SwiftPM build against the authenticated feed: SwiftPM sends credentials only over HTTPS"
+  exit 0
+fi
 
 consumer() {
   local dir="$T/$1" req="$2"

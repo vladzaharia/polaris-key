@@ -27,6 +27,7 @@ import {
   registryEcosystemOf,
   registryHostname,
   registryOrigin,
+  FEED_AUTH_ROUTE,
   FEED_READ_ROUTE,
   type RegistryRoute,
 } from "../src/core/registryHost.js";
@@ -582,11 +583,23 @@ describe("registry host: the landing page at /", () => {
 // ── Dispatch through fake routes ─────────────────────────────────────────────────────────────
 
 describe("registry host: the access ladder cannot be skipped", () => {
-  it("every REGISTRY_ROUTES entry is built by feedRoute (serveFeedRead around its work)", () => {
-    for (const route of REGISTRY_ROUTES)
+  it("every REGISTRY_ROUTES read is built by feedRoute (serveFeedRead around its work)", () => {
+    for (const route of REGISTRY_ROUTES) {
+      if (route.methods !== undefined) continue;
       expect(route[FEED_READ_ROUTE], `${route.name} skips the ladder`).toBe(
         true,
       );
+    }
+  });
+
+  it("the only non-read routes are F-21's credential routes: built by feedAuthRoute, POST only", () => {
+    const others = REGISTRY_ROUTES.filter((r) => r.methods !== undefined);
+    expect(others.map((r) => r.name)).toEqual(["swift.login"]);
+    for (const route of others) {
+      expect(route[FEED_AUTH_ROUTE], route.name).toBe(true);
+      expect(route[FEED_READ_ROUTE], route.name).toBeUndefined();
+      expect(route.methods, route.name).toEqual(["POST"]);
+    }
   });
 
   it("feedRoute marks its routes and a hand-written route is not marked", () => {

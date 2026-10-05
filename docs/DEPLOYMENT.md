@@ -21,7 +21,7 @@ Target account and fixed values:
 | Platform admin group | `admins`                                        |
 | GitHub App           | `polaris-key`                                   |
 | First product        | `djdl` (linked from its own product repository) |
-| Portal email sender  | `Polaris Key <noreply@plrs.im>`                 |
+| Portal email sender  | `Polaris Key <noreply@auth.plrs.im>` (I-18)     |
 
 Do not change the production hostname as a deployment-time tweak. The SDK defaults,
 signed-config issuer, tests, docs, and product examples assume `key.plrs.im`; using a
@@ -70,15 +70,16 @@ These steps are browser/provider tasks. Complete them before deploying.
    (`pkg.plrs.im`, `pkg-staging.plrs.im`, `pkg-dev.plrs.im`, F-02). `wrangler deploy` attaches
    each `custom_domain = true` route in `wrangler.toml` and creates its DNS record and
    certificate; a name that already has a DNS record outside the Worker must be cleared first.
-3. Onboard `plrs.im` to Cloudflare Email Service for outbound sending.
-4. Verify or allow the sender address `noreply@plrs.im`.
-5. The Worker binds Email Service as `EMAIL` in prod and restricts senders to
-   `noreply@plrs.im`:
+3. Onboard the auth sending subdomain `auth.plrs.im` on Cloudflare Email Sending, add its
+   SPF record, register it with Apple's private email relay and run the DNS check: RUNBOOK
+   "Sign-in email (I-18)" lists the exact records and steps. (`plrs.im` itself is onboarded
+   too; the Worker sends from `noreply@plrs.im` until `EMAIL_SENDER_ADDRESS` is set.)
+4. The Worker binds Email Service as `EMAIL` in prod and staging and restricts senders:
 
    ```toml
    [[env.prod.send_email]]
    name = "EMAIL"
-   allowed_sender_addresses = ["noreply@plrs.im"]
+   allowed_sender_addresses = ["noreply@plrs.im", "noreply@auth.plrs.im"]
    ```
 
 Cloudflare documents the `send_email` binding and `allowed_sender_addresses` restriction at
@@ -251,6 +252,10 @@ publisher (`.pkey/release` `publishing.trustedPublisher`) and runs in the GitHub
    `gh api repos/vladzaharia/polaris-key --jq '.id, .owner.id'`) say which. An environment without
    those vars has no deploy hook (staging and dev today); bootstrap there from the console and
    claim the publisher (`PUT /manage/api/products/polaris-key/ci-publisher`) if it should publish.
+   The hook also reports whether the Worker can issue upload tickets (`uploads.ready`, with the
+   missing binding or secret NAMES): the step fails the deploy when it cannot, because every SDK
+   publish would otherwise meet a bare 404 on `/polaris-key/release/publish/uploads`. Set the
+   R2 parent token first (below, "Trusted publishing: the R2 parent token").
 
 No other publishing credential exists: there is no npm, PyPI, Maven Central or Docker Hub token,
 and no workflow publishes to GitHub Packages, PyPI or a GitHub Release (owner decision 2026-10-04,
@@ -441,12 +446,27 @@ compensation (no cookies, `nosniff`, a `sandbox` CSP, JSON errors), adds
 test`, `registry-clients.yml`). It has no routes and must never be deployed.
 - Until the feeds' tables exist (F-03) every feed path answers the not-found: the settings read
   fails closed.
+- **`REGISTRY_TOKEN_KEY` (F-21), per environment, before deploying F-21.** The HMAC key of the OCI
+  pull tokens `GET /v2/token` issues (plans/F-20.md §6.4). Set it in dev, then staging, then prod:
+
+  ```sh
+  cd packages/worker
+  openssl rand -base64 32 | npx wrangler secret put REGISTRY_TOKEN_KEY --env <env>
+  ```
+
+  Without it `/v2/token` answers 503 and `/v2/` stays a plain 200; with it `/v2/` answers the
+  Bearer challenge to a request without a pull token (anonymous pull tokens keep public images
+  pullable). No feature flag: every feed is `public` until an operator changes its mode. Rotation
+  is in the RUNBOOK ("Registry tokens (F-21)"). Optionally, add a GitHub secret-scanning custom
+  pattern `pkeyr_[A-Za-z0-9_-]{43}` at organisation level.
 
 After the next deploy, check the host from outside:
 
 ```sh
-curl -sI https://pkg.plrs.im/v2/ | grep -iE '^(HTTP|docker-distribution-api-version|content-security-policy)'
-# HTTP/2 200, docker-distribution-api-version: registry/2.0, content-security-policy: sandbox; ...
+curl -sI https://pkg.plrs.im/v2/ | grep -iE '^(HTTP|docker-distribution-api-version|content-security-policy|www-authenticate)'
+# HTTP/2 401 with www-authenticate: Bearer realm="https://pkg.plrs.im/v2/token",service="pkg.plrs.im"
+# (HTTP/2 200 while REGISTRY_TOKEN_KEY is unset), docker-distribution-api-version: registry/2.0,
+# content-security-policy: sandbox; ...
 curl -sI https://pkg.plrs.im/manage | grep -iE '^(HTTP|set-cookie|x-content-type-options)'
 # HTTP/2 404, x-content-type-options: nosniff, and no set-cookie line
 curl -sI https://pkg.plrs.im./manage | head -1
@@ -492,6 +512,12 @@ What the minted credential may do is fixed in code (`core/publisher.ts`,
 listing, no `CopyObject`/`UploadPartCopy` (a copy could carry another product's object, with its
 stored checksum, into the ticket prefix) and no multipart (a multipart object's stored checksum is
 not its SHA-256). CI must upload each object as **one** PUT with `x-amz-checksum-sha256`.
+
+The JWT names `actions` and **no** `scope`. Cloudflare's example shows the two together, but R2
+refuses a session token that carries both: every request then fails with 400
+`InvalidArgument` / `X-Amz-Security-Token`, which is how the v0.8.17 SDK publish failed. The
+signing key is the parent's **Secret Access Key** (the SHA-256 hex of the token value), not the
+`cfat_…` token value itself; signing with the token value gives 403 `SignatureDoesNotMatch`.
 
 After the first deploy with the secrets, confirm against real R2 (the test suite models R2's
 documented rules; it cannot reach an account):
@@ -621,8 +647,8 @@ ADMIN_OIDC_ISSUER=https://id.plrs.im
 Paste the complete GitHub App private key PEM for `GITHUB_APP_PRIVATE_KEY`, including the
 `BEGIN` and `END` lines.
 
-`PORTAL_EMAIL_FROM` does not need to be set when using the default sender
-`Polaris Key <noreply@plrs.im>`.
+`PORTAL_EMAIL_FROM` does not need to be set. The sender's display name is fixed (`Polaris Key`,
+or `<App> via Polaris Key`); the address is the `EMAIL_SENDER_ADDRESS` var (I-18).
 
 ### Platform store connections (A-16, optional)
 
