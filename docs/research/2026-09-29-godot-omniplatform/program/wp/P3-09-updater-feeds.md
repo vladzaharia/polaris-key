@@ -5,7 +5,7 @@
 | Phase       | P3: Signed feed, decision, feeds (wire v4)                                                      |
 | Size        | 1.5–2 engineer-weeks                                                                            |
 | Depends on  | [P3-03](P3-03-feed-composition.md), [P0-10](P0-10-sparkle-hardening.md), [P0-05](P0-05-cors.md) |
-| Unblocks    | [P3-10](P3-10-godot-updater.md)                                                                 |
+| Unblocks    | [P3-10](P3-10-godot-updater.md), [SP-09](SP-09-velopack-auth-redirect.md)                       |
 | Role        | `pkey-implementer`                                                                              |
 | Plan mode   | no. The feeds are unsigned routes; only a new `shared-protocol` type would be plan-mode         |
 | Gates       | rule 10 (OpenAPI + `routeCoverage`); generated `reference/routes.mdx`                           |

@@ -91,7 +91,7 @@ export function TiersPage({ slug }: { slug: string }): React.ReactElement {
         meta: { priority: 2, mono: true },
         cell: ({ getValue }) => (
           <span
-            className="block max-w-[8rem] truncate"
+            className="block max-w-[7rem] truncate"
             title={getValue() as string}
           >
             {getValue() as string}
@@ -105,14 +105,14 @@ export function TiersPage({ slug }: { slug: string }): React.ReactElement {
         meta: { priority: 2 },
         cell: ({ row }) =>
           row.original.profile ? (
-            <span className="whitespace-nowrap">
-              <EntityLink
-                slug={slug}
-                kind="profile"
-                id={row.original.profile}
-                label={profileName(row.original.profile)}
-              />
-            </span>
+            <EntityLink
+              slug={slug}
+              kind="profile"
+              id={row.original.profile}
+              label={profileName(row.original.profile)}
+              className="block max-w-[11rem] truncate"
+              title={profileName(row.original.profile)}
+            />
           ) : (
             <span className="text-fg-muted">None</span>
           ),

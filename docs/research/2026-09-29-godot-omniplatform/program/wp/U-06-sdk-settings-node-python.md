@@ -12,6 +12,12 @@
 | Human input | none                                                                                                                                              |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                         |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/U-01.md`](../plans/U-01.md):** client codes from §2.8 (`body_too_large`, not `payload_too_large`); the Q5 policy source: `user` policies come from `/config/schema` cached beside the journal, the compiled mirror before the first fetch, and a refetch when the pull's `catalogVersion` changes; a stale LWW write answers `conflict` with the server copy (Q6).
+
 ## Goal
 
 Node and Python persist user settings locally and, with Cloud Sync on and a signed-in account, sync them: journal, `setConfig`, `clearConfig`, `settingState`, `onChange` with origin, member diffs, flush hooks (`beforeExit`, `atexit`), sign-out rules, first-sign-in upload of the local partition, `account_required` handling that never touches licence state, and a scenario runner.

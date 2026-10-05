@@ -12,6 +12,12 @@
 | Human input | none                                                                                                                                                                                                                      |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                 |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/U-01.md`](../plans/U-01.md):** glossary noun **Cloud Sync principal** (Q7); the A3 record; enum additions (the parity `service` enums gain `sync`); tolerance tests; the discovery re-record; data shape in the catalog and limits and access policy as claimable settings in `.pkey/product` (Q5), with the registry slice; rule 8b.
+
 ## Goal
 
 Products declare user settings and Cloud Sync data in `.pkey/schema` and turn on a new **Cloud Sync** service: the catalog `user` block and the `cloudSync` block validate under rules 1–11, mirrors expose typed setting keys, docs regenerate, and `tools/services.json` gains the `sync` descriptor with `requires: [config, identity]`, its toggle, discovery fragment and console section.

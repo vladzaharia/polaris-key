@@ -12,6 +12,13 @@
 | Human input | none                                                                                                                                              |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                         |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/LX-01.md`](../plans/LX-01.md):** Q1: keep a usable anchor unless the holder has a candidate with a strictly higher `tiers.rank`, then move the device to it, seat-checked; the `id` tiebreak.
+- **[`plans/I-09.md`](../plans/I-09.md):** replace I-09's inline `core/anchor.ts` behind the same signature.
+
 ## Goal
 
 Activation chooses the anchor by `anchorPolicy` (default `rank-first`) for sign-in, attach, Discover and base claims, handles licence-less devices, supersedes an enrolled free licence on attach and re-homes its grants; I-09's inline rule is replaced by `chooseAnchor`.
