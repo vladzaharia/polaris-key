@@ -51,6 +51,25 @@ The setup dock (right dock) edits `res://polaris_key.tres`, a `PKeyOptions` reso
    confirmation box, then **Save**.
 4. **Editor channel**: the channel editor runs use (`dev` by default). Exports take theirs from
    the build stamp (see [Export presets and CI](#export-presets-and-ci)).
+5. **Tools** run the Polaris Key CLI (`pkey` on PATH, or set the command, for example
+   `npx @polaris-key/cli`):
+   - **Generate config** runs `pkey sdk --lang godot --write` into `res://polaris_key_config.gd`
+     (product, base URL, trust pins, pinned release keys and expected services from discovery;
+     `PolarisKey.configure(preload("res://polaris_key_config.gd").options())`). Release keys have
+     no public route: the command runs in the nearest directory above the project holding
+     `.pkey/release`, and without one the keys already in `res://polaris_key.tres` are passed as
+     `--release-key`. The CLI refuses, writing nothing, when they do not match discovery's
+     `releaseKeyFingerprints`, and prints every pin's fingerprint to compare with the console.
+   - **Generate catalog mirror** runs `pkey mirror --lang gdscript`, writing
+     `res://catalog_generated.gd` from the product's schema route
+     (`PolarisKey.config.set_compiled_catalog(preload("res://catalog_generated.gd"))`).
+   - **Add pkey_packs/\* to exports** adds `pkey_packs/*` to every export preset's
+     non-resource filter, so embedded pack baselines and their markers ship. **Save** does the
+     same once `res://pkey_packs/` exists.
+6. **Web exports** need the origin that serves the game listed under `web.origins` in the
+   product's `.pkey/product` (exact origins, `http://localhost:8060` for local testing), then a
+   resync. Without it the browser blocks every call. The dock shows this reminder; the rules are
+   in [Web clients and CORS](/docs/build/web-cors/).
 
 Everything else is a `PKeyOptions` property you can set in the inspector or in code: `version`
 (defaults to `application/config/version`, which must be SemVer), `pinned_release_keys` (the CI
@@ -351,6 +370,10 @@ plugin, run it) on 4.4.1 and 4.7.2 before each zip reaches the feed.
 - **Web** needs the product's origin in the Worker's CORS allowlist. A web build has no
   fingerprint, no keyless enrolment and no `strict` tiers. `user://` is IndexedDB in memory,
   which the browser may clear: that mints a new device id. Keep large packs out of `user://`.
+  **Clearing site data can consume a seat**: the device token goes with it, and with no
+  fingerprint the server cannot tell the browser is the same device, so entering the key again
+  activates a new device against the licence's device limit. The old one stays listed until it
+  is freed from the portal (`PolarisKey.portal.url("free-device")`) or the console.
 - **Device-code sign-in sends no fingerprint**, so a `strict` tier refuses that path.
 - **Secrets are not secret in a game.** A `clientScoped` secret is readable by anyone with the
   build (and on web by any same-origin script); use edge-mint (`mint_token`) for third-party API
@@ -449,7 +472,9 @@ PKEY_BUILD_OUTLET=itch-beta PKEY_BUILD_OUTLET_KIND=itch \
   line is `const PINNED_TRUST_KEYS := {...}`), editor channel. "Check" verifies the live trust
   manifest against the pasted pins and lists each kid with a SHA-256 fingerprint. "Fill from
   discovery" only pre-fills candidates; "Save" needs the box confirming the pins match
-  `pkey trust` or the console.
+  `pkey trust` or the console. Its tools (`editor/setup_tools.gd`, PKeySetupTools) build the
+  `pkey sdk --lang godot --write` and `pkey mirror --lang gdscript` command lines, run them
+  through the platform shell and add `pkey_packs/*` to the export presets.
 
 ## Boot and UI kit (`PolarisKey.boot()`, `PKeyBoot`, P1-10)
 
