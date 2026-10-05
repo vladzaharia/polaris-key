@@ -2578,6 +2578,13 @@ the flag and the store, never a token.
   the account's own (`ownersteamid` = `steamid`: a Family Sharing borrower gets nothing) and not a
   timed trial.
 
+**Licence merges (LX-03).** When an identity sign-in retires an anonymous enrolled licence into
+the identity's licence, the retired licence's grants and purchases move to the survivor and its
+binding becomes an alias of the survivor (`dist_purchase_binding_aliases`, read before
+`dist_purchase_bindings`), in the same batch as the device move. A restore under the old binding
+therefore reaches the survivor, and "first licence wins" below then names the survivor. Nothing
+else writes an alias; see the R1-07 migrate bullet for the attach case.
+
 **Cross-licence claims.** Every purchase is bound before it is made: the licence's binding UUID
 (random, not the licence id, not PII) is handed to the store as Apple's `appAccountToken`, Play's
 `obfuscatedAccountId` or the Steam ticket identity. A claim grants only when the STORE's record
@@ -2776,16 +2783,35 @@ plain R1-07 poll, which authorizes one starter device on the victim's license th
   claim is offered (`attachable`) only while every authorized device on the starter's row,
   dormant ones included, fits the device limit the row will carry after the claim (the victim's
   mapped tier and provisioned overrides).
-- **Migrate** (the victim already has a license): `moveDevices` re-points _every_ device on the
-  starter's anonymous license at the victim's license, with `seat_no = NULL` and without
-  `authorizeDevice`. Bounded since P1-07 review: the attach is offered (`attachable`) only while
-  every authorized device on the starter's license (dormant ones too, since `moveDevices` moves
-  them and a moved dormant device comes back without claiming a seat) plus the seat-holding
-  devices on the victim's license fit the device limit the victim's license will carry after the
-  activation. The activation rewrites that license's tier and overrides to the victim's current
-  group-mapped tier and provisioning before the mint, so the bound is measured on that, not on
-  a larger tier the license still stores from an earlier sign-in or an admin `deviceLimit`
-  override the same write discards.
+- **Migrate** (the victim already has a license): the merge re-points _every_ device on the
+  starter's anonymous license at the victim's license, without `authorizeDevice`. Bounded since
+  P1-07 review: the attach is offered (`attachable`) only while every authorized device on the
+  starter's license (dormant ones too, since the merge moves them and a moved dormant device
+  comes back without claiming a seat) plus the seat-holding devices on the victim's license fit
+  the device limit the victim's license will carry after the activation. The activation rewrites
+  that license's tier and overrides to the victim's current group-mapped tier and provisioning
+  before the mint, so the bound is measured on that, not on a larger tier the license still
+  stores from an earlier sign-in or an admin `deviceLimit` override the same write discards.
+  Since LX-03 the move itself is seat-checked against the same limit (`planDeviceMove`,
+  `repo.ts`): the destination's dormant seats are released, the move is refused
+  (`device-limit`, nothing written) when the moving devices plus the destination's seat-holders
+  exceed it, and every moved authorized device takes a free ordinal of the destination, so
+  `idx_devices_seat` arbitrates a concurrent activation (the merge batch then fails whole and is
+  planned again). The offer is no longer the only guard.
+- **What the migrate carries (LX-03).** The same batch moves the starter's store purchases onto
+  the victim's license (`core/licenseMerge.ts`: License re-keys `license_store_grants`,
+  Distribution re-keys `dist_purchases` and records the starter's purchase binding in
+  `dist_purchase_binding_aliases`, so it resolves to the victim's license). This gives the
+  starter nothing it did not already have: its devices are already on the victim's license and
+  see the victim's flags; the carried purchases add the starter's own flags to the victim's
+  license, a gift to the victim. A later purchase under the aliased binding grants the victim's
+  license, the residual the commerce bridge already accepts ("anyone who learns a licence's
+  binding can make a purchase that grants THAT licence"). The aliased binding cannot pull a
+  purchase off any other license: "first licence wins" still holds for every purchase not
+  recorded for the retired license, and the merge itself needs the claimable anonymous license
+  and a usable identity license as before. Without Core's merge collector on the request
+  (`ServiceContext.licenseMerge`, built by `dispatchService`) the migrate is refused rather than
+  run without carrying.
 - **On both arms**, then, the attach cannot take the victim past their device limit. It can
   still fill the victim's free seats with the starter's devices, so the victim's own next device
   then gets `device_limit` until the owner removes them. The bound is a read before the merge,
@@ -2804,7 +2830,9 @@ claim)` / `P1-07 (R1-07 bound, migrate)` tests (dormant devices on a claim, the 
 rather than the enroll tier, the mapped tier rather than a stale stored one) assert the
 seat-limit refusal, and `P1-07
 (R1-07, claim on a strict tier)` and `P1-07 (R1-07, migrate on a strict tier)` assert that nothing
-merges when the mint would be refused. Binding the
+merges when the mint would be refused. `licenseMerge.test.ts` and `enroll.test.ts` (`LX-03: …`)
+assert the seat-checked move, the refusal in one piece, and that grants, purchases and the
+binding follow the merge. Binding the
 callback to the confirming browser (below) closes all of it, because the device-code holder is
 then again the person who signed in.
 

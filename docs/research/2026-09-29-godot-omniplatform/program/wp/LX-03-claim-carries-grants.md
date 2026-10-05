@@ -41,6 +41,23 @@ Migrate disables the enrolled licence without moving purchases, and `moveDevices
 
 - Existing per-licence bindings must keep resolving.
 
+**Corrections from the code (2026-10-04, implementation).**
+
+- Only the **migrate** arm of `activateFromIdentity` retires a licence. The **claim** arm keeps
+  the same licence row, so its grants, purchases and binding already stay put; nothing is carried
+  there.
+- `dist_purchase_bindings` is keyed (product, license_id), so the old binding cannot be re-pointed
+  at a target that already has one. The alias is a new Distribution table,
+  `dist_purchase_binding_aliases` (migration 0072), read before `dist_purchase_bindings` by
+  `licenseOfBinding`. `dist_purchases.license_id` ("first licence wins") also has to move, or a
+  restore of an already-recorded purchase is refused as `bound_elsewhere`.
+- The rows belong to License (`license_store_grants`) and Distribution (`dist_purchases`, the
+  bindings), which Identity may not import (rule 6). The carry is therefore a Core-declared
+  descriptor step, `ServiceDescriptor.licenseMerge` (statements only, run whatever the service's
+  enablement, like `manifestIngestAlways`), collected by `core/licenseMerge.ts` and handed to
+  Identity on `ServiceContext.licenseMerge`. `mergeLicenseInto` runs the seat-checked device move
+  (`planDeviceMove`), those statements, the retirement and its audit row in one batch.
+
 ## Steps
 
 1. Tests.
@@ -48,9 +65,9 @@ Migrate disables the enrolled licence without moving purchases, and `moveDevices
 
 ## Acceptance criteria
 
-- [ ] After migrate, a restore on the old binding reaches the target licence (test).
-- [ ] `moveDevices` refuses beyond the target's seats (test).
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] After migrate, a restore on the old binding reaches the target licence (test).
+- [x] `moveDevices` refuses beyond the target's seats (test).
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 

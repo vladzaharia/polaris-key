@@ -61,6 +61,8 @@ import { handleLicenseDocument } from "../../src/services/license/document.js";
 // The latter is the exact behavioural equivalent of the pre-split core function, so it is what
 // these tests assert against.
 import { requireLicensedDevice } from "../../src/services/license/auth.js";
+import { licenseMergeFor } from "../../src/core/licenseMerge.js";
+import { SERVICES } from "../../src/mount.js";
 import { authorizeDevice } from "../../src/core/authz.js";
 import {
   countActiveDevices,
@@ -1259,6 +1261,8 @@ describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous l
       ctx.db,
       ctx.product,
       at,
+      // What `dispatchService` hands Identity (`ServiceContext.licenseMerge`, LX-03).
+      licenseMergeFor(SERVICES),
     );
     return { status: res.status, body: (await res.json()) as PollBody };
   }
@@ -1680,7 +1684,7 @@ describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous l
   it("P1-07 (R1-07 bound, dormant devices): a dormant device on the anonymous licence counts against the destination's limit, because the migrate moves it too", async () => {
     // Two seats: the victim's own device holds one. The starter's anonymous licence holds the
     // flow's device, which fits, plus a device unseen for longer than SEAT_DORMANCY_SECONDS.
-    // A floor on `moving` would leave the dormant one out (1 + 1 <= 2), yet `moveDevices` moves
+    // A floor on `moving` would leave the dormant one out (1 + 1 <= 2), yet `planDeviceMove` moves
     // it onto the victim's licence, where it comes back without ever claiming a seat.
     await ctx.db.run(
       "UPDATE tiers SET policy_device_limit = 2 WHERE product = 'djdl' AND id = 'pro'",
