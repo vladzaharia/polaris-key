@@ -26,8 +26,24 @@ public const val DOWNLOAD_WINDOW: Int = 8 * 1024 * 1024
 public data class FetchedFile(val path: File, val size: Long, val sha256: String)
 
 /**
+ * Whether the device bearer may go to [url]: the control plane's own origin ([sameOrigin]), or the
+ * bytes host discovery declares, which is the origin of its Distribution or Release `builds` template
+ * (`dl.plrs.im`, the same Worker answering byte routes only; docs/security/THREAT-MODEL.md "the bytes
+ * host"). Any other origin never sees the token.
+ */
+public suspend fun CoreContext.bearerAllowed(url: String): Boolean {
+    if (sameOrigin(url, endpoints.baseUrl)) return true
+    return listOf(ServiceSlug.distribution, ServiceSlug.release).any { slug ->
+        discoveredEndpoint(slug, "builds")?.let { template ->
+            // Only the origin matters: the placeholders are blanked so the template parses as a URL.
+            expandTemplate(template.replace(Regex("\\{[^}]*\\}"), "_"), endpoints.baseUrl, emptyMap())?.let { sameOrigin(url, it) }
+        } == true
+    }
+}
+
+/**
  * Download [url] to [dest], verifying [size] and [sha256] (lowercase hex). [bearer] sends the device
- * token (the URL is the Worker's own: its origin, or a template discovery advertised).
+ * token, but only where [bearerAllowed] holds: the control plane's origin or discovery's bytes host.
  * [onProgress] gets (bytes so far, [size]). Throws [PolarisException]: the Worker's code for a
  * refusal (`attestation_required`, `unauthorized`, `not_entitled`, …), `network-error`,
  * `payload-mismatch`.
@@ -50,6 +66,7 @@ public suspend fun CoreContext.fetchVerified(
         part.delete()
         etagFile.delete()
     }
+    val sendBearer = bearer && bearerAllowed(url)
     var offset = if (part.isFile) part.length() else 0L
     if (offset > size) {
         part.delete()
@@ -61,7 +78,7 @@ public suspend fun CoreContext.fetchVerified(
         val headers = linkedMapOf("accept-encoding" to "identity")
         if (size > 0) headers["range"] = "bytes=$offset-$end"
         if (offset > 0) etag?.let { headers["if-range"] = it }
-        if (bearer) token()?.let { headers["authorization"] = "Bearer $it" }
+        if (sendBearer) token()?.let { headers["authorization"] = "Bearer $it" }
         val response = try {
             request(url, headers = headers, timeoutSeconds = 120.0)
         } catch (e: PolarisException) {

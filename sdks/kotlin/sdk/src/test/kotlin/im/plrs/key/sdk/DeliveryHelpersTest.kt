@@ -28,6 +28,8 @@ import im.plrs.key.core.testing.TestSigner
 import im.plrs.key.core.testing.path
 import im.plrs.key.license.LicenseClientOptions
 import im.plrs.key.release.ReleaseTarget
+import im.plrs.key.core.bearerAllowed
+import im.plrs.key.core.fetchVerified
 import im.plrs.key.update.FeedKind
 import im.plrs.key.update.UpdateClientOptions
 import java.io.File
@@ -107,6 +109,24 @@ class DeliveryHelpersTest {
         assertFalse(File(dir, "djdl.AppImage.part").exists())
         assertEquals(UpdateEvent.updateDownloaded, c.updateEvents.events().single().event)
         assertEquals("1.4.0", c.updateEvents.events().single().release)
+        dir.deleteRecursively()
+        Unit
+    }
+
+    @Test
+    fun theBearerGoesOnlyToTheControlPlaneOrDiscoverysBytesHost() = runBlocking {
+        val dir = tmp()
+        val transport = mutableListOf<PolarisRequest>()
+        val c = client({ transport += it; serving(it) })
+        c.core.discover()
+        // Another origin serving the same path gets the download, never the device token.
+        c.core.fetchVerified("https://evil.example/djdl/distribution/builds/1.4.0/linux-x64", File(dir, "x"), payload.size.toLong(), sha)
+        assertTrue(transport.filter { it.url.startsWith("https://evil.example/") }.all { it.headers["authorization"] == null })
+        // The bytes host discovery's builds template names, and the control plane's origin, do.
+        assertTrue(c.core.bearerAllowed("https://dl.plrs.im/djdl/distribution/builds/1.4.0/linux-x64"))
+        assertTrue(c.core.bearerAllowed("https://key.plrs.im/djdl/release/builds/1.4.0/linux-x64"))
+        assertFalse(c.core.bearerAllowed("https://dl.plrs.im.evil.example/x"))
+        assertFalse(c.core.bearerAllowed("http://dl.plrs.im/x"))
         dir.deleteRecursively()
         Unit
     }
