@@ -100,6 +100,7 @@ describe("the platform inventory (ST-02)", () => {
       ["BLOB_GC_MODE", "BLOB_GC_MODE"],
       ["LAZY_DELTAS", "LAZY_DELTAS"],
       ["LAZY_DELTA_MAX_BYTES", "LAZY_DELTA_MAX_BYTES"],
+      ["LICENSING_RESERVED_NAMES", "LICENSING_RESERVED_NAMES"],
     ]);
   });
 

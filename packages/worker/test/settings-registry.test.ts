@@ -180,12 +180,13 @@ describe("the settings registry (ST-03)", () => {
     }
   });
 
-  it("resolves A-13's four keys through their aliases", () => {
+  it("resolves A-13's four keys (and LX-05's reserved-names mode) through their aliases", () => {
     const pairs: Array<[string, string]> = [
       ["LAZY_DELTAS", "deltas.lazy.mode"],
       ["LAZY_DELTA_MAX_BYTES", "deltas.lazy.maxBytes"],
       ["BLOB_GC_MODE", "blobs.gc.mode"],
       ["BLOB_GC_GRACE_DAYS", "blobs.gc.graceDays"],
+      ["LICENSING_RESERVED_NAMES", "licensing.reservedNames"],
     ];
     for (const [alias, key] of pairs) {
       expect(SETTINGS.canonicalKey(alias)).toBe(key);
@@ -203,6 +204,13 @@ describe("the settings registry (ST-03)", () => {
     }
     expect(PLATFORM_SETTINGS.map((d) => d.key)).toEqual(pairs.map(([a]) => a));
     expect(SETTINGS.canonicalKey("NOT_A_SETTING")).toBeUndefined();
+    // LX-05's ordered enum becomes the A-13 store's choice kind: up (toward error) is L1.
+    const reserved = platformSettingDef("LICENSING_RESERVED_NAMES")!;
+    expect(reserved.kind).toBe("choice");
+    if (reserved.kind === "choice") {
+      expect(reserved.options.map((o) => o.value)).toEqual(["warn", "error"]);
+      expect(reserved.confirm).toEqual({ warn: "L0", error: "L1" });
+    }
   });
 
   it("registers the key-entry settings for I-09 and I-10a", () => {
@@ -230,9 +238,15 @@ describe("the settings registry (ST-03)", () => {
   });
 
   it("seeds S-19's licensing settings as claimable, from one module", () => {
-    const licensing = SETTINGS.entries.filter((e) =>
-      e.key.startsWith("licensing."),
+    // The product-scope ones: LX-05's `licensing.reservedNames` is a platform entry (above).
+    const licensing = SETTINGS.entries.filter(
+      (e) => e.key.startsWith("licensing.") && e.scope === "product",
     );
+    expect(
+      SETTINGS.entries
+        .filter((e) => e.key.startsWith("licensing.") && e.scope !== "product")
+        .map((e) => e.key),
+    ).toEqual(["licensing.reservedNames"]);
     expect(licensing.map((e) => e.key).sort()).toEqual(
       LICENSING_SETTINGS.map((e) => e.key).sort(),
     );
