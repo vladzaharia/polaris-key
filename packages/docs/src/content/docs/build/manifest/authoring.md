@@ -691,7 +691,9 @@ admin owns them, and so is the trusted-publisher policy once claimed.
 Profiles are the manifest's, with one exception: **secret values**. A manifest can't carry a
 secret value, so you set a profile's secrets (a `secret` entry, or a `config` entry flagged
 `secret: true`) in the console, and a re-sync carries them forward, still sealed, onto every
-profile the manifest still lists — unless the manifest's own profile payload declares that key.
+profile the manifest still lists — unless the manifest's own profile payload declares that key,
+or the catalog in the same push no longer declares it a secret. Only sealed values are carried;
+a plaintext one written before sealing existed is not.
 A profile's plain config values and flags follow the manifest, so declare those in
 `.pkey/product`; a console edit to one lasts only until the next push. A profile the manifest
 drops is removed with its secrets. So the flow is:

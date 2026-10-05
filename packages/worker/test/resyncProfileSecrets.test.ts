@@ -7,11 +7,14 @@
  * console, and the replace used to wipe them on the next push: a product that delivered an API
  * key through a tier profile silently stopped delivering it after any `.pkey/` change.
  *
- * The rule pinned here: for every profile that SURVIVES the push, each stored `secrets` entry the
- * manifest's payload does not declare is carried forward exactly as stored (still sealed), as is
- * a sealed value under a `config` key flagged `secret: true`. Everything else on the profile still
- * follows the manifest, a profile the manifest drops is still removed with its secrets, and a
- * secret the manifest does declare still wins.
+ * The rule pinned here: for every profile that SURVIVES the push, a stored value is carried forward
+ * exactly as stored when the INCOMING catalog still declares its key a managed secret (a `secret`
+ * entry, or a `config` entry flagged `secret: true`), the value is a sealed envelope, and the
+ * manifest's payload does not declare that key. A plaintext value is never carried, nor is one
+ * whose key the new catalog dropped or stopped calling secret. Everything else on the profile still
+ * follows the manifest, a profile the manifest drops is still removed with its secrets, and a key
+ * the manifest does declare still wins. The carry reads the profiles immediately before the batch,
+ * so a console edit made while the push was fetching from GitHub is the one carried.
  *
  * Every case drives the real path: `linkRepo` registers the product from a stubbed GitHub, the
  * console API (`handleAdmin`) sets the value, and `resyncRepo` re-reads a changed `.pkey/`.
@@ -49,44 +52,53 @@ const SECRET_CONFIG = "proxy.password";
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────────────────
 
-const SCHEMA_JSON = JSON.stringify({
-  schemaVersion: 1,
-  entries: [
-    {
-      key: API_KEY,
-      kind: "secret",
-      category: "api",
-      label: "API key",
-      description: "",
-      schema: { type: "string", minLength: 8 },
-    },
-    {
-      key: OTHER_SECRET,
-      kind: "secret",
-      category: "api",
-      label: "Backup token",
-      description: "",
-      schema: { type: "string", minLength: 8 },
-    },
-    {
-      key: BASE_URL,
-      kind: "config",
-      category: "api",
-      label: "Base URL",
-      description: "",
-      schema: { type: "string" },
-    },
-    {
-      key: SECRET_CONFIG,
-      kind: "config",
-      secret: true,
-      category: "api",
-      label: "Proxy password",
-      description: "",
-      schema: { type: "string" },
-    },
-  ],
-});
+const ENTRIES: Record<string, unknown>[] = [
+  {
+    key: API_KEY,
+    kind: "secret",
+    category: "api",
+    label: "API key",
+    description: "",
+    schema: { type: "string", minLength: 8 },
+  },
+  {
+    key: OTHER_SECRET,
+    kind: "secret",
+    category: "api",
+    label: "Backup token",
+    description: "",
+    schema: { type: "string", minLength: 8 },
+  },
+  {
+    key: BASE_URL,
+    kind: "config",
+    category: "api",
+    label: "Base URL",
+    description: "",
+    schema: { type: "string" },
+  },
+  {
+    key: SECRET_CONFIG,
+    kind: "config",
+    secret: true,
+    category: "api",
+    label: "Proxy password",
+    description: "",
+    schema: { type: "string" },
+  },
+];
+
+/** `.pkey/schema.json` with these entries (every entry by default). */
+const schemaJson = (entries = ENTRIES): string =>
+  JSON.stringify({ schemaVersion: 1, entries });
+
+/** The catalog with one entry dropped, or replaced by `replacement`. */
+const without = (key: string, replacement?: Record<string, unknown>) =>
+  schemaJson(
+    ENTRIES.flatMap((e) =>
+      e.key !== key ? [e] : replacement ? [replacement] : [],
+    ),
+  );
 
 type Payload = Record<string, unknown>;
 
@@ -128,10 +140,18 @@ const RELEASE_JSON = JSON.stringify({
   },
 });
 
+interface PushOptions {
+  /** `.pkey/schema.json`; the full catalog when absent. */
+  schema?: string;
+  /** Runs when the resync makes its LAST GitHub read (the releases list), i.e. after the
+   *  profile statements are built and before the batch is written. */
+  onReleases?: () => Promise<void>;
+}
+
 /** GitHub, stubbed: installation discovery, the token exchange, `.pkey/` contents, releases. */
-function pkey(product: string): FetchImpl {
+function pkey(product: string, opts: PushOptions = {}): FetchImpl {
   const files: Record<string, string> = {
-    ".pkey/schema.json": SCHEMA_JSON,
+    ".pkey/schema.json": opts.schema ?? schemaJson(),
     ".pkey/product.json": product,
     ".pkey/release.json": RELEASE_JSON,
   };
@@ -154,8 +174,10 @@ function pkey(product: string): FetchImpl {
       }
       return new Response("not found", { status: 404 });
     }
-    if (url.includes("/releases?per_page"))
+    if (url.includes("/releases?per_page")) {
+      await opts.onReleases?.();
       return new Response("[]", { status: 200 });
+    }
     return new Response("not found", { status: 404 });
   };
 }
@@ -227,13 +249,18 @@ async function setOnProfile(
   expect(res.status).toBe(200);
 }
 
-async function resync(ctx: Ctx, profiles: ProfileDecl[], at = NOW + 60) {
+async function resync(
+  ctx: Ctx,
+  profiles: ProfileDecl[],
+  at = NOW + 60,
+  opts: PushOptions = {},
+) {
   const res = await resyncRepo(
     ctx.env,
     ctx.db,
     SLUG,
     at,
-    pkey(productJson(profiles)),
+    pkey(productJson(profiles), opts),
     manifestIngestFor(SERVICES),
   );
   if (!res.ok) throw new Error(`resync refused: ${res.error}`);
@@ -390,5 +417,118 @@ describe("what a resync still owns (R2)", () => {
     const after = (await stored(ctx, "standard"))!;
     expect(after.secrets![API_KEY]).toEqual(declared);
     expect(after.secrets![OTHER_SECRET]).toEqual(other);
+  });
+});
+
+describe("the carry follows the incoming catalog, never the value's shape (R2)", () => {
+  it("does not carry a value whose key the new catalog drops", async () => {
+    const ctx = await linked([{ id: "standard" }]);
+    await setOnProfile(ctx, "standard", API_KEY, "sk-plan-key-0001");
+    await setOnProfile(ctx, "standard", OTHER_SECRET, "backup-console-01");
+    const other = (await stored(ctx, "standard"))!.secrets![OTHER_SECRET]!;
+
+    await resync(ctx, [{ id: "standard" }], NOW + 60, {
+      schema: without(API_KEY),
+    });
+
+    const after = (await stored(ctx, "standard"))!;
+    expect(after.secrets?.[API_KEY]).toBeUndefined();
+    // The key the catalog still declares is carried, byte for byte.
+    expect(after.secrets![OTHER_SECRET]).toEqual(other);
+  });
+
+  it("does not carry a sealed config value once the new catalog stops flagging the key secret", async () => {
+    const ctx = await linked([{ id: "standard" }]);
+    await setOnProfile(ctx, "standard", SECRET_CONFIG, "hunter2-proxy");
+    expect(
+      isSealedEnvelope(
+        (await stored(ctx, "standard"))!.config![SECRET_CONFIG]!.value,
+      ),
+    ).toBe(true);
+
+    await resync(ctx, [{ id: "standard" }], NOW + 60, {
+      schema: without(SECRET_CONFIG, {
+        key: SECRET_CONFIG,
+        kind: "config",
+        category: "api",
+        label: "Proxy password",
+        description: "",
+        schema: { type: "string" },
+      }),
+    });
+
+    expect((await stored(ctx, "standard"))!.config?.[SECRET_CONFIG]).toBe(
+      undefined,
+    );
+  });
+
+  it("never carries a plaintext value, even under a key the catalog still calls secret", async () => {
+    const ctx = await linked([{ id: "standard" }]);
+    // A row written before sealing existed (R12-02): the value sits in D1 as plaintext.
+    await ctx.db.run(
+      "UPDATE profiles SET payload_json = ? WHERE product = ? AND id = 'standard'",
+      JSON.stringify({
+        config: {
+          [SECRET_CONFIG]: {
+            state: "enforced",
+            value: "plain-proxy",
+            updatedAt: NOW,
+          },
+        },
+        secrets: {
+          [API_KEY]: {
+            state: "enforced",
+            value: "sk-legacy-plain",
+            updatedAt: NOW,
+          },
+        },
+        entitlements: {},
+      }),
+      SLUG,
+    );
+
+    await resync(ctx, [{ id: "standard" }]);
+
+    const after = (await stored(ctx, "standard"))!;
+    expect(after.secrets?.[API_KEY]).toBeUndefined();
+    expect(after.config?.[SECRET_CONFIG]).toBeUndefined();
+    expect(JSON.stringify(after)).not.toContain("sk-legacy-plain");
+  });
+
+  it("lets a config value the manifest declares beat a stored sealed one", async () => {
+    const ctx = await linked([{ id: "standard" }]);
+    await setOnProfile(ctx, "standard", SECRET_CONFIG, "hunter2-proxy");
+
+    const declared = {
+      state: "default",
+      value: "from-the-manifest",
+      updatedAt: 9,
+    };
+    await resync(ctx, [
+      { id: "standard", payload: { config: { [SECRET_CONFIG]: declared } } },
+    ]);
+
+    expect((await stored(ctx, "standard"))!.config![SECRET_CONFIG]).toEqual(
+      declared,
+    );
+  });
+});
+
+describe("the carry reads the profiles immediately before the batch (R2)", () => {
+  it("carries a console edit made while the push was still fetching from GitHub", async () => {
+    const ctx = await linked([{ id: "standard" }]);
+    await setOnProfile(ctx, "standard", API_KEY, "sk-before-push-01");
+
+    // The operator rotates the key while the resync is mid-flight: after the profile rows were
+    // built, during the last GitHub read, before the batch lands.
+    await resync(ctx, [{ id: "standard" }], NOW + 60, {
+      onReleases: () =>
+        setOnProfile(ctx, "standard", API_KEY, "sk-rotated-mid-push"),
+    });
+
+    const after = (await stored(ctx, "standard"))!.secrets![API_KEY]!;
+    expect(await openManagedValue(ctx.env, SLUG, API_KEY, after.value)).toBe(
+      "sk-rotated-mid-push",
+    );
   });
 });

@@ -21,6 +21,7 @@ import {
   getProduct,
   insertSchema,
   invalidateWidenedEdgeMintApprovals,
+  isManagedSecretKey,
   isSealedEnvelope,
   listProfiles,
   listTiers,
@@ -37,7 +38,7 @@ import {
   stmtInsertTier,
 } from "../../core/ingest.js";
 import { getReleaseConfig } from "./config.js";
-import { parseManifest } from "./manifest.js";
+import { parseManifest, type ManifestProfile } from "./manifest.js";
 import {
   discoverInstallation,
   type FetchImpl,
@@ -372,6 +373,9 @@ async function applyRepoManifest(
   updated.push("services");
 
   // ── schema: publish a new active version only when the catalog changed ──────
+  // The incoming catalog, built once: screened here when it changed, and asked by the profile
+  // carry-forward below (R2) which keys are still managed secrets.
+  const incomingCatalog = new Catalog(manifest.catalog as never);
   const nextCatalogJson = JSON.stringify(manifest.catalog);
   const activeSchema = await getActiveSchema(db, slug);
   if (activeSchema?.catalog_json !== nextCatalogJson) {
@@ -379,7 +383,7 @@ async function applyRepoManifest(
     // triggered by a repo webhook, so without this the sync path installs catalogs the admin
     // API would refuse — and the refusal is the only thing bounding `pattern` complexity.
     try {
-      new Catalog(manifest.catalog as never).compileAll();
+      incomingCatalog.compileAll();
     } catch (e) {
       return {
         ok: false,
@@ -481,8 +485,7 @@ async function applyRepoManifest(
   updated.push("oidc");
 
   const nextProfileIds = new Set(manifest.profiles.map((p) => p.id));
-  const currentProfiles = await listProfiles(db, slug);
-  for (const profile of currentProfiles) {
+  for (const profile of await listProfiles(db, slug)) {
     if (!nextProfileIds.has(profile.id)) {
       const refs = await countLicensesUsingProfile(db, slug, profile.id);
       if (refs > 0)
@@ -495,26 +498,16 @@ async function applyRepoManifest(
   // Profiles are replaced from the manifest, with one carve-out: their SECRET VALUES. A manifest
   // cannot express a secret value (a sealed envelope is minted by the console under
   // `PLATFORM_KEK`, and a plaintext secret has no place in a repo), so an operator sets one on a
-  // profile in the console, and without this every `.pkey/` push wiped it (R2). The stored
-  // payloads are read before the DELETE below and carried into each profile the manifest still
-  // lists; a profile it no longer lists goes, secrets and all.
-  const storedPayloads = new Map(
-    currentProfiles.map((p) => [p.id, p.payload_json]),
-  );
+  // profile in the console, and without this every `.pkey/` push wiped it (R2). Each row's slot
+  // is reserved here with the manifest's payload, and `withStoredSecrets` fills the carried values
+  // in immediately before the batch (below), so a console edit made while this push was still
+  // reading GitHub is the one carried. A profile the manifest no longer lists goes, secrets and
+  // all.
+  const profileSlots: { index: number; profile: ManifestProfile }[] = [];
   stmts.push({ sql: "DELETE FROM profiles WHERE product = ?", params: [slug] });
   for (const p of manifest.profiles) {
-    stmts.push(
-      stmtInsertProfile({
-        product: slug,
-        id: p.id,
-        name: p.name,
-        description: p.description ?? null,
-        payloadJson: JSON.stringify(
-          withStoredSecrets(p.payload, storedPayloads.get(p.id)),
-        ),
-        modifiedAt: now,
-      }),
-    );
+    profileSlots.push({ index: stmts.length, profile: p });
+    stmts.push(profileStatement(slug, p, p.payload, now));
   }
   updated.push("profiles");
 
@@ -671,6 +664,26 @@ async function applyRepoManifest(
       });
   }
 
+  // R2 — the profiles' carried secret values, read as late as possible: after every GitHub read
+  // above, with nothing but this one D1 read between the snapshot and the batch. A console edit
+  // landing inside that single round trip is the only one a push can still overwrite.
+  if (profileSlots.length > 0) {
+    const stored = new Map(
+      (await listProfiles(db, slug)).map((p) => [p.id, p.payload_json]),
+    );
+    for (const { index, profile } of profileSlots)
+      stmts[index] = profileStatement(
+        slug,
+        profile,
+        withStoredSecrets(
+          profile.payload,
+          stored.get(profile.id),
+          incomingCatalog,
+        ),
+        now,
+      );
+  }
+
   let packSets: StoreOutcome | null = null;
   if (stmts.length > 0) {
     await db.batch(stmts);
@@ -691,35 +704,80 @@ async function applyRepoManifest(
   };
 }
 
+/** One profile row of the resync's batch. */
+function profileStatement(
+  product: string,
+  profile: ManifestProfile,
+  payload: Record<string, unknown>,
+  now: number,
+): DbStatement {
+  return stmtInsertProfile({
+    product,
+    id: profile.id,
+    name: profile.name,
+    description: profile.description ?? null,
+    payloadJson: JSON.stringify(payload),
+    modifiedAt: now,
+  });
+}
+
+/** The payload bucket the console writes a catalog entry's value into (`applyOverrides`). */
+const BUCKET_OF_KIND = {
+  secret: "secrets",
+  config: "config",
+  flag: "entitlements",
+} as const;
+type Bucket = (typeof BUCKET_OF_KIND)[keyof typeof BUCKET_OF_KIND];
+
 /**
  * A manifest profile payload with the secret values its stored predecessor held carried forward
- * (R2). What counts as a secret value:
+ * (R2). A stored entry is carried only when all three hold:
  *
- *   - every `secrets` entry, since a `kind: "secret"` value only ever comes from the console;
- *   - a `config` entry whose value is a sealed envelope, which is how the console stores a
- *     `config` key flagged `secret: true` (R12-02). A plain config value is the manifest's to
- *     replace, so it is left alone.
+ *   - the INCOMING catalog still declares its key a managed secret (`isManagedSecretKey`: a
+ *     `secret` entry, or a `config` entry flagged `secret: true`), in the bucket that kind is
+ *     stored in. What the push says about the catalog decides, not the shape of the old value:
+ *     a key the new catalog drops, or stops calling secret, is not carried;
+ *   - the stored value is a sealed envelope (R12-02). A plaintext value is never carried — it
+ *     is either a pre-sealing row or a value a manifest once wrote, and neither is a secret the
+ *     console vouches for;
+ *   - the manifest's own map for that bucket does not declare the key. The manifest stays the
+ *     last word on anything it actually says.
  *
- * An entry the manifest's own map declares under the same key wins: the manifest stays the last
- * word on anything it actually says. Carried values are copied verbatim, never opened or
- * re-sealed, so the stored ciphertext and its `updatedAt` are unchanged.
+ * Carried values are copied verbatim, never opened or re-sealed, so the stored ciphertext and its
+ * `updatedAt` are unchanged.
  */
 function withStoredSecrets(
   manifestPayload: Record<string, unknown>,
   storedJson: string | undefined,
+  catalog: Catalog,
 ): Record<string, unknown> {
   if (storedJson === undefined) return manifestPayload;
   const stored = parsePayload(storedJson);
-  const secrets = carried(stored.secrets, manifestPayload.secrets, () => true);
-  const config = carried(stored.config, manifestPayload.config, (entry) =>
-    isSealedEnvelope(entry?.value),
-  );
-  if (!secrets && !config) return manifestPayload;
-  return {
-    ...manifestPayload,
-    ...(secrets ? { secrets } : {}),
-    ...(config ? { config } : {}),
-  };
+  const keep =
+    (bucket: Bucket) =>
+    (key: string, entry: { value?: unknown } | undefined): boolean => {
+      const meta = catalog.entryByKey(key);
+      return (
+        meta !== undefined &&
+        isManagedSecretKey(catalog, key) &&
+        BUCKET_OF_KIND[meta.kind] === bucket &&
+        isSealedEnvelope(entry?.value)
+      );
+    };
+  const next: Record<string, unknown> = { ...manifestPayload };
+  let changed = false;
+  for (const bucket of ["secrets", "config", "entitlements"] as const) {
+    const merged = carried(
+      stored[bucket],
+      manifestPayload[bucket],
+      keep(bucket),
+    );
+    if (merged) {
+      next[bucket] = merged;
+      changed = true;
+    }
+  }
+  return changed ? next : manifestPayload;
 }
 
 /** One bucket of `withStoredSecrets`: the stored entries `keep` selects and the manifest does
@@ -727,14 +785,14 @@ function withStoredSecrets(
 function carried(
   stored: Record<string, { value?: unknown } | undefined>,
   declared: unknown,
-  keep: (entry: { value?: unknown } | undefined) => boolean,
+  keep: (key: string, entry: { value?: unknown } | undefined) => boolean,
 ): Record<string, unknown> | null {
   const own: Record<string, unknown> =
     declared && typeof declared === "object" && !Array.isArray(declared)
       ? (declared as Record<string, unknown>)
       : {};
   const kept = Object.entries(stored).filter(
-    ([key, entry]) => !Object.hasOwn(own, key) && keep(entry),
+    ([key, entry]) => !Object.hasOwn(own, key) && keep(key, entry),
   );
   if (kept.length === 0) return null;
   return { ...Object.fromEntries(kept), ...own };

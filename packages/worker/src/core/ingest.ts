@@ -53,7 +53,11 @@ export {
   nextSchemaVersion,
 } from "../admin/repo.js";
 
-// R2: the resync reads a surviving profile's stored payload to carry its secret values forward.
-// Readers only; sealing stays with the console's write path.
+// R2: the resync reads a surviving profile's stored payload to carry its secret values forward,
+// asking the incoming catalog which keys are still managed secrets. Readers only; sealing stays
+// with the console's write path.
 export { parsePayload } from "../admin/lib/redact.js";
-export { isSealedEnvelope } from "../admin/lib/managedSecrets.js";
+export {
+  isManagedSecretKey,
+  isSealedEnvelope,
+} from "../admin/lib/managedSecrets.js";
