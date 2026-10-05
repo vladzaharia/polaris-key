@@ -1423,8 +1423,10 @@ Cell drawer (2.4.0 × Google Play) ───────────────
   (`setup.credentialSource`, `platformSource`) and the connectors section links the store
   connections docs. The platform Store connections page itself is A-16's (the Platform section).
 - **Access.** A pack's gate is a catalog-flag `Combobox` while Config is on, a text field
-  otherwise; the app's `entitled` describes Release's channel and version window (the app row's
-  `entitlement` is stored, not enforced, so it is not offered). `?deliverable=<pack>` focuses that
+  otherwise; the app's `entitled` describes Release's channel and version window. A pack's gate is
+  enforced (P4-05: pack blobs and registry reads require the flag); the app row's `entitlement`
+  is stored but never consulted, because app delivery under `entitled` is the window, so it is
+  not offered. `?deliverable=<pack>` focuses that
   pack's section (DLV-3).
 - **Update → Feed** saves metadata access, the compatibility window and the artifact policy as
   three forms (each its own PATCH with only its fields) and lists the endpoint URLs per channel;

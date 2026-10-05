@@ -60,7 +60,8 @@ CREATE TABLE IF NOT EXISTS tiers (
   PRIMARY KEY (product, id)
 );
 
--- An account: status + identity + tier + per-license overrides.
+-- A licence: status + holder details + tier + per-license overrides. Not an account: the
+-- Polaris Key account is a separate, platform-level row (comment corrected by LX-04, S-19 G19).
 CREATE TABLE IF NOT EXISTS licenses (
   product         TEXT NOT NULL REFERENCES products(slug),
   id              TEXT NOT NULL,
