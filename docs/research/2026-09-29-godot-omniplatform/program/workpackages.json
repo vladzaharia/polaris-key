@@ -6371,7 +6371,7 @@
       "optional": false,
       "refs": ["notes/S-19 §4.3", "notes/S-19 §9 LX-03"],
       "brief": "wp/LX-03-claim-carries-grants.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "LX-04",
