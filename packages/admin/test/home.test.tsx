@@ -125,6 +125,21 @@ describe("Home", () => {
     expect(within(main()).getByText("1 of 2")).toBeTruthy();
   });
 
+  it("pills mean attention: a healthy card has none, an issue pill ends the card header (ADMIN.md §5.11)", async () => {
+    boot("#/", { extra: registry() });
+    await home();
+    await waitFor(() => expect(cards()).toHaveLength(2));
+    const acme = cards().find((c) => c.getAttribute("aria-label") === "Acme")!;
+    const djdl = cards().find((c) => c.getAttribute("aria-label") === "DJDL")!;
+    const healthy = [acme, djdl].find(
+      (c) => c.querySelector("[data-status=pill]") === null,
+    )!;
+    const issue = [acme, djdl].find((c) => c !== healthy)!;
+    expect(within(healthy).queryByText("Setup complete")).toBeNull();
+    const header = issue.querySelector("[data-card-header]")!;
+    expect(header.lastElementChild!.getAttribute("data-status")).toBe("pill");
+  });
+
   it("omits the attention list when nothing needs the operator", async () => {
     boot("#/");
     await home();

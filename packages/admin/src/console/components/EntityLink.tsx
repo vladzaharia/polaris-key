@@ -71,18 +71,22 @@ export type EntityLinkProps = EntityRef & {
   /** Human text (a license name, a version). Without it the id shows, in mono. */
   label?: React.ReactNode;
   className?: string;
+  /** The full text, shown on hover when `className` truncates the label. */
+  title?: string;
 };
 
 export function EntityLink({
   slug,
   label,
   className,
+  title,
   ...ref
 }: EntityLinkProps): React.ReactElement {
   const entity = ref as EntityRef;
   return (
     <Link
       to={entityHref(slug, entity)}
+      title={title}
       className={cn(
         "text-accent-fg underline-offset-4 hover:underline",
         label === undefined && "font-mono text-xs",

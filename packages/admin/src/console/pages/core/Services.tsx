@@ -644,7 +644,9 @@ function PackageFeedsSection({
               htmlFor="service-package-feeds"
               help={
                 distributionOn
-                  ? "Off, every feed of this product answers not-found. Its feed settings are kept."
+                  ? enabled
+                    ? "On: every feed of this product answers installs and updates."
+                    : "Off: every feed of this product answers not-found. Its feed settings are kept."
                   : "Needs Distribution: with Distribution off, no feed answers whatever this says."
               }
             >

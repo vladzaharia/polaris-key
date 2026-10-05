@@ -78,7 +78,21 @@ describe("Products", () => {
     ).toBeTruthy();
     const djdl = rows().find((r) => r.textContent?.includes("djdl"))!;
     expect(within(djdl).getByText("Manual")).toBeTruthy();
-    expect(within(djdl).getByText("Setup complete")).toBeTruthy();
+    // Pills mean attention (ADMIN.md §5.11): the issue pill ends the row, in the last data
+    // column; a healthy product draws no pill, only words for assistive tech.
+    const acmeCells = within(acme).getAllByRole("cell");
+    const setupCell = acmeCells.find((c) =>
+      c.textContent?.includes("1 needs attention"),
+    )!;
+    expect(setupCell.querySelector("[data-status=pill]")).not.toBeNull();
+    expect(
+      acmeCells.indexOf(setupCell) >=
+        acmeCells.filter((c) => c.textContent?.trim()).length - 1,
+    ).toBe(true);
+    expect(djdl.querySelector("[data-status=pill]")).toBeNull();
+    expect(within(djdl).getByText("Setup complete").className).toContain(
+      "sr-only",
+    );
   });
 
   it("the product name links to its Overview, never a service page (PRD-1)", async () => {

@@ -582,6 +582,29 @@ describe("the registered device token", () => {
     expect(res.headers.get("content-type")).toBe("application/jwt");
   });
 
+  it("fetches a config document on a LICENSED product too: a keyless device is not refused (R1)", async () => {
+    // R1 refuses a device BOUND to a licence that is no longer usable. A device registered under
+    // an `open` policy was never bound to one (`license_id` is NO_LICENSE_ID), and it still gets
+    // config documents, as the concepts page promises.
+    const w = await world(SET.licensed, "open");
+    expect(w.product.services.license.enabled).toBe(true);
+    const { status, token } = await register(w);
+    expect(status).toBe(200);
+    expect((await getDevice(w.db, "djdl", DEVICE))?.license_id).toBe(
+      NO_LICENSE_ID,
+    );
+
+    const res = await handleConfigDocument(
+      mkReq("GET", { authorization: `Bearer ${token}` }),
+      w.env,
+      w.db,
+      w.product,
+      NOW,
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("application/jwt");
+  });
+
   it("is refused if it carries the withdrawn plrst_ prefix", async () => {
     // Wire v3 §8: exactly one device-token prefix. The shape gate makes this a fact about the
     // code rather than about which hashes happen to exist.

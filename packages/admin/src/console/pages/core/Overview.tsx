@@ -10,7 +10,8 @@
  *   queries, loaded per tile (one failing never blanks the page; OVR-1, OVR-5).
  * - The setup checklist derives from the product's setup state and real data ("Issue a first
  *   license" is done once a license exists), links only elsewhere, never truncates silently and
- *   hides once complete; a "Setup complete" chip reopens it. Each item states its status in
+ *   hides once complete; the header's "Setup checklist" action reopens it (healthy states get no
+ *   pill, ADMIN.md §5.11). Each item states its status in
  *   words (OVR-2, OVR-7).
  * - Trust & SDK: the signing key in gold with copy, the JWKS URL, and a quick start per SDK whose
  *   version comes from the latest release (OVR-3, OVR-6).
@@ -23,6 +24,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Circle,
+  ListChecks,
   Settings as SettingsIcon,
 } from "lucide-react";
 import {
@@ -148,29 +150,12 @@ function OverviewBody({
       header={
         <PageHeader
           title={p.name}
-          titleAside={
-            <span className="inline-flex items-center gap-2">
-              <IdChip value={slug} noun="slug" head={32} />
-              {p.releaseSource === "github" ? (
-                <StatusPill tone="neutral" icon={null}>
-                  Linked to a repository
-                </StatusPill>
-              ) : null}
-              {complete && !showChecklist ? (
-                <button
-                  type="button"
-                  onClick={() => setShowChecklist(true)}
-                  className="rounded-full focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
-                >
-                  <StatusPill tone="success">Setup complete</StatusPill>
-                </button>
-              ) : null}
-            </span>
-          }
+          titleAside={<IdChip value={slug} noun="slug" head={32} />}
           description={
             <>
               Runs {enabled.length}{" "}
               {enabled.length === 1 ? "service" : "services"}
+              {p.releaseSource === "github" ? " · linked to a repository" : ""}
               {sync?.lastSyncedAt
                 ? ` · last resync ${formatDate(fromSeconds(sync.lastSyncedAt))}`
                 : ""}{" "}
@@ -184,6 +169,18 @@ function OverviewBody({
               icon: <SettingsIcon aria-hidden />,
               onSelect: () => navigate(r.settings(slug)),
             },
+            // A finished checklist is hidden, and healthy states get no pill (pills mean
+            // attention, ADMIN.md §5.11): it comes back from here instead of a "Setup
+            // complete" chip.
+            ...(complete && !showChecklist
+              ? [
+                  {
+                    label: "Setup checklist",
+                    icon: <ListChecks aria-hidden />,
+                    onSelect: () => setShowChecklist(true),
+                  },
+                ]
+              : []),
           ]}
         />
       }
@@ -224,9 +221,10 @@ function OverviewBody({
           <RecentActivity slug={slug} />
         )
       }
-      side={<TrustPanel slug={slug} product={p} />}
-      split="1-1"
     >
+      {/* Trust & SDK carries a code sample and is far taller than the checklist or the activity
+          feed: it takes its own full-width row, so no card stretches to match it. */}
+      <TrustPanel slug={slug} product={p} />
       {!complete || showChecklist ? <RecentActivity slug={slug} /> : null}
     </DashboardTemplate>
   );
@@ -445,13 +443,13 @@ function ChecklistPanel({
       title="Setup"
       action={
         <span className="flex items-center gap-2">
-          <StatusPill
-            tone={done === items.length ? "success" : "neutral"}
-            icon={false}
-            size="sm"
-          >
-            {done} of {items.length} done
-          </StatusPill>
+          {done === items.length ? (
+            <span className="text-xs text-fg-muted">All done</span>
+          ) : (
+            <StatusPill tone="warning" icon={false} size="sm">
+              {done} of {items.length} done
+            </StatusPill>
+          )}
           {onHide ? (
             <Button variant="ghost" size="sm" onClick={onHide}>
               Hide
@@ -520,7 +518,10 @@ function TileFrame({
   children,
 }: {
   service: ServiceSlug;
-  /** A pill beside the service name, top-left ("Schema v8"). */
+  /**
+   * A pill at the header's right edge: a neutral fact ("Schema v8") or an issue ("Needs
+   * setup"). Never a healthy state: pills mean attention (ADMIN.md §5.11).
+   */
   badge?: React.ReactNode;
   href: string;
   linkLabel: string;
@@ -536,14 +537,16 @@ function TileFrame({
       aria-labelledby={id}
       className="flex flex-col gap-3 rounded-lg border border-border border-t-2 border-t-accent bg-surface-raised p-4"
     >
-      <h2
-        id={id}
-        className="flex items-center gap-2 text-sm font-bold text-fg-strong"
-      >
-        <ServiceGlyph id={service} />
-        {serviceLabel(service)}
+      <div data-card-header="" className="flex items-center gap-2">
+        <h2
+          id={id}
+          className="flex min-w-0 flex-1 items-center gap-2 text-sm font-bold text-fg-strong"
+        >
+          <ServiceGlyph id={service} />
+          {serviceLabel(service)}
+        </h2>
         {badge}
-      </h2>
+      </div>
       <div className="min-h-12 flex-1 space-y-1 text-sm text-fg">
         {loading ? (
           <>
@@ -720,6 +723,13 @@ function ReleaseTile({ slug }: { slug: string }): React.ReactElement {
   return (
     <TileFrame
       service="release"
+      badge={
+        health.data && !health.data.healthy ? (
+          <StatusPill tone="warning" size="sm">
+            Needs setup
+          </StatusPill>
+        ) : undefined
+      }
       href={r.releases(slug)}
       linkLabel="Releases"
       loading={store.isPending}
@@ -737,15 +747,6 @@ function ReleaseTile({ slug }: { slug: string }): React.ReactElement {
         <Line>
           stable → <span className="font-mono">{stableVersion}</span>
         </Line>
-      ) : null}
-      {health.data ? (
-        <p>
-          {health.data.healthy ? (
-            <StatusPill tone="success">Healthy</StatusPill>
-          ) : (
-            <StatusPill tone="warning">Needs setup</StatusPill>
-          )}
-        </p>
       ) : null}
     </TileFrame>
   );
@@ -958,7 +959,7 @@ function TrustPanel({
         {jwks ? (
           <div className="space-y-1">
             <p className="text-xs font-bold text-fg-muted">JWKS</p>
-            <p className="flex items-start gap-1">
+            <p className="flex items-center gap-1">
               <code className="min-w-0 flex-1 font-mono text-xs text-fg [overflow-wrap:anywhere]">
                 {jwks}
               </code>
