@@ -26,6 +26,8 @@ const fns = vi.hoisted(() => ({
   ciTokens: vi.fn(),
   issueCiToken: vi.fn(),
   resyncProduct: vi.fn(),
+  checkRepoLink: vi.fn(),
+  linkProductRepo: vi.fn(),
 }));
 
 vi.mock("../src/api.js", async () => {
@@ -287,6 +289,59 @@ describe("Releases → guided first release (UX-23)", () => {
     expect(
       await screen.findByText("CI token issued", { selector: "li p" }),
     ).toBeTruthy();
+  });
+
+  it("offers a manual product Link a repository, through Settings' own drawer", async () => {
+    const user = userEvent.setup();
+    fns.product.mockResolvedValue({
+      product: product({ releaseSource: "manual" }),
+    });
+    fns.checkRepoLink.mockResolvedValue({
+      ok: true,
+      dryRun: true,
+      slug: "tonebox",
+      repository: "acme/tonebox",
+      manifestDigest: "a".repeat(64),
+      plan: {
+        apply: [{ area: "tiers", id: "pro", summary: "Tier pro added" }],
+        skipClaimed: [],
+        delete: [],
+        conflicts: [],
+      },
+      remainingSecrets: [],
+    });
+    fns.linkProductRepo.mockResolvedValue({
+      ok: true,
+      slug: "tonebox",
+      repository: "acme/tonebox",
+      plan: { apply: [], skipClaimed: [], delete: [], conflicts: [] },
+      updated: ["product"],
+      remainingSecrets: [],
+    });
+    mount();
+    const link = await row("Link a repository");
+    await user.click(
+      within(link).getByRole("button", { name: "Link repository…" }),
+    );
+    const drawer = await screen.findByRole("dialog", {
+      name: "Link repository",
+    });
+    await user.type(
+      within(drawer).getByRole("textbox", { name: /Repository/ }),
+      "acme/tonebox",
+    );
+    await user.click(within(drawer).getByRole("button", { name: "Check" }));
+    await within(drawer).findByText("Tier pro added");
+    await user.click(
+      within(drawer).getByRole("button", { name: "Link repository" }),
+    );
+    await waitFor(() =>
+      expect(fns.linkProductRepo).toHaveBeenCalledWith(
+        "tonebox",
+        "acme/tonebox",
+        "a".repeat(64),
+      ),
+    );
   });
 
   it("polls the store and announces the release that ends the wait", async () => {

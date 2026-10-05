@@ -146,6 +146,43 @@ A resync is one D1 transaction: either everything above lands together, or a val
 (a bad catalog, an OIDC issuer change that fails the platform's own gate) leaves the product
 exactly as it was.
 
+### Linking a repository to an existing product
+
+A product created from nothing (or before its repository had a `.pkey/`) can be handed over to
+its manifest later: **Settings → Repository → Link repository…**, or **Link a repository** on the
+Releases page before the first release. Both open the same drawer, and it works in two steps.
+
+1. **Check.** Type `owner/repo` or the repository's GitHub URL. The console runs the link's checks
+   and marks each one: the repository parses, the Polaris Key GitHub App can read it, the
+   `.pkey/` manifest validates, and its `product.slug` is this product's slug. It also runs the
+   checks a resync would otherwise hit halfway: an OIDC issuer change outside the platform's
+   allowlist, an unsafe binary name, a catalog the validator refuses. Nothing is written. A
+   passing check lists what the link will do:
+   - **Applies**: the values and rows the manifest writes (name and defaults, a new catalog
+     version, tiers, profiles, release settings, the trusted publisher, and so on);
+   - **Stays (set in the console)**: values the manifest declares but an operator already set
+     here (services, the compatibility window, the fingerprint and auto-issue policies, release
+     access, a trusted publisher saved in Keys & secrets). The ownership rule above applies from
+     the first apply;
+   - **Removes**: tiers, profiles, catalog keys, token recipes and so on that the product has and
+     the manifest does not declare;
+   - **Blocks the link**: a tier or profile the manifest drops while licenses still use it. Add it
+     to the manifest or move the licenses, then check again.
+2. **Link repository.** The console sends back a digest of the manifest it checked. If someone
+   pushed to `.pkey/` in between, the link is refused (`409`) and asks for a fresh check, so the
+   manifest applied is always the one you read. Otherwise the product's source becomes the
+   repository and the manifest is applied by the same code as **Resync from repo**. The signing
+   key is not touched. Secrets the manifest names but cannot carry are listed for you to set in
+   [Secrets & keys](/docs/admin/secrets-and-keys/).
+
+The link is recorded in Activity as _linked the product to a repository_. After it, every push to
+the default branch re-applies `.pkey/`, exactly as for a product created from its repository. The
+platform's own product cannot be linked here: the deploy hook links it.
+
+The API is `POST /manage/api/products/<slug>/release/link?dryRun=1` with `{ "repoUrl" }` for the
+check, then `POST …/release/link` with `{ "repoUrl", "manifestDigest" }`. A refusal's `reason`
+names the check that failed: `product`, `repository`, `app`, `manifest`, `slug` or `policy`.
+
 ### What deleting a product actually does
 
 **Delete product** is a **tombstone**, not a row deletion — nothing here is a `DELETE FROM`. It:

@@ -42,6 +42,8 @@ export type WriteMethod =
   | "updateProduct"
   | "deleteProduct"
   | "resyncProduct"
+  | "checkRepoLink"
+  | "linkProductRepo"
   | "updateReleaseChannel"
   | "revertReleaseChannel"
   | "setChannelFloor"
@@ -237,6 +239,21 @@ export const MUTATIONS: MutationTable = {
     // A resync re-applies channels, catalog, services, tiers, profiles, update settings and
     // delivery access: everything under the product.
     invalidates: (slug) => [exact(qk.products()), prefix(qk.product(slug))],
+  },
+  checkRepoLink: {
+    label: "link repository check (dry run)",
+    invalidates: () => [],
+    why: "A dry run: it reads the repository and writes nothing.",
+  },
+  linkProductRepo: {
+    label: "link repository",
+    // Linking applies the manifest the way a resync does (everything under the product), and
+    // the registry shows each product's source.
+    invalidates: (slug) => [
+      exact(qk.me()),
+      exact(qk.products()),
+      prefix(qk.product(slug)),
+    ],
   },
   updateReleaseChannel: {
     label: "channel policy (promote, pin, unpin, minimum, critical)",

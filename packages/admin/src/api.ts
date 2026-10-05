@@ -917,6 +917,47 @@ export interface ResyncResult {
     | { ok: false; reason: string; message: string };
 }
 
+/** One line of a manifest plan (worker `release/linkExisting.ts`, S-18 §4.5's dry-run shape). */
+export interface ManifestPlanItem {
+  area: string;
+  /** The row it names (a tier, a catalog key), when there is one. */
+  id?: string;
+  summary: string;
+}
+
+/** What applying a repository's `.pkey/` to a product will do. */
+export interface ManifestPlan {
+  apply: ManifestPlanItem[];
+  /** Declared by the manifest but set in the console: they stay. */
+  skipClaimed: ManifestPlanItem[];
+  delete: ManifestPlanItem[];
+  /** What blocks the link. */
+  conflicts: ManifestPlanItem[];
+}
+
+/** `POST …/release/link?dryRun=1`: the checks passed; this is what a link would do. A refusal
+ *  is an `ApiError` whose `reason` names the failed check (`repository`, `app`, `manifest`,
+ *  `slug`, `policy`, `product`). */
+export interface LinkCheckResult {
+  ok: true;
+  dryRun: true;
+  slug: string;
+  repository: string;
+  /** Sent back with the link: a push since the check refuses it (409). */
+  manifestDigest: string;
+  plan: ManifestPlan;
+  /** Secret names the manifest references that the product does not hold yet. */
+  remainingSecrets: string[];
+}
+
+/** `POST …/release/link`: linked and applied. */
+export interface LinkExistingResult extends Omit<ResyncResult, "updated"> {
+  repository: string;
+  plan: ManifestPlan;
+  updated: string[];
+  remainingSecrets: string[];
+}
+
 // ── Core inventories (chunk 5 · A-4, A-5) and CI publishing (P2-02) ─────────────
 export type SigningKeyState = "active" | "staged" | "retired" | "revoked";
 
@@ -3035,6 +3076,18 @@ const rawApi = {
     }),
   resyncProduct: (slug: string) =>
     call<ResyncResult>(`${p(slug)}/release/resync`, { method: "POST" }),
+  /** Link repository, step 1: check `repoUrl` and plan the hand-over. Writes nothing. */
+  checkRepoLink: (slug: string, repoUrl: string) =>
+    call<LinkCheckResult>(`${p(slug)}/release/link?dryRun=1`, {
+      method: "POST",
+      body: JSON.stringify({ repoUrl }),
+    }),
+  /** Link repository, step 2: link and apply the manifest the check read. */
+  linkProductRepo: (slug: string, repoUrl: string, manifestDigest: string) =>
+    call<LinkExistingResult>(`${p(slug)}/release/link`, {
+      method: "POST",
+      body: JSON.stringify({ repoUrl, manifestDigest }),
+    }),
   releaseHealth: (slug: string) =>
     call<{ health: ReleaseHealth }>(`${p(slug)}/release/health`),
   /** The release TRUTH STORE (`release_metadata`/`_artifacts`/`_channels`, P2.T2) — what

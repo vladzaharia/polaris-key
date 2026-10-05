@@ -208,10 +208,12 @@ landed, and reads the validation errors verbatim when it didn't. A `release` del
 ## The manual resync action
 
 **Resync from repo** in the console calls the same `resyncRepo` path the webhook does,
-synchronously, and is only enabled for a product whose `release_source` is actually
-`github` — a manually-created product has nothing to resync from and the endpoint answers
-with a clear `422` rather than a confusing failure; the console shows the button disabled
-with that reason. When the resync finishes, the **Repo sync** drawer lists what it updated,
+synchronously, and only for a product whose `release_source` is actually `github`. A
+manually created product has nothing to resync from (the endpoint answers `422`), so its
+Settings page offers **Link repository…** instead: it checks the repository, shows what the
+manifest will apply, keep and remove, then links the product and applies the manifest through
+this same path (see
+[Linking a repository to an existing product](/docs/admin/products/#linking-a-repository-to-an-existing-product)). When the resync finishes, the **Repo sync** drawer lists what it updated,
 any part of the manifest it refused (with the manifest path), and the pack-set
 re-resolution it triggered. Use it after linking a repo whose
 `.pkey/` predates the App installation, or any time an operator wants to confirm a change

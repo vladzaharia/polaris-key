@@ -4492,6 +4492,37 @@ sit behind the portal session; the claim also needs the CSRF header.
   `audit`, both with `source: discover`.
 - **Developers can withhold an offer without changing the policy** (`discover_enabled = 0`).
 
+### Linking an existing product to a repository (UX-23)
+
+**What changes hands.** `POST /manage/api/products/<slug>/release/link` turns a manual product
+into a repository-linked one: from then on whoever can push `.pkey/` to the repository's default
+branch writes everything a resync writes (catalog, tiers, profiles, sign-in provider, edge-mint
+recipes, release settings, the manifest-owned trusted publisher). That is the same authority a
+product created from its repository has, granted to an existing product. Code:
+`services/release/linkExisting.ts`; tests: `test/linkExisting.test.ts`.
+
+**Who can do it.** The console session with CSRF, behind the platform-admin gate, like resync. The
+repository is not trusted for its own identity: the App installation must exist on it, and its
+`.pkey/product` must name this product's slug, so a link cannot attach a product to a repository
+that describes another product. The system product is refused (the deploy hook is its only
+writer), and an already-linked product is refused (no re-pointing to another repository here).
+
+**Nothing is applied that the operator did not see.** The dry run (`?dryRun=1`) writes nothing and
+returns the plan and a SHA-256 digest of the `.pkey/` files it read. The link refuses (409) unless
+the files GitHub serves at link time have the same digest, so a push between the check and the
+click cannot slip a different manifest in. The window left is the one every resync has: the
+second fetch inside `resyncRepo`, milliseconds later.
+
+**Every resync gate still runs, before the first write.** The issuer allowlist (R9-01: a custom
+issuer that differs from the stored one is refused unless allowlisted), the binary-name class
+(R6-01), catalog compilation, and the tier and profile references are checked before the
+coordinates are written; the apply itself is `resyncRepo`, so the ownership rules (`admin`-owned
+services, policies, compat window, access modes and publisher stay), the edge-mint approval sweep
+(P0-12) and the profile secret carry-forward (R2) apply unchanged. A refusal from the apply puts
+`release_source` and the coordinates back; what a refused resync already wrote stays, as for any
+resync, and the checks above make that reachable only by a push landing inside that window. The
+signing key is never touched.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The
