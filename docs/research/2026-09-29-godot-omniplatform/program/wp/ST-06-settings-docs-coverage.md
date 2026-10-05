@@ -71,8 +71,10 @@ The code is the fact; these record where it, or an open question, shaped the wor
   ownership, critical, secret, pending, deprecated) and `NOT_A_SETTING_INDEX` (the fixed-on-purpose
   rows search explains). It carries no hrefs: deep links belong to ST-10, over ST-08's hub routes.
   It is added to `docsLinks.test.ts`'s sources, so every entry's `docs` page is link-gated.
-- **Coverage data** lives in `packages/worker/src/core/settings/coverage.ts` (data plus a pure
-  `checkCoverage`, read by the test and the generator, never at runtime): `NOT_A_SETTING` (S-18 A.4's
+- **Coverage data** lives in `packages/worker/scripts/settings-coverage.ts` (data plus a pure
+  `checkCoverage`, read by the test and the generator, never at runtime; not under `src/`, because
+  it names the credential tables and `outletCredentialReach.test.ts` allows only their accessors
+  in the Worker source to do so): `NOT_A_SETTING` (S-18 A.4's
   rows plus rows explaining the concrete targets), `PENDING` (59 entries, each with its owning work
   package) and `PENDING_CEILING` (equal to the length; lower it with every removal).
 - **Targets.** Ownership markers are every column named `source` or ending `_source` in the

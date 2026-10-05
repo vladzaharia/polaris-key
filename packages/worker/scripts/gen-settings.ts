@@ -6,7 +6,7 @@
  *
  * The source is the settings registry as the composition root assembles it (`mount.ts`
  * `SETTINGS`: the platform slice, Core's slice and every service's slice) plus the
- * `NOT_A_SETTING` rows of `core/settings/coverage.ts`. It writes:
+ * `NOT_A_SETTING` rows of `scripts/settings-coverage.ts`. It writes:
  *
  *   1. `packages/docs/src/content/docs/reference/settings.mdx`: the generated reference page
  *      (GENERATED banner, AGENTS.md rule 3), one table per scope and service;
@@ -22,8 +22,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as prettier from "prettier";
 import { SETTINGS } from "../src/mount.js";
-import { NOT_A_SETTING } from "../src/core/settings/coverage.js";
-import type { NotASetting } from "../src/core/settings/coverage.js";
+import { NOT_A_SETTING } from "./settings-coverage.js";
+import type { NotASetting } from "./settings-coverage.js";
 import type {
   SettingConfirm,
   SettingDef,

@@ -22,7 +22,7 @@ import {
   settingsShapedTables,
   SOURCE_MARKERS,
   type CoverageTarget,
-} from "../src/core/settings/coverage.js";
+} from "../scripts/settings-coverage.js";
 import { setting } from "../src/core/settings/define.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));

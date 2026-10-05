@@ -21,11 +21,13 @@
  * Data plus pure checks: `test/settings-coverage.test.ts` reads the schema, the inventory and
  * the manifest schemas and runs `checkCoverage`; `scripts/gen-settings.ts` publishes
  * `NOT_A_SETTING` on the generated reference page and in the console's search index, so search
- * can explain why a thing is fixed. Nothing here is read at runtime.
+ * can explain why a thing is fixed. Nothing here is read at runtime, which is why it lives under
+ * `scripts/` and not `src/`: it names every settings-shaped table, the credential tables among
+ * them, and only the allowlisted Worker files may name those (`test/outletCredentialReach.test.ts`).
  */
 
-import type { InventoryKind } from "../../platformInventory.js";
-import type { SettingDef } from "./types.js";
+import type { InventoryKind } from "../src/platformInventory.js";
+import type { SettingDef } from "../src/core/settings/types.js";
 
 /** One thing that could hold a setting, with what the checks need to know about it. */
 export interface CoverageTarget {

@@ -19,7 +19,7 @@ import {
   ROOT,
 } from "../scripts/gen-settings.js";
 import { SETTINGS } from "../src/mount.js";
-import { NOT_A_SETTING } from "../src/core/settings/coverage.js";
+import { NOT_A_SETTING } from "../scripts/settings-coverage.js";
 
 describe("the generated settings outputs (ST-06)", () => {
   it("are up to date (pnpm gen:settings)", async () => {
