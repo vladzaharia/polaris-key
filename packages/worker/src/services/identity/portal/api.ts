@@ -84,6 +84,11 @@ import {
 import { platformOidcConfig } from "../../../core/platform.js";
 import { portalSecurityHeaders } from "./headers.js";
 import { handleProductDownloads } from "./downloads.js";
+import {
+  discoverCount,
+  handleDiscover,
+  handleDiscoverClaim,
+} from "./discover.js";
 
 export function portalJson(
   body: unknown,
@@ -222,9 +227,11 @@ async function requireSession(
 ): Promise<{ session: PortalSession } | Response> {
   const session = await portalSessionFromRequest(env, req, now);
   if (!session) return unauthorized();
-  const account = await getPortalAccount(db, session.accountId);
+  // I-05: the id resolves through a merge tombstone (30 days), so a cookie of an absorbed
+  // account acts as the survivor, and every handler below reads the resolved id.
+  const account = await getPortalAccount(db, session.accountId, now);
   if (!account || account.status !== "active") return unauthorized();
-  return { session };
+  return { session: { ...session, accountId: account.id } };
 }
 
 export async function hasLinkedProductLicense(
@@ -495,7 +502,13 @@ async function handleMeDelete(
     accountDeletedNotice({ origin: new URL(req.url).origin }),
     now,
   );
-  await deletePortalAccount(db, session.accountId, now);
+  await deletePortalAccount(
+    db,
+    session.accountId,
+    now,
+    env,
+    new URL(req.url).origin,
+  );
   return portalJson({ ok: true, deleted: session.accountId }, 200, {
     "set-cookie": buildPortalClearCookie(),
   });
@@ -1185,7 +1198,23 @@ export async function handlePortalApi(
   // PX-W1: the library and the product page (`library.ts`). Reads only.
   if (head === "library" && rest.length === 0) {
     if (req.method !== "GET") return err(405, "method_not_allowed");
-    return portalJson(await libraryView(db, session.accountId, now, hooksFor));
+    return portalJson({
+      ...(await libraryView(db, session.accountId, now, hooksFor)),
+      // PX-W10: the Discover count in the nav (§4.16); the offers themselves are `GET /api/discover`.
+      discoverCount: await discoverCount(env, db, session.accountId, now),
+    });
+  }
+  // PX-W10 (G24, G25): Discover's offers and "Add to library" (`discover.ts`).
+  if (head === "discover" && rest.length === 0) {
+    return handleDiscover(req, env, db, session, now, hooksFor);
+  }
+  if (
+    head === "discover" &&
+    rest.length === 2 &&
+    rest[0] &&
+    rest[1] === "claim"
+  ) {
+    return handleDiscoverClaim(req, env, db, session, rest[0], now);
   }
   if (head === "products" && rest.length === 1 && rest[0]) {
     if (req.method !== "GET") return err(405, "method_not_allowed");
@@ -1263,23 +1292,12 @@ export async function handlePortalDownload(
   }
   const scope = parseJson<{ portalAccountId?: string }>(row.scope_json, {});
   if (!scope.portalAccountId) return notFound();
-  const account = await getPortalAccount(db, scope.portalAccountId);
+  const account = await getPortalAccount(db, scope.portalAccountId, now);
   if (!account || account.status !== "active") return notFound();
-  if (
-    !(await hasLinkedProductLicense(db, scope.portalAccountId, row.product))
-  ) {
+  if (!(await hasLinkedProductLicense(db, account.id, row.product))) {
     return notFound();
   }
-  if (
-    !(await accountMayDownload(
-      db,
-      scope.portalAccountId,
-      gate,
-      mode,
-      facts,
-      now,
-    ))
-  ) {
+  if (!(await accountMayDownload(db, account.id, gate, mode, facts, now))) {
     return notFound();
   }
   // R9-05b: the conditional UPDATE IS the single-use gate. A concurrent redemption of the same

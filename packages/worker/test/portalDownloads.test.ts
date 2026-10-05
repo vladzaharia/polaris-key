@@ -20,7 +20,10 @@ import { loadProductPublic } from "../src/core/products.js";
 import { SERVICES } from "../src/mount.js";
 import { setServices } from "../src/repo.js";
 import { serializeServices } from "../src/core/services.js";
-import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
+import {
+  getOrCreateAccountByEmail,
+  linkLicense,
+} from "../src/services/identity/portal/repo.js";
 import {
   PORTAL_COOKIE,
   issuePortalSession,
@@ -85,17 +88,7 @@ async function account(
     NOW,
   );
   if (link)
-    await w.db.run(
-      `INSERT INTO portal_license_links
-         (account_id, product, license_id, source, created_at, last_seen_at)
-       VALUES (?,?,?,?,?,?)`,
-      acct.id,
-      SLUG,
-      licenseId,
-      "license-key",
-      NOW,
-      NOW,
-    );
+    await linkLicense(w.db, acct.id, SLUG, licenseId, "license-key", NOW);
   const { token } = await issuePortalSession(
     w.env,
     {

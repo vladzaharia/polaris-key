@@ -350,7 +350,7 @@ export interface PortalMintTokenInput {
 export type PortalPreviewVerdict =
   | "addable"
   | "already_yours"
-  | "owned_elsewhere"
+  | "license_owned"
   | "email_mismatch"
   | "portal_off"
   | "unknown";

@@ -136,6 +136,7 @@ const HOOKS = {
       ).map((releaseId) => ({ releaseId })),
   }),
   outletCapabilities: async () => null,
+  licenseProvenance: () => null,
 } as unknown as ServiceHooks;
 
 const SCOPE = staticScope({

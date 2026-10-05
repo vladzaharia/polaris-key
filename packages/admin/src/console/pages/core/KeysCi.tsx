@@ -53,6 +53,7 @@ const SCOPE_TEXT: Record<string, string> = {
   "distribution:report": "Report store status",
   "distribution:rollout": "Start and change rollouts",
   "distribution:feeds": "Publish package feeds",
+  "distribution:listing": "Upload listing assets",
 };
 
 export function fetchCiPublisher(

@@ -298,12 +298,13 @@ describe("R5-01 cross-tenant license injection by unverified email", () => {
     const account = await getOrCreateAccountByEmail(db, victimEmail, NOW);
     await syncAccountLicenseLinks(db, account.id, NOW);
 
-    // A `portal_license_links` row was written into the victim's account without consent.
-    const links = await db.all<{ product: string; source: string }>(
-      "SELECT product, source FROM portal_license_links WHERE account_id = ?",
+    // The floating licence was attached to the victim's account without consent (I-05: the
+    // owner pointer is `licenses.account_id`).
+    const links = await db.all<{ product: string; id: string }>(
+      "SELECT product, id FROM licenses WHERE account_id = ?",
       account.id,
     );
-    expect(links).toEqual([{ product: EVILCO, source: "email" }]);
+    expect(links).toEqual([{ product: EVILCO, id: "lic_evil_bait" }]);
   });
 });
 
@@ -972,8 +973,9 @@ describe("REFUTED: portal email binding is sticky, so an inbox does not inherit 
     );
 
     await linkEmail(db, second.id, "shared@example.com", NOW + 10);
+    // I-05: the email sign-in method is an `account_links` row; one link, one account.
     const row = await db.first<{ account_id: string }>(
-      "SELECT account_id FROM portal_account_emails WHERE email = ?",
+      "SELECT account_id FROM account_links WHERE issuer_key = 'email' AND subject = ?",
       "shared@example.com",
     );
     expect(row?.account_id).toBe(first.id); // NOT moved to `second`

@@ -28,7 +28,7 @@ Locked decisions. Sources: **[P]** = prior brainstorm session (answers recovered
 | D-11 [P]   | SDK shape          | One package per language; Core + service sub-clients (`client.license`, `client.config`, …); subpath exports for tree-shaking (Node/React)                                            |
 | D-12 [S]   | Offline depth      | All three: offline-tolerant grace; air-gapped activation (out-of-band signed bundles); local-only build profile. Consciously unlocks the old "offline activation OUT" exclusion       |
 | D-13 [S]   | Update gating      | Per-product **`entitled`** feed access mode (opt-in) enforcing tier channels + version windows on feeds/artifacts; default stays `public` (closes R3 gap by policy, not by force)     |
-| D-14 [P]   | Identity scope     | Carve the boundary now (move OIDC, browser session, portal into `services/identity/`); build centralized identity later                                                               |
+| D-14 [P]   | Identity scope     | ~~Carve the boundary now (move OIDC, browser session, portal into `services/identity/`); build centralized identity later~~ **Superseded by Amendment A2 (2026-10-04).**              |
 | D-15 [S]   | Console UX         | Unified suite console: per-service sections, nav filtered by the product's enabled services                                                                                           |
 | D-16 [S]   | Deployment         | Modular monolith, split-ready (restates D-02)                                                                                                                                         |
 | D-17 [P]   | Console theming    | Per-section `data-service` accent + new `core` accent; amends brand-spec locked decision D4 (`data-service="key"` everywhere)                                                         |
@@ -396,3 +396,50 @@ enforcement is equivalent and CI-gated; the mechanism differs from the spec's wo
 noted for CI: `pnpm -r build` does not typecheck the worker (esbuild strips types), so the green
 gate must include `pnpm -r typecheck` — build+test alone missed five broken type-only imports
 during the A1 sweep.
+
+---
+
+## Amendment A2 (2026-10-04): the Polaris Key account and the Identity service
+
+**Supersedes D-14.** "Centralized identity later" is now: one Polaris Key **account** per person
+across every product (layer 1), and a per-product **Identity service** that signs that account in
+_through_ a product. Decided by the owner on 2026-10-04 (research note S-16 and its owner
+decisions; S-17 for Cloud Sync), approved as the account contract in
+`docs/research/2026-09-29-godot-omniplatform/program/plans/I-04.md`, and built from I-05 on. The
+owner decisions this amendment records, quoted from that plan's §0:
+
+- **D17** credentials only on the `key.plrs.im` login card, no in-app email-code API. **D18** a
+  product's own IdP stays product-only in layer 2, linkable from the portal under step-up. **D19**
+  the console shows the buyer email, the account primary email only with consent. **D20** a key
+  entry counts only when it enrols a new device or is a portal submission. **D21** on merge the
+  survivor's pairwise subject wins, the other becomes an alias, and the developer gets
+  `subject.merged`. **D22** no silent SSO into apps: the first sign-in per app needs "Continue to
+  <App>", and device code always does. **D23** dormant accounts (no sign-in, no licence) deleted
+  after 36 months with an email warning.
+- **D24** `license_owned` (403, with `signInUrl`) on key entry of an owned licence on a new device,
+  only with Identity on, while re-entry on an enrolled device and existing installs keep working.
+  **D25** per-product removal keeps the licence unless "also remove". **D27** deletion leaves
+  developer-set buyer columns to the developer, notified by `subject.deleted` (the DPA wording is
+  pending a legal review). D26 is superseded by the split below.
+- **The account/service split.** The Polaris Key account is platform-level, part of Core and the
+  portal, always present and never a per-product toggle. The per-product `identity` toggle gates
+  only sign-in _through the product_. Cloud Sync declares `requires: [config, identity]`; its
+  principal is `devices.subject` only, with no licence-owner fallback. Key-entry limits and the
+  `license_owned` key-entry refusal exist only with Identity on.
+- Carried unchanged: no Discord; email confirmation interstitial with the provider-verified fast
+  path and the join offer (never silent); profile import; the safety defaults (email-bound licences
+  attach only by verified email unless `claimByKey`; an owned licence never moves by key; no
+  recovery desk; custom auth domains deferred; passkeys on `key.plrs.im`); operators on Pocket ID.
+
+**What it changes in this spec.** §5's ownership table gains Identity's account tables
+(`accounts`, `account_links`, `account_product_subjects` and their aliases, `account_tombstones`,
+`subject_events`, `account_sessions`, `account_product_grants`, `account_passkeys`), License's
+`licenses.account_id` (the owner pointer; `portal_license_links` and the platform `licenses.sub`
+join retire after I-17) and Core's `devices.subject`/`devices.bound_by` (the device binding).
+Core gains the account accessors other services read without importing Identity
+(`src/core/accountSubjects.ts`: `subjectFor`, `resolveSubject`, `licenseOwnerSubject`) and the
+subject hooks (`src/core/subjectHooks.ts`: the clearing hook, the licence-ownership hook, and the
+registry through which Config and Cloud Sync hear about merges and deletions), so rule 6 holds.
+The global account id never leaves the Worker's Identity and Core code: developers see pairwise
+subjects only. The wire stays v4 (`PROTOCOL_VERSION` 4): the device-facing additions are I-08's
+and I-09's, additive and feature-detected.

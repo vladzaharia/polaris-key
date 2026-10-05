@@ -2388,7 +2388,7 @@
         "notes/S-17 §6 changes to S-16 work packages"
       ],
       "brief": "wp/I-05-accounts-core.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "I-06",
@@ -4619,7 +4619,7 @@
       "optional": false,
       "refs": ["notes/S-15 §7.2", "notes/S-15 §11 (A-18c)"],
       "brief": "wp/A-18c-listing-import.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "A-18d",
@@ -4642,7 +4642,7 @@
         "notes/S-15 §13 decision 2"
       ],
       "brief": "wp/A-18d-listing-asset-derivation.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "A-18e",
@@ -4666,7 +4666,7 @@
         "notes/S-15 §13 decisions 2, 4, 6"
       ],
       "brief": "wp/A-18e-play-adapter.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "A-18f",
@@ -4689,7 +4689,7 @@
         "notes/S-15 §13 decision 2"
       ],
       "brief": "wp/A-18f-msstore-adapter.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "A-18g",
@@ -4739,7 +4739,7 @@
         "notes/S-15 §11 (A-18h)"
       ],
       "brief": "wp/A-18h-ci-plane-adapters.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "A-18i",
@@ -5121,7 +5121,7 @@
       "optional": false,
       "refs": ["design/PORTAL §10.2 G8", "design/PORTAL §11.2 PX-W6"],
       "brief": "wp/PX-W6-purchase-source.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "PX-W7",
@@ -5207,7 +5207,7 @@
         "design/PORTAL §11.2 PX-W10"
       ],
       "brief": "wp/PX-W10-discover.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "PX-W11",
@@ -5394,7 +5394,7 @@
       "optional": false,
       "refs": ["design/PORTAL §4.13–4.15", "design/PORTAL §11.3 PX-08"],
       "brief": "wp/PX-08-library-api.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PX-09",
@@ -5439,7 +5439,7 @@
         "design/PORTAL §11.3 PX-10"
       ],
       "brief": "wp/PX-10-focused-flows.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PX-11",
@@ -5464,7 +5464,7 @@
         "design/PORTAL §12 Q-1"
       ],
       "brief": "wp/PX-11-package-access.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PX-12",

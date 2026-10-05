@@ -12,7 +12,7 @@
  * `evaluateKeyClaim` is the only place the claim rules live. `POST /api/claim/license-key` acts on
  * its verdict and the preview reports it, so the preview can never promise an add the claim then
  * refuses, nor refuse one the claim would allow. The rules are the S-16 safety defaults the owner
- * confirmed (2026-10-04): an owned licence never moves by its key (`owned_elsewhere`), and a licence
+ * confirmed (2026-10-04): an owned licence never moves by its key (`license_owned`, I-05), and a licence
  * that carries an email attaches only to an account with that email verified (`email_mismatch`),
  * unless the product sets `claimByKey`.
  *
@@ -21,7 +21,7 @@
  * Nothing here can be reached without the WHOLE key: 128 random bits, so the preview is not a
  * key oracle. What it adds is what a key HOLDER learns, and that is kept to the design's list:
  * the product's public presentation, and for a licence they could add, its tier and terms. A
- * refusal never carries ownership details: `owned_elsewhere` says only that another account holds
+ * refusal never carries ownership details: `license_owned` says only that another account holds
  * it, and `email_mismatch` shows the first character and the domain of the address (§4.19). The
  * preview and the claim charge ONE rate bucket (`portalClaimKey`, per account), so previewing is
  * never a cheaper probe than adding.
@@ -53,16 +53,15 @@ import {
   getPortalLicense,
   getPortalProductSettings,
   licenseLinkedElsewhere,
-  linkLicense,
   normalizeEmail,
   portalAudit,
   type PortalLicenseRow,
 } from "./repo.js";
 import { portalSessionAuthenticatedAt, type PortalSession } from "./session.js";
 import { sendNotice } from "./email.js";
+import { attachLicense } from "../accounts/claim.js";
 import {
   licenseAddedNotice,
-  licenseAttachedNotice,
   licenseKeyReplacedNotice,
   type NoticeMessage,
 } from "./notices.js";
@@ -106,7 +105,7 @@ export type KeyClaimVerdict =
       license: PortalLicenseRow;
     }
   /** Linked to another account; an owned licence never moves by its key. */
-  | { kind: "owned_elsewhere"; product: ProductFacts }
+  | { kind: "license_owned"; product: ProductFacts }
   /** Carries an email this account has not verified, and the product does not allow claim by key. */
   | { kind: "email_mismatch"; product: ProductFacts; maskedEmail: string }
   /** May be added. */
@@ -169,7 +168,7 @@ export async function evaluateKeyClaim(
   const mine = await getPortalLicense(db, accountId, slug, license.id);
   if (mine) return { kind: "already_yours", product, license: mine };
   if (await licenseLinkedElsewhere(db, accountId, slug, license.id)) {
-    return { kind: "owned_elsewhere", product };
+    return { kind: "license_owned", product };
   }
   const email = license.email?.trim();
   if (
@@ -185,7 +184,7 @@ export async function evaluateKeyClaim(
 // ── G22: the activate preview ───────────────────────────────────────────────────────────────
 
 /** The platforms the product's newest app release ships for (through Core's catalog hook). */
-async function productPlatforms(
+export async function productPlatforms(
   db: Db,
   hooksFor: PortalHooksFor | undefined,
   slug: string,
@@ -315,6 +314,17 @@ export async function handleActivatePreview(
 
 // ── The claim, on the same verdict ──────────────────────────────────────────────────────────
 
+/** `license_owned` (403): another account owns the licence. Says THAT, never whom (S-16 §5.1). */
+function licenseOwned(): Response {
+  return portalJson(
+    {
+      error: "license_owned",
+      message: "license is held by another account",
+    },
+    403,
+  );
+}
+
 export async function handleClaimKey(
   req: Request,
   env: Env,
@@ -342,14 +352,9 @@ export async function handleClaimKey(
       return err(401, ErrorCode.Unauthorized, "license key not found");
     case "portal_off":
       return notFound();
-    case "owned_elsewhere":
-      return portalJson(
-        {
-          error: "owned_elsewhere",
-          message: "license is held by another account",
-        },
-        409,
-      );
+    case "license_owned":
+      // I-05 (plans/I-04.md §4): the claim rule's code, 403, shared with the device attach.
+      return licenseOwned();
     case "email_mismatch":
       return portalJson(
         {
@@ -369,14 +374,33 @@ export async function handleClaimKey(
       break;
   }
   const { product, license } = verdict;
-  await linkLicense(
-    db,
-    session.accountId,
-    product.slug,
-    license.id,
-    "license-key",
-    now,
+  const origin = new URL(req.url).origin;
+  // I-05: the claim engine re-checks every rule and writes conditionally, so of two concurrent
+  // claims exactly one attaches. It also creates the pairwise subject and, S-16, notifies the
+  // licence's own email when that is not one of this account's verified addresses.
+  const attached = await attachLicense(
+    { db, env, now, origin },
+    {
+      accountId: session.accountId,
+      product: product.slug,
+      licenseId: license.id,
+      via: "key",
+    },
   );
+  if (!attached.ok) {
+    if (attached.reason === "license_owned") return licenseOwned();
+    if (attached.reason === "license_email_bound") {
+      return portalJson(
+        {
+          error: "email_mismatch",
+          message: "license joins only the account with its email verified",
+          maskedEmail: maskEmail(attached.email ?? ""),
+        },
+        403,
+      );
+    }
+    return err(401, ErrorCode.Unauthorized, "license key not found");
+  }
   await portalAudit(db, {
     accountId: session.accountId,
     action: "portal.license.claim",
@@ -387,7 +411,6 @@ export async function handleClaimKey(
     now,
   });
   // The claim has committed: a mail failure must not turn it into an error (PX-W7 review).
-  const origin = new URL(req.url).origin;
   await sendQuietly(
     env,
     db,
@@ -399,19 +422,6 @@ export async function handleClaimKey(
     }),
     now,
   );
-  // S-16: each attach notifies the licence's own email too, when it is a different address.
-  if (
-    license.email &&
-    normalizeEmail(license.email) !== normalizeEmail(session.email)
-  ) {
-    await sendQuietly(
-      env,
-      db,
-      license.email,
-      licenseAttachedNotice({ productName: product.name, origin }),
-      now,
-    );
-  }
   const portalRow = await getPortalLicense(
     db,
     session.accountId,

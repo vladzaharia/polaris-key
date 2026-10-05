@@ -24,6 +24,12 @@
  * cache and inside the open) or for the platform apps listing. This file is one of the two
  * reviewed callers of `openPlatformCredential` outside Core (`outletCredentialReach.test.ts`).
  *
+ * **The MSI/EXE audience (A-18f).** The write client (`write.ts`) needs a second token from the
+ * same application: `platformMsStoreToken(…, "msi")` exchanges at the v2.0 endpoint for the scope
+ * `https://api.store.microsoft.com/.default`, cached in its own sealed slot (the audience is part
+ * of the slot hash), and `platformMsStoreSellerId` reads the seller id from the credential's
+ * non-secret metadata. The default (`"classic"`) is P5-04's token, unchanged.
+ *
  * **Fixed host.** The token request goes only to `login.microsoftonline.com`; the tenant id from
  * the credential becomes one percent-encoded path segment after a format check (a GUID or a
  * domain name), and the final URL is re-checked, so a credential cannot make the Worker post its
@@ -58,6 +64,14 @@ export const MSSTORE_PLATFORM_CREDENTIAL =
 export const ENTRA_ORIGIN = "https://login.microsoftonline.com";
 /** The `resource` of every Store submission API token. */
 export const STORE_API_RESOURCE = "https://manage.devcenter.microsoft.com";
+/**
+ * The `scope` of an MSI/EXE submission API token (A-18f): a v2.0 endpoint token, sent with the
+ * seller id in `X-Seller-Account-Id`. Same Entra application, different audience.
+ */
+export const MSI_API_SCOPE = "https://api.store.microsoft.com/.default";
+
+/** Which Store API a token is for: the classic API (v1 `resource`) or MSI/EXE (v2 `scope`). */
+export type MsStoreTokenApi = "classic" | "msi";
 /** The cache stops serving a token this long before Entra says it expires. */
 export const ENTRA_CACHE_MARGIN = 300;
 /** The most of a token response read (one is ~1.5 KiB). */
@@ -67,11 +81,15 @@ export const MAX_TOKEN_RESPONSE_BYTES = 64 * 1024;
 const TENANT =
   /^(?:[0-9a-fA-F-]{36}|[A-Za-z0-9](?:[A-Za-z0-9-]{0,62}\.)+[A-Za-z]{2,63})$/;
 
-/** The token endpoint of one tenant, or null for a tenant id that is neither form. */
-export function entraTokenUrl(tenantId: string): string | null {
+/** The token endpoint of one tenant, or null for a tenant id that is neither form. The v1
+ *  endpoint for the classic API, v2.0 for MSI/EXE (A-18f). */
+export function entraTokenUrl(
+  tenantId: string,
+  api: MsStoreTokenApi = "classic",
+): string | null {
   if (!TENANT.test(tenantId) || tenantId.length > 253) return null;
   const url = new URL(
-    `/${encodeURIComponent(tenantId)}/oauth2/token`,
+    `/${encodeURIComponent(tenantId)}/oauth2/${api === "msi" ? "v2.0/token" : "token"}`,
     ENTRA_ORIGIN,
   );
   return url.origin === ENTRA_ORIGIN ? url.toString() : null;
@@ -149,9 +167,10 @@ export async function msStoreToken(
 async function entraExchange(
   value: { tenantId: string; clientId: string; clientSecret: string },
   fetchImpl: FetchImpl,
+  api: MsStoreTokenApi = "classic",
 ): Promise<{ token: string; ttl: number }> {
   const { tenantId, clientId, clientSecret } = value;
-  const url = entraTokenUrl(tenantId);
+  const url = entraTokenUrl(tenantId, api);
   if (!url)
     throw new Error("entra token: the credential's tenantId is invalid");
   const res = await fetchImpl(url, {
@@ -163,7 +182,9 @@ async function entraExchange(
       grant_type: "client_credentials",
       client_id: clientId,
       client_secret: clientSecret,
-      resource: STORE_API_RESOURCE,
+      ...(api === "msi"
+        ? { scope: MSI_API_SCOPE }
+        : { resource: STORE_API_RESOURCE }),
     }).toString(),
   });
   if (!res.ok || isRedirect(res)) {
@@ -207,6 +228,7 @@ export async function platformMsStoreToken(
   use: string,
   now: number,
   fetchImpl: FetchImpl,
+  api: MsStoreTokenApi = "classic",
 ): Promise<string | null> {
   const id = MSSTORE_PLATFORM_CREDENTIAL;
   if (
@@ -216,17 +238,40 @@ export async function platformMsStoreToken(
     return null;
   const ref = await resolvePlatformCredential(env, db, id);
   if (!ref) return null;
+  // One cache slot per audience: a classic token is never served to the MSI/EXE API.
+  const audience = api === "msi" ? MSI_API_SCOPE : STORE_API_RESOURCE;
   const slotFor = async (version: string) =>
     outletTokenSlot(
       PLATFORM_SEAL_PRODUCT,
       id,
-      await outletTokenSlotHash(STORE_API_RESOURCE, version),
+      await outletTokenSlotHash(audience, version),
     );
   const cached = await readSealedToken(env, await slotFor(ref.version), now);
   if (cached) return cached.token;
   const cred = await openPlatformCredential(env, db, id, use, purpose, now);
   if (!cred) return null;
-  const { token, ttl } = await entraExchange(cred.value, fetchImpl);
+  const { token, ttl } = await entraExchange(cred.value, fetchImpl, api);
   await writeSealedToken(env, await slotFor(cred.version), token, ttl, now);
   return token;
+}
+
+/**
+ * The seller id the MSI/EXE API needs in `X-Seller-Account-Id` (A-18f), from the platform
+ * credential's NON-SECRET metadata: no open, no audit row. Null when no credential is configured
+ * or its metadata lacks a plain seller id (letters, digits, hyphens).
+ */
+export async function platformMsStoreSellerId(
+  env: Env,
+  db: Db,
+): Promise<string | null> {
+  const ref = await resolvePlatformCredential(
+    env,
+    db,
+    MSSTORE_PLATFORM_CREDENTIAL,
+  );
+  const seller = (ref?.meta as { sellerId?: unknown } | null | undefined)
+    ?.sellerId;
+  return typeof seller === "string" && /^[A-Za-z0-9-]{1,64}$/.test(seller)
+    ? seller
+    : null;
 }

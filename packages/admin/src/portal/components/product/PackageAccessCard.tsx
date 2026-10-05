@@ -464,7 +464,13 @@ function CreateTokenDialog({
         presentation: eco === "godot" ? "url" : "header",
         expiresInDays: expires,
       },
-      { onSuccess: (res) => onMinted({ token: res.token, view: res.view }) },
+      {
+        onSuccess: (res) => {
+          onMinted({ token: res.token, view: res.view });
+          // The plaintext now lives only in the one-time dialog: drop the mutation's copy.
+          mint.reset();
+        },
+      },
     );
   };
   return (

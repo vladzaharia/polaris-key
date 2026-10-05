@@ -33,6 +33,7 @@ import { hashKey, sha256Hex } from "../../crypto.js";
 import type { AdminSession } from "../adminApi.js";
 import type { Plane } from "../adapters/contract.js";
 import { storefrontAdapter, type StorefrontId } from "./adapter.js";
+import type { CiStoreId } from "./ciPlane.js";
 import { StoreVendorError, StoreWriteDenied } from "./errors.js";
 import {
   projectStoreResource,
@@ -47,9 +48,18 @@ export type StoreOpState = "pending" | "done" | "failed" | "ambiguous";
 /** Where a ledger row's step ran: an adapter `Plane`, or a deep-linked step the operator did. */
 export type StoreOpPlane = Plane | "deep-link";
 
-export interface StoreOpKey {
-  /** The storefront adapter the write goes to. Part of `op_id`. */
-  store: StorefrontId;
+/**
+ * A ledger row's store: a storefront adapter, or a CI-plane store whose adapter has not landed yet
+ * (`steam`, `msstore`; `epic`, which has none: `ciPlane.ts`).
+ */
+export type StoreLedgerId = StorefrontId | CiStoreId;
+
+export interface StoreOpKey<S extends StoreLedgerId = StorefrontId> {
+  /**
+   * The storefront adapter the step goes to (a Worker-plane write's), or any CI-plane store for a
+   * reported CI step (`StoreOpKey<StoreLedgerId>`). Part of `op_id`.
+   */
+  store: S;
   scope: StoreOpScope;
   /** The product slug for product scope; null for team scope. */
   product: string | null;
@@ -96,7 +106,7 @@ export function isIdempotencyKey(v: unknown): v is string {
 
 const STORE = /^[a-z][a-z0-9-]{0,39}$/;
 
-function validateKey(k: StoreOpKey): void {
+function validateKey(k: StoreOpKey<StoreLedgerId>): void {
   if (!STORE.test(k.store)) throw new Error("invalid store");
   if ((k.scope === "team") !== (k.product === null))
     throw new Error("a store operation's product must match its scope");
@@ -133,7 +143,7 @@ export async function testerDigest(
 }
 
 /** The derived `op_id` (hex SHA-256 of an unambiguous JSON array, the store first). */
-export function storeOpId(k: StoreOpKey): Promise<string> {
+export function storeOpId(k: StoreOpKey<StoreLedgerId>): Promise<string> {
   return sha256Hex(
     JSON.stringify([
       k.store,
@@ -182,7 +192,7 @@ export type StoreBegin =
 /** Open (or find) the ledger row of one step. */
 export async function beginStoreOperation(
   db: Db,
-  key: StoreOpKey,
+  key: StoreOpKey<StoreLedgerId>,
   request: unknown,
   actor: string,
   now: number,
@@ -277,7 +287,7 @@ export function listStoreOperations(
   db: Db,
   scope: { scope: "team" } | { scope: "product"; product: string },
   limit = 50,
-  store?: StorefrontId,
+  store?: StoreLedgerId,
 ): Promise<StoreOperationRow[]> {
   const n = Math.max(1, Math.min(200, Math.floor(limit)));
   const byStore = store === undefined ? "" : " AND store = ?";
@@ -467,6 +477,6 @@ export async function performStoreWrite<T extends StoreResource>(
 }
 
 /** A store's audit target kind: its adapter's audit action (`asc` for the App Store, as A-17 wrote it). */
-function targetKind(store: StorefrontId): string {
+function targetKind(store: StoreLedgerId): string {
   return storefrontAdapter(store)?.audit.action ?? store;
 }

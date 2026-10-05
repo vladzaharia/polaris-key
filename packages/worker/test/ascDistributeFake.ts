@@ -34,6 +34,8 @@ const CHILDREN: Readonly<Record<string, [string, string]>> = {
   "apps/appStoreVersions": ["appStoreVersions", "app"],
   "apps/betaGroups": ["betaGroups", "app"],
   "apps/appInfos": ["appInfos", "app"],
+  // A-18c: the listing import reads each app info's localizations.
+  "appInfos/appInfoLocalizations": ["appInfoLocalizations", "appInfo"],
   "apps/betaAppLocalizations": ["betaAppLocalizations", "app"],
   "appStoreVersions/appStoreVersionLocalizations": [
     "appStoreVersionLocalizations",

@@ -47,7 +47,10 @@ import {
   markPortalDownloadUsed,
 } from "../src/services/identity/portal/repo.js";
 import { enableDownloads, handlePortalDownload } from "./portalHarness.js";
-import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
+import {
+  getOrCreateAccountByEmail,
+  linkLicense,
+} from "../src/services/identity/portal/repo.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 
 const SLUG = "djdl";
@@ -821,17 +824,7 @@ async function seedPortalAccount(db: Db): Promise<string> {
   const account = await getOrCreateAccountByEmail(db, "ada@example.com", NOW);
   const accountIdReal = account.id;
   const { licenseId } = await seedLicenseWithKey(db, SLUG);
-  await db.run(
-    `INSERT INTO portal_license_links
-       (account_id, product, license_id, source, created_at, last_seen_at)
-     VALUES (?,?,?,?,?,?)`,
-    accountIdReal,
-    SLUG,
-    licenseId,
-    "license-key",
-    NOW,
-    NOW,
-  );
+  await linkLicense(db, accountIdReal, SLUG, licenseId, "license-key", NOW);
   return accountIdReal;
 }
 
