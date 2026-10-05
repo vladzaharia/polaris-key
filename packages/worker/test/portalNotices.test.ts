@@ -8,6 +8,7 @@
  * security notices), and the handlers are driven end to end for who receives what.
  */
 
+import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { describe, expect, it } from "vitest";
 import { THEME_TOKENS } from "@polaris-key/brand";
 import { makeTestDb } from "./helpers.js";
@@ -253,8 +254,9 @@ function req(
 
 async function session(env: Env, db: Db, email = "ada@example.com") {
   const account = await getOrCreateAccountByEmail(db, email, NOW);
-  const { token, session: s } = await issuePortalSession(
+  const { token, session: s } = await issuePortalSessionRow(
     env,
+    db,
     {
       accountId: account.id,
       email: account.primary_email,

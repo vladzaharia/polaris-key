@@ -2717,7 +2717,7 @@ describe("R8-07 redirect-URI allowlist fail-open", () => {
 // R8-08 — magic link: 72-bit token, unhashed KV key (fixed, R12-04), no verify rate limit
 // ═══════════════════════════════════════════════════════════════════════════════
 describe("R8-08 portal magic link", () => {
-  it("ATTACK: the magic token is 72 bits (FIXED R12-04: it is no longer its own KV key name)", async () => {
+  it("FIXED (I-07): the magic token is 192 bits, and (R12-04) no longer its own KV key name", async () => {
     const db = makeTestDb();
     const kv = new KvMock();
     const env = makeEnv(kv, ["djdl"]);
@@ -2744,10 +2744,9 @@ describe("R8-08 portal magic link", () => {
 
     // The secret is in the QUERY STRING of the emailed link.
     const token = new URL(sent.link!).searchParams.get("token")!;
-    expect(token.startsWith("magic_")).toBe(true);
-    // randomId => 9 random bytes = 72 bits (crypto.ts:42-44). Compare: browser-session and
-    // download tokens are 256-bit AND peppered-hashed at rest.
-    expect(token.slice("magic_".length).length).toBe(12); // 9 bytes b64url
+    // FIXED (I-07): the login card mints the link token from 24 random bytes (192 bits), not
+    // `randomId`'s 9 (72 bits); it is still peppered-hashed at rest (below).
+    expect(token).toMatch(/^[A-Za-z0-9_-]{32}$/); // 24 bytes b64url
 
     // FIXED (R12-04): the store key is `portal-magic:<hashKey(token, pepper)>` (I-02 moved it
     // from KV into the single-use store), so a listing no longer yields a working token. The
@@ -2760,11 +2759,18 @@ describe("R8-08 portal magic link", () => {
     );
     expect(await artefacts(env).get(magicKey)).toContain("victim@corp.com");
 
-    // The emailed token itself still signs the holder in.
+    // The emailed token itself still signs the holder in: from the browser that asked (its flow
+    // cookie), by the landing page's POST (I-07; a GET consumes nothing).
+    const flowCookie = (res.headers.get("set-cookie") ?? "").split(";")[0]!;
     const verified = await handleMagicVerify(
-      req(
-        `https://key.plrs.im/magic/verify?token=${encodeURIComponent(token)}`,
-      ),
+      new Request("https://key.plrs.im/magic/verify", {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          cookie: flowCookie,
+        },
+        body: new URLSearchParams({ token }).toString(),
+      }) as unknown as Request,
       env,
       db,
       NOW,

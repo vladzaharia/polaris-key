@@ -14,6 +14,7 @@
  * (yanked), 1.2.0-beta.1 (beta) and 1.2.0 on stable; App Store, Play and Steam reported live.
  */
 
+import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildHooks } from "../src/core/hooks.js";
 import { loadProductPublic } from "../src/core/products.js";
@@ -89,8 +90,9 @@ async function account(
   );
   if (link)
     await linkLicense(w.db, acct.id, SLUG, licenseId, "license-key", NOW);
-  const { token } = await issuePortalSession(
+  const { token } = await issuePortalSessionRow(
     w.env,
+    w.db,
     {
       accountId: acct.id,
       email: acct.primary_email,

@@ -340,15 +340,30 @@ describe("portal magic links and flows are consumed atomically (G15)", () => {
     );
     expect(res.status).toBe(200);
     const link = /https:\/\/\S+/.exec(sent[0] ?? "")![0];
-    return { db, e, link };
+    // I-07: the link is bound to the browser that asked, by its flow cookie.
+    const flowCookie = (res.headers.get("set-cookie") ?? "").split(";")[0]!;
+    return { db, e, link, flowCookie };
   }
 
   it("two concurrent clicks on one magic link: exactly one signs in", async () => {
-    const { db, e, link } = await magicSetup();
-    const [a, b] = await Promise.all([
-      handleMagicVerify(new Request(link) as unknown as Request, e, db, NOW),
-      handleMagicVerify(new Request(link) as unknown as Request, e, db, NOW),
-    ]);
+    const { db, e, link, flowCookie } = await magicSetup();
+    // I-07: opening the link (GET) consumes nothing; its button POSTs the token back.
+    const token = new URL(link).searchParams.get("token")!;
+    const click = () =>
+      handleMagicVerify(
+        new Request("https://key.plrs.im/magic/verify", {
+          method: "POST",
+          headers: {
+            "content-type": "application/x-www-form-urlencoded",
+            cookie: flowCookie,
+          },
+          body: new URLSearchParams({ token }).toString(),
+        }) as unknown as Request,
+        e,
+        db,
+        NOW,
+      );
+    const [a, b] = await Promise.all([click(), click()]);
     const statuses = [a.status, b.status].sort();
     expect(statuses).toEqual([302, 400]);
     expect(

@@ -440,6 +440,8 @@ export async function handleMagicLanding(
   env: Env,
   db: Db,
 ): Promise<Response> {
+  const token = new URL(req.url).searchParams.get("token");
+  if (!token) return expiredLinkPage();
   const caps = await portalAuthCapabilities(db);
   if (!caps.portalEnabled || !caps.magicEnabled) {
     return cardPage(404, {
@@ -447,8 +449,6 @@ export async function handleMagicLanding(
       heading: "Email sign-in is disabled.",
     });
   }
-  const token = new URL(req.url).searchParams.get("token");
-  if (!token) return expiredLinkPage();
   const record = parse<MagicRecord>(
     await getArtefact(env, await portalMagicKey(env, token)),
   );
