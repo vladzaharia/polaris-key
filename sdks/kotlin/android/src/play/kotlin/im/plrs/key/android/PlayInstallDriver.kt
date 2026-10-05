@@ -148,7 +148,7 @@ public class PlayInstallDriver(
     }
 
     override suspend fun install(check: UpdateCheck): InstallResult = when (val d = check.decision) {
-        is UpdateDecision.Store -> inAppUpdate(d.mandatory || d.critical, d.listingUrl, d.release.version)
+        is UpdateDecision.Store -> inAppUpdate(d.mandatory || d.critical, d.listingUrl, check.releaseId ?: d.release.version)
         // A `platform` answer: the platform updates this install by itself.
         is UpdateDecision.Platform -> InstallResult.NothingToInstall
         is UpdateDecision.Binary -> InstallResult.Failed(

@@ -51,7 +51,7 @@ public class DesktopInstallDriver @JvmOverloads constructor(
             is UpdateDecision.Store -> {
                 val url = d.listingUrl ?: return InstallResult.Failed(ErrorCode.unsupported, "the store decision names no listing")
                 if (!browse(url)) return InstallResult.Failed(ErrorCode.unsupported, "no browser to open $url")
-                c.updateEvents.record(UpdateEvent.updateApplied, d.release.version, fromRelease = c.core.version)
+                c.updateEvents.record(UpdateEvent.updateApplied, check.releaseId ?: d.release.version, fromRelease = c.core.version)
                 InstallResult.Started
             }
             else -> InstallResult.NothingToInstall
@@ -82,7 +82,7 @@ public class DesktopInstallDriver @JvmOverloads constructor(
         if (!open(fetched.path)) {
             return InstallResult.Failed(ErrorCode.unsupported, "no desktop to open the installer; it is at ${fetched.path.absolutePath}")
         }
-        c.updateEvents.record(UpdateEvent.updateApplied, d.release.version, fromRelease = c.core.version)
+        c.updateEvents.record(UpdateEvent.updateApplied, im.plrs.key.core.releaseId(d.release.version, record.tag), fromRelease = c.core.version)
         return InstallResult.Started
     }
 

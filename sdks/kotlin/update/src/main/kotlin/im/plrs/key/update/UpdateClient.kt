@@ -358,15 +358,10 @@ public class UpdateClient private constructor(
     // ── Internals ───────────────────────────────────────────────────────────────────────────
 
     /** §3.13: a decision that offers a newer app build journals `update_offered` once per release. */
+    /** The release is named by its record's tag when it has one, else its version (the Worker's releaseId). */
     private fun noteOffer(check: UpdateCheck) {
-        val release = when (val d = check.decision) {
-            is UpdateDecision.CodeReady -> d.release
-            is UpdateDecision.Binary -> d.release
-            is UpdateDecision.Store -> d.release
-            is UpdateDecision.Platform -> d.release
-            else -> return
-        }
-        core.updateEvents.recordOnce(UpdateEvent.updateOffered, release.version, fromRelease = core.version)
+        val release = check.releaseId ?: return
+        core.updateEvents.recordOnce(UpdateEvent.updateOffered, release, fromRelease = core.version)
         offerFlow.tryEmit(check)
     }
 

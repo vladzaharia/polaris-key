@@ -40,7 +40,7 @@ class DesktopInstallDriverTest {
     private val sha = MessageDigest.getInstance("SHA-256").digest(payload).joinToString("") { "%02x".format(it) }
     private val recordSha = "ab".repeat(32)
     private val record = ReleaseRecordDoc(
-        schemaVersion = 1, aud = "djdl", deliverable = "app", kind = "app", version = "1.4.0", seq = 14, issuedAt = 1_700_000_000,
+        schemaVersion = 1, aud = "djdl", deliverable = "app", kind = "app", version = "1.4.0", seq = 14, issuedAt = 1_700_000_000, tag = "v1.4.0",
         builds = listOf(ReleaseRecordBuild("windows-x64", "windows", "x86_64", "msi", artifacts = listOf(ReleaseRecordArtifact("DJDL-1.4.0.msi", "payload", sha, payload.size.toLong())))),
         json = JsonObject(emptyMap()),
     )
@@ -82,6 +82,8 @@ class DesktopInstallDriverTest {
             assertEquals(listOf(File(dir, "DJDL-1.4.0.msi")), opened)
             assertTrue(opened.single().readBytes().contentEquals(payload))
             assertEquals(listOf(UpdateEvent.updateDownloaded, UpdateEvent.updateApplied), c.updateEvents.events().map { it.event })
+            // A tagged record's events name the tag: the Worker counts an event under Release's releaseId.
+            assertEquals(listOf("v1.4.0", "v1.4.0"), c.updateEvents.events().map { it.release })
 
             // No desktop: the file is still there, and the failure names it.
             val headless = DesktopInstallDriver(dir, open = { false }, records = { record }) { c }.install(binary)
@@ -100,6 +102,10 @@ class DesktopInstallDriverTest {
         val store = check(UpdateDecision.Store(DecisionRelease("1.4.0", 14), "https://store.steampowered.com/app/1", false, false, false))
         assertEquals(InstallResult.Started, driver.install(store))
         assertEquals(listOf("https://store.steampowered.com/app/1"), browsed)
+        // Without a tag the version names the release; with the decision's record tag, the tag does.
+        assertEquals("1.4.0", c.updateEvents.events().last().release)
+        driver.install(store.copy(releaseTag = "v1.4.0"))
+        assertEquals("v1.4.0", c.updateEvents.events().last().release)
         assertEquals(InstallResult.NothingToInstall, driver.install(check(UpdateDecision.None("current", false, false))))
         c.close()
     }

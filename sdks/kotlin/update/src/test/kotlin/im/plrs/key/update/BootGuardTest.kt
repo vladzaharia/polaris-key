@@ -190,4 +190,26 @@ class BootGuardEventsTest {
         assertEquals(im.plrs.key.core.UpdateEvent.updateConfirmed, e.event)
         assertEquals("1.0.0", e.fromRelease)
     }
+
+    @Test
+    fun taggedSlotsAreJournaledUnderTheirTags() = runBlocking {
+        val events = journal()
+        val slots = MemorySlots().apply { cur = meta("1.0.0").copy(tag = "v1.0.0"); stg = meta("1.1.0").copy(tag = "v1.1.0") }
+        val store = MemoryGuardStore()
+        BootGuard(store, slots, "1.0.0", events = events).confirmNow()
+        BootGuard(store, slots, "1.0.0", events = events).run()
+        val guard = BootGuard(store, slots, "1.1.0", events = events)
+        guard.run()
+        guard.confirmNow()
+        val e = events.events()
+        assertEquals(listOf("v1.1.0", "v1.1.0"), e.map { it.release })
+        assertEquals(listOf("v1.0.0", "v1.0.0"), e.map { it.fromRelease })
+        // A rollback names the bad and the restored slot by their tags too.
+        val rb = journal()
+        val bad = MemorySlots().apply { cur = meta("1.1.0").copy(tag = "v1.1.0"); prev = meta("1.0.0").copy(tag = "v1.0.0") }
+        val rbStore = MemoryGuardStore()
+        repeat(3) { BootGuard(rbStore, bad, "1.1.0", events = rb).run() }
+        assertEquals(listOf("v1.1.0", "v1.0.0"), rb.events().map { it.release })
+        assertEquals(listOf("v1.0.0", "v1.1.0"), rb.events().map { it.fromRelease })
+    }
 }

@@ -112,7 +112,8 @@ public class ReleaseClient(
         val url = expandTemplate(template, core.endpoints.baseUrl, mapOf("selector" to version, "buildId" to buildId))
             ?: throw PolarisException(ErrorCode.serviceUnavailable, "the builds template does not expand")
         val fetched = attestAndRetry(attest) { core.fetchVerified(url, to, artifact.size, artifact.sha256.lowercase(), bearer = true, onProgress = onProgress) }
-        core.updateEvents.record(UpdateEvent.updateDownloaded, version, fromRelease = core.version)
+        // Named by the record's tag when it has one, else the version (the Worker's releaseId).
+        core.updateEvents.record(UpdateEvent.updateDownloaded, im.plrs.key.core.releaseId(version, record.tag), fromRelease = core.version)
         return fetched
     }
 

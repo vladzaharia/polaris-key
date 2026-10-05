@@ -29,6 +29,17 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 
+/**
+ * The id an update-health event names a release by: the release record's `tag` when it names one,
+ * else its version. The Worker counts an event only when `release` is a releaseId its Release catalog
+ * declares (`W/core/updateHealth.ts`), and a tagged release's releaseId is its tag (Godot's
+ * `PKeyUpdater.release_id`).
+ */
+public fun releaseId(version: String, tag: String?): String = tag?.takeIf { it.isNotEmpty() } ?: version
+
+/** This record's update-health release id ([releaseId]). */
+public val ReleaseRecordDoc.releaseId: String get() = releaseId(version, tag)
+
 /** One small piece of SDK-owned state, read whole and replaced atomically. */
 public interface StateSlot {
     public fun read(): String?
@@ -173,8 +184,8 @@ public class UpdateEventJournal(
     public fun events(): List<UpdateEventEntry> = synchronized(lock) { load() }
 
     /**
-     * Queue one event. [deliverable] is `app` or a pack id; [release] the version (or tag) the event
-     * is about. Values outside the Worker's alphabets are normalised or the event is dropped (never
+     * Queue one event. [deliverable] is `app` or a pack id; [release] the release the event is about:
+     * its [releaseId] (the record's tag when it names one, else the version). Values outside the Worker's alphabets are normalised or the event is dropped (never
      * sent to be refused). Returns the entry, or null when it was dropped.
      */
     public fun record(

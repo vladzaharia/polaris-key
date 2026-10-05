@@ -109,4 +109,20 @@ class UpdateEventJournalTest {
             dir.deleteRecursively()
         }
     }
+
+    @Test
+    fun aReleaseIsNamedByItsTagElseItsVersion() {
+        // The Worker counts an event only under Release's releaseId (W/core/updateHealth.ts): the
+        // record's tag when it names one, else the version, as Godot's PKeyUpdater.release_id.
+        assertEquals("v1.4.0", releaseId("1.4.0", "v1.4.0"))
+        assertEquals("1.4.0", releaseId("1.4.0", null))
+        assertEquals("1.4.0", releaseId("1.4.0", ""))
+        val store = UpdateDecision.Store(DecisionRelease("1.4.0", 14), null, false, false, false)
+        val check = UpdateCheck("stable", store, UpdateCheck.FeedSource.network, UpdateCheck.RecordSource.network, emptyList(), releaseTag = "v1.4.0")
+        assertEquals("v1.4.0", check.releaseId)
+        assertEquals("1.4.0", check.copy(releaseTag = null).releaseId)
+        assertNull(check.copy(decision = UpdateDecision.None("up-to-date", false, false)).releaseId)
+        // The tag is not part of the wire UpdateCheck.
+        assertEquals(check.copy(releaseTag = null).json, check.json)
+    }
 }

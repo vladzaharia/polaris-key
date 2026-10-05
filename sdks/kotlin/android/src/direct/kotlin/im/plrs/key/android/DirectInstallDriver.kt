@@ -126,7 +126,8 @@ public class DirectInstallDriver(
             part.delete()
             return InstallResult.Failed(ErrorCode.payloadMismatch, "the downloaded APK does not match the record's size and SHA-256; nothing was installed")
         }
-        events()?.record(UpdateEvent.updateDownloaded, d.release.version, fromRelease = runningVersion)
+        val releaseId = im.plrs.key.core.releaseId(d.release.version, record.tag)
+        events()?.record(UpdateEvent.updateDownloaded, releaseId, fromRelease = runningVersion)
         apk.delete()
         if (!part.renameTo(apk)) {
             part.delete()
@@ -146,7 +147,7 @@ public class DirectInstallDriver(
             return InstallResult.Failed(ErrorCode.swapRefused, "apk-refused: ${why.joinToString(", ")}")
         }
         // Handed off to PackageInstaller: the new version's first confirmed boot reports update_confirmed.
-        events()?.record(UpdateEvent.updateApplied, d.release.version, fromRelease = runningVersion)
+        events()?.record(UpdateEvent.updateApplied, releaseId, fromRelease = runningVersion)
         return InstallResult.Started
     }
 

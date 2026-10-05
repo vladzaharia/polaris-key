@@ -53,8 +53,8 @@ class DeliveryHelpersTest {
         "update":{"enabled":true,"endpoints":{"appcast":"https://key.plrs.im/djdl/update/appcast.xml","channelAppcast":"https://key.plrs.im/djdl/update/{channel}/appcast.xml","velopack":"https://key.plrs.im/djdl/update/{channel}/velopack/releases.{velopackChannel}.json"}}
     }}"""
 
-    private fun record(size: Long = payload.size.toLong(), hash: String = sha) = ReleaseRecordDoc(
-        schemaVersion = 1, aud = "djdl", deliverable = "app", kind = "app", version = "1.4.0", seq = 14, issuedAt = 1_700_000_000,
+    private fun record(size: Long = payload.size.toLong(), hash: String = sha, tag: String? = null) = ReleaseRecordDoc(
+        schemaVersion = 1, aud = "djdl", deliverable = "app", kind = "app", version = "1.4.0", seq = 14, issuedAt = 1_700_000_000, tag = tag,
         builds = listOf(ReleaseRecordBuild("linux-x64", "linux", "x86_64", "appimage", artifacts = listOf(ReleaseRecordArtifact("djdl.AppImage", "payload", hash, size)))),
         json = JsonObject(emptyMap()),
     )
@@ -106,6 +106,18 @@ class DeliveryHelpersTest {
         assertEquals("identity", get.headers["accept-encoding"])
         assertFalse(File(dir, "djdl.AppImage.part").exists())
         assertEquals(UpdateEvent.updateDownloaded, c.updateEvents.events().single().event)
+        assertEquals("1.4.0", c.updateEvents.events().single().release)
+        dir.deleteRecursively()
+        Unit
+    }
+
+    @Test
+    fun aTaggedRecordsDownloadIsJournaledUnderItsTag() = runBlocking {
+        val dir = tmp()
+        val c = client({ serving(it) })
+        c.release.fetch(ReleaseTarget.Record(record(tag = "v1.4.0"), "linux-x64"), File(dir, "djdl.AppImage"))
+        // The Worker counts an update-health event only under Release's releaseId: the tag when set.
+        assertEquals("v1.4.0", c.updateEvents.events().single().release)
         dir.deleteRecursively()
         Unit
     }
