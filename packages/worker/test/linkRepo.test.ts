@@ -43,6 +43,7 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../src/admin/session.js";
+import { HEAD_SHA, withDefaultHead } from "./githubHead.js";
 
 // A throwaway 2048-bit RSA private key (PKCS#8 PEM) so the App-JWT signer actually runs; the
 // fetch stub then shortcuts the installation-token exchange. Never a prod key.
@@ -165,7 +166,7 @@ function stubFetch(files: Record<string, string>): {
     }
     return new Response("not found", { status: 404 });
   };
-  return { fetchImpl, calls };
+  return { fetchImpl: withDefaultHead(fetchImpl), calls };
 }
 
 // ── Manifest fixtures ────────────────────────────────────────────────────────
@@ -999,11 +1000,14 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         ],
       },
     ]);
-    // R6-05: the manifest is read from the DB-configured repo's default branch (the
-    // Contents API default), NEVER from a payload-supplied `after`/ref.
+    // R6-05: the manifest is read from the DB-configured repo's default branch, pinned to the
+    // head GitHub resolved for it (ST-01a), NEVER from a payload-supplied `after`/ref.
     const contents = calls.filter((url) => url.includes("/contents/"));
     expect(contents.length).toBeGreaterThan(0);
-    expect(contents.every((url) => !url.includes("ref="))).toBe(true);
+    expect(contents.every((url) => url.endsWith(`?ref=${HEAD_SHA}`))).toBe(
+      true,
+    );
+    expect(contents.some((url) => url.includes("abc123"))).toBe(false);
 
     const sync = await getProductSyncState(db, "acme");
     expect(sync).toMatchObject({
@@ -1051,7 +1055,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
     const linked = await linkRepo(env, db, "acme-org/acme-app", NOW, fetchImpl);
     expect(linked.ok).toBe(true);
 
-    const failingFetch: FetchImpl = async (input) => {
+    const failingFetch: FetchImpl = withDefaultHead(async (input) => {
       const url = String(input);
       if (url.includes("/access_tokens")) {
         return new Response(
@@ -1064,7 +1068,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       if (url.includes("/contents/"))
         return new Response("forbidden", { status: 403 });
       return new Response("not found", { status: 404 });
-    };
+    });
     const result = await resyncRepo(env, db, "acme", NOW + 1, failingFetch);
     expect(result.ok).toBe(false);
     if (result.ok) return;

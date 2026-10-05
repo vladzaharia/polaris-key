@@ -282,6 +282,9 @@ export async function handleDeployHook(
       repositoryId: policy.repositoryId,
       repositoryOwnerId: policy.repositoryOwnerId,
     },
+    // ST-01a: the snapshot records the documents this body carried, applied at the commit this
+    // deploy built (`PKEY_GIT_SHA`, which deploy.yml sets to the same `GITHUB_SHA` the job ran at).
+    { files, sha: env.PKEY_GIT_SHA ?? null },
     now,
     manifestIngestFor(SERVICES),
   );
