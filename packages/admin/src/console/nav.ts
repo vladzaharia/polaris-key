@@ -624,8 +624,11 @@ export const SECTIONS: NavSection[] = [
  * The Platform section's pages (notes/S-13 §9.1, owner decision 3 of 2026-10-04): instance-wide
  * pages that belong to no product. The sidebar draws them as one group, like a product section
  * (no header icon, an icon on every item, only the active group open, the `core` accent and no
- * section bit), whether or not a product is in scope. `#/platform` itself is not a page: it
- * redirects to Settings, and a page that is not built yet redirects on to Deployment.
+ * section bit). The group shows only off a product (Home, Products and the Platform pages
+ * themselves); inside a product it is not drawn (owner, 2026-10-04) and is reached through the
+ * product switcher's Platform entry, the account menu's version chip and ⌘K. `#/platform` itself
+ * is not a page: it redirects to Settings, and a page that is not built yet redirects on to
+ * Deployment.
  */
 const PLATFORM_PAGES: NavPage[] = [
   {

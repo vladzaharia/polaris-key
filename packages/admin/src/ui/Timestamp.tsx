@@ -87,7 +87,10 @@ export function Timestamp({
         ? formatDate(at, opts)
         : absolute;
   return (
-    <time dateTime={iso} className={cn("whitespace-nowrap", className)}>
+    <time
+      dateTime={iso}
+      className={cn("whitespace-nowrap tabular-nums", className)}
+    >
       {text}
     </time>
   );

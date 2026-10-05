@@ -12,6 +12,17 @@
 | Human input | none                                                                                                                                                                                                                                                                                                |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                           |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/U-01.md`](../plans/U-01.md):** the `syncAccess` swap and the §6.3 snapshot rule.
+- **[`plans/PX-W3.md`](../plans/PX-W3.md):** the PX-W3 test matrix is the `legacy` regression for the portal download caller.
+- **[`plans/LX-01.md`](../plans/LX-01.md):** the catalog `combine` and `entitlementKind` rule 9 rows; `resolveSubjectEntitlements`.
+- **[`plans/I-24.md`](../plans/I-24.md):** the §2.4 byte-identity rule: a licence without named-user seats keeps byte-identical documents.
+- **[`plans/PX-W9.md`](../plans/PX-W9.md):** the byte-identity snapshot includes a counted key-entry device.
+- **[`plans/PX-W17.md`](../plans/PX-W17.md):** relies on the §1 invariant (no device is signed in on an Identity-off product) and does not read the toggle.
+
 ## Goal
 
 `resolveDeviceEntitlements` computes every device's entitlements in `legacy` mode (byte-identical to today) and `combined` mode (contributors under `entitlementHolder: device`, combine and state rules), produces the holder report, caches by holder versions, and every caller uses it.

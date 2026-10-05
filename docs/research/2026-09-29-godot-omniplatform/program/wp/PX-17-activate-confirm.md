@@ -12,6 +12,13 @@
 | Human input | none                                                                                                                                                                                     |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/PX-W8.md`](../plans/PX-W8.md):** read `#key=` as well as `?key=`, and handle `next=free-device` from the activate link (PX-10 is done, so PX-17 carries the `next=` hand-off to free-device).
+- **[`plans/PX-W9.md`](../plans/PX-W9.md):** Q2: the Worker never puts the key in the link. The modal opens with the §4.18 notice and an empty field unless the SDK added a `#key=` fragment (PX-W8 Q2).
+
 ## Goal
 
 `ActivateDialog` gains the confirm step from `POST /api/activate/preview` (art header, product, tier, terms, key echo), the entries notice, and `product=` context from app deep links, with every §4.19 error state.

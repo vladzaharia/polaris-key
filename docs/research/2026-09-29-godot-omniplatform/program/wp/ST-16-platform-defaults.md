@@ -12,6 +12,12 @@
 | Human input | none                                                                                                         |
 | Repo        | `vladzaharia/polaris-key`                                                                                    |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/U-01.md`](../plans/U-01.md):** the three Cloud Sync ceiling entries.
+
 ## Goal
 
 Platform defaults and policies apply to product settings: platform values inherit live with a fan-out preview and an L2 confirm, entries offer enforce or delegate where they allow a lock, and clamped values are displayed. Covers licence defaults, the key-entry maximum and the Cloud Sync ceilings.
