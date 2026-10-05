@@ -26,7 +26,9 @@
  *   - `not_entitled`: the deliverable is `entitled` and no licence's grant holds this release's
  *     channel or version (an update window that ended, a beta not included).
  *   - `not_hosted`: covered, but nothing here can hand the bytes to a browser yet: licensed
- *     builds stored only on R2 wait for PX-W3 (gap G3).
+ *     builds stored only on R2 wait for PX-W3 (gap G3), and licensed builds whose only source is
+ *     a PRIVATE GitHub repository are left out (plans/PX-W3.md Q7). A PUBLIC build is served
+ *     from the bytes host whatever its location, a private repository's included.
  *
  * The portal UI turns those into the "Not included" text (§4.20); the codes are not copy.
  *
