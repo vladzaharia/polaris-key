@@ -8,6 +8,7 @@ import {
   STORE_DEGRADED_REASONS,
 } from "@polaris-key/client-core/store";
 import { ARCH_SPELLINGS, PLATFORM_SPELLINGS } from "@polaris-key/protocol/core";
+import type { LicenseStatus } from "@polaris-key/protocol/license";
 import {
   buildModel,
   camelName,
@@ -33,6 +34,7 @@ import {
   upperName,
   validateEnums,
   validateErrors,
+  VALUES_ONLY_ENUMS,
   words,
   type Sources,
 } from "./gen-sdk-constants.js";
@@ -140,6 +142,49 @@ describe("the sources", () => {
     );
     expect(byName.storeBackend).toEqual([...STORE_BACKENDS]);
     expect(byName.storeDegradedReason).toEqual([...STORE_DEGRADED_REASONS]);
+  });
+
+  it("licenseStatus equals LicenseStatus (@polaris-key/protocol/license), through an exhaustive map", () => {
+    // A LicenseStatus member added or removed fails to compile here, and a value in enums.json
+    // that is not a member fails the comparison.
+    const EVERY: { [K in LicenseStatus]: true } = {
+      ok: true,
+      grace: true,
+      expired: true,
+      revoked: true,
+      "needs-activation": true,
+      "version-too-old": true,
+      "version-too-new": true,
+      "channel-not-entitled": true,
+      "not-applicable": true,
+    };
+    const byName = Object.fromEntries(
+      SOURCES.enums.map((e) => [e.name, e.values]),
+    );
+    expect([...byName.licenseStatus!].sort()).toEqual(
+      Object.keys(EVERY).sort(),
+    );
+  });
+
+  it("activationResult is SDK-PARITY-PASS §3.1's thirteen kinds, in kebab form", () => {
+    const byName = Object.fromEntries(
+      SOURCES.enums.map((e) => [e.name, e.values]),
+    );
+    expect(byName.activationResult).toEqual([
+      "ok",
+      "device-limit",
+      "fingerprint-required",
+      "hardware-mismatch",
+      "enroll-claimed",
+      "license-disabled",
+      "license-expired",
+      "attestation-required",
+      "rate-limited",
+      "unauthorized",
+      "enroll-disabled",
+      "refused",
+      "error",
+    ]);
   });
 
   it("reads the corpus versions and the protocol version", () => {
@@ -406,6 +451,33 @@ describe("renderers", () => {
       expect(renderTs(MODEL)).toContain(`export const ${name} = {`);
       expect(renderPython(MODEL)).toContain(`class ${name}:`);
       expect(renderGdscript(MODEL)).toContain(`class ${name}:`);
+    }
+  });
+
+  it("a values-only enum emits its *_VALUES list and no type, in every language", () => {
+    expect([...VALUES_ONLY_ENUMS]).toEqual([
+      "licenseStatus",
+      "activationResult",
+    ]);
+    for (const [name, list] of [
+      ["LicenseStatus", "LICENSE_STATUS_VALUES"],
+      ["ActivationResult", "ACTIVATION_RESULT_VALUES"],
+    ] as const) {
+      const ts = renderTs(MODEL);
+      expect(ts).toContain(`export const ${list}: readonly string[] = [`);
+      expect(ts).not.toMatch(new RegExp(`export (const|type) ${name}\\b`));
+      const py = renderPython(MODEL);
+      expect(py).toContain(`${list}: Tuple[str, ...] = (`);
+      expect(py).not.toContain(`class ${name}:`);
+      expect(py).not.toContain(`"${name}",`);
+      expect(renderSwift(MODEL)).toContain(`public let ${list}: [String] = [`);
+      expect(renderSwift(MODEL)).not.toMatch(new RegExp(`enum ${name}\\b`));
+      expect(renderGdscript(MODEL)).toContain(`const ${list} := [`);
+      expect(renderGdscript(MODEL)).not.toContain(`class ${name}:`);
+      expect(renderKotlin(MODEL)).toContain(
+        `public val ${list}: List<String> = listOf(`,
+      );
+      expect(renderKotlin(MODEL)).not.toMatch(new RegExp(`object ${name}\\b`));
     }
   });
 

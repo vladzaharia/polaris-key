@@ -523,6 +523,9 @@ export interface Group {
   members: Member[];
   /** False where the language already declares the type (Swift's `ServiceSlug`). */
   swift: boolean;
+  /** Emit only the `*_VALUES` list, in every language: the SDKs declare the type natively
+   *  under the same name (see VALUES_ONLY_ENUMS). */
+  valuesOnly?: boolean;
 }
 
 export type ScalarValue = string | number | string[] | Record<string, string>;
@@ -548,6 +551,7 @@ function group(
   doc: string,
   members: Member[],
   swift = true,
+  valuesOnly = false,
 ): Group {
   const camel = new Map<string, string>();
   const upper = new Map<string, string>();
@@ -577,7 +581,9 @@ function group(
       );
     }
   }
-  return { name, doc, members, swift };
+  return valuesOnly
+    ? { name, doc, members, swift, valuesOnly }
+    : { name, doc, members, swift };
 }
 
 const fromValues = (values: readonly string[]): Member[] =>
@@ -653,6 +659,16 @@ function scalarValue(name: string, value: unknown): ScalarValue {
 }
 
 /** Build the language-neutral model. Throws on any identifier collision. */
+/** Enums every SDK already declares as its own type under the generated group's name (Swift's
+ *  and Kotlin's `LicenseStatus` enums, every SDK's `ActivationResult` sum type), so a generated
+ *  group of that name would clash or shadow it at the package root. They emit only their
+ *  `*_VALUES` list, in every language alike; the copy generator checks its keys against them
+ *  (plans/SP-00.md §4). */
+export const VALUES_ONLY_ENUMS: ReadonlySet<string> = new Set([
+  "licenseStatus",
+  "activationResult",
+]);
+
 export function buildModel(sources: Sources): Model {
   const { protocol } = sources;
   const exportNames = Object.keys(protocol).sort();
@@ -694,6 +710,7 @@ export function buildModel(sources: Sources): Model {
         def.description,
         fromValues(def.values),
         !SWIFT_DECLARED.has(name),
+        VALUES_ONLY_ENUMS.has(def.name),
       );
     }),
     group(
@@ -882,6 +899,12 @@ export const CAPABILITY_DIGEST = ${q(capabilityDigest(caps))};
 export function renderTs(model: Model, caps?: SdkCapabilities): string {
   const out: string[] = [banner("//")];
   for (const g of model.groups) {
+    if (g.valuesOnly) {
+      out.push(`/** ${g.doc} Every value, in source order. */
+export const ${valuesName(g)}: readonly string[] = [${g.members.map((m) => q(m.value)).join(", ")}];
+`);
+      continue;
+    }
     out.push(`/** ${g.doc} */
 export const ${g.name} = {
 ${g.members.map((m) => `  ${m.camel}: ${q(m.value)},`).join("\n")}
@@ -979,7 +1002,9 @@ const PY_CAPS_EXPORTS = [
 
 export function renderPython(model: Model, caps?: SdkCapabilities): string {
   const exported = [
-    ...model.groups.flatMap((g) => [g.name, valuesName(g)]),
+    ...model.groups.flatMap((g) =>
+      g.valuesOnly ? [valuesName(g)] : [g.name, valuesName(g)],
+    ),
     "ERROR_CODE_KINDS",
     ...model.scalars.map((s) => s.name),
     ...(caps ? PY_CAPS_EXPORTS : []),
@@ -998,6 +1023,14 @@ ${exported.map((n) => `    ${q(n)},`).join("\n")}
 `,
   ];
   for (const g of model.groups) {
+    if (g.valuesOnly) {
+      out.push(`
+
+#: ${g.doc} Every value, in source order.
+${valuesName(g)}: Tuple[str, ...] = ${pyLiteral(g.members.map((m) => m.value))}
+`);
+      continue;
+    }
     out.push(`
 
 class ${g.name}:
@@ -1114,6 +1147,15 @@ export function renderSwift(model: Model, caps?: SdkCapabilities): string {
   ];
   for (const g of model.groups) {
     if (!g.swift) continue;
+    if (g.valuesOnly) {
+      out.push(`
+/// ${g.doc} Every value, in source order.
+public let ${valuesName(g)}: [String] = [
+${g.members.map((m) => `    ${q(m.value)},`).join("\n")}
+]
+`);
+      continue;
+    }
     out.push(`
 /// ${g.doc}
 public enum ${g.name} {
@@ -1190,6 +1232,14 @@ extends RefCounted
 `,
   ];
   for (const g of model.groups) {
+    if (g.valuesOnly) {
+      out.push(`
+
+## ${g.doc} Every value, in source order.
+const ${valuesName(g)} := ${gdLiteral(g.members.map((m) => m.value))}
+`);
+      continue;
+    }
     out.push(`
 
 ## ${g.doc}
@@ -1285,6 +1335,15 @@ package im.plrs.key.core
   ];
   for (const g of model.groups) {
     if (KOTLIN_DECLARED.has(g.name)) continue;
+    if (g.valuesOnly) {
+      out.push(`
+/** ${g.doc} Every value, in source order. */
+public val ${valuesName(g)}: List<String> = listOf(
+${g.members.map((m) => `    ${ktq(m.value)},`).join("\n")}
+)
+`);
+      continue;
+    }
     out.push(`
 /** ${g.doc} */
 public object ${g.name} {
