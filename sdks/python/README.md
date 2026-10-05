@@ -2,7 +2,8 @@
 
 A product-agnostic Python client for **Polaris Key** — an always-on **Core**
 (device principal, credential, trust, verified cache, clock floor, sync) with opt-in
-**License**, **Config**, **Release** and **Update** services layered over it. It mirrors
+**License**, **Config**, **Devices**, **Identity**, **Release**, **Update** (with packs) and
+**Commerce** services layered over it, a one-call `boot()`, an `asyncio` client and a CLI kit. It mirrors
 the Node SDK (`@polaris-key/node`) module for module and verifies the **same** cross-language
 conformance corpus byte-for-byte.
 
@@ -32,10 +33,18 @@ polaris-key = { index = "polaris-key" }
 ```
 
 ```sh
+# desktop apps and games: install the keyring extra (the recommended default)
+uv add "polaris-key[keyring]"
+# servers, containers and CI: the bare package (credentials in a 0600 file)
 uv add polaris-key
-# optional extras: OS keyring + alternate CLI front ends
+# alternate CLI front ends
 uv add "polaris-key[keyring,click,typer]"
 ```
+
+**On a desktop, install `polaris-key[keyring]`.** Without the extra the device token is in a `0600`
+file under the config directory, `store_status()` reports `keyring-unavailable`, and
+`supports("core.store")` answers `dependency`. The bare package is right for a server or a
+container, where there is no OS keyring to use.
 
 pip cannot route one project to one index: install the dependencies from your usual index, then
 the package alone from the feed. Poetry and the rest:
@@ -88,8 +97,9 @@ client.sync()
 client.license.deactivate()
 ```
 
-`PolarisKeyClient.create(...)` loads the cached documents with **no network**; `sync()`
-re-pulls. The default `KeyringStore` stores credentials in the OS keyring when available
+`PolarisKeyClient.create(...)` loads the cached documents with **no network**, then (unless
+`expected_services` is pinned, or `auto_discover=False`) fetches discovery once and keeps going
+offline on any failure; `sync()` re-pulls. The default `KeyringStore` stores credentials in the OS keyring when available
 (service tag `pkey:<product>`) and uses `0600` files for device/cache data and headless
 fallback. Inject an `InMemoryStore` (or your own `Store`) for tests, and an `httpx.Client`
 (e.g. with a `MockTransport`) for the transport.
@@ -154,9 +164,12 @@ Every one is importable on its own, so a config-only daemon never pulls the lice
 | `polaris_key.license`  | `activate` / `enroll` / `token` / `deauthorize`, the signed grant document, the gate, `entitled_channels()`          |
 | `polaris_key.config`   | the signed config document + layered resolution, `fetch_schema()` (the catalog), edge-mint (`mint_token`)            |
 | `polaris_key.devices`  | registration, the roster, fingerprint / facts / device-id, the stores                                                |
-| `polaris_key.identity` | device-code sign-in (RFC 8628): `begin_sign_in` / `poll_sign_in` / `wait_for_sign_in`                                |
-| `polaris_key.release`  | changelog, install script, artifact URLs                                                                             |
+| `polaris_key.identity` | device-code sign-in (RFC 8628): `begin_sign_in` / `poll_sign_in` / `wait_for_sign_in` / `sign_in_with_browser`       |
+| `polaris_key.release`  | changelog, install script, artifact URLs, verified `fetch()`                                                         |
 | `polaris_key.update`   | version check, the Sparkle appcast URL, the signed update decision (`decide`, `feed`, `release_record`, `build_url`) |
+| `polaris_key.commerce` | store purchase claims: `binding()`, `claim()`, `claim_steam()`, `claim_play()`, `claim_app_store()`                  |
+| `polaris_key.portal`   | portal links (`client.portal.url(flow)`); `polaris_key.copy` holds the localised message table                       |
+| `polaris_key.aio`      | `AsyncClient`: every sub-client as coroutines over the same core                                                     |
 | `polaris_key.local`    | the transportless profile                                                                                            |
 
 `client.license.entitled_channels()` returns the `channels` entitlement's string grants in
@@ -229,6 +242,127 @@ updating them as a release, not a runtime fetch. Key rotation is handled for you
 signed trust manifest at `/<product>/.well-known/polaris-trust.jws`, which is verified
 against your pins.
 
+## The whole integration
+
+Everything below hangs off one `PolarisKeyClient`; the same surface is on `AsyncClient`.
+
+### One-call boot
+
+```python
+client = polaris_key.create(product_slug="djdl", version="1.0.0", trust=TRUST)
+outcome = client.boot(on_stage=lambda state, emits: print(state.stage))
+if outcome.needs_activation:
+    ...  # show key entry or sign-in; client.ensure_activated() covers the keyless policies
+```
+
+`boot()` runs discover, boot guard, sync (registering or enrolling when no player is needed),
+gate, update decision, required packs and ready through the shared boot stage machine, and
+returns a `BootOutcome` (`ready`, `needs_activation`, `update_available`). `on_stage(state,
+emits)` runs after every accepted event; `consent`, `metered` and `answer` set the pack download
+consent policy. It calls `update.mark_boot_attempt()` at the start and confirms the boot once
+healthy, so an update that fails to start rolls back (`update.confirm_boot()` by hand with
+`auto_confirm=False`).
+
+### Typed activation outcomes
+
+`license.activate_with_key()` and `license.enroll()` return a result whose `kind` is one of
+`ok`, `device-limit` (only for the Worker's `device_limit` refusal, with the roster),
+`unauthorized`, `fingerprint-required`, `enroll-disabled`, `hardware-mismatch`,
+`enroll-claimed`, `license-disabled`, `license-expired`, `attestation-required`,
+`rate-limited`, `refused` (any other 4xx, keeping the server's `code`) or `error`. An unknown
+403 is `refused`, never `device-limit`. Device calls (`rename`, `deauthorize`) raise with the
+server's own code too. `polaris_key.copy.message(code)` and `title(code)` give the localised
+wording for any registry code or gate status (`register_locale()` adds a table).
+
+### Entitlements
+
+`license.is_entitled(name)` is false, and `entitlement_value(name)` is `None`, whenever the gate
+is `revoked` or `expired`, whatever the cached document still says (S-19 G11).
+`license.license_info()` returns a `LicenseInfo` (`licenseId`, `tier`, `tierLabel`,
+`deviceLimit`, `profile`, `entitledChannels`; `deviceCount` and `expiresAt` stay `None` until
+the licence document carries them) or `None`, read regardless of the gate so an account screen
+can show which licence was revoked.
+
+### Events and local overrides
+
+```python
+unsubscribe = client.subscribe(lambda e: print(e.kind, e.data), kinds=["license", "config"])
+client.on_config_change("ui.theme", lambda e: apply_theme(e.get("value")))
+client.config.set("ui.theme", "dark")    # a persisted local override (config.local)
+client.config.clear("ui.theme")
+```
+
+`client.events` is the bus. Kinds: `license`, `entitlement` (per name), `config` (per key, from
+a sync or a local change), `updateAvailable`, `packs` and `store`. Local overrides persist in
+the state directory. `config.set` refuses a key the signed document enforces or hides
+(`managed_by_admin`) and a value that fails the key's catalog schema (`bad_request`).
+
+### Downloads, updater feeds and install drivers
+
+- `client.release.fetch(decision, to=path)` downloads a build through discovery's build URL with
+  the device bearer, resumes with `Range`/`If-Range`, and checks the size and SHA-256 against
+  the signed release record before the file appears at `to`.
+- `client.distribution.download_model()` reads the product's `download.json`;
+  `this_platform()` picks this install's row.
+- `client.update.feed_url(kind)` returns discovery's updater feed URL (appcast, WinSparkle,
+  Velopack, AppInstaller, zsync), or a typed `Unsupported`.
+- `client.update.install(decision)` runs the install driver: `VelopackDriver` (PyInstaller or
+  Briefcase apps with the `velopack` package), `SelfReplaceDriver` (a frozen single-file CLI)
+  or `StoreLinkDriver` (a store build opens its listing). Without a usable driver it returns
+  `unsupported` with a reason, never a silent no-op.
+
+### Update health
+
+The SDK keeps an update-health journal in the state directory (`update_offered`,
+`update_downloaded`, `update_applied`, `update_confirmed`, `update_reverted`, `pack_failed`,
+`boot_rolled_back`) and sends it
+with the next device report, which also carries the gate, the outlet and the installed packs.
+
+### Commerce
+
+```python
+result = client.commerce.claim_steam(ticket_hex, dlc_app_id=480)   # any Steamworks binding
+if result.kind == "ok":
+    ...  # the grant is live; the client has synced
+```
+
+`binding()` reads the product's store binding, `claim(store, payload)` is the generic call, and
+`claim_play()` / `claim_app_store()` cover the other stores. Refusals keep the server's code
+(`ClaimNotOwned`, `ClaimAttestationRequired`, `ClaimRefused`).
+
+### Portal links and crash tags
+
+`client.portal.url(flow)` builds a portal link for `library`, `account`, `activate`,
+`devices`, `freeDevice` or `download`, with a checked `return_to`. `client.crash_tags()` returns
+the release, environment and outlet tags to set on a crash reporter such as Sentry.
+
+### `asyncio`
+
+```python
+client = await polaris_key.AsyncClient.create(product_slug="djdl", version="1.0.0", trust=TRUST)
+outcome = await client.boot()
+result = await client.identity.wait_for_sign_in(prompt)        # cancels at once
+async for progress in client.update.packs.progress(until_done=True):
+    ...
+```
+
+`AsyncClient` shares the sync client's core, cache and gate: each sub-client method is a
+coroutine, `wait_for_sign_in` and `sign_in_with_browser` are native `asyncio` loops that cancel
+immediately, and `events.stream()` is an async iterator.
+
+### Where it runs
+
+| Runtime                                    | Status                                                                                                             |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| CPython on Windows, macOS, Linux           | Supported. Desktop apps install the `keyring` extra.                                                               |
+| Servers, containers, CI                    | Supported; see "Linux and containers" for the machine-id the fingerprint needs.                                    |
+| Ren'Py and Pygame games                    | Supported (CPython underneath); see `examples/python-renpy/`.                                                      |
+| Pyodide (`platform.system()` = Emscripten) | Unsupported: no fingerprint or outlet reader, and no platform header value (the corpus maps `Emscripten` to none). |
+| Python on iOS or Android (BeeWare, Kivy)   | Unsupported until fingerprint and outlet readers exist for them; use the Swift or Kotlin SDK in the native shell.  |
+
+Samples: `examples/python-cli/` (a CLI mounting the verb set) and `examples/python-renpy/` (a
+Ren'Py boot snippet).
+
 ## Gate statuses
 
 `status().status` is one of: `ok`, `grace`, `expired`, `revoked`, `needs-activation`,
@@ -268,9 +402,19 @@ identity's **own** licence; it does not attach a licence this device already hel
 
 **After `ready`, show on the device which account signed in.** Anyone holding the user code can
 complete the sign-in on the verification page, so the player must be able to see a mis-binding:
-`ready` carries no identity itself, but the post-acquisition sync has already run, so
-`client.license.get_profile()` returns the signed licence profile (`name`, `email`) to show — for
-example "Signed in as Ada Lovelace <ada@example.com>" with a way to sign out.
+`ready` carries `identity` (a `SignedInIdentity`) when the Worker sent it, and the
+post-acquisition sync has already run, so `client.license.get_profile()` also returns the signed
+licence profile (`name`, `email`) — show, for example, "Signed in as Ada Lovelace
+<ada@example.com>" with a way to sign out (`client.identity.sign_out()`).
+
+`client.identity.sign_in_with_browser()` is the native interim until the redirect-token route
+(I-15) lands: it begins a device-code sign-in, opens `verificationUriComplete` with
+`webbrowser.open` and waits. Pass `on_prompt` to show the code and a terminal QR
+(`polaris_key.qr.terminal(prompt.verificationUriComplete)`) for a browser on another device.
+`begin_sign_in(..., confirm_identity=True)` with `on_confirm` is the attach opt-in: the poll
+stops at `confirm` (with `identity` and `attachable`) until the player accepts, and
+`accept_sign_in(prompt, attach_license=True)` attaches this device's free licence. The deprecated
+`/identity/auth/poll` route is never used.
 
 The prompt's `repr` leaves out `deviceCode`, and a `MintedToken`'s leaves out `token`, so
 logging either object does not leak the credential.
@@ -368,12 +512,19 @@ A framework-agnostic command **core** (`polaris_key.cli.core`) powers a dependen
 matching extras. All three wrap the same core, so they never diverge. Verbs are grouped by
 the service that owns them:
 
-| Service   | Verbs                                           |
-| --------- | ----------------------------------------------- |
-| `license` | `activate` · `enroll` · `deactivate` · `status` |
-| `devices` | `register`                                      |
-| `config`  | `config <key>`                                  |
-| `core`    | `import-bundle`                                 |
+| Service    | Verbs                                                                                    |
+| ---------- | ---------------------------------------------------------------------------------------- |
+| `license`  | `activate` · `enroll` · `deactivate` · `status`                                          |
+| `identity` | `sign-in` (`--browser`, `--attach`, a terminal QR) · `sign-out`                          |
+| `devices`  | `register` · `devices list` · `devices rename <id> <label>` · `devices deauthorize <id>` |
+| `config`   | `config list` · `config get <key>` · `config set <key> <value>` · `config reset <key>`   |
+|            | `secret <key>` (presence only, never printed) · `mint <recipe>` (never printed)          |
+| `update`   | `update check` · `update download --to <path>` · `update apply` · `packs status/ensure`  |
+| `release`  | `changelog`                                                                              |
+| `core`     | `boot` · `import-bundle` · `offline-request` · `doctor`                                  |
+
+The verbs are described once in `polaris_key.cli.verbs.VERBS`, so the three front ends carry the
+same set with the same options.
 
 Trust keys are passed as repeatable `--trust kid=rawBase64url` pairs so the CLI stays
 product-agnostic; `--service <slug>` (repeatable) carries the capability expectation.

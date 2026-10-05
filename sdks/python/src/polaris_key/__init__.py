@@ -11,25 +11,32 @@ Core plus one sub-client per service, mirroring ``@polaris-key/node``::
     client.release.changelog()           # the truth store
     client.update.check()                # the feed over it
     client.update.decide()               # wire v4: the signed feed, the pinned record, the decision
+    client.boot(on_stage=print)          # or the whole start-up in one call
 
 Every subpackage is importable on its own, so a config-only daemon can
 ``from polaris_key.config import ConfigClient`` without pulling the licence module:
 
-    ``polaris_key.core``     device principal, credential, trust, cache, clock floor, sync,
-                         telemetry, offline bundles, the boot stage machine, and the
-                         frozen wire crypto
-    ``polaris_key.license``  activation + the gate
-    ``polaris_key.config``   the signed config document + layered resolution
-    ``polaris_key.devices``  registration, the roster, fingerprint/facts/device-id, the stores
-    ``polaris_key.identity`` device-code sign-in (RFC 8628)
-    ``polaris_key.release``  changelog / install script / artifact URLs
-    ``polaris_key.update``   version check, the Sparkle appcast URL, and wire v4's signed
-                         update decision (``decide()``, ``feed()``, ``release_record()``)
-    ``polaris_key.local``    the transportless profile
+    ``polaris_key.core``         device principal, credential, trust, cache, clock floor, sync,
+                             telemetry (with the update-health journal), offline bundles, the
+                             boot stage machine, the event bus, and the frozen wire crypto
+    ``polaris_key.license``      activation (typed outcomes) + the gate + entitlements
+    ``polaris_key.config``       the signed config document, layered resolution, ``config.set``
+    ``polaris_key.devices``      registration, the roster, fingerprint/facts/device-id, the stores
+    ``polaris_key.identity``     device-code sign-in (RFC 8628), ``sign_in_with_browser()``
+    ``polaris_key.release``      changelog, install script, verified ``fetch()``
+    ``polaris_key.distribution`` the ``download.json`` model
+    ``polaris_key.update``       version check, updater feed URLs, wire v4's signed decision,
+                             install drivers, the boot guard and ``update.packs``
+    ``polaris_key.commerce``     store purchase claims (Steam, Play, App Store)
+    ``polaris_key.portal``       portal links; ``polaris_key.copy`` localised messages
+    ``polaris_key.aio``          ``AsyncClient`` over the same core
+    ``polaris_key.cli``          the CLI verb set for argparse, click and typer
+    ``polaris_key.local``        the transportless profile
 
 This SDK verifies the SAME cross-language conformance corpus (``conformance/corpus/v2``)
-byte-for-byte as the Node, React and Swift SDKs. The normative source is
-``docs/security/WIRE-CONTRACT-V3.md``.
+byte-for-byte as the Node, React, Swift, Kotlin and Godot SDKs. The normative sources are
+``docs/security/WIRE-CONTRACT-V3.md`` (device, licence, config) and
+``docs/security/WIRE-CONTRACT-V4.md`` (the signed update and pack layer).
 """
 
 from __future__ import annotations
