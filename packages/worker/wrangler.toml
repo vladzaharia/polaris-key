@@ -207,9 +207,22 @@ LAZY_DELTAS = "runtime"
 PLATFORM_REPOSITORY = "vladzaharia/polaris-key"
 PLATFORM_REPOSITORY_ID = "1278490640"
 PLATFORM_REPOSITORY_OWNER_ID = "79390"
+# I-18: the shared sign-in sender (core/emailSender.ts). Uncomment once auth.plrs.im passes
+# `pnpm --filter @polaris-key/worker email:dns-check` and the staging send is aligned; until then
+# the Worker sends from noreply@plrs.im.
+# EMAIL_SENDER_ADDRESS = "noreply@auth.plrs.im"
+# I-18: "registered" once auth.plrs.im and noreply@auth.plrs.im are registered for Apple's
+# private email relay; until then relay recipients get email_unavailable instead of a bounce.
+# EMAIL_APPLE_RELAY = "registered"
+# I-18: the deploy-wide daily cap on one product's passthrough mail (default 500 in code; a
+# product's email_product_caps row wins).
+# EMAIL_PRODUCT_DAILY_CAP = "500"
+# I-18: sign-in and account mail. The binding may send only from these addresses: today's
+# noreply@plrs.im, and the auth sending subdomain's noreply@auth.plrs.im, which the Worker uses
+# once EMAIL_SENDER_ADDRESS above names it (RUNBOOK "Sign-in email").
 [[env.prod.send_email]]
 name = "EMAIL"
-allowed_sender_addresses = ["noreply@plrs.im"]
+allowed_sender_addresses = ["noreply@plrs.im", "noreply@auth.plrs.im"]
 
 [env.staging]
 [[env.staging.routes]]
@@ -270,6 +283,13 @@ BLOBS_BUCKET_NAME = "polaris-key-blobs-staging"
 # P4-17: lazy hot-pair deltas' kill switch. A-13: "runtime" = the console's platform settings
 # store decides (default off); "off" = a hard off no console value can override.
 LAZY_DELTAS = "runtime"
+# I-18: staging sends from the production auth sending subdomain, so the staging deliverability
+# check proves the very records production uses (RUNBOOK "Sign-in email"). Until the owner
+# onboards auth.plrs.im the provider refuses the sender and the Worker answers email_unavailable.
+EMAIL_SENDER_ADDRESS = "noreply@auth.plrs.im"
+[[env.staging.send_email]]
+name = "EMAIL"
+allowed_sender_addresses = ["noreply@auth.plrs.im"]
 
 [env.dev]
 [[env.dev.routes]]
@@ -370,7 +390,9 @@ PKEY_ENVIRONMENT = "test"
 # Console's own Pocket ID client (I-03; set all three in ONE `wrangler secret bulk`):
 #   ADMIN_OIDC_ISSUER, ADMIN_OIDC_CLIENT_ID, ADMIN_OIDC_CLIENT_SECRET. Until they are set the
 #   console signs in through PLATFORM_OIDC_*; the portal never reads them.
-# Customer portal email:
-#   prod binds Cloudflare Email Service as EMAIL and restricts senders to noreply@plrs.im.
-#   Set PORTAL_EMAIL_FROM if the default sender should not be "Polaris Key <noreply@plrs.im>".
+# Sign-in and account email (I-18, core/emailSender.ts, core/emailDelivery.ts):
+#   prod and staging bind Cloudflare Email Service as EMAIL. The display name is never
+#   configurable ("Polaris Key", or "<App> via Polaris Key" for passthrough); EMAIL_SENDER_ADDRESS
+#   picks the address (unset = noreply@plrs.im). PORTAL_EMAIL_FROM is still read for its address
+#   only, while EMAIL_SENDER_ADDRESS is unset.
 # Product signing keys and product-scoped secrets are sealed in D1 through the admin API.

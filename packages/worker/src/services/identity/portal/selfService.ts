@@ -390,12 +390,14 @@ export async function handleClaimKey(
   const origin = new URL(req.url).origin;
   await sendQuietly(
     env,
+    db,
     session.email,
     licenseAddedNotice({
       productName: product.name,
       productSlug: product.slug,
       origin,
     }),
+    now,
   );
   // S-16: each attach notifies the licence's own email too, when it is a different address.
   if (
@@ -404,8 +406,10 @@ export async function handleClaimKey(
   ) {
     await sendQuietly(
       env,
+      db,
       license.email,
       licenseAttachedNotice({ productName: product.name, origin }),
+      now,
     );
   }
   const portalRow = await getPortalLicense(
@@ -580,12 +584,12 @@ export async function handleKeyReissue(
     productSlug: product,
     origin: new URL(req.url).origin,
   });
-  await sendQuietly(env, session.email, notice);
+  await sendQuietly(env, db, session.email, notice, now);
   if (
     license.email &&
     normalizeEmail(license.email) !== normalizeEmail(session.email)
   ) {
-    await sendQuietly(env, license.email, notice);
+    await sendQuietly(env, db, license.email, notice, now);
   }
   // Shown ONCE: the raw key is in this response and nowhere else; only its hash is stored.
   return portalJson({ key, revokedKeys: revoked, createdAt: now }, 201);
@@ -595,11 +599,13 @@ export async function handleKeyReissue(
  *  logging, R12), so mail trouble never reports a done change as failed. */
 async function sendQuietly(
   env: Env,
+  db: Db,
   to: string | null | undefined,
   message: NoticeMessage,
+  now: number,
 ): Promise<void> {
   try {
-    await sendNotice(env, to, message);
+    await sendNotice(env, db, to, message, now);
   } catch {
     // Deliberately ignored; see above.
   }

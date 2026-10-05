@@ -11,15 +11,19 @@ import {
   type ArtefactRef,
 } from "./singleUse.js";
 
-// Email sign-in limits (I-02), the reusable primitives I-08's email login and I-21's delivery
-// operations build on. S-16 §5.4 item 4 specifies the numbers; they are named constants here so
-// I-08 and its tests import them rather than restating them.
+// Email sign-in limits (I-02), the reusable primitives the login card's email flows (I-07) and
+// I-18's delivery operations (`emailDelivery.ts`) build on. S-16 §5.4 item 4 specifies the
+// numbers; they are named constants here so I-07 and its tests import them rather than
+// restating them.
 //
 // SEND SIDE (`checkEmailSend`): before a code or magic link is mailed, the request must pass,
-// in order, per-IP, per-network, per-device (in-SDK starts only), per-recipient hourly and
-// daily, and the per-product daily cap; and the recipient must not be locked out. Every limit is
-// product-scoped: one tenant's traffic can neither exhaust another tenant's budget nor lock a
-// person out of another product's sign-in.
+// in order, per-IP, per-network, per-device (in-SDK starts only), and per-recipient hourly and
+// daily; and the recipient must not be locked out. Every limit is product-scoped: one tenant's
+// traffic can neither exhaust another tenant's budget nor lock a person out of another product's
+// sign-in. The per-product DAILY CAP is not here: I-18 charges it at the one send choke point
+// (`deliverEmail` in `emailDelivery.ts`), for passthrough mail only, after suppression, so it is
+// charged last, only for mail that would really leave, and never for platform mail. A capped
+// product answers `email_unavailable` there (a product-level fact that names no recipient).
 //
 // VERIFY SIDE (`issueEmailCode`, `verifyEmailCode`): a code is 6 digits, lives 10 minutes and
 // dies after 5 wrong attempts; a new code for the same recipient and flow replaces (so
@@ -29,7 +33,7 @@ import {
 //
 // Enumeration safety (S-16 §5.4): `checkEmailSend` answers only `{ send }` and
 // `verifyEmailCode` only `{ ok }` (plus the payload on success), with no reason, so a caller
-// that echoes either cannot leak WHY. The caller (I-08) must answer a refused send — locked
+// that echoes either cannot leak WHY. The caller (I-07) must answer a refused send — locked
 // out, over a limit, or an unknown address — exactly as it answers a sent one.
 
 /** Digits in an email one-time code. */
@@ -56,11 +60,14 @@ export const EMAIL_SEND_PER_NETWORK_HOUR = 30;
 /** In-SDK email starts from one registered device per hour. */
 export const EMAIL_SEND_PER_DEVICE_HOUR = 3;
 /**
- * The per-product daily send cap when the caller passes none. A placeholder until I-21 sets the
- * operational default (and wires the configurable value); the cap exists so one tenant cannot
- * drain the shared sender quota.
+ * The operational per-product daily cap on passthrough sign-in mail (I-18), used when neither
+ * the product's `email_product_caps` row nor the `EMAIL_PRODUCT_DAILY_CAP` var sets one
+ * (`productDailyEmailCap`). One tenant cannot drain the shared sender: at 500 a product can
+ * spend a tenth of a 5,000-a-day account quota (Cloudflare's documented example; the account's
+ * real quota is read from `GET /accounts/{id}/email/sending/limits`, RUNBOOK "Sign-in email").
+ * Platform mail is never counted against it.
  */
-export const EMAIL_SEND_PRODUCT_DAILY_DEFAULT = 1000;
+export const EMAIL_SEND_PRODUCT_DAILY_DEFAULT = 500;
 
 const HOUR = 3600;
 const DAY = 86_400;
@@ -112,14 +119,12 @@ export interface EmailSendRequest {
   req: Request;
   /** The registered device an in-SDK start came from; absent for the hosted page. */
   deviceId?: string;
-  /** The product's daily cap (I-21); default `EMAIL_SEND_PRODUCT_DAILY_DEFAULT`. */
-  productDailyCap?: number;
 }
 
 /**
  * Whether a code or magic link may be sent now. Counts the request against every limit it
- * reaches (stopping at the first refusal, so a refused request spends no later budget, and the
- * product cap is charged last). A locked-out recipient is refused before anything is counted.
+ * reaches (stopping at the first refusal, so a refused request spends no later budget; the
+ * product cap follows at send time, in `deliverEmail`). A locked-out recipient is refused before anything is counted.
  * Fails closed: a limiter or store outage refuses.
  */
 export async function checkEmailSend(
@@ -164,12 +169,6 @@ export async function checkEmailSend(
       bucket: "emailSendRecipientDay",
       id: recipient,
       limit: EMAIL_SEND_PER_RECIPIENT_DAY,
-      windowSec: DAY,
-    },
-    {
-      bucket: "emailSendProductDay",
-      id: r.product,
-      limit: r.productDailyCap ?? EMAIL_SEND_PRODUCT_DAILY_DEFAULT,
       windowSec: DAY,
     },
   ];

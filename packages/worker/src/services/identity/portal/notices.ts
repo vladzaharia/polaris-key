@@ -6,7 +6,8 @@
  * place and the handlers only choose a template and its recipients. The rules they hold:
  *
  *   - From "Polaris Key", and named "Polaris Key" in the copy: never "Polaris Key Portal" or
- *     "the portal" (§6.1 rule 2). The sender itself is `fromAddress` in `email.ts`.
+ *     "the portal" (§6.1 rule 2). The sender itself is Core's `platformSender`, applied by
+ *     `deliverEmail` (I-18), which `email.ts` sends every notice through.
  *   - Product NAMES and device LABELS, never slugs or device ids (§6.1 rule 10).
  *   - One call to action, deep-linking to the exact section of the signed-in app (§3.3, §3.4):
  *     `#/p/<product>`, `#/p/<product>/devices`, `#/p/<product>/download?platform=`,

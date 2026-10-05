@@ -44,6 +44,8 @@ this page or fails the freshness gate.
 | `platform_job_runs` | 0057_platform_operations.sql | `id`, `run_id`, `job`, `cron`, `step`, `started_at`, `duration_ms`, `outcome`, `items`, `rows_affected`, `error_summary` |
 | `platform_heartbeats` | 0057_platform_operations.sql | `script`, `at`, `version_tag`, `cf_version_id`, `outcome`, `backlog_count`, `backlog_bytes`, `oldest_at` |
 | `store_operations` | 0061_store_operations.sql | `op_id`, `store`, `scope`, `product`, `op`, `natural_key`, `state`, `request_hash`, `result_ids_json`, `before_json`, `after_json`, `vendor_status`, `vendor_code`, `actor`, `created_at`, `finished_at`, `plane (0062)` |
+| `email_suppressions` | 0066_email_delivery.sql | `address_hash`, `reason`, `created_at`, `expires_at` |
+| `email_product_caps` | 0066_email_delivery.sql | `product`, `daily_cap`, `modified_at` |
 
 ## license
 

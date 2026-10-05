@@ -424,7 +424,13 @@ export async function handleMagicStart(
   const record: MagicRecord = { email, returnTo };
   const magicKey = await portalMagicKey(env, token);
   await putArtefact(env, magicKey, JSON.stringify(record), FLOW_TTL_SECONDS);
-  const sent = await sendMagicLink(env, email, verifyUrl.toString());
+  const sent = await sendMagicLink(
+    env,
+    db,
+    email,
+    verifyUrl.toString(),
+    Math.floor(Date.now() / 1000),
+  );
   if (!sent) {
     await deleteArtefact(env, magicKey);
     return authJson(

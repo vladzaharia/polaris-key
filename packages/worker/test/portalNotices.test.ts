@@ -216,7 +216,12 @@ describe("notice templates: rules", () => {
 
 // ── Delivery ─────────────────────────────────────────────────────────────────────────────────
 
-type Sent = { to: string; subject: string; text: string; from: string };
+type Sent = {
+  to: string;
+  subject: string;
+  text: string;
+  from: { name: string; email: string };
+};
 
 function portalEnv(): { env: Env; sent: Sent[] } {
   const env = makeEnv(new KvMock(), ["djdl"]);
@@ -306,15 +311,16 @@ describe("security notices reach every verified address", () => {
       s.accountId,
       "ada@example.com",
       signInMethodRemovedNotice({ method: "Steam", origin: ORIGIN }),
+      NOW,
     );
     expect(n).toBe(2);
     expect(sent.map((m) => m.to).sort()).toEqual([
       "ada.work@example.com",
       "ada@example.com",
     ]);
-    expect(sent.every((m) => m.from === "Polaris Key <noreply@plrs.im>")).toBe(
-      true,
-    );
+    // Platform mail, From "Polaris Key" (core/emailSender.ts platformSender, I-18).
+    for (const m of sent)
+      expect(m.from).toEqual({ name: "Polaris Key", email: "noreply@plrs.im" });
   });
 
   it("device removal: label and product name, to every verified address", async () => {

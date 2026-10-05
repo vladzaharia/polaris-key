@@ -15,16 +15,17 @@
  *     light grounds) is the default; the dark palette swaps in the `dark` variant for the clients
  *     that apply it. With no usable origin the lockup is left out and a text wordmark stands in;
  *   - every dynamic value escaped; links are only the ones the Worker built.
+ *
+ * Every message is platform mail, sent as "Polaris Key" through Core's one send choke point
+ * (`core/emailDelivery.ts`, I-18), which applies the suppression list, the Apple private-relay
+ * gate and the provider-error handling; platform mail is never counted against a product cap.
  */
 
 import { BRAND, FONT, THEME_TOKENS } from "@polaris-key/brand";
 import type { Db, Env } from "../../../core/platform.js";
+import { deliverEmail } from "../../../core/emailDelivery.js";
 import type { NoticeMessage } from "./notices.js";
 import { listVerifiedAccountEmails } from "./repo.js";
-
-function fromAddress(env: Env): string {
-  return env.PORTAL_EMAIL_FROM ?? "Polaris Key <noreply@plrs.im>";
-}
 
 export function portalEmailConfigured(env: Env): boolean {
   return Boolean(env.EMAIL);
@@ -166,44 +167,66 @@ export function renderEmail(c: EmailContent): string {
     .join("\n");
 }
 
+/**
+ * Mail a magic sign-in link. False only when email cannot be sent at all (`email_unavailable`);
+ * a suppressed recipient answers true, exactly like a sent message, so the response does not
+ * reveal that the address once bounced or complained.
+ */
 export async function sendMagicLink(
   env: Env,
+  db: Db,
   to: string,
   link: string,
+  now: number,
 ): Promise<boolean> {
-  const email = env.EMAIL;
-  if (!email) return false;
   const subject = "Sign in to Polaris Key";
-  await email.send({
-    from: fromAddress(env),
-    to,
-    subject,
-    text:
-      `Use this link to sign in to Polaris Key:\n\n${link}\n\n` +
-      `This link expires in 10 minutes and works once. If you did not ask to sign in, you can ignore this email.`,
-    html: renderEmail({
+  const result = await deliverEmail(
+    env,
+    db,
+    {
+      sender: { kind: "platform" },
+      to,
       subject,
-      heading: "Sign in to Polaris Key",
-      paragraphs: [
-        "Use the button below to sign in. The link expires in 10 minutes and works once.",
-      ],
-      action: { label: "Sign in", url: link },
-      footer:
-        "If you did not ask to sign in, you can ignore this email. Nothing changes until the link is used.",
-      origin: emailAssetOrigin(link, env.CONSOLE_ORIGIN),
-    }),
-  });
-  return true;
+      text:
+        `Use this link to sign in to Polaris Key:\n\n${link}\n\n` +
+        `This link expires in 10 minutes and works once. If you did not ask to sign in, you can ignore this email.`,
+      html: renderEmail({
+        subject,
+        heading: "Sign in to Polaris Key",
+        paragraphs: [
+          "Use the button below to sign in. The link expires in 10 minutes and works once.",
+        ],
+        action: { label: "Sign in", url: link },
+        footer:
+          "If you did not ask to sign in, you can ignore this email. Nothing changes until the link is used.",
+        origin: emailAssetOrigin(link, env.CONSOLE_ORIGIN),
+      }),
+    },
+    now,
+  );
+  return result.ok || result.reason === "suppressed";
 }
 
-/** One notice to one address. No binding or no address: nothing is sent. */
+/**
+ * One notice to one address, through Core's send choke point (`deliverEmail`). No binding or no
+ * address: nothing is sent. True only when it went out; an unavailable or suppressed recipient
+ * answers false, and nothing here throws on a provider error.
+ */
 export async function sendNotice(
   env: Env,
+  db: Db,
   to: string | null | undefined,
   message: NoticeMessage,
-): Promise<void> {
-  if (!to || !env.EMAIL) return;
-  await env.EMAIL.send({ from: fromAddress(env), to, ...message });
+  now: number,
+): Promise<boolean> {
+  if (!to || !env.EMAIL) return false;
+  const result = await deliverEmail(
+    env,
+    db,
+    { sender: { kind: "platform" }, to, ...message },
+    now,
+  );
+  return result.ok;
 }
 
 /**
@@ -213,9 +236,9 @@ export async function sendNotice(
  * whose subject IS an address, such as a sign-in email added, does show that address; render
  * email methods generically when those notices are wired, PX-W12.)
  *
- * A failed send is caught per recipient and never fails the change it reports (a device is
- * already removed, an account is about to be erased); the others still go out. Returns how many
- * were sent.
+ * A recipient that is not sent to (unavailable, suppressed, or a failed send) never fails the
+ * change the notice reports (a device is already removed, an account is about to be erased); the
+ * others still go out. Returns how many were sent.
  */
 export async function sendSecurityNotice(
   env: Env,
@@ -223,14 +246,14 @@ export async function sendSecurityNotice(
   accountId: string,
   alsoTo: string | null | undefined,
   message: NoticeMessage,
+  now: number,
 ): Promise<number> {
   if (!env.EMAIL) return 0;
   const recipients = await securityNoticeRecipients(db, accountId, alsoTo);
   let sent = 0;
   for (const to of recipients) {
     try {
-      await sendNotice(env, to, message);
-      sent += 1;
+      if (await sendNotice(env, db, to, message, now)) sent += 1;
     } catch {
       // Swallowed on purpose: the change already happened (or is about to); the worker has no
       // console logging (test/attack/R12-secrets.test.ts), so the shortfall is the return value.

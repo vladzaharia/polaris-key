@@ -21,7 +21,7 @@ Target account and fixed values:
 | Platform admin group | `admins`                                        |
 | GitHub App           | `polaris-key`                                   |
 | First product        | `djdl` (linked from its own product repository) |
-| Portal email sender  | `Polaris Key <noreply@plrs.im>`                 |
+| Portal email sender  | `Polaris Key <noreply@auth.plrs.im>` (I-18)     |
 
 Do not change the production hostname as a deployment-time tweak. The SDK defaults,
 signed-config issuer, tests, docs, and product examples assume `key.plrs.im`; using a
@@ -70,15 +70,16 @@ These steps are browser/provider tasks. Complete them before deploying.
    (`pkg.plrs.im`, `pkg-staging.plrs.im`, `pkg-dev.plrs.im`, F-02). `wrangler deploy` attaches
    each `custom_domain = true` route in `wrangler.toml` and creates its DNS record and
    certificate; a name that already has a DNS record outside the Worker must be cleared first.
-3. Onboard `plrs.im` to Cloudflare Email Service for outbound sending.
-4. Verify or allow the sender address `noreply@plrs.im`.
-5. The Worker binds Email Service as `EMAIL` in prod and restricts senders to
-   `noreply@plrs.im`:
+3. Onboard the auth sending subdomain `auth.plrs.im` on Cloudflare Email Sending, add its
+   SPF record, register it with Apple's private email relay and run the DNS check: RUNBOOK
+   "Sign-in email (I-18)" lists the exact records and steps. (`plrs.im` itself is onboarded
+   too; the Worker sends from `noreply@plrs.im` until `EMAIL_SENDER_ADDRESS` is set.)
+4. The Worker binds Email Service as `EMAIL` in prod and staging and restricts senders:
 
    ```toml
    [[env.prod.send_email]]
    name = "EMAIL"
-   allowed_sender_addresses = ["noreply@plrs.im"]
+   allowed_sender_addresses = ["noreply@plrs.im", "noreply@auth.plrs.im"]
    ```
 
 Cloudflare documents the `send_email` binding and `allowed_sender_addresses` restriction at
@@ -625,8 +626,8 @@ ADMIN_OIDC_ISSUER=https://id.plrs.im
 Paste the complete GitHub App private key PEM for `GITHUB_APP_PRIVATE_KEY`, including the
 `BEGIN` and `END` lines.
 
-`PORTAL_EMAIL_FROM` does not need to be set when using the default sender
-`Polaris Key <noreply@plrs.im>`.
+`PORTAL_EMAIL_FROM` does not need to be set. The sender's display name is fixed (`Polaris Key`,
+or `<App> via Polaris Key`); the address is the `EMAIL_SENDER_ADDRESS` var (I-18).
 
 ### Platform store connections (A-16, optional)
 

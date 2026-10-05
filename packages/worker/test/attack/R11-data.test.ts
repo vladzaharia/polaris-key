@@ -619,6 +619,11 @@ describe("R11-05 product scoping", () => {
       // One row per ecosystem, above every owner's own settings; written only by a platform
       // admin. Each owner's settings live in `dist_registry_feeds`, which IS product-first.
       "dist_registry_policy",
+      // 0062 (I-18) — the email suppression list. A bounce or a complaint hurts the ONE shared
+      // sender whichever product's mail caused it, so an entry belongs to no product: it is keyed
+      // by the recipient's peppered hash alone and read only by `core/emailDelivery.ts` before
+      // every send. The per-product caps (`email_product_caps`) ARE product-first (this loop).
+      "email_suppressions",
     ]);
     const offenders: string[] = [];
     for (const t of tables.map((r) => r.name)) {

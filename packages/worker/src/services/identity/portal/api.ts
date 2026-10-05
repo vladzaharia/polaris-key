@@ -480,6 +480,7 @@ async function handleMeDelete(
     session.accountId,
     account.primary_email ?? session.email,
     accountDeletedNotice({ origin: new URL(req.url).origin }),
+    now,
   );
   await deletePortalAccount(db, session.accountId, now);
   return portalJson({ ok: true, deleted: session.accountId }, 200, {
@@ -605,6 +606,7 @@ async function handleDeviceDelete(
       productSlug: product,
       origin: new URL(req.url).origin,
     }),
+    now,
   );
   return portalJson({ ok: true, deviceId });
 }
@@ -842,6 +844,7 @@ async function handleEmailDownload(
   const account = await getPortalAccount(db, session.accountId);
   await sendNotice(
     env,
+    db,
     account?.primary_email ?? session.email,
     downloadLinkEmail({
       productName: productRow.name,
@@ -849,6 +852,7 @@ async function handleEmailDownload(
       platform,
       origin: new URL(req.url).origin,
     }),
+    now,
   );
   return portalJson({ ok: true }, 202);
 }
