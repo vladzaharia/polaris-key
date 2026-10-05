@@ -1198,10 +1198,18 @@ export async function handlePortalApi(
   // PX-W1: the library and the product page (`library.ts`). Reads only.
   if (head === "library" && rest.length === 0) {
     if (req.method !== "GET") return err(405, "method_not_allowed");
+    const view = await libraryView(db, session.accountId, now, hooksFor);
     return portalJson({
-      ...(await libraryView(db, session.accountId, now, hooksFor)),
+      ...view,
       // PX-W10: the Discover count in the nav (§4.16); the offers themselves are `GET /api/discover`.
-      discoverCount: await discoverCount(env, db, session.accountId, now),
+      // Never a product this same answer lists in the library.
+      discoverCount: await discoverCount(
+        env,
+        db,
+        session.accountId,
+        now,
+        new Set(view.products.map((p) => String(p.product))),
+      ),
     });
   }
   // PX-W10 (G24, G25): Discover's offers and "Add to library" (`discover.ts`).
