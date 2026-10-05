@@ -1222,7 +1222,7 @@ async function renderDeviceConfirmation(
     .join("");
   const html = renderBrandPage({
     title: `Authorize ${product.name}`,
-    eyebrow: "Device activation",
+    surface: "device",
     heading: `Authorize ${product.name}`,
     body:
       `<p>An app is asking to activate this device. Check that the code and device match what the app shows before signing in.</p>` +
@@ -1252,7 +1252,7 @@ function renderDeviceEntry(
       : "";
   const html = renderBrandPage({
     title: `Connect a device to ${product.name}`,
-    eyebrow: "Device activation",
+    surface: "device",
     heading: `Connect a device to ${product.name}`,
     body:
       `<p class="muted">Enter the code shown on your device.</p>${error}` +

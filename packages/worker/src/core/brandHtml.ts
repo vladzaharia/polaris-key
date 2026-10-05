@@ -23,7 +23,7 @@
 
 import { createHash } from "node:crypto";
 import { BRAND, FONT, THEME_TOKENS } from "@polaris-key/brand";
-import { lockupMetrics } from "@polaris-key/brand/svg";
+import { lockupMetrics, markParts } from "@polaris-key/brand/svg";
 
 /** Escape for HTML text and double-quoted attribute values. */
 export function escapeHtml(s: string): string {
@@ -69,6 +69,23 @@ export function themedLockup(
   const w = Math.round(m.width * 100) / 100;
   const title = escapeHtml(m.template.title);
   return `<svg class="${className}" xmlns="http://www.w3.org/2000/svg" width="${w}" height="${height}" viewBox="0 0 ${m.template.width} ${m.template.height}" role="img" aria-label="${title}"><title>${title}</title>${body}</svg>`;
+}
+
+/**
+ * The Pinned K alone, themed by the page's stylesheet like `themedLockup`: the mark the
+ * console's `Logo` draws beside its "Polaris Key" text (the display cut at 48 px, no bit).
+ * Decorative: the brand block's visible name says it.
+ */
+export function themedMark(size: number, className: string): string {
+  const m = markParts({ kind: "key", size, theme: "dark", bit: "none" });
+  const paths = m.parts
+    .map((p) => {
+      if (p.role === "gold")
+        throw new Error("brand: the default mark has no bit");
+      return `<path class="${ROLE_CLASS[p.role]}" d="${p.d}"/>`;
+    })
+    .join("");
+  return `<svg class="${className}" xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${m.grid} ${m.grid}" aria-hidden="true" focusable="false">${paths}</svg>`;
 }
 
 // ── Stylesheet ───────────────────────────────────────────────────────────────────────────────
@@ -118,9 +135,13 @@ export const BRAND_PAGE_CSS = [
   `body{margin:0;min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:3rem 1rem;background:var(--page);color:var(--text);font-family:${FONT.sans};font-synthesis:none;font-size:1rem;line-height:1.5;-webkit-text-size-adjust:100%;text-rendering:optimizeLegibility}`,
   `main{width:100%;max-width:28rem}`,
   // The console sign-in look (shared with the customer portal's login card and the console's
-  // own boot screen): the lockup centred over one card, brand type, generous spacing.
-  `.brand{display:flex;justify-content:center;margin:0 0 2rem;line-height:0}`,
-  `.brand svg{display:block;max-width:100%;height:auto}`,
+  // own boot screen): the brand block centred over one card, brand type, generous spacing. The
+  // block is the console `Logo`'s, measure for measure: the 48 px mark, a 12 px gap, "Polaris
+  // Key" in bold at 16 px and the surface ("console", "account") as a small uppercase label.
+  `.brand{display:flex;justify-content:center;align-items:center;gap:.75rem;margin:0 0 2rem;color:var(--strong)}`,
+  `.brand svg{display:block;flex:none}`,
+  `.wordmark{display:flex;align-items:baseline;gap:.375rem;font-size:1rem;line-height:1.5rem;font-weight:700;letter-spacing:-.025em}`,
+  `.surface{color:var(--muted);font-size:.75rem;line-height:1rem;font-weight:400;letter-spacing:.05em;text-transform:uppercase}`,
   `.mb{fill:var(--mb)}.ms{fill:var(--ms)}.mt{fill:var(--mt)}`,
   `.card{padding:2rem;border:1px solid var(--rule);border-radius:8px;background:var(--raised);box-shadow:0 1px 2px rgb(0 0 0 / .12)}`,
   `.eyebrow{margin:0 0 .5rem;color:var(--muted);font-size:.75rem;line-height:1rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}`,
@@ -137,7 +158,8 @@ export const BRAND_PAGE_CSS = [
   `label{display:block;margin:1.5rem 0 .5rem;color:var(--strong);font-size:.875rem;line-height:1.25rem;font-weight:700}`,
   `input[type=text]{display:block;width:100%;min-height:44px;padding:0 .75rem;margin:0 0 1rem;border:1px solid var(--edge);border-radius:6px;background:var(--sunken);color:var(--strong);font-family:${FONT.mono};font-size:1.25rem;letter-spacing:.08em;text-transform:uppercase}`,
   `input[type=text]::placeholder{color:var(--muted);opacity:1}`,
-  `.button{display:flex;width:100%;align-items:center;justify-content:center;min-height:44px;padding:0 1.25rem;border:1px solid var(--accent);border-radius:6px;background:var(--accent);color:var(--on-accent);font:inherit;font-size:.875rem;font-weight:700;text-decoration:none;cursor:pointer}`,
+  // The console's md Button (BootScreen's Retry): 36 px, 14 px regular weight, one accent fill.
+  `.button{display:flex;width:100%;align-items:center;justify-content:center;min-height:2.25rem;padding:0 1rem;border:1px solid var(--accent);border-radius:6px;background:var(--accent);color:var(--on-accent);font:inherit;font-size:.875rem;line-height:1.25rem;font-weight:400;text-decoration:none;cursor:pointer}`,
   `.button:hover{filter:brightness(1.1)}`,
   `.actions{margin:1.5rem 0 0}`,
   `a{color:var(--accent-fg)}`,
@@ -160,21 +182,31 @@ export interface BrandPageOptions {
   title: string;
   /** The `<h1>`. Plain text (escaped here). */
   heading: string;
-  /** A short line above the heading (the product, the surface). Plain text. */
+  /**
+   * The surface beside the wordmark, as the console's `Logo` labels it ("console", "account",
+   * "device"). Plain text (escaped here); drawn uppercase by the stylesheet.
+   */
+  surface?: string;
+  /** A short line above the heading (a product name). Plain text. */
   eyebrow?: string;
   /** The card's body below the heading: TRUSTED markup built by the caller, every value escaped. */
   body?: string;
 }
 
-let lockup: string | null = null;
+let mark: string | null = null;
 
 /**
- * A branded page: the Polaris Key lockup (80 px tall, so its glyph is the display cut at 48 px,
- * BRAND §1.3-1.4) above one card. Built on first use, so a brand template this shell cannot
- * theme fails that request rather than the Worker's module load.
+ * A branded page: the console's brand block (the Pinned K at 48 px, the display cut, BRAND
+ * §1.3-1.4, beside "Polaris Key" and the surface label) above one card, so a Worker-served
+ * sign-in error reads as the same design as the console's boot screen and the portal's login.
+ * Built on first use, so a brand geometry this shell cannot theme fails that request rather
+ * than the Worker's module load.
  */
 export function renderBrandPage(opts: BrandPageOptions): string {
-  lockup ??= themedLockup("key", "horizontal", 80, "lockup");
+  mark ??= themedMark(48, "mark");
+  const surface = opts.surface
+    ? `<span class="surface">${escapeHtml(opts.surface)}</span>`
+    : "";
   const dark = THEME_TOKENS.dark.surface.page;
   const light = THEME_TOKENS.light.surface.page;
   return [
@@ -193,7 +225,7 @@ export function renderBrandPage(opts: BrandPageOptions): string {
     `</head>`,
     `<body>`,
     `<main>`,
-    `<div class="brand">${lockup}</div>`,
+    `<div class="brand" role="img" aria-label="Polaris Key${opts.surface ? ` ${escapeHtml(opts.surface)}` : ""}">${mark}<span class="wordmark" aria-hidden="true">Polaris&nbsp;Key${surface}</span></div>`,
     `<div class="card">`,
     opts.eyebrow ? `<p class="eyebrow">${escapeHtml(opts.eyebrow)}</p>` : "",
     `<h1>${escapeHtml(opts.heading)}</h1>`,

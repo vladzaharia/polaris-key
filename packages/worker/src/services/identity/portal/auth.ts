@@ -90,7 +90,7 @@ function htmlError(status: number, message: string): Response {
   return new Response(
     renderBrandPage({
       title: "Sign-in",
-      eyebrow: "Polaris Key account",
+      surface: "account",
       heading: message,
       body: retry
         ? `<p class="actions"><a class="button" href="${escapeHtml("/")}">Back to sign-in</a></p>`
