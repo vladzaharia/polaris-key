@@ -4557,7 +4557,8 @@ sit behind the portal session; the claim also needs the CSRF header.
   deploy hook, which records the deploy's own `PKEY_GIT_SHA`) writes one
   `product_manifest_snapshot` row in the apply's batch: the applied commit, a SHA-256 over the raw
   documents and the parsed manifest. Manifests name secrets but never carry values, so the row
-  holds no secret material; it is latest-only and cascades with the product. The snapshot
+  holds no secret material; it is latest-only and, like every product-scoped table, references
+  the product without `ON DELETE` (R11-01). The snapshot
   records what was applied and never decides it. **Residual:** the backfill (ST-01c) may fetch at
   the webhook-supplied `commit_sha` to corroborate an old row; that read is compare-only, never
   applied, and the row it writes says so.

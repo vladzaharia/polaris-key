@@ -26,13 +26,17 @@
 -- at the parse; `test/manifestSnapshot.test.ts` stores and reads back a snapshot built from four
 -- maximum-size documents.
 --
+-- No ON DELETE, unlike the sketch in S-18 §4.3: like every other product-scoped table, the row
+-- references `products(slug)` plainly (R11-01, `test/attack/R11-data.test.ts`; products are never
+-- deleted, and only the account/portal tables cascade).
+--
 -- Expand-only: a new table. A Worker deployed before this migration never names it.
 --
 -- Rollback: a pre-ST-01a Worker ignores the table, so no SQL is needed. To drop it anyway:
 --   DROP TABLE product_manifest_snapshot;
 
 CREATE TABLE IF NOT EXISTS product_manifest_snapshot (
-  product        TEXT PRIMARY KEY REFERENCES products(slug) ON DELETE CASCADE,
+  product        TEXT PRIMARY KEY REFERENCES products(slug),
   applied_sha    TEXT NULL,
   applied_at     INTEGER NOT NULL,
   origin         TEXT NOT NULL CHECK (origin IN ('resync','link','deploy-hook','backfill')),

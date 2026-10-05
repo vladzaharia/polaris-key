@@ -61,6 +61,9 @@ Nothing stores the applied manifest today: `product_sync_state` holds only the t
   S-18 §4.3's two calls (`GET /repos/{o}/{r}`, then `/commits/{branch}`). The property is the same:
   GitHub resolves the default branch from the repo coordinates alone. It is one fewer round trip,
   and it avoids reading a full commit JSON, whose file list could exceed the read cap.
+- The table's `product` column references `products(slug)` without S-18 §4.3's `ON DELETE
+CASCADE`: `test/attack/R11-data.test.ts` (R11-01) pins that only the account and portal tables
+  cascade, and no product-scoped table declares `ON DELETE` (products are never deleted).
 
 ## Steps
 
