@@ -88,15 +88,16 @@ with a Developer ID, notarises, staples and writes the zip that `sign_update` si
   passes the bearer through `vpkc_new_source_http_url_with_options`. It checks and downloads on
   a worker thread, then applies on exit with a restart. The feed's `FileName`s are bare names,
   which the Worker redirects to the package bytes.
-- **Velopack needs public delivery, for now.** Velopack resolves each package's bare `FileName`
-  against the feed URL. The Worker answers that path with a cross-origin 302 to the package's
-  delivery URL on the bytes host, and Velopack drops `Authorization` on that redirect (notes/S-11
-  §5.2; its HTTP client, ureq, drops it on every redirect, even a same-origin one, as P5-07's
-  end-to-end run showed). Under `licensed` or `entitled` delivery the second hop is therefore refused. Discovery
-  does not say which delivery a product uses, so the facade cannot refuse up front. A download
-  that fails with 401 or 403 answers `unsupported` (`product`), and the prompt opens the build's
-  download link. Use WinSparkle for a non-public Windows product until the package route streams
-  same-origin or redirects to a signed URL.
+- **Velopack under licensed or entitled delivery.** Velopack resolves each package's bare
+  `FileName` against the feed URL, and its HTTP client (ureq) drops `Authorization` on every
+  redirect, even a same-origin one (notes/S-11 §5.2; P5-07's end-to-end run). So under a
+  non-public delivery the Worker's package route checks the file with the bearer it sees and
+  redirects with a short-lived download ticket that needs no header (SP-09). If a download still
+  fails with 401 or 403 (a ticket that expired before the request, or a key rotated twice inside
+  its window), the facade calls `download()` once more, which asks the route again for a fresh
+  ticket. A second 401 or 403 answers `unsupported` (`product`): the deployment cannot sign
+  Velopack downloads, or the licence does not cover this release. The prompt then opens the
+  build's download link. The facade never clears tokens on either answer.
 - **WinSparkle.** It needs the EdDSA public key in `PKeyOptions.update_eddsa_public_key`; without
   one it refuses to start. The release's build `format` must be `inno`, `nsis` or `msi`, so the
   appcast carries the installer's silent arguments. WinSparkle asks the game to quit before it

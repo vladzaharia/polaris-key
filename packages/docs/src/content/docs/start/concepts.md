@@ -339,6 +339,8 @@ for product.
   when a portal download token is redeemed, after every portal check. It is bound to the
   product, release, file name and SHA-256, lives at most 120 seconds, may be reused inside that
   window (so `Range` and resume work), carries no account, and is honoured on the bytes host only.
+  The Velopack package route also mints one, for a device whose bearer passes that file's own
+  access check, because Velopack drops `Authorization` on redirects.
   It is not a grant (the word S-19 keeps for the reasons someone holds an entitlement), and it is
   not a CI upload ticket (the short-lived R2 credentials of trusted publishing, which upload under
   `staging/<product>/<ticketId>/`).

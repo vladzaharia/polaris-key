@@ -1466,8 +1466,11 @@ gained two read-only methods, `feedSelection` (P2b-05's selection, offered to Up
   selection (`velopackCandidates`) and the same SHA-1 check over the stored bytes. So a yank or
   halt removes a package from the route on the next request. A caller refused the feed is refused
   the route with the same answer, an unknown name included. `Location` is always our own delivery
-  URL, which checks the delivery access again on its own. Under a non-public delivery a client that
-  drops `Authorization` on the redirect is refused at the second hop, which fails closed.
+  URL, which checks the delivery access again on its own. Under a non-public delivery the route
+  mints a download ticket only after both checks: the feed's access decision, then the bytes
+  route's own per-file decision with the caller's bearer (the release's stored version, pinned).
+  So a client that drops `Authorization` on the redirect, as Velopack does, still succeeds, and
+  the route widens nothing (SP-09, "Licensed portal downloads" below).
 - **Residual.** The `deltaFrom`, the App Installer identity and update settings, and the build
   format that picks WinSparkle's installer arguments are CI or manifest claims. A wrong value makes
   an updater fail or fall back to the full package. It never changes which bytes are served,
@@ -4546,6 +4549,21 @@ is minted and a presented ticket verifies against nothing, so deleting it is the
   `gatedDelivery: attested` therefore serves its licensed R2 files to an owning, signed-in
   customer through the portal. The policy keeps gating devices; an operator who reads it as
   covering browsers needs a follow-up that withholds both the GitHub and the ticketed branch.
+- **SP-09: the Velopack package route is a second minter.** Under a non-public delivery,
+  `GET /<p>/update/<channel>/velopack/<FileName>` appends a ticket to its `302` for a package the
+  feed lists, after the feed's access decision and the `files` route's own per-file decision with
+  the caller's device bearer (`accessRefusal` over the release's stored version, pinned). It mints
+  only for a file that bearer could fetch from the bytes route at that moment, so it widens
+  nothing; device trust (`gatedDelivery`) is part of that decision, unlike the portal's.
+  - **Leak scope:** a leaked `Location` opens that one file, to anyone, for at most 120 s. It
+    never contains the bearer, is never logged (R12) and never cached (`private, no-store`,
+    `no-referrer`). Public delivery mints nothing and is unchanged.
+  - **Revocation residual (accepted, plans/SP-09.md Q5):** at most 120 s after the route's check.
+  - **Hosts:** a ticket is minted only for a URL on the bytes host, and works only there.
+  - **Key loss or kill switch:** with `DOWNLOAD_TICKET_KEY` or `BLOB_ORIGIN` unset the route
+    answers the bare URL, today's behaviour, whose second hop refuses an anonymous client.
+  - **Not covered:** an `.appinstaller` `Uri` and a `.zsync` control file are fetched without a
+    bearer and cached for days, too long for a ticket; they stay public-delivery features.
 
 ### Boundaries that are weaker than they look
 

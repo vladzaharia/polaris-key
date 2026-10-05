@@ -7019,7 +7019,7 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [0.1, 0.2],
-      "deps": ["P3-09"],
+      "deps": ["P3-09", "PX-W3"],
       "planMode": true,
       "gates": ["plan-mode", "rule-10", "threat-model", "workerd"],
       "humanInputs": [],
