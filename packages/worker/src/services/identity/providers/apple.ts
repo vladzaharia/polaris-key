@@ -25,6 +25,7 @@
 import { importPKCS8, SignJWT } from "jose";
 import type { AppleClientConfig } from "./config.js";
 import {
+  checkAuthorizationIss,
   providerAssertsVerified,
   ProviderVerifyError,
   verifyProviderIdToken,
@@ -103,6 +104,8 @@ export async function completeAppleSignIn(
   discovered: DiscoveredProvider,
   response: {
     code: string;
+    /** RFC 9207 `iss`, when Apple sends one: a present value must equal the issuer. */
+    iss: string | null;
     redirectUri: string;
     nonce: string;
     /** The raw `user` form field, present on first consent only. */
@@ -110,6 +113,7 @@ export async function completeAppleSignIn(
   },
   opts: { fetch?: ProviderFetch; nowSec?: number } = {},
 ): Promise<ProviderSignInResult> {
+  checkAuthorizationIss(discovered, response.iss);
   const nowSec = opts.nowSec ?? Math.floor(Date.now() / 1000);
   const tokens = await gatedJson(
     "apple",

@@ -11,6 +11,9 @@
  *   site, another flow or another path is refused;
  * - `openid.claimed_id` and `openid.identity` must be the same Steam identity URL and carry a
  *   SteamID64;
+ * - every `openid.*` key (and `state`) must appear exactly once, and the body sent to
+ *   `check_authentication` is built from those single values, so the identity checked locally is
+ *   the identity Steam vouches for;
  * - `openid.response_nonce` must be fresh. Steam refuses a nonce it already verified, and the
  *   flow's `state` is single-use on our side, so an assertion cannot be replayed.
  *
@@ -84,7 +87,19 @@ export async function verifySteamAssertion(
   expect: { returnTo: string; nowSec: number },
   opts: { fetch?: ProviderFetch } = {},
 ): Promise<string> {
-  const get = (k: string): string => params.get(`openid.${k}`) ?? "";
+  // Every key must appear once. URLSearchParams.get answers the first occurrence while a body
+  // rebuilt by iteration would carry the last, so a repeated key could make the local checks
+  // and Steam's verdict look at two different assertions (a victim's claimed_id before the
+  // attacker's genuinely signed one). Refuse rather than pick.
+  const single = new Map<string, string>();
+  for (const [k, v] of params) {
+    if (!k.startsWith("openid.") && k !== "state") continue;
+    if (single.has(k)) {
+      throw new ProviderVerifyError("assertion repeats a parameter");
+    }
+    single.set(k, v);
+  }
+  const get = (k: string): string => single.get(`openid.${k}`) ?? "";
   if (get("ns") !== OPENID_NS) throw new ProviderVerifyError("not OpenID 2.0");
   if (get("mode") !== "id_res") {
     throw new ProviderVerifyError("not a positive assertion");
@@ -112,9 +127,10 @@ export async function verifySteamAssertion(
     throw new ProviderVerifyError("assertion is stale");
   }
 
-  // Stateless verification: send the assertion back, mode switched, and require is_valid:true.
+  // Stateless verification: send back exactly the assertion checked above (one value per key),
+  // mode switched, and require is_valid:true.
   const check = new URLSearchParams();
-  for (const [k, v] of params) {
+  for (const [k, v] of single) {
     if (k.startsWith("openid.")) check.set(k, v);
   }
   check.set("openid.mode", "check_authentication");

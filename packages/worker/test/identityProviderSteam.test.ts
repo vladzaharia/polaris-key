@@ -173,6 +173,39 @@ describe("Sign in with Steam", () => {
       expect(res.status).toBe(401);
     });
 
+    it("refuses a repeated claimed_id placed before Steam's genuine fields (takeover shape)", async () => {
+      const h = await makeProviderHarness();
+      const { location, cookie } = await h.start("steam");
+      const real = location.searchParams.get("openid.return_to")!;
+      const victim = "https://steamcommunity.com/openid/id/76561190000000001";
+      // The attacker signed in to Steam as themselves (the genuine, Steam-valid assertion) and
+      // put a victim's identity first: first-value readers would see the victim, an iterating
+      // rebuild would send Steam the attacker's.
+      const url = new URL(real);
+      url.searchParams.append("openid.claimed_id", victim);
+      url.searchParams.append("openid.identity", victim);
+      for (const [k, v] of assertion(real)) url.searchParams.append(k, v);
+      const res = await h.request(`${url.pathname}${url.search}`, { cookie });
+      expect(res.status).toBe(401);
+      expect(cookieFrom(res, PORTAL_COOKIE)).toBeFalsy();
+      expect(h.calls.some((c) => c.method === "POST")).toBe(false);
+      expect(await h.db.first("SELECT id FROM accounts")).toBeNull();
+      expect(await h.db.first("SELECT id FROM account_links")).toBeNull();
+    });
+
+    it("refuses a repeated state", async () => {
+      const h = await makeProviderHarness();
+      const { location, cookie } = await h.start("steam");
+      const real = location.searchParams.get("openid.return_to")!;
+      const url = new URL(real);
+      for (const [k, v] of assertion(real)) url.searchParams.append(k, v);
+      url.searchParams.append("state", "another");
+      const res = await h.request(`${url.pathname}${url.search}`, { cookie });
+      expect([400, 401]).toContain(res.status);
+      expect(h.calls.some((c) => c.method === "POST")).toBe(false);
+      expect(await h.db.first("SELECT id FROM accounts")).toBeNull();
+    });
+
     it.each([
       [
         "another OP",

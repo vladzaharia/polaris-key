@@ -37,6 +37,17 @@ export const PROVIDER_HOSTS: Readonly<
 /** The largest provider response this module reads (a discovery document or a JWKS is ~2 KB). */
 export const PROVIDER_MAX_BYTES = 64 * 1024;
 
+/**
+ * The provider refused the grant itself (RFC 6749 §5.2 `invalid_grant`: a replayed, expired or
+ * foreign authorization code). The user's sign-in could not be verified; the provider is up.
+ */
+export class ProviderGrantRefusedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ProviderGrantRefusedError";
+  }
+}
+
 /** How long one outbound provider call may take. */
 export const PROVIDER_TIMEOUT_MS = 10_000;
 
@@ -127,6 +138,9 @@ export async function gatedJson(
 ): Promise<Record<string, unknown>> {
   const { status, body } = await gatedFetch(kind, url, init, fetchImpl);
   if (status < 200 || status >= 300) {
+    if (status === 400 && grantError(body) === "invalid_grant") {
+      throw new ProviderGrantRefusedError(`${kind} refused the grant`);
+    }
     throw new ProviderNetworkError(`${kind} answered ${status}`);
   }
   let parsed: unknown;
@@ -139,4 +153,14 @@ export async function gatedJson(
     throw new ProviderNetworkError(`${kind} answered a non-object`);
   }
   return parsed as Record<string, unknown>;
+}
+
+/** The OAuth `error` code of a token-endpoint error body, or `null`. */
+function grantError(body: string): string | null {
+  try {
+    const parsed = JSON.parse(body) as { error?: unknown };
+    return typeof parsed?.error === "string" ? parsed.error : null;
+  } catch {
+    return null;
+  }
 }

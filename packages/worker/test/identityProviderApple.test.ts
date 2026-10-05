@@ -33,12 +33,13 @@ const FIRST_CONSENT_USER = JSON.stringify({
 async function appleCallback(
   h: ProviderHarness,
   claims: (nonce: string) => Record<string, unknown>,
-  opts: { user?: string; cookie?: string | null } = {},
+  opts: { user?: string; cookie?: string | null; iss?: string } = {},
 ): Promise<Response> {
   const { location, state, cookie } = await h.start("apple");
   h.idToken.apple = await h.signApple(claims(nonceOf(location)));
   const form = new URLSearchParams({ state, code: "c0ffee.0.abcd.apple-code" });
   if (opts.user) form.set("user", opts.user);
+  if (opts.iss) form.set("iss", opts.iss);
   // A cross-site top-level form POST from appleid.apple.com: Lax cookies are NOT sent, so the
   // request carries at most the SameSite=None binding cookie.
   return h.request("/login/apple/callback", {
@@ -175,6 +176,26 @@ describe("Sign in with Apple", () => {
       expect((await appleCallback(h, () => appleClaims("other"))).status).toBe(
         401,
       );
+    });
+  });
+
+  describe("mix-up (RFC 9207)", () => {
+    it("accepts an iss that names Apple", async () => {
+      const h = await makeProviderHarness();
+      const res = await appleCallback(h, appleClaims, {
+        iss: "https://appleid.apple.com",
+      });
+      expect(res.status).toBe(303);
+    });
+
+    it("refuses an iss naming another issuer, before redeeming the code", async () => {
+      const h = await makeProviderHarness();
+      const res = await appleCallback(h, appleClaims, {
+        iss: "https://accounts.google.com",
+      });
+      expect(res.status).toBe(401);
+      expect(h.calls.some((c) => c.url.includes("/auth/token"))).toBe(false);
+      expect(await h.db.first("SELECT id FROM accounts")).toBeNull();
     });
   });
 

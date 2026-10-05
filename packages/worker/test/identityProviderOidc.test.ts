@@ -344,6 +344,27 @@ describe("Sign in with Google", () => {
       expect(await h.db.first("SELECT id FROM accounts")).toBeNull();
     });
 
+    it("answers a refused code (invalid_grant) as unverified, an outage as unavailable", async () => {
+      const refused = await makeProviderHarness();
+      refused.routes.set(
+        "https://oauth2.googleapis.com/token",
+        () =>
+          new Response(JSON.stringify({ error: "invalid_grant" }), {
+            status: 400,
+            headers: { "content-type": "application/json" },
+          }),
+      );
+      expect((await googleCallback(refused, googleClaims)).status).toBe(401);
+
+      const down = await makeProviderHarness();
+      down.routes.set(
+        "https://oauth2.googleapis.com/token",
+        () => new Response("upstream unavailable", { status: 503 }),
+      );
+      expect((await googleCallback(down, googleClaims)).status).toBe(502);
+      expect(await down.db.first("SELECT id FROM accounts")).toBeNull();
+    });
+
     it("burns the flow on a cancelled sign-in", async () => {
       const h = await makeProviderHarness();
       const { state, cookie } = await h.start("google");

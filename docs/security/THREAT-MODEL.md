@@ -4480,7 +4480,10 @@ methods, never behind a product's Identity toggle. S-16 §5.4 item 2 (broker con
   never reaches audience checking. Steam (OpenID 2.0) has no audience; its equivalents are an
   exact `openid.return_to` (our origin, our path and this flow's `state`) among the signed fields,
   `op_endpoint` = Steam's, and Steam's own `check_authentication` verdict, never the redirect's
-  parameters alone.
+  parameters alone. Every `openid.*` key (and `state`) must appear exactly once and the body sent
+  to `check_authentication` is rebuilt from those single values, so a repeated `claimed_id` placed
+  before Steam's genuine one cannot make the local checks and Steam's verdict look at two
+  different identities (an account-takeover shape found in review).
 - **Mix-up (RFC 9207).** Each provider has its own callback path and a flow records the provider
   it was started for; a `state` is never redeemed on another provider's callback. Where the
   provider advertises `authorization_response_iss_parameter_supported` (Google), `iss` is required

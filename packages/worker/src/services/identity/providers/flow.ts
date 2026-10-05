@@ -468,6 +468,7 @@ async function completeProvider(
     discovered,
     {
       code,
+      iss: params.get("iss"),
       redirectUri: flow.redirectUri,
       nonce: flow.nonce,
       user: params.get("user"),
