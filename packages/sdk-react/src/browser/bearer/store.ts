@@ -46,8 +46,9 @@ function pagePersistence(): StoragePersistence | undefined {
 
 /**
  * The IndexedDB `Store` for one product, or `null` where IndexedDB does not exist (a server
- * render, a locked-down webview): bearer mode then reports `store-failed` instead of pretending
- * to persist a credential.
+ * render, a locked-down webview). The browser adapter then falls back to `memoryStore`, whose
+ * `status()` reports backend `memory`, degraded `not-persistent`, so the page is told the
+ * credential does not outlive it rather than led to think it persists.
  */
 export function indexedDbStore(
   product: string,
