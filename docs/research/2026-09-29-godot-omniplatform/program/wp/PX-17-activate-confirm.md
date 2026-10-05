@@ -19,6 +19,20 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 - **[`plans/PX-W8.md`](../plans/PX-W8.md):** read `#key=` as well as `?key=`, and handle `next=free-device` from the activate link (PX-10 is done, so PX-17 carries the `next=` hand-off to free-device).
 - **[`plans/PX-W9.md`](../plans/PX-W9.md):** Q2: the Worker never puts the key in the link. The modal opens with the §4.18 notice and an empty field unless the SDK added a `#key=` fragment (PX-W8 Q2).
 
+## Owner decision (2026-10-05): licence choice at sign-in
+
+The owner decided on 2026-10-05 that every sign-in that binds a device asks the person which licence to use (**Choose a licence for this device**, with an inline **Replace a device** on full licences), never silently mints a second auto-issued licence, and treats the rank-first rule as the preselected default only. The verbatim decision, the card API and the delegated decisions are in [`plans/I-04.md`](../plans/I-04.md), "Owner decision (2026-10-05): licence choice at sign-in"; that section wins over this brief where they differ. **The device wire does not change** (`PROTOCOL_VERSION` 4, no corpus change).
+
+For this package:
+
+- **A key confirmed in the card's KeyStep is the licence choice.** The added licence is bound
+  without showing `LicenseChoiceStep` again. If that licence is full, the confirm offers
+  **Replace a device**, as the chooser does.
+- **The `/activate?product=<slug>` deep link** from the card's "You don't have <Product> yet"
+  state carries `return=/signin?request=rq_…`. After the confirm, the person goes back to the card,
+  whose chooser now lists the new licence.
+- **Counting** is unchanged: one `portal` key entry (PX-W9).
+
 ## Goal
 
 `ActivateDialog` gains the confirm step from `POST /api/activate/preview` (art header, product, tier, terms, key echo), the entries notice, and `product=` context from app deep links, with every §4.19 error state.

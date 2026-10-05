@@ -9,6 +9,7 @@ import {
   detail,
   device,
   fetchedRequests,
+  libraryFor,
   license,
   mockFetch,
   NOW_S,
@@ -143,6 +144,52 @@ describe("product page on today's data (PX-04)", () => {
     ).toEqual(["Get it", "License", "Devices 2", "What's new"]);
     expect(document.body.textContent).not.toMatch(/Cloud Sync/);
     expect(await axeViolations()).toEqual([]);
+  });
+
+  it("puts the icon in front of the cover, and stands it alone without one (§4.20)", async () => {
+    const item = (over: Record<string, unknown>) =>
+      routes({
+        "/api/library": libraryFor([nightfall], undefined, over),
+      });
+    // No cover: no banner, the letter tile beside the name.
+    mockFetch(item({}));
+    renderPortal();
+    await page();
+    let header = document.querySelector("[data-cover]")!;
+    expect(header.getAttribute("data-cover")).toBe("none");
+    expect(header.previousElementSibling?.getAttribute("data-art")).toBeNull();
+    expect(header.querySelector("[data-art]")!.textContent).toBe("N");
+    cleanup();
+
+    // A cover and an icon: the banner, then the icon tile stacked in front of it.
+    mockFetch(
+      item({
+        iconUrl: "/media/nightfall/icon?v=1",
+        headerUrl: "/media/nightfall/header?v=1",
+      }),
+    );
+    renderPortal();
+    await page();
+    header = document.querySelector("[data-cover]")!;
+    expect(header.getAttribute("data-cover")).toBe("image");
+    expect(header.previousElementSibling?.getAttribute("data-art")).toBe(
+      "image",
+    );
+    const icon = header.querySelector("img[data-art]")!;
+    expect(icon.className).toMatch(/\brelative\b/);
+    expect(icon.className).toMatch(/\bz-10\b/);
+    expect(icon.className).toMatch(/-mt-/);
+    cleanup();
+
+    // A cover and no icon: the letter tile in front of the cover.
+    mockFetch(item({ headerUrl: "/media/nightfall/header?v=1" }));
+    renderPortal();
+    await page();
+    header = document.querySelector("[data-cover]")!;
+    expect(header.getAttribute("data-cover")).toBe("image");
+    const tile = header.querySelector("[data-art='fallback']")!;
+    expect(tile.textContent).toBe("N");
+    expect(tile.className).toMatch(/\bz-10\b/);
   });
 
   it("shows the license facts, the masked key and what it includes", async () => {

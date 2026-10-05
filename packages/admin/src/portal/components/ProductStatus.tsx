@@ -42,9 +42,26 @@ export function ProductStatusPill({
     </StatusPill>
   );
   if (!onArt) return pill;
+  // On art: a solid plate with room around the word. A healthy status is quiet text, so the
+  // plate is its frame and carries the padding; an attention pill is its own frame, made as tall.
   return (
-    <span className="inline-flex rounded-full bg-surface-overlay shadow-elevation-2">
-      {pill}
+    <span
+      className={cn(
+        "inline-flex h-8 items-center rounded-full bg-surface-overlay shadow-elevation-2",
+        status.tone === "success" && "px-3.5",
+      )}
+    >
+      {status.tone === "success" ? (
+        pill
+      ) : (
+        <StatusPill
+          tone={status.tone}
+          icon={ICON[status.kind]}
+          className={cn("h-8 px-3.5 font-bold", className)}
+        >
+          {status.label}
+        </StatusPill>
+      )}
     </span>
   );
 }

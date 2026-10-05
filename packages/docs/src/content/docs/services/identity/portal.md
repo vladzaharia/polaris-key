@@ -125,7 +125,8 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   `expires_soon` within 14 days, `active`, first match wins), that license's seats
   (`deviceLimit` as activation enforces it, `activeSeatCount`, `dormantCount`), how many licenses
   it holds and when it was added. Art is only ever a same-origin `/media/…` URL. `discoverCount`
-  is how many offers `GET /api/discover` has, for the Discover count in the nav.
+  is how many offers `GET /api/discover` has, for the Discover count in the nav; a product the
+  account already holds is never offered or counted, so it never names one `products` lists.
 - **`GET /api/discover`** — the products the account could add for free right now: every product
   whose license policy would auto-issue to it on the product's first sign-in, evaluated by that
   same policy function without issuing anything. A product qualifies through its `oidcDefault`
