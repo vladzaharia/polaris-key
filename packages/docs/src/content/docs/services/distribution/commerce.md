@@ -124,7 +124,10 @@ down the hook answers `503` and Apple redelivers.
 
 **What you set up in App Store Connect:**
 
-- the in-app purchases themselves (non-consumable), in a cleared agreements/tax/banking state;
+- the in-app purchases themselves (non-consumable), in a cleared agreements/tax/banking state.
+  The App Store Connect connector can create them from this map, with their localizations, price
+  and availability ([In-app purchases](/docs/services/distribution/app-store-connect/#in-app-purchases));
+  the app's first purchase is still submitted in App Store Connect, with an app version;
 - **App Information → App Store Server Notifications**: Production Server URL
   `https://key.plrs.im/<product>/distribution/hooks/app-store`, **Version 2** (set the Sandbox
   URL to a staging product's hook, or leave it empty);

@@ -368,6 +368,8 @@ There are two scopes, and they map onto the existing layers.
   - submit for App Store review;
   - release;
   - an IAP price change;
+  - completing a phased release and every IAP availability write (added at integration, see the
+    last Corrections section);
   - enabling a capability on a bundle id that another product's app uses.
 
   Everything else uses a plain confirm.
@@ -836,3 +838,264 @@ send only these requests). The full redacted log is `S-14-asc-provisioning/out/a
 | Restore HockeyDrills' previous values                                    | `PATCH` **200**; `GET` shows `null`/`null` — **restored**                       | Nothing left changed on the app.                                                                                                                                                   |
 
 Still unmeasured: the 429 response shape (no rate limit was hit).
+
+## Corrections (A-17a as built, 2026-10-04)
+
+A-17a landed the substrate in `packages/worker/src/core/asc/`. Where the build departs from §6,
+§7 and §9 above, the code is the fact:
+
+- **The client moved here (A-16 had not moved it).** `core/asc/client.ts`; only P5-02's connector
+  files and their tests changed imports. It now also serves `/v2/` paths (IAPs, availability) and
+  keeps Apple's `errors[0].code` token on `AscError.code` (A-17h's `ENTITY_ERROR.ATTRIBUTE.INVALID`).
+- **No `DELETE` in the allow table.** §7.5 allowed `POST`/`DELETE …/relationships/{builds,betaTesters}`;
+  the owner's decision ("never any DELETE") wins, so only the `POST` linkages are allowed. Removing
+  a build or tester from a group is a portal step.
+- **Typed and first-time assertions are enforced by the gate**, not only by handlers:
+  `confirm: "typed"` (release request; review submission `submitted: true`), `"initial"`
+  (`/v2/appAvailabilities`: a change could take the app off sale) and `"typed-or-initial"` (both
+  price schedules). The handler passes `{ typedConfirmation: true }` or `{ initial: true }` after
+  its own check. The "shared-bundle capability" typed confirmation (§7.1) stays a handler check in
+  A-17b, because the gate cannot know who holds a bundle id.
+- **The spec is pinned as an extract.** The 7 MB document is not committed; `scripts/asc-spec-writes.mjs`
+  writes its 468 write operations (method, template, body type, attribute and relationship keys)
+  to `test/fixtures/asc/openapi-writes.json`, refusing any spec whose SHA-256 is not the pinned
+  one unless `--accept` is passed. The deny side is an explicit list grouped by reason
+  (`writeGateDenied.ts`), so a new spec operation fails CI even where a family rule would have
+  denied it.
+- **Ledger.** `asc_operations` (migration `0059`; merged as `store_operations` in
+  `0061_store_operations.sql`, see the integration corrections below) gained `before_json`,
+  `after_json`, `apple_status` and `apple_code` (merged as `vendor_status` and `vendor_code`), because the product `audit` table has no before/after columns:
+  the projections live on the ledger row and the product audit summary names the `op_id`. Only a
+  `done` row replays; a `failed`, `ambiguous` or `pending` row is retried under the same key, and
+  a failed pre-read leaves the row `pending` (nothing reached Apple).
+- **Testers' emails are not stored at all** (§7.4 proposed a salted hash plus a count): a
+  `betaTesters` projection keeps `inviteType` and `state` only; the caller's summary carries the
+  count.
+- **Budget.** The meter moved to `core/asc/budget.ts` with the same KV slots; A-16's apps listing
+  now feeds the team key's slot too, and `budgetAllows` adds the `background` class (stops at 20 %
+  left) beside the poller and the operator.
+- **P5-02's `release` control** now requires `confirm` (the app's name, compared with Apple's
+  current value): 422 `confirmation_required` / `confirmation_mismatch`, nothing sent. The
+  console's **Release this version** is retrofitted with it: `connector.releaseVersion` is L3
+  (`typed: "appName"`), the dialog has its own **App name** field (the console does not know the
+  name, so the Worker does the comparison) and sends it as `confirm`.
+- **A natural key never carries an email.** §7.3 makes a tester's email the natural key
+  (`filter[email]`); the ledger stores `natural_key` raw, so `beginAscOperation` refuses a key
+  containing `@`. A-17d passes a keyed digest of the email (or the group plus a count) instead,
+  and keeps the email out of the request object it hashes (the request hash is unsalted SHA-256).
+- **Callback URLs are pinned to the Worker's origin.** The gate admits a webhook or App Store
+  Server Notifications URL only on the origin the handler asserts (`AscGateContext.hookOrigin`,
+  from the request it serves); without it every callback URL is refused.
+- **The gate checks what is sent.** The client serialises a body once and gates the parsed form
+  of that exact string, so a `toJSON` or a getter cannot send something other than what was
+  checked. The personal-data read refusal (`/v1/users*`, `/v1/userInvitations*`) is
+  case-insensitive.
+- **The gate's capability types** (`GATE_CAPABILITY_TYPES`) are a superset for A-17b's wizard:
+  `IN_APP_PURCHASE`, `PUSH_NOTIFICATIONS`, `GAME_CENTER`, `ICLOUD`, `APP_GROUPS`,
+  `ASSOCIATED_DOMAINS`, `APPLE_ID_AUTH`, `DATA_PROTECTION`. There is no `APP_ATTEST` (A-17h).
+
+## Corrections (A-17b as built, 2026-10-04)
+
+A-17b landed the team provisioning API. Where it departs from §6, §7 and §8.1, the code is the
+fact:
+
+- **Where it lives.** `core/ascProvisioning.ts` holds the logic and takes an `AscClient` as an
+  argument. Core cannot import A-16's team client builder (`connectors/asc/platform.ts`, a
+  Distribution file), so the admin handler builds the client and passes it in. The handler is
+  `admin/handlers/platformStoreProvisioning.ts` (not `platformStore*.ts` files per route), and
+  `platformStoreConnections.ts` routes `app-store/…` to it. The handler gets "who holds this app or
+  bundle id" from the dispatcher as a function (`holderOf`). It does not import
+  `core/platformCredentials`, so the custody allowlists in `outletCredentialReach.test.ts` and
+  `ascWriteReach.test.ts` stay as they were.
+- **Routes** (under `/manage/api/platform/store-connections/app-store`):
+  - `capability-types`;
+  - `bundle-ids` (`GET` list, `GET ?identifier=` lookup with capabilities, app and holder, `POST`
+    register);
+  - `bundle-ids/<id>/capabilities` (`GET`, `POST`);
+  - `apps/lookup?bundleId=[&poll=1]`;
+  - `signing`;
+  - `operations` (the team ledger).
+
+  §6 named only `{bundle-ids,apps/lookup}`.
+
+- **The wizard's list has seven capability types** (`WIZARD_CAPABILITIES`): In-App Purchase, Push,
+  Sign in with Apple, Game Center, Associated Domains, App Groups and iCloud. The list also has an
+  `APP_ATTEST` row of kind `entitlement` ("entitlement in the export preset; no portal step"). A
+  request to enable `APP_ATTEST` is answered 422 `entitlement_only`. `DATA_PROTECTION` is in the
+  gate's superset but not offered. Capabilities are created without `settings`, so Apple's defaults
+  apply. A module-load check fails if the wizard offers a type the gate would refuse.
+- **Shared-bundle confirmation** (§7.1, §7.2 item 4) is a handler check. A bundle id is held when
+  its app is held (by a platform pin or a product's own key pin), or when the In-App Purchase key's
+  bundle-id pin names it. In that case, a request naming no product or another `product` must
+  carry `confirm`:
+  - normally, the app's name as Apple reports it;
+  - the bundle identifier when no app exists yet.
+
+  The check runs only when at least one requested type is missing.
+
+- **Exact matching.** `filter[identifier]` and `filter[bundleId]` are treated as hints. The handler
+  keeps only exact matches, so `gg.acme.game` never matches `gg.acme.game.extra`.
+- **Signing expiry reads** name their fields. A certificate's content and serial number, and a
+  profile's content, are never requested. An item is `expiring` below 30 days.
+- **A write without `Idempotency-Key` is 428** `idempotency_key_required`. The same key with
+  another body is 409 `idempotency_conflict`.
+- **Background polling.** `apps/lookup?poll=1` is `background` spending, refused 429
+  `asc_budget_low` below 20 % of the team budget. An operator's lookup without `poll` always runs.
+
+## Corrections (A-17c as built, 2026-10-04)
+
+A-17c landed the product setup controls in `connectors/asc/provision.ts`, merged into P5-02's
+control table, so the routes are `…/distribution/connectors/asc/setup/<op>` (all `POST`). Where
+the build departs from §7 and §8.1, the code is the fact:
+
+- **The ASN URL step follows A-17h.** `setup/notifications-url` still sends the gated `PATCH` (the
+  four attributes, the URL fixed server-side to the request's origin), but only its verification
+  re-read decides: when Apple did not keep the URL, the answer is `persisted: false` with the App
+  Information deep link and the URL to paste. `setup/notifications-url/verify` repeats the read
+  after the operator pastes it. The test notification (`setup/notifications-test`, then
+  `…/status`) reports Apple's delivery attempts and P6-01's stored `TEST` event; a 404 is
+  `notification_url_missing`.
+- **The app before the manifest names it.** §6 puts product-scope writes behind "the product's
+  pin". The wizard runs before `.pkey/distribution` declares an Apple outlet, so with no outlet
+  at all and no `asc-api-key` of the product's own, the platform team key's pin for the product
+  names the app. A manifest that names an app still wins, and a mismatch stays refused.
+- **Group names are operator input.** §8.1 step 8 names the internal group "from a platform
+  setting". No such A-13 setting exists, and adding one is not A-17c's scope, so `name` is required
+  in the request (A-17f's wizard supplies the default). A name with `@` is refused, because a
+  natural key never carries one. A same-named group of the other kind is 409
+  `beta_group_name_taken`.
+- **Testers.** Emails only (Apple's optional first and last names are not accepted), 1–25 per
+  request, one ledger step each. The natural key is `<groupId>:<digest>`, where the digest
+  (`ascTesterDigest` in `core/asc/ledger.ts`) is an HMAC of the email keyed with `KEY_HASH_PEPPER`
+  and the Idempotency-Key, which is never stored. A tester the app already has joins by the
+  `POST` linkage; Apple's 4xx for one address is reported per address and the rest carry on.
+- **Defaults.** Availability lists every territory from `GET /v1/territories` (the gate caps
+  `included` at 200, so a future list over 200 would be refused, not truncated). The free price is
+  the price point of `customerPrice` 0 in the base territory (`USA` unless the request names one).
+  An existing schedule or availability is "existing", never changed.
+- **Checklist storage.** The ticks live in `dist_connector_settings` under `asc-setup`, not in a
+  new table: no migration. `GET …/connectors/asc` adds `provisioning` (the checklist with deep links
+  and the product's newest `store_operations` rows).
+- **Deep links** live in `ASC_DEEP_LINKS` in `provision.ts`; A-17f may move them into its own
+  table.
+- **`Idempotency-Key`** reaches a control through `ControlContext.idempotencyKey`, from the request
+  header, in Distribution's admin dispatcher.
+
+## Corrections (A-17d as built, 2026-10-04)
+
+A-17d landed the Distribute API in `packages/worker/src/services/distribution/connectors/asc/distribute.ts`
+beside `controls.ts`. Where the build departs from §7 and §8.2 above, the code is the fact:
+
+- **Reads are connector reads.** P5-02's connector controls were `POST`-only, so the connector
+  interface gained an optional `reads` table, answered on `GET …/connectors/<kind>/<path>`:
+  `distribute/{builds,beta-groups,versions,preflight}`. A `GET` on a write path stays 405.
+- **The `Idempotency-Key` header reaches the controls** (`ControlContext.idempotencyKey`). Every
+  Distribute write requires it (422 `idempotency_key_required`); P5-02's older controls do not.
+- **The release retrofit was already A-17a's.** P5-02's `release` control has required `confirm`
+  (the app's name, compared with Apple's) since A-17a; A-17d shares the same server-side check
+  (`checkTypedConfirmation`) for `distribute/submit`, before any submission step.
+- **Submission items are the version only.** IAP and Background Asset versions join the
+  submission in A-17e through the exported `addSubmissionItem` step (the gate already admits both
+  relationships); their ownership proofs belong there.
+- **`store_refused` now carries Apple's code** (`appleCode`, the `errors[0].code` token, never the
+  text) for every ASC control, as §5.5 proposed.
+- **A phased release is created `INACTIVE`**; it starts with the release, and P5-02's pause,
+  resume and complete manage it afterwards.
+- **The build upload's state is an object** in the 4.5 spec (`{ state, warnings, errors, infos }`,
+  each note `{ code, description }`); the builds read accepts that and the bare string older
+  answers carry.
+- **States.** A version's state is `appVersionState`, falling back to `appStoreState`. Editable
+  (reuse, build, notes, release type): `PREPARE_FOR_SUBMISSION`, `DEVELOPER_REJECTED`, `REJECTED`,
+  `METADATA_REJECTED`, `INVALID_BINARY`; submitting also accepts `READY_FOR_REVIEW`. A submission
+  can be cancelled while `WAITING_FOR_REVIEW`, `IN_REVIEW` or `UNRESOLVED_ISSUES` (§8.2 named the
+  first only; Apple decides the rest).
+- **Preflight scope.** It reads the build, export compliance, screenshot sets (up to ten
+  localizations), the age-rating declaration (unanswered questions by key), App Review contact and
+  demo account as booleans only, price, availability, and the beta review detail and
+  localizations. The first-IAP "portal" flag is A-17e's; App Privacy is reported as unverifiable
+  (`ok: null`), the operator's tick being A-17c's portal checklist.
+
+## Corrections (A-17e as built, 2026-10-04)
+
+A-17e landed the in-app purchase flow in `packages/worker/src/services/distribution/commerce/appleCatalog.ts`.
+Where the build departs from §7, §8.3 and §10 above, the code is the fact:
+
+- **Routes live in the ASC connector's tables.** §6 named `…/commerce/appleCatalog.ts` and the
+  connector prefix; the handlers are connector controls and reads under
+  `…/distribution/connectors/asc/`: `GET iap/products`, `GET iap/price-points`,
+  `GET distribute/submission-items`, `POST iap/{create,localization,price,availability}`. A-17d's
+  plumbing (`distributeControl`, `step`, `proveOwned`, the field validators) moved to
+  `connectors/asc/flow.ts` so Distribute and the catalog share it without importing each other.
+- **Mapped ids only.** Every write and the price-point read take a `productId` that must be an
+  `app-store` row of `dist_store_products` (404 `unmapped_product`); the IAP id is never request
+  input, it is found under the pinned app by `filter[productId]`. A mapped id that already exists
+  as another type is refused (409 `iap_type_mismatch`), never changed.
+- **Create is one multi-step write**: the IAP, its version (Apple 4.5's `inAppPurchaseVersions`:
+  the newest editable one is reused, else one is created; whether Apple creates a version with
+  the IAP is unverified, the pre-read covers both), and one v2 localization per locale (1 to 10;
+  display name ≤ 35, description ≤ 55, reference name ≤ 64). `iap/localization` adds or edits one
+  locale later. Price and availability are separate writes because the price-point picker needs
+  the created IAP.
+- **Price.** One manual price in the base territory, effective now (`startDate: null`); Apple
+  derives the other territories. A future-dated change is not offered (it would need the current
+  price kept until that date). "First price" is decided by Apple's schedule read: none → the
+  `initial` assertion; any other price → a typed `confirm` (the app's name, as for submit and
+  release) → `typedConfirmation`; a price that appears between the check and the write meets
+  neither and the gate refuses it. The ledger's before and after carry the base territory, the
+  customer price and the price point id (`audit.ts` projection of `inAppPurchasePriceSchedules`).
+  The point may be named by id or by customer price, and must be one Apple lists for that IAP in
+  that territory (422 `unknown_price_point`).
+- **Availability** is every territory plus new ones, written only while the IAP has none: one set
+  here or in the portal is the operator's and is not changed.
+- **Submission items.** `distribute/submit` takes optional `inAppPurchaseVersionIds` and
+  `backgroundAssetVersionIds` (≤ 20 each), proven after the typed confirmation and before the
+  submission is opened. An IAP version is walked version → IAP → mapped product id → the pinned
+  app's IAP, and needs a non-consumable IAP in `READY_TO_SUBMIT`, `DEVELOPER_ACTION_NEEDED` or
+  `REJECTED` with an editable version (409 `iap_not_ready`). A Background Asset version needs its
+  asset on the pinned app (`include=app`), state `COMPLETE`, an App Store release in
+  `PREPARE_FOR_SUBMISSION`, `READY_FOR_REVIEW` or `REJECTED`, and the submission's platform.
+- **First IAP.** "First" means no IAP of the app is `APPROVED`, `DEVELOPER_REMOVED_FROM_SALE` or
+  `REMOVED_FROM_SALE` (subscriptions are not counted; P6-01 grants none). Then
+  `submission-items` offers no IAP versions, `submit` refuses them (409 `first_iap_portal`), the
+  products read sets `firstInAppPurchase`, and A-17d's preflight gains a non-blocking
+  `firstInAppPurchase` line (`ok: null`) when the product maps any App Store product.
+- **No deep links in the API.** The review screenshot and the first-IAP submission are portal
+  steps; the console (A-17g) builds their links from A-17f's constant table.
+- **No gate change.** A-17a's allow rules already covered every request; the S-15 default of IAP
+  localizations from the listing model (A-18b) is not applied, A-18b not having landed.
+- **Unverified live:** Apple's price point ids are taken as opaque URL-safe tokens; one carrying a
+  character outside the gate's identifier set would be refused (`write_denied`), not sent.
+- **Migration renumbered.** Main took `0059` (`0059_portal_identity_issuer.sql`, I-01) before
+  A-17a merged, so A-17a's ledger migration is `0060_asc_operations.sql` on this branch
+  (`LATEST_MIGRATION` and the generated data model follow). It has not reached production.
+  Superseded at integration: main also took `0060`, and the ledger merged as
+  `0061_store_operations.sql`.
+
+## Corrections (integration of A-17a–e, 2026-10-04)
+
+A-17a to A-17e merged together on `integ/asc-kotlin`, with three owner decisions applied on the
+way. Where they depart from the sections above, the code is the fact:
+
+- **The ledger is `store_operations`** (S-15 owner decision 3), not `asc_operations`. Migration
+  `0061_store_operations.sql`: main had taken both `0059` (`0059_portal_identity_issuer.sql`) and
+  `0060` (`0060_render_queue_attempts.sql`), so the ledger takes the next free number and
+  `LATEST_MIGRATION` follows. The table gains `store` (`'app-store'` for every A-17 row, never
+  empty) and names Apple's status and code `vendor_status` and `vendor_code`. `op_id` is unchanged
+  (A-18a adds the store to it, with `plane`). `core/asc/ledger.ts` exports `StoreOperationRow`,
+  `beginStoreOperation`, `getStoreOperation`, `finishStoreOperation` and `listStoreOperations`;
+  `performAscWrite` keeps its name until A-18a. API answers still say `appleStatus`/`appleCode`.
+- **Completing a phased release is typed** (owner decision, 2026-10-04). §7.1's typed list did
+  not name it, so it fell under "everything else uses a plain confirm", but completing releases the
+  version to every user, so it is a release. The gate refuses `PATCH appStoreVersionPhasedReleases/{id}` with `COMPLETE` unless the
+  handler asserts `typedConfirmation`; P5-02's `phased-release/complete` requires `confirm`, refuses
+  a blank one before any Apple call (422 `confirmation_required`), compares it with the app's name
+  as Apple reports it now (`checkTypedConfirmation`, 422 `confirmation_mismatch`) and only then
+  asserts it. Pause and resume stay plain. The console's **Release to everyone…** is L3
+  (`connector.phasedComplete`) and its dialog asks for the app's name.
+- **Every In-App Purchase availability write is typed** (owner decision, 2026-10-04): availability
+  decides where an IAP is sold, and an empty territory list takes it off sale everywhere. The
+  gate's `POST /v1/inAppPurchaseAvailabilities` rule is `confirm: "typed"` (the first availability
+  included; `initial` does not satisfy it). A-17e's `iap/availability` requires `confirm`, checks
+  it the same way before the ledger step, and asserts `typedConfirmation` on the write. The console
+  has no IAP surface yet (A-17g); its action `connector.iapAvailability` is registered as L3 with
+  the typed app name, so A-17g's dialog inherits the rule.

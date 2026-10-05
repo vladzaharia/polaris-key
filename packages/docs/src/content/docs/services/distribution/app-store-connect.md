@@ -18,7 +18,9 @@ App Store Connect API with the product's API key and keeps three things current:
   objects until a pack release claims them.
 
 It never uploads a build or an asset pack, and it never submits anything for review. Those stay
-with CI and Apple's tools.
+with CI and Apple's tools. Its setup controls can also prepare a new app: server notifications,
+TestFlight groups and testers, and the free price and availability defaults (see
+[Setting up the app](#setting-up-the-app)).
 
 ## Setting it up
 
@@ -198,10 +200,16 @@ In the console API, under `/manage/api/products/<slug>/distribution/connectors/a
 | ------------------------- | -------------------------- | ----------------------------------------------------------------- |
 | `phased-release/pause`    | `{ releaseId }`            | `PATCH /v1/appStoreVersionPhasedReleases/{id}` → `PAUSED`         |
 | `phased-release/resume`   | `{ releaseId }`            | the same → `ACTIVE`                                               |
-| `phased-release/complete` | `{ releaseId }`            | the same → `COMPLETE` (everyone, now)                             |
-| `release`                 | `{ releaseId }`            | `POST /v1/appStoreVersionReleaseRequests` (a held version only)   |
+| `phased-release/complete` | `{ releaseId, confirm }`   | the same → `COMPLETE` (everyone, now)                             |
+| `release`                 | `{ releaseId, confirm }`   | `POST /v1/appStoreVersionReleaseRequests` (a held version only)   |
 | `testflight/public-link`  | `{ betaGroupId, enabled }` | `PATCH /v1/betaGroups/{id}` `publicLinkEnabled`                   |
 | `webhook`                 | `{}`                       | `POST /v1/webhooks` (all 12 events), then `POST /v1/webhookPings` |
+
+**Releasing is typed.** `release` and `phased-release/complete` cannot be undone, and both put the
+version in front of every user, so `confirm` must be the app's name exactly as App Store Connect
+shows it (the control reads it from Apple before sending). Without it the answer is 422
+`confirmation_required`; with a different name, 422 `confirmation_mismatch`. Nothing is sent
+either way. Pausing and resuming a phased release are not typed.
 
 **Only on the pinned app.** The controls act on the app whose `appleId` the setup shows in
 `GET …/distribution/connectors/asc`, which is always the app the key is pinned to. While the key
@@ -218,6 +226,159 @@ change, a version that is not held — the answer is `store_refused` with Apple'
 why there is none (`inert`: the manifest's app id, the chosen key and the app it is pinned to),
 the objects the connector tracks, unresolved ones flagged, and the latest webhook deliveries.
 
+## Setting up the app
+
+The `setup/…` controls do the API side of a new app's setup on the product's pinned app: server
+notifications, TestFlight groups and testers, and the free price and availability defaults. The
+**New app** wizard in Platform → Store connections drives them; they work on their own too. Each one
+that writes needs an `Idempotency-Key` header, a UUID per intent: retrying with the same key
+answers the stored result (`outcome: "replayed"`) instead of writing twice, and a different body
+under a used key is 409 `idempotency_conflict`. Without the header the answer is 428
+`idempotency_key_required`, and nothing is sent.
+
+| `POST`                            | Body                                             | What it does                                                                                                |
+| --------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `setup/notifications-url`         | `{}`                                             | Sets the App Store Server Notifications URL (production and sandbox, Version 2), then reads it back         |
+| `setup/notifications-url/verify`  | `{}`                                             | Reads the URL Apple has for each environment (no key needed)                                                |
+| `setup/notifications-test`        | `{ environment }`                                | Asks Apple to send a test notification (`"sandbox"` or `"production"`); answers a `testNotificationToken`   |
+| `setup/notifications-test/status` | `{ environment, testNotificationToken, since? }` | Apple's delivery attempts, and whether the hook stored a `TEST` notification since `since`                  |
+| `setup/beta-group`                | `{ name, kind }`                                 | Creates a TestFlight group: `internal` (all builds) or `external`. A group with that name is reused         |
+| `setup/beta-testers`              | `{ betaGroupId, emails }`                        | Adds up to 25 testers to one of the app's groups: invites a new address, links a tester the app already has |
+| `setup/availability`              | `{}`                                             | Makes the app available in every territory and in new ones, only if it has no availability yet              |
+| `setup/price`                     | `{ baseTerritory? }`                             | Sets the app's price to free (base territory `USA` by default), only if it has no price yet                 |
+| `setup/checklist`                 | `{ item, done }`                                 | Ticks or unticks a portal-only step (no Apple call, no key needed)                                          |
+
+**The notification URL needs the portal.** The URL is always this product's own hook,
+`https://<this host>/<slug>/distribution/hooks/app-store`; nothing in the request can change it.
+App Store Connect accepts the API change but, in our live check, did not keep it. So the control
+reads the app back after the write: when Apple did not keep the URL, the answer has
+`persisted: false` and a `fallback` with a link to App Information and the URL to paste. Paste it
+as both the Production and the Sandbox Server URL, choose Version 2 and save. Then check it with
+`setup/notifications-url/verify` and prove delivery with a test notification. The test uses the
+In-App Purchase key pinned to the app's bundle id (the product's own `app-store-server-key`, or the
+platform's). If no URL is configured for that environment, the answer is 409
+`notification_url_missing`. The proof is the `TEST` notification the hook stores.
+
+**Testers' addresses are not kept.** They are sent to Apple once. Polaris Key stores only a keyed
+digest in the operation record, and neither the answer nor the activity log names an address.
+`results` gives one outcome per address, in the request's order after duplicates are removed:
+`written`, `existing` (already in the group), `replayed`, or `failed` with Apple's status and code.
+
+**Defaults never overwrite.** If the app already has availability or a price, the control leaves
+it alone (`outcome: "existing"`). Changing a price is a separate, typed action.
+
+**Portal checklist.** These steps have no API: App Privacy (`app_privacy`), agreements, tax and
+banking (`agreements`), App Group and iCloud identifiers (`capability_identifiers`), App
+Information (`app_information`) and screenshots (`screenshots`). A tick is your own statement, and
+nobody checks it. `GET …/distribution/connectors/asc` shows the checklist under `provisioning`,
+with a link for each step, together with the newest setup operations and their state.
+
+**Before the repo names the app.** The wizard runs before `.pkey/distribution` declares an Apple
+outlet. Until then, the app assigned to the product in Platform → Store connections is the app the
+setup controls act on. This needs the platform team key and no `asc-api-key` of the product's own.
+Once the manifest names an app, the manifest's app must be the pinned one, as for every other
+control.
+
+## Distribute
+
+The Distribute flow takes a build of the pinned app through TestFlight and App Review from the
+console API, under the same `/manage/api/products/<slug>/distribution/connectors/asc/` prefix.
+Uploading the build stays in CI; everything after the upload is here.
+
+| `GET`                                 | Answers                                                                                                                                                                          |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `distribute/builds[?limit=]`          | the app's unexpired builds, newest first: build number, version, processing state, export compliance, TestFlight states, the upload's state with Apple's warning and error codes |
+| `distribute/beta-groups`              | the app's TestFlight groups, internal or external                                                                                                                                |
+| `distribute/versions[?platform=]`     | the app's App Store versions (state, whether still editable, build, release type, phased release) and its live review submissions                                                |
+| `distribute/preflight?versionId=<id>` | a readiness checklist: build, export compliance, screenshots per locale, age rating, App Review contact, price, availability, beta review details, App Privacy (portal-only)     |
+
+| `POST`                              | Body                                                                           | Sends to App Store Connect                                                                       |
+| ----------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `distribute/export-compliance`      | `{ buildId, usesNonExemptEncryption }`                                         | `PATCH /v1/builds/{id}` (an unanswered build only)                                               |
+| `distribute/beta-localization`      | `{ buildId, locale, whatsNew }`                                                | TestFlight's What to Test: `POST` or `PATCH /v1/betaBuildLocalizations`                          |
+| `distribute/testflight/groups`      | `{ buildId, betaGroupIds }`                                                    | `POST /v1/betaGroups/{id}/relationships/builds` per group not yet holding the build              |
+| `distribute/testflight/beta-review` | `{ buildId }`                                                                  | `POST /v1/betaAppReviewSubmissions` (external groups see the build after review)                 |
+| `distribute/version`                | `{ platform, versionString }`                                                  | reuses the editable version with that string, or `POST /v1/appStoreVersions`                     |
+| `distribute/version/build`          | `{ versionId, buildId }`                                                       | `PATCH /v1/appStoreVersions/{id}/relationships/build`                                            |
+| `distribute/version/release-type`   | `{ versionId, releaseType, earliestReleaseDate? }`                             | `PATCH /v1/appStoreVersions/{id}`: `MANUAL`, `AFTER_APPROVAL` or `SCHEDULED` (a future date)     |
+| `distribute/version/phased-release` | `{ versionId }`                                                                | `POST /v1/appStoreVersionPhasedReleases`; the phased-release controls above manage it later      |
+| `distribute/version-localization`   | `{ versionId, locale, whatsNew?, promotionalText? }`                           | `POST` or `PATCH /v1/appStoreVersionLocalizations` (release notes only)                          |
+| `distribute/submit`                 | `{ versionId, confirm, inAppPurchaseVersionIds?, backgroundAssetVersionIds? }` | the open review submission or a new one, the version and any given items, then `submitted: true` |
+| `distribute/submission/cancel`      | `{ submissionId }`                                                             | `PATCH /v1/reviewSubmissions/{id}` `canceled: true`                                              |
+
+**Each write needs an `Idempotency-Key` header**, a fresh UUID per thing you mean to do; without
+one the answer is 428 `idempotency_key_required`. Sending the same request again with the same key
+answers what happened the first time without calling Apple (`outcome: "replayed"`); the same key
+with a different body is 409 `idempotency_conflict`. Before any write the handler looks the object
+up the way Apple allows (the version by its string, the build in the group, the open submission),
+and when Apple already has it nothing is sent (`outcome: "existing"`). If Apple fails part-way, or a
+request times out, send the same request with the same key: it re-reads first and carries on from
+the step that did not finish. `submit` runs three such steps and answers each one's outcome.
+
+**Submitting is typed.** `confirm` must be the app's name exactly as App Store Connect shows it,
+compared by the Worker before anything is opened; otherwise 422 `confirmation_required` or
+`confirmation_mismatch`. Cancelling a submission is not typed.
+
+**Only the pinned app's objects.** A build, group, version or submission named in a request is
+re-read from Apple first and must belong to the pinned app (`unknown_build`,
+`unknown_beta_group`, `unknown_version`, `unknown_submission`); a groups request that names one
+foreign group sends nothing at all. A shipped version is never reused or edited
+(`version_not_editable`), a build must be `VALID` and unexpired before it goes to testers or a
+version (`build_not_ready`, `build_expired`), and a version needs a build before it is submitted
+(`no_build`). When Apple refuses, the answer is `store_refused` with Apple's status and its error
+code (`appleCode`, such as `ENTITY_ERROR.ATTRIBUTE.INVALID`), never its message. Each write is
+audited as `distribution.asc.<step>` with Apple's state before and after kept on the operation.
+
+The preflight reads presence only: it never returns the App Review contact, the demo account or its
+password. It cannot check App Privacy, which has no API. When the product maps App Store products
+and none of the app's in-app purchases has passed review yet, it adds a `firstInAppPurchase` line
+(see below).
+
+## In-app purchases
+
+The App Store rows of the [commerce bridge](/docs/services/distribution/commerce/)'s product map
+can be created in App Store Connect from the console API, under the same prefix, as
+**non-consumable** in-app purchases of the pinned app. Only a mapped product id can be created,
+priced or made available (`unmapped_product`): what exists at Apple follows your map.
+
+| `GET`                                             | Answers                                                                                                                                                                                      |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `iap/products`                                    | each App Store mapping (product id, flag, deliverable) beside Apple's state: `missing`, `MISSING_METADATA`, `READY_TO_SUBMIT`, `WAITING_FOR_REVIEW`, `APPROVED`…; a type mismatch is flagged |
+| `iap/price-points?productId=<id>&territory=<USA>` | the price points Apple offers for that purchase in one territory, cheapest first, and its current price                                                                                      |
+| `distribute/submission-items[?platform=]`         | the in-app purchase versions and Background Asset versions that can join the next App Review submission                                                                                      |
+
+| `POST`             | Body                                                                        | Sends to App Store Connect                                                                                       |
+| ------------------ | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `iap/create`       | `{ productId, referenceName, reviewNote?, familySharable?, localizations }` | `POST /v2/inAppPurchases` (`NON_CONSUMABLE`), a version, then `POST /v2/inAppPurchaseLocalizations` per locale   |
+| `iap/localization` | `{ productId, locale, name, description? }`                                 | `POST` or `PATCH /v2/inAppPurchaseLocalizations` on the purchase's editable version                              |
+| `iap/price`        | `{ productId, baseTerritory, pricePointId` or `customerPrice, confirm? }`   | `POST /v1/inAppPurchasePriceSchedules`: one price in the base territory, effective now; Apple derives the others |
+| `iap/availability` | `{ productId, confirm }`                                                    | `POST /v1/inAppPurchaseAvailabilities`: every territory, and new ones (only while none is set)                   |
+
+`localizations` lists one to ten `{ locale, name, description? }` (display name up to 35
+characters, description up to 55). The same `Idempotency-Key` rules as Distribute apply: an
+existing purchase, version, locale, price or availability is found first and left alone. A mapped
+id that already exists as a consumable or subscription is refused (`iap_type_mismatch`); Apple does
+not let a product id change type or be reused.
+
+**A price change is typed.** The first price needs no confirmation. Once the purchase has a price,
+any other price needs `confirm` set to the app's name exactly as App Store Connect shows it
+(otherwise 422 `confirmation_required` or `confirmation_mismatch`, nothing sent), because once a
+price increase takes effect it cannot be reverted. Setting the same price again sends nothing.
+
+**Availability is typed.** Every `iap/availability` request needs `confirm` set to the app's name,
+checked the same way: availability decides where the purchase is sold, and a write with no
+territories would take it off sale everywhere.
+
+**Submitting.** Pass the ids from `distribute/submission-items` to `distribute/submit` as
+`inAppPurchaseVersionIds` and `backgroundAssetVersionIds`. Each is re-read and must be the pinned
+app's (an in-app purchase version through its purchase and your map; a Background Asset version
+through its asset), ready (`iap_not_ready`, `background_asset_not_ready`) and, for an asset, built
+for the submission's platform, before the submission is opened; one foreign id
+(`unknown_iap_version`, `unknown_background_asset_version`) sends nothing. Apple requires an
+app's **first** in-app purchase to be submitted with an app version in App Store Connect itself:
+until one of the app's purchases has passed review, `submission-items` offers none and `submit`
+refuses them (409 `first_iap_portal`). The review screenshot is added in App Store Connect too.
+
 ## Security
 
 - The webhook secret is per product and checked in constant time; a missing or malformed
@@ -230,6 +391,10 @@ the objects the connector tracks, unresolved ones flagged, and the latest webhoo
 - Which app the key reads and the controls act on is the app you pinned it to. The repo's
   `.pkey/distribution` must name the same app, or the connector stops; it can never choose
   another one.
+- Every request goes through a deny-by-default write gate: only the writes these controls and the
+  App Store provisioning flows need are allowed, each with its exact body. Nothing can delete,
+  touch users, certificates, devices or profiles, or read user records, whatever role the key has.
+  A refused request answers 409 `write_denied` and sends nothing.
 - An App Manager key can change metadata, TestFlight and release timing, but it cannot sign a
   build. Keep a separate Developer-role key for CI uploads if you want the two apart.
 

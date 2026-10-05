@@ -64,7 +64,7 @@ import {
   relId,
   single,
   type AscResource,
-} from "./client.js";
+} from "../../../../core/asc/client.js";
 import {
   ASC_PLATFORM_TO_RELEASE,
   APP_VERSION_AVAILABILITY,

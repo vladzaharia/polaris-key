@@ -29,8 +29,20 @@ No change to scope. Once A-18a lands, its writes call `performStoreWrite`: an im
 
 ## Acceptance criteria
 
-- [ ] S-14 §10's A-17e row is met.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] S-14 §10's A-17e row is met: `commerce/appleCatalog.ts` reads status by `filter[productId]`;
+      creates the non-consumable IAP, its version and localizations; looks up price points and
+      sets the schedule; sets availability; a price change is typed (server-side and in the gate);
+      IAP and Background Asset versions join A-17d's submission (`distribute/submit`).
+- [x] The green gate passes (`AGENTS.md`).
+
+## Corrections (as built)
+
+The departures from S-14 are recorded in S-14's "Corrections (A-17e as built, 2026-10-04)": the
+handlers sit in the App Store Connect connector's tables, A-17d's plumbing moved to
+`connectors/asc/flow.ts`, a price change is immediate only (no future-dated schedule), an
+availability already set is never changed, the first-IAP rule counts approved IAPs only, the
+A-18b localization defaults are not applied (A-18b has not landed), and A-17a's migration is
+renumbered `0060` after main's `0059`.
 
 ## Hand-off
 

@@ -28,6 +28,12 @@ jobs:
       - run: pnpm build
       - run: pnpm typecheck
       - run: pnpm test
+      # Adapter conformance (A-18a, notes/S-15 §6.6): every storefront and feed adapter against the
+      # shared contract, and every write of each store's pinned vendor spec classified (allowed or
+      # denied with a reason). `pnpm test` runs these too; this step names them, so a failing
+      # adapter is legible at a glance and the check is part of this required job.
+      - name: Adapter conformance and spec classification
+        run: pnpm --filter @polaris-key/worker exec vitest run test/storefront/ test/ascWriteGate.test.ts test/feedAdapters.test.ts
       # Parity gate: every SDK's parity.json lists every feature in
       # conformance/parity/features.json, each implemented entry has a test tagged
       # `@pkey-feature <id>`, each N/A is one the registry allows, and each planned entry names an
@@ -305,16 +311,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Xcode 26.6, Swift 6.3 or later
-        run: |
-          sudo xcode-select -s /Applications/Xcode_26.6.app
-          xcodebuild -version
-          swift --version
-          v="$(swift --version 2>&1 | sed -n 's/.*Swift version \([0-9][0-9]*\.[0-9][0-9]*\).*/\1/p' | head -n 1)"
-          major="${v%%.*}"; minor="${v#*.}"
-          if [ -z "$v" ] || [ "$major" -lt 6 ] || { [ "$major" -eq 6 ] && [ "$minor" -lt 3 ]; }; then
-            echo "Swift $v is below 6.3: the guarded Background Assets code would not compile" >&2
-            exit 1
-          fi
+        run: sdks/swift/tools/select-xcode-26.sh
       - name: swift build + test (warnings as errors)
         run: |
           swift build --package-path sdks/swift -Xswiftc -warnings-as-errors
@@ -429,21 +426,26 @@ jobs:
           path: |
             sdks/kotlin/*/build/reports/
 
-  # P5-06/P6-09/P6-10: the Android platform AAR (sdks/kotlin :platform, polaris-key-platform-{play,direct})
-  # and the Godot Android binding over it alone (sdks/godot/native/android, built as :godot), on JDK 17 and the
+  # P5-06/P6-09/P6-10/P6-12: the Android platform AAR (sdks/kotlin :platform, polaris-key-platform-{play,direct}),
+  # the Godot Android binding over it alone (sdks/godot/native/android, built as :godot) and the Kotlin
+  # SDK's Android glue over the SDK and the platform (:android, polaris-key-android-{play,direct}), on JDK 17 and the
   # runner's Android SDK with platforms;android-36 and build-tools;36.1.0. Steps: both flavours'
   # unit tests (Robolectric; Play Core's FakeAppUpdateManager, a fake asset-pack manager, the
-  # PackageInstaller verification refusals and Robolectric's PackageInstaller), assembleRelease of
-  # both flavours of both modules and of the :boundary app, the flavour boundary on those release
+  # PackageInstaller verification refusals and Robolectric's PackageInstaller; :android's drivers,
+  # PAD transport, Keystore store and readers against fakes and the corpus), assembleRelease of
+  # both flavours of every module and of the :boundary app, the flavour boundary on those release
   # outputs (tools/check_flavours.sh: no install permission and no session creation or commit in
-  # play, no Play Core in direct, no native libraries), and PKeyAndroid's headless stub tests (with
+  # play, no Play Core in direct, no native library but zstd-jni's 16 KB-aligned one), and PKeyAndroid's headless stub tests (with
   # P5-08's platform transports suite). No
   # secrets, no signing key, no Play Console: In-App Updates and Play Asset Delivery on a real Play
   # install are the owner's device checklist (the P5-06 brief). First-party actions, plus Gradle's
   # own wrapper-validation action, SHA-pinned, which checks the committed gradle-wrapper.jar against
   # Gradle's published checksums before anything runs it.
+  # P6-11: the Compose UI kit (:ui, polaris-key-ui): its unit, state-holder, branding, contrast and
+  # TalkBack suites with every screen's committed Roborazzi snapshot verified (Robolectric's native
+  # graphics, no emulator), lint and assembleRelease, and the local publication.
   android:
-    name: Android platform AAR + Godot binding
+    name: Android platform AAR + Godot binding + Compose UI kit + Android glue
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -470,15 +472,18 @@ jobs:
         working-directory: sdks/kotlin
         run: >-
           ./gradlew --no-daemon :platform:testPlayDebugUnitTest :platform:testDirectDebugUnitTest
-          :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest
+          :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest :ui:verifyRoborazziDebug
+          :android:testPlayDebugUnitTest :android:testDirectDebugUnitTest
       - name: Lint and assembleRelease (play and direct)
         working-directory: sdks/kotlin
         run: >-
           ./gradlew --no-daemon :platform:lintPlayRelease :platform:lintDirectRelease
-          :godot:lintPlayRelease :godot:lintDirectRelease :platform:assembleRelease :godot:assembleRelease :boundary:assembleRelease
+          :godot:lintPlayRelease :godot:lintDirectRelease :android:lintPlayRelease :android:lintDirectRelease
+          :platform:assembleRelease :godot:assembleRelease :android:assembleRelease :boundary:assembleRelease
+          :ui:lintRelease :ui:assembleRelease
       - name: Flavour boundary
         run: sdks/kotlin/tools/check_flavours.sh
-      - name: Module boundaries (:core has no Android dependency, :platform no SDK module)
+      - name: Module boundaries (:core has no Android dependency, :platform no SDK module, only :android sees both)
         working-directory: sdks/kotlin
         run: ./gradlew --no-daemon checkModuleBoundaries
       # P6-09: :platform stays standalone (no project or im.plrs.key module on any classpath), and
@@ -491,7 +496,8 @@ jobs:
         working-directory: sdks/kotlin
         run: |
           ./gradlew --no-daemon :platform:checkStandalone :godot:checkPlatformOnly \
-            :platform:publishAllPublicationsToLocalRepository :godot:publishAllPublicationsToLocalRepository
+            :platform:publishAllPublicationsToLocalRepository :godot:publishAllPublicationsToLocalRepository \
+            :ui:publishUiPublicationToLocalRepository :android:publishAllPublicationsToLocalRepository
           tools/check_publication.sh
       - uses: actions/cache@v4
         with:
@@ -508,6 +514,9 @@ jobs:
           name: android-logs
           path: |
             sdks/kotlin/platform/build/reports/
+            sdks/kotlin/ui/build/reports/
+            sdks/kotlin/ui/build/outputs/roborazzi/
+            sdks/kotlin/android/build/reports/
             sdks/godot/native/android/build/reports/
             sdks/godot/build/logs/
 

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A partial French translation, in the DEBUG source set only (never in the published release AAR),
+  standing in for an app's values-fr/strings.xml: PolarisCopyResourcesTest proves that resources
+  with the kit's names override its English and that untranslated names keep the English.
+-->
+<resources>
+    <string name="pkey_ui_retry">Réessayer</string>
+    <string name="pkey_ui_activation_title">Bienvenue dans %1$s</string>
+</resources>

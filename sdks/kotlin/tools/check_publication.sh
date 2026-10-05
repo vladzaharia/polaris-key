@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# check_publication.sh: the local publication of polaris-key-platform (P6-09) and of the Godot
-# Android binding over it, polaris-key-godot (P6-10). Run after
+# check_publication.sh: the local publication of polaris-key-platform (P6-09), of the Godot
+# Android binding over it, polaris-key-godot (P6-10), and of the Kotlin SDK's Android glue,
+# polaris-key-android (P6-12). Run after
 #
-#   ./gradlew :platform:publishAllPublicationsToLocalRepository :godot:publishAllPublicationsToLocalRepository
+#   ./gradlew :platform:publishAllPublicationsToLocalRepository :godot:publishAllPublicationsToLocalRepository \
+#     :android:publishAllPublicationsToLocalRepository
 #
 # (the Godot half is checked when :godot is part of the build, i.e. when an Android SDK is set.)
 #
@@ -96,6 +98,36 @@ if [ -d "$REPO/polaris-key-godot-play" ] || [ -d "$REPO/polaris-key-godot-direct
   fi
 fi
 
+# The Kotlin SDK's Android glue (P6-12): per flavour the AAR, POM, sources jar and module metadata;
+# its SDK dependencies are exactly polaris-key-sdk and polaris-key-platform-<same flavour> at the
+# same version (never the other flavour), the desktop zstd-jni JAR is excluded from polaris-key-sdk
+# and the Android AAR named instead, and the direct POM names no Play Core.
+if [ -d "$REPO/polaris-key-android-play" ] || [ -d "$REPO/polaris-key-android-direct" ]; then
+  for flavor in play direct; do
+    echo "── android $flavor"
+    a="polaris-key-android-$flavor"
+    dir="$REPO/$a/$VERSION"
+    [ -d "$dir" ] || { fail "$dir missing; run :android:publishAllPublicationsToLocalRepository"; continue; }
+    for f in "$a-$VERSION.aar" "$a-$VERSION.pom" "$a-$VERSION.module" "$a-$VERSION-sources.jar"; do
+      [ -s "$dir/$f" ] && ok "$f" || fail "$f missing"
+    done
+    pom="$dir/$a-$VERSION.pom"
+    deps="$(sed '/<dependencies>/,$!d' "$pom" | tr -d ' \n')"
+    sdk_deps="$(grep -o '<groupId>im.plrs.key</groupId><artifactId>[^<]*</artifactId><version>[^<]*</version>' <<<"$deps" |
+      sed 's|<groupId>im.plrs.key</groupId><artifactId>\([^<]*\)</artifactId><version>\([^<]*\)</version>|\1:\2|' | sort -u | tr '\n' ' ' | sed 's/ $//')"
+    want="polaris-key-platform-$flavor:$VERSION polaris-key-sdk:$VERSION"
+    [ "$sdk_deps" = "$want" ] && ok "$a's POM depends on $want" || fail "$a's POM SDK dependencies are '$sdk_deps', expected '$want'"
+    if grep -q '<artifactId>zstd-jni</artifactId><version>[^<]*</version><type>aar</type>' <<<"$deps" &&
+      grep -q '<artifactId>polaris-key-sdk</artifactId>.*<exclusion><groupId>com.github.luben</groupId><artifactId>zstd-jni</artifactId>' <<<"$deps"; then
+      ok "$a links zstd-jni's Android AAR in place of the desktop JAR"
+    else
+      fail "$a does not swap zstd-jni's desktop JAR for the Android AAR"
+    fi
+    if [ "$flavor" = direct ] && grep -q 'com.google.android.play' "$pom"; then fail "$a's POM names Play Core"; else ok "$a's POM names no Play Core of its own"; fi
+    if ls "$dir" | grep -qE '\.(asc|sig)$'; then fail "$a is signed (no signing in this program)"; else ok "$a carries no signature"; fi
+  done
+fi
+
 echo "── build scripts"
 if grep -rlE --include='*.gradle.kts' --include='*.properties' -i 'id\("signing"\)|`signing`|sonatype|nexus-publish|central\.sonatype|vanniktech' "$ROOT" --exclude-dir=build --exclude-dir=.gradle >/dev/null 2>&1; then
   fail "a build script configures signing or a Central publication"
@@ -107,4 +139,4 @@ if [ "$FAILED" != 0 ]; then
   echo "check_publication: FAILED"
   exit 1
 fi
-echo "check_publication: both flavours published locally (platform, and the Godot binding when built)"
+echo "check_publication: both flavours published locally (platform, and the Godot binding and the Android glue when built)"

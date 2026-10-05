@@ -93,13 +93,13 @@ pack using only SDK modules.
 
 ## Acceptance criteria
 
-- [ ] `core.store`, `devices.fingerprint`, `outlet.detect`, `update.driver` and
+- [x] `core.store`, `devices.fingerprint`, `outlet.detect`, `update.driver` and
       `packs.transport.play` are `implemented` (or the registry's allowed `na` on jvm) in
       `sdks/kotlin/parity.json`, and `parity:check` is green.
-- [ ] Unit tests cover each adapter against fakes, including every `PackageInstaller` refusal path
+- [x] Unit tests cover each adapter against fakes, including every `PackageInstaller` refusal path
       the driver can surface.
-- [ ] `tools/check_flavours.sh` passes with `:android` in the boundary apps.
-- [ ] A CI check proves no module except `:android` depends on both `:core` and `:platform`.
+- [x] `tools/check_flavours.sh` passes with `:android` in the boundary apps.
+- [x] A CI check proves no module except `:android` depends on both `:core` and `:platform`.
 - [ ] The device rows (internal-track update offered, direct self-update, fast-follow pack mounted,
       outlet readout) are recorded in the PR by the person who ran them.
 - [ ] The green gate passes (`AGENTS.md`) and the `android` CI job is green.
@@ -118,3 +118,85 @@ mise exec node@22 -- pnpm parity:check -- --check
 - The role agent sets `--set P6-12 in-review` when it hands off. After review, the lead adds the last
   commit of the PR:
   `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P6-12 done`.
+
+## Corrections from implementation
+
+Recorded by the implementer on 2026-10-04. The code is the fact where this brief and the code
+disagree.
+
+- **Module.** `sdks/kotlin/android`, namespace `im.plrs.key.android`, flavours `play` and `direct`,
+  published as `im.plrs.key:polaris-key-android-{play,direct}` to `build/repo` only. It depends on
+  `:sdk` (`api`, and through it `:core` and every service module) and on `:platform` by its
+  per-flavour coordinate, as the Godot binding does (P6-10), so each POM names
+  `polaris-key-sdk` and `polaris-key-platform-<same flavour>`; `check_publication.sh` checks both.
+  `PolarisKeyAndroid.client(context, options, AndroidOptions)` fills every Android edge the host
+  left unset (store, fingerprint and facts sources, the outlet reader, the flavour's install driver,
+  `platform: android`, the flavour's format and methods, the PAD baselines, the pack directory).
+- **Boundary check.** `checkModuleBoundaries` now walks every project's resolvable classpaths and
+  fails when a module other than `:android` reaches both `:core` and `:platform` (as projects or as
+  their published coordinates), and when any module but the `:boundary` probe depends on
+  `:android`. The probe is exempt because it packages everything on purpose. Negative-tested by
+  temporarily adding `:core` and `:android` edges to `:godot`.
+- **Flavour boundary.** `:boundary` now packages `:android`. `check_flavours.sh` reads the
+  `:android` AARs (no `.so`, no permission), finds no `DirectInstallDriver`, `ApkSessions` or
+  `ApkInstallerSessions` in the play APK and no `PlayInstallDriver` or `PadPackTransport` in the
+  direct one, and checks the APK's only native library is zstd-jni's, 16 KB aligned.
+- **zstd-jni on Android (a departure from P6-08's note).** P6-08 expected `:android` to link the
+  Android AAR "of the same version" (1.5.7-21). Every zstd-jni AAR from 1.5.7-13 on declares
+  `minCompileSdk=37`, which compileSdk 36 under AGP 8.6.1 (pinned to Godot 4.7.2's template) cannot
+  consume (`checkAarMetadata` fails for the module and for every app that depends on it). `:android`
+  therefore excludes the desktop JAR from `:sdk` and links the 1.5.7-12 AAR (`zstdJniAndroid` in the
+  catalog; 16 KB aligned; the `ZstdInputStreamNoFinalizer`, `Native` and dictionary API `:packs`
+  calls is the same). `check_16k_alignment.py` now resolves `zstdJniAndroid`. Move both pins
+  together when the Android toolchain moves to compileSdk 37.
+- **tink-android** (Ed25519 below API 33) brings `androidx.annotation:annotation-jvm:1.8.2`, whose
+  classes duplicate the `androidx.annotation:annotation:1.3.0` Play Core brings (an app build
+  failed `checkDuplicateClasses`). It is excluded from tink-android; the annotations are
+  class-retention only.
+- **Store.** `AndroidKeystoreStore` follows Godot's `PKeyKeystoreStore`: token and device id in
+  `SecureStore` (accounts `token`, `device`), the cache and a copy of the device id in plain files
+  under `noBackupFilesDir/pkey/<product>/`. A failed Keystore call throws `StoreException` from the
+  token calls (as `FileStore` and Swift do) and sets `keyring-error` until a call succeeds; the
+  device-id path never throws on a Keystore fault (it falls back to its file, so no seat is minted
+  per launch). A lost key is reported through `lastReset`, not `degraded`: the backend is healthy,
+  the values are gone. Migration takes any legacy `Store` (a `FileStore` in practice).
+- **The "Keystore anchor".** Read as: `machineUuid` (and the device id's raw value) is
+  `ANDROID_ID`; where it cannot be read (or is the Android 2.2 constant or all zeros) a random UUID
+  generated once and kept in `SecureStore` account `anchor`. Components are only `machineUuid`,
+  `machineModel` (`Build.MODEL`) and `ramBucket`, as Godot's Android capture. Corpus evidence:
+  `fingerprint.json`'s `unicode-model` vector (exactly the Android shape) through the reader, every
+  `ramBuckets` case and every `deviceIds` case (`AndroidFingerprintTest`).
+- **Facts.** `machineModel` in facts is `<manufacturer> <model>` (not repeating a manufacturer the
+  model starts with); `cpuModel` is `Build.SOC_MODEL` on API 31+. Probes need the app manifest's
+  `<queries>` on API 30+ (package visibility); without it a probe reads as absent.
+- **Outlet readers.** The signals are Godot's (`installer`, `initiator`, `initiatorCertSha256`, and
+  `installerMismatch = installer != initiator`), plus `originator`, `packageSource` and
+  `updateOwner` inside `android.installSource` for the host's diagnostics (detection ignores them).
+  Every Android row of `outlet-matrix.json` replays through the reader (`AndroidOutletTest`).
+- **Play driver.** The table is Godot's play adapter's; results map to `:update`'s
+  `InstallResult`: a started, completed or in-progress update is `Started`, Play staging is
+  `Declined("play-staging")`, anything Play cannot do is `Failed(platform-error)` whose detail
+  offers the listing URL (the driver does not open the listing itself). `PlayUpdatePolicy` adds the
+  "priority and staleness" urgency the brief names; both are off by default, matching Godot. A
+  `binary` decision on a play build is `Failed(unsupported)`. Play Core's fake does not model the
+  immediate-flow restart, so that path is asserted as an attempt (`PlayInstallDriverTest`).
+- **Direct driver.** `binary {method: native}` only (the flavour lists `native` and `download`);
+  `download` and `store` answers are `Declined` with what to offer. Codes follow Godot's
+  `PKeyApkUpdate`: `record-mismatch` (no pinned hash, no build, not exactly one `payload`),
+  `payload-mismatch` (size or SHA-256), `swap-refused` with every installer reason in the detail
+  (`apk-refused: …`), `service-unavailable` without a builds route. No expected versionCode (the
+  record carries none, as P5-06 recorded). The download is a plain GET (no Range resume) through
+  `OkHttpBuildDownload` with Core's headers and the bearer to the control plane's origin only.
+- **Play pack transport.** `PlayPackTransport` is flavour-neutral so app code compiles in both
+  flavours; the direct build's answers `Unsupported(packs.transport.play, outlet)`. The Kotlin pack
+  engine loads baselines once per process (`PackEngine.load`; loading again would re-activate the
+  active set), so a pack delivered mid-session mounts at the pack facet's next start (the next
+  launch), and the transport feeds `PacksOptions.embedded`, which the stamp-pin match already
+  requires Play's pinned copies to pass. No `:packs` change was made.
+- **API 24-25.** `:android` itself uses `java.io` only, but `:packs`' `DirPackStorage` takes a
+  `java.nio.file.Path` (API 26+), so `PolarisKeyAndroid` sets the default pack directory only on
+  API 26+; below it a host that wants packs must pass `PacksOptions.dir` itself (and needs NIO
+  desugaring). Recorded for P6-05.
+- **Device rows** are not run here (no device or Play Console in this session): the internal-track
+  update, the direct self-update, the fast-follow pack and the outlet readout stay on the owner's
+  checklist, as for P5-06 and P5-08.

@@ -20,6 +20,12 @@
 //                                       from kit/source/fonts/Rubik-Bold.ttf)
 //   sdks/godot/addons/polaris_key/ui/theme/brand_tokens_generated.gd    GDScript constants
 //   sdks/swift/Sources/PolarisKeyUI/BrandTokens.generated.swift         Swift constants
+//   sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/brand/PolarisBrandTokens.generated.kt
+//                                       Kotlin (Compose) constants for the Compose UI kit, with
+//                                       the bit-less display-cut Pinned K and the compact
+//                                       "Powered by" badge as vector data (P6-11)
+//   sdks/kotlin/ui/src/main/res/font/*  the Compose kit's Rubik: each kit TTF byte for byte, with
+//                                       the kit's OFL.txt and notice in the module's assets
 //   sdks/godot/addons/polaris_key/brand/*                                the Godot addon's
 //                                       copies of kit files (the 16 px editor glyphs, the
 //                                       "Powered by" credit screens and compact badges), each
@@ -837,6 +843,354 @@ ${table("light")}
 `;
 }
 
+// ── Kotlin (Compose) ────────────────────────────────────────────────────────────────────────
+
+function ktColor(hex: string): string {
+  return `Color(0xFF${hex.slice(1).toUpperCase()})`;
+}
+
+const ktFloat = (n: number): string => {
+  const s = String(n);
+  return `${s.includes(".") || s.includes("e") ? s : `${s}.0`}f`;
+};
+
+const remToDp = (rem: string): number =>
+  rem.endsWith("rem") ? Number(rem.slice(0, -3)) * 16 : Number(rem);
+
+function ktTheme(theme: Theme): string {
+  const t = T[theme];
+  const out: string[] = [];
+  const c = (name: string, hex: string) =>
+    out.push(`        public val ${name}: Color = ${ktColor(hex)}`);
+  for (const [k, x] of Object.entries(t.surface))
+    c(`surface${k[0]!.toUpperCase()}${k.slice(1)}`, x);
+  for (const [k, x] of Object.entries(t.text))
+    c(`text${k[0]!.toUpperCase()}${k.slice(1)}`, x);
+  for (const [k, x] of Object.entries(t.border))
+    c(`border${k[0]!.toUpperCase()}${k.slice(1)}`, x);
+  c("focus", t.focus);
+  for (const s of STATUS_IDS) {
+    const st = t.status[s];
+    c(s, st.fg);
+    c(`${s}On`, st.on);
+    c(`${s}Border`, st.border);
+    c(`${s}Subtle`, st.subtle);
+  }
+  c("signed", t.signed.solid);
+  c("signedOn", t.signed.on);
+  c("signedBorder", t.signed.border);
+  c("signedSubtle", t.signed.subtle);
+  c("signedMark", t.signed.mark);
+  c("brandViolet", BRAND.violet[theme]);
+  c("brandStar", BRAND.star[theme]);
+  c("brandGold", BRAND.gold[theme]);
+  return out.join("\n");
+}
+
+/** One node of a kit SVG, reduced to what Compose's ImageVector draws: groups and filled paths. */
+type SvgNode =
+  | {
+      kind: "group";
+      tx: number;
+      ty: number;
+      sx: number;
+      sy: number;
+      fill: string | null;
+      children: SvgNode[];
+    }
+  | { kind: "path"; fill: string | null; d: string };
+
+function svgTransform(value: string | undefined): {
+  tx: number;
+  ty: number;
+  sx: number;
+  sy: number;
+} {
+  const out = { tx: 0, ty: 0, sx: 1, sy: 1 };
+  if (!value) return out;
+  let rest = value.trim();
+  const translate = /^translate\(\s*([-\d.]+)[\s,]+([-\d.]+)\s*\)\s*/.exec(
+    rest,
+  );
+  if (translate) {
+    out.tx = Number(translate[1]);
+    out.ty = Number(translate[2]);
+    rest = rest.slice(translate[0].length);
+  }
+  const scale = /^scale\(\s*([-\d.]+)(?:[\s,]+([-\d.]+))?\s*\)\s*/.exec(rest);
+  if (scale) {
+    out.sx = Number(scale[1]);
+    out.sy = scale[2] === undefined ? out.sx : Number(scale[2]);
+    rest = rest.slice(scale[0].length);
+  }
+  if (rest) throw new Error(`gen: unsupported SVG transform "${value}"`);
+  return out;
+}
+
+/**
+ * A kit SVG as a tree of groups and filled paths. The kit marks use only `<g>` (translate, then
+ * scale, and an inherited fill) and filled `<path>`; anything else fails the generator rather
+ * than drawing something the kit did not.
+ */
+export function svgTree(svg: string): {
+  width: number;
+  height: number;
+  nodes: SvgNode[];
+} {
+  const root = /<svg\b([^>]*)>/.exec(svg);
+  if (!root) throw new Error("gen: not an SVG");
+  const attrs = (src: string) =>
+    Object.fromEntries(
+      [...src.matchAll(/([\w:-]+)="([^"]*)"/g)].map((m) => [m[1]!, m[2]!]),
+    );
+  const rootAttrs = attrs(root[1]!);
+  const width = Number(rootAttrs.width);
+  const height = Number(rootAttrs.height);
+  if (rootAttrs.viewBox !== `0 0 ${width} ${height}`)
+    throw new Error("gen: a kit SVG's viewBox must be 0 0 width height");
+  const top: SvgNode[] = [];
+  const stack: SvgNode[][] = [top];
+  const body = svg
+    .slice(root.index + root[0].length)
+    .replace(/<title>[^<]*<\/title>|<desc>[^<]*<\/desc>/g, "");
+  for (const m of body.matchAll(/<(\/?)([a-z]+)\b([^>]*?)(\/?)>/g)) {
+    const [, close, tag, rawAttrs, selfClose] = m;
+    if (tag === "svg" && close) break;
+    if (tag === "g") {
+      if (close) {
+        stack.pop();
+        continue;
+      }
+      const a = attrs(rawAttrs!);
+      const group: SvgNode = {
+        kind: "group",
+        ...svgTransform(a.transform),
+        fill: a.fill ?? null,
+        children: [],
+      };
+      stack.at(-1)!.push(group);
+      if (!selfClose) stack.push(group.children);
+      continue;
+    }
+    if (tag === "path") {
+      const a = attrs(rawAttrs!);
+      const path: SvgNode = { kind: "path", fill: a.fill ?? null, d: a.d! };
+      if (a.transform) {
+        stack.at(-1)!.push({
+          kind: "group",
+          ...svgTransform(a.transform),
+          fill: null,
+          children: [path],
+        });
+      } else stack.at(-1)!.push(path);
+      continue;
+    }
+    throw new Error(`gen: unsupported SVG element <${tag}>`);
+  }
+  return { width, height, nodes: top };
+}
+
+function ktNodes(nodes: SvgNode[], indent: string): string {
+  return nodes
+    .map((n) => {
+      if (n.kind === "path") {
+        const fill = n.fill ? ktColor(n.fill) : "null";
+        return `${indent}BrandVectorNode.Path(fill = ${fill}, pathData = "${n.d}"),`;
+      }
+      const fill = n.fill ? ktColor(n.fill) : "null";
+      return `${indent}BrandVectorNode.Group(
+${indent}    translateX = ${ktFloat(n.tx)}, translateY = ${ktFloat(n.ty)}, scaleX = ${ktFloat(n.sx)}, scaleY = ${ktFloat(n.sy)}, fill = ${fill},
+${indent}    children = listOf(
+${ktNodes(n.children, `${indent}        `)}
+${indent}    ),
+${indent}),`;
+    })
+    .join("\n");
+}
+
+/** The kit SVGs the Compose kit draws when branding is on (PolarisBrandMarks). */
+const KOTLIN_MARKS: [string, string, string][] = [
+  [
+    "pinnedKDark",
+    "01-marks/key/svg/key-display-dark.svg",
+    "The Pinned K, display cut, for dark grounds; no terminal bit.",
+  ],
+  [
+    "pinnedKLight",
+    "01-marks/key/svg/key-display-light.svg",
+    "The Pinned K, display cut, for light grounds; no terminal bit.",
+  ],
+  [
+    "poweredByCompactDark",
+    "03-powered-by/transparent/powered-by-compact-dark.svg",
+    'The compact "Powered by Polaris Key" badge, transparent treatment, for dark grounds.',
+  ],
+  [
+    "poweredByCompactLight",
+    "03-powered-by/transparent/powered-by-compact-light.svg",
+    'The compact "Powered by Polaris Key" badge, transparent treatment, for light grounds.',
+  ],
+];
+
+function ktMarks(): string {
+  return KOTLIN_MARKS.map(([name, kitPath, doc]) => {
+    const tree = svgTree(readFileSync(join(PKG, "kit", kitPath), "utf8"));
+    return `    /** ${doc} kit/${kitPath}. */
+    public val ${name}: BrandVector = BrandVector(
+        width = ${ktFloat(tree.width)},
+        height = ${ktFloat(tree.height)},
+        nodes = listOf(
+${ktNodes(tree.nodes, "            ")}
+        ),
+    )`;
+  }).join("\n\n");
+}
+
+function kotlinSource(): string {
+  const table = (theme: Theme) =>
+    SERVICE_IDS.map((id) => {
+      const a = serviceAccent(theme, id);
+      const bit = sectionBit(theme, id);
+      return `        "${id}" to BrandAccent(solid = ${ktColor(a.solid)}, fg = ${ktColor(a.fg)}, on = ${ktColor(a.on)}, subtle = ${ktColor(a.subtle)}, bit = ${bit === null ? "null" : ktColor(bit)}),`;
+    }).join("\n");
+  const badge = (["horizontal", "compact", "stacked"] as const)
+    .map((layout) => {
+      const { width, height } = POWERED_BY.minimum[layout];
+      const name = layout[0]!.toUpperCase() + layout.slice(1);
+      return `    public val badgeMin${name}: BrandSize = BrandSize(${ktFloat(width)}, ${ktFloat(height)})`;
+    })
+    .join("\n");
+  const radius = Object.entries(RADIUS)
+    .filter(([k]) => k !== "full")
+    .map(
+      ([k, v]) =>
+        `        public const val ${k}: Float = ${ktFloat(remToDp(v))}`,
+    )
+    .join("\n");
+  const motion = Object.entries(MOTION.duration)
+    .map(([k, v]) => `        public const val ${k}: Int = ${parseInt(v, 10)}`)
+    .join("\n");
+  return `${banner("//")}
+
+@file:Suppress("MagicNumber", "MaxLineLength")
+
+package im.plrs.key.ui.brand
+
+import androidx.compose.ui.graphics.Color
+
+/**
+ * One section's accent in one theme: [solid] for indicators and fills, [fg] for text, [on] for
+ * text on a solid fill, [subtle] for a tinted surface, [bit] for the K's terminal bit (null on
+ * core: the platform draws no bit).
+ */
+public data class BrandAccent(
+    val solid: Color,
+    val fg: Color,
+    val on: Color,
+    val subtle: Color,
+    val bit: Color?,
+)
+
+/** A size in dp (CSS-pixel equivalents). */
+public data class BrandSize(val width: Float, val height: Float)
+
+/** A kit SVG reduced to groups and filled paths, in its own coordinate space. */
+public data class BrandVector(val width: Float, val height: Float, val nodes: List<BrandVectorNode>)
+
+/** One node of a [BrandVector]. */
+public sealed interface BrandVectorNode {
+    /** A group: translate, then scale (the SVG order), and a fill its paths inherit. */
+    public data class Group(
+        val translateX: Float,
+        val translateY: Float,
+        val scaleX: Float,
+        val scaleY: Float,
+        val fill: Color?,
+        val children: List<BrandVectorNode>,
+    ) : BrandVectorNode
+
+    /** A filled path in SVG path syntax; a null fill inherits the group's. */
+    public data class Path(val fill: Color?, val pathData: String) : BrandVectorNode
+}
+
+/** Polaris Key brand tokens (@polaris-key/brand). Dark is the default theme. */
+public object PolarisBrandTokens {
+    /** Kit primitives, verbatim (kit/08-developer/tokens.json). */
+    public object Kit {
+        public val violetDark: Color = ${ktColor(BRAND.violet.dark)}
+        public val violetLight: Color = ${ktColor(BRAND.violet.light)}
+        public val goldDark: Color = ${ktColor(BRAND.gold.dark)}
+        public val goldLight: Color = ${ktColor(BRAND.gold.light)}
+        public val pageDark: Color = ${ktColor(BRAND.page.dark)}
+        public val pageLight: Color = ${ktColor(BRAND.page.light)}
+        public val starDark: Color = ${ktColor(BRAND.star.dark)}
+        public val starLight: Color = ${ktColor(BRAND.star.light)}
+        public val mutedDark: Color = ${ktColor(BRAND.muted.dark)}
+        public val mutedLight: Color = ${ktColor(BRAND.muted.light)}
+    }
+
+    /** Optical cuts by displayed (dp) size, never pixel density. */
+    public const val FAVICON_BELOW: Float = ${ktFloat(OPTICAL.faviconBelow)}
+    public const val SERVICE_MAX: Float = ${ktFloat(OPTICAL.serviceMax)}
+    public const val GOLD_MINIMUM_GLYPH: Float = ${ktFloat(OPTICAL.goldMinimumGlyphSize)}
+    public const val CLEAR_SPACE_RATIO: Float = ${ktFloat(CLEAR_SPACE_RATIO)}
+    public const val POWERED_BY_PHRASE: String = "${POWERED_BY.phrase}"
+
+    /** "Powered by" badge minimum sizes in dp: never render smaller. */
+${badge}
+
+    /** Corner radii in dp (controls use md, cards lg, the badge frame xl). */
+    public object Radius {
+${radius}
+    }
+
+    /** Motion durations in milliseconds. */
+    public object Duration {
+${motion}
+    }
+
+    /** Section ids: core plus every service slug. */
+    public val serviceIds: List<String> = listOf(${SERVICE_IDS.map((s) => `"${s}"`).join(", ")})
+
+    /** The dark theme (default). */
+    public object Dark {
+${ktTheme("dark")}
+    }
+
+    /** The light theme. */
+    public object Light {
+${ktTheme("light")}
+    }
+
+    private val accentsDark: Map<String, BrandAccent> = mapOf(
+${table("dark")}
+    )
+
+    private val accentsLight: Map<String, BrandAccent> = mapOf(
+${table("light")}
+    )
+
+    /** A section's accent. Unknown ids answer the core (platform) violet. */
+    public fun accent(service: String, dark: Boolean = true): BrandAccent {
+        val table = if (dark) accentsDark else accentsLight
+        return table[service] ?: table.getValue("core")
+    }
+
+    /** Which optical cut a mark displayed at [size] dp uses. */
+    public fun opticalCut(size: Float): String = when {
+        size < FAVICON_BELOW -> "favicon"
+        size <= SERVICE_MAX -> "service"
+        else -> "display"
+    }
+}
+
+/** The kit artwork the Compose kit draws when Polaris Key branding is on. */
+public object PolarisBrandMarkData {
+${ktMarks()}
+}
+`;
+}
+
 // ── Run ─────────────────────────────────────────────────────────────────────────────────────
 
 interface Target {
@@ -844,6 +1198,29 @@ interface Target {
   render: () => string;
   parser?: "typescript" | "json" | "css";
 }
+
+/** A kit file copied byte for byte (binary-safe), compared as bytes by `--check`. */
+interface Copy {
+  path: string;
+  kitPath: string;
+}
+
+/**
+ * The Compose kit's Rubik (P6-11): Android resource fonts must sit in res/font with lowercase
+ * names, so the kit TTFs are copied there unchanged; the OFL and the kit notice travel in the
+ * module's assets (a TARGET below), so they ship inside every app that bundles the fonts.
+ */
+const KOTLIN_UI = "sdks/kotlin/ui/src/main";
+const COPIES: Copy[] = [
+  {
+    path: `${KOTLIN_UI}/res/font/polaris_rubik_regular.ttf`,
+    kitPath: "source/fonts/Rubik-Regular.ttf",
+  },
+  {
+    path: `${KOTLIN_UI}/res/font/polaris_rubik_bold.ttf`,
+    kitPath: "source/fonts/Rubik-Bold.ttf",
+  },
+];
 
 const DELIVERY_VARIANTS: KitVariant[] = [
   "dark",
@@ -988,6 +1365,15 @@ const TARGETS: Target[] = [
     render: swiftSource,
   },
   {
+    path: `${KOTLIN_UI}/kotlin/im/plrs/key/ui/brand/PolarisBrandTokens.generated.kt`,
+    render: kotlinSource,
+  },
+  ...["OFL.txt", "FONT-NOTICE.txt"].map((name) => ({
+    path: `${KOTLIN_UI}/assets/polaris-key/fonts/${name}`,
+    render: () =>
+      readFileSync(join(PKG, "kit", "source", "fonts", name), "utf8"),
+  })),
+  {
     path: `${GODOT_BRAND_DIR}/.gdignore`,
     render: () =>
       "# GENERATED by `pnpm gen:brand`: Godot never imports this folder (see packages/brand/scripts/gen.ts).",
@@ -1044,6 +1430,21 @@ export async function run(opts: {
     }
     if (current === content) continue;
     stale.push(path);
+    if (opts.check) continue;
+    mkdirSync(dirname(abs), { recursive: true });
+    writeFileSync(abs, content);
+  }
+  for (const copy of COPIES) {
+    const abs = join(root, copy.path);
+    const content = readFileSync(join(PKG, "kit", copy.kitPath));
+    let current: Buffer | undefined;
+    try {
+      current = readFileSync(abs);
+    } catch {
+      current = undefined;
+    }
+    if (current?.equals(content)) continue;
+    stale.push(copy.path);
     if (opts.check) continue;
     mkdirSync(dirname(abs), { recursive: true });
     writeFileSync(abs, content);
