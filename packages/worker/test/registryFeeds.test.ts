@@ -477,7 +477,7 @@ describe("d1RegistrySettings", () => {
     expect(await d1RegistrySettings(db).settings("djdl", "pypi")).toMatchObject(
       { policy: { ecosystem: "pypi", enabled: true }, feed: null },
     );
-    // F-30's migration seeds Cargo's policy row; Go (tier 3, reserved) has none yet.
+    // F-30's and F-31's migrations seed Cargo's and Go's policy rows.
     expect(
       await d1RegistrySettings(db).settings("djdl", "cargo"),
     ).toMatchObject({
@@ -489,7 +489,7 @@ describe("d1RegistrySettings", () => {
       feed: null,
     });
     expect(await d1RegistrySettings(db).settings("djdl", "go")).toMatchObject({
-      policy: null,
+      policy: { ecosystem: "go", enabled: true },
       feed: null,
     });
   });

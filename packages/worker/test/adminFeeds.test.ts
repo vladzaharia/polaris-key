@@ -283,7 +283,7 @@ describe("product scope", () => {
         { mode: "entitled", available: true },
       ],
     });
-    expect((await admin("GET", product("/go"))).status).toBe(404);
+    expect((await admin("GET", product("/nuget"))).status).toBe(404);
   });
 
   it("validates settings writes: namespace, ceiling, access mode, upstream, unknown fields", async () => {
@@ -678,15 +678,15 @@ describe("platform scope", () => {
     ]);
     const body = await (await admin("GET", platform())).json();
     expect(body).toMatchObject({ owner: SYSTEM_PRODUCT_SLUG });
-    // The bootstrap sets up the six feeds the platform's packages use; Go has no platform module
-    // (F-31), so its feed stays not set up.
+    // The bootstrap sets up the feeds the platform's packages use (the six of tier 1 and Cargo,
+    // F-30); Go has no platform module (F-31), so its feed stays not set up.
     expect(
       body.feeds.map((f: { ecosystem: string; status: string }) => [
         f.ecosystem,
         f.status,
       ]),
     ).toEqual([
-      ...["npm", "pypi", "swift", "maven", "oci", "godot"].map((e) => [
+      ...["npm", "pypi", "swift", "maven", "oci", "godot", "cargo"].map((e) => [
         e,
         "enabled",
       ]),
@@ -835,7 +835,7 @@ describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", ()
     );
     expect(JSON.stringify(listed)).not.toContain(minted.token);
     expect(listed.username).toBe("__token__");
-    expect(listed.feeds).toHaveLength(7);
+    expect(listed.feeds).toHaveLength(8);
     expect(listed.limits).toMatchObject({
       defaultDays: 90,
       urlDefaultDays: 30,

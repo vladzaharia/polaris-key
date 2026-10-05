@@ -470,7 +470,7 @@ describe("the Feeds overview", () => {
     ).toBeTruthy();
     expect(
       within(table).getAllByText("This feed has no settings yet.").length,
-    ).toBe(4);
+    ).toBe(5);
     expect(
       within(main()).queryByRole("heading", { name: "Owners" }),
     ).toBeNull();
