@@ -24,7 +24,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | Python | `python` | 55 | 6 | 0 | 7 |
 | Swift | `macos`, `ios` | 56 | 5 | 0 | 7 |
 | Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 63 | 1 | 0 | 4 |
-| Kotlin | `android`, `jvm` | 59 | 5 | 0 | 4 |
+| Kotlin | `android`, `jvm` | 61 | 5 | 0 | 2 |
 
 ## Core
 
@@ -73,7 +73,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `devices.register` | Keyless registration | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓ | ✓ | web, desktop-bridge: runtime |
 | `devices.manage` | List, rename, deauthorise | transcripts (not recorded) | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | ✓ | web: runtime |
 | `devices.report` | Telemetry (allowlisted keys) | transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | ✓ | web: runtime |
-| `devices.attest` | Device attestation (App Attest, Play Integrity) raising the trust level | unit | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (unowned); N/A (macos: runtime) | ✓; N/A (linux: runtime); N/A (macos: runtime); N/A (windows: runtime); N/A (web: runtime); N/A (ios: outlet); N/A (android: outlet) | planned (unowned); N/A (jvm: runtime) | node, python, web, desktop-bridge, macos, windows, linux, jvm, dotnet, tauri: runtime; any: outlet |
+| `devices.attest` | Device attestation (App Attest, Play Integrity) raising the trust level | unit | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (unowned); N/A (macos: runtime) | ✓; N/A (linux: runtime); N/A (macos: runtime); N/A (windows: runtime); N/A (web: runtime); N/A (ios: outlet); N/A (android: outlet) | ✓; N/A (jvm: runtime); N/A (android: outlet) | node, python, web, desktop-bridge, macos, windows, linux, jvm, dotnet, tauri: runtime; any: outlet |
 | `identity.oidc` | Browser sign-in | transcripts (not recorded) | planned (unowned) | ✓ | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | — |
 | `identity.devicecode` | Device-code sign-in (RFC 8628) with QR | transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | ✓ | web: runtime |
 
@@ -127,7 +127,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `ui.stages` | The boot stage machine: states, events, outcomes | `stage-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `ui.kit` | Gate, activation, sign-in with QR, settings, devices, update banner, pack progress | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | planned (unowned) | ✓ | ✓ | headless: runtime |
-| `commerce.receipt` | Store purchase to licence entitlement | transcripts | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | ✓ | planned (unowned) | — |
+| `commerce.receipt` | Store purchase to licence entitlement | transcripts | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | ✓ | ✓ | — |
 
 ## Unowned gaps
 
@@ -166,7 +166,5 @@ Planned entries no work package owns yet. Each needs an owner before the gap can
 | Godot | `identity.oidc` | Native Godot has no completion path for the OIDC redirect; see P1-07, which ships device-code sign-in instead. |
 | Godot | `packs.transport.msix` | No work package owns an MSIX transport for Godot (program README §9). |
 | Godot | `packs.transport.flatpak` | No work package owns a Flatpak transport for Godot (program README §9). |
-| Kotlin | `devices.attest` | P6-09 brings the standard Play Integrity API into :platform for native hosts; as in Swift (App Attest in PolarisKeyPlatform), no work package wires attestation into the Kotlin SDK client. |
 | Kotlin | `identity.oidc` | Only through a host-supplied sign-in closure, as in Swift; no work package gives the Kotlin SDK its own browser sign-in (P6-07). |
 | Kotlin | `packs.transport.steam` | As in Swift, no work package builds a Steam-depot transport for a JVM desktop app (P5-08 covers Godot only). |
-| Kotlin | `commerce.receipt` | Play Billing is a store edge, not an SDK service; P6-01 is the server side. As in Swift, no work package wires receipts into the Kotlin SDK client. |
