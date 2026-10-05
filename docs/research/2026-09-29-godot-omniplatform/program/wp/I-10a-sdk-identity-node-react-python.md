@@ -17,10 +17,40 @@
 The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
 
 - **[`plans/I-09.md`](../plans/I-09.md):** the §4 transcript and parity rows, the §5 SDK table, and the Kotlin `ui` path.
-- **[`plans/PX-W8.md`](../plans/PX-W8.md):** the `key-entry-limit` outcome reads `manageUrl` through client-core's `readManageUrl` (not `portalUrl`), and the key-entry screen reuses PX-W8's **Free up a device** component (`ui.kit.account`).
+- **[`plans/PX-W8.md`](../plans/PX-W8.md):** the `key-entry-limit` outcome reads `manageUrl` through client-core's `readManageUrl` (not `portalUrl`), and the key-entry screen reuses PX-W8's **Replace a device** component (`ui.kit.account`).
 - **[`plans/PX-W9.md`](../plans/PX-W9.md):** `keyEntries` on every successful key activation; the `keyentry-*` transcripts are owned by PX-W9.
 - **[`plans/PX-W13.md`](../plans/PX-W13.md):** inherit PX-W13's device-label helper (`deviceName`), which PX-W13 ships in every SDK.
 - **[`plans/PX-W17.md`](../plans/PX-W17.md):** replay the `identity.toggle` transcript, add the `identity.toggle` parity row and the UI-kit "Identity off" snapshot.
+
+## Owner decision (2026-10-05): licence choice at sign-in
+
+The owner decided on 2026-10-05 that every sign-in that binds a device asks the person which licence to use (**Choose a license for this device**, with an inline **Replace a device** on full licences), never silently mints a second auto-issued licence, and treats the rank-first rule as the preselected default only. The verbatim decision, the card API and the delegated decisions are in [`plans/I-04.md`](../plans/I-04.md), "Owner decision (2026-10-05): licence choice at sign-in"; that section wins over this brief where they differ. **The device wire does not change** (`PROTOCOL_VERSION` 4, no corpus change).
+
+For this package:
+
+- **No new SDK call.** Replay the device steps of `devicecode-choose.json`,
+  `devicecode-replace.json`, `devicecode-choice-required.json` and `devicecode-autoissue.json`.
+  React also replays `redirect-web-choose.json`.
+- **Polling.** Keep polling `pending` until `expires_in`, because choosing on the card can take a
+  while.
+- **After `ready`,** show the bound tier from the licence document ("Signed in · Standard
+  license").
+- **Constants.** `gen:constants` adds `license_choice_required`, and no SDK branches on it.
+- **React kit naming.** The device-limit screen is **Replace a device**; its confirm is
+  "Replace <device>?" with `signin.replace.consequence` and **Replace and continue** (SIGN-IN.md
+  §3.7, `plans/I-04.md` §F.7). **Replace a device** opens `manageUrl`, where "Free up a device"
+  used to lead. There is no in-app device list until I-13.
+
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- Kit and SDK copy to `signin.*` (US "license"; `signin.key.owned` replaces "This licence belongs…"); "{n} key entries left", never "activations" (SIGN-IN.md D-01, D-25).
+- Native LicenseChoice on I-13's `choose` (React: `useLicenseChoice`), with the row anatomy of SIGN-IN.md §3.6; StatusScreen **signed-out** state and the sign-out confirm of §4.9; "Signed in · <Tier> license" after `ready`.
+- Replay `devicecode-account-wide.json` (I-04 §F.6) with no SDK change.
 
 ## Goal
 

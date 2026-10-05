@@ -1,16 +1,16 @@
 # ST-04 Settings resolver: source chain over row- and column-backed keys, cache, `writeSetting()`, audit with before, after, origin, reason and key, discovery-vs-enforcement test
 
-| Field       | Value                                                                                                                                                                              |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 1: foundation)                                                                                                                             |
-| Size        | 0.8–1.1 engineer-weeks                                                                                                                                                             |
-| Depends on  | [ST-03](ST-03-settings-registry.md), [ST-01b](ST-01b-resync-claims.md)                                                                                                             |
-| Unblocks    | [I-09](I-09-key-entry-attach.md), [ST-05](ST-05-settings-admin-api.md), [ST-15](ST-15-hardcoded-policy.md), [ST-16](ST-16-platform-defaults.md), [ST-24](ST-24-audit-retention.md) |
-| Role        | `pkey-implementer`                                                                                                                                                                 |
-| Plan mode   | no                                                                                                                                                                                 |
-| Gates       | `TABLE_OWNERS`; drift gate (`--check`)                                                                                                                                             |
-| Human input | none                                                                                                                                                                               |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                          |
+| Field       | Value                                                                                                                                                                                                           |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | ST: Settings architecture (S-18) (phase 1: foundation)                                                                                                                                                          |
+| Size        | 0.8–1.1 engineer-weeks                                                                                                                                                                                          |
+| Depends on  | [ST-03](ST-03-settings-registry.md), [ST-01b](ST-01b-resync-claims.md)                                                                                                                                          |
+| Unblocks    | [I-09](I-09-key-entry-attach.md), [ST-05](ST-05-settings-admin-api.md), [ST-15](ST-15-hardcoded-policy.md), [ST-16](ST-16-platform-defaults.md), [ST-24](ST-24-audit-retention.md), [CM-03](CM-03-merchants.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                              |
+| Plan mode   | no                                                                                                                                                                                                              |
+| Gates       | `TABLE_OWNERS`; drift gate (`--check`)                                                                                                                                                                          |
+| Human input | none                                                                                                                                                                                                            |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                       |
 
 ## Goal
 

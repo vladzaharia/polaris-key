@@ -2,7 +2,6 @@ import { RELEASE_PLATFORMS, platformFromFileName } from "@polaris-key/manifest";
 import { CHANNEL_STABLE } from "@polaris-key/protocol";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import {
-  deleteTokenRecord,
   isAllowedDownloadRedirectHost,
   isAllowedStorageHost,
   type Db,
@@ -15,9 +14,9 @@ import {
 } from "../../../core/products.js";
 import { licenseEntitled } from "../../../core/entitledAccess.js";
 import { ErrorCode } from "../../../core/errors.js";
-import { getDevice, getProduct, setDeviceStatus } from "../../../core/data.js";
+import { getProduct } from "../../../core/data.js";
 import { licenseUsable } from "../../../core/devices.js";
-import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
+import { rateLimitOk } from "../../../core/rateLimit.js";
 import { registryOrigin } from "../../../core/registryHostname.js";
 import {
   MAX_LIVE_TOKENS_PER_LICENSE,
@@ -77,11 +76,7 @@ import {
   sendNotice,
   sendSecurityNotice,
 } from "./email.js";
-import {
-  accountDeletedNotice,
-  deviceRemovedNotice,
-  downloadLinkEmail,
-} from "./notices.js";
+import { accountDeletedNotice, downloadLinkEmail } from "./notices.js";
 import { platformOidcConfig } from "../../../core/platform.js";
 import { portalSecurityHeaders } from "./headers.js";
 import { handleProductDownloads } from "./downloads.js";
@@ -90,6 +85,7 @@ import {
   handleDiscover,
   handleDiscoverClaim,
 } from "./discover.js";
+import { freeAccountDevice, portalActionLimit } from "./freeDevice.js";
 
 export function portalJson(
   body: unknown,
@@ -270,6 +266,12 @@ export type PortalHooksFor = (
 export interface DeliveryGate {
   product: ProductPublic;
   delivery: Delivery;
+  /**
+   * Is the product's GitHub repository public (Release's `repositoryPublic`, read at most once
+   * per gate)? `false` when Release is off or the answer could not be read. Only a public
+   * repository's stored download URLs may be handed to a browser.
+   */
+  repositoryPublic: () => Promise<boolean>;
 }
 
 /**
@@ -286,8 +288,16 @@ export async function deliveryGate(
   if (!hooksFor) return null;
   const loaded = await loadProductPublic(db, product);
   if (!loaded) return null;
-  const delivery = hooksFor(loaded, now).delivery();
-  return delivery ? { product: loaded, delivery } : null;
+  const hooks = hooksFor(loaded, now);
+  const delivery = hooks.delivery();
+  if (!delivery) return null;
+  let visibility: Promise<boolean> | undefined;
+  const repositoryPublic = (): Promise<boolean> =>
+    (visibility ??= (async () => {
+      const catalog = hooks.releaseCatalog();
+      return catalog ? catalog.repositoryPublic() : false;
+    })());
+  return { product: loaded, delivery, repositoryPublic };
 }
 
 export type ReleaseFacts = Pick<
@@ -323,11 +333,21 @@ export async function accountMayDownload(
 }
 
 /**
- * Where a download redirects (R6-12): the artifact's own GitHub storage URL when it is one;
- * otherwise, for a PUBLIC deliverable only, Distribution's bytes-host URL for the file
- * (`delivery.deliveryUrl`), accepted only when it is `https` on the configured bytes host. A
- * non-public deliverable is never redirected to the bytes host: the browser holds no device
- * token, so the redirect could only end in a refusal.
+ * Where a download redirects (R6-12), or `null` when nothing here can hand a browser the bytes:
+ *
+ *   1. For a PUBLIC deliverable, Distribution's bytes-host URL for the file
+ *      (`delivery.deliveryUrl`), accepted only when it is `https` on the configured bytes host.
+ *      Distribution serves every location from there (R2, and GitHub through Release's
+ *      installation token, so a PRIVATE repository's asset downloads too), which is why it
+ *      comes first: a GitHub URL alone only works for a public repository.
+ *   2. Otherwise the artifact's own GitHub storage URL, but only when the repository is PUBLIC
+ *      (`gate.repositoryPublic`). A private repository answers a browser's anonymous request
+ *      with GitHub's 404, so before this check the portal offered DJDL's private-repo builds and
+ *      the redirect ended on GitHub's "Not Found" page.
+ *
+ * A non-public deliverable is never redirected to the bytes host: the browser holds no device
+ * token, so the redirect could only end in a refusal. Licensed files stored only on R2 (PX-W3)
+ * and licensed files in a private GitHub repository (PX-W3's plan, Q7) are `null`.
  */
 export async function downloadTarget(
   env: Env,
@@ -335,9 +355,21 @@ export async function downloadTarget(
   gate: DeliveryGate,
   mode: ReleaseAccess,
 ): Promise<string | null> {
+  if (mode === "public") {
+    const hosted = await bytesHostTarget(env, artifact, gate);
+    if (hosted !== null) return hosted;
+  }
   const source = redirectableSourceUrl(artifact);
-  if (source !== null) return source;
-  if (mode !== "public") return null;
+  if (source === null) return null;
+  return (await gate.repositoryPublic()) ? source : null;
+}
+
+/** Distribution's bytes-host URL for a file, when it is `https` on the configured bytes host. */
+async function bytesHostTarget(
+  env: Env,
+  artifact: PortalArtifactRow,
+  gate: DeliveryGate,
+): Promise<string | null> {
   const minted = await gate.delivery.deliveryUrl({
     releaseId: artifact.release_id,
     name: artifact.name,
@@ -419,17 +451,15 @@ export async function requireActionRateLimit(
   product?: string,
   windowSec = 60,
 ): Promise<Response | null> {
-  const ok = await rateLimitOk(
-    env,
-    product ?? "_portal",
-    {
-      bucket,
-      id: `${product ?? "_"}:${session.accountId}:${clientIp(req)}`,
-      limit,
-      windowSec,
-    },
-    now,
+  const { shard, rl } = portalActionLimit(
+    req,
+    session.accountId,
+    bucket,
+    limit,
+    product,
+    windowSec,
   );
+  const ok = await rateLimitOk(env, shard, rl, now);
   return ok ? null : err(429, "rate_limited", "too many attempts");
 }
 
@@ -782,58 +812,37 @@ async function handleDeviceDelete(
   now: number,
 ): Promise<Response> {
   if (req.method !== "DELETE") return err(405, "method_not_allowed");
-  const settings = await getPortalProductSettings(db, product);
-  if (settings.portal_enabled !== 1) return notFound();
-  const license = await getPortalLicense(
-    db,
-    session.accountId,
-    product,
-    licenseId,
-  );
-  if (!license) return notFound();
-  // R5-05: charged AFTER ownership is proven, so a caller who owns no license on this product
-  // cannot spend a budget at all — and the budget they do spend is scoped to this product.
-  const limited = await requireActionRateLimit(
+  // The shared operation (`freeAccountDevice`): the sign-in chooser's Replace runs the same
+  // checks, audit, email and rate-limit budget (plans/I-04.md, owner decision 2026-10-05 §B).
+  const freed = await freeAccountDevice(
     req,
     env,
-    session,
-    "portalDeviceDisconnect",
-    now,
-    20,
-    product,
-  );
-  if (limited) return limited;
-  const device = await getDevice(db, product, deviceId);
-  if (!device || device.license_id !== licenseId) return notFound();
-  await setDeviceStatus(db, product, deviceId, "deauthorized");
-  if (device.token_hash)
-    await deleteTokenRecord(env, product, device.token_hash);
-  await portalAudit(db, {
-    accountId: session.accountId,
-    action: "portal.device.disconnect",
-    product,
-    targetKind: "device",
-    targetId: deviceId,
-    summary: `Disconnected device ${deviceId}`,
-    now,
-  });
-  // A security notice (PORTAL.md §6.3): every verified address, the device by its label and
-  // the product by its name, never the ids.
-  await sendSecurityNotice(
-    env,
     db,
-    session.accountId,
-    session.email,
-    deviceRemovedNotice({
-      deviceLabel: device.label,
-      productName: (await getProduct(db, product))?.name,
-      productSlug: product,
-      origin: new URL(req.url).origin,
-    }),
+    { accountId: session.accountId, email: session.email },
+    product,
+    licenseId,
+    deviceId,
     now,
   );
+  if (!freed.ok) {
+    if (freed.reason === "rate_limited")
+      return err(429, "rate_limited", "too many attempts");
+    return notFound();
+  }
   return portalJson({ ok: true, deviceId });
 }
+
+/**
+ * The token mint's refusal codes once the caller is known to own the product (a stranger only
+ * ever gets `not_found`). The last three are the downloads listing's `PortalFileReason`s, so a
+ * file the listing marks unavailable and a click the mint refuses say the same thing.
+ */
+export const MINT_REFUSAL = {
+  fileNotFound: "file_not_found",
+  notHosted: "not_hosted",
+  licenseInactive: "license_inactive",
+  notEntitled: "not_entitled",
+} as const;
 
 async function handleReleases(
   req: Request,
@@ -960,24 +969,8 @@ async function handleReleases(
   ) {
     return notFound();
   }
-  const artifact = await getPortalArtifact(db, product, releaseId, artifactId);
-  const facts = artifact
-    ? await getPortalReleaseFacts(db, product, releaseId)
-    : null;
-  // Byte delivery is Distribution's: with it off (or no hooks to ask), nothing is minted.
-  const gate = facts ? await deliveryGate(db, hooksFor, product, now) : null;
-  const mode =
-    gate && facts ? await gate.delivery.accessMode(facts.deliverable_id) : null;
-  // Refused at MINT time as well as at redemption: a token that could only ever be rejected is
-  // a row written, a rate-limit charge spent and a URL handed to the user for nothing.
-  if (
-    !artifact ||
-    !facts ||
-    !gate ||
-    !mode ||
-    (await downloadTarget(env, artifact, gate, mode)) === null
-  )
-    return notFound();
+  // Ownership first: a caller with no linked licence for the product learns nothing, not even
+  // whether the release or the file exists. Every refusal before this line is the same 404.
   if (!(await hasLinkedProductLicense(db, session.accountId, product))) {
     return notFound();
   }
@@ -994,12 +987,49 @@ async function handleReleases(
     product,
   );
   if (limited) return limited;
+  // From here the caller owns the product, so a refusal says why, with the downloads listing's
+  // own reason codes (`downloads.ts`), and the portal turns the code into words. Refused at MINT
+  // time as well as at redemption: a token that could only ever be rejected is a row written
+  // and a URL handed to the user for nothing.
+  const artifact = await getPortalArtifact(db, product, releaseId, artifactId);
+  const facts = artifact
+    ? await getPortalReleaseFacts(db, product, releaseId)
+    : null;
+  if (!artifact || !facts)
+    return err(
+      404,
+      MINT_REFUSAL.fileNotFound,
+      "this release or file is no longer offered",
+    );
+  // Byte delivery is Distribution's: with it off (or no hooks to ask), nothing is minted.
+  const gate = await deliveryGate(db, hooksFor, product, now);
+  const mode = gate
+    ? await gate.delivery.accessMode(facts.deliverable_id)
+    : null;
+  if (!gate || !mode)
+    return err(
+      409,
+      MINT_REFUSAL.notHosted,
+      "downloads are not served for this product",
+    );
   // The delivery access every download surface reads (P2b-04): `licensed` needs a usable
   // licence, `entitled` one whose grant holds this release's channel and version.
   if (
     !(await accountMayDownload(db, session.accountId, gate, mode, facts, now))
   )
-    return forbidden(`${mode} release access required`);
+    return err(
+      403,
+      mode === "entitled"
+        ? MINT_REFUSAL.notEntitled
+        : MINT_REFUSAL.licenseInactive,
+      `${mode} release access required`,
+    );
+  if ((await downloadTarget(env, artifact, gate, mode)) === null)
+    return err(
+      409,
+      MINT_REFUSAL.notHosted,
+      "this file cannot be downloaded from the portal yet",
+    );
   const token = await createPortalDownloadToken(env, db, {
     accountId: session.accountId,
     product,
@@ -1084,6 +1114,20 @@ async function handleEmailDownload(
 /** "Email me the download" sends per account, per product, per hour. */
 export const EMAIL_DOWNLOAD_PER_HOUR = 5;
 
+/** A path's non-empty segments, each percent-decoded once; `null` when one is malformed. */
+export function decodeSegments(path: string): string[] | null {
+  const out: string[] = [];
+  for (const raw of path.split("/")) {
+    if (!raw) continue;
+    try {
+      out.push(decodeURIComponent(raw));
+    } catch {
+      return null;
+    }
+  }
+  return out;
+}
+
 export async function handlePortalApi(
   req: Request,
   env: Env,
@@ -1095,7 +1139,13 @@ export async function handlePortalApi(
 ): Promise<Response> {
   let p = path.startsWith("/api") ? path.slice(4) : path;
   if (p.length > 1 && p.endsWith("/")) p = p.slice(0, -1);
-  const segments = p.split("/").filter(Boolean);
+  // The composition root hands over `url.pathname`, which is still percent-encoded, while the
+  // SPA encodes every segment it sends (`encodeURIComponent`). Ids are compared to stored values
+  // byte for byte, so each segment is decoded once here, after the split (an encoded `/` stays
+  // inside its segment). Without this an artifact id like `file:App-1.0.dmg` arrived as
+  // `file%3AApp-1.0.dmg` and the token mint 404'd a file the downloads listing had offered.
+  const segments = decodeSegments(p);
+  if (segments === null) return notFound();
   if (segments[0] === "capabilities") {
     const requested = new URL(req.url).searchParams.get("product");
     return handleCapabilities(env, db, requested);
@@ -1240,10 +1290,18 @@ export async function handlePortalApi(
   // PX-W1: the library and the product page (`library.ts`). Reads only.
   if (head === "library" && rest.length === 0) {
     if (req.method !== "GET") return err(405, "method_not_allowed");
+    const view = await libraryView(db, session.accountId, now, hooksFor);
     return portalJson({
-      ...(await libraryView(db, session.accountId, now, hooksFor)),
+      ...view,
       // PX-W10: the Discover count in the nav (§4.16); the offers themselves are `GET /api/discover`.
-      discoverCount: await discoverCount(env, db, session.accountId, now),
+      // Never a product this same answer lists in the library.
+      discoverCount: await discoverCount(
+        env,
+        db,
+        session.accountId,
+        now,
+        new Set(view.products.map((p) => String(p.product))),
+      ),
     });
   }
   // PX-W10 (G24, G25): Discover's offers and "Add to library" (`discover.ts`).

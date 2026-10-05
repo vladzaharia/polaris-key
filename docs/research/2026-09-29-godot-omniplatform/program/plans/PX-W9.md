@@ -41,6 +41,21 @@ field is empty only without one.
 | Precondition | The S-18 and S-19 decisions sit on the unmerged branch `wp/S-18-S-19-decisions` (`3a367634`). The lead merges that branch before PX-W9 starts. PX-W9 also gains the dependencies **ST-01b** and **ST-03**, the same ones that branch gives I-09                                                          |
 | Line refs    | `main` at `8c28e023`. After a rebase, re-locate each reference by its quoted text                                                                                                                                                                                                                        |
 
+## Owner decision (2026-10-05): licence choice at sign-in
+
+The owner decided on 2026-10-05 that sign-in shows a **Choose a license for this device** step and
+can replace a device inline. The full text is in [`plans/I-04.md`](I-04.md), "Owner decision
+(2026-10-05): licence choice at sign-in". **Effect on this plan:** none on the wire or on the
+counter. These rules are added to §12.2's list of things that never count:
+
+- choosing a licence at sign-in;
+- **Keep the license this device uses**;
+- **Create a new free license**;
+- replacing a device from the card.
+
+A licence added through the card's KeyStep counts once, as a `portal` submission (D20), exactly as
+today. `keyEntries` is never shown in the chooser, because it belongs to the key, not to the seat.
+
 ## 0. Owner decisions encoded (binding)
 
 - **S-16 / I-04.** The decisions that apply here:

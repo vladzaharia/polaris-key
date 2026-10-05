@@ -1,16 +1,16 @@
 # ST-05 Generic settings admin API with compatibility aliases for the bespoke routes
 
-| Field       | Value                                                                                                                                           |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 1: foundation)                                                                                          |
-| Size        | 0.6–0.85 engineer-weeks                                                                                                                         |
-| Depends on  | [ST-04](ST-04-settings-resolver.md)                                                                                                             |
-| Unblocks    | [ST-07](ST-07-settings-row-v2.md), [ST-11](ST-11-sql-only-settings.md), [ST-27](ST-27-alert-destinations.md), [ST-21](ST-21-capability-gate.md) |
-| Role        | `pkey-implementer`                                                                                                                              |
-| Plan mode   | no                                                                                                                                              |
-| Gates       | rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL                                                                                               |
-| Human input | none                                                                                                                                            |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                       |
+| Field       | Value                                                                                                                                                                        |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | ST: Settings architecture (S-18) (phase 1: foundation)                                                                                                                       |
+| Size        | 0.6–0.85 engineer-weeks                                                                                                                                                      |
+| Depends on  | [ST-04](ST-04-settings-resolver.md)                                                                                                                                          |
+| Unblocks    | [ST-07](ST-07-settings-row-v2.md), [ST-11](ST-11-sql-only-settings.md), [ST-27](ST-27-alert-destinations.md), [ST-21](ST-21-capability-gate.md), [CM-03](CM-03-merchants.md) |
+| Role        | `pkey-implementer`                                                                                                                                                           |
+| Plan mode   | no                                                                                                                                                                           |
+| Gates       | rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL                                                                                                                            |
+| Human input | none                                                                                                                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                    |
 
 ## Amendments from approved plans (2026-10-05)
 

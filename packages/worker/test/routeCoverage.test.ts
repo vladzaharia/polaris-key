@@ -190,6 +190,8 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/identity/auth/device/start", ["post"]],
   ["/{product}/identity/auth/device/verify", ["get", "post"]],
   ["/{product}/identity/auth/device/poll", ["post"]],
+  // I-26: the legacy sign-in's licence chooser (server-rendered HTML).
+  ["/{product}/identity/auth/choose", ["get", "post"]],
 ];
 
 /**
@@ -405,6 +407,7 @@ const CORS_EXCLUDED = new Set([
   "/{product}/identity/auth/logout",
   "/{product}/identity/auth/device",
   "/{product}/identity/auth/device/verify",
+  "/{product}/identity/auth/choose",
   "/{product}/config/mint/{mintId}/auth",
   // P2-05: CI routes, authenticated by a `pkeyci_` bearer — never called from a browser page.
   "/{product}/release/channels/{channel}/promote",
