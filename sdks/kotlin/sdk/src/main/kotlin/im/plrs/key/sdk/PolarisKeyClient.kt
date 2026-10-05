@@ -27,6 +27,11 @@ package im.plrs.key.sdk
 import im.plrs.key.config.ConfigClient
 import im.plrs.key.config.ConfigClientOptions
 import im.plrs.key.core.ActivationSource
+import im.plrs.key.core.AttestResult
+import im.plrs.key.core.AttestationProvider
+import im.plrs.key.core.AttestationProviders
+import im.plrs.key.core.NoAttestation
+import im.plrs.key.core.attestDevice
 import im.plrs.key.core.BlockInfoRecord
 import im.plrs.key.core.Capabilities
 import im.plrs.key.core.CoreContext
@@ -112,6 +117,12 @@ public data class PolarisKeyClientOptions(
     val update: UpdateClientOptions? = null,
     /** Packs: the content stamp, embedded baselines, variant preferences and the store directory. */
     val packs: PacksOptions = PacksOptions(),
+    /**
+     * The platform attestation `devices.attest()` uses (Play Integrity on Android, installed by
+     * `PolarisKeyAndroid.client`). Null: the process's [im.plrs.key.core.AttestationProviders]
+     * provider, else the typed `runtime` N/A ([im.plrs.key.core.NoAttestation]).
+     */
+    val attestation: AttestationProvider? = null,
 )
 
 /** One snapshot of everything a UI layer renders from. `doc` is the LICENCE document. */
@@ -157,7 +168,19 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     private val reacquire: ReacquireFn = { current, source -> reacquireToken(current, source) }
 
     public val license: LicenseClient = LicenseClient(core, options.license) { syncAfterAcquisition() }
-    public val config: ConfigClient = ConfigClient(core, options.config, reacquire)
+    private val attestationProvider: AttestationProvider? = options.attestation
+
+    /** The provider attest() uses now (the option, the process's installed one, or none). */
+    private fun attestation(): AttestationProvider = attestationProvider ?: AttestationProviders.installed ?: NoAttestation
+
+    /** §3.10: attest once for a retry; false when this runtime cannot (the refusal then stands). */
+    private suspend fun attestForRetry(): Boolean {
+        val provider = attestation()
+        if (provider.unavailable() != null) return false
+        return core.attestDevice(provider).trustLevel == "attested"
+    }
+
+    public val config: ConfigClient = ConfigClient(core, options.config, reacquire) { attestForRetry() }
     public val release: ReleaseClient = ReleaseClient(core)
 
     /**
@@ -171,6 +194,41 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
 
     /** The update client: `check()`, and with `update` options the signed decision. */
     public val update: UpdateClient = options.update?.let { UpdateClient(core, it, packs) } ?: UpdateClient(core)
+
+    /** Device attestation and the roster: `client.devices.attest()` (§3.10). */
+    public val devices: DevicesFacet = DevicesFacet()
+
+    /** Store purchases to licence flags (§3.9): `binding()`, `claim()`, `claimPlay()`, `claimSteam()`. */
+    public val commerce: CommerceClient = CommerceClient(
+        core,
+        attest = { attestForRetry() },
+        isEntitled = { license.isEntitled(it) },
+        outletKind = { update.outlet()?.kind },
+    )
+
+    /** The `devices.*` calls under one name, as every SDK spells them. */
+    public inner class DevicesFacet internal constructor() {
+        /**
+         * Raise this device to trust level `attested` (P6-02): the Worker's challenge, the platform
+         * token (Play Integrity on a play build Google Play installed), `POST /devices/attest`.
+         * Throws [im.plrs.key.core.UnsupportedException] (`runtime` on a JVM desktop, `outlet` on a
+         * build that cannot attest) or a [im.plrs.key.core.PolarisException] with the Worker's code.
+         */
+        public suspend fun attest(): AttestResult = core.attestDevice(attestation())
+
+        /** Why this install cannot attest, or null when it can. Offline. */
+        public fun attestUnavailable(): im.plrs.key.core.Unsupported? = attestation().unavailable()
+
+        public suspend fun register(): RegisterResult = this@PolarisKeyClient.register()
+
+        public suspend fun list(): List<DeviceInfo> = listDevices()
+
+        public suspend fun current(): DeviceInfo = currentDevice()
+
+        public suspend fun rename(deviceId: String, label: String?): Unit = renameDevice(deviceId, label)
+
+        public suspend fun deauthorize(deviceId: String): Unit = deauthorizeDevice(deviceId)
+    }
 
     /** Device-code sign-in. Refuses with `service-unavailable` unless the product runs Identity. */
     public val identity: IdentityClient = IdentityClient(core, onAcquired = { syncAfterAcquisition() })

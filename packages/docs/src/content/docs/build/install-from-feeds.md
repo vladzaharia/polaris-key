@@ -201,6 +201,7 @@ dependencies {
 | `polaris-key-godot-play`, `polaris-key-godot-direct`         | the Godot Android plugin binding over the platform AAR of the same flavour                                             |
 | `polaris-key-android-play`, `polaris-key-android-direct`     | the Kotlin SDK's Android glue, one per flavour: `polaris-key-sdk` wired to the platform AAR of the same flavour        |
 | `polaris-key-ui`                                             | the Jetpack Compose UI kit over `polaris-key-sdk`                                                                      |
+| `polaris-key-billing`                                        | Play Billing purchases and restores as licence flags (`PolarisPlayBilling`), over `polaris-key-sdk`                    |
 
 Pick one platform flavour per build: the two are a policy boundary, because Play forbids
 self-update. Maven builds use a repository with a fatal checksum policy:

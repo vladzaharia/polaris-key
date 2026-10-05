@@ -15,7 +15,8 @@
     "sdks/kotlin/conformance/src/test",
     "sdks/kotlin/android/src/test",
     "sdks/kotlin/android/src/testPlay",
-    "sdks/kotlin/android/src/testDirect"
+    "sdks/kotlin/android/src/testDirect",
+    "sdks/kotlin/billing/src/test"
   ],
   "features": {
     "core.verify": {
@@ -114,15 +115,18 @@
       "note": "PolarisKeyClient.report(): the facts, the verified config and entitlement values, caps, content.packSetId, gate {status}, outlet, and the update-health journal (`updates`, at most 16 per report, marked sent once accepted; notes/SDK-PARITY-PASS.md §3.13). UpdateClient journals update_offered, the boot guard update_applied, update_reverted, boot_rolled_back and update_confirmed, PacksClient update_downloaded, update_applied and pack_failed, and both Android install drivers update_downloaded and update_applied (UpdateEventJournalTest, BootGuardEventsTest, DevicesTest, DirectInstallDriverTest)."
     },
     "devices.attest": {
-      "status": "planned",
-      "unowned": true,
+      "status": "implemented",
       "except": [
         {
           "runtime": "jvm",
           "reason": "runtime"
+        },
+        {
+          "runtime": "android",
+          "reason": "outlet"
         }
       ],
-      "note": "P6-09 brings the standard Play Integrity API into :platform for native hosts; as in Swift (App Attest in PolarisKeyPlatform), no work package wires attestation into the Kotlin SDK client."
+      "note": "client.devices.attest() (:core's attestDevice): POST devices/attest/challenge, the platform token for the requestHash, POST devices/attest, the Worker's refusal codes kept. On Android :android's PlayIntegrityAttestation over :platform's PlatformIntegrity (the challenge's cloud project number, or AndroidOptions.playCloudProjectNumber); a direct build, or a play build Google Play did not install, answers outlet. Attest-and-retry (one attest, one retry on attestation_required) on edge-mint and commerce claims (AttestTest, PlayIntegrityAttestationTest). A JVM desktop build answers runtime (NoAttestation)."
     },
     "identity.oidc": {
       "status": "planned",
@@ -310,9 +314,8 @@
       "note": "P6-11's :ui (polaris-key-ui, Jetpack Compose + Material 3, Android): PolarisBoot over :core's stage machine, the gate (every terminal state and the grace banner), activation, sign-in with QR, settings, devices, the update banner and prompt and pack progress, each with a StateFlow state holder; neutral over the host's MaterialTheme by default, Polaris Key branding behind PolarisBranding.PolarisKey and the Powered-by badge behind showPoweredBy. Proof: every screen's Roborazzi snapshots (light, dark, 200 % font, phone, tablet; neutral and branded) plus the branding, contrast and TalkBack suites."
     },
     "commerce.receipt": {
-      "status": "planned",
-      "unowned": true,
-      "note": "Play Billing is a store edge, not an SDK service; P6-01 is the server side. As in Swift, no work package wires receipts into the Kotlin SDK client."
+      "status": "implemented",
+      "note": "client.commerce (:sdk's CommerceClient, P6-01): binding() and claim(store, payload) with claimPlay, claimSteam and claimAppStore, ClaimResult Ok / NotOwned / AttestationRequired / Refused(code, reason) (the host syncs after an Ok claim, as the transcript pins), attest-and-retry on attestation_required, hiddenHere/isUnlocked (App Store 3.1.3(b)); the commerce-claim transcript replays. Steam claims work on the JVM (the host passes the GetAuthTicketForWebApi hex ticket); Play Billing's one-call purchase and restore are :billing's PolarisPlayBilling in polaris-key-billing (obfuscatedAccountId = the binding, claim, acknowledge after the claim)."
     }
   }
 }

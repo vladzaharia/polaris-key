@@ -6,9 +6,10 @@ P6-05: P6-06 landed the verified core and the conformance runner, P6-07 the lice
 devices, identity and release services and the umbrella client, P6-08 the update client and the
 pack engine, P6-09 the platform module's stable API, P6-10 the Godot binding on `:platform`, P6-11
 the Compose UI kit and P6-12 the Android glue. `parity.json` says which features are implemented;
-the docs' parity page renders it. The only rows it leaves planned are the ones Swift also leaves
-planned with no owner (`devices.attest`, `identity.oidc`, `packs.transport.steam`,
-`commerce.receipt`), each with a note.
+the docs' parity page renders it. The SDK parity pass (notes/SDK-PARITY-PASS.md §5.5) added
+attestation, commerce, update-health events and the typed activation results; the rows it leaves
+planned are `identity.oidc` (native browser sign-in waits on I-15) and `packs.transport.steam`,
+each with a note.
 
 | Module         | Kind                  | What                                                                                                                                                                      |
 | -------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -26,6 +27,7 @@ planned with no owner (`devices.attest`, `identity.oidc`, `packs.transport.steam
 | `:godot`       | Android library (AAR) | the Godot Android plugin (v2) over `:platform` ONLY, singleton `PolarisKeyAndroid` (`../godot/native/android/`); `checkPlatformOnly`                                      |
 | `:boundary`    | Android app (probe)   | an empty app per flavour; `tools/check_flavours.sh` proves the flavour boundary on its release                                                                            |
 | `:ui`          | Android library (AAR) | the Jetpack Compose UI kit (P6-11): boot shell, gate, activation, sign-in with QR, settings, devices, update banner and prompt, pack progress; see `ui/README.md`         |
+| `:billing`     | Android library (AAR) | Play Billing as licence flags (SP-K05): `PolarisPlayBilling` buys with the licence binding as `obfuscatedAccountId`, claims, acknowledges after the claim, restores       |
 
 `:ui` sees `:sdk` and never `:platform` or `:android`. No JVM module has an Android
 dependency, each service module depends on `:core` only (never on a sibling; `:sdk` is the one
@@ -158,6 +160,20 @@ client.identity.waitForSignIn(prompt)
   `renameDevice`, `deauthorizeDevice`, the report, and two ports: `FingerprintSource`
   (`JvmFingerprintSource` on a desktop) and `DeviceFactsSource` (`JvmDeviceFactsSource`); the
   Android implementations are `:android`'s.
+- **`devices.attest()`** (P6-02, notes/SDK-PARITY-PASS.md §3.10): `client.devices.attest()` runs the
+  Worker's challenge, the platform token and `POST /devices/attest` through an
+  `AttestationProvider`: Play Integrity on a play build Google Play installed (`:android`'s
+  `PlayIntegrityAttestation`, installed by `PolarisKeyAndroid.client`), the typed `outlet` N/A on any
+  other Android build and `runtime` on a JVM desktop. Edge-mint and commerce claims that answer
+  `attestation_required` attest once and retry once.
+- **`client.commerce`** (P6-01, §3.9): `binding()` (hand `bindingId` to the store before buying),
+  `claim(store, payload)`, `claimPlay`, `claimSteam` (the host passes the `GetAuthTicketForWebApi`
+  hex ticket; works on the JVM), `claimAppStore`, typed `ClaimResult`s (`Ok`, `NotOwned`,
+  `AttestationRequired`, `Refused(code, reason)`), `hiddenHere`/`isUnlocked` (App Store 3.1.3(b)).
+  After an `Ok` claim call `sync(force = true)`. `polaris-key-billing`'s `PolarisPlayBilling`
+  (`PolarisPlayBilling.create(context, client)`) is the one-call Play purchase: `purchase(...)`
+  sets the binding as `obfuscatedAccountId`, claims, acknowledges only after the claim
+  answered ok and syncs; `restore()` and the `PurchasesUpdatedListener` loop claim what Play holds.
 - **`:identity`**: `beginSignIn`, `pollSignIn` (once), `waitForSignIn` (paced, cancellable).
 - **`:release`**: `changelog`, `installUrl`, `downloadUrl` (built, never fetched), `verifyRecord`
   (a `pkey-release+jws` against the keys the app pins; `:core`'s `verifyReleaseRecord`, which the

@@ -128,6 +128,12 @@ public class Capabilities(
             capabilityDetectorKey(Feature.packsApplyDelta, UnsupportedReason.dependency) to {
                 if (zstdNativeLoads) null else "zstd-jni's native libzstd does not load on this runtime"
             },
+            // SP-K04: `devices.attest` on Android is `outlet` unless this install can attest (a play
+            // build Google Play installed); :android registers the provider that knows.
+            capabilityDetectorKey(Feature.devicesAttest, UnsupportedReason.outlet) to {
+                val p = AttestationProviders.installed
+                if (p == null) "no attestation provider in this build (PolarisKeyAndroid.client installs Play Integrity)" else p.unavailable()?.detail
+            },
         )
 
         /** Whether zstd-jni's native library loads here (probed once, by reflection). */

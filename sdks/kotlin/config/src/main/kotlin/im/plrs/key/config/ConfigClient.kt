@@ -46,6 +46,11 @@ public class ConfigClient(
     private val core: CoreContext,
     options: ConfigClientOptions = ConfigClientOptions(),
     private val reacquire: ReacquireFn? = null,
+    /**
+     * §3.10's attest-and-retry: called once when an edge-mint answers 403 `attestation_required`;
+     * true when the device attested (the mint is then retried once). Null: the refusal stands.
+     */
+    private val attest: (suspend () -> Boolean)? = null,
 ) {
     private val localOverrides = options.localOverrides
     private val envPrefix = options.envPrefix
@@ -98,7 +103,7 @@ public class ConfigClient(
         if (shared != null) return shared.await()
         mine!!
         try {
-            val (deviceToken, fresh) = MintEndpoint.mint(core, recipeId, reacquire)
+            val (deviceToken, fresh) = im.plrs.key.core.attestAndRetry(attest) { MintEndpoint.mint(core, recipeId, reacquire) }
             mintLock.withLock {
                 minted[recipeId] = Held(deviceToken, fresh)
                 if (minting[recipeId] === mine) minting.remove(recipeId)

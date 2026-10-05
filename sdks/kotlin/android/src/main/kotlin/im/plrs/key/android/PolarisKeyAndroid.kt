@@ -7,6 +7,7 @@
 //   outlet.detect         AndroidOutletSignalReader (unless UpdateClientOptions.signals is set)
 //   update.driver         this flavour's driver (unless UpdateClientOptions.installDriver is set), with
 //                         `platform: android`, the flavour's format and binary methods
+//   devices.attest       PlayIntegrityAttestation (unless PolarisKeyClientOptions.attestation is set)
 //   packs.transport.play  the carried packs Play holds now join PacksOptions.embedded (re-read at
 //                         every client construction, i.e. every launch); the pack store defaults to
 //                         `noBackupFilesDir/pkey/<product>/packs`
@@ -19,6 +20,7 @@ package im.plrs.key.android
 import android.app.Activity
 import android.content.Context
 import android.os.Build
+import im.plrs.key.core.AttestationProviders
 import im.plrs.key.core.BinaryMethod
 import im.plrs.key.core.Platform
 import im.plrs.key.core.Store
@@ -42,6 +44,11 @@ public data class AndroidOptions(
     val playUpdates: PlayUpdatePolicy = PlayUpdatePolicy(),
     /** A store an earlier build used (a FileStore); its token and device id move into the Keystore. */
     val legacyStore: Store? = null,
+    /**
+     * The Play Integrity cloud project number `devices.attest()` uses when the Worker's challenge
+     * names none (the operator usually configures it there). Digits only.
+     */
+    val playCloudProjectNumber: String? = null,
 )
 
 /** When Play's own signals make an update urgent (play build; PlayInstallDriver); null turns a signal off. */
@@ -103,8 +110,13 @@ public object PolarisKeyAndroid {
             handlers = p.handlers,
             objectTransport = p.objectTransport,
         )
+        // devices.attest (SP-K04): Play Integrity, unless the host brought its own provider. Installed
+        // process-wide too, so supports(devices.attest) answers `outlet` on a build that cannot attest.
+        val attestation = options.attestation ?: PlayIntegrityAttestation.create(ctx, android.playCloudProjectNumber)
+        if (options.attestation == null) AttestationProviders.installed = attestation
         val built = PolarisKeyClient(
             options.copy(
+                attestation = attestation,
                 core = core,
                 license = license,
                 factsSource = options.factsSource ?: AndroidDeviceFactsSource(ctx),

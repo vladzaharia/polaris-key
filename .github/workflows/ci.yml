@@ -473,14 +473,14 @@ jobs:
         run: >-
           ./gradlew --no-daemon :platform:testPlayDebugUnitTest :platform:testDirectDebugUnitTest
           :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest :ui:verifyRoborazziDebug
-          :android:testPlayDebugUnitTest :android:testDirectDebugUnitTest
+          :android:testPlayDebugUnitTest :android:testDirectDebugUnitTest :billing:testDebugUnitTest
       - name: Lint and assembleRelease (play and direct)
         working-directory: sdks/kotlin
         run: >-
           ./gradlew --no-daemon :platform:lintPlayRelease :platform:lintDirectRelease
           :godot:lintPlayRelease :godot:lintDirectRelease :android:lintPlayRelease :android:lintDirectRelease
           :platform:assembleRelease :godot:assembleRelease :android:assembleRelease :boundary:assembleRelease
-          :ui:lintRelease :ui:assembleRelease
+          :ui:lintRelease :ui:assembleRelease :billing:lintRelease :billing:assembleRelease
       - name: Flavour boundary
         run: sdks/kotlin/tools/check_flavours.sh
       - name: Module boundaries (:core has no Android dependency, :platform no SDK module, only :android sees both)
