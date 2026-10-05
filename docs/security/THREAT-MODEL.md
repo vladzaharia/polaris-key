@@ -4609,6 +4609,67 @@ The login card is the one place a Polaris Key account's credentials are entered
   re-encoded (the strict content-type alternative the design allows, as for the product media
   proxy).
 
+### Login-card providers: Google, Apple and Steam (I-06)
+
+The login card signs people in with Google, Apple and Steam through Polaris's own platform
+clients (S-16 §5.2): one Google OAuth client, one Apple Services ID and one Steam Web API key per
+environment, under `/login/<provider>` (`services/identity/providers/`). They are account sign-in
+methods, never behind a product's Identity toggle. S-16 §5.4 item 2 (broker confusion) is I-06's.
+
+- **Broker confusion and audience (item 2).** `verifyProviderIdToken` takes the audience as a
+  required argument and refuses an empty one, so there is no "any audience" mode: a login-card
+  token must name exactly the platform client id (Google) or the Polaris Services ID (Apple), a
+  multi-audience token must carry that client as `azp`, and a present `azp` must equal it. A token
+  Apple or Google minted for a developer's bundle id (I-13's native sign-in) is therefore refused
+  on the card, and I-13 will pass the bundle id, so a card token is refused there. A provider is
+  offered only when all of its values are set and its sealed secret opens, so a missing client id
+  never reaches audience checking. Steam (OpenID 2.0) has no audience; its equivalents are an
+  exact `openid.return_to` (our origin, our path and this flow's `state`) among the signed fields,
+  `op_endpoint` = Steam's, and Steam's own `check_authentication` verdict, never the redirect's
+  parameters alone. Every `openid.*` key (and `state`) must appear exactly once and the body sent
+  to `check_authentication` is rebuilt from those single values, so a repeated `claimed_id` placed
+  before Steam's genuine one cannot make the local checks and Steam's verdict look at two
+  different identities (an account-takeover shape found in review).
+- **Mix-up (RFC 9207).** Each provider has its own callback path and a flow records the provider
+  it was started for; a `state` is never redeemed on another provider's callback. Where the
+  provider advertises `authorization_response_iss_parameter_supported` (Google), `iss` is required
+  on the authorization response, and a present `iss` must equal the issuer in any case.
+- **Discovery is data (SSRF).** The discovery document is fetched from the provider's fixed
+  issuer, its `issuer` must match exactly, and every URL it names (authorize, token, JWKS), like
+  every other outbound provider call, passes one door (`providers/net.ts`): `https:` only, no
+  credentials, the default port, no private, loopback or link-local literal, and a per-provider
+  host allowlist. Redirects are never followed and bodies are capped at 64 KB, so a poisoned
+  document cannot aim the token POST (which carries the client secret) or the key fetch elsewhere.
+- **Login CSRF without a Lax cookie.** Apple answers with a cross-site `form_post`, on which a
+  `SameSite=Lax` cookie is not sent, so the flow is found by its `state` alone, server-side, in
+  the single-use store (peppered hash, ten minutes, consumed atomically by the first callback,
+  burned by a cancel or failure). It is still bound to the browser that started it: start sets
+  `__Host-pkey_signin` (random, `SameSite=None; Secure; HttpOnly`, ten minutes), whose hash the
+  flow holds, and a callback without the matching cookie is refused. The cookie opens nothing by
+  itself. Residual: a browser that blocks `SameSite=None` cookies on a cross-site top-level POST
+  cannot finish Apple sign-in and is told to start again.
+- **Credential custody.** The Google client secret, the Apple `.p8` and the Steam Web API key are
+  Worker secrets holding `keyvault.seal` blobs bound to `pkey:v2:_platform:signin-provider-secret:<id>`,
+  a slot no product slug can spell under a kind of its own; a copy of the Worker secret without
+  the KEK is inert. The `.p8` only ever leaves as a five-minute ES256 client secret.
+- **Upstream tokens.** ID tokens are verified once (signature against the provider JWKS, issuer,
+  audience, `azp`, `nonce`, `iat` within the ID-token age) and never stored; the access and refresh
+  tokens a token endpoint also returns are dropped unread. Apple's first-consent `user` field is
+  unsigned, so it is only a display suggestion; the email always comes from the signed token.
+- **Verified email.** `emailVerified` is true only when the provider asserted it in the signed
+  token (`email_verified` `true`, or Apple's `"true"`); Steam supplies no email. The card never
+  joins by email match (I-05); I-07's interstitial decides what an unverified or absent email needs.
+- **Apple server-to-server notifications.** `POST /login/apple/notifications` accepts only a JWT
+  signed by Apple, issued by Apple, addressed to the Services ID and at most seven days old (Apple
+  retries). Events flag the link (`account_links.provider_flag`: `consent_revoked`,
+  `account_deleted`, `email_disabled`) and are audited; they never delete it, since removing a
+  method stays the person's own step-up action with its last-method guard. A replayed event only
+  re-applies an idempotent flag. `account_deleted` is final; a fresh Apple sign-in clears
+  `consent_revoked`, and `email-enabled` clears `email_disabled`.
+- **Abuse.** Start, callback and notifications are rate limited per caller IP in their own
+  buckets (`portalProviderStart`, `portalProviderCallback`, `appleNotifications`), all failing
+  closed.
+
 ### Discover: free offers and "Add to library" (PX-W10)
 
 `GET /api/discover` lists the products whose licence policy would auto-issue to the signed-in

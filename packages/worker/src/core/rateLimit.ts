@@ -91,6 +91,11 @@ const FAIL_MODE: Record<string, FailMode> = {
   adminCallback: "closed",
   portalLogin: "closed",
   portalMagic: "closed",
+  // I-06: the login card's Google, Apple and Steam legs (start and callback), and Apple's
+  // server-to-server notifications.
+  portalProviderStart: "closed",
+  portalProviderCallback: "closed",
+  appleNotifications: "closed",
   portalClaimKey: "closed",
   // P2-02: the trusted-publisher exchange mints a `pkeyci_` token from a GitHub OIDC token —
   // per caller IP (every request), and per product (charged only after the token passes the

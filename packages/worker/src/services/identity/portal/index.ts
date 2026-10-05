@@ -3,9 +3,9 @@
  *
  * ── WHY THE ROUTES DID NOT MOVE WITH THE FILES ──────────────────────────────────────────────
  *
- * `/login`, `/callback`, `/logout`, `/magic/verify`, `/api/*` (the login card's `/api/signin/*`
- * among them, I-07), `/download/<token>`, `/media/<product>/<asset>` (PX-W1) and
- * `/media/avatar/<key>` (I-07) are ROOT
+ * `/login`, `/login/<provider>/…` (I-06), `/callback`, `/logout`, `/magic/verify`, `/api/*`
+ * (the login card's `/api/signin/*` among them, I-07), `/download/<token>`,
+ * `/media/<product>/<asset>` (PX-W1) and `/media/avatar/<key>` (I-07) are ROOT
  * paths, reserved ahead of every product slug by `router.ts`. They stay exactly where they
  * were, and they must: the portal is one account across every tenant on the deployment — an
  * account can hold licences for several products at once — so there is no `<product>` to scope
@@ -34,6 +34,7 @@ import {
 import { portalSecurityHeaders } from "./headers.js";
 import { handlePortalMedia } from "./media.js";
 import { serveAvatar } from "../card/avatars.js";
+import { handleProviderSignInPath } from "../providers/flow.js";
 
 function portalShell(): Response {
   return new Response(
@@ -89,6 +90,10 @@ export async function handlePortal(
     path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
 
   if (clean === "/login") return handlePortalLogin(req, env, db);
+  // I-06: Google, Apple and Steam on the login card (`../providers/flow.ts`).
+  if (clean.startsWith("/login/")) {
+    return handleProviderSignInPath(req, env, db, clean, { now });
+  }
   if (clean === "/callback") return handlePortalCallback(req, env, db, now);
   if (clean === "/logout") return handlePortalLogout(req, env, db, now);
   if (clean === "/magic/verify") return handleMagicVerify(req, env, db, now);

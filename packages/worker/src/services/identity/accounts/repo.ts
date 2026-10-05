@@ -38,6 +38,9 @@ export interface AccountLinkRow {
   amr_json: string | null;
   created_at: number;
   last_used_at: number;
+  /** I-06: what the provider reported since linking (`consent_revoked`, `account_deleted`,
+   *  `email_disabled`), or NULL. Absent on rows read before migration 0076 applies. */
+  provider_flag?: string | null;
 }
 
 /** The issuer key of an email sign-in method (its subject is the normalised address). */

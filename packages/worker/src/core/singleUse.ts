@@ -22,6 +22,8 @@ export type SingleUseKind =
   | "portal-flow"
   /** Portal email magic link, by token. */
   | "portal-magic"
+  /** A login-card provider sign-in (Google, Apple, Steam; I-06), by `state`. */
+  | "signin-flow"
   /** Console (admin) OIDC sign-in, by `state`. */
   | "admin-flow"
   /** Product OIDC sign-in, by `state`. */
