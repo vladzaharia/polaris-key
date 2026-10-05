@@ -71,27 +71,28 @@ silently stop matching a returning machine to its existing free-tier enrollment.
 
 ## What's in the corpus
 
-Nine files and the content corpus, one directory, so a runner can point at `corpus/v2/` and find everything it needs:
+Ten files and the content corpus, one directory, so a runner can point at `corpus/v2/` and find everything it needs:
 
-| File                 | Contents                                                                                                                                                                                                                                                                              |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cases.json`         | JWS cases, license/config documents, trust manifests, clock-floor sequences, offline bundles, and (wire contract v4) channel feeds and release records. A case whose payload holds a number that cannot be a wire integer lists those pointers in `nonWireIntegers`, beside `expect`. |
-| `gate-matrix.json`   | The client gate's decision table — every input combination and the state it must produce.                                                                                                                                                                                             |
-| `fingerprint.json`   | Hardware-fingerprint and device-id derivation vectors, and the §6.1 source rules: `windowsCim` (with `windowsCimCommand`), `linuxAnchor`, `ramBuckets`. Node and Python run all three; Swift runs `ramBuckets`.                                                                       |
-| `stage-matrix.json`  | The boot stage machine (client boot behaviour, outside the wire contract): rows, guard cases and (version 2) boot-confirmation cases.                                                                                                                                                 |
-| `headers.json`       | WIRE-CONTRACT-V3 §5.2: each runtime spelling of a platform or arch and its canonical header value, or none. The rows are the `PLATFORM_SPELLINGS` / `ARCH_SPELLINGS` tables.                                                                                                          |
-| `config-matrix.json` | WIRE-CONTRACT-V4 §2.2.1: config precedence, the variable name, the strict environment value and the user-visible list, each with a no-environment answer where it differs (`expectNoEnv`).                                                                                            |
-| `update-matrix.json` | WIRE-CONTRACT-V4 §11.1: version comparisons, capability narrowing, the decision's outlet, rollout buckets and every update-decision row with its boot value.                                                                                                                          |
-| `outlet-matrix.json` | WIRE-CONTRACT-V4 §11.2: outlet capability defaults and narrowing, the listing-URL prefixes, the detection signals and every detection row.                                                                                                                                            |
-| `plan-matrix.json`   | WIRE-CONTRACT-V4 §11.4: the install planner's rows, variant selection and target mapping (packs v1).                                                                                                                                                                                  |
-| `content/`           | WIRE-CONTRACT-V4 §2.6: `content/cases.json` (path rules, the files index, the chunk index, full, delta, file and chunk apply, `packSetId`, the content stamp, `frameWindow`) over the committed blobs in `content/blobs/`. Source only, not mirrored.                                 |
+| File                   | Contents                                                                                                                                                                                                                                                                              |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cases.json`           | JWS cases, license/config documents, trust manifests, clock-floor sequences, offline bundles, and (wire contract v4) channel feeds and release records. A case whose payload holds a number that cannot be a wire integer lists those pointers in `nonWireIntegers`, beside `expect`. |
+| `gate-matrix.json`     | The client gate's decision table — every input combination and the state it must produce (`rows`) — and, in `entitlementRows`, what `isEntitled` answers in each licence state.                                                                                                       |
+| `fingerprint.json`     | Hardware-fingerprint and device-id derivation vectors, and the §6.1 source rules: `windowsCim` (with `windowsCimCommand`), `linuxAnchor`, `ramBuckets`. Node and Python run all three; Swift runs `ramBuckets`.                                                                       |
+| `stage-matrix.json`    | The boot stage machine (client boot behaviour, outside the wire contract): rows, guard cases and (version 2) boot-confirmation cases.                                                                                                                                                 |
+| `headers.json`         | WIRE-CONTRACT-V3 §5.2: each runtime spelling of a platform or arch and its canonical header value, or none. The rows are the `PLATFORM_SPELLINGS` / `ARCH_SPELLINGS` tables.                                                                                                          |
+| `config-matrix.json`   | WIRE-CONTRACT-V4 §2.2.1: config precedence, the variable name, the strict environment value and the user-visible list, each with a no-environment answer where it differs (`expectNoEnv`).                                                                                            |
+| `update-matrix.json`   | WIRE-CONTRACT-V4 §11.1: version comparisons, capability narrowing, the decision's outlet, rollout buckets and every update-decision row with its boot value.                                                                                                                          |
+| `outlet-matrix.json`   | WIRE-CONTRACT-V4 §11.2: outlet capability defaults and narrowing, the listing-URL prefixes, the detection signals and every detection row.                                                                                                                                            |
+| `plan-matrix.json`     | WIRE-CONTRACT-V4 §11.4: the install planner's rows, variant selection and target mapping (packs v1).                                                                                                                                                                                  |
+| `feed-url-matrix.json` | The app-updater feed URLs (`appcast`, `winsparkle`, `velopack`, `appInstaller`, `zsync`) expanded from discovery's `update.endpoints` templates, or `{unsupported: "product"}` when a template is missing (`plans/SP-00.md` D5).                                                      |
+| `content/`             | WIRE-CONTRACT-V4 §2.6: `content/cases.json` (path rules, the files index, the chunk index, full, delta, file and chunk apply, `packSetId`, the content stamp, `frameWindow`) over the committed blobs in `content/blobs/`. Source only, not mirrored.                                 |
 
 There is exactly one corpus: v1 was deleted when wire contract v2 shipped, so there is no
 dual-shape ambiguity for a runner to pick the wrong side of. Version constants travel with the
 files themselves — `corpusVersion` **2**, `gateMatrixVersion` **2**, `fingerprintVersion` **1**,
 `stageMatrixVersion` **3**, `headersVersion` **1**, `configMatrixVersion` **1**,
 `updateMatrixVersion` **1**, `outletMatrixVersion` **1**, `planMatrixVersion` **2**,
-`contentCorpusVersion` **2** — and case counts, generated straight from the corpus files, live at
+`feedUrlMatrixVersion` **1**, `contentCorpusVersion` **2** — and case counts, generated straight from the corpus files, live at
 [Conformance corpus v2](/docs/reference/corpus/).
 
 ## The Swift resource mirror
@@ -159,7 +160,7 @@ over it and needs a PR of its own with the guard deliberately relaxed. `.prettie
 
 `cases.json`, `gate-matrix.json`, `fingerprint.json`, `stage-matrix.json`, `headers.json`,
 `config-matrix.json`, `update-matrix.json`, `outlet-matrix.json`, `plan-matrix.json`,
-`content/cases.json`, and both mirrors are all output.
+`feed-url-matrix.json`, `content/cases.json`, and both mirrors are all output.
 `pnpm gen:corpus -- --check` regenerates every one of them **in memory** and fails if any
 committed file differs — mirrors included. A red drift job means a wire-affecting change wasn't
 reflected in the corpus; regenerate and commit the result in the same PR:
@@ -194,6 +195,28 @@ can be retired only by an approved plan, through `RETIRED_CARRIED_ROWS`, which n
 the reason and a successor row; the frozen array itself is never edited, and the generator
 refuses to run if a retired name is not a carried row or its successor is not emitted. P0-04
 retired one (the pre-R3-01 dev-build bypass).
+
+`entitlementRows` (SP-00, `plans/SP-00.md` D4) is a second family in the same file, beside
+`rows`, so `gateMatrixVersion` stays 2 and a runner that iterates `rows` is unaffected. Each row
+is `{name, gate, license, entitlement, expect: {status, isEntitled}}`: the same `gate` and
+`license` inputs as `rows`, plus `entitlement: {key, entry}`, the entry the cached licence
+document carries at `entitlements[key]` (`null` when it carries none, always `null` without a
+document). `isEntitled` is `isUsable(status) && entry.value === true`, so a revoked, expired or
+unactivated licence entitles nothing even while its cached document still says `true` (S-19
+G11). The documents are today's licence shape (S-19 `legacy` mode). The generator evaluates every
+row through `@polaris-key/client-core`'s `licenseState` and `isUsable` and refuses to write one
+that disagrees.
+
+`feed-url-matrix.json` is hand-authored the same way. Its templates are not: `endpointSets.everything`
+is read from the Worker's byte-checked discovery golden
+(`packages/worker/test/fixtures/discovery-golden.json`), so a Worker change to a template goes
+stale under `--check`. Each row names an endpoint set and `{kind, channel?, velopackChannel?,
+buildId?}`. The expansion is the one sdk-node's `appcastUrlFrom` and Godot's updater already
+ship: an absent channel is `stable`, an alias goes through `CHANNEL_ALIASES` (`staging` → `beta`,
+`latest` → `stable`), every placeholder is replaced by the value encoded as
+`encodeURIComponent`, `appcast` puts a non-stable channel in the path before `/appcast.xml`, and
+`velopack` without a `velopackChannel` is the feed directory Velopack's UpdateManager opens. The
+generator recomputes every row with its own reference expansion.
 
 The stage matrix is hand-authored too, and **append-only** in the same way. `buildStageMatrix`
 writes literal rows (each an ordered list of host events with the exact emits each produces),
