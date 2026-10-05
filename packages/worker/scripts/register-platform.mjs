@@ -8,6 +8,8 @@
 // repository and applies the root `.pkey/` sent in the body: the package deliverables every SDK
 // publish is checked against, and the trusted publisher the publishes exchange their OIDC tokens
 // through (publish-package.yml in the `package-registry` environment).
+// It then checks the hook's `uploads` report and fails the job when the Worker cannot issue upload
+// tickets (a missing `BLOBS` binding or parent R2 secret), naming what is missing.
 //
 // Authentication is the job's own GitHub Actions OIDC token for the audience
 // `<origin>/webhooks/deploy` (the job needs `id-token: write`); the Worker admits only this
@@ -115,6 +117,22 @@ export async function registerPlatform({
       : "";
     throw new Error(
       `the deploy hook refused the registration (${res.status}): ${why}${detail}`,
+    );
+  }
+  // The registration landed, but a publish also needs an upload ticket, and a Worker without the
+  // blob store or the parent R2 token answers the uploads route 404 (core/publisher.ts r2Parent).
+  // Fail here, by name, rather than in every SDK feed job afterwards.
+  if (!body.uploads || typeof body.uploads.ready !== "boolean")
+    throw new Error(
+      "the deploy hook answered without `uploads`: the Worker that answered is not the version just deployed (or predates the readiness report); rerun this job",
+    );
+  if (!body.uploads.ready) {
+    const missing = Array.isArray(body.uploads.missing)
+      ? body.uploads.missing.join(", ")
+      : "unknown";
+    throw new Error(
+      `the system product ${body.slug} is registered, but this Worker cannot issue upload tickets, so every SDK publish would get 404 from /${body.slug}/release/publish/uploads. ` +
+        `Missing Worker configuration: ${missing}. Set the secrets with \`wrangler secret put <NAME> --env <env>\` (docs/DEPLOYMENT.md, "Trusted publishing: the R2 parent token") and rerun this job.`,
     );
   }
   return body;

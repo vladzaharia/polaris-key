@@ -251,6 +251,10 @@ publisher (`.pkey/release` `publishing.trustedPublisher`) and runs in the GitHub
    `gh api repos/vladzaharia/polaris-key --jq '.id, .owner.id'`) say which. An environment without
    those vars has no deploy hook (staging and dev today); bootstrap there from the console and
    claim the publisher (`PUT /manage/api/products/polaris-key/ci-publisher`) if it should publish.
+   The hook also reports whether the Worker can issue upload tickets (`uploads.ready`, with the
+   missing binding or secret NAMES): the step fails the deploy when it cannot, because every SDK
+   publish would otherwise meet a bare 404 on `/polaris-key/release/publish/uploads`. Set the
+   R2 parent token first (below, "Trusted publishing: the R2 parent token").
 
 No other publishing credential exists: there is no npm, PyPI, Maven Central or Docker Hub token,
 and no workflow publishes to GitHub Packages, PyPI or a GitHub Release (owner decision 2026-10-04,

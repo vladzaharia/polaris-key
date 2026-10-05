@@ -27,6 +27,7 @@ import {
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
+import { asR2, R2Mock } from "./r2Mock.js";
 import { NOW, TEST_KEK } from "./seed.js";
 import { CONSOLE, envFor } from "./releaseRoutesFixture.js";
 import type { Db } from "../src/db/types.js";
@@ -158,6 +159,18 @@ describe("the deploy hook (F-10 automation)", () => {
       },
       publisherClaimed: false,
       publisherChanged: true,
+      // This test Worker has no blob store and no parent R2 token: the uploads route would 404,
+      // and the hook says so by name (register-platform.mjs then fails the deploy).
+      uploads: {
+        ready: false,
+        missing: [
+          "BLOBS (R2 binding)",
+          "R2_ACCOUNT_ID",
+          "R2_PARENT_ACCESS_KEY_ID",
+          "R2_PARENT_SECRET_ACCESS_KEY",
+          "BLOBS_BUCKET_NAME",
+        ],
+      },
     });
     const row = (await getProduct(db, SYSTEM_PRODUCT_SLUG))!;
     expect(row.system).toBe(1);
@@ -207,6 +220,44 @@ describe("the deploy hook (F-10 automation)", () => {
     expect(audit?.actor_sub).toContain(
       "ci:github:repo:vladzaharia/polaris-key",
     );
+  });
+
+  it("reports upload readiness by name, never by value, and the uploads route agrees", async () => {
+    env.BLOBS = asR2(new R2Mock());
+    Object.assign(env, {
+      R2_ACCOUNT_ID: "not-an-account-id",
+      R2_PARENT_ACCESS_KEY_ID: "parent-akid",
+      R2_PARENT_SECRET_ACCESS_KEY: "parent-secret-value",
+    });
+    let body = (await (await hook(await token())).json()) as {
+      uploads: { ready: boolean; missing: string[] };
+    };
+    expect(body.uploads).toEqual({
+      ready: false,
+      missing: ["R2_ACCOUNT_ID (not a 32-hex account id)", "BLOBS_BUCKET_NAME"],
+    });
+    expect(JSON.stringify(body)).not.toContain("parent-secret-value");
+    // While not ready, the uploads route is absent (404), which is what every SDK publish met.
+    const uploads = () =>
+      dispatchWith(
+        new Request(
+          `${CONSOLE}/${SYSTEM_PRODUCT_SLUG}/release/publish/uploads`,
+          { method: "POST", body: "{}" },
+        ),
+        env,
+        db,
+        NOW,
+      );
+    expect((await uploads()).status).toBe(404);
+
+    Object.assign(env, {
+      R2_ACCOUNT_ID: "0123456789abcdef0123456789abcdef",
+      BLOBS_BUCKET_NAME: "polaris-key-blobs-test",
+    });
+    body = (await (await hook(await token())).json()) as typeof body;
+    expect(body.uploads).toEqual({ ready: true, missing: [] });
+    // Ready: the route exists and now asks for a publish token instead.
+    expect((await uploads()).status).toBe(401);
   });
 
   it("is idempotent, and never turns back on what an operator switched off", async () => {

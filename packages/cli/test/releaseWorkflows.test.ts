@@ -191,6 +191,10 @@ describe("the root .pkey/ (the system product)", () => {
         "platform-direct",
         "godot-play",
         "godot-direct",
+        // P6-11 and P6-12: the Compose UI module and the Kotlin SDK's Android glue, per flavour.
+        "ui",
+        "android-play",
+        "android-direct",
       ]),
     );
     const expected = /expected="([^"]+)"/.exec(raw(PUBLISH_SDKS))?.[1];
@@ -213,6 +217,9 @@ describe("publishing is automatic and in lockstep (owner decision 2026-10-04)", 
       needs: "deploy-worker",
       uses: "./.github/workflows/publish-sdks.yml",
       permissions: { contents: "read", "id-token": "write" },
+      // Without it the called workflow's swift-sign job reads every package-registry secret as
+      // empty (the v0.8.15 tag run), although it declares the environment itself.
+      secrets: "inherit",
     });
     // Only publish-sdks.yml and deploy.yml start a publish.
     for (const file of workflowFiles)

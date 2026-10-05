@@ -15,6 +15,10 @@
  *      deliverables every publish is checked against, and the trusted publisher
  *      (`publish-package.yml` in the `package-registry` environment) the SDK publishes exchange
  *      their OIDC tokens through.
+ *   3. The answer reports `uploads: {ready, missing}`: whether this Worker can issue the upload
+ *      tickets every publish needs (the `BLOBS` binding and the parent R2 token, by name only).
+ *      `scripts/register-platform.mjs` fails the deploy job on `ready: false`, so a missing R2
+ *      secret is a red deploy, not a 404 in every SDK feed job.
  *
  * Safe to rerun: every write is an idempotent upsert, and a second call with the same manifest
  * changes nothing but `modified_at`.
@@ -60,6 +64,7 @@ import {
   verifyGithubOidcToken,
   type JwksFetcher,
   type PublisherPolicy,
+  uploadsMissing,
 } from "./core/publisher.js";
 import { randomId } from "./crypto.js";
 import { appendPlatformAudit } from "./repo.js";
@@ -321,5 +326,11 @@ export async function handleDeployHook(
     publisher: linked.publisher,
     publisherClaimed: linked.publisherClaimed,
     publisherChanged: linked.publisherChanged,
+    // Whether this Worker can issue upload tickets at all: every SDK publish needs one. Names
+    // only; register-platform.mjs fails the deploy on `ready: false`.
+    uploads: (() => {
+      const missing = uploadsMissing(env);
+      return { ready: missing.length === 0, missing };
+    })(),
   });
 }
