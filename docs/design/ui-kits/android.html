@@ -1,0 +1,1233 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>UI kits · Android (Compose, Material 3 Expressive)</title>
+    <link rel="stylesheet" href="shared.css" />
+    <script src="shared.js"></script>
+    <style>
+      @font-face {
+        font-family: "Material Symbols Rounded";
+        font-style: normal;
+        font-weight: 400;
+        font-display: block;
+        src: url("./fonts/material-symbols-rounded-subset.woff2")
+          format("woff2");
+      }
+      .ms {
+        font-family: "Material Symbols Rounded";
+        font-weight: 400;
+        font-style: normal;
+        font-size: 24px;
+        line-height: 1;
+        display: inline-block;
+        font-variation-settings:
+          "FILL" 0,
+          "wght" 400,
+          "GRAD" 0,
+          "opsz" 24;
+        -webkit-font-feature-settings: "liga";
+        flex: none;
+      }
+      .ms.fill {
+        font-variation-settings:
+          "FILL" 1,
+          "wght" 400,
+          "GRAD" 0,
+          "opsz" 24;
+      }
+
+      /* Pixel-class phone, 412 × 915 dp. M3 surface containers from the brand neutrals. */
+      :root {
+        --a-page: var(--pk-surface-page);
+        --a-low: #0d111b;
+        --a-cont: #131824;
+        --a-high: color-mix(
+          in oklab,
+          var(--pk-surface-raised),
+          var(--pk-text-strong) 7%
+        );
+        --a-sunken: #171c27;
+      }
+      [data-theme="light"] {
+        --a-low: #ffffff;
+        --a-cont: #eff1f8;
+        --a-high: #e6e9f2;
+        --a-sunken: #e9ecf4;
+      }
+      .shot {
+        width: 436px;
+        height: 939px;
+        padding: 12px;
+        border-radius: 52px;
+        background: #1a1b1f;
+        box-shadow:
+          0 0 0 1px #34353a inset,
+          0 30px 60px -20px rgb(0 0 0 / 0.5);
+      }
+      [data-theme="light"] .shot {
+        background: #d6d8de;
+        box-shadow:
+          0 0 0 1px #c2c5cd inset,
+          0 30px 60px -20px rgb(6 9 18 / 0.25);
+      }
+      .screen {
+        position: relative;
+        width: 412px;
+        height: 915px;
+        border-radius: 40px;
+        overflow: hidden;
+        background: var(--a-page);
+        isolation: isolate;
+        color: var(--pk-text-default);
+        font-size: 16px;
+        line-height: 24px;
+      }
+      .status {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 24px 0 26px;
+        font: 500 14px/1 var(--pk-font-sans);
+        color: var(--pk-text-strong);
+        z-index: 40;
+      }
+      .status .ms {
+        font-size: 18px;
+      }
+      .cam {
+        position: absolute;
+        top: 14px;
+        left: 50%;
+        width: 22px;
+        height: 22px;
+        margin-left: -11px;
+        border-radius: 50%;
+        background: #000;
+        z-index: 41;
+      }
+      .navh {
+        position: absolute;
+        bottom: 10px;
+        left: 50%;
+        width: 108px;
+        height: 4px;
+        margin-left: -54px;
+        border-radius: 2px;
+        background: color-mix(in oklab, var(--pk-text-strong) 40%, transparent);
+        z-index: 50;
+      }
+      .ambient {
+        position: absolute;
+        left: 50%;
+        top: 250px;
+        width: 560px;
+        height: 560px;
+        margin: -280px 0 0 -280px;
+        border-radius: 50%;
+        z-index: -1;
+        background: radial-gradient(
+          closest-side,
+          #1aa594 0%,
+          #0f6f7a 45%,
+          transparent 100%
+        );
+        opacity: 0.35;
+        filter: blur(30px);
+      }
+      [data-theme="light"] .ambient {
+        background: radial-gradient(
+          closest-side,
+          #5fe3cf 0%,
+          #9fd8d0 50%,
+          transparent 100%
+        );
+        opacity: 0.3;
+      }
+      .display {
+        font: 600 36px/44px var(--pk-font-sans);
+        letter-spacing: -0.01em;
+        color: var(--pk-text-strong);
+        margin: 0;
+        text-wrap: balance;
+      }
+      .headline {
+        font: 600 28px/36px var(--pk-font-sans);
+        color: var(--pk-text-strong);
+        margin: 0;
+        text-wrap: balance;
+      }
+      .body {
+        color: var(--pk-text-muted);
+        margin: 0;
+        text-wrap: pretty;
+      }
+      .btn {
+        height: 56px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font: 500 16px/24px var(--pk-font-sans);
+        color: var(--pk-text-strong);
+      }
+      .btn.filled {
+        background: var(--kit-accent);
+        color: #fff;
+      }
+      .btn.tonal {
+        background: var(--a-high);
+      }
+      .btn.text {
+        height: 40px;
+        padding: 0 12px;
+        font-size: 14px;
+        line-height: 20px;
+        color: var(--pk-text-default);
+      }
+      .btn.text.accent {
+        color: var(--kit-accent-fg);
+      }
+      .appbar {
+        position: absolute;
+        top: 44px;
+        left: 0;
+        right: 0;
+        height: 64px;
+        display: flex;
+        align-items: center;
+        padding: 0 4px;
+        z-index: 5;
+      }
+      .ib {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        color: var(--pk-text-strong);
+      }
+      .picon {
+        border-radius: 28%;
+        overflow: hidden;
+        line-height: 0;
+        box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+        position: relative;
+        flex: none;
+      }
+      .picon::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        box-shadow: inset 0 0 0 1px
+          color-mix(in oklab, var(--pk-text-strong) 8%, transparent);
+      }
+      .phead {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font: 500 16px/24px var(--pk-font-sans);
+        color: var(--pk-text-strong);
+      }
+      .phead small {
+        color: var(--pk-text-muted);
+        font-weight: 400;
+        font-size: 16px;
+      }
+
+      /* M3 filled field: surface-sunken, 16 dp radius on every corner, no outline, label inside */
+      .field {
+        min-height: 64px;
+        border-radius: 16px;
+        background: var(--a-sunken);
+        padding: 10px 8px 10px 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        position: relative;
+        overflow: hidden;
+      }
+      .field.focus::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 2px;
+        background: var(--kit-focus);
+      }
+      .field label {
+        display: block;
+        font: 500 12px/16px var(--pk-font-sans);
+        color: var(--kit-accent-fg);
+      }
+      .field .mono {
+        font-size: 15px;
+        line-height: 22px;
+        color: var(--pk-text-strong);
+        overflow-wrap: anywhere;
+      }
+      .caret {
+        display: inline-block;
+        width: 2px;
+        height: 18px;
+        background: var(--kit-accent-fg);
+        vertical-align: -3px;
+      }
+
+      /* Connected (segmented) list: outer 24, inner 6, 2 dp gaps */
+      .clist {
+        display: grid;
+        gap: 2px;
+      }
+      .citem {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        min-height: 72px;
+        padding: 12px 16px;
+        background: var(--a-low);
+        border-radius: 6px;
+        color: var(--pk-text-strong);
+      }
+      [data-theme="light"] .citem {
+        background: #fff;
+      }
+      .clist .citem:first-child {
+        border-radius: 24px 24px 6px 6px;
+      }
+      .clist .citem:last-child {
+        border-radius: 6px 6px 24px 24px;
+      }
+      .clist .citem:only-child {
+        border-radius: 24px;
+      }
+      .citem.sel {
+        background: var(--kit-accent-subtle);
+      }
+      .citem .t {
+        flex: 1;
+        min-width: 0;
+      }
+      .citem .t small {
+        display: block;
+        font-size: 14px;
+        line-height: 20px;
+        color: var(--pk-text-muted);
+      }
+      .citem > .ms:first-child {
+        color: var(--pk-text-muted);
+      }
+      .radio {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        box-shadow: inset 0 0 0 2px var(--pk-text-muted);
+        flex: none;
+        margin-right: 2px;
+      }
+      .radio.on {
+        box-shadow: inset 0 0 0 2px var(--kit-accent-fg);
+        background: radial-gradient(
+          circle,
+          var(--kit-accent-fg) 0 5px,
+          transparent 5.5px
+        );
+      }
+      .ghead {
+        font: 500 14px/20px var(--pk-font-sans);
+        color: var(--pk-text-muted);
+        margin: 24px 16px 8px;
+      }
+      .sw {
+        width: 52px;
+        height: 32px;
+        border-radius: 999px;
+        background: var(--kit-accent);
+        position: relative;
+        flex: none;
+      }
+      .sw::after {
+        content: "check";
+        font-family: "Material Symbols Rounded";
+        font-size: 16px;
+        line-height: 24px;
+        text-align: center;
+        color: var(--kit-accent);
+        position: absolute;
+        right: 4px;
+        top: 4px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #fff;
+      }
+      .sw.off {
+        background: var(--a-high);
+        box-shadow: inset 0 0 0 2px var(--pk-text-subtle);
+      }
+      .sw.off::after {
+        content: "";
+        left: 8px;
+        right: auto;
+        top: 8px;
+        width: 16px;
+        height: 16px;
+        background: var(--pk-text-subtle);
+      }
+
+      /* Bottom sheet */
+      .scrimA {
+        position: absolute;
+        inset: 0;
+        background: rgb(0 0 0 / 0.6);
+        z-index: 8;
+      }
+      [data-theme="light"] .scrimA {
+        background: rgb(0 0 0 / 0.32);
+      }
+      .sheet {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 10;
+        border-radius: 28px 28px 0 0;
+        background: var(--a-low);
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
+        padding: 10px 24px 40px;
+      }
+      [data-theme="light"] .sheet {
+        background: #fff;
+        box-shadow: none;
+      }
+      .handle {
+        width: 32px;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--pk-text-subtle);
+        opacity: 0.6;
+        margin: 12px auto 22px;
+      }
+
+      /* M3E contained LoadingIndicator: a morphing soft polygon inside a circle (inline only). */
+      .loading {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: var(--kit-accent-subtle);
+        display: grid;
+        place-items: center;
+        flex: none;
+      }
+      .loading svg {
+        width: 30px;
+        height: 30px;
+      }
+      .code {
+        border-radius: 24px;
+        background: var(--a-cont);
+        padding: 20px 12px 20px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .code .mono {
+        font-size: 32px;
+        line-height: 40px;
+        font-weight: 500;
+        letter-spacing: 0.06em;
+        color: var(--pk-text-strong);
+        font-variant-numeric: tabular-nums;
+      }
+      .tonalib {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: var(--a-high);
+        display: grid;
+        place-items: center;
+        color: var(--pk-text-strong);
+      }
+
+      /* IME (Gboard, 2026) */
+      .ime {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 300px;
+        background: #1b1e24;
+        padding: 46px 6px 0;
+        z-index: 15;
+      }
+      [data-theme="light"] .ime {
+        background: #e8eaef;
+      }
+      .ime .r {
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+        margin-bottom: 10px;
+      }
+      .ime .k {
+        width: 34px;
+        height: 46px;
+        border-radius: 10px;
+        background: #2d3139;
+        color: #e8eaef;
+        display: grid;
+        place-items: center;
+        font: 400 20px/1 system-ui;
+      }
+      [data-theme="light"] .ime .k {
+        background: #fff;
+        color: #1b1e24;
+      }
+      .ime .k.w {
+        width: 50px;
+        background: #3a3f48;
+        font-size: 15px;
+      }
+      [data-theme="light"] .ime .k.w {
+        background: #d3d7df;
+      }
+      .ime .k.sp {
+        width: 160px;
+      }
+      .ime .k.go {
+        width: 64px;
+        background: var(--kit-accent);
+        color: #fff;
+        border-radius: 999px;
+      }
+      .ime .strip {
+        position: absolute;
+        top: 8px;
+        left: 12px;
+        right: 12px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        color: var(--pk-text-muted);
+        font-size: 14px;
+      }
+
+      /* Host app (its own look: system type, flat list) */
+      .hostlist {
+        position: absolute;
+        top: 180px;
+        left: 0;
+        right: 0;
+        font-family: system-ui, sans-serif;
+      }
+      .hrow {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 12px 20px;
+        color: var(--pk-text-strong);
+      }
+      .hrow .th {
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        background: #0b3a48;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+      }
+      .hrow .th i {
+        width: 2.5px;
+        border-radius: 2px;
+        background: #5fe3cf;
+      }
+      .hrow small {
+        display: block;
+        color: var(--pk-text-muted);
+        font-size: 14px;
+      }
+      .credsheet .acct {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 14px 16px;
+        border-radius: 20px;
+        background: var(--a-cont);
+        color: var(--pk-text-strong);
+      }
+      .avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #3d6a5e;
+        color: #fff;
+        display: grid;
+        place-items: center;
+        font: 500 16px var(--pk-font-sans);
+      }
+    </style>
+  </head>
+  <body>
+    <template id="chrome">
+      <div class="status">
+        <span>9:41</span>
+        <span style="display: flex; gap: 4px; align-items: center"
+          ><span class="ms fill">wifi</span
+          ><span class="ms fill">signal_cellular_4_bar</span
+          ><span class="ms fill">battery_full</span></span
+        >
+      </div>
+      <div class="cam"></div>
+      <div class="navh"></div>
+    </template>
+
+    <template id="gate">
+      <div class="ambient"></div>
+      <!-- the hero block is centred in the area above the actions -->
+      <div
+        style="
+          position: absolute;
+          top: 44px;
+          bottom: 300px;
+          left: 28px;
+          right: 28px;
+          display: grid;
+          align-content: center;
+          justify-items: center;
+          text-align: center;
+        "
+      >
+        <div class="picon" data-art="tidewater" data-size="120"></div>
+        <h1 class="display" style="margin-top: 28px">
+          Welcome to Tidewater Studio
+        </h1>
+        <span
+          style="font-size: 14px; color: var(--pk-text-subtle); margin-top: 6px"
+          >by Harbor Audio</span
+        >
+        <p class="body" style="margin-top: 12px; max-width: 30ch">
+          Sign in or add your license to start.
+        </p>
+      </div>
+      <div
+        style="
+          position: absolute;
+          left: 24px;
+          right: 24px;
+          bottom: 40px;
+          display: grid;
+          gap: 12px;
+        "
+      >
+        <div class="btn filled">Sign in</div>
+        <div class="btn tonal">Use a license key</div>
+        <div
+          style="
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-top: 4px;
+          "
+        >
+          <span class="btn text">Restore purchase</span
+          ><span class="btn text">Activate offline</span>
+        </div>
+      </div>
+    </template>
+
+    <template id="host">
+      <div
+        class="appbar"
+        style="justify-content: space-between; font-family: system-ui"
+      >
+        <span class="ib"><span class="ms">tune</span></span
+        ><span class="ib"><span class="ms">search</span></span>
+      </div>
+      <h1
+        style="
+          position: absolute;
+          top: 116px;
+          left: 20px;
+          margin: 0;
+          font:
+            400 32px/40px system-ui,
+            sans-serif;
+          color: var(--pk-text-strong);
+        "
+      >
+        Sessions
+      </h1>
+      <div class="hostlist"></div>
+    </template>
+
+    <main class="board">
+      <!-- 1. Gate -->
+      <figure>
+        <figcaption>android · gate</figcaption>
+        <div class="shot" data-shot="gate">
+          <div class="screen" data-tpl="gate"></div>
+        </div>
+      </figure>
+
+      <!-- 2. Activate with the IME -->
+      <figure>
+        <figcaption>
+          android · activate (key parsed, IME up, Activate rides the IME)
+        </figcaption>
+        <div class="shot" data-shot="activate">
+          <div class="screen">
+            <div class="appbar">
+              <span class="ib"><span class="ms">arrow_back</span></span>
+            </div>
+            <div
+              style="
+                position: absolute;
+                top: 116px;
+                left: 24px;
+                right: 24px;
+                display: grid;
+                grid-template-columns: minmax(0, 1fr);
+                gap: 20px;
+              "
+            >
+              <div class="phead">
+                <span class="picon" data-art="tidewater" data-size="32"></span
+                ><span style="white-space: nowrap"
+                  >Tidewater Studio <small>· Pro</small></span
+                >
+              </div>
+              <div style="display: grid; gap: 8px">
+                <h1 class="headline">Add your license</h1>
+                <p class="body" style="font-size: 15px; line-height: 22px">
+                  Your key is in the purchase email from Harbor Audio.
+                </p>
+              </div>
+              <div>
+                <div class="field focus">
+                  <div style="flex: 1; min-width: 0">
+                    <label>License key</label>
+                    <span class="mono"
+                      ><span class="k-key"
+                        ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
+                        ><span>3WPLDA</span></span
+                      ><span class="caret"></span
+                    ></span>
+                  </div>
+                  <span class="ib" style="color: var(--pk-text-muted)"
+                    ><span class="ms">content_paste</span></span
+                  >
+                </div>
+                <div
+                  style="
+                    display: flex;
+                    gap: 8px;
+                    align-items: center;
+                    margin: 10px 16px 0;
+                    font-size: 14px;
+                    line-height: 20px;
+                    color: var(--pk-text-muted);
+                  "
+                >
+                  <span
+                    class="ms fill"
+                    style="font-size: 18px; color: var(--pk-success)"
+                    >check_circle</span
+                  >
+                  <span
+                    ><b style="font-weight: 500; color: var(--pk-text-default)"
+                      >Tidewater Studio Pro</b
+                    >&#8201;·&#8201;Lifetime&#8201;·&#8201;3 devices</span
+                  >
+                </div>
+              </div>
+            </div>
+            <div
+              style="position: absolute; left: 24px; right: 24px; bottom: 316px"
+            >
+              <div class="btn filled">Activate</div>
+            </div>
+            <div class="ime" id="ime"></div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 3. Sign in: Credential Manager over the gate -->
+      <figure>
+        <figcaption>
+          android · sign-in (Credential Manager first, then the kit’s methods)
+        </figcaption>
+        <div class="shot" data-shot="sign-in">
+          <div class="screen" data-tpl="gate">
+            <div class="scrimA"></div>
+            <div class="sheet credsheet">
+              <div class="handle"></div>
+              <div
+                style="
+                  display: grid;
+                  justify-items: center;
+                  gap: 12px;
+                  text-align: center;
+                  margin-bottom: 20px;
+                "
+              >
+                <span class="picon" data-art="tidewater" data-size="40"></span>
+                <h2 class="headline" style="font-size: 24px; line-height: 32px">
+                  Sign in to Tidewater Studio
+                </h2>
+              </div>
+              <div style="display: grid; gap: 8px">
+                <div class="acct">
+                  <span class="avatar">M</span>
+                  <div style="flex: 1">
+                    <div style="font-weight: 500">Mara Lindqvist</div>
+                    <div style="font-size: 14px; color: var(--pk-text-muted)">
+                      mara@fennick.studio · passkey
+                    </div>
+                  </div>
+                  <span class="ms" style="color: var(--pk-text-muted)"
+                    >passkey</span
+                  >
+                </div>
+                <div class="acct">
+                  <span class="avatar" style="background: #fff"
+                    ><span data-google data-size="20"></span
+                  ></span>
+                  <div style="flex: 1">
+                    <div style="font-weight: 500">Continue with Google</div>
+                    <div style="font-size: 14px; color: var(--pk-text-muted)">
+                      mara.l@gmail.com
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div
+                style="
+                  display: flex;
+                  justify-content: center;
+                  gap: 16px;
+                  margin-top: 16px;
+                "
+              >
+                <span class="btn text accent">Use email</span
+                ><span class="btn text accent">Use another device</span>
+              </div>
+              <p
+                style="
+                  margin: 14px 8px 0;
+                  text-align: center;
+                  font-size: 12px;
+                  line-height: 16px;
+                  color: var(--pk-text-muted);
+                  text-wrap: balance;
+                "
+              >
+                Polaris Key handles sign-in. Harbor Audio never sees your
+                passkeys.
+              </p>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 4. Sign-in hand-off -->
+      <figure>
+        <figcaption>android · sign-in hand-off (another device)</figcaption>
+        <div class="shot" data-shot="sign-in-handoff">
+          <div class="screen">
+            <div
+              style="
+                position: absolute;
+                top: 96px;
+                left: 24px;
+                right: 24px;
+                display: grid;
+                gap: 24px;
+              "
+            >
+              <div class="phead">
+                <span class="picon" data-art="tidewater" data-size="32"></span
+                >Tidewater Studio
+              </div>
+              <div style="display: grid; gap: 8px">
+                <h1 class="headline">Finish on another device</h1>
+                <p class="body" style="font-size: 15px; line-height: 22px">
+                  Go to
+                  <b style="font-weight: 500; color: var(--pk-text-strong)"
+                    >key.plrs.im/activate</b
+                  >
+                  and enter this code.
+                </p>
+              </div>
+              <div class="code">
+                <span class="mono">WDJB-MJHT</span>
+                <span class="tonalib"
+                  ><span class="ms">content_copy</span></span
+                >
+              </div>
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 14px;
+                  color: var(--pk-text-muted);
+                  font-size: 16px;
+                "
+              >
+                <span class="loading"
+                  ><svg viewBox="0 0 40 40" aria-hidden="true">
+                    <path
+                      fill="var(--kit-accent-fg)"
+                      d="M20 3.5c2.3 0 3.6 2.6 5.6 3.6s4.9.5 6.4 2.2.9 4.5 1.9 6.6 3.6 3.3 3.6 5.6-2.6 3.6-3.6 5.6-.5 4.9-2.2 6.4-4.5.9-6.6 1.9-3.3 3.6-5.6 3.6-3.6-2.6-5.6-3.6-4.9-.5-6.4-2.2-.9-4.5-1.9-6.6S3.5 22.8 3.5 20.5s2.6-3.6 3.6-5.6.5-4.9 2.2-6.4 4.5-.9 6.6-1.9 3.3-3.1 5.6-3.1Z"
+                      transform="rotate(12 20 20) scale(.92) translate(1.7 1.7)"
+                    /></svg
+                ></span>
+                <span class="tnum">Waiting for you · code expires in 4:12</span>
+              </div>
+            </div>
+            <div
+              style="
+                position: absolute;
+                left: 24px;
+                right: 24px;
+                bottom: 40px;
+                display: grid;
+                gap: 8px;
+              "
+            >
+              <div class="btn tonal">
+                <span class="ms">qr_code_2</span>Show a QR code
+              </div>
+              <div class="btn text" style="height: 48px; font-size: 16px">
+                Cancel
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 5. Device limit -->
+      <figure>
+        <figcaption>android · device limit</figcaption>
+        <div class="shot" data-shot="device-limit">
+          <div class="screen">
+            <div style="position: absolute; top: 88px; left: 16px; right: 16px">
+              <div class="phead" style="margin: 0 8px 18px">
+                <span class="picon" data-art="tidewater" data-size="32"></span
+                ><span style="white-space: nowrap"
+                  >Tidewater Studio <small>· Pro</small></span
+                >
+              </div>
+              <h1 class="headline" style="margin: 0 8px">
+                Your license is on 3 of 3 devices
+              </h1>
+              <p class="body" style="margin: 10px 8px 14px; font-size: 16px">
+                To use it on this phone, remove one. You can add it back later.
+              </p>
+              <div
+                class="k-meter"
+                style="margin: 0 8px 24px"
+                role="img"
+                aria-label="3 of 3 devices in use"
+              >
+                <i class="on"></i><i class="on"></i><i class="on"></i
+                ><span style="font-size: 14px">3 of 3 in use</span>
+              </div>
+              <div class="clist" role="radiogroup">
+                <div class="citem sel">
+                  <span class="ms">laptop_windows</span>
+                  <div class="t">
+                    Work laptop <em class="k-tag">Least recent</em
+                    ><small>Windows 11 · last used 41 days ago</small>
+                  </div>
+                  <span class="radio on"></span>
+                </div>
+                <div class="citem">
+                  <span class="ms">tablet_android</span>
+                  <div class="t">
+                    Mara’s iPad<small>iPadOS 26 · last used yesterday</small>
+                  </div>
+                  <span class="radio"></span>
+                </div>
+                <div class="citem">
+                  <span class="ms">laptop_mac</span>
+                  <div class="t">
+                    MacBook Pro<small>macOS 26 · last used today</small>
+                  </div>
+                  <span class="radio"></span>
+                </div>
+              </div>
+              <p
+                style="
+                  margin: 14px 8px 0;
+                  font-size: 14px;
+                  line-height: 20px;
+                  color: var(--pk-text-muted);
+                "
+              >
+                Tidewater Studio signs out on Work laptop.
+              </p>
+            </div>
+            <div
+              style="
+                position: absolute;
+                left: 24px;
+                right: 24px;
+                bottom: 40px;
+                display: grid;
+                gap: 8px;
+              "
+            >
+              <div class="btn filled">Remove Work laptop and continue</div>
+              <div class="btn text" style="height: 48px; font-size: 16px">
+                Cancel
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 6. Update sheet over the host app -->
+      <figure>
+        <figcaption>
+          android · update prompt (modal bottom sheet, downloading)
+        </figcaption>
+        <div class="shot" data-shot="update">
+          <div class="screen" data-tpl="host">
+            <div class="scrimA"></div>
+            <div class="sheet">
+              <div class="handle"></div>
+              <div style="display: flex; gap: 16px; align-items: center">
+                <span class="picon" data-art="tidewater" data-size="56"></span>
+                <div>
+                  <h2
+                    class="headline"
+                    style="font-size: 24px; line-height: 32px"
+                  >
+                    Tidewater Studio 2.5
+                  </h2>
+                  <span
+                    style="color: var(--pk-text-muted); font-size: 14px"
+                    class="tnum"
+                    >You have 2.4.1 · 61 MB</span
+                  >
+                </div>
+              </div>
+              <div
+                style="
+                  font: 500 14px/20px var(--pk-font-sans);
+                  color: var(--pk-text-muted);
+                  margin: 22px 0 8px;
+                "
+              >
+                What’s new
+              </div>
+              <div
+                style="
+                  display: grid;
+                  gap: 8px;
+                  font-size: 15px;
+                  line-height: 22px;
+                  color: var(--pk-text-default);
+                "
+              >
+                <span>Stem export in one tap, with loudness matching</span>
+                <span>Track freeze works with every plug-in</span>
+                <span>Fixes a crash when unplugging an interface</span>
+              </div>
+              <span
+                class="btn text accent"
+                style="justify-content: flex-start; padding: 0; margin-top: 4px"
+                >Release notes</span
+              >
+              <div id="wavy" style="margin-top: 14px"></div>
+              <div
+                style="
+                  display: flex;
+                  justify-content: space-between;
+                  font-size: 14px;
+                  color: var(--pk-text-muted);
+                  margin: 8px 0 24px;
+                "
+                class="tnum"
+              >
+                <span>38 of 61 MB</span><span>About 20 seconds left</span>
+              </div>
+              <div
+                style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px"
+              >
+                <div class="btn tonal">Later</div>
+                <div class="btn filled">Restart when ready</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 7. Settings -->
+      <figure>
+        <figcaption>android · settings (account and license)</figcaption>
+        <div class="shot" data-shot="settings">
+          <div class="screen">
+            <div class="appbar">
+              <span class="ib"><span class="ms">arrow_back</span></span>
+            </div>
+            <div
+              style="position: absolute; top: 104px; left: 16px; right: 16px"
+            >
+              <h1
+                class="display"
+                style="font-size: 32px; line-height: 40px; margin: 0 8px 16px"
+              >
+                Account
+              </h1>
+              <div
+                class="citem"
+                style="
+                  border-radius: 28px;
+                  min-height: 104px;
+                  gap: 18px;
+                  padding: 16px 20px;
+                "
+              >
+                <span class="picon" data-art="tidewater" data-size="64"></span>
+                <div class="t">
+                  <div style="font: 600 20px/28px var(--pk-font-sans)">
+                    Tidewater Studio Pro
+                  </div>
+                  <small>Lifetime · mara@fennick.studio</small>
+                </div>
+              </div>
+              <div class="clist" style="margin-top: 16px">
+                <div class="citem">
+                  <span class="ms">open_in_new</span>
+                  <div class="t">Manage license</div>
+                </div>
+                <div class="citem">
+                  <span class="ms">devices</span>
+                  <div class="t">Devices<small>2 of 3 in use</small></div>
+                  <span class="ms" style="color: var(--pk-text-muted)"
+                    >chevron_right</span
+                  >
+                </div>
+                <div class="citem">
+                  <span class="ms">cloud_done</span>
+                  <div class="t">Cloud Sync<small>Synced 2 min ago</small></div>
+                </div>
+              </div>
+              <div class="ghead">Updates</div>
+              <div class="clist">
+                <div class="citem">
+                  <span class="ms">download</span>
+                  <div class="t">Download on Wi-Fi only</div>
+                  <span class="sw"></span>
+                </div>
+                <div class="citem">
+                  <span class="ms">update</span>
+                  <div class="t">Version 2.4.1<small>Up to date</small></div>
+                </div>
+              </div>
+              <div class="ghead">From Harbor Audio</div>
+              <div class="clist">
+                <div class="citem">
+                  <span class="ms">build</span>
+                  <div class="t">
+                    Share crash reports<small>Set by Fennick Studio</small>
+                  </div>
+                  <span
+                    style="
+                      display: flex;
+                      align-items: center;
+                      gap: 6px;
+                      color: var(--pk-text-muted);
+                      font-size: 14px;
+                    "
+                    ><span class="ms" style="font-size: 16px">lock</span
+                    >On</span
+                  >
+                </div>
+              </div>
+              <div class="clist" style="margin-top: 16px">
+                <div class="citem" style="min-height: 56px">
+                  <span class="ms" style="color: var(--pk-danger)">logout</span>
+                  <div class="t" style="color: var(--pk-danger)">Sign out</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+    </main>
+
+    <script>
+      document
+        .querySelectorAll("[data-tpl]")
+        .forEach((s) =>
+          s.prepend(
+            document.getElementById(s.dataset.tpl).content.cloneNode(true),
+          ),
+        );
+      document
+        .querySelectorAll(".screen")
+        .forEach((s) =>
+          s.appendChild(
+            document.getElementById("chrome").content.cloneNode(true),
+          ),
+        );
+      // IME
+      const rows = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
+      document.getElementById("ime").innerHTML =
+        `<div class="strip"><span>pkey_</span><span>|</span><span class="ms" style="font-size:20px">content_paste</span></div>` +
+        rows
+          .map((r, i) => {
+            let keys = [...r]
+              .map((c) => `<span class="k">${c}</span>`)
+              .join("");
+            if (i === 2)
+              keys = `<span class="k w">⇧</span>${keys}<span class="k w">⌫</span>`;
+            return `<div class="r">${keys}</div>`;
+          })
+          .join("") +
+        `<div class="r"><span class="k w">?123</span><span class="k">,</span><span class="k sp"></span><span class="k">.</span><span class="k go"><span class="ms">check</span></span></div>`;
+      // Host list
+      document.querySelectorAll(".hostlist").forEach((h) => {
+        [
+          "Harbor demo",
+          "Night swim",
+          "Field notes",
+          "Lighthouse",
+          "Low tide",
+          "Pier 9",
+        ].forEach((t, n) => {
+          let w = "";
+          for (let i = 0; i < 11; i++)
+            w += `<i style="height:${(8 + Math.abs(Math.sin(i * 0.9 + n)) * 26).toFixed(0)}px"></i>`;
+          h.insertAdjacentHTML(
+            "beforeend",
+            `<div class="hrow"><span class="th">${w}</span><div>${t}<small>${n + 2} tracks · edited today</small></div></div>`,
+          );
+        });
+      });
+      // Wavy progress: amplitude 3 dp, wavelength 32 dp, 4 dp gap, stop indicator
+      const W = 364,
+        p = 0.62,
+        x1 = W * p,
+        amp = 3,
+        wl = 32;
+      let d = `M0 8`;
+      for (let x = 0; x <= x1; x += 2)
+        d += ` L${x.toFixed(1)} ${(8 + amp * Math.sin((x / wl) * 2 * Math.PI)).toFixed(2)}`;
+      document.getElementById("wavy").innerHTML =
+        `<svg width="${W}" height="16" viewBox="0 0 ${W} 16" aria-hidden="true"><path d="${d}" fill="none" stroke="var(--kit-accent-fg)" stroke-width="4" stroke-linecap="round"/><line x1="${x1 + 10}" y1="8" x2="${W - 6}" y2="8" stroke="var(--a-high)" stroke-width="4" stroke-linecap="round"/><circle cx="${W - 2}" cy="8" r="2" fill="var(--kit-accent-fg)"/></svg>`;
+    </script>
+  </body>
+</html>
