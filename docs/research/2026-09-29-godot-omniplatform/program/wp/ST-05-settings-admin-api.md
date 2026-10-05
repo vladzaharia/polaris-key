@@ -12,6 +12,12 @@
 | Human input | none                                                                                                                                            |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                       |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/PX-W17.md`](../plans/PX-W17.md):** call `applyServiceTransitions`, and show the dry-run count in the confirm.
+
 ## Goal
 
 A generic settings admin API reads, writes, reverts and lists settings at any scope through the registry, and the bespoke settings routes become compatibility aliases over it.

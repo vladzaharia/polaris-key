@@ -7,10 +7,16 @@
 | Depends on  | [I-04](I-04-account-contract-plan.md), [I-05](I-05-accounts-core.md)                                                                                                                                               |
 | Unblocks    | none                                                                                                                                                                                                               |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                              |
-| Plan mode   | yes: executes the approved [`plans/I-04.md`](../plans/I-04.md) (no separate plan)                                                                                                                                  |
+| Plan mode   | yes: executes the approved [`plans/PX-W17.md`](../plans/PX-W17.md) (approved 2026-10-05), which refines [`plans/I-04.md`](../plans/I-04.md)                                                                        |
 | Gates       | the PORTAL.md §11 green gate; plan mode; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; corpus and transcripts (`gen:corpus -- --check`, `gen:transcripts -- --check`); `typecheck:workerd` and `test:workerd` |
 | Human input | none                                                                                                                                                                                                               |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                          |
+
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/PX-W17.md`](../plans/PX-W17.md):** narrowed to this plan, approved on 2026-10-05 with every recommendation accepted: `identity_disabled` only where a person is looking and `404 not_found` for device and JSON routes (Q1); turning Identity off clears every binding after a console confirm with the count (Q2); pairwise subjects stay random-and-stored (Q3); Cloud Sync requires Identity (Q4); subjects everywhere, product users only with Identity on (Q5). The redirect targets the root path `/signin?product=<slug>&error=identity_disabled`.
 
 ## Goal
 

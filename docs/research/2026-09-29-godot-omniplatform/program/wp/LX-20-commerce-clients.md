@@ -12,6 +12,12 @@
 | Human input | none                                                                           |
 | Repo        | `vladzaharia/polaris-key`                                                      |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`notes/SDK-PARITY-PASS.md`](../../notes/SDK-PARITY-PASS.md) owner decisions (2026-10-05):** `commerce.receipt` is **required** on Node and Python. This reverses the planned Python `allowedNa`; SP-00 changes the registry.
+
 ## Goal
 
 Commerce clients reach parity: Swift (StoreKit 2), Kotlin (Play), Node (Steam and Electron) implement bind and claim; React goes through client-core; Python is `allowedNa`; restore returns a `transferred` result.
