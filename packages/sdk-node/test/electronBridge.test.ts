@@ -1,14 +1,14 @@
 // @pkey-feature core.store license.activate identity.devicecode
 // SDK parity pass SP-N10 and SP-N11: exposePolarisBridge (Electron main) and the preload's
 // PolarisBridge v3 round-trip over a structured-clone IPC, and SafeStorageStore's surfaced
-// degradation. The PolarisBridge interface below is copied from
-// `packages/sdk-react/src/desktop/bridge.ts` method for method (doc comments dropped, the protocol
-// types inside BridgeState widened to unknown): if the React contract changes, this stops
-// compiling instead of drifting.
+// degradation. `PolarisBridge` is imported from `@polaris-key/react/desktop` itself (a
+// workspace devDependency, type-only), so if the React contract in
+// `packages/sdk-react/src/desktop/bridge.ts` changes, this stops compiling instead of drifting.
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { BridgeState, PolarisBridge } from "@polaris-key/react/desktop";
 import {
   DEFAULT_INVOKE_VERBS,
   exposePolarisBridge,
@@ -27,51 +27,6 @@ import {
   tempDir,
   type Handler,
 } from "./parityFixtures.js";
-
-// ── The React contract (sdk-react/src/desktop/bridge.ts) ────────────────────────────────────
-type BridgeState = {
-  activation: unknown;
-  doc: unknown;
-  lastSyncUnauthorized?: boolean;
-  blocked?: unknown;
-  lastVerifiedAt?: number | null;
-  highWaterMark?: number;
-  capabilities?: unknown;
-  config?: Record<string, unknown>;
-};
-interface BridgeOidcBegin {
-  flowId: string;
-  verificationUrl?: string;
-  userCode?: string;
-}
-type BridgeOidcPoll =
-  | { kind: "pending" }
-  | { kind: "ok" }
-  | { kind: "denied" }
-  | { kind: "expired" }
-  | { kind: "error"; message: string };
-type BridgeActivation =
-  | { kind: "ok" }
-  | { kind: "device-limit"; limit?: number; deviceCount?: number }
-  | { kind: "unauthorized" }
-  | { kind: "error"; message: string };
-interface BridgeImportBundle {
-  bundleId: string;
-  imported: ("license" | "config")[];
-}
-interface PolarisBridge {
-  readonly version?: number;
-  getSyncState(): Promise<BridgeState>;
-  refresh(): Promise<BridgeState>;
-  beginSignIn(): Promise<BridgeOidcBegin>;
-  pollSignIn(flowId: string): Promise<BridgeOidcPoll>;
-  submitKey(key: string): Promise<BridgeActivation>;
-  signOut(): Promise<void>;
-  invoke?(service: string, method: string, args?: unknown): Promise<unknown>;
-  fetchSchema?(): Promise<unknown>;
-  importBundle?(jws: string): Promise<BridgeImportBundle>;
-  on(event: "stateChanged", cb: (state: BridgeState) => void): () => void;
-}
 
 /** An in-process ipcMain/ipcRenderer pair that structured-clones every message, as Electron
  *  does, so a function or class instance in a reply fails the test. */

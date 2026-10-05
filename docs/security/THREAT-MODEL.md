@@ -4126,6 +4126,75 @@ The Godot SDK reaches Android through `polaris-key-platform` (sdks/kotlin) and t
   (notes/S-06 §7): it gates In-App Updates (a forged Play claim only reaches Play's own API, which
   then refuses) and never authorises anything on the server.
 
+### Node/Electron install drivers, PolarisBridge host and SafeStorageStore (SP-N09/N10/N11)
+
+`@polaris-key/node` hands a verified `binary` decision to an install driver
+(`packages/sdk-node/src/update/drivers/`), gives an Electron renderer a proxy over the client
+(`src/electron/main.ts`, `renderer.ts`, `preload.ts`) and keeps the token in Electron's
+`safeStorage` (`src/electron/safeStorage.ts`). The drivers install new code, the bridge is a
+privilege boundary, and the store holds the bearer. No driver holds a private key. In every case
+the signed update decision (P3-01) is the authority: a driver whose own feed offers any other
+version answers `unsupported` (`version`) and installs nothing.
+
+- **What verifies the bytes, per driver.**
+  - `seaSelfReplaceDriver` downloads through `release.fetch`, which checks the size and SHA-256
+    against the payload artifact of the signed release record before the file is renamed into
+    place. Nothing unverified runs. A payload whose name is an archive or an installer is
+    refused (`product`), and a process that is not a single-executable build is refused
+    (`runtime`), so the driver never replaces Node itself.
+  - `electronUpdaterDriver` lets electron-updater download through the host's own provider. It
+    then hashes the downloaded file and requires that SHA-256 to match an artifact of the decided
+    build in the signed release record (`payload-mismatch` otherwise). electron-updater's own
+    checks (sha512, the Windows publisher name) still run underneath. The record check is on by
+    default; a host that passes `verifyAgainstRecord: false` falls back to electron-updater's
+    feed-level integrity.
+  - `velopackDriver` checks only that the Velopack feed offers the decided version. The bytes are
+    verified by Velopack's own SHA-1/SHA-256 from that feed, so, as with the Godot Velopack path
+    (P5-07), integrity is the feed's: TLS to the Worker and the Worker's selection over verified
+    release records. Authenticode on Update.exe is the owner's. The driver does not compare the
+    package against the release record.
+- **SEA rename and rollback.** The driver writes `<exe>.new` beside the executable, renames the
+  running image to `<exe>.previous` and renames `<exe>.new` into its place. A failed second
+  rename restores the first. The boot guard's `rollback()` puts `<exe>.previous` back after
+  `MAX_FAILED_BOOTS` unconfirmed launches, and only when `<exe>.previous.json` names the version
+  being rolled back to. Residuals:
+  - the install directory must be writable by the user, so anyone who can write there can swap
+    `<exe>.new` between the verify and the rename, or plant `<exe>.previous` and its marker;
+  - the rollback does not re-verify `<exe>.previous`.
+    Both need write access to the directory that already holds the executable, which is
+    equivalent to replacing it. A host that installs into a protected directory should use an
+    installer-based driver instead.
+- **The bridge's trust boundary.** `exposePolarisBridge` registers `ipcMain` handlers that any
+  renderer loaded with the preload can call: state reads, `refresh`, sign-in, `submitKey`,
+  `signOut`, `importBundle`, `fetchSchema` and an `invoke` allowlist (`DEFAULT_INVOKE_VERBS`:
+  device list, rename, deauthorize and report, update check and decide, release changelog,
+  install URL and download URL).
+  - `invoke` answers only the allowlist plus the host's own `invoke.extra` verbs, looked up with
+    `Object.hasOwn`, so a prototype key never resolves. Arguments are type-checked before they
+    reach the client.
+  - The device code of a sign-in stays in the main process; the renderer holds a random flow id
+    that expires with the code. The token, the keyring and the cache never cross the boundary.
+    `BridgeState` carries the verified documents and the sync bookkeeping only.
+  - Refusals cross as `{code, message}` envelopes built from the copy catalog, never a raw
+    server body.
+  - `allowSender` is **optional, and the default accepts every frame**. A host that loads remote
+    content, an iframe, or a second window with the same preload exposes every verb above to
+    that content, including `devices.deauthorize` and `signOut`. Hosts should pass an
+    `allowSender` that pins the app's own origin (the README and tests show
+    `senderFrame.url.startsWith("app://")`), and attach the preload only to windows they trust.
+    The bridge cannot install code: no verb reaches a driver's `install`.
+- **SafeStorageStore degradation.** The token is encrypted with `safeStorage` (Keychain, DPAPI,
+  libsecret or KWallet) into a 0600 `token.enc` file opened with `O_NOFOLLOW`. Every weaker state
+  is reported by `status()`, never silent (P1b-09):
+  - encryption unavailable (before `app.whenReady()`, or no secret store) puts the token in a
+    plain 0600 `token` file and reports `keyring-unavailable`;
+  - Linux `basic_text` is Chromium's hard-coded key, which is obfuscation, not encryption. It is
+    reported as `keyring-unavailable`, with that detail;
+  - a token that no longer decrypts (the OS key was reset) reads as null and reports
+    `keyring-error`; the next activation writes a fresh one.
+    At most one of `token.enc` and `token` exists after a write. In the two plain-equivalent
+    states the token is as safe as the user's home directory, the same residual as `FileStore`.
+
 ### Platform pack transports (P5-08)
 
 Apple-hosted Background Assets, Play Asset Delivery and Steam depots move pack bytes that Polaris
@@ -4788,7 +4857,10 @@ under a looser policy, a registry route answers CORS or a method other than GET,
 Swift's `POST …/login`, or `authorizeFeedRead` moves after the cache lookup (F-02); a new registry
 principal kind, a registry token accepted in a URL outside Godot, any increase of
 `REGISTRY_TOKEN_TTL_SECONDS` or of the OCI pull token's lifetime, or a credentialed registry
-answer reaching the Cache API (F-21); the bucket-lock duration
+answer reaching the Cache API (F-21); a Node install driver (SP-N09) installs
+without the signed decision's version match, `electronUpdaterDriver`'s record check stops being
+the default, a PolarisBridge verb (SP-N10) is added to `DEFAULT_INVOKE_VERBS` or reaches an
+install, or `SafeStorageStore` (SP-N11) gains a degraded state `status()` does not report; the bucket-lock duration
 changes; the admin authorization model changes; the wire contract
 version increments; any new field is added to `AdminSession` or `PortalSession` (see the
 domain-separation note in the audit report — the two realms share HMAC key material by default);

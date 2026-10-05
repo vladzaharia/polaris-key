@@ -139,6 +139,7 @@
     }
   },
   "devDependencies": {
+    "@polaris-key/react": "workspace:*",
     "@types/node": "^22.14.0",
     "@types/yargs": "^17.0.33",
     "commander": "^14.0.0",
