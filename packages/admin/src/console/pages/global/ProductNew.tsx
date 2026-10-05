@@ -203,6 +203,10 @@ const focusField = (name: string): void => {
  * takes its name and slug from `.pkey/product` (link-repo accepts only the repository), so the
  * name and slug fields belong to Nothing alone, and choosing a source must not move fields that
  * sit above the pointer.
+ *
+ * The GitHub path has no live "App installed · manifest valid" check before Link (AS 1.6, the
+ * storyboard's frame 1): that needs a read-only worker probe this screen does not own. Until it
+ * exists, the same problems arrive as the refusal of Link, each with its fix beside it.
  */
 export function ProductNew(): React.ReactElement {
   const [viaRaw, setViaParam] = useSearchParam("via", viaCodec);
