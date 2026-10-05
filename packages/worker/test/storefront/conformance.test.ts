@@ -80,6 +80,7 @@ import {
 import type { StoreResource } from "../../src/core/storefront/audit.js";
 import { PLATFORM_CREDENTIALS } from "../../src/core/platformCredentials.js";
 import { AscClient } from "../../src/core/asc/client.js";
+import { MsStoreWriteClient } from "../../src/services/distribution/connectors/msstore/write.js";
 import {
   FEED_ADAPTERS,
   feedCapabilityView,
@@ -104,6 +105,13 @@ const SPEC_FIXTURES: Partial<Record<StorefrontId, SpecFixture>> = {
   "app-store": JSON.parse(
     readFileSync(
       join(HERE, "..", "fixtures", "asc", "openapi-writes.json"),
+      "utf8",
+    ),
+  ) as SpecFixture,
+  // A-18f: no machine-readable spec exists; a hand-written list pinned by fetch date.
+  "microsoft-store": JSON.parse(
+    readFileSync(
+      join(HERE, "..", "fixtures", "msstore", "operations.json"),
       "utf8",
     ),
   ) as SpecFixture,
@@ -133,6 +141,29 @@ const CLIENTS: Partial<Record<StorefrontId, () => CountingClient>> = {
         c.tokens++;
         return "t";
       },
+      fetchImpl: async () => {
+        c.sends++;
+        return new Response("{}", { status: 200 });
+      },
+    });
+    return c;
+  },
+  "microsoft-store": () => {
+    const c: CountingClient = {
+      tokens: 0,
+      sends: 0,
+      request: (method, path, body) =>
+        client.request(method as "POST", path, body),
+    };
+    const token = async () => {
+      c.tokens++;
+      return "t";
+    };
+    const client = new MsStoreWriteClient({
+      classicToken: token,
+      msiToken: token,
+      sellerId: "123",
+      sleep: async () => {},
       fetchImpl: async () => {
         c.sends++;
         return new Response("{}", { status: 200 });
@@ -227,6 +258,44 @@ const TYPED_SAMPLES: Partial<
             relationships: { app: { data: { type: "apps", id: "A1" } } },
           },
         },
+      },
+    ],
+  },
+  "microsoft-store": {
+    submit: [
+      {
+        method: "POST",
+        path: "/v1.0/my/applications/9NBLGGH4R315/submissions/1152921504621243540/commit",
+        body: {},
+      },
+      {
+        method: "POST",
+        path: "/submission/v1/product/9NBLGGH4R315/submit",
+        body: {},
+      },
+    ],
+    release: [
+      {
+        method: "POST",
+        path: "/v1.0/my/applications/9NBLGGH4R315/submissions/1152921504621243540/finalizepackagerollout",
+        body: {},
+      },
+    ],
+    pricing: [
+      {
+        method: "PUT",
+        path: "/v1.0/my/applications/9NBLGGH4R315/submissions/1152921504621243540",
+        body: { pricing: { priceId: "Tier2", trialPeriod: "NoFreeTrial" } },
+      },
+      {
+        method: "PATCH",
+        path: "/submission/v1/product/9NBLGGH4R315/metadata",
+        body: { availability: { pricing: "PAID" } },
+      },
+      {
+        method: "PUT",
+        path: "/submission/v1/product/9NBLGGH4R315/metadata",
+        body: { availability: { markets: ["US"] } },
       },
     ],
   },
