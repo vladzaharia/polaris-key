@@ -91,7 +91,7 @@ one fails CI.
    NuGet are already there, reserved: take yours out of `RESERVED_ECOSYSTEMS`). If the protocol
    needs a content type that is not on `REGISTRY_HOST_TYPES`, stop: that list is a THREAT-MODEL
    review trigger. Seed the ecosystem's row in `dist_registry_policy` with a migration (F-30's
-   `0072_cargo_registry_policy.sql`): the access ladder reads a missing row as the platform
+   `0074_cargo_registry_policy.sql`): the access ladder reads a missing row as the platform
    switch off, so without it the feed never answers.
 3. **The directory.** Create `registry/<ecosystem>/` with `render.ts` (pure documents),
    `routes.ts` (every route through `feedRoute`) and `index.ts` (the `FeedAdapter`). Keep every

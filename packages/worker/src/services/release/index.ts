@@ -23,9 +23,12 @@ import { getReleaseConfig } from "./config.js";
 import { bytesHostname } from "../../core/bytesHost.js";
 import { releaseCatalog } from "./catalog.js";
 import { releaseKeyFingerprints } from "./records.js";
+import { RELEASE_SETTINGS_SLICE } from "./settings.js";
 
 export const releaseService: ServiceDescriptor = {
   slug: "release",
+  /** ST-03: this service's settings registry slice (`settings.ts`). */
+  settings: RELEASE_SETTINGS_SLICE,
   handle: handleReleaseRoutes,
   adminHandle: (ctx: ServiceContext & { session: AdminSession }) =>
     handleReleaseAdmin(ctx),

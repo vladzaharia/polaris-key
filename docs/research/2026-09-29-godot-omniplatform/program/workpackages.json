@@ -5807,7 +5807,7 @@
         "notes/S-18 §6.2 ST-01a"
       ],
       "brief": "wp/ST-01a-manifest-snapshot.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "ST-01b",
@@ -5878,7 +5878,7 @@
       "optional": false,
       "refs": ["notes/S-18 §2.2", "notes/S-18 §4.13", "notes/S-18 §6.2 ST-02"],
       "brief": "wp/ST-02-platform-inventory.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "ST-03",
@@ -5903,7 +5903,7 @@
         "notes/S-18 Appendix A"
       ],
       "brief": "wp/ST-03-settings-registry.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "ST-04",
@@ -6428,7 +6428,7 @@
         "notes/S-19 §10.3 decision 12"
       ],
       "brief": "wp/LX-02-oidc-signin-fix.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "LX-03",
@@ -6446,7 +6446,7 @@
       "optional": false,
       "refs": ["notes/S-19 §4.3", "notes/S-19 §9 LX-03"],
       "brief": "wp/LX-03-claim-carries-grants.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "LX-04",
@@ -6464,7 +6464,7 @@
       "optional": false,
       "refs": ["notes/S-19 §4.3 G14 G19", "notes/S-19 §9 LX-04"],
       "brief": "wp/LX-04-portal-doc-agreement.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "LX-05",
@@ -6486,7 +6486,7 @@
         "notes/S-19 §10.3 decision 15"
       ],
       "brief": "wp/LX-05-reserved-names-warn.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "LX-05b",
@@ -6578,7 +6578,7 @@
         "notes/S-19 §10.3 decision 10"
       ],
       "brief": "wp/LX-17-sdk-licenseid-audit.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "LX-08",

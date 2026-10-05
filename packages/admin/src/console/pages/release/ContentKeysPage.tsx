@@ -156,7 +156,10 @@ export function ContentKeysPage({
       id: "signedBy",
       header: "Signed by",
       accessorKey: "signedBy",
-      meta: { priority: 2, label: "Signed by" },
+      // Priority 3: hidden by default under 1440 px (every delegation is signed by the release
+      // key, so it is the column a laptop can spare). With it shown the table's min-content
+      // width left 1.5 px of slack at 1280 px, which whole-pixel glyph advances overran.
+      meta: { priority: 3, label: "Signed by" },
       cell: ({ row }) => (
         <SignedBadge kid={row.original.signedBy} by="the release key" />
       ),

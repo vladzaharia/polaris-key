@@ -205,7 +205,7 @@ Account (one per person, platform-level, ALWAYS present; "portal account" in S-1
     ├─ services (per product, each with its own toggle)
     │   ├─ Identity (S-16)         ← "<App> wants you to sign in": app sign-in through Polaris Key
     │   │   └─ product user        ← how that app knows the person: a PAIRWISE id per product
-    │   ├─ Cloud Sync (S-17)       ← depends on the account and the license, NOT on Identity
+    │   ├─ Cloud Sync (S-17)       ← REQUIRES Identity: its principal is the device's sign-in
     │   └─ …
     ├─ releases → builds per platform, extras, release notes
     └─ store listings (App Store, Play, Steam, Microsoft Store, Flathub …)
@@ -217,14 +217,14 @@ Discover = products whose license policy would auto-issue to this account (evalu
 platform layer: one per person, across every product, always present, whether or not any product
 turns Identity on. **Identity** is a per-product _service_:
 
-| The product has Identity …                   | **on**                                                 | **off**                                                                                                         |
-| -------------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| Licenses attach to accounts                  | Yes                                                    | Yes: Activate license, Discover, purchases with a verified email, the portal                                    |
-| Library tile and product page                | Yes                                                    | Yes                                                                                                             |
-| App sign-in (§4.7–4.9)                       | Yes: `/authorize`, native redirect, device code        | **Never.** No "<App> wants you to sign in"; the broker refuses the request (§3.3)                               |
-| Connected products, "<Product> knows you as" | Listed, with the method it uses                        | Not listed; no identity card on the product page                                                                |
-| Cloud Sync                                   | When the product has the Cloud Sync service on         | Same: Cloud Sync depends on the account (reached through the license on the device), not on the Identity toggle |
-| Key-entry limits (§4.6)                      | Available: at zero the app signs the person in instead | Not offered: the app has no way to sign in instead (derived from this decision; for owner confirmation)         |
+| The product has Identity …                   | **on**                                                 | **off**                                                                                                                                                                                 |
+| -------------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Licenses attach to accounts                  | Yes                                                    | Yes: Activate license, Discover, purchases with a verified email, the portal                                                                                                            |
+| Library tile and product page                | Yes                                                    | Yes                                                                                                                                                                                     |
+| App sign-in (§4.7–4.9)                       | Yes: `/authorize`, native redirect, device code        | **Never.** No "<App> wants you to sign in"; the broker refuses the request (§3.3)                                                                                                       |
+| Connected products, "<Product> knows you as" | Listed, with the method it uses                        | Not listed; no identity card on the product page                                                                                                                                        |
+| Cloud Sync                                   | When the product has the Cloud Sync service on         | **Never.** Cloud Sync requires Identity: its principal is the device's sign-in (`devices.subject`), and the console refuses Cloud Sync without Identity (S-17 owner's final answers, 1) |
+| Key-entry limits (§4.6)                      | Available: at zero the app signs the person in instead | Not offered: the app has no way to sign in instead (derived from this decision; for owner confirmation)                                                                                 |
 
 **Pairwise ids toward developers.** A developer never sees the account id. Each product with
 Identity gets its own stable **pairwise subject** for the person (`sub` = keyed hash of account and
@@ -1329,9 +1329,9 @@ new with the owner decisions of 2026-10-04**, and **G31–G34 with the second ro
 
 Notes:
 
-- **Identity off still means an account.** Library, Activate license, Discover, the product page
-  and Cloud Sync all work for products without Identity (§3.1); only app sign-in, Connected products
-  rows and the product identity card depend on it.
+- **Identity off still means an account.** Library, Activate license, Discover and the product page
+  all work for products without Identity (§3.1); app sign-in, Connected products rows, the product
+  identity card and Cloud Sync (which requires Identity, S-17 owner's final answers, 1) depend on it.
 - **Rule 6.** Identity (where the portal lives) may not import Distribution, Update or License
   internals. G2, G4, G8, G24 and G25 go through descriptor hooks in `src/core/hooks.ts`.
 - **G2 and G4 as built (PX-W2).** `GET /api/products/:p/downloads[?channel=]` reads Distribution's

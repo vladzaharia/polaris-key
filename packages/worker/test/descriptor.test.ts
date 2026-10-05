@@ -50,6 +50,7 @@ import {
   releaseStoreStatements,
 } from "../src/services/release/store.js";
 import { recordRef } from "../src/core/blobs.js";
+import { withDefaultHead } from "./githubHead.js";
 
 const SLUG = "diceroll";
 const OWNER = "vladzaharia";
@@ -219,7 +220,10 @@ function github(
     }
     return new Response("nope", { status: 404 });
   };
-  return { fetchImpl, assetFetches: () => assetFetches };
+  return {
+    fetchImpl: withDefaultHead(fetchImpl),
+    assetFetches: () => assetFetches,
+  };
 }
 
 function envFor(): Env {
