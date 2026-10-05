@@ -4,6 +4,7 @@
 // @pkey-feature identity.devicecode config.mint
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk
+// @pkey-feature license.manage
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
 // drive the umbrella `PolarisKeyClient` (:sdk) through every recorded conversation
@@ -202,8 +203,12 @@ object KotlinReplay {
                 }
                 out["documents"] = JsonObject(docs)
             }
-            "activate" -> out["result"] = JsonPrimitive(activationKind(client.activate(args["key"].stringValue ?: "")))
-            "enroll" -> out["result"] = JsonPrimitive(activationKind(client.enroll()))
+            "activate", "enroll" -> {
+                val r = if (action == "activate") client.activate(args["key"].stringValue ?: "") else client.enroll()
+                out["result"] = JsonPrimitive(activationKind(r))
+                // PX-W8: the refusal link, exactly as served; null when the result carries none.
+                if (r is ActivationResult.DeviceLimit) out["manageUrl"] = r.manageUrl?.let { JsonPrimitive(it) } ?: JsonNull
+            }
             "deactivate" -> client.deactivate()
             "register" -> out["result"] = JsonPrimitive(
                 when (client.register()) {

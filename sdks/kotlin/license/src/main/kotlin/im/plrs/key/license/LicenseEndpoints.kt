@@ -20,6 +20,7 @@ import im.plrs.key.core.CoreContext
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.HardwareFingerprint
 import im.plrs.key.core.JsonText
+import im.plrs.key.core.ManageLink
 import im.plrs.key.core.arrayValue
 import im.plrs.key.core.longValue
 import im.plrs.key.core.objectValue
@@ -33,7 +34,14 @@ public sealed interface ActivationResult {
         override fun toString(): String = "Ok(token=[redacted], schemaVersion=$schemaVersion)"
     }
 
-    public data class DeviceLimit(val limit: Long?, val deviceCount: Long?) : ActivationResult
+    /**
+     * Every seat is taken. [manageUrl] (PX-W8, WIRE-CONTRACT-V4 §5.3) is the customer-portal link
+     * that frees one, present while the product's portal is on and already validated by
+     * [ManageLink.read]. Add the app's return with [ManageLink.withReturn] and, on an `/activate`
+     * link, the key with [ManageLink.withKey]. Never an auth failure: open it only behind a user
+     * action.
+     */
+    public data class DeviceLimit(val limit: Long?, val deviceCount: Long?, val manageUrl: String? = null) : ActivationResult
     public data object Unauthorized : ActivationResult
 
     /** The tier requires a hardware fingerprint this host could not produce. */
@@ -122,6 +130,7 @@ public object LicenseEndpoints {
                     ActivationResult.DeviceLimit(
                         limit = o?.get("limit").longValue ?: nested?.get("limit").longValue,
                         deviceCount = o?.get("deviceCount").longValue ?: nested?.get("deviceCount").longValue,
+                        manageUrl = ManageLink.read(o?.get("manageUrl").stringValue, nested?.get("manageUrl").stringValue),
                     )
                 }
             }
