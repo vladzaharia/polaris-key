@@ -2782,10 +2782,12 @@ plain R1-07 poll, which authorizes one starter device on the victim's license th
   every authorized device on the starter's license (dormant ones too, since `moveDevices` moves
   them and a moved dormant device comes back without claiming a seat) plus the seat-holding
   devices on the victim's license fit the device limit the victim's license will carry after the
-  activation. The activation rewrites that license's tier and overrides to the victim's current
-  group-mapped tier and provisioning before the mint, so the bound is measured on that, not on
-  a larger tier the license still stores from an earlier sign-in or an admin `deviceLimit`
-  override the same write discards.
+  activation. Since LX-02 (S-19 G7, decision 12) the activation's sign-in write keeps that
+  license's own `tier_id` and `expires_at` and rewrites only the override keys the product's
+  provisioning declares, so the bound is measured on the stored tier plus the surgically merged
+  overrides (an operator's `deviceLimit` override survives and counts), not on a larger tier the
+  victim's groups map to now. The strict-fingerprint refusal below likewise reads the
+  destination's stored tier on a migrate, and the identity's mapped tier on a claim.
 - **On both arms**, then, the attach cannot take the victim past their device limit. It can
   still fill the victim's free seats with the starter's devices, so the victim's own next device
   then gets `device_limit` until the owner removes them. The bound is a read before the merge,
@@ -2801,10 +2803,11 @@ plain R1-07 poll, which authorizes one starter device on the victim's license th
 PoCs: `R8-oidc.test.ts` › `OPEN (R1-07 / R8-03, P1-07 claim)` and `OPEN (R1-07 / R8-03, P1-07
 migrate)` assert the gap; `P1-07 (R1-07 bound)`, `P1-07 (R1-07 bound, dormant devices)` and the three `P1-07 (R1-07 bound,
 claim)` / `P1-07 (R1-07 bound, migrate)` tests (dormant devices on a claim, the identity's tier
-rather than the enroll tier, the mapped tier rather than a stale stored one) assert the
-seat-limit refusal, and `P1-07
-(R1-07, claim on a strict tier)` and `P1-07 (R1-07, migrate on a strict tier)` assert that nothing
-merges when the mint would be refused. Binding the
+rather than the enroll tier, the destination's stored tier rather than a larger mapped one, an
+operator `deviceLimit` override that survives sign-in) assert the seat-limit refusal, and
+`P1-07 (R1-07, claim on a strict tier)`, `P1-07 (R1-07, migrate on a strict tier)` and `P1-07
+(R1-07, migrate onto a strict stored tier)` assert that nothing merges when the mint would be
+refused. Binding the
 callback to the confirming browser (below) closes all of it, because the device-code holder is
 then again the person who signed in.
 
@@ -4683,7 +4686,14 @@ Stated honestly, so nobody builds on a false assumption:
 
 **It does stop:** using the product with no license at all _against the server_; obtaining product
 secrets or edge-mint tokens without a valid device token; exceeding seat limits by ordinary,
-non-concurrent use; continuing to work after revocation _if the client contacts the server again_.
+non-concurrent use; continuing to work after revocation _if the client contacts the server again_;
+outliving a time-limited licence by signing in again. Until LX-02 (S-19 G7) an OIDC sign-in on an
+existing licence reset `expires_at` to `now + policy_expiry_days` and its tier to the first mapped
+group's, so a trial renewed on every sign-in, and replaced the whole `overrides_json`, so an
+operator's restriction (a `deviceLimit` cut, a revoked flag) was undone by the next sign-in. The
+sign-in write now sets only `name`, `email` and `groups_json` and rewrites only the override keys
+the product's provisioning declares, as a compare-and-set on the column it merged from (tests:
+`oidc.test.ts` › `OIDC sign-in on an existing licence (LX-02)`).
 
 **It does not stop casual license sharing.** This was claimed here in the first draft and it is
 wrong. A user can copy `~/.config/<product>/managed.json` to another machine, or simply hand-write
