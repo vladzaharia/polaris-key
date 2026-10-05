@@ -269,6 +269,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@polaris-key/catalog':
+        specifier: workspace:*
+        version: link:../shared-catalog
       '@polaris-key/client-core':
         specifier: workspace:*
         version: link:../client-core
@@ -540,6 +543,9 @@ importers:
       '@polaris-key/catalog':
         specifier: workspace:*
         version: link:../packages/shared-catalog
+      '@polaris-key/cli':
+        specifier: workspace:*
+        version: link:../packages/cli
       '@polaris-key/client-core':
         specifier: workspace:*
         version: link:../packages/client-core
