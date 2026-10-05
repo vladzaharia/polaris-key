@@ -68,8 +68,8 @@ export function Switch({
   );
   if (!label) return control;
   return (
-    <div className={cn("flex items-start gap-2.5", className)}>
-      <span className="mt-0.5 flex">{control}</span>
+    // Label first, the switch flush right: a switch reads as a row's trailing control.
+    <div className={cn("flex items-start justify-between gap-3", className)}>
       <div className="min-w-0">
         <label htmlFor={switchId} className="text-sm text-fg">
           {label}
@@ -80,6 +80,7 @@ export function Switch({
           </p>
         ) : null}
       </div>
+      <span className="mt-0.5 flex">{control}</span>
     </div>
   );
 }

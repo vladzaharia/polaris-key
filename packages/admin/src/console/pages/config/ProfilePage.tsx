@@ -308,6 +308,8 @@ function UsedByTab({
           kind={row.original.kind}
           id={row.original.id}
           label={row.original.name}
+          className="block max-w-[20rem] truncate"
+          title={row.original.name}
         />
       ),
     },
@@ -323,6 +325,14 @@ function UsedByTab({
       accessorKey: "detail",
       enableSorting: false,
       meta: { priority: 2 },
+      cell: ({ getValue }) => (
+        <span
+          className="block max-w-[24rem] truncate"
+          title={getValue() as string}
+        >
+          {getValue() as string}
+        </span>
+      ),
     },
   ];
   return (
@@ -333,6 +343,7 @@ function UsedByTab({
       columns={columns}
       getRowId={(u) => `${u.kind}:${u.id}`}
       exportCsv={false}
+      mobile="cards"
       empty={
         <EmptyState
           kind="first-run"
