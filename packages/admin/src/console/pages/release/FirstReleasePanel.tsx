@@ -52,9 +52,9 @@ const DEFAULT_WORKFLOW = ".github/workflows/release.yml";
  * The publish step for a release job, with the product's slug filled in. It follows the CI guide
  * (`/docs/build/ci/`): the Action is referenced by commit until it is listed as `@v1`.
  */
-export function workflowStep(slug: string, workflow?: string | null): string {
+export function workflowStep(slug: string): string {
   return [
-    `# ${workflow || DEFAULT_WORKFLOW}, in the job that publishes`,
+    "# In the release job, after the steps that build your files",
     "- uses: vladzaharia/polaris-key/actions/publish@<commit-sha>",
     "  with:",
     `    product: ${slug}`,
@@ -150,7 +150,7 @@ export function FirstReleasePanel({
   const [issuing, setIssuing] = React.useState(false);
   const { copy, state: copyState } = useCopy();
   const policy = publisher.data ?? null;
-  const step = workflowStep(slug, policy?.workflow);
+  const step = workflowStep(slug);
 
   // Wait out loud: re-read the store until the first release lands (ReleasesPage announces it).
   React.useEffect(() => {
