@@ -39,6 +39,7 @@ import type { Db, DbStatement } from "../db/types.js";
 import type { Env } from "../env.js";
 import { notFound } from "./errors.js";
 import { isBytesHost } from "./bytesHostname.js";
+import { peekStream, sniffContentType, SNIFF_BYTES } from "./sniff.js";
 
 // ── Key builders ────────────────────────────────────────────────────────────────────────────
 
@@ -245,12 +246,17 @@ type PutBody = ReadableStream | ArrayBuffer | ArrayBufferView;
  * - A key named by a hash (blobs, bundles, staging) must be named by THIS hash.
  * - A stream is wrapped in a `FixedLengthStream` where the runtime has one, so R2 knows the
  *   length up front and a short or long stream errors instead of being stored.
+ * - Every object is stored with `httpMetadata.contentType` (HA-01, S-20 §4.6 #1). It is the
+ *   caller's `opts.contentType` when given (a type the caller has itself sniffed, or a release
+ *   descriptor's), else the type `sniffContentType` reads from the first bytes, peeked without
+ *   buffering the body. A sender's declared type is never used: there is no parameter for it.
  */
 export async function putVerified(
   bucket: R2Bucket,
   key: string,
   body: PutBody,
   expected: Expected,
+  opts: { contentType?: string } = {},
 ): Promise<PutResult> {
   const parsed = parseKey(key);
   if (!parsed) return { ok: false, reason: "key_mismatch", detail: "layout" };
@@ -263,14 +269,40 @@ export async function putVerified(
     return { ok: false, reason: "size_mismatch" };
 
   let value: PutBody = body;
+  let contentType = opts.contentType;
   if (body instanceof ArrayBuffer || ArrayBuffer.isView(body)) {
     if (body.byteLength !== expected.size)
       return { ok: false, reason: "size_mismatch" };
+    if (contentType === undefined) {
+      const bytes =
+        body instanceof ArrayBuffer
+          ? new Uint8Array(body, 0, Math.min(body.byteLength, SNIFF_BYTES))
+          : new Uint8Array(
+              body.buffer,
+              body.byteOffset,
+              Math.min(body.byteLength, SNIFF_BYTES),
+            );
+      contentType = sniffContentType(bytes);
+    }
   } else {
+    let stream: ReadableStream = body;
+    if (contentType === undefined) {
+      try {
+        const peeked = await peekStream(body, SNIFF_BYTES);
+        contentType = sniffContentType(peeked.head);
+        stream = peeked.stream;
+      } catch (err) {
+        return {
+          ok: false,
+          reason: "rejected",
+          detail: err instanceof Error ? err.message : String(err),
+        };
+      }
+    }
     const Fixed = (
       globalThis as { FixedLengthStream?: typeof FixedLengthStream }
     ).FixedLengthStream;
-    if (Fixed) value = body.pipeThrough(new Fixed(expected.size));
+    value = Fixed ? stream.pipeThrough(new Fixed(expected.size)) : stream;
   }
 
   let object: R2Object | null;
@@ -278,6 +310,7 @@ export async function putVerified(
     object = await bucket.put(key, value, {
       sha256: expected.sha256,
       onlyIf: new Headers({ "If-None-Match": "*" }),
+      httpMetadata: { contentType },
     });
   } catch (err) {
     return {
@@ -350,7 +383,9 @@ export type PromoteResult =
  * Order is the invariant: verify → copy (streamed, pinned to the verified version, with the
  * checksum so R2 re-checks it) → record. A failed verification writes nothing, anywhere. The
  * R2 binding has no server-side copy, so the copy is a stream from `get` into `put`; the
- * staging object is left for the one-day lifecycle rule (P2-02 may delete it sooner).
+ * staging object is left for the one-day lifecycle rule (P2-02 may delete it sooner). The copy
+ * goes through `putVerified`, so the locked object carries the SNIFFED `Content-Type` (HA-01); a
+ * type the CI upload declared on the staged object is never carried over.
  *
  * Idempotent: promoting an object that is already stored succeeds with `alreadyStored` once
  * the stored object's own checksum is confirmed to be the expected one. `alreadyStored` is
@@ -572,7 +607,8 @@ export async function referencedKeys(
 export interface BlobRef {
   product: string;
   storageKey: string;
-  /** What holds the reference: `artifact` (P2-04), `pack-object` (P4-02), … */
+  /** What holds the reference: `artifact` (P2-04), `pack-object` (P4-02), `hosted-asset`
+   *  (HA-01, `core/hostedAssets.ts`), … */
   refKind: string;
   /** The holder's id within its kind. */
   refId: string;

@@ -48,6 +48,18 @@ S-20 found that Polaris Key has no way to copy a developer's file into its own s
 - Ingest that hits an existing object adds the ref only. The key is content-addressed, so a re-ingest is idempotent.
 - The guard table in `pull.mjs --self-test` is the unit test's table. Keep the two identical.
 
+### Corrections recorded at implementation (HA-01, 2026-10-05)
+
+The code is the fact; these refine the notes above.
+
+- **More reason codes.** Besides the list above, `hosted_assets.error` can hold `not-a-video` (a video slot that is not MP4), `size-mismatch` (a stream shorter or longer than it declared), `network` (the fetch threw), `unverifiable` (a streamed ingest without an expected SHA-256 and a known length), `retry` (the store refused or raced the write; try again) and the guard's `guard:not-allowed` and `guard:redirects`. `unavailable` (no blob store bound) is returned but never stored.
+- **"Adds the ref only" still reads every byte.** An ingest that finds the object already stored adds only the ref, but it reads and hashes the whole stream first. A ref is earned only by possession (THREAT-MODEL §3), so an expected hash never lets the read be skipped.
+- **Large slots need the hash up front.** Image slots (≤ 20 MiB) are read into memory and hashed. Video and release-file slots are streamed into R2. Because the key is named by the hash, they need `expectedSha256` and a known length, and are refused as `unverifiable` without them. Every GitHub release asset has a `digest` (S-20 §5).
+- **The migration adds `REFERENCES products(slug)` on `product`**, as its sibling tables do, and no CHECK constraints, so later packages can add values without rebuilding the table. The number is `0072`.
+- **`IMAGES` is typed on `Env` only.** HA-03 adds the binding to `wrangler.toml`.
+- **"The ref kinds the collector knows"** is the collector's documented table (`core/blobGc.ts`): `hosted-asset` refs are never dropped by the collector. The ingest drops a replaced copy's refs itself. There was no code list to extend.
+- **Content-Type.** `putVerified` takes an optional `contentType`, which `ingest` passes. Without one, `putVerified` sniffs the first bytes, peeking at a stream without buffering it. `promote` goes through `putVerified`, so every caller stores a type.
+
 ## Steps
 
 1. Migration and table owners.
