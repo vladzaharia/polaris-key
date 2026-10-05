@@ -160,6 +160,16 @@ export interface Env {
   /** The kid within `PLATFORM_KEK_KEYS` that new seals use. Must be a key of that map. */
   PLATFORM_KEK_ACTIVE?: string;
   KEY_HASH_PEPPER?: string;
+  /**
+   * F-21 (plans/F-20.md §6.4): the HMAC key of the registry host's OCI pull tokens (32 random
+   * bytes, base64). With it unset, `GET /v2/token` answers 503 and `GET /v2/` stays a plain 200;
+   * once set, `/v2/` challenges callers without a valid pull token (Q1). Set per environment
+   * before deploying: `wrangler secret put REGISTRY_TOKEN_KEY --env <env>`.
+   */
+  REGISTRY_TOKEN_KEY?: string;
+  /** The previous `REGISTRY_TOKEN_KEY`, still accepted for verification during a rotation (pull
+   *  tokens live 300 s, so it can be removed five minutes after the new key is live). */
+  REGISTRY_TOKEN_KEY_PREVIOUS?: string;
   ADMIN_SESSION_SECRET?: string;
   PORTAL_SESSION_SECRET?: string;
   PLATFORM_OIDC_ISSUER?: string;

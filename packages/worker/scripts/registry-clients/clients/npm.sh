@@ -7,7 +7,7 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$here/lib/npm-feed.bash"
 npm_cli() { if [ -n "${NPM_VERSION:-}" ]; then npx -y "npm@$NPM_VERSION" "$@"; else npm "$@"; fi; }
 echo "npm $(npm_cli --version)"
-setup() { printf '%s:registry=%s\n' "$SCOPE" "$FEED" > "$1/.npmrc"; }
+setup() { printf '%s:registry=%s\n' "$SCOPE" "$FEED" > "$1/.npmrc"; npmrc_auth "$1/.npmrc"; }
 add() { (cd "$1" && npm_cli install --no-audit --no-fund --cache "$1/.npm-cache" "$2"); }
 lockfile() { echo "$1/package-lock.json"; }
 YANK_WARNING="broken build" RANGE_AVOIDS_YANKED=1 npm_feed_matrix

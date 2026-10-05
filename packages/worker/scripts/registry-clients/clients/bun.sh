@@ -8,11 +8,14 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUN="${BUN:-bun}"
 echo "bun $("$BUN" --version)"
 setup() {
+  # F-21: an authenticated feed (run.mjs --auth) carries the token in the scope.
+  local tok=""
+  if [ -n "${PKEY_REGISTRY_TOKEN:-}" ]; then tok=", token = \"$PKEY_REGISTRY_TOKEN\""; fi
   cat > "$1/bunfig.toml" <<TOML
 [install]
 cache = "$1/.bun-cache"
 [install.scopes]
-"$SCOPE" = "$FEED"
+"$SCOPE" = { url = "$FEED"$tok }
 TOML
 }
 add() { (cd "$1" && "$BUN" add "$2"); }

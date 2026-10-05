@@ -58,6 +58,8 @@ import { selectFeedWith } from "./feeds/select.js";
 import { feedStateStamp } from "./feeds/cache.js";
 import { readinessReader, type ReadinessReader } from "./readiness.js";
 import { packageFeedOf } from "./registryFeeds.js";
+import { feedAdapter } from "./registry/index.js";
+import { registryOrigin } from "../../core/registryHostname.js";
 import { resolvePlaySetup } from "./connectors/play/setup.js";
 import { customerDownloads } from "./page/customer.js";
 
@@ -193,7 +195,19 @@ export function delivery(ctx: HookContext): Delivery {
     // PX-W2: the customer portal's per-platform downloads and store links (`page/customer.ts`).
     customerDownloads: (q) => customerDownloads(ctx, q),
 
-    packageFeed: (ecosystem: string) => packageFeedOf(db, slug, ecosystem),
+    async packageFeed(ecosystem: string) {
+      const feed = await packageFeedOf(db, slug, ecosystem);
+      if (!feed) return null;
+      const adapter = feedAdapter(ecosystem);
+      const origin = registryOrigin(ctx.env);
+      return {
+        ...feed,
+        baseUrl:
+          adapter && origin
+            ? `${origin}${adapter.feedPath(encodeURIComponent(slug))}`
+            : null,
+      };
+    },
 
     async transports() {
       return (

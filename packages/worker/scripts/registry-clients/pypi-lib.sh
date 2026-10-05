@@ -7,6 +7,15 @@ set -euo pipefail
 : "${REGISTRY:?REGISTRY is the registry host origin}"
 : "${OWNER:?OWNER is the fixture owner}"
 INDEX="$REGISTRY/pypi/$OWNER/simple/"
+# F-21: against an authenticated feed (run.mjs --auth) the clients send Basic `__token__:<token>`:
+# pip in the index URL, uv and Poetry through their per-index credential variables. `curl` sends
+# the token through CURL_HOME's .curlrc, so INDEX itself stays credential-free.
+CLIENT_INDEX="$INDEX"
+if [ -n "${PKEY_REGISTRY_TOKEN:-}" ]; then
+  CLIENT_INDEX="${REGISTRY%%://*}://__token__:$PKEY_REGISTRY_TOKEN@${REGISTRY#*://}/pypi/$OWNER/simple/"
+  export UV_INDEX_POLARIS_USERNAME=__token__ UV_INDEX_POLARIS_PASSWORD="$PKEY_REGISTRY_TOKEN"
+  export POETRY_HTTP_BASIC_POLARIS_USERNAME=__token__ POETRY_HTTP_BASIC_POLARIS_PASSWORD="$PKEY_REGISTRY_TOKEN"
+fi
 PROJECT="polaris-smoke"
 fail=0
 tmp="$(mktemp -d)"

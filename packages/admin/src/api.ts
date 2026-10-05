@@ -2426,6 +2426,74 @@ export interface FeedDetailDto extends FeedsHead {
   policy: FeedPolicy | null;
   capabilities: FeedCapabilities;
   accessModes: { mode: string; available: boolean }[];
+  /** F-21: the ecosystem's packages with no delivery gate, which `entitled` refuses every
+   *  licence token for. */
+  ungatedPackages?: { id: string; name: string }[];
+}
+
+// ── registry tokens (F-21; worker `admin/handlers/registryTokens.ts`) ────────────────────────
+
+/** One registry token as the console lists it: never the plaintext or its hash. */
+export interface RegistryTokenDto {
+  tokenId: string;
+  label: string;
+  /** The token's last four characters. */
+  hint: string;
+  scopes: string[];
+  /** `null` = every feed of the owner. */
+  ecosystems: FeedEcosystem[] | null;
+  binding: "owner" | "license";
+  licenseId: string | null;
+  presentation: "header" | "url";
+  createdBy: string;
+  createdAt: number;
+  expiresAt: number;
+  lastUsedAt: number | null;
+  revokedAt: number | null;
+  revokedBy: string | null;
+  revokeReason: string | null;
+  status: "active" | "expired" | "revoked";
+}
+
+export interface RegistryTokenFeed {
+  ecosystem: FeedEcosystem;
+  label: string;
+  enabled: boolean;
+  accessMode: string;
+  baseUrl: string | null;
+}
+
+export interface RegistryTokensDto {
+  owner: string;
+  registryOrigin: string | null;
+  /** The username clients send beside the token (`__token__`). */
+  username: string;
+  tokens: RegistryTokenDto[];
+  feeds: RegistryTokenFeed[];
+  limits: {
+    minDays: number;
+    maxDays: number;
+    defaultDays: number;
+    urlDefaultDays: number;
+    perOwner: number;
+    perLicense: number;
+  };
+}
+
+export interface MintRegistryTokenBody {
+  label: string;
+  ecosystems?: FeedEcosystem[] | null;
+  expiresInDays?: number;
+  binding: "owner" | "license";
+  licenseId?: string;
+  presentation?: "header" | "url";
+}
+
+export interface MintedRegistryToken {
+  ok: true;
+  /** The plaintext: in this answer only. */
+  token: string;
+  view: RegistryTokenDto;
 }
 
 export interface FeedSettingsWrite {
@@ -3481,6 +3549,29 @@ const rawApi = {
     }),
   feedActivity: (scope: FeedScope, eco: FeedEcosystem) =>
     call<{ items: ActivityItem[] }>(`${feedsBase(scope)}/${eco}/activity`),
+  /** F-21: the scope's registry tokens (or one licence's), with its feeds for the snippets. */
+  registryTokens: (scope: FeedScope, licenseId?: string) =>
+    call<RegistryTokensDto>(
+      `${feedsBase(scope)}/tokens${licenseId ? `?license=${enc(licenseId)}` : ""}`,
+    ),
+  mintRegistryToken: (scope: FeedScope, body: MintRegistryTokenBody) =>
+    call<MintedRegistryToken>(`${feedsBase(scope)}/tokens`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  revokeRegistryToken: (scope: FeedScope, tokenId: string) =>
+    call<{ ok: true; view: RegistryTokenDto }>(
+      `${feedsBase(scope)}/tokens/${enc(tokenId)}/revoke`,
+      { method: "POST" },
+    ),
+  revokeAllRegistryTokens: (scope: FeedScope, licenseId?: string) =>
+    call<{ ok: true; revoked: number }>(
+      `${feedsBase(scope)}/tokens/revoke-all`,
+      {
+        method: "POST",
+        body: JSON.stringify(licenseId ? { licenseId } : {}),
+      },
+    ),
   /** Create (or re-assert) the system product that owns the platform's feeds (F-03). */
   bootstrapPlatformFeeds: () =>
     call<{ ok: true; slug: string; created: boolean }>(

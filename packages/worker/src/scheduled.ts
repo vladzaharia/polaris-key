@@ -29,6 +29,7 @@
 //    a table that is never pruned again. Failures are collected and re-thrown as one aggregate
 //    at the very end, so the invocation is still recorded as failed.
 
+import { purgeRegistryTokens } from "./core/registryTokens.js";
 import { pruneCiCredentials } from "./core/publisher.js";
 import { loadProductPublic } from "./core/products.js";
 import { runScheduledServices } from "./core/registry.js";
@@ -368,6 +369,9 @@ export async function runScheduledMaintenance(
   await step(report, "heartbeats", () =>
     pruneHeartbeats(db, now - JOB_RUN_RETENTION_SECONDS),
   );
+
+  // F-21: registry tokens 90 days past their expiry or revocation (`core/registryTokens.ts`).
+  await step(report, "registryTokens", () => purgeRegistryTokens(db, now));
 
   // P4-17: the lazy-delta sweep, for products opted in (none while `LAZY_DELTAS` is off). Before
   // the collector, so a delta marked cold tonight loses its ref before tonight's mark pass.

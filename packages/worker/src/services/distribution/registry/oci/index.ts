@@ -15,6 +15,7 @@ import {
 import type { RegistryRenderer } from "../materialise.js";
 import { renderOci } from "./render.js";
 import { OCI_ROUTES } from "./routes.js";
+import { OCI_TOKEN_ROUTE } from "./token.js";
 
 export const OCI_ADAPTER: FeedAdapter<"oci"> = defineFeedAdapter({
   ecosystem: "oci",
@@ -23,6 +24,8 @@ export const OCI_ADAPTER: FeedAdapter<"oci"> = defineFeedAdapter({
   hostPrefix: "/v2/",
   feedPath: (owner) => `/v2/${owner}/`,
   routes: OCI_ROUTES,
+  // F-21: the token service `docker login` and every pull of a non-public feed go through.
+  ownerlessRoutes: [OCI_TOKEN_ROUTE],
   renderer: { render: (pkg) => renderOci(pkg), stamp: "package" },
   ingest: PACKAGE_ECOSYSTEM_RULES.oci,
   settings: { ext: { retainUntaggedDays: extInteger(0, 3650) } },
@@ -43,8 +46,8 @@ export const OCI_ADAPTER: FeedAdapter<"oci"> = defineFeedAdapter({
     inputs: ["registryHost", "owner", "package.name", "package.version"],
   },
   openapi: [
-    // `/v2/token` is the dispatcher's OCI not-found until F-21 issues tokens.
-    ["/v2/token", ["get", "head"], "host"],
+    // F-21: the token service, an owner-less route (its owners are in `scope`).
+    ["/v2/token", ["get", "head"], "oci.token"],
     [
       "/v2/{owner}/{repository}/manifests/{reference}",
       ["get", "head"],

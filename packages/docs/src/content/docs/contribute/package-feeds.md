@@ -66,8 +66,14 @@ Both families have the same pieces:
 
 A feed's operations are `render`, `serve`, `auth`, `yank`, `unyank`, `deprecate` and `setup`. A
 feed writes a `FeedAdapterSpec`, and `defineFeedAdapter` derives the base's parts from it: `serve`
-is an `api` operation whose rules are the feed's route names, `auth` is unsupported until registry
-tokens arrive (F-21), and `yank` and `deprecate` are `true` or `{ unsupported: "<reason>" }`. The
+is an `api` operation whose rules are the feed's read route names, `auth` (registry tokens, F-21,
+judged by the same ladder) is an `api` operation whose rules are the feed's credential routes
+(`authRoutes`, built by `feedAuthRoute`, such as Swift's `POST …/login`) and owner-less routes
+(`ownerlessRoutes`, such as OCI's `GET /v2/token`), and `yank` and `deprecate` are `true` or
+`{ unsupported: "<reason>" }`. A new feed declares its native challenge as
+`capabilities.authChallenge`, gets token checks from the ladder without code of its own, and adds
+an authenticated setup for its clients to the console's snippets and to `--auth` runs of its
+harness clients. The
 admin API exposes the result (`feedCapabilityView`), so the console renders a feed tile and a
 storefront tile the same way.
 

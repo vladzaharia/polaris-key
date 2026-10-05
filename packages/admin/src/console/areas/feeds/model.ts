@@ -122,6 +122,13 @@ export function feedHref(
     : r.packageFeed(scope.slug, eco, tab);
 }
 
+/** The scope's registry tokens page (F-21). */
+export function tokensHref(scope: FeedScope): string {
+  return scope.kind === "platform"
+    ? r.platformFeed("tokens")
+    : r.packageFeed(scope.slug, "tokens");
+}
+
 /** The Feeds overview in this scope. */
 export function overviewHref(scope: FeedScope): string {
   return scope.kind === "platform"
@@ -159,20 +166,44 @@ function hostOf(baseUrl: string): string {
   }
 }
 
+/** What the snippets authenticate with (plans/F-20.md §3, the shape F-12's `renderFeedSetup`
+ *  takes): nothing; an environment variable (docs, CI); the real token, only in the shown-once
+ *  dialog; or a Godot URL token, which travels in the editor's URL. */
+export type FeedCredential =
+  | { kind: "none" }
+  | { kind: "env"; name: string }
+  | { kind: "token"; value: string }
+  | { kind: "godot-url"; value: string };
+
+/** The environment variable the docs and the Setup tab name the token by. */
+export const TOKEN_ENV = "PKEY_REGISTRY_TOKEN";
+
+/** The username every client that needs one sends beside a registry token. */
+export const REGISTRY_USERNAME = "__token__";
+
+interface SnippetContext {
+  baseUrl: string;
+  owner: string;
+  namespace: FeedSettings["namespace"];
+  pkg?: { name: string; version?: string | null };
+}
+
 /**
- * The copy-paste setup for one feed, for its owner, optionally for one package. Basic per
- * ecosystem; F-12 replaces it with `renderFeedSetup` from `@polaris-key/manifest`, which the CLI's
- * `pkey feeds setup` shares, and adds each ecosystem's variants.
+ * The copy-paste setup for one feed, for its owner, optionally for one package, with or without a
+ * registry credential (F-21, plans/F-20.md §6.3). Basic per ecosystem; F-12 moves it into
+ * `renderFeedSetup` in `@polaris-key/manifest`, which the CLI's `pkey feeds setup` shares, keeping
+ * this `credential` argument.
  */
 export function setupSnippets(
   eco: FeedEcosystem,
-  ctx: {
-    baseUrl: string;
-    owner: string;
-    namespace: FeedSettings["namespace"];
-    pkg?: { name: string; version?: string | null };
-  },
+  ctx: SnippetContext,
+  credential: FeedCredential = { kind: "none" },
 ): Snippet[] {
+  if (credential.kind === "none") return anonymousSnippets(eco, ctx);
+  return authenticatedSnippets(eco, ctx, credential);
+}
+
+function anonymousSnippets(eco: FeedEcosystem, ctx: SnippetContext): Snippet[] {
   const { baseUrl, owner, namespace, pkg } = ctx;
   const ns = namespace as Record<string, unknown>;
   const version = pkg?.version ?? null;
@@ -287,6 +318,177 @@ export function setupSnippets(
           code: `${baseUrl}store/api/v1`,
         },
       ];
+  }
+}
+
+/** How a token is written in each format: the env reference, or the value itself. */
+function secretIn(
+  credential: Exclude<FeedCredential, { kind: "none" }>,
+  format: "sh" | "npmrc" | "yaml" | "toml" | "xml" | "properties",
+): string {
+  if (credential.kind !== "env") return credential.value;
+  const n = credential.name;
+  switch (format) {
+    case "sh":
+      return `"$${n}"`;
+    case "npmrc":
+    case "yaml":
+      return `\${${n}}`;
+    case "xml":
+      return `\${env.${n}}`;
+    case "toml":
+    case "properties":
+      return `<${n}>`;
+  }
+}
+
+/** An identifier from the owner slug (Gradle property names, uv's index env names). */
+function ident(owner: string): string {
+  return owner.replace(/[^A-Za-z0-9]+(.)?/g, (_, c: string | undefined) =>
+    c ? c.toUpperCase() : "",
+  );
+}
+
+function authenticatedSnippets(
+  eco: FeedEcosystem,
+  ctx: SnippetContext,
+  credential: Exclude<FeedCredential, { kind: "none" }>,
+): Snippet[] {
+  const { baseUrl, owner } = ctx;
+  const plain = anonymousSnippets(eco, ctx);
+  const host = hostOf(baseUrl);
+  const T = (f: Parameters<typeof secretIn>[1]) => secretIn(credential, f);
+  const envNote =
+    credential.kind === "env"
+      ? `Set ${credential.name} to a registry token first.`
+      : undefined;
+  switch (eco) {
+    case "npm": {
+      const ns = ctx.namespace as Record<string, unknown>;
+      const scope = (typeof ns.scope === "string" && ns.scope) || "@scope";
+      const path = baseUrl.replace(/^https?:/, "");
+      return [
+        {
+          title: "npm and pnpm: the scope and its token",
+          ...(envNote ? { description: envNote } : {}),
+          filename: ".npmrc",
+          language: "text",
+          code: `${scope}:registry=${baseUrl}\n${path}:_authToken=${T("npmrc")}`,
+        },
+        {
+          title: "Yarn Berry",
+          filename: ".yarnrc.yml",
+          language: "text",
+          code: `npmScopes:\n  ${scope.replace(/^@/, "")}:\n    npmRegistryServer: "${baseUrl}"\n    npmAuthToken: "${T("yaml")}"\n    npmAlwaysAuth: true`,
+        },
+        ...plain.slice(1),
+      ];
+    }
+    case "pypi": {
+      const name = ctx.pkg?.name ?? "<package>";
+      const env = `UV_INDEX_${ident(owner).toUpperCase()}`;
+      const withCreds = baseUrl.replace(
+        /^https:\/\//,
+        `https://${REGISTRY_USERNAME}:${credential.kind === "env" ? `\${${credential.name}}` : credential.value}@`,
+      );
+      return [
+        {
+          title: "uv: an explicit index that always authenticates",
+          ...(envNote ? { description: envNote } : {}),
+          filename: "pyproject.toml",
+          language: "toml",
+          code: `[[tool.uv.index]]\nname = "${owner}"\nurl = "${baseUrl}"\nexplicit = true\nauthenticate = "always"`,
+        },
+        {
+          title: "uv: the credentials",
+          language: "sh",
+          code: `export ${env}_USERNAME=${REGISTRY_USERNAME}\nexport ${env}_PASSWORD=${T("sh")}`,
+        },
+        {
+          title: "pip",
+          language: "sh",
+          code: `pip install --index-url "${withCreds}" ${name}`,
+        },
+      ];
+    }
+    case "oci":
+      return [
+        {
+          title: "Log in once per machine",
+          description:
+            "docker, podman, crane and oras hold one credential per registry host.",
+          language: "sh",
+          code: `echo ${credential.kind === "env" ? T("sh") : `'${credential.value}'`} | docker login ${host} -u ${REGISTRY_USERNAME} --password-stdin`,
+        },
+        ...plain,
+      ];
+    case "swift": {
+      const ci = credential.kind === "env" ? " --no-confirm" : "";
+      return [
+        plain[0]!,
+        {
+          title: "Log in",
+          description:
+            "SwiftPM keeps one credential per registry host (the keychain, or ~/.netrc on Linux).",
+          language: "sh",
+          code: `swift package-registry login ${baseUrl.replace(/\/$/, "")} --token ${T("sh")}${ci}`,
+        },
+        ...plain.slice(1),
+      ];
+    }
+    case "maven": {
+      const id = ident(owner);
+      return [
+        {
+          title: "Gradle: password credentials for this feed",
+          filename: "settings.gradle.kts",
+          language: "text",
+          code: `maven {\n  name = "${id}"\n  url = uri("${baseUrl}")\n  credentials(PasswordCredentials::class)\n}`,
+        },
+        {
+          title: "Gradle: the credentials",
+          ...(envNote ? { description: envNote } : {}),
+          filename: "~/.gradle/gradle.properties",
+          language: "text",
+          code: `${id}Username=${REGISTRY_USERNAME}\n${id}Password=${T("properties")}`,
+        },
+        {
+          title: "Maven",
+          filename: "~/.m2/settings.xml",
+          language: "text",
+          code: `<server>\n  <id>${id}</id>\n  <username>${REGISTRY_USERNAME}</username>\n  <password>${T("xml")}</password>\n</server>`,
+        },
+      ];
+    }
+    case "godot": {
+      if (credential.kind !== "godot-url")
+        return [
+          {
+            title: "The Godot editor needs a Godot editor URL token",
+            language: "text",
+            code: "Create a token with “Godot editor URL” on: the editor sends no credentials, so the token goes in its URL.",
+          },
+        ];
+      const base = `${baseUrl}t/${credential.value}/`;
+      return [
+        {
+          title:
+            "Godot 4.6 and earlier: Editor Settings → Asset Library → Available URLs",
+          language: "text",
+          code: `${base}asset-library/api`,
+        },
+        {
+          title: "Godot 4.7 and later: the asset store URL",
+          language: "text",
+          code: `${base}store/api/v1`,
+        },
+        {
+          title: "GodotEnv",
+          language: "text",
+          code: `${base}index.json`,
+        },
+      ];
+    }
   }
 }
 

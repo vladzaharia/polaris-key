@@ -106,7 +106,10 @@ export type WriteMethod =
   | "feedVersionAction"
   | "rebuildFeed"
   | "bootstrapPlatformFeeds"
-  | "savePackageFeeds";
+  | "savePackageFeeds"
+  | "mintRegistryToken"
+  | "revokeRegistryToken"
+  | "revokeAllRegistryTokens";
 
 export interface MutationSpec<A extends unknown[]> {
   /** What the write does, for the table's readers (and the test's failure messages). */
@@ -567,6 +570,19 @@ export const MUTATIONS: MutationTable = {
       exact(qk.products()),
       prefix(qk.platformActivity()),
     ],
+  },
+  mintRegistryToken: {
+    label: "registry token mint",
+    // The scope's token lists (every licence filter) and the feed activity trails.
+    invalidates: (scope) => feeds(scope),
+  },
+  revokeRegistryToken: {
+    label: "registry token revoke",
+    invalidates: (scope) => feeds(scope),
+  },
+  revokeAllRegistryTokens: {
+    label: "registry token revoke all",
+    invalidates: (scope) => feeds(scope),
   },
   savePackageFeeds: {
     label: "package feeds switch",

@@ -7,6 +7,14 @@ set -euo pipefail
 need crane
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
+# F-21: against an authenticated feed, log in with the registry token (a throwaway docker config).
+if [ -n "${REGISTRY_AUTH:-}" ]; then
+  export DOCKER_CONFIG="$tmp/docker"
+  mkdir -p "$DOCKER_CONFIG"
+  if crane auth login "$HOSTPORT" -u __token__ -p "$PKEY_REGISTRY_TOKEN" >/dev/null 2>&1; then
+    ok "crane auth login with the registry token"
+  else bad "crane auth login"; fi
+fi
 
 if [ "$(crane ls --insecure "$REF" | paste -sd, -)" = "0.8.0,1.0.0,1.1.0-beta.1,beta,latest" ]; then
   ok "crane ls"

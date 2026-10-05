@@ -49,6 +49,24 @@ if it isn't. There are no anonymous downloads through the portal, and the link o
 redirects to the file's GitHub release-download address — a file hosted anywhere else is shown
 as unavailable rather than offered.
 
+## Package access
+
+Some products publish packages (an SDK, a container image, a Godot addon) to private package
+feeds. When a product you hold an active license for has one, the license's page offers
+**Package access**: the setup for each private feed, and your own **registry tokens** for them.
+
+- **Create a token**: give it a label, choose every feed or one, and how long it lasts (90 days
+  unless you choose otherwise, at most a year). For the Godot editor, choose **Godot editor URL**:
+  the editor sends no credentials, so that token goes in the URL you paste into its settings.
+- The token is **shown once**. Store it in your package manager's configuration or your CI's
+  secret store; Polaris Key keeps only a fingerprint of it.
+- A token only reads, works only while your license is active, and stops when you revoke it (or
+  when the product's team does). You can hold up to 10 at a time per license.
+
+Some tools (docker, SwiftPM) keep one login per registry, so one machine can be signed in to only
+one product's private feeds for them. If you delete your portal account, every token you created
+stops working.
+
 ## Managing your devices
 
 Every license's page lists the devices using it and lets you disconnect any of them — handy for

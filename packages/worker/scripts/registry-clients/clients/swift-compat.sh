@@ -17,6 +17,12 @@ SWIFT="${SWIFT:-swift}"
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 COMMIT=5d873abb62ac543237a1918db804de83bd1fd0aa
 CACHE="${SWIFT_COMPAT_CACHE:-${TMPDIR:-/tmp}/pkey-swift-compat}/$COMMIT"
+# F-21: the compatibility suite is a protocol check with no credential option, so it runs against
+# the public feed only; SwiftPM itself (swift.sh, swift-linux.sh) covers the authenticated feed.
+if [ -n "${REGISTRY_AUTH:-}" ]; then
+  echo "skip the compatibility suite against an authenticated feed (it sends no credentials)"
+  exit 0
+fi
 URL="$REGISTRY/swift/$OWNER"
 FIX="$STATE/swift/fixture.json"
 

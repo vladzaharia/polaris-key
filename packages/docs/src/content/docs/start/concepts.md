@@ -399,6 +399,12 @@ vocabulary first; the records arrive with the distribution manifest and the pack
 - **outlet capabilities** — what an outlet permits: `binaryUpdates` (`self` | `store` | `none`),
   `codeUpdates`, `dataUpdates`, `channelSwitch`, `commerce`, `downloadedScripts`. The
   security-relevant bits are operator-owned, never manifest-writable.
+- **registry token** — the credential a client of a non-public package feed presents on the
+  registry host: `pkeyr_…`, read-only, always expiring, bound to one product, and either
+  owner-bound (minted in the console) or licence-bound (minted by a licensee in the portal, or by
+  an operator for one). A **Godot editor URL** token is the narrow variant the Godot editor carries
+  in its URL. Not a device token (`pkeyt_`) and not a licence key (`pkey_`), neither of which a
+  registry accepts.
 
 ## Layering & precedence
 

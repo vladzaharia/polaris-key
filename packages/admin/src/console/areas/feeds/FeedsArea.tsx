@@ -13,7 +13,7 @@
  */
 
 import * as React from "react";
-import { LayoutGrid, Rocket } from "lucide-react";
+import { KeyRound, LayoutGrid, Rocket } from "lucide-react";
 import type { FeedSummary, FeedsOverviewDto } from "../../../api.js";
 import { docsUrl } from "../../../lib/docsLinks.js";
 import { errorCopy } from "../../../lib/errorCopy.js";
@@ -48,9 +48,11 @@ import {
   feedHref,
   isEcosystem,
   overviewHref,
+  tokensHref,
   type FeedScope,
 } from "./model.js";
 import { PackageRecord } from "./PackageRecord.js";
+import { RegistryTokensPage } from "./RegistryTokens.js";
 
 /** The area's page for a route: the overview, a feed, or a package. */
 export function FeedsArea({
@@ -70,6 +72,8 @@ export function FeedsArea({
   if (scope.kind === "product" && product.data?.packageFeeds === false)
     return <PackageFeedsOff slug={scope.slug} name={product.data.name} />;
   if (eco === undefined) return <FeedsOverview scope={scope} />;
+  // F-21: `…/feeds/tokens` is the scope's registry tokens, beside the feed pages.
+  if (eco === "tokens") return <RegistryTokensPage scope={scope} />;
   if (!isEcosystem(eco))
     return (
       <div className="space-y-6">
@@ -137,7 +141,7 @@ export function FeedNav({
   current,
 }: {
   scope: FeedScope;
-  current: "overview" | (typeof ECOSYSTEMS)[number];
+  current: "overview" | "tokens" | (typeof ECOSYSTEMS)[number];
 }): React.ReactElement {
   const items = [
     {
@@ -152,6 +156,8 @@ export function FeedNav({
       icon: ECOSYSTEM_ICONS[e],
       to: feedHref(scope, e),
     })),
+    // F-21: the registry tokens clients of non-public feeds present.
+    { key: "tokens", label: "Tokens", icon: KeyRound, to: tokensHref(scope) },
   ];
   return (
     <nav aria-label="Package feeds" className="pk-scroll overflow-x-auto">

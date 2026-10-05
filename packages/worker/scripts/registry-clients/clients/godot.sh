@@ -19,6 +19,14 @@ set -euo pipefail
 PUBLISHER="registry-smoke"
 NAME="smoke_addon"
 BASE="$REGISTRY/godot/$OWNER"
+# F-21: an authenticated feed is reached through a Godot editor URL token in the path; every answer
+# is then private and uncached, and every feed URL in a document carries the same segment.
+CC='public, max-age=(60|31536000)'
+if [ -n "${REGISTRY_AUTH:-}" ]; then
+  : "${PKEY_REGISTRY_URL_TOKEN:?the URL token comes from run.mjs --auth}"
+  BASE="$REGISTRY/godot/$OWNER/t/$PKEY_REGISTRY_URL_TOKEN"
+  CC='private, no-store'
+fi
 fail=0
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
@@ -33,8 +41,8 @@ fetch() {
   if [ "$code" != 200 ]; then echo "  $path: status $code"; return 1; fi
   grep -qi '^x-content-type-options: nosniff' "$tmp/h" || { echo "  $path: no nosniff"; return 1; }
   grep -qi '^content-security-policy: sandbox' "$tmp/h" || { echo "  $path: no sandbox CSP"; return 1; }
-  grep -qiE '^cache-control: public, max-age=(60|31536000)' "$tmp/h" || { echo "  $path: cache-control"; return 1; }
-  grep -qi '^etag: "' "$tmp/h" || { echo "  $path: no strong etag"; return 1; }
+  grep -qiE "^cache-control: $CC" "$tmp/h" || { echo "  $path: cache-control"; return 1; }
+  [ -n "${REGISTRY_AUTH:-}" ] || grep -qi '^etag: "' "$tmp/h" || { echo "  $path: no strong etag"; return 1; }
 }
 
 # check <label> <python expression over `d` (the parsed JSON)> <path>

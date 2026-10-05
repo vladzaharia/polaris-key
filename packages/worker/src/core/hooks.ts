@@ -1207,6 +1207,10 @@ export interface PackageFeedSettings {
   maxPackageBytes: number;
   /** `ext_json`, parsed (`{}` when unreadable). */
   ext: Record<string, unknown>;
+  /** F-21: the feed's access mode (read fail-closed: an unknown value is `entitled`). */
+  accessMode?: ReleaseAccess;
+  /** F-21: the feed's base URL on the registry host, or `null` with no registry host. */
+  baseUrl?: string | null;
 }
 
 // ── outletCapabilities (Distribution) ───────────────────────────────────────────────────────

@@ -7658,12 +7658,15 @@ paths:
       tags: [registry]
       summary: OCI distribution base endpoint (registry host only)
       description: >
-        F-02. The OCI Distribution Specification's base endpoint (`end-1`,
+        F-02, F-21. The OCI Distribution Specification's base endpoint (`end-1`,
         https://github.com/opencontainers/distribution-spec/blob/main/spec.md#determining-support).
-        Always 200 with `Docker-Distribution-API-Version: registry/2.0` and the body `{}`, the
-        same for everyone: authentication challenges are made per repository. `/v2` answers the
-        same. Any method other than GET and HEAD under `/v2/` is 405 with OCI's error JSON
-        (`UNSUPPORTED`). The repository routes are F-08's.
+        With `REGISTRY_TOKEN_KEY` unset: always 200 with `Docker-Distribution-API-Version:
+        registry/2.0` and the body `{}`. Once it is set (plans/F-20.md Q1): 200 only to a request
+        bearing a valid pull token from `/v2/token`, else 401 with
+        `WWW-Authenticate: Bearer realm="https://pkg.plrs.im/v2/token",service="pkg.plrs.im"`,
+        as Docker Hub and GHCR answer; anonymous pull tokens keep public pulls working, and
+        `docker login` checks its credentials at once. `/v2` answers the same. Any method other
+        than GET and HEAD under `/v2/` is 405 with OCI's error JSON (`UNSUPPORTED`).
       responses:
         "200":
           description: The registry speaks OCI distribution v2.
@@ -7675,6 +7678,7 @@ paths:
               schema: { type: object, maxProperties: 0 }
               examples:
                 base: { value: {} }
+        "401": { $ref: "#/components/responses/OciError" }
     head:
       operationId: ociBaseHead
       tags: [registry]
@@ -7926,7 +7930,7 @@ paths:
           { description: "Invalid API version in `Accept` (problem+json)." }
         "401":
           {
-            description: "A non-public feed (tier 1): `WWW-Authenticate: Basic` (problem+json).",
+            description: "A non-public feed, and no valid registry token (F-21): `WWW-Authenticate: Basic` (problem+json); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { description: "Not found (problem+json)." }
         "415":
@@ -8119,13 +8123,31 @@ paths:
     post:
       operationId: swiftLogin
       tags: [registry]
-      summary: SwiftPM registry login, not supported yet (registry host only)
+      summary: SwiftPM registry login (registry host only)
       description: >
-        F-06. `swift package-registry login` posts here. Registry credentials arrive with F-21;
-        until then the host answers 501 (problem+json, `Content-Version: 1`) for every owner,
-        decided from the path alone. Publishing (`PUT`, Registry.md §4.6) is 405 until F-22.
+        F-21 (plans/F-20.md §6.3). `swift package-registry login https://pkg.plrs.im/swift/<owner>
+        --token <t>` posts here with `Authorization: Bearer <t>` (or Basic), and SwiftPM stores the
+        credential only on a 200. 200 (empty body, `Content-Version: 1`) when the token is a live
+        registry token (`pkeyr_`) or CI token (`pkeyci_`) of this owner, valid for Swift, whose
+        licence (if licence-bound) is usable; 401 with `WWW-Authenticate: Basic` (problem+json)
+        otherwise; the host's not-found when the owner's Swift feed does not answer. Counted in the
+        `registryLogin` budget (per IP, fail closed). Publishing (`PUT`, Registry.md §4.6) is 405
+        until F-22.
       responses:
-        "501": { description: "Login is not supported yet (problem+json)." }
+        "200":
+          {
+            description: "The token is valid for this owner's Swift feed (empty body).",
+          }
+        "401":
+          {
+            description: "No valid registry token (problem+json, `WWW-Authenticate: Basic`).",
+          }
+        "404":
+          {
+            description: "The owner's Swift feed does not answer (problem+json).",
+          }
+        "429":
+          { description: "The login budget (problem+json, `Retry-After`)." }
   # ── Maven (F-07) ──
   /maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml:
     servers:
@@ -8163,7 +8185,8 @@ paths:
         "304": { description: Not modified (the ETag matched). }
         "401":
           {
-            description: The feed is not public (tier 1 has no credentials yet).,
+            description: The feed is not public,
+            and no valid registry token was presented (F-21).,
           }
         "404": { description: No such owner, feed or artifact. }
     head:
@@ -8297,23 +8320,58 @@ paths:
     get:
       operationId: ociToken
       tags: [registry]
-      summary: OCI token endpoint, reserved (registry host only)
+      summary: OCI token service (registry host only)
       description: >
-        F-08. The realm a non-public OCI feed's Bearer challenge names
-        (`WWW-Authenticate: Bearer realm="https://pkg.plrs.im/v2/token",service="pkg.plrs.im",scope="repository:<owner>/<repository>:pull"`,
-        https://distribution.github.io/distribution/spec/auth/token/). Tier 1 issues no
-        registry credentials, so it always answers OCI's not-found (`NAME_UNKNOWN`), `no-store`,
-        until F-21.
+        F-21 (plans/F-20.md §6.4; https://distribution.github.io/distribution/spec/auth/token/).
+        The realm a non-public OCI feed's Bearer challenge names, and the one owner-less route on
+        the registry host: `scope=repository:<owner>/<repository>:pull` (repeatable, at most four)
+        names the owners. Grants pull per scope when the access ladder admits the caller: with no
+        credential only public repositories (an anonymous token), with Basic
+        `__token__:<pkeyr_ or pkeyci_>` per the access mode. A scope is all or nothing. `push`,
+        `delete` and `registry:catalog:*` are refused. With no scope (`docker login`), a valid
+        credential gets a token granting nothing, and an invalid one 401. The pull token is
+        opaque, lives 300 s and carries identity only: every OCI request re-runs the ladder.
+        `cache-control: no-store`. Counted in the `registryOciToken` budget (per IP, fail closed).
+      parameters:
+        - {
+            name: service,
+            in: query,
+            required: false,
+            schema: { type: string },
+            description: "The registry host name; any other value is 401.",
+          }
+        - {
+            name: scope,
+            in: query,
+            required: false,
+            schema: { type: string },
+            description: "`repository:<owner>/<repository>:pull`, repeatable.",
+          }
       responses:
-        "404": { $ref: "#/components/responses/OciError" }
+        "200":
+          description: A pull token.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, access_token, expires_in, issued_at]
+                properties:
+                  token: { type: string }
+                  access_token: { type: string }
+                  expires_in: { type: integer, const: 300 }
+                  issued_at: { type: string, format: date-time }
+        "401": { $ref: "#/components/responses/OciError" }
+        "403": { $ref: "#/components/responses/OciError" }
+        "429": { $ref: "#/components/responses/OciError" }
+        "503": { $ref: "#/components/responses/OciError" }
     head:
       operationId: ociTokenHead
       tags: [registry]
-      summary: OCI token endpoint, reserved, headers only (registry host only)
-      description: F-08. As `GET /v2/token`, with no body.
+      summary: OCI token service, headers only (registry host only)
+      description: F-21. As `GET /v2/token`, with no body.
       responses:
-        "404":
-          description: Not issued until F-21.
+        "200": { description: Headers only. }
+        "401": { description: No valid credential. }
   /v2/{owner}/{repository}/manifests/{reference}:
     servers:
       - url: https://pkg.plrs.im
@@ -8542,7 +8600,7 @@ paths:
         "304": { description: Not modified. }
         "401":
           {
-            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+            description: "A non-public feed or package, and no valid registry token (F-21; `WWW-Authenticate: Basic`); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { $ref: "#/components/responses/NotFound" }
     head:
@@ -8571,7 +8629,7 @@ paths:
         "304": { description: Not modified. }
         "401":
           {
-            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+            description: "A non-public feed or package, and no valid registry token (F-21; `WWW-Authenticate: Basic`); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { $ref: "#/components/responses/NotFound" }
   /godot/{owner}/asset-library/api/asset:
@@ -8645,7 +8703,7 @@ paths:
         "304": { description: Not modified. }
         "401":
           {
-            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+            description: "A non-public feed or package, and no valid registry token (F-21; `WWW-Authenticate: Basic`); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { $ref: "#/components/responses/NotFound" }
     head:
@@ -8704,7 +8762,7 @@ paths:
         "304": { description: Not modified. }
         "401":
           {
-            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+            description: "A non-public feed or package, and no valid registry token (F-21; `WWW-Authenticate: Basic`); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { $ref: "#/components/responses/NotFound" }
   /godot/{owner}/asset-library/api/asset/{id}:
@@ -8747,7 +8805,7 @@ paths:
         "304": { description: Not modified. }
         "401":
           {
-            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+            description: "A non-public feed or package, and no valid registry token (F-21; `WWW-Authenticate: Basic`); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { $ref: "#/components/responses/NotFound" }
     head:
@@ -8776,7 +8834,7 @@ paths:
         "304": { description: Not modified. }
         "401":
           {
-            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+            description: "A non-public feed or package, and no valid registry token (F-21; `WWW-Authenticate: Basic`); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { $ref: "#/components/responses/NotFound" }
   /godot/{owner}/store/api/v1/:
@@ -8811,7 +8869,7 @@ paths:
         "304": { description: Not modified. }
         "401":
           {
-            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+            description: "A non-public feed or package, and no valid registry token (F-21; `WWW-Authenticate: Basic`); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { $ref: "#/components/responses/NotFound" }
     head:
@@ -8833,7 +8891,7 @@ paths:
         "304": { description: Not modified. }
         "401":
           {
-            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+            description: "A non-public feed or package, and no valid registry token (F-21; `WWW-Authenticate: Basic`); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { $ref: "#/components/responses/NotFound" }
   /godot/{owner}/store/api/v1/tags/:
@@ -8873,7 +8931,7 @@ paths:
         "304": { description: Not modified. }
         "401":
           {
-            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+            description: "A non-public feed or package, and no valid registry token (F-21; `WWW-Authenticate: Basic`); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { $ref: "#/components/responses/NotFound" }
     head:
@@ -8901,7 +8959,7 @@ paths:
         "304": { description: Not modified. }
         "401":
           {
-            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+            description: "A non-public feed or package, and no valid registry token (F-21; `WWW-Authenticate: Basic`); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { $ref: "#/components/responses/NotFound" }
   /godot/{owner}/store/api/v1/licenses/:
@@ -8935,7 +8993,7 @@ paths:
         "304": { description: Not modified. }
         "401":
           {
-            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+            description: "A non-public feed or package, and no valid registry token (F-21; `WWW-Authenticate: Basic`); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { $ref: "#/components/responses/NotFound" }
     head:
@@ -8957,7 +9015,7 @@ paths:
         "304": { description: Not modified. }
         "401":
           {
-            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+            description: "A non-public feed or package, and no valid registry token (F-21; `WWW-Authenticate: Basic`); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { $ref: "#/components/responses/NotFound" }
   /godot/{owner}/store/api/v1/search/query/:
@@ -9033,7 +9091,7 @@ paths:
         "304": { description: Not modified. }
         "401":
           {
-            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+            description: "A non-public feed or package, and no valid registry token (F-21; `WWW-Authenticate: Basic`); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { $ref: "#/components/responses/NotFound" }
     head:
@@ -9095,7 +9153,7 @@ paths:
         "304": { description: Not modified. }
         "401":
           {
-            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+            description: "A non-public feed or package, and no valid registry token (F-21; `WWW-Authenticate: Basic`); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { $ref: "#/components/responses/NotFound" }
   /godot/{owner}/store/api/v1/assets/{publisher}/{asset}/:
@@ -9145,7 +9203,7 @@ paths:
         "304": { description: Not modified. }
         "401":
           {
-            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+            description: "A non-public feed or package, and no valid registry token (F-21; `WWW-Authenticate: Basic`); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { $ref: "#/components/responses/NotFound" }
     head:
@@ -9181,7 +9239,7 @@ paths:
         "304": { description: Not modified. }
         "401":
           {
-            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+            description: "A non-public feed or package, and no valid registry token (F-21; `WWW-Authenticate: Basic`); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { $ref: "#/components/responses/NotFound" }
   /godot/{owner}/store/api/v1/releases/{publisher}/{asset}/:
@@ -9242,7 +9300,7 @@ paths:
         "304": { description: Not modified. }
         "401":
           {
-            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+            description: "A non-public feed or package, and no valid registry token (F-21; `WWW-Authenticate: Basic`); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { $ref: "#/components/responses/NotFound" }
     head:
@@ -9290,7 +9348,7 @@ paths:
         "304": { description: Not modified. }
         "401":
           {
-            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+            description: "A non-public feed or package, and no valid registry token (F-21; `WWW-Authenticate: Basic`); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { $ref: "#/components/responses/NotFound" }
   /godot/{owner}/index.json:
@@ -9325,7 +9383,7 @@ paths:
         "304": { description: Not modified. }
         "401":
           {
-            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+            description: "A non-public feed or package, and no valid registry token (F-21; `WWW-Authenticate: Basic`); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { $ref: "#/components/responses/NotFound" }
     head:
@@ -9347,7 +9405,7 @@ paths:
         "304": { description: Not modified. }
         "401":
           {
-            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+            description: "A non-public feed or package, and no valid registry token (F-21; `WWW-Authenticate: Basic`); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { $ref: "#/components/responses/NotFound" }
   /godot/{owner}/files/{sha256}/{file}:
@@ -9395,7 +9453,7 @@ paths:
         "304": { description: Not modified. }
         "401":
           {
-            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+            description: "A non-public feed or package, and no valid registry token (F-21; `WWW-Authenticate: Basic`); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { $ref: "#/components/responses/NotFound" }
     head:
@@ -9432,7 +9490,7 @@ paths:
         "304": { description: Not modified. }
         "401":
           {
-            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+            description: "A non-public feed or package, and no valid registry token (F-21; `WWW-Authenticate: Basic`); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { $ref: "#/components/responses/NotFound" }
   /godot/{owner}/icons/{sha256}.png:
@@ -9473,7 +9531,7 @@ paths:
         "304": { description: Not modified. }
         "401":
           {
-            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+            description: "A non-public feed or package, and no valid registry token (F-21; `WWW-Authenticate: Basic`); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { $ref: "#/components/responses/NotFound" }
     head:
@@ -9503,7 +9561,7 @@ paths:
         "304": { description: Not modified. }
         "401":
           {
-            description: "A non-public feed or package (tier 1: no credentials; `WWW-Authenticate: Basic`).",
+            description: "A non-public feed or package, and no valid registry token (F-21; `WWW-Authenticate: Basic`); a valid licence-bound token the mode does not admit is 403.",
           }
         "404": { $ref: "#/components/responses/NotFound" }
   # ── The customer portal's library, product and media routes (PX-W1, docs/design/PORTAL.md
@@ -9682,6 +9740,699 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "429":
           description: Too many upstream fetches for this product from this client (cache misses only).
+  # ── Godot tokenised URLs (F-21) ──
+  /godot/{owner}/t/{token}/asset-library/api/configure:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "The owner (product slug).",
+        }
+      - {
+          name: token,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "A registry token minted for the Godot editor (`presentation: url`, read-only, Godot only).",
+        }
+    get:
+      operationId: godotLegacyConfigureTokenised
+      tags: [registry]
+      summary: "As `/godot/{owner}/asset-library/api/configure`, through a Godot URL token (registry host only)"
+      description: >
+        F-21 (plans/F-20.md §6.3). The Godot editor sends no credentials, so a non-public Godot
+        feed is reached through a URL holding a registry token minted with `presentation: url`
+        (read-only, narrowed to Godot, 30 days by default). The same route as `/godot/{owner}/asset-library/api/configure`; the
+        segment is the credential, which only a URL token satisfies. Absolute URLs into the
+        owner's feed in a JSON answer (`download_url`, icons) carry the same segment. Always
+        `private, no-store` with no ETag, and never shared-cached.
+      responses:
+        "200":
+          {
+            description: "As the untokenised path; `cache-control: private, no-store`.",
+          }
+        "401":
+          {
+            description: "The token is unknown, expired, revoked, another owner's, or not a URL token (`WWW-Authenticate: Basic`).",
+          }
+        "403":
+          {
+            description: "The token's licence is not usable, or not entitled to this package.",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+    head:
+      operationId: godotLegacyConfigureTokenisedHead
+      tags: [registry]
+      summary: "As `/godot/{owner}/asset-library/api/configure` through a Godot URL token, headers only (registry host only)"
+      description: F-21. As the GET, with no body.
+      responses:
+        "200": { description: Headers only. }
+        "401": { description: Not a valid URL token for this owner. }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /godot/{owner}/t/{token}/asset-library/api/asset:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "The owner (product slug).",
+        }
+      - {
+          name: token,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "A registry token minted for the Godot editor (`presentation: url`, read-only, Godot only).",
+        }
+    get:
+      operationId: godotLegacySearchTokenised
+      tags: [registry]
+      summary: "As `/godot/{owner}/asset-library/api/asset`, through a Godot URL token (registry host only)"
+      description: >
+        F-21 (plans/F-20.md §6.3). The Godot editor sends no credentials, so a non-public Godot
+        feed is reached through a URL holding a registry token minted with `presentation: url`
+        (read-only, narrowed to Godot, 30 days by default). The same route as `/godot/{owner}/asset-library/api/asset`; the
+        segment is the credential, which only a URL token satisfies. Absolute URLs into the
+        owner's feed in a JSON answer (`download_url`, icons) carry the same segment. Always
+        `private, no-store` with no ETag, and never shared-cached.
+      responses:
+        "200":
+          {
+            description: "As the untokenised path; `cache-control: private, no-store`.",
+          }
+        "401":
+          {
+            description: "The token is unknown, expired, revoked, another owner's, or not a URL token (`WWW-Authenticate: Basic`).",
+          }
+        "403":
+          {
+            description: "The token's licence is not usable, or not entitled to this package.",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+    head:
+      operationId: godotLegacySearchTokenisedHead
+      tags: [registry]
+      summary: "As `/godot/{owner}/asset-library/api/asset` through a Godot URL token, headers only (registry host only)"
+      description: F-21. As the GET, with no body.
+      responses:
+        "200": { description: Headers only. }
+        "401": { description: Not a valid URL token for this owner. }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /godot/{owner}/t/{token}/asset-library/api/asset/{id}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "The owner (product slug).",
+        }
+      - {
+          name: token,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "A registry token minted for the Godot editor (`presentation: url`, read-only, Godot only).",
+        }
+      - {
+          name: id,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "As on `/godot/{owner}/asset-library/api/asset/{id}`.",
+        }
+    get:
+      operationId: godotLegacyAssetTokenised
+      tags: [registry]
+      summary: "As `/godot/{owner}/asset-library/api/asset/{id}`, through a Godot URL token (registry host only)"
+      description: >
+        F-21 (plans/F-20.md §6.3). The Godot editor sends no credentials, so a non-public Godot
+        feed is reached through a URL holding a registry token minted with `presentation: url`
+        (read-only, narrowed to Godot, 30 days by default). The same route as `/godot/{owner}/asset-library/api/asset/{id}`; the
+        segment is the credential, which only a URL token satisfies. Absolute URLs into the
+        owner's feed in a JSON answer (`download_url`, icons) carry the same segment. Always
+        `private, no-store` with no ETag, and never shared-cached.
+      responses:
+        "200":
+          {
+            description: "As the untokenised path; `cache-control: private, no-store`.",
+          }
+        "401":
+          {
+            description: "The token is unknown, expired, revoked, another owner's, or not a URL token (`WWW-Authenticate: Basic`).",
+          }
+        "403":
+          {
+            description: "The token's licence is not usable, or not entitled to this package.",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+    head:
+      operationId: godotLegacyAssetTokenisedHead
+      tags: [registry]
+      summary: "As `/godot/{owner}/asset-library/api/asset/{id}` through a Godot URL token, headers only (registry host only)"
+      description: F-21. As the GET, with no body.
+      responses:
+        "200": { description: Headers only. }
+        "401": { description: Not a valid URL token for this owner. }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /godot/{owner}/t/{token}/store/api/v1/:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "The owner (product slug).",
+        }
+      - {
+          name: token,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "A registry token minted for the Godot editor (`presentation: url`, read-only, Godot only).",
+        }
+    get:
+      operationId: godotStoreOverviewTokenised
+      tags: [registry]
+      summary: "As `/godot/{owner}/store/api/v1/`, through a Godot URL token (registry host only)"
+      description: >
+        F-21 (plans/F-20.md §6.3). The Godot editor sends no credentials, so a non-public Godot
+        feed is reached through a URL holding a registry token minted with `presentation: url`
+        (read-only, narrowed to Godot, 30 days by default). The same route as `/godot/{owner}/store/api/v1/`; the
+        segment is the credential, which only a URL token satisfies. Absolute URLs into the
+        owner's feed in a JSON answer (`download_url`, icons) carry the same segment. Always
+        `private, no-store` with no ETag, and never shared-cached.
+      responses:
+        "200":
+          {
+            description: "As the untokenised path; `cache-control: private, no-store`.",
+          }
+        "401":
+          {
+            description: "The token is unknown, expired, revoked, another owner's, or not a URL token (`WWW-Authenticate: Basic`).",
+          }
+        "403":
+          {
+            description: "The token's licence is not usable, or not entitled to this package.",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+    head:
+      operationId: godotStoreOverviewTokenisedHead
+      tags: [registry]
+      summary: "As `/godot/{owner}/store/api/v1/` through a Godot URL token, headers only (registry host only)"
+      description: F-21. As the GET, with no body.
+      responses:
+        "200": { description: Headers only. }
+        "401": { description: Not a valid URL token for this owner. }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /godot/{owner}/t/{token}/store/api/v1/tags/:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "The owner (product slug).",
+        }
+      - {
+          name: token,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "A registry token minted for the Godot editor (`presentation: url`, read-only, Godot only).",
+        }
+    get:
+      operationId: godotStoreTagsTokenised
+      tags: [registry]
+      summary: "As `/godot/{owner}/store/api/v1/tags/`, through a Godot URL token (registry host only)"
+      description: >
+        F-21 (plans/F-20.md §6.3). The Godot editor sends no credentials, so a non-public Godot
+        feed is reached through a URL holding a registry token minted with `presentation: url`
+        (read-only, narrowed to Godot, 30 days by default). The same route as `/godot/{owner}/store/api/v1/tags/`; the
+        segment is the credential, which only a URL token satisfies. Absolute URLs into the
+        owner's feed in a JSON answer (`download_url`, icons) carry the same segment. Always
+        `private, no-store` with no ETag, and never shared-cached.
+      responses:
+        "200":
+          {
+            description: "As the untokenised path; `cache-control: private, no-store`.",
+          }
+        "401":
+          {
+            description: "The token is unknown, expired, revoked, another owner's, or not a URL token (`WWW-Authenticate: Basic`).",
+          }
+        "403":
+          {
+            description: "The token's licence is not usable, or not entitled to this package.",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+    head:
+      operationId: godotStoreTagsTokenisedHead
+      tags: [registry]
+      summary: "As `/godot/{owner}/store/api/v1/tags/` through a Godot URL token, headers only (registry host only)"
+      description: F-21. As the GET, with no body.
+      responses:
+        "200": { description: Headers only. }
+        "401": { description: Not a valid URL token for this owner. }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /godot/{owner}/t/{token}/store/api/v1/licenses/:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "The owner (product slug).",
+        }
+      - {
+          name: token,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "A registry token minted for the Godot editor (`presentation: url`, read-only, Godot only).",
+        }
+    get:
+      operationId: godotStoreLicensesTokenised
+      tags: [registry]
+      summary: "As `/godot/{owner}/store/api/v1/licenses/`, through a Godot URL token (registry host only)"
+      description: >
+        F-21 (plans/F-20.md §6.3). The Godot editor sends no credentials, so a non-public Godot
+        feed is reached through a URL holding a registry token minted with `presentation: url`
+        (read-only, narrowed to Godot, 30 days by default). The same route as `/godot/{owner}/store/api/v1/licenses/`; the
+        segment is the credential, which only a URL token satisfies. Absolute URLs into the
+        owner's feed in a JSON answer (`download_url`, icons) carry the same segment. Always
+        `private, no-store` with no ETag, and never shared-cached.
+      responses:
+        "200":
+          {
+            description: "As the untokenised path; `cache-control: private, no-store`.",
+          }
+        "401":
+          {
+            description: "The token is unknown, expired, revoked, another owner's, or not a URL token (`WWW-Authenticate: Basic`).",
+          }
+        "403":
+          {
+            description: "The token's licence is not usable, or not entitled to this package.",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+    head:
+      operationId: godotStoreLicensesTokenisedHead
+      tags: [registry]
+      summary: "As `/godot/{owner}/store/api/v1/licenses/` through a Godot URL token, headers only (registry host only)"
+      description: F-21. As the GET, with no body.
+      responses:
+        "200": { description: Headers only. }
+        "401": { description: Not a valid URL token for this owner. }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /godot/{owner}/t/{token}/store/api/v1/search/query/:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "The owner (product slug).",
+        }
+      - {
+          name: token,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "A registry token minted for the Godot editor (`presentation: url`, read-only, Godot only).",
+        }
+    get:
+      operationId: godotStoreSearchTokenised
+      tags: [registry]
+      summary: "As `/godot/{owner}/store/api/v1/search/query/`, through a Godot URL token (registry host only)"
+      description: >
+        F-21 (plans/F-20.md §6.3). The Godot editor sends no credentials, so a non-public Godot
+        feed is reached through a URL holding a registry token minted with `presentation: url`
+        (read-only, narrowed to Godot, 30 days by default). The same route as `/godot/{owner}/store/api/v1/search/query/`; the
+        segment is the credential, which only a URL token satisfies. Absolute URLs into the
+        owner's feed in a JSON answer (`download_url`, icons) carry the same segment. Always
+        `private, no-store` with no ETag, and never shared-cached.
+      responses:
+        "200":
+          {
+            description: "As the untokenised path; `cache-control: private, no-store`.",
+          }
+        "401":
+          {
+            description: "The token is unknown, expired, revoked, another owner's, or not a URL token (`WWW-Authenticate: Basic`).",
+          }
+        "403":
+          {
+            description: "The token's licence is not usable, or not entitled to this package.",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+    head:
+      operationId: godotStoreSearchTokenisedHead
+      tags: [registry]
+      summary: "As `/godot/{owner}/store/api/v1/search/query/` through a Godot URL token, headers only (registry host only)"
+      description: F-21. As the GET, with no body.
+      responses:
+        "200": { description: Headers only. }
+        "401": { description: Not a valid URL token for this owner. }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /godot/{owner}/t/{token}/store/api/v1/assets/{publisher}/{asset}/:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "The owner (product slug).",
+        }
+      - {
+          name: token,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "A registry token minted for the Godot editor (`presentation: url`, read-only, Godot only).",
+        }
+      - {
+          name: publisher,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "As on `/godot/{owner}/store/api/v1/assets/{publisher}/{asset}/`.",
+        }
+      - {
+          name: asset,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "As on `/godot/{owner}/store/api/v1/assets/{publisher}/{asset}/`.",
+        }
+    get:
+      operationId: godotStoreAssetTokenised
+      tags: [registry]
+      summary: "As `/godot/{owner}/store/api/v1/assets/{publisher}/{asset}/`, through a Godot URL token (registry host only)"
+      description: >
+        F-21 (plans/F-20.md §6.3). The Godot editor sends no credentials, so a non-public Godot
+        feed is reached through a URL holding a registry token minted with `presentation: url`
+        (read-only, narrowed to Godot, 30 days by default). The same route as `/godot/{owner}/store/api/v1/assets/{publisher}/{asset}/`; the
+        segment is the credential, which only a URL token satisfies. Absolute URLs into the
+        owner's feed in a JSON answer (`download_url`, icons) carry the same segment. Always
+        `private, no-store` with no ETag, and never shared-cached.
+      responses:
+        "200":
+          {
+            description: "As the untokenised path; `cache-control: private, no-store`.",
+          }
+        "401":
+          {
+            description: "The token is unknown, expired, revoked, another owner's, or not a URL token (`WWW-Authenticate: Basic`).",
+          }
+        "403":
+          {
+            description: "The token's licence is not usable, or not entitled to this package.",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+    head:
+      operationId: godotStoreAssetTokenisedHead
+      tags: [registry]
+      summary: "As `/godot/{owner}/store/api/v1/assets/{publisher}/{asset}/` through a Godot URL token, headers only (registry host only)"
+      description: F-21. As the GET, with no body.
+      responses:
+        "200": { description: Headers only. }
+        "401": { description: Not a valid URL token for this owner. }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /godot/{owner}/t/{token}/store/api/v1/releases/{publisher}/{asset}/:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "The owner (product slug).",
+        }
+      - {
+          name: token,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "A registry token minted for the Godot editor (`presentation: url`, read-only, Godot only).",
+        }
+      - {
+          name: publisher,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "As on `/godot/{owner}/store/api/v1/releases/{publisher}/{asset}/`.",
+        }
+      - {
+          name: asset,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "As on `/godot/{owner}/store/api/v1/releases/{publisher}/{asset}/`.",
+        }
+    get:
+      operationId: godotStoreReleasesTokenised
+      tags: [registry]
+      summary: "As `/godot/{owner}/store/api/v1/releases/{publisher}/{asset}/`, through a Godot URL token (registry host only)"
+      description: >
+        F-21 (plans/F-20.md §6.3). The Godot editor sends no credentials, so a non-public Godot
+        feed is reached through a URL holding a registry token minted with `presentation: url`
+        (read-only, narrowed to Godot, 30 days by default). The same route as `/godot/{owner}/store/api/v1/releases/{publisher}/{asset}/`; the
+        segment is the credential, which only a URL token satisfies. Absolute URLs into the
+        owner's feed in a JSON answer (`download_url`, icons) carry the same segment. Always
+        `private, no-store` with no ETag, and never shared-cached.
+      responses:
+        "200":
+          {
+            description: "As the untokenised path; `cache-control: private, no-store`.",
+          }
+        "401":
+          {
+            description: "The token is unknown, expired, revoked, another owner's, or not a URL token (`WWW-Authenticate: Basic`).",
+          }
+        "403":
+          {
+            description: "The token's licence is not usable, or not entitled to this package.",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+    head:
+      operationId: godotStoreReleasesTokenisedHead
+      tags: [registry]
+      summary: "As `/godot/{owner}/store/api/v1/releases/{publisher}/{asset}/` through a Godot URL token, headers only (registry host only)"
+      description: F-21. As the GET, with no body.
+      responses:
+        "200": { description: Headers only. }
+        "401": { description: Not a valid URL token for this owner. }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /godot/{owner}/t/{token}/index.json:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "The owner (product slug).",
+        }
+      - {
+          name: token,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "A registry token minted for the Godot editor (`presentation: url`, read-only, Godot only).",
+        }
+    get:
+      operationId: godotIndexTokenised
+      tags: [registry]
+      summary: "As `/godot/{owner}/index.json`, through a Godot URL token (registry host only)"
+      description: >
+        F-21 (plans/F-20.md §6.3). The Godot editor sends no credentials, so a non-public Godot
+        feed is reached through a URL holding a registry token minted with `presentation: url`
+        (read-only, narrowed to Godot, 30 days by default). The same route as `/godot/{owner}/index.json`; the
+        segment is the credential, which only a URL token satisfies. Absolute URLs into the
+        owner's feed in a JSON answer (`download_url`, icons) carry the same segment. Always
+        `private, no-store` with no ETag, and never shared-cached.
+      responses:
+        "200":
+          {
+            description: "As the untokenised path; `cache-control: private, no-store`.",
+          }
+        "401":
+          {
+            description: "The token is unknown, expired, revoked, another owner's, or not a URL token (`WWW-Authenticate: Basic`).",
+          }
+        "403":
+          {
+            description: "The token's licence is not usable, or not entitled to this package.",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+    head:
+      operationId: godotIndexTokenisedHead
+      tags: [registry]
+      summary: "As `/godot/{owner}/index.json` through a Godot URL token, headers only (registry host only)"
+      description: F-21. As the GET, with no body.
+      responses:
+        "200": { description: Headers only. }
+        "401": { description: Not a valid URL token for this owner. }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /godot/{owner}/t/{token}/files/{sha256}/{file}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "The owner (product slug).",
+        }
+      - {
+          name: token,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "A registry token minted for the Godot editor (`presentation: url`, read-only, Godot only).",
+        }
+      - {
+          name: sha256,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "As on `/godot/{owner}/files/{sha256}/{file}`.",
+        }
+      - {
+          name: file,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "As on `/godot/{owner}/files/{sha256}/{file}`.",
+        }
+    get:
+      operationId: godotZipTokenised
+      tags: [registry]
+      summary: "As `/godot/{owner}/files/{sha256}/{file}`, through a Godot URL token (registry host only)"
+      description: >
+        F-21 (plans/F-20.md §6.3). The Godot editor sends no credentials, so a non-public Godot
+        feed is reached through a URL holding a registry token minted with `presentation: url`
+        (read-only, narrowed to Godot, 30 days by default). The same route as `/godot/{owner}/files/{sha256}/{file}`; the
+        segment is the credential, which only a URL token satisfies. Absolute URLs into the
+        owner's feed in a JSON answer (`download_url`, icons) carry the same segment. Always
+        `private, no-store` with no ETag, and never shared-cached.
+      responses:
+        "200":
+          {
+            description: "As the untokenised path; `cache-control: private, no-store`.",
+          }
+        "401":
+          {
+            description: "The token is unknown, expired, revoked, another owner's, or not a URL token (`WWW-Authenticate: Basic`).",
+          }
+        "403":
+          {
+            description: "The token's licence is not usable, or not entitled to this package.",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+    head:
+      operationId: godotZipTokenisedHead
+      tags: [registry]
+      summary: "As `/godot/{owner}/files/{sha256}/{file}` through a Godot URL token, headers only (registry host only)"
+      description: F-21. As the GET, with no body.
+      responses:
+        "200": { description: Headers only. }
+        "401": { description: Not a valid URL token for this owner. }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /godot/{owner}/t/{token}/icons/{sha256}.png:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "The owner (product slug).",
+        }
+      - {
+          name: token,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "A registry token minted for the Godot editor (`presentation: url`, read-only, Godot only).",
+        }
+      - {
+          name: sha256,
+          in: path,
+          required: true,
+          schema: { type: string },
+          description: "As on `/godot/{owner}/icons/{sha256}.png`.",
+        }
+    get:
+      operationId: godotIconTokenised
+      tags: [registry]
+      summary: "As `/godot/{owner}/icons/{sha256}.png`, through a Godot URL token (registry host only)"
+      description: >
+        F-21 (plans/F-20.md §6.3). The Godot editor sends no credentials, so a non-public Godot
+        feed is reached through a URL holding a registry token minted with `presentation: url`
+        (read-only, narrowed to Godot, 30 days by default). The same route as `/godot/{owner}/icons/{sha256}.png`; the
+        segment is the credential, which only a URL token satisfies. Absolute URLs into the
+        owner's feed in a JSON answer (`download_url`, icons) carry the same segment. Always
+        `private, no-store` with no ETag, and never shared-cached.
+      responses:
+        "200":
+          {
+            description: "As the untokenised path; `cache-control: private, no-store`.",
+          }
+        "401":
+          {
+            description: "The token is unknown, expired, revoked, another owner's, or not a URL token (`WWW-Authenticate: Basic`).",
+          }
+        "403":
+          {
+            description: "The token's licence is not usable, or not entitled to this package.",
+          }
+        "404": { $ref: "#/components/responses/NotFound" }
+    head:
+      operationId: godotIconTokenisedHead
+      tags: [registry]
+      summary: "As `/godot/{owner}/icons/{sha256}.png` through a Godot URL token, headers only (registry host only)"
+      description: F-21. As the GET, with no body.
+      responses:
+        "200": { description: Headers only. }
+        "401": { description: Not a valid URL token for this owner. }
+        "404": { $ref: "#/components/responses/NotFound" }
 components:
   securitySchemes:
     ciToken:
@@ -10225,9 +10976,9 @@ components:
       description: "`If-None-Match` named the answer's ETag."
     NpmBasicChallenge:
       description: >
-        The feed is not public, and tier 1 issues no registry credentials:
-        `WWW-Authenticate: Basic realm="pkg.plrs.im"` (the deployment's own registry host name),
-        `cache-control: no-store`.
+        The feed is not public, and the request carries no valid registry token (F-21, a `pkeyr_`
+        token as Bearer or Basic `__token__:<t>`): `WWW-Authenticate: Basic realm="pkg.plrs.im"`
+        (the deployment's own registry host name), `cache-control: no-store`.
       headers:
         WWW-Authenticate:
           schema: { type: string }

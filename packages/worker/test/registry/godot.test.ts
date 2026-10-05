@@ -29,6 +29,10 @@ import { ingestPackageDescriptor } from "../../src/services/release/packages/ing
 import { packageStateStatements } from "../../src/services/release/packages/state.js";
 import { forgetRegistrySettings } from "../../src/services/distribution/registry/settings.js";
 import {
+  forgetRegistryTokens,
+  mintRegistryToken,
+} from "../../src/core/registryTokens.js";
+import {
   RENDER_STAMP_META,
   registryCounters,
   registryObjectKey,
@@ -741,5 +745,95 @@ describe("documents (pure)", () => {
         ext: {},
       }),
     ).toBeNull();
+  });
+});
+
+describe("Godot URL tokens (F-21, plans/F-20.md §6.3)", () => {
+  async function urlToken(presentation: "url" | "header" = "url") {
+    const res = await mintRegistryToken(
+      env,
+      db,
+      {
+        product: SLUG,
+        label: "editor",
+        binding: "owner",
+        presentation,
+        createdBy: "admin:test",
+      },
+      NOW,
+    );
+    if (!res.ok) throw new Error(JSON.stringify(res));
+    return res.token;
+  }
+
+  beforeEach(() => {
+    forgetRegistryTokens();
+  });
+
+  it("a non-public feed answers the editor through /t/<url-token>/, with every feed URL carrying the segment", async () => {
+    await setFeed({ access: "authenticated" });
+    const token = await urlToken();
+    const tokenised = `${base}/t/${token}`;
+    expect((await get(`${LEGACY}/asset/${ASSET_ID}`)).status).toBe(401);
+    const res = await get(`${tokenised}/asset-library/api/asset/${ASSET_ID}`);
+    expect(res.status, await res.clone().text()).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
+    expect(res.headers.get("etag")).toBeNull();
+    const doc = (await res.json()) as Record<string, string>;
+    expect(doc.download_url).toContain(`${PKG}${tokenised}/files/`);
+    // The rewritten download URL is itself authorised by the same segment.
+    const zip = await get(new URL(doc.download_url!).pathname);
+    expect(zip.status).toBe(200);
+    expect(zip.headers.get("cache-control")).toBe("private, no-store");
+    // Renderers and stored objects never hold the token.
+    for (const key of r2.keys())
+      expect(
+        await ((await r2.get(key)) as R2ObjectBody).text(),
+        key,
+      ).not.toContain(token);
+  });
+
+  it("only a URL token satisfies the segment, and a URL token is no header credential", async () => {
+    await setFeed({ access: "authenticated" });
+    const header = await urlToken("header");
+    const url = await urlToken("url");
+    expect((await get(`${base}/t/${header}/index.json`)).status).toBe(401);
+    expect(
+      (
+        await get(`${base}/index.json`, {
+          headers: { authorization: `Bearer ${url}` },
+        })
+      ).status,
+    ).toBe(401);
+    expect(
+      (
+        await get(`${base}/index.json`, {
+          headers: { authorization: `Bearer ${header}` },
+        })
+      ).status,
+    ).toBe(200);
+    expect((await get(`${base}/t/${url}/index.json`)).status).toBe(200);
+    expect(
+      (await get(`${base}/t/pkeyr_${"u".repeat(43)}/index.json`)).status,
+    ).toBe(401);
+  });
+
+  it("on a public feed the segment is accepted and ignored, and never enters the Cache API key", async () => {
+    const store = new Map<string, Response>();
+    (globalThis as { caches?: unknown }).caches = {
+      default: {
+        match: async (r: Request) => store.get(r.url)?.clone(),
+        put: async (r: Request, res: Response) => {
+          store.set(r.url, res.clone());
+        },
+      },
+    };
+    try {
+      const url = await urlToken();
+      expect((await get(`${base}/t/${url}/index.json`)).status).toBe(200);
+      for (const key of store.keys()) expect(key).not.toContain(url);
+    } finally {
+      delete (globalThis as { caches?: unknown }).caches;
+    }
   });
 });

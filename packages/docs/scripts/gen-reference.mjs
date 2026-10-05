@@ -342,6 +342,7 @@ const TABLE_OWNERS = {
     "platform_store_settings",
     "platform_audit",
     "registry_render_queue",
+    "registry_tokens",
     "platform_settings",
     "platform_job_runs",
     "platform_heartbeats",

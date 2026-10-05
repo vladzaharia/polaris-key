@@ -42,7 +42,10 @@ import type {
   Capabilities,
   Support,
 } from "../../../core/adapters/contract.js";
-import type { RegistryRoute } from "../../../core/registryHost.js";
+import type {
+  OwnerlessRegistryRoute,
+  RegistryRoute,
+} from "../../../core/registryHost.js";
 import type { ChallengeKind } from "./authorize.js";
 import type {
   RegistryPackage,
@@ -152,8 +155,12 @@ export interface FeedAdapter<
   readonly hostPrefix: string;
   /** The feed's base path for one (already URL-encoded) owner, under `hostPrefix`. */
   feedPath(owner: string): string;
-  /** Every route, each built by `feedRoute`. */
+  /** Every read route, each built by `feedRoute`. */
   readonly routes: readonly RegistryRoute[];
+  /** The feed's credential routes (F-21: Swift's `POST …/login`), each built by `feedAuthRoute`. */
+  readonly authRoutes?: readonly RegistryRoute[];
+  /** The feed's owner-less routes (F-21: OCI's `GET /v2/token`), whose owners are in the query. */
+  readonly ownerlessRoutes?: readonly OwnerlessRegistryRoute[];
   readonly renderer: FeedRenderer;
   /** The ecosystem's one ingest declaration in `@polaris-key/manifest`. */
   readonly ingest: PackageEcosystemRules<E>;
@@ -196,12 +203,6 @@ export interface FeedAdapterSpec<E extends PackageEcosystem> extends Omit<
   };
 }
 
-/** Tier 1 serves anonymous reads only; registry tokens are F-21's. */
-const TIER1_AUTH: Support = {
-  mode: "unsupported",
-  reason: "registry tokens arrive with F-21; tier 1 serves public feeds only",
-};
-
 function verbSupport(verb: FeedVerb): Support {
   return verb === true
     ? { mode: "api", plane: "worker", rules: [] }
@@ -210,8 +211,9 @@ function verbSupport(verb: FeedVerb): Support {
 
 /**
  * A feed adapter from its spec: `id` is the ecosystem; `ops` declares `serve` behind the access
- * ladder with the feed's route names as its rules, `render` and `setup` in the Worker, `auth` as
- * tier 1 leaves it, and the version verbs as the spec says; `limits` are the ingest rules' file
+ * ladder with the feed's read route names as its rules, `auth` (F-21: registry tokens, judged by
+ * the same ladder) with its credential routes as its rules, `render` and `setup` in the Worker,
+ * and the version verbs as the spec says; `limits` are the ingest rules' file
  * and name ceilings. Feeds have no upstream to rate-limit them.
  */
 export function defineFeedAdapter<E extends PackageEcosystem>(
@@ -231,7 +233,10 @@ export function defineFeedAdapter<E extends PackageEcosystem>(
       ops: {
         render: worker([]),
         serve: worker(spec.routes.map((r) => r.name)),
-        auth: TIER1_AUTH,
+        auth: worker([
+          ...(spec.authRoutes ?? []).map((r) => r.name),
+          ...(spec.ownerlessRoutes ?? []).map((r) => r.name),
+        ]),
         yank: verbSupport(yank),
         unyank: verbSupport(yank),
         deprecate: verbSupport(deprecate),

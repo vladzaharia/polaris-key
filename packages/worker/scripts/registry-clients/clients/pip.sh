@@ -10,7 +10,7 @@ UV="$(find_uv)"
 matrix() {
   local name="$1" venv="$2"
   local py="$venv/bin/python" pip=("$venv/bin/python" -m pip)
-  local base=(install -q --no-cache-dir --index-url "$INDEX")
+  local base=(install -q --no-cache-dir --index-url "$CLIENT_INDEX")
   expect_ok "$name: install the stable version" "${pip[@]}" "${base[@]}" "$PROJECT"
   expect_version "$name: stable resolves to 1.0.0, past the yanked 0.9.0" "$py" 1.0.0
   expect_ok "$name: --pre resolves the beta" "${pip[@]}" "${base[@]}" --pre --upgrade "$PROJECT"
@@ -41,7 +41,7 @@ matrix "pip current" "$tmp/current"
 meta_check() {
   curl -sS -H 'Accept: application/vnd.pypi.simple.v1+json' "$INDEX$PROJECT/" |
     python3 -c '
-import hashlib, json, sys, urllib.parse, urllib.request
+import hashlib, json, os, sys, urllib.parse, urllib.request
 page = sys.argv[1]
 d = json.load(sys.stdin)
 for f in d["files"]:
@@ -49,7 +49,11 @@ for f in d["files"]:
     if not cm:
         continue
     url = urllib.parse.urljoin(page, f["url"]) + ".metadata"
-    body = urllib.request.urlopen(url).read()
+    req = urllib.request.Request(url)
+    token = os.environ.get("PKEY_REGISTRY_TOKEN")
+    if token:  # F-21: an authenticated feed
+        req.add_header("Authorization", "Bearer " + token)
+    body = urllib.request.urlopen(req).read()
     assert hashlib.sha256(body).hexdigest() == cm["sha256"], url
     assert b"Name: polaris-smoke" in body, url
 print("checked")' "$INDEX$PROJECT/"

@@ -9,8 +9,8 @@ import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import {
   authorizeFeedRead,
   extractFeedCredential,
-  feedPrincipal,
   feedRefusal,
+  resolveFeedPrincipal,
 } from "../src/services/distribution/registry/authorize.js";
 import {
   REGISTRY_SETTINGS_TTL_SECONDS,
@@ -121,7 +121,7 @@ afterEach(() => {
 
 // ── The extractor ────────────────────────────────────────────────────────────────────────────
 
-describe("feedPrincipal: the credential extractor", () => {
+describe("extractFeedCredential: the credential extractor", () => {
   const req = (authorization?: string) =>
     new Request(PKG, authorization ? { headers: { authorization } } : {});
   const b64 = (s: string) => btoa(s);
@@ -177,7 +177,7 @@ describe("feedPrincipal: the credential extractor", () => {
     expect(extractFeedCredential(fake)).toBeNull();
   });
 
-  it("is anonymous in tier 1, whatever the header holds", () => {
+  it("resolves to anonymous when nothing it holds is a registry credential", async () => {
     for (const h of [
       undefined,
       "Bearer t",
@@ -185,7 +185,14 @@ describe("feedPrincipal: the credential extractor", () => {
       "raw",
       "junk junk",
     ])
-      expect(feedPrincipal(req(h))).toEqual({ kind: "anonymous" });
+      expect(
+        await resolveFeedPrincipal(
+          { db: {} as Db, services: ON },
+          extractFeedCredential(req(h)),
+          "djdl",
+          "npm",
+        ),
+      ).toEqual({ kind: "anonymous" });
   });
 });
 
@@ -193,7 +200,7 @@ describe("feedPrincipal: the credential extractor", () => {
 
 describe("authorizeFeedRead", () => {
   const db = {} as Db;
-  const anon = { kind: "anonymous" } as const;
+  const anon = null;
   const run = (
     s: FakeSettings,
     deliverable: string | null = "sdk",
@@ -413,13 +420,7 @@ describe("d1RegistrySettings", () => {
       feed: null,
     });
     expect(
-      await authorizeFeedRead(
-        { db, services: ON },
-        { kind: "anonymous" },
-        "djdl",
-        "npm",
-        null,
-      ),
+      await authorizeFeedRead({ db, services: ON }, null, "djdl", "npm", null),
     ).toEqual({ ok: false, challenge: "not-found" });
   });
 
@@ -436,13 +437,7 @@ describe("d1RegistrySettings", () => {
       feed: null,
     });
     expect(
-      await authorizeFeedRead(
-        { db, services: ON },
-        { kind: "anonymous" },
-        "djdl",
-        "npm",
-        null,
-      ),
+      await authorizeFeedRead({ db, services: ON }, null, "djdl", "npm", null),
     ).toEqual({ ok: false, challenge: "not-found" });
   });
 
@@ -498,13 +493,7 @@ describe("d1RegistrySettings", () => {
        VALUES ('djdl', 'npm', 1, 'public', '{"scope":"@djdl"}', 1000, '{}', 1, 0)`,
     );
     const read = () =>
-      authorizeFeedRead(
-        { db, services: ON },
-        { kind: "anonymous" },
-        "djdl",
-        "npm",
-        null,
-      );
+      authorizeFeedRead({ db, services: ON }, null, "djdl", "npm", null);
     forgetRegistrySettings();
     expect(await read()).toEqual({ ok: true, cache: "public" });
     await deleteProduct(db, "djdl", 5);
@@ -891,9 +880,10 @@ describe("the materialiser", () => {
 
   it("every registry route belongs to a registered renderer of its own ecosystem", () => {
     // F-02 shipped none; each feed package (F-04 to F-09) registers one renderer.
-    expect(DISTRIBUTION_REGISTRY_ROUTES).toEqual(
-      [...RENDERERS.values()].flatMap((r) => r.routes),
-    );
+    // Every read route; F-21's credential routes (Swift's login) read no package.
+    expect(
+      DISTRIBUTION_REGISTRY_ROUTES.filter((r) => r.methods === undefined),
+    ).toEqual([...RENDERERS.values()].flatMap((r) => r.routes));
     for (const [ecosystem, renderer] of RENDERERS) {
       expect(renderer.ecosystem).toBe(ecosystem);
       for (const route of renderer.routes) {

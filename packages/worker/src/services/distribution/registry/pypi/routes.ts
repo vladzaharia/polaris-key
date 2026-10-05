@@ -35,9 +35,9 @@ import type { CatalogPackageDeliverable } from "../../../../core/hooks.js";
 import { registryNotFound } from "../../../../core/registryHost.js";
 import { blobKey, blobResponse, hasRef } from "../../../../core/blobs.js";
 import { ErrorCode, errorResponse } from "../../../../core/errors.js";
-import { authorizeFeedRead, feedPrincipal } from "../authorize.js";
+import { authorizeFeedRead } from "../authorize.js";
 import { registryCacheHeaders } from "../cache.js";
-import { feedRoute } from "../serve.js";
+import { feedReadContext, feedRoute, requestCredential } from "../serve.js";
 import { cachedRegistrySettings, d1RegistrySettings } from "../settings.js";
 import type { PackageFile, RegistryPackage } from "../materialise.js";
 import {
@@ -200,8 +200,8 @@ const simpleIndex: RegistryRoute = feedRoute({
     const listed = [];
     for (const project of await pypiProjects(ctx)) {
       const decision = await authorizeFeedRead(
-        { db: ctx.db, services: ctx.product.services },
-        feedPrincipal(req),
+        feedReadContext(req, ctx),
+        requestCredential(req, ctx),
         owner,
         "pypi",
         project.id,

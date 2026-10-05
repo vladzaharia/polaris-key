@@ -21,6 +21,15 @@
  * step 2 and before `wrangler dev` opens the state (F-05's PyPI clients share `pypi-fixture.mjs`,
  * which seeds once per state directory).
  *
+ * AUTHENTICATED MODE (F-21, plans/F-20.md §9): `--auth` switches every feed of the fixture owner
+ * to `authenticated` and mints two registry tokens straight into the local D1 (an owner-bound
+ * header token and a Godot editor URL token), then checks that each ecosystem refuses a request
+ * without a token (401) before running the clients with PKEY_REGISTRY_TOKEN and
+ * PKEY_REGISTRY_URL_TOKEN in their environment. Each client configures its tool's native
+ * credential from them; every `curl` a client makes sends the header token (a `.curlrc` under
+ * CURL_HOME). Both modes set REGISTRY_TOKEN_KEY, as production does, so `GET /v2/` answers the
+ * Bearer challenge and OCI clients always run the token dance.
+ *
  * F-02 ships one smoke client, `curl`; F-04 to F-09 add their ecosystem's clients (npm, pnpm,
  * yarn, bun, pip, uv, poetry, SwiftPM, Gradle, Maven, docker, crane, GodotEnv) as further
  * `clients/*.sh` and matrix rows in `.github/workflows/registry-clients.yml`. Nothing here
@@ -28,18 +37,27 @@
  */
 
 import { spawn, spawnSync } from "node:child_process";
+import { createHmac, randomBytes } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { TSX, WORKER, WRANGLER, argValue, argValues } from "./lib.mjs";
+import {
+  TSX,
+  WORKER,
+  WRANGLER,
+  argValue,
+  argValues,
+  wrangler,
+} from "./lib.mjs";
 import { seedFixtures } from "./fixtures.mjs";
 import { FIXTURE_OWNER, seed } from "./seed.mjs";
 
@@ -69,6 +87,87 @@ async function waitFor(url, ms) {
     await new Promise((r) => setTimeout(r, 500));
   }
   throw new Error(`registry host did not answer ${url} within ${ms / 1000}s`);
+}
+
+const auth = process.argv.includes("--auth");
+/** F-21: the pull-token key and the pepper the tokens below are hashed under (local only). */
+const REGISTRY_TOKEN_KEY = randomBytes(32).toString("base64");
+const KEY_HASH_PEPPER = randomBytes(16).toString("hex");
+const b64url = (b) => b.toString("base64url");
+const HEADER_TOKEN = `pkeyr_${b64url(randomBytes(32))}`;
+const URL_TOKEN = `pkeyr_${b64url(randomBytes(32))}`;
+
+/** Switch the owner's feeds to `authenticated` and mint the two tokens into the local D1. */
+function seedAuth(persistTo) {
+  const now = Math.floor(Date.now() / 1000);
+  const hash = (t) =>
+    createHmac("sha256", KEY_HASH_PEPPER).update(t).digest("hex");
+  const row = (id, token, eco, presentation) =>
+    `INSERT INTO registry_tokens (product, token_id, token_hash, hint, label, scopes_json,
+       ecosystems_json, binding, license_id, presentation, created_by, created_at, expires_at)
+     VALUES ('${FIXTURE_OWNER}', '${id}', '${hash(token)}', '${token.slice(-4)}', '${id}',
+       '["read"]', ${eco}, 'owner', NULL, '${presentation}', 'admin:harness', ${now},
+       ${now + 86_400});`;
+  const sql = [
+    `UPDATE dist_registry_feeds SET access_mode = 'authenticated' WHERE product = '${FIXTURE_OWNER}';`,
+    row("rtok_harness", HEADER_TOKEN, "NULL", "header"),
+    row("rtok_harness_url", URL_TOKEN, `'["godot"]'`, "url"),
+  ].join("\n");
+  const file = join(persistTo, "registry-clients-auth.sql");
+  writeFileSync(file, sql);
+  wrangler([
+    "d1",
+    "execute",
+    "DB",
+    "--local",
+    "--env",
+    "test",
+    "--persist-to",
+    persistTo,
+    "--file",
+    file,
+  ]);
+}
+
+/** One path per ecosystem that a non-public feed must refuse without a token. */
+const PROBES = {
+  npm: (o) => `/npm/${o}/@${o}%2fhello`,
+  pypi: (o) => `/pypi/${o}/simple/`,
+  swift: (o) => `/swift/${o}/identifiers?url=https%3A%2F%2Fexample.com%2Fx`,
+  maven: (o) => `/maven/${o}/im/plrs/fixture/demo/maven-metadata.xml`,
+  oci: (o) => `/v2/${o}/tools/smoke/tags/list`,
+  godot: (o) => `/godot/${o}/index.json`,
+};
+
+/** The ecosystem a client exercises (its family's prefix), or null for the smoke client. */
+function ecosystemOf(client) {
+  const family = client.split("-")[0];
+  if (["npm", "pnpm", "yarn", "bun"].includes(family)) return "npm";
+  if (["pip", "uv", "poetry"].includes(family)) return "pypi";
+  if (["gradle8", "gradle9", "maven"].includes(family)) return "maven";
+  return family in PROBES ? family : null;
+}
+
+async function probeRefusals(selected) {
+  let bad = 0;
+  const ecosystems = new Set(selected.map(ecosystemOf).filter(Boolean));
+  for (const [eco, path] of Object.entries(PROBES)) {
+    if (!ecosystems.has(eco)) continue;
+    const res = await fetch(`${origin}${path(FIXTURE_OWNER)}`);
+    const challenge = res.headers.get("www-authenticate") ?? "";
+    const want = eco === "oci" ? /^Bearer realm=/ : /^Basic realm=/;
+    if (res.status === 401 && want.test(challenge))
+      console.log(
+        `ok   ${eco}: 401 without a token (${challenge.split(" ")[0]})`,
+      );
+    else {
+      console.error(
+        `FAIL ${eco}: ${res.status} without a token (${challenge})`,
+      );
+      bad++;
+    }
+  }
+  return bad;
 }
 
 const port = Number(argValue("--port") ?? (await freePort()));
@@ -133,6 +232,7 @@ try {
     if (r.status !== 0)
       throw new Error(`seed ${seedFile} failed (exit ${r.status})`);
   }
+  if (auth) seedAuth(state);
   dev = spawn(
     WRANGLER,
     [
@@ -151,6 +251,10 @@ try {
       assets,
       "--var",
       `PKG_ORIGIN:${origin}`,
+      "--var",
+      `REGISTRY_TOKEN_KEY:${REGISTRY_TOKEN_KEY}`,
+      "--var",
+      `KEY_HASH_PEPPER:${KEY_HASH_PEPPER}`,
       "--show-interactive-dev-session=false",
     ],
     {
@@ -160,7 +264,18 @@ try {
       detached: true,
     },
   );
-  await waitFor(`${origin}/v2/`, 120_000);
+  // The landing page: `/v2/` answers the Bearer challenge once REGISTRY_TOKEN_KEY is set.
+  await waitFor(`${origin}/`, 120_000);
+  const curlHome = join(state, "curl-home");
+  if (auth) {
+    console.log("\n── authenticated feeds: refusals without a token ──");
+    failed += await probeRefusals(clients);
+    mkdirSync(curlHome);
+    writeFileSync(
+      join(curlHome, ".curlrc"),
+      `header = "Authorization: Bearer ${HEADER_TOKEN}"\n`,
+    );
+  }
   for (const client of clients) {
     console.log(`\n── registry client: ${client} ──`);
     const r = spawnSync("bash", [join(CLIENTS, `${client}.sh`)], {
@@ -170,6 +285,14 @@ try {
         REGISTRY: origin,
         OWNER: FIXTURE_OWNER,
         STATE: state,
+        ...(auth
+          ? {
+              PKEY_REGISTRY_TOKEN: HEADER_TOKEN,
+              PKEY_REGISTRY_URL_TOKEN: URL_TOKEN,
+              CURL_HOME: curlHome,
+              REGISTRY_AUTH: "1",
+            }
+          : {}),
       },
     });
     if (r.status !== 0) {
@@ -188,4 +311,6 @@ try {
   rmSync(state, { recursive: true, force: true });
 }
 if (failed) process.exit(1);
-console.log(`\nregistry clients green: ${clients.join(", ")}`);
+console.log(
+  `\nregistry clients green${auth ? " (authenticated feeds)" : ""}: ${clients.join(", ")}`,
+);

@@ -12,6 +12,7 @@ import type {
   ProductRow,
 } from "../../../core/data.js";
 import { parseServices } from "../../../core/services.js";
+import { stmtRevokeAccountRegistryTokens } from "../../../core/registryTokens.js";
 
 export interface PortalAccountRow {
   id: string;
@@ -1074,6 +1075,8 @@ export async function deletePortalAccount(
       params: [accountId],
     },
     { sql: "DELETE FROM portal_accounts WHERE id = ?", params: [accountId] },
+    // F-21: every registry token this account minted, on every product, stops now.
+    stmtRevokeAccountRegistryTokens(accountId, now),
     {
       sql: `INSERT INTO portal_audit
               (id, account_id, at, action, product, target_kind, target_id, summary)

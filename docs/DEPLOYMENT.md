@@ -446,12 +446,27 @@ compensation (no cookies, `nosniff`, a `sandbox` CSP, JSON errors), adds
 test`, `registry-clients.yml`). It has no routes and must never be deployed.
 - Until the feeds' tables exist (F-03) every feed path answers the not-found: the settings read
   fails closed.
+- **`REGISTRY_TOKEN_KEY` (F-21), per environment, before deploying F-21.** The HMAC key of the OCI
+  pull tokens `GET /v2/token` issues (plans/F-20.md §6.4). Set it in dev, then staging, then prod:
+
+  ```sh
+  cd packages/worker
+  openssl rand -base64 32 | npx wrangler secret put REGISTRY_TOKEN_KEY --env <env>
+  ```
+
+  Without it `/v2/token` answers 503 and `/v2/` stays a plain 200; with it `/v2/` answers the
+  Bearer challenge to a request without a pull token (anonymous pull tokens keep public images
+  pullable). No feature flag: every feed is `public` until an operator changes its mode. Rotation
+  is in the RUNBOOK ("Registry tokens (F-21)"). Optionally, add a GitHub secret-scanning custom
+  pattern `pkeyr_[A-Za-z0-9_-]{43}` at organisation level.
 
 After the next deploy, check the host from outside:
 
 ```sh
-curl -sI https://pkg.plrs.im/v2/ | grep -iE '^(HTTP|docker-distribution-api-version|content-security-policy)'
-# HTTP/2 200, docker-distribution-api-version: registry/2.0, content-security-policy: sandbox; ...
+curl -sI https://pkg.plrs.im/v2/ | grep -iE '^(HTTP|docker-distribution-api-version|content-security-policy|www-authenticate)'
+# HTTP/2 401 with www-authenticate: Bearer realm="https://pkg.plrs.im/v2/token",service="pkg.plrs.im"
+# (HTTP/2 200 while REGISTRY_TOKEN_KEY is unset), docker-distribution-api-version: registry/2.0,
+# content-security-policy: sandbox; ...
 curl -sI https://pkg.plrs.im/manage | grep -iE '^(HTTP|set-cookie|x-content-type-options)'
 # HTTP/2 404, x-content-type-options: nosniff, and no set-cookie line
 curl -sI https://pkg.plrs.im./manage | head -1
