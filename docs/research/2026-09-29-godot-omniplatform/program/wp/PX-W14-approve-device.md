@@ -44,6 +44,27 @@ Signing in on a new device by approving from a known one ([PORTAL.md §4.23](../
 - **THREAT-MODEL (phishing):** short expiry, location shown to the approver, never auto-approve.
 - **Overlap with the re-cut S-16/S-17 graph:** I-08 also names QR sign-in on another device. PORTAL.md is the approved UI and API spec for this surface; whichever package lands first owns the shared code and the other narrows its scope to what is left (the lead reconciles the briefs).
 
+## Corrections (PX-W14, verified against the code)
+
+- **A fourth route, `POST /api/device-login/lookup {code}`.** §4.24 shows the approver the asking
+  device (browser and OS, coarse place, when) before **Deny** or **Approve**, and the THREAT-MODEL
+  line asks for the location to be shown; G29's three routes have no read for that. `lookup` reads
+  only; `approve` takes `{code, decision: "approve" | "deny"}` with no default, which is also how
+  **Deny** reaches the server.
+- **Rule 10 is the OpenAPI spec plus `routeCoverage`'s `PORTAL_KIND_PATHS`,** as PX-W1 and PX-W10
+  did (PORTAL.md §10.1's "narrative-only" predates them), plus the docs site's portal page.
+- **Step-up is "a sign-in no older than 5 minutes"** (`STEP_UP_MAX_AGE_SECONDS`, the account
+  links'), the portal's only step-up until I-14/I-15. **"New location"** is the asking device's
+  country differing from the approver's, or either unknown (fail closed), in one function
+  (`isNewLocation`) that I-15's sign-in history can replace.
+- **The QR encoder moved to `src/core/qr.ts`** (it was Distribution's, and rule 6 forbids Identity
+  importing it). `qr` is an SVG `data:` URI (the portal CSP allows `img-src data:`), next to
+  `approveUrl`.
+- **The poll is bound to the starting browser** by an `HttpOnly` cookie, and every "not there"
+  answer is `410 expired`. The email is the existing, until now unwired, `newDeviceSignInNotice`.
+- **I-08 overlap:** this package lands the shared code (single-use kinds `device-login` and
+  `device-login-code`, `services/identity/portal/deviceLogin.ts`); I-08 narrows to what is left.
+
 ## Steps
 
 1. Re-read the PORTAL.md sections above and the matching mockups in `docs/design/portal/`; verify this brief against the code and record any correction here.

@@ -4492,7 +4492,48 @@ sit behind the portal session; the claim also needs the CSRF header.
   `audit`, both with `source: discover`.
 - **Developers can withhold an offer without changing the policy** (`discover_enabled = 0`).
 
-### Boundaries that are weaker than they look
+### Signing in with another device (PX-W14)
+
+A device with no session asks to be signed in (`POST /api/device-login/start`), a signed-in device
+approves it by its 8-letter code (`POST /api/device-login/lookup`, then `…/approve`), and the new
+device's poll (`GET /api/device-login/<id>`) is answered with a portal session for the approver's
+account (docs/design/PORTAL.md §4.23, §4.24, G29). The approval is a credential handed across
+devices, so the threat is **phishing**: an attacker starts a request on their own device and talks
+the account holder into approving it ("read me the code", "scan this to claim your prize").
+
+- **Short expiry and single use.** A request and its code live 5 minutes in the atomic single-use
+  store (I-02), expired by the store itself. A decision consumes the code in one atomic step and
+  then moves the request out of `pending` with a compare-and-set, so two racing approvals cannot
+  both land; the poll that sees the decision consumes the request before minting the session, so
+  exactly one browser is signed in per approval. The `ifAbsent` code index means two live requests
+  never share a code.
+- **Never auto-approved.** Only `approve` with an explicit `decision: "approve"` approves; there is
+  no default, `lookup` reads only, and the QR code opens the approve screen with the code filled in,
+  never an approval. The design's approve screen (§4.24) carries the warning "Only approve if you
+  started this yourself, on a device in front of you".
+- **The place is shown.** The request records the asking browser and OS and its coarse place
+  (Cloudflare's edge geolocation, which the client cannot set); `lookup` shows them next to the
+  approver's own country, and the security notice names them.
+- **Step-up for a new location.** Approving a request whose country is not the approver's, or
+  where either is unknown (Tor, an unlocated address), needs a sign-in no older than 5 minutes
+  (the account-links step-up). A phisher in another country therefore also needs the victim to
+  sign in again on the spot, which is one more prompt to notice. Denying never needs it. The rule
+  is one function (`isNewLocation`) so I-15's sign-in history can replace a country comparison.
+  **Residual:** a phisher in the victim's own country (or behind a VPN exiting there) meets no
+  step-up; the warning, the shown device and the notice are the defence.
+- **Bound to the browser that started it.** `start` sets an `HttpOnly`, `SameSite=Strict`,
+  `__Host-` binding cookie whose peppered hash the request holds; a poll without it is answered
+  exactly like an expired request, so a poll handle seen in a log or over a shoulder signs nobody
+  in. The handle itself is 32 random bytes and, like the code, is stored only as a peppered hash
+  (R12-04).
+- **Guessing codes.** A code is 20^8 (about 34.5 bits) and lives 5 minutes. Lookup and approve
+  need a session and share 10 calls a minute per account and client (fail closed), so an account
+  guesses at most 50 codes in a code's lifetime. A correct guess would sign the stranger's device
+  in to the guesser's own account, not the other way round. Starts are bounded per client network
+  (10 per 10 minutes) and polls likewise (60 a minute).
+- **Audited and emailed.** `portal.device_login.approve` / `.deny` and `portal.login.device` in
+  `portal_audit`; an approval sends "A new device signed in" to every verified address on the
+  account, with "Wasn't you? Secure your account".
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The
   JWS is verified once on fetch, then discarded; the decoded doc is reloaded with a bare

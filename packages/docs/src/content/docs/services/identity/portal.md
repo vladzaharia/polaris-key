@@ -90,9 +90,11 @@ even when the underlying key is shared (`R1-02`).
 
 ## The portal API surface
 
-Everything under `/api/*` except `capabilities` and `magic/start` requires the session cookie
-(`401 unauthorized` otherwise), and every mutating method additionally requires the
-`X-PKey-Portal-CSRF` header to match the session's CSRF value (`403` otherwise).
+Everything under `/api/*` except `capabilities`, `magic/start` and the new device's half of
+[signing in with another device](#signing-in-with-another-device) (`device-login/start` and the
+poll) requires the session cookie (`401 unauthorized` otherwise), and every mutating method
+additionally requires the `X-PKey-Portal-CSRF` header to match the session's CSRF value (`403`
+otherwise).
 
 - **`GET /api/capabilities?product=<slug>`** — pre-auth. With `product`, answers for that one
   product; without it, answers the platform-wide aggregate (used only by the root login page,
@@ -255,6 +257,43 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   platform, `503 email_not_configured` without an `EMAIL` binding, and `202` when sent. Limited
   to 5 an hour per account and product; the bucket fails closed.
 
+## Signing in with another device
+
+A device that is not signed in can be signed in by approving it from one that is (PX-W14):
+
+| Route                            | Who                    | What it does                                                    |
+| -------------------------------- | ---------------------- | --------------------------------------------------------------- |
+| `POST /api/device-login/start`   | the new device         | Creates a request: a code, a QR code and a poll handle.         |
+| `GET /api/device-login/<id>`     | the new device         | Polls; once approved, the answer signs this browser in.         |
+| `POST /api/device-login/lookup`  | the signed-in approver | Shows what is asking (`{ code }`), before deciding. Reads only. |
+| `POST /api/device-login/approve` | the signed-in approver | `{ code, decision: "approve" \| "deny" }`: the decision.        |
+
+**Start.** Answers `201` with `id` (the poll handle, never shown), `code` (8 letters, `WDJB-MJHT`,
+from RFC 8628's consonant alphabet, case and hyphens ignored on input), `qr` (an SVG `data:` URI
+of `approveUrl`, the signed-in app's `#/account/approve?code=`), `expiresIn` (300) and `interval`
+(3). It records the asking browser and OS (from the User-Agent, "Chrome on macOS") and its coarse
+place from Cloudflare's edge geolocation (city, region, country), and sets an `HttpOnly`,
+`SameSite=Strict` cookie, `__Host-pkey_device_login`, that binds the request to this browser. 10
+starts per client network per 10 minutes; `404 auth_method_disabled` while the portal is off.
+
+**Poll.** Needs the binding cookie; without it, with the wrong one, for an unknown or expired
+request, or after the answer was already given, it is `410 expired`. Otherwise `pending` (with
+`expiresIn` and `interval`), `denied`, or `approved` with the session cookie set. The answer to a
+decision is taken in one atomic step, so exactly one poll is signed in.
+
+**Lookup and approve.** Both need the session and the CSRF header and share 10 calls a minute per
+account, which bounds guessing at codes. `lookup` returns the device, its place, when it asked,
+the time left, the approver's own country, `newLocation` and `stepUpRequired`. `approve` takes an
+explicit `decision`; anything else is a `422`, so nothing approves a request by default.
+Approving a request from another country than the approver's, or from an unknown place, needs a
+sign-in no older than 5 minutes, otherwise `401 { "error": "step_up_required", "maxAgeSeconds":
+300 }` and the code stays live. A decision spends the code atomically (two racing approvals: one
+lands, the other is `410`), is audited (`portal.device_login.approve` or `.deny`, and
+`portal.login.device` when the new device signs in), and an approval sends the "A new device
+signed in" notice to every verified address.
+
+Requests and codes live in the Worker's atomic single-use store for 5 minutes.
+
 ## Emails
 
 Every email is from **Polaris Key** (`PORTAL_EMAIL_FROM`, default `Polaris Key <noreply@plrs.im>`)
@@ -267,6 +306,7 @@ their names, not their slugs or ids, and links to the exact section of the signe
 | License added by key | Mossgarden is in your library               | `#/p/<product>`                    | the session's address  |
 | Download link        | Download Mossgarden for macOS               | `#/p/<product>/download?platform=` | the account's address  |
 | Device removed       | Studio PC was removed from Tidewater Studio | `#/p/<product>/devices`            | every verified address |
+| New device signed in | A new device signed in to Polaris Key       | `#/account/sessions`               | every verified address |
 | Account deleted      | Your Polaris Key account has been deleted   | nothing                            | every verified address |
 
 The security notices (a device removed, and the sign-in method and new-device templates the
