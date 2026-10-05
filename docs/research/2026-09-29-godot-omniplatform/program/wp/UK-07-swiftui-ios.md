@@ -1,0 +1,86 @@
+# UK-07 SwiftUI kit for iOS and iPadOS 26: `PolarisKeyUI` rebuilt on a pure-Swift presentation core, `.polarisKeyGate`, Liquid Glass on 26 with a designed iOS 18 fallback, floors raised to iOS 18 / macOS 15
+
+| Field       | Value                                                                                                                                                                                                                                                                      |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                                                                                               |
+| Size        | 4–6 engineer-weeks                                                                                                                                                                                                                                                         |
+| Depends on  | [UK-01](UK-01-brand-kit-tokens.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-02b](UK-02b-ui-fixtures-parity.md), [UK-15](UK-15-visual-qa-harness.md), [UK-16](UK-16-ui-docs-scaffold.md)                                                                                  |
+| Unblocks    | [UK-08](UK-08-swiftui-macos.md), [UK-23](UK-23-uikit-kit.md), [UK-25](UK-25-storekit-paywall.md), [UK-26](UK-26-visionos-kit.md), [UK-27](UK-27-tvos-kit.md), [UK-33](UK-33-watchos.md), [UK-34](UK-34-widgetkit-live-activities.md), [UK-41](UK-41-must-tier-closeout.md) |
+| Role        | `pkey-sdk-porter`                                                                                                                                                                                                                                                          |
+| Plan mode   | no                                                                                                                                                                                                                                                                         |
+| Gates       | swift-snapshot-testing baselines on iOS 26 and iOS 18 simulators; `performAccessibilityAudit`; the SwiftUI lint equivalents; `swift build && swift test`                                                                                                                   |
+| Human input | none                                                                                                                                                                                                                                                                       |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                  |
+
+## Goal
+
+An iOS app gates itself with `.polarisKeyGate(client)`, every §4.1 component exists as a public SwiftUI view in the Liquid Glass idiom on 26 and a polished material fallback on 18, and the package floor is iOS 18.
+
+## Why
+
+Today's Swift kit is one iOS 17-era screen with about 10 % of the catalogue (§0, SW). The owner raised the Apple floors to iOS 18 / macOS 15 (2026-10-05), which removes the iOS 17 fallback work. The spec is [`docs/design/UI-KITS.md`](../../../../design/UI-KITS.md); its "Owner decisions (2026-10-05)" header wins over the sections below it.
+
+## Read first
+
+- `AGENTS.md` (always) and `CLAUDE.md`.
+- [UI-KITS.md](../../../../design/UI-KITS.md) §0 SwiftUI row, §1.4 iOS row, §1.5, §3.2 SwiftUI row, §4, §4.8, §5.1, §9 (Swift files)
+- `sdks/swift/Package.swift`, `sdks/swift/Sources/PolarisKeyUI/`
+- Mockups: [ios-gate-dark](../../../../design/ui-kits/shots/ios-gate-dark.png), [ios-gate-light](../../../../design/ui-kits/shots/ios-gate-light.png), [ios-activate-dark](../../../../design/ui-kits/shots/ios-activate-dark.png), [ios-activate-light](../../../../design/ui-kits/shots/ios-activate-light.png), [ios-sign-in-dark](../../../../design/ui-kits/shots/ios-sign-in-dark.png), [ios-sign-in-light](../../../../design/ui-kits/shots/ios-sign-in-light.png), [ios-device-limit-dark](../../../../design/ui-kits/shots/ios-device-limit-dark.png), [ios-device-limit-light](../../../../design/ui-kits/shots/ios-device-limit-light.png), [ios-update-dark](../../../../design/ui-kits/shots/ios-update-dark.png), [ios-update-light](../../../../design/ui-kits/shots/ios-update-light.png), [ios-update-required-dark](../../../../design/ui-kits/shots/ios-update-required-dark.png), [ios-update-required-light](../../../../design/ui-kits/shots/ios-update-required-light.png), [ios-settings-dark](../../../../design/ui-kits/shots/ios-settings-dark.png), [ios-settings-light](../../../../design/ui-kits/shots/ios-settings-light.png)
+
+## Scope
+
+**In:**
+
+- `Package.swift` platforms raised to iOS 18, macOS 15, tvOS 18, visionOS 2 (watchOS 11 when UK-33 lands); `#available` guards below 18 removed; the Godot xcframework build (P5-05 `build.sh`) follows the new floor.
+- A pure-Swift presentation core running the UK-02b fixtures; `@Observable` models with a status stream (no flash of the wrong state; live updates).
+- Public components and styled parts with `PolarisKeyStyle` protocols; `.polarisKeyGate`; String Catalog from UK-02a; typed errors; public `PolarisKeyPreviewState`s.
+- Glass on 26 (`.glassProminent` capsules, glass secondaries, concentric sheets); the designed `.regularMaterial` fallback on 18 with its own baselines.
+- `ProductIdentity` presentation seam (Swift `PresentationSource`), filled by HA-13's Swift accessor.
+- Fix the "this Mac" copy on iPhone.
+
+**Out** (and where it belongs instead):
+
+- macOS specifics (→ UK-08).
+- UIKit, StoreKit paywall, visionOS, tvOS (→ UK-23, UK-25–UK-27).
+
+## Design notes
+
+- No iOS 17 / macOS 14 code paths (owner decision).
+- Rubik scaled with `UIFontMetrics` (§11 Q6).
+- Presentation comes only through the core's `ProductIdentity` seam from the SDK (HA-13, HA-14). This package does not depend on them: it tests the default with a fake source, and the real accessor plugs in without a kit change (UK-41 verifies it).
+- Launch locales are English plus `de`, `fr`, `es`, `pt-BR`, `it`, `ja`, `ko`, `zh-Hans`; there is no RTL locale, so no RTL baselines, but layouts stay RTL-safe.
+
+## Steps
+
+1. Headless layer first: the models or controllers, running the UK-02b fixtures.
+2. Styled parts, then the drop-in flow, against the mockups.
+3. Baselines in both themes, the lint, the sample and the docs pages.
+4. Design review against the mockups; record it in the PR.
+
+## Acceptance criteria
+
+- [ ] Every §4.1 component in scope ships in all three layers of §1.3: (a) the drop-in flow, (b) styled parts with the kit's restyle hooks (§3.2), and (c) the headless model.
+- [ ] With an empty theme the kit renders the Polaris Key look (§1.1) in the product's accent; `preset: "native"` restyles it to the host (§3.4); every §3.1 theme field is honoured.
+- [ ] Product identity resolves integrator → SDK presentation source → bundle → derived accent → ink (§1.2). A test with a fake presentation source (accent, `accentDark`, verified icon) renders the product accent and icon with **zero integrator code**; the kit has no discovery fetch or icon cache of its own (owner decision: one path, via HA-13/HA-14).
+- [ ] Every visible string is a catalog key from UK-02a in the launch locales; the cross-kit string lint (UK-15) passes.
+- [ ] Screenshot baselines exist for every fixture component × state (UK-02b) in **both dark and light**, at the sizes and variants of §7.1 for this kit, committed lossless under `sdks/swift/Tests/PolarisKeyUISnapshotTests/__Snapshots__/`; a changed baseline fails CI until re-recorded with the reason in the commit.
+- [ ] The §7.3 modernity lint passes on this kit (SwiftUI equivalents: no `.buttonBorderShape(.roundedRectangle)` on 26, no filled secondary capsule), including the RTL-safe layout rule (no physical left/right; no RTL baselines are required).
+- [ ] The §4.4 accessibility checks pass on the same renders (`performAccessibilityAudit`, AX3 Dynamic Type).
+- [ ] The sample `examples/ui/swiftui/` runs against the fixture adapters with no live Worker and with `--live` (§6.1).
+- [ ] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
+- [ ] A design review against the mockups (`ios.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
+- [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
+- [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+
+## Verify
+
+```sh
+( cd sdks/swift && swift build && swift test )
+```
+
+## Hand-off
+
+UK-08, UK-23, UK-25, UK-26, UK-27, UK-33 and UK-34 extend this kit; HA-13 plugs the Swift presentation accessor into its seam.
+
+The role agent sets `--set UK-07 in-review` when it hands off. After review, the lead adds the last
+commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set UK-07 done`.
