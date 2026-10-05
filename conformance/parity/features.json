@@ -506,6 +506,23 @@
       ]
     },
     {
+      "id": "identity.devicelabel",
+      "family": "devices",
+      "title": "Device label sent on device-code sign-in, activation and registration (WIRE-CONTRACT-V4 §12.7.1)",
+      "service": "identity",
+      "proof": [
+        { "kind": "corpus", "file": "device-label.json", "wp": "PX-W13" },
+        { "kind": "transcript", "wp": "PX-W13" }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "A browser has no device name to report: the sign-in card shows the registered origin instead, and a web app signs in with the OIDC redirect."
+        }
+      ]
+    },
+    {
       "id": "release.changelog",
       "family": "release",
       "title": "Changelog",

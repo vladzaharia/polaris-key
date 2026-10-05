@@ -14,7 +14,10 @@
  * Adding an entry is a THREAT-MODEL §9 review trigger.
  */
 
-import { DEFAULT_RESERVED_NAMES_MODE } from "@polaris-key/manifest";
+import {
+  DEFAULT_RESERVED_DISPLAY_NAMES_MODE,
+  DEFAULT_RESERVED_NAMES_MODE,
+} from "@polaris-key/manifest";
 import { setting } from "./define.js";
 import type { SettingDef } from "./types.js";
 
@@ -173,6 +176,37 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     readers: ["core/reservedNames.ts"],
     storage: { kind: "scalar", storedAs: "LICENSING_RESERVED_NAMES" },
     since: "LX-05",
+  }),
+
+  // ── Identity: reserved display names (PX-W13, plans/PX-W13.md §8 Q4 as amended) ─────────
+  // How an app or developer name that uses a platform or store name (`reserved_display_name`) is
+  // treated at manifest ingest and on console listing claims. `warn` for the S-19 decision-15
+  // window (two minor releases or 60 days after PX-W13 ships, whichever is later); then the lead
+  // flips it to `error`. Either way the sign-in card's render-time re-check shows such a name in
+  // the neutral frame. Platform-only (no productLink).
+  setting({
+    key: "identity.reservedDisplayNames",
+    aliases: ["IDENTITY_RESERVED_DISPLAY_NAMES"],
+    scope: "platform",
+    service: "platform",
+    area: "identity",
+    label: "Reserved display names",
+    description:
+      "How a product name or listing name that uses a platform or store name (Polaris Key, Apple, Google Play, Steam and others) is treated: warn and accept it, or refuse the manifest or listing.",
+    keywords: ["reserved", "display name", "spoofing", "sign-in"],
+    docs: "/docs/admin/platform-settings/",
+    // Ordered: `up` is toward `error`. Refusing can stop a product's next resync, so it is
+    // confirmed; relaxing is not.
+    value: { kind: "enum", values: ["warn", "error"] },
+    defaultValue: DEFAULT_RESERVED_DISPLAY_NAMES_MODE,
+    merge: "cascade",
+    varName: "IDENTITY_RESERVED_DISPLAY_NAMES",
+    precedence: "runtime",
+    ownership: "operator",
+    confirm: { up: "L1", down: "L0" },
+    readers: ["core/reservedDisplayNames.ts"],
+    storage: { kind: "scalar", storedAs: "IDENTITY_RESERVED_DISPLAY_NAMES" },
+    since: "PX-W13",
   }),
 
   // ── Identity (registered for I-09 and I-10a; I-04 §7 step 3, S-18 §5.5) ────────────────

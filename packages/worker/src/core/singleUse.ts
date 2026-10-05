@@ -37,7 +37,9 @@ export type SingleUseKind =
   /** A WebAuthn challenge (I-14). */
   | "webauthn-challenge"
   /** An issuer authorization code (I-16). */
-  | "auth-code";
+  | "auth-code"
+  /** A passthrough sign-in request handle (PX-W13, WIRE-CONTRACT-V4 §12.7.2), by its hash. */
+  | "signin-request";
 
 /** The address of one artefact. */
 export interface ArtefactRef {

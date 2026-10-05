@@ -698,7 +698,12 @@ describe("the RFC 8628 user-code page", () => {
     expect(html).not.toContain(body.deviceCode);
     expect(html).not.toContain("device_code");
     // The form posts the user code back to this route, never the device code.
-    expect(html).toContain(`<form method="post" action="${ENTRY}">`);
+    // PX-W13: the form also carries the sign-in request handle (§12.7.2).
+    expect(html).toMatch(
+      new RegExp(
+        `<form method="post" action="${ENTRY}" data-request="rq_[A-Za-z0-9_-]{22}">`,
+      ),
+    );
     expect(html).toContain(
       `<input type="hidden" name="user_code" value="${body.userCode}">`,
     );

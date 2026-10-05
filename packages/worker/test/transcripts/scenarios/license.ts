@@ -10,7 +10,10 @@ import {
   document,
   FINGERPRINT,
   FINGERPRINT_EXPECT,
+  LABELLED_FINGERPRINT,
+  LABELLED_FINGERPRINT_EXPECT,
   syncReport,
+  TRANSCRIPT_DEVICE_NAME,
   T0,
   trust,
   VERSION,
@@ -51,14 +54,18 @@ export const activateEnrollDeactivate: Scenario = {
       const r = new TranscriptRecorder({
         id: "activate-enroll-deactivate",
         description:
-          "The licence mint and release paths. Activation exchanges a licence key (plus a hashed fingerprint) for a device token and syncs; deactivation releases the seat and wipes the client; keyless enrolment on the product's free tier mints a token and syncs; and a deactivation the server refuses (the device was already deauthorized from the console, so the token 401s) still wipes the client, because the remote half is best-effort and the local half is not.",
+          "The licence mint and release paths. Activation exchanges a licence key (plus a hashed fingerprint and the device label the SDK takes from the platform's device name, PX-W13) for a device token and syncs; deactivation releases the seat and wipes the client; keyless enrolment on the product's free tier mints a token and syncs; and a deactivation the server refuses (the device was already deauthorized from the console, so the token 401s) still wipes the client, because the remote half is best-effort and the local half is not.",
         features: ["license.activate", "license.enroll", "license.deactivate"],
         requires: ["core.store"],
         product: PRODUCT,
         now: T0,
         world,
         pinned: pin,
-        initial: { deviceId: DEVICE, version: VERSION },
+        initial: {
+          deviceId: DEVICE,
+          version: VERSION,
+          deviceName: TRANSCRIPT_DEVICE_NAME,
+        },
       });
 
       await r.step(
@@ -72,8 +79,8 @@ export const activateEnrollDeactivate: Scenario = {
             method: "POST",
             path: `/${PRODUCT}/license/activate`,
             bearer: "key",
-            body: FINGERPRINT,
-            expectBody: FINGERPRINT_EXPECT,
+            body: LABELLED_FINGERPRINT,
+            expectBody: LABELLED_FINGERPRINT_EXPECT,
             capture: { token: "$.token" },
           });
           expect(res.status).toBe(200);

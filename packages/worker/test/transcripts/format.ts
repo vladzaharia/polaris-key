@@ -24,7 +24,10 @@
 //   * `initial` is the client's state before the first step: the device id its store returns,
 //     the token it already holds (if any), the host version it reports, and the services it
 //     expects before discovery (`services`, the SDK's `expectedServices`; absent ⇒ the SDK
-//     default of license + config).
+//     default of license + config). `deviceName` (PX-W13, WIRE-CONTRACT-V4 §12.7.1) stands in
+//     for the platform's own device name: a replayer feeds it to the SDK's default-label hook
+//     (the label the SDK sends when the host passes none), and absent means NO default, so the
+//     SDK sends no label unless a step passes one.
 //   * each step is ONE public SDK call (`action`), made with the SDK clock at `now` (the step's,
 //     else the transcript's), and every HTTP exchange that call makes — including the ones it
 //     makes implicitly, such as the sync an activation triggers.
@@ -72,7 +75,9 @@
 //                   mintToken: "ok", or the error code the call failed with — the Worker's
 //                     wire code ("not_found", "unauthorized", "rate_limited") or a client one
 //   prompt          beginSignIn: what the host shows the player — { userCode, verificationUri,
-//                   verificationUriComplete, expiresIn, interval } (never the device code)
+//                   verificationUriComplete, expiresIn, interval, deviceName } (never the device
+//                   code). `deviceName` is the label the Worker echoed (PX-W13, §12.7.1), `null`
+//                   when it stored none.
 //   interval        pollSignIn on "slow-down": the interval the client must now wait (seconds)
 //   token / expiresAt   mintToken on "ok": the minted token and its expiry (epoch seconds)
 //   bindingId / products   commerceBinding on "ok": the binding UUID (compared case-insensitively)
@@ -221,6 +226,8 @@ export interface Transcript {
     token?: string;
     version: string;
     services?: string[];
+    /** PX-W13: the platform's device name the SDK's default label comes from; absent = none. */
+    deviceName?: string;
     /** P3-03: the update client's state, on `updateDecide` transcripts only. */
     update?: UpdateInitial;
   };

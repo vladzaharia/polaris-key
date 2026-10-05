@@ -32,7 +32,10 @@
  * Product-less, Core-owned, no outbound call.
  */
 
-import type { ReservedNamesMode } from "@polaris-key/manifest";
+import type {
+  ReservedDisplayNamesMode,
+  ReservedNamesMode,
+} from "@polaris-key/manifest";
 import type { Db, DbStatement } from "../db/types.js";
 import { PLATFORM_SLICE } from "./settings/platform.js";
 import type { SettingDef } from "./settings/types.js";
@@ -50,7 +53,8 @@ export type PlatformSettingKey =
   | "LAZY_DELTA_MAX_BYTES"
   | "BLOB_GC_MODE"
   | "BLOB_GC_GRACE_DAYS"
-  | "LICENSING_RESERVED_NAMES";
+  | "LICENSING_RESERVED_NAMES"
+  | "IDENTITY_RESERVED_DISPLAY_NAMES";
 
 /** The typed value each setting resolves to. */
 export interface PlatformSettingValues {
@@ -59,6 +63,7 @@ export interface PlatformSettingValues {
   BLOB_GC_MODE: "on" | "off";
   BLOB_GC_GRACE_DAYS: number;
   LICENSING_RESERVED_NAMES: ReservedNamesMode;
+  IDENTITY_RESERVED_DISPLAY_NAMES: ReservedDisplayNamesMode;
 }
 
 export type Precedence = "runtime" | "ceiling";
@@ -72,7 +77,7 @@ interface BaseDef {
   key: PlatformSettingKey;
   /** The settings-registry key this entry is derived from (ST-03), e.g. `deltas.lazy.mode`. */
   registryKey: string;
-  area: "background-jobs" | "licensing";
+  area: "background-jobs" | "licensing" | "identity";
   label: string;
   description: string;
   /** The `[vars]` name read as the deploy-time value (the same name as the key today). */
@@ -137,6 +142,7 @@ const VAR_PARSERS: Record<string, (raw: string) => number | undefined> = {
 /** Each A-13 choice key's option labels, in the registry's enum order (LX-05). */
 const CHOICE_LABELS: Record<string, Readonly<Record<string, string>>> = {
   LICENSING_RESERVED_NAMES: { warn: "Warn", error: "Refuse" },
+  IDENTITY_RESERVED_DISPLAY_NAMES: { warn: "Warn", error: "Refuse" },
 };
 
 /** The A-13 store's view of one settings-registry entry (`core/settings/platform.ts`). */
@@ -147,13 +153,15 @@ function fromRegistry(def: SettingDef): PlatformSettingDef {
     !storedAs ||
     !def.varName ||
     !def.precedence ||
-    (def.area !== "background-jobs" && def.area !== "licensing")
+    (def.area !== "background-jobs" &&
+      def.area !== "licensing" &&
+      def.area !== "identity")
   )
     throw new Error(`${def.key} is not an A-13 store entry`);
   const base = {
     key: storedAs as PlatformSettingKey,
     registryKey: def.key,
-    area: def.area as "background-jobs" | "licensing",
+    area: def.area as "background-jobs" | "licensing" | "identity",
     label: def.label,
     description: def.description,
     varName: def.varName,

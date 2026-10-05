@@ -85,6 +85,9 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // PX-W10 (G24, G25): Discover's offers and "Add to library".
     ["/api/discover", ["get"]],
     ["/api/discover/{product}/claim", ["post"]],
+    // PX-W13 (G28): the sign-in request the card renders, and its app-consent view.
+    ["/api/signin/requests/{request}", ["get"]],
+    ["/api/signin/requests/{request}/consent", ["get"]],
   ],
 };
 
@@ -482,6 +485,7 @@ function concrete(template: string): string {
     pack: "acme.core",
     variant: "default",
     store: "snap",
+    request: `rq_${"A".repeat(22)}`,
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];

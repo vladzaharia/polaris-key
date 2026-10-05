@@ -65,6 +65,7 @@ import {
 import { handleMagicStart } from "./auth.js";
 import { licenseGrants } from "./entitlements.js";
 import { libraryView, productView } from "./library.js";
+import { signInConsentView, signInRequestView } from "../passthrough/routes.js";
 import {
   handleActivatePreview,
   handleClaimKey,
@@ -1102,6 +1103,25 @@ export async function handlePortalApi(
   if (segments[0] === "magic" && segments[1] === "start") {
     return handleMagicStart(req, env, db);
   }
+  // PX-W13 (WIRE-CONTRACT-V4 §12.7.2): the sign-in request the card renders. The binder cookie,
+  // not a session: the card shows it before anyone signs in (`passthrough/routes.ts`).
+  if (
+    segments[0] === "signin" &&
+    segments[1] === "requests" &&
+    segments[2] &&
+    segments.length === 3
+  ) {
+    if (req.method !== "GET") return err(405, "method_not_allowed");
+    const view = await signInRequestView(
+      env,
+      db,
+      req,
+      segments[2],
+      now,
+      hooksFor,
+    );
+    return view.status === 200 ? portalJson(view.body) : notFound();
+  }
 
   const sessionResult = await requireSession(req, env, db, now);
   if (sessionResult instanceof Response) return sessionResult;
@@ -1124,6 +1144,25 @@ export async function handlePortalApi(
 
   const [head, ...rest] = segments;
   if (head === "me") return handleMe(db, session, now);
+  // PX-W13 (§12.7.3): app consent for a sign-in request, for the signed-in account.
+  if (
+    head === "signin" &&
+    rest[0] === "requests" &&
+    rest[1] &&
+    rest[2] === "consent" &&
+    rest.length === 3
+  ) {
+    if (req.method !== "GET") return err(405, "method_not_allowed");
+    const view = await signInConsentView(
+      env,
+      db,
+      req,
+      rest[1],
+      session.accountId,
+      now,
+    );
+    return view.status === 200 ? portalJson(view.body) : notFound();
+  }
   if (
     head === "licenses" &&
     rest[2] === "devices" &&

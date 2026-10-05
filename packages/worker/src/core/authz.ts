@@ -287,6 +287,8 @@ export async function authorizeDevice(
     sdkVersion?: string | null;
     /** Validated hardware components, when the client supplied any. */
     fingerprint?: PresentedFingerprint | null;
+    /** PX-W13 §8 Q2: the normalised device label; seeds `devices.label` while it is NULL. */
+    label?: string | null;
     /** I-05: how this activation binds the device (`devices.bound_by`). */
     boundBy?: DeviceBoundBy;
     /** I-05: the pairwise subject of an ACCOUNT sign-in activating this device. Key entry, enrol

@@ -78,6 +78,7 @@ import {
 } from "./admin/systemProduct.js";
 import { MANIFEST_FILE_NAMES } from "./services/release/manifestFiles.js";
 import { reservedNamesMode } from "./core/reservedNames.js";
+import { reservedDisplayNamesMode } from "./core/reservedDisplayNames.js";
 
 export const DEPLOY_HOOK_PATH = "/webhooks/deploy";
 /** The one workflow whose runs may call the hook. */
@@ -227,6 +228,7 @@ export async function handleDeployHook(
   }
   const parsed = parseManifest(files, {
     reservedNames: await reservedNamesMode(env, db),
+    reservedDisplayNames: await reservedDisplayNamesMode(env, db),
   });
   if (!parsed.ok)
     return refuse(

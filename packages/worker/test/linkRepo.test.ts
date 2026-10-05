@@ -597,6 +597,60 @@ describe("linkRepo (GitHub-forward product creation)", () => {
     expect((await getActiveSchema(db, "acme"))?.catalog_json).toBe(reserved);
   });
 
+  // PX-W13 (plans/PX-W13.md §3, §8 Q4 as amended): a product named after a platform or store
+  // links with a warning by default and is refused once identity.reservedDisplayNames says error.
+  // Text with a bidi override is refused in every mode.
+  it("a reserved display name links in warn mode and is refused in error mode", async () => {
+    const spoofed = JSON.stringify({
+      ...JSON.parse(PRODUCT_JSON),
+      name: "Steam Companion",
+    });
+    const files = {
+      ".pkey/schema.json": SCHEMA_JSON,
+      ".pkey/product.json": spoofed,
+      ".pkey/release.json": RELEASE_JSON,
+    };
+    const strict = envFor();
+    strict.IDENTITY_RESERVED_DISPLAY_NAMES = "error";
+    const db = makeTestDb();
+    const refused = await linkRepo(
+      strict,
+      db,
+      "acme-org/acme-app",
+      NOW,
+      stubFetch(files).fetchImpl,
+    );
+    expect(refused.ok).toBe(false);
+    if (refused.ok) return;
+    expect(refused.errors?.join("\n")).toContain(
+      'uses the reserved name "steam"',
+    );
+
+    const linked = await linkRepo(
+      envFor(),
+      db,
+      "acme-org/acme-app",
+      NOW,
+      stubFetch(files).fetchImpl,
+    );
+    expect(linked.ok).toBe(true);
+
+    const bidi = await linkRepo(
+      envFor(),
+      makeTestDb(),
+      "acme-org/acme-app",
+      NOW,
+      stubFetch({
+        ...files,
+        ".pkey/product.json": JSON.stringify({
+          ...JSON.parse(PRODUCT_JSON),
+          name: "Acme \u202eexe.png",
+        }),
+      }).fetchImpl,
+    );
+    expect(bidi.ok).toBe(false);
+  });
+
   it("a catalog the admin API would reject is refused by linkRepo and resyncRepo too", async () => {
     const db = makeTestDb();
     const env = envFor();

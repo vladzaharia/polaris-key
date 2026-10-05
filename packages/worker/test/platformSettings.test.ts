@@ -118,10 +118,11 @@ function countingDb(inner: Db): { db: Db; count: () => number } {
 // ── The registry ─────────────────────────────────────────────────────────────────────────────
 
 describe("PLATFORM_SETTINGS", () => {
-  it("declares exactly the four background-job settings and the reserved-names severity", () => {
+  it("declares exactly the four background-job settings and the two reserved-names severities", () => {
     expect(PLATFORM_SETTINGS.map((d) => d.key).sort()).toEqual([
       "BLOB_GC_GRACE_DAYS",
       "BLOB_GC_MODE",
+      "IDENTITY_RESERVED_DISPLAY_NAMES",
       "LAZY_DELTAS",
       "LAZY_DELTA_MAX_BYTES",
       "LICENSING_RESERVED_NAMES",

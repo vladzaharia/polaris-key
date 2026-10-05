@@ -1377,7 +1377,9 @@ export async function upsertDevice(db: Db, row: DeviceRow): Promise<void> {
   // I-05: `subject` is written on INSERT only (a first-ever bind through a sign-in) and otherwise
   // preserved, like `seat_no`: the binding changes only through `core/accountSubjects.ts`, so a
   // metadata touch or a token rotation can never set or drop it. `bound_by` keeps the stored
-  // value unless the caller names one (a fresh bind does; a touch does not).
+  // value unless the caller names one (a fresh bind does; a touch does not). PX-W13 §8 Q2:
+  // `label` is seeded from the device's reported label only while the row has none, so a
+  // console or portal rename always wins over what the device reports.
   await db.run(
     `INSERT INTO devices (product, device_id, customer_id, license_id, status, first_seen, last_seen, ua, label,
        overrides_json, reported_json, token_hash, platform, arch, app_version, sdk_name, sdk_version,
@@ -1389,7 +1391,8 @@ export async function upsertDevice(db: Db, row: DeviceRow): Promise<void> {
        ua = excluded.ua, token_hash = excluded.token_hash, platform = excluded.platform,
        arch = excluded.arch, app_version = excluded.app_version, sdk_name = excluded.sdk_name,
        sdk_version = excluded.sdk_version,
-       bound_by = COALESCE(excluded.bound_by, devices.bound_by)`,
+       bound_by = COALESCE(excluded.bound_by, devices.bound_by),
+       label = COALESCE(devices.label, excluded.label)`,
     row.product,
     row.device_id,
     row.customer_id,

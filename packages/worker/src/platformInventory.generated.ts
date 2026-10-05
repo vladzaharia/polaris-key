@@ -77,6 +77,13 @@ export const PLATFORM_INVENTORY: readonly PlatformInventoryEntry[] = [
     editable: "LICENSING_RESERVED_NAMES",
   },
   {
+    name: "IDENTITY_RESERVED_DISPLAY_NAMES",
+    kind: "var",
+    area: "identity",
+    optional: true,
+    editable: "IDENTITY_RESERVED_DISPLAY_NAMES",
+  },
+  {
     name: "LAZY_DELTAS",
     kind: "var",
     area: "jobs",
