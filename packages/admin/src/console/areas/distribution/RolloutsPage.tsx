@@ -71,6 +71,9 @@ import { statusOf } from "../../../lib/status.js";
 
 const rowId = (r: Rollout) => `${r.deliverableId}:${r.outletId}:${r.channel}`;
 
+/** The rollout states that need someone: the only ones drawn as pills. */
+const ISSUE_STATES = new Set(["halted", "paused"]);
+
 /** Module-level, so `useSearchParam` keeps one codec identity. */
 const VIEW = codecs.oneOf(ROLLOUT_VIEWS, "list");
 
@@ -189,15 +192,6 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
       ),
     },
     {
-      id: "state",
-      header: "State",
-      accessorKey: "state",
-      meta: { priority: 1, csv: (r) => rolloutSummary(r) },
-      cell: ({ row }) => (
-        <StatusPill domain="rollout" state={row.original.state} size="sm" />
-      ),
-    },
-    {
       id: "source",
       header: "Source",
       accessorFn: (r) =>
@@ -223,6 +217,27 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
           </span>
         </span>
       ),
+    },
+    {
+      // Pills mean attention (EXPERIENCE.md §11): halted and paused are pills, right-aligned in
+      // the last column; a healthy rollout's state is plain text the phone card leaves out.
+      id: "state",
+      header: "State",
+      accessorKey: "state",
+      meta: {
+        priority: 1,
+        align: "end",
+        csv: (r) => rolloutSummary(r),
+        quiet: (r) => !ISSUE_STATES.has(r.state),
+      },
+      cell: ({ row }) =>
+        ISSUE_STATES.has(row.original.state) ? (
+          <StatusPill domain="rollout" state={row.original.state} size="sm" />
+        ) : (
+          <span className="text-fg-muted">
+            {statusOf("rollout", row.original.state).label}
+          </span>
+        ),
     },
   ];
 
