@@ -4463,6 +4463,63 @@ rules and item 16's tenant-scoped lookup are enforced in the same code.
   not-yet-settled loser inline, so the scheduled catch-up (which copies a portal link onto a
   floating licence) can never hand it to that loser.
 
+### Login card (I-07)
+
+The login card is the one place a Polaris Key account's credentials are entered
+(`services/identity/card/`, S-16 §5.4 items 4, 7 and 14; PORTAL.md §4.1, §4.4, §4.29, §4.30).
+
+- **Email enumeration (item 4).** The email start never looks the address up and answers the same
+  bytes for a known, an unknown, a locked-out, an over-limit and a suppressed address (a test
+  compares them byte for byte); only "mail cannot leave at all" (`503 email_unavailable`) differs,
+  and it names no one. Whose an address is becomes visible only after a code or a provider proved
+  the address (the gate's join offer), so the card cannot be used to test addresses.
+- **Code guessing and mail bombing (item 4).** I-02's limits in the platform scope: 6 digits, 10
+  minutes, 5 wrong attempts per code, a 15-minute lockout after 10 wrong attempts in an hour
+  (answered like success), 5 sends an hour and 20 a day per recipient, 10 an hour per client
+  address and 30 per network, 8 starts a minute per address. Cloudflare Turnstile guards the start
+  when the deploy sets `TURNSTILE_SECRET_KEY`, verified server-side and failing closed (Cloudflare
+  unreachable refuses). Residual: until the owner sets the Turnstile keys (RUNBOOK "Login card"),
+  the limits alone stand between the card and a scripted sender.
+- **Magic-link relay and prefetch (item 14).** A link and a code are bound to the browser that
+  asked, by a host-only `__Host-pkey_signin` cookie naming the flow; the link's token is 192 bits
+  and only its peppered hash is a store key. Opening the link (`GET`) consumes nothing, so a mail
+  scanner cannot burn it; its button `POST`s. Opened on another device it shows "Confirm sign-in,
+  requested at <time> from <place>" and confirming only lets the asking browser finish: a link
+  phished out of a victim signs in the attacker's own flow at most, never the device that opened
+  it. A code and the link complete one flow once (atomic consume).
+- **The email gate and the join offer (owner decisions, 2026-10-04).** No account row and no
+  session exist until the gate passes; its record is server-held and named by a host-only
+  `__Host-pkey_gate` cookie, so another browser cannot drive it. A provider-asserted verified
+  address (Google `email_verified: true`, Apple) is trusted as the provider's statement, which is
+  the same trust I-06 places in that provider's ID token; anything else needs our code. An address
+  another account uses stops the gate with an offer and writes nothing. Joining needs both
+  identities proven in the one session: the gate proves the provider identity, and the other
+  account is proven by a fresh (5-minute) account session in this browser or by the gate's code
+  only when the address is an active email sign-in method of that account (a code to an address
+  that is merely another account's primary email proves nothing). Linking and merging then run
+  I-05's `linkIdentity` and `mergeAccounts`, with their own freshness checks and notices. Account
+  creation is one atomic batch on the links' UNIQUE key, so a race leaves nothing behind.
+- **Sessions (item 7).** The account cookie stays signed (realm-tagged) and also names a
+  server-side `account_sessions` row by a random id whose peppered hash is the key; a revoked,
+  expired or missing row refuses the cookie, so sign-out (server-side too), ending one session
+  and "sign out everywhere" are real, and a table dump is not a set of cookies. All three account
+  cookies are host-only on key.plrs.im (`__Host-`, `Path=/`), `HttpOnly`, `Secure`,
+  `SameSite=Lax`. Because a host-only cookie still reaches every path on the host, the dispatcher
+  removes the account realm's cookies from every product route's request and drops any
+  `Set-Cookie` for them from its response (a test plants and reads through a product route), so
+  product code can neither read nor plant the account session.
+- **Profile import and avatars.** Provider names and locales are untrusted display data: names
+  lose control, bidirectional and zero-width characters and are cut to 64 characters, locales
+  must look like BCP 47, nothing is rendered as markup. Pictures are fetched server-side only from
+  the providers' https hosts (Google's `lh3`–`lh6.googleusercontent.com`, Steam's avatar hosts),
+  redirects followed by hand and re-checked, 5 s and 2 MiB budgets, and stored only when the
+  bytes are PNG, JPEG, WebP or GIF by magic number (never SVG). They are served same-origin at
+  `/media/avatar/<key>` (an opaque random key; `avatar` is a reserved product slug) with the
+  sniffed type, `nosniff` and `default-src 'none'; sandbox`, so the CSP keeps `img-src 'self'`.
+  Residual: the Worker has no image codec, so a picture is stored as fetched rather than
+  re-encoded (the strict content-type alternative the design allows, as for the product media
+  proxy).
+
 ### Discover: free offers and "Add to library" (PX-W10)
 
 `GET /api/discover` lists the products whose licence policy would auto-issue to the signed-in

@@ -764,6 +764,32 @@ Polaris Key <noreply@auth.plrs.im>`. Repeat to a Hide-My-Email (`@privaterelay.a
   `emailSendingAdaptive` dataset show the rest (delivery rate over 95 %, hard bounces under 2 %,
   complaints under 0.1 %).
 
+## Login card (I-07)
+
+The login card's Worker half needs two owner inputs per environment. Until they are set the card
+works without them: no Turnstile token is asked for, and copied avatars use the `BLOBS` bucket
+that already exists.
+
+1. **Turnstile.** Cloudflare dashboard → Turnstile → Add widget, one per environment, hostname
+   `key.plrs.im` (`key-staging.plrs.im`, `key-dev.plrs.im` for the others), mode Managed. Put the
+   site key in `wrangler.toml` as the `TURNSTILE_SITE_KEY` var of that environment (it is public;
+   the portal reads it from `GET /api/capabilities`), and the secret with
+   `npx wrangler secret put TURNSTILE_SECRET_KEY --env <env>`. With the secret set, the email start
+   refuses a missing or failing token (`403 turnstile_failed`), and an unreachable Cloudflare
+   refuses too. The widget itself is rendered by the card's UI, which also needs Cloudflare's
+   challenge origin in the portal's CSP (PX-12).
+2. **Avatars.** Copied provider pictures live in the environment's `BLOBS` bucket under the
+   `avatars/` prefix; no extra binding or bucket is needed. To use a separate bucket instead, it
+   would need a binding and a code change.
+
+**Sessions after the deploy.** Account sessions became server-side rows (`account_sessions`); a
+portal cookie signed before this deploy names no row and is refused, so every portal visitor signs
+in once afterwards. There is nothing to migrate.
+
+**A person locked out by the email limits** (10 wrong codes in an hour) gets no new code for 15
+minutes and sees nothing different; waiting is the fix. The limits are in
+`src/core/emailLimits.ts`.
+
 ## The blob collector (P4-14)
 
 The nightly maintenance cron (`17 3 * * *`) runs Core's blob collector after the retention steps:

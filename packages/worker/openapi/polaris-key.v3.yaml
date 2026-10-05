@@ -10096,6 +10096,388 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "429":
           description: Too many upstream fetches for this product from this client (cache misses only).
+  # ── The login card (I-07, S-16 §5.4 items 4, 7 and 14; PORTAL.md §4.1, §4.4, §4.29, §4.30).
+  # Pre-authentication routes of the Polaris Key account, root paths on the console host, never
+  # CORS. The card's state lives in host-only `__Host-` cookies (`__Host-pkey_signin` for an email
+  # sign-in, `__Host-pkey_gate` for the email gate) naming server-held records in the single-use
+  # store; no product route ever receives or sets them, or the account session (`core/accountCookies.ts`).
+  # Pinned in `test/routeCoverage.test.ts` (PORTAL_KIND_PATHS).
+  /api/signin/email/start:
+    post:
+      operationId: startCardEmailSignIn
+      tags: [portal]
+      summary: Identifier-first email start (a code and a magic link)
+      description: >
+        Opens an email sign-in bound to this browser (a 10-minute `__Host-pkey_signin` cookie) and,
+        when every send limit passes, mails one message with a 6-digit code and a magic link.
+        Enumeration-safe: a known address, an unknown one, a locked-out or over-limit recipient
+        and a suppressed one all answer the same bytes; the address is never looked up here. Limits
+        (I-02, platform scope): 8 starts a minute and 10 sends an hour per client address, 30 an hour
+        per network, 5 an hour and 20 a day per recipient; a recipient with 10 wrong codes in an
+        hour gets no new code for 15 minutes. When the deploy has Turnstile on
+        (`GET /api/capabilities` → `turnstileSiteKey`), `turnstileToken` is verified with
+        Cloudflare first and any failure refuses (fail closed). `POST /api/magic/start` is the
+        older name of this route.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+                turnstileToken: { type: string, maxLength: 2048 }
+                returnTo:
+                  {
+                    type: string,
+                    description: "A same-origin path to land on afterwards (never under `/manage`).",
+                  }
+      responses:
+        "200":
+          description: Accepted (whether or not mail was sent).
+          headers:
+            Set-Cookie:
+              description: "`__Host-pkey_signin=<secret>; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`."
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, expiresIn, codeLength]
+                properties:
+                  ok: { type: boolean, enum: [true] }
+                  expiresIn: { type: integer, enum: [600] }
+                  codeLength: { type: integer, enum: [6] }
+        "400": { $ref: "#/components/responses/CardError" }
+        "403":
+          description: "`turnstile_failed`: the security check did not pass."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404":
+          description: "`auth_method_disabled`: email sign-in is off."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "422": { $ref: "#/components/responses/CardError" }
+        "429": { $ref: "#/components/responses/CardError" }
+        "503":
+          description: "`email_unavailable`: mail cannot leave at all (a platform fact that names no one)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/signin/email/verify:
+    post:
+      operationId: verifyCardEmailCode
+      tags: [portal]
+      summary: Redeem the emailed code in the browser that asked
+      description: >
+        Checks the code against this browser's flow. A right code completes the flow once (a code
+        and the link cannot both complete it) and opens an account session; a wrong one answers
+        `invalid_code` with `triesLeft` (a code dies after 5 wrong attempts). An unknown address
+        signs in to a new account; an address another account uses only as its primary email
+        answers `409 email_in_use` (never a silent link). Rate-limited per client address.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, pattern: "^[0-9 ]{6,7}$" }
+      responses:
+        "200": { $ref: "#/components/responses/CardSignedIn" }
+        "400": { $ref: "#/components/responses/CardError" }
+        "403": { $ref: "#/components/responses/CardError" }
+        "409": { $ref: "#/components/responses/CardError" }
+        "429": { $ref: "#/components/responses/CardError" }
+  /api/signin/flow:
+    post:
+      operationId: pollCardEmailFlow
+      tags: [portal]
+      summary: The asking browser's poll after the link was confirmed elsewhere
+      description: >
+        A magic link opened on another device only confirms this browser's flow ("Confirm
+        sign-in, requested at <time> from <place>"); it never signs that other device in. This
+        browser polls here: `pending` until confirmed, then `signed_in` once (with the account
+        session cookie), then `expired`.
+      responses:
+        "200":
+          description: The flow's state, or the completed sign-in.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, enum: [pending, signed_in, expired] }
+                  expiresAt: { type: integer }
+                  next: { type: string }
+                  nudge: { type: boolean }
+  /api/signin/confirm-email:
+    get:
+      operationId: getCardEmailGate
+      tags: [portal]
+      summary: The email gate's state (the required first-provider-sign-in interstitial)
+      description: >
+        A provider front door (I-06, I-08, I-13, I-14) opens the gate on an identity's first sign-in
+        (or while its account has no confirmed email, or a product's terms version is not yet
+        accepted) and redirects here with a 15-minute `__Host-pkey_gate` cookie. No account row and
+        no session exist until the gate passes. The view carries the provider's email (an Apple
+        private-relay address included) and whether the provider verified it, the imported profile
+        for adjustment (the picture through `/api/signin/confirm-email/picture`), the product's
+        terms when it requires them, and at the `join_offer` stage the address another account
+        uses. It never carries an account id.
+      responses:
+        "200":
+          description: The gate.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CardEmailGate" }
+        "400": { $ref: "#/components/responses/CardError" }
+    post:
+      operationId: confirmCardEmailGate
+      tags: [portal]
+      summary: Confirm the provider's email or a typed one (and accept terms)
+      description: >
+        `choice: provider` with an address the provider asserted as verified (Google
+        `email_verified: true`, Apple) passes without a code (owner decision, 2026-10-04); a
+        typed address, or a provider address that is not verified, gets a 6-digit code
+        (`code_sent`, the same limits as the email start, enumeration-safe). `termsVersion` must
+        name the product's current version when it requires terms. `name` is an explicit choice
+        that later sign-ins never overwrite. A proven address that another account uses answers
+        `409 email_in_use` with the join offer; nothing is created or joined.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                choice: { type: string, enum: [provider, typed] }
+                email: { type: string, format: email }
+                name: { type: string, maxLength: 64 }
+                termsVersion: { type: string }
+      responses:
+        "200":
+          description: "`code_sent`, or the gate passed (`signed_in`, with the account session cookie)."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/CardSignedIn"
+                  - type: object
+                    required: [status, email, expiresIn, codeLength]
+                    properties:
+                      status: { type: string, enum: [code_sent] }
+                      email: { type: string }
+                      expiresIn: { type: integer }
+                      codeLength: { type: integer }
+        "400": { $ref: "#/components/responses/CardError" }
+        "409": { $ref: "#/components/responses/CardJoinOffer" }
+        "422": { $ref: "#/components/responses/CardError" }
+        "503": { $ref: "#/components/responses/CardError" }
+  /api/signin/confirm-email/verify:
+    post:
+      operationId: verifyCardEmailGateCode
+      tags: [portal]
+      summary: The code for a typed or unverified address
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/CardSignedIn" }
+        "400": { $ref: "#/components/responses/CardError" }
+        "409": { $ref: "#/components/responses/CardJoinOffer" }
+  /api/signin/confirm-email/join:
+    post:
+      operationId: joinCardEmailGate
+      tags: [portal]
+      summary: Take the join offer, with proof of both identities
+      description: >
+        Joins only when both identities are proven in this session: the provider identity by the
+        gate, and the account that uses the email by a code to that address (only when it is an
+        active email sign-in method there) or by a fresh (5-minute) account session for it in this
+        browser, from any of its methods. A new identity is linked to that account; an identity
+        that already had its own account is merged into it under I-05's rules (D21: the email's
+        account survives, the developer gets `subject.merged`). Never by email match alone.
+      responses:
+        "200": { $ref: "#/components/responses/CardSignedIn" }
+        "400": { $ref: "#/components/responses/CardError" }
+        "403":
+          description: "`step_up_required`: sign in to the account that uses this email in this browser first."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "409": { $ref: "#/components/responses/CardError" }
+  /api/signin/confirm-email/cancel:
+    post:
+      operationId: cancelCardEmailGate
+      tags: [portal]
+      summary: Abandon the sign-in
+      responses:
+        "200":
+          description: The gate is gone and its cookie cleared.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [cancelled] }
+        "400": { $ref: "#/components/responses/CardError" }
+  /api/signin/confirm-email/picture:
+    get:
+      operationId: getCardEmailGatePicture
+      tags: [portal]
+      summary: The provider's picture, proxied for the gate
+      description: >
+        Fetched server-side under the avatar rules (allowlisted provider hosts over https, redirects
+        re-checked, 2 MiB, PNG/JPEG/WebP/GIF by magic number) and served same-origin with
+        `nosniff` and `default-src 'none'; sandbox`; copied into R2 only once the gate passes.
+      responses:
+        "200":
+          description: The image.
+          content:
+            image/png: { schema: { type: string, format: binary } }
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/webp: { schema: { type: string, format: binary } }
+            image/gif: { schema: { type: string, format: binary } }
+        "400": { $ref: "#/components/responses/CardError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  # ── Account sessions (I-07, S-16 §5.4 item 7). Session-authenticated by the portal cookie, which
+  # names a server-side `account_sessions` row; a cookie whose row is revoked or expired is refused.
+  /api/sessions:
+    get:
+      operationId: listAccountSessions
+      tags: [portal]
+      summary: The account's live sessions
+      responses:
+        "200":
+          description: Newest first, this browser's marked `current`.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sessions]
+                properties:
+                  sessions:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        [id, createdAt, lastSeenAt, expiresAt, methods, current]
+                      properties:
+                        id:
+                          {
+                            type: string,
+                            description: "The row key (a hash; it cannot be presented as a cookie).",
+                          }
+                        createdAt: { type: integer }
+                        lastSeenAt: { type: integer }
+                        expiresAt: { type: integer }
+                        userAgent: { type: [string, "null"] }
+                        methods: { type: array, items: { type: string } }
+                        current: { type: boolean }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/sessions/{sessionId}:
+    delete:
+      operationId: revokeAccountSession
+      tags: [portal]
+      summary: End one of the account's sessions
+      description: Needs the `X-PKey-Portal-CSRF` header. Ending this browser's own session also clears its cookie.
+      parameters:
+        - {
+            name: sessionId,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+      responses:
+        "200":
+          description: Ended.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  current: { type: boolean }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/sessions/sign-out-everywhere:
+    post:
+      operationId: signOutEverywhere
+      tags: [portal]
+      summary: End every session of the account, this one included
+      description: Needs the `X-PKey-Portal-CSRF` header; clears this browser's cookie.
+      responses:
+        "200":
+          description: Ended.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  ended: { type: integer }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /media/avatar/{key}:
+    get:
+      operationId: getAccountAvatar
+      tags: [portal]
+      summary: A copied provider picture, served same-origin
+      description: >
+        I-07 (PORTAL.md §4.30, G33). A provider's picture is copied once per change into R2 under an
+        opaque random key (`avatar` is a reserved product slug, so this never shadows a product's
+        art at `/media/{product}/{asset}`). Served with the sniffed image type, `nosniff`,
+        `default-src 'none'; sandbox` and `cache-control: private, max-age=86400`. Account deletion
+        removes the bytes. Every refusal is the same `404`.
+      parameters:
+        - {
+            name: key,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[0-9a-f]{32}$" },
+          }
+      responses:
+        "200":
+          description: The image.
+          content:
+            image/png: { schema: { type: string, format: binary } }
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/webp: { schema: { type: string, format: binary } }
+            image/gif: { schema: { type: string, format: binary } }
+        "404": { $ref: "#/components/responses/NotFound" }
   # ── Godot tokenised URLs (F-21) ──
   /godot/{owner}/t/{token}/asset-library/api/configure:
     servers:
@@ -11188,6 +11570,38 @@ components:
         Vary:
           description: "`Origin`, whenever the product lists any origin."
           schema: { type: string }
+    CardError:
+      description: >
+        A login-card refusal (I-07), in the flat shape: `bad_request`, `signin_expired` (the flow or
+        gate is gone; its cookie is cleared), `invalid_code` (with `triesLeft`), `terms_required`,
+        `rate_limited`, `forbidden`, `link_conflict` or `email_unavailable`.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/FlatError" }
+    CardSignedIn:
+      description: The sign-in completed; the account session cookie is set and the card's own cookie cleared.
+      headers:
+        Set-Cookie:
+          description: "`__Host-pkey_portal=<signed>; Path=/; HttpOnly; Secure; SameSite=Lax`, naming a server-side `account_sessions` row."
+          schema: { type: string }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/CardSignedIn" }
+    CardJoinOffer:
+      description: >
+        `email_in_use`: the proven address belongs to another Polaris Key account. Nothing was
+        created or joined; the card offers "Join with your existing Polaris Key account" or a
+        different email. `proven` says whether the code already proved that account (the address is
+        an active email sign-in method there).
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/FlatError"
+              - type: object
+                properties:
+                  email: { type: string }
+                  proven: { type: boolean }
     NotFound:
       description: >
         Not found — including "the product does not exist", "the service is not enabled for
@@ -11848,6 +12262,74 @@ components:
                             dormant:
                               type: boolean
                               description: Past the dormancy window; holds no seat.
+    CardSignedIn:
+      type: object
+      required: [status, next, nudge]
+      properties:
+        status: { type: string, enum: [signed_in] }
+        next:
+          {
+            type: string,
+            description: "Where the card goes next: a same-origin path.",
+          }
+        nudge:
+          type: boolean
+          description: Show the "add another way to sign in" card now (after the first sign-in, and again after 30 days while the account has one method).
+        joined:
+          { type: boolean, description: "The sign-in took the join offer." }
+        request:
+          {
+            type: string,
+            description: "I-08's passthrough request handle, handed back unchanged.",
+          }
+    CardEmailGate:
+      type: object
+      required:
+        [status, provider, stage, expiresAt, emailRequired, email, profile]
+      properties:
+        status: { type: string, enum: [gate] }
+        provider: { type: string, description: "`google`, `apple`, `steam`, …" }
+        stage: { type: string, enum: [choose, code_sent, join_offer] }
+        expiresAt: { type: integer }
+        emailRequired:
+          type: boolean
+          description: False when the account already confirmed an email and only terms are asked.
+        email:
+          type: object
+          properties:
+            provider: { type: [string, "null"] }
+            providerVerified: { type: boolean }
+            relay:
+              { type: boolean, description: "An Apple private-relay address." }
+            pending: { type: [string, "null"] }
+            confirmed: { type: [string, "null"] }
+        profile:
+          type: object
+          properties:
+            name: { type: [string, "null"] }
+            nameExplicit: { type: boolean }
+            picture: { type: [string, "null"] }
+            locale: { type: [string, "null"] }
+        terms:
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [url, version]
+              properties:
+                url: { type: string }
+                version: { type: string }
+        product:
+          oneOf:
+            - type: "null"
+            - type: object
+              properties:
+                slug: { type: string }
+                name: { type: [string, "null"] }
+        join:
+          type: object
+          properties:
+            email: { type: string }
+            proven: { type: boolean }
     FlatError:
       type: object
       description: >
