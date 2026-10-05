@@ -3,7 +3,8 @@
  *
  * ── WHY THE ROUTES DID NOT MOVE WITH THE FILES ──────────────────────────────────────────────
  *
- * `/login`, `/callback`, `/logout`, `/magic/verify`, `/api/*` and `/download/<token>` are ROOT
+ * `/login`, `/callback`, `/logout`, `/magic/verify`, `/api/*`, `/download/<token>` and
+ * `/media/<product>/<asset>` (PX-W1) are ROOT
  * paths, reserved ahead of every product slug by `router.ts`. They stay exactly where they
  * were, and they must: the portal is one account across every tenant on the deployment — an
  * account can hold licences for several products at once — so there is no `<product>` to scope
@@ -30,10 +31,11 @@ import {
   type PortalHooksFor,
 } from "./api.js";
 import { portalSecurityHeaders } from "./headers.js";
+import { handlePortalMedia } from "./media.js";
 
 function portalShell(): Response {
   return new Response(
-    `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Polaris Key — Portal</title></head><body><div id="root"></div><script type="module" src="/assets/portal.js"></script></body></html>`,
+    `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Polaris Key</title></head><body><div id="root"></div><script type="module" src="/assets/portal.js"></script></body></html>`,
     {
       status: 200,
       headers: {
@@ -90,6 +92,21 @@ export async function handlePortal(
   if (clean === "/magic/verify") return handleMagicVerify(req, env, db, now);
   if (clean === "/api" || clean.startsWith("/api/")) {
     return handlePortalApi(req, env, db, clean, now, opts.hooksFor);
+  }
+  // PX-W1: the same-origin media proxy (`media.ts`): `/media/<product>/<asset>`, public. Every
+  // other path under `/media` is its not-found, never the SPA shell.
+  if (clean === "/media" || clean.startsWith("/media/")) {
+    const media = clean.match(/^\/media\/([^/]+)\/([^/]+)$/);
+    return handlePortalMedia(
+      req,
+      env,
+      db,
+      // Not decoded: a slug and an asset name are plain ASCII, and anything else is refused.
+      media?.[1] ?? "",
+      media?.[2] ?? "",
+      now,
+      opts.hooksFor,
+    );
   }
   const download = clean.match(/^\/download\/([^/]+)$/);
   if (download?.[1]) {

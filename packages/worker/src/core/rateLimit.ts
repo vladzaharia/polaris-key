@@ -136,12 +136,19 @@ const FAIL_MODE: Record<string, FailMode> = {
   emailSendRecipientHour: "closed",
   emailSendRecipientDay: "closed",
   emailSendProductDay: "closed",
+  // PX-W7 (G23): "Email me the download" mails the account's own address. It is a send, so
+  // it fails CLOSED: a limiter outage must not turn it into an unmetered mailer on the shared
+  // sender quota. A refused request is a retry for one person.
+  portalEmailDownload: "closed",
 
   // ── authenticated, non-credential surfaces — fail open ─────────────────────
   adminApi: "open",
   adminAccessDenied: "open",
   portalDeviceDisconnect: "open",
   portalDownloadToken: "open",
+  // PX-W2: the product page's downloads listing. A read charged only after ownership is
+  // proven; it mints no URL (the token mint above re-checks everything), so nothing to guard.
+  portalDownloads: "open",
 
   // ── public read surfaces — fail open ───────────────────────────────────────
   // The release surface (R10-05) is a *delivery* path: appcasts, version checks and binary
@@ -154,6 +161,9 @@ const FAIL_MODE: Record<string, FailMode> = {
   // P2b-05: the public storefront feeds (AltStore, Obtainium, F-Droid relay, Scoop, Flathub).
   // A D1-read budget per IP, nothing secret behind it.
   distributionFeed: "open",
+  // PX-W1: the portal's media proxy, charged per product and IP on a cache MISS only (the
+  // upstream fetch). Listing art is public; an outage must not blank every library tile.
+  portalMedia: "open",
   // P3-09: the app-updater feeds (WinSparkle, Velopack, App Installer, zsync, the extended
   // appcast and version check). The same D1-read budget, the same reason to fail open.
   updateFeed: "open",

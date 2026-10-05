@@ -29,8 +29,9 @@ import {
   emailAssetOrigin,
   renderEmail,
   sendMagicLink,
-  sendPortalNotice,
+  sendNotice,
 } from "../src/services/identity/portal/email.js";
+import { licenseAddedNotice } from "../src/services/identity/portal/notices.js";
 import type { Env } from "../src/env.js";
 import { artefacts } from "./singleUseMock.js";
 
@@ -247,26 +248,36 @@ describe("the portal email", () => {
     expect(html).toContain("@media (prefers-color-scheme: dark)");
     expect(html).toContain(THEME_TOKENS.light.accent.violet.solid);
     expect(html).toContain(THEME_TOKENS.dark.surface.page);
-    // The link, escaped, in the button and as copyable text; the icon from the link's origin.
+    // The link, escaped, in the button and as copyable text; the kit lockup from the link's origin.
     const escaped = link.replace(/&/g, "&amp;");
     expect(html.split(`href="${escaped}"`)).toHaveLength(3);
     expect(html).toContain(
-      `<img src="${ORIGIN}/assets/branding/key/app-icon-dark-180.png" width="40" height="40" alt=""`,
+      `<img class="pk-logo-light" src="${ORIGIN}/assets/branding/key/key-horizontal-light-944.png" width="472" height="160" alt="Polaris Key"`,
     );
+    expect(html).toContain(
+      `<img class="pk-logo-dark" src="${ORIGIN}/assets/branding/key/key-horizontal-dark-944.png" width="472" height="160" alt="Polaris Key"`,
+    );
+    expect(html).toContain(".pk-logo-dark{display:block !important");
+    expect(html).not.toMatch(/app-icon|powered by/i);
     expect(html).not.toMatch(/<script|\son\w+=/i);
   });
 
-  it("a notice: no icon without a usable console origin", async () => {
+  it("a notice: a text wordmark, no lockup, without a usable console origin", async () => {
     const env = makeEnv(new KvMock(), []);
     env.CONSOLE_ORIGIN = undefined;
     const sent = capture(env);
-    await sendPortalNotice(env, "ada@example.com", "Device disconnected", "x");
-    expect(sent[0]!.text).toBe("x");
+    const message = licenseAddedNotice({
+      productName: "Mossgarden",
+      productSlug: "mossgarden",
+      origin: "http://key.plrs.im",
+    });
+    await sendNotice(env, "ada@example.com", message);
+    expect(sent[0]!.text).toBe(message.text);
     expect(sent[0]!.html).not.toContain("<img");
-    expect(sent[0]!.html).toContain(">Polaris Key</td>");
+    expect(sent[0]!.html).toContain(">Polaris Key</p>");
   });
 
-  it("loads the icon only over https (or http on loopback)", () => {
+  it("loads the lockup only over https (or http on loopback)", () => {
     expect(emailAssetOrigin("http://key.plrs.im/x")).toBeNull();
     expect(emailAssetOrigin("javascript:alert(1)")).toBeNull();
     expect(emailAssetOrigin(undefined, "https://key.plrs.im/")).toBe(ORIGIN);

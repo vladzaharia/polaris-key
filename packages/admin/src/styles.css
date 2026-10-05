@@ -97,6 +97,10 @@
 /* Motion through the brand's duration and easing tokens, which collapse to 0 ms under
    prefers-reduced-motion. The spinner is a loading indicator, not decoration, and keeps turning. */
 @theme {
+  /* The customer site's breakpoints (PORTAL.md §8): phones end at 760 px, the three-column
+     product page starts at 1180 px. */
+  --breakpoint-desk: 47.5625rem;
+  --breakpoint-wide: 73.75rem;
   --animate-pk-in: pk-in var(--pk-duration-fast) var(--pk-ease-enter);
   --animate-pk-overlay-in: pk-overlay-in var(--pk-duration-fast)
     var(--pk-ease-standard);

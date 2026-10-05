@@ -57,6 +57,8 @@ async function handlePortalSettings(
     "magicEnabled",
     "licenseKeyClaimEnabled",
     "releasesEnabled",
+    "keyReissueEnabled",
+    "claimByKey",
   ] as const;
   const fields: string[] = [];
   for (const key of booleans) {

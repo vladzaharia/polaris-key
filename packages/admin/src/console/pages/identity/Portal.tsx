@@ -47,6 +47,8 @@ type PortalDraft = {
   magicEnabled: boolean;
   licenseKeyClaimEnabled: boolean;
   releasesEnabled: boolean;
+  keyReissueEnabled: boolean;
+  claimByKey: boolean;
   autoLink: AutoLink;
 };
 
@@ -64,6 +66,8 @@ function draftOf(s: PortalProductSettings): PortalDraft {
     magicEnabled: s.magicEnabled,
     licenseKeyClaimEnabled: s.licenseKeyClaimEnabled,
     releasesEnabled: s.releasesEnabled,
+    keyReissueEnabled: s.keyReissueEnabled ?? false,
+    claimByKey: s.claimByKey ?? false,
     autoLink: autoLinkOf(s.autoLinkEnabled),
   };
 }
@@ -193,6 +197,8 @@ function PortalForm({
           magicEnabled: draft.magicEnabled,
           licenseKeyClaimEnabled: draft.licenseKeyClaimEnabled,
           releasesEnabled: draft.releasesEnabled,
+          keyReissueEnabled: draft.keyReissueEnabled,
+          claimByKey: draft.claimByKey,
           autoLinkEnabled: autoLinkSetting(draft.autoLink),
         });
       } catch (err) {
@@ -305,6 +311,25 @@ function PortalForm({
               </>
             ) : null,
             !portalOn || releaseOff,
+          )}
+        </SettingsSection>
+
+        <SettingsSection
+          id="portal-keys"
+          title="License keys"
+          description={portalOn ? undefined : PORTAL_OFF}
+        >
+          {toggle(
+            "keyReissueEnabled",
+            "Customers can get a new key",
+            "A customer who signed in within the last 5 minutes can replace a license's key. The old key stops activating new devices; devices already activated keep working.",
+            !portalOn,
+          )}
+          {toggle(
+            "claimByKey",
+            "Add by key without the purchase email",
+            "Off: a license that carries an email joins only an account with that email verified. On: anyone holding the key can add it. A license already in an account never moves by its key either way.",
+            !portalOn,
           )}
         </SettingsSection>
 

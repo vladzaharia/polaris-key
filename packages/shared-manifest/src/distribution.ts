@@ -467,6 +467,13 @@ export interface ManifestListing {
   screenshots?: string[];
   website?: string;
   developerName?: string;
+  /**
+   * Where a customer gets help with the product (PX-W1, the portal's Help card and its "Renew
+   * with <developer>" action). An https URL, like the other URL fields.
+   */
+  supportUrl?: string;
+  /** The product's support address (PX-W1), shown as text in the portal; at most 254 characters. */
+  supportEmail?: string;
 }
 
 const LISTING_TEXT_FIELDS = [
@@ -475,7 +482,12 @@ const LISTING_TEXT_FIELDS = [
   "category",
   "developerName",
 ] as const;
-const LISTING_URL_FIELDS = ["iconUrl", "headerUrl", "website"] as const;
+const LISTING_URL_FIELDS = [
+  "iconUrl",
+  "headerUrl",
+  "website",
+  "supportUrl",
+] as const;
 const MAX_LISTING_TEXT = 200;
 const MAX_LISTING_DESCRIPTION = 4000;
 const MAX_LISTING_URL = 2048;
@@ -486,6 +498,11 @@ const LINE_RE = /^[^\u0000-\u001f\u007f]+$/;
 /** No control characters but tab and newline (the description). */
 const PROSE_RE = /^[^\u0000-\u0008\u000b-\u001f\u007f]+$/;
 const HTTPS_URL_RE = /^https:\/\/[^\s\u0000-\u001f\u007f]+$/;
+/** RFC 5321's 254-character path limit. */
+const MAX_LISTING_EMAIL = 254;
+/** One `local@domain.tld` address: no whitespace, no control characters, no angle brackets, one `@`. */
+const LISTING_EMAIL_RE =
+  /^[^\s@<>\u0000-\u001f\u007f]+@[^\s@<>\u0000-\u001f\u007f]+\.[^\s@<>\u0000-\u001f\u007f]+$/;
 
 function isListingUrl(v: unknown): v is string {
   if (
@@ -529,6 +546,13 @@ function listingProblem(raw: unknown): string | null {
     (typeof raw.tintColor !== "string" || !TINT_COLOR_RE.test(raw.tintColor))
   )
     return "tintColor must be a #rrggbb colour";
+  if (
+    raw.supportEmail !== undefined &&
+    (typeof raw.supportEmail !== "string" ||
+      raw.supportEmail.length > MAX_LISTING_EMAIL ||
+      !LISTING_EMAIL_RE.test(raw.supportEmail))
+  )
+    return `supportEmail must be one email address of at most ${MAX_LISTING_EMAIL} characters`;
   const shots = raw.screenshots;
   if (
     shots !== undefined &&
@@ -1108,6 +1132,7 @@ function normalizeListing(raw: unknown): ManifestListing | null {
     "description",
     ...LISTING_URL_FIELDS,
     "tintColor",
+    "supportEmail",
   ] as const) {
     if (typeof r[f] === "string") out[f] = r[f] as string;
   }

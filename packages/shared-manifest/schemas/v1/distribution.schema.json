@@ -977,6 +977,18 @@
           "type": "string",
           "maxLength": 200,
           "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+        },
+        "supportUrl": {
+          "description": "Where a customer gets help with the product: the customer portal's Help card and its renewal action.",
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^https://[^\\s\\u0000-\\u001f\\u007f]+$"
+        },
+        "supportEmail": {
+          "description": "The product's support address, shown as text in the customer portal.",
+          "type": "string",
+          "maxLength": 254,
+          "pattern": "^[^\\s@<>\\u0000-\\u001f\\u007f]+@[^\\s@<>\\u0000-\\u001f\\u007f]+\\.[^\\s@<>\\u0000-\\u001f\\u007f]+$"
         }
       }
     }

@@ -9,11 +9,29 @@ export interface PortalMe {
   csrf: string;
 }
 
+/** The sign-in providers the login card can show (PORTAL.md §4.1), in display order. */
+export type PortalProvider = "apple" | "google" | "steam";
+
 export interface PortalCapabilities {
   auth: {
     oidc: boolean;
     magic: boolean;
+    /**
+     * The single sign-on provider's display name. Not sent by today's Worker (G11): the card
+     * falls back to "Continue with single sign-on".
+     */
+    oidcName?: string;
+    /**
+     * Apple, Google and Steam for this context (G11, S-16). Not sent by today's Worker: the
+     * provider row renders only when the list is present and non-empty.
+     */
+    providers?: PortalProvider[];
   };
+  /**
+   * The product named by `?product=`, for the login card's context header (G1/G28). Not sent by
+   * today's Worker: without it the card shows no header rather than a slug.
+   */
+  product?: { slug: string; name: string; developerName?: string | null };
   modules: {
     licensing: boolean;
     claim: boolean;
@@ -52,6 +70,11 @@ export interface PortalLicenseSummary {
 
 export interface PortalKey {
   hash: string;
+  /**
+   * The key's last 4 characters (PORTAL.md §4.17 masked display). Not stored by today's Worker
+   * (G7, PX-W5): without it the mask is `pkey_<slug>_…`.
+   */
+  last4?: string;
   status: string;
   label: string | null;
   createdAt: number;
@@ -88,6 +111,8 @@ export interface PortalArtifact {
   /** Distribution's delivery access for the release's deliverable (P2b-04). */
   access: "public" | "authenticated" | "licensed" | "entitled" | string;
   canDownload: boolean;
+  /** Why not, when the per-product downloads view (PX-W2) said; `/api/releases` never does. */
+  reason?: PortalFileReason | null;
 }
 
 export interface PortalRelease {
@@ -100,6 +125,191 @@ export interface PortalRelease {
   publishedAt: number | null;
   sourceUrl: string | null;
   artifacts: PortalArtifact[];
+}
+
+// ── Library and product views (PX-W1; docs/design/PORTAL.md G1, G5, G16) ──────────────────
+
+/** A product's status from its best licence (§5.3, the statuses the Worker decides today). */
+export type PortalStatus =
+  | "suspended"
+  | "expired"
+  | "device_limit"
+  | "expires_soon"
+  | "active";
+
+/** A product's presentation; art is always a same-origin `/media/…` URL or null. */
+export interface PortalPresentation {
+  name: string;
+  developerName: string | null;
+  tintColor: string | null;
+  website: string | null;
+  iconUrl: string | null;
+  headerUrl: string | null;
+  support: { url: string | null; email: string | null } | null;
+}
+
+/** One licence with its seats (G5). */
+export interface PortalLicenseSeats {
+  id: string;
+  tier: string | null;
+  status: PortalStatus;
+  licenseStatus: string;
+  activatedAt: number | null;
+  expiresAt: number | null;
+  maxOfflineDays: number | null;
+  deviceLimit: number;
+  activeSeatCount: number;
+  deviceCount: number;
+  dormantCount: number;
+}
+
+export interface PortalLibraryItem extends PortalPresentation {
+  product: string;
+  status: PortalStatus;
+  license: PortalLicenseSeats;
+  licenseCount: number;
+  addedAt: number | null;
+}
+
+export interface PortalProductDevice {
+  deviceId: string;
+  label: string | null;
+  platform: string | null;
+  arch: string | null;
+  appVersion: string | null;
+  firstSeen: number;
+  lastSeen: number;
+  /** Past the dormancy window: holds no seat. */
+  dormant: boolean;
+}
+
+export interface PortalProduct extends PortalPresentation {
+  product: string;
+  /** Each service's own toggle (e.g. `identity`); a section shows only for a service that is on. */
+  services: Record<string, boolean>;
+  status: PortalStatus;
+  addedAt: number | null;
+  /** Best first. */
+  licenses: Array<
+    PortalLicenseSeats & {
+      entitlements: PortalEntitlement[];
+      devices: PortalProductDevice[];
+    }
+  >;
+}
+
+// ── Downloads and store links (PX-W2; G2, G4) ──────────────────────────────────────────────
+
+/** Why a file can't be downloaded by this account (the Worker's codes, never copy). */
+export type PortalFileReason =
+  | "license_inactive"
+  | "not_entitled"
+  | "not_hosted";
+
+/** One file of a release, marked for this account by the token mint's own predicates. */
+export interface PortalDownloadFile {
+  releaseId: string;
+  artifactId: string;
+  version: string;
+  name: string;
+  buildId: string | null;
+  platform: string | null;
+  arch: string | null;
+  format: string | null;
+  role: string | null;
+  sizeBytes: number | null;
+  sha256: string | null;
+  minOs: string | null;
+  canDownload: boolean;
+  reason: PortalFileReason | null;
+}
+
+export interface PortalRecommendation {
+  platform: string;
+  label: string;
+  releaseId: string;
+  version: string;
+  /** `files[0]` runs on every arch of the platform. */
+  universal: boolean;
+  /** `false`: an older covered release (an update window that ended, §5.4). */
+  latest: boolean;
+  files: PortalDownloadFile[];
+}
+
+export interface PortalStoreLink {
+  id: string;
+  kind: string;
+  outletId: string;
+  platforms: string[];
+  label: string;
+  url: string | null;
+  deepLink: string | null;
+  command: string | null;
+  activateUrl: string | null;
+  live: boolean;
+  version: string | null;
+}
+
+export interface PortalDownloads {
+  product: { slug: string; name: string };
+  channel: string;
+  /** `false`: no downloads here (every list is then empty). */
+  available: boolean;
+  access: string | null;
+  detected: {
+    platform: string | null;
+    arch: string | null;
+    touchAmbiguous: boolean;
+  };
+  latest: {
+    releaseId: string;
+    version: string;
+    title: string | null;
+    publishedAt: number | null;
+  } | null;
+  recommended: PortalRecommendation | null;
+  platforms: Array<{
+    platform: string;
+    label: string;
+    recommended: PortalRecommendation | null;
+    files: PortalDownloadFile[];
+  }>;
+  extras: PortalDownloadFile[];
+  stores: PortalStoreLink[];
+}
+
+// ── Activate preview (PX-W5; G22) ──────────────────────────────────────────────────────────
+
+export type PortalPreviewVerdict =
+  | "addable"
+  | "already_yours"
+  | "owned_elsewhere"
+  | "email_mismatch"
+  | "portal_off"
+  | "unknown";
+
+/** What adding a key would do, before it is added (one evaluator with the claim). */
+export interface PortalKeyPreview {
+  verdict: PortalPreviewVerdict;
+  product: {
+    slug: string;
+    name: string;
+    developerName: string | null;
+    iconUrl: string | null;
+    headerUrl: string | null;
+  } | null;
+  license?: {
+    id?: string;
+    tier: string | null;
+    tierLabel: string | null;
+    status: string;
+    usable: boolean;
+    expiresAt: number | null;
+    deviceLimit: number | null;
+  };
+  platforms?: string[];
+  /** `email_mismatch` only: `m•••@proton.me`. */
+  maskedEmail?: string;
 }
 
 export class PortalApiError extends Error {
@@ -126,11 +336,17 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers.set(CSRF_HEADER, csrf);
     if (init.body) headers.set("Content-Type", "application/json");
   }
-  const res = await fetch(path, {
-    ...init,
-    headers,
-    credentials: "same-origin",
-  });
+  let res: Response;
+  try {
+    res = await fetch(path, {
+      ...init,
+      headers,
+      credentials: "same-origin",
+    });
+  } catch {
+    // Offline, DNS, a dropped connection: "Can't reach Polaris Key", never "signed out".
+    throw new PortalApiError(0, "network");
+  }
   if (!res.ok) {
     let code: string | undefined;
     let message: string | undefined;
@@ -155,8 +371,15 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 const enc = encodeURIComponent;
 
 export const portalApi = {
-  capabilities: () => call<PortalCapabilities>("/api/capabilities"),
+  capabilities: (product?: string | null) =>
+    call<PortalCapabilities>(
+      product
+        ? `/api/capabilities?product=${enc(product)}`
+        : "/api/capabilities",
+    ),
   me: () => call<PortalMe>("/api/me"),
+  deleteMe: () =>
+    call<{ ok: true; deleted: string }>("/api/me", { method: "DELETE" }),
   licenses: () => call<{ licenses: PortalLicenseSummary[] }>("/api/licenses"),
   license: (product: string, id: string) =>
     call<PortalLicenseDetail>(`/api/licenses/${enc(product)}/${enc(id)}`),
@@ -178,7 +401,23 @@ export const portalApi = {
       `/api/licenses/${enc(product)}/${enc(id)}/devices/${enc(deviceId)}`,
       { method: "DELETE" },
     ),
+  library: () => call<{ products: PortalLibraryItem[] }>("/api/library"),
+  product: (product: string) =>
+    call<PortalProduct>(`/api/products/${enc(product)}`),
+  downloads: (product: string) =>
+    call<PortalDownloads>(`/api/products/${enc(product)}/downloads`),
+  previewKey: (key: string) =>
+    call<PortalKeyPreview>("/api/activate/preview", {
+      method: "POST",
+      body: JSON.stringify({ key }),
+    }),
   releases: () => call<{ releases: PortalRelease[] }>("/api/releases"),
+  /** G23: email the account's own address a link to this product's download for `platform`. */
+  emailDownload: (product: string, platform: string) =>
+    call<{ ok: true }>(`/api/products/${enc(product)}/email-download`, {
+      method: "POST",
+      body: JSON.stringify({ platform }),
+    }),
   downloadToken: (product: string, releaseId: string, artifactId: string) =>
     call<{ url: string }>(
       `/api/releases/${enc(product)}/${enc(releaseId)}/artifacts/${enc(artifactId)}/token`,

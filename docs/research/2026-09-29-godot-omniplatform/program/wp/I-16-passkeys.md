@@ -5,7 +5,7 @@
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1b)          |
 | Size        | 0.6–0.85 engineer-weeks                                                                         |
 | Depends on  | [I-07](I-07-login-card-email.md)                                                                |
-| Unblocks    | none                                                                                            |
+| Unblocks    | [PX-W12](PX-W12-sign-in-methods-api.md), [PX-12](PX-12-login-card-v2.md)                        |
 | Role        | `pkey-implementer`                                                                              |
 | Plan mode   | no: follows the approved [`plans/I-04.md`](../plans/I-04.md) where it names this package        |
 | Gates       | `test:workerd`; D1 migration; `TABLE_OWNERS`; THREAT-MODEL; rule 10 (OpenAPI + `routeCoverage`) |

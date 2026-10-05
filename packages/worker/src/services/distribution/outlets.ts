@@ -29,6 +29,7 @@ import {
   normalizeDistribution,
   outletListing,
   type ManifestDistribution,
+  type ManifestListing,
   type ParsedManifest,
 } from "@polaris-key/manifest";
 import type { Db, DbStatement } from "../../core/platform.js";
@@ -125,6 +126,26 @@ export function manifestIngestStatements(
     params: [now, now, product, ...declared],
   });
 
+  // PX-W1: the document's own listing (not an outlet's merged copy) — the product's presentation
+  // in the customer portal, read through the `delivery` hook's `listing()`. Same idempotence as
+  // the outlets: an identical listing touches nothing; no listing deletes the row.
+  if (dist.listing) {
+    stmts.push({
+      sql: `INSERT INTO dist_listing (product, listing_json, modified_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT (product) DO UPDATE SET
+              listing_json = excluded.listing_json,
+              modified_at = excluded.modified_at
+            WHERE dist_listing.listing_json IS NOT excluded.listing_json`,
+      params: [product, JSON.stringify(dist.listing), now],
+    });
+  } else {
+    stmts.push({
+      sql: "DELETE FROM dist_listing WHERE product = ?",
+      params: [product],
+    });
+  }
+
   // The resolved transport for every (deliverable, live outlet) pair, replaced wholesale. Packs
   // are routed too (P4-05), so a manifest at the bounds — 64 packs and the app across 32 outlets
   // — resolves 2,080 pairs: written TRANSPORT_ROWS_PER_INSERT to a statement (four parameters
@@ -184,6 +205,24 @@ export const SUPPORTED_TRANSPORTS: readonly string[] = [
 
 export function transportSupported(transport: string): boolean {
   return SUPPORTED_TRANSPORTS.includes(transport);
+}
+
+/**
+ * The product's root listing (PX-W1), as the last ingest stored it, or `null` when the document
+ * declares none (or the stored value is unreadable, which only a hand edit could make it).
+ */
+export async function getListing(
+  db: Db,
+  product: string,
+): Promise<ManifestListing | null> {
+  const row = await db.first<{ listing_json: string }>(
+    "SELECT listing_json FROM dist_listing WHERE product = ?",
+    product,
+  );
+  const parsed = row ? parseJsonColumn(row.listing_json) : null;
+  return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+    ? (parsed as ManifestListing)
+    : null;
 }
 
 /** Every outlet row of a product, live first, then by id. */

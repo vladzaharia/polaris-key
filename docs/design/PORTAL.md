@@ -678,9 +678,10 @@ The `KeyField`:
 - **Never rewritten.** No auto-grouping, no dashes inserted, **no uppercasing or lowercasing**. The
   only normalisation is trimming leading and trailing whitespace (and newlines from a paste).
 - **Format validation** is the regex `^pkey_([a-z0-9-]+)_([A-Za-z0-9_-]{22})$`. A valid key gets the
-  success border and a check ("Key format is valid"); **Continue** enables. (`productFromKey`
-  accepts 8 or more characters after the slug; the portal checks the exact minted length so a
-  cut-off paste is caught before any request.)
+  success border and a check ("Key format is valid"); **Continue** enables. The server checks the
+  same exact shape (`LICENSE_KEY_SHAPE` in `crypto.ts`, used by `productFromKey`; owner decision
+  2026-10-04, PX-W5), so a cut-off paste is caught before any request and refused by the Worker
+  if one is sent anyway.
 - **The parts are coloured:** `pkey_` and the separator in `text-subtle`, the slug in `accent-fg`,
   the secret in `text-strong`.
 - **The product is known before the server is called.** The `pkey_<product>_` prefix names the
@@ -1158,6 +1159,16 @@ accounts were joined". Security emails (method added or removed, device approved
 always go to every verified email on the account and carry "Wasn't you? Secure your account". The
 emails use the kit PNG lockup and no "Powered by" badge.
 
+PX-W7 implementation note (2026-10-04): the header is the kit's horizontal lockup PNG,
+`/lockups/key/key-horizontal-{light,dark}-944.png` shown at 472 × 160 with `alt="Polaris Key"`
+(BRAND.md §2 "Emails"), served from the console origin's `/assets/branding/key/`
+(`packages/admin/vite.config.ts` emits it next to the web icons). The email ground is light, so
+the `light` variant (for light backgrounds) is the default, and the email's dark palette swaps in
+the `dark` variant for the clients that apply `prefers-color-scheme` (BRAND.md's example names
+the `dark` file; on the light ground its white wordmark would vanish). A client that inverts the
+ground without honouring the palette can still dim the `light` wordmark; that is the residual
+risk. With no usable `https` origin a text wordmark stands in.
+
 ### 6.4 Error copy
 
 Errors say what happened, in the user's terms, and the next step. Map every flat error code the API
@@ -1243,8 +1254,12 @@ WCAG 2.2 AA in both themes (BRAND §9), plus:
 `DELETE /api/licenses/:p/:id/devices/:deviceId`, `GET /api/releases`,
 `POST /api/releases/:p/:r/artifacts/:a/token`, `GET /download/<token>`, plus `/login`,
 `/callback`, `/logout`, `/magic/verify` and `POST /api/magic/start`. All are root paths on
-`key.plrs.im`; the routes are in the OpenAPI spec and `routeCoverage` (`portalApi`,
-`portalDownload`, …), so **rule 10 applies to every new route**.
+`key.plrs.im`; the route kinds are in `routeCoverage` (`portalApi`,
+`portalDownload`, …) as **narrative-only**: the OpenAPI spec covers the product-scoped wire and
+must not list `/api/*` (the coverage test fails on a path outside its expected set), so **rule 10
+for every new portal route means documenting it on the docs site's portal page**
+(`packages/docs/src/content/docs/services/identity/portal.md`) (corrected by PX-W7 against the
+code).
 
 ### 10.2 Gaps the Worker must close
 
@@ -1292,6 +1307,14 @@ Notes:
   rows and the product identity card depend on it.
 - **Rule 6.** Identity (where the portal lives) may not import Distribution, Update or License
   internals. G2, G4, G8, G24 and G25 go through descriptor hooks in `src/core/hooks.ts`.
+- **G2 and G4 as built (PX-W2).** `GET /api/products/:p/downloads[?channel=]` reads Distribution's
+  `customerDownloads` hook (account-free: files per platform and release, recommended picks, store
+  links) and Core's `detectPlatform` (moved from `page/detect.ts` to `core/platformDetect.ts`), then
+  marks each file `canDownload` with a `reason` (`license_inactive`, `not_entitled`, `not_hosted`)
+  from the token mint's own predicates. A store row is `{id, kind, outletId, platforms[], label,
+url, deepLink, command, activateUrl, live, version}`: `platforms` is a list, not one `platform`,
+  because Steam and itch serve three desktop platforms from one outlet; `activateUrl` is Steam's
+  `registerkey` page, to which the client appends the held key once G8 supplies it.
 - **One library call.** `GET /api/library` returns, per product: presentation, status and reason,
   best license summary with seats, quick-action inputs and support links, plus the Discover count.
   `GET /api/products/:p` adds licenses, devices, downloads, stores, feeds and `services`.

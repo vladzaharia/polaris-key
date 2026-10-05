@@ -261,6 +261,33 @@ split into halves by phase in the note, become U-11a…c, U-15a…c and U-24a…
 express their phase dependencies. U-26 is retired in the note and has no package. The ⚑ packages
 execute U-01's plan, except the optional U-14, U-16 and U-17, which get their own.
 
+Phase PX (customer portal) follows `docs/design/PORTAL.md` §11, approved by the owner on
+2026-10-04. Ids keep the spec's own form, which `check.mjs` accepts as a special case: PX-01…PX-22
+for the front end (§11.1 phase A, §11.3 phase B) and PX-W1…PX-W17 for the Worker additions (§11.2);
+each package's stage names the spec phase. Sizes map S → 0.1–0.2, M → 0.4–0.8 and L → 1–1.6
+engineer-weeks. PX-W8, PX-W9, PX-W13 and PX-W17 execute I-04's plan (`planRef`; PORTAL.md's "one
+contract plan"); PX-W3 gets its own. PX-20 is the rolling quality bar: it starts after PX-01 and is
+marked done last. PORTAL.md §10.3 and §11 cite the first revision of phase I; the graph maps them
+onto the re-cut ids:
+
+| PORTAL.md cites                                        | Graph dependency                    |
+| ------------------------------------------------------ | ----------------------------------- |
+| I-02 (single-use store), I-04 (contract plan)          | I-02, I-04 (unchanged)              |
+| I-06 (product users, links, pairwise subjects)         | I-05                                |
+| I-05 (Google), I-20 (Apple), I-12 (web Steam, persona) | I-06                                |
+| I-08 (email login), I-15 (sessions)                    | I-07                                |
+| I-14 (passkeys)                                        | I-16                                |
+| I-13 (native redirect)                                 | I-15                                |
+| I-16 (per-product issuer, web-app header)              | I-08 for layer 1 (I-21 later)       |
+| S-17 (Cloud Sync service)                              | U-05                                |
+| F-21; G14 (Q-1)                                        | F-21; G14 is a human input on PX-11 |
+
+Several re-cut packages describe the same surface as PX packages: I-11 (Library, Discover, Activate
+and account settings), I-07 (email gate and profile import), I-08 (passthrough and QR sign-in),
+I-09 (key-entry limits) and U-12 (the portal Cloud Sync section). Each PX brief names its overlap.
+PORTAL.md is the approved spec; whichever package lands first owns the shared code, and the lead
+narrows the other's scope.
+
 ---
 
 ## 9. Known gaps without a work package

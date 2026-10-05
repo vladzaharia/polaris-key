@@ -272,17 +272,17 @@ const FLATPAK_ID_RE = /^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$/;
 const SNAP_NAME_RE = /^[a-z0-9](?:-?[a-z0-9]){0,39}$/;
 const WINGET_ID_RE =
   /^[A-Za-z0-9][A-Za-z0-9-]{0,31}(\.[A-Za-z0-9][A-Za-z0-9-]{0,31}){1,7}$/;
-const FINGERPRINT_RE = /^[0-9a-f]{64}$/;
+export const FINGERPRINT_RE = /^[0-9a-f]{64}$/;
 /** One line of listing text: no control characters (the manifest's `LINE_RE`). */
 const LINE_RE = /^[^\u0000-\u001f\u007f]{1,200}$/;
 const PROSE_RE = /^[^\u0000-\u0008\u000b-\u001f\u007f]{1,4000}$/;
 
-function idOf(v: unknown, re: RegExp, max = 255): string | null {
+export function idOf(v: unknown, re: RegExp, max = 255): string | null {
   const s = typeof v === "number" && Number.isSafeInteger(v) ? String(v) : v;
   return typeof s === "string" && s.length <= max && re.test(s) ? s : null;
 }
 
-function lineOf(v: unknown): string | null {
+export function lineOf(v: unknown): string | null {
   return typeof v === "string" && LINE_RE.test(v) ? v : null;
 }
 
@@ -364,7 +364,7 @@ export function notesSummary(notes: string | null): string | null {
 
 // ── Building ─────────────────────────────────────────────────────────────────────────────────
 
-const STORE_KINDS = [
+export const STORE_KINDS = [
   "app-store",
   "play",
   "ms-store",
@@ -374,7 +374,7 @@ const STORE_KINDS = [
   "snap",
   "winget",
 ] as const;
-type StoreKind = (typeof STORE_KINDS)[number];
+export type StoreKind = (typeof STORE_KINDS)[number];
 
 /** The order actions are offered in, per platform: the first present is the primary. */
 const PRIORITY: Readonly<Record<PagePlatform, readonly ActionKind[]>> = {
@@ -388,7 +388,9 @@ const PRIORITY: Readonly<Record<PagePlatform, readonly ActionKind[]>> = {
 const DESKTOP: PagePlatform[] = ["windows", "macos", "linux"];
 
 /** A build's arch preference when the visitor's is unknown (a universal build first). */
-const ARCH_PREFERENCE: Readonly<Record<PagePlatform, readonly string[]>> = {
+export const ARCH_PREFERENCE: Readonly<
+  Record<PagePlatform, readonly string[]>
+> = {
   ios: ["universal", "any", "arm64"],
   android: ["universal", "any", "arm64", "armv7", "x86_64"],
   macos: ["universal", "any", "arm64", "x86_64"],
@@ -417,20 +419,30 @@ export function pickBuild(
   return [...same].sort((a, b) => rank(a.arch) - rank(b.arch))[0] ?? null;
 }
 
-function pageBuild(e: RenderEntry, outletId: string): PageBuild | null {
-  if (!(PAGE_PLATFORMS as readonly string[]).includes(e.platform ?? ""))
-    return null;
-  const url = httpsUrl(e.url) ?? null;
-  if (!url) return null;
-  const meta = e.metadata ?? {};
-  const minOs =
-    e.minOs ??
+/** A build's minimum OS: its own `minOs`, else the IPA's `minOSVersion` or the APK's `minSdk`
+ *  from the descriptor metadata, as one line of text; `null` when none says. */
+export function minOsOf(
+  minOs: string | null,
+  metadata: Record<string, unknown> | null,
+): string | null {
+  const meta = metadata ?? {};
+  const raw =
+    minOs ??
     (typeof meta.minOSVersion === "string"
       ? lineOf(meta.minOSVersion)
       : null) ??
     (typeof meta.minSdk === "number" && Number.isSafeInteger(meta.minSdk)
       ? `API ${meta.minSdk}`
       : null);
+  return raw === null ? null : lineOf(raw);
+}
+
+function pageBuild(e: RenderEntry, outletId: string): PageBuild | null {
+  if (!(PAGE_PLATFORMS as readonly string[]).includes(e.platform ?? ""))
+    return null;
+  const url = httpsUrl(e.url) ?? null;
+  if (!url) return null;
+  const minOs = minOsOf(e.minOs, e.metadata);
   return {
     releaseId: e.releaseId,
     version: e.version,
@@ -441,14 +453,14 @@ function pageBuild(e: RenderEntry, outletId: string): PageBuild | null {
     name: e.name,
     size: e.size,
     sha256: e.sha256 && FINGERPRINT_RE.test(e.sha256) ? e.sha256 : null,
-    minOs: minOs === null ? null : lineOf(minOs),
+    minOs,
     url,
     outletId,
   };
 }
 
 /** The archive format a payload name ends in, as the page labels it. */
-function formatOf(name: string): string | null {
+export function formatOf(name: string): string | null {
   const lower = name.toLowerCase();
   for (const ext of [
     "appimage",
@@ -483,14 +495,14 @@ async function outletQuery(
     : `?outlet=${encodeURIComponent(outlet.id)}`;
 }
 
-interface StoreState {
+export interface StoreState {
   /** outlet → release → live (any build reported live). */
   live: Map<string, Set<string>>;
   /** outlet → releases held back there. */
   held: Map<string, Set<string>>;
 }
 
-async function storeState(db: Db, product: string): Promise<StoreState> {
+export async function storeState(db: Db, product: string): Promise<StoreState> {
   const live = new Map<string, Set<string>>();
   for (const r of await db.all<{ outlet_id: string; release_id: string }>(
     `SELECT DISTINCT outlet_id, release_id FROM dist_availability
@@ -526,7 +538,7 @@ async function storeState(db: Db, product: string): Promise<StoreState> {
 }
 
 /** A store outlet's link (and the platforms it serves), or `null` when its identity is unusable. */
-function storeLink(
+export function storeLink(
   kind: StoreKind,
   identity: Record<string, unknown>,
 ): Pick<

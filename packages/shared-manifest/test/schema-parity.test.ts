@@ -444,6 +444,8 @@ function base(): Docs {
         screenshots: ["https://acme.example/1.png"],
         website: "https://acme.example",
         developerName: "Acme Inc.",
+        supportUrl: "https://acme.example/support",
+        supportEmail: "help@acme.example",
       },
     },
   };
@@ -538,6 +540,20 @@ const MUTATIONS: Mutation[] = [
     file: "product",
     schema: "rejects",
     mutate: (d) => (p(d).product.slug = "docs"),
+  },
+  {
+    code: "reserved_slug",
+    file: "product",
+    schema: "rejects",
+    // PX-W1: the portal's media proxy is a root path too.
+    mutate: (d) => (p(d).product.slug = "media"),
+  },
+  {
+    code: "reserved_slug",
+    file: "product",
+    schema: "rejects",
+    // PX-W16 (G33): `/media/avatar/<asset>` must never be a product's media path.
+    mutate: (d) => (p(d).product.slug = "avatar"),
   },
   {
     code: "missing_name",
@@ -2324,6 +2340,26 @@ const MUTATIONS: Mutation[] = [
     file: "distribution",
     schema: "rejects",
     mutate: (d) => (outlet(d, "altstore-beta").listing = { subtitle: 3 }),
+  },
+  // PX-W1: the portal's support links (G16).
+  {
+    code: "invalid_listing",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (dist(d).listing.supportUrl = "mailto:help@acme.example"),
+  },
+  {
+    code: "invalid_listing",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (dist(d).listing.supportEmail = "help at acme.example"),
+  },
+  {
+    code: "invalid_listing",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) =>
+      (dist(d).listing.supportEmail = `${"a".repeat(250)}@acme.example`),
   },
   {
     code: "capabilities_not_manifest_writable",

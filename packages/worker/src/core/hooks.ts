@@ -44,13 +44,16 @@
  * `Delivery` and the optional `packChunks` hook point to `ReleaseCatalog` (P4-22 implements it);
  * P4-18 added the optional `packPayload` (Distribution's payload URL). F-03 added the package
  * readers to `ReleaseCatalog` (`packageDeliverables`, `packageVersions`, `packageChannelHeads`) and
- * `packageFeed` to `Delivery`.
+ * `packageFeed` to `Delivery`. PX-W2 added the optional `customerDownloads` to `Delivery` (the
+ * customer portal's per-platform files and store links, portal gaps G2 and G4).
  * P2b-05, P2b-06, P3-03, P4-02 (Release's publish routes read `delivery.entitlement`), P4-05,
- * P4-09, P4-14 (Core's blob collector reads both hooks) and P6-03 consume.
+ * P4-09, P4-14 (Core's blob collector reads both hooks), P6-03 and PX-W2 (Identity's portal)
+ * consume.
  */
 
 /// <reference types="@cloudflare/workers-types" />
 
+import type { ManifestListing } from "@polaris-key/manifest";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { FeedDelta } from "@polaris-key/protocol/update";
 import type { Env } from "../env.js";
@@ -970,6 +973,12 @@ export interface Delivery {
   keys(q?: { purpose?: string }): Promise<KeyRecord[]>;
   /** The product's live outlets, by id (P3-03, the signed feed's outlet entries). */
   outlets(): Promise<DeliveryOutlet[]>;
+  /**
+   * The product's own store listing (PX-W1): the `.pkey/distribution` document's root `listing`,
+   * never an outlet's merged override, or `null` when it declares none. The customer portal's
+   * product presentation (name, developer, tint, website, art URLs, support links) reads this.
+   */
+  listing(): Promise<ManifestListing | null>;
   /** The rollout on one outlet's channel for a deliverable, or `null` when there is none. */
   rollout(q: {
     deliverable: string;
@@ -1064,6 +1073,104 @@ export interface Delivery {
    * implement it; Core's attest route treats a missing method like a missing setup.
    */
   attestationTargets?(): Promise<AttestationTargets>;
+  /**
+   * PX-W2 (portal gaps G2, G4): the app deliverable's downloads on `channel`, shaped for a person
+   * who already holds the product: per platform and release, the files and the recommended
+   * picks (`page/model.ts`'s arch preference: a universal build alone, else every arch, Apple
+   * silicon first), the platform-free extras, and every store outlet's link with whether a
+   * channel release is reported live there. ACCOUNT-FREE by design: the deliverable's delivery
+   * access is not applied here (the portal decides per release whether the account is covered,
+   * and per file whether it can be served), and nothing about the visitor's device is read.
+   * `null` when Release is off, the product has no release configuration, or the channel does
+   * not exist. Optional so a test double need not implement it; the portal then offers none.
+   */
+  customerDownloads?(
+    q: CustomerDownloadsQuery,
+  ): Promise<CustomerDownloads | null>;
+}
+
+// ── customerDownloads (Distribution, PX-W2) ─────────────────────────────────────────────────
+
+export interface CustomerDownloadsQuery {
+  /** The channel the releases come from (`stable` for the product page). */
+  channel: string;
+  /** How many of the channel's newest releases to read (yanked ones skipped, not counted). */
+  limit: number;
+}
+
+/**
+ * One file a customer may be offered. A RECORD: whether it can be downloaded is the consumer's
+ * decision (`release_artifacts` by `artifactId`, the portal's token mint).
+ */
+export interface CustomerFile {
+  releaseId: string;
+  artifactId: string;
+  version: string;
+  name: string;
+  buildId: string | null;
+  /** One of `PAGE_PLATFORMS` (`core/platformDetect.ts`), or `null` for an extra. */
+  platform: string | null;
+  arch: string | null;
+  /** The archive format the name ends in (`dmg`, `msix`, `tar.gz`, …), or `null`. */
+  format: string | null;
+  role: string | null;
+  sizeBytes: number | null;
+  /** Lowercase hex, or `null` when absent or malformed. */
+  sha256: string | null;
+  minOs: string | null;
+}
+
+/** What to offer first on one platform for one release. */
+export interface CustomerPick {
+  /** Every recommended file, best first; one entry when `universal`. */
+  artifactIds: string[];
+  /** The first pick runs on every arch of the platform (a `universal` or `any` build). */
+  universal: boolean;
+}
+
+export interface CustomerRelease {
+  releaseId: string;
+  version: string;
+  title: string | null;
+  publishedAt: number | null;
+  /** The channel the release was published to (`null` = derived from GitHub, i.e. stable). */
+  channel: string | null;
+  /** User-facing files only (payloads, and untyped files from a GitHub sync); no deltas, chunk
+   *  indexes, signatures or checksums. */
+  files: CustomerFile[];
+  /** Per platform that has a payload in this release. */
+  picks: Partial<Record<string, CustomerPick>>;
+}
+
+/** A store outlet's link (G2). Every URL is built by the Worker from a validated identity. */
+export interface CustomerStoreLink {
+  /** `<kind>:<outletId>`. */
+  id: string;
+  kind: string;
+  outletId: string;
+  platforms: string[];
+  /** A fixed Worker string ("App Store", "Steam", …). */
+  label: string;
+  /** An `https:` store page, or `null` (winget has none). */
+  url: string | null;
+  /** A custom-scheme link (`steam://`, `ms-windows-store://`), or `null`. */
+  deepLink: string | null;
+  /** A command to paste (Flathub, Snap, winget), or `null`. */
+  command: string | null;
+  /** Steam only: the key-activation page a held Steam key is handed to (`?key=` appended by the
+   *  consumer). `null` for every other store. */
+  activateUrl: string | null;
+  /** A non-yanked release of the channel is reported live there and not held by a rollout. */
+  live: boolean;
+  /** That release's version, when `live`. */
+  version: string | null;
+}
+
+export interface CustomerDownloads {
+  channel: string;
+  /** Newest first, at most `limit`. */
+  releases: CustomerRelease[];
+  stores: CustomerStoreLink[];
 }
 
 /** P6-02: the store identities a device attestation must match (`Delivery.attestationTargets`). */

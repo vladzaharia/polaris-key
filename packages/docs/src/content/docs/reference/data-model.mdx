@@ -96,6 +96,7 @@ this page or fails the freshness gate.
 | Table | Since | Columns (ALTERs annotated with their migration) |
 | --- | --- | --- |
 | `dist_outlets` | 0036_distribution_outlets.sql | `product`, `outlet_id`, `kind`, `identity_json`, `capabilities_json`, `listing_json`, `capabilities_source`, `removed_at`, `created_at`, `modified_at` |
+| `dist_listing` | 0063_dist_listing.sql | `product`, `listing_json`, `modified_at` |
 | `dist_transports` | 0036_distribution_outlets.sql | `product`, `deliverable_id`, `outlet_id`, `transport`, `config_json` |
 | `dist_rollouts` | 0038_distribution_rollouts_access.sql | `product`, `deliverable_id`, `outlet_id`, `channel`, `release_id`, `rollout_bp`, `rollout_salt`, `state`, `mirrored`, `source`, `started_at`, `updated_at`, `updated_by` |
 | `dist_access` | 0038_distribution_rollouts_access.sql | `product`, `deliverable_id`, `mode`, `entitlement`, `source`, `modified_at` |
@@ -132,5 +133,5 @@ this page or fails the freshness gate.
 | `portal_account_emails` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `email`, `account_id`, `verified_at`, `created_at` |
 | `portal_account_identities` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `provider`, `subject`, `account_id`, `email`, `display_name`, `created_at`, `last_seen_at` |
 | `portal_license_links` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `account_id`, `product`, `license_id`, `source`, `created_at`, `last_seen_at` |
-| `portal_product_settings` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `product`, `portal_enabled`, `oidc_enabled`, `magic_enabled`, `license_key_claim_enabled`, `releases_enabled`, `branding_json`, `created_at`, `modified_at`, `auto_link_enabled` |
+| `portal_product_settings` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `product`, `portal_enabled`, `oidc_enabled`, `magic_enabled`, `license_key_claim_enabled`, `releases_enabled`, `branding_json`, `created_at`, `modified_at`, `auto_link_enabled`, `key_reissue_enabled (0064)`, `claim_by_key (0064)` |
 | `portal_audit` | 0008_portal.sql | `id`, `account_id`, `at`, `action`, `product`, `target_kind`, `target_id`, `summary` |

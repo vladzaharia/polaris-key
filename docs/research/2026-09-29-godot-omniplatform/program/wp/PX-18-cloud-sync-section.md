@@ -1,0 +1,73 @@
+# PX-18 Cloud Sync section: `CloudSyncCard` on the product page, TOC entry, ⌘K action, export and delete; absent for products without the service
+
+| Field       | Value                                                                                                                                                                                    |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                                                               |
+| Size        | 0.4–0.8 engineer-weeks                                                                                                                                                                   |
+| Depends on  | [PX-04](PX-04-product-page-today.md), [PX-W11](PX-W11-cloud-sync-api.md)                                                                                                                 |
+| Unblocks    | none                                                                                                                                                                                     |
+| Role        | `pkey-implementer`                                                                                                                                                                       |
+| Plan mode   | no                                                                                                                                                                                       |
+| Gates       | the PORTAL.md §11 green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components |
+| Human input | none                                                                                                                                                                                     |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                |
+
+## Goal
+
+Products with Cloud Sync show `CloudSyncCard` (storage bar, data classes, per-device last sync, export, delete with step-up) with a `#/p/:product/sync` section, a TOC entry and a ⌘K action; products without the service show none of it.
+
+## Why
+
+Cloud Sync lives on the product page only ([PORTAL.md §4.20](../../../../design/PORTAL.md#420-product-page)). PORTAL.md sizes this M (2–4 agent-days); the owner approved the design on 2026-10-04.
+
+## Read first
+
+- `AGENTS.md` (always) and `CLAUDE.md`.
+- [docs/design/PORTAL.md](../../../../design/PORTAL.md) in full once, then: [PORTAL.md §11.3](../../../../design/PORTAL.md#113-phase-b-features-on-the-new-api-s-16-and-s-17) (this package's row) and [PORTAL.md §11.4](../../../../design/PORTAL.md#114-order).
+- [PORTAL.md §4.20](../../../../design/PORTAL.md#420-product-page), [PORTAL.md §10.2](../../../../design/PORTAL.md#102-gaps-the-worker-must-close)
+- `wp/U-12-privacy-settings-portal.md`
+- `docs/design/BRAND.md` and `@polaris-key/brand`; the console kit in `packages/admin/src/ui/`.
+
+## Scope
+
+**In:**
+
+- `CloudSyncCard`, section route, TOC entry, palette action, export, delete with step-up.
+
+**Out** (and where it belongs instead):
+
+- Anything not in PORTAL.md's row for this package (→ the PX package that owns it, per §11).
+
+## Design notes
+
+- **Cloud Sync** appears only on the product page of a product whose `services.cloudSync` is on; there is no global Cloud Sync page, nav item or account section.
+- **Overlap with the re-cut S-16/S-17 graph:** U-12 also names the product-page Cloud Sync section. PORTAL.md is the approved UI and API spec for this surface; whichever package lands first owns the shared code and the other narrows its scope to what is left (the lead reconciles the briefs).
+
+## Steps
+
+1. Re-read the PORTAL.md sections above and the matching mockups in `docs/design/portal/`; verify this brief against the code and record any correction here.
+2. Implement the **In** list in small commits prefixed `PX-18:`.
+3. Add the tests named in the acceptance criteria.
+4. Run the green gate and the extra gates in the header; set `--set PX-18 in-review`.
+
+## Acceptance criteria
+
+- [ ] Test: no sync UI anywhere (section, TOC, palette, route) when `services.cloudSync` is off.
+- [ ] Delete requires step-up (test).
+- [ ] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e` reports zero CSP violations.
+- [ ] `vitest-axe` passes on every new or changed page component; one `h1` per screen (§9).
+- [ ] No horizontal page scroll at 360 px on every screen this package touches (§8).
+- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
+
+## Verify
+
+```sh
+mise exec node@22 -- pnpm --filter @polaris-key/admin test -- portal
+```
+
+## Hand-off
+
+none.
+
+The role agent sets `--set PX-18 in-review` when it hands off. After review, the lead adds the last commit of the PR:
+`node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set PX-18 done`.

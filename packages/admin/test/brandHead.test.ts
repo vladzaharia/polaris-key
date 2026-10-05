@@ -38,6 +38,37 @@ describe("the brand head snippet", () => {
       expect(existsSync(join(brandWebKey, name)), name).toBe(true);
   });
 
+  it("vite.config.ts emits the email lockups the Worker links, from @polaris-key/brand/lockups/key", () => {
+    const lockups = Array.from(
+      (
+        viteConfig.match(/BRAND_LOCKUP_FILES[^=]*=\s*\[([\s\S]*?)\]/)?.[1] ?? ""
+      ).matchAll(/"([^"]+)"/g),
+      (m) => m[1]!,
+    );
+    const brandLockupKey = join(pkg, "..", "brand", "kit", "02-lockups", "key");
+    const email = readFileSync(
+      join(
+        pkg,
+        "..",
+        "worker",
+        "src",
+        "services",
+        "identity",
+        "portal",
+        "email.ts",
+      ),
+      "utf8",
+    );
+    for (const variant of ["light", "dark"]) {
+      const name = `key-horizontal-${variant}-944.png`;
+      expect(lockups).toContain(name);
+      expect(existsSync(join(brandLockupKey, name)), name).toBe(true);
+    }
+    expect(email).toContain(
+      "/assets/branding/key/key-horizontal-${variant}-944.png",
+    );
+  });
+
   it("the manifest's icons are emitted next to it", () => {
     const manifest = JSON.parse(
       readFileSync(join(brandWebKey, "site.webmanifest"), "utf8"),

@@ -1,0 +1,88 @@
+import * as React from "react";
+import { ChevronDown, KeyRound, LogOut, Palette, User } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../../components/ui/index.js";
+import type { PortalAccount } from "../api.js";
+import { href } from "../router.js";
+import { Avatar } from "./Avatar.js";
+
+/**
+ * The account menu (PORTAL.md §3.2): the avatar chip ("Account: <email>"), then Account,
+ * Sign-in methods, Appearance and Sign out. Approve a new device waits for G29 and Help for a
+ * public help URL; both are left out rather than shown as dead ends.
+ *
+ * Sign out is a form POST (R1-03): a state change is never a link.
+ */
+export function AccountMenu({
+  account,
+}: {
+  account: PortalAccount;
+}): React.ReactElement {
+  const formRef = React.useRef<HTMLFormElement>(null);
+  const email = account.email || account.name;
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label={`Account: ${email}`}
+            className="inline-flex h-11 max-w-[18rem] items-center gap-2 rounded-full border border-border bg-surface-raised p-1 text-sm text-fg-strong hover:bg-hover desk:pr-3"
+          >
+            <Avatar name={account.name} email={account.email} />
+            <span className="hidden truncate desk:inline">{email}</span>
+            <ChevronDown
+              aria-hidden
+              className="hidden size-4 shrink-0 text-fg-muted desk:inline"
+            />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-64">
+          <DropdownMenuLabel>
+            <div className="flex flex-col gap-0.5">
+              {account.name && account.name !== account.email ? (
+                <span className="text-sm font-bold text-fg-strong">
+                  {account.name}
+                </span>
+              ) : null}
+              <span className="truncate text-xs font-normal text-fg-muted">
+                {account.email}
+              </span>
+            </div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <a href={href.account()}>
+              <User aria-hidden />
+              Account
+            </a>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <a href={href.account("methods")}>
+              <KeyRound aria-hidden />
+              Sign-in methods
+            </a>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <a href={href.account("appearance")}>
+              <Palette aria-hidden />
+              Appearance
+            </a>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => formRef.current?.requestSubmit()}>
+            <LogOut aria-hidden />
+            Sign out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <form ref={formRef} method="post" action="/logout" hidden />
+    </>
+  );
+}
