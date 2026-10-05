@@ -68,7 +68,8 @@ import {
  * live, the halt reason from the audit trail, **Halt everywhere…** and a guided **Roll back…**),
  * then builds as cards with their files (RBD-1, RBD-2), the packs it pins as links to the pack
  * record, where each channel serves it, and its matrix row.
- * Tabs are route segments: `release/releases/:id/[status|builds|packs|channels|distribution]`.
+ * Tabs are route segments: `release/releases/:id[/builds|/packs|/channels|/distribution]`; Status
+ * is the bare record URL.
  */
 
 export type ReleaseTab =
@@ -1035,9 +1036,11 @@ export function ReleaseRecord({
     : [];
   const tabs = [
     {
+      // The record's own URL: Status is the default, and nav.ts's record tabs (the router's
+      // accepted segments) name only the other tabs.
       value: "status",
       label: "Status",
-      to: r.release(slug, id, "status"),
+      to: r.release(slug, id),
     },
     {
       value: "builds",

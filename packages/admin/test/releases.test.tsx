@@ -614,9 +614,12 @@ describe("Release record (T3, ADMIN.md §6.3.2)", () => {
     expect(within(live).getByText("beta channel")).toBeTruthy();
     expect(within(live).getAllByText("Every platform but iOS")).toHaveLength(2);
     expect(screen.queryByText(/^Live on/)).toBeNull();
-    expect(
-      screen.getByRole("link", { name: "Status" }).getAttribute("aria-current"),
-    ).toBe("page");
+    const status = screen.getByRole("link", { name: "Status" });
+    expect(status.getAttribute("aria-current")).toBe("page");
+    // Status is the record's own URL (the router accepts no `/status` segment).
+    expect(status.getAttribute("href")).toBe(
+      "#/p/djdl/release/releases/v0.4.2",
+    );
     expect(screen.getAllByText(RELEASE_KID).length).toBeGreaterThan(0);
     expect(
       screen.getByRole("link", { name: /GitHub release/ }).getAttribute("href"),
