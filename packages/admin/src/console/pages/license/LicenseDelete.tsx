@@ -96,10 +96,12 @@ export function DeleteLicenseDialog({
       title={`Delete ${license.name || license.id}?`}
       description="The license and everything bound to it are removed for good."
       consequences={[
-        devices
-          ? `Its ${plural(devices, "device")} stop authenticating right away and are removed.`
-          : "No device is bound to it.",
-        `Its ${plural(keys, "key")}, registry tokens, purchase binding and portal links are removed.`,
+        devices === 0
+          ? "No device is bound to it."
+          : devices === 1
+            ? "Its device stops authenticating right away and is removed."
+            : `Its ${devices} devices stop authenticating right away and are removed.`,
+        `${keys === 1 ? "Its key" : keys ? `Its ${keys} keys` : "Its keys"}, registry tokens, purchase binding and portal links are removed.`,
         "Its activity history is kept, with a “license deleted” entry.",
         "This can't be undone. To keep the record, disable the license instead.",
       ]}

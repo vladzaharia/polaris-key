@@ -37,6 +37,7 @@ import type {
 } from "../../../core/licenseDelete.js";
 import {
   adminJson,
+  adminNotFound,
   auditStatementFor,
   err,
   readBody,
@@ -187,7 +188,7 @@ export async function handleDeletions(
       return err(405, ErrorCode.BadRequest, "method not allowed");
     return adminJson(await cleanupCandidates(ctx));
   }
-  if (sub !== undefined) return err(404, ErrorCode.NotFound);
+  if (sub !== undefined) return adminNotFound();
   if (ctx.req.method !== "POST")
     return err(405, ErrorCode.BadRequest, "method not allowed");
 
