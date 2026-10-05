@@ -19,6 +19,15 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 - **[`plans/PX-W13.md`](../plans/PX-W13.md):** §2.5: the request carries `deviceName` under §2.1 and the entry creates a `native` handle.
 - **[`plans/PX-W13.md`](../plans/PX-W13.md):** offer a pushed-request step (RFC 9126 style, `POST /<p>/identity/request` → `{request, authorizeUrl}`), because a label in an `authorize` query string would be a display query parameter.
 
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- Native redirect uses the same card: LicenseChoiceStep, then Consent when due; the redirect code carries the choice; ReturnStep per SIGN-IN.md §3.10 ("is yours" only when a license was added or issued now; timer with **Stay here**).
+
 ## Goal
 
 Desktop and mobile apps sign in by a native redirect: loopback, claimed-HTTPS and registered-scheme redirect URIs on I-08's code-exchange route, `signIn({redirect})` in all six SDKs with the system browser only, and `/auth/poll` retired.

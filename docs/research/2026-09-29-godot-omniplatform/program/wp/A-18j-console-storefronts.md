@@ -5,7 +5,7 @@
 | Phase       | A: Admin: store provisioning (storefronts)                                                                                                           |
 | Size        | 2–3 engineer-weeks                                                                                                                                   |
 | Depends on  | [A-18a](A-18a-storefront-adapter-layer.md), [A-18b](A-18b-listing-model.md), [F-11](F-11-console-feeds.md)                                           |
-| Unblocks    | [ST-13](ST-13-listing-in-hub.md)                                                                                                                     |
+| Unblocks    | [ST-13](ST-13-listing-in-hub.md), [PS-06](PS-06-console-polaris-key-storefront.md)                                                                   |
 | Role        | `pkey-implementer`                                                                                                                                   |
 | Plan mode   | no                                                                                                                                                   |
 | Gates       | docs help-link drift gate; console CSP parity (`adminCspParity`, the CSP e2e); rule 10 (narrative-only admin routes); THREAT-MODEL (admin mutations) |
@@ -126,6 +126,16 @@ The slot board renders each asset from S-20's media host, built in
 [HA-06](HA-06-upload-paths.md)'s `POST /admin/products/:p/assets/:slot`, which writes
 `dist_listing_assets` rows with `source = 'admin'`. Do not add a second upload path
 ([notes/S-20 §6.3](../../notes/S-20-hosted-assets.md#63-ingest-one-path-three-ways-in)).
+
+## S-21 note (2026-10-05)
+
+[S-21](../../notes/S-21-polaris-storefront.md) adds a first-party storefront, `polaris-key`, to `STOREFRONT_ADAPTERS`
+([PS-01](PS-01-polaris-key-adapter.md)). Its operations use a new `Support` mode,
+`first-party`, rendered as "Built in". The tile and the Listing editor must come from the
+registry like every other store, so the Polaris Key tile appears with no store-specific code here.
+Do not add it to Store connections: it has no credential. Its panel, preview and analytics are
+[PS-06](PS-06-console-polaris-key-storefront.md)'s. The `direct` outlet is labelled "Polaris
+Key" ([PS-10](PS-10-direct-shown-as-polaris-key.md)).
 
 ## Hand-off
 

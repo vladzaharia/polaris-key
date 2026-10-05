@@ -18,6 +18,15 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 - **[`plans/I-24.md`](../plans/I-24.md):** the named-user seats docs page.
 
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- Developer docs: the sign-in step model (SIGN-IN.md §3), license choice and what end users see, `status: "choose"` on the exchange, `license_choice_required` on the card's Continue, Replace a device and its shared rate budget, Account-wide licences; glossary entry "Account-wide" (`start/concepts.md`).
+
 ## Goal
 
 Developers and end users have accurate docs for layer 1: the account and the Library, recovery ("remaining links, then the developer's licence tool"), key-entry limits for developers, tenant-scoped native links, Steam and Game Center guides, and the inputs for the Polaris privacy notice.

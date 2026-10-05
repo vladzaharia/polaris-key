@@ -565,9 +565,13 @@ refusals into one flow.
 
 #### P1 · First sign-in from an app, through activation and download (PJ A, C)
 
+> **Sign-in is specified in [SIGN-IN.md](SIGN-IN.md) (2026-10-05)**, the single source of truth for
+> every sign-in step, license choice and **Replace a device**, the console card, the Worker pages,
+> the emails and the kits. It supersedes this section where they differ.
+
 | Before                                                                                                    | After (one card, the app's header on every step)                                                                                                                                                              |
 | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| No passthrough: `/authorize` shows "Manage your copy of Saltwind"; the key and the app are separate trips | "**Tidewater Studio** wants you to sign in" → email → code or link (or a provider, then the email gate) → **Choose a licence for this device** (or **Add Tidewater Studio**: key, confirm) → It's yours → app |
+| No passthrough: `/authorize` shows "Manage your copy of Saltwind"; the key and the app are separate trips | "**Tidewater Studio** wants you to sign in" → email → code or link (or a provider, then the email gate) → **Choose a license for this device** (or **Add Tidewater Studio**: key, confirm) → It's yours → app |
 
 The `AuthCard` steps, in order, each under the persistent app header (PORTAL.md §4.7) and the lock
 footer ([storyboard](experience/15-story-portal-desktop-dark.png)):
@@ -582,17 +586,23 @@ footer ([storyboard](experience/15-story-portal-desktop-dark.png)):
    provider gives them), the email radio cards, Terms when the product requires them, primary
    "Continue to Tidewater Studio" or **Send code** for a typed address. **No skip path**; Cancel
    abandons the sign-in. A provider-verified address needs no code (frame 3).
-4. **LicenseChoiceStep**, "Choose a licence for this device" (owner, 2026-10-05; §8): shown
-   whenever the account holds a usable Tidewater Studio licence.
-   - Each row reads "Tidewater Studio Pro · Bought on the App Store · 2 of 3 devices · Lifetime",
-     and the rank-first default is preselected.
-   - A full licence is disabled with "No free devices", **Replace a device** (inline, one confirm:
-     "Replace Work laptop? It will need to sign in again.") and **Free a device**.
-   - The primary is **Use this licence and continue**.
-   - With no licence, the card says a free licence will be created (auto-issue), or goes on to
-     KeyStep (not in the storyboard frames yet; PX-14 adds the frame).
+4. **LicenseChoiceStep**, "Choose a license for this device" (owner, 2026-10-05; SIGN-IN.md §3.6):
+   shown on every sign-in that binds this installation, even with one license (a one-tap confirm).
+   - Each row reads "Tidewater Studio", then the tier as a neutral pill ("Pro") with "2 of 3
+     devices", or "Account-wide · unlimited devices" for an Account-wide license, then "Bought on
+     the App Store · Lifetime" (SIGN-IN.md O-11). Seat licenses hide the counter when the account
+     also holds an Account-wide license. Rank-first only orders and preselects; the device's
+     current license stays preselected.
+   - A full license shows "No free devices", no radio, **Replace a device** (inline, SIGN-IN.md
+     §3.7: "Replace Work laptop?" with **Replace and continue** and **Back**) and **Free a device**.
+   - The primary is **Use this license and continue**. When first-time consent follows, the consent
+     step shows the chosen license with **Change**.
+   - With no license, a **New** row ("created when you continue") when the product auto-issues;
+     otherwise "No Tidewater Studio license in this account" with the key field (KeyStep).
 5. **KeyStep**, "Add Tidewater Studio to your account": shown when the account has no license for
-   the requesting app and the product accepts keys. The `KeyField` names the product as soon as the
+   the requesting app, the product does not auto-issue, and it accepts keys (or from "Use a license
+   key instead"). Its confirm is the choice and binds the device ("Add and use on this device"). The
+   `KeyField` names the product as soon as the
    key parses, then the **PX-17 confirm** renders in the same step: art header, product and tier,
    terms ("lifetime · up to 3 devices"), the key echoed with **Change key**, and the entries notice
    when the key has used its entries (frame 4). Verdicts, inline under the field:
@@ -601,7 +611,7 @@ footer ([storyboard](experience/15-story-portal-desktop-dark.png)):
      is already in another Polaris Key account. A license never moves by its key." with **Sign in to
      that account** (the `signInUrl` flow) and **Use a different key** (frame 5);
    - **`key_entry_limit`** (I-09, Identity-on products): the app sends the person here with its
-     `portalUrl` (`/activate?product=<slug>`); the card shows PORTAL.md §4.18's notice ("This key has
+     `manageUrl` (`/activate?product=<slug>`); the card shows PORTAL.md §4.18's notice ("This key has
      no entries left in Tidewater Studio. Add it to your account and the app signs you in
      instead.") and keeps **Add** enabled (Q-5: a warning, not a block);
    - "I bought it with another email" leads to the account-linking path (PORTAL.md §4.11).
@@ -1010,6 +1020,10 @@ These hold in both apps and are acceptance criteria for the packages that build 
 
 ## 8. The shared sign-in
 
+> **Sign-in is specified in [SIGN-IN.md](SIGN-IN.md) (2026-10-05)**, the single source of truth for
+> every sign-in step, license choice and **Replace a device**, the console card, the Worker pages,
+> the emails and the kits. It supersedes this section where they differ.
+
 **One card for every sign-in surface.** `ui/auth/AuthCard` renders: the brand row above the card,
 an optional **persistent card header** (product context or an app's request), the body (one step,
 one primary), an optional **card footer** (passthrough), and Help · Privacy · Terms below. The
@@ -1019,47 +1033,20 @@ edge on phones.
 
 **The steps** (each one a component inside the card; the header and footer persist across them):
 
-| Step                | When                                                                                                                                                         | Owner                                              |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
-| `MethodsStep`       | First: identifier-first email, then the variant's methods                                                                                                    | UX-40                                              |
-| `CodeStep`          | After an email: one email with a 6-digit code and a magic link                                                                                               | I-07 (Worker), UX-40 (card)                        |
-| `EmailGateStep`     | First sign-in through a provider; `ProfileImport`; no skip path                                                                                              | PX-21 (built inside the card UX-40 promotes)       |
-| `LicenseChoiceStep` | Passthrough, after authentication (and the email gate): "Choose a licence for this device"; inline **Replace a device** on full licences (owner, 2026-10-05) | UX-41, PX-14 (card), I-08 (Worker), I-09 (ranking) |
-| `KeyStep`           | "Have a license key?", or the passthrough's "Add <App>"; PX-17's confirm; I-09's verdicts                                                                    | UX-41, PX-17, UX-05                                |
-| `ReturnStep`        | Passthrough done: "It's yours", Return to <App>, timer with Stay here                                                                                        | UX-41                                              |
+| Step                | When                                                                                                                                                                                                                                               | Owner                                                    |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `MethodsStep`       | First: identifier-first email, then the variant's methods                                                                                                                                                                                          | UX-40                                                    |
+| `CodeStep`          | After an email: one email with a 6-digit code and a magic link                                                                                                                                                                                     | I-07 (Worker), UX-40 (card)                              |
+| `EmailGateStep`     | First sign-in through a provider; `ProfileImport`; no skip path                                                                                                                                                                                    | PX-21 (built inside the card UX-40 promotes)             |
+| `LicenseChoiceStep` | After authentication, every sign-in that binds an installation: "Choose a license for this device"; tier pill with the counter or "Account-wide · unlimited devices"; full licenses without a radio; `ReplaceDevice` inline (SIGN-IN.md §3.6–§3.7) | UX-41, PX-14 (card), I-08 (routes), I-09 (ranking), I-26 |
+| `ConsentStep`       | First sign-in to an app or a scope change; after LicenseChoiceStep, showing the chosen license with **Change** (SIGN-IN.md §3.8)                                                                                                                   | PX-14, UX-41                                             |
+| `KeyStep`           | "Have a license key?", "Use a license key instead", or no license without auto-issue; PX-17's confirm, which is itself the choice; I-09's verdicts                                                                                                 | UX-41, PX-17, UX-05                                      |
+| `ReturnStep`        | Passthrough done: "It's yours", Return to <App>, timer with Stay here                                                                                                                                                                              | UX-41                                                    |
 
-**`LicenseChoiceStep` (owner decision, 2026-10-05).** It applies to every passthrough sign-in
-that binds a device: device code and its QR, the web redirect, the native redirect, and a device
-that already runs on a licence. It comes after authentication and the email gate, and before the
-consent confirm (when one is shown) and `ReturnStep`.
-
-- **The list.** The account's usable licences for the product: tier, origin ("Bought on Steam",
-  "Added with a key", "Free", "From <developer>", "Created when you signed in"), "2 of 5 devices"
-  and the expiry.
-  - The step is shown even when there is only one licence, as a one-tap confirm.
-  - The rank-first rule only **preselects** a row. If the device already runs on a usable licence,
-    **Keep the licence this device uses** is preselected instead.
-- **Full licences** stay in the list, disabled, with "No free devices". They offer **Replace a
-  device** and the **Free a device** link (PX-10's focused flow, which returns to the card).
-  - **Replace a device** expands the row in place: the licence's seat-holding devices, each with
-    its glyph and "<platform> · last used <when>". The least recent is tagged **Least recent** and
-    preselected; tags **Active now** and **This browser** mark the others.
-  - Picking a device shows one confirm: "Replace Work laptop? It will need to sign in again." with
-    **Replace and continue** and **Back**.
-  - Nothing changes until Continue. Then the device is freed through the portal's Remove
-    operation, with the same checks, rate limit, audit and email, and the new installation takes
-    the seat.
-  - A rate-limited Replace says when it can be tried again.
-- **No licence.** "A free <Tier> licence will be created for you" with Continue when the product
-  auto-issues. Otherwise "You don't have <Product> yet", with the purchase or store link and
-  **Have a license key?** (`KeyStep`).
-- **Create a new free licence** is a row only when the product auto-issues and every licence is
-  full.
-- **Primary button.** It reads **Use this licence and continue** when no consent screen follows.
-  When one follows, the consent screen shows the chosen licence with **Change**.
-
-The contract is `plans/I-04.md`, "Owner decision (2026-10-05): licence choice at sign-in". The
-storyboard frames below predate the step. PX-14 adds its mockups.
+**`LicenseChoiceStep`, `ReplaceDevice` and `ConsentStep` are specified in SIGN-IN.md §3.6–§3.8**
+(owner decisions 2026-10-05; contract in `plans/I-04.md`, "Owner decision (2026-10-05): licence
+choice at sign-in", §F). Their frames are SIGN-IN.md frames 05–09 and 18–22; this section keeps
+no second copy of their rules.
 
 | Variant         | Brand row                  | Header                                               | Methods                                                                                                                                                                                                                                                                                             |
 | --------------- | -------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1182,35 +1169,35 @@ sign-in email carries the code first and the link second; the copy is §11.1's.
 
 ### 11.1 Sign-in, Worker pages and email
 
-| Where                  | Text                                                                                    | Verdict | Becomes / why                                                                                              |
-| ---------------------- | --------------------------------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------- |
-| Portal sign-in         | "Your library of games and apps from developers who use Polaris Key."                   | Remove  | Filler under a self-explanatory h1                                                                         |
-| Sign-in (app)          | "Use the email you bought it with."                                                     | Keep    | The one fact a buyer needs                                                                                 |
-| Sign-in (app)          | h1 "Sign in or create an account"                                                       | Rewrite | "Sign in"; the header carries the context                                                                  |
-| Card header            | "Manage your copy of X / dev · downloads, license and devices"                          | Rewrite | "**X** wants you to sign in" / developer · where                                                           |
-| Sign-in loading        | "Getting the ways you can sign in…"                                                     | Remove  | Card skeleton                                                                                              |
-| Sent step h1           | "Check your email"                                                                      | Keep    |                                                                                                            |
-| Sent step              | "We sent a sign-in link to {email}. It works for 10 minutes."                           | Rewrite | "We sent a code and a sign-in link to {email}. Both work for 10 minutes." (I-07 sends one email with both) |
-| Sent step              | "Open it on this device and this page signs you in by itself."                          | Rewrite | "Or open the link in the email. Keep this tab open."                                                       |
-| Resend                 | "We sent a new link. Either one works for 10 minutes."                                  | Rewrite | Button "Send a new code"; status "We sent a new code and link to {email}."                                 |
-| Wrong code             | (new)                                                                                   | New     | "That code isn't right. Check the email and try again."                                                    |
-| Too many tries         | (new)                                                                                   | New     | "Too many tries. Send a new code." (after 5 wrong attempts, I-07)                                          |
-| Link on another device | (new)                                                                                   | New     | "Confirm sign-in, requested at {time} from {place}" + **Confirm** (I-07)                                   |
-| Sign-in off            | "There's no way to sign in to Polaris Key here right now. Try again later."             | Rewrite | "Sign-in is unavailable. Try again later."                                                                 |
-| Footer                 | "Polaris Key · key.plrs.im"                                                             | Remove  | The brand is above                                                                                         |
-| Console boot error     | "The admin session could not be loaded. Retry, or sign in again if your session ended." | Rewrite | "Can't reach Polaris Key" / "Your session ended" (§8 states)                                               |
-| Worker expired         | "This magic link has expired." / "Missing magic-link token."                            | Rewrite | h1 "That code or link has expired" + "Codes and links work once, for 10 minutes." + **Send a new code**    |
-| Worker admin           | "Admin sign-in is not configured."                                                      | Rewrite | "Admin sign-in isn't set up" + docs link                                                                   |
-| Worker buttons         | "Back to sign-in"                                                                       | Rewrite | "Sign in again"                                                                                            |
-| Device confirm         | "An app is asking to activate this device. Check that the code and device match…"       | Rewrite | "Check the code matches the one on your device."                                                           |
-| Device confirm         | "Product nightfall" row                                                                 | Remove  | The header names the product                                                                               |
-| Signed-in page         | "You can close this tab and return to the app."                                         | Keep    |                                                                                                            |
-| Return step            | (new)                                                                                   | New     | "{Product} is yours" · "Returning by itself in 3 s · Stay here"                                            |
-| Console sign-in        | "Continue with Pocket ID" as the only control                                           | Rewrite | Email field (known operator as a chip) + **Continue**; fine print "Next: Pocket ID at {issuer host}"       |
-| Email subject          | (link-only subject)                                                                     | Rewrite | "Your Polaris Key code: {code}"                                                                            |
-| Email body             | "Use the button below to sign in. The link expires in 10 minutes and works once."       | Rewrite | The code large first, then "Or sign in with the button. The code and the link work once, for 10 minutes."  |
-| Email                  | "If the button does not work, paste this link into your browser:"                       | Keep    |                                                                                                            |
-| Email footer           | "…Nothing changes until the link is used."                                              | Keep    |                                                                                                            |
+| Where                  | Text                                                                                    | Verdict | Becomes / why                                                                                                                                            |
+| ---------------------- | --------------------------------------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Portal sign-in         | "Your library of games and apps from developers who use Polaris Key."                   | Remove  | Filler under a self-explanatory h1                                                                                                                       |
+| Sign-in (app)          | "Use the email you bought it with."                                                     | Keep    | The one fact a buyer needs                                                                                                                               |
+| Sign-in (app)          | h1 "Sign in or create an account"                                                       | Rewrite | "Sign in"; the header carries the context                                                                                                                |
+| Card header            | "Manage your copy of X / dev · downloads, license and devices"                          | Rewrite | Developer link: "**X** · developer" / "Your license, downloads and devices". "**X** wants you to sign in" is only for an app's request (SIGN-IN.md D-11) |
+| Sign-in loading        | "Getting the ways you can sign in…"                                                     | Remove  | Card skeleton                                                                                                                                            |
+| Sent step h1           | "Check your email"                                                                      | Keep    |                                                                                                                                                          |
+| Sent step              | "We sent a sign-in link to {email}. It works for 10 minutes."                           | Rewrite | "We sent a code and a sign-in link to {email}. Both work for 10 minutes." (I-07 sends one email with both)                                               |
+| Sent step              | "Open it on this device and this page signs you in by itself."                          | Rewrite | "Or open the link in the email. Keep this tab open."                                                                                                     |
+| Resend                 | "We sent a new link. Either one works for 10 minutes."                                  | Rewrite | Button "Send a new code"; status "We sent a new code and link to {email}."                                                                               |
+| Wrong code             | (new)                                                                                   | New     | "That code isn't right. Check the email and try again."                                                                                                  |
+| Too many tries         | (new)                                                                                   | New     | "Too many tries. Send a new code." (after 5 wrong attempts, I-07)                                                                                        |
+| Link on another device | (new)                                                                                   | New     | "Confirm sign-in, requested at {time} from {place}" + **Confirm** (I-07)                                                                                 |
+| Sign-in off            | "There's no way to sign in to Polaris Key here right now. Try again later."             | Rewrite | "Sign-in is unavailable. Try again later."                                                                                                               |
+| Footer                 | "Polaris Key · key.plrs.im"                                                             | Remove  | The brand is above                                                                                                                                       |
+| Console boot error     | "The admin session could not be loaded. Retry, or sign in again if your session ended." | Rewrite | "Can't reach Polaris Key" / "Your session ended" (§8 states)                                                                                             |
+| Worker expired         | "This magic link has expired." / "Missing magic-link token."                            | Rewrite | h1 "That code or link has expired" + "Codes and links work once, for 10 minutes." + **Send a new code**                                                  |
+| Worker admin           | "Admin sign-in is not configured."                                                      | Rewrite | "Admin sign-in isn't set up" + docs link                                                                                                                 |
+| Worker buttons         | "Back to sign-in"                                                                       | Rewrite | "Sign in again"                                                                                                                                          |
+| Device confirm         | "An app is asking to activate this device. Check that the code and device match…"       | Rewrite | "Check the code matches the one on your device."                                                                                                         |
+| Device confirm         | "Product nightfall" row                                                                 | Remove  | The header names the product                                                                                                                             |
+| Signed-in page         | "You can close this tab and return to the app."                                         | Keep    |                                                                                                                                                          |
+| Return step            | (new)                                                                                   | New     | "{Product} is yours" · "Returning by itself in 3 s · Stay here"                                                                                          |
+| Console sign-in        | "Continue with Pocket ID" as the only control                                           | Rewrite | Email field (known operator as a chip) + **Continue**; fine print "Next: Pocket ID at {issuer host}"                                                     |
+| Email subject          | (link-only subject)                                                                     | Rewrite | "Your Polaris Key code: {code}"                                                                                                                          |
+| Email body             | "Use the button below to sign in. The link expires in 10 minutes and works once."       | Rewrite | The code large first, then "Or sign in with the button. The code and the link work once, for 10 minutes."                                                |
+| Email                  | "If the button does not work, paste this link into your browser:"                       | Keep    |                                                                                                                                                          |
+| Email footer           | "…Nothing changes until the link is used."                                              | Keep    |                                                                                                                                                          |
 
 ### 11.2 Portal
 
@@ -1421,14 +1408,14 @@ any file it edits (checked against §13.1), not merely that its dependencies are
 
 **Wave 2: shared sign-in**
 
-| Id    | Package                                                                                                                                                                                                        | Size | Deps                                           |
-| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------------------------------- |
-| UX-40 | **`AuthCard` in `ui/auth/`**: promote `LoginCard`, `ProviderRow`, `Glyphs`, `KeyField`; the step slots (§8); passkey and "Have a license key?" in `MethodsStep`                                                | M    | PX-20 (`PortalShell`), I-07 (`SignInPage.tsx`) |
-| UX-41 | **Passthrough steps**: persistent app header, `LicenseChoiceStep` with inline Replace a device (2026-10-05), `KeyStep` with PX-17's confirm and I-09's verdicts, `ReturnStep` with Stay here, the library ring | L    | UX-40, PX-17, I-08 and PX-W13 (broker), I-09   |
-| PX-21 | (approved, existing) **EmailGateStep** with `ProfileImport` inside the promoted card                                                                                                                           | M    | UX-40, PX-12, PX-W15, PX-W16                   |
-| UX-42 | **Console sign-in**: identifier-first card at `/manage/login`, Continue starts PKCE or a passkey, 403 and not-configured states                                                                                | M    | UX-40, UX-02, r2 (`admin/auth.ts`)             |
-| UX-43 | **Worker twin**: `renderAuthCard()` in `brandHtml.ts`; expired code or link with Send a new code; device pages with the product header; measures test                                                          | M    | UX-40, I-07, r2 (`brandHtml.ts`)               |
-| UX-44 | **Email**: no-bit centred lockup, card radius, the code-and-link copy on I-07's template                                                                                                                       | S    | I-07                                           |
+| Id    | Package                                                                                                                                                                                                                                                                                                                                             | Size | Deps                                           |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------------------------------- |
+| UX-40 | **`AuthCard` in `ui/auth/`**: promote `LoginCard`, `ProviderRow`, `Glyphs`, `KeyField`; the step slots (§8); passkey and "Have a license key?" in `MethodsStep`                                                                                                                                                                                     | M    | PX-20 (`PortalShell`), I-07 (`SignInPage.tsx`) |
+| UX-41 | **Passthrough steps** (SIGN-IN.md §3.6–§3.10): persistent app header, `LicenseChoiceStep` (every row state, Account-wide vocabulary) with inline `ReplaceDevice` (2026-10-05), `ConsentStep` with Change, `KeyStep` with PX-17's confirm ("Add and use on this device") and I-09's verdicts, `ReturnStep` variants with Stay here, the library ring | L    | UX-40, PX-17, I-08 and PX-W13 (broker), I-09   |
+| PX-21 | (approved, existing) **EmailGateStep** with `ProfileImport` inside the promoted card                                                                                                                                                                                                                                                                | M    | UX-40, PX-12, PX-W15, PX-W16                   |
+| UX-42 | **Console sign-in**: identifier-first card at `/manage/login`, Continue starts PKCE or a passkey, 403 and not-configured states                                                                                                                                                                                                                     | M    | UX-40, UX-02, r2 (`admin/auth.ts`)             |
+| UX-43 | **Worker twin**: `renderAuthCard()` in `brandHtml.ts`; expired code or link with Send a new code; device pages with the product header; measures test                                                                                                                                                                                               | M    | UX-40, I-07, r2 (`brandHtml.ts`)               |
+| UX-44 | **Email**: no-bit centred lockup, card radius, the code-and-link copy on I-07's template                                                                                                                                                                                                                                                            | S    | I-07                                           |
 
 **Wave 3: console journeys on the shared layer**
 
@@ -1555,6 +1542,9 @@ flowchart LR
 | PORTAL.md | §4.26 Account (Appearance, Sign out, Delete)                | §0.6 P5 (Profile and `Avatar` stay PX-22's, §4.30)                  |
 | PORTAL.md | §5.1–5.3 Components and status model                        | §3, §7                                                              |
 | PORTAL.md | §6.1 Copy rules                                             | §2, §11                                                             |
+
+**Sign-in:** [SIGN-IN.md](SIGN-IN.md) supersedes §0.6 P1, §8 and §11.1's sign-in rows here, and the
+PORTAL.md and ADMIN.md sign-in sections, where they differ.
 
 **Not superseded:** PORTAL.md §3.2's phone bottom bar (Activate as the middle pill), §4.17–§4.19
 (Activate, PX-17), §4.29 (email gate, PX-21) and §4.30 (Profile, PX-22) stand as approved; this
