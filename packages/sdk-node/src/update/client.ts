@@ -96,6 +96,7 @@ import type { TrustManager } from "../core/trust.js";
 import { readOutletSignals, type OutletReaderEnvironment } from "./outlet.js";
 import { PacksClient, type NodePacksOptions } from "../packs/client.js";
 import { UpdateJournal } from "./journal.js";
+import { BootGuard, type BootAttempt } from "./bootguard.js";
 import {
   appcastUrlFrom,
   updateEndpointsFrom,
@@ -460,6 +461,8 @@ export class UpdateClient {
   readonly packs: PacksClient;
   /** The update-health journal (§3.13): events the next device report carries. */
   readonly journal: UpdateJournal;
+  /** The app boot guard (§3.15): slots in the state directory. */
+  readonly guard: BootGuard;
   /** The releases this process already reported as offered. */
   private readonly offered = new Set<string>();
   private readonly cache?: CacheManager;
@@ -491,6 +494,7 @@ export class UpdateClient {
       channel: () => ctx.channel,
     });
     const journal = this.journal;
+    this.guard = new BootGuard(ctx.dirs.state, ctx.version, journal);
     this.packs = new PacksClient(
       {
         ctx,
@@ -528,6 +532,14 @@ export class UpdateClient {
     );
   }
 
+  /** Whether `decide()` can run: the host passed `update` options with release keys. */
+  get decidable(): boolean {
+    return (
+      this.configured !== null &&
+      Object.keys(this.configured.releaseKeys).length > 0
+    );
+  }
+
   /** The outlet `decide()` uses (`resolveUpdateOutlet`'s answer), or null when the client has
    *  no `update` options. For support diagnostics and UI. */
   get outlet(): ResolvedOutlet | null {
@@ -538,6 +550,18 @@ export class UpdateClient {
    *  null when the host named the outlet, turned detection off, or configured no updates. */
   get detected(): DetectedOutlet | null {
     return this.configured?.detected ?? null;
+  }
+
+  /** Count this launch before the app does anything that could crash (§3.15). On the third
+   *  unconfirmed launch of a new version it rolls back (through the driver's rollback when one
+   *  is installed) and reports `boot_rolled_back`. */
+  markBootAttempt(): Promise<BootAttempt> {
+    return this.guard.markBootAttempt();
+  }
+
+  /** Mark this launch healthy: resets the count and reports `update_confirmed` once. */
+  confirmBoot(): Promise<void> {
+    return this.guard.confirmBoot();
   }
 
   /**

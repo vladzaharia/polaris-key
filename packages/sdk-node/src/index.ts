@@ -125,6 +125,40 @@ export {
   type UpdateDecideOptions,
   type VersionCheck,
 } from "./update/client.js";
+// The boot stage machine (`ui.stages`, client-core) and the one-call boot over it (§3.4).
+export {
+  BOOT_EMIT_TYPES,
+  BOOT_EVENT_TYPES,
+  BOOT_GUARD_ACTIONS,
+  BOOT_OK_SECONDS,
+  BOOT_OUTCOMES,
+  BOOT_STAGES,
+  MAX_FAILED_BOOTS,
+  bootConfirmation,
+  bootGuardAction,
+  bootTransition,
+  initialBootState,
+  type BootEmit,
+  type BootEvent,
+  type BootOptions,
+  type BootStage,
+  type BootState,
+  type BootTransition,
+} from "@polaris-key/client-core";
+export {
+  ensureActivated,
+  runBoot,
+  type BootOutcome,
+  type BootStep,
+  type ClientBootOptions,
+  type EnsureActivatedResult,
+} from "./boot.js";
+export {
+  BootGuard,
+  type BootAttempt,
+  type BootGuardOptions,
+  type BootSlots,
+} from "./update/bootguard.js";
 // The update-health journal (SDK parity pass §3.13, P6-03).
 export {
   MAX_UPDATE_EVENTS_PER_REPORT,

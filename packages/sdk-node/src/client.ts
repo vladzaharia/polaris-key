@@ -69,6 +69,13 @@ import { ReleaseClient } from "./release/client.js";
 import { CommerceClient } from "./commerce/client.js";
 import { UpdateClient, type UpdateClientOptions } from "./update/client.js";
 import {
+  ensureActivated,
+  runBoot,
+  type BootOutcome,
+  type ClientBootOptions,
+  type EnsureActivatedResult,
+} from "./boot.js";
+import {
   discoverProduct,
   type DiscoverProductResult,
   type ProductDiscoveryDocument,
@@ -156,6 +163,8 @@ export class PolarisKeyClient {
   private readonly probes: DevicesClientOptions["probes"];
   private timer: ReturnType<typeof setInterval> | null = null;
   private discoveryDoc: ProductDiscoveryDocument | null = null;
+  /** Whether the host pinned `expectedServices` (then boot skips discovery). */
+  private readonly pinnedServices: boolean;
   /** The token store's last `status()`, read at `init()` and before every report, so
    *  `supports()` can answer offline and synchronously. */
   private lastStoreStatus: StoreStatus | null = null;
@@ -239,6 +248,7 @@ export class PolarisKeyClient {
       if (ids.length > 0) await this.update.journal.markSent(ids);
     };
 
+    this.pinnedServices = opts.expectedServices !== undefined;
     this.refreshIntervalSeconds = opts.refreshIntervalSeconds;
     this.onChange = opts.onChange;
 
@@ -320,6 +330,37 @@ export class PolarisKeyClient {
       this.core.setServices(result.services);
     }
     return result;
+  }
+
+  /** The discovery document this session loaded, or null. */
+  discovery(): ProductDiscoveryDocument | null {
+    return this.discoveryDoc;
+  }
+
+  /** Whether the build pinned `expectedServices` (boot then needs no discovery round trip). */
+  get servicesPinned(): boolean {
+    return this.pinnedServices;
+  }
+
+  // ── One-call boot (SDK parity pass §3.4) ──────────────────────────────────────────────
+  /**
+   * Boot to a working, gated, updated app: discovery (when no services are pinned) → boot guard
+   * → sync → reacquire per `core.registration` → gate → update decision → required packs →
+   * mount, driving client-core's stage machine and reporting every step to `onStage`. Never
+   * prompts: a gate that needs the player ends `waiting`, and the host shows its activation UI.
+   */
+  boot(opts: ClientBootOptions = {}): Promise<BootOutcome> {
+    return runBoot(this, opts);
+  }
+
+  /** Steps 1–3 of `boot()`: sync, then register or enrol where the product allows it. */
+  ensureActivated(
+    opts: { registration?: boolean } = {},
+  ): Promise<EnsureActivatedResult> {
+    return ensureActivated(this, {
+      discover: !this.pinnedServices && this.discoveryDoc === null,
+      ...opts,
+    });
   }
 
   /** What this client currently believes the product runs. */

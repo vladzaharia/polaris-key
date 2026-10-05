@@ -1389,7 +1389,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "update.decide": { status: "implemented", service: "update", na: [] },
   "update.content": { status: "implemented", service: "update", na: [] },
   "update.driver": { status: "planned", service: "update", na: [] },
-  "update.bootguard": { status: "planned", service: "update", na: [] },
+  "update.bootguard": { status: "implemented", service: "update", na: [] },
   "outlet.detect": { status: "implemented", service: "update", na: [] },
   "packs.record": { status: "implemented", service: "release", na: [] },
   "packs.revoke": { status: "implemented", service: "release", na: [] },
@@ -1458,4 +1458,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "017e9dcec404c7db5102719c7c32d6632c62025aa9932a96b8733bd4013d72d8";
+  "502a8417bbce900b3631dee3fcad366915c9c4786f8e77b600990a53361efb34";

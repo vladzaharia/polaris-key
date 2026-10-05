@@ -89,9 +89,8 @@
       "note": "Only appcastUrl() today; the Velopack, electron-updater or single-executable hand-off has no work package (P3-04 excludes it)."
     },
     "update.bootguard": {
-      "status": "planned",
-      "unowned": true,
-      "note": "P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02."
+      "status": "implemented",
+      "note": "client.update.markBootAttempt() / confirmBoot() over client-core's bootGuardAction: slots in <stateDir>/boot-guard.json, a rollback through the install driver's hook (else boot_rolled_back with code no-previous and the version kept as skipVersion), update_confirmed / update_reverted / boot_rolled_back in the update-health journal (SP-N06)."
     },
     "outlet.detect": {
       "status": "implemented",
@@ -199,7 +198,10 @@
       "unowned": true,
       "note": "No work package owns the Flatpak extension transport (P5-08 Out)."
     },
-    "ui.stages": { "status": "implemented" },
+    "ui.stages": {
+      "status": "implemented",
+      "note": "BOOT_STAGES, bootTransition, bootGuardAction and the rest re-exported from client-core; client.boot({onStage}) drives the machine end to end and client.ensureActivated() runs its first three stages (SP-N05)."
+    },
     "ui.kit": { "status": "na", "runtime": "headless", "reason": "runtime" },
     "commerce.receipt": {
       "status": "implemented",
