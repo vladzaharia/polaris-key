@@ -67,6 +67,41 @@ the manifest ([S-15 §7.2](../../notes/S-15-storefront-provisioning.md#72-where-
   the target store's fit check (S-15 §5.6).
 - Imported text is data, rendered escaped (S-15 §9 3(g)).
 
+### Corrections from the code (A-18c implementation)
+
+- **There is no generated CLI reference.** `packages/docs/scripts/gen-reference.mjs` generates
+  only the `reference/*.mdx` pages, none of them for the CLI. `pkey listing import` is documented
+  in the narrative page `admin/storefront-listing.md` (hand-written, as `pkey bundle` and
+  `pkey feeds setup` are). The generated page that did change is `reference/data-model.mdx`
+  (the new migration), regenerated with `pnpm --filter @polaris-key/docs gen`. The CLI bundle
+  (`actions/publish/dist/index.js`) is regenerated.
+- **Precedence needs per-field provenance**: migration `0068_dist_listing_provenance.sql` adds
+  `provenance_json` (`{field: import source}`) to `dist_listings` and `dist_listing_locales`, so an
+  import can tell a value an earlier, higher-ranked import wrote from one an operator typed (A-18b
+  stored only a row-level `source`). An operator's edit removes the source of each field it changes;
+  rows written before 0068 read as A-18b left them (`import` rows as `manifest`).
+- **The diff API is the import route itself**: `POST …/listing/import` without `confirm` answers
+  the field-by-field diff and a `digest` and writes nothing; with `confirm: <digest>` (and optional
+  `fields`) it re-reads the sources and applies only if the diff is unchanged (409
+  `import_changed` with the new diff otherwise). A-18b's one-step manifest import moved onto this
+  flow; `.pkey/product` (`product`, already in the precedence list) is a source too.
+- **Icons and store images are reported, not uploaded.** A `dist_listing_assets` row needs an
+  uploaded blob and digest, which A-18d's `pkey listing assets` makes. The Godot import sends the
+  icon paths with their SHA-256 and PNG size, and the store imports their image URLs; the diff
+  lists them (`assets`) for A-18d to start from.
+- **Version and bundle ids have no model field**, so they are shown beside the outlets' identities
+  (`identifiers`, with a match per outlet), not stored.
+- **Play edit lease:** A-18e has not landed, so the import opens a direct read-only edit with a
+  `TODO(A-18e)` at the call site (`listing/sources.ts` `playSource`).
+- **Microsoft needs no client change:** the last published submission is already a GET of P5-04's
+  client; a separate parser (`connectors/msstore/listing.ts`) reads its `listings`, leaving
+  `parseSubmission` (and polling) untouched. Images are listed by file name only there, so they are
+  skipped with a reason.
+- **"The gate's fake token endpoint":** App Store Connect has no token endpoint (the JWT is minted
+  locally), so the Apple test asserts every request is a GET the gate admits and nothing is
+  written; the Play and Microsoft tests assert their fake token endpoints saw exactly one token,
+  for the read scope, and only reads (plus Play's edit insert and delete).
+
 ## Acceptance criteria
 
 - [ ] Each of the three adapters' `readListing` is tested against its fake vendor, and the gate's

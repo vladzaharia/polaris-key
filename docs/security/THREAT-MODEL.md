@@ -1662,6 +1662,23 @@ or `PLATFORM_KEK` compromise bypasses every adapter's gate at once. The deep-lin
 undocumented by most stores (a broken link misleads, it grants nothing). Rows written before
 A-18a keep their old `op_id`; a replay of such an intent re-reads its natural key before sending.
 
+**Listing import (A-18c).** The shared listing fills itself from the stores' own listings, the
+Godot project and the manifest (`services/distribution/listing/{import,sources}.ts`, the planner in
+`core/storefront/listingImport.ts`). An import never writes to a store: Apple's `readListing`
+sends only GETs, which the App Store gate admits (personal data stays refused); Play's reads sit in
+one edit that is never patched or committed and is deleted before the request ends (until A-18e's
+lease lands, a poll tick can invalidate it: the import then fails and writes nothing); Microsoft's
+goes through P5-04's client, which can send nothing but GET. Each store's setup and the operator's
+pin are resolved first, so an unconfigured store or a disagreeing pin mints no token. Tokens are
+minted under their own audited `use` (`<connector>:listing-import`). The Godot upload is
+operator-supplied data and is validated field by field (unknown keys refused; Godot's
+`config/description`, a tooltip, is never accepted). An import is a preview first and is written
+only when the operator echoes the preview's digest, so a diff that changed in between (a store
+edit, another operator) is refused, not applied blind. Values over the model's limits are refused,
+never cut; imported text is data (control (g)); store screenshot and icon URLs are reported, never
+fetched or stored (A-18d derives assets). Residual risk: an import trusts the store's own text as
+much as the store does, and an operator who confirms a diff without reading it applies it.
+
 ### App Store Connect writes: the write gate, the ledger and the budget (A-17a)
 
 **What it is.** The substrate every App Store Connect call goes through (notes/S-14 §7): the
