@@ -4492,6 +4492,30 @@ sit behind the portal session; the claim also needs the CSRF header.
   `audit`, both with `source: discover`.
 - **Developers can withhold an offer without changing the policy** (`discover_enabled = 0`).
 
+### The refusal log (UX-15)
+
+`authorizeDevice` (`core/authz.ts`) now records each refused activation in `license_refusals`
+(`core/refusals.ts`): product, licence, time, reason, a device label and a SHA-256 prefix of the
+device id. Only the platform-admin session reads it (`GET /manage/api/products/<slug>/refusals`).
+
+- **The label is customer-influenced text.** It is the device's stored name, else the reported
+  platform and architecture, else the User-Agent, so whoever runs the client chooses it. It is
+  stripped of control, format, separator, private-use and surrogate characters (no bidirectional
+  override can make one label render as another), whitespace-collapsed and cut to 64 characters
+  before it is written, and the console renders it as text.
+- **A refused caller cannot grow the table without bound.** Activation is already rate limited
+  per IP (30 a minute per product), a write is folded into the previous row when the same device
+  was refused for the same reason on the same licence in the last minute, and the nightly sweep
+  deletes rows older than 30 days, per product and in bounded passes. Residual: a holder of one
+  valid key rotating device ids can still write about one row per id per minute within the IP
+  limit; the cost is bounded by the 30-day retention.
+- **No new oracle.** The device's answer is decided before the write and is unchanged by it: the
+  write is handed to `waitUntil` where the request has one (the licence activate and enroll
+  routes) and otherwise runs inline, wrapped so that a failure is dropped. No public response
+  carries anything from the table.
+- **No raw identifier is copied.** The device id is stored only as a truncated hash; the licence
+  holder's name and email are not stored here at all.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The

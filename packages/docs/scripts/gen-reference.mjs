@@ -322,6 +322,7 @@ const TABLE_OWNERS = {
     "product_secrets",
     "outlet_credentials",
     "devices",
+    "license_refusals",
     "device_fingerprints",
     "device_facts",
     "audit",
