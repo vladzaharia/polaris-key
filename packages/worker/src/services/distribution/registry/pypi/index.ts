@@ -42,7 +42,10 @@ export const PYPI_ADAPTER: FeedAdapter<"pypi"> = defineFeedAdapter({
     ["/pypi/{owner}/simple/{project}/", ["get", "head"], "pypi.simple.project"],
     ["/pypi/{owner}/files/{sha256}/{filename}", ["get", "head"], "pypi.files"],
   ],
-  harness: { clients: ["pip", "uv", "poetry"] },
+  harness: {
+    // F-22: twine uploads natively (Release's route), then pip installs back.
+    clients: ["pip", "uv", "poetry", "twine"],
+  },
 });
 
 /** The materialiser's view of the adapter. */

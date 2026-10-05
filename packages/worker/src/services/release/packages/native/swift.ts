@@ -77,7 +77,6 @@ export const SWIFT_PUBLISH_ROUTE: RegistryRoute = publishRoute({
         accept,
       )
     ) {
-      await req.body?.cancel().catch(() => undefined);
       return problem(
         415,
         "swift-accept",
@@ -86,12 +85,10 @@ export const SWIFT_PUBLISH_ROUTE: RegistryRoute = publishRoute({
     }
     const declared = await declaredPackage(ctx.db, owner, "swift", name);
     if (!declared) {
-      await req.body?.cancel().catch(() => undefined);
       return refusalResponse("swift", undeclared("swift", name));
     }
     const boundary = multipartBoundary(req.headers.get("content-type"));
     if (boundary === null) {
-      await req.body?.cancel().catch(() => undefined);
       return problem(
         415,
         "swift-content-type",

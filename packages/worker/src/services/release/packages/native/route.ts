@@ -137,7 +137,6 @@ export function publishRoute(def: PublishRouteDef): RegistryRoute {
       const eco = def.ecosystem;
       const feed = await answeringFeed(ctx, eco);
       if (!feed) {
-        await req.body?.cancel().catch(() => undefined);
         return registryNotFound(eco);
       }
       const auth = await authorizeRegistryPublish(ctx.env, ctx.db, req, {
@@ -147,7 +146,6 @@ export function publishRoute(def: PublishRouteDef): RegistryRoute {
         ...(ctx.waitUntil ? { waitUntil: ctx.waitUntil } : {}),
       });
       if (!auth.ok) {
-        await req.body?.cancel().catch(() => undefined);
         return authRefusal(ctx, eco, auth.refusal, auth.reason);
       }
       if (
@@ -162,7 +160,6 @@ export function publishRoute(def: PublishRouteDef): RegistryRoute {
           ctx.now,
         ))
       ) {
-        await req.body?.cancel().catch(() => undefined);
         return authRefusal(ctx, eco, "rate-limited");
       }
       return def.handle({

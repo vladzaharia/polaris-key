@@ -114,7 +114,6 @@ async function handle({
     segments.length < 3 ||
     segments.some((s) => !SEGMENT.test(s) || s === "." || s === "..")
   ) {
-    await req.body?.cancel().catch(() => undefined);
     return bad("not a Maven repository path");
   }
   await touchSessions(ctx.db, owner, "maven", principal);
@@ -132,7 +131,6 @@ async function handle({
         p.prefix.every((s, i) => s.toLowerCase() === lower[i]),
     );
   if (!declared) {
-    await req.body?.cancel().catch(() => undefined);
     return refusalResponse("maven", {
       status: 403,
       code: "forbidden",
@@ -147,7 +145,6 @@ async function handle({
   if (rest.length === 1) {
     const file = rest[0]!;
     if (!/^maven-metadata\.xml(\.(md5|sha1|sha256|sha512|asc))?$/.test(file)) {
-      await req.body?.cancel().catch(() => undefined);
       return bad(`${file} is not a file of the repository layout`);
     }
     if (!(await discard(req))) return bad("the metadata is too large");
@@ -171,12 +168,10 @@ async function handle({
     return created();
   }
   if (rest.length !== 2) {
-    await req.body?.cancel().catch(() => undefined);
     return bad(`${segments.join("/")} is not a file of the repository layout`);
   }
   const [version, file] = rest as [string, string];
   if (/-SNAPSHOT$/i.test(version)) {
-    await req.body?.cancel().catch(() => undefined);
     return bad(
       `${version} is a Maven snapshot; a package version is immutable, so snapshots are never published to a feed.`,
       "maven-snapshot",
@@ -205,7 +200,6 @@ async function handle({
           tail,
         );
   if (!m) {
-    await req.body?.cancel().catch(() => undefined);
     return bad(
       `${file} is not a file of ${stem} (a Maven file is named <artifactId>-<version>[-<classifier>].<extension>)`,
       "maven-file-name",

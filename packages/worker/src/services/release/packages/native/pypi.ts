@@ -98,7 +98,6 @@ export const PYPI_UPLOAD_ROUTE: RegistryRoute = publishRoute({
     await touchSessions(ctx.db, owner, "pypi", principal);
     const boundary = multipartBoundary(req.headers.get("content-type"));
     if (boundary === null) {
-      await req.body?.cancel().catch(() => undefined);
       return bad("the upload is multipart/form-data (twine upload)");
     }
     const body = await readCappedBody(req);

@@ -25,7 +25,6 @@ export async function readCappedBody(
   const lengthHeader = req.headers.get("content-length");
   const declared = lengthHeader === null ? NaN : Number(lengthHeader);
   if (Number.isFinite(declared) && declared > max) {
-    await req.body?.cancel().catch(() => undefined);
     return { ok: false, reason: "too-large" };
   }
   const body = req.body;

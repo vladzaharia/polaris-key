@@ -42,7 +42,10 @@ export const NPM_ADAPTER: FeedAdapter<"npm"> = defineFeedAdapter({
     ["/npm/{owner}/{escapedName}/-/{tarball}", ["get", "head"], "npm.tarball"],
     ["/npm/{owner}/{scope}/{name}/-/{tarball}", ["get", "head"], "npm.tarball"],
   ],
-  harness: { clients: ["npm", "pnpm", "yarn", "bun"] },
+  harness: {
+    // F-22: npm-publish publishes natively (Release's route), then installs back.
+    clients: ["npm", "pnpm", "yarn", "bun", "npm-publish"],
+  },
 });
 
 /** The materialiser's view of the adapter. */

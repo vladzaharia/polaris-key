@@ -6,7 +6,8 @@ name: Registry clients
 # packages/worker/scripts/registry-clients/run.mjs. F-02 ships the smoke client (curl), which pins
 # the host's isolation contract over real HTTP; F-04 to F-09 add their ecosystem's clients as
 # matrix rows (npm, pnpm, Yarn, Bun; pip, uv, Poetry; SwiftPM on macOS; Gradle and Maven; docker,
-# podman and crane; GodotEnv). `workflow_dispatch -f ecosystem=<name>` runs one ecosystem's rows.
+# podman and crane; GodotEnv). F-22 adds the native publish clients (npm publish, twine, SwiftPM's
+# publish request, mvn deploy, Gradle maven-publish), each publishing then installing back. `workflow_dispatch -f ecosystem=<name>` runs one ecosystem's rows.
 #
 # F-21 (plans/F-20.md §9): every job runs its client twice, against public feeds and then against
 # authenticated ones (`--auth`: the owner's feeds switched to `authenticated`, registry tokens
@@ -26,6 +27,8 @@ on:
       - "packages/worker/scripts/registry-clients/**"
       - "packages/worker/wrangler.toml"
       - "packages/cli/src/package/**"
+      - "packages/worker/src/services/release/packages/**"
+      - "packages/worker/src/core/registryPublish.ts"
       - ".github/workflows/registry-clients.yml"
   workflow_dispatch:
     inputs:
@@ -139,6 +142,27 @@ jobs:
           # editor API shapes; the manual editor installs are recorded on the PR.
           - client: godot
             ecosystem: godot
+            os: ubuntu-latest
+          # F-22: native-client publish. Each publishes with the client's own tool and the
+          # harness's publish token (run.mjs `seedPublish`), then installs what it published.
+          - client: npm-publish
+            name: npm publish
+            ecosystem: npm
+            os: ubuntu-latest
+          - client: twine
+            ecosystem: pypi
+            os: ubuntu-latest
+          - client: swift-publish
+            name: swift package-registry publish
+            ecosystem: swift
+            os: macos-latest
+          - client: maven-publish
+            name: mvn deploy
+            ecosystem: maven
+            os: ubuntu-latest
+          - client: gradle-publish
+            name: Gradle maven-publish
+            ecosystem: maven
             os: ubuntu-latest
     # A dispatch with `ecosystem` set runs only that ecosystem's rows; the others pass, empty. (A
     # job-level `if:` cannot read `matrix`, so the filter is a step condition.)

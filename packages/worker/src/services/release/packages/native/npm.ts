@@ -97,7 +97,6 @@ export const NPM_PUBLISH_ROUTE: RegistryRoute = publishRoute({
       name,
     );
     if (!declared) {
-      await req.body?.cancel().catch(() => undefined);
       return refusalResponse("npm", undeclared("npm", name));
     }
     const body = await readCappedBody(req);
