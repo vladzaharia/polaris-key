@@ -14,7 +14,7 @@
 // A device report carries at most `MAX_REPORT_UPDATE_EVENTS` of them as `updates`; a report the
 // Worker accepted drops the ones it carried (by `eventId`; the Worker counts a resent event once).
 // The journal is bounded (`MAX_JOURNAL_EVENTS`, oldest dropped) and persisted through the store
-// (`Store.readJournal`/`writeJournal`), so events survive a crash before the next report.
+// (`Store.readRecord`/`writeRecord`, `update-events`), so events survive a crash before the next report.
 
 import Foundation
 
@@ -57,6 +57,8 @@ public struct UpdateEventEntry: Sendable, Equatable, Codable {
 
 /// The journal: in memory, persisted through the store after every change.
 public final class UpdateJournal: Sendable {
+    /// The store record the journal persists as.
+    public static let recordName = "update-events"
     private let store: any Store
     private let events = LockedValue<[UpdateEventEntry]?>(nil)
     /// The outlet id events (and reports) carry: the update client sets it once it resolved the
@@ -70,7 +72,7 @@ public final class UpdateJournal: Sendable {
     private func loaded() async -> [UpdateEventEntry] {
         if let current = events.current { return current }
         let persisted =
-            (await store.readJournal()).flatMap {
+            (await store.readRecord(UpdateJournal.recordName)).flatMap {
                 try? JSONDecoder().decode([UpdateEventEntry].self, from: $0)
             } ?? []
         return events.with { value in
@@ -81,8 +83,8 @@ public final class UpdateJournal: Sendable {
 
     private func persist() async {
         let snapshot = events.current ?? []
-        await store.writeJournal(
-            snapshot.isEmpty ? nil : try? JSONEncoder().encode(snapshot))
+        await store.writeRecord(
+            UpdateJournal.recordName, snapshot.isEmpty ? nil : try? JSONEncoder().encode(snapshot))
     }
 
     /// Queue one event. `event` is an `UpdateEvent` constant; `release` the build or pack release

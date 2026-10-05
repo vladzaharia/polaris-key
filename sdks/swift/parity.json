@@ -149,9 +149,8 @@
       "note": "Sparkle on macOS."
     },
     "update.bootguard": {
-      "status": "planned",
-      "unowned": true,
-      "note": "P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02."
+      "status": "implemented",
+      "note": "PolarisKeyCore AppBootGuard (client.bootGuard, client.markBootAttempt/confirmBoot with PolarisKeyUpdate): bootGuardAction over a launch counter kept beside the credential (Store record boot-guard); an Apple app has no previous build to roll back to, so after MAX_FAILED_BOOTS it journals P6-03 boot_rolled_back (code no-previous) once and answers rollBackUnavailable; the first confirmed launch of a new build journals update_confirmed. client.boot() marks the attempt and confirms BOOT_OK_SECONDS after ready."
     },
     "outlet.detect": {
       "status": "implemented",
@@ -268,7 +267,8 @@
       "reason": "runtime"
     },
     "ui.stages": {
-      "status": "implemented"
+      "status": "implemented",
+      "note": "bootTransition and the stage-matrix replay (StageMatrixTests); client.boot() drives it end to end (discover, guard, sync, keyless reacquire under an open policy, gate, decide and fetch hooks installed by PolarisKeyUpdate, mount)."
     },
     "ui.kit": {
       "status": "planned",

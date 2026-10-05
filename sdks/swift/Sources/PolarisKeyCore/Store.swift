@@ -239,17 +239,18 @@ public protocol Store: Sendable {
     /// Where the token lives now, and why if that is weaker than this platform's best option.
     /// Optional: the default is `nil` ("this store does not report"). Never throws.
     func status() async -> StoreStatus?
-    /// The persisted update-health journal (P6-03 events not yet reported), or nil. Optional:
-    /// the default keeps no journal across launches (events still ride this process's reports).
-    func readJournal() async -> Data?
-    /// Replace the journal; nil deletes it. Best-effort, never throws.
-    func writeJournal(_ data: Data?) async
+    /// A small persisted SDK record beside the credential (`update-events`: the P6-03 journal;
+    /// `boot-guard`: the launch counter), or nil. Optional: the default keeps nothing across
+    /// launches (the SDK then holds it for the process only).
+    func readRecord(_ name: String) async -> Data?
+    /// Replace a record; nil deletes it. Best-effort, never throws.
+    func writeRecord(_ name: String, _ data: Data?) async
 }
 
 extension Store {
     public func status() async -> StoreStatus? { nil }
-    public func readJournal() async -> Data? { nil }
-    public func writeJournal(_ data: Data?) async {}
+    public func readRecord(_ name: String) async -> Data? { nil }
+    public func writeRecord(_ name: String, _ data: Data?) async {}
 }
 
 // ── In-memory (tests) ────────────────────────────────────────────────────────────
@@ -258,7 +259,7 @@ extension Store {
 public actor InMemoryStore: Store {
     private var token: String?
     private var cache: CacheRecord?
-    private var journal: Data?
+    private var records: [String: Data] = [:]
     private let deviceId: String
 
     public init(productSlug: String = "test", deviceId: String? = nil) {
@@ -273,8 +274,8 @@ public actor InMemoryStore: Store {
     public func writeCache(_ record: CacheRecord) async { cache = record }
     public func clearCache() async { cache = nil }
     public func status() async -> StoreStatus? { StoreStatus(backend: .memory) }
-    public func readJournal() async -> Data? { journal }
-    public func writeJournal(_ data: Data?) async { journal = data }
+    public func readRecord(_ name: String) async -> Data? { records[name] }
+    public func writeRecord(_ name: String, _ data: Data?) async { records[name] = data }
 }
 
 // ── Keychain + 0600 file (production) ──────────────────────────────────────────────
@@ -337,7 +338,7 @@ public actor KeychainStore: Store {
     private let account = "token"
     private let dir: URL
     private let cacheURL: URL
-    private let journalURL: URL
+    private let recordsDir: URL
     private let deviceURL: URL
     private let keychain: any KeychainAPI
 
@@ -354,7 +355,7 @@ public actor KeychainStore: Store {
         let base = configDir ?? ProductDirs.defaultConfigBase()
         self.dir = base.appendingPathComponent(productSlug, isDirectory: true)
         self.cacheURL = dir.appendingPathComponent("managed.json")
-        self.journalURL = dir.appendingPathComponent("update-events.json")
+        self.recordsDir = dir
         self.deviceURL = dir.appendingPathComponent("device")
         try? FileManager.default.createDirectory(
             at: dir, withIntermediateDirectories: true,
@@ -548,15 +549,24 @@ public actor KeychainStore: Store {
     }
 
     // ── Offline cache (0600 file) ──
-    public func readJournal() async -> Data? {
-        (try? readSecure(journalURL)) ?? nil
+    private func recordURL(_ name: String) -> URL? {
+        // Only the SDK's own names: letters, digits and `-`, so a name can never leave the dir.
+        guard !name.isEmpty, name.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-") })
+        else { return nil }
+        return recordsDir.appendingPathComponent("\(name).json")
     }
 
-    public func writeJournal(_ data: Data?) async {
+    public func readRecord(_ name: String) async -> Data? {
+        guard let url = recordURL(name) else { return nil }
+        return (try? readSecure(url)) ?? nil
+    }
+
+    public func writeRecord(_ name: String, _ data: Data?) async {
+        guard let url = recordURL(name) else { return }
         if let data {
-            try? writeSecure(data, to: journalURL)
+            try? writeSecure(data, to: url)
         } else {
-            try? FileManager.default.removeItem(at: journalURL)
+            try? FileManager.default.removeItem(at: url)
         }
     }
 
