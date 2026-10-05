@@ -37,7 +37,7 @@ import {
   qrCapacity,
   qrRows,
   qrSvg,
-} from "../src/services/distribution/page/qr.js";
+} from "../src/core/qr.js";
 import { detectPlatform } from "../src/services/distribution/page/detect.js";
 import {
   esc,

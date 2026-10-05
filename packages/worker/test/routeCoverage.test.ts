@@ -85,6 +85,11 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // PX-W10 (G24, G25): Discover's offers and "Add to library".
     ["/api/discover", ["get"]],
     ["/api/discover/{product}/claim", ["post"]],
+    // PX-W14 (G29): sign in with another device.
+    ["/api/device-login/start", ["post"]],
+    ["/api/device-login/lookup", ["post"]],
+    ["/api/device-login/approve", ["post"]],
+    ["/api/device-login/{requestId}", ["get"]],
   ],
 };
 
@@ -482,6 +487,7 @@ function concrete(template: string): string {
     pack: "acme.core",
     variant: "default",
     store: "snap",
+    requestId: `dl_${"A".repeat(43)}`,
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];
