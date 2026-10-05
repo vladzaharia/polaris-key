@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from ..core.context import DocumentResult
 from ..core.errors import PolarisError
+from ..core.manage import read_manage_url
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from ..core.context import CoreContext
@@ -52,9 +53,15 @@ class ActivationOk:
 
 @dataclass(frozen=True)
 class ActivationDeviceLimit:
+    """Every seat is taken. ``manage_url`` (PX-W8) is the customer-portal link that frees one,
+    present while the product's portal is on; add the app's return with
+    :func:`polaris_key.with_manage_return` and, on an ``/activate`` link, the key with
+    :func:`polaris_key.with_manage_key`. Never an auth failure."""
+
     limit: Optional[int] = None
     deviceCount: Optional[int] = None
     kind: str = "device-limit"
+    manage_url: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -162,6 +169,7 @@ def _activation_like(
         return ActivationDeviceLimit(
             limit=b.get("limit", nested.get("limit")),
             deviceCount=b.get("deviceCount", nested.get("deviceCount")),
+            manage_url=read_manage_url(b),
         )
     if res.status_code == 401:
         return ActivationUnauthorized()

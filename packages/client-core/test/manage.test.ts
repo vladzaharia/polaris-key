@@ -33,6 +33,7 @@ describe("readManageUrl", () => {
       undefined,
     ],
     ["relative", { manageUrl: "/activate?product=djdl" }, undefined],
+    ["whitespace", { manageUrl: "https://key.plrs.im/a b" }, undefined],
     ["a number", { manageUrl: 7 }, undefined],
     ["absent", { error: "device_limit", limit: 1, deviceCount: 1 }, undefined],
     ["not an object", "device_limit", undefined],

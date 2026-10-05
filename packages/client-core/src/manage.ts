@@ -14,6 +14,9 @@ const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 function parseManage(raw: string): URL | null {
   if (raw.length === 0 || raw.length > MANAGE_URL_MAX_LENGTH) return null;
+  // No whitespace or control characters: a link is shown and opened as served, never repaired.
+  // eslint-disable-next-line no-control-regex
+  if (/[\s\u0000-\u001f\u007f]/.test(raw)) return null;
   let url: URL;
   try {
     url = new URL(raw);

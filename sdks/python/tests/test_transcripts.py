@@ -32,6 +32,7 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature identity.devicecode config.mint
 # @pkey-feature update.feed release.record update.decide
 # @pkey-feature packs.apply.chunk
+# @pkey-feature license.manage
 
 from __future__ import annotations
 
@@ -147,10 +148,16 @@ def _act(
             for slice_, outcome in r.documents.items()
             if outcome.kind != "skipped"
         }
-    elif action == "activate":
-        out["result"] = client.license.activate_with_key(args["key"]).kind
-    elif action == "enroll":
-        out["result"] = client.license.enroll().kind
+    elif action in ("activate", "enroll"):
+        r = (
+            client.license.activate_with_key(args["key"])
+            if action == "activate"
+            else client.license.enroll()
+        )
+        out["result"] = r.kind
+        # PX-W8: the refusal link, exactly as served; None when the result carries none.
+        if r.kind == "device-limit":
+            out["manageUrl"] = r.manage_url
     elif action == "register":
         out["result"] = client.devices.register().kind
     elif action == "deactivate":
