@@ -84,6 +84,10 @@ The owner delegated open questions to the lead; the recommended option was taken
    desktop suites only, because the other JVM suites have never run on Windows and making them pass
    there is outside this scope. A final step fails unless the real-keyring contract ran, with one
    exception: on Linux it may be skipped with the recorded N/A.
+   Review round 2 correction: the test reads `PKEY_KEYRING_TESTS` at run time, so `:core`'s Test
+   tasks declare it as an input, and the `kotlin-desktop` gradle runs pass `--no-build-cache`. A
+   cached `:core:test` result recorded without the variable, which setup-java's Gradle cache could
+   restore, can no longer stand in for the real-keyring run.
 
 ## Acceptance criteria
 
