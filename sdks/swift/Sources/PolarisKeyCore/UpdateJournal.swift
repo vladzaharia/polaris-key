@@ -131,17 +131,27 @@ public final class UpdateJournal: Sendable {
     }
 }
 
-/// What Core's modules tell the facade (it fans them out as `client.changes` events).
+/// What Core's modules tell the facade (it fans them out as `client.events`).
 public enum CoreEvent: Sendable, Equatable {
     /// `update.decide` offered a newer build.
-    case updateAvailable(version: String)
-    /// A pack finished (`installed`) or failed (its error code).
-    case packs(packId: String, result: String)
+    case updateAvailable(version: String, action: String, mandatory: Bool, channel: String)
+    /// Pack install progress: the engine's `download`, `apply`, `done` and `state-issue`.
+    case packs(pack: String, phase: String, done: Int, total: Int)
     /// A local override of `key` changed (`config.set` / `clear`).
     case config(key: String)
 }
 
 extension UpdateDecision {
+    /// Whether the offer is mandatory (`binary`, `store`, `platform`); false otherwise.
+    public var mandatory: Bool {
+        switch self {
+        case .binary(_, _, _, let m, _, _, _, _), .store(_, _, let m, _, _, _),
+            .platform(_, let m, _, _, _):
+            return m
+        default: return false
+        }
+    }
+
     /// The release a decision offers (code-ready, binary, store, platform), or nil.
     public var offeredRelease: DecisionRelease? {
         switch self {

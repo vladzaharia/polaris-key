@@ -120,10 +120,14 @@ import PolarisKeyCore
         }
 
         private func observe() {
-            let stream = client.changes
+            let stream = client.events
             observation = Task { [weak self] in
                 for await event in stream {
-                    if case .license = event { await self?.reconfigure() }
+                    // The gate, or an entitlement (the entitled channels), moved.
+                    switch event {
+                    case .license, .entitlement: await self?.reconfigure()
+                    default: break
+                    }
                 }
             }
         }

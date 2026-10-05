@@ -452,7 +452,10 @@ extension UpdateClient {
         await core.journal.record(
             UpdateEvent.updateOffered, release: release.version, fromRelease: core.version,
             channel: check.channel)
-        core.emit(.updateAvailable(version: release.version))
+        core.emit(
+            .updateAvailable(
+                version: release.version, action: check.decision.action,
+                mandatory: check.decision.mandatory, channel: check.channel))
     }
 
     /// The verified feed `decide()` would decide from (§2.5 steps 1–10), without the record. It

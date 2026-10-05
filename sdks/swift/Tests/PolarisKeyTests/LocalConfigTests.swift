@@ -3,7 +3,7 @@
 // SP-S14: persisted local overrides (`config.set` / `clear`, notes/SDK-PARITY-PASS.md §3.11) and
 // the decoded catalog (`fetchCatalog()`). A kept value sits in the resolution's local layer, beats
 // a remote `default`, never an `enforced` or `hidden` entry, survives a new client over the same
-// store and raises `config(key:)` on `client.changes`.
+// store and raises a `config` event (key, value, previous, source) on `client.events`.
 
 import Foundation
 import PolarisKey
@@ -68,14 +68,15 @@ final class LocalConfigTests: XCTestCase {
     func testASetValueBeatsTheRemoteDefaultPersistsAndRaisesAChange() async throws {
         let local = MemoryLocalConfigStore()
         let c = try await client(store: local)
-        var events = c.changes.makeAsyncIterator()
+        var events = c.events.makeAsyncIterator()
         try await c.config.set("ui.theme", .string("light"))
         let theme = await c.config.string("ui.theme", default: "x")
         let source = await c.config.configSource("ui.theme")
         XCTAssertEqual(theme, "light")
         XCTAssertEqual(source, .local)
         let event = await events.next()
-        XCTAssertEqual(event, .config(key: "ui.theme"))
+        XCTAssertEqual(
+            event, .config(key: "ui.theme", value: .string("light"), previous: .string("dark"), source: .local))
         XCTAssertEqual(local.load(), ["ui.theme": .string("light")])
 
         // A new client over the same store reads the kept value back.

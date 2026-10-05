@@ -114,14 +114,15 @@ public final class DevicesClient: Sendable {
     private let attestClient: any AppAttestClient
     private let keyStore: any AttestKeyStore
     private let outletCheck: @Sendable () -> String?
-    private let events: PolarisEventHub?
+    /// The facade's "the licence may have moved" hook (it diffs and emits `client.events`).
+    private let onLicenseChanged: (@Sendable () async -> Void)?
 
     public init(
         core: CoreContext, license: LicenseClient, attest options: AttestOptions = AttestOptions(),
-        events: PolarisEventHub? = nil
+        onLicenseChanged: (@Sendable () async -> Void)? = nil
     ) {
         self.core = core
-        self.events = events
+        self.onLicenseChanged = onLicenseChanged
         self.license = license
         self.attestClient = options.client ?? DevicesClient.systemAttestClient()
         self.keyStore = options.keyStore ?? KeychainAttestKeyStore(product: core.product)
@@ -192,7 +193,7 @@ public final class DevicesClient: Sendable {
     public func deauthorize(_ deviceId: String) async throws {
         if deviceId == (await core.deviceId) {
             try await license.deactivate()
-            events?.emit(.license(await license.status()))
+            await onLicenseChanged?()
             return
         }
         try await core.deauthorizeDevice(deviceId)

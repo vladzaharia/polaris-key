@@ -201,7 +201,7 @@ public actor ConfigClient {
     // ── Persisted local overrides (SP-S14, notes/SDK-PARITY-PASS.md §3.11) ─────────────────
 
     /// Keep `value` as the user's own value for the `config` key `key`, persisted across launches,
-    /// and raise `config(key:)`. It beats the environment and a remote `default`, never an
+    /// and raise a `config` event on `client.events`. It beats the environment and a remote `default`, never an
     /// `enforced` or `hidden` entry.
     ///
     /// Throws `PolarisError` `invalid-options` when the key is locked by the signed document, or
@@ -309,6 +309,19 @@ public actor ConfigClient {
     /// each carrying its effective value and whether it is `enforced`.
     public func listUserConfig() async -> [UserConfigEntry] {
         ConfigResolution.listUserEntries(await context())
+    }
+
+    /// Every known key's effective value (document keys, `localOverrides` and `set` values), for
+    /// change detection: the facade diffs two snapshots into `client.events` `config` events.
+    public func snapshot() async -> [String: JSONValue] {
+        let ctx = await context()
+        var keys = Set(ctx.localOverrides.keys)
+        keys.formUnion((ctx.remote ?? [:]).keys)
+        var out: [String: JSONValue] = [:]
+        for k in keys {
+            if let v = ConfigResolution.resolveValue(ctx, k) { out[k] = v }
+        }
+        return out
     }
 
     /// A managed secret's value (string only), or nil. Secrets are never enumerated.

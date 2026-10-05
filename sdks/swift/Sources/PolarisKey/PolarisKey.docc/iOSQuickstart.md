@@ -35,7 +35,7 @@ struct MyApp: App {
 ```
 
 `.polarisKey(client)` puts the observable model in the environment and syncs when the scene
-becomes active. Subscribe to `client.changes` for licence, config, update and pack events.
+becomes active. Subscribe to `client.events` for licence, entitlement, config, update, pack and store events.
 
 ## Sell with StoreKit 2
 

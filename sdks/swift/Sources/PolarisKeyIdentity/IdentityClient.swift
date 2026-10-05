@@ -167,8 +167,10 @@ public final class IdentityClient: Sendable {
     public static let networkError = "network-error"
     public static let serverError = "server-error"
 
-    private let core: CoreContext
+    let core: CoreContext
     private let onAcquired: SignInAcquiredListener?
+    /// The facade's sign-out (`installSignOut`).
+    let signOutHook = LockedValue<(@Sendable () async throws -> Void)?>(nil)
     private let sleep: @Sendable (Double) async throws -> Void
 
     /// - Parameter sleep: how `waitForSignIn` waits between polls. Defaults to `Task.sleep`, which

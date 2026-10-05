@@ -266,7 +266,6 @@ public actor PacksClient {
                     fromRelease: before[i.packId].map { "\(i.packId)@\($0.version)" },
                     channel: core.channel, deliverable: i.packId,
                     packSetId: await engine.packSetId())
-                core.emit(.packs(packId: i.packId, result: "installed"))
             }
             return installed
         } catch let e as PackError {
@@ -274,7 +273,6 @@ public actor PacksClient {
             await core.journal.record(
                 UpdateEvent.packFailed, release: packId, channel: core.channel,
                 deliverable: packId, code: e.code)
-            core.emit(.packs(packId: packId, result: e.code))
             throw e
         }
     }
@@ -478,7 +476,11 @@ public actor PacksClient {
             feedMenu.with { if $0 == nil { $0 = .some(loaded) } }
         }
         let listeners = self.listeners
-        engine.on { e in for l in listeners.with({ Array($0.values) }) { l(e) } }
+        engine.on { e in
+            for l in listeners.with({ Array($0.values) }) { l(e) }
+            // The facade's `packs` event (notes/SDK-PARITY-PASS.md §3.11): the same progress.
+            core.emit(.packs(pack: e.packId, phase: e.phase, done: e.done, total: e.total))
+        }
         // A handler registered while the engine loads goes straight to it.
         building.with { $0 = engine }
         for h in pendingHandlers.with({ $0 }) { try? engine.registerHandler(h) }

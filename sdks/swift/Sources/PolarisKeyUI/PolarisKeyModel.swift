@@ -2,7 +2,7 @@
 //
 //   PolarisKeyModel        an `@Observable` snapshot of the client — gate state, licence info,
 //                          the signed profile, whether Identity runs — kept current by
-//                          observing `client.changes`, plus the actions every screen needs
+//                          observing `client.events`, plus the actions every screen needs
 //                          (refresh, activate, enrol, deactivate). One per client.
 //   .polarisKey(client)    puts the model in the environment, syncs when the scene becomes
 //                          active (at most once a minute), and wraps the content in the gate
@@ -54,16 +54,16 @@ public final class PolarisKeyModel {
         self.offersFreeTier = offersFreeTier
     }
 
-    /// Begin observing `client.changes` and take the first snapshot. Idempotent.
+    /// Begin observing `client.events` and take the first snapshot. Idempotent.
     public func start() {
         guard observation == nil else { return }
-        let stream = client.changes
+        let stream = client.events
         observation = Task { [weak self] in
             await self?.reload()
             for await event in stream {
                 guard let self else { return }
                 switch event {
-                case .updateAvailable(let version): self.availableUpdate = version
+                case .updateAvailable(let version, _, _, _): self.availableUpdate = version
                 default: await self.reload()
                 }
             }

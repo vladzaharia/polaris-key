@@ -300,7 +300,7 @@ public actor CoreContext {
     public nonisolated let journal: UpdateJournal
     private nonisolated let eventSink = LockedValue<(@Sendable (CoreEvent) -> Void)?>(nil)
 
-    /// Where module events go (the facade's `client.changes`).
+    /// Where module events go (the facade's `client.events`).
     public nonisolated func setEventSink(_ sink: (@Sendable (CoreEvent) -> Void)?) {
         eventSink.set(sink)
     }

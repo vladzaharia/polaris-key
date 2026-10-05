@@ -38,7 +38,7 @@ public final class PolarisGateModel: ObservableObject {
     private let client: LicenseClient
     private let syncAction: @Sendable () async -> Void
     /// The facade, when built with `init(client:)`: the gate then offers the built-in device-code
-    /// sign-in, and the model follows `client.changes`.
+    /// sign-in, and the model follows `client.events`.
     public private(set) var facade: PolarisKeyClient?
     /// Whether the product runs Identity (known only with `init(client:)`).
     @Published public private(set) var identityEnabled = false
@@ -57,11 +57,11 @@ public final class PolarisGateModel: ObservableObject {
     }
 
     /// The convenience init: the gate over `client`, syncing through `client.sync()` and
-    /// re-snapshotting whenever `client.changes` reports a change.
+    /// re-snapshotting whenever `client.events` reports a change.
     public convenience init(client: PolarisKeyClient) {
         self.init(license: client.license, sync: { _ = await client.sync() })
         self.facade = client
-        let stream = client.changes
+        let stream = client.events
         observation = Task { [weak self] in
             await self?.reload()
             for await _ in stream { await self?.reload() }

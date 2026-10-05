@@ -165,7 +165,7 @@ let package = Package(
         .target(
             name: "PolarisKeyUI",
             // The umbrella (never Sparkle) for `.polarisKey(client)` and the models that observe
-            // `client.changes`; Packs (no Sparkle) for the pack-progress view's events.
+            // `client.events`; Packs (no Sparkle) for the pack-progress view's events.
             dependencies: [
                 "PolarisKey", "PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyConfig",
                 "PolarisKeyIdentity", "PolarisKeyRelease", "PolarisKeyPacks", "PolarisKeyPlatform",

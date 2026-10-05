@@ -32,8 +32,14 @@ Node, Python, React, Kotlin and Godot SDKs pins this one.
 
 ### Change events
 
+- `PolarisKeyClient.events`
 - `PolarisKeyEvent`
 - `PolarisEventHub`
+
+### Sign-in
+
+- `CurrentIdentity`
+- `SignInBrowser`
 
 ### Devices and commerce
 

@@ -179,8 +179,10 @@ public actor PolarisKeyClient {
     /// Per-module state the other targets attach (`client.update` in PolarisKeyUpdate), keyed by
     /// the attaching type. Internal plumbing for the SDK's own modules.
     public nonisolated let attachments = LockedValue<[ObjectIdentifier: any Sendable]>([:])
-    /// The fan-out behind `changes`.
-    public nonisolated let events: PolarisEventHub
+    /// The fan-out behind `events`.
+    public nonisolated let eventHub: PolarisEventHub
+    /// Diffs observations into `license`, `entitlement` and `config` events.
+    nonisolated let publisher: ChangePublisher
     var foregroundObserver: ForegroundObserver?
     var lastForegroundSync: Double?
 
@@ -198,20 +200,36 @@ public actor PolarisKeyClient {
         let core = try CoreContext(options: options.core)
         self.core = core
         let hub = PolarisEventHub()
-        self.events = hub
-        core.setEventSink { event in
-            switch event {
-            case .updateAvailable(let version): hub.emit(.updateAvailable(version: version))
-            case .packs(let packId, let result): hub.emit(.packs(packId: packId, result: result))
-            case .config(let key): hub.emit(.config(key: key))
-            }
-        }
+        self.eventHub = hub
         // An edge-mint 401 gets the same single re-acquire a document fetch does, through the
         // same closure, so a registered-without-licence device re-registers there too (§5).
-        self.config = ConfigClient(
+        let config = ConfigClient(
             core: core, options: options.config,
             reacquire: PolarisKeyClient.reacquire(
                 core: core, fingerprintEnabled: options.license.fingerprint))
+        self.config = config
+        // The licence client is built below (its acquisition hook needs the publisher), so the
+        // observation reads it through a box filled before init returns.
+        let licenseBox = LockedValue<LicenseClient?>(nil)
+        let publisher = ChangePublisher(
+            hub: hub,
+            observe: {
+                await PolarisKeyClient.observe(core: core, license: licenseBox.current, config: config)
+            },
+            source: { await config.configSource($0) })
+        self.publisher = publisher
+        core.setEventSink { event in
+            switch event {
+            case .updateAvailable(let version, let action, let mandatory, let channel):
+                hub.emit(
+                    .updateAvailable(
+                        version: version, action: action, mandatory: mandatory, channel: channel))
+            case .packs(let pack, let phase, let done, let total):
+                hub.emit(.packs(pack: pack, phase: phase, done: done, total: total))
+            case .config:
+                Task { await publisher.publish() }
+            }
+        }
         // A completed device-code sign-in raises the same acquisition event activation does: a
         // signed-in device holds a licensed token exactly as an activated one does.
         // One engine for supports(), caps() and every report's `caps`.
@@ -219,7 +237,7 @@ public actor PolarisKeyClient {
         self.identity = IdentityClient(core: core) {
             await PolarisKeyClient.syncAfterAcquisition(
                 core: core, probes: options.probes, engine: engine,
-                fingerprintEnabled: options.license.fingerprint, events: hub)
+                fingerprintEnabled: options.license.fingerprint, publisher: publisher)
         }
         self.release = ReleaseClient(core: core)
         self.distribution = DistributionClient(core: core)
@@ -229,7 +247,7 @@ public actor PolarisKeyClient {
         ) {
             await PolarisKeyClient.syncAfterAcquisition(
                 core: core, probes: options.probes, engine: engine,
-                fingerprintEnabled: options.license.fingerprint, events: hub)
+                fingerprintEnabled: options.license.fingerprint, publisher: publisher)
         }
         self.probes = options.probes
         self.capabilityEngine = engine
@@ -244,16 +262,49 @@ public actor PolarisKeyClient {
             // actor; the hop back in is what makes `sync()` the facade's decision.
             await PolarisKeyClient.syncAfterAcquisition(
                 core: core, probes: options.probes, engine: engine,
-                fingerprintEnabled: options.license.fingerprint, events: hub)
+                fingerprintEnabled: options.license.fingerprint, publisher: publisher)
         }
+        let license = self.license
+        licenseBox.set(license)
         let devices = DevicesClient(
-            core: core, license: license, attest: options.attest, events: hub)
+            core: core, license: license, attest: options.attest,
+            onLicenseChanged: { await publisher.publish() })
         self.devices = devices
         // §3.10: where attestation can run, an `attestation_required` refusal attests once and
         // retries once. Elsewhere the caller gets the typed refusal.
         if devices.attestSupport().isSupported {
             core.setAttestor { await devices.attest().isAttested }
         }
+        // `identity.signOut()` is the facade's `deactivate()`: seat release, wipe, `license`.
+        identity.installSignOut {
+            try await PolarisKeyClient.deactivate(license: license, publisher: publisher)
+        }
+    }
+
+    /// What the change events are diffed from: the gate status, every entitlement read through
+    /// the gate (nil while it is not usable), every setting's effective value, the last store
+    /// failure.
+    static func observe(
+        core: CoreContext, license: LicenseClient?, config: ConfigClient
+    ) async -> ChangeObservation {
+        let status = await license?.status().status ?? .notApplicable
+        var entitlements: [String: JSONValue] = [:]
+        if let license, isUsable(status) {
+            entitlements = await license.entitlements()
+        }
+        return ChangeObservation(
+            status: status, entitlements: entitlements, config: await config.snapshot(),
+            storeFailure: await core.lastStoreError)
+    }
+
+    static func deactivate(license: LicenseClient, publisher: ChangePublisher) async throws {
+        do {
+            try await license.deactivate()
+        } catch {
+            await publisher.publish()
+            throw error
+        }
+        await publisher.publish()
     }
 
     /// Construct + `start()` (load token/device/cache with NO network) in one step.
@@ -271,6 +322,10 @@ public actor PolarisKeyClient {
     /// Load device id + token + cached documents, re-verifying everything. NO NETWORK.
     public func start() async throws {
         try await core.start()
+        await publisher.baseline()
+        if let degraded = await core.storeStatus()?.degraded {
+            eventHub.emit(.store(reason: degraded.reason.rawValue, detail: degraded.detail))
+        }
         startRefreshLoop()
     }
 
@@ -327,23 +382,16 @@ public actor PolarisKeyClient {
         let afterConfig = await core.etag(.config)
         let changed = afterLicense != before || afterConfig != beforeConfig
         if result.applied, changed {
-            let state = await license.status()
-            if afterLicense != before || result.unauthorized || result.blocked {
-                events.emit(.license(state))
-            }
-            if afterConfig != beforeConfig { events.emit(.config(key: nil)) }
-            onChange?(state)
-        } else if result.unauthorized || result.blocked {
-            events.emit(.license(await license.status()))
+            onChange?(await license.status())
         }
-        if await core.lastStoreError != nil { events.emit(.store(code: ErrorCode.storeFailed)) }
+        await publisher.publish()
         return result
     }
 
     /// The post-activation sync, forced so a stale ETag cannot 304 away the very first document.
     private static func syncAfterAcquisition(
         core: CoreContext, probes: [ProbeDeclaration], engine: Capabilities,
-        fingerprintEnabled: Bool, events: PolarisEventHub
+        fingerprintEnabled: Bool, publisher: ChangePublisher
     ) async {
         _ = await core.sync(
             force: true,
@@ -352,9 +400,7 @@ public actor PolarisKeyClient {
                 _ = await PolarisKeyClient.report(core: core, probes: probes, engine: engine)
             })
         // A fresh credential changes the gate's inputs whatever the documents did.
-        let licenseOn = await core.enabled(.license)
-        events.emit(.license(await PolarisKeyClient.gateState(core, licenseOn: licenseOn)))
-        events.emit(.config(key: nil))
+        await publisher.publish()
     }
 
     /// The gate state straight from Core, for the static event paths that have no
@@ -514,8 +560,7 @@ public actor PolarisKeyClient {
     @discardableResult
     public func importBundle(_ jws: String, now: Int? = nil) async throws -> ImportBundleResult {
         let result = try await core.importBundle(jws, now: now)
-        events.emit(.license(await license.status()))
-        events.emit(.config(key: nil))
+        await publisher.publish()
         return result
     }
 
@@ -563,19 +608,14 @@ public actor PolarisKeyClient {
         let result = await core.registerDevice(
             fingerprint: PolarisKeyClient.registrationFingerprint(
                 product: product, enabled: fingerprintEnabled))
-        if case .ok = result { events.emit(.license(await license.status())) }
+        if case .ok = result { await publisher.publish() }
         return result
     }
 
-    /// Release this device's seat and wipe every local credential, then emit `license`.
+    /// Release this device's seat and wipe every local credential, then emit what changed
+    /// (`license`, and `entitlement` for every entitlement it held).
     public func deactivate() async throws {
-        do {
-            try await license.deactivate()
-        } catch {
-            events.emit(.license(await license.status()))
-            throw error
-        }
-        events.emit(.license(await license.status()))
+        try await PolarisKeyClient.deactivate(license: license, publisher: publisher)
     }
 
     public func currentDevice() async -> DeviceInfo {
