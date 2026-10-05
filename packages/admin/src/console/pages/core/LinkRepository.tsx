@@ -268,7 +268,7 @@ export function LinkRepositoryDrawer({
         }}
       >
         <DrawerBody className="space-y-5">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
             <FormField
               className="min-w-0 flex-1"
               name="repoUrl"
@@ -299,7 +299,8 @@ export function LinkRepositoryDrawer({
             <Button
               type="button"
               variant="outline"
-              className="sm:mb-6"
+              // Level with the input: the field's label sits above it.
+              className="sm:mt-6"
               loading={phase === "checking"}
               disabled={!repoUrl.trim() || linking}
               onClick={() => void check()}
@@ -317,8 +318,8 @@ export function LinkRepositoryDrawer({
               const detail =
                 state === "failed" && refusal
                   ? refusal.title
-                  : id === "repository" && checked
-                    ? checked.repository
+                  : id === "repository" && state === "done"
+                    ? (checked?.repository ?? repoUrl.trim())
                     : id === "slug"
                       ? `.pkey/product names ${slug}`
                       : id === "policy"
