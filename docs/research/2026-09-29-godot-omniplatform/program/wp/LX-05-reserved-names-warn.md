@@ -68,6 +68,12 @@ System keys share the product flag namespace with no rule (G13, [S-19 §4.3](../
   compatible form and is reported. `examples` is allowed as a presentation field alongside the
   fields §7.4 lists.
 
+- **Integration with ST-03 (2026-10-05).** ST-03 derives `PLATFORM_SETTINGS` from the settings
+  registry's platform slice, so the setting is now the registry entry **`licensing.reservedNames`**
+  (`core/settings/platform.ts`) with alias and row key `LICENSING_RESERVED_NAMES`, an ordered enum
+  `warn` < `error` (confirm up L1, down L0) that `fromRegistry` maps to the `choice` kind. ST-02's
+  inventory tags the var `@inventory var licensing` / `@editable LICENSING_RESERVED_NAMES`.
+
 ## Steps
 
 1. Rule and mutation entry.
