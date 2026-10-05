@@ -19,7 +19,9 @@
  * Release and the staged rollout stay with P5-03's controls on the Rollouts page and are not
  * steps here (their typed production `complete` is A-18e's proposed follow-up); in-app products
  * and prices have no binding yet, so their steps are absent (the owner's rule). "Push listing" is
- * text plus accepted images in one edit, staged or sent per the operator's choice.
+ * text plus accepted images in one edit, ALWAYS committed staged (`changesNotSentForReview`): a push
+ * is never a review submission (S-15 §8.2), whatever the request asks; sending for review is
+ * only the typed `submit` step.
  */
 
 import type { StorefrontOp } from "../../../core/storefront/adapter.js";
@@ -460,8 +462,9 @@ export const GOOGLE_PLAY_FLOW: FlowRuntime = {
 
   pushListing: {
     stageOnly: true,
-    run(c, { idempotencyKey: key, stageOnly }) {
-      return inEdit(c, key, { stageOnly }, async (s) => {
+    // `stageOnly` from the request is ignored on purpose: a push is never sent for review.
+    run(c, { idempotencyKey: key }) {
+      return inEdit(c, key, { stageOnly: true }, async (s) => {
         const text = await writeText(c, s, key);
         if (!Array.isArray(text)) return text;
         const images = await writeImages(c, s, key);

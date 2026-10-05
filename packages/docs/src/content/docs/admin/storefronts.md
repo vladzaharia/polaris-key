@@ -95,9 +95,9 @@ Every image slot of the listing, grouped by store, from what
 ## Listing push
 
 **Distribution → Listing → Push** sends a store its listing text and accepted images, outside the
-flow, with a plain confirmation. It never submits for review: Google Play can commit **Stage only**
-(the change waits until you send it), and the Microsoft Store keeps its pending submission
-uncommitted. A store appears there once its adapter can push a listing.
+flow, with a plain confirmation. It never submits for review: Google Play always stages the change
+(it waits until you send it with the flow's typed **Submit**), and the Microsoft Store keeps its
+pending submission uncommitted. A store appears there once its adapter can push a listing.
 
 ## The console API
 
@@ -110,7 +110,7 @@ the stored result), except the check and accept routes.
 | `GET`  | `storefronts`                           | every store: connection, app, capabilities, prerequisites and plan, and the listing's name and locales                          |
 | `POST` | `storefronts/<store>/steps/<op>`        | run a step through the store's runtime: `{input?, confirm?}`; submit, release and price are typed (`confirm` is the app's name) |
 | `POST` | `storefronts/<store>/steps/<op>/check`  | a link step: `{}` runs its check, `{assert: true}` records one only you can confirm                                             |
-| `POST` | `storefronts/<store>/push-listing`      | push the listing: `{stageOnly?}` where the store can stage                                                                      |
+| `POST` | `storefronts/<store>/push-listing`      | push the listing: `{}`; always staged where the store stages, never sent for review                                             |
 | `GET`  | `storefronts/slots`                     | the slot board                                                                                                                  |
 | `GET`  | `storefronts/slots/image?slot=&locale=` | an asset's preview (PNG, JPEG or WebP only)                                                                                     |
 | `POST` | `storefronts/slots/accept`              | `{slot, locale?, sha256}`: accept exactly those bytes; `409 asset_changed` when they changed since you looked                   |

@@ -202,7 +202,10 @@ export interface FlowRuntime {
   ): Promise<RunOutcome>;
   /** "Push listing" (S-15 §8.2): text and assets only, plain confirm, never a review submission. */
   pushListing?: {
-    /** The store can stage the push without sending it for review (Play's `changesNotSentForReview`). */
+    /**
+     * The store stages the push without sending it for review (Play's `changesNotSentForReview`).
+     * A staging store ALWAYS stages a push; the route refuses `stageOnly: false` for it.
+     */
     readonly stageOnly: boolean;
     run(
       c: FlowContext,

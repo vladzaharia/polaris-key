@@ -18,7 +18,6 @@ import type {
   StorefrontDto,
 } from "../../../api.js";
 import { Button } from "../../../ui/Button.js";
-import { Checkbox } from "../../../ui/Checkbox.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import { EmptyState } from "../../../ui/EmptyState.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
@@ -625,7 +624,6 @@ function PushDialog({
   store: StorefrontDto | null;
   onClose: () => void;
 }): React.ReactElement | null {
-  const [stageOnly, setStageOnly] = React.useState(true);
   const key = React.useMemo(() => (store ? newIdempotencyKey() : ""), [store]);
   if (!store) return null;
   const canStage = store.pushListing?.stageOnly === true;
@@ -637,9 +635,7 @@ function PushDialog({
       consequences={[
         `${store.label} receives every locale's listing text and the accepted images.`,
         canStage
-          ? stageOnly
-            ? "The change is staged: nothing is sent for review until you submit."
-            : `${store.label} sends the change for review when it is committed.`
+          ? "The change is staged: nothing is sent for review until you submit."
           : "The pending submission stays uncommitted: nothing goes to certification.",
         "No image is deleted: older ones stay until you remove them in the store's console.",
       ]}
@@ -648,24 +644,9 @@ function PushDialog({
         errorCopy(e, { area: "distribution", thing: "Listing push" })
       }
       onConfirm={async () => {
-        await mutate(
-          "pushListing",
-          slug,
-          store.id,
-          canStage ? { stageOnly } : {},
-          { idempotencyKey: key },
-        );
+        await mutate("pushListing", slug, store.id, {}, { idempotencyKey: key });
         toast.success(`Listing pushed to ${store.label}`);
       }}
-    >
-      {canStage ? (
-        <Checkbox
-          label="Stage only"
-          description="Commit without sending the change for review."
-          checked={stageOnly}
-          onCheckedChange={(v) => setStageOnly(v === true)}
-        />
-      ) : null}
-    </ConfirmDialog>
+    />
   );
 }

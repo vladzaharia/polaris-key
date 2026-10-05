@@ -22,7 +22,8 @@
  *                                                           an operator-asserted step done
  *     POST …/distribution/storefronts/<store>/push-listing  "Push listing" (`{stageOnly?}` +
  *                                                           `Idempotency-Key`), through the
- *                                                           store's runtime
+ *                                                           store's runtime; always staged
+ *                                                           where the store stages
  *
  * Most `api` steps do not come here: a binding names the reviewed route that performs them (A-17b
  * bundle ids, A-17c setup controls), and the console calls that route. These routes exist for what
@@ -376,8 +377,16 @@ async function pushListing(
     return err(422, ErrorCode.BadRequest, "stageOnly must be a boolean", {
       fields: ["stageOnly"],
     });
-  const stageOnly = body.stageOnly === true;
-  if (stageOnly && !runtime.pushListing.stageOnly)
+  // A push is never a review submission (S-15 §8.2): where the store stages, it always stages,
+  // and sending for review stays the typed `submit` step.
+  if (body.stageOnly === false && runtime.pushListing.stageOnly)
+    return err(
+      422,
+      ErrorCode.BadRequest,
+      `a listing push to ${adapter.label} is always staged: send it for review with the typed submit step`,
+      { fields: ["stageOnly"] },
+    );
+  if (body.stageOnly === true && !runtime.pushListing.stageOnly)
     return err(
       422,
       ErrorCode.BadRequest,
@@ -398,7 +407,7 @@ async function pushListing(
     );
   const r = await runtime.pushListing.run(c, {
     idempotencyKey: key,
-    stageOnly,
+    stageOnly: runtime.pushListing.stageOnly,
   });
   if (!r.ok) return refusal(r);
   return adminJson(r);

@@ -553,9 +553,12 @@ describe("Distribution → Listing", () => {
       await screen.findByRole("button", { name: "Push listing" }),
     );
     const dialog = await screen.findByRole("alertdialog");
+    // A push is never a review submission: no control can unstage it.
+    expect(within(dialog).queryByRole("checkbox")).toBeNull();
     expect(
-      within(dialog).getByRole("checkbox", { name: /Stage only/ }),
+      within(dialog).getByText(/nothing is sent for review until you submit/),
     ).toBeTruthy();
+    expect(within(dialog).queryByText(/sends the change for review/)).toBeNull();
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Push listing" }),
     );
@@ -563,7 +566,7 @@ describe("Distribution → Listing", () => {
       expect(writes(calls)).toEqual([
         expect.objectContaining({
           path: SF("/google-play/push-listing"),
-          body: { stageOnly: true },
+          body: {},
           idempotencyKey: expect.stringMatching(/^[A-Za-z0-9-]{8,128}$/),
         }),
       ]),

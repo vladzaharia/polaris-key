@@ -577,6 +577,21 @@ describe("Push listing", () => {
     );
     expect(bad.status).toBe(422);
   });
+
+  it("always stages a push where the store stages: stageOnly false is refused, absent stages", async () => {
+    const KEY2 = { "idempotency-key": "11111111-2222-3333-4444-777777777777" };
+    const unstaged = await admin(
+      "POST",
+      "/test-store/push-listing",
+      { stageOnly: false },
+      KEY2,
+    );
+    expect(unstaged.status).toBe(422);
+    expect(calls.pushes).toEqual([]);
+    const plain = await admin("POST", "/test-store/push-listing", {}, KEY2);
+    expect(plain.status).toBe(200);
+    expect(calls.pushes).toEqual([{ stageOnly: true }]);
+  });
 });
 
 describe("the App Store: the New-app wizard as the adapter's plan", () => {

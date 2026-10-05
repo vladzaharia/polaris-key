@@ -3711,7 +3711,7 @@ const rawApi = {
       `${p(slug)}/distribution/storefronts/${enc(store)}/steps/${enc(op)}/check`,
       { method: "POST", body: JSON.stringify(body ?? {}) },
     ),
-  /** "Push listing" (text and accepted images; plain confirm; `stageOnly` where the store has it). */
+  /** "Push listing" (text and accepted images; plain confirm; always staged where the store stages, never sent for review). */
   pushListing: (
     slug: string,
     store: string,
