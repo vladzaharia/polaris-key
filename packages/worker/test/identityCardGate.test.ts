@@ -11,6 +11,7 @@ import {
   EMAIL_GATE_LANDING,
   type ProviderSignIn,
 } from "../src/services/identity/card/gate.js";
+import { CODE_VERIFY_PER_IP_MINUTE } from "../src/services/identity/card/emailSignIn.js";
 import {
   ACCOUNT_SESSION_COOKIE,
   EMAIL_GATE_COOKIE,
@@ -208,6 +209,24 @@ describe("the verified-email rule (owner, 2026-10-04)", () => {
         )
       )?.primary_email,
     ).toBe("ada@work.example");
+  });
+
+  it("the code check shares the email card's per-IP verify limit", async () => {
+    const w = await seededWorld();
+    const d = new Device(w);
+    await arrive(w, d, google("g-1", "ada@gmail.com"));
+    await d.send("POST", GATE, { choice: "typed", email: "ada@work.example" });
+    const wrongCode =
+      "000000" === lastCode(w, "ada@work.example") ? "111111" : "000000";
+    for (let i = 0; i < CODE_VERIFY_PER_IP_MINUTE; i++) {
+      const res = await d.send("POST", `${GATE}/verify`, { code: wrongCode });
+      expect(res.status).toBe(400);
+    }
+    const limited = await d.send("POST", `${GATE}/verify`, {
+      code: lastCode(w, "ada@work.example"),
+    });
+    expect(limited.status).toBe(429);
+    expect(await limited.json()).toEqual({ error: "rate_limited" });
   });
 
   it("an unverified provider email requires a code", async () => {

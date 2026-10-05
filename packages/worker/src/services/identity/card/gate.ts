@@ -96,7 +96,12 @@ import {
 } from "../accounts/repo.js";
 import { isFresh, linkIdentity } from "../accounts/links.js";
 import { mergeAccounts } from "../accounts/merge.js";
-import { emailUnavailable, PORTAL_EMAIL_SCOPE } from "./emailSignIn.js";
+import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
+import {
+  CODE_VERIFY_PER_IP_MINUTE,
+  emailUnavailable,
+  PORTAL_EMAIL_SCOPE,
+} from "./emailSignIn.js";
 import { finishSignIn } from "./finish.js";
 import {
   cardJson,
@@ -604,6 +609,20 @@ async function gateVerify(
   if (gate.stage !== "code_sent" || !gate.pendingEmail) {
     return cardJson({ error: "bad_request", message: "no code was sent" }, 400);
   }
+  // Same per-IP bucket as the email card's verify: defence in depth on top of I-02's
+  // per-code and per-recipient attempt limits.
+  const allowed = await rateLimitOk(
+    env,
+    PORTAL_EMAIL_SCOPE,
+    {
+      bucket: "portalCodeVerify",
+      id: clientIp(req),
+      limit: CODE_VERIFY_PER_IP_MINUTE,
+      windowSec: 60,
+    },
+    now,
+  );
+  if (!allowed) return cardJson({ error: "rate_limited" }, 429);
   const body = await readJsonObject(req);
   const code = typeof body?.code === "string" ? body.code : "";
   const result = await verifyEmailCode(env, {

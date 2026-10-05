@@ -10319,6 +10319,7 @@ paths:
         "200": { $ref: "#/components/responses/CardSignedIn" }
         "400": { $ref: "#/components/responses/CardError" }
         "409": { $ref: "#/components/responses/CardJoinOffer" }
+        "429": { $ref: "#/components/responses/CardError" }
   /api/signin/confirm-email/join:
     post:
       operationId: joinCardEmailGate
