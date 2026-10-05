@@ -29,6 +29,7 @@ import { SourceBadge } from "../../../ui/SourceBadge.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { EntityLink } from "../../components/EntityLink.js";
+import { RevertClaimDialog } from "../../components/RevertClaimDialog.js";
 import { PageHeader } from "../../components/PageHeader.js";
 import { useProduct } from "../../data/hooks.js";
 import {
@@ -67,6 +68,9 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
   const catalog = useCatalog(slug);
   const { data: product } = useProduct(slug);
   const source = catalogSource(product);
+  // ST-01b: a claimed catalog on a repo-linked product can be handed back to `.pkey/schema`.
+  const revertable = source === "admin" && product?.releaseSource === "github";
+  const [reverting, setReverting] = React.useState(false);
   const [state, setState] = useTableUrlState("catalog", {
     facets: ["kind", "category", "state"],
   });
@@ -230,7 +234,18 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
             <span className="text-sm text-fg-muted">
               {entries.length} {entries.length === 1 ? "key" : "keys"}
             </span>
-            <SourceBadge source={source} path={CATALOG_PATH} />
+            <SourceBadge
+              source={source}
+              path={CATALOG_PATH}
+              onRevert={revertable ? () => setReverting(true) : undefined}
+            />
+            {reverting ? (
+              <RevertClaimDialog
+                slug={slug}
+                claim="config.catalog"
+                onOpenChange={setReverting}
+              />
+            ) : null}
           </span>
         ) : null
       }

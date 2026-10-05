@@ -42,6 +42,7 @@ export type WriteMethod =
   | "updateProduct"
   | "deleteProduct"
   | "resyncProduct"
+  | "revertClaim"
   | "updateReleaseChannel"
   | "revertReleaseChannel"
   | "setChannelFloor"
@@ -241,6 +242,16 @@ export const MUTATIONS: MutationTable = {
     // A resync re-applies channels, catalog, services, tiers, profiles, update settings and
     // delivery access: everything under the product.
     invalidates: (slug) => [exact(qk.products()), prefix(qk.product(slug))],
+  },
+  revertClaim: {
+    label: "revert a claimed setting to the manifest",
+    // The product row carries the claims and the reverted value; the catalog revert publishes a
+    // new active version, so everything under the product.
+    invalidates: (slug) => [
+      exact(qk.me()),
+      exact(qk.products()),
+      prefix(qk.product(slug)),
+    ],
   },
   updateReleaseChannel: {
     label: "channel policy (promote, pin, unpin, minimum, critical)",

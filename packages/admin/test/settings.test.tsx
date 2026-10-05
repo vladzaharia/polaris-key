@@ -9,6 +9,7 @@ const fns = vi.hoisted(() => ({
   updateProduct: vi.fn(),
   deleteProduct: vi.fn(),
   resyncProduct: vi.fn(),
+  revertClaim: vi.fn(),
   blobGc: vi.fn(),
 }));
 
@@ -77,6 +78,10 @@ describe("Core → Settings", () => {
   it("saves only what changed, sending a cleared admin group as null (A-3, PRD-6)", async () => {
     const user = userEvent.setup();
     fns.updateProduct.mockResolvedValue({ ok: true, slug: "djdl" });
+    // A manual product: on a repo-linked one the admin group is manifest-only (ST-01b).
+    fns.product.mockResolvedValue({
+      product: product({ releaseSource: "manual" }),
+    });
     mount();
     const group = await screen.findByLabelText("Admin group");
     await user.clear(group);
@@ -161,6 +166,149 @@ describe("Core → Settings", () => {
     ).toBeTruthy();
     expect(screen.getByText(/kept the previous keys/)).toBeTruthy();
     expect(screen.getByText("Pack sets resolved: 2.")).toBeTruthy();
+  });
+
+  it("shows the admin group read-only on a repo-linked product (manifest-only, ST-01b)", async () => {
+    mount();
+    expect(await screen.findByText("djdl-admins")).toBeTruthy();
+    expect(screen.queryByLabelText("Admin group")).toBeNull();
+    expect(
+      screen.getByText(/Set by adminGroup in .pkey\/product/),
+    ).toBeTruthy();
+  });
+
+  it("asks before a save claims a manifest-owned value, and sends nothing on cancel (ST-01b)", async () => {
+    const user = userEvent.setup();
+    fns.updateProduct.mockResolvedValue({ ok: true, slug: "djdl" });
+    mount();
+    const name = await screen.findByLabelText(/Display name/);
+    await user.clear(name);
+    await user.type(name, "DJDL Pro");
+    await user.click(screen.getByRole("button", { name: "Save settings" }));
+    let dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText(/Saving sets Display name here/),
+    ).toBeTruthy();
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(fns.updateProduct).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Save settings" }));
+    dialog = await screen.findByRole("alertdialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Save and claim" }),
+    );
+    await waitFor(() =>
+      expect(fns.updateProduct).toHaveBeenCalledWith("djdl", {
+        name: "DJDL Pro",
+      }),
+    );
+  });
+
+  it("saves an already-claimed value without asking again", async () => {
+    const user = userEvent.setup();
+    fns.updateProduct.mockResolvedValue({ ok: true, slug: "djdl" });
+    fns.product.mockResolvedValue({
+      product: product({
+        claims: [
+          {
+            key: "license.defaults.deviceLimit",
+            claimedBy: "u1",
+            claimedAt: 1_700_000_050,
+            version: 1,
+          },
+        ],
+      }),
+    });
+    mount();
+    const limit = await screen.findByLabelText(/Default device limit/);
+    await user.clear(limit);
+    await user.type(limit, "8");
+    await user.click(screen.getByRole("button", { name: "Save settings" }));
+    await waitFor(() =>
+      expect(fns.updateProduct).toHaveBeenCalledWith("djdl", {
+        defaultDeviceLimit: 8,
+      }),
+    );
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("reverts a claimed value to the manifest after an L1 confirm (ST-01b)", async () => {
+    const user = userEvent.setup();
+    fns.revertClaim.mockResolvedValue({
+      ok: true,
+      key: "core.name",
+      applied: false,
+      message: "applies at the next resync",
+    });
+    fns.product.mockResolvedValue({
+      product: product({
+        claims: [
+          {
+            key: "core.name",
+            claimedBy: "u1",
+            claimedAt: 1_700_000_050,
+            version: 1,
+          },
+        ],
+      }),
+    });
+    mount();
+    await user.click(
+      await screen.findByRole("button", { name: /Set in console/ }),
+    );
+    await user.click(await screen.findByRole("button", { name: "Revert…" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText("Return display name to the manifest?"),
+    ).toBeTruthy();
+    await user.click(
+      within(dialog).getByRole("button", { name: "Revert to manifest" }),
+    );
+    await waitFor(() =>
+      expect(fns.revertClaim).toHaveBeenCalledWith("djdl", "core.name"),
+    );
+    expect(
+      await screen.findByText(
+        "Display name returns to the manifest at the next resync",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("keeps the system product's settings read-only (manifest-authoritative)", async () => {
+    fns.product.mockResolvedValue({
+      product: product({ system: true }),
+    });
+    mount();
+    const limit = await screen.findByLabelText(/Default device limit/);
+    expect(
+      limit.hasAttribute("disabled") ||
+        limit.getAttribute("aria-disabled") === "true" ||
+        limit.hasAttribute("readonly"),
+    ).toBe(true);
+    expect(screen.queryByRole("button", { name: /From manifest/ })).toBeNull();
+  });
+
+  it("lists what a resync kept as set in the console", async () => {
+    const user = userEvent.setup();
+    fns.resyncProduct.mockResolvedValue({
+      ok: true,
+      slug: "djdl",
+      updated: ["product"],
+      claimed: ["core.name", "tier:gold"],
+    });
+    mount();
+    await user.click(
+      await screen.findByRole("button", { name: "Resync from repo…" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Resync from repo" }),
+    );
+    expect(
+      await screen.findByText(
+        "Kept as set in the console: Display name, tier gold.",
+      ),
+    ).toBeTruthy();
   });
 
   it("explains why a manual product cannot resync", async () => {

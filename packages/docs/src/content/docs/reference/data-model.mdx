@@ -25,6 +25,7 @@ this page or fails the freshness gate.
 | `audit` | 0001_init.sql | `product`, `id`, `at`, `actor_sub`, `actor_name`, `actor_email`, `action`, `target_kind`, `target_id`, `parent_id`, `summary` |
 | `product_sync_state` | 0005_product_sync_state.sql | `product`, `source`, `status`, `last_checked_at`, `last_synced_at`, `commit_sha`, `changed_paths_json`, `updated_json`, `errors_json`, `message` |
 | `product_manifest_snapshot` | 0072_product_manifest_snapshot.sql | `product`, `applied_sha`, `applied_at`, `origin`, `files_sha256`, `manifest_json` |
+| `product_settings` | 0074_product_settings.sql | `product`, `key`, `value_json`, `source`, `version`, `updated_at`, `updated_by`, `reason`, `expires_at` |
 | `schema_index_assertion` | 0018_index_assertion.sql | `id`, `expected`, `found`, `missing` |
 | `blob_objects` | 0026_blob_store.sql | `storage_key`, `sha256`, `size`, `kind`, `gated`, `verified_at`, `created_at`, `unreferenced_since (0048)`, `gc_claimed_at (0048)` |
 | `blob_refs` | 0026_blob_store.sql | `product`, `storage_key`, `ref_kind`, `ref_id`, `created_at` |
@@ -55,7 +56,7 @@ this page or fails the freshness gate.
 | --- | --- | --- |
 | `licenses` | 0001_init.sql | `product`, `id`, `status`, `sub`, `name`, `email`, `groups_json`, `tier_id`, `activated_at`, `expires_at`, `max_offline_days`, `overrides_json`, `modified_by`, `modified_at`, `channels_json (0002)`, `min_version (0002)`, `max_version (0002)`, `origin (0011)`, `enroll_hwid (0011)`, `account_id (0068)` |
 | `keys_index` | 0001_init.sql | `product`, `key_hash`, `license_id`, `status`, `label`, `created_at`, `created_by`, `last_used_at` |
-| `tiers` | 0001_init.sql | `product`, `id`, `label`, `profile_id`, `policy_expiry_days`, `policy_device_limit`, `modified_by`, `modified_at`, `policy_fingerprint (0010)` |
+| `tiers` | 0001_init.sql | `product`, `id`, `label`, `profile_id`, `policy_expiry_days`, `policy_device_limit`, `modified_by`, `modified_at`, `policy_fingerprint (0010)`, `source (0074)` |
 | `license_profiles` | 0004_license_profiles.sql | `product`, `license_id`, `profile_id`, `sort_order` |
 | `license_store_grants` | 0052_commerce.sql | `product`, `license_id`, `flag`, `store`, `purchase_key_hash`, `state`, `granted_at`, `revoked_at` |
 
@@ -64,7 +65,7 @@ this page or fails the freshness gate.
 | Table | Since | Columns (ALTERs annotated with their migration) |
 | --- | --- | --- |
 | `product_schema` | 0001_init.sql | `product`, `catalog_version`, `catalog_json`, `active`, `created_at` |
-| `profiles` | 0001_init.sql | `product`, `id`, `name`, `description`, `payload_json`, `modified_by`, `modified_at` |
+| `profiles` | 0001_init.sql | `product`, `id`, `name`, `description`, `payload_json`, `modified_by`, `modified_at`, `source (0074)` |
 | `edge_mint_config` | 0001_init.sql | `product`, `id`, `alg`, `signing_key_secret`, `kid`, `claims_template_json`, `ttl_seconds`, `auth_page_template`, `audience (0003)` |
 | `edge_mint_approvals` | 0025_b_edge_mint_approvals.sql | `product`, `id`, `alg`, `signing_key_secret`, `kid`, `claims_template_json`, `ttl_seconds`, `audience`, `open_registration_acknowledged`, `license_enabled`, `identity_enabled`, `oidc_provider`, `oidc_issuer`, `oidc_client_id`, `oidc_group_role_map_json`, `approved_at`, `approved_by` |
 

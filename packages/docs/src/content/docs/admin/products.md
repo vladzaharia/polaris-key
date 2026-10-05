@@ -119,22 +119,26 @@ Resync re-reads `schema`, `product` and `release` from the linked repo's **defau
 never a caller-supplied ref, so the manifest applied to production can't be a function of an
 unreviewed branch — and re-applies each in place:
 
-- Product metadata (name, compat window, defaults) is overwritten unconditionally.
-- The catalog gets a new active `schemaVersion` **only when its content actually changed**.
+- Product metadata (name, licence defaults, web origins) is written unless the console has
+  claimed that field; the admin group is manifest-only and always follows the manifest. The
+  compatibility window follows the ownership rule below.
+- The catalog gets a new active `schemaVersion` **only when its content actually changed**, and
+  never once a console publish has claimed it.
 - `release_config` is updated in place; the release truth store re-syncs in the same batch.
-- `oidc_config`, `tiers`, `provisioning_config` and `edge_mint_config` are replaced from the
-  manifest — these have no live-admin override, so the manifest is always the last word for
-  them.
-- `profiles` are replaced from the manifest too, **except for their secret values**. A manifest
+- `oidc_config`, `provisioning_config` and `edge_mint_config` are replaced from the manifest —
+  these have no live-admin override, so the manifest is always the last word for them.
+- `tiers` and `profiles` are applied per row: a row created or edited in the console is left
+  alone, and a manifest row the manifest drops is removed when nothing references it.
+- Manifest-owned `profiles` follow the manifest, **except for their secret values**. A manifest
   can't carry a secret value, so the secrets an operator set on a profile in the console are
   carried forward, still sealed, onto every profile the manifest still lists. The pushed catalog
   decides what counts: a value is carried only while its key is still a `secret` entry, or a
   `config` entry flagged `secret: true`, in the catalog this push brings, and only if it is
   stored sealed. A key the new catalog drops or stops calling secret loses its value, and a
   plaintext value is never carried. A key the manifest's own profile payload declares wins, and
-  a profile the manifest drops is removed, secrets and all. Every other value on a profile
-  (plain config values and flags) follows the manifest, so set those in `.pkey/product` rather
-  than in the console.
+  a profile the manifest drops is removed, secrets and all. Setting a plain config value or a
+  flag on a profile in the console claims that profile for the console, so later resyncs leave
+  it alone.
 - Dropping a tier or profile from the manifest is refused (409) while a license still
   references it.
 - **Services enablement and the fingerprint/auto-issue policies follow the ownership rule**:
@@ -142,9 +146,20 @@ unreviewed branch — and re-applies each in place:
   operator edits one of those live (claiming it as `admin`-owned), a resync no longer touches it
   — see [Services & enablement](/docs/admin/services-enablement/#manifest-vs-admin-ownership).
 
-A resync is one D1 transaction: either everything above lands together, or a validation failure
-(a bad catalog, an OIDC issuer change that fails the platform's own gate) leaves the product
-exactly as it was.
+A resync is one D1 transaction, and every check runs before it: either everything above lands
+together, or a refusal (a bad catalog, an OIDC issuer change that fails the platform's own gate,
+a dropped tier a license still uses) leaves the product exactly as it was. Each setting, tier or
+profile it changes gets its own audit row.
+
+### Claimed settings
+
+On a repository-linked product, saving the display name or a licence default in Settings
+claims it for the console: you confirm first, the row's source badge then reads **Set in
+console**, and resyncs leave it alone. **Revert…** in that badge restores the value from the
+last applied manifest at once, or at the next resync for a product not applied since claims
+arrived. Publishing the catalog claims it the same way, with Revert in the catalog's source
+badge. The admin group is read-only there: change it in `.pkey/product`. The system product
+follows the monorepo's `.pkey/` and refuses console claims.
 
 ### What deleting a product actually does
 
