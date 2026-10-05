@@ -510,6 +510,18 @@ describe("errorCopy: GitHub access", () => {
       ),
     ).toMatchObject({ title: "Fix 1 field", focus: "repoUrl" });
   });
+
+  it("the area alone never claims an ended session or a missing permission", () => {
+    expect(errorCopy(api(401), { area: "github" }).title).toBe(
+      "Your session ended",
+    );
+    expect(
+      errorCopy(api(403, { code: "csrf_invalid" }), { area: "github" }).title,
+    ).toBe("Your session token is out of date");
+    expect(
+      errorCopy(api(502), { area: "github", repo: "acme/tonebox" }).title,
+    ).toBe("Couldn't reach GitHub");
+  });
 });
 
 describe("errorCopy never shows an HTTP status", () => {

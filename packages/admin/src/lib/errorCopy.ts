@@ -274,6 +274,7 @@ type GitHubProblem =
   | "unreachable";
 
 function githubProblem(
+  status: number,
   hasFields: boolean,
   message: string,
   area: ErrorArea | undefined,
@@ -291,12 +292,13 @@ function githubProblem(
   )
     return "not-installed";
   // The other access failures `linkRepo` and resync pass through; a message that merely says
-  // "github" (a CI environment field, say) is not one of them.
+  // "github" (a CI environment field, say) is not one of them. The area alone never claims an
+  // ended session, a missing permission or a rate limit: the status table words those.
   if (
     /github access failed|github manifest fetch failed|installation (?:discovery|token)|repo file/i.test(
       message,
     ) ||
-    (area === "github" && !hasFields)
+    (area === "github" && !hasFields && ![401, 403, 429].includes(status))
   )
     return "unreachable";
   return null;
@@ -642,7 +644,12 @@ function setupCopy(
   }
 
   // A refused field (`repoUrl is required`) is the form's to word, even in the GitHub area.
-  const github = githubProblem(Boolean(error.fields?.length), message, area);
+  const github = githubProblem(
+    error.status,
+    Boolean(error.fields?.length),
+    message,
+    area,
+  );
   if (github) {
     const repo = context.repo;
     const where = repo ?? "this repository";
