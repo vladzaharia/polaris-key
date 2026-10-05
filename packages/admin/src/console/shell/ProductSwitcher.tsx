@@ -77,6 +77,7 @@ export function ProductSwitcher({
         className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm data-[selected=true]:bg-accent-subtle data-[selected=true]:text-fg-strong"
       >
         <span
+          title={`${p.name} (${p.slug})`}
           className={cn(
             "min-w-0 flex-1 truncate",
             p.slug === current.slug && "font-bold text-fg-strong",
@@ -176,8 +177,9 @@ export function ProductSwitcher({
             </Command.List>
           </Command>
           {/* The way out of a product: every product, the instance-wide Platform pages (hidden
-              from the sidebar inside a product; owner, 2026-10-04) and a new product. */}
-          <div className="mt-1 grid grid-cols-2 gap-1 border-t border-border pt-1">
+              from the sidebar inside a product; owner, 2026-10-04) and a new product. One column,
+              like the product list above it: a two-column grid left New product alone on a row. */}
+          <div className="mt-1 flex flex-col gap-0.5 border-t border-border pt-1">
             <a
               href={r.products()}
               onClick={() => onOpenChange(false)}

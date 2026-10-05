@@ -150,11 +150,11 @@ export function Panel({
         className,
       )}
     >
-      {/* The title takes the free width and the action stays top-right; only an action wider
-          than what is left (a phone) wraps under the title. */}
+      {/* The title takes the free width and the action stays right, centred on the title; only
+          an action wider than what is left (a phone) wraps under the title. */}
       <div
         data-card-header=""
-        className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3"
+        className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3"
       >
         <div className="min-w-0 flex-1">
           <Heading id={id} className="text-base font-bold text-fg-strong">
@@ -166,7 +166,10 @@ export function Panel({
         </div>
         {/* A labelled ghost button that ends the header meets the edge by its ink (the trailing
             ghost rule in styles.css; the header is a data-card-header). */}
-        {action ? <div className="max-w-full">{action}</div> : null}
+        {/* The action never sets the header's height: a 32 px sm button or a 36 px field beside a
+            24 px title would grow this header past its siblings' 49 px, so it hangs 6 px into the
+            padding (the layout lint's rhythm/header-height). */}
+        {action ? <div className="-my-1.5 max-w-full">{action}</div> : null}
       </div>
       <div className="min-w-0 flex-1 p-4">{children}</div>
     </section>
@@ -180,6 +183,8 @@ export interface AttentionItem {
   tone: AttentionTone;
   /** The object the item is about: an `EntityLink`, a product name. */
   object: React.ReactNode;
+  /** The object's full text when `object` is markup (a link): the truncated name's tooltip. */
+  objectTitle?: string;
   /** One line: why it needs the operator. */
   reason: string;
   /** One action: a link (`href`) or a handler. */
@@ -249,10 +254,19 @@ export function AttentionList({
             className="flex flex-col items-start gap-2 px-4 py-2.5 sm:flex-row sm:items-center"
           >
             <StatusPill tone={item.tone}>{TONE_WORD[item.tone]}</StatusPill>
-            <span className="shrink-0 text-sm font-bold text-fg-strong">
+            {/* The object never takes the reason's width: from 640 px it is capped at 40 % of the
+                row and truncates (full text in the tooltip), and the reason keeps a 16ch floor so
+                a long name cannot crush it to a letter per line. */}
+            <span
+              className="min-w-0 max-w-full truncate text-sm font-bold text-fg-strong sm:max-w-[40%]"
+              title={
+                item.objectTitle ??
+                (typeof item.object === "string" ? item.object : undefined)
+              }
+            >
               {item.object}
             </span>
-            <span className="min-w-0 flex-1 text-sm text-fg">
+            <span className="min-w-0 flex-1 text-sm text-fg sm:min-w-[16ch]">
               {item.reason}
             </span>
             {item.action ? (

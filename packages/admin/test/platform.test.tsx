@@ -201,6 +201,10 @@ describe("the Platform section inside a product (owner, 2026-10-04)", () => {
         .getAllByRole("link")
         .map((a) => a.textContent),
     ).toEqual(["All products", "Platform", "New product"]);
+    // One column, like the product list above: a two-column grid left New product alone on a
+    // row beside an empty cell (the layout lint's rhythm/grid-orphan).
+    expect(footer.className).toContain("flex-col");
+    expect(footer.className).not.toMatch(/grid-cols-/);
     await userEvent.keyboard("{Escape}");
 
     // The account menu's version chip goes to Deployment.

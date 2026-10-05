@@ -207,6 +207,7 @@ export function Home(): React.ReactElement {
         {a.product.name}
       </Link>
     ),
+    objectTitle: a.product.name,
     reason: a.reason,
     action: { label: a.action.label, href: a.action.href },
   }));
