@@ -47,7 +47,9 @@
  *     (`fixedReleaseSelector`) — never re-read as a selector, so a release tagged `latest`,
  *     `stable`, `beta`, `pr-5` or a manual channel's name cannot pass as a moving channel (the
  *     P2-05 fixedVersion rule); a missing release row is checked as an empty fixed version
- *     (refused under a bounded window) and then answers not-found;
+ *     (refused under a bounded window) and then answers not-found. On the bytes host only, a
+ *     valid portal download ticket (`?ticket=`, `core/downloadTicket.ts`, PX-W3) for exactly
+ *     this file stands in for the device bearer; an invalid one is treated as absent;
  *   - `blobs` names no version: it authorises the HOLDERS of the object's key instead
  *     (`blobAccess.ts`, P4-05). The app side keeps P2b-04's rule (under `entitled` a release
  *     of THIS product carrying the digest must pass the `files` check); a pack's objects are
@@ -90,6 +92,10 @@ import type {
 import { errorResponse, notFound } from "../../core/errors.js";
 import { BLOB_CSP, blobResponse, hasRef, parseKey } from "../../core/blobs.js";
 import { isBytesHost } from "../../core/bytesHost.js";
+import {
+  DOWNLOAD_TICKET_PARAM,
+  verifyDownloadTicket,
+} from "../../core/downloadTicket.js";
 import type { ByteRoute, ByteRouteMatch } from "../../core/bytesHost.js";
 import {
   accessRefusal,
@@ -266,6 +272,34 @@ async function resolveFile(
     : { kind: "file" as const, release: null, artifact: null };
 }
 
+/**
+ * Does the request carry a valid download ticket for this file (PX-W3, plans/PX-W3.md §6.4)?
+ * Only on the bytes host, only for a resolved file of the app deliverable with a recorded
+ * SHA-256; the console host and every other target ignore `?ticket=`.
+ */
+async function ticketClears(
+  { req, env, product, now }: ByteContext,
+  target: Extract<ByteTarget, { kind: "file" }>,
+  file: Awaited<ReturnType<typeof resolveFile>>,
+): Promise<boolean> {
+  const url = new URL(req.url);
+  const ticket = url.searchParams.get(DOWNLOAD_TICKET_PARAM);
+  if (!ticket || !isBytesHost(url, env)) return false;
+  if (!file.release || !file.artifact?.sha256) return false;
+  return verifyDownloadTicket(
+    env,
+    ticket,
+    {
+      host: url.hostname,
+      product: product.slug,
+      releaseId: target.releaseId,
+      name: target.name,
+      sha256: file.artifact.sha256,
+    },
+    now,
+  );
+}
+
 /** Serve one byte target for `product`, on either host. */
 export async function serveDistributionBytes(
   ctx: ByteContext,
@@ -354,6 +388,12 @@ export async function serveDistributionBytes(
       // The release's STORED version, pinned — never re-read as a selector (`fixedVersion`).
       selector = fixedReleaseSelector(file.release?.version ?? "");
       pinned = true;
+      // PX-W3: a download ticket from the portal's redemption stands in for a device bearer, on
+      // the bytes host only, for exactly the file (by content) it was minted for. An invalid
+      // ticket is treated as absent: the request gets the no-credential answer below, so a
+      // probe cannot tell a bad ticket from a missing one. The mode stays non-public, so the
+      // answer is still private, sandboxed and forced to download.
+      if (await ticketClears(ctx, target, file)) decided = null;
       break;
     }
     case "blob": {

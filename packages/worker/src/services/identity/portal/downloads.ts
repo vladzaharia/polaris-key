@@ -23,10 +23,11 @@
  *
  *   - `license_inactive`: the deliverable needs a usable licence and none of the account's is
  *     (expired, suspended, past its offline grace).
- *   - `not_entitled`: the deliverable is `entitled` and no licence's grant holds this release's
- *     channel or version (an update window that ended, a beta not included).
- *   - `not_hosted`: covered, but nothing here can hand the bytes to a browser yet: licensed
- *     builds stored only on R2 wait for PX-W3 (gap G3).
+ *   - `not_entitled`: the deliverable is `entitled` and no licence's entitlement window holds
+ *     this release's channel or version (an update window that ended, a beta not included).
+ *   - `not_hosted`: covered, but nothing here can hand the bytes to a browser: no GitHub storage
+ *     URL and no bytes-host copy, or, for a non-public deliverable, a deployment without
+ *     download tickets (`DOWNLOAD_TICKET_KEY` unset, PX-W3) or a file with no recorded SHA-256.
  *
  * The portal UI turns those into the "Not included" text (§4.20); the codes are not copy.
  *

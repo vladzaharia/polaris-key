@@ -1445,6 +1445,14 @@ const SECRET_NOTES: Record<string, { what: string; unset?: string }> = {
     what: "R2 parent secret access key",
     unset: "Trusted publishing is off",
   },
+  DOWNLOAD_TICKET_KEY: {
+    what: "Portal download ticket signing",
+    unset: "Licensed builds stored only on R2 cannot be downloaded from the portal",
+  },
+  DOWNLOAD_TICKET_KEY_PREVIOUS: {
+    what: "Previous download ticket key, during a rotation",
+    unset: "No rotation in progress",
+  },
 };
 
 function SecretsSection({
