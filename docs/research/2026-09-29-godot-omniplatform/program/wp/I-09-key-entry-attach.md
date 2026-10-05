@@ -4,8 +4,8 @@
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1a)                                                                               |
 | Size        | 0.8–1.1 engineer-weeks                                                                                                                                               |
-| Depends on  | [I-04](I-04-account-contract-plan.md), [I-05](I-05-accounts-core.md)                                                                                                 |
-| Unblocks    | [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md), [I-11](I-11-portal-library.md)                                  |
+| Depends on  | [I-04](I-04-account-contract-plan.md), [I-05](I-05-accounts-core.md), [ST-01b](ST-01b-resync-claims.md), [ST-03](ST-03-settings-registry.md)                         |
+| Unblocks    | [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md), [I-11](I-11-portal-library.md), [LX-10](LX-10-anchor-choice.md) |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                |
 | Plan mode   | yes: executes the approved [`plans/I-04.md`](../plans/I-04.md) (no separate plan)                                                                                    |
 | Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; rule 10 (OpenAPI + `routeCoverage`); D1 migration; `TABLE_OWNERS`; THREAT-MODEL |
@@ -43,6 +43,8 @@ The owner decided the legacy key flow becomes a limited on-ramp to accounts ([S-
 
 ## Design notes
 
+- **Anchor choice (S-19 decisions 2 and 3, owner, 2026-10-04).** Sign-in activation binds the device to the anchor chosen by `anchorPolicy: rank-first` ([S-19 §7.5](../../notes/S-19-licensing-model.md#75-anchor-selection-seats-and-re-anchoring) steps 1–3: the account's usable `base` licences with a free seat, highest `tiers.rank`, then no expiry, then latest expiry, then oldest; else auto-issue; else today's `not-entitled`). Ship it inline; [LX-10](LX-10-anchor-choice.md) replaces it with `chooseAnchor`. Until LX-08 adds `tiers.rank`, every tier ranks 0. See the amendment in [`plans/I-04.md`](../plans/I-04.md).
+- **Settings as rows (S-18, owner, 2026-10-04).** Identity settings (`identity.keyEntry.limit`, `identity.keyEntryRefusals`, `identity.keyEntry.claimByKey`) are claimable `product_settings` rows registered through [ST-03](ST-03-settings-registry.md) on [ST-01b](ST-01b-resync-claims.md)'s table; create no `identity_product_settings` table ([S-18 §5.5](../../notes/S-18-settings-architecture.md#55-i-04-identity-rollout-plan-and-the-later-identity-layers)).
 - **Counting rules (D20, accepted by the owner 2026-10-04).** Count only a successful key activation that enrols a new device, or a portal Activate License submission. Re-entry on an enrolled device, refused attempts, refresh, offline grace, the licence document, store-binding activation and sign-in-based activation never count.
 - **Existing installs are never affected** (owner): device tokens, refresh, offline grace and the signed licence document keep working exactly as today.
 - Neither refusal is an auth failure: the URLs never carry the key, and a device that already holds a token for the licence never sees either.
