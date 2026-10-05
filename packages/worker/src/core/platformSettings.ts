@@ -33,19 +33,16 @@
  */
 
 import type { Db, DbStatement } from "../db/types.js";
+import { PLATFORM_SLICE } from "./settings/platform.js";
+import type { SettingDef } from "./settings/types.js";
 
 /** How long an isolate trusts its copy of the table (notes/S-13 §6.3: "within 30 seconds"). */
 export const SETTINGS_CACHE_MS = 30_000;
 
-/**
- * The lazy-delta consumer's per-side ceiling: 32 MiB, measured (notes/S-08 §4.2) against the
- * consumer's 128 MB isolate. A runtime value may only lower it, and "lower" is measured against
- * THIS constant, not against the deploy-time `[vars]` value: a `[vars]` cap of 8 MiB does not stop
- * the console storing 16 MiB.
- */
-export const LAZY_DELTA_MAX_BYTES_CEILING = 33_554_432;
-/** The lowest runtime per-side cap (1 MiB): below it no delta could save `MIN_SAVING_BYTES`. */
-export const LAZY_DELTA_MAX_BYTES_FLOOR = 1_048_576;
+export {
+  LAZY_DELTA_MAX_BYTES_CEILING,
+  LAZY_DELTA_MAX_BYTES_FLOOR,
+} from "./settings/platform.js";
 
 export type PlatformSettingKey =
   | "LAZY_DELTAS"
@@ -68,7 +65,10 @@ export type ConfirmLevel = "L0" | "L1" | "L2" | "L3";
 export type SettingScript = "main" | "deltas";
 
 interface BaseDef {
+  /** The `platform_settings` row key: the registry entry's alias (`storage.storedAs`). */
   key: PlatformSettingKey;
+  /** The settings-registry key this entry is derived from (ST-03), e.g. `deltas.lazy.mode`. */
+  registryKey: string;
   area: "background-jobs";
   label: string;
   description: string;
@@ -108,74 +108,78 @@ function positiveInteger(raw: string): number | undefined {
 }
 
 /**
- * THE registry. Adding an entry is a THREAT-MODEL §9 review trigger, as is moving one from
- * `ceiling` to `runtime`.
+ * Each A-13 key's deploy-time parser. Deploy-time values are reviewed in the repo, so these keep
+ * each setting's pre-A-13 parsing rather than the runtime bounds.
  */
-export const PLATFORM_SETTINGS: readonly PlatformSettingDef[] = [
-  {
-    key: "LAZY_DELTAS",
-    area: "background-jobs",
-    kind: "switch",
-    label: "Lazy deltas",
-    description:
-      "Lets products opted in to lazy hot-pair deltas count demand and generate deltas. Off stops the subsystem in both Worker scripts.",
-    varName: "LAZY_DELTAS",
-    scripts: ["main", "deltas"],
-    precedence: "ceiling",
-    defaultValue: "off",
-    confirm: { on: "L1", off: "L0" },
+const VAR_PARSERS: Record<string, (raw: string) => number | undefined> = {
+  LAZY_DELTA_MAX_BYTES: positiveInteger,
+  BLOB_GC_GRACE_DAYS: (raw) => {
+    const n = Number(raw.trim());
+    return raw.trim() !== "" && Number.isFinite(n) && n > 0 ? n : undefined;
   },
-  {
-    key: "LAZY_DELTA_MAX_BYTES",
-    area: "background-jobs",
-    kind: "integer",
-    unit: "bytes",
-    label: "Lazy delta size cap",
-    description:
-      "The largest payload, on either side of a pair, the delta consumer will encode. It can only be lowered below the measured 32 MiB ceiling.",
-    varName: "LAZY_DELTA_MAX_BYTES",
-    scripts: ["main", "deltas"],
-    precedence: "runtime",
-    defaultValue: LAZY_DELTA_MAX_BYTES_CEILING,
-    min: LAZY_DELTA_MAX_BYTES_FLOOR,
-    max: LAZY_DELTA_MAX_BYTES_CEILING,
-    parseVar: positiveInteger,
-    confirm: { raise: "L1", lower: "L0" },
-  },
-  {
-    key: "BLOB_GC_MODE",
-    area: "background-jobs",
-    kind: "switch",
-    label: "Blob collector",
-    description:
-      "Runs the nightly collector that deletes blob-store objects nothing has referenced for the grace period. Off only costs storage.",
-    varName: "BLOB_GC_MODE",
-    scripts: ["main"],
-    precedence: "ceiling",
-    defaultValue: "on",
-    confirm: { on: "L1", off: "L0" },
-  },
-  {
-    key: "BLOB_GC_GRACE_DAYS",
-    area: "background-jobs",
-    kind: "integer",
-    unit: "days",
-    label: "Blob collector grace period",
-    description:
-      "How long an object stays unreferenced before the collector may delete it. The bucket's 180-day age lock still bounds every deletion.",
-    varName: "BLOB_GC_GRACE_DAYS",
-    scripts: ["main"],
-    precedence: "runtime",
-    defaultValue: 30,
-    min: 1,
-    max: 365,
-    parseVar: (raw) => {
-      const n = Number(raw.trim());
-      return raw.trim() !== "" && Number.isFinite(n) && n > 0 ? n : undefined;
-    },
-    confirm: { raise: "L0", lower: "L1" },
-  },
-];
+};
+
+/** The A-13 store's view of one settings-registry entry (`core/settings/platform.ts`). */
+function fromRegistry(def: SettingDef): PlatformSettingDef {
+  const storedAs =
+    def.storage.kind === "scalar" ? def.storage.storedAs : undefined;
+  if (
+    !storedAs ||
+    !def.varName ||
+    !def.precedence ||
+    def.area !== "background-jobs"
+  )
+    throw new Error(`${def.key} is not an A-13 store entry`);
+  const base = {
+    key: storedAs as PlatformSettingKey,
+    registryKey: def.key,
+    area: "background-jobs" as const,
+    label: def.label,
+    description: def.description,
+    varName: def.varName,
+    scripts: def.readers.some((r) =>
+      r.startsWith("services/release/packs/deltas/"),
+    )
+      ? (["main", "deltas"] as const)
+      : (["main"] as const),
+    precedence: def.precedence,
+  };
+  if (def.value.kind === "switch" && "on" in def.confirm)
+    return {
+      ...base,
+      kind: "switch",
+      defaultValue: def.defaultValue as "on" | "off",
+      confirm: def.confirm,
+    };
+  if (def.value.kind === "integer" && "up" in def.confirm) {
+    const parseVar = VAR_PARSERS[storedAs];
+    if (!parseVar) throw new Error(`${storedAs} has no deploy-time parser`);
+    return {
+      ...base,
+      kind: "integer",
+      unit: def.value.unit as "bytes" | "days",
+      defaultValue: def.defaultValue as number,
+      min: def.value.min,
+      max: def.value.max,
+      parseVar,
+      confirm: { raise: def.confirm.up, lower: def.confirm.down },
+    };
+  }
+  throw new Error(`${def.key} has a value kind the A-13 store cannot hold`);
+}
+
+/**
+ * THE editable list, derived from the settings registry's platform slice (ST-03): every live
+ * entry stored in `platform_settings` under an A-13 row key (`storage.storedAs`). Adding an entry
+ * is a THREAT-MODEL §9 review trigger, as is moving one from `ceiling` to `runtime`.
+ */
+export const PLATFORM_SETTINGS: readonly PlatformSettingDef[] =
+  PLATFORM_SLICE.filter(
+    (d) =>
+      !d.pending &&
+      d.storage.kind === "scalar" &&
+      d.storage.storedAs !== undefined,
+  ).map(fromRegistry);
 
 const BY_KEY: ReadonlyMap<string, PlatformSettingDef> = new Map(
   PLATFORM_SETTINGS.map((d) => [d.key, d]),

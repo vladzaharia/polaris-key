@@ -70,6 +70,7 @@ import {
   manifestIngestStatements as outletIngestStatements,
   parseJsonColumn,
 } from "./outlets.js";
+import { DISTRIBUTION_SETTINGS_SLICE } from "./settings.js";
 
 /**
  * `core/hooks.ts` `outletCapabilities`: the capabilities in force for one of this product's live
@@ -178,6 +179,8 @@ async function scheduled(
 
 export const distributionService: ServiceDescriptor = {
   slug: "distribution",
+  /** ST-03: this service's settings registry slice (`settings.ts`). */
+  settings: DISTRIBUTION_SETTINGS_SLICE,
   /** `routes.ts`: the byte routes and the CI rollout routes. `null` = Core's not-found. */
   handle: handleDistributionRoutes,
   /**

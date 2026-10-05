@@ -20,9 +20,12 @@ import { handleLicenseRoutes } from "./routes.js";
 import { handleLicenseAdmin } from "./admin/index.js";
 import { applyStoreGrant } from "./storeGrants.js";
 import { licenseProvenance } from "./provenance.js";
+import { LICENSE_SETTINGS_SLICE } from "./settings.js";
 
 export const licenseService: ServiceDescriptor = {
   slug: "license",
+  /** ST-03: this service's settings registry slice (`settings.ts`). */
+  settings: LICENSE_SETTINGS_SLICE,
   handle: handleLicenseRoutes,
   /** `license/{licenses,tiers,policy}` on the console API (§R1). */
   adminHandle: handleLicenseAdmin,
