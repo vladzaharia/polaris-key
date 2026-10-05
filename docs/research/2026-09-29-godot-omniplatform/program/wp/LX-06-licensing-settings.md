@@ -12,6 +12,12 @@
 | Human input | none                                                                                                                                        |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                   |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/LX-01.md`](../plans/LX-01.md):** the §3.2 keys; a derived default for `entitlementModel` (`legacy` for products created before a constant committed here, else `combined`; Q2); no `oidc_config` column; `refundGraceHours` kept, capped at 168 hours, and S-18's A.4 row reworded to say it only delays the revocation (Q3).
+
 ## Goal
 
 S-19's per-product licensing settings (`licensing.entitlementModel`, `entitlementHolder`, `clampGraceToExpiry`, `anchorPolicy`, `reanchor`, `refundGraceHours`, `dunningGraceDays`) are claimable `product_settings` rows in S-18's registry, declarable in the manifest as `licensing.*` (plus `oidc.syncTierOnSignIn`), editable in License → Settings, and served by an admin API.

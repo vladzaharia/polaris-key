@@ -78,6 +78,11 @@ export interface Opened {
   violations: () => Promise<string[]>;
   /** `METHOD /path?query` of every portal API and media request, in order. */
   requests: string[];
+  /**
+   * Closes the context. The catch-all route passes static assets through, and a font fetch can
+   * still be in flight when a test ends; dropping the routes first (Playwright's own advice)
+   * keeps that callback from rejecting into whichever test runs next.
+   */
   close: () => Promise<void>;
 }
 
@@ -195,7 +200,10 @@ export async function startPortal(): Promise<PortalHarness> {
         page.evaluate(() =>
           (window as unknown as { __v: string[] }).__v.splice(0),
         ),
-      close: () => ctx.close(),
+      close: async () => {
+        await ctx.unrouteAll({ behavior: "ignoreErrors" });
+        await ctx.close();
+      },
     };
   };
 

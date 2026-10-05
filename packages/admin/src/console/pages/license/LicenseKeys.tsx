@@ -76,7 +76,7 @@ export function LicenseKeys({
         id: "createdAt",
         header: "Created",
         accessorKey: "createdAt",
-        meta: { priority: 2 },
+        meta: { numeric: true, priority: 2 },
         cell: ({ row }) => (
           <Timestamp at={fromSeconds(row.original.createdAt)} />
         ),
@@ -91,7 +91,7 @@ export function LicenseKeys({
         id: "lastUsedAt",
         header: "Last used",
         accessorFn: (k) => k.lastUsedAt ?? 0,
-        meta: { priority: 2 },
+        meta: { numeric: true, priority: 2 },
         cell: ({ row }) =>
           row.original.lastUsedAt ? (
             <Timestamp at={fromSeconds(row.original.lastUsedAt)} />
