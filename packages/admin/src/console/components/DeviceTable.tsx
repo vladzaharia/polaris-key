@@ -92,16 +92,24 @@ export function DeviceTable({
         cell: ({ row }) => {
           const d = row.original;
           return (
-            <span className="flex min-w-0 max-w-[22rem] flex-col">
+            // 20rem, not 22rem: at a 1280 px laptop the table has ~974 px beside the sidebar,
+            // and a 352 px Device column left it 1.5 px of slack, which whole-pixel glyph
+            // advances (Chromium on Linux) overran, scrolling Actions off the edge.
+            <span className="flex min-w-0 max-w-[20rem] flex-col">
               {d.label ? (
-                <span className="truncate">{d.label}</span>
+                <span className="truncate" title={d.label}>
+                  {d.label}
+                </span>
               ) : (
                 // No label: a muted placeholder, not the 32-character id in bold.
                 <span className="truncate font-normal text-fg-muted">
                   Unnamed device
                 </span>
               )}
-              <span className="truncate font-mono text-xs font-normal text-fg-muted">
+              <span
+                className="truncate font-mono text-xs font-normal text-fg-muted"
+                title={d.deviceId}
+              >
                 {d.deviceId}
               </span>
             </span>
@@ -187,6 +195,7 @@ export function DeviceTable({
         header: "Added",
         accessorKey: "firstSeen",
         meta: {
+          numeric: true,
           priority: 3,
           csv: (d) => new Date(fromSeconds(d.firstSeen)).toISOString(),
         },
@@ -199,6 +208,7 @@ export function DeviceTable({
         header: "Last seen",
         accessorKey: "lastSeen",
         meta: {
+          numeric: true,
           priority: 1,
           csv: (d) => new Date(fromSeconds(d.lastSeen)).toISOString(),
         },

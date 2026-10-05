@@ -225,15 +225,18 @@ is in scope. It fixes SH-10: Home and Products no longer draw a product's sectio
 instance-wide pages that belong to no product: Settings, Deployment, Operations, Store connections
 and Package feeds. It follows the product sections' rules: its header has no icon, every item has
 one, only the active group is open (a collapsed group can be peeked into), it takes the `core`
-accent and no section bit, and it is shown whether or not a product is in scope, after the platform
-links and before the product's sections. `#/platform` is not a page: it redirects to Settings.
+accent and no section bit. It is shown **only off a product** (Home, Products and the Platform pages
+themselves), after the platform links. Inside a product it is hidden (owner, 2026-10-04: beside a
+product's own sections it read as part of the product), and stays one step away: the product
+switcher's **Platform** entry (beside "All products"), the account menu's version chip (→
+Deployment) and `⌘K`. `#/platform` is not a page: it redirects to Settings.
 
 ### 2.2 Global elements
 
 | Element               | Behavior                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Brand block**       | `SectionMark` at 28 px + "Polaris Key" (≥ 640 px). Links to Home. The terminal bit shows the current section's accent: chartreuse in License; yellow in Config; cyan in Release; green in Distribution; tangerine in Update; orchid in Identity; no bit at all on Home, Products, Platform and Core pages (BRAND.md §6, 2026-10-03, superseding gold there). The star never changes. Gold was used on core pages because a violet bit would disappear into the violet K. |
-| **Product switcher**  | A combobox (search, recent, service dots, attention count). It keeps the current page when the target product runs that service (SH-11). Shortcut `g p`.                                                                                                                                                                                                                                                                                                                 |
+| **Product switcher**  | A combobox (search, recent, service dots, attention count). It keeps the current page when the target product runs that service (SH-11). Its footer links All products, Platform and New product. The trigger shows the name (never squeezed below a few characters) and, from 1024 px, the slug and service dots. Shortcut `g p`.                                                                                                                                       |
 | **Environment badge** | Shown in staging and dev ("Staging" in `status.warning`, "Dev" in `status.info`); hidden in production. The source is `/me.environment` (API addition **A-1**), with no hostname heuristics.                                                                                                                                                                                                                                                                             |
 | **Command palette**   | `⌘K` / `Ctrl+K`. Navigation, products, entities of the current product, and safe actions (`components.md` §1.5).                                                                                                                                                                                                                                                                                                                                                         |
 | **Docs**              | "Docs" link to `docsFor(page)`, a labelled link, not a `title`-only icon (SH-13).                                                                                                                                                                                                                                                                                                                                                                                        |
@@ -289,13 +292,13 @@ re-scoped. A page is shown only when its section is shown, plus the conditions l
 that is not built yet carries `ready: false` in `nav.ts` and redirects to Deployment, with no
 "coming soon" copy:
 
-| Page                  | URL                            | Template       | Contents                                                                                                                                                                                                                                                                                                                                                                                     |
-| --------------------- | ------------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Settings**          | `#/platform/settings`          | T4             | Background jobs (the four runtime-editable settings: `LAZY_DELTAS`, `LAZY_DELTA_MAX_BYTES` lower-only, `BLOB_GC_MODE`, `BLOB_GC_GRACE_DAYS`, each with its source; ceiling precedence for kill switches), the read-only inventory, the KEK keyring (re-seal sweep, L3 "type reseal") and secrets presence. Needs A-13                                                                        |
-| **Deployment**        | `#/platform/deployment`        | T1 plus tables | The running build (tag, commit, Cloudflare version, protocol and discovery versions), deploy history (`platform_deploys`, keyset Load more), D1 migrations against the build's newest, required indexes, bindings (presence only), and **Platform activity** (`platform_audit`, A-12). Built in chunk 4                                                                                      |
-| **Operations**        | `#/platform/operations`        | T1             | Self-reported operations data (A-14), built in chunk 4P-3: a health state (Healthy, Degraded, Failed) per section, cron runs by step with recent history, heartbeats and staleness, queue and dead-letter backlog, D1 and R2 size, required indexes, connector aggregates; refreshes on an interval with a pause switch. Cloudflare analytics panels wait for A-15 and are absent until then |
-| **Store connections** | `#/platform/store-connections` | T2             | Instance-wide store connector state                                                                                                                                                                                                                                                                                                                                                          |
-| **Package feeds**     | `#/platform/feeds`             | T2 (S-12)      | S-12 owns the page and its API                                                                                                                                                                                                                                                                                                                                                               |
+| Page                  | URL                            | Template       | Contents                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| --------------------- | ------------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Settings**          | `#/platform/settings`          | T4             | Background jobs (the four runtime-editable job settings: `LAZY_DELTAS`, `LAZY_DELTA_MAX_BYTES` lower-only, `BLOB_GC_MODE`, `BLOB_GC_GRACE_DAYS`, each with its source; ceiling precedence for kill switches), Licensing (`LICENSING_RESERVED_NAMES` warn/error and the reserved-names list of registered products, LX-05), the read-only inventory, the KEK keyring (re-seal sweep, L3 "type reseal") and secrets presence. Needs A-13 |
+| **Deployment**        | `#/platform/deployment`        | T1 plus tables | The running build (tag, commit, Cloudflare version, protocol and discovery versions), deploy history (`platform_deploys`, keyset Load more), D1 migrations against the build's newest, required indexes, bindings (presence only), and **Platform activity** (`platform_audit`, A-12). Built in chunk 4                                                                                                                                |
+| **Operations**        | `#/platform/operations`        | T1             | Self-reported operations data (A-14), built in chunk 4P-3: a health state (Healthy, Degraded, Failed) per section, cron runs by step with recent history, heartbeats and staleness, queue and dead-letter backlog, D1 and R2 size, required indexes, connector aggregates; refreshes on an interval with a pause switch. Cloudflare analytics panels wait for A-15 and are absent until then                                           |
+| **Store connections** | `#/platform/store-connections` | T2             | Instance-wide store connector state                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **Package feeds**     | `#/platform/feeds`             | T2 (S-12)      | S-12 owns the page and its API                                                                                                                                                                                                                                                                                                                                                                                                         |
 
 **Rejected moves, so they stay rejected:**
 
@@ -957,6 +960,25 @@ nonetheless built so a read-only role becomes a gate change, not a redesign:
 - **Hidden vs disabled.** Hide what cannot apply to this product (a service it does not run).
   Disable, with a reason, what applies but is not possible right now.
 
+### 5.11 Pills mean attention
+
+A pill (a filled, rounded status shape) is the console's "look here". So (owner, 2026-10-04):
+
+- **Only an issue, or a neutral fact, is a pill.** "Needs setup", "1 needs attention", "Halted",
+  "Expires in 3 days" are pills; so are neutral facts a reader scans for, such as "Schema v8" or
+  "Not bound".
+- **A healthy state is never a pill.** On a card or a page title it is simply absent: a healthy
+  product card on Home shows no "Setup complete", and its service glyphs take that row; a
+  finished Overview checklist is reopened from the header's "Setup checklist" action, not a chip.
+  Where the state is the value a row or column exists to show ("Enabled", "Active", "Answering"),
+  `StatusPill` draws `success` as quiet status text: the icon and the word in the success colour,
+  with no frame.
+- **Pills sit at the right edge.** In a card header (`data-card-header`: a `Panel`, an Overview
+  tile, a Home product card) the pill ends the row, with only controls after it; in a table the
+  pill column is the last column, aligned to the end.
+- The layout lint enforces the placement (`right-align/pill-right`); `StatusPill` enforces the
+  healthy-state rule for every caller.
+
 ---
 
 ## 6. Redesigns of the key areas
@@ -1433,8 +1455,10 @@ Cell drawer (2.4.0 × Google Play) ───────────────
   (`setup.credentialSource`, `platformSource`) and the connectors section links the store
   connections docs. The platform Store connections page itself is A-16's (the Platform section).
 - **Access.** A pack's gate is a catalog-flag `Combobox` while Config is on, a text field
-  otherwise; the app's `entitled` describes Release's channel and version window (the app row's
-  `entitlement` is stored, not enforced, so it is not offered). `?deliverable=<pack>` focuses that
+  otherwise; the app's `entitled` describes Release's channel and version window. A pack's gate is
+  enforced (P4-05: pack blobs and registry reads require the flag); the app row's `entitlement`
+  is stored but never consulted, because app delivery under `entitled` is the window, so it is
+  not offered. `?deliverable=<pack>` focuses that
   pack's section (DLV-3).
 - **Update → Feed** saves metadata access, the compatibility window and the artifact policy as
   three forms (each its own PATCH with only its fields) and lists the endpoint URLs per channel;

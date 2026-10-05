@@ -212,7 +212,7 @@ describe("Core → Overview", () => {
     expect(fns.licenses).not.toHaveBeenCalled();
   });
 
-  it("hides a complete checklist behind a Setup complete chip that reopens it", async () => {
+  it("hides a complete checklist, with no healthy pill, behind a Setup checklist action", async () => {
     const user = userEvent.setup();
     fns.product.mockResolvedValue({
       product: product({ setup: { secrets: [] } }),
@@ -221,9 +221,12 @@ describe("Core → Overview", () => {
       licenses: [{ id: "l1", status: "active", expiresAt: null }],
     });
     mount();
-    await user.click(
-      await screen.findByRole("button", { name: "Setup complete" }),
-    );
+    const reopen = await screen.findByRole("button", {
+      name: "Setup checklist",
+    });
+    // Pills mean attention: a finished setup draws no "Setup complete" pill anywhere.
+    expect(screen.queryByText("Setup complete")).toBeNull();
+    await user.click(reopen);
     expect(await screen.findByRole("heading", { name: "Setup" })).toBeTruthy();
   });
 

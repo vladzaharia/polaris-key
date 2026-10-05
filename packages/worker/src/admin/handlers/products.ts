@@ -77,8 +77,10 @@ import {
 import { listProductSecretsView, productView } from "../lib/shape.js";
 import {
   catalogRepresentabilityResponse,
+  reservedNamesResponse,
   WriteChecks,
 } from "../lib/writeChecks.js";
+import { reservedNamesMode } from "../../core/reservedNames.js";
 import { handleOutletCredentials } from "./outletCredentials.js";
 
 /** Compile a schema supplied as a JSON/YAML string or a parsed object. Returns the catalog or
@@ -398,6 +400,11 @@ async function manualCreate(
     // it: refuse an unsignable default or key, and a key the manifest's ID_RE would refuse.
     const unrepresentable = catalogRepresentabilityResponse(catalogObj);
     if (unrepresentable) return unrepresentable;
+    const reserved = reservedNamesResponse(
+      catalogObj,
+      await reservedNamesMode(env, db),
+    );
+    if (reserved) return reserved;
   }
 
   // Mint + seal the per-product Ed25519 signing key under the platform KEK.

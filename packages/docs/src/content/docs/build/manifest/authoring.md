@@ -100,6 +100,34 @@ tier/license/device live at [The config catalog](/docs/services/config/catalog/)
 `ConfigEntry` type itself, reproduced verbatim, is at
 [ConfigEntry — the catalog item shape](/docs/reference/config-entry/).
 
+### Reserved entitlement names
+
+A `flag` is an entitlement, and the platform sets a few entitlements itself in every license
+document: `channels`, `deviceLimit`, `app.minVersion`, `app.maxVersion`, `license.tier` and
+`license.tierLabel`. Every name under `license.`, `app.` and `pkey.` is reserved for future system
+keys too. The platform's value always wins over a product's.
+
+A flag may still **declare** one of these names, to give it a label, a category, a narrower
+schema or a `userGrant` label (djdl declares `channels`, `deviceLimit` and both `app.*` keys).
+That declaration is valid as long as it is **compatible**:
+
+- its `schema.type` is the system key's type: `channels` an array of strings (`items` of type
+  `string`), `deviceLimit` an integer, the `app.*` and `license.*` keys strings;
+- the schema only narrows that type (`enum`, `const`, `pattern`, `minLength`/`maxLength`,
+  `minimum`/`maximum`, `uniqueItems`, `minItems`/`maxItems`, `format`, `multipleOf`) or annotates
+  it;
+- the entry carries only presentation fields besides `key`, `kind` and `schema`: `label`,
+  `category`, `description`, `default` (of the right type), `examples`, `ui`, `userGrant` and
+  `grantLabel`.
+
+Any other name under `license.` or `pkey.` has no compatible form. The validator reports an
+incompatible declaration as `incompatible_reserved_name`. It is a **warning** for now (`pkey
+validate` prints it and link and resync accept it); the platform setting
+[`LICENSING_RESERVED_NAMES`](/docs/admin/platform-settings/#the-runtime-settings) turns it into an
+error after a window of two minor releases or 60 days, whichever is later. Platform → Settings →
+Licensing lists every registered product with a reserved-name declaration and whether it is
+compatible.
+
 ## Enabled services: `modules` + `devices.registration`
 
 Polaris Key is six opt-in services — **license, config, release, distribution, update,
@@ -680,13 +708,23 @@ does not expose whether a product uses platform or custom OIDC.
 
 ### Admin override vs re-sync
 
-Admins set **management state + values** (per profile/tier/license/device) and operational
-runtime overrides in the admin SPA. Those values live in D1 and are **not** overwritten by a
-re-sync. A re-sync updates the manifest baseline from `.pkey/`: product metadata, service
-enablement + registration policy, fingerprint and auto-issue policy, catalog shape, OIDC
-baseline, release baseline, profiles, tiers, provisioning, and edge-mint recipes. The three
-operator-claimable blocks (`services_source`, `fingerprint_policy_source`, `auto_issue_source`)
-are skipped while an admin owns them, and so is the trusted-publisher policy once claimed. So the flow is:
+Admins set **management state + values** (per license/device) and operational runtime
+overrides in the admin SPA. Those values live in D1 and are **not** overwritten by a re-sync. A
+re-sync updates the manifest baseline from `.pkey/`: product metadata, service enablement +
+registration policy, fingerprint and auto-issue policy, catalog shape, OIDC baseline, release
+baseline, profiles, tiers, provisioning, and edge-mint recipes. The three operator-claimable
+blocks (`services_source`, `fingerprint_policy_source`, `auto_issue_source`) are skipped while an
+admin owns them, and so is the trusted-publisher policy once claimed.
+
+Profiles are the manifest's, with one exception: **secret values**. A manifest can't carry a
+secret value, so you set a profile's secrets (a `secret` entry, or a `config` entry flagged
+`secret: true`) in the console, and a re-sync carries them forward, still sealed, onto every
+profile the manifest still lists — unless the manifest's own profile payload declares that key,
+or the catalog in the same push no longer declares it a secret. Only sealed values are carried;
+a plaintext one written before sealing existed is not.
+A profile's plain config values and flags follow the manifest, so declare those in
+`.pkey/product`; a console edit to one lasts only until the next push. A profile the manifest
+drops is removed with its secrets. So the flow is:
 
 1. Edit `.pkey/schema` in the product repo (add a key, tighten a schema, change a
    `managementDefault`); bump `schemaVersion` only on an incompatible shape change.

@@ -108,7 +108,7 @@ export function SecretsSection({
         id: "updatedAt",
         header: "Updated",
         accessorFn: (s) => s.updatedAt ?? 0,
-        meta: { priority: 2 },
+        meta: { numeric: true, priority: 2 },
         cell: ({ row }) =>
           row.original.updatedAt ? (
             <Timestamp at={fromSeconds(row.original.updatedAt)} />

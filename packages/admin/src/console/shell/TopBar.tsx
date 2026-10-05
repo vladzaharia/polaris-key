@@ -53,6 +53,7 @@ export function TopBar({
 }): React.ReactElement {
   return (
     <header
+      data-shell="topbar"
       className={cn(
         "z-30 flex items-center gap-1.5 border-b border-border bg-surface-raised px-2 sm:gap-3 sm:px-4",
         "h-[calc(4rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)]",
@@ -97,7 +98,10 @@ export function TopBar({
         >
           <Search aria-hidden className="size-4" />
           <span className="hidden md:inline">Search or jump to…</span>
-          <Kbd keys="⌘K" className="hidden md:flex" />
+          {/* The shortcut hint joins the label only from lg: at 768–1023 px its ~40 px were the
+              product switcher's last slack, and with whole-pixel glyph advances (Chromium on
+              Linux) the switcher's chevron was pushed out of its border box. */}
+          <Kbd keys="⌘K" className="hidden lg:flex" />
         </button>
         {/* Under 640 px the bar has no room for it; the account menu keeps "Docs home". */}
         <Button variant="ghost" size="sm" asChild className="max-sm:hidden">

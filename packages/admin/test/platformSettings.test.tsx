@@ -134,9 +134,76 @@ function grace(over: Setting = {}): Setting {
   };
 }
 
+function reservedNames(over: Setting = {}): Setting {
+  return {
+    key: "LICENSING_RESERVED_NAMES",
+    area: "licensing",
+    label: "Reserved entitlement names",
+    description:
+      "How a product catalog flag that declares a system key with an incompatible type is treated.",
+    kind: "choice",
+    options: [
+      { value: "warn", label: "Warn" },
+      { value: "error", label: "Refuse" },
+    ],
+    scripts: ["main"],
+    precedence: "runtime",
+    default: "warn",
+    deployValue: null,
+    value: "warn",
+    source: "default",
+    forcedOff: false,
+    stored: null,
+    version: 0,
+    confirm: { warn: "L0", error: "L1" },
+    ...over,
+  };
+}
+
+const RESERVED = {
+  mode: "warn",
+  keys: [
+    {
+      key: "channels",
+      type: "string-array",
+      rule: "The union of the tier's and the license's channels.",
+    },
+    {
+      key: "deviceLimit",
+      type: "integer",
+      rule: "The tier's device limit, else the license's, else the product default.",
+    },
+  ],
+  prefixes: ["license.", "app.", "pkey."],
+  products: [
+    {
+      slug: "acme",
+      name: "Acme",
+      catalogVersion: 3,
+      declarations: [
+        {
+          key: "channels",
+          compatible: false,
+          problem:
+            'schema.type must be "array" (the system key is an array of strings)',
+        },
+      ],
+    },
+    {
+      slug: "djdl",
+      name: "djdl",
+      catalogVersion: 7,
+      declarations: [
+        { key: "channels", compatible: true, problem: null },
+        { key: "deviceLimit", compatible: true, problem: null },
+      ],
+    },
+  ],
+};
+
 function view(over: Record<string, unknown> = {}) {
   return {
-    settings: [lazyDeltas(), maxBytes(), gcMode(), grace()],
+    settings: [lazyDeltas(), maxBytes(), gcMode(), grace(), reservedNames()],
     storeAvailable: true,
     propagationSeconds: 30,
     deployTime: [
@@ -172,7 +239,19 @@ function view(over: Record<string, unknown> = {}) {
       { name: "BLOBS_BUCKET_NAME", area: "delivery", value: "pk-blobs" },
       { name: "R2_ACCOUNT_ID", area: "delivery", value: null },
       { name: "GITHUB_APP_ID", area: "delivery", value: "12345" },
+      {
+        name: "PKG_ORIGIN",
+        area: "delivery",
+        value: "https://pkg.example.com",
+      },
       { name: "PORTAL_EMAIL_FROM", area: "email", value: null },
+      {
+        name: "EMAIL_SENDER_ADDRESS",
+        area: "email",
+        value: "noreply@auth.example.com",
+      },
+      { name: "EMAIL_PRODUCT_DAILY_CAP", area: "email", value: null },
+      { name: "EMAIL_APPLE_RELAY", area: "email", value: null },
       { name: "PLATFORM_KEK_ACTIVE", area: "keyring", value: "kek-2" },
       { name: "PLATFORM_KEK_ID", area: "keyring", value: null },
     ],
@@ -273,6 +352,7 @@ function routes(over: Record<string, unknown> = {}): Record<string, unknown> {
       environment: "prod",
     },
     "/manage/api/platform/settings": view(),
+    "/manage/api/platform/reserved-names": RESERVED,
     "/manage/api/products/kek": KEK,
     "/manage/api/platform/activity": HISTORY,
     ...over,
@@ -349,6 +429,79 @@ describe("the Settings page in the Platform section", () => {
     const failed = await settingsPage();
     const alert = await within(failed).findByRole("alert");
     expect(within(alert).getByRole("button", { name: "Retry" })).toBeTruthy();
+  });
+});
+
+describe("Licensing (LX-05)", () => {
+  it("shows the reserved-names severity, the reserved keys and each declaring product", async () => {
+    boot("#/platform/settings", { extra: routes() });
+    const licensing = await section("Licensing");
+    const group = within(licensing).getByRole("radiogroup", {
+      name: "Reserved entitlement names",
+    });
+    expect(
+      within(group)
+        .getByRole("radio", { name: "Warn" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    const keys = await within(licensing).findByRole("list", {
+      name: "Reserved keys",
+    });
+    expect(within(keys).getByText("deviceLimit")).toBeTruthy();
+    expect(within(keys).getByText("array of strings")).toBeTruthy();
+    // Only an issue gets a pill; a compatible product reads plainly.
+    expect(within(licensing).getByText("1 incompatible")).toBeTruthy();
+    expect(within(licensing).getByText("Compatible")).toBeTruthy();
+    expect(
+      within(licensing).getByText(/schema.type must be "array"/),
+    ).toBeTruthy();
+    // The background-jobs section does not carry the licensing setting.
+    const jobs = await section("Background jobs");
+    expect(within(jobs).queryByText("Reserved entitlement names")).toBeNull();
+  });
+
+  it("confirms switching to refuse (L1), then saves it with expectedVersion", async () => {
+    const log = boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/settings": writable(() =>
+          reservedNames({ value: "error", source: "runtime", version: 1 }),
+        ),
+      }),
+    });
+    const licensing = await section("Licensing");
+    await userEvent.click(
+      within(licensing).getByRole("radio", { name: "Refuse" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText(
+        /fails its next resync until its catalog is fixed/,
+      ),
+    ).toBeTruthy();
+    expect(writes(log, "PATCH")).toHaveLength(0);
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Set to refuse" }),
+    );
+    await waitFor(() => expect(writes(log, "PATCH")).toHaveLength(1));
+    expect(writes(log, "PATCH")[0]!.path).toBe(
+      "/manage/api/platform/settings/LICENSING_RESERVED_NAMES",
+    );
+    expect(JSON.parse(writes(log, "PATCH")[0]!.body!)).toEqual({
+      value: "error",
+      expectedVersion: 0,
+    });
+  });
+
+  it("says so when no product declares a reserved name", async () => {
+    boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/reserved-names": { ...RESERVED, products: [] },
+      }),
+    });
+    const licensing = await section("Licensing");
+    expect(
+      await within(licensing).findByText("No product declares a reserved name"),
+    ).toBeTruthy();
   });
 });
 
@@ -713,6 +866,12 @@ describe("the read-only inventory", () => {
     const delivery = await section("Delivery");
     expect(within(delivery).getByText("Production")).toBeTruthy();
     expect(within(delivery).getByText("https://dl.example.com")).toBeTruthy();
+    // ST-02: the deploy vars the inventory added are read out too.
+    expect(within(delivery).getByText("https://pkg.example.com")).toBeTruthy();
+    const email = await section("Email");
+    expect(within(email).getByText("noreply@auth.example.com")).toBeTruthy();
+    expect(within(email).getByText("Not set: 500")).toBeTruthy();
+    expect(within(email).getByText("Not registered")).toBeTruthy();
     const warnings = within(main()).getByRole("region", { name: "Warnings" });
     expect(
       within(warnings).getByText("Portal sessions share the admin secret"),

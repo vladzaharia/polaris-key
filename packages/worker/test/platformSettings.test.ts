@@ -29,6 +29,7 @@ import { lazyDeltasOn } from "../src/core/deltaDemand.js";
 import { effectiveBlobGcSettings } from "../src/core/blobGc.js";
 import { listPlatformAudit } from "../src/repo.js";
 import { makeTestDb } from "./helpers.js";
+import { PLATFORM_INVENTORY } from "../src/platformInventory.generated.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW } from "./seed.js";
 
@@ -117,12 +118,13 @@ function countingDb(inner: Db): { db: Db; count: () => number } {
 // ── The registry ─────────────────────────────────────────────────────────────────────────────
 
 describe("PLATFORM_SETTINGS", () => {
-  it("declares exactly the four background-job settings", () => {
+  it("declares exactly the four background-job settings and the reserved-names severity", () => {
     expect(PLATFORM_SETTINGS.map((d) => d.key).sort()).toEqual([
       "BLOB_GC_GRACE_DAYS",
       "BLOB_GC_MODE",
       "LAZY_DELTAS",
       "LAZY_DELTA_MAX_BYTES",
+      "LICENSING_RESERVED_NAMES",
     ]);
     // Kill switches are `ceiling`, tunables `runtime` (moving one is a THREAT-MODEL §9 trigger).
     expect(
@@ -132,7 +134,28 @@ describe("PLATFORM_SETTINGS", () => {
       BLOB_GC_MODE: "ceiling",
       LAZY_DELTA_MAX_BYTES: "runtime",
       BLOB_GC_GRACE_DAYS: "runtime",
+      LICENSING_RESERVED_NAMES: "runtime",
     });
+  });
+
+  it("the reserved-names severity is warn or error, warn by default (S-19 §7.4, LX-05)", () => {
+    const d = def("LICENSING_RESERVED_NAMES");
+    expect(d.kind).toBe("choice");
+    expect(d.area).toBe("licensing");
+    expect(d.defaultValue).toBe("warn");
+    expect(validateSettingValue(d, "warn")).toBe("warn");
+    expect(validateSettingValue(d, "error")).toBe("error");
+    expect(validateSettingValue(d, "Error")).toBeUndefined();
+    expect(validateSettingValue(d, "on")).toBeUndefined();
+    expect(resolveSetting(d, " ERROR ", undefined, true).value).toBe("error");
+    expect(resolveSetting(d, "strict", undefined, true)).toMatchObject({
+      value: "warn",
+      source: "default",
+    });
+    // An unreadable store is not a fail-safe "error": a runtime setting falls to [vars]/default.
+    expect(resolveSetting(d, undefined, undefined, false).value).toBe("warn");
+    expect(settingConfirmLevel(d, "warn", "error")).toBe("L1");
+    expect(settingConfirmLevel(d, "error", "warn")).toBe("L0");
   });
 
   it("never declares an origin, privilege root, IdP, gate, key, session, limit, retention or bucket (S-13 §8.2)", () => {
@@ -224,7 +247,7 @@ describe("PLATFORM_SETTINGS", () => {
     expect(
       settingConfirmLevel(def("LAZY_DELTA_MAX_BYTES"), 33_554_432, 2_097_152),
     ).toBe("L0");
-    // None of the four is L2+: the `{ confirm }` echo is reserved for future settings.
+    // None of the five is L2+: the `{ confirm }` echo is reserved for future settings.
     for (const d of PLATFORM_SETTINGS)
       expect(
         Object.values(d.confirm).every((l) => l === "L0" || l === "L1"),
@@ -490,6 +513,51 @@ describe("GET /manage/api/platform/settings", () => {
     expect(secrets.GITHUB_WEBHOOK_SECRET.set).toBe(false);
     for (const s of body.secrets as any[])
       expect(Object.keys(s).sort()).toEqual(["name", "set"]);
+  });
+
+  it("ST-02: reports every inventory var and secret, and never a secret's value", async () => {
+    const env = adminEnv({
+      PKG_ORIGIN: "https://pkg.example",
+      EMAIL_PRODUCT_DAILY_CAP: "250",
+      PLATFORM_REPOSITORY: "owner/repo",
+      REGISTRY_TOKEN_KEY: "registry-SENTINEL",
+      PLATFORM_ASC_API_KEY: '{"p8":"SENTINEL"}',
+    });
+    const { body, text } = await call(
+      env,
+      makeTestDb(),
+      "/api/platform/settings",
+    );
+    expect(text).not.toContain("SENTINEL");
+    const reported = new Set([
+      ...(body.deployTime as any[]).map((v) => v.name),
+      ...(body.secrets as any[]).map((s) => s.name),
+      ...(body.settings as any[]).map((s) => s.key),
+    ]);
+    for (const e of PLATFORM_INVENTORY)
+      if (e.kind !== "binding") expect(reported.has(e.name), e.name).toBe(true);
+    const secretNames = PLATFORM_INVENTORY.filter(
+      (e) => e.kind === "secret",
+    ).map((e) => e.name);
+    expect((body.secrets as any[]).map((s) => s.name)).toEqual(secretNames);
+    for (const v of body.deployTime as any[])
+      expect(secretNames, v.name).not.toContain(v.name);
+    const deploy = Object.fromEntries(
+      (body.deployTime as any[]).map((v) => [v.name, v]),
+    );
+    expect(deploy.PKG_ORIGIN).toEqual({
+      name: "PKG_ORIGIN",
+      area: "delivery",
+      value: "https://pkg.example",
+    });
+    expect(deploy.EMAIL_PRODUCT_DAILY_CAP.value).toBe("250");
+    expect(deploy.PLATFORM_REPOSITORY.area).toBe("deployment");
+    const secrets = Object.fromEntries(
+      (body.secrets as any[]).map((s) => [s.name, s.set]),
+    );
+    expect(secrets.REGISTRY_TOKEN_KEY).toBe(true);
+    expect(secrets.PLATFORM_ASC_API_KEY).toBe(true);
+    expect(secrets.PLATFORM_STEAM_PUBLISHER_KEY).toBe(false);
   });
 
   it("warns while the console borrows the platform client, on a set PLATFORM_KEK_ID and on an unset PORTAL_SESSION_SECRET", async () => {

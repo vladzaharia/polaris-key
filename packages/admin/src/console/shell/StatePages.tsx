@@ -7,7 +7,7 @@
 import * as React from "react";
 import { AlertTriangle, Blocks, Compass, PackageSearch } from "lucide-react";
 import type { ProductRef } from "../../api.js";
-import { LogoMark } from "../../components/brand/Logo.js";
+import { Logo } from "../../components/brand/Logo.js";
 import { Button, EmptyState, Spinner } from "../../components/ui/index.js";
 import type { NavSection } from "../nav.js";
 import { Link } from "../router.js";
@@ -187,7 +187,13 @@ export function ServiceOffPage({
   );
 }
 
-/** Before the session loads: the brand mark and a live "Loading console…". */
+/**
+ * Before the session loads, and the console's own sign-in moment: the Polaris Key lockup (the
+ * Pinned K, no bit, BRAND.md §6) above a live "Loading console…", or, when the session cannot
+ * load, one card with Retry and Sign in. It shares the customer portal's sign-in look (the
+ * centred lockup over a 28 rem card, brand type and spacing, both themes) without any of the
+ * portal's customer parts, and matches the Worker's sign-in error pages (`core/brandHtml.ts`).
+ */
 export function BootScreen({
   error,
   onRetry,
@@ -196,31 +202,46 @@ export function BootScreen({
   onRetry?: () => void;
 }): React.ReactElement {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-background px-4 text-foreground">
-      <LogoMark size={48} />
-      {error ? (
-        <div className="w-full max-w-md">
-          <EmptyState
-            icon={<AlertTriangle aria-hidden />}
-            title="Can’t load the console"
-            description="The admin session could not be loaded. Retry, or sign in again if your session ended."
-            action={
-              <div className="flex flex-wrap justify-center gap-2">
-                <Button onClick={onRetry}>Retry</Button>
-                <Button asChild variant="outline">
-                  <a href="/manage/login">Sign in</a>
-                </Button>
-              </div>
-            }
-          />
-        </div>
-      ) : (
-        <div className="flex items-center gap-3 text-fg-muted">
-          <Spinner className="size-5 text-fg-subtle" />
-          <LiveRegion message="Loading console…" />
-          <span aria-hidden>Loading console…</span>
-        </div>
-      )}
+    // A div, not <main>: the console's one main landmark is the shell's, and tests (and assistive
+    // tech) waiting for it must not find this screen's instead.
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-surface-page px-4 py-12 text-fg">
+      <div className="flex w-full max-w-md flex-col items-center gap-8">
+        <Logo subtitle="console" />
+        {error ? (
+          <section
+            aria-labelledby="boot-error-title"
+            className="w-full rounded-lg border border-border bg-surface-raised p-6 shadow-pk-sm sm:p-8"
+          >
+            <div className="mb-4 flex size-10 items-center justify-center rounded-full bg-danger-subtle text-danger">
+              <AlertTriangle aria-hidden className="size-5" />
+            </div>
+            <h1
+              id="boot-error-title"
+              className="text-xl font-bold tracking-tight text-fg-strong"
+            >
+              Can’t load the console
+            </h1>
+            <p className="mt-2 text-sm text-fg-muted">
+              The admin session could not be loaded. Retry, or sign in again if
+              your session ended.
+            </p>
+            <div className="mt-6 flex flex-col gap-2">
+              <Button className="w-full" onClick={onRetry}>
+                Retry
+              </Button>
+              <Button asChild variant="outline" className="w-full">
+                <a href="/manage/login">Sign in</a>
+              </Button>
+            </div>
+          </section>
+        ) : (
+          <div className="flex items-center gap-3 text-sm text-fg-muted">
+            <Spinner className="size-5 text-fg-subtle" />
+            <LiveRegion message="Loading console…" />
+            <span aria-hidden>Loading console…</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -190,7 +190,7 @@ export function ReleasesPage({ slug }: { slug: string }): React.ReactElement {
       id: "published",
       header: "Published",
       accessorFn: (x) => x.publishedAt ?? 0,
-      meta: { priority: 2, label: "Published" },
+      meta: { numeric: true, priority: 2, label: "Published" },
       cell: ({ row }) =>
         row.original.publishedAt ? (
           <Timestamp at={fromSeconds(row.original.publishedAt)} />

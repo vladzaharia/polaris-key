@@ -196,9 +196,9 @@ function SigningKeysSection({
       </div>
       <div className="space-y-2 px-5 py-4 text-sm">
         {jwks ? (
-          <p className="flex items-start gap-2">
+          <p className="flex items-center gap-2">
             <span className="shrink-0 text-fg-muted">JWKS</span>
-            <code className="min-w-0 break-all font-mono text-xs text-fg-strong">
+            <code className="min-w-0 flex-1 break-all font-mono text-xs text-fg-strong">
               {jwks}
             </code>
             <span className="shrink-0">
