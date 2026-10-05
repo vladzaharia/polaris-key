@@ -7,7 +7,8 @@ extends PKeyResult
 ##   ok                    the store purchase was claimed and the licence synced: `flags` holds
 ##                         the flags now on the licence from this call
 ##   pending               the store holds the purchase (Ask to Buy, a slow payment); it arrives
-##                         later through the store's updates and is claimed then
+##                         later through the store's updates; on the App Store PolarisKey.commerce
+##                         claims it then (transaction_updated) and emits app_store_update_claimed
 ##   cancelled             the player cancelled in the store sheet
 ##   not-owned             the store says this account does not own it (restore found nothing,
 ##                         or the claim answered `not_owned`)

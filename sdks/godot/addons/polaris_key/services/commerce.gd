@@ -35,6 +35,13 @@ extends RefCounted
 ##                                 owned); Play answers unsupported/dependency until the Play
 ##                                 Billing helper ships (claim_play() takes a purchase token from
 ##                                 your own billing plugin meanwhile)
+##   (App Store updates)           on an App Store outlet, attach() connects the facade's
+##                                 transaction_updated (StoreKit Transaction.updates: Ask to Buy
+##                                 approved, a slow payment cleared, another device's purchase)
+##                                 to claim_app_store() and then on_claimed, once per transaction
+##                                 id; `app_store_update_claimed(result)` reports each outcome. A
+##                                 revoked (refunded) transaction is not claimed. A failed claim
+##                                 leaves the transaction unfinished for StoreKit to redeliver
 ##   restore()                     re-claim what the store says this account owns (App Store
 ##                                 current entitlements, Steam-owned DLC), then sync
 ##   claim_play(sku, token)        claim a Play purchase token, then sync
@@ -74,11 +81,22 @@ const STEAM_TICKET_TIMEOUT := 10.0
 ## How long purchase() waits for the player to close Steam's store overlay.
 const STEAM_OVERLAY_TIMEOUT := 900.0
 
+## A StoreKit transaction that arrived through transaction_updated (not through purchase()) was
+## claimed, or the claim failed: a PKeyPurchaseResult with store "app-store".
+signal app_store_update_claimed(result: PKeyPurchaseResult)
+
 ## Awaited after a claim answered ok (purchase, restore, claim_play, claim_steam): the autoload's
 ## forced sync, so the result returns with the flag on the licence. Empty: no sync.
 var on_claimed: Callable = Callable()
-## The App Store facade (null: PKeyApple.shared()). Tests set it.
-var apple: Object = null
+## The App Store facade (null: PKeyApple.shared()). Tests set it; setting it while the
+## transaction_updated listener is connected moves the listener to the new facade.
+var apple: Object = null:
+	set(v):
+		var was := _watched_apple != null
+		_unwatch_app_store()
+		apple = v
+		if was:
+			watch_app_store_updates()
 ## The GodotSteam object (null: the `Steam` singleton when the build has it). Tests set it.
 var steam: Object = null
 ## The store purchase() and restore() use ("" : the outlet's). Tests and custom hosts set it.
@@ -90,11 +108,48 @@ var _license_ref: WeakRef = null
 var products: Array = []
 ## The binding from the last successful get_binding() ("" until then).
 var binding_id := ""
+## The facade whose transaction_updated is connected (null: none).
+var _watched_apple: Object = null
+## Transaction ids from transaction_updated being claimed or already claimed (id -> true).
+var _update_ids := {}
 
 
 func attach(core: PKeyCore, license: Object = null) -> void:
 	_core_ref = weakref(core)
 	_license_ref = weakref(license) if license != null else null
+	if current_store() == "app-store":
+		watch_app_store_updates()
+
+
+## Connect the App Store facade's transaction_updated to claim_app_store() (idempotent; attach()
+## does it on an App Store outlet). false when the facade has no such signal.
+func watch_app_store_updates() -> bool:
+	var a := _apple()
+	if a == null or not a.has_signal("transaction_updated"):
+		return false
+	if _watched_apple == a:
+		return true
+	_unwatch_app_store()
+	a.connect("transaction_updated", _on_app_store_update)
+	_watched_apple = a
+	return true
+
+
+func _unwatch_app_store() -> void:
+	if _watched_apple != null and is_instance_valid(_watched_apple) and _watched_apple.is_connected("transaction_updated", _on_app_store_update):
+		_watched_apple.disconnect("transaction_updated", _on_app_store_update)
+	_watched_apple = null
+
+
+func _on_app_store_update(jws: String, transaction: Dictionary) -> void:
+	var id := str(transaction.get("id", ""))
+	if jws == "" or id == "" or transaction.get("revoked") == true or _update_ids.has(id):
+		return
+	_update_ids[id] = true
+	var r := await claim_app_store({"id": id, "jws": jws}, _apple())
+	if not r.ok:
+		_update_ids.erase(id)
+	app_store_update_claimed.emit(await _claimed(r, "app-store"))
 
 
 func _core() -> PKeyCore:

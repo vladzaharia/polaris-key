@@ -18,6 +18,7 @@ var plan := {}
 
 class Apple:
 	extends RefCounted
+	signal transaction_updated(jws: String, transaction: Dictionary)
 	var result := "success"
 	var owned: Array = []
 	var finished: Array = []
@@ -157,7 +158,50 @@ func _app_store(t: PKeyTestContext) -> void:
 	server.requests.clear()
 	r = await sdk.commerce.restore()
 	t.check("restore: every unrevoked entitlement is claimed, then one sync", r.ok and r.flags == ["extras.diceSkins"] and _claims().size() == 2 and syncs[0] == 1, "%s claims=%d" % [r, _claims().size()])
+	await _app_store_updates(t, sdk, apple, syncs)
 	sdk.queue_free()
+
+
+# §3.9: an Ask to Buy or slow-payment purchase that answered pending arrives later through
+# StoreKit Transaction.updates (PKeyApple.transaction_updated); commerce claims it on its own.
+func _app_store_updates(t: PKeyTestContext, sdk: Node, apple: Apple, syncs: Array) -> void:
+	t.check("updates: an App Store outlet listens to the facade's transaction_updated", apple.transaction_updated.get_connections().size() == 1)
+	t.check("updates: watching again does not connect twice", sdk.commerce.watch_app_store_updates() and apple.transaction_updated.get_connections().size() == 1)
+	var seen: Array = []
+	sdk.commerce.app_store_update_claimed.connect(func(res: PKeyPurchaseResult) -> void: seen.append(res))
+	server.requests.clear()
+	syncs[0] = 0
+	apple.finished.clear()
+	apple.transaction_updated.emit("u.p.d", {"id": "77", "jws": "u.p.d"})
+	apple.transaction_updated.emit("u.p.d", {"id": "77", "jws": "u.p.d"})
+	await _until(func() -> bool: return seen.size() >= 1)
+	for i in 5:
+		await Engine.get_main_loop().process_frame
+	var c: Array = _claims()
+	var body = JSON.parse_string((c[0]["body"] as PackedByteArray).get_string_from_utf8()) if not c.is_empty() else {}
+	t.check("updates: an approved Ask to Buy is claimed, finished and synced once", seen.size() == 1 and seen[0].ok and seen[0].flags == ["extras.diceSkins"] and c.size() == 1 and body.get("signedTransaction") == "u.p.d" and apple.finished == ["77"] and syncs[0] == 1, "%s claims=%d finished=%s syncs=%d" % [seen, c.size(), apple.finished, syncs[0]])
+	apple.transaction_updated.emit("r.e.v", {"id": "78", "jws": "r.e.v", "revoked": true})
+	for i in 5:
+		await Engine.get_main_loop().process_frame
+	t.check("updates: a refund (revoked) is not claimed", _claims().size() == 1 and seen.size() == 1)
+	plan["/distribution/commerce/claim"] = _json(503, {"error": {"code": "unavailable"}})
+	apple.transaction_updated.emit("f.a.i", {"id": "79", "jws": "f.a.i"})
+	await _until(func() -> bool: return seen.size() >= 2)
+	t.check("updates: a failed claim is reported and the transaction stays unfinished", seen.size() == 2 and not seen[1].ok and apple.finished == ["77"], str(seen))
+	plan["/distribution/commerce/claim"] = _claim_ok
+	apple.transaction_updated.emit("f.a.i", {"id": "79", "jws": "f.a.i"})
+	await _until(func() -> bool: return seen.size() >= 3)
+	t.check("updates: StoreKit's redelivery of a failed one is claimed", seen.size() == 3 and seen[2].ok and apple.finished == ["77", "79"], str(seen))
+	var other := Apple.new()
+	sdk.commerce.apple = other
+	t.check("updates: a new facade takes the listener over", apple.transaction_updated.get_connections().is_empty() and other.transaction_updated.get_connections().size() == 1)
+
+
+func _until(done: Callable, frames := 600) -> void:
+	for i in frames:
+		if done.call():
+			return
+		await Engine.get_main_loop().process_frame
 
 
 func _steam(t: PKeyTestContext) -> void:
