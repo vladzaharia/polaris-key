@@ -391,11 +391,13 @@ describe("registry host: isolation", () => {
     expect(res.headers.get("cross-origin-resource-policy")).toBeNull();
   });
 
-  it("reserved ecosystems (cargo, go, nuget) and unknown repositories answer the not-found", async () => {
+  it("reserved ecosystems (cargo, nuget) and unknown repositories answer the not-found", async () => {
     for (const path of [
       "/cargo/djdl/index/config.json",
-      "/go/djdl/example.com/m/@v/list",
       "/nuget/djdl/v3/index.json",
+      // Go has routes since F-31 (they load the owner: test/registry/go.test.ts pins their
+      // not-found with a database); this path is no proxy request, so no route matches it.
+      "/go/djdl/example.com/m",
       // No D1 here, so only paths no route matches: F-04's npm routes load the owner for a
       // scoped name (test/registry/npm.test.ts pins their not-found with a database).
       "/npm/djdl/sdk",

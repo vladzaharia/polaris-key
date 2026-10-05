@@ -43,7 +43,8 @@
  * declares for pushes (`tools/pushed`, `tools/conformance`).
  *
  * F-02 ships one smoke client, `curl`; F-04 to F-09 add their ecosystem's clients (npm, pnpm,
- * yarn, bun, pip, uv, poetry, SwiftPM, Gradle, Maven, docker, crane, GodotEnv; F-30: Cargo) as further
+ * yarn, bun, pip, uv, poetry, SwiftPM, Gradle, Maven, docker, crane, GodotEnv; F-30: Cargo;
+ * F-31's go) as further
  * `clients/*.sh` and matrix rows in `.github/workflows/registry-clients.yml`. Nothing here
  * reaches a deployed environment.
  */
@@ -239,6 +240,7 @@ const PROBES = {
   oci: (o) => `/v2/${o}/tools/smoke/tags/list`,
   godot: (o) => `/godot/${o}/index.json`,
   cargo: (o) => `/cargo/${o}/config.json`,
+  go: (o) => `/go/${o}/go.plrs.test/smoke/@v/list`,
 };
 
 /** The ecosystem a client exercises (its family's prefix), or null for the smoke client. */

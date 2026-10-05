@@ -422,6 +422,14 @@ const NAMESPACE_COPY: Record<
     },
   },
   cargo: {},
+  go: {
+    modulePrefixes: {
+      row: "Module paths",
+      label: "Module prefixes",
+      help: "Every module path must equal or sit under one of these prefixes, like go.acme.dev. Clients name the same prefixes in GONOSUMDB.",
+      placeholder: "go.acme.dev",
+    },
+  },
 };
 
 /** How the Namespace section names a feed whose namespace is the owner itself (no fields). */

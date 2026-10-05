@@ -882,9 +882,9 @@ function deps(source: Map<string, RegistryPackage>): TestDeps {
 }
 
 describe("the materialiser", () => {
-  it("every feed package's ecosystem has its renderer and routes (F-04 to F-09, F-30)", () => {
+  it("every feed package's ecosystem has its renderer and routes (F-04 to F-09, F-30, F-31)", () => {
     expect([...RENDERERS.keys()].sort()).toEqual(
-      ["cargo", "godot", "maven", "npm", "oci", "pypi", "swift"].sort(),
+      ["cargo", "go", "godot", "maven", "npm", "oci", "pypi", "swift"].sort(),
     );
     for (const [ecosystem, renderer] of RENDERERS)
       expect(renderer.routes.length, ecosystem).toBeGreaterThan(0);

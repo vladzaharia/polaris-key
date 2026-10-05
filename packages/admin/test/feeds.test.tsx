@@ -375,6 +375,7 @@ describe("the Feeds overview", () => {
       "Maven / Gradle",
       "Godot",
       "Cargo",
+      "Go",
     ]);
     expect(within(rows[0]!).getByText("Enabled")).toBeTruthy();
     expect(
@@ -383,7 +384,7 @@ describe("the Feeds overview", () => {
     expect(
       within(rows[0]!).getByRole("link", { name: "npm" }).getAttribute("href"),
     ).toBe("#/platform/feeds/npm");
-    expect(within(main()).getByText("7 of 7")).toBeTruthy();
+    expect(within(main()).getByText("8 of 8")).toBeTruthy();
     expect(
       within(main()).getByRole("heading", { name: "Owners" }),
     ).toBeTruthy();
@@ -404,6 +405,7 @@ describe("the Feeds overview", () => {
       "Maven / Gradle",
       "Godot",
       "Cargo",
+      "Go",
       "Tokens",
     ]);
     // Nothing suggests a public registry, and nothing is "coming soon".
@@ -868,6 +870,7 @@ describe("a feed page", () => {
       "Maven / Gradle",
       "Godot",
       "Cargo",
+      "Go",
       "Tokens",
     ]);
     expect(

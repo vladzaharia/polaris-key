@@ -2,7 +2,7 @@
 sidebar:
   order: 10
 title: "Package feeds"
-description: "The registry host, pkg.plrs.im: package feeds for npm, PyPI, SwiftPM, Maven and Gradle, OCI, Godot and Cargo clients, with one access check before every cached answer."
+description: "The registry host, pkg.plrs.im: package feeds for npm, PyPI, SwiftPM, Maven and Gradle, OCI, Godot, Cargo and Go clients, with one access check before every cached answer."
 ---
 
 Package feeds let a product publish libraries and tools to the package managers its users
@@ -25,12 +25,13 @@ the owner.
 | OCI       | `https://pkg.plrs.im/v2/<owner>/…`          | docker, podman, crane                      |
 | Godot     | `https://pkg.plrs.im/godot/<owner>/`        | the Godot editor's asset library, GodotEnv |
 | Cargo     | `sparse+https://pkg.plrs.im/cargo/<owner>/` | Cargo                                      |
+| Go        | `https://pkg.plrs.im/go/<owner>`            | the go command (a GOPROXY)                 |
 
 `GET /` is a static page naming the host, and `GET /v2/` is OCI's base answer
 (`Docker-Distribution-API-Version: registry/2.0`): `200` to a request bearing a valid pull token,
 and the standard `401` Bearer challenge naming `/v2/token` to any other once the deployment has its
-registry token key set (before that, always `200`). Go and NuGet names are reserved and answer
-the not-found.
+registry token key set (before that, always `200`). NuGet names are reserved and answer the
+not-found.
 
 ## What the host promises
 
@@ -505,6 +506,62 @@ is no namespace to set: every crate sits in the owner's own index.
   `credential-provider = "cargo:token"` beside its `index`. A crate whose own delivery access is stricter than its feed's is refused to a
   client the feed admits without a token, which Cargo reports as an error rather than a missing
   crate: keep such crates on a non-public feed.
+
+## Go
+
+The Go feed is a module proxy (the
+[GOPROXY protocol](https://go.dev/ref/mod#goproxy-protocol)) at `https://pkg.plrs.im/go/<owner>`.
+A package's name is its module path (`go.acme.dev/sdk`, `go.acme.dev/sdk/v2`), and the feed's
+namespace is a list of **module prefixes**: every published path must equal one or sit under it.
+
+```sh
+go env -w GOPROXY=https://pkg.plrs.im/go/<owner>,https://proxy.golang.org,direct
+go env -w GONOSUMDB=<module prefix>[,<module prefix>…]
+go get go.acme.dev/sdk@latest
+```
+
+- **GONOSUMDB, never GOPRIVATE.** The public checksum database cannot see your modules, so
+  GONOSUMDB keeps their lookups away from it; go.sum still pins every hash. GOPRIVATE would do
+  that too, but it also sets GONOPROXY, so the go command would skip every proxy, this feed
+  included, and go to the module path's host directly.
+- **Routing.** The feed answers only for modules it holds and 404s everything else (another
+  module, and the parent paths the go command probes when it looks for a package's module), so
+  the go command moves on to the public proxy for every other dependency.
+- **Versions.** A release version is semver without Go's `v`, which the feed adds: release
+  `1.4.0` is module version `v1.4.0`. A v2+ module's path ends in `/v<major>`, and publishing
+  refuses a version whose major does not match. Build metadata is refused.
+- **Documents.** `@v/list` (every version that is not yanked), `@latest` (the `stable` channel's
+  head), `@v/<version>.info`, and the version's `.mod` and `.zip`, which are its own bytes,
+  immutable and served by digest. Module paths and versions are case-encoded as the go command
+  sends them (`!a` for `A`).
+- **Channels** are queries: `go get go.acme.dev/sdk@beta` asks for `@v/beta.info`, and the feed
+  answers with the version the `beta` channel serves.
+- **A yanked version** leaves `@v/list`, `@latest` and every channel, so no query (`@latest`,
+  `@v1`, `@v1.2`) resolves to it. Its `.info`, `.mod` and `.zip` stay, so a go.mod and go.sum
+  that pin it keep building. Go has no deprecation a proxy can carry (it reads `// Deprecated:`
+  from the module's own go.mod), so the console offers none.
+- **Credentials.** A feed that is not public answers `401` with `WWW-Authenticate: Basic`. The go
+  command answers from a `.netrc` entry for `pkg.plrs.im` (login `__token__`, password the
+  registry token), over https only.
+- **Zero-config use** (no GOPROXY setting at all) would need a `go-import` `<meta>` tag on the
+  module path's own host. The registry host never serves one: it answers only under `/go/`.
+
+**Publishing.** `pkey release publish --deliverable <id> --version <semver>` reads either a module
+zip (built by `golang.org/x/mod/zip` or another tool; every entry under `<module>@v<version>/`) or,
+when the artifacts glob matches a `go.mod`, the module's source tree, which the CLI zips by Go's
+own rules (no VCS directories, nested modules or vendored packages). It splits out the go.mod the
+`.mod` answer serves and records both go.sum hashes (`h1:`), so the console can show the lines a
+go.sum must hold:
+
+```yaml
+deliverables:
+  go.sdk:
+    kind: package
+    ecosystem: go
+    name: go.acme.dev/sdk
+    artifacts:
+      module: { match: "go.mod" }
+```
 
 ## Publishing with native clients
 

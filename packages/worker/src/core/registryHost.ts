@@ -115,10 +115,9 @@ export const REGISTRY_ECOSYSTEMS = [
 ] as const;
 export type RegistryEcosystem = (typeof REGISTRY_ECOSYSTEMS)[number];
 
-/** Reserved for tier 3 (F-31, F-32): known names, no routes, so always the not-found. Cargo
- *  (F-30) left the list when its feed shipped. */
+/** Reserved for tier 3 (F-32): known names, no routes, so always the not-found. Cargo (F-30)
+ *  and Go (F-31) left the list when their feeds shipped. */
 export const RESERVED_ECOSYSTEMS: ReadonlySet<RegistryEcosystem> = new Set([
-  "go",
   "nuget",
 ]);
 

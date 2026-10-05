@@ -45,6 +45,7 @@ import {
   PACKAGE_ECOSYSTEMS,
   PACKAGE_FILE_TYPES,
   PACKAGE_METADATA_KEYS,
+  goMajorProblem,
   isPackageEcosystem,
   isPackageName,
   maxPackageFiles,
@@ -1447,6 +1448,20 @@ function validatePackageDescriptor(
         "invalid_descriptor",
         `a ${eco} package version is a semantic version.`,
       );
+    if (eco === "go") {
+      // Go adds its `v`: release 1.4.0 is module version v1.4.0. Build metadata is refused (Go
+      // reserves `+incompatible`, which is never published here).
+      if (!SEMVER_RE.test(d.version) || d.version.includes("+"))
+        err(
+          "/version",
+          "invalid_descriptor",
+          "a Go module version is a semantic version without the v (Go adds it) and without build metadata.",
+        );
+      else if (isPackageName(eco, pkg.name)) {
+        const major = goMajorProblem(pkg.name, d.version);
+        if (major !== null) err("/version", "invalid_descriptor", major);
+      }
+    }
     if (eco === "oci" && !OCI_TAG_RE.test(d.version))
       err(
         "/version",
@@ -1629,8 +1644,11 @@ function validatePackageDescriptor(
                   "at least one oci-manifest or oci-index"
                 : eco === "cargo"
                   ? count("crate") === 1 || "exactly one crate"
-                  : (count("godot-zip") === 1 && count("godot-icon") <= 1) ||
-                    "exactly one godot-zip and at most one godot-icon";
+                  : eco === "go"
+                    ? (count("go-zip") === 1 && count("go-mod") === 1) ||
+                      "exactly one go-zip and exactly one go-mod"
+                    : (count("godot-zip") === 1 && count("godot-icon") <= 1) ||
+                      "exactly one godot-zip and at most one godot-icon";
     if (composition !== true && types.length === files.length)
       err(
         "/package/files",

@@ -1,7 +1,8 @@
-/** The package extractors (F-03, plans/F-01.md §6.8; Cargo F-30), one per ecosystem. */
+/** The package extractors (F-03, plans/F-01.md §6.8; Cargo F-30, Go F-31), one per ecosystem. */
 
 import type { PackageEcosystem } from "@polaris-key/manifest";
 import { extractCargo } from "./cargo.js";
+import { extractGo } from "./go.js";
 import { extractGodot } from "./godot.js";
 import { extractMaven } from "./maven.js";
 import { extractNpm } from "./npm.js";
@@ -29,5 +30,7 @@ export function extractPackage(
       return extractGodot(input);
     case "cargo":
       return extractCargo(input);
+    case "go":
+      return extractGo(input);
   }
 }

@@ -325,6 +325,30 @@ const SAMPLES: Record<string, RegistryPackage> = {
       ),
     ),
   ),
+  go: pkg(
+    "go",
+    "go.acme.dev/Sdk",
+    V.map((v) =>
+      version(
+        v,
+        [
+          {
+            name: `v${v}.zip`,
+            type: "go-zip",
+            sha256: hex(`go zip ${v}`),
+            size: 100,
+          },
+          {
+            name: "go.mod",
+            type: "go-mod",
+            sha256: hex(`go mod ${v}`),
+            size: 30,
+          },
+        ],
+        { name: "go.acme.dev/Sdk", version: v, h1: `h1:${v}` },
+      ),
+    ),
+  ),
 };
 
 /** Two feed-settings values a render can be given; a `package`-stamped renderer ignores both. */
@@ -370,6 +394,8 @@ const PARAMS: Record<string, Record<string, string>> = {
     prefix2: "me",
     file: "acme-sdk-1.0.0.crate",
   },
+  // The module path case-encoded as the go command sends it; a canonical version.
+  go: { module: "go.acme.dev/!sdk", version: "v1.0.0" },
 };
 
 /**

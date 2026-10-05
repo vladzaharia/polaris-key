@@ -237,6 +237,38 @@
         "kind": "token",
         "value": "pkeyr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
       }
+    },
+    {
+      "id": "go-feed",
+      "ecosystem": "go",
+      "owner": "acme",
+      "namespace": {
+        "modulePrefixes": ["go.acme.dev"]
+      }
+    },
+    {
+      "id": "go-package",
+      "ecosystem": "go",
+      "owner": "acme",
+      "namespace": {
+        "modulePrefixes": ["go.acme.dev"]
+      },
+      "package": {
+        "name": "go.acme.dev/sdk/v2",
+        "version": "2.1.0"
+      }
+    },
+    {
+      "id": "go-env",
+      "ecosystem": "go",
+      "owner": "acme",
+      "namespace": {
+        "modulePrefixes": ["go.acme.dev", "example.com/acme"]
+      },
+      "credential": {
+        "kind": "env",
+        "name": "PKEY_REGISTRY_TOKEN"
+      }
     }
   ]
 }

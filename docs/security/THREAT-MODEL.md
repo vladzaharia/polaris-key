@@ -1012,11 +1012,11 @@ writer can push.
 
 **What it is.** `pkg.plrs.im` (with `pkg-staging` and `pkg-dev`) is the same Worker on a third
 custom domain, beside the console (`key.plrs.im`) and the bytes host (`dl.plrs.im`). It serves
-package feeds to registry clients: npm, PyPI, SwiftPM, Maven and Gradle, OCI, Godot and Cargo
+package feeds to registry clients: npm, PyPI, SwiftPM, Maven and Gradle, OCI, Godot, Cargo and Go
 (plans/F-01.md §6). `PKG_ORIGIN` names it, and `core/registryHost.ts` confines it to `mount.ts`
 `REGISTRY_ROUTES`, a static landing page at `/` and OCI's fixed `/v2/` root. F-02 ships the host
 and the framework, F-03 the tables and ingest, F-04 to F-09 one feed each (npm, PyPI, Swift,
-Maven, OCI, Godot), F-11 the console's Feeds pages and F-30 the Cargo feed; each part is below. Tests: `test/registryHost.test.ts`, `test/registryFeeds.test.ts`,
+Maven, OCI, Godot), F-11 the console's Feeds pages, F-30 the Cargo feed and F-31 the Go module proxy (tier 3); each part is below. Tests: `test/registryHost.test.ts`, `test/registryFeeds.test.ts`,
 `test/feedAdapters.test.ts` (the adapter conformance suite), `test/registryDrain.test.ts`,
 `test-workerd/registry.test.ts`, and the curl client of `registry-clients.yml`.
 
@@ -1159,10 +1159,11 @@ symbol); review catches the rest.
   protocol-fixed names (npm tarballs, Swift archives, Maven files) immutable for clients that
   cache by name, and Swift's trust-on-first-use safe.
 - **Dependency confusion.** A feed takes only names in its operator-set namespace (npm and Swift
-  scope, Maven group prefixes, PyPI names and prefixes, the Godot publisher; OCI and Cargo names
-  sit under the owner, and Cargo takes a crate only for a dependency naming the registry), enforced at ingest
+  scope, Maven group prefixes, PyPI names and prefixes, the Godot publisher, Go module prefixes;
+  OCI and Cargo names sit under the owner, and Cargo takes a crate only for a dependency naming
+  the registry), enforced at ingest
   (`package-namespace`); an ecosystem with no configured feed takes nothing. Names collide after
-  each ecosystem's normalisation (PEP 503; case-insensitive npm, Swift, Maven), in the manifest
+  each ecosystem's normalisation (PEP 503; case-insensitive npm, Swift, Maven, Go), in the manifest
   (`package_name_collision`) and in the key. `upstream` is pinned to `none` by a CHECK, so no feed
   proxies a public registry. The residual risk is that no public name is claimed on npmjs or Maven
   Central (owner decision Q2: account-level claims only), which the setup docs warn about.
@@ -1331,6 +1332,20 @@ credential path.
 - **Private feeds.** A non-public feed answers `config.json` 401; the admitted answer says
   `auth-required: true`, so Cargo sends the token on every request, never as a URL. A crate
   stricter than its public feed is refused (401) to a client the feed admits anonymously.
+
+**The Go module proxy (F-31).** A GOPROXY at `/go/<owner>/`: `@v/list`, `@latest` and `.info`
+are rendered JSON or opaque bytes (the list leaves as `application/octet-stream`, never `text/*`),
+and `.mod` and `.zip` are the release's own blobs by SHA-256 (attachments, immutable). The Worker
+never unzips: the publishing CLI splits the go.mod out of the module zip and records both go.sum
+`h1:` hashes; the go command recomputes them from the served bytes and pins them in go.sum.
+Module paths are matched exactly after the go command's case decoding (an upper-case letter in a
+URL, or a dangling `!`, matches nothing), and a v2+ module's `/vN` suffix must agree with its
+version at publish. A path the feed does not hold is the plain 404, which is what makes the go
+command fall through to the next GOPROXY entry; the setup tells clients to name the feed's
+prefixes in GONOSUMDB, so these modules never reach the public checksum database, and never in
+GOPRIVATE (which would bypass the proxy). Go has no proxy-side authenticity beyond TLS and
+go.sum's trust-on-first-use, the same as any private GOPROXY. The go command sends `.netrc`
+credentials over https only. The host never serves a `go-import` `<meta>` page.
 
 **The Feeds console and its admin API (F-11).** `/manage/api/platform/feeds/*` and
 `/manage/api/products/<slug>/distribution/feeds/*` (`admin/handlers/feeds.ts`) sit behind the

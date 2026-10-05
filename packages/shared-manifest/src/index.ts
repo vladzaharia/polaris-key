@@ -3050,6 +3050,7 @@ const PACKAGE_NAME_RULES: Readonly<Record<PackageEcosystem, string>> = {
   godot: "1-64 of a-z, 0-9 and '_'",
   cargo:
     "a crate name (an ASCII letter, then letters, digits, '-' and '_', at most 64 characters)",
+  go: "a Go module path (a lower-case host name with a dot, then '/'-separated elements of letters, digits and '-._~')",
 };
 
 /** A `deliverables.<packId>` entry against plans/P4-01.md §3's v1 subset. */
