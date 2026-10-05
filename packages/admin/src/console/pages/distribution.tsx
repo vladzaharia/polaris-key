@@ -7,6 +7,8 @@ import { HealthPage } from "../areas/distribution/HealthPage.js";
 import { MatrixPage } from "../areas/distribution/MatrixPage.js";
 import { OutletsPage } from "../areas/distribution/OutletsPage.js";
 import { RolloutsPage } from "../areas/distribution/RolloutsPage.js";
+import { ListingPage } from "../areas/storefronts/ListingPage.js";
+import { StorefrontsPage } from "../areas/storefronts/StorefrontsPage.js";
 import { FeedsArea } from "../areas/feeds/FeedsArea.js";
 import type { SectionPageProps } from "./types.js";
 
@@ -22,6 +24,10 @@ export default function DistributionPages({
       return <RolloutsPage slug={slug} />;
     case "outlets":
       return <OutletsPage slug={slug} />;
+    case "storefronts":
+      return <StorefrontsPage slug={slug} />;
+    case "listing":
+      return <ListingPage slug={slug} />;
     case "app-store":
       return <AppStorePage slug={slug} />;
     case "commerce":

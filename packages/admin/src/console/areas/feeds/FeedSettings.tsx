@@ -45,6 +45,7 @@ import { RadioCards } from "../../../ui/RadioCards.js";
 import { SaveBar } from "../../../ui/SaveBar.js";
 import { Select } from "../../../ui/Select.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
+import { CapabilityStrip } from "../../../ui/CapabilityBadge.js";
 import { Switch } from "../../../ui/Switch.js";
 import { Textarea } from "../../../ui/Textarea.js";
 import { toast } from "../../../ui/toast.js";
@@ -62,6 +63,7 @@ import {
   FEED_ACCESS_LABELS,
   YANK_EFFECTS,
   bytesToMiB,
+  feedVersionCapabilities,
   mibToBytes,
   tokensHref,
   type FeedScope,
@@ -674,14 +676,11 @@ function YankSection({
           label="Version states"
           help="Shown on each version of the package record, where they are set."
         >
-          <span className="flex flex-wrap gap-1.5">
-            <StatusPill tone={caps.yank ? "success" : "neutral"} size="sm">
-              {caps.yank ? "Yank" : "No yank"}
-            </StatusPill>
-            <StatusPill tone={caps.deprecate ? "success" : "neutral"} size="sm">
-              {caps.deprecate ? "Deprecate" : "No deprecation"}
-            </StatusPill>
-          </span>
+          <CapabilityStrip
+            label="Version states"
+            className="w-full sm:w-72"
+            items={feedVersionCapabilities(caps)}
+          />
         </SettingsRow>
         {caps.yankPolicy ? (
           <SettingsRow

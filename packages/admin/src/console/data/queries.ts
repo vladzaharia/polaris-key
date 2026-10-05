@@ -191,6 +191,16 @@ export const qk = {
   outlets: (slug: string) => product(slug, "distribution", "outlets"),
   distributionKeys: (slug: string) => product(slug, "distribution", "keys"),
   connectors: (slug: string) => product(slug, "distribution", "connectors"),
+  /** A-18j: the storefront flow (every store's plan); as a prefix, also the slot board. */
+  storefronts: (slug: string) => product(slug, "distribution", "storefronts"),
+  storefrontSlots: (slug: string) =>
+    product(slug, "distribution", "storefronts", "slots"),
+  /** A-18b: the listing model; as a prefix, also its fit report and release notes. */
+  listing: (slug: string) => product(slug, "distribution", "listing"),
+  listingFit: (slug: string, release: string | null) =>
+    product(slug, "distribution", "listing", "fit", release ?? ""),
+  listingNotes: (slug: string, release: string) =>
+    product(slug, "distribution", "listing", "notes", release),
   /**
    * One connector read (A-17g: the App Store Distribute flow and App Store products). Under
    * `connectors`, so every connector control makes it stale.

@@ -457,6 +457,11 @@ export const r = {
     productPage(slug, "matrix", { query }),
   rollouts: (slug: string) => productPage(slug, "rollouts"),
   outlets: (slug: string) => productPage(slug, "outlets"),
+  /** A-18j: `?flow=1&step=…&stores=…` opens "Add to storefronts"; `?store=` pre-scopes it. */
+  storefronts: (slug: string, query?: QueryInit) =>
+    productPage(slug, "storefronts", { query }),
+  listing: (slug: string, query?: QueryInit) =>
+    productPage(slug, "listing", { query }),
   appStore: (slug: string, query?: QueryInit) =>
     productPage(slug, "app-store", { query }),
   commerce: (slug: string) => productPage(slug, "commerce"),
