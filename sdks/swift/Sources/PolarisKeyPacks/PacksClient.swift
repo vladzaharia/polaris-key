@@ -151,6 +151,7 @@ public struct PacksOptions: Sendable, Equatable {
             && a.handlers.map(\.type) == b.handlers.map(\.type)
             && a.excludeFromBackup == b.excludeFromBackup
             && (a.objectTransport == nil) == (b.objectTransport == nil)
+            && a.platformTransport?.id == b.platformTransport?.id
     }
 
     /// The content stamp (`pkey-content.json`). Without one the facet has no packs (`ensure`
@@ -172,13 +173,20 @@ public struct PacksOptions: Sendable, Equatable {
     public var excludeFromBackup: Bool
     /// The blob transport. Default `URLSessionPackObjectTransport()`.
     public var objectTransport: (any PackObjectTransport)?
+    /// P5-08: the store transport that carries some packs (`AppleAssetPackTransport` in
+    /// PolarisKeyUpdate for Apple-hosted Background Assets), or nil. A carried pack is installed
+    /// only through it; while it is unavailable the pack is refused with
+    /// `plan-transport-unsupported`, never fetched from the CDN.
+    public var platformTransport: (any PackPlatformTransport)?
 
     public init(
         contentStamp: PackStampSource? = nil, embedded: [EmbeddedPack] = [], axes: [String: [String]] = [:],
         engine: String? = nil, memBudget: Int = 256 * 1024 * 1024, dir: URL? = nil,
         handlers: [any PackHandler] = [], excludeFromBackup: Bool = true,
-        objectTransport: (any PackObjectTransport)? = nil
+        objectTransport: (any PackObjectTransport)? = nil,
+        platformTransport: (any PackPlatformTransport)? = nil
     ) {
+        self.platformTransport = platformTransport
         self.contentStamp = contentStamp
         self.embedded = embedded
         self.axes = axes
@@ -464,7 +472,8 @@ public actor PacksClient {
                 // stamp holds (`stampHolds` gives nil) are treated as no holds: the record hash a
                 // decision names still binds the bytes.
                 holds: ((try? readStampBytes()) ?? nil).flatMap { stampHolds($0) } ?? [],
-                feedDeltas: { [feedMenu] in feedMenu.with { $0 ?? nil } }))
+                feedDeltas: { [feedMenu] in feedMenu.with { $0 ?? nil } },
+                platform: opts.platformTransport))
         if feedMenu.with({ $0 == nil }), let load = loadFeedDeltas, let loaded = await load() {
             feedMenu.with { if $0 == nil { $0 = .some(loaded) } }
         }

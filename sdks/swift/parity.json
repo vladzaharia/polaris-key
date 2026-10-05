@@ -111,7 +111,7 @@
     "identity.oidc": {
       "status": "planned",
       "unowned": true,
-      "note": "Only through a host-supplied sign-in closure; no work package gives Swift its own browser sign-in."
+      "note": "No OIDC redirect flow yet: native browser sign-in waits on I-15. The interim is client.identity signInWithBrowser(), which opens the device-code verification URL in ASWebAuthenticationSession and polls identity.devicecode (never the deprecated /identity/auth/poll)."
     },
     "identity.devicecode": {
       "status": "implemented"
@@ -236,9 +236,8 @@
       "note": "P4-16: MlModelHandler (host-registered): model.json runtime, quantisation and RAM/VRAM needs against the host budget, then the host load test before model(packId) swaps."
     },
     "packs.transport.apple": {
-      "status": "planned",
-      "unowned": true,
-      "note": "P5-05's PolarisKeyPlatform target carries the AssetPackManager client (iOS / macOS 26.4, behind #if compiler(>=6.3)) behind its C surface; P5-08 wires the transport for Godot only, and no package adopts it as a Swift SDK pack transport."
+      "status": "implemented",
+      "note": "SP-S08: PolarisKeyUpdate's AppleAssetPackTransport (a PackPlatformTransport over P5-05's AssetPackClient, set as PacksOptions.platformTransport): the level's asset pack <pack>-c<contentApi> (dots to hyphens), files under pkey/<asset pack>/ resolved with url(for:) on every call and never persisted, ensure with progress forwarded. The engine plans a carried pack only through the platform (plan-transport-unsupported while it is unavailable, never a CDN fallback), verifies the marker and the payload or treeDigest against the signed record, floats to a later unrevoked seq, and never commits the copy to the state. Unsupported version below iOS / macOS 26.4 and outlet without the Background Assets Info.plist keys. Stub-proven in PlatformTransportTests; the TestFlight device run is the owner's, as for Godot's P5-08."
     },
     "packs.transport.play": {
       "status": "na",
@@ -273,7 +272,7 @@
     "ui.kit": {
       "status": "planned",
       "unowned": true,
-      "note": "PolarisLoginView only; no work package builds the rest of the Swift kit."
+      "note": "PolarisLoginView, PolarisGate, PolarisSignIn and PolarisOfflineActivation over the @Observable PolarisKeyModel; the rest of the kit (PARITY \u00a75.9) belongs to the UI-kit program (UK-*)."
     },
     "commerce.receipt": {
       "status": "implemented",

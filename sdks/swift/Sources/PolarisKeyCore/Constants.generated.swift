@@ -1326,7 +1326,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "packs.type.audio.bank": CapabilityRow(status: "na", service: "release", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "packs.type.ml.model": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.provides": CapabilityRow(status: "implemented", service: "release", na: []),
-    "packs.transport.apple": CapabilityRow(status: "planned", service: "distribution", na: []),
+    "packs.transport.apple": CapabilityRow(status: "implemented", service: "distribution", na: []),
     "packs.transport.play": CapabilityRow(status: "na", service: "distribution", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "packs.transport.steam": CapabilityRow(status: "planned", service: "distribution", na: [CapabilityNa(runtime: "ios", reason: "runtime")]),
     "packs.transport.msix": CapabilityRow(status: "na", service: "distribution", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
@@ -1337,4 +1337,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "cb703841f7d6ac5a92be797386074c7c62b8b2fe2bb3d7b76288a28351faec43"
+public let CAPABILITY_DIGEST = "6759868c7ef24d199c1f4f15c83ae18002fa51442e1b8bc23a7928cf3dda38f9"
