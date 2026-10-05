@@ -71,6 +71,15 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test
 mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
 ```
 
+## S-21 amendment (2026-10-05): grant source `polaris-key`
+
+The owner decided on 2026-10-05 that "`direct` really becomes `Polaris Key`"
+([S-21](../../notes/S-21-polaris-storefront.md) D9, §6.8). In the grant-source vocabulary of [`plans/LX-01.md`](../plans/LX-01.md)
+(`trg_grants_source_{ins,upd}`), write `polaris-key` where the plan says `direct`: the
+source of a sale made through Polaris Key itself. No code writes `direct` yet, so this costs
+nothing. The portal badge reads "Polaris Key". The outlet id `direct` is unrelated and does not
+change.
+
 ## Hand-off
 
 - LX-09 switches reads; LX-12 and LX-13 write grants.
