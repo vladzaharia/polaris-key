@@ -4253,6 +4253,46 @@ The Godot SDK reaches Android through `polaris-key-platform` (sdks/kotlin) and t
   (notes/S-06 §7): it gates In-App Updates (a forged Play claim only reaches Play's own API, which
   then refuses) and never authorises anything on the server.
 
+### JVM desktop keyring store and installer driver (UK-40)
+
+The Kotlin SDK's JVM desktop path (`PolarisKeyDesktop`) adds an OS keyring token store
+(`KeyringStore`, `sdks/kotlin/core/.../Keyring.kt`) and a driver that downloads and opens a
+binary update (`DesktopInstallDriver` over `OkHttpArtifactFetch`, `sdks/kotlin/update/`). The
+driver installs new code, so its trust anchor is the point of this section.
+
+- **Trust anchor.** The driver acts only on a release record that `UpdateClient.releaseRecord`
+  has verified under the pinned release keys (`verifyReleaseRecord`). The expected size and
+  SHA-256 come from that record's `payload` artifact, never from the feed or the download
+  response, and the downloaded `.part` must match both before anything opens it; a mismatch is
+  `payload-mismatch`, the partial is removed and nothing runs. The URL only says where to fetch.
+- **Where installers land.** The record's artifact name is reduced to a safe basename
+  (`safeName`: no directory part, no leading dot, `[A-Za-z0-9._-]` only), and installers are
+  downloaded into an app-private directory created 0700. The verified file is handed to
+  `open` (macOS), `rundll32 shell32.dll,ShellExec_RunDLL` (Windows, so no `cmd` parsing of the
+  path) or `xdg-open` (Linux), except an AppImage, which is made owner-executable and run
+  directly. Arguments are passed as a list, never through a shell.
+- **The bearer and redirects.** `OkHttpArtifactFetch` follows redirects itself. The bearer goes
+  only to the control plane's own origin (scheme, host and port), is dropped as soon as a hop
+  changes origin and never comes back on a later hop, and plain http to a non-loopback host is
+  refused (`insecure-redirect`), on the first URL as on any redirect. Redirects are capped
+  (`too-many-redirects`).
+- **No publisher check.** The driver checks no code signature or publisher of its own. The OS
+  installer's checks (Gatekeeper and notarisation on macOS, Authenticode and SmartScreen on
+  Windows, the package's signature on Linux where the format has one; an AppImage has none) are
+  the residual. A malicious installer published under the product's own release key is the
+  release key's compromise (AT-3) and outside this model.
+- **Token store fallback (a deliberate difference).** The token lives in the OS keyring
+  (Keychain, Credential Manager or Secret Service) under service `pkey:<product>`. A write that
+  cannot be verified by reading it back, or a host with no reachable keyring (java-keyring
+  absent, a headless Linux session with no Secret Service), falls back to the 0600 token file,
+  and `status()` surfaces it as `keyring-error` or `keyring-unavailable`; it is never silent.
+  This follows the Python SDK's `KeyringStore` (finding R4-11) and departs on purpose from the
+  Apple and Android stores above, where the token is never written to a file instead: a desktop
+  JVM has no store the SDK can rely on everywhere, and the 0600 file is the same protection the
+  file store gave before. A keyring read that throws while no token file exists returns no token
+  (the host may activate again) and `status()` reports `keyring-error`, as in Python. The device
+  id and the verified cache stay in their 0600 files; neither is a secret.
+
 ### Platform pack transports (P5-08)
 
 Apple-hosted Background Assets, Play Asset Delivery and Steam depots move pack bytes that Polaris
