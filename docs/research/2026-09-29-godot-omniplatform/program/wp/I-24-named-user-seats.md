@@ -5,7 +5,7 @@
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (later)                                                                  |
 | Size        | 1–2 engineer-weeks                                                                                                                          |
 | Depends on  | [I-05](I-05-accounts-core.md)                                                                                                               |
-| Unblocks    | none                                                                                                                                        |
+| Unblocks    | [LX-24](LX-24-per-seat-features.md)                                                                                                         |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                       |
 | Plan mode   | yes: `pkey-wire-planner` writes `plans/I-24.md` first; it needs human approval before code                                                  |
 | Gates       | plan mode; signed corpus regeneration; all six SDKs (`parity:check`); D1 migration; `TABLE_OWNERS`; generated docs pages (`gen-docs` drift) |
