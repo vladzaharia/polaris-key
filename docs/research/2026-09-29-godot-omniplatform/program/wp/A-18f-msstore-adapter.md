@@ -106,7 +106,7 @@ Where the brief or S-15 and the code disagreed, the code won:
 - [x] The conformance suite passes for Microsoft, including the five denied `DELETE`s and typed
       commit, finalize and pricing.
 - [x] P5-04's poller is unchanged and still GET-only.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 
