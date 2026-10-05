@@ -22,6 +22,7 @@ func run(t: PKeyTestContext) -> void:
 	await _refusals(t)
 	await _discovery(t)
 	await _concurrent(t)
+	await _attest_retry(t)
 	server.queue_free()
 
 
@@ -244,3 +245,30 @@ func _concurrent(t: PKeyTestContext) -> void:
 	var b: PKeyMintResult = join.results["b"]
 	t.check("mint: two concurrent asks share one request", a.ok and b.ok and a.token == MINTED and b.token == MINTED and _mints("shared").size() == 1, "%d requests" % _mints("shared").size())
 	sdk.queue_free()
+
+
+## SDK parity §3.10: a 403 attestation_required attests once (PKeyCore.attest_hook) and retries
+## once; a failed attestation, auto_attest off, or a second refusal returns the refusal.
+func _attest_retry(t: PKeyTestContext) -> void:
+	var cases := [
+		["attests and retries once", [_err(403, "attestation_required"), _minted()], PKeyResult.success({"trust_level": "attested"}), true, true, 2, 1],
+		["a failed attestation keeps the refusal", [_err(403, "attestation_required")], PKeyResult.unsupported("devices.attest", "runtime", "desktop"), true, false, 1, 1],
+		["auto_attest off never attests", [_err(403, "attestation_required")], PKeyResult.success({}), false, false, 1, 0],
+		["a second refusal is not retried again", [_err(403, "attestation_required"), _err(403, "attestation_required")], PKeyResult.success({}), true, false, 2, 1],
+	]
+	for c in cases:
+		server.requests.clear()
+		clock[0] = S.NOW
+		var sdk: Node = await _sdk(PKeyMemoryStore.new("", TOKEN))
+		sdk.core.options.auto_attest = c[3]
+		var calls := [0]
+		var answer: PKeyResult = c[2]
+		sdk.core.attest_hook = func() -> PKeyResult:
+			calls[0] += 1
+			return answer
+		plan = {"/config/mint/r1/token": (c[1] as Array).duplicate()}
+		var r: PKeyMintResult = await sdk.config.mint_token("r1")
+		t.check("mint attest: %s" % c[0], r.ok == c[4] and _mints().size() == c[5] and calls[0] == c[6], "%s mints=%d attests=%d" % [r, _mints().size(), calls[0]])
+		if not c[4]:
+			t.check("mint attest: %s keeps the code" % c[0], r.code == &"attestation_required")
+		sdk.queue_free()
