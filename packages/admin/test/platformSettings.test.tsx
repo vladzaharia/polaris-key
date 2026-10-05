@@ -172,7 +172,19 @@ function view(over: Record<string, unknown> = {}) {
       { name: "BLOBS_BUCKET_NAME", area: "delivery", value: "pk-blobs" },
       { name: "R2_ACCOUNT_ID", area: "delivery", value: null },
       { name: "GITHUB_APP_ID", area: "delivery", value: "12345" },
+      {
+        name: "PKG_ORIGIN",
+        area: "delivery",
+        value: "https://pkg.example.com",
+      },
       { name: "PORTAL_EMAIL_FROM", area: "email", value: null },
+      {
+        name: "EMAIL_SENDER_ADDRESS",
+        area: "email",
+        value: "noreply@auth.example.com",
+      },
+      { name: "EMAIL_PRODUCT_DAILY_CAP", area: "email", value: null },
+      { name: "EMAIL_APPLE_RELAY", area: "email", value: null },
       { name: "PLATFORM_KEK_ACTIVE", area: "keyring", value: "kek-2" },
       { name: "PLATFORM_KEK_ID", area: "keyring", value: null },
     ],
@@ -713,6 +725,12 @@ describe("the read-only inventory", () => {
     const delivery = await section("Delivery");
     expect(within(delivery).getByText("Production")).toBeTruthy();
     expect(within(delivery).getByText("https://dl.example.com")).toBeTruthy();
+    // ST-02: the deploy vars the inventory added are read out too.
+    expect(within(delivery).getByText("https://pkg.example.com")).toBeTruthy();
+    const email = await section("Email");
+    expect(within(email).getByText("noreply@auth.example.com")).toBeTruthy();
+    expect(within(email).getByText("Not set: 500")).toBeTruthy();
+    expect(within(email).getByText("Not registered")).toBeTruthy();
     const warnings = within(main()).getByRole("region", { name: "Warnings" });
     expect(
       within(warnings).getByText("Portal sessions share the admin secret"),

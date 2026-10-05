@@ -265,7 +265,7 @@ export function PlatformSettingsPage(): React.ReactElement {
     IDENTITY_VARS.some((n) => deploy.has(n)) ||
     view.constants.some((c) => c.name === "ADMIN_SESSION_TTL_SECONDS");
   const showDelivery = DELIVERY_VARS.some((n) => deploy.has(n));
-  const showEmail = deploy.has("PORTAL_EMAIL_FROM");
+  const showEmail = EMAIL_VARS.some((n) => deploy.has(n));
   const showLimits = view.constants.some(
     (c) => c.name !== "ADMIN_SESSION_TTL_SECONDS",
   );
@@ -357,7 +357,9 @@ export function PlatformSettingsPage(): React.ReactElement {
           title="Email"
           description="The email binding's allowed senders still restrict it."
         >
-          <DeployRow item={deploy.get("PORTAL_EMAIL_FROM")} />
+          {EMAIL_VARS.map((n) => (
+            <DeployRow key={n} item={deploy.get(n)} />
+          ))}
         </SettingsSection>
       ) : null}
 
@@ -990,9 +992,16 @@ const DELIVERY_VARS = [
   "PKEY_ENVIRONMENT",
   "CONSOLE_ORIGIN",
   "BLOB_ORIGIN",
+  "PKG_ORIGIN",
   "BLOBS_BUCKET_NAME",
   "R2_ACCOUNT_ID",
   "GITHUB_APP_ID",
+];
+const EMAIL_VARS = [
+  "EMAIL_SENDER_ADDRESS",
+  "PORTAL_EMAIL_FROM",
+  "EMAIL_PRODUCT_DAILY_CAP",
+  "EMAIL_APPLE_RELAY",
 ];
 
 const DEPLOY_LABELS: Record<
@@ -1060,8 +1069,28 @@ const DEPLOY_LABELS: Record<
     unset: "Not set: repositories cannot be linked",
   },
   PORTAL_EMAIL_FROM: {
-    label: "Portal sender",
-    help: "The From address of the portal's magic-link email.",
+    label: "Legacy sender",
+    help: "Older sender setting. Only its address is read, and only while the sender address is not set.",
+    unset: "Not set",
+  },
+  EMAIL_SENDER_ADDRESS: {
+    label: "Sender address",
+    help: "The one address sign-in and account mail is sent from.",
+    unset: "Not set: mail is sent from noreply@plrs.im",
+  },
+  EMAIL_PRODUCT_DAILY_CAP: {
+    label: "Daily cap per product",
+    help: "The most passthrough sign-in emails one product sends in a day. A product's own cap wins.",
+    unset: "Not set: 500",
+  },
+  EMAIL_APPLE_RELAY: {
+    label: "Apple private relay",
+    help: "Registered once the sender is registered with Apple's private email relay; until then relay recipients are refused.",
+    unset: "Not registered",
+  },
+  PKG_ORIGIN: {
+    label: "Registry host",
+    help: "The origin that serves package feeds. Requests there reach only registry routes.",
     unset: "Not set",
   },
 };

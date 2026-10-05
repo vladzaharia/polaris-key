@@ -3450,7 +3450,13 @@ is no new privilege level and no outbound call.
 - **The inventory never reveals a secret.** `GET …/settings` reports deploy-time values that are
   not credentials (the environment, the admin group name, the IdP issuer and client id, the
   parsed issuer allowlist, the origins, the bucket, the account and GitHub App ids, kid names)
-  and every secret as `{ name, set }` only: never a value, a length, a prefix or a hash. It warns
+  and every secret as `{ name, set }` only: never a value, a length, a prefix or a hash. Since
+  ST-02 both lists are generated from the `@inventory var|secret` tags on `Env` (`env.ts` →
+  `platformInventory.generated.ts`) rather than hand-kept, so a new member cannot be left out,
+  and a member cannot be added untagged (`pnpm gen:platform-inventory -- --check`). The tag is
+  now what keeps a value out of the response: `test/platformInventory.test.ts` refuses a
+  credential-shaped name (`*_SECRET`, `*_KEY`, `*_KEYS`, `*_PEPPER`, `*PRIVATE_KEY`, the store
+  credentials, `PLATFORM_KEK`) tagged anything but `secret`. It warns
   when the console still borrows the platform IdP client (`ADMIN_OIDC_*` unset, I-03), when
   `PLATFORM_KEK_ID` is set, and when `PORTAL_SESSION_SECRET` is unset (the portal then signs with
   `ADMIN_SESSION_SECRET`).
@@ -4860,6 +4866,7 @@ reporting a binding's resource id or any secret-derived value, a route updates o
 `PLATFORM_SETTINGS`, a setting's precedence changes from `ceiling` to `runtime`, a registry
 entry's bounds widen (`LAZY_DELTA_MAX_BYTES` above the measured 32 MiB ceiling, or a grace below
 one day), the settings inventory starts reporting anything about a secret beyond its presence,
+an `Env` member's `@inventory` tag changes from `secret` to `var` (ST-02),
 or a path reads one of the four settings from the raw `[vars]` instead of through the resolver;
 or, for self-reported operations (A-14), the `DELTA_DLQ` binding is used for anything but
 `metrics()`, a request path starts persisting free-text error capture, a job-run or heartbeat
