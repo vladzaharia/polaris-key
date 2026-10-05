@@ -223,7 +223,14 @@ class PolarisKeyClient:
         # Device-code sign-in raises the same acquisition event activation does: a
         # signed-in device holds a licensed token exactly as an activated one does, and
         # syncs the same way.
-        self.identity = IdentityClient(self.core, self._tokens, self._on_license_acquired)
+        self.identity = IdentityClient(
+            self.core,
+            self._tokens,
+            self._on_license_acquired,
+            deactivate=lambda: self.license.deactivate(),
+            profile=lambda: self.license.get_profile(),
+            on_signed_out=lambda: self._license_changed(),
+        )
         self.release = ReleaseClient(self.core, self._tokens, lambda: self._discovery_doc)
         #: The public download model (``distribution/download.json``, SDK parity pass §3.8).
         self.distribution = DistributionClient(
@@ -488,6 +495,14 @@ class PolarisKeyClient:
 
     def _on_license_acquired(self) -> None:
         self.sync(force=True)
+
+    def _license_changed(self) -> None:
+        """The licence state may have moved without a sync (a sign-out, a deactivation)."""
+        if self._on_change is not None:
+            try:
+                self._on_change(self.license.status())
+            except Exception:
+                pass
 
     def get_sync_state(self) -> SyncState:
         state = self._cache.state

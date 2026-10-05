@@ -148,7 +148,7 @@ Planned entries no work package owns yet. Each needs an owner before the gap can
 | React | `update.driver` | No updater hand-off in React, and no work package adds one. |
 | React | `update.bootguard` | P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02. |
 | React | `commerce.receipt` | P6-01 builds the Worker bridge and leaves the SDK side planned with no owner. |
-| Python | `identity.oidc` | No browser sign-in in the Python SDK, and no work package ports it. |
+| Python | `identity.oidc` | Browser redirect sign-in waits on the native redirect-token route (I-15, SDK parity pass wire item W4). Until then identity.sign_in_with_browser() opens the device-code verificationUriComplete in the system browser and polls (identity.devicecode); the deprecated /identity/auth/poll is never used. |
 | Python | `packs.transport.steam` | P5-08 covers Godot only; Python desktop hosts have no Steam-depot transport owner. |
 | Python | `packs.transport.msix` | No work package owns the MSIX optional-package transport (P5-08 Out). |
 | Python | `packs.transport.flatpak` | No work package owns the Flatpak extension transport (P5-08 Out). |

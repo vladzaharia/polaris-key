@@ -55,7 +55,7 @@
     "identity.oidc": {
       "status": "planned",
       "unowned": true,
-      "note": "No browser sign-in in the Python SDK, and no work package ports it."
+      "note": "Browser redirect sign-in waits on the native redirect-token route (I-15, SDK parity pass wire item W4). Until then identity.sign_in_with_browser() opens the device-code verificationUriComplete in the system browser and polls (identity.devicecode); the deprecated /identity/auth/poll is never used."
     },
     "identity.devicecode": { "status": "implemented" },
     "release.changelog": { "status": "implemented" },

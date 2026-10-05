@@ -54,7 +54,14 @@ from .commerce import (
 )
 from .config.client import DEFAULT_ENV_PREFIX, ConfigClient
 from .config.mint import MintedToken
-from .identity.client import IdentityClient, SignInPoll, SignInPrompt, SignInResult
+from .identity.client import (
+    IdentityClient,
+    SignedInIdentity,
+    SignInPoll,
+    SignInPrompt,
+    SignInResult,
+)
+from . import qr
 # Generated constants (`pnpm gen:constants`, tools/gen-sdk-constants.ts), imported wholesale through
 # the generated ``__all__`` so a constant the generator gains reaches the package root unedited.
 from . import constants_generated as _constants_generated
@@ -288,6 +295,8 @@ __all__ = [
     "SignInPrompt",
     "SignInPoll",
     "SignInResult",
+    "SignedInIdentity",
+    "qr",
     "MintedToken",
     "ReleaseClient",
     "FetchedFile",
