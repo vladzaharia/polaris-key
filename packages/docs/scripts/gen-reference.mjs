@@ -638,7 +638,8 @@ runners of SDKs predating packs never read, and the content corpus and \`plan-ma
 // Reads the feature registry and every SDK's parity manifest directly (this file stays
 // dependency-free, so it does not import tools/parity-check.ts, which is what GATES them).
 // MDX would read `<p>` in a note as JSX, so prose escapes angle brackets as well as braces.
-const mdxText = (s) => mdxProse(s).replace(/([<>])/g, "\\$1");
+// mdxProse already escapes `<`; escaping it again here wrote `\\<`, a literal backslash then a bare `<`.
+const mdxText = (s) => mdxProse(s).replace(/>/g, "\\>");
 
 function parityMatrix() {
   const registry = JSON.parse(read("conformance", "parity", "features.json"));
