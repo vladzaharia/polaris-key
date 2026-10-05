@@ -218,6 +218,7 @@ describe("product scope", () => {
       "maven",
       "oci",
       "godot",
+      "cargo",
     ]);
     expect(body.feeds[0]).toMatchObject({
       status: "off",
@@ -281,7 +282,7 @@ describe("product scope", () => {
         { mode: "entitled", available: true },
       ],
     });
-    expect((await admin("GET", product("/cargo"))).status).toBe(404);
+    expect((await admin("GET", product("/go"))).status).toBe(404);
   });
 
   it("validates settings writes: namespace, ceiling, access mode, upstream, unknown fields", async () => {
@@ -801,7 +802,7 @@ describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", ()
     );
     expect(JSON.stringify(listed)).not.toContain(minted.token);
     expect(listed.username).toBe("__token__");
-    expect(listed.feeds).toHaveLength(6);
+    expect(listed.feeds).toHaveLength(7);
     expect(listed.limits).toMatchObject({
       defaultDays: 90,
       urlDefaultDays: 30,

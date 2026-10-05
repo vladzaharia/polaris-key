@@ -9,8 +9,9 @@
  * empty catalog), marks the row `system = 1`, enables Release and Distribution, turns its
  * `packageFeeds` on and seeds one feed per ecosystem with the platform's namespaces (§6.7):
  * `@polaris-key` (npm), `polaris-key` (Swift scope), `im.plrs.key` (Maven), the PyPI name
- * `polaris-key` and the Godot publisher `polaris-key`; OCI repositories sit under the owner. Swift
- * releases must be signed (owner decision 2026-10-04). A second run creates nothing and leaves an
+ * `polaris-key` and the Godot publisher `polaris-key`; OCI repositories and Cargo crates sit under
+ * the owner. Swift releases must be signed (owner decision 2026-10-04). A second run creates
+ * nothing and leaves an
  * operator's later settings alone (a service or `packageFeeds` switched off stays off); it
  * fills in any missing feed row and queues a full render.
  *
@@ -76,6 +77,8 @@ export const SYSTEM_FEEDS = [
   },
   { ecosystem: "oci", namespace: {}, ext: {} },
   { ecosystem: "godot", namespace: { publisher: "polaris-key" }, ext: {} },
+  // F-30: crates sit in the owner's own index (no namespace); empty until a Rust SDK ships.
+  { ecosystem: "cargo", namespace: {}, ext: {} },
 ] as const;
 
 export type EnsureSystemProduct =
