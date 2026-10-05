@@ -597,18 +597,38 @@ describe("pkey listing assets: icons", () => {
     expect(report.slots.find((s) => s.slot === "play:icon")!.status).toBe("ok");
   }, 60_000);
 
-  it("gives icon-only fallbacks without key art, marked red", async () => {
-    const { report } = await run({
+  it("gives icon-only fallbacks without key art, marked red, and never uploads them", async () => {
+    const server = fakeServer();
+    server.script("/distribution/listing/assets", () =>
+      json({ ok: true, stored: [], kept: [] }),
+    );
+    const { report, out } = await run({
       keyArt: undefined,
       keyArtPortrait: undefined,
       screenshots: undefined,
+      upload: true,
+      product: SLUG,
+      baseUrl: BASE,
+      env: { PKEY_CI_TOKEN: CI_TOKEN },
+      fetchImpl: server.fetchImpl,
+      sleep: async () => {},
     });
-    for (const spec of SLOT_SPECS.filter((s) => s.kind === "compose")) {
+    const [register] = server.to("/distribution/listing/assets");
+    const slots = (
+      register!.body as { assets: Array<{ slot: string }> }
+    ).assets.map((a) => a.slot);
+    const composed = SLOT_SPECS.filter((s) => s.kind === "compose");
+    for (const spec of composed) {
       const s = report.slots.find((x) => x.slot === spec.slot)!;
       expect(s.status, spec.slot).toBe("red");
       expect(s.derivedFrom, spec.slot).toBe("icon-master");
       expect(s.notes.join(), spec.slot).toContain("icon-only fallback");
+      // The stored row has no status: a red output must not be registered.
+      expect(slots, spec.slot).not.toContain(spec.slot);
     }
+    // The icon-derived outputs that are fine still go up.
+    expect(slots).toContain("play:icon");
+    expect(out).toContain(`${composed.length} red outputs were not uploaded`);
   }, 120_000);
 
   it("refuses a master that is not square", async () => {
@@ -781,6 +801,10 @@ describe("pkey listing assets --upload", () => {
       );
     expect(out).toContain("kept 1 the operator uploaded (steam:library-hero)");
     expect(out).toContain("1 pending screenshot proposal was not uploaded");
+    // Only ok and warn outputs are registered.
+    for (const r of report.slots)
+      if (r.status !== "ok" && r.status !== "warn")
+        expect(slots, r.slot).not.toContain(r.slot);
     expect(report.packs.map((p) => p.store)).toEqual([...PACK_STORES]);
   }, 180_000);
 

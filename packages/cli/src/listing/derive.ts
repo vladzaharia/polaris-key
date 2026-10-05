@@ -291,7 +291,14 @@ function composeSlot(
       status: "red",
       raster: canvas,
       derivedFrom: "icon-master",
-      notes: ["no key art: an icon-only fallback; this store needs key art"],
+      notes: [
+        "no key art: an icon-only fallback; this store needs key art",
+        ...(spec.textAllowed === "none"
+          ? [
+              "this slot allows no text, and the icon master may carry some: check the fallback",
+            ]
+          : []),
+      ],
     };
   }
 

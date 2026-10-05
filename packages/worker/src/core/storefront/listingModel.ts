@@ -278,18 +278,28 @@ export function listingAssetRule(slot: string): TextAllowed | undefined {
   return m && Number(m[3]) <= MAX_STORE_SCREENSHOTS ? "free" : undefined;
 }
 
+/** The masters a template output can be derived from (`derivedFrom` of a composed slot). */
+const TEMPLATE_SOURCES: ReadonlySet<string> = new Set([
+  "icon-master",
+  "key-art",
+  "key-art-portrait",
+  "wordmark",
+]);
+
 /**
  * Play's `aiGeneratedState` for a stored asset (S-15 §7.4; A-18e reads it when it uploads an
- * image): an output `pkey listing assets` derived or composed by template (`derivedFrom` set) is
- * `NotAiGenerated`. A master a person made says nothing, so the adapter leaves the field unset.
+ * image): an output `pkey listing assets` derived or composed by template from a master
+ * (`derivedFrom` is one of the masters) is `NotAiGenerated`. Anything else says nothing, so the
+ * adapter leaves the field unset: a master a person made (`derivedFrom` null), and a fitted
+ * screenshot (`derivedFrom` `screenshot:<class>`), whose pixels a person made and the tool only
+ * cropped or padded, so it cannot vouch for them.
  */
 export function aiGeneratedStateOf(asset: {
   derivedFrom?: string | null;
   derived_from?: string | null;
 }): "NotAiGenerated" | null {
-  return (asset.derivedFrom ?? asset.derived_from ?? null) !== null
-    ? "NotAiGenerated"
-    : null;
+  const from = asset.derivedFrom ?? asset.derived_from ?? null;
+  return from !== null && TEMPLATE_SOURCES.has(from) ? "NotAiGenerated" : null;
 }
 
 /** One `dist_listing_assets` row as a writer (A-18d) hands it in. */

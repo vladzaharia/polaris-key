@@ -19,12 +19,14 @@
  *   4. With `--upload --product <slug>`: upload the masters, outputs, fitted screenshots and packs
  *      through an upload ticket (P2-02's uploads route accepts `distribution:listing`) and register
  *      them (`POST /<p>/distribution/listing/assets`) into `dist_listing_assets`, with SHA-256,
- *      width, height, alpha and `derivedFrom`. Pending proposals, `human` and `missing` slots are
- *      never uploaded. Nothing is pushed to any store here: the storefront adapters push from the
- *      blob store, after the operator has seen and accepted each output in the console (A-18j).
+ *      width, height, alpha and `derivedFrom`. Pending proposals and `red`, `human` and `missing`
+ *      slots are never uploaded (the stored row carries no status, so a red output stays local).
+ *      Nothing is pushed to any store here: the storefront adapters push from the blob store,
+ *      after the operator has seen and accepted each output in the console (A-18j).
  *
  * Play's `aiGeneratedState` is `NotAiGenerated` for every template output: the report and the
- * Play pack say so, and the Worker derives the same from `derivedFrom` for the Play adapter.
+ * Play pack say so, and the Worker derives the same from `derivedFrom` for the Play adapter (a
+ * master or a fitted screenshot, which a person made, gets no declaration).
  */
 
 import { createHash } from "node:crypto";
@@ -708,8 +710,12 @@ export async function listingAssets(
       derivedFrom: null,
       textAllowed: MASTER_RULES[m.slot],
     });
+  // Only `ok` and `warn` outputs go up. A `red` output (an icon-only fallback with no key art, a
+  // `title` slot composed with no wordmark, a file over the store's byte limit) stays local: the
+  // stored row has no status, so registering it would make it look compliant.
+  const notUploaded = reportSlots.filter((s) => s.file && s.status === "red");
   for (const s of reportSlots)
-    if (s.file && s.status !== "human" && s.status !== "missing")
+    if (s.file && (s.status === "ok" || s.status === "warn"))
       rows.push({
         slot: s.slot,
         file: path.join(dir, ...s.file.split("/")),
@@ -757,10 +763,18 @@ export async function listingAssets(
     derivedFrom: r.derivedFrom,
     textAllowed: r.textAllowed,
   }));
+  const writeNotUploaded = () => {
+    if (notUploaded.length)
+      out.write(
+        `${notUploaded.length} red output${notUploaded.length === 1 ? " was" : "s were"} not uploaded: ` +
+          `${notUploaded.map((s) => s.slot).join(", ")}. Fix them (see the report) and run again.\n`,
+      );
+  };
   if (opts.dryRun) {
     out.write(
       `Dry run: would upload and register ${rows.length} listing assets; nothing sent.\n`,
     );
+    writeNotUploaded();
     return result;
   }
   const token = await resolveCiToken({
@@ -837,6 +851,7 @@ export async function listingAssets(
         : "") +
       ". Nothing was pushed to a store: accept each output in the console first.\n",
   );
+  writeNotUploaded();
   if (pending.length)
     out.write(
       `${pending.length} pending screenshot proposal${pending.length === 1 ? " was" : "s were"} not uploaded.\n`,

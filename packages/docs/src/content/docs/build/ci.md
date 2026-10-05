@@ -423,8 +423,10 @@ it, or a directory that holds anything else (keep the keystore and the APKs outs
 ## Listing assets
 
 `pkey listing assets` makes every store's listing art from three images a person draws: a square
-icon master (1024×1024 is best), key art with no logo on it, and the wordmark on transparency. It
-needs the `sharp` image library beside `pkey` (`npm install sharp`):
+icon master (1024×1024 is best), key art with no logo on it, and the wordmark on transparency.
+Export them in sRGB: an image with another embedded colour profile is converted first, and that
+conversion is not guaranteed to give identical bytes on every machine. It needs the `sharp` image
+library beside `pkey` (`npm install sharp`):
 
 ```yaml
 - run: |
@@ -454,8 +456,10 @@ Everything lands under `--out`: one directory per store, `report.json` (every sl
 alpha, format and digest), `preview.html` to look at, and a ZIP per store under `packs/` (Steam has
 no listing API, so its pack is what you upload by hand). `--upload` stores the images in the
 product's [shared listing](/docs/admin/storefront-listing/). It needs `distribution:listing`,
-which an operator adds deliberately. It never pushes anything to a store, and it never replaces an
-image an operator uploaded in the console. Rerunning with the same `--out` replaces only the files
+which an operator adds deliberately. Only `ok` and `warn` outputs go up: a red output (an icon-only
+fallback, a title slot with no wordmark, a file over the store's size limit) stays in `--out` and is
+listed as not uploaded, as are `human` and `missing` slots and pending proposals. It never pushes
+anything to a store, and it never replaces an image an operator uploaded in the console. Rerunning with the same `--out` replaces only the files
 the last run wrote.
 
 ## Other CI systems

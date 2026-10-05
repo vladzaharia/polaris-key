@@ -254,6 +254,14 @@ describe("the listing model's asset slots (A-18d additions)", () => {
     );
     expect(aiGeneratedStateOf({ derived_from: null })).toBeNull();
   });
+
+  it("says nothing of a fitted screenshot or an unknown source", () => {
+    expect(aiGeneratedStateOf({ derivedFrom: "screenshot:phone" })).toBeNull();
+    expect(
+      aiGeneratedStateOf({ derived_from: "screenshot:tablet" }),
+    ).toBeNull();
+    expect(aiGeneratedStateOf({ derivedFrom: "something-else" })).toBeNull();
+  });
 });
 
 describe("POST /<p>/distribution/listing/assets", () => {

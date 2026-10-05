@@ -5,6 +5,11 @@
  * pixels, a JPEG (Steam's community icon) only approximately, which is why the hash is taken
  * before encoding.
  *
+ * The one step that is not integer-only is `toColourspace("srgb")` in `decodeImage`: an input with
+ * an embedded non-sRGB ICC profile goes through libvips/lcms float conversion first, so its
+ * pixels (and the hashes after them) are not guaranteed identical across architectures. Plain
+ * sRGB inputs, like the fixtures, are untouched by it. The docs ask for sRGB masters.
+ *
  * `sharp` is loaded on first use, not at import: the rest of `pkey` (and the standalone bundle,
  * which leaves `sharp` external) runs where no native image library is installed.
  */
