@@ -23,8 +23,45 @@ export function isNotFound(err: unknown): boolean {
   return err instanceof PortalApiError && err.status === 404;
 }
 
+/**
+ * The download-link mint's reasons (`POST …/artifacts/<id>/token`). The Worker sends them only
+ * to an account that owns the product, so they can say exactly what is wrong; a stranger gets a
+ * plain 404. The last three match the downloads view's per-file `reason`.
+ */
+const DOWNLOAD_REFUSALS: Record<string, PortalErrorCopy> = {
+  file_not_found: {
+    title: "That file is no longer offered",
+    description:
+      "A newer release may have replaced it. Reload the page to see the current downloads.",
+    retry: false,
+  },
+  not_hosted: {
+    title: "Not available here yet",
+    description:
+      "This file can't be downloaded from here yet. Contact the developer for another way to get it.",
+    retry: false,
+  },
+  license_inactive: {
+    title: "Your license isn't active",
+    description:
+      "Renew or reactivate your license, then try the download again.",
+    retry: false,
+  },
+  not_entitled: {
+    title: "Your license doesn't include this version",
+    description:
+      "Download a version your license covers, or upgrade your license to get this one.",
+    retry: false,
+  },
+};
+
 export function portalErrorCopy(err: unknown): PortalErrorCopy {
   if (err instanceof PortalApiError) {
+    if (
+      err.code &&
+      Object.prototype.hasOwnProperty.call(DOWNLOAD_REFUSALS, err.code)
+    )
+      return DOWNLOAD_REFUSALS[err.code]!;
     if (err.status === 0)
       return {
         title: "Can't reach Polaris Key",

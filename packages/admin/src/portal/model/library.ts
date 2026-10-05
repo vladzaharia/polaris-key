@@ -19,7 +19,7 @@ import { PLATFORM_ORDER, type PlatformKey } from "../components/Glyphs.js";
  * holds, each one's status from the licence the Worker ranks best, presentation and same-origin
  * art (G1), the seats activation counts (G5) and support links (G16). The client only words the
  * Worker's status (§6.4: codes are never copy) and adds what the Worker leaves to the page:
- * "Signed-in app" for an account-bound licence. `GET /api/licenses` supplies each product's
+ * "Account-wide" for an account-bound licence. `GET /api/licenses` supplies each product's
  * licence summaries (the product page's switcher and key facts), `GET /api/products/<p>/downloads`
  * (PX-W2) the server-detected build and the live store links for the quick action, and
  * `GET /api/releases` the fallback while a downloads view hasn't answered. Steam-key states wait
@@ -45,7 +45,7 @@ export interface ProductStatus {
   tone: StatusTone;
   /** The reason line, in visible text: "Ended 4 Sep 2026", "Lifetime · 2 devices". */
   note: string;
-  /** Not "Active" or "Signed-in app": counted by the Needs attention filter. */
+  /** Not "Active" or "Account-wide": counted by the Needs attention filter. */
   attention: boolean;
 }
 
@@ -191,6 +191,19 @@ export function devicesText(n: number, limit?: number | null): string {
   return `${n} ${n === 1 ? "device" : "devices"}`;
 }
 
+/** The word for a licence bound to the account (signed in, no key): owner, 2026-10-05. */
+export const ACCOUNT_WIDE = "Account-wide";
+
+/**
+ * An account-bound licence: issued by signing in (`identityProvider` "oidc") with no key. It
+ * follows the account to any device the person signs in on; activation still counts its seats.
+ */
+export function isAccountWide(
+  l: Pick<PortalLicenseSummary, "identityProvider" | "keyCount">,
+): boolean {
+  return l.identityProvider === "oidc" && l.keyCount === 0;
+}
+
 /** §5.3: one status per license, first match wins. */
 export function licenseStatus(
   l: PortalLicenseSummary,
@@ -240,12 +253,12 @@ export function licenseStatus(
       attention: true,
     };
   }
-  if (l.identityProvider === "oidc" && l.keyCount === 0) {
+  if (isAccountWide(l)) {
     return {
       kind: "signedInApp",
-      label: "Signed-in app",
+      label: ACCOUNT_WIDE,
       tone: "neutral",
-      note: "Sign in on any device",
+      note: `${tier ?? "Standard"} · ${ACCOUNT_WIDE}`,
       attention: false,
     };
   }
@@ -337,7 +350,7 @@ function summaryFromItem(item: PortalLibraryItem): PortalLicenseSummary {
 /**
  * The Worker's status for a product (§5.3, `GET /api/library`), in words. The precedence is the
  * Worker's; the page only phrases it, and turns an `active` account-bound licence (signed in, no
- * key) into "Signed-in app". `lastCovered` is the newest version an expired licence still
+ * key) into "Account-wide". `lastCovered` is the newest version an expired licence still
  * downloads, for "Updates ended at 1.8".
  */
 export function statusFromServer(

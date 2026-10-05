@@ -26,6 +26,7 @@ in the same pull request.
 cd docs/research/2026-09-29-godot-omniplatform/program
 node check.mjs              # validate the graph and the index (exit 1 on any problem)
 node check.mjs --ready      # what can start now, most-blocking first
+node check.mjs --ready --optional --deferred  # also optional work and packages waiting for the owner's go (CM-*)
 node check.mjs --summary    # effort and status per phase
 node check.mjs --critical   # the longest remaining dependency chain
 node check.mjs --show P3-02 # one work package with its dependants

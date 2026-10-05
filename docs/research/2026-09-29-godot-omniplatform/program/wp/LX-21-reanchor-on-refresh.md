@@ -12,6 +12,15 @@
 | Human input | none                                                                           |
 | Repo        | `vladzaharia/polaris-key`                                                      |
 
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- Until LX-21, sign-in's LicenseChoiceStep is the way to change a device's license (sign out, sign in, choose; SIGN-IN.md D-42). "Run this device on" reuses `LicenseChoiceView`, including `access` and `current`.
+
 ## Goal
 
 `licensing.reanchor: onRefresh` works (silent re-bind on refresh when the anchor became unusable), and the portal's "Run this device on" route takes effect at the next refresh.
