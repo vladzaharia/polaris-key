@@ -204,14 +204,17 @@ async function groupedLicenses(
   return out;
 }
 
-/** When the account first got this product: its oldest licence link (for "Recently added"). */
+/**
+ * When the account first got this product (for "Recently added"): its first contact with the
+ * product, which is when the pairwise subject was created (I-05; a licence attach creates it).
+ */
 async function addedAt(
   db: Db,
   accountId: string,
   product: string,
 ): Promise<number | null> {
   const row = await db.first<{ at: number | null }>(
-    `SELECT MIN(created_at) AS at FROM portal_license_links
+    `SELECT created_at AS at FROM account_product_subjects
       WHERE account_id = ? AND product = ?`,
     accountId,
     product,

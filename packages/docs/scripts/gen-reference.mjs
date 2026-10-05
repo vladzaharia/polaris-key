@@ -417,6 +417,18 @@ const TABLE_OWNERS = {
   identity: [
     "oidc_config",
     "provisioning_config",
+    // I-05 (plans/I-04.md §6.1): the Polaris Key account. Core reads the subject rows through
+    // src/core/accountSubjects.ts only; `licenses.account_id` stays License's column and
+    // `devices.subject`/`bound_by` Core's.
+    "accounts",
+    "account_links",
+    "account_product_subjects",
+    "account_product_subject_aliases",
+    "account_tombstones",
+    "subject_events",
+    "account_sessions",
+    "account_product_grants",
+    "account_passkeys",
     "portal_accounts",
     "portal_account_emails",
     "portal_account_identities",

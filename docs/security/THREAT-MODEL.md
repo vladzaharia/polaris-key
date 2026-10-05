@@ -4094,8 +4094,8 @@ CSRF header like every other portal mutation.
   lookup. Guessing a key through it is the same 2^128 search as guessing one anywhere else.
 - **Enumeration by a key holder is bounded to the design's list.** A holder learns the product's
   public presentation and, for a licence they could add, its tier, expiry, device limit and
-  platforms. Refusals carry no ownership details: `owned_elsewhere` says only that another account
-  holds the licence (no account, email or licence id), and `email_mismatch` shows the first
+  platforms. Refusals carry no ownership details: `license_owned` (named `owned_elsewhere` until
+  I-05) says only that another account holds the licence (no account, email or licence id), and `email_mismatch` shows the first
   character and the domain of the licence's address (`m•••@proton.me`). Residual: the masked form
   confirms the domain of the buyer's address to whoever holds the key; the design accepts it so
   the buyer can recognise their own address.
@@ -4103,7 +4103,7 @@ CSRF header like every other portal mutation.
   (`portalClaimKey`, 10 a minute per account and IP, charged before any lookup), and both act on one
   evaluator (`evaluateKeyClaim`), so the preview never promises an add the claim refuses.
 - **The claim now enforces the S-16 safety defaults.** An owned licence never moves by its key
-  (`owned_elsewhere`, 409), and a licence that carries an email attaches only to an account that
+  (`license_owned`, 403, since I-05), and a licence that carries an email attaches only to an account that
   verified that email (`email_mismatch`, 403) unless the product sets `claimByKey`. Every attach
   emails the licence's own address too. Residual (as S-16 §5.4 item 5): a licence with no email,
   leaked before its buyer adds it, goes to whoever adds it first; the buyer's remedy is the
@@ -4164,6 +4164,68 @@ PORTAL.md G23). Assets: the account (A6) and the shared sender's reputation and 
   answers each of those refusals with the same 404. Sends are limited to 5 an hour per account
   and product, charged after ownership is proven, in the `portalEmailDownload` bucket, which
   fails closed (a limiter outage refuses the send).
+
+### The Polaris Key account: links, merge and pairwise subjects (I-05)
+
+Layer 1 of the Identity design (S-16 §5.1, plans/I-04.md §6) replaced the portal account with one
+Polaris Key account per person (`accounts`), its sign-in methods (`account_links`), a stored
+random pairwise subject per (account, product) (`account_product_subjects`) and the licence owner
+pointer `licenses.account_id`. Every portal sign-in ends in one `signIn(verifiedIdentity)`
+(`services/identity/accounts/signIn.ts`). S-16 §5.4 items 3, 12 and 15 are I-05's; item 5's claim
+rules and item 16's tenant-scoped lookup are enforced in the same code.
+
+- **Linking takeover (item 3).** A sign-in method belongs to exactly one account (UNIQUE
+  `(issuer_key, tenant_scope, subject)`); linking one held elsewhere is refused with
+  `link_conflict` and nothing moves. Connecting and disconnecting need a sign-in no older than
+  5 minutes (`STEP_UP_MAX_AGE_SECONDS`), are audited, and email every verified address on the
+  account (the removed address too), so taking over one inbox is not enough to hide a change. The
+  last method cannot be removed (`last_link`; the guard is inside the DELETE, so two concurrent
+  removals cannot orphan the account). **Never by email match:** an unknown identity whose
+  provider-verified email another account already uses is a join offer that writes nothing; the
+  login card (I-07) joins only after the person proves the other account in the same session.
+  Residual: until I-07 the portal answers such a sign-in with a page that names nobody and asks
+  the person to sign in to the existing account first.
+- **Merge takeover (item 15).** `mergeAccounts` needs a live sign-in to EACH account, both fresh
+  (5 minutes); one stale proof refuses the whole merge. Links, licences, sessions, grants,
+  passkeys and registry tokens move in one atomic batch; the absorbed account becomes a tombstone
+  that redirects its sessions to the survivor for 30 days and then resolves to nothing; both
+  accounts' addresses are emailed. A merge cannot be started from one account alone.
+- **Cross-tenant correlation (item 12).** A developer sees a pairwise subject (`ps_` + 128 random
+  bits), different for every product and never derived from the account id; the account id stays
+  inside Identity and Core (a test reads every developer-facing route I-05 touched and finds no
+  account id). After a merge the absorbed subject is an alias of the survivor's, and the developer
+  is told through the `subject.merged` pull feed (`subject_events`), which carries subjects only.
+  Residual (S-16 §5.1, D25): per-product data removal ends the subject but is not unlinkability
+  while a licence of that product stays attached; the removal path offers detaching it too. Two
+  developers can still correlate a person by data they hold anyway (a buyer email).
+- **Tenant-scoped links (item 16).** A link from a tenant-scoped identity (Game Center, Play
+  Games, EOS, Apple's per-team id) is looked up exactly on its scope and recognised only inside a
+  product that lists that scope; another team's identity with the same subject string is a
+  different identity and resolves no account.
+- **Licence claim (item 5).** First attach only: the owner pointer is written by a conditional
+  `UPDATE … WHERE account_id IS NULL`, so an owned licence never moves by key, by the device's
+  enrolled licence or by an email match (`license_owned`), and of two concurrent claims exactly one
+  wins. An email-carrying licence attaches by key only to an account that verified that email,
+  unless the product sets `claimByKey`; each attach notifies the licence's own address when it is
+  not one of the account's. A licence's `sub` alone never attaches it; the platform `sub` joins an
+  account only through an existing link, and legacy `sub`-only licences of custom-issuer products
+  stay floating (§8 Q6).
+- **The device binding.** `devices.subject` holds the pairwise subject of an account signed in on
+  the device, never the account id, and is never signed. Key entry never sets it. Core's clearing
+  hook drops it on sign-out, sign out everywhere, account disable or deletion, per-product removal
+  and relink; a plain licence detach does not sign the device out (S-17 §5.8 item 2). Sign-out
+  also deauthorizes a device only when the sign-in bound it (`bound_by = 'signin'`) to a licence of
+  the signed-out account (§8 Q3).
+- **Migration.** The backfill (`0068_e`) keeps account ids and picks one owner per licence by link
+  strength (oidc > email > admin > licence key, then earliest); every other account loses its link,
+  is emailed, has its registry tokens for that licence revoked and is listed in the platform audit
+  log (`account.license.superseded`). The `portal_*` tables stay for a rollback, and every removal
+  under I-05 (a method, a licence detach or relink, a per-product removal, a merge, a deletion, a
+  disable) is mirrored into them, so a rolled-back Worker never resurrects what the person removed;
+  `scripts/rollback/0068_accounts.down.sql` copies forward only what the new Worker created. A
+  removal that leaves a licence floating first ends every account's portal link to it, settling a
+  not-yet-settled loser inline, so the scheduled catch-up (which copies a portal link onto a
+  floating licence) can never hand it to that loser.
 
 ### Boundaries that are weaker than they look
 

@@ -70,6 +70,14 @@ export function mintOpaqueToken(): string {
   return b64url(randomBytes(32));
 }
 
+/**
+ * A pairwise subject (plans/I-04.md §2): `ps_` and 22 base64url characters, 128 random bits.
+ * Random and stored, never derived from the account id (S-16 §5.1), so ending it ends it.
+ */
+export function mintPairwiseSubject(): string {
+  return `ps_${b64url(randomBytes(16))}`;
+}
+
 /** A short opaque id with a typed prefix (lic_, dev_, flow_, …). */
 export function randomId(prefix: string): string {
   return `${prefix}_${b64url(randomBytes(9))}`;
