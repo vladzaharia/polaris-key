@@ -56,6 +56,53 @@ Every kit reads these tokens, so they come first (§10). Today only Rubik 400 an
 1. Build the scope in the order listed.
 2. Run the gates in the header.
 
+## Corrections and decisions (implementation, 2026-10-05)
+
+The code is the fact where it disagreed with the brief or the spec; the lead's delegated decisions
+took the recommended option. UI-KITS.md §2.1, §3.3 and §8 were edited to match.
+
+- **Font sources.** `packages/brand/kit/` is the verbatim launch kit (checked against its own
+  `SHA256SUMS.txt`), so the variable TTFs live in `packages/brand/fonts/ttf/` (Rubik[wght] 2.300 and
+  JetBrainsMono[wght] 2.211 from google/fonts, unmodified) with `OFL-JetBrainsMono.txt` beside the
+  Rubik `OFL.txt`. The web WOFF2 files are subsets of them (`scripts/build-fonts.py`); JetBrains Mono
+  is limited to wght 400–600 there, the TTFs keep their full axis. `fonts.css` adds metric-matched
+  fallback faces ("Rubik Fallback", "JetBrains Mono Fallback"), named second in `--pk-font-sans` /
+  `--pk-font-mono`.
+- **"Replacing the static files".** The web statics are gone (the admin build's stable font path and
+  the Worker's branded pages now serve the variable files). The SDKs' static 400/700 copies stay
+  beside the new variable ones, because switching each kit's typography is kit code (UI-KITS §9 last
+  bullet; UK-07, UK-09, UK-11 remove them).
+- **Kotlin path.** The Compose kit is an Android library module, so `PolarisKitTokens.generated.kt`
+  and the fonts go to `src/main` (Android resource fonts), not `commonMain` / Compose Resources; the
+  move belongs to UK-09/UK-10 when the module becomes KMP.
+- **Godot themes and icons.** `pkey_brand_{dark,light}.tres` already exist and stay Godot-saved
+  resources written by `tools/gen_theme.gd` from `PKeyUiTheme` (UK-11 owns that builder); UK-01 adds
+  `PKeyKitTokens` (`kit_tokens_generated.gd`), the engine control icons as SVG templates in
+  `PKeyKitIcons` (`kit_icons_generated.gd`, rasterised at run time: an imported `.svg` gets
+  engine-version-specific `.import` files) and the variable fonts as MSDF `FontFile`s.
+- **Resolver rules the draft left open** (now in UI-KITS §3.3): deriveAccent clusters opaque
+  (alpha ≥ 128), non-grey (chroma ≥ 0.04) pixels into 30° hue bins, needs 8 % of the opaque area,
+  takes the highest mean chroma and clamps the mean colour's lightness to 0.45–0.60; `solid` takes the
+  smallest lightness move to its label's 4.5:1 and then to 3:1 on the scheme's surfaces; `fg` starts
+  at ≥ 0.78 (dark) / ≤ 0.52 (light); `subtle` is the section-accent recipe; `focus` is `fg` in dark
+  and `solid` in light. Every search is a fixed 32-step bisection on rounded hex, so the ports agree
+  bit for bit. The §3.3 table now carries the resolver's output (the first draft's numbers were
+  hand-tuned mockup colours; Drift Kart's raw light solid failed 3:1 on white).
+- **Shared vectors.** Inputs live in `src/tokens/accent-vectors.ts`; `gen:brand` computes
+  `fixtures/accent-vectors.json` and writes copies into the Python and Godot tests and native literals
+  into the Swift and Kotlin tests, all drift-gated, so an algorithm change cannot land without every
+  port following.
+- **Type scale for Windows and GNOME.** The §2.1 table has no rows for them; they follow the Fluent
+  and libadwaita ramps at the kit's 400/500/600 weights (Qt and Compose Desktop read them).
+- **QSS.** The stylesheets bake in the palette and leave the product accent and the platform measures
+  as `@pk-<name>@` placeholders (`_tokens.QSS_PLACEHOLDERS`) for UK-12's `apply_theme`.
+- **C#.** `PKeyBrand.generated.cs` has no Godot dependency (a `BrandColor` struct with a
+  `#if GODOT` conversion), so it compiles in plain .NET too.
+- **Mockups.** New `apple.html` (iPad, visionOS, tvOS, watchOS) and `qt.html` boards; iOS 18,
+  AX3, paywall, Live Activity, Android tablet, 200 % font, predictive back, dynamic colour, macOS 15,
+  web forced-colors and native full screen, and boot/status/error on every non-web board. The
+  Material Symbols subset was re-cut to add the glyphs the new Android shots use.
+
 ## Acceptance criteria
 
 - [ ] `pnpm gen:brand -- --check` covers every new output, and a hand edit to any of them fails it.

@@ -47,7 +47,9 @@
     var(--pk-text-strong) 12%,
     transparent
   );
-  --kit-danger-solid: var(--pk-kit-danger-solid); /* white-first: #db3a2b, 4.5:1 */
+  --kit-danger-solid: var(
+    --pk-kit-danger-solid
+  ); /* white-first: #db3a2b, 4.5:1 */
   --kit-scrim: rgb(2 4 8 / 0.5);
   --kit-scrim-blur: 16px;
 }

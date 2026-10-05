@@ -1119,10 +1119,12 @@ them, and it is fixed before review.
 ## 8. Mockups
 
 HTML mockups of the key components in the Polaris look, rendered from the generated tokens
-(`packages/brand/css/tokens.css`) with the kit fonts (variable Rubik, JetBrains Mono, and the
-Material Symbols subset for Android) from `docs/design/ui-kits/fonts/`.
+(`packages/brand/css/tokens.css` and `kit.css`) with the kit fonts as the package ships them
+(`packages/brand/fonts/fonts.css`: variable Rubik and JetBrains Mono) and the Material Symbols subset
+for Android (`docs/design/ui-kits/fonts/`). Every accent on the boards is the resolver's output
+(§3.3).
 
-- **Sources:** `docs/design/ui-kits/{web,ios,android,desktop,windows,linux,godot,terminal}.html`.
+- **Sources:** `docs/design/ui-kits/{web,ios,apple,android,desktop,windows,linux,qt,godot,terminal}.html`.
   `shared.css` holds the kit primitives and maps §3 onto `--kit-*` vars; `shared.js` holds icons,
   the fake QR, product art, the countdown ring and the platform marks.
 - **Render:** `NODE_PATH=packages/admin/node_modules node docs/design/ui-kits/render.cjs`. It writes
@@ -1151,19 +1153,25 @@ busy, plus field errors and row states. The components board covers Boot, Status
 GraceBanner, Toast, Devices, Paywall and CloudSyncStatus; the layers board shows (b) and (c); the
 motion board shows keyframes.
 
-| Dark                                                     | Light                                                     |
-| -------------------------------------------------------- | --------------------------------------------------------- |
-| ![Gate](ui-kits/shots/web-gate-dark.png)                 | ![Gate](ui-kits/shots/web-gate-light.png)                 |
-| ![Activate](ui-kits/shots/web-activate-dark.png)         | ![Activate](ui-kits/shots/web-activate-light.png)         |
-| ![Sign in](ui-kits/shots/web-sign-in-dark.png)           | ![Sign in](ui-kits/shots/web-sign-in-light.png)           |
-| ![Device limit](ui-kits/shots/web-device-limit-dark.png) | ![Device limit](ui-kits/shots/web-device-limit-light.png) |
-| ![Update](ui-kits/shots/web-update-dark.png)             | ![Update](ui-kits/shots/web-update-light.png)             |
-| ![Settings](ui-kits/shots/web-settings-dark.png)         | ![Settings](ui-kits/shots/web-settings-light.png)         |
-| ![Theming](ui-kits/shots/web-theming-dark.png)           | ![Theming](ui-kits/shots/web-theming-light.png)           |
-| ![States](ui-kits/shots/web-states-dark.png)             | ![States](ui-kits/shots/web-states-light.png)             |
-| ![Components](ui-kits/shots/web-components-dark.png)     | ![Components](ui-kits/shots/web-components-light.png)     |
-| ![Layers](ui-kits/shots/web-layers-dark.png)             | ![Layers](ui-kits/shots/web-layers-light.png)             |
-| ![Motion](ui-kits/shots/web-motion-dark.png)             | ![Motion](ui-kits/shots/web-motion-light.png)             |
+| Dark                                                           | Light                                                           |
+| -------------------------------------------------------------- | --------------------------------------------------------------- |
+| ![Gate](ui-kits/shots/web-gate-dark.png)                       | ![Gate](ui-kits/shots/web-gate-light.png)                       |
+| ![Activate](ui-kits/shots/web-activate-dark.png)               | ![Activate](ui-kits/shots/web-activate-light.png)               |
+| ![Sign in](ui-kits/shots/web-sign-in-dark.png)                 | ![Sign in](ui-kits/shots/web-sign-in-light.png)                 |
+| ![Device limit](ui-kits/shots/web-device-limit-dark.png)       | ![Device limit](ui-kits/shots/web-device-limit-light.png)       |
+| ![Update](ui-kits/shots/web-update-dark.png)                   | ![Update](ui-kits/shots/web-update-light.png)                   |
+| ![Settings](ui-kits/shots/web-settings-dark.png)               | ![Settings](ui-kits/shots/web-settings-light.png)               |
+| ![Theming](ui-kits/shots/web-theming-dark.png)                 | ![Theming](ui-kits/shots/web-theming-light.png)                 |
+| ![States](ui-kits/shots/web-states-dark.png)                   | ![States](ui-kits/shots/web-states-light.png)                   |
+| ![Components](ui-kits/shots/web-components-dark.png)           | ![Components](ui-kits/shots/web-components-light.png)           |
+| ![Layers](ui-kits/shots/web-layers-dark.png)                   | ![Layers](ui-kits/shots/web-layers-light.png)                   |
+| ![Motion](ui-kits/shots/web-motion-dark.png)                   | ![Motion](ui-kits/shots/web-motion-light.png)                   |
+| ![forced-colors](ui-kits/shots/web-forced-colors-dark.png)     | ![forced-colors](ui-kits/shots/web-forced-colors-light.png)     |
+| ![Native, full screen](ui-kits/shots/web-native-full-dark.png) | ![Native, full screen](ui-kits/shots/web-native-full-light.png) |
+
+`forced-colors` is drawn in the Windows contrast themes (Night sky for dark, Desert for light): every
+colour is a system colour, borders return, the ambient and tints go, and the product icon stays
+because it is an image.
 
 At 390 × 844:
 
@@ -1183,6 +1191,25 @@ settings.
 | ![](ui-kits/shots/ios-gate-dark.png)  | ![](ui-kits/shots/ios-activate-dark.png)  | ![](ui-kits/shots/ios-sign-in-dark.png)  | ![](ui-kits/shots/ios-device-limit-dark.png)  | ![](ui-kits/shots/ios-update-dark.png)  | ![](ui-kits/shots/ios-update-required-dark.png)  | ![](ui-kits/shots/ios-settings-dark.png)  |
 | ![](ui-kits/shots/ios-gate-light.png) | ![](ui-kits/shots/ios-activate-light.png) | ![](ui-kits/shots/ios-sign-in-light.png) | ![](ui-kits/shots/ios-device-limit-light.png) | ![](ui-kits/shots/ios-update-light.png) | ![](ui-kits/shots/ios-update-required-light.png) | ![](ui-kits/shots/ios-settings-light.png) |
 
+The iOS 18 fallback (the same layout on system materials), AX3 Dynamic Type, the StoreKit paywall,
+the Live Activity, and boot, status and error:
+
+| iOS 18                                 | AX3                                  | Paywall                                  | Live Activity                                  | Boot, status, error                     |
+| -------------------------------------- | ------------------------------------ | ---------------------------------------- | ---------------------------------------------- | --------------------------------------- |
+| ![](ui-kits/shots/ios-ios18-dark.png)  | ![](ui-kits/shots/ios-ax3-dark.png)  | ![](ui-kits/shots/ios-paywall-dark.png)  | ![](ui-kits/shots/ios-live-activity-dark.png)  | ![](ui-kits/shots/ios-states-dark.png)  |
+| ![](ui-kits/shots/ios-ios18-light.png) | ![](ui-kits/shots/ios-ax3-light.png) | ![](ui-kits/shots/ios-paywall-light.png) | ![](ui-kits/shots/ios-live-activity-light.png) | ![](ui-kits/shots/ios-states-light.png) |
+
+#### iPadOS, visionOS, tvOS and watchOS
+
+iPad at regular width with the activate form sheet, the welcome window in a visionOS room (glass is
+always the system material; a gaze-hover state), tvOS device-code sign-in under the focus engine,
+and the watchOS glance.
+
+| iPad                                    | visionOS                                    | tvOS                                    | watchOS                                  |
+| --------------------------------------- | ------------------------------------------- | --------------------------------------- | ---------------------------------------- |
+| ![](ui-kits/shots/apple-ipad-dark.png)  | ![](ui-kits/shots/apple-visionos-dark.png)  | ![](ui-kits/shots/apple-tvos-dark.png)  | ![](ui-kits/shots/apple-watch-dark.png)  |
+| ![](ui-kits/shots/apple-ipad-light.png) | ![](ui-kits/shots/apple-visionos-light.png) | ![](ui-kits/shots/apple-tvos-light.png) | ![](ui-kits/shots/apple-watch-light.png) |
+
 #### Android (Compose, Material 3 Expressive)
 
 The Android board shows the product icon in the adaptive mask, filled fields with the IME up,
@@ -1194,19 +1221,29 @@ wavy progress and equal-width buttons.
 | ![](ui-kits/shots/android-gate-dark.png)  | ![](ui-kits/shots/android-activate-dark.png)  | ![](ui-kits/shots/android-sign-in-dark.png)  | ![](ui-kits/shots/android-sign-in-handoff-dark.png)  | ![](ui-kits/shots/android-device-limit-dark.png)  | ![](ui-kits/shots/android-update-dark.png)  | ![](ui-kits/shots/android-settings-dark.png)  |
 | ![](ui-kits/shots/android-gate-light.png) | ![](ui-kits/shots/android-activate-light.png) | ![](ui-kits/shots/android-sign-in-light.png) | ![](ui-kits/shots/android-sign-in-handoff-light.png) | ![](ui-kits/shots/android-device-limit-light.png) | ![](ui-kits/shots/android-update-light.png) | ![](ui-kits/shots/android-settings-light.png) |
 
+Tablet list-detail, 200 % font, predictive back, dynamic colour under `native`, and boot, status
+and error:
+
+| Tablet                                      | 200 % font                                    | Predictive back                                      | Native, dynamic colour                              | Boot, status, error                         |
+| ------------------------------------------- | --------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------- | ------------------------------------------- |
+| ![](ui-kits/shots/android-tablet-dark.png)  | ![](ui-kits/shots/android-font-200-dark.png)  | ![](ui-kits/shots/android-predictive-back-dark.png)  | ![](ui-kits/shots/android-native-dynamic-dark.png)  | ![](ui-kits/shots/android-states-dark.png)  |
+| ![](ui-kits/shots/android-tablet-light.png) | ![](ui-kits/shots/android-font-200-light.png) | ![](ui-kits/shots/android-predictive-back-light.png) | ![](ui-kits/shots/android-native-dynamic-light.png) | ![](ui-kits/shots/android-states-light.png) |
+
 #### macOS 26 (SwiftUI; Electron and Tauri on macOS)
 
 The macOS board is drawn at Mac scale: the split Welcome window with product art, inset rounded
 sheets below the title-bar row, the single-column update window, and the Settings scene.
 
-| Dark                                                         | Light                                                         |
-| ------------------------------------------------------------ | ------------------------------------------------------------- |
-| ![Gate](ui-kits/shots/desktop-gate-dark.png)                 | ![Gate](ui-kits/shots/desktop-gate-light.png)                 |
-| ![Activate](ui-kits/shots/desktop-activate-dark.png)         | ![Activate](ui-kits/shots/desktop-activate-light.png)         |
-| ![Sign in](ui-kits/shots/desktop-sign-in-dark.png)           | ![Sign in](ui-kits/shots/desktop-sign-in-light.png)           |
-| ![Device limit](ui-kits/shots/desktop-device-limit-dark.png) | ![Device limit](ui-kits/shots/desktop-device-limit-light.png) |
-| ![Update](ui-kits/shots/desktop-update-dark.png)             | ![Update](ui-kits/shots/desktop-update-light.png)             |
-| ![Settings](ui-kits/shots/desktop-settings-dark.png)         | ![Settings](ui-kits/shots/desktop-settings-light.png)         |
+| Dark                                                          | Light                                                          |
+| ------------------------------------------------------------- | -------------------------------------------------------------- |
+| ![Gate](ui-kits/shots/desktop-gate-dark.png)                  | ![Gate](ui-kits/shots/desktop-gate-light.png)                  |
+| ![Activate](ui-kits/shots/desktop-activate-dark.png)          | ![Activate](ui-kits/shots/desktop-activate-light.png)          |
+| ![Sign in](ui-kits/shots/desktop-sign-in-dark.png)            | ![Sign in](ui-kits/shots/desktop-sign-in-light.png)            |
+| ![Device limit](ui-kits/shots/desktop-device-limit-dark.png)  | ![Device limit](ui-kits/shots/desktop-device-limit-light.png)  |
+| ![Update](ui-kits/shots/desktop-update-dark.png)              | ![Update](ui-kits/shots/desktop-update-light.png)              |
+| ![Settings](ui-kits/shots/desktop-settings-dark.png)          | ![Settings](ui-kits/shots/desktop-settings-light.png)          |
+| ![macOS 15](ui-kits/shots/desktop-macos15-dark.png)           | ![macOS 15](ui-kits/shots/desktop-macos15-light.png)           |
+| ![Boot, status, error](ui-kits/shots/desktop-states-dark.png) | ![Boot, status, error](ui-kits/shots/desktop-states-light.png) |
 
 #### Windows 11 and GNOME (Electron, Tauri, Compose Desktop, Qt Quick)
 
@@ -1222,6 +1259,21 @@ and an `AdwDialog`.
 | ![](ui-kits/shots/windows-settings-dark.png) | ![](ui-kits/shots/windows-settings-light.png) |
 | ![](ui-kits/shots/linux-gate-dark.png)       | ![](ui-kits/shots/linux-gate-light.png)       |
 | ![](ui-kits/shots/linux-activate-dark.png)   | ![](ui-kits/shots/linux-activate-light.png)   |
+| ![](ui-kits/shots/windows-states-dark.png)   | ![](ui-kits/shots/windows-states-light.png)   |
+| ![](ui-kits/shots/linux-states-dark.png)     | ![](ui-kits/shots/linux-states-light.png)     |
+
+#### Qt (Qt Quick and QWidget, Python)
+
+Drawn as Qt draws them, from the generated `Theme.qml` and QSS: the Qt Quick gate on Windows, the
+activate dialog on Linux in the KDE Breeze frame, the QWidget parts by object name, and boot, status
+and error.
+
+| Dark                                          | Light                                          |
+| --------------------------------------------- | ---------------------------------------------- |
+| ![](ui-kits/shots/qt-quick-gate-dark.png)     | ![](ui-kits/shots/qt-quick-gate-light.png)     |
+| ![](ui-kits/shots/qt-quick-activate-dark.png) | ![](ui-kits/shots/qt-quick-activate-light.png) |
+| ![](ui-kits/shots/qt-widgets-dark.png)        | ![](ui-kits/shots/qt-widgets-light.png)        |
+| ![](ui-kits/shots/qt-states-dark.png)         | ![](ui-kits/shots/qt-states-light.png)         |
 
 #### Godot (Control nodes)
 
@@ -1240,6 +1292,9 @@ the game's menu.
 | ![Update](ui-kits/shots/godot-update-dark.png)             | ![Update](ui-kits/shots/godot-update-light.png)             |
 | ![Settings](ui-kits/shots/godot-settings-dark.png)         | ![Settings](ui-kits/shots/godot-settings-light.png)         |
 | ![Steam Deck](ui-kits/shots/godot-gate-deck-dark.png)      | ![Steam Deck](ui-kits/shots/godot-gate-deck-light.png)      |
+| ![Boot](ui-kits/shots/godot-boot-dark.png)                 | ![Boot](ui-kits/shots/godot-boot-light.png)                 |
+| ![Status](ui-kits/shots/godot-status-dark.png)             | ![Status](ui-kits/shots/godot-status-light.png)             |
+| ![Error](ui-kits/shots/godot-error-dark.png)               | ![Error](ui-kits/shots/godot-error-light.png)               |
 
 #### Terminal (Node and Python CLIs, Textual)
 
@@ -1261,6 +1316,7 @@ blocks.
 | ![Fallbacks](ui-kits/shots/terminal-fallbacks-dark.png)       | ![Fallbacks](ui-kits/shots/terminal-fallbacks-light.png)       |
 | ![60 columns](ui-kits/shots/terminal-narrow-dark.png)         | ![60 columns](ui-kits/shots/terminal-narrow-light.png)         |
 | ![Textual](ui-kits/shots/terminal-textual-dark.png)           | ![Textual](ui-kits/shots/terminal-textual-light.png)           |
+| ![States](ui-kits/shots/terminal-states-dark.png)             | ![States](ui-kits/shots/terminal-states-light.png)             |
 
 #### Critique round 1 (2026-10-05)
 
@@ -1278,7 +1334,7 @@ spec and in every board:
 - **Scale and layout:** mobile-sized desktop controls and Sparkle-era update windows; no responsive
   or Windows and Linux boards; terminal shots that no terminal could draw.
 
-**Still to draw before UK-01 closes** (§7.4 needs a reference for each):
+**Drawn in UK-01 (2026-10-05)**, so §7.4 has a reference for each (the boards above):
 
 - web: `forced-colors`, and the native preset at full screen;
 - Apple: iPad regular width, visionOS, tvOS, the watchOS glance, the iOS 18 and macOS 15 fallbacks, AX3
