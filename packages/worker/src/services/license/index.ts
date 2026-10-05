@@ -20,6 +20,7 @@ import { handleLicenseRoutes } from "./routes.js";
 import { handleLicenseAdmin } from "./admin/index.js";
 import { applyStoreGrant, storeGrantMergeStatements } from "./storeGrants.js";
 import { licenseProvenance } from "./provenance.js";
+import { licenseDeleteContribution } from "./deletion.js";
 import { LICENSE_SETTINGS_SLICE } from "./settings.js";
 
 export const licenseService: ServiceDescriptor = {
@@ -45,6 +46,9 @@ export const licenseService: ServiceDescriptor = {
   applyStoreGrant,
   /** LX-03: a retired licence's store grants move to the survivor (`core/licenseMerge.ts`). */
   licenseMerge: storeGrantMergeStatements,
+  /** Licence deletion (`core/licenseDelete.ts`): store grants block it; the licence row, its keys,
+   *  profile stack and grants go (`deletion.ts`). */
+  licenseDelete: licenseDeleteContribution,
   /** PX-W6 (G8): where each licence came from — store grants and origin (`provenance.ts`). */
   licenseProvenance,
 };

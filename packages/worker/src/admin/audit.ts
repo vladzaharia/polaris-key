@@ -9,6 +9,7 @@ import type { Db } from "../db/types.js";
 import {
   appendAudit,
   appendPlatformAudit,
+  auditStatement,
   platformAuditStatement,
   type PlatformAuditRow,
 } from "../repo.js";
@@ -26,6 +27,30 @@ export async function audit(
   summary: string,
 ): Promise<void> {
   await appendAudit(db, {
+    product,
+    id: randomId("aud"),
+    at: now,
+    actor_sub: session.sub,
+    actor_name: session.name,
+    actor_email: session.email,
+    action,
+    target_kind: target?.kind ?? null,
+    target_id: target?.id ?? null,
+    parent_id: null,
+    summary,
+  });
+}
+
+/** `audit` as a statement, for a batch that commits the row with the change it records. */
+export function auditStatementFor(
+  product: string,
+  session: AdminSession,
+  now: number,
+  action: string,
+  target: { kind: string; id: string } | null,
+  summary: string,
+): DbStatement {
+  return auditStatement({
     product,
     id: randomId("aud"),
     at: now,
