@@ -511,7 +511,7 @@ export function ProductNew(): React.ReactElement {
               announceError
             >
               {(field) => (
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="flex items-center gap-2">
                   <Input
                     {...field}
                     data-field-name="slug"
@@ -520,12 +520,12 @@ export function ProductNew(): React.ReactElement {
                     autoComplete="off"
                     spellCheck={false}
                     mono
-                    className="sm:flex-1"
+                    className="min-w-0 flex-1"
                   />
                   {suggestion ? (
                     <Button
                       variant="outline"
-                      className="sm:shrink-0"
+                      className="shrink-0"
                       onClick={() => {
                         setSlug(suggestion);
                         focusField("slug");

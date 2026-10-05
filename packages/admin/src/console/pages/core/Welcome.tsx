@@ -94,11 +94,11 @@ export function WelcomeHeader({
     <section
       aria-labelledby="product-welcome-title"
       data-testid="product-welcome"
-      className="flex flex-col gap-4 rounded-xl border border-border bg-surface-raised p-5 sm:flex-row sm:items-start"
+      className="flex items-start gap-4 rounded-xl border border-border bg-surface-raised p-4 sm:p-5"
     >
       <span
         aria-hidden
-        className="grid size-10 shrink-0 place-items-center rounded-lg bg-accent-subtle text-base font-bold text-accent-fg"
+        className="hidden size-10 shrink-0 place-items-center sm:grid rounded-lg bg-accent-subtle text-base font-bold text-accent-fg"
       >
         {welcome.name.slice(0, 1).toUpperCase()}
       </span>
@@ -142,7 +142,7 @@ export function WelcomeHeader({
           </p>
         ) : null}
       </div>
-      <div className="flex justify-end sm:self-start">
+      <div className="shrink-0">
         <Button variant="ghost" size="sm" onClick={onDismiss}>
           Dismiss
         </Button>
