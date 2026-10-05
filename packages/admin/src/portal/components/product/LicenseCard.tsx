@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check, Info } from "lucide-react";
+import { Info } from "lucide-react";
 import { Skeleton } from "../../../ui/Skeleton.js";
 import type { PortalLicenseDetail } from "../../api.js";
 import type { LibraryProduct } from "../../model/library.js";
@@ -12,13 +12,15 @@ import {
 } from "../../model/product.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { KeyMask } from "../KeyMask.js";
-import { ProductStatusPill } from "../ProductStatus.js";
+import { isIssueStatus, ProductStatusPill } from "../ProductStatus.js";
 import { ErrorPanel } from "../States.js";
 import { SectionCard } from "./Card.js";
 
 /**
- * The License card (§4.20): status and tier, the facts that used to be hidden (updates,
- * versions, activation, offline days), the masked key and what the license includes. With
+ * The License card (§4.20): the tier as a neutral pill with the device count beside it, the
+ * facts as text (updates, versions, activation, offline days), the masked key and what the license includes as a plain list. The status shows once,
+ * in the header (EXPERIENCE §0.6 P4): this card adds an issue pill only when the license it
+ * describes has a different issue from the one the header shows. With
  * several licenses for the product, a switcher ("2 licenses · Pro, Edu") picks the one this
  * card, Devices and Package access describe; each option names the tier and how the licence is
  * held ("Pro · Key", "Standard · Account-wide"). The tier is a neutral pill with the device count
@@ -51,10 +53,19 @@ export function LicenseCard({
   const now = Math.floor(Date.now() / 1000);
   const switcherId = React.useId();
   const multiple = product.licenses.length > 1;
+  const status = detail ? licenseStatus(detail, now) : null;
+  const ownIssue =
+    status &&
+    isIssueStatus(status) &&
+    (status.kind !== product.status.kind ||
+      status.label !== product.status.label)
+      ? status
+      : null;
   return (
     <SectionCard
       id="license"
       title={`${product.name} license`}
+      aside={ownIssue ? <ProductStatusPill status={ownIssue} /> : undefined}
       subtitle={detail?.email ? `Licensed to ${detail.email}` : undefined}
     >
       {multiple ? (
@@ -126,6 +137,7 @@ function LicenseFacts({
   const key = detail.keys.find((k) => k.status === "active") ?? detail.keys[0];
   const includes = detail.entitlements.filter((e) => e.key !== "channels");
   const channels = detail.channels;
+  const includedId = React.useId();
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -135,9 +147,6 @@ function LicenseFacts({
         </StatusPill>
         {countLine ? (
           <span className="text-sm text-fg-strong">{countLine}</span>
-        ) : null}
-        {status.attention ? (
-          <ProductStatusPill status={status} className="ml-auto" />
         ) : null}
       </div>
       {status.kind === "expired" || status.kind === "suspended" ? (
@@ -202,17 +211,16 @@ function LicenseFacts({
         </div>
       ) : null}
       {includes.length ? (
-        <ul aria-label="Included" className="flex flex-wrap gap-2">
-          {includes.map((e) => (
-            <li
-              key={e.key}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border-strong px-2.5 text-sm text-fg-strong"
-            >
-              <Check aria-hidden className="size-3.5 text-success" />
-              {e.label}
-            </li>
-          ))}
-        </ul>
+        <div className="space-y-1 text-sm">
+          <p id={includedId} className="text-xs text-fg-muted">
+            Included
+          </p>
+          <ul aria-labelledby={includedId} className="space-y-1 text-fg-strong">
+            {includes.map((e) => (
+              <li key={e.key}>{e.label}</li>
+            ))}
+          </ul>
+        </div>
       ) : null}
     </div>
   );

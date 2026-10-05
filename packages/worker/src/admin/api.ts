@@ -15,7 +15,7 @@
  * Per-product resources are grouped by the SERVICE that owns them (plan §R1, spec §4.2). What is
  * left at the top level here is core/platform — the things a product has whether or not it runs
  * any service: `secrets/*`, `outlet-credentials/*`, `ci-publisher`, `ci-tokens/*`, `keys/rotate`,
- * `activity`, `services[/revert]`, `bundles`, `blob-gc[/bundles]`. Everything
+ * `activity`, `refusals`, `services[/revert]`, `bundles`, `blob-gc[/bundles]`. Everything
  * else is dispatched into a `ServiceDescriptor.adminHandle` with the full remaining path:
  *
  *   license/{licenses…,tiers…,policy[/revert]}   config/{catalog,profiles…}
@@ -76,6 +76,7 @@ import {
 import { handleActivity } from "./handlers/activity.js";
 import { handleCiPublisher, handleCiTokens } from "./handlers/ciPublishing.js";
 import { handleProductDevices } from "./handlers/devices.js";
+import { handleRefusals } from "./handlers/refusals.js";
 import { handleTrustPolicy } from "./handlers/trustPolicy.js";
 import { handleServicesAdmin } from "../core/servicesAdmin.js";
 import { handleBundleMint } from "../core/bundles.js";
@@ -267,6 +268,13 @@ async function handleProductScoped(
 
   if (resource === "activity") {
     return handleActivity(req, db, slug);
+  }
+
+  // UX-15: the refusal log (`core/refusals.ts`). CORE, like `activity`: the refusal site is
+  // Core's `authorizeDevice`, whichever service (License, Identity) asked it for a seat.
+  //   GET /products/<slug>/refusals[?refusedSince=&licenseId=&limit=]
+  if (resource === "refusals") {
+    return handleRefusals(req, db, slug, rest.slice(1), now);
   }
 
   // Every device of the product, licensed or not. CORE: a product that issues no licenses (open
