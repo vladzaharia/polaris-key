@@ -184,7 +184,7 @@ export async function evaluateKeyClaim(
 // ── G22: the activate preview ───────────────────────────────────────────────────────────────
 
 /** The platforms the product's newest app release ships for (through Core's catalog hook). */
-async function productPlatforms(
+export async function productPlatforms(
   db: Db,
   hooksFor: PortalHooksFor | undefined,
   slug: string,

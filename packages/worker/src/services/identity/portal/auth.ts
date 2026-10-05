@@ -25,6 +25,7 @@ import {
   rekeyLegacyPortalIdentities,
   portalAuthCapabilities,
   portalAudit,
+  recordLinkGroups,
   syncAccountLicenseLinks,
 } from "./repo.js";
 import { signIn, type SignInResult } from "../accounts/signIn.js";
@@ -167,6 +168,7 @@ function mapClaims(payload: Record<string, unknown>): {
   email?: string;
   emailVerified: boolean;
   name?: string;
+  groups?: string[];
 } {
   const email =
     typeof payload.email === "string" ? payload.email.toLowerCase() : undefined;
@@ -183,6 +185,12 @@ function mapClaims(payload: Record<string, unknown>): {
     email,
     emailVerified,
     name: name || undefined,
+    // PX-W10: kept so Discover can evaluate a product's `groupRoleMap` for this account. The
+    // same filter the product sign-in applies (`oidc.ts` `mapClaims`): strings only; no claim
+    // at all is "not known", not "no groups".
+    groups: Array.isArray(payload.groups)
+      ? payload.groups.filter((g): g is string => typeof g === "string")
+      : undefined,
   };
 }
 
@@ -367,8 +375,10 @@ export async function handlePortalCallback(
   );
   const refused = signInRefusal(result);
   if (refused) return refused;
-  const account = (result as Extract<SignInResult, { status: "signed_in" }>)
-    .account;
+  const signedIn = result as Extract<SignInResult, { status: "signed_in" }>;
+  const account = signedIn.account;
+  // PX-W10: the platform IdP's `groups` claim, kept on this link for Discover (NULL = not sent).
+  await recordLinkGroups(db, signedIn.linkId, identity.groups);
   await syncAccountLicenseLinks(db, account.id, now);
   await portalAudit(db, {
     accountId: account.id,

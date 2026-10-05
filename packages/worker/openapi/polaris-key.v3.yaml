@@ -9796,8 +9796,8 @@ paths:
           }
         "404": { $ref: "#/components/responses/NotFound" }
   # ── The customer portal's library, product and media routes (PX-W1, docs/design/PORTAL.md
-  # G1, G5, G16). The rest of the portal API stays narrative (see the header); these three are
-  # pinned here and in `test/routeCoverage.test.ts` (PORTAL_KIND_PATHS). Root paths on the
+  # G1, G5, G16) and Discover (PX-W10, G24, G25). The rest of the portal API stays narrative (see
+  # the header); these are pinned here and in `test/routeCoverage.test.ts` (PORTAL_KIND_PATHS). Root paths on the
   # console host, never CORS: they share this origin with the portal session cookie.
   /api/library:
     get:
@@ -9846,6 +9846,7 @@ paths:
                           dormantCount: 1
                         licenseCount: 1
                         addedAt: 1790000000
+                    discoverCount: 1
         "401":
           description: No portal session.
           content:
@@ -9940,6 +9941,116 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
         "404": { $ref: "#/components/responses/NotFound" }
+  /api/discover:
+    get:
+      operationId: getPortalDiscover
+      tags: [portal]
+      summary: The products the signed-in account could add for free
+      description: >
+        PX-W10 (docs/design/PORTAL.md §4.16, G24). Every product whose licence policy would
+        auto-issue to this account on the product's first sign-in, evaluated by the same policy
+        function in dry-run mode: nothing is written. A product qualifies through its
+        `oidcDefault` auto-issue rule (`reason: free_with_account`) or a `groupRoleMap` group the
+        account holds at the platform IdP (`reason: group:<group>`). Only products that run
+        License, authenticate against the platform issuer with auto-linking on, and have the
+        portal and Discover (`discoverEnabled`) on are considered; purchase-only and
+        operator-issued products, and products the account already holds, never appear. An
+        account with no platform identity is offered nothing. Every offer carries its reason.
+        Session-authenticated by the portal cookie; `cache-control: no-store`.
+      responses:
+        "200":
+          description: The offers, in product-name order (possibly none).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalDiscover" }
+              examples:
+                oneOffer:
+                  summary: One free product
+                  value:
+                    offers:
+                      - product: mossgarden
+                        name: Mossgarden
+                        developerName: Fennick Studio
+                        tintColor: "#2f5d3a"
+                        website: https://mossgarden.example
+                        iconUrl: /media/mossgarden/icon?v=3f9a0c2d1e4b5a6c
+                        headerUrl: null
+                        support: null
+                        platforms: [macos, windows]
+                        offer:
+                          tier: free
+                          tierLabel: Free
+                          deviceLimit: 5
+                          expiresAt: null
+                          expiryDays: null
+                        reason: free_with_account
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/discover/{product}/claim:
+    post:
+      operationId: claimPortalDiscover
+      tags: [portal]
+      summary: Add a Discover product to the library
+      description: >
+        PX-W10 (G25). Re-evaluates the offer server-side and mints the licence through the
+        auto-issue path itself (the product sign-in's), so it carries exactly the tier, limits
+        and entitlements a first sign-in would give; the licence is linked to the account and
+        audited with `source: discover`. Idempotent per account and product: a repeat, or a
+        racing double submit, answers the same licence with `added: false` and mints nothing.
+        `409 not_eligible` when the product is not (or no longer) offered to this account,
+        including an unknown product. Needs the `X-PKey-Portal-CSRF` header. Rate-limited on the
+        account-wide bucket the activate preview and the key claim share (10 a minute).
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: "The licence, new (`added: true`) or already held (`added: false`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalDiscoverClaim" }
+              examples:
+                added:
+                  summary: Just added
+                  value:
+                    added: true
+                    product: mossgarden
+                    license:
+                      id: lic_3c9d
+                      tier: free
+                      tierLabel: Free
+                      status: active
+                      usable: true
+                      expiresAt: null
+                      deviceLimit: 5
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "409":
+          description: "`not_eligible`: the product is not offered to this account; nothing was minted."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+              examples:
+                notEligible:
+                  value:
+                    {
+                      error: not_eligible,
+                      message: this product is no longer offered to your account,
+                    }
+        "429":
+          description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
   /media/{product}/{asset}:
     get:
       operationId: getPortalMedia
@@ -11542,8 +11653,14 @@ components:
       enum: [suspended, expired, device_limit, expires_soon, active]
     PortalLibrary:
       type: object
-      required: [products]
+      required: [products, discoverCount]
       properties:
+        discoverCount:
+          type: integer
+          minimum: 0
+          description: >
+            How many products `GET /api/discover` offers this account (PX-W10): the Discover
+            count in the portal's nav.
         products:
           type: array
           items:
@@ -11594,6 +11711,66 @@ components:
               revokedAt: { type: [integer, "null"] }
               flag: { type: [string, "null"] }
               label: { type: [string, "null"] }
+    PortalDiscover:
+      type: object
+      required: [offers]
+      properties:
+        offers:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/PortalPresentation"
+              - type: object
+                required: [product, platforms, offer, reason]
+                properties:
+                  product: { type: string, description: The product slug. }
+                  platforms:
+                    type: array
+                    description: The platforms of the newest app release's builds.
+                    items: { type: string }
+                  offer: { $ref: "#/components/schemas/PortalDiscoverTerms" }
+                  reason:
+                    type: string
+                    pattern: "^(free_with_account|group:.+)$"
+                    description: >
+                      Why the account can add the product, always present (owner decision Q-6):
+                      `free_with_account` (the `oidcDefault` auto-issue rule) or `group:<group>`
+                      (a platform-IdP group mapped in the product's `groupRoleMap`). An open set:
+                      clients show an unknown reason generically.
+    PortalDiscoverTerms:
+      type: object
+      description: What adding the product would give, from the same policy that would mint it.
+      required: [tier, tierLabel, deviceLimit, expiresAt, expiryDays]
+      properties:
+        tier: { type: [string, "null"] }
+        tierLabel: { type: [string, "null"] }
+        deviceLimit: { type: integer }
+        expiresAt:
+          type: [integer, "null"]
+          description: "The expiry if minted now; null = never expires."
+        expiryDays:
+          type: [integer, "null"]
+          description: "The tier's policy length in days; null = lifetime."
+    PortalDiscoverClaim:
+      type: object
+      required: [added, product, license]
+      properties:
+        added:
+          type: boolean
+          description: "True when this call minted the licence; false when it was already held."
+        product: { type: string }
+        license:
+          type: object
+          required:
+            [id, tier, tierLabel, status, usable, expiresAt, deviceLimit]
+          properties:
+            id: { type: string }
+            tier: { type: [string, "null"] }
+            tierLabel: { type: [string, "null"] }
+            status: { type: string }
+            usable: { type: boolean }
+            expiresAt: { type: [integer, "null"] }
+            deviceLimit: { type: integer }
     PortalProduct:
       allOf:
         - $ref: "#/components/schemas/PortalPresentation"

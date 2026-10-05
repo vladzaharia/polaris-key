@@ -90,6 +90,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/license/document` | license | The signed license document (pkey-license+jws) |
 | POST | `/{product}/license/enroll` | license | Keyless enrollment (auto-issue policy) |
 | POST | `/{product}/license/token` | license | Rotate/re-acquire the device token |
+| POST | `/api/discover/{product}/claim` | portal | Add a Discover product to the library |
+| GET | `/api/discover` | portal | The products the signed-in account could add for free |
 | GET | `/api/library` | portal | The signed-in account's library |
 | GET | `/api/products/{product}` | portal | One product in the signed-in account's library |
 | GET | `/media/{product}/{asset}` | portal | A product's listing art, served same-origin |

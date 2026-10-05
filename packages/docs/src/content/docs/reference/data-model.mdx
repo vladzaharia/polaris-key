@@ -139,7 +139,7 @@ this page or fails the freshness gate.
 | `oidc_config` | 0001_init.sql | `product`, `issuer`, `client_id`, `client_secret_secret`, `redirect_uris_json`, `group_role_map_json`, `provider (0009)` |
 | `provisioning_config` | 0001_init.sql | `product`, `claim`, `entitlement_key`, `entitlement_value_json`, `secret_key`, `secret_url_template`, `allowed_hosts_json` |
 | `accounts` | 0068_a_accounts.sql | `id`, `status`, `primary_email`, `primary_email_verified_at`, `display_name`, `avatar_key`, `locale`, `details_source_json`, `terms_json`, `created_at`, `modified_at`, `last_sign_in_at`, `deleted_at` |
-| `account_links` | 0068_a_accounts.sql | `id`, `account_id`, `issuer_key`, `tenant_scope`, `subject`, `kind`, `email`, `email_verified`, `display_name`, `amr_json`, `created_at`, `last_used_at` |
+| `account_links` | 0068_a_accounts.sql | `id`, `account_id`, `issuer_key`, `tenant_scope`, `subject`, `kind`, `email`, `email_verified`, `display_name`, `amr_json`, `created_at`, `last_used_at`, `groups_json (0071)` |
 | `account_product_subjects` | 0068_a_accounts.sql | `account_id`, `product`, `subject`, `created_at` |
 | `account_product_subject_aliases` | 0068_a_accounts.sql | `product`, `alias`, `subject`, `merged_at` |
 | `account_tombstones` | 0068_a_accounts.sql | `id`, `email_hash`, `merged_into`, `deleted_at` |
@@ -151,5 +151,5 @@ this page or fails the freshness gate.
 | `portal_account_emails` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `email`, `account_id`, `verified_at`, `created_at` |
 | `portal_account_identities` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `provider`, `subject`, `account_id`, `email`, `display_name`, `created_at`, `last_seen_at` |
 | `portal_license_links` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `account_id`, `product`, `license_id`, `source`, `created_at`, `last_seen_at` |
-| `portal_product_settings` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `product`, `portal_enabled`, `oidc_enabled`, `magic_enabled`, `license_key_claim_enabled`, `releases_enabled`, `branding_json`, `created_at`, `modified_at`, `auto_link_enabled`, `key_reissue_enabled (0064)`, `claim_by_key (0064)` |
+| `portal_product_settings` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `product`, `portal_enabled`, `oidc_enabled`, `magic_enabled`, `license_key_claim_enabled`, `releases_enabled`, `branding_json`, `created_at`, `modified_at`, `auto_link_enabled`, `key_reissue_enabled (0064)`, `claim_by_key (0064)`, `discover_enabled (0071)` |
 | `portal_audit` | 0008_portal.sql | `id`, `account_id`, `at`, `action`, `product`, `target_kind`, `target_id`, `summary` |

@@ -48,6 +48,7 @@ public enum ErrorCode {
     public static let linkConflict = "link_conflict"
     public static let lastLink = "last_link"
     public static let stepUpRequired = "step_up_required"
+    public static let notEligible = "not_eligible"
     public static let downloadAuthRequired = "download_auth_required"
     public static let deliveryGateMissing = "delivery_gate_missing"
     public static let upstreamRateLimited = "upstream_rate_limited"
@@ -195,6 +196,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "link_conflict",
     "last_link",
     "step_up_required",
+    "not_eligible",
     "download_auth_required",
     "delivery_gate_missing",
     "upstream_rate_limited",
@@ -342,6 +344,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "link_conflict": "wire",
     "last_link": "wire",
     "step_up_required": "wire",
+    "not_eligible": "wire",
     "download_auth_required": "wire",
     "delivery_gate_missing": "wire",
     "upstream_rate_limited": "wire",
