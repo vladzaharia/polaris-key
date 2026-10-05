@@ -445,11 +445,17 @@ async function replay(t: Transcript): Promise<void> {
 }
 
 describe("HTTP transcripts: @polaris-key/react", () => {
-  it("replays every transcript: the cookie-free bearer engine closed the device-token ones", () => {
+  it("replays every transcript but commerce's: the cookie-free bearer engine closed the device-token ones", () => {
     const ids = TRANSCRIPTS.filter((t) => applies(t, MANIFEST)).map(
       (t) => t.id,
     );
-    expect(ids.sort()).toEqual(TRANSCRIPTS.map((t) => t.id).sort());
+    // commerce.receipt is planned on the web (SP-R10: the Worker's CORS list does not cover
+    // distribution/commerce yet), so the transcripts that exercise it do not apply.
+    const expected = TRANSCRIPTS.filter(
+      (t) => !t.features.includes("commerce.receipt"),
+    ).map((t) => t.id);
+    expect(expected.length).toBe(TRANSCRIPTS.length - 1);
+    expect(ids.sort()).toEqual(expected.sort());
   });
 
   for (const t of TRANSCRIPTS) {

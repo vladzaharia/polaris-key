@@ -1506,9 +1506,9 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   },
   "ui.stages": { status: "implemented", service: "sdk", na: [] },
   "ui.kit": { status: "implemented", service: "sdk", na: [] },
-  "commerce.receipt": { status: "implemented", service: "license", na: [] },
+  "commerce.receipt": { status: "planned", service: "license", na: [] },
 };
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "9700f5d65f299231f209656ce1c9d05952763b7526c3dac9fd0cc7dbc6f71e2c";
+  "e422904c605bdb53aee45e2abad2e83417cee9f760a31420a9823d93c06fb2bd";

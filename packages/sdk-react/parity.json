@@ -107,7 +107,7 @@
     },
     "config.mint": {
       "status": "implemented",
-      "note": "SP-R02: bearer mode's GET /<p>/config/mint/<recipe>/token, memory-cached per device token until 30 s before expiry (edge-mint replays through it). Desktop through bridge v4's invoke(\"config\", \"mint\"), answered by the host's client.config.mintToken() (SP-N10); a v3 host refuses with a typed version N/A."
+      "note": "SP-R02: bearer mode's GET /<p>/config/mint/<recipe>/token, memory-cached per device token until 30 s before expiry (edge-mint replays through it). Desktop: the renderer half of bridge v4's invoke(\"config\", \"mint\") is in place and is sent only to a host reporting version 4 or later; the Node Electron host is still v3 until SP-N10, so today a desktop renderer gets the typed version N/A."
     },
     "config.mirror": {
       "status": "implemented",
@@ -138,7 +138,7 @@
     },
     "devices.manage": {
       "status": "implemented",
-      "note": "Desktop through the bridge's invoke(\"devices\", \u2026). Web in bearer mode (SP-R02): GET /<p>/devices, PATCH and DELETE /<p>/devices/:id with the device token. A cookie-session page cannot (the routes take a device bearer) and refuses with device-management-unsupported carrying the runtime reason."
+      "note": "Desktop through the bridge's invoke(\"devices\", …). Web in bearer mode (SP-R02): GET /<p>/devices, PATCH and DELETE /<p>/devices/:id with the device token. A cookie-session page cannot (the routes take a device bearer) and refuses with device-management-unsupported carrying the runtime reason."
     },
     "devices.report": {
       "status": "implemented",
@@ -155,7 +155,7 @@
     },
     "identity.devicecode": {
       "status": "implemented",
-      "note": "Desktop through the bridge (beginSignIn/pollSignIn, v4 adds the expiry, interval and identity). Web in bearer mode (SP-R02): POST /<p>/identity/auth/device/{start,poll} through adapter.beginSignIn() and <PolarisSignIn>; devicecode-happy and devicecode-expired replay through it. A cookie-session page signs in by the OIDC redirect (identity.oidc)."
+      "note": "Desktop through the bridge (beginSignIn/pollSignIn, v4 adds the expiry, interval and identity). Web in bearer mode (SP-R02): POST /<p>/identity/auth/device/{start,poll} through adapter.beginSignIn(); devicecode-happy and devicecode-expired replay through it. A cookie-session page signs in by the OIDC redirect (identity.oidc)."
     },
     "release.changelog": {
       "status": "implemented"
@@ -310,8 +310,9 @@
       "status": "implemented"
     },
     "commerce.receipt": {
-      "status": "implemented",
-      "note": "SP-R10: bearer mode's GET /<p>/distribution/commerce/binding and POST \u2026/claim (adapter.commerceBinding()/commerceClaim(), \u00a73.9's ClaimResult), then a sync; commerce-claim replays through it. Desktop through bridge v4's invoke(\"commerce\", \u2026), answered by the host (SP-N04/SP-N10). A browser has no store SDK, so <PolarisPurchaseButton> takes the host's purchase step as a prop."
+      "status": "planned",
+      "unowned": true,
+      "note": "Web commerce is SP-R10 (not yet a program work package). The bearer engine already speaks GET /<p>/distribution/commerce/binding and POST .../claim, but the Worker's CORS allow-list (packages/worker/src/core/cors.ts CORS_SERVICE_PATHS) does not cover distribution/commerce, so a cross-origin bearer page cannot reach them; no claim until SP-R10 closes that gap. Desktop: the renderer half of bridge v4's invoke(\"commerce\", ...) is gated on host version 4, and the Node host side is pending SP-N10."
     }
   }
 }

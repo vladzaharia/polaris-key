@@ -256,15 +256,15 @@ describe("auth: which transport a page uses", () => {
       offlineStore: null,
       autoStart: false,
     });
-    for (const f of [
-      Feature.devicesManage,
-      Feature.configMint,
-      Feature.commerceReceipt,
-    ])
+    for (const f of [Feature.devicesManage, Feature.configMint])
       expect(adapter.supports(f)).toMatchObject({
         supported: false,
         reason: "runtime",
       });
+    // Planned on the web (SP-R10), whatever the transport.
+    expect(adapter.supports(Feature.commerceReceipt)).toMatchObject({
+      supported: false,
+    });
     expect(adapter.caps()).not.toContain(Feature.devicesManage);
     await expect(adapter.listDevices()).rejects.toMatchObject({
       code: "device-management-unsupported",
