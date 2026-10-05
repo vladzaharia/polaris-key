@@ -24,6 +24,7 @@
  * (`systemClaimRefusal`).
  */
 
+import { Catalog } from "@polaris-key/catalog";
 import type { Db, DbStatement } from "../db/types.js";
 import { randomId } from "./platform.js";
 import { serializeWebOrigins } from "./cors.js";
@@ -259,7 +260,9 @@ async function revertStatements(
   key: ClaimKey,
   manifest: SnapshotManifest,
   now: number,
-): Promise<{ statements: DbStatement[]; value: unknown } | null> {
+): Promise<
+  { statements: DbStatement[]; value: unknown } | { refusal: string } | null
+> {
   const p = manifest.product ?? {};
   const intIn = (v: unknown, min: number): v is number =>
     typeof v === "number" && Number.isInteger(v) && v >= min;
@@ -314,6 +317,17 @@ async function revertStatements(
     case "config.catalog": {
       if (!manifest.catalog || typeof manifest.catalog !== "object")
         return null;
+      // The same screening the console publish, linkRepo and a resync apply before writing
+      // `product_schema` — the only thing bounding `pattern` complexity. A resync does NOT screen
+      // the catalog while it is claimed (it is not installed), yet the snapshot still records it,
+      // so a repo writer could otherwise plant a catalog that this Revert would activate unscreened.
+      try {
+        new Catalog(manifest.catalog as never).compileAll();
+      } catch (e) {
+        return {
+          refusal: `the manifest's catalog is invalid: ${e instanceof Error ? e.message : "unknown error"}`,
+        };
+      }
       const json = JSON.stringify(manifest.catalog);
       const active = await db.first<{ catalog_json: string }>(
         "SELECT catalog_json FROM product_schema WHERE product = ? AND active = 1 ORDER BY catalog_version DESC LIMIT 1",
@@ -375,6 +389,15 @@ export async function revertClaim(
   const plan = manifest
     ? await revertStatements(db, product.slug, key, manifest, now)
     : null;
+  // A snapshot value the write path would refuse keeps the claim: dropping it would let the next
+  // resync's own screening be the only guard, and leave the key "following" a manifest it cannot.
+  if (plan && "refusal" in plan)
+    return {
+      ok: false,
+      status: 409,
+      reason: "invalid_catalog",
+      message: `${plan.refusal}; the claim is kept`,
+    };
   await db.batch([
     stmtDeleteClaim(product.slug, key),
     ...(plan?.statements ?? []),

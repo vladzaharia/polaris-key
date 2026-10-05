@@ -557,6 +557,38 @@ describe("Revert to manifest (ST-01b)", () => {
     expect(await activeCatalog(ctx)).toEqual(["run.name"]);
   });
 
+  it("refuses a snapshot catalog that fails the catalog screen, keeping the claim", async () => {
+    // A claimed catalog is not screened by the resync (it is not installed), but the snapshot
+    // still records it; Revert must screen it before it becomes the active version.
+    const ctx = await linked();
+    await call(ctx, "PUT", "config/catalog", {
+      catalog: JSON.parse(schemaJson("console.only")),
+    });
+    const bad = JSON.stringify({
+      schemaVersion: 1,
+      entries: [
+        { ...entry("run.name"), schema: { type: "string", pattern: 42 } },
+      ],
+    });
+    const res = await okResync(ctx, { schema: bad });
+    expect(res.claimed).toContain("config.catalog");
+    const schemaRows = () =>
+      ctx.db.all(
+        "SELECT * FROM product_schema WHERE product = ? ORDER BY catalog_version",
+        SLUG,
+      );
+    const before = await schemaRows();
+    const revert = await call(ctx, "DELETE", "claims/config.catalog");
+    expect(revert.status).toBe(409);
+    expect(revert.json).toMatchObject({ reason: "invalid_catalog" });
+    expect(await schemaRows()).toEqual(before);
+    expect(await activeCatalog(ctx)).toEqual(["console.only"]);
+    expect((await claimRows(ctx)).map((c) => c.key)).toEqual([
+      "config.catalog",
+    ]);
+    expect(await audits(ctx, "setting.revert")).toEqual([]);
+  });
+
   it("says it applies at the next resync when the product has no snapshot", async () => {
     const ctx = await linked();
     await call(ctx, "PATCH", "", { name: "Mine" });
