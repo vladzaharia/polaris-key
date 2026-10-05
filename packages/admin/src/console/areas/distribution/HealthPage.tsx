@@ -136,8 +136,6 @@ export function HealthPage({ slug }: { slug: string }): React.ReactElement {
 
   return (
     <DashboardTemplate
-      // Funnels and Auto-halt are equal-weight panels: half and half.
-      split="1-1"
       header={
         <>
           <PageHeader
@@ -264,17 +262,16 @@ export function HealthPage({ slug }: { slug: string }): React.ReactElement {
           ) : null}
         </Panel>
       }
-      side={
-        data ? (
-          <div className="space-y-6">
-            <AutoHaltPanel slug={slug} data={data} />
-            <TripsPanel data={data} version={v} />
-          </div>
-        ) : health.isPending ? (
-          <Skeleton className="h-64 w-full" />
-        ) : undefined
-      }
     >
+      {/* One panel per row: Funnels, Auto-halt and Trips and alerts each grow with the data (no
+          rollouts is a two-line Funnels panel), so no pairing of them keeps one height and none
+          is stretched to match a neighbour. */}
+      {data ? (
+        <AutoHaltPanel slug={slug} data={data} />
+      ) : health.isPending ? (
+        <Skeleton className="h-64 w-full" />
+      ) : null}
+      {data ? <TripsPanel data={data} version={v} /> : null}
       {data ? <SentryPanel slug={slug} data={data} version={v} /> : null}
     </DashboardTemplate>
   );
@@ -457,38 +454,50 @@ function AutoHaltPanel({
               />
             )}
           </FormField>
-          <FormField<number | null> name="windowHours" label="Window" required>
-            {(field) => (
-              <NumberInput {...field} integer min={1} max={max} unit="hours" />
-            )}
-          </FormField>
-          <FormField<number | null>
-            name="minSample"
-            label="Minimum devices applied"
-            required
-          >
-            {(field) => (
-              <NumberInput {...field} integer min={1} unit="devices" />
-            )}
-          </FormField>
-          <FormField<number | null>
-            name="maxRevertRate"
-            label="Maximum revert rate"
-            required
-          >
-            {(field) => (
-              <NumberInput {...field} percent min={0} max={100} step="any" />
-            )}
-          </FormField>
-          <FormField<number | null>
-            name="maxBootRollbackRate"
-            label="Maximum boot rollback rate"
-            required
-          >
-            {(field) => (
-              <NumberInput {...field} percent min={0} max={100} step="any" />
-            )}
-          </FormField>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FormField<number | null>
+              name="windowHours"
+              label="Window"
+              required
+            >
+              {(field) => (
+                <NumberInput
+                  {...field}
+                  integer
+                  min={1}
+                  max={max}
+                  unit="hours"
+                />
+              )}
+            </FormField>
+            <FormField<number | null>
+              name="minSample"
+              label="Minimum devices applied"
+              required
+            >
+              {(field) => (
+                <NumberInput {...field} integer min={1} unit="devices" />
+              )}
+            </FormField>
+            <FormField<number | null>
+              name="maxRevertRate"
+              label="Maximum revert rate"
+              required
+            >
+              {(field) => (
+                <NumberInput {...field} percent min={0} max={100} step="any" />
+              )}
+            </FormField>
+            <FormField<number | null>
+              name="maxBootRollbackRate"
+              label="Maximum boot rollback rate"
+              required
+            >
+              {(field) => (
+                <NumberInput {...field} percent min={0} max={100} step="any" />
+              )}
+            </FormField>
+          </div>
           <Button size="sm" variant="link" onClick={resetToDefaults}>
             Reset to defaults
           </Button>

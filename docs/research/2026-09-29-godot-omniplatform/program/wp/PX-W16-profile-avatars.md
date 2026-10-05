@@ -67,6 +67,13 @@ Owner decision: import profile data from identity providers ([PORTAL.md §4.30](
 mise exec node@22 -- pnpm --filter @polaris-key/worker test -- portal
 ```
 
+## S-20 note (2026-10-05)
+
+The avatar copy reuses S-20's ingest core, `core/safeFetch.ts` and `core/hostedAssets.ts` from
+[HA-01](HA-01-hosted-asset-core.md), with an `avatar` slot space. It must not build a second
+outbound fetcher. The provider host allowlist stays specific to this route
+([notes/S-20 §8](../../notes/S-20-hosted-assets.md#8-interactions-with-other-plans)).
+
 ## Hand-off
 
 PX-21 shows `ProfileImport`; PX-22 builds `ProfileEditor` and `Avatar`.
