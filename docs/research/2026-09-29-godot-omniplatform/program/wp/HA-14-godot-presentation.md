@@ -5,7 +5,7 @@
 | Phase       | HA: Hosted assets: Polaris Key hosts every file it serves (S-20) (phase 5: presentation in SDKs) |
 | Size        | 0.5–0.8 engineer-weeks                                                                           |
 | Depends on  | [HA-11](HA-11-presentation-discovery-plan.md), [HA-12](HA-12-presentation-discovery.md)          |
-| Unblocks    | none                                                                                             |
+| Unblocks    | [UK-41](UK-41-must-tier-closeout.md)                                                             |
 | Role        | `pkey-godot-engineer` (the plan is written first by `pkey-wire-planner`)                         |
 | Plan mode   | yes: executes the approved [`plans/HA-11.md`](../plans/HA-11.md)                                 |
 | Gates       | plan mode; corpus and transcript runners; UI snapshots                                           |
@@ -40,6 +40,7 @@ Godot is the program's primary engine. Its kit today shows only bundled marks ([
 ## Design notes
 
 - Use the SDK's existing SHA-256 path. Never follow a redirect away from the media origin.
+- **UI kit (owner decision, 2026-10-05).** This package is the only path by which presentation reaches the Godot kit: the modernised kit (UK-11) reads it through its `ProductIdentity` seam into `ui_accent` and the brand node. If UK-11 has landed, plug into that seam; if not, wire today's `pkey_ui_theme` and UK-11 keeps the same accessor. UK-41 verifies the default end to end ([UI-KITS.md](../../../../design/UI-KITS.md) §1.2, §10).
 
 ## Steps
 
