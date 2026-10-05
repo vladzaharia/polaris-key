@@ -390,6 +390,16 @@ PKEY_ENVIRONMENT = "test"
 # Console's own Pocket ID client (I-03; set all three in ONE `wrangler secret bulk`):
 #   ADMIN_OIDC_ISSUER, ADMIN_OIDC_CLIENT_ID, ADMIN_OIDC_CLIENT_SECRET. Until they are set the
 #   console signs in through PLATFORM_OIDC_*; the portal never reads them.
+# Login-card providers (I-06, services/identity/providers/config.ts; optional, per environment;
+# a provider is offered only once ALL of its values are set and its sealed secret opens):
+#   Google: SIGNIN_GOOGLE_CLIENT_ID, SIGNIN_GOOGLE_CLIENT_SECRET (sealed).
+#   Apple:  SIGNIN_APPLE_SERVICES_ID, SIGNIN_APPLE_TEAM_ID, SIGNIN_APPLE_KEY_ID,
+#           SIGNIN_APPLE_PRIVATE_KEY (the sealed .p8).
+#   Steam:  SIGNIN_STEAM_WEB_API_KEY (sealed).
+#   The three secrets hold `pnpm --filter @polaris-key/worker signin:seal` blobs sealed under that
+#   environment's PLATFORM_KEK, never the raw credential (RUNBOOK "Login-card providers"). Set one
+#   provider's values in ONE `wrangler secret bulk --env <env>`; the ids are not secret but travel
+#   with them so a provider never comes up half-configured.
 # Sign-in and account email (I-18, core/emailSender.ts, core/emailDelivery.ts):
 #   prod and staging bind Cloudflare Email Service as EMAIL. The display name is never
 #   configurable ("Polaris Key", or "<App> via Polaris Key" for passthrough); EMAIL_SENDER_ADDRESS

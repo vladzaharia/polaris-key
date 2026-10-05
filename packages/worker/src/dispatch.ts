@@ -159,6 +159,7 @@ export async function dispatchWith(
     case "portalSpa":
     case "portalApi":
     case "portalLogin":
+    case "portalProviderSignIn":
     case "portalCallback":
     case "portalLogout":
     case "portalMagicVerify":

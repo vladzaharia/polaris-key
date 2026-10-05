@@ -182,6 +182,19 @@ export interface Env {
   ADMIN_OIDC_ISSUER?: string;
   ADMIN_OIDC_CLIENT_ID?: string;
   ADMIN_OIDC_CLIENT_SECRET?: string;
+  /**
+   * I-06: the login card's platform sign-in clients (`services/identity/providers/config.ts`).
+   * The ids are plain vars; the three secrets are SEALED blobs (`pnpm --filter
+   * @polaris-key/worker signin:seal`), not raw credentials. A provider is offered only when all
+   * of its values are set and its sealed secret opens.
+   */
+  SIGNIN_GOOGLE_CLIENT_ID?: string;
+  SIGNIN_GOOGLE_CLIENT_SECRET?: string;
+  SIGNIN_APPLE_SERVICES_ID?: string;
+  SIGNIN_APPLE_TEAM_ID?: string;
+  SIGNIN_APPLE_KEY_ID?: string;
+  SIGNIN_APPLE_PRIVATE_KEY?: string;
+  SIGNIN_STEAM_WEB_API_KEY?: string;
   /** Older sender setting ("Name <addr>"). Only its ADDRESS is still honoured, and only while
    *  `EMAIL_SENDER_ADDRESS` is unset; the display name is never configurable (I-18). */
   PORTAL_EMAIL_FROM?: string;

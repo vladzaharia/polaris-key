@@ -86,7 +86,7 @@ interface MagicRecord {
 
 /** A portal sign-in error page: the branded, script-free shell (`core/brandHtml.ts`). Every
  *  message is a hard-coded literal, escaped anyway. A retry is offered where one can help. */
-function htmlError(status: number, message: string): Response {
+export function htmlError(status: number, message: string): Response {
   const retry = status === 400 || status === 401 || status === 429;
   return new Response(
     renderBrandPage({
@@ -149,7 +149,10 @@ async function pkce(): Promise<{ verifier: string; challenge: string }> {
   return { verifier, challenge: b64url(new Uint8Array(digest)) };
 }
 
-function safeReturnTo(req: Request, raw: string | null): string | undefined {
+export function safeReturnTo(
+  req: Request,
+  raw: string | null,
+): string | undefined {
   if (!raw) return undefined;
   try {
     const parsed = new URL(raw);
@@ -385,7 +388,7 @@ export async function handlePortalCallback(
  * offers to join once the person proves the other account; until it lands, the page says so and
  * names nobody.
  */
-function signInRefusal(result: SignInResult): Response | null {
+export function signInRefusal(result: SignInResult): Response | null {
   switch (result.status) {
     case "signed_in":
       return result.account.status === "active"

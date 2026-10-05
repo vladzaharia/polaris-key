@@ -60,6 +60,8 @@ export type Route =
   | { kind: "portalSpa" }
   | { kind: "portalApi" }
   | { kind: "portalLogin" }
+  /** I-06: the login card's platform providers, `/login/<provider>[/callback|/notifications]`. */
+  | { kind: "portalProviderSignIn" }
   | { kind: "portalCallback" }
   | { kind: "portalLogout" }
   | { kind: "portalMagicVerify" }
@@ -139,6 +141,10 @@ export function matchRoute(pathname: string): Route {
   )
     return { kind: "portalSpa" };
   if (path === "/login") return { kind: "portalLogin" };
+  // I-06: `/login/<provider>`, its callback and Apple's notifications (`login` is a reserved
+  // slug). The provider and step are validated by the handler; any other shape under `/login/`
+  // is its not-found page, never a product route.
+  if (path.startsWith("/login/")) return { kind: "portalProviderSignIn" };
   if (path === "/callback") return { kind: "portalCallback" };
   if (path === "/logout") return { kind: "portalLogout" };
   if (path === "/magic/verify") return { kind: "portalMagicVerify" };

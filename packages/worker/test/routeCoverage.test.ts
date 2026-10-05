@@ -43,6 +43,7 @@ const NARRATIVE_ONLY = new Set([
   "portalSpa",
   "portalApi",
   "portalLogin",
+  "portalProviderSignIn",
   "portalCallback",
   "portalLogout",
   "portalMagicVerify",
