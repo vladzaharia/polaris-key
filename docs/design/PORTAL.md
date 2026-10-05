@@ -79,7 +79,7 @@ is not the developer's console, and it does not sell anything.
    for (auto-issue policy, tier, group membership, email domain) without issuing anything; **Add to
    library** mints the license on the spot.
 3. **One obvious next action per product,** chosen from the license model and the device in hand:
-   _Download for macOS_, _Get it on the App Store_, _Activate on Steam_, _Free up a device_,
+   _Download for macOS_, _Get it on the App Store_, _Activate on Steam_, _Free a device_,
    _Open Quill_, _Set up package access_.
 4. **Every product has one complete page:** get it, Cloud Sync (when the product has it), what's
    new, license, devices, package access, help. Nothing about a product lives anywhere else.
@@ -520,6 +520,13 @@ to sign in", and "<Developer> · <where>":
   only when you continue to their app."), an opt-in checkbox "Add a passkey after this, so next time
   is one tap", **Create account and continue**, and the terms line naming both Polaris Key's terms
   and the developer's.
+- **Choose a license for this device** (owner decision, 2026-10-05): SIGN-IN.md §3.6 (the step)
+  and §3.7 (**Replace a device**) are canonical; contract in `plans/I-04.md`, "Owner decision
+  (2026-10-05): licence choice at sign-in". It comes after authentication and before Confirm on
+  every sign-in that binds a device, even with one license. Rank-first only preselects; full
+  licenses show "No free devices" with **Replace a device** and **Free a device** (§4.25, returning
+  here); a second free license is never minted silently. The primary is **Use this license and
+  continue**.
 - **Confirm** (every first sign-in to an app, and whenever what it gets changes): the person row
   (avatar, name, email, **Not you?**), "Continue to Tidewater Studio as Mara?", and **what it
   gets** as a list: its license ("Your Tidewater Pro license · Lifetime · this Mac becomes device 3
@@ -528,8 +535,8 @@ to sign in", and "<Developer> · <where>":
   your other products or how you sign in." (the pairwise id, §3.1). **Continue to Tidewater
   Studio** and **Cancel**. **Decided:** shown on the first sign-in to each app and again whenever
   what it gets changes; later sign-ins skip it. **The license line is the license the person chose**
-  in SIGN-IN.md §3.6's LicenseChoiceStep (shown on every sign-in that binds a device, even with one
-  license); when both are due they render as one screen (SIGN-IN.md frame 07).
+  in SIGN-IN.md §3.6's LicenseChoiceStep, with **Change** to go back to it (SIGN-IN.md §3.8,
+  frame 07). Confirm always follows the choice as its own step.
 - **Return:** a success mark, "You're signed in to Tidewater Studio", **Return to Tidewater
   Studio** (re-fires the redirect / app link), "You can close this tab. Open your library".
 
@@ -545,7 +552,9 @@ to sign in", and "<Developer> · <where>":
   when you're done." then the §4.1 methods (Drift Kart ships only on Steam, so its provider row has
   one button: the one-button case), and "Didn't start this on
   a TV? Cancel it. Someone may be trying to use your account."
-- Signed in already: straight to the confirm step (§4.8) with the device name.
+- Signed in already: straight to **Choose a license for this device** (§4.8), then Confirm when it
+  is due. A full license's **Replace a device** works here too, so the TV never needs a trip to the
+  portal.
 - Done: "Drift Kart is signed in on Living room TV · Look at your TV: it continues by itself", the
   person row with the method used, and **Sign the TV out** for the wrong account.
 
@@ -625,7 +634,7 @@ claim error "owned by another account" (§4.19).
   and a Grid/List toggle, all in the URL (§3.3); a non-"All" filter shows "Showing 3 of 12 · Show
   all" (A4).
 - **Needs attention shelf:** only items the person can act on, each with a solid primary action:
-  device limit → **Free up a device**; expires within 14 days → **Renew with <developer>** (G16, else
+  device limit → **Free a device**; expires within 14 days → **Renew with <developer>** (G16, else
   "Contact"); Steam key not activated → **Activate on Steam**; expired with a newer version →
   **Renew**. Never news. Hidden when empty.
 - **All products:** 4-column compact grid (3 at 761–1179 px), or the **list**: icon · Product ·
@@ -772,8 +781,12 @@ bucket (THREAT-MODEL: enumeration).
 
 <img src="portal/31-product-sync-mobile-dark.png" alt="Product page, phone" width="260">
 
-**Header:** back link to Library, the 320 px key-art banner (16:9, full-bleed on phones), the
-112 px icon overlapping its lower edge, the name as `h1`, "by <developer>", status pill and tier,
+**Header:** back link to Library, the key-art banner (the listing's 16:9 header: all of it,
+full-bleed, on phones; a centred 3:1 band capped at 416 px from 761 px; `object-fit: cover`, centred,
+as the library card's 16:9 crop is), the 112 px icon (80 on phones) in front of its lower edge,
+half over it, drawn edge to edge with no tile of ours (the developer's own shape is the frame; a
+full-bleed square icon gets only the store's corner mask; only the letter fallback is a tile); without a cover the icon stands beside the name, with no banner;
+the name as `h1`, "by <developer>", status pill and tier,
 and the **primary action** with an overflow menu (Copy link, Contact developer, Remove from
 library).
 
@@ -869,7 +882,7 @@ the new session appears in "Where you're signed in".
 
 ![Device limit flow](portal/35-device-limit-desktop-dark.png)
 
-Unchanged: minimal chrome with **Back to Orbit Survey without changes**; "Your license is on 2 of 2
+This flow is also the fallback behind the sign-in card's **Free a device** link (§4.8, 2026-10-05). Otherwise it is unchanged: minimal chrome with **Back to Orbit Survey without changes**; "Your license is on 2 of 2
 devices" with a full red meter; devices as radio cards with the least recently used preselected;
 consequences; **Remove Work laptop**; then "Go back to Orbit Survey and press Try again". This
 flow only frees the seat. Inside the sign-in card the same situation is **Replace a device**, which
@@ -1097,7 +1110,7 @@ New components live in `packages/admin/src/portal/components/` unless the consol
 | `LinkAccounts`                                                                                                                                              | Two proven account cards, consequences, join.                                                                                                                                                                                                                                                      |
 | `DeviceApproval`                                                                                                                                            | New-device side (QR, code, poll) and approving side (dialog with device details, deny/approve).                                                                                                                                                                                                    |
 | `ProductArt`                                                                                                                                                | `variant: "banner" \| "tile" \| "thumb" \| "icon"`; proxied art (G1) with the flat tint-and-icon / tint-and-letter fallback. No gradients.                                                                                                                                                         |
-| `LibraryTile`, `LibraryHero`, `LibraryList`, `AttentionShelf`, `LibraryToolbar`, `QuickAction`                                                              | As in the converged design: art with the status pill on a solid plate, icon overlapping, name, developer, meta, platform glyphs, note, outlined quick action and overflow; the one-product hero; the list on `ui/data-table`; the shelf; the URL-synced toolbar; quick-action resolution (§5.4).   |
+| `LibraryTile`, `LibraryHero`, `LibraryList`, `AttentionShelf`, `LibraryToolbar`, `QuickAction`                                                              | As in the converged design: 16:9 art, the status on a padded plate, icon overlapping, name, meta, platform glyphs, note, outlined quick action and overflow; the one-product hero; the list on `ui/data-table`; the shelf; the URL-synced toolbar; quick-action resolution (§5.4).                 |
 | `DiscoverTile`                                                                                                                                              | Art, icon, name, developer, offer terms, platforms, "why you can add it", **Add to library** → added state (green edge, **In your library**, **Open**).                                                                                                                                            |
 | `ActivateDialog`                                                                                                                                            | Steps enter → confirm (art header, product, tier, terms, key echo) → done; inline errors (§4.19); `prefill` and `fromProduct` props for the deep link. Mounted once in `PortalShell`, opened from anywhere.                                                                                        |
 | `JumpPalette`                                                                                                                                               | ⌘K (§4.27).                                                                                                                                                                                                                                                                                        |
@@ -1119,7 +1132,7 @@ client-side from existing fields before then. Precedence, first match wins:
 | --------------------- | --------------------------------------- | -------------------------------------------------- | ---------------------- |
 | Suspended             | alert · "Suspended" · danger            | "Suspended by <developer>."                        | Contact <developer>    |
 | Expired               | alert · "Expired" · danger              | "Updates ended at 1.8" (or "Ended 4 Sep 2026")     | Renew with <developer> |
-| Device limit reached  | alert · "Device limit reached" · danger | "2 of 2 devices"                                   | Free up a device       |
+| Device limit reached  | alert · "Device limit reached" · danger | "2 of 2 devices"                                   | Free a device          |
 | Key not activated     | key · "Key not activated" · info        | "Steam key"                                        | Activate on Steam      |
 | Expires soon (≤ 14 d) | clock · "Expires in 9 days" · warning   | "Studio · ends 13 Oct"                             | Renew with <developer> |
 | Offline grace ended   | alert · "Needs a check-in" · warning    | "Open <product> while online"                      | none                   |
@@ -1133,7 +1146,7 @@ Expiry inside 14 days uses relative days; otherwise "until 14 Mar 2027".
 
 | Product state                           | Desktop                                                        | Phone                                                  |
 | --------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------ |
-| Device limit reached                    | Free up a device                                               | Free up a device                                       |
+| Device limit reached                    | Free a device                                                  | Free a device                                          |
 | Steam key held, not activated           | Activate on Steam                                              | Activate on Steam                                      |
 | Account-bound (no key, no seats)        | Open <product> (website / app scheme)                          | Get it on the App Store / Google Play, else Open       |
 | Build for this OS exists and is covered | Download for <OS>                                              | Store link for this OS, else **Email me the download** |

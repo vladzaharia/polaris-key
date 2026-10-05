@@ -527,8 +527,8 @@ React exports bare names from `@polaris-key/react`. Headless names follow each l
 | **SignInHandoff**     | "Finish in your browser": the RFC 8628 user code, a QR, Open browser again, the countdown; moves on by itself                                                                       | starting · waiting · link copied · confirm · ok · denied · expired · cancelled                                                | must     |
 | **Activate**          | License key entry with live verdict: the key field names the product and tier as soon as it parses, catches cut-short keys (EXPERIENCE P2), paste button, Return submits            | empty · typing · parsed · cut short · busy · rejected · device limit (hands to DeviceLimit) · done                            | must     |
 | **OfflineActivation** | Request code (text + QR), load or drop a response file, paste box                                                                                                                   | default · loaded · rejected signature · done                                                                                  | must     |
-| **DeviceLimit**       | The focused device-limit flow (PORTAL §4.25): seat meter, devices as radio rows, least recent preselected, consequences, "Replace <device>" (SIGN-IN.md D-08)                       | default · busy · removed · failed · browser mode (links to the portal)                                                        | must     |
-| **LicenseChoice**     | "Choose a license for this device" after a native sign-in (SIGN-IN.md §3.6): license cards with seat meters, full licenses disabled, inline Replace a device                        | loading · many · one · new · all full · replace open · raced · attach refused · none (keys) · none (no keys)                  | must     |
+| **DeviceLimit**       | The focused **Replace a device** flow (PORTAL §4.25; SIGN-IN.md §3.7, D-08): seat meter, devices as radio rows, least recent preselected, the "Replace <device>?" confirm, **Replace and continue** | default · busy · removed · failed · browser mode (opens `manageUrl`)                                                           | must     |
+| **LicenseChoice**     | "Choose a license for this device" after a native sign-in (SIGN-IN.md §3.6; I-13 `choose`): license rows with seat meters, full licenses without a radio, inline Replace a device                    | loading · many · one · keep · new · create · all full · replace open · raced · none (keys) · none (no keys)                    | must     |
 | **Devices**           | Device list: icon by form factor, friendly name, platform and last seen, "This device", rename (inline, not an always-open form, RE), Remove with an L1 inline confirm              | loading · list · renaming · confirming · empty · browser mode                                                                 | must     |
 | **UpdatePrompt**      | Available / downloading / ready / mandatory / blocked / store outlet, with notes and the right verb per outlet ("Update on the App Store", "Restart when ready", "Get it on Steam") | available · downloading · ready · mandatory · blocked · store · platform · revoked-required-content · up to date              | must     |
 | **UpdateProgress**    | Compact download and install progress for app updates and content packs: toast, pill, or inline row                                                                                 | queued · downloading · installing · paused (metered) · failed · done                                                          | must     |
@@ -715,7 +715,7 @@ PORTAL §4.25 in every kit, top to bottom:
 
 1. The product header with tier.
 2. "Your license is on 3 of 3 devices".
-3. "To use it on <this device>, remove one. You can add it back later."
+3. "To use it on <this device>, replace one. You can add it back later."
 4. The neutral seat meter with its "3 of 3 in use" caption (`role="img"`, labelled), under the lede.
 5. **One inset grouped list.** Radius 16, hairlines inset past the glyph, 64 px rows. Each row has a
    bare 20 px form-factor glyph in `text-muted` and one meta template: "<platform> · last used
@@ -725,9 +725,23 @@ PORTAL §4.25 in every kit, top to bottom:
    (Mac mini, towers), tablet, phone, handheld; `laptop_windows`, `laptop_mac`, `desktop_mac`,
    `tablet_android` and `phone_android` in Material Symbols.
 6. Selection: `accent-subtle` plus one indicator (§1.5 rule 2).
-7. The consequence line, "<Product> signs out on <device>."
-8. **Replace <device>** as the primary (SIGN-IN.md D-08: the action frees the seat and puts this
-   device in it). On macOS it reads "Replace “<device>”". It stacks full width when the label runs past half the row.
+7. The confirm block under the list follows the selection (SIGN-IN.md §3.7): "Replace <device>?",
+   then "<device> signs out of <Product> and <this device> takes its seat. <device> can sign in
+   again later if a seat is free."
+8. **Replace and continue** as the primary and **Back** (SIGN-IN.md D-08). On macOS the confirm
+   reads "Replace “<device>”?". The buttons stack full width when a label runs past half the row.
+
+**Naming and data source (owner decision, 2026-10-05).** The component is titled **Replace a
+device** in every kit, matching the sign-in card's inline Replace (`plans/I-04.md`, "Owner
+decision (2026-10-05): licence choice at sign-in"). Layer 1 has no device-wire source for the list:
+
+- a device token manages only itself (R3-09);
+- a device refused with `device_limit` holds no token for the full licence.
+
+So in layer 1 the kits ship the browser mode: **Replace a device** opens `manageUrl` (PX-W8),
+shown as a QR on TV and console, and a sign-in started there reaches the card's inline Replace.
+The in-app radio list above arrives with I-13's `choose` response, which carries the list. There
+is no key-authenticated device removal.
 
 Browser mode (no device API) links to the portal flow instead. The copy never shows `dev-2` or
 `macos` (RE).

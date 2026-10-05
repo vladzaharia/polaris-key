@@ -13,6 +13,7 @@ import {
   type DeviceInHand,
   type LibraryProduct,
 } from "./model/library.js";
+import { discoverCountFrom } from "./model/owned.js";
 
 /**
  * The library as products (PX-08): `GET /api/library` lists them, with their status, seats,
@@ -57,10 +58,9 @@ export function useLibrary(): {
   // first answer (so quick actions don't change under the pointer) but never fails for them.
   const releasesPending = releasesOn && releases.isPending;
   const licensesPending = licenses.isPending && licenses.fetchStatus !== "idle";
-  const count = library.data?.discoverCount;
   return {
     products,
-    discoverCount: typeof count === "number" && count >= 0 ? count : null,
+    discoverCount: discoverCountFrom(library.data?.discoverCount),
     isPending:
       library.isPending ||
       caps.isPending ||

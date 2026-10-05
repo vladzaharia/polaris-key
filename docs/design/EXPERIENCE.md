@@ -569,9 +569,9 @@ refusals into one flow.
 > every sign-in step, license choice and **Replace a device**, the console card, the Worker pages,
 > the emails and the kits. It supersedes this section where they differ.
 
-| Before                                                                                                    | After (one card, the app's header on every step)                                                                                                                     |
-| --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| No passthrough: `/authorize` shows "Manage your copy of Saltwind"; the key and the app are separate trips | "**Tidewater Studio** wants you to sign in" → email → code or link (or a provider, then the email gate) → **Add Tidewater Studio** (key, confirm) → It's yours → app |
+| Before                                                                                                    | After (one card, the app's header on every step)                                                                                                                                                              |
+| --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No passthrough: `/authorize` shows "Manage your copy of Saltwind"; the key and the app are separate trips | "**Tidewater Studio** wants you to sign in" → email → code or link (or a provider, then the email gate) → **Choose a license for this device** (or **Add Tidewater Studio**: key, confirm) → It's yours → app |
 
 The `AuthCard` steps, in order, each under the persistent app header (PORTAL.md §4.7) and the lock
 footer ([storyboard](experience/15-story-portal-desktop-dark.png)):
@@ -586,16 +586,20 @@ footer ([storyboard](experience/15-story-portal-desktop-dark.png)):
    provider gives them), the email radio cards, Terms when the product requires them, primary
    "Continue to Tidewater Studio" or **Send code** for a typed address. **No skip path**; Cancel
    abandons the sign-in. A provider-verified address needs no code (frame 3).
-   - **LicenseChoiceStep** (owner decision 2026-10-05; SIGN-IN.md §3.6): after authentication, on
-     every sign-in that binds this installation, "Choose a license for this device" lists the
-     account's licenses for the app, even one (a one-tap confirm). Rank-first only preselects. Full
-     licenses show disabled with an inline **Replace a device** (SIGN-IN.md §3.7). With no license
-     and auto-issue on, the new license shows as a **New** row; it is never issued silently, and
-     never when the account's licenses are merely full. First-time consent renders on the same
-     screen.
-4. **KeyStep**, "Add Tidewater Studio to your account": shown when the account has no license for
+4. **LicenseChoiceStep**, "Choose a license for this device" (owner, 2026-10-05; SIGN-IN.md §3.6):
+   shown on every sign-in that binds this installation, even with one license (a one-tap confirm).
+   - Each row reads "Tidewater Studio Pro", then "Bought on the App Store · 2 of 3 devices ·
+     Lifetime"; rank-first only preselects.
+   - A full license shows "No free devices", no radio, **Replace a device** (inline, SIGN-IN.md
+     §3.7: "Replace Work laptop?" with **Replace and continue** and **Back**) and **Free a device**.
+   - The primary is **Use this license and continue**. When first-time consent follows, the consent
+     step shows the chosen license with **Change**.
+   - With no license, a **New** row ("created when you continue") when the product auto-issues;
+     otherwise "No Tidewater Studio license in this account" with the key field (KeyStep).
+5. **KeyStep**, "Add Tidewater Studio to your account": shown when the account has no license for
    the requesting app, the product does not auto-issue, and it accepts keys (or from "Use a license
-   key instead"); its confirm binds the device directly ("Add and use on this device"). The `KeyField` names the product as soon as the
+   key instead"). Its confirm is the choice and binds the device ("Add and use on this device"). The
+   `KeyField` names the product as soon as the
    key parses, then the **PX-17 confirm** renders in the same step: art header, product and tier,
    terms ("lifetime · up to 3 devices"), the key echoed with **Change key**, and the entries notice
    when the key has used its entries (frame 4). Verdicts, inline under the field:
@@ -608,14 +612,14 @@ footer ([storyboard](experience/15-story-portal-desktop-dark.png)):
      no entries left in Tidewater Studio. Add it to your account and the app signs you in
      instead.") and keeps **Add** enabled (Q-5: a warning, not a block);
    - "I bought it with another email" leads to the account-linking path (PORTAL.md §4.11).
-5. **ReturnStep**, "It's yours": one celebration (a star burst under
+6. **ReturnStep**, "It's yours": one celebration (a star burst under
    `prefers-reduced-motion: no-preference`, a static check otherwise), the product row with "In
    your library", **Return to Tidewater Studio**, and "Returning by itself in 3 s · **Stay here**".
    Stay here stops the timer (WCAG 2.2.1); the timer also pauses while focus is inside the card
    (frame 6).
-6. Next time the person opens Polaris Key, the new product is **first in the Library with a ring and
+7. Next time the person opens Polaris Key, the new product is **first in the Library with a ring and
    the quiet text "Added just now"** for 24 hours, its download as the tile's lead (frame 7). No pill.
-7. The product page has **one lead**: Download for this Mac in the header; other platforms below
+8. The product page has **one lead**: Download for this Mac in the header; other platforms below
    with **Change platform**; **What you own** with sources (LX-15); "This device" marked; **Set up
    another device** in Devices (frame 8; [mockup](experience/09-portal-product-desktop-dark.png)).
 
@@ -1026,15 +1030,20 @@ edge on phones.
 
 **The steps** (each one a component inside the card; the header and footer persist across them):
 
-| Step                | When                                                                                                                                                                     | Owner                                                |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
-| `MethodsStep`       | First: identifier-first email, then the variant's methods                                                                                                                | UX-40                                                |
-| `CodeStep`          | After an email: one email with a 6-digit code and a magic link                                                                                                           | I-07 (Worker), UX-40 (card)                          |
-| `EmailGateStep`     | First sign-in through a provider; `ProfileImport`; no skip path                                                                                                          | PX-21 (built inside the card UX-40 promotes)         |
-| `LicenseChoiceStep` | After authentication, every sign-in that binds an installation: "Choose a license for this device"; full licenses disabled; `ReplaceDevice` inline (SIGN-IN.md §3.6–3.7) | UX-41, PX-14; wire not yet planned (SIGN-IN.md §6.2) |
-| `ConsentStep`       | First sign-in to an app or a scope change; merged with LicenseChoiceStep when both are due                                                                               | PX-14, UX-41                                         |
-| `KeyStep`           | "Have a license key?", "Use a license key instead", or no license without auto-issue; PX-17's confirm; I-09's verdicts                                                   | UX-41, PX-17, UX-05                                  |
-| `ReturnStep`        | Passthrough done: "It's yours", Return to <App>, timer with Stay here                                                                                                    | UX-41                                                |
+| Step                | When                                                                                                                                                                         | Owner                                                     |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `MethodsStep`       | First: identifier-first email, then the variant's methods                                                                                                                    | UX-40                                                     |
+| `CodeStep`          | After an email: one email with a 6-digit code and a magic link                                                                                                               | I-07 (Worker), UX-40 (card)                               |
+| `EmailGateStep`     | First sign-in through a provider; `ProfileImport`; no skip path                                                                                                              | PX-21 (built inside the card UX-40 promotes)              |
+| `LicenseChoiceStep` | After authentication, every sign-in that binds an installation: "Choose a license for this device"; full licenses disabled; `ReplaceDevice` inline (SIGN-IN.md §3.6–§3.7) | UX-41, PX-14 (card), I-08 (routes), I-09 (ranking), I-26 |
+| `ConsentStep`       | First sign-in to an app or a scope change; after LicenseChoiceStep, showing the chosen license with **Change** (SIGN-IN.md §3.8)                                            | PX-14, UX-41                                              |
+| `KeyStep`           | "Have a license key?", "Use a license key instead", or no license without auto-issue; PX-17's confirm, which is itself the choice; I-09's verdicts                           | UX-41, PX-17, UX-05                                       |
+| `ReturnStep`        | Passthrough done: "It's yours", Return to <App>, timer with Stay here                                                                                                        | UX-41                                                     |
+
+**`LicenseChoiceStep`, `ReplaceDevice` and `ConsentStep` are specified in SIGN-IN.md §3.6–§3.8**
+(owner decisions 2026-10-05; contract in `plans/I-04.md`, "Owner decision (2026-10-05): licence
+choice at sign-in"). Their frames are SIGN-IN.md frames 05–09 and 18–21; this section keeps no
+second copy of their rules.
 
 | Variant         | Brand row                  | Header                                               | Methods                                                                                                                                                                                                                                                                                             |
 | --------------- | -------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1289,24 +1298,24 @@ and every render: `/private/tmp/claude-501/ux-unify/mockups/` (`_src/build.mjs`,
 frames under `frames/`). Optimised PNGs are in [`experience/`](experience/), named
 `<page>-<desktop|mobile>-<dark|light>.png`.
 
-| #   | Mockup                         | Shows                                                                                                                                                                                                               |
-| --- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 01  | `01-signin-portal`             | Shared AuthCard, portal: identifier-first email, provider row, passkey, quiet links                                                                                                                                 |
-| 02  | `02-signin-console`            | Console variant: "Polaris Key │ Console", identifier-first email with the known-operator chip, Continue (to Pocket ID), passkey                                                                                     |
-| 02b | `02b-signin-console-signedout` | Session ended in place, return to the page, unsaved edits kept                                                                                                                                                      |
-| 03  | `03-signin-passthrough`        | "Tidewater Studio wants you to sign in", product providers, lock footer                                                                                                                                             |
-| 04  | `04-signin-worker`             | Worker no-JS page in the same card: expired link, Send a new link                                                                                                                                                   |
-| 05  | `05-console-overview`          | Overview after consolidation: one attention list (no pill where the title says it), StatStrip, Releases, Services                                                                                                   |
-| 06  | `06-console-licenses`          | List page: search by key, counted facets (Refusing devices), Filters on phones, right-aligned issue pills, a chevron on every phone row                                                                             |
-| 07  | `07-console-settings`          | The S-18 hub's License area: SourceBadges, a claimable row being edited with ST-07's pre-save diff and impact, drift with Revert, inherited value, channels as checkboxes, auto-issue preview, LX-06 licensing rows |
-| 08  | `08-portal-library`            | Library without healthy pills, real quick actions, Discover end note; phone bar with Activate as the approved middle pill                                                                                           |
-| 09  | `09-portal-product`            | One lead, Change platform, What you own with sources (LX-15), facts as text, This device, no section rail, Signed as a glyph                                                                                        |
-| 10  | `10-console-empty`             | Guided empty state: Releases checks, snippet, live waiting row                                                                                                                                                      |
-| 11  | `11-console-confirm`           | Release Status tab with Halt everywhere confirm; the halted outlet disabled; Signed as a glyph                                                                                                                      |
-| 12  | `12-console-toast`             | License Status after the fix (nothing shouted), tabs per LX-14, toast with an action that stays                                                                                                                     |
-| 13  | `13-story-setup`               | Storyboard: console guided product setup (6 frames; frame 5 is A-18j's Add to storefronts)                                                                                                                          |
-| 14  | `14-story-support`             | Storyboard: console device-limit support (5 frames; Refusing devices, Add seats…)                                                                                                                                   |
-| 15  | `15-story-portal`              | Storyboard: portal first sign-in from an app through the email gate, key confirm, `license_owned`, Stay here, library and product (8 frames)                                                                        |
+| #   | Mockup                         | Shows                                                                                                                                                                                                                |
+| --- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 01  | `01-signin-portal`             | Shared AuthCard, portal: identifier-first email, provider row, passkey, quiet links                                                                                                                                  |
+| 02  | `02-signin-console`            | Console variant: "Polaris Key │ Console", identifier-first email with the known-operator chip, Continue (to Pocket ID), passkey                                                                                      |
+| 02b | `02b-signin-console-signedout` | Session ended in place, return to the page, unsaved edits kept                                                                                                                                                       |
+| 03  | `03-signin-passthrough`        | "Tidewater Studio wants you to sign in", product providers, lock footer                                                                                                                                              |
+| 04  | `04-signin-worker`             | Worker no-JS page in the same card: expired link, Send a new link                                                                                                                                                    |
+| 05  | `05-console-overview`          | Overview after consolidation: one attention list (no pill where the title says it), StatStrip, Releases, Services                                                                                                    |
+| 06  | `06-console-licenses`          | List page: search by key, counted facets (Refusing devices), Filters on phones, right-aligned issue pills, a chevron on every phone row                                                                              |
+| 07  | `07-console-settings`          | The S-18 hub's License area: SourceBadges, a claimable row being edited with ST-07's pre-save diff and impact, drift with Revert, inherited value, channels as checkboxes, auto-issue preview, LX-06 licensing rows  |
+| 08  | `08-portal-library`            | Library without healthy pills, real quick actions, Discover end note; phone bar with Activate as the approved middle pill                                                                                            |
+| 09  | `09-portal-product`            | One lead, Change platform, What you own with sources (LX-15), facts as text, This device, no section rail, Signed as a glyph                                                                                         |
+| 10  | `10-console-empty`             | Guided empty state: Releases checks, snippet, live waiting row                                                                                                                                                       |
+| 11  | `11-console-confirm`           | Release Status tab with Halt everywhere confirm; the halted outlet disabled; Signed as a glyph                                                                                                                       |
+| 12  | `12-console-toast`             | License Status after the fix (nothing shouted), tabs per LX-14, toast with an action that stays                                                                                                                      |
+| 13  | `13-story-setup`               | Storyboard: console guided product setup (6 frames; frame 5 is A-18j's Add to storefronts)                                                                                                                           |
+| 14  | `14-story-support`             | Storyboard: console device-limit support (5 frames; Refusing devices, Add seats…)                                                                                                                                    |
+| 15  | `15-story-portal`              | Storyboard: portal first sign-in from an app through the email gate, key confirm, `license_owned`, Stay here, library and product (8 frames; the 2026-10-05 `LicenseChoiceStep` frame is still to be added by PX-14) |
 
 ![Guided product setup storyboard](experience/13-story-setup-desktop-dark.png)
 
@@ -1396,14 +1405,14 @@ any file it edits (checked against §13.1), not merely that its dependencies are
 
 **Wave 2: shared sign-in**
 
-| Id    | Package                                                                                                                                                         | Size | Deps                                           |
-| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------------------------------- |
-| UX-40 | **`AuthCard` in `ui/auth/`**: promote `LoginCard`, `ProviderRow`, `Glyphs`, `KeyField`; the step slots (§8); passkey and "Have a license key?" in `MethodsStep` | M    | PX-20 (`PortalShell`), I-07 (`SignInPage.tsx`) |
-| UX-41 | **Passthrough steps**: persistent app header, `KeyStep` with PX-17's confirm and I-09's verdicts, `ReturnStep` with Stay here, the library ring                 | L    | UX-40, PX-17, I-08 and PX-W13 (broker), I-09   |
-| PX-21 | (approved, existing) **EmailGateStep** with `ProfileImport` inside the promoted card                                                                            | M    | UX-40, PX-12, PX-W15, PX-W16                   |
-| UX-42 | **Console sign-in**: identifier-first card at `/manage/login`, Continue starts PKCE or a passkey, 403 and not-configured states                                 | M    | UX-40, UX-02, r2 (`admin/auth.ts`)             |
-| UX-43 | **Worker twin**: `renderAuthCard()` in `brandHtml.ts`; expired code or link with Send a new code; device pages with the product header; measures test           | M    | UX-40, I-07, r2 (`brandHtml.ts`)               |
-| UX-44 | **Email**: no-bit centred lockup, card radius, the code-and-link copy on I-07's template                                                                        | S    | I-07                                           |
+| Id    | Package                                                                                                                                                                                                        | Size | Deps                                           |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------------------------------- |
+| UX-40 | **`AuthCard` in `ui/auth/`**: promote `LoginCard`, `ProviderRow`, `Glyphs`, `KeyField`; the step slots (§8); passkey and "Have a license key?" in `MethodsStep`                                                | M    | PX-20 (`PortalShell`), I-07 (`SignInPage.tsx`) |
+| UX-41 | **Passthrough steps**: persistent app header, `LicenseChoiceStep` with inline Replace a device (2026-10-05), `KeyStep` with PX-17's confirm and I-09's verdicts, `ReturnStep` with Stay here, the library ring | L    | UX-40, PX-17, I-08 and PX-W13 (broker), I-09   |
+| PX-21 | (approved, existing) **EmailGateStep** with `ProfileImport` inside the promoted card                                                                                                                           | M    | UX-40, PX-12, PX-W15, PX-W16                   |
+| UX-42 | **Console sign-in**: identifier-first card at `/manage/login`, Continue starts PKCE or a passkey, 403 and not-configured states                                                                                | M    | UX-40, UX-02, r2 (`admin/auth.ts`)             |
+| UX-43 | **Worker twin**: `renderAuthCard()` in `brandHtml.ts`; expired code or link with Send a new code; device pages with the product header; measures test                                                          | M    | UX-40, I-07, r2 (`brandHtml.ts`)               |
+| UX-44 | **Email**: no-bit centred lockup, card radius, the code-and-link copy on I-07's template                                                                                                                       | S    | I-07                                           |
 
 **Wave 3: console journeys on the shared layer**
 
