@@ -242,7 +242,8 @@ from .license.endpoints import (
     ActivationUnauthorized,
 )
 from .license.gate import LicenseState, is_usable, license_state
-from .release.client import ChangelogEntry, ReleaseClient
+from .release.client import ChangelogEntry, FetchedFile, ReleaseClient
+from .distribution import DistributionClient, DownloadModel, DownloadPlatform
 from .update.client import (
     FeedCheck,
     ReleaseRecordCheck,
@@ -283,6 +284,10 @@ __all__ = [
     "SignInResult",
     "MintedToken",
     "ReleaseClient",
+    "FetchedFile",
+    "DistributionClient",
+    "DownloadModel",
+    "DownloadPlatform",
     "CommerceClient",
     "CommerceBinding",
     "CommerceProduct",

@@ -55,6 +55,7 @@ from ..constants_generated import (
     PLATFORM_VALUES,
     ErrorCode,
     Feature,
+    UnsupportedReason,
 )
 from ..core.b64url import b64url_decode
 from ..core.check import FetchOutcome, run_update_check
@@ -367,6 +368,10 @@ def _wire_code_of(body: bytes) -> Optional[str]:
     return None
 
 
+#: The updater feeds :meth:`UpdateClient.feed_url` expands (discovery ``update.endpoints``).
+FEED_KINDS = ("appcast", "winsparkle", "velopack", "appInstaller", "zsync")
+
+
 class UpdateClient:
     def __init__(
         self,
@@ -487,6 +492,56 @@ class UpdateClient:
         if manifest is None:
             return None
         return appcast_url_from(manifest, channel=channel, arch=arch)
+
+    def feed_url(
+        self,
+        kind: str,
+        *,
+        channel: Optional[str] = None,
+        velopack_channel: Optional[str] = None,
+        build_id: Optional[str] = None,
+        arch: Optional[str] = None,
+    ) -> Any:
+        """A native updater's feed URL (SDK parity pass §3.7), expanded from discovery's
+        ``update.endpoints`` templates: ``kind`` is ``appcast`` (Sparkle; ``arch`` adds
+        ``?arch=``), ``winsparkle``, ``velopack`` (``velopack_channel``: the channel the app was
+        packed with, e.g. ``win-x64``), ``appInstaller`` or ``zsync`` (``build_id``: an AppImage
+        build's artifact-map id). ``channel`` defaults to the client's.
+
+        Returns the URL string, or a typed :class:`~polaris_key.core.caps.Unsupported` with
+        reason ``product`` when discovery is not loaded, the product runs no Update service or
+        its document names no template for ``kind`` (an older Worker). Raises
+        ``invalid-options`` for an unknown ``kind`` or a missing placeholder value."""
+        from ..core.caps import Unsupported
+
+        if kind not in FEED_KINDS:
+            raise _invalid(f"feed kind must be one of {', '.join(FEED_KINDS)}")
+        channel = channel or self._ctx.channel
+        manifest = self._discovery()
+
+        def unsupported(why: str) -> Unsupported:
+            return Unsupported(Feature.UPDATE_DRIVER, UnsupportedReason.PRODUCT, why)
+
+        if manifest is None:
+            return unsupported("discovery has not been loaded (call client.discover())")
+        if kind == "appcast":
+            url = appcast_url_from(manifest, channel=channel, arch=arch)
+            return url if url is not None else unsupported("the product publishes no appcast")
+        from ..discovery import service_endpoint
+
+        template = service_endpoint(manifest, "update", kind)
+        if template is None:
+            return unsupported(f"the product's discovery document names no {kind} feed")
+        values = {"channel": channel}
+        if "{velopackChannel}" in template:
+            if not velopack_channel:
+                raise _invalid("a velopack feed needs velopack_channel (e.g. win-x64)")
+            values["velopackChannel"] = velopack_channel
+        if "{buildId}" in template:
+            if not build_id:
+                raise _invalid("a zsync feed needs build_id")
+            values["buildId"] = build_id
+        return _expand(template, self._ctx.base_url, values)
 
     # ── Wire v4 ─────────────────────────────────────────────────────────────────────────
 

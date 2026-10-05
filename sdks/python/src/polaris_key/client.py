@@ -67,6 +67,7 @@ from .devices.client import (
 )
 from .devices.facts import ProbeDeclaration
 from .identity.client import IdentityClient
+from .distribution import DistributionClient
 from .discovery import (
     DiscoveryOk,
     ServicesMap,
@@ -221,7 +222,11 @@ class PolarisKeyClient:
         # signed-in device holds a licensed token exactly as an activated one does, and
         # syncs the same way.
         self.identity = IdentityClient(self.core, self._tokens, self._on_license_acquired)
-        self.release = ReleaseClient(self.core, self._tokens)
+        self.release = ReleaseClient(self.core, self._tokens, lambda: self._discovery_doc)
+        #: The public download model (``distribution/download.json``, SDK parity pass §3.8).
+        self.distribution = DistributionClient(
+            self.core, platform=getattr(update, "platform", None)
+        )
         # Wire v4's signed decision: the pinned release keys, the outlet, the installed build's
         # format and build number, the host's methods. Validated here: a bad value, or a
         # release key that is also a trust pin, raises `invalid-options` from the constructor.
@@ -252,6 +257,7 @@ class PolarisKeyClient:
         # pending events in `updates`, with `gate`, `outlet` and `packInstalls` beside them.
         self.update_journal = UpdateJournal(self.core.local_state_dir(), self._journal_context)
         self.update.journal = self.update_journal
+        self.release.update = self.update
         self.update.packs.journal = self.update_journal
         self.devices.journal = self.update_journal
         self.devices.gate_status = lambda: self.license.status().status
