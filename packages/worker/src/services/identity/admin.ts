@@ -160,7 +160,7 @@ async function handlePortalSettings(
   });
 }
 
-/** The listing values that changed, as `name: before → after` (no free text beyond labels' groups). */
+/** The listing values that changed, as `name before → after`; group labels are counted, never quoted. */
 function describeListingChanges(
   before: PortalProductSettingsView,
   after: PortalProductSettingsView,

@@ -8,7 +8,7 @@
  * kind, no labels.
  */
 
-import type { Db } from "../../../db/types.js";
+import type { Db } from "../../../core/platform.js";
 import {
   resolveListing,
   type StorefrontListing,
