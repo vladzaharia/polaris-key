@@ -47,9 +47,9 @@ import {
   type FetchImpl,
   getInstallationToken,
 } from "./githubApp.js";
-import { fetchRepoFile, getRepoIdentity } from "./github.js";
+import { getRepoIdentity } from "./github.js";
 import { isSafeBinaryName } from "./install.js";
-import { MANIFEST_FILE_NAMES, MANIFEST_FILES } from "./manifestFiles.js";
+import { fetchPinnedManifestFiles } from "./manifestFetch.js";
 import { syncReleaseStore } from "./sync.js";
 import { manifestDeliverableStatements } from "./deliverables.js";
 import { releaseKeysForSync } from "./records.js";
@@ -57,6 +57,7 @@ import { serializeServices } from "../../core/services.js";
 import type { ManifestIngest } from "../../core/registry.js";
 import { serializeWebOrigins } from "../../core/cors.js";
 import { stmtUpsertManifestPublisher } from "../../core/publisher.js";
+import { manifestSnapshotStatement } from "../../core/manifestSnapshot.js";
 
 export type LinkRepoResult =
   | {
@@ -139,22 +140,6 @@ export function manifestIssuerRefusal(env: Env, issuer: string): string | null {
   );
 }
 
-/** Read the first existing variant of a manifest document (JSON before YAML — see
- *  `manifestFiles.ts`). */
-async function readManifestFile(
-  token: string,
-  owner: string,
-  repo: string,
-  paths: string[],
-  fetchImpl: FetchImpl,
-): Promise<string | undefined> {
-  for (const path of paths) {
-    const text = await fetchRepoFile(token, owner, repo, path, fetchImpl);
-    if (text !== null) return text;
-  }
-  return undefined;
-}
-
 /**
  * Link a GitHub repo as a new Polaris Key product. Returns a structured result rather than
  * throwing on the expected failure modes (bad URL, app not installed, manifest errors) so the
@@ -199,19 +184,17 @@ export async function linkRepo(
   }
 
   // Read the manifest files (schema + product required, release optional). Missing required
-  // files surface as parseManifest errors below.
-  const files: Record<string, string> = {};
+  // files surface as parseManifest errors below. ST-01a: every document at ONE commit, the
+  // default branch's head as GitHub resolves it (`fetchPinnedManifestFiles`).
+  let files: Record<string, string>;
+  let appliedSha: string;
   try {
-    for (const name of MANIFEST_FILE_NAMES) {
-      const text = await readManifestFile(
-        token,
-        owner,
-        repo,
-        MANIFEST_FILES[name],
-        fetchImpl,
-      );
-      if (text !== undefined) files[name] = text;
-    }
+    ({ files, sha: appliedSha } = await fetchPinnedManifestFiles(
+      token,
+      owner,
+      repo,
+      fetchImpl,
+    ));
   } catch (err) {
     // `fetchRepoFile` throws on a non-404 upstream status and on an over-cap body. Surfacing
     // that as a structured error (as `resync.ts` already did) keeps an oversized or hostile
@@ -252,6 +235,7 @@ export async function linkRepo(
     db,
     manifest,
     { owner, repo, installId, token },
+    { sha: appliedSha, files },
     now,
     fetchImpl,
     ingest,
@@ -264,6 +248,7 @@ async function registerFromManifest(
   db: Db,
   manifest: ParsedManifest,
   gh: { owner: string; repo: string; installId: number; token: string },
+  applied: { sha: string; files: Record<string, string> },
   now: number,
   fetchImpl: FetchImpl,
   ingest: ManifestIngest | undefined,
@@ -536,6 +521,19 @@ async function registerFromManifest(
     statements.push(
       ...ingest(manifest, slug, manifest.services, now).statements,
     );
+
+  // ST-01a: the manifest snapshot (origin `link`), in the same atomic batch and after the product
+  // row it references, so a linked product always has its applied manifest on record.
+  statements.push(
+    await manifestSnapshotStatement(
+      slug,
+      "link",
+      applied.sha,
+      applied.files,
+      manifest,
+      now,
+    ),
+  );
 
   await db.batch(statements);
 

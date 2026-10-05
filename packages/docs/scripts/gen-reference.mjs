@@ -326,6 +326,7 @@ const TABLE_OWNERS = {
     "device_facts",
     "audit",
     "product_sync_state",
+    "product_manifest_snapshot",
     "schema_index_assertion",
     "blob_objects",
     "blob_refs",

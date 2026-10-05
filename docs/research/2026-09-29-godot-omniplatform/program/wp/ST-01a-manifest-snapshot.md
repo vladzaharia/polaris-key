@@ -49,6 +49,22 @@ Nothing stores the applied manifest today: `product_sync_state` holds only the t
 - D1's value-size limit is unverified [U]: assert in a test that four maximum-size documents fit.
 - No observable behaviour change: resync still overwrites as today until ST-01b.
 
+**Corrections from the code (recorded by the implementer, 2026-10-04):**
+
+- `linkRepo` lives in `packages/worker/src/services/release/linkRepo.ts`, not `admin.ts`
+  (`admin.ts` holds the manual-resync route that calls `resyncRepo`).
+- `docs/security/THREAT-MODEL.md` has no row labelled R6-05. The control it names is the
+  `.pkey/` manifest row of §5 ("Semi-trusted inputs"); that row was amended, and a bullet on the
+  pinned fetch and the snapshot was added under "Boundaries that are weaker than they look".
+- The head is resolved with ONE call, `GET /repos/{o}/{r}/commits/HEAD` with
+  `Accept: application/vnd.github.sha` (bare sha body; checked against api.github.com), instead of
+  S-18 §4.3's two calls (`GET /repos/{o}/{r}`, then `/commits/{branch}`). The property is the same:
+  GitHub resolves the default branch from the repo coordinates alone. It is one fewer round trip,
+  and it avoids reading a full commit JSON, whose file list could exceed the read cap.
+- The table's `product` column references `products(slug)` without S-18 §4.3's `ON DELETE
+CASCADE`: `test/attack/R11-data.test.ts` (R11-01) pins that only the account and portal tables
+  cascade, and no product-scoped table declares `ON DELETE` (products are never deleted).
+
 ## Steps
 
 1. Migration and `TABLE_OWNERS`; scratch-SQLite rehearsal against the full migration chain.

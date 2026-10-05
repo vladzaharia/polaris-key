@@ -405,7 +405,10 @@ export function RepoSyncDrawer({
                             : (sync.source ?? "—"),
                     },
                     {
-                      term: "Commit",
+                      // The pushed commit that triggered this sync (any branch touching
+                      // `.pkey/`), NOT the commit applied: resync always reads the default
+                      // branch (notes/S-18 §2.1, ST-01a).
+                      term: "Triggered by push",
                       detail: sync.commitSha ? (
                         <span className="font-mono text-xs">
                           {sync.commitSha.slice(0, 12)}
