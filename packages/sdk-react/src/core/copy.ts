@@ -98,6 +98,8 @@ const EN: CopyBundle = {
       "This license has reached its device limit. Free a device in your account, then try again.",
     license_disabled:
       "This license was disabled. Contact the seller or your administrator.",
+    license_unusable:
+      "This license can no longer be used (disabled, expired or removed). Contact the seller or your administrator.",
     license_expired:
       "This license has expired. Renew it to keep using the app.",
     not_entitled: "Your license doesn't include this.",
@@ -272,6 +274,8 @@ const FR: CopyBundle = {
       "Cette licence a atteint sa limite d'appareils. Libérez un appareil depuis votre compte, puis réessayez.",
     license_disabled:
       "Cette licence a été désactivée. Contactez le vendeur ou votre administrateur.",
+    license_unusable:
+      "Cette licence n'est plus utilisable (désactivée, expirée ou supprimée). Contactez le vendeur ou votre administrateur.",
     license_expired:
       "Cette licence a expiré. Renouvelez-la pour continuer à utiliser l'application.",
     not_entitled: "Votre licence n'inclut pas cela.",
