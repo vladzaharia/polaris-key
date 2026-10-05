@@ -29,8 +29,46 @@ export interface ErrorContext {
    * different thing to a rollout than to a channel promote) and marks a 409 as the catalog's
    * concurrent-publish conflict (A-6).
    */
-  area?: "release" | "distribution" | "catalog";
+  area?: ErrorArea;
+  /** The slug the operator typed, for "tonebox is taken: try tonebox-app" (`area: "slug"`). */
+  slug?: string;
+  /** The repository the operator named (`acme/tonebox`), for the GitHub App install fix. */
+  repo?: string;
 }
+
+/**
+ * The areas `errorCopy` routes by (EXPERIENCE.md §0.3, UX-01). The first three break ties between
+ * reason tables. The rest name where a refusal came from, so it reads as that problem and not as a
+ * generic status: a `.pkey/` manifest the server would not accept, a product slug, access to a
+ * GitHub repository, or service settings that don't fit together. Each of the last four is also
+ * recognised from the error itself, so a caller that passes no area still gets the right copy.
+ */
+export type ErrorArea =
+  | "release"
+  | "distribution"
+  | "catalog"
+  | "manifest"
+  | "slug"
+  | "github"
+  | "services";
+
+/** One `.pkey/` manifest problem, with the file and the JSON path it is about. */
+export interface ManifestProblem {
+  /** The repository path of the document: `.pkey/product`. */
+  file: string;
+  /** The JSON pointer inside it (`/licensing/tiers/0`), or "" for the whole document. */
+  path: string;
+  message: string;
+}
+
+/**
+ * A fix the error offers beside its words (EXPERIENCE.md §0.3 "Inline fixes on errors"). The
+ * caller renders it as a button: the GitHub App install link, or "Check again" once the operator
+ * has pushed a fixed manifest.
+ */
+export type ErrorFix =
+  | { kind: "install-github-app"; label: string; repo?: string }
+  | { kind: "check-again"; label: string };
 
 export interface ErrorCopy {
   title: string;
@@ -42,7 +80,21 @@ export interface ErrorCopy {
   fieldErrors?: string[];
   /** One line per coherence code (422 `errors[]`, services). */
   lines?: string[];
-  /** A JSON-able blob for "Copy details" (status, code, reason, path, time). */
+  /** The `.pkey/` problems, each with its file and path (`area: "manifest"`). */
+  problems?: ManifestProblem[];
+  /**
+   * The field a form should move focus to: the first refused field, or the one the area implies
+   * (`slug`, `repoUrl`). It matches the field's `data-field-name`. Absent: nothing to focus.
+   */
+  focus?: string;
+  /** A value the operator can take with one click: the free slug to try instead. */
+  suggestion?: string;
+  /** The fix to offer as a button, when there is one. */
+  fix?: ErrorFix;
+  /**
+   * A JSON-able blob for "Copy details" (status, code, reason, path, time). The HTTP status lives
+   * only here: a title or a description never shows it (EXPERIENCE.md §0.3).
+   */
   details: Record<string, unknown>;
 }
 
@@ -148,6 +200,113 @@ export const DISTRIBUTION_ERROR_MESSAGES: Record<string, string> = {
   unknown_candidate: "That Sentry candidate doesn't exist any more.",
 };
 
+/** The `.pkey/` documents a manifest problem can name (shared-manifest `MANIFEST_DOCUMENTS`). */
+const MANIFEST_FILES = ["product", "schema", "release", "distribution"];
+
+/**
+ * One manifest problem as the worker words it (shared-manifest `formatIngestError` and
+ * `parseDocument`): `product/licensing/tiers/0: must be an object`, or `product: invalid YAML`.
+ */
+const MANIFEST_LINE = new RegExp(
+  `^(?:\\.pkey/)?(${MANIFEST_FILES.join("|")})(/[^:\\s]*)?: (.+)$`,
+  "s",
+);
+
+/** Parse every `errors[]` entry as a manifest problem, or null when any one is not. */
+function manifestProblems(
+  errors: string[] | undefined,
+): ManifestProblem[] | null {
+  if (!errors?.length) return null;
+  const problems: ManifestProblem[] = [];
+  for (const line of errors) {
+    const m = MANIFEST_LINE.exec(line);
+    if (!m) return null;
+    problems.push({ file: `.pkey/${m[1]}`, path: m[2] ?? "", message: m[3]! });
+  }
+  return problems;
+}
+
+/**
+ * Strip an HTTP status a server message carries ("github access failed: 404 Not Found",
+ * "(422 bad_request)", "api 500"): a title or a description never shows one (EXPERIENCE.md §0.3).
+ * What is left is the message's words; null when nothing is.
+ */
+function withoutStatus(message: string | null): string | null {
+  if (!message) return null;
+  const words = message
+    .replace(/\s*\(\s*[1-5]\d\d(?:\s+[\w-]+)?\s*\)/g, "")
+    .replace(/:\s*(?:HTTP\s+)?[1-5]\d\d(?:\s+[A-Za-z][A-Za-z -]*)?$/i, "")
+    .replace(/^(?:api|HTTP)\s+[1-5]\d\d$/i, "")
+    .trim();
+  return words || null;
+}
+
+/** "taken" (exists), "reserved" or "invalid": why the slug was refused. */
+type SlugProblem = "taken" | "reserved" | "invalid";
+
+function slugProblem(
+  error: ApiError,
+  message: string,
+  area: ErrorArea | undefined,
+): SlugProblem | null {
+  if (error.reason === "reserved_slug" || /^reserved slug\b/i.test(message))
+    return "reserved";
+  if (
+    error.reason === "slug_taken" ||
+    /\bproduct (?:already )?exists\b/i.test(message)
+  )
+    return "taken";
+  if (/^invalid slug\b/i.test(message)) return "invalid";
+  // Only a refusal of the slug alone: one that names other fields too is a form's to word.
+  const slugField = error.fields?.length === 1 && error.fields[0] === "slug";
+  if (slugField || area === "slug") {
+    if (error.status === 409) return "taken";
+    if (slugField) return "invalid";
+  }
+  return null;
+}
+
+/** "github app is not installed…", "installation token failed: 403", and the other access failures. */
+type GitHubProblem =
+  | "not-installed"
+  | "not-configured"
+  | "bad-repo"
+  | "unreachable";
+
+function githubProblem(
+  hasFields: boolean,
+  message: string,
+  area: ErrorArea | undefined,
+): GitHubProblem | null {
+  if (/github app not configured/i.test(message)) return "not-configured";
+  if (/could not parse a github/i.test(message)) return "bad-repo";
+  if (
+    /github app is not installed/i.test(message) ||
+    /installation (?:discovery|token) failed:\s*(?:401|403|404)\b/i.test(
+      message,
+    ) ||
+    /(?:repo file fetch|github access) failed:\s*(?:401|403|404)\b/i.test(
+      message,
+    )
+  )
+    return "not-installed";
+  // The other access failures `linkRepo` and resync pass through; a message that merely says
+  // "github" (a CI environment field, say) is not one of them.
+  if (
+    /github access failed|github manifest fetch failed|installation (?:discovery|token)|repo file/i.test(
+      message,
+    ) ||
+    (area === "github" && !hasFields)
+  )
+    return "unreachable";
+  return null;
+}
+
+/** The field a refused request should focus: the first one the server named. */
+function firstField(error: ApiError): string | undefined {
+  return error.fields?.[0];
+}
+
 /** Is this a network failure (fetch rejected before any response)? */
 function isNetworkError(error: unknown): boolean {
   if (error instanceof TypeError) return true;
@@ -210,16 +369,17 @@ export function errorCopy(
     return {
       title: "Something went wrong",
       description:
-        error instanceof Error && error.message
-          ? error.message
-          : "The console hit an unexpected error.",
+        (error instanceof Error && withoutStatus(error.message)) ||
+        "The console hit an unexpected error.",
       action: "copy-details",
       details,
     };
   }
 
   const { status, code, reason } = error;
-  const message = serverMessage(error);
+  const raw = serverMessage(error);
+  // What a description may quote from the server: its words, never its status (§0.3).
+  const message = withoutStatus(raw);
 
   // Reason tables first: they are the most specific. Distribution first in its own area.
   const distribution =
@@ -238,6 +398,7 @@ export function errorCopy(
       description: RELEASE_REASON_MESSAGES[reason]!,
       action: "none",
       fieldErrors: error.fields,
+      focus: firstField(error),
       details,
     };
   }
@@ -250,6 +411,11 @@ export function errorCopy(
     };
   }
 
+  // UX-01: the product-setup refusals, each worded as its own problem. Recognized from the error
+  // itself, so a caller without an area gets the same copy; `context.area` only widens the match.
+  const routed = setupCopy(error, raw ?? "", context, details);
+  if (routed) return routed;
+
   if (status === 401) {
     return {
       title: "Your session ended",
@@ -260,7 +426,7 @@ export function errorCopy(
     };
   }
   if (status === 403) {
-    if (/csrf/i.test(`${code ?? ""} ${reason ?? ""} ${message ?? ""}`)) {
+    if (/csrf/i.test(`${code ?? ""} ${reason ?? ""} ${raw ?? ""}`)) {
       return {
         title: "Your session token is out of date",
         description: "Reload the page to refresh it, then try again.",
@@ -313,15 +479,6 @@ export function errorCopy(
       details,
     };
   }
-  if (status === 422 && error.errors?.length) {
-    return {
-      title: "These services depend on each other",
-      description: "Change the settings below so they fit together.",
-      action: "fields",
-      lines: error.errors.map((c) => SERVICE_ERROR_MESSAGES[c] ?? c),
-      details,
-    };
-  }
   if ((status === 422 || status === 400) && error.fields?.length) {
     const n = error.fields.length;
     return {
@@ -329,6 +486,7 @@ export function errorCopy(
       description: message ?? "Some values weren't accepted.",
       action: "fields",
       fieldErrors: error.fields,
+      focus: firstField(error),
       details,
     };
   }
@@ -384,13 +542,161 @@ export function errorCopy(
     };
   }
   return {
-    // A 5xx is the server failing, not a refusal; "refused" is for 4xx.
+    // A 5xx is the server failing, not a refusal; "refused" is for 4xx. The status and code stay
+    // in `details` for Copy details; the words never carry them (EXPERIENCE.md §0.3, UX-01).
     title:
       status >= 500
-        ? `Something went wrong on the server (${status}${code ? ` ${code}` : ""})`
-        : `The server refused this (${status}${code ? ` ${code}` : ""})`,
+        ? "Something went wrong on the server"
+        : "The server refused this",
     description: message ?? "Copy the details for a support report.",
     action: "copy-details",
     details,
   };
+}
+
+/** "1 problem", "3 problems". */
+function problemCount(n: number): string {
+  return n === 1 ? "1 problem" : `${n} problems`;
+}
+
+/**
+ * The product-setup refusals (EXPERIENCE.md §0.4 S1, §11.3 "Errors"): a `.pkey/` manifest the
+ * server would not accept, a slug that is taken or reserved, GitHub access, and service settings
+ * that don't fit together. Null when the error is none of these, so the status table words it.
+ */
+function setupCopy(
+  error: ApiError,
+  message: string,
+  context: ErrorContext,
+  details: Record<string, unknown>,
+): ErrorCopy | null {
+  const { area } = context;
+
+  // A manifest: every `errors[]` line names a `.pkey/` file. Service coherence codes never do.
+  const problems = manifestProblems(error.errors);
+  if (problems || (area === "manifest" && error.errors?.length)) {
+    const list =
+      problems ??
+      error.errors!.map((line) => ({
+        file: ".pkey/",
+        path: "",
+        message: line,
+      }));
+    const files = new Set(list.map((p) => p.file));
+    const only = files.size === 1 && problems ? [...files][0] : undefined;
+    return {
+      title: only
+        ? `${problemCount(list.length)} in ${only}`
+        : `The manifest has ${problemCount(list.length)}`,
+      description:
+        list.length === 1
+          ? "Fix it in a commit, then check again."
+          : "Fix them in one commit, then check again.",
+      action: "none",
+      problems: list,
+      lines: list.map((p) =>
+        problems ? `${p.file}${p.path}: ${p.message}` : p.message,
+      ),
+      fix: { kind: "check-again", label: "Check again" },
+      details,
+    };
+  }
+
+  const slug = slugProblem(error, message, area);
+  if (slug) {
+    const named =
+      context.slug ?? /exists:\s*([a-z0-9-]+)/i.exec(message)?.[1] ?? undefined;
+    const suggestion = named ? `${named}-app` : undefined;
+    if (slug === "taken") {
+      return {
+        title: named ? `${named} is taken` : "That slug is taken",
+        description: suggestion ? `Try ${suggestion}.` : "Choose another slug.",
+        action: "fields",
+        fieldErrors: ["slug"],
+        focus: "slug",
+        suggestion,
+        details,
+      };
+    }
+    if (slug === "reserved") {
+      return {
+        title: named ? `${named} is reserved` : "That slug is reserved",
+        description: suggestion
+          ? `Polaris Key uses this address itself. Try ${suggestion}.`
+          : "Polaris Key uses this address itself. Choose another slug.",
+        action: "fields",
+        fieldErrors: ["slug"],
+        focus: "slug",
+        suggestion,
+        details,
+      };
+    }
+    return {
+      title: "That slug can't be used",
+      description: "Use lowercase letters, digits and hyphens.",
+      action: "fields",
+      fieldErrors: ["slug"],
+      focus: "slug",
+      details,
+    };
+  }
+
+  // A refused field (`repoUrl is required`) is the form's to word, even in the GitHub area.
+  const github = githubProblem(Boolean(error.fields?.length), message, area);
+  if (github) {
+    const repo = context.repo;
+    const where = repo ?? "this repository";
+    if (github === "not-installed") {
+      return {
+        title: `The GitHub App can't read ${where}`,
+        description: `The Polaris Key GitHub App isn't installed on ${where}, or the repo is private.`,
+        action: "none",
+        focus: "repoUrl",
+        fix: {
+          kind: "install-github-app",
+          label: "Install the GitHub App",
+          repo,
+        },
+        details,
+      };
+    }
+    if (github === "not-configured") {
+      return {
+        title: "The GitHub App isn't set up",
+        description:
+          "This platform has no GitHub App credentials yet. Add them on the Platform page.",
+        action: "platform",
+        details,
+      };
+    }
+    if (github === "bad-repo") {
+      return {
+        title: "That isn't a GitHub repository",
+        description:
+          "Enter it as owner/repo, like acme/tonebox, or paste its URL.",
+        action: "fields",
+        fieldErrors: ["repoUrl"],
+        focus: "repoUrl",
+        details,
+      };
+    }
+    return {
+      title: "Couldn't reach GitHub",
+      description: `GitHub didn't answer for ${where}. Try again in a moment.`,
+      action: "retry",
+      details,
+    };
+  }
+
+  // Service coherence: codes that name a relationship, not a field (services, 422 `errors[]`).
+  if (error.errors?.length && (area === "services" || error.status === 422)) {
+    return {
+      title: "These services depend on each other",
+      description: "Change the settings below so they fit together.",
+      action: "fields",
+      lines: error.errors.map((c) => SERVICE_ERROR_MESSAGES[c] ?? c),
+      details,
+    };
+  }
+  return null;
 }

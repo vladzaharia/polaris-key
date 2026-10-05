@@ -122,9 +122,7 @@ describe("ErrorState", () => {
 
   it("offers Copy details for an unknown refusal", () => {
     render(<ErrorState error={new ApiError(418, undefined, "teapot")} />);
-    expect(
-      screen.getByText("The server refused this (418 teapot)"),
-    ).toBeTruthy();
+    expect(screen.getByText("The server refused this")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Copy details/ })).toBeTruthy();
   });
 
