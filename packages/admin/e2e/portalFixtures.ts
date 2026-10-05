@@ -1,4 +1,5 @@
 import type { Request } from "playwright";
+import { artPng, type Rgb } from "./artPng.js";
 
 /**
  * The portal API for the browser checks (portal.e2e.test.ts): the mockup cast of PORTAL.md
@@ -258,6 +259,57 @@ const PRESENTATION: Record<
   },
 };
 
+/** Stand-in key art per product (PX-08: real images through the media proxy), as palettes. */
+const ART: Record<string, { bands: Rgb[]; disc: Rgb }> = {
+  nightfall: {
+    bands: [
+      [34, 22, 58],
+      [44, 30, 78],
+      [62, 40, 104],
+      [38, 26, 66],
+    ],
+    disc: [232, 220, 186],
+  },
+  tidewater: {
+    bands: [
+      [18, 44, 44],
+      [24, 92, 84],
+      [240, 204, 170],
+      [244, 140, 104],
+    ],
+    disc: [196, 110, 80],
+  },
+  "ember-tactics": {
+    bands: [
+      [44, 22, 14],
+      [70, 32, 18],
+      [96, 40, 20],
+    ],
+    disc: [250, 120, 40],
+  },
+  "orbit-survey": {
+    bands: [
+      [12, 14, 22],
+      [18, 20, 30],
+    ],
+    disc: [222, 166, 110],
+  },
+  glyphsmith: {
+    bands: [[242, 234, 216]],
+    disc: [196, 72, 52],
+  },
+};
+
+/** The media proxy's answer for `/media/<product>/<icon|header>`, or null (404). */
+export function portalMedia(pathname: string): Buffer | null {
+  const m = pathname.match(/^\/media\/([a-z0-9-]+)\/(icon|header)$/);
+  const art = m ? ART[m[1]!] : undefined;
+  if (!m || !art) return null;
+  return m[2] === "icon"
+    ? artPng(256, 256, art.bands, art.disc)
+    : artPng(640, 360, art.bands, art.disc);
+}
+
 type Lic = ReturnType<typeof lic>;
 
 function libraryItem(l: Lic) {
@@ -277,8 +329,8 @@ function libraryItem(l: Lic) {
     developerName: pres?.developerName ?? null,
     tintColor: null,
     website: null,
-    iconUrl: null,
-    headerUrl: null,
+    iconUrl: ART[l.product] ? `/media/${l.product}/icon?v=1` : null,
+    headerUrl: ART[l.product] ? `/media/${l.product}/header?v=1` : null,
     support: pres?.support ? { url: pres.support, email: null } : null,
     status,
     license: {
@@ -426,6 +478,176 @@ function nightfallDownloads() {
   };
 }
 
+/** Tidewater: two Mac builds (never guessed between), Windows, and the App Store live. */
+function tidewaterDownloads() {
+  const arm = file(
+    "rel_241",
+    "2.4.1",
+    "t-arm",
+    "Tidewater-2.4.1-arm64.dmg",
+    "macos",
+    "arm64",
+  );
+  const x64 = file(
+    "rel_241",
+    "2.4.1",
+    "t-x64",
+    "Tidewater-2.4.1-x64.dmg",
+    "macos",
+    "x86_64",
+  );
+  const win = file(
+    "rel_241",
+    "2.4.1",
+    "t-win",
+    "Tidewater-2.4.1.msi",
+    "windows",
+    "x86_64",
+  );
+  const mac = {
+    platform: "macos",
+    label: "macOS",
+    releaseId: "rel_241",
+    version: "2.4.1",
+    universal: false,
+    latest: true,
+    files: [arm, x64],
+  };
+  return {
+    product: { slug: "tidewater", name: "Tidewater Studio" },
+    channel: "stable",
+    available: true,
+    access: "licensed",
+    detected: { platform: "macos", arch: null, touchAmbiguous: false },
+    latest: {
+      releaseId: "rel_241",
+      version: "2.4.1",
+      title: null,
+      publishedAt: NOW - 4 * DAY,
+    },
+    recommended: mac,
+    platforms: [
+      {
+        platform: "macos",
+        label: "macOS",
+        recommended: mac,
+        files: [arm, x64],
+      },
+      {
+        platform: "windows",
+        label: "Windows",
+        recommended: {
+          ...mac,
+          platform: "windows",
+          label: "Windows",
+          files: [win],
+        },
+        files: [win],
+      },
+    ],
+    extras: [],
+    stores: [
+      {
+        id: "app-store:ios",
+        kind: "app-store",
+        outletId: "ios",
+        platforms: ["ios"],
+        label: "App Store",
+        url: "https://apps.apple.com/app/id000000000",
+        deepLink: null,
+        command: null,
+        activateUrl: null,
+        live: true,
+        version: "2.4.1",
+      },
+    ],
+  };
+}
+
+/** Ember Tactics: expired; the update window covered 1.8, not 2.0 (§5.4 "Download 1.8"). */
+function emberDownloads() {
+  const notEntitled = { canDownload: false, reason: "not_entitled" };
+  const m20 = file(
+    "rel_200",
+    "2.0",
+    "e2-mac",
+    "EmberTactics-2.0.dmg",
+    "macos",
+    "universal",
+    notEntitled,
+  );
+  const w20 = file(
+    "rel_200",
+    "2.0",
+    "e2-win",
+    "EmberTactics-2.0.exe",
+    "windows",
+    "x86_64",
+    notEntitled,
+  );
+  const m18 = file(
+    "rel_180",
+    "1.8",
+    "e18-mac",
+    "EmberTactics-1.8.dmg",
+    "macos",
+    "universal",
+    { sizeBytes: 1_900_000_000 },
+  );
+  const w18 = file(
+    "rel_180",
+    "1.8",
+    "e18-win",
+    "EmberTactics-1.8.exe",
+    "windows",
+    "x86_64",
+    { sizeBytes: 2_000_000_000 },
+  );
+  const rec = (
+    platform: string,
+    label: string,
+    f: ReturnType<typeof file>,
+  ) => ({
+    platform,
+    label,
+    releaseId: "rel_180",
+    version: "1.8",
+    universal: f.arch === "universal",
+    latest: false,
+    files: [f],
+  });
+  return {
+    product: { slug: "ember-tactics", name: "Ember Tactics" },
+    channel: "stable",
+    available: true,
+    access: "entitled",
+    detected: { platform: "macos", arch: null, touchAmbiguous: false },
+    latest: {
+      releaseId: "rel_200",
+      version: "2.0",
+      title: null,
+      publishedAt: NOW - 10 * DAY,
+    },
+    recommended: rec("macos", "macOS", m18),
+    platforms: [
+      {
+        platform: "macos",
+        label: "macOS",
+        recommended: rec("macos", "macOS", m18),
+        files: [m20, m18],
+      },
+      {
+        platform: "windows",
+        label: "Windows",
+        recommended: rec("windows", "Windows", w18),
+        files: [w20, w18],
+      },
+    ],
+    extras: [],
+    stores: [],
+  };
+}
+
 const CAPS = {
   auth: { oidc: true, magic: true },
   modules: { licensing: true, claim: true, releases: true },
@@ -482,8 +704,12 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
     "/api/me": { body: { account: ACCOUNT, csrf: "csrf" } },
     "/api/capabilities": { body: CAPS },
     "/api/licenses": () => ({ body: { licenses } }),
-    "/api/library": () => ({ body: { products: licenses.map(libraryItem) } }),
+    "/api/library": () => ({
+      body: { products: licenses.map(libraryItem), discoverCount: 4 },
+    }),
     "/api/products/nightfall/downloads": { body: nightfallDownloads() },
+    "/api/products/tidewater/downloads": { body: tidewaterDownloads() },
+    "/api/products/ember-tactics/downloads": { body: emberDownloads() },
     "POST /api/activate/preview": (req) => {
       const { key } = req.postDataJSON() as { key: string };
       if (key !== GOOD_KEY)

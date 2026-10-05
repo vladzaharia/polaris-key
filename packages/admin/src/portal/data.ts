@@ -1,8 +1,10 @@
+import * as React from "react";
 import {
   MutationCache,
   QueryCache,
   QueryClient,
   useMutation,
+  useQueries,
   useQuery,
   useQueryClient,
   type UseQueryResult,
@@ -13,7 +15,7 @@ import {
   setPortalCsrf,
   type PortalCapabilities,
   type PortalDownloads,
-  type PortalLibraryItem,
+  type PortalLibrary,
   type PortalLicenseDetail,
   type PortalLicenseSummary,
   type PortalMe,
@@ -168,23 +170,14 @@ export function useReleases(enabled: boolean): UseQueryResult<PortalRelease[]> {
 }
 
 /**
- * The server-side library (PX-W1, `GET /api/library`): presentation (G1), seats (G5) and support
- * links (G16) per product. Extra detail over the licence list: a Worker without the route (404)
- * or a failed read leaves the client-side fallbacks in place instead of failing the Library.
+ * The Library (PX-W1, PX-08): `GET /api/library` decides which products the account holds, each
+ * one's status from its best licence, its presentation and art (G1), its seats (G5) and support
+ * links (G16), and the Discover count once the Worker lists offers (G24).
  */
-export function useLibraryItems(
-  enabled = true,
-): UseQueryResult<PortalLibraryItem[] | null> {
+export function useLibraryView(enabled = true): UseQueryResult<PortalLibrary> {
   return useQuery({
     queryKey: qk.portalLibrary(),
-    queryFn: async () => {
-      try {
-        return (await portalApi.library()).products;
-      } catch (err) {
-        if (err instanceof PortalApiError && err.status === 404) return null;
-        throw err;
-      }
-    },
+    queryFn: () => portalApi.library(),
     enabled,
   });
 }
@@ -197,9 +190,14 @@ export function useProductDownloads(
   product: string,
   enabled: boolean,
 ): UseQueryResult<PortalDownloads | null> {
-  return useQuery({
+  return useQuery({ ...downloadsQuery(product), enabled });
+}
+
+/** The downloads query for one product, shared by the Library and the product page. */
+function downloadsQuery(product: string) {
+  return {
     queryKey: qk.portalDownloads(product),
-    queryFn: async () => {
+    queryFn: async (): Promise<PortalDownloads | null> => {
       try {
         return await portalApi.downloads(product);
       } catch (err) {
@@ -207,7 +205,40 @@ export function useProductDownloads(
         throw err;
       }
     },
-    enabled,
+    staleTime: 5 * 60_000,
+  };
+}
+
+/**
+ * Every listed product's downloads view (PX-08: store-aware quick actions, §5.4), by slug, and
+ * whether any is still on its first load. A product whose view failed is absent from the map:
+ * its quick action falls back to `GET /api/releases`, never to a guess.
+ */
+export function useDownloadsFor(
+  products: readonly string[],
+  enabled: boolean,
+): { bySlug: ReadonlyMap<string, PortalDownloads | null>; pending: boolean } {
+  const results = useQueries({
+    queries: products.map((p) => ({ ...downloadsQuery(p), enabled })),
+  });
+  const key = results.map((r) => r.dataUpdatedAt).join(",");
+  const bySlug = React.useMemo(() => {
+    const out = new Map<string, PortalDownloads | null>();
+    results.forEach((r, i) => {
+      if (r.data !== undefined) out.set(products[i]!, r.data);
+    });
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products.join(","), key]);
+  const pending = results.some((r) => r.isPending && r.fetchStatus !== "idle");
+  return { bySlug, pending };
+}
+
+/** G23: email the account's own address this product's download link for `platform`. */
+export function useEmailDownload() {
+  return useMutation({
+    mutationFn: (v: { product: string; platform: string }) =>
+      portalApi.emailDownload(v.product, v.platform),
   });
 }
 

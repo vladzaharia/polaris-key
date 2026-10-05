@@ -4,7 +4,12 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
 import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/securityHeaders.js";
-import { portalRoutes, type PortalScenario } from "./portalFixtures.js";
+import { mediaResponseHeaders } from "../../worker/src/services/identity/portal/media.js";
+import {
+  portalMedia,
+  portalRoutes,
+  type PortalScenario,
+} from "./portalFixtures.js";
 
 /**
  * The customer site (PORTAL.md) in real Chromium under the Worker's exact CSP: every main flow
@@ -81,6 +86,20 @@ async function open(
         return route.fulfill({ status: 404, json: { error: "not_found" } });
       const res = typeof handler === "function" ? handler(req) : handler;
       return route.fulfill({ status: res.status ?? 200, json: res.body });
+    }
+    // PX-08: developer art as the media proxy answers it (same origin, its own headers).
+    if (url.pathname.startsWith("/media/")) {
+      requests.push(`${req.method()} ${url.pathname}`);
+      const png = portalMedia(url.pathname);
+      if (!png) return route.fulfill({ status: 404, body: "" });
+      const headers = Object.fromEntries(
+        mediaResponseHeaders({
+          "content-type": "image/png",
+          "content-length": String(png.byteLength),
+          "content-disposition": "inline",
+        }),
+      );
+      return route.fulfill({ status: 200, headers, body: png });
     }
     // The Worker serves the SPA shell for `/activate` (router.ts); vite preview does not.
     const res =
@@ -224,6 +243,33 @@ describe("the customer site under the Worker's CSP", () => {
       }
     });
   }
+});
+
+describe("Library on GET /api/library (PX-08)", () => {
+  it("shows proxied art with zero violations, every image decoded", async () => {
+    const o = await open("three", "/");
+    await h1(o.page, "Your library");
+    await expect
+      .poll(() =>
+        o.page.evaluate(
+          () =>
+            [...document.images].filter((i) => i.complete && i.naturalWidth > 0)
+              .length,
+        ),
+      )
+      .toBeGreaterThanOrEqual(4);
+    const srcs = await o.page.evaluate(() =>
+      [...document.images].map((i) => new URL(i.src).pathname),
+    );
+    expect(srcs.every((s) => s.startsWith("/media/"))).toBe(true);
+    expect(o.requests).toContain("GET /media/nightfall/header");
+    await o.page
+      .getByRole("navigation", { name: "Main" })
+      .getByRole("link", { name: /Discover/ })
+      .waitFor();
+    expect(await o.violations()).toEqual([]);
+    await o.page.context().close();
+  });
 });
 
 describe("main flows", () => {

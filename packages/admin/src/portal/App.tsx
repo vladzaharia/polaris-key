@@ -19,7 +19,6 @@ import { announceSignedIn } from "./session.js";
 import {
   consumeQuietSignOut,
   createPortalQueryClient,
-  useLicenses,
   useSession,
 } from "./data.js";
 import { portalErrorCopy } from "./errors.js";
@@ -78,7 +77,15 @@ function Boot(): React.ReactElement {
   // Signed out (or deleted): nothing of the last account stays in the cache.
   React.useEffect(() => {
     if (!signedOut) return;
-    for (const key of ["licenses", "license", "releases"])
+    for (const key of [
+      "licenses",
+      "license",
+      "releases",
+      "library",
+      "downloads",
+      "product",
+      "registryTokens",
+    ])
       qc.removeQueries({ queryKey: ["portal", key] });
   }, [signedOut, qc]);
   if (session.isPending) {
@@ -113,11 +120,7 @@ function SignedIn({ account }: { account: PortalAccount }): React.ReactElement {
   const route = useRoute();
   // Another tab waiting on "Check your email" signs itself in now (§4.4).
   React.useEffect(() => announceSignedIn(), []);
-  const licenses = useLicenses();
   const activate = useActivate();
-  const libraryCount = licenses.data
-    ? new Set(licenses.data.map((l) => l.product)).size
-    : null;
 
   // `#/?activate=<key>` (and `/activate?key=…`, rewritten to it) opens the modal over the
   // Library with the key filled in; the parameter is consumed so a reload doesn't re-open it.
@@ -136,6 +139,7 @@ function SignedIn({ account }: { account: PortalAccount }): React.ReactElement {
 
   // ⌘K (§4.27) from 8 products.
   const lib = useLibrary();
+  const libraryCount = lib.products ? lib.products.length : null;
   const scaled = (lib.products?.length ?? 0) >= SCALE_THRESHOLD;
   const [jumpOpen, setJumpOpen] = React.useState(false);
   React.useEffect(() => {
@@ -155,6 +159,7 @@ function SignedIn({ account }: { account: PortalAccount }): React.ReactElement {
       account={account}
       route={route}
       libraryCount={libraryCount}
+      discoverCount={lib.discoverCount}
       headerExtra={
         scaled ? <JumpTrigger onOpen={() => setJumpOpen(true)} /> : null
       }

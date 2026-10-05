@@ -163,6 +163,16 @@ export interface PortalLicenseSeats {
   dormantCount: number;
 }
 
+/** `GET /api/library`: one item per product, plus the Discover count once the Worker lists offers. */
+export interface PortalLibrary {
+  products: PortalLibraryItem[];
+  /**
+   * How many products this account could add from Discover (G24). Absent until the Worker can
+   * list offers (PX-W10): Discover then stays out of the nav, as the spec's fallback says.
+   */
+  discoverCount?: number;
+}
+
 export interface PortalLibraryItem extends PortalPresentation {
   product: string;
   status: PortalStatus;
@@ -401,7 +411,7 @@ export const portalApi = {
       `/api/licenses/${enc(product)}/${enc(id)}/devices/${enc(deviceId)}`,
       { method: "DELETE" },
     ),
-  library: () => call<{ products: PortalLibraryItem[] }>("/api/library"),
+  library: () => call<PortalLibrary>("/api/library"),
   product: (product: string) =>
     call<PortalProduct>(`/api/products/${enc(product)}`),
   downloads: (product: string) =>

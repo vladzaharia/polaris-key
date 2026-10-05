@@ -1,20 +1,27 @@
 import type {
   PortalArtifact,
+  PortalDownloadFile,
+  PortalDownloads,
   PortalLibraryItem,
   PortalLicenseSummary,
   PortalRelease,
+  PortalStatus,
+  PortalStoreLink,
 } from "../api.js";
 import { PLATFORM_ORDER, type PlatformKey } from "../components/Glyphs.js";
 
 /**
- * The Library's model on today's API (PORTAL.md §5.3, §5.4, PX-02): licenses grouped into one
- * product each, the product's one status from its best license, and the one next action.
+ * The Library's model (PORTAL.md §5.3, §5.4; PX-02, PX-08): one product per library item, the
+ * product's one status, its reason line and the one next action.
  *
- * Products are grouped client-side from `GET /api/licenses` and `GET /api/releases`; the
- * server-side library (`GET /api/library`, PX-W1) adds what only the Worker knows: presentation
- * and same-origin art (G1), the seat limit activation enforces (G5) and support links (G16).
- * Without it (an older Worker, a failed read) those facts are never guessed: no seat limit
- * ("2 devices", not "of 3"), no developer name, no device-limit state. Steam-key states wait
+ * `GET /api/library` (PX-W1) is the source of the product list: which products the account
+ * holds, each one's status from the licence the Worker ranks best, presentation and same-origin
+ * art (G1), the seats activation counts (G5) and support links (G16). The client only words the
+ * Worker's status (§6.4: codes are never copy) and adds what the Worker leaves to the page:
+ * "Signed-in app" for an account-bound licence. `GET /api/licenses` supplies each product's
+ * licence summaries (the product page's switcher and key facts), `GET /api/products/<p>/downloads`
+ * (PX-W2) the server-detected build and the live store links for the quick action, and
+ * `GET /api/releases` the fallback while a downloads view hasn't answered. Steam-key states wait
  * for G8.
  */
 
@@ -71,12 +78,19 @@ export interface LibraryProduct {
   addedAt: number;
   /** Devices using a seat on the best license. */
   deviceCount: number;
-  /** The seat limit and use (G5), when the server-side library sent them. */
+  /** The seat limit and use (G5), as the Worker counted them on the best licence. */
   seats: Seats | null;
   /** This product's releases, newest first. */
   releases: PortalRelease[];
   latestVersion: string | null;
   platforms: PlatformKey[];
+  /**
+   * The per-product downloads view (PX-W2): the server-detected build and the store links. `null`
+   * when the Worker has none for this product; `undefined` while it hasn't answered.
+   */
+  downloads?: PortalDownloads | null;
+  /** Stores reporting a live release with a link to open ("Also yours on", §4.13). */
+  stores: PortalStoreLink[];
 }
 
 const DAY = 86_400;
@@ -206,7 +220,7 @@ export function licenseStatus(
     return {
       kind: "deviceLimit",
       label: "Device limit reached",
-      tone: "warning",
+      tone: "danger",
       note: [tier, `${devicesText(seats.inUse, seats.limit)} in use`]
         .filter(Boolean)
         .join(" · "),
@@ -273,61 +287,183 @@ export function normalisePlatform(p: string | null): PlatformKey | null {
     : null;
 }
 
+/** The licence summary a library item stands for, when `GET /api/licenses` hasn't listed it. */
+function summaryFromItem(item: PortalLibraryItem): PortalLicenseSummary {
+  const l = item.license;
+  return {
+    id: l.id,
+    product: item.product,
+    productName: item.name,
+    name: "",
+    email: "",
+    status: l.licenseStatus,
+    tier: l.tier,
+    activatedAt: l.activatedAt ?? item.addedAt ?? 0,
+    expiresAt: l.expiresAt,
+    maxOfflineDays: l.maxOfflineDays,
+    channels: [],
+    minVersion: null,
+    maxVersion: null,
+    identityProvider: "manual",
+    usable: l.status !== "suspended" && l.status !== "expired",
+    keyCount: 0,
+    activeKeyCount: 0,
+    deviceCount: l.deviceCount,
+    entitlements: [],
+  };
+}
+
 /**
- * Group licenses into products; releases attach by product slug, and the server-side library
- * item (PX-W1), when there is one, supplies presentation and the best licence's seats.
+ * The Worker's status for a product (§5.3, `GET /api/library`), in words. The precedence is the
+ * Worker's; the page only phrases it, and turns an `active` account-bound licence (signed in, no
+ * key) into "Signed-in app". `lastCovered` is the newest version an expired licence still
+ * downloads, for "Updates ended at 1.8".
+ */
+export function statusFromServer(
+  status: PortalStatus,
+  best: PortalLicenseSummary,
+  seats: Seats | null,
+  now: number,
+  developer: string | null = null,
+  lastCovered: string | null = null,
+): ProductStatus {
+  const tier = tierLabel(best.tier);
+  switch (status) {
+    case "suspended":
+      return {
+        kind: "suspended",
+        label: "Suspended",
+        tone: "danger",
+        note: `Suspended by ${developer ?? "the developer"}.`,
+        attention: true,
+      };
+    case "expired":
+      return {
+        kind: "expired",
+        label: "Expired",
+        tone: "danger",
+        note: lastCovered
+          ? `Updates ended at ${lastCovered}`
+          : best.expiresAt
+            ? `Ended ${formatDay(best.expiresAt)}`
+            : "Ended",
+        attention: true,
+      };
+    case "device_limit":
+      return {
+        kind: "deviceLimit",
+        label: "Device limit reached",
+        tone: "danger",
+        note: seats
+          ? devicesText(seats.inUse, seats.limit)
+          : "Every device is in use",
+        attention: true,
+      };
+    case "expires_soon": {
+      const at = best.expiresAt ?? now;
+      const days = Math.max(1, Math.ceil((at - now) / DAY));
+      return {
+        kind: "expiresSoon",
+        label: days === 1 ? "Expires tomorrow" : `Expires in ${days} days`,
+        tone: "warning",
+        note: [tier, `ends ${formatDay(at, false)}`]
+          .filter(Boolean)
+          .join(" · "),
+        attention: true,
+      };
+    }
+    default:
+      return licenseStatus(best, now, seats);
+  }
+}
+
+/** Platforms a downloads view offers a file for, in display order. */
+function platformsFromDownloads(d: PortalDownloads): PlatformKey[] {
+  const set = new Set<PlatformKey>();
+  for (const p of d.platforms) {
+    const k = normalisePlatform(p.platform);
+    if (k && p.files.length > 0) set.add(k);
+  }
+  for (const st of d.stores)
+    if (st.live)
+      for (const p of st.platforms) {
+        const k = normalisePlatform(p);
+        if (k) set.add(k);
+      }
+  return PLATFORM_ORDER.filter((p) => set.has(p));
+}
+
+/**
+ * One product per library item (PX-08), in the Worker's order. Licence summaries attach by product
+ * (the product page's switcher); releases and downloads views attach by slug.
  */
 export function buildLibrary(
+  items: readonly PortalLibraryItem[],
   licenses: readonly PortalLicenseSummary[],
   releases: readonly PortalRelease[],
   now: number,
-  items?: readonly PortalLibraryItem[] | null,
+  downloads?: ReadonlyMap<string, PortalDownloads | null>,
 ): LibraryProduct[] {
-  const bySlug = new Map<string, PortalLicenseSummary[]>();
-  for (const l of licenses) {
-    const list = bySlug.get(l.product);
-    if (list) list.push(l);
-    else bySlug.set(l.product, [l]);
-  }
   const out: LibraryProduct[] = [];
-  for (const [slug, list] of bySlug) {
-    const best = bestLicense(list, now);
-    const own = releases
+  for (const item of items) {
+    const slug = item.product;
+    const own = licenses.filter((l) => l.product === slug);
+    const best =
+      own.find((l) => l.id === item.license.id) ?? summaryFromItem(item);
+    const list = own.some((l) => l.id === best.id) ? own : [best, ...own];
+    const ownReleases = releases
       .filter((r) => r.product === slug)
       .sort((a, b) => (b.publishedAt ?? 0) - (a.publishedAt ?? 0));
-    const platforms = new Set<PlatformKey>();
-    for (const r of own)
-      for (const a of r.artifacts) {
-        const p = normalisePlatform(a.platform);
-        if (p) platforms.add(p);
-      }
-    const item = items?.find((i) => i.product === slug);
-    // Seats describe one licence: only trusted when the server picked the same best one.
+    const d = downloads?.get(slug);
+    const usable = d && d.available ? d : null;
+    let platforms: PlatformKey[];
+    if (usable) platforms = platformsFromDownloads(usable);
+    else {
+      const set = new Set<PlatformKey>();
+      for (const r of ownReleases)
+        for (const a of r.artifacts) {
+          const p = normalisePlatform(a.platform);
+          if (p) set.add(p);
+        }
+      platforms = PLATFORM_ORDER.filter((p) => set.has(p));
+    }
     const seats: Seats | null =
-      item && item.license.id === best.id && item.license.deviceLimit > 0
+      item.license.deviceLimit > 0
         ? {
             limit: item.license.deviceLimit,
             inUse: item.license.activeSeatCount,
           }
         : null;
+    const presentation = presentationFrom(item);
+    const lastCovered =
+      usable?.recommended && !usable.recommended.latest
+        ? usable.recommended.version
+        : null;
     out.push({
       slug,
-      name: item?.name || best.productName || slug,
-      presentation: item
-        ? presentationFrom(item)
-        : readPresentation(best.productBranding),
+      name: item.name || best.productName || slug,
+      presentation,
       licenses: list,
       best,
-      status: licenseStatus(best, now, seats),
-      addedAt: Math.max(...list.map((l) => l.activatedAt)),
-      deviceCount: seats ? seats.inUse : best.deviceCount,
+      status: statusFromServer(
+        item.status,
+        best,
+        seats,
+        now,
+        presentation.developer,
+        lastCovered,
+      ),
+      addedAt: item.addedAt ?? Math.max(...list.map((l) => l.activatedAt)),
+      deviceCount: seats ? seats.inUse : item.license.deviceCount,
       seats,
-      releases: own,
-      latestVersion: own[0]?.version ?? null,
-      platforms: PLATFORM_ORDER.filter((p) => platforms.has(p)),
+      releases: ownReleases,
+      latestVersion: usable?.latest?.version ?? ownReleases[0]?.version ?? null,
+      platforms,
+      downloads: d,
+      stores: (usable?.stores ?? []).filter((st) => st.live && st.url),
     });
   }
-  return out.sort((a, b) => b.addedAt - a.addedAt);
+  return out;
 }
 
 // ── the device in hand ────────────────────────────────────────────────────────────────────────
@@ -370,8 +506,14 @@ export type QuickAction =
       kind: "link";
       label: string;
       href: string;
-      icon: "downloads" | "open" | "details";
+      icon: "downloads" | "open" | "details" | "store" | "device";
       external?: boolean;
+    }
+  | {
+      /** G23 on a phone: email the account's own address the download for `platform`. */
+      kind: "email";
+      label: string;
+      platform: PlatformKey;
     };
 
 export function formatSize(bytes: number | null): string | null {
@@ -414,6 +556,149 @@ function pickBuild(builds: PortalArtifact[]): PortalArtifact | null {
   return universal ?? null;
 }
 
+/** The phone stores, by the OS they serve. */
+const PHONE_STORE: Partial<Record<PlatformKey, readonly string[]>> = {
+  ios: ["app-store"],
+  android: ["play"],
+};
+
+/** "Get it on the App Store" / "Get it on Google Play" / "Get it on Steam". */
+export function storeActionLabel(s: PortalStoreLink): string {
+  if (s.kind === "app-store") return "Get it on the App Store";
+  if (s.kind === "play") return "Get it on Google Play";
+  return `Get it on ${s.label}`;
+}
+
+/** A live store with a page for the device in hand; on a phone, only that phone's own store. */
+export function storeFor(
+  p: LibraryProduct,
+  device: DeviceInHand,
+): PortalStoreLink | null {
+  if (!device.os) return null;
+  const os = device.os;
+  const kinds = device.phone ? PHONE_STORE[os] : null;
+  if (device.phone && !kinds) return null;
+  return (
+    p.stores.find(
+      (s) => s.platforms.includes(os) && (!kinds || kinds.includes(s.kind)),
+    ) ?? null
+  );
+}
+
+const DESKTOP: readonly PlatformKey[] = ["macos", "windows", "linux"];
+
+function asArtifact(f: PortalDownloadFile, access: string): PortalArtifact {
+  return {
+    artifactId: f.artifactId,
+    name: f.name,
+    kind: f.role,
+    platform: f.platform,
+    arch: f.arch,
+    sizeBytes: f.sizeBytes,
+    sha256: f.sha256,
+    access,
+    canDownload: f.canDownload,
+    reason: f.reason,
+  };
+}
+
+function asRelease(
+  p: LibraryProduct,
+  releaseId: string,
+  version: string,
+): PortalRelease {
+  return (
+    p.releases.find((r) => r.releaseId === releaseId) ?? {
+      product: p.slug,
+      productName: p.name,
+      releaseId,
+      version,
+      title: null,
+      notes: null,
+      publishedAt: null,
+      sourceUrl: null,
+      artifacts: [],
+    }
+  );
+}
+
+/** §5.4 from the downloads view: the Worker detected the platform and picked the build. */
+function actionFromDownloads(
+  p: LibraryProduct,
+  d: PortalDownloads,
+  device: DeviceInHand,
+  productHref: (section?: "get" | "license" | "devices") => string,
+): QuickAction | null {
+  const seeDownloads: QuickAction = {
+    kind: "link",
+    label: "See downloads",
+    href: productHref("get"),
+    icon: "downloads",
+  };
+  const store = storeFor(p, device);
+  const storeAction: QuickAction | null = store?.url
+    ? {
+        kind: "link",
+        label: storeActionLabel(store),
+        href: store.url,
+        icon: "store",
+        external: true,
+      }
+    : null;
+  const coveredOn = (os: PlatformKey): boolean =>
+    d.platforms.some(
+      (x) =>
+        normalisePlatform(x.platform) === os &&
+        x.files.some((f) => f.canDownload),
+    );
+  const anyCovered =
+    d.platforms.some((x) => x.files.some((f) => f.canDownload)) ||
+    d.extras.some((f) => f.canDownload);
+  if (device.phone) {
+    if (storeAction) return storeAction;
+    if (device.os && coveredOn(device.os)) return seeDownloads;
+    const desktop = DESKTOP.find(coveredOn);
+    if (desktop)
+      return {
+        kind: "email",
+        label: "Email me the download",
+        platform: desktop,
+      };
+    return anyCovered ? seeDownloads : null;
+  }
+  const rec = d.recommended;
+  const os = device.os ?? normalisePlatform(d.detected.platform);
+  const files =
+    rec && normalisePlatform(rec.platform) === os
+      ? rec.files.filter((f) => f.canDownload)
+      : [];
+  if (os && files.length > 0) {
+    const label = rec!.latest
+      ? `Download for ${osName(os)}`
+      : `Download ${rec!.version}`;
+    if (files.length > 1)
+      // Two Mac builds and no Universal one: both are on the page, Apple silicon first.
+      return { ...seeDownloads, label };
+    const f = files[0]!;
+    const artifact = asArtifact(f, d.access ?? "licensed");
+    return {
+      kind: "download",
+      label,
+      detail: [
+        `Version ${rec!.version}`,
+        rec!.universal ? "Universal" : archName(artifact),
+        formatSize(f.sizeBytes),
+      ]
+        .filter(Boolean)
+        .join(" · "),
+      release: asRelease(p, f.releaseId, rec!.version),
+      artifact,
+    };
+  }
+  if (storeAction) return storeAction;
+  return anyCovered ? seeDownloads : null;
+}
+
 export function quickAction(
   p: LibraryProduct,
   device: DeviceInHand,
@@ -424,10 +709,19 @@ export function quickAction(
       kind: "link",
       label: "Free up a device",
       href: productHref("devices"),
-      icon: "details",
+      icon: "device",
     };
   }
   if (p.status.kind === "signedInApp") {
+    const store = storeFor(p, device);
+    if (device.phone && store?.url)
+      return {
+        kind: "link",
+        label: storeActionLabel(store),
+        href: store.url,
+        icon: "store",
+        external: true,
+      };
     return p.presentation.website
       ? {
           kind: "link",
@@ -442,6 +736,16 @@ export function quickAction(
           href: productHref(),
           icon: "details",
         };
+  }
+  if (p.downloads && p.downloads.available) {
+    const fromView = actionFromDownloads(p, p.downloads, device, productHref);
+    if (fromView) return fromView;
+    return {
+      kind: "link",
+      label: "View details",
+      href: productHref("license"),
+      icon: "details",
+    };
   }
   const covered = p.releases.filter((r) =>
     r.artifacts.some((a) => a.canDownload),
@@ -460,8 +764,8 @@ export function quickAction(
     href: productHref("get"),
     icon: "downloads",
   };
-  // Phones get no installer (§5.4): store links (G2) and "Email me the download" (G23) are not
-  // available yet, so the action opens the product's downloads.
+  // Phones get no installer (§5.4); without the downloads view there are no store links, so
+  // the action opens the product's downloads.
   if (device.phone || !device.os) return seeDownloads;
   const os = device.os;
   const latest = p.releases[0];
@@ -497,6 +801,17 @@ export function osName(os: PlatformKey): string {
     android: "Android",
     web: "the web",
   }[os];
+}
+
+/**
+ * "Version 2.0 isn't covered. Renew with Kiln Games to get it." when the Worker recommends an
+ * older covered build because the newest one is outside the licence (§5.4, mockup 20).
+ */
+export function coverageNote(p: LibraryProduct): string | null {
+  const d = p.downloads;
+  if (!d?.recommended || d.recommended.latest || !d.latest) return null;
+  const who = p.presentation.developer;
+  return `Version ${d.latest.version} isn't covered.${who ? ` Renew with ${who} to get it.` : ""}`;
 }
 
 /** "Windows and Linux only" when nothing is built for the device in hand. */

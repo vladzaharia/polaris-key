@@ -1,5 +1,5 @@
 import * as React from "react";
-import { KeyRound, Library } from "lucide-react";
+import { Compass, KeyRound, Library } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { cn } from "../../lib/cn.js";
 import type { PortalAccount } from "../api.js";
@@ -14,16 +14,18 @@ import { Lockup } from "./Lockup.js";
  * - **Header** (64 px; 56 on phones): the compact lockup (the link home), the Library nav with
  *   its count, a slot for the ⌘K trigger, the right-aligned **Activate license** action and the
  *   account menu.
- * - **Phone bar** (≤ 760 px): Library, and the Activate pill in the middle.
+ * - **Phone bar** (≤ 760 px): Library, the Activate pill in the middle, and Discover.
  * - **Footer**, a skip link, one `banner`, `nav` ("Main"), `main` and `contentinfo`.
  *
- * Discover joins the nav once the Worker can list offers (G24, PX-W10); until then it is hidden
- * from the nav, as the spec's fallback says.
+ * Discover sits in the nav with its count of offers (a small violet count; a dot on the phone
+ * bar) once `GET /api/library` carries `discoverCount` (G24, PX-W10); without it Discover is
+ * hidden from the nav, as the spec's fallback says.
  */
 export function PortalShell({
   account,
   route,
   libraryCount,
+  discoverCount = null,
   headerExtra,
   phoneHeaderExtra,
   children,
@@ -32,6 +34,8 @@ export function PortalShell({
   route: PortalRoute;
   /** Products in the library, once known. */
   libraryCount: number | null;
+  /** Offers in Discover; `null` keeps Discover out of the nav (the Worker can't list them). */
+  discoverCount?: number | null;
   /** The ⌘K trigger (PX-03), shown from 8 products. */
   headerExtra?: React.ReactNode;
   /** The phone header's search icon (PX-03). */
@@ -41,6 +45,8 @@ export function PortalShell({
   const activate = useActivate();
   // The product pages live inside the Library (§3.2): its tab stays current there.
   const onLibrary = route.kind === "library" || route.kind === "product";
+  const onDiscover = route.kind === "discover";
+  const showDiscover = discoverCount !== null;
   const mainRef = React.useRef<HTMLElement>(null);
 
   return (
@@ -67,7 +73,7 @@ export function PortalShell({
           </a>
           <nav
             aria-label="Main"
-            className="hidden h-full items-stretch desk:flex"
+            className="hidden h-full items-stretch gap-8 desk:flex"
           >
             <NavLink
               href={href.library()}
@@ -75,6 +81,15 @@ export function PortalShell({
               label="Library"
               count={libraryCount}
             />
+            {showDiscover ? (
+              <NavLink
+                href={href.discover()}
+                active={onDiscover}
+                label="Discover"
+                count={discoverCount}
+                accentCount
+              />
+            ) : null}
           </nav>
           <div className="ml-auto flex items-center gap-3">
             {headerExtra ? (
@@ -134,7 +149,34 @@ export function PortalShell({
               Activate
             </button>
           </div>
-          <span />
+          {showDiscover ? (
+            <a
+              href={href.discover()}
+              aria-current={onDiscover ? "page" : undefined}
+              className={cn(
+                "flex h-full flex-col items-center justify-center gap-0.5 text-xs",
+                onDiscover ? "font-bold text-fg-strong" : "text-fg-muted",
+              )}
+            >
+              <span className="relative">
+                <Compass aria-hidden className="size-5" />
+                {discoverCount ? (
+                  <span
+                    aria-hidden
+                    className="absolute -right-1 -top-0.5 size-2 rounded-full bg-accent"
+                  />
+                ) : null}
+              </span>
+              Discover
+              {discoverCount ? (
+                <span className="sr-only">
+                  , {discoverCount} {discoverCount === 1 ? "offer" : "offers"}
+                </span>
+              ) : null}
+            </a>
+          ) : (
+            <span />
+          )}
         </div>
       </nav>
     </div>
@@ -146,11 +188,14 @@ function NavLink({
   active,
   label,
   count,
+  accentCount = false,
 }: {
   href: string;
   active: boolean;
   label: string;
   count: number | null;
+  /** Discover's count of offers: small, violet, on a subtle plate (§4.16). */
+  accentCount?: boolean;
 }): React.ReactElement {
   return (
     <a
@@ -165,7 +210,13 @@ function NavLink({
     >
       {label}
       {count ? (
-        <span className="text-xs font-normal text-fg-muted">{count}</span>
+        accentCount ? (
+          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-subtle px-1.5 text-xs font-bold text-accent-fg">
+            {count}
+          </span>
+        ) : (
+          <span className="text-xs font-normal text-fg-muted">{count}</span>
+        )
       ) : null}
     </a>
   );
