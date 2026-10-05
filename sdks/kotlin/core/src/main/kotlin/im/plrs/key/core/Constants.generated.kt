@@ -1319,7 +1319,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "devices.register" to CapabilityRow("implemented", "core", listOf()),
     "devices.manage" to CapabilityRow("implemented", "core", listOf()),
     "devices.report" to CapabilityRow("implemented", "core", listOf()),
-    "devices.attest" to CapabilityRow("planned", "core", listOf(CapabilityNa("jvm", "runtime"))),
+    "devices.attest" to CapabilityRow("implemented", "core", listOf(CapabilityNa("jvm", "runtime"), CapabilityNa("android", "outlet"))),
     "identity.oidc" to CapabilityRow("planned", "identity", listOf()),
     "identity.devicecode" to CapabilityRow("implemented", "identity", listOf()),
     "release.changelog" to CapabilityRow("implemented", "release", listOf()),
@@ -1358,8 +1358,8 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "packs.transport.flatpak" to CapabilityRow("na", "distribution", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
     "ui.stages" to CapabilityRow("implemented", "sdk", listOf()),
     "ui.kit" to CapabilityRow("implemented", "sdk", listOf()),
-    "commerce.receipt" to CapabilityRow("planned", "license", listOf()),
+    "commerce.receipt" to CapabilityRow("implemented", "license", listOf()),
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "d7430e47fb7630468315e393921b7bc3cc5f325d0347a6d45d95501c7da02553"
+public const val CAPABILITY_DIGEST: String = "bdc774f67d8dc8474b8b5be053e02eb8bb16e3992ac3ad8ef48ec29c49614625"

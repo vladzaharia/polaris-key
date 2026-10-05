@@ -6,7 +6,7 @@ package im.plrs.key.android
 import im.plrs.key.core.CoreContext
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.PolarisException
-import im.plrs.key.core.sameOrigin
+import im.plrs.key.core.bearerAllowed
 import java.io.File
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
@@ -29,7 +29,7 @@ public class OkHttpBuildDownload(
 ) : BuildDownload {
     override suspend fun download(url: String, dest: File) {
         val headers = LinkedHashMap(core.headers())
-        core.token()?.let { if (sameOrigin(url, core.endpoints.baseUrl)) headers["authorization"] = "Bearer $it" }
+        if (core.bearerAllowed(url)) core.token()?.let { headers["authorization"] = "Bearer $it" }
         withContext(Dispatchers.IO) {
             val req = Request.Builder().url(url).apply { for ((k, v) in headers) header(k, v) }.build()
             client.newCall(req).execute().use { res ->

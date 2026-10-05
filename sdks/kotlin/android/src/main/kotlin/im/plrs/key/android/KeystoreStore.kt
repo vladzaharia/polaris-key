@@ -53,6 +53,9 @@ public class AndroidKeystoreStore(
     /** A store an earlier build used; its token and device id move into the Keystore. */
     private val legacy: Store? = null,
 ) : Store {
+    /** The SDK's unsigned state (the update-event journal, local config) lives beside the cache. */
+    override val stateDirectory: File get() = directory
+
     /** The store for [productSlug] in [context]: AndroidKeyStore, `noBackupFilesDir`, [AndroidDevice.deviceIdRaw]. */
     public constructor(context: Context, productSlug: String, legacy: Store? = null) : this(
         productSlug,

@@ -426,7 +426,7 @@ jobs:
         working-directory: sdks/kotlin
         run: >-
           ./gradlew --no-daemon -Ppkey.jvmOnly=true :core:test :license:test :config:test :identity:test
-          :release:test :update:test :packs:test :sdk:test :conformance:test checkModuleBoundaries
+          :release:test :update:test :packs:test :sdk:test :conformance:test :sample-cli:test checkModuleBoundaries
           :core:publishCorePublicationToLocalRepository :license:publishLicensePublicationToLocalRepository
           :config:publishConfigPublicationToLocalRepository :identity:publishIdentityPublicationToLocalRepository
           :release:publishReleasePublicationToLocalRepository :update:publishUpdatePublicationToLocalRepository
@@ -488,14 +488,14 @@ jobs:
         run: >-
           ./gradlew --no-daemon :platform:testPlayDebugUnitTest :platform:testDirectDebugUnitTest
           :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest :ui:verifyRoborazziDebug
-          :android:testPlayDebugUnitTest :android:testDirectDebugUnitTest
+          :android:testPlayDebugUnitTest :android:testDirectDebugUnitTest :billing:testDebugUnitTest
       - name: Lint and assembleRelease (play and direct)
         working-directory: sdks/kotlin
         run: >-
           ./gradlew --no-daemon :platform:lintPlayRelease :platform:lintDirectRelease
           :godot:lintPlayRelease :godot:lintDirectRelease :android:lintPlayRelease :android:lintDirectRelease
           :platform:assembleRelease :godot:assembleRelease :android:assembleRelease :boundary:assembleRelease
-          :ui:lintRelease :ui:assembleRelease
+          :ui:lintRelease :ui:assembleRelease :billing:lintRelease :billing:assembleRelease
       - name: Flavour boundary
         run: sdks/kotlin/tools/check_flavours.sh
       - name: Module boundaries (:core has no Android dependency, :platform no SDK module, only :android sees both)
