@@ -10440,7 +10440,13 @@ paths:
                 type: object
                 properties:
                   ok: { type: boolean }
-                  ended: { type: integer }
+                  ended:
+                    { type: integer, description: "Account sessions ended." }
+                  devices:
+                    {
+                      type: integer,
+                      description: "Devices whose binding to the account was dropped (Core's clearing hook); a device the sign-in itself bound is also released.",
+                    }
         "401":
           description: No portal session.
           content:

@@ -11,6 +11,7 @@ import {
 } from "../src/core/accountCookies.js";
 import { issuePortalSession } from "../src/services/identity/portal/session.js";
 import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
+import { subjectFor } from "../src/core/accountSubjects.js";
 
 // I-07: account sessions (S-16 §5.4 item 7): host-only, revocable, listable, "sign out
 // everywhere"; a cookie is good only while its server-side row is.
@@ -89,9 +90,36 @@ describe("account sessions", () => {
     await laptop.me();
     const out = await laptop.send("POST", "/api/sessions/sign-out-everywhere");
     expect(out.status).toBe(200);
-    expect(await out.json()).toEqual({ ok: true, ended: 2 });
+    expect(await out.json()).toEqual({ ok: true, ended: 2, devices: 0 });
     expect(laptop.jar.has(ACCOUNT_SESSION_COOKIE)).toBe(false);
     expect((await phone.me()).status).toBe(401);
+  });
+
+  it("sign out everywhere also drops every device's binding to the account (Core's hook)", async () => {
+    const w = await seededWorld();
+    const d = new Device(w);
+    await d.signInWithCode("ada@example.com");
+    await d.me();
+    const account = await getOrCreateAccountByEmail(
+      w.db,
+      "ada@example.com",
+      NOW,
+    );
+    const subject = await subjectFor(w.db, account.id, "acme", NOW);
+    await w.db.run(
+      `INSERT INTO devices (product, device_id, license_id, status, first_seen, last_seen, subject, bound_by)
+       VALUES ('acme', 'dev-1', '', 'authorized', ?, ?, ?, 'key')`,
+      NOW,
+      NOW,
+      subject,
+    );
+    const out = await d.send("POST", "/api/sessions/sign-out-everywhere");
+    expect(await out.json()).toEqual({ ok: true, ended: 1, devices: 1 });
+    const device = await w.db.first<{ subject: string | null; status: string }>(
+      "SELECT subject, status FROM devices WHERE device_id = 'dev-1'",
+    );
+    // The binding is gone; a key-bound device keeps its licence and stays authorized.
+    expect(device).toEqual({ subject: null, status: "authorized" });
   });
 
   it("session mutations need the CSRF header", async () => {

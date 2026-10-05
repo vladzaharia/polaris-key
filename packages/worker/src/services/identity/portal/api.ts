@@ -70,6 +70,7 @@ import {
   revokeAllAccountSessions,
 } from "./accountSessions.js";
 import { avatarUrl, handleCardApi, turnstileSiteKey } from "../card/index.js";
+import { clearDeviceSubjects } from "../../../core/subjectHooks.js";
 import { entitlementView } from "./entitlements.js";
 import { libraryView, productView } from "./library.js";
 import {
@@ -1104,6 +1105,7 @@ async function handleEmailDownload(
  */
 async function handleSessions(
   req: Request,
+  env: Env,
   db: Db,
   session: PortalSession,
   currentIdHash: string,
@@ -1124,13 +1126,21 @@ async function handleSessions(
   if (rest.length === 1 && rest[0] === "sign-out-everywhere") {
     if (req.method !== "POST") return err(405, "method_not_allowed");
     const ended = await revokeAllAccountSessions(db, session.accountId, now);
+    // The apps too (S-17 §5.8 item 2): Core's one clearing hook drops every device's binding to
+    // this account, releasing a seat only where the sign-in itself bound it.
+    const devices = await clearDeviceSubjects(
+      db,
+      env,
+      { kind: "account", accountId: session.accountId },
+      "signout_everywhere",
+    );
     await portalAudit(db, {
       accountId: session.accountId,
       action: "portal.sessions.revoke_all",
-      summary: `Signed out everywhere (${ended} sessions)`,
+      summary: `Signed out everywhere (${ended} sessions, ${devices.cleared} devices)`,
       now,
     });
-    return portalJson({ ok: true, ended }, 200, {
+    return portalJson({ ok: true, ended, devices: devices.cleared }, 200, {
       "set-cookie": buildPortalClearCookie(),
     });
   }
@@ -1205,7 +1215,7 @@ export async function handlePortalApi(
   const [head, ...rest] = segments;
   if (head === "me") return handleMe(db, session, now);
   if (head === "sessions") {
-    return handleSessions(req, db, session, sessionIdHash, rest, now);
+    return handleSessions(req, env, db, session, sessionIdHash, rest, now);
   }
   if (
     head === "licenses" &&

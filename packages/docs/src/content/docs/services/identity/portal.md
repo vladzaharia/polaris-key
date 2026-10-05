@@ -186,7 +186,8 @@ requires the session cookie
   and was last seen, its user agent, how the person signed in (`methods`) and whether it is this
   browser's (`current`). **`DELETE /api/sessions/<id>`** ends one; **`POST
 /api/sessions/sign-out-everywhere`** ends every one, this browser's included, and clears its
-  cookie.
+  cookie. It also drops every device's binding to the account through Core's clearing hook,
+  releasing a seat only where the sign-in itself bound the device.
 - **`DELETE /api/me`** — the account holder erases their own account. Deletes every email,
   identity, and license-link row plus the account row itself in one atomic batch, then writes a
   single tombstone audit entry naming only the opaque `acct_…` id — nothing that still identifies
