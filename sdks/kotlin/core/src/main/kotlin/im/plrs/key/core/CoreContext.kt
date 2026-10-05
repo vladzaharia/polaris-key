@@ -20,7 +20,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonObject
 
 /** What Core needs. Per-service inputs live in that service's own options. */
-public data class CoreOptions(
+public data class CoreOptions @JvmOverloads constructor(
     val productSlug: String,
     /** MUST be `https:`, or `http://localhost` / `http://127.0.0.1` for local development. */
     val baseUrl: String = "https://key.plrs.im",
@@ -115,13 +115,47 @@ public data class Reacquired(val token: String, val source: TokenSource)
 /** §5's single re-acquire, injected so Core does not depend on the licence module. */
 public typealias ReacquireFn = suspend (current: String, source: TokenSource?) -> Reacquired?
 
+private val CHANNEL_PREFERENCE = Regex("^[a-z0-9][a-z0-9-]{0,63}$")
+
 public class CoreContext(options: CoreOptions) {
     public val product: String = options.productSlug
 
     /** Throws `insecure-base-url` before anything else happens. */
     public val endpoints: Endpoints = Endpoints(options.baseUrl, options.productSlug)
     public val version: String = options.version
-    public val channel: String = options.channel ?: Semver.channelForVersion(options.version).wire
+    /** The channel this build was made for: `CoreOptions.channel`, else derived from the version. */
+    public val buildChannel: String = options.channel ?: Semver.channelForVersion(options.version).wire
+
+    /**
+     * The release channel every request names (`X-PKey-Channel`) and decisions default to: the
+     * persisted preference [setChannel] wrote, else [buildChannel].
+     */
+    public val channel: String
+        get() {
+            if (!preferenceLoaded) {
+                preferred = channelSlot.read()?.trim()?.takeIf { CHANNEL_PREFERENCE.matches(it) }
+                preferenceLoaded = true
+            }
+            return preferred ?: buildChannel
+        }
+
+    @Volatile private var preferred: String? = null
+    @Volatile private var preferenceLoaded = false
+    private val channelSlot: StateSlot by lazy {
+        store.stateDirectory?.let { FileStateSlot(File(it, "channel")) } ?: MemoryStateSlot()
+    }
+
+    /**
+     * Switch this install's channel at runtime (persisted; null returns to [buildChannel]). The
+     * caller checks the outlet lock and the licence's channels first (`PolarisKeyClient.setChannel`);
+     * the next sync and decision use it.
+     */
+    public fun setChannel(channel: String?) {
+        if (channel != null) require(CHANNEL_PREFERENCE.matches(channel)) { "not a channel name: $channel" }
+        if (channel == null || channel == buildChannel) channelSlot.write("") else channelSlot.write(channel)
+        preferred = channel?.takeIf { it != buildChannel }
+        preferenceLoaded = true
+    }
     public val pinnedTrust: TrustSet = options.pinnedKeys
     public val trustRefreshEnabled: Boolean = options.trustRefresh
     public val store: Store = options.store ?: FileStore(options.productSlug, FileStore.defaultDirectory(options.productSlug))

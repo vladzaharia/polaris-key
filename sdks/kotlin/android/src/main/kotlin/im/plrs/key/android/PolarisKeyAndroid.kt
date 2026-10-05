@@ -33,7 +33,7 @@ import java.io.File
 import java.util.concurrent.atomic.AtomicReference
 
 /** The Android-only inputs to [PolarisKeyAndroid.client]. */
-public data class AndroidOptions(
+public data class AndroidOptions @JvmOverloads constructor(
     /** The host's current activity: In-App Updates' flows and Play's pack confirmation start from it. */
     val activity: () -> Activity? = { null },
     /** The pack ids this build ships as Play asset packs (fast-follow or on-demand). */

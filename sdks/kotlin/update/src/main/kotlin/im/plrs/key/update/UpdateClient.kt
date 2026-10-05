@@ -96,7 +96,7 @@ public object NoOutletSignals : OutletSignalReader {
  * Wire v4 update inputs. The installed VERSION is `CoreOptions.version`; everything else the decision
  * needs about this install is here, validated at construction (`invalid-options`).
  */
-public data class UpdateClientOptions(
+public data class UpdateClientOptions @JvmOverloads constructor(
     /** `kid` → raw 32-byte Ed25519 release key, base64url: the ONLY keys a release record verifies against. */
     val pinnedReleaseKeys: TrustSet = emptyMap(),
     /** Where this install came from; wins over [stamp] and [detected]. */
@@ -220,6 +220,10 @@ public class UpdateClient private constructor(
         this(core, configure(options, core.pinnedTrust), content)
 
     private val serial = Mutex()
+    private val offerFlow = kotlinx.coroutines.flow.MutableSharedFlow<UpdateCheck>(replay = 1, extraBufferCapacity = 4)
+
+    /** Every decision that offers a newer app build (`code-ready`, `binary`, `store`, `platform`); replays the last. */
+    public val offers: kotlinx.coroutines.flow.SharedFlow<UpdateCheck> = offerFlow
     private var detection: CompletableDeferred<Pair<ResolvedOutlet, DetectedOutlet?>>? = null
     private val detectionLock = Mutex()
 
@@ -346,10 +350,10 @@ public class UpdateClient private constructor(
      * desktop there is none: [JvmInstallDriver] throws the typed `runtime` N/A (registry
      * `update.driver` jvm), and the host offers [buildUrl] as a download link instead.
      */
-    public suspend fun install(check: UpdateCheck): InstallResult {
-        val driver = configured?.options?.installDriver ?: JvmInstallDriver
-        return driver.install(check)
-    }
+    public suspend fun install(check: UpdateCheck): InstallResult = installDriver.install(check)
+
+    /** The install driver [install] uses ([UpdateClientOptions.installDriver], else [JvmInstallDriver]). */
+    public val installDriver: InstallDriver get() = configured?.options?.installDriver ?: JvmInstallDriver
 
     // ── Internals ───────────────────────────────────────────────────────────────────────────
 
@@ -363,6 +367,7 @@ public class UpdateClient private constructor(
             else -> return
         }
         core.updateEvents.recordOnce(UpdateEvent.updateOffered, release.version, fromRelease = core.version)
+        offerFlow.tryEmit(check)
     }
 
     private fun requireKeys(): ConfiguredUpdate {

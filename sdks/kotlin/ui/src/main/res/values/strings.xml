@@ -138,6 +138,7 @@
     <string name="pkey_ui_update_later">Later</string>
     <string name="pkey_ui_update_restart">Restart to update</string>
     <string name="pkey_ui_update_restart_body">Version %1$s is ready. Restart to finish updating.</string>
+    <string name="pkey_ui_update_failed">The update couldn\'t be installed. Try again later.</string>
     <string name="pkey_ui_packs_title">Downloading content</string>
     <string name="pkey_ui_packs_downloading">Downloading</string>
     <string name="pkey_ui_packs_installing">Installing</string>

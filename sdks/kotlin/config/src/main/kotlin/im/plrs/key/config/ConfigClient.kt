@@ -13,6 +13,20 @@
 
 package im.plrs.key.config
 
+import im.plrs.key.core.FileStateSlot
+import im.plrs.key.core.JsonText
+import im.plrs.key.core.ManagementState
+import im.plrs.key.core.MemoryStateSlot
+import im.plrs.key.core.StateSlot
+import im.plrs.key.core.longValue
+import im.plrs.key.core.objectValue
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.serialization.json.JsonObject
 import im.plrs.key.core.CoreContext
 import im.plrs.key.core.ConfigDoc
 import im.plrs.key.core.ErrorCode
@@ -29,14 +43,24 @@ import kotlinx.serialization.json.JsonElement
 /** The env prefix. The interim `PLRS_CONFIG_` spelling withdrawn by Amendment A1 is not read. */
 public const val DEFAULT_CONFIG_ENV_PREFIX: String = "PKEY_CONFIG_"
 
-public data class ConfigClientOptions(
+public data class ConfigClientOptions @JvmOverloads constructor(
     /** User/local overrides: beat a remote `default`, never an `enforced`/`hidden` entry. */
     val localOverrides: Map<String, JsonElement> = emptyMap(),
     /** A key's variable is `${envPrefix}${key with "." → "__"}`: `run.concurrency` → `PKEY_CONFIG_run__concurrency`. */
     val envPrefix: String = DEFAULT_CONFIG_ENV_PREFIX,
     /** The environment table; defaults to `System.getenv()`. Injected so precedence is testable. */
     val environment: Map<String, String>? = null,
+    /**
+     * Where `set()`/`clear()` persist local overrides (notes/SDK-PARITY-PASS.md §3.11, `config.local`):
+     * null is `local-config.json` in the store's state directory (on Android the Keystore store's
+     * no-backup directory), or memory for a store without one. Pass any [StateSlot] to keep them
+     * elsewhere.
+     */
+    val localStore: StateSlot? = null,
 )
+
+/** One change to a key's effective value (`ConfigClient.changes`). */
+public data class ConfigChange(val key: String, val value: JsonElement?, val source: ConfigSource)
 
 /**
  * @param reacquire the §5 single re-acquire an edge-mint 401 gets: the facade's one closure, the
@@ -52,7 +76,20 @@ public class ConfigClient(
      */
     private val attest: (suspend () -> Boolean)? = null,
 ) {
-    private val localOverrides = options.localOverrides
+    /** The host's static overrides; persisted user overrides layer over them. */
+    private val hostOverrides = options.localOverrides
+    private val localSlot: StateSlot = options.localStore
+        ?: core.store.stateDirectory?.let { FileStateSlot(java.io.File(it, "local-config.json")) }
+        ?: MemoryStateSlot()
+    private val localLock = Any()
+    @Volatile private var persisted: Map<String, JsonElement> = readPersisted()
+    private val localOverrides: Map<String, JsonElement> get() = hostOverrides + persisted
+    @Volatile private var catalogCache: Catalog? = null
+    private val settings = java.util.concurrent.ConcurrentHashMap<String, MutableStateFlow<JsonElement?>>()
+    private val changeFlow = MutableSharedFlow<ConfigChange>(extraBufferCapacity = 64)
+
+    /** Every change to a key's effective value: a local `set()`/`clear()`, or a new document. */
+    public val changes: SharedFlow<ConfigChange> = changeFlow.asSharedFlow()
     private val envPrefix = options.envPrefix
     private val environment: Map<String, String> = options.environment ?: try {
         System.getenv()
@@ -126,7 +163,103 @@ public class ConfigClient(
     public suspend fun isEnabled(): Boolean = core.enabled(ServiceSlug.config)
 
     /** `GET /<p>/config/schema`: the active catalog as served; null on any failure, never a throw. */
-    public suspend fun fetchSchema(): ByteArray? = ConfigEndpoints.fetchSchema(core)
+    public suspend fun fetchSchema(): ByteArray? = ConfigEndpoints.fetchSchema(core)?.also { b -> Catalog.parse(b)?.let { catalogCache = it } }
+
+    /** The active catalog as types (fetched, then kept for validation); null on any failure. */
+    public suspend fun fetchCatalog(): Catalog? = fetchSchema()?.let { Catalog.parse(it) } ?: catalogCache
+
+    /** The catalog the last successful fetch returned, or null. Offline. */
+    public val catalog: Catalog? get() = catalogCache
+
+    // ── config.local (§3.11) ─────────────────────────────────────────────────────────────────
+
+    /**
+     * Persist a local override for [key]. It beats a remote `default` and never an `enforced` or
+     * `hidden` entry (refused `managed_by_admin`). [value] is checked against the catalog entry's
+     * schema when the catalog is known, else against the JSON type of the document's value
+     * (`invalid-options` when it does not fit). Emits on [changes] and the key's [setting].
+     */
+    public suspend fun set(key: String, value: JsonElement) {
+        val entry = doc()?.config?.get(key)
+        if (entry != null && (entry.state == ManagementState.enforced || entry.state == ManagementState.hidden)) {
+            throw PolarisException(ErrorCode.managedByAdmin, "$key is managed by the product's administrator and cannot be changed here.")
+        }
+        val problem = catalogCache?.entry(key)?.problem(value)
+            ?: entry?.takeIf { !sameJsonType(it.value, value) }?.let { "$key takes the same type as its current value" }
+        if (problem != null) throw PolarisException(ErrorCode.invalidOptions, problem)
+        synchronized(localLock) {
+            persisted = persisted + (key to value)
+            writePersisted(persisted)
+        }
+        publish()
+    }
+
+    /** Remove the local override for [key] (the remote default, environment or fallback answer again). */
+    public suspend fun clear(key: String) {
+        synchronized(localLock) {
+            if (!persisted.containsKey(key)) return
+            persisted = persisted - key
+            writePersisted(persisted)
+        }
+        publish()
+    }
+
+    /** Remove every persisted local override. */
+    public suspend fun clearAll() {
+        synchronized(localLock) {
+            if (persisted.isEmpty()) return
+            persisted = emptyMap()
+            writePersisted(persisted)
+        }
+        publish()
+    }
+
+    /** The persisted local overrides (not the host's static ones). */
+    public fun localValues(): Map<String, JsonElement> = persisted
+
+    /**
+     * A live handle on [key]'s effective value: the current value now, then every change (a local
+     * override, a new verified document). Null while no layer answers.
+     */
+    public suspend fun setting(key: String): StateFlow<JsonElement?> {
+        val flow = settings.getOrPut(key) { MutableStateFlow(null) }
+        flow.value = ConfigResolution.resolveValue(context(), key)
+        return flow.asStateFlow()
+    }
+
+    /**
+     * Re-resolve every key a [setting] watches and emit [changes] for those whose value moved. The
+     * umbrella client calls it after a sync applied a new document; `set()`/`clear()` call it too.
+     */
+    public suspend fun publish(emit: Boolean = true) {
+        val ctx = context()
+        val keys = LinkedHashSet<String>(settings.keys)
+        doc()?.config?.keys?.let { keys += it }
+        keys += localOverrides.keys
+        keys += lastSeen.keys
+        for (key in keys) {
+            val now = ConfigResolution.resolveValue(ctx, key)
+            if (emit && now != lastSeen[key]) changeFlow.tryEmit(ConfigChange(key, now, ConfigResolution.resolveSource(ctx, key)))
+            if (now == null) lastSeen.remove(key) else lastSeen[key] = now
+            settings[key]?.value = now
+        }
+    }
+
+    private val lastSeen = java.util.concurrent.ConcurrentHashMap<String, JsonElement>()
+
+    private fun readPersisted(): Map<String, JsonElement> {
+        val o = localSlot.read()?.let { JsonText.parseOrNull(it) }.objectValue ?: return emptyMap()
+        if (o["v"].longValue != 1L) return emptyMap()
+        return o["values"].objectValue?.toMap() ?: emptyMap()
+    }
+
+    private fun writePersisted(values: Map<String, JsonElement>) {
+        try {
+            localSlot.write(JsonObject(mapOf("v" to im.plrs.key.core.jsonInt(1), "values" to JsonObject(values))).toString())
+        } catch (e: Exception) {
+            throw PolarisException(ErrorCode.storeFailed, "the local override could not be saved: ${e.message}", cause = e)
+        }
+    }
 
     /** The product's active catalog version, as the last verified document stated it. */
     public suspend fun schemaVersion(): Long? = doc()?.schemaVersion

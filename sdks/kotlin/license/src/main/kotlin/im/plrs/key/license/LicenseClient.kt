@@ -38,7 +38,7 @@ import im.plrs.key.core.stringValue
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonElement
 
-public data class LicenseClientOptions(
+public data class LicenseClientOptions @JvmOverloads constructor(
     /**
      * Collect a hardware fingerprint at activation. Defaults to true; false opts out entirely (the
      * server then records the device as `unverified` rather than refusing it).

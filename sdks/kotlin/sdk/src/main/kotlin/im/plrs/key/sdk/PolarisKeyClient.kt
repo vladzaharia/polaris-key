@@ -99,7 +99,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.JsonArray
 
-public data class PolarisKeyClientOptions(
+public data class PolarisKeyClientOptions @JvmOverloads constructor(
     val core: CoreOptions,
     val license: LicenseClientOptions = LicenseClientOptions(),
     val config: ConfigClientOptions = ConfigClientOptions(),
@@ -125,6 +125,33 @@ public data class PolarisKeyClientOptions(
      * provider, else the typed `runtime` N/A ([im.plrs.key.core.NoAttestation]).
      */
     val attestation: AttestationProvider? = null,
+)
+
+/**
+ * One event on [PolarisKeyClient.events] (notes/SDK-PARITY-PASS.md §3.11): the multi-subscriber
+ * stream a UI layer listens to instead of polling.
+ */
+public sealed interface PolarisEvent {
+    /** The licence state after a sync whose documents changed, or after an activation. */
+    public data class License(val state: LicenseState) : PolarisEvent
+
+    /** A key's effective value moved (a local override, a new config document). */
+    public data class Config(val change: im.plrs.key.config.ConfigChange) : PolarisEvent
+
+    /** A decision offered a newer app build. */
+    public data class UpdateAvailable(val check: im.plrs.key.core.UpdateCheck) : PolarisEvent
+
+    /** Pack progress (`download`, `apply`, `done`, `state-issue`). */
+    public data class Packs(val progress: im.plrs.key.packs.PackProgress) : PolarisEvent
+}
+
+/** `channelChoices()`: what a channel picker offers. */
+public data class ChannelChoices(
+    val current: String,
+    val buildChannel: String,
+    val options: List<String>,
+    /** The outlet (id or kind) that fixes the channel, or null when it may be switched. */
+    val lockedBy: String?,
 )
 
 /** One snapshot of everything a UI layer renders from. `doc` is the LICENCE document. */
@@ -193,6 +220,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     public val distribution: DistributionClient = DistributionClient(core)
 
     private val buildNumber: String? = options.update?.buildNumber
+    private val updatePlatform: String? = options.update?.platform
 
     /**
      * The customer portal's URL for [flow] (notes/SDK-PARITY-PASS.md §3.5): `freeDevice` names this
@@ -211,6 +239,77 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
         deviceId = deviceId ?: if (flow == PortalFlow.freeDevice) core.deviceId() else null,
         returnTo = returnTo, key = key, platform = platform ?: RuntimeFamily.platformHeader, allowedReturn = allowedReturn,
     )
+
+    /**
+     * The channels this install may switch to, and why it may not (notes/SDK-PARITY-PASS.md §3.18
+     * `ChannelPicker`): [ChannelChoices.lockedBy] names the outlet when its capabilities forbid a
+     * channel switch (store, Steam, itch, package-managed builds take their channel from the
+     * outlet); the options are the current channel, `stable` and every channel the licence grants.
+     */
+    public suspend fun channelChoices(): ChannelChoices {
+        val current = core.channel
+        val options = LinkedHashSet<String>()
+        options += current
+        options += im.plrs.key.core.CHANNEL_STABLE
+        options += license.entitledChannels()
+        val outlet = try {
+            update.outlet()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
+        val platform = updatePlatform ?: RuntimeFamily.platformHeader ?: ""
+        val lockedBy = when {
+            outlet == null -> null
+            im.plrs.key.core.effectiveCapabilities(outlet.kind, platform, outlet.subkind).channelSwitch -> null
+            else -> outlet.id ?: outlet.kind
+        }
+        return ChannelChoices(current, core.buildChannel, options.toList(), lockedBy)
+    }
+
+    /**
+     * Switch this install's release channel at runtime, persisted (null returns to the build's
+     * channel). Refused `channel_not_allowed` when the outlet locks the channel or the licence does
+     * not grant it. Syncs (forced) so the documents and the next decision follow the new channel.
+     */
+    public suspend fun setChannel(channel: String?) {
+        val choices = channelChoices()
+        if (channel != null && channel != choices.buildChannel) {
+            if (choices.lockedBy != null) {
+                throw im.plrs.key.core.PolarisException(im.plrs.key.core.ErrorCode.channelNotAllowed, "This install's channel is set by ${choices.lockedBy}.")
+            }
+            if (channel !in choices.options) {
+                throw im.plrs.key.core.PolarisException(im.plrs.key.core.ErrorCode.channelNotAllowed, "This licence does not grant the $channel channel.")
+            }
+        }
+        core.setChannel(channel)
+        try {
+            sync(force = true)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Offline: the next sync uses the new channel.
+        }
+    }
+
+    /**
+     * The boot guard for this app build (`update.bootguard`, notes/SDK-PARITY-PASS.md §3.15), its
+     * state in `boot-guard.json` beside the token store and its events in [updateEvents]. [slots]
+     * are the host's staged / current / previous payloads; null (a store- or platform-installed
+     * app) counts nothing and still journals `update_confirmed` on a new version's first healthy
+     * launch. `bootHost()` in the Compose kit uses this by default.
+     */
+    public fun bootGuard(slots: im.plrs.key.update.UpdateSlots? = null, engine: String? = null): im.plrs.key.update.BootGuard {
+        val slot = core.store.stateDirectory?.let { im.plrs.key.core.FileStateSlot(java.io.File(it, "boot-guard.json")) } ?: bootGuardMemory
+        val store = object : im.plrs.key.update.BootGuardStore {
+            override fun read(): String? = slot.read()
+            override fun write(text: String) = slot.write(text)
+        }
+        return im.plrs.key.update.BootGuard(store, slots, core.version, engine, core.updateEvents)
+    }
+
+    private val bootGuardMemory = im.plrs.key.core.MemoryStateSlot()
 
     /**
      * The crash-reporter tags the Worker's Sentry hook maps to rollouts (notes/SDK-PARITY-PASS.md
@@ -289,11 +388,24 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     public val licenseChanges: SharedFlow<LicenseState> = changes.asSharedFlow()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    private val eventFlow = MutableSharedFlow<PolarisEvent>(extraBufferCapacity = 64)
+
+    /** Licence, config, update-offer and pack events, for every subscriber (§3.11). */
+    public val events: SharedFlow<PolarisEvent> = eventFlow.asSharedFlow()
+
+    init {
+        scope.launch { changes.collect { eventFlow.emit(PolarisEvent.License(it)) } }
+        scope.launch { config.changes.collect { eventFlow.emit(PolarisEvent.Config(it)) } }
+        scope.launch { update.offers.collect { eventFlow.emit(PolarisEvent.UpdateAvailable(it)) } }
+        packs.on { eventFlow.tryEmit(PolarisEvent.Packs(it)) }
+    }
     private var refreshJob: Job? = null
 
     /** Load device id, token and cached documents, re-verifying everything. NO NETWORK. */
     public suspend fun start() {
         core.start()
+        config.publish(emit = false)
         startRefreshLoop()
     }
 
@@ -321,13 +433,18 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
         // The ETags are the change signal: they exclude per-request timestamps, so a differing tag
         // means the CONTENT changed rather than that the document was re-signed.
         val changed = core.etag(DocumentSlice.license) != beforeLicense || core.etag(DocumentSlice.config) != beforeConfig
-        if (result.applied && changed) changes.tryEmit(license.status())
+        if (result.applied && changed) {
+            changes.tryEmit(license.status())
+            config.publish()
+        }
         return result
     }
 
     /** The post-acquisition sync, forced so a stale ETag cannot 304 away the very first document. */
     private suspend fun syncAfterAcquisition() {
         core.sync(force = true, reacquire = reacquire) { report() }
+        changes.tryEmit(license.status())
+        config.publish()
     }
 
     /**

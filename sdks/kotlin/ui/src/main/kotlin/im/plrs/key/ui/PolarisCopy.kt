@@ -171,6 +171,7 @@ public data class PolarisCopy(
     val updateLater: String = "Later",
     val updateRestart: String = "Restart to update",
     val updateRestartBody: String = "Version %1\$s is ready. Restart to finish updating.",
+    val updateFailed: String = "The update couldn't be installed. Try again later.",
 
     // ── Pack progress ────────────────────────────────────────────────────────────────────────
     val packsTitle: String = "Downloading content",
