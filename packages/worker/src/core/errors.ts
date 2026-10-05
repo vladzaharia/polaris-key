@@ -29,8 +29,9 @@ export const ErrorCode = {
    *  re-enrolling around the disable would bypass a deliberate refusal. */
   LicenseDisabled: "license_disabled",
   /** `GET /<p>/config/document` on a product that runs License, for a device whose licence is
-   *  disabled, expired or gone (R1): answered `403`, so the document's secrets stop with the
-   *  licence. One code for all three, because the device's remedy is the same. */
+   *  disabled, expired or gone (R1): answered `401`, so the document's secrets stop with the
+   *  licence and a client re-acquires once and lands on `revoked`, as it does for the licence
+   *  document. One code for all three, because the device's remedy is the same. */
   LicenseUnusable: "license_unusable",
   /** A written value no signed document could carry (plans/P3-01.md §2.2): a lone surrogate,
    *  U+0000 in a member name, canonically equivalent sibling names, a number out of range or

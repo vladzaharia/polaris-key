@@ -195,9 +195,8 @@ export const syncErrors: Scenario = {
           expect((await document(s, PRODUCT, "license")).status).toBe(401);
           // Re-enabled before the config document, which is fetched in parallel with the token
           // held at the time. This step is the licence document's 401 ladder; on a product that
-          // runs License the config document now refuses a disabled licence outright
-          // (`403 license_unusable`, R1, pinned in `serviceRoutes.test.ts`), and the SDKs'
-          // handling of that answer has no transcript yet.
+          // runs License the config document refuses a disabled licence too (a 401 with code
+          // `license_unusable`, R1), and that conversation is `sync-config-license-unusable`.
           await setLicense("status", "active");
           const cfg = await document(s, PRODUCT, "config");
           expect(cfg.status).toBe(200);
@@ -288,6 +287,97 @@ export const syncErrors: Scenario = {
           blocked: false,
           documents: { license: "unchanged", config: "error" },
           licenseStatus: "ok",
+          tokenHeld: true,
+        },
+      );
+      return r.transcript();
+    }),
+};
+
+export const syncConfigLicenseUnusable: Scenario = {
+  id: "sync-config-license-unusable",
+  record: () =>
+    pinned("sync-config-license-unusable", async (pin) => {
+      const world = await productWorld(LICENSED);
+      const { licenseId, key } = await seedLicense(world);
+      const token = await activated(world, key);
+      const r = new TranscriptRecorder({
+        id: "sync-config-license-unusable",
+        description:
+          "A licensed product stops serving the config document to a disabled licence (R1). After a healthy first pass, an operator disables the licence. On the next sync the licence document answers 401 unauthorized and the config document answers 401 with code license_unusable, before its ETag is compared. The client makes exactly one POST /license/token re-acquire, which the disabled licence also fails; neither document is retried, nothing is reported, and the gate reports revoked, not a build block.",
+        features: ["core.sync"],
+        requires: ["core.store"],
+        product: PRODUCT,
+        now: T0,
+        world,
+        pinned: pin,
+        initial: { deviceId: DEVICE, token, version: VERSION },
+      });
+
+      let licenseEtag = "";
+      let configEtag = "";
+      await r.step(
+        {
+          action: "sync",
+          args: { force: false },
+          note: "A healthy first pass: both documents download.",
+        },
+        async (s) => {
+          await trust(s, PRODUCT);
+          const lic = await document(s, PRODUCT, "license");
+          expect(lic.status).toBe(200);
+          licenseEtag = etagOf(lic);
+          const cfg = await document(s, PRODUCT, "config");
+          expect(cfg.status).toBe(200);
+          configEtag = etagOf(cfg);
+          expect((await syncReport(s, PRODUCT, VALUES)).status).toBe(200);
+        },
+        {
+          applied: true,
+          unauthorized: false,
+          blocked: false,
+          documents: { license: "applied", config: "applied" },
+          licenseStatus: "ok",
+          tokenHeld: true,
+        },
+      );
+
+      // An operator disables the licence. The device row and its token are untouched, so the
+      // token still authenticates the DEVICE; only the licence behind it is unusable.
+      await world.db.run(
+        "UPDATE licenses SET status = 'disabled' WHERE product = ? AND id = ?",
+        PRODUCT,
+        licenseId,
+      );
+      await r.step(
+        {
+          action: "sync",
+          args: { force: false },
+          now: T0 + 60,
+          note: "Both documents 401, the one re-acquire 401s, and the client ends revoked.",
+        },
+        async (s) => {
+          await trust(s, PRODUCT);
+          const lic = await document(s, PRODUCT, "license", licenseEtag);
+          expect(lic.status).toBe(401);
+          const cfg = await document(s, PRODUCT, "config", configEtag);
+          expect(cfg.status).toBe(401);
+          expect(await cfg.json()).toEqual({
+            error: { code: "license_unusable" },
+          });
+          const reacquire = await s.send({
+            method: "POST",
+            path: `/${PRODUCT}/license/token`,
+            bearer: "token",
+          });
+          expect(reacquire.status).toBe(401);
+        },
+        {
+          applied: false,
+          unauthorized: true,
+          blocked: false,
+          documents: { license: "unauthorized", config: "unauthorized" },
+          licenseStatus: "revoked",
           tokenHeld: true,
         },
       );

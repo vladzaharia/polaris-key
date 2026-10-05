@@ -1553,9 +1553,11 @@ paths:
       description: >
         Device-token auth. A product with License OFF needs no license at all (D-08: a
         config-only product serves signed settings to any registered device); a product that
-        runs License also requires the device's license to be USABLE, and answers 403
-        `license_unusable` when it is disabled, expired or gone (R1) — before the ETag
-        comparison, so such a device never gets a 304. Carries catalog schemaVersion + config +
+        runs License also requires the device's license to be USABLE, and answers 401 with
+        code `license_unusable` when it is disabled, expired or gone (R1) — before the ETag
+        comparison, so such a device never gets a 304. A 401, not a 403, because a 403 on a
+        document is the build gate's status: on a 401 a client makes its one re-acquire, which
+        an unusable license also fails, and ends `revoked`. Carries catalog schemaVersion + config +
         secrets maps. No build gate. Strong per-doc ETag/304, independent of the license
         document's.
 
@@ -1591,16 +1593,17 @@ paths:
           description: Not modified (If-None-Match). Empty body; the ONLY header is `etag`.
           headers:
             ETag: { $ref: "#/components/headers/ETag" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403":
+        "401":
           description: >
-            The product runs License and the device's license is not usable (disabled,
-            expired, or no longer exists) — NESTED. Never answered by a product with License
-            off.
+            NESTED. `unauthorized`: the device token is missing or invalid. `license_unusable`:
+            the product runs License and the device's license is not usable (disabled, expired,
+            or no longer exists); never answered by a product with License off. Either way one
+            /license/token re-acquire then retry is the SDK convention.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
               examples:
+                unauthorized: { value: { error: { code: unauthorized } } }
                 licenseUnusable:
                   summary: test/serviceRoutes.test.ts — the exact-equality assertion
                   value:

@@ -145,7 +145,7 @@ disagree on purpose everywhere it matters:
 
 |                                       | Config (`pkey-config+jws`)                                               | License (`pkey-license+jws`)                 |
 | ------------------------------------- | ------------------------------------------------------------------------ | -------------------------------------------- |
-| Auth                                  | Device token; a usable license if License is on (`403 license_unusable`) | Device token, and the license must be usable |
+| Auth                                  | Device token; a usable license if License is on (`401 license_unusable`) | Device token, and the license must be usable |
 | Carries                               | `schemaVersion`, `config`, `secrets`                                     | `licenseId`, `profile`, `entitlements`       |
 | Build gate                            | None                                                                     | Version/channel enforcement (D-20)           |
 | ETag                                  | Content-only, independent of License's                                   | Content-only, independent of Config's        |

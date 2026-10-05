@@ -169,7 +169,7 @@
       "code": "license_unusable",
       "kind": "wire",
       "service": "config",
-      "description": "403 from GET /<p>/config/document: the product runs License and the device's licence is disabled, expired or no longer exists, so no config document (and none of its secrets) is served. A product with License off never answers it."
+      "description": "401 from GET /<p>/config/document: the product runs License and the device's licence is disabled, expired or no longer exists, so no config document (and none of its secrets) is served. A client treats it as any document 401 (one re-acquire, then revoked). A product with License off never answers it."
     },
     {
       "code": "disabled",

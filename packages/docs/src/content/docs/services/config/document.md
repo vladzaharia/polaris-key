@@ -27,13 +27,17 @@ what `validateDeviceToken` checks.
 
 On a product that **runs** License, the device's license must also be usable — active, and not
 past its expiry. The document carries the product's secrets, so a device whose license an
-operator disabled, or that expired, or that no longer exists gets `403 license_unusable` instead,
-and stops receiving them. The check runs before the ETag comparison, so such a device is never
-told its copy is current. The rule follows the enablement flag, not the presence of a license
-row, exactly like Core's `/devices` surfaces and the
-[edge-mint guard](/docs/services/config/edge-mint/). Compare
-[`GET /<product>/license/document`](/docs/services/license/document/), which calls
-`license.requireLicensedDevice` and answers an unusable license `401`.
+operator disabled, or that expired, or that no longer exists gets a `401` with the code
+`license_unusable` instead, and stops receiving them. The check runs before the ETag comparison,
+so such a device is never told its copy is current. The rule follows the enablement flag, not the
+presence of a license row, exactly like Core's `/devices` surfaces and the
+[edge-mint guard](/docs/services/config/edge-mint/).
+
+It is a `401`, like the one [`GET /<product>/license/document`](/docs/services/license/document/)
+answers for the same license, and not a `403`: a `403` on a document is the build gate's status,
+which a client reads as a version or channel block. On the `401` a client makes its single
+`POST /<product>/license/token` re-acquire, which an unusable license fails too, and its license
+state becomes `revoked`. The `sync-config-license-unusable` transcript pins that conversation.
 
 A missing or invalid token is `401 unauthorized`. Anything but `GET` is `405`.
 

@@ -33,10 +33,17 @@
  * meant a device whose licence an operator had disabled, or that had expired, kept receiving
  * them — a rotated key included — for as long as its token lived. So when the product runs
  * License, the licence must be usable (Core's `licenseUsable`, the predicate License itself
- * applies), and otherwise the answer is `403 license_unusable`: before the ETag comparison, so
- * such a device is never told its copy is current. The rule is scoped to the enablement flag,
- * not to the presence of a licence row, exactly as Core's `/devices` surfaces and the edge-mint
- * guard scope it: a product with License off is still served on the token alone.
+ * applies), and otherwise the answer is `401` with the code `license_unusable`: before the ETag
+ * comparison, so such a device is never told its copy is current. The rule is scoped to the
+ * enablement flag, not to the presence of a licence row, exactly as Core's `/devices` surfaces
+ * and the edge-mint guard scope it: a product with License off is still served on the token
+ * alone.
+ *
+ * Why 401 and not 403: a 403 on a document is the build gate's status, and every SDK reads it as
+ * a version or channel block. A 401 is what `/license/document` already answers for the same
+ * licence, so a client takes its one re-acquire (`POST /license/token`, which refuses an
+ * unusable licence too) and lands on `revoked`, the state that is actually true. The code still
+ * says which refusal it was.
  */
 
 import type { ConfigDoc } from "@polaris-key/protocol/config";
@@ -95,7 +102,7 @@ export async function handleConfigDocument(
   if ("error" in valid) return wireError(401, ErrorCode.Unauthorized);
   // ...plus a usable licence when the product runs License (R1, above).
   if (product.services.license.enabled && !licenseUsable(valid.license, now))
-    return wireError(403, ErrorCode.LicenseUnusable);
+    return wireError(401, ErrorCode.LicenseUnusable);
 
   await touchDeviceMetadata(db, valid.device, deviceMetadata(req), now);
 

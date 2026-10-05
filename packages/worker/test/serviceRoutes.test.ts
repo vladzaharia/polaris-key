@@ -324,6 +324,8 @@ describe("a config-only product (D-08)", () => {
 // device whose licence an operator had disabled, or that had expired, kept receiving every secret
 // — a rotated one included — for as long as its token lived. The licence check is scoped to the
 // enablement flag, exactly as Core's own `/devices` surfaces and the edge-mint guard scope it.
+// The refusal is a 401 (with its own code), never a 403: SDKs read a 403 on a document as a build
+// block. The client side of it is the `sync-config-license-unusable` transcript.
 
 describe("a licensed product's config document (R1)", () => {
   let db: SqliteDb;
@@ -361,7 +363,7 @@ describe("a licensed product's config document (R1)", () => {
     });
 
   async function expectRefused(res: Response): Promise<void> {
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(401);
     expect(await res.json()).toEqual({ error: { code: "license_unusable" } });
   }
 
@@ -378,7 +380,7 @@ describe("a licensed product's config document (R1)", () => {
     expect(doc).not.toBeNull();
   });
 
-  it("refuses a disabled licence with 403 license_unusable, and never answers it a 304", async () => {
+  it("refuses a disabled licence with 401 license_unusable, and never answers it a 304", async () => {
     const ok = await configDocument();
     expect(ok.status).toBe(200);
     const etag = ok.headers.get("etag")!;

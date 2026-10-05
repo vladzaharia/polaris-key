@@ -197,8 +197,8 @@ core-only answer is enough — that is the wire-level guarantee that Config work
 and without it a config-only product's devices could fetch a signed config document but not
 rename the device that fetched it. The relaxation is scoped to the enablement flag, not to the
 presence of a license row, so on a licensed product an expired, revoked, or missing license is
-still refused: a 401 on Core's surfaces and edge-mint, and `403 license_unusable` on the config
-document, so the document's secrets stop with the license.
+still a 401 — on the config document with the code `license_unusable`, so the document's secrets
+stop with the license.
 
 One more guard rides here: the KV hot record is back-filled only after every check has passed.
 Writing it as soon as the device row was found meant replaying a just-revoked token silently
