@@ -41,11 +41,19 @@ export interface SubjectStore {
     ctx: SubjectStoreContext,
     args: { product: string; subject: string },
   ): Promise<void>;
-  /** The subject's data for one product, for a per-product export (optional until I-11). */
+  /** The subject's data for one product, for a per-product export. Optional in the type until
+   *  I-11 calls it; the registry guard (`test/subjectStores.test.ts`) requires it of every store
+   *  that declares a table or a Durable Object class (plans/U-01.md §6.1). */
   export?(
     ctx: SubjectStoreContext,
     args: { product: string; subject: string },
   ): Promise<unknown>;
+  /** U-02: the D1 tables this store keeps keyed by pairwise subject. The registry guard fails
+   *  for any table with a subject column that no store claims and that is not Identity's own. */
+  tables?: readonly string[];
+  /** U-02: the Durable Object classes this store names by subject (Cloud Sync's
+   *  `idFromName("<product>:<subject>")`). The guard fails for an unclassified class. */
+  durableObjects?: readonly string[];
 }
 
 const STORES = new Map<string, SubjectStore>();
@@ -53,7 +61,8 @@ const STORES = new Map<string, SubjectStore>();
 /**
  * Register a subject-keyed store. Names are unique: registering one twice is a programming error
  * (two modules claiming one table), so it throws rather than silently replacing the first.
- * U-02 adds the guard test that fails when a subject-keyed table has no registration.
+ * `test/subjectStores.test.ts` (U-02) fails when a subject-keyed table or Durable Object class
+ * has no registration, or a registration lacks `merge`, `delete` or `export`.
  */
 export function registerSubjectStore(name: string, store: SubjectStore): void {
   if (STORES.has(name)) {
@@ -65,6 +74,11 @@ export function registerSubjectStore(name: string, store: SubjectStore): void {
 /** Remove a registration (tests only: the registry is module state). */
 export function unregisterSubjectStore(name: string): void {
   STORES.delete(name);
+}
+
+/** The registered stores by name, sorted (for the registry guard test). */
+export function subjectStores(): Array<[string, SubjectStore]> {
+  return subjectStoreNames().map((n) => [n, STORES.get(n)!]);
 }
 
 /** The registered store names, sorted (for the guard test and diagnostics). */
