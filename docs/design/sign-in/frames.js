@@ -20,6 +20,9 @@
     key: S(
       '<circle cx="7.5" cy="15.5" r="3.5"/><path d="M10 13l8-8M15 8l3 3M17 6l2 2"/>',
     ),
+    users: S(
+      '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6"/><path d="M15.5 5.2a3 3 0 0 1 0 5.6M17.5 14.6c1.6.6 2.6 2.1 3 4.4"/>',
+    ),
     lock: S(
       '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
     ),
@@ -67,6 +70,7 @@
     saltwind: `<svg viewBox="0 0 52 52" width="100%" height="100%"><defs><linearGradient id="sw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7cc4e8"/><stop offset="1" stop-color="#1f5e8a"/></linearGradient></defs><rect width="52" height="52" fill="url(#sw)"/><path d="M27 8v30H12z" fill="#fff"/><path d="M29 14v24h11z" fill="#e8f4fb"/><path d="M8 40h36l-5 5H13z" fill="#123a55"/></svg>`,
     nightfall: `<svg viewBox="0 0 52 52" width="100%" height="100%"><rect width="52" height="52" fill="#1d1640"/><circle cx="30" cy="20" r="11" fill="#e9e1ff"/><circle cx="35" cy="16" r="10" fill="#1d1640"/><path d="M0 40l12-8 10 6 12-10 18 12v12H0z" fill="#2f2466"/></svg>`,
     mossgarden: `<svg viewBox="0 0 52 52" width="100%" height="100%"><rect width="52" height="52" fill="#20402c"/><circle cx="18" cy="30" r="12" fill="#3f8a4f"/><circle cx="34" cy="26" r="13" fill="#5fb06a"/><circle cx="27" cy="38" r="9" fill="#9ad27f"/></svg>`,
+    storytime: `<svg viewBox="0 0 52 52" width="100%" height="100%"><rect width="52" height="52" fill="#3b2a5c"/><circle cx="39" cy="13" r="5" fill="#ffd98a"/><path d="M8 18c6-2 12-2 18 2v22c-6-4-12-4-18-2z" fill="#fdf3e1"/><path d="M44 18c-6-2-12-2-18 2v22c6-4 12-4 18-2z" fill="#f1e2c4"/><path d="M26 20v22" stroke="#3b2a5c" stroke-width="1.5"/></svg>`,
   };
 
   // ---------- deterministic helpers ----------
@@ -130,11 +134,19 @@
   const meter = (used, limit) =>
     `<div class="meter" role="img" aria-label="${used} of ${limit} devices in use">${Array.from({ length: limit }, (_, i) => `<i class="${i < used ? "on" : ""}"></i>`).join("")}</div>`;
   // Full and blocked rows are not radios (SIGN-IN §3.14, D-45): a glyph sits where the radio would.
+  // Row anatomy (SIGN-IN.md §3.6, O-11): title + tag; the tier as a neutral pill with the device
+  // counter, or "Account-wide · unlimited devices"; then "{origin} · {term}"; a meter on seat rows.
+  // `hideCount` is the mixed rule: seat rows drop the counter and meter when the account also
+  // holds an Account-wide license for the product.
   const lic = ({
     name,
+    tier,
     meta,
     used,
     limit,
+    accountWide,
+    hideCount,
+    noMeter,
     sel,
     full,
     blocked,
@@ -142,8 +154,19 @@
     tagKind,
     act,
     extra,
-  }) =>
-    `<div class="lic ${sel ? "sel" : ""} ${full ? "full" : ""} ${blocked ? "blocked" : ""}">${full || blocked ? `<div class="nosel" aria-hidden="true">${I.ban}</div>` : `<div class="radio"></div>`}<div class="ln">${name}</div>${tag ? `<span class="tag ${tagKind || ""}">${tag}</span>` : "<span></span>"}<div class="lm">${meta}</div>${limit ? meter(used, limit) : ""}${act ? `<div class="act">${act}</div>` : ""}${extra || ""}</div>`;
+  }) => {
+    const count = accountWide
+      ? `<span class="aw">${I.users}Account-wide · unlimited devices</span>`
+      : limit && !hideCount
+        ? `<span>${used} of ${limit} ${limit === 1 ? "device" : "devices"}</span>`
+        : "";
+    const line2 =
+      tier || count
+        ? `<div class="tl">${tier ? `<span class="pill">${tier}</span>` : ""}${count}</div>`
+        : "";
+    const showMeter = limit && !accountWide && !hideCount && !noMeter;
+    return `<div class="lic ${sel ? "sel" : ""} ${full ? "full" : ""} ${blocked ? "blocked" : ""}">${full || blocked ? `<div class="nosel" aria-hidden="true">${I.ban}</div>` : `<div class="radio"></div>`}<div class="ln">${name}</div>${tag ? `<span class="tag ${tagKind || ""}">${tag}</span>` : "<span></span>"}${line2}${meta ? `<div class="lm">${meta}</div>` : ""}${showMeter ? meter(used, limit) : ""}${act ? `<div class="act">${act}</div>` : ""}${extra || ""}</div>`;
+  };
   const fullAct = `<div class="btn secondary inline">Replace a device</div><span class="link">Free a device</span>`;
   const FULL = {
     full: true,
@@ -250,8 +273,8 @@
       <h1>Choose a license for this device</h1>
       <p class="lede">Tidewater Studio will use it on Mara's MacBook Pro.</p>
       <div role="radiogroup" aria-label="Licenses for Tidewater Studio" style="display:flex;flex-direction:column;gap:10px">
-      ${lic({ name: "Tidewater Studio Pro", meta: "Bought from Harbor Audio · 2 of 3 devices · Lifetime", used: 2, limit: 3, sel: true })}
-      ${lic({ name: "Tidewater Studio Edu", meta: "Added with a key · 2 of 2 devices · Until 12 Jun 2027", used: 2, limit: 2, ...FULL })}
+      ${lic({ name: "Tidewater Studio", tier: "Pro", meta: "Bought from Harbor Audio · Lifetime", used: 2, limit: 3, sel: true })}
+      ${lic({ name: "Tidewater Studio", tier: "Edu", meta: "Added with a key · Until 12 Jun 2027", used: 2, limit: 2, ...FULL })}
       </div>
       ${btn("primary", "Use this license and continue")}
       ${quiet(true)}`,
@@ -271,10 +294,11 @@
     body: `${person()}
       <h1>Choose a license for this device</h1>
       <div role="radiogroup" aria-label="Licenses for Tidewater Studio" style="display:flex;flex-direction:column;gap:10px">
-      ${lic({ name: "Tidewater Studio Pro", meta: "Bought from Harbor Audio · 2 of 3 devices · Lifetime", used: 2, limit: 3 })}
+      ${lic({ name: "Tidewater Studio", tier: "Pro", meta: "Bought from Harbor Audio · Lifetime", used: 2, limit: 3 })}
       ${lic({
-        name: "Tidewater Studio Edu",
-        meta: "Added with a key · 2 of 2 devices · Until 12 Jun 2027",
+        name: "Tidewater Studio",
+        tier: "Edu",
+        meta: "Added with a key · Until 12 Jun 2027",
         used: 2,
         limit: 2,
         full: true,
@@ -334,7 +358,7 @@
     body: `${person()}
       <h1>Choose a license for this device</h1>
       <p class="lede">You don't have a Saltwind license yet. Tern Works gives you this one.</p>
-      ${lic({ name: "Saltwind Free", meta: "Free · created when you continue · device 1 of 2", used: 0, limit: 2, sel: true, tag: "New", tagKind: "new" })}
+      ${lic({ name: "Saltwind", tier: "Free", meta: "Created when you continue", used: 1, limit: 2, noMeter: true, sel: true, tag: "New", tagKind: "new" })}
       ${btn("primary", "Use this license and continue")}
       ${quiet(true)}`,
     foot: footer("Saltwind", "Tern Works"),
@@ -354,8 +378,8 @@
       <h1>Choose a license for this device</h1>
       <div class="notice warn">${I.warn}<span>Your licenses are on all their devices. Replace a device to use one here.</span></div>
       <div style="display:flex;flex-direction:column;gap:10px">
-      ${lic({ name: "Tidewater Studio Pro", meta: "Bought from Harbor Audio · 3 of 3 devices · Lifetime", used: 3, limit: 3, ...FULL })}
-      ${lic({ name: "Tidewater Studio Edu", meta: "Added with a key · 2 of 2 devices · Until 12 Jun 2027", used: 2, limit: 2, ...FULL })}
+      ${lic({ name: "Tidewater Studio", tier: "Pro", meta: "Bought from Harbor Audio · Lifetime", used: 3, limit: 3, ...FULL })}
+      ${lic({ name: "Tidewater Studio", tier: "Edu", meta: "Added with a key · Until 12 Jun 2027", used: 2, limit: 2, ...FULL })}
       </div>
       ${btn("primary disabled", "Use this license and continue")}
       ${quiet(true)}`,
@@ -488,8 +512,8 @@
       <div class="who">Signed in as Mara Fennick · <span class="link">Not you?</span></div>
       <h1>Choose a license for this device</h1>
       <p class="lede">Saltwind will use it on Mara's iPhone.</p>
-      ${lic({ name: "Saltwind Pro", meta: "Bought on the App Store · 1 of 3 devices · Yearly, until 2 Feb 2027", used: 1, limit: 3, sel: true })}
-      ${lic({ name: "Saltwind Free", meta: "Created when you signed in · 2 of 2 devices · Free", used: 2, limit: 2, full: true, tag: "No free devices", tagKind: "warn", act: `<div class="btn secondary inline">Replace a device</div>` })}
+      ${lic({ name: "Saltwind", tier: "Pro", meta: "Bought on the App Store · Yearly, until 2 Feb 2027", used: 1, limit: 3, sel: true })}
+      ${lic({ name: "Saltwind", tier: "Free", meta: "Created when you signed in", used: 2, limit: 2, full: true, tag: "No free devices", tagKind: "warn", act: `<div class="btn secondary inline">Replace a device</div>` })}
       <div style="flex:1"></div>
       ${btn("primary", "Use this license and continue")}
       <p class="small center">Polaris Key signs you in for Saltwind. Tern Works never sees your codes or passkeys.</p>`,
@@ -509,8 +533,8 @@
       <h1>Choose a license for this device</h1>
       <div class="notice warn">${I.warn}<span>Your licenses are on all their devices. Replace a device, or create a new free license.</span></div>
       <div role="radiogroup" aria-label="Licenses for Saltwind" style="display:flex;flex-direction:column;gap:10px">
-      ${lic({ name: "Saltwind Free", meta: "Created when you signed in · 2 of 2 devices · Free", used: 2, limit: 2, ...FULL })}
-      ${lic({ name: "Create a new free license", meta: "Free · a separate license · device 1 of 2", tag: "New", tagKind: "new" })}
+      ${lic({ name: "Saltwind", tier: "Free", meta: "Created when you signed in", used: 2, limit: 2, ...FULL })}
+      ${lic({ name: "Create a new free license", tier: "Free", used: 1, limit: 2, noMeter: true, meta: "A separate license · created when you continue", tag: "New", tagKind: "new" })}
       </div>
       ${btn("primary disabled", "Use this license and continue")}
       ${quiet(false)}`,
@@ -553,11 +577,34 @@
       <p class="lede">Drift Kart will use it on Living room TV.</p>
       <div role="radiogroup" aria-label="Licenses for Drift Kart" style="display:flex;flex-direction:column;gap:10px">
       ${lic({ name: "Keep the license this device uses", meta: "Drift Kart keeps running as it does now.", sel: true })}
-      ${lic({ name: "Drift Kart Season Pass", meta: "Bought on Steam · 1 of 3 devices · Until 1 Mar 2027", used: 1, limit: 3 })}
+      ${lic({ name: "Drift Kart", tier: "Season Pass", meta: "Bought on Steam · Until 1 Mar 2027", used: 1, limit: 3 })}
       </div>
       ${btn("primary", "Use this license and continue")}
       ${quiet(false)}`,
     foot: footer("Drift Kart", "Pitlane Games"),
+  });
+
+  // 22 A seat license and an Account-wide license for one product (owner vocabulary, O-11): the
+  // seat license hides its device counter; the Account-wide row reads "unlimited devices".
+  F({
+    id: "22-choice-account-wide",
+    head: appHeader({
+      icon: "storytime",
+      app: "Storytime",
+      dev: "Bramble Books",
+      where: "on Mara's iPad",
+      whereIcon: "phone",
+    }),
+    body: `${person()}
+      <h1>Choose a license for this device</h1>
+      <p class="lede">Storytime will use it on Mara's iPad.</p>
+      <div role="radiogroup" aria-label="Licenses for Storytime" style="display:flex;flex-direction:column;gap:10px">
+      ${lic({ name: "Storytime", tier: "Standard", meta: "Bought on the App Store · Lifetime", used: 1, limit: 5, hideCount: true, sel: true })}
+      ${lic({ name: "Storytime", tier: "Standard", accountWide: true, meta: "Created when you signed in · Lifetime" })}
+      </div>
+      ${btn("primary", "Use this license and continue")}
+      ${quiet(false)}`,
+    foot: footer("Storytime", "Bramble Books"),
   });
 
   // ---------- render ----------

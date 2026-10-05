@@ -20,7 +20,7 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 ## Owner decision (2026-10-05): licence choice at sign-in
 
-The owner decided on 2026-10-05 that every sign-in that binds a device asks the person which licence to use (**Choose a licence for this device**, with an inline **Replace a device** on full licences), never silently mints a second auto-issued licence, and treats the rank-first rule as the preselected default only. The verbatim decision, the card API and the delegated decisions are in [`plans/I-04.md`](../plans/I-04.md), "Owner decision (2026-10-05): licence choice at sign-in"; that section wins over this brief where they differ. **The device wire does not change** (`PROTOCOL_VERSION` 4, no corpus change).
+The owner decided on 2026-10-05 that every sign-in that binds a device asks the person which licence to use (**Choose a license for this device**, with an inline **Replace a device** on full licences), never silently mints a second auto-issued licence, and treats the rank-first rule as the preselected default only. The verbatim decision, the card API and the delegated decisions are in [`plans/I-04.md`](../plans/I-04.md), "Owner decision (2026-10-05): licence choice at sign-in"; that section wins over this brief where they differ. **The device wire does not change** (`PROTOCOL_VERSION` 4, no corpus change).
 
 This package is done. For the record:
 
@@ -74,7 +74,7 @@ Targets of `manageUrl` and email links ([PORTAL.md §3.4](../../../../design/POR
   links; `javascript:`, `data:` and the like are refused even when declared; credentials, control
   characters, whitespace and values over 2,048 characters are dropped; without a match the way
   back is the product page.
-- **The library's "Free up a device"** keeps opening the product page's Devices section (inline
+- **The library's "Free a device"** keeps opening the product page's Devices section (inline
   remove); the focused flow is for apps and email links.
 
 ## Steps

@@ -33,6 +33,15 @@
 > document where they differ** in §3.3–§3.4 (sign-in routes and entry points), §4.1–§4.11,
 > §4.18–§4.19, §4.23–§4.25 and §4.29. Contradictions it resolved are fixed in place below (its §7
 > lists them).
+>
+> **License vocabulary (owner, 2026-10-05; SIGN-IN.md O-11, D-53–D-58).** Account-bound licenses
+> (today's "Signed-in app") are labelled **Account-wide**, with "unlimited devices". Wherever a
+> license is shown (License card, switcher, Library note, LicenseChoiceStep) the tier is a neutral
+> pill ("Standard") with "0 of 5 devices" or "Account-wide · unlimited devices" beside it. "For
+> life" is **Lifetime**. When an account holds a seat license and an Account-wide license for one
+> product, the seat license hides its device counter and meter. **Devices**, with **Remove**, shows
+> for both kinds. The Worker reports the kind as `access: "seats" | "account"` (`plans/I-04.md`
+> §F.6).
 
 **Status:** draft for owner approval, revised with the owner decisions of 2026-10-04 (Appendix C,
 and the second round in Appendix E)
@@ -244,7 +253,9 @@ or the person's other sign-in methods. Profile and email reach an app only after
 The library aggregates by **product**. When a person holds several licenses for one product, the
 product page shows the best one (by status precedence, §5.3) with a license switcher in the
 License card ("2 licenses · Pro, Edu"). Per-license sections (Devices, Package access) follow the
-switcher.
+switcher. Each license in the card and the switcher shows its tier as a neutral pill, then "2 of 3
+devices" for a seat license or "Account-wide · unlimited devices" for an Account-wide one; seat
+licenses drop the counter when the product also has an Account-wide license (SIGN-IN.md O-11).
 
 ### 3.2 Global elements
 
@@ -840,8 +851,9 @@ amber "Expires in 6 days" pill.
 
 **States:** loading (skeleton header and two skeleton cards); not found (§4.28); load error
 (`ErrorState` with Retry); license expired (a `danger` callout with **Renew with <developer>**);
-suspended by the developer; account-bound product (Get it becomes **Open Quill** plus store links;
-no key, no Devices).
+suspended by the developer; Account-wide license (Get it becomes **Open Quill** plus store links;
+no key; **Devices** still lists every device signed in with it, each with **Remove**, and no seat
+meter: "Account-wide · unlimited devices").
 
 ### 4.21 Package token created
 
@@ -857,7 +869,8 @@ scope and expiry, and the snippet with the real token inlined.
 
 **Remove** expands the row in place into a `danger-subtle` panel with the consequences (the seat is
 free straight away with the new count; the app on that device asks to activate next time; an email
-confirms it), **Remove Studio PC** and **Keep it**. Focus moves to the panel heading.
+confirms it), **Remove Studio PC** and **Keep it**. Focus moves to the panel heading. On an Account-wide license there is no seat to free: the panel reads "Studio PC signs out of
+<Product>. It can sign in again any time." (SIGN-IN.md D-58).
 
 ### 4.23 Sign in with another device
 
@@ -1136,7 +1149,7 @@ client-side from existing fields before then. Precedence, first match wins:
 | Key not activated     | key · "Key not activated" · info        | "Steam key"                                        | Activate on Steam      |
 | Expires soon (≤ 14 d) | clock · "Expires in 9 days" · warning   | "Studio · ends 13 Oct"                             | Renew with <developer> |
 | Offline grace ended   | alert · "Needs a check-in" · warning    | "Open <product> while online"                      | none                   |
-| Signed-in app         | user · "Signed-in app" · neutral        | "Sign in on any device"                            | none                   |
+| Account-wide          | user · "Account-wide" · neutral         | "Standard · unlimited devices"                     | none                   |
 | Active                | check · "Active" · success              | tier and devices, e.g. "Lifetime · 2 of 3 devices" | none                   |
 
 A past date is never shown as "Expires …": it is "Ended <date>" or "Updates ended at <version>".
@@ -1148,7 +1161,7 @@ Expiry inside 14 days uses relative days; otherwise "until 14 Mar 2027".
 | --------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------ |
 | Device limit reached                    | Free a device                                                  | Free a device                                          |
 | Steam key held, not activated           | Activate on Steam                                              | Activate on Steam                                      |
-| Account-bound (no key, no seats)        | Open <product> (website / app scheme)                          | Get it on the App Store / Google Play, else Open       |
+| Account-wide (no key, no seats)         | Open <product> (website / app scheme)                          | Get it on the App Store / Google Play, else Open       |
 | Build for this OS exists and is covered | Download for <OS>                                              | Store link for this OS, else **Email me the download** |
 | Covered builds exist, none for this OS  | See downloads (with "Windows and Linux only" as the meta line) | Email me the download / See downloads                  |
 | Expired, an older build is covered      | Download <last covered version>                                | Email me the download                                  |

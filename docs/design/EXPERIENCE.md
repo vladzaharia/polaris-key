@@ -588,8 +588,11 @@ footer ([storyboard](experience/15-story-portal-desktop-dark.png)):
    abandons the sign-in. A provider-verified address needs no code (frame 3).
 4. **LicenseChoiceStep**, "Choose a license for this device" (owner, 2026-10-05; SIGN-IN.md §3.6):
    shown on every sign-in that binds this installation, even with one license (a one-tap confirm).
-   - Each row reads "Tidewater Studio Pro", then "Bought on the App Store · 2 of 3 devices ·
-     Lifetime"; rank-first only preselects.
+   - Each row reads "Tidewater Studio", then the tier as a neutral pill ("Pro") with "2 of 3
+     devices", or "Account-wide · unlimited devices" for an Account-wide license, then "Bought on
+     the App Store · Lifetime" (SIGN-IN.md O-11). Seat licenses hide the counter when the account
+     also holds an Account-wide license. Rank-first only orders and preselects; the device's
+     current license stays preselected.
    - A full license shows "No free devices", no radio, **Replace a device** (inline, SIGN-IN.md
      §3.7: "Replace Work laptop?" with **Replace and continue** and **Back**) and **Free a device**.
    - The primary is **Use this license and continue**. When first-time consent follows, the consent
@@ -1030,20 +1033,20 @@ edge on phones.
 
 **The steps** (each one a component inside the card; the header and footer persist across them):
 
-| Step                | When                                                                                                                                                                      | Owner                                                    |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `MethodsStep`       | First: identifier-first email, then the variant's methods                                                                                                                 | UX-40                                                    |
-| `CodeStep`          | After an email: one email with a 6-digit code and a magic link                                                                                                            | I-07 (Worker), UX-40 (card)                              |
-| `EmailGateStep`     | First sign-in through a provider; `ProfileImport`; no skip path                                                                                                           | PX-21 (built inside the card UX-40 promotes)             |
-| `LicenseChoiceStep` | After authentication, every sign-in that binds an installation: "Choose a license for this device"; full licenses disabled; `ReplaceDevice` inline (SIGN-IN.md §3.6–§3.7) | UX-41, PX-14 (card), I-08 (routes), I-09 (ranking), I-26 |
-| `ConsentStep`       | First sign-in to an app or a scope change; after LicenseChoiceStep, showing the chosen license with **Change** (SIGN-IN.md §3.8)                                          | PX-14, UX-41                                             |
-| `KeyStep`           | "Have a license key?", "Use a license key instead", or no license without auto-issue; PX-17's confirm, which is itself the choice; I-09's verdicts                        | UX-41, PX-17, UX-05                                      |
-| `ReturnStep`        | Passthrough done: "It's yours", Return to <App>, timer with Stay here                                                                                                     | UX-41                                                    |
+| Step                | When                                                                                                                                                                                                                                               | Owner                                                    |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `MethodsStep`       | First: identifier-first email, then the variant's methods                                                                                                                                                                                          | UX-40                                                    |
+| `CodeStep`          | After an email: one email with a 6-digit code and a magic link                                                                                                                                                                                     | I-07 (Worker), UX-40 (card)                              |
+| `EmailGateStep`     | First sign-in through a provider; `ProfileImport`; no skip path                                                                                                                                                                                    | PX-21 (built inside the card UX-40 promotes)             |
+| `LicenseChoiceStep` | After authentication, every sign-in that binds an installation: "Choose a license for this device"; tier pill with the counter or "Account-wide · unlimited devices"; full licenses without a radio; `ReplaceDevice` inline (SIGN-IN.md §3.6–§3.7) | UX-41, PX-14 (card), I-08 (routes), I-09 (ranking), I-26 |
+| `ConsentStep`       | First sign-in to an app or a scope change; after LicenseChoiceStep, showing the chosen license with **Change** (SIGN-IN.md §3.8)                                                                                                                   | PX-14, UX-41                                             |
+| `KeyStep`           | "Have a license key?", "Use a license key instead", or no license without auto-issue; PX-17's confirm, which is itself the choice; I-09's verdicts                                                                                                 | UX-41, PX-17, UX-05                                      |
+| `ReturnStep`        | Passthrough done: "It's yours", Return to <App>, timer with Stay here                                                                                                                                                                              | UX-41                                                    |
 
 **`LicenseChoiceStep`, `ReplaceDevice` and `ConsentStep` are specified in SIGN-IN.md §3.6–§3.8**
 (owner decisions 2026-10-05; contract in `plans/I-04.md`, "Owner decision (2026-10-05): licence
-choice at sign-in"). Their frames are SIGN-IN.md frames 05–09 and 18–21; this section keeps no
-second copy of their rules.
+choice at sign-in", §F). Their frames are SIGN-IN.md frames 05–09 and 18–22; this section keeps
+no second copy of their rules.
 
 | Variant         | Brand row                  | Header                                               | Methods                                                                                                                                                                                                                                                                                             |
 | --------------- | -------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1405,14 +1408,14 @@ any file it edits (checked against §13.1), not merely that its dependencies are
 
 **Wave 2: shared sign-in**
 
-| Id    | Package                                                                                                                                                                                                        | Size | Deps                                           |
-| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------------------------------- |
-| UX-40 | **`AuthCard` in `ui/auth/`**: promote `LoginCard`, `ProviderRow`, `Glyphs`, `KeyField`; the step slots (§8); passkey and "Have a license key?" in `MethodsStep`                                                | M    | PX-20 (`PortalShell`), I-07 (`SignInPage.tsx`) |
-| UX-41 | **Passthrough steps**: persistent app header, `LicenseChoiceStep` with inline Replace a device (2026-10-05), `KeyStep` with PX-17's confirm and I-09's verdicts, `ReturnStep` with Stay here, the library ring | L    | UX-40, PX-17, I-08 and PX-W13 (broker), I-09   |
-| PX-21 | (approved, existing) **EmailGateStep** with `ProfileImport` inside the promoted card                                                                                                                           | M    | UX-40, PX-12, PX-W15, PX-W16                   |
-| UX-42 | **Console sign-in**: identifier-first card at `/manage/login`, Continue starts PKCE or a passkey, 403 and not-configured states                                                                                | M    | UX-40, UX-02, r2 (`admin/auth.ts`)             |
-| UX-43 | **Worker twin**: `renderAuthCard()` in `brandHtml.ts`; expired code or link with Send a new code; device pages with the product header; measures test                                                          | M    | UX-40, I-07, r2 (`brandHtml.ts`)               |
-| UX-44 | **Email**: no-bit centred lockup, card radius, the code-and-link copy on I-07's template                                                                                                                       | S    | I-07                                           |
+| Id    | Package                                                                                                                                                                                                                                                                                                                                             | Size | Deps                                           |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------------------------------- |
+| UX-40 | **`AuthCard` in `ui/auth/`**: promote `LoginCard`, `ProviderRow`, `Glyphs`, `KeyField`; the step slots (§8); passkey and "Have a license key?" in `MethodsStep`                                                                                                                                                                                     | M    | PX-20 (`PortalShell`), I-07 (`SignInPage.tsx`) |
+| UX-41 | **Passthrough steps** (SIGN-IN.md §3.6–§3.10): persistent app header, `LicenseChoiceStep` (every row state, Account-wide vocabulary) with inline `ReplaceDevice` (2026-10-05), `ConsentStep` with Change, `KeyStep` with PX-17's confirm ("Add and use on this device") and I-09's verdicts, `ReturnStep` variants with Stay here, the library ring | L    | UX-40, PX-17, I-08 and PX-W13 (broker), I-09   |
+| PX-21 | (approved, existing) **EmailGateStep** with `ProfileImport` inside the promoted card                                                                                                                                                                                                                                                                | M    | UX-40, PX-12, PX-W15, PX-W16                   |
+| UX-42 | **Console sign-in**: identifier-first card at `/manage/login`, Continue starts PKCE or a passkey, 403 and not-configured states                                                                                                                                                                                                                     | M    | UX-40, UX-02, r2 (`admin/auth.ts`)             |
+| UX-43 | **Worker twin**: `renderAuthCard()` in `brandHtml.ts`; expired code or link with Send a new code; device pages with the product header; measures test                                                                                                                                                                                               | M    | UX-40, I-07, r2 (`brandHtml.ts`)               |
+| UX-44 | **Email**: no-bit centred lockup, card radius, the code-and-link copy on I-07's template                                                                                                                                                                                                                                                            | S    | I-07                                           |
 
 **Wave 3: console journeys on the shared layer**
 

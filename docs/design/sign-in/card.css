@@ -554,6 +554,39 @@ label.lab {
   color: var(--pk-text-strong);
   font-weight: 500;
 }
+/* SIGN-IN.md O-11: line 2 is the tier as a neutral pill, then the device counter or
+   "Account-wide · unlimited devices". */
+.tl {
+  grid-column: 2 / 4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--pk-text);
+}
+.pill {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--pk-border-strong);
+  color: var(--pk-text-strong);
+  background: transparent;
+  white-space: nowrap;
+}
+.tl .aw {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.tl .aw svg {
+  width: 14px;
+  height: 14px;
+  color: var(--pk-text-muted);
+}
 .lm {
   grid-column: 2 / 4;
   font-size: 13px;

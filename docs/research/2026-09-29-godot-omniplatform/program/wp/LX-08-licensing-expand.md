@@ -18,6 +18,15 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 - **[`plans/LX-01.md`](../plans/LX-01.md):** the exact DDL of §6.1; the Core table `entitlement_events` with a pull cursor (Q4); the triggers; no `dist_commerce_settings` table (Q5); the A3 record; the `addon` column, with nothing writing `addon` until LX-25 (Q8).
 
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- Add `tiers.device_access` (`seats` | `account`, default `seats`), backfilled to `account` for tiers that hold only keyless account-bound licences; a licence on an `account` tier never receives a key (`plans/I-04.md` §F.6, SIGN-IN.md D-53). The console tier editor says "Devices: up to N" or "Account-wide · unlimited devices".
+
 ## Goal
 
 The licensing model's storage exists and is kept in sync: new tables and columns are added, existing store grants are backfilled into `grants`, commerce, admin and refund paths dual-write, and provisioned entitlement keys become `oidc` grants in the same deploy as the new sign-in writer.

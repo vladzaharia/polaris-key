@@ -19,6 +19,15 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 - **[`plans/LX-01.md`](../plans/LX-01.md):** Q6: add `reason: "no_license"` to the licence-less 401, so new SDKs show `needs-activation` instead of `revoked`.
 - **[`plans/PX-W8.md`](../plans/PX-W8.md):** Q5: `not_entitled` with `reason: device_limit` on the sign-in path carries `manageUrl` from PX-W8's `core/manageUrl.ts` builder.
 
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- The sign-in seat refusal is no longer the main path: the card's LicenseChoiceStep and inline Replace handle a full licence. `device_limit` + `manageUrl` covers only the bind-time race on surfaces without the card (`plans/PX-W8.md` alignment note).
+
 ## Goal
 
 The device wire carries the model: per-entry `expiresAt`, `licenseExpiresAt`, `grants`, a 401 `reason`, and `not_entitled` reasons, in `shared-protocol`, client-core, parity and appended corpus cases.
