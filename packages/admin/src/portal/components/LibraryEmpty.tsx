@@ -1,5 +1,5 @@
 import * as React from "react";
-import { KeyRound } from "lucide-react";
+import { Compass, KeyRound } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { markPartPath } from "../../ui/markPath.js";
 import { useActivate } from "../activate.js";
@@ -9,10 +9,16 @@ const STAR = markPartPath("star", { kind: "key", size: 48, theme: "mono" });
 
 /**
  * The empty library (§4.12): the signed-in email, Activate a license (the one primary) and the
- * stationary star on the right half (a top strip on phones). The Discover teaser and "See N in
- * Discover" wait for G24.
+ * stationary star on the right half (a top strip on phones), and "See N in Discover" once the
+ * Worker counts offers (G24). The teaser rows of offers are PX-16's.
  */
-export function LibraryEmpty({ email }: { email: string }): React.ReactElement {
+export function LibraryEmpty({
+  email,
+  discoverCount = null,
+}: {
+  email: string;
+  discoverCount?: number | null;
+}): React.ReactElement {
   const activate = useActivate();
   return (
     <section
@@ -31,7 +37,7 @@ export function LibraryEmpty({ email }: { email: string }): React.ReactElement {
           license key from a store or a developer? Activate it and the product
           joins your library.
         </p>
-        <div>
+        <div className="flex flex-wrap gap-3">
           <Button
             size="lg"
             className="h-12 font-bold"
@@ -40,6 +46,14 @@ export function LibraryEmpty({ email }: { email: string }): React.ReactElement {
           >
             Activate a license
           </Button>
+          {discoverCount ? (
+            <Button asChild size="lg" variant="outline" className="h-12">
+              <a href={href.discover()}>
+                <Compass aria-hidden />
+                See {discoverCount} in Discover
+              </a>
+            </Button>
+          ) : null}
         </div>
         <p className="border-t border-border pt-5 text-sm text-fg-muted">
           Bought with a different email or on Steam?{" "}

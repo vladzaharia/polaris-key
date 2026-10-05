@@ -1,0 +1,197 @@
+{
+  "$comment": "HAND-WRITTEN: Microsoft publishes no machine-readable spec for either submission API (notes/S-15 §6.2). Transcribed from the reference pages below as fetched on source.version; source.sha256 is the SHA-256 of JSON.stringify(operations). Editing this list means re-reading the pages, bumping the pin in core/storefront/rules/microsoftStore.ts (MSSTORE_SPEC_PIN) and re-classifying every write: a THREAT-MODEL §9 review trigger. Templates use {id} for every identifier, as the gate engine spells them.",
+  "source": {
+    "title": "Microsoft Store submission APIs (hand-written operation list)",
+    "version": "2026-10-04",
+    "sha256": "75d4349577abc74b6d41b831a713bb743b03b90fc8a0157a48078ddef6b3c10c"
+  },
+  "pages": {
+    "manage-app-submissions": "https://learn.microsoft.com/en-us/windows/uwp/monetize/manage-app-submissions",
+    "manage-flights": "https://learn.microsoft.com/en-us/windows/uwp/monetize/manage-flights",
+    "manage-flight-submissions": "https://learn.microsoft.com/en-us/windows/uwp/monetize/manage-flight-submissions",
+    "manage-add-ons": "https://learn.microsoft.com/en-us/windows/uwp/monetize/manage-add-ons",
+    "manage-add-on-submissions": "https://learn.microsoft.com/en-us/windows/uwp/monetize/manage-add-on-submissions",
+    "get-app-data": "https://learn.microsoft.com/en-us/windows/uwp/monetize/get-app-data",
+    "store-submission-api": "https://learn.microsoft.com/en-us/windows/apps/publish/store-submission-api"
+  },
+  "hosts": {
+    "classic": "https://manage.devcenter.microsoft.com",
+    "msi": "https://api.store.microsoft.com"
+  },
+  "operations": [
+    {
+      "method": "POST",
+      "path": "/v1.0/my/applications/{id}/submissions",
+      "page": "manage-app-submissions"
+    },
+    {
+      "method": "PUT",
+      "path": "/v1.0/my/applications/{id}/submissions/{id}",
+      "page": "manage-app-submissions"
+    },
+    {
+      "method": "POST",
+      "path": "/v1.0/my/applications/{id}/submissions/{id}/commit",
+      "page": "manage-app-submissions"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1.0/my/applications/{id}/submissions/{id}",
+      "page": "manage-app-submissions"
+    },
+    {
+      "method": "POST",
+      "path": "/v1.0/my/applications/{id}/submissions/{id}/updatepackagerolloutpercentage",
+      "page": "manage-app-submissions"
+    },
+    {
+      "method": "POST",
+      "path": "/v1.0/my/applications/{id}/submissions/{id}/haltpackagerollout",
+      "page": "manage-app-submissions"
+    },
+    {
+      "method": "POST",
+      "path": "/v1.0/my/applications/{id}/submissions/{id}/finalizepackagerollout",
+      "page": "manage-app-submissions"
+    },
+    {
+      "method": "POST",
+      "path": "/v1.0/my/applications/{id}/flights",
+      "page": "manage-flights"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1.0/my/applications/{id}/flights/{id}",
+      "page": "manage-flights"
+    },
+    {
+      "method": "POST",
+      "path": "/v1.0/my/applications/{id}/flights/{id}/submissions",
+      "page": "manage-flight-submissions"
+    },
+    {
+      "method": "PUT",
+      "path": "/v1.0/my/applications/{id}/flights/{id}/submissions/{id}",
+      "page": "manage-flight-submissions"
+    },
+    {
+      "method": "POST",
+      "path": "/v1.0/my/applications/{id}/flights/{id}/submissions/{id}/commit",
+      "page": "manage-flight-submissions"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1.0/my/applications/{id}/flights/{id}/submissions/{id}",
+      "page": "manage-flight-submissions"
+    },
+    {
+      "method": "POST",
+      "path": "/v1.0/my/applications/{id}/flights/{id}/submissions/{id}/updatepackagerolloutpercentage",
+      "page": "manage-flight-submissions"
+    },
+    {
+      "method": "POST",
+      "path": "/v1.0/my/applications/{id}/flights/{id}/submissions/{id}/haltpackagerollout",
+      "page": "manage-flight-submissions"
+    },
+    {
+      "method": "POST",
+      "path": "/v1.0/my/applications/{id}/flights/{id}/submissions/{id}/finalizepackagerollout",
+      "page": "manage-flight-submissions"
+    },
+    {
+      "method": "POST",
+      "path": "/v1.0/my/inappproducts",
+      "page": "manage-add-ons"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1.0/my/inappproducts/{id}",
+      "page": "manage-add-ons"
+    },
+    {
+      "method": "POST",
+      "path": "/v1.0/my/inappproducts/{id}/submissions",
+      "page": "manage-add-on-submissions"
+    },
+    {
+      "method": "PUT",
+      "path": "/v1.0/my/inappproducts/{id}/submissions/{id}",
+      "page": "manage-add-on-submissions"
+    },
+    {
+      "method": "POST",
+      "path": "/v1.0/my/inappproducts/{id}/submissions/{id}/commit",
+      "page": "manage-add-on-submissions"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1.0/my/inappproducts/{id}/submissions/{id}",
+      "page": "manage-add-on-submissions"
+    },
+    {
+      "method": "PUT",
+      "path": "/submission/v1/product/{id}/metadata",
+      "page": "store-submission-api"
+    },
+    {
+      "method": "PATCH",
+      "path": "/submission/v1/product/{id}/metadata",
+      "page": "store-submission-api"
+    },
+    {
+      "method": "PUT",
+      "path": "/submission/v1/product/{id}/packages",
+      "page": "store-submission-api"
+    },
+    {
+      "method": "PATCH",
+      "path": "/submission/v1/product/{id}/packages/{id}",
+      "page": "store-submission-api"
+    },
+    {
+      "method": "POST",
+      "path": "/submission/v1/product/{id}/packages/commit",
+      "page": "store-submission-api"
+    },
+    {
+      "method": "POST",
+      "path": "/submission/v1/product/{id}/listings/assets/create",
+      "page": "store-submission-api"
+    },
+    {
+      "method": "PUT",
+      "path": "/submission/v1/product/{id}/listings/assets/commit",
+      "page": "store-submission-api"
+    },
+    {
+      "method": "POST",
+      "path": "/submission/v1/product/{id}/submit",
+      "page": "store-submission-api"
+    }
+  ],
+  "reads": [
+    "/v1.0/my/applications",
+    "/v1.0/my/applications/{id}",
+    "/v1.0/my/applications/{id}/listinappproducts",
+    "/v1.0/my/applications/{id}/listflights",
+    "/v1.0/my/applications/{id}/submissions/{id}",
+    "/v1.0/my/applications/{id}/submissions/{id}/status",
+    "/v1.0/my/applications/{id}/submissions/{id}/packagerollout",
+    "/v1.0/my/applications/{id}/flights/{id}",
+    "/v1.0/my/applications/{id}/flights/{id}/submissions/{id}",
+    "/v1.0/my/applications/{id}/flights/{id}/submissions/{id}/status",
+    "/v1.0/my/applications/{id}/flights/{id}/submissions/{id}/packagerollout",
+    "/v1.0/my/inappproducts",
+    "/v1.0/my/inappproducts/{id}",
+    "/v1.0/my/inappproducts/{id}/submissions/{id}",
+    "/v1.0/my/inappproducts/{id}/submissions/{id}/status",
+    "/submission/v1/product/{id}/metadata",
+    "/submission/v1/product/{id}/metadata/{id}",
+    "/submission/v1/product/{id}/packages",
+    "/submission/v1/product/{id}/packages/{id}",
+    "/submission/v1/product/{id}/listings/assets",
+    "/submission/v1/product/{id}/status",
+    "/submission/v1/product/{id}/submission/{id}/status"
+  ]
+}

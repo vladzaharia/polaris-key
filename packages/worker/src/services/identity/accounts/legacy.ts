@@ -14,6 +14,7 @@
  * log, which is the operator report.
  */
 
+import { stmtMoveLicenseAccount } from "../../../core/accountSubjects.js";
 import { onLicenseOwnershipEnded } from "../../../core/subjectHooks.js";
 import { appendPlatformEvent } from "../../../core/platformEvents.js";
 import type { Db } from "../../../core/platform.js";
@@ -124,9 +125,20 @@ export async function catchUpLegacyAccount(
   return row !== null;
 }
 
-type LicenseLink = { account_id: string; product: string; license_id: string };
+type LicenseLink = {
+  account_id: string;
+  product: string;
+  license_id: string;
+  created_at: number;
+};
 
-/** One §8 Q1 loser: revoke its tokens for the licence, email it, audit it, drop its link. */
+/**
+ * One §8 Q1 loser: revoke its tokens for the licence, email it, audit it, drop its link.
+ *
+ * Idempotent: if a run dies part-way, the next one revokes again (revocation is idempotent) but
+ * finds the `account.license.superseded` audit row written since this link was created, so it does
+ * not email the person or audit the change a second time; it only finishes by dropping the link.
+ */
 async function settleLoser(
   ctx: AccountContext,
   loser: LicenseLink,
@@ -139,6 +151,31 @@ async function settleLoser(
     reason: "relinked",
     now,
   });
+  const settled = await db.first<{ one: number }>(
+    `SELECT 1 AS one FROM portal_audit
+      WHERE account_id = ? AND action = 'account.license.superseded'
+        AND product = ? AND target_kind = 'license' AND target_id = ? AND at >= ?
+      LIMIT 1`,
+    loser.account_id,
+    loser.product,
+    loser.license_id,
+    loser.created_at,
+  );
+  if (!settled) await announceLoser(ctx, loser);
+  await db.run(
+    "DELETE FROM portal_license_links WHERE account_id = ? AND product = ? AND license_id = ?",
+    loser.account_id,
+    loser.product,
+    loser.license_id,
+  );
+}
+
+/** The once-only half of settleLoser: the security email and both audit rows. */
+async function announceLoser(
+  ctx: AccountContext,
+  loser: LicenseLink,
+): Promise<void> {
+  const { db, env, now } = ctx;
   const product = await getProduct(db, loser.product);
   await sendSecurityNotice(
     env,
@@ -168,12 +205,6 @@ async function settleLoser(
     summary:
       "A second account lost its link to this license: a license has one owner (I-04 §8 Q1)",
   });
-  await db.run(
-    "DELETE FROM portal_license_links WHERE account_id = ? AND product = ? AND license_id = ?",
-    loser.account_id,
-    loser.product,
-    loser.license_id,
-  );
 }
 
 /**
@@ -192,7 +223,7 @@ export async function endLicenseLinks(
   exempt: Array<string | null>,
 ): Promise<void> {
   const links = await ctx.db.all<LicenseLink>(
-    `SELECT account_id, product, license_id FROM portal_license_links
+    `SELECT account_id, product, license_id, created_at FROM portal_license_links
       WHERE product = ? AND license_id = ? ORDER BY account_id`,
     product,
     licenseId,
@@ -208,6 +239,49 @@ export async function endLicenseLinks(
 }
 
 /**
+ * Move a licence's owner pointer (`from` → `to`, compare-and-set) and, in the SAME batch, delete
+ * every `portal_license_links` row still on that licence. `endLicenseLinks` already ended them, but
+ * it is a separate call: a pre-I-05 Worker serving during the deploy window could write a link in
+ * between, which the scheduled catch-up would then copy onto the floating licence. The DELETE is
+ * guarded by the same compare-and-set condition, so it runs only when the move does.
+ */
+export async function moveLicenseOwnerEndingLinks(
+  ctx: AccountContext,
+  product: string,
+  licenseId: string,
+  from: string | null,
+  to: string | null,
+): Promise<boolean> {
+  const { db, now } = ctx;
+  const statements = [
+    {
+      sql: `DELETE FROM portal_license_links
+             WHERE product = ? AND license_id = ?
+               AND EXISTS (SELECT 1 FROM licenses x
+                            WHERE x.product = ? AND x.id = ? AND x.account_id IS ?)`,
+      params: [product, licenseId, product, licenseId, from],
+    },
+    stmtMoveLicenseAccount(product, licenseId, from, to, now),
+  ];
+  if (db.batchChanges) {
+    const changes = await db.batchChanges(statements);
+    return (changes[1] ?? 0) > 0;
+  }
+  // A test double without per-statement counts: the move happened iff the row now carries `to`
+  // and this stamp.
+  await db.batch(statements);
+  const row = await db.first<{
+    account_id: string | null;
+    modified_at: number;
+  }>(
+    "SELECT account_id, modified_at FROM licenses WHERE product = ? AND id = ?",
+    product,
+    licenseId,
+  );
+  return row !== null && row.account_id === to && row.modified_at === now;
+}
+
+/**
  * §8 Q1: every account that held a portal link to a licence another account now owns loses it.
  * Bounded per run; answers how many links were settled.
  */
@@ -216,7 +290,7 @@ export async function settleOwnershipConflicts(
   limit = 200,
 ): Promise<number> {
   const losers = await ctx.db.all<LicenseLink>(
-    `SELECT l.account_id, l.product, l.license_id
+    `SELECT l.account_id, l.product, l.license_id, l.created_at
        FROM portal_license_links l
        JOIN licenses x ON x.product = l.product AND x.id = l.license_id
       WHERE x.account_id IS NOT NULL AND x.account_id != l.account_id

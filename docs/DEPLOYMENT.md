@@ -513,6 +513,12 @@ listing, no `CopyObject`/`UploadPartCopy` (a copy could carry another product's 
 stored checksum, into the ticket prefix) and no multipart (a multipart object's stored checksum is
 not its SHA-256). CI must upload each object as **one** PUT with `x-amz-checksum-sha256`.
 
+The JWT names `actions` and **no** `scope`. Cloudflare's example shows the two together, but R2
+refuses a session token that carries both: every request then fails with 400
+`InvalidArgument` / `X-Amz-Security-Token`, which is how the v0.8.17 SDK publish failed. The
+signing key is the parent's **Secret Access Key** (the SHA-256 hex of the token value), not the
+`cfat_…` token value itself; signing with the token value gives 403 `SignatureDoesNotMatch`.
+
 After the first deploy with the secrets, confirm against real R2 (the test suite models R2's
 documented rules; it cannot reach an account):
 

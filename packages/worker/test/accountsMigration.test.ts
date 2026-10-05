@@ -28,6 +28,7 @@ import { signIn } from "../src/services/identity/accounts/signIn.js";
 import { rekeyLegacyAccountLinks } from "../src/services/identity/accounts/repo.js";
 import {
   catchUpLegacyAccounts,
+  moveLicenseOwnerEndingLinks,
   settleOwnershipConflicts,
 } from "../src/services/identity/accounts/legacy.js";
 import {
@@ -504,6 +505,62 @@ describe("migrations 0068 on a production-shaped copy", () => {
     expect(
       await settleOwnershipConflicts({ db, env, now: NOW, origin: "" }),
     ).toBe(0);
+
+    // Idempotent settlement: a run that died after announcing a loser but before dropping its
+    // link finishes on the next run without a second email or audit row.
+    raw
+      .prepare(
+        `INSERT INTO portal_license_links (account_id, product, license_id, source, created_at, last_seen_at)
+         VALUES ('acct_3', 'acme', 'lic-1', 'email', ?, ?)`,
+      )
+      .run(NOW - 10, NOW - 10);
+    expect(
+      await settleOwnershipConflicts({ db, env, now: NOW, origin: "" }),
+    ).toBe(1);
+    expect(
+      raw
+        .prepare(
+          "SELECT COUNT(*) AS n FROM platform_audit WHERE action = 'account.license.superseded'",
+        )
+        .get(),
+    ).toEqual({ n: 3 });
+    expect(
+      raw
+        .prepare(
+          "SELECT COUNT(*) AS n FROM portal_license_links WHERE account_id = 'acct_3' AND license_id = 'lic-1'",
+        )
+        .get(),
+    ).toEqual({ n: 0 });
+
+    // The owner move ends every portal link in the same batch, and only when the move applies.
+    const ctx = { db, env, now: NOW, origin: "" };
+    expect(
+      await moveLicenseOwnerEndingLinks(ctx, "acme", "lic-1", "acct_2", null),
+    ).toBe(false);
+    expect(
+      raw
+        .prepare(
+          "SELECT COUNT(*) AS n FROM portal_license_links WHERE license_id = 'lic-1'",
+        )
+        .get(),
+    ).toEqual({ n: 1 });
+    expect(
+      await moveLicenseOwnerEndingLinks(ctx, "acme", "lic-1", "acct_1", null),
+    ).toBe(true);
+    expect(
+      raw
+        .prepare(
+          "SELECT COUNT(*) AS n FROM portal_license_links WHERE license_id = 'lic-1'",
+        )
+        .get(),
+    ).toEqual({ n: 0 });
+    expect(
+      raw
+        .prepare(
+          "SELECT account_id FROM licenses WHERE product = 'acme' AND id = 'lic-1'",
+        )
+        .get(),
+    ).toEqual({ account_id: null });
   });
 
   // Review fix: a removal path that clears the owner pointer must not leave another account's

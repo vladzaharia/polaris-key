@@ -10,6 +10,7 @@ import { ErrorPanel } from "../components/States.js";
 import { useLibrary } from "../library.js";
 import {
   attentionItems,
+  coverageNote,
   platformsOnlyNote,
   quickAction,
   type DeviceInHand,
@@ -63,12 +64,13 @@ export function LibraryPage({
       ) : lib.error ? (
         <ErrorPanel error={lib.error} onRetry={lib.retry} />
       ) : count === 0 ? (
-        <LibraryEmpty email={account.email} />
+        <LibraryEmpty email={account.email} discoverCount={lib.discoverCount} />
       ) : (
         <LibraryBody
           products={lib.products!}
           device={lib.device}
           email={account.email}
+          discoverCount={lib.discoverCount}
           params={params}
         />
       )}
@@ -80,11 +82,13 @@ function LibraryBody({
   products,
   device,
   email,
+  discoverCount,
   params,
 }: {
   products: LibraryProduct[];
   device: DeviceInHand;
   email: string;
+  discoverCount: number | null;
   params: URLSearchParams;
 }): React.ReactElement {
   const action = (p: LibraryProduct) =>
@@ -96,7 +100,22 @@ function LibraryBody({
         <LibraryHero product={p} action={action(p)} />
         <p className="flex items-center gap-2 text-fg-muted">
           <Compass aria-hidden className="size-4 shrink-0" />
-          That's everything linked to {email}.
+          <span>
+            That's everything linked to {email}.
+            {discoverCount ? (
+              <>
+                {" "}
+                {discoverCount === 1 ? "There is " : "There are "}
+                <a
+                  href={href.discover()}
+                  className="font-bold text-accent-fg hover:underline"
+                >
+                  {discoverCount} more you can add in Discover
+                </a>
+                .
+              </>
+            ) : null}
+          </span>
         </p>
       </>
     );
@@ -113,7 +132,7 @@ function LibraryBody({
               <LibraryTile
                 product={p}
                 action={action(p)}
-                note={platformsOnlyNote(p, device)}
+                note={coverageNote(p) ?? platformsOnlyNote(p, device)}
               />
             </li>
           ))}
@@ -226,7 +245,7 @@ function ScaledLibrary({
                 <LibraryTile
                   product={p}
                   action={action(p)}
-                  note={platformsOnlyNote(p, device)}
+                  note={coverageNote(p) ?? platformsOnlyNote(p, device)}
                   compact
                 />
               </li>

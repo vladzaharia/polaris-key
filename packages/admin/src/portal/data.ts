@@ -1,8 +1,10 @@
+import * as React from "react";
 import {
   MutationCache,
   QueryCache,
   QueryClient,
   useMutation,
+  useQueries,
   useQuery,
   useQueryClient,
   type UseQueryResult,
@@ -13,10 +15,13 @@ import {
   setPortalCsrf,
   type PortalCapabilities,
   type PortalDownloads,
-  type PortalLibraryItem,
+  type PortalLibrary,
   type PortalLicenseDetail,
   type PortalLicenseSummary,
   type PortalMe,
+  type PortalMintTokenInput,
+  type PortalPackageAccess,
+  type PortalProduct,
   type PortalRelease,
 } from "./api.js";
 import { browser } from "./browser.js";
@@ -44,6 +49,9 @@ const qk = {
   portalLibrary: () => ["portal", "library"] as const,
   portalDownloads: (product: string) =>
     ["portal", "downloads", product] as const,
+  portalProduct: (product: string) => ["portal", "product", product] as const,
+  portalRegistryTokens: (product: string, license: string) =>
+    ["portal", "registryTokens", product, license] as const,
 };
 
 export const portalKeys = {
@@ -54,6 +62,7 @@ export const portalKeys = {
   releases: qk.portalReleases(),
   library: qk.portalLibrary(),
   downloads: qk.portalDownloads,
+  product: qk.portalProduct,
 };
 
 export function createPortalQueryClient(): QueryClient {
@@ -168,23 +177,14 @@ export function useReleases(enabled: boolean): UseQueryResult<PortalRelease[]> {
 }
 
 /**
- * The server-side library (PX-W1, `GET /api/library`): presentation (G1), seats (G5) and support
- * links (G16) per product. Extra detail over the licence list: a Worker without the route (404)
- * or a failed read leaves the client-side fallbacks in place instead of failing the Library.
+ * The Library (PX-W1, PX-08): `GET /api/library` decides which products the account holds, each
+ * one's status from its best licence, its presentation and art (G1), its seats (G5) and support
+ * links (G16), and the Discover count once the Worker lists offers (G24).
  */
-export function useLibraryItems(
-  enabled = true,
-): UseQueryResult<PortalLibraryItem[] | null> {
+export function useLibraryView(enabled = true): UseQueryResult<PortalLibrary> {
   return useQuery({
     queryKey: qk.portalLibrary(),
-    queryFn: async () => {
-      try {
-        return (await portalApi.library()).products;
-      } catch (err) {
-        if (err instanceof PortalApiError && err.status === 404) return null;
-        throw err;
-      }
-    },
+    queryFn: () => portalApi.library(),
     enabled,
   });
 }
@@ -199,15 +199,114 @@ export function useProductDownloads(
 ): UseQueryResult<PortalDownloads | null> {
   return useQuery({
     queryKey: qk.portalDownloads(product),
+    queryFn: () => fetchDownloads(product),
+    staleTime: DOWNLOADS_STALE_MS,
+    enabled,
+  });
+}
+
+/**
+ * The Package access card's state for one licence (F-21). `null` when this Worker has no such
+ * route (404): the card stays hidden, as it does when no private feed exists.
+ */
+export function usePackageAccess(
+  product: string,
+  licenseId: string,
+): UseQueryResult<PortalPackageAccess | null> {
+  return useQuery({
+    queryKey: qk.portalRegistryTokens(product, licenseId),
     queryFn: async () => {
       try {
-        return await portalApi.downloads(product);
+        return await portalApi.packageAccess(product, licenseId);
       } catch (err) {
         if (err instanceof PortalApiError && err.status === 404) return null;
         throw err;
       }
     },
-    enabled,
+  });
+}
+
+export function useMintRegistryToken(product: string, licenseId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: PortalMintTokenInput) =>
+      portalApi.mintRegistryToken(product, licenseId, input),
+    onSuccess: () =>
+      void qc.invalidateQueries({
+        queryKey: qk.portalRegistryTokens(product, licenseId),
+      }),
+  });
+}
+
+export function useRevokeRegistryToken(product: string, licenseId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (tokenId: string) =>
+      portalApi.revokeRegistryToken(product, licenseId, tokenId),
+    onSuccess: () =>
+      void qc.invalidateQueries({
+        queryKey: qk.portalRegistryTokens(product, licenseId),
+      }),
+  });
+}
+
+/** One product in full (PX-W1, `GET /api/products/<p>`): seats, devices, `returnTo`. */
+export function useProduct(product: string): UseQueryResult<PortalProduct> {
+  return useQuery({
+    queryKey: qk.portalProduct(product),
+    queryFn: () => portalApi.product(product),
+  });
+}
+
+/** The downloads query for one product, shared by the Library and the product page. */
+const DOWNLOADS_STALE_MS = 5 * 60_000;
+
+async function fetchDownloads(
+  product: string,
+): Promise<PortalDownloads | null> {
+  try {
+    return await portalApi.downloads(product);
+  } catch (err) {
+    if (err instanceof PortalApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+/**
+ * Every listed product's downloads view (PX-08: store-aware quick actions, §5.4), by slug, and
+ * whether any is still on its first load. A product whose view failed is absent from the map:
+ * its quick action falls back to `GET /api/releases`, never to a guess.
+ */
+export function useDownloadsFor(
+  products: readonly string[],
+  enabled: boolean,
+): { bySlug: ReadonlyMap<string, PortalDownloads | null>; pending: boolean } {
+  const results = useQueries({
+    queries: products.map((p) => ({
+      queryKey: qk.portalDownloads(p),
+      queryFn: () => fetchDownloads(p),
+      staleTime: DOWNLOADS_STALE_MS,
+      enabled,
+    })),
+  });
+  const key = results.map((r) => r.dataUpdatedAt).join(",");
+  const bySlug = React.useMemo(() => {
+    const out = new Map<string, PortalDownloads | null>();
+    results.forEach((r, i) => {
+      if (r.data !== undefined) out.set(products[i]!, r.data);
+    });
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products.join(","), key]);
+  const pending = results.some((r) => r.isPending && r.fetchStatus !== "idle");
+  return { bySlug, pending };
+}
+
+/** G23: email the account's own address this product's download link for `platform`. */
+export function useEmailDownload() {
+  return useMutation({
+    mutationFn: (v: { product: string; platform: string }) =>
+      portalApi.emailDownload(v.product, v.platform),
   });
 }
 
@@ -241,6 +340,7 @@ export function useRemoveDevice(product: string, licenseId: string) {
       });
       void qc.invalidateQueries({ queryKey: portalKeys.licenses });
       void qc.invalidateQueries({ queryKey: portalKeys.library });
+      void qc.invalidateQueries({ queryKey: portalKeys.product(product) });
     },
   });
 }

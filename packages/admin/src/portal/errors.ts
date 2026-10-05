@@ -19,6 +19,10 @@ export function isSignedOut(err: unknown): boolean {
   return err instanceof PortalApiError && err.status === 401;
 }
 
+export function isNotFound(err: unknown): boolean {
+  return err instanceof PortalApiError && err.status === 404;
+}
+
 export function portalErrorCopy(err: unknown): PortalErrorCopy {
   if (err instanceof PortalApiError) {
     if (err.status === 0)

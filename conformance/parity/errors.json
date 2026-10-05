@@ -226,6 +226,12 @@
       "description": "401 from the customer portal's POST /api/licenses/<p>/<id>/keys: minting a new licence key needs a sign-in at most `maxAgeSeconds` old; sign in again and retry."
     },
     {
+      "code": "not_eligible",
+      "kind": "wire",
+      "service": "identity",
+      "description": "409 from the customer portal's POST /api/discover/<p>/claim: the product's auto-issue policy no longer offers it to this account (the offer was withdrawn or changed since it was listed), or it was never a Discover offer. Nothing was minted; refresh GET /api/discover."
+    },
+    {
       "code": "download_auth_required",
       "kind": "wire",
       "service": "release",

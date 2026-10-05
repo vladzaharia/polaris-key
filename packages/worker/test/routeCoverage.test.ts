@@ -83,6 +83,9 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
   portalApi: [
     ["/api/library", ["get"]],
     ["/api/products/{product}", ["get"]],
+    // PX-W10 (G24, G25): Discover's offers and "Add to library".
+    ["/api/discover", ["get"]],
+    ["/api/discover/{product}/claim", ["post"]],
   ],
 };
 
@@ -135,6 +138,8 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/distribution/rollouts/{outlet}/{channel}/complete", ["post"]],
   // P2b-03: the CI report of availability, submissions and signing keys.
   ["/{product}/distribution/report", ["post"]],
+  // A-18h: a CI-plane store's projection of the listing model.
+  ["/{product}/distribution/listing/{store}", ["get"]],
   // P5-02: the App Store Connect webhook (Apple → Worker, HMAC-signed).
   ["/{product}/distribution/hooks/asc", ["post"]],
   // P6-03: the Sentry alert webhook (Sentry → Worker, HMAC-signed); opens halt candidates.
@@ -153,6 +158,8 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/distribution/scoop/{channel}.json", ["get"]],
   ["/{product}/distribution/flathub/{channel}.json", ["get"]],
   ["/{product}/distribution/feeds/fdroid/{channel}", ["get", "post"]],
+  // A-18d: the listing assets CI derived, registered into the listing model.
+  ["/{product}/distribution/listing/assets", ["post"]],
   // P2b-06: the public download page's model (console host) and the page (bytes host only).
   ["/{product}/distribution/download.json", ["get"]],
   ["/{product}/distribution/download", ["get"]],
@@ -416,6 +423,8 @@ const CORS_EXCLUDED = new Set([
   "/{product}/distribution/rollouts/{outlet}/{channel}/complete",
   // P2b-03: the CI report route, authenticated by a `pkeyci_` bearer.
   "/{product}/distribution/report",
+  // A-18h: the CI listing read, authenticated by a `pkeyci_` bearer.
+  "/{product}/distribution/listing/{store}",
   // P5-02: a store webhook, called server-to-server by App Store Connect.
   "/{product}/distribution/hooks/asc",
   // P6-02: device attestation — only a native iOS or Android build can attest, never a page.
@@ -431,6 +440,8 @@ const CORS_EXCLUDED = new Set([
   "/{product}/distribution/hooks/play-rtdn",
   // P2b-05: the F-Droid CI route, authenticated by a `pkeyci_` bearer.
   "/{product}/distribution/feeds/fdroid/{channel}",
+  // A-18d: the listing assets register, authenticated by a `pkeyci_` bearer.
+  "/{product}/distribution/listing/assets",
   // P2b-06: the download page and its alias — HTML on the bytes host, a top-level navigation.
   "/{product}/distribution/download",
   "/{product}",
@@ -471,6 +482,7 @@ function concrete(template: string): string {
     fileName: "Acme-1.2.3-full.nupkg",
     pack: "acme.core",
     variant: "default",
+    store: "snap",
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];

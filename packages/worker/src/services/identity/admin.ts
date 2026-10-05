@@ -59,6 +59,7 @@ async function handlePortalSettings(
     "releasesEnabled",
     "keyReissueEnabled",
     "claimByKey",
+    "discoverEnabled",
   ] as const;
   const fields: string[] = [];
   for (const key of booleans) {
