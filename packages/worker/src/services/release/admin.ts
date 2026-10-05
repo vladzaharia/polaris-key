@@ -160,6 +160,7 @@ async function handleLink(
       dryRun: true,
       slug,
       repository: prepared.repository,
+      commit: prepared.commit,
       manifestDigest: prepared.manifestDigest,
       plan: prepared.plan,
       remainingSecrets: prepared.remainingSecrets,

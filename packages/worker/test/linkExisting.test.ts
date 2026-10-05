@@ -14,6 +14,7 @@ import {
   seedTier,
 } from "./seed.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
+import { HEAD_SHA, withDefaultHead } from "./githubHead.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
@@ -55,7 +56,7 @@ function stubFetch(
   files: Record<string, string>,
   opts: { installed?: boolean } = {},
 ): FetchImpl {
-  return async (input) => {
+  return withDefaultHead(async (input) => {
     const url = String(input);
     if (url.includes("/installation"))
       return opts.installed === false
@@ -71,7 +72,7 @@ function stubFetch(
     // The release list (the truth-store sync): none yet.
     if (url.includes("/releases")) return new Response("[]", { status: 200 });
     return new Response("not found", { status: 404 });
-  };
+  });
 }
 
 const SCHEMA = JSON.stringify({
@@ -146,6 +147,7 @@ describe("prepareLink (the dry run)", () => {
     expect(res.ok).toBe(true);
     if (!res.ok) return;
     expect(res.repository).toBe("acme/tonebox");
+    expect(res.commit).toBe(HEAD_SHA);
     expect(res.manifestDigest).toMatch(/^[0-9a-f]{64}$/);
     const areas = res.plan.apply.map((i) => i.area);
     expect(areas[0]).toBe("source");

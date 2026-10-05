@@ -48,10 +48,9 @@ import {
   type FetchImpl,
   getInstallationToken,
 } from "./githubApp.js";
-import { fetchRepoFile } from "./github.js";
 import { isSafeBinaryName } from "./install.js";
 import { manifestIssuerRefusal, parseRepoUrl } from "./linkRepo.js";
-import { MANIFEST_FILE_NAMES, MANIFEST_FILES } from "./manifestFiles.js";
+import { fetchPinnedManifestFiles } from "./manifestFetch.js";
 import { resyncRepo, type ResyncResult } from "./resync.js";
 import type { ManifestIngest } from "../../core/registry.js";
 
@@ -115,7 +114,10 @@ export type PreparedLink =
       owner: string;
       repo: string;
       installId: number;
-      /** sha-256 over the `.pkey/` files read: what the operator checked. */
+      /** The default-branch commit the files were read at. */
+      commit: string;
+      /** sha-256 over the `.pkey/` files read: what the operator checked. A push that leaves
+       *  `.pkey/` alone moves the commit but not the digest, so it does not refuse the link. */
       manifestDigest: string;
       manifest: ParsedManifest;
       plan: ManifestPlan;
@@ -220,17 +222,17 @@ export async function prepareLink(
     );
   }
 
-  const files: Record<string, string> = {};
+  // Read exactly as link and resync do: every document at the default branch's head, one commit
+  // (ST-01a, `manifestFetch.ts`).
+  let files: Record<string, string>;
+  let commit: string;
   try {
-    for (const name of MANIFEST_FILE_NAMES) {
-      for (const path of MANIFEST_FILES[name]) {
-        const text = await fetchRepoFile(token, owner, repo, path, fetchImpl);
-        if (text !== null) {
-          files[name] = text;
-          break;
-        }
-      }
-    }
+    ({ files, sha: commit } = await fetchPinnedManifestFiles(
+      token,
+      owner,
+      repo,
+      fetchImpl,
+    ));
   } catch (err) {
     return refuse(
       "manifest",
@@ -297,6 +299,7 @@ export async function prepareLink(
     owner,
     repo,
     installId,
+    commit,
     manifestDigest: await digestFiles(files),
     manifest,
     plan,
