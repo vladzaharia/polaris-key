@@ -316,14 +316,14 @@ describe("a config-only product (D-08)", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════
-// R1 — a LICENSED product's config document needs a usable licence
+// R1 — a LICENSED product's config document needs the device's licence to still be usable
 // ═══════════════════════════════════════════════════════════════════════════════════════════
 //
 // The config document carries the product's secrets. D-08 lets a product with License OFF serve
 // it on a device token alone, but the same rule used to apply to a licensed product too, so a
 // device whose licence an operator had disabled, or that had expired, kept receiving every secret
-// — a rotated one included — for as long as its token lived. The licence check is scoped to the
-// enablement flag, exactly as Core's own `/devices` surfaces and the edge-mint guard scope it.
+// — a rotated one included — for as long as its token lived. The check applies to a device BOUND
+// to a licence; a keyless device of a licensed product is still served (`register.test.ts`).
 // The refusal is a 401 (with its own code), never a 403: SDKs read a 403 on a document as a build
 // block. The client side of it is the `sync-config-license-unusable` transcript.
 

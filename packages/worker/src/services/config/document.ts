@@ -32,12 +32,21 @@
  * The document carries the product's secrets. Taking Core's device-only answer for EVERY product
  * meant a device whose licence an operator had disabled, or that had expired, kept receiving
  * them — a rotated key included — for as long as its token lived. So when the product runs
- * License, the licence must be usable (Core's `licenseUsable`, the predicate License itself
- * applies), and otherwise the answer is `401` with the code `license_unusable`: before the ETag
- * comparison, so such a device is never told its copy is current. The rule is scoped to the
- * enablement flag, not to the presence of a licence row, exactly as Core's `/devices` surfaces
- * and the edge-mint guard scope it: a product with License off is still served on the token
- * alone.
+ * License and the device is BOUND to a licence (`license_id` is not `NO_LICENSE_ID`), that
+ * licence must still be usable (Core's `licenseUsable`, the predicate License itself applies; a
+ * deleted row is not usable). Otherwise the answer is `401` with the code `license_unusable`,
+ * before the ETag comparison, so such a device is never told its copy is current.
+ *
+ * Two kinds of device are NOT refused, because neither was ever granted the document by a
+ * licence: every device of a product with License off (D-08), and a KEYLESS device of a licensed
+ * product — one registered under an `open` or `requires-identity` policy, which holds a token
+ * with no licence behind it and still fetches config documents (the concepts page promises it).
+ *
+ * That last case is where this differs from `coreDeviceAllowed` (Core's `/devices` surfaces) and
+ * the edge-mint guard, which require a usable licence of EVERY device once License is on, keyless
+ * ones included. Those surfaces manage seats and mint third-party credentials; this one only
+ * withdraws what a lapsed licence used to grant, so it keys off the binding rather than the flag
+ * alone, and does not reuse that predicate.
  *
  * Why 401 and not 403: a 403 on a document is the build gate's status, and every SDK reads it as
  * a version or channel block. A 401 is what `/license/document` already answers for the same
@@ -55,6 +64,7 @@ import { ErrorCode, methodNotAllowed, wireError } from "../../core/errors.js";
 import {
   deviceMetadata,
   licenseUsable,
+  NO_LICENSE_ID,
   touchDeviceMetadata,
   validateDeviceToken,
 } from "../../core/devices.js";
@@ -100,8 +110,13 @@ export async function handleConfigDocument(
   // Device authentication — see the D-08 note at the top of this file.
   const valid = await validateDeviceToken(env, db, product, bearer(req), now);
   if ("error" in valid) return wireError(401, ErrorCode.Unauthorized);
-  // ...plus a usable licence when the product runs License (R1, above).
-  if (product.services.license.enabled && !licenseUsable(valid.license, now))
+  // ...plus, on a product that runs License, a usable licence for a device bound to one (R1,
+  // above). A keyless device has nothing to have lapsed.
+  if (
+    product.services.license.enabled &&
+    valid.device.license_id !== NO_LICENSE_ID &&
+    !licenseUsable(valid.license, now)
+  )
     return wireError(401, ErrorCode.LicenseUnusable);
 
   await touchDeviceMetadata(db, valid.device, deviceMetadata(req), now);

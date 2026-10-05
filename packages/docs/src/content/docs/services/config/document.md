@@ -10,7 +10,7 @@ sidebar:
 fused v2 document at `/<product>/config`; that route is gone rather than aliased, because a route
 that used to return a signed document must not quietly start returning half of one.
 
-## Authentication: a device token, and a usable license when License is on
+## Authentication: a device token, and a license that is still usable
 
 The route calls `core.validateDeviceToken`. On a product with License **off**, that is the
 whole check — no license lookup, no usability check:
@@ -25,13 +25,17 @@ This is the wire-level proof of D-08, service independence: a product can run Co
 a config document. See [the device principal](/docs/services/core/device-principal/) for exactly
 what `validateDeviceToken` checks.
 
-On a product that **runs** License, the device's license must also be usable — active, and not
-past its expiry. The document carries the product's secrets, so a device whose license an
-operator disabled, or that expired, or that no longer exists gets a `401` with the code
-`license_unusable` instead, and stops receiving them. The check runs before the ETag comparison,
-so such a device is never told its copy is current. The rule follows the enablement flag, not the
-presence of a license row, exactly like Core's `/devices` surfaces and the
-[edge-mint guard](/docs/services/config/edge-mint/).
+On a product that **runs** License, a device bound to a license that is no longer usable is
+refused. The document carries the product's secrets, so a device whose license an operator
+disabled, or that expired, or that no longer exists gets a `401` with the code `license_unusable`
+instead, and stops receiving them. The check runs before the ETag comparison, so such a device is
+never told its copy is current.
+
+A keyless device is not refused. Under an `open` or `requires-identity` registration policy a
+device of a licensed product can hold a token with no license behind it at all, and it still
+fetches config documents: there is no license to have lapsed. This is narrower than Core's
+`/devices` surfaces and the [edge-mint guard](/docs/services/config/edge-mint/), which on a
+licensed product require a usable license of every device.
 
 It is a `401`, like the one [`GET /<product>/license/document`](/docs/services/license/document/)
 answers for the same license, and not a `403`: a `403` on a document is the build gate's status,

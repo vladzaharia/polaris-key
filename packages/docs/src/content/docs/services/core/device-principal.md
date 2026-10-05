@@ -191,14 +191,18 @@ license.requireLicensedDevice          token -> device row, AND the license is u
 Every surface that was license-gated before still calls the second one, applying the usability
 check in exactly the position it used to occupy.
 
-Core's own surfaces, the config document and edge-mint take it **conditionally**: the license
-check applies if and only if the product runs the License service. On a config-only product the
-core-only answer is enough — that is the wire-level guarantee that Config works without License,
-and without it a config-only product's devices could fetch a signed config document but not
-rename the device that fetched it. The relaxation is scoped to the enablement flag, not to the
-presence of a license row, so on a licensed product an expired, revoked, or missing license is
-still a 401 — on the config document with the code `license_unusable`, so the document's secrets
-stop with the license.
+Core's own surfaces and edge-mint take it **conditionally**: the license check applies if and
+only if the product runs the License service. A config-only product's devices could otherwise
+fetch a signed config document but not rename the device that fetched it. The relaxation is
+scoped to the enablement flag, not to the presence of a license row, so a licensed product's
+behaviour is unchanged — an expired, revoked, or missing license is still a 401.
+
+`GET /<p>/config/document` is narrower still. On a config-only product the core-only answer is
+enough — that is the wire-level guarantee that Config works without License. On a licensed
+product it refuses only a device bound to a license that is no longer usable (disabled, expired,
+or deleted), with a 401 carrying the code `license_unusable`, so the document's secrets stop with
+the license; a keyless device registered under an `open` or `requires-identity` policy keeps
+fetching config documents.
 
 One more guard rides here: the KV hot record is back-filled only after every check has passed.
 Writing it as soon as the device row was found meant replaying a just-revoked token silently

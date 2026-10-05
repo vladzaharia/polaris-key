@@ -18,7 +18,8 @@ value still reaches a runtime — as a short-lived token instead of the value it
 
 A product that runs Config without License gets all of this. Every route below authenticates with
 nothing but a device token — no license anywhere in the picture (D-08). When the product does run
-License, the config document and edge-mint also require the device's license to be usable. See
+License, edge-mint requires a usable license, and the config document refuses a device bound to a
+license that is no longer usable. See
 [Core](/docs/services/core/) for the device principal, which exists either way, and
 [License](/docs/services/license/) for the service Config most often runs alongside.
 
@@ -51,7 +52,7 @@ is at [Public route table](/docs/reference/routes/).
 
 | Route                                  | Purpose                                                                         |
 | -------------------------------------- | ------------------------------------------------------------------------------- |
-| `GET /<product>/config/document`       | The signed config document. Device token; a usable license if License is on.    |
+| `GET /<product>/config/document`       | The signed config document. Device token; a bound license must still be usable. |
 | `GET /<product>/config/schema`         | The public catalog — the same JSON the admin catalog editor and every SDK read. |
 | `/<product>/config/mint/<id>/token`    | Mint a short-lived third-party token. Both `GET` and `POST` work.               |
 | `GET /<product>/config/mint/<id>/auth` | The recipe's operator-authored HTML auth page, if it declares one.              |
@@ -143,13 +144,13 @@ whole story.
 The two services sign structurally similar documents from the same merged payload, but they
 disagree on purpose everywhere it matters:
 
-|                                       | Config (`pkey-config+jws`)                                               | License (`pkey-license+jws`)                 |
-| ------------------------------------- | ------------------------------------------------------------------------ | -------------------------------------------- |
-| Auth                                  | Device token; a usable license if License is on (`401 license_unusable`) | Device token, and the license must be usable |
-| Carries                               | `schemaVersion`, `config`, `secrets`                                     | `licenseId`, `profile`, `entitlements`       |
-| Build gate                            | None                                                                     | Version/channel enforcement (D-20)           |
-| ETag                                  | Content-only, independent of License's                                   | Content-only, independent of Config's        |
-| Works with the other service disabled | Yes — this is D-08                                                       | Yes                                          |
+|                                       | Config (`pkey-config+jws`)                                                           | License (`pkey-license+jws`)                 |
+| ------------------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------- |
+| Auth                                  | Device token; a license it is bound to must still be usable (`401 license_unusable`) | Device token, and the license must be usable |
+| Carries                               | `schemaVersion`, `config`, `secrets`                                                 | `licenseId`, `profile`, `entitlements`       |
+| Build gate                            | None                                                                                 | Version/channel enforcement (D-20)           |
+| ETag                                  | Content-only, independent of License's                                               | Content-only, independent of Config's        |
+| Works with the other service disabled | Yes — this is D-08                                                                   | Yes                                          |
 
 Neither document references the other, and a client that wants both simply fetches both. See
 [The config document](/docs/services/config/document/) for the full shape.

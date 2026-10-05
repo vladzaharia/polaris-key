@@ -1553,9 +1553,11 @@ paths:
       description: >
         Device-token auth. A product with License OFF needs no license at all (D-08: a
         config-only product serves signed settings to any registered device); a product that
-        runs License also requires the device's license to be USABLE, and answers 401 with
-        code `license_unusable` when it is disabled, expired or gone (R1) — before the ETag
-        comparison, so such a device never gets a 304. A 401, not a 403, because a 403 on a
+        runs License refuses a device bound to a license that is no longer usable (disabled,
+        expired or gone) with 401 and code `license_unusable` (R1) — before the ETag
+        comparison, so such a device never gets a 304. A keyless device (registered under an
+        `open` or `requires-identity` policy, no license behind it) is still served. A 401, not
+        a 403, because a 403 on a
         document is the build gate's status: on a 401 a client makes its one re-acquire, which
         an unusable license also fails, and ends `revoked`. Carries catalog schemaVersion + config +
         secrets maps. No build gate. Strong per-doc ETag/304, independent of the license
@@ -1596,9 +1598,10 @@ paths:
         "401":
           description: >
             NESTED. `unauthorized`: the device token is missing or invalid. `license_unusable`:
-            the product runs License and the device's license is not usable (disabled, expired,
-            or no longer exists); never answered by a product with License off. Either way one
-            /license/token re-acquire then retry is the SDK convention.
+            the product runs License and the device is bound to a license that is no longer
+            usable (disabled, expired, or no longer exists); never answered to a keyless device
+            or by a product with License off. Either way one /license/token re-acquire then
+            retry is the SDK convention.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
