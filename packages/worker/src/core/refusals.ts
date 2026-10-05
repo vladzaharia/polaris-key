@@ -24,6 +24,7 @@
  */
 
 import type { Db } from "../db/types.js";
+import { randomId } from "../crypto.js";
 
 /** How long a refusal row is kept: 30 days. The facet looks back 7, the spike rate 7 + today. */
 export const REFUSAL_RETENTION_SECONDS = 30 * 24 * 60 * 60;
@@ -130,13 +131,14 @@ export async function recordRefusal(
     sanitizeRefusalLabel(device?.label) ?? fallbackRefusalLabel(input);
   const changed = await db.runChanges(
     `INSERT INTO license_refusals
-       (product, license_id, at, reason, device_label, device_hash)
-     SELECT ?, ?, ?, ?, ?, ?
+       (product, id, license_id, at, reason, device_label, device_hash)
+     SELECT ?, ?, ?, ?, ?, ?, ?
       WHERE NOT EXISTS (
         SELECT 1 FROM license_refusals
          WHERE product = ? AND license_id = ? AND device_hash = ? AND reason = ?
            AND at > ?)`,
     input.product,
+    randomId("ref"),
     input.licenseId,
     input.at,
     input.reason,
@@ -174,7 +176,7 @@ export async function logRefusal(
 // ── reads ────────────────────────────────────────────────────────────────────────────────
 
 export interface RefusalRow {
-  id: number;
+  id: string;
   license_id: string;
   at: number;
   reason: string;
@@ -193,7 +195,7 @@ export async function listRefusals(
       `SELECT id, license_id, at, reason, device_label, device_hash
          FROM license_refusals
         WHERE product = ? AND license_id = ? AND at >= ?
-        ORDER BY at DESC, id DESC
+        ORDER BY at DESC, rowid DESC
         LIMIT ?`,
       product,
       opts.licenseId,
@@ -205,7 +207,7 @@ export async function listRefusals(
     `SELECT id, license_id, at, reason, device_label, device_hash
        FROM license_refusals
       WHERE product = ? AND at >= ?
-      ORDER BY at DESC, id DESC
+      ORDER BY at DESC, rowid DESC
       LIMIT ?`,
     product,
     opts.since,

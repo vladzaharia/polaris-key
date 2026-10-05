@@ -6,7 +6,9 @@
 -- off the response path (`ServiceContext.waitUntil`) by `core/refusals.ts`, so a refused device
 -- never waits on this table and a failed write never changes the answer it gets.
 --
---   product       the product slug (every read and the prune name one product)
+--   product       the product slug (every read and the prune name one product); first in the
+--                 primary key, like every product-scoped table (R11-05)
+--   id            `ref_` and 12 random base64url characters
 --   license_id    the licence the activation was refused against
 --   at            epoch seconds
 --   reason        `device_limit` | `hardware_mismatch` | `fingerprint_required` |
@@ -34,13 +36,14 @@
 --   DROP TABLE license_refusals;
 
 CREATE TABLE IF NOT EXISTS license_refusals (
-  id           INTEGER PRIMARY KEY AUTOINCREMENT,
   product      TEXT NOT NULL REFERENCES products(slug),
+  id           TEXT NOT NULL,
   license_id   TEXT NOT NULL,
   at           INTEGER NOT NULL,
   reason       TEXT NOT NULL,
   device_label TEXT,
-  device_hash  TEXT NOT NULL
+  device_hash  TEXT NOT NULL,
+  PRIMARY KEY (product, id)
 );
 CREATE INDEX IF NOT EXISTS idx_license_refusals_product_at
   ON license_refusals(product, at);

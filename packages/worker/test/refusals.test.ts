@@ -62,7 +62,7 @@ interface Row {
 
 async function rows(db: Db): Promise<Row[]> {
   return db.all<Row>(
-    "SELECT product, license_id, at, reason, device_label, device_hash FROM license_refusals ORDER BY id",
+    "SELECT product, license_id, at, reason, device_label, device_hash FROM license_refusals ORDER BY rowid",
   );
 }
 
