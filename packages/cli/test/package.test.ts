@@ -226,6 +226,60 @@ describe("the package extractors (F-03, F-31)", () => {
     ).rejects.toThrow(/without the v/);
   });
 
+  // x/mod's isVendoredPackage follows the root go.mod's language version. The h1 values are
+  // golang.org/x/mod v0.35.0's own: zip.CreateFromDir over these trees, then dirhash.HashZip.
+  it("Go: vendoring rules follow the go directive, as x/mod zip does", async () => {
+    const extra = { "pkg/vendor/a.go": "package vendor\n" };
+    // Before go1.24: vendor/modules.txt stays, and the old offset bug leaves pkg/vendor/a.go out.
+    const old = await extractIn(
+      goModuleTree("1.22", extra),
+      "go.tool",
+      "0.2.0",
+    );
+    expect(old.metadata).toMatchObject({
+      h1: "h1:NdZ+UHSvct6ahfejYc0HS7aeMyAGyH1Eps5h8LNdSok=",
+      goModH1: "h1:N7KP1ihkDNQGM6OiSMO5ZsqQnfzINO2FODHVKGT2DKI=",
+      goVersion: "1.22",
+    });
+    // From go1.24: vendor/modules.txt is left out and pkg/vendor/a.go is kept.
+    const cur = await extractIn(
+      goModuleTree("1.24.0", extra),
+      "go.tool",
+      "0.2.0",
+    );
+    expect(cur.metadata).toMatchObject({
+      h1: "h1:WqUm0008Gh20vaJUYorJhkrLtDrghpJIgWYe98jEyUo=",
+      goModH1: "h1:PfZq3+tBvr9vF9YEvKClJKBQ6O5O9mPPmUkD4gRurVQ=",
+      goVersion: "1.24.0",
+    });
+
+    // A ready zip is checked by the same rules, read from its own go.mod.
+    const { zip } = await import("./packageFixtures.js");
+    const P = "go.acme.dev/sdk@v1.0.0/";
+    const zipOf = (go: string, files: Record<string, string>) => ({
+      "sdk-v1.0.0.zip": zip({
+        [`${P}go.mod`]: `module go.acme.dev/sdk\n\ngo ${go}\n`,
+        ...Object.fromEntries(
+          Object.entries(files).map(([k, v]) => [P + k, v]),
+        ),
+      }),
+    });
+    const modules = { "vendor/modules.txt": "# none\n" };
+    const nested = { "pkg/vendor/a.go": "package vendor\n" };
+    await expect(
+      extractIn(zipOf("1.22", modules), "go.sdk"),
+    ).resolves.toBeTruthy();
+    await expect(
+      extractIn(zipOf("1.24", nested), "go.sdk"),
+    ).resolves.toBeTruthy();
+    await expect(extractIn(zipOf("1.24", modules), "go.sdk")).rejects.toThrow(
+      /vendor\/modules\.txt is inside a vendored package/,
+    );
+    await expect(extractIn(zipOf("1.22", nested), "go.sdk")).rejects.toThrow(
+      /pkg\/vendor\/a\.go is inside a vendored package/,
+    );
+  });
+
   it("Go: refuses a zip of another module, a go.mod naming another module and a bad path", async () => {
     const { zip } = await import("./packageFixtures.js");
     const other = {

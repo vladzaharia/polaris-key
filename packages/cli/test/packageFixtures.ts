@@ -213,12 +213,16 @@ export function goModuleZip(version = "1.4.0"): Record<string, Uint8Array> {
 
 /**
  * A Go module's source tree (F-31), with what `CreateFromDir` leaves out: a VCS directory, a
- * nested module and a vendored package (but not vendor/modules.txt).
+ * nested module and a vendored package; vendor/modules.txt too from go 1.24 (x/mod zip).
  */
-export function goModuleTree(): Record<string, Uint8Array> {
+export function goModuleTree(
+  go = "1.23.0",
+  extra: Record<string, string> = {},
+): Record<string, Uint8Array> {
   const t = (s: string) => new TextEncoder().encode(s);
   return {
-    "go.mod": t("module go.acme.dev/tool // the tool\n\ngo 1.23.0\n"),
+    ...Object.fromEntries(Object.entries(extra).map(([k, v]) => [k, t(v)])),
+    "go.mod": t(`module go.acme.dev/tool // the tool\n\ngo ${go}\n`),
     "tool.go": t("package tool\n"),
     LICENSE: t("MIT\n"),
     "cmd/tool/main.go": t("package main\n\nfunc main() {}\n"),

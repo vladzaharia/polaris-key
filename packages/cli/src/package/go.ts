@@ -74,9 +74,13 @@ export function goModHash1(data: Uint8Array): string {
 export function parseGoMod(text: string): { module?: string; go?: string } {
   const out: { module?: string; go?: string } = {};
   for (const raw of text.split(/\r?\n/)) {
-    const line = raw.replace(/\/\/.*$/, "").trim();
-    const m = /^module\s+(?:"([^"]+)"|`([^`]+)`|(\S+))$/.exec(line);
+    // A quoted module path may itself hold `//`, so match it before stripping the comment.
+    const m =
+      /^module\s+(?:"([^"]+)"|`([^`]+)`|([^\s"`]+?))\s*(?:\/\/.*)?$/.exec(
+        raw.trim(),
+      );
     if (m && out.module === undefined) out.module = m[1] ?? m[2] ?? m[3];
+    const line = raw.replace(/\/\/.*$/, "").trim();
     const g = /^go\s+([0-9][0-9A-Za-z.]*)$/.exec(line);
     if (g && out.go === undefined) out.go = g[1];
   }
@@ -109,16 +113,36 @@ export function goFilePathProblem(rel: string): string | null {
   return null;
 }
 
-/** `isVendoredPackage`: a file inside a package under a vendor directory, never zipped. */
-export function goVendored(rel: string): boolean {
-  let rest: string;
-  if (rel.startsWith("vendor/")) rest = rel.slice("vendor/".length);
+/**
+ * Whether a go directive's language version (`version.Lang`) is at least go1.24. An absent or
+ * unreadable directive counts as older, as x/mod's `version.Compare("", "go1.24")` does.
+ */
+export function goLangAtLeast124(go: string | undefined): boolean {
+  const m = /^(\d+)(?:\.(\d+))?/.exec(go ?? "");
+  if (!m) return false;
+  const major = Number(m[1]);
+  const minor = Number(m[2] ?? "0");
+  return major > 1 || (major === 1 && minor >= 24);
+}
+
+/**
+ * `isVendoredPackage(name, vers)` from golang.org/x/mod/zip, never zipped. `go` is the root
+ * go.mod's go directive. From go1.24 `vendor/modules.txt` is left out too and a nested
+ * `/vendor/` is measured from its end; before go1.24 (or with no directive) `vendor/modules.txt`
+ * stays and a nested `/vendor/` keeps Go's old offset bug (golang.org/issue/37397: the rest is
+ * read from index 8, not after the match), which Go preserves so older checksums stay valid.
+ */
+export function goVendored(rel: string, go: string | undefined): boolean {
+  const lang124 = goLangAtLeast124(go);
+  if (lang124 && rel === "vendor/modules.txt") return true;
+  let i: number;
+  if (rel.startsWith("vendor/")) i = "vendor/".length;
   else {
     const j = rel.indexOf("/vendor/");
     if (j < 0) return false;
-    rest = rel.slice(j + "/vendor/".length);
+    i = lang124 ? j + "/vendor/".length : "/vendor/".length;
   }
-  return rest.includes("/");
+  return rel.slice(i).includes("/");
 }
 
 function isLicense(rel: string): boolean {
@@ -161,6 +185,11 @@ function checkModuleFiles(files: readonly { rel: string; size: number }[]) {
  */
 export async function goModuleFiles(root: string): Promise<string[]> {
   const out: string[] = [];
+  // x/mod reads the language version from the root go.mod only (`listFilesInDir`).
+  const rootMod = await readFile(path.join(root, "go.mod"), "utf8").catch(
+    () => null,
+  );
+  const go = rootMod === null ? undefined : parseGoMod(rootMod).go;
   async function walk(dir: string, rel: string): Promise<void> {
     const entries = await readdir(dir, { withFileTypes: true });
     entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
@@ -172,7 +201,7 @@ export async function goModuleFiles(root: string): Promise<string[]> {
         const nested = await lstat(path.join(full, "go.mod")).catch(() => null);
         if (nested?.isFile()) continue;
         await walk(full, r);
-      } else if (e.isFile() && !goVendored(r)) out.push(r);
+      } else if (e.isFile() && !goVendored(r, go)) out.push(r);
     }
   }
   await walk(root, "");
@@ -220,6 +249,11 @@ async function readModuleZip(
     const prefix = `${module}@${goVersion}/`;
     const files: GoZipFile[] = [];
     const rels: { rel: string; size: number }[] = [];
+    // As x/mod's `checkFiles`: the vendoring rules follow the zip's root go.mod go directive.
+    const rootModEntry = z.entries.find((e) => e.name === `${prefix}go.mod`);
+    const go = rootModEntry
+      ? parseGoMod(Buffer.from(await z.read(rootModEntry)).toString("utf8")).go
+      : undefined;
     for (const e of z.entries) {
       if (!e.name.startsWith(prefix))
         throw new PackageExtractError(
@@ -230,7 +264,7 @@ async function readModuleZip(
           `${zipName}: ${e.name} is a directory entry; a module zip holds files only.`,
         );
       const rel = e.name.slice(prefix.length);
-      if (goVendored(rel))
+      if (goVendored(rel, go))
         throw new PackageExtractError(
           `${zipName}: ${rel} is inside a vendored package, which a module zip never holds.`,
         );
