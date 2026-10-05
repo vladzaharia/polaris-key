@@ -177,6 +177,14 @@ class DevicesClient:
         self._caps = caps
         #: The active pack set's id for the report's ``content`` (P4-07), set by the facade.
         self.pack_set_id: Callable[[], Optional[str]] = lambda: None
+        #: The report's ``gate``, ``outlet`` and ``packInstalls`` sources, set by the facade
+        #: (SDK parity pass §3.13). ``None`` leaves the key out.
+        self.gate_status: Optional[Callable[[], Optional[str]]] = None
+        self.outlet_id: Optional[Callable[[], Optional[str]]] = None
+        self.pack_installs: Optional[Callable[[], List[Dict[str, Any]]]] = None
+        #: The update-health journal whose pending events ride ``updates``; the events a
+        #: report the Worker accepted carried are marked sent.
+        self.journal: Any = None
         self._ctx = ctx
         self._cache = cache
         self._tokens = tokens
@@ -313,8 +321,26 @@ class DevicesClient:
         token = self._tokens.current
         if not token:
             return False
-        return report_snapshot(
-            self._ctx, token, build_snapshot(self._cache, self._probes, self._caps, self.pack_set_id)
+        journal = self.journal
+        snapshot = self.snapshot()
+        ok = report_snapshot(self._ctx, token, snapshot)
+        carried = snapshot.get("updates")
+        if ok and journal is not None and isinstance(carried, list):
+            journal.mark_sent([e.get("eventId") for e in carried if isinstance(e, dict)])
+        return ok
+
+    def snapshot(self) -> Dict[str, Any]:
+        """The body :meth:`report` sends, without sending it (for diagnostics and tests)."""
+        journal = self.journal
+        return build_snapshot(
+            self._cache,
+            self._probes,
+            self._caps,
+            self.pack_set_id,
+            gate=self.gate_status,
+            outlet=self.outlet_id,
+            updates=journal.pending if journal is not None else None,
+            pack_installs=self.pack_installs,
         )
 
     def _require_token(self) -> str:

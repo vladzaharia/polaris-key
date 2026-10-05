@@ -50,7 +50,7 @@ from .core.models import (
 )
 from .core.store import Store, StoreStatus
 from .core.sync import SyncDeps, SyncResult, sync as run_sync
-from .core.telemetry import build_snapshot, report_snapshot
+from .core.update_journal import UpdateJournal
 from .core.token import (
     Reacquired,
     TokenManager,
@@ -237,6 +237,17 @@ class PolarisKeyClient:
         # `devices/report` carries the active pack set's id (plans/P4-01.md §2.11).
         self.devices.pack_set_id = self.update.packs.pack_set_id
 
+        # The update-health journal (P6-03; SDK parity pass §3.13): decide, packs, the boot
+        # guard and the install drivers record into it, and every device report carries its
+        # pending events in `updates`, with `gate`, `outlet` and `packInstalls` beside them.
+        self.update_journal = UpdateJournal(self.core.local_state_dir(), self._journal_context)
+        self.update.journal = self.update_journal
+        self.update.packs.journal = self.update_journal
+        self.devices.journal = self.update_journal
+        self.devices.gate_status = lambda: self.license.status().status
+        self.devices.outlet_id = self.outlet_id
+        self.devices.pack_installs = self.update.packs.pack_installs
+
         self._discovery_doc: Optional[Dict[str, Any]] = None
         # The detectors behind the table's conditional N/As (P1b-10). Checked against the
         # generated table here, so a manifest that gains or loses one fails loudly.
@@ -407,14 +418,29 @@ class PolarisKeyClient:
         return result
 
     def _report_once(self) -> None:
-        token = self._tokens.current
-        if not token:
+        if not self._tokens.current:
             return
-        report_snapshot(
-            self.core,
-            token,
-            build_snapshot(self._cache, self._probes, self.caps, self.update.packs.pack_set_id),
-        )
+        self.devices.report()
+
+    def outlet_id(self) -> Optional[str]:
+        """The outlet this install resolved (``client.update.outlet``: its id, else its kind),
+        or ``None`` without update options or when it is ``unknown``. Sent as the report's
+        ``outlet`` and stamped on every update-health event."""
+        try:
+            resolved = self.update.outlet
+        except Exception:
+            return None
+        if resolved is None:
+            return None
+        value = resolved.id or resolved.kind
+        return value if isinstance(value, str) and value and value != "unknown" else None
+
+    def _journal_context(self) -> Dict[str, Optional[str]]:
+        return {
+            "outlet": self.outlet_id(),
+            "channel": self.core.channel,
+            "release": self.core.version,
+        }
 
     def _on_license_acquired(self) -> None:
         self.sync(force=True)

@@ -390,6 +390,9 @@ class UpdateClient:
         )
         #: The v4 calls run one at a time: each is a read-modify-write of the cache slices.
         self._lock = threading.RLock()
+        #: The update-health journal (SDK parity pass §3.13), set by the facade: a decision
+        #: offering a newer build records ``update_offered`` once per release.
+        self.journal: Any = None
         #: plans/P4-29.md §2.4 step 1: the delta menu of the most recently committed feed, fresh
         #: or stale (``_UNSET`` until a check ran or the cache was read).
         self._feed_menu: Any = _UNSET
@@ -563,7 +566,24 @@ class UpdateClient:
             self._feed_menu = r.content.deltas if r.content is not None else None
             if r.revocations is not None:
                 self.packs.record_revocations(r.revocations)
+            self._journal_offer(r.check)
             return r.check
+
+    def _journal_offer(self, check: UpdateCheck) -> None:
+        """``update_offered`` for a decision that offers a newer app build (``binary``,
+        ``code-ready``, ``store`` or ``platform`` with a release), once per release."""
+        journal = self.journal
+        d = check.decision
+        if journal is None or d.release is None:
+            return
+        if d.action not in ("binary", "code-ready", "store", "platform"):
+            return
+        try:
+            journal.offered(
+                d.release.version, from_release=self._ctx.version, channel=check.channel
+            )
+        except Exception:
+            pass  # telemetry never fails a decision
 
     def feed(self, *, channel: Optional[str] = None) -> FeedCheck:
         """The verified feed ``decide()`` would decide from (§2.5 steps 1–10), without the
