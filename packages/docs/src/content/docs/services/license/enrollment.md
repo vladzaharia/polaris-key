@@ -223,13 +223,21 @@ across the claim and asserts `enroll_hwid` is still set.
 
 The user already signed in on another machine, so a license for this `sub` exists:
 
-- The enrolled row's devices are **moved** onto the identity's license.
+- The enrolled row's devices are **moved** onto the identity's license, seat-checked: each
+  authorized device takes a free seat there, and the migrate is refused (`device-limit`) when
+  they would not fit the device limit the identity's license carries after the sign-in.
+- The enrolled row's **store purchases follow** (the grants, the purchase records), and its
+  purchase binding keeps resolving to the identity's license, so a restore made under it later
+  still lands there.
 - The enrolled row is set `status = 'disabled'`, keeping its `enroll_hwid`.
 - Audit: `license.merge` against the identity's license, with the enrolled row as parent.
 
-The result carries `merged: "migrated"`. The user keeps their machines but ends up on the license
-that already holds their entitlements. `test/enroll.test.ts` pins the device landing on the
-identity license, the enrolled row ending `disabled`, and its `enroll_hwid` surviving.
+All of that is one batch: either everything moves or nothing does. The result carries
+`merged: "migrated"`. The user keeps their machines and purchases but ends up on the license that
+already holds their entitlements. `test/enroll.test.ts` pins the device landing on the identity
+license with a seat, the enrolled row ending `disabled`, its `enroll_hwid` surviving, the
+purchases following, and a refused migrate moving nothing; `test/licenseMerge.test.ts` pins a
+restore under the old binding reaching the identity's license.
 
 :::note[Why the retired row keeps its key]
 The unique index is the only guard on "one free license per machine". If a migrate released the

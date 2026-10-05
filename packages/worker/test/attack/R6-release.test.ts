@@ -52,6 +52,7 @@ import {
   getOrCreateAccountByEmail,
   syncAccountLicenseLinks,
 } from "../../src/services/identity/portal/repo.js";
+import { HEAD_SHA, withDefaultHead } from "../githubHead.js";
 
 // ── Shared harness ───────────────────────────────────────────────────────────
 
@@ -209,7 +210,7 @@ function stubFetch(routes: Array<[string, () => Response]>): {
     }
     return new Response("not found", { status: 404 });
   };
-  return { fetchImpl, calls };
+  return { fetchImpl: withDefaultHead(fetchImpl), calls };
 }
 
 function req(url = "https://key.plrs.im/djdl/version"): Request {
@@ -249,7 +250,7 @@ function pkeyFetch(files: Record<string, string>): {
     }
     return new Response("not found", { status: 404 });
   };
-  return { fetchImpl, calls, files };
+  return { fetchImpl: withDefaultHead(fetchImpl), calls, files };
 }
 
 const SCHEMA_JSON = JSON.stringify({
@@ -967,9 +968,9 @@ describe("R6-06 aarch64 / amd64 route aliases raise an unhandled TypeError", () 
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe("R6-07 webhook resync trusts payload-supplied ref and has no replay protection", () => {
-  // FIXED (R6-05): `resyncRepo` takes no ref at all — the Contents API resolves the
-  // DB-configured repo's own default branch, so nothing in the payload steers which
-  // commit's `.pkey/` is applied.
+  // FIXED (R6-05): `resyncRepo` takes no ref at all — GitHub resolves the DB-configured repo's
+  // own default-branch head (`commits/HEAD`), and every document is read at THAT sha (ST-01a), so
+  // nothing in the payload steers which commit's `.pkey/` is applied.
   it("payload.after is passed straight through to ?ref= (any branch / PR head / old sha)", async () => {
     const db = makeTestDb();
     const env = envFor();
@@ -1000,7 +1001,9 @@ describe("R6-07 webhook resync trusts payload-supplied ref and has no replay pro
     expect(res.status).toBe(200);
     const contents = stub.calls.filter((c) => c.url.includes("/contents/"));
     expect(contents.length).toBeGreaterThan(0);
-    expect(contents.every((c) => !c.url.includes("ref="))).toBe(true);
+    expect(contents.every((c) => c.url.endsWith(`?ref=${HEAD_SHA}`))).toBe(
+      true,
+    );
     expect(contents.every((c) => !c.url.includes("pull"))).toBe(true);
   });
 

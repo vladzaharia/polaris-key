@@ -31,6 +31,7 @@ import {
   listReleaseMetadata,
 } from "../src/services/release/store.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
+import { withDefaultHead } from "./githubHead.js";
 
 const SLUG = "djdl";
 const OWNER = "acme";
@@ -133,7 +134,7 @@ function github(state: { releases: Release[] }): {
     }
     return new Response("nf", { status: 404 });
   };
-  return { fetchImpl, calls };
+  return { fetchImpl: withDefaultHead(fetchImpl), calls };
 }
 
 function hex(bytes: Uint8Array): string {

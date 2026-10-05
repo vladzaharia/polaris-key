@@ -95,6 +95,25 @@ const ROUTES: Record<string, unknown> = {
     bindings: { DB: true, HOT: true },
   },
   "/manage/api/platform/activity": { items: [], nextCursor: null },
+  "/manage/api/platform/reserved-names": {
+    mode: "warn",
+    keys: [
+      {
+        key: "deviceLimit",
+        type: "integer",
+        rule: "The tier's device limit, else the license's, else the product default.",
+      },
+    ],
+    prefixes: ["license.", "app.", "pkey."],
+    products: [
+      {
+        slug: "djdl",
+        name: "djdl",
+        catalogVersion: 1,
+        declarations: [{ key: "deviceLimit", compatible: true, problem: null }],
+      },
+    ],
+  },
   "/manage/api/platform/settings": {
     settings: [
       {
@@ -133,6 +152,27 @@ const ROUTES: Record<string, unknown> = {
         stored: null,
         version: 0,
         confirm: { raise: "L0", lower: "L1" },
+      },
+      {
+        key: "LICENSING_RESERVED_NAMES",
+        area: "licensing",
+        label: "Reserved entitlement names",
+        description: "Incompatible reserved-name declarations.",
+        kind: "choice",
+        options: [
+          { value: "warn", label: "Warn" },
+          { value: "error", label: "Refuse" },
+        ],
+        scripts: ["main"],
+        precedence: "runtime",
+        default: "warn",
+        deployValue: null,
+        value: "warn",
+        source: "default",
+        forcedOff: false,
+        stored: null,
+        version: 0,
+        confirm: { warn: "L0", error: "L1" },
       },
     ],
     storeAvailable: true,
