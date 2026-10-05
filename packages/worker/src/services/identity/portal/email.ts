@@ -208,6 +208,71 @@ export async function sendMagicLink(
 }
 
 /**
+ * The login card's sign-in email (I-07): one message carrying the 6-digit code and, for a card
+ * sign-in, the magic link, so the person can type the code on the device that asked or open the
+ * link (which confirms that device's sign-in from wherever it is opened). The gate's
+ * confirmation mail carries the code only (`link: null`).
+ *
+ * Answers `"sent"` for a delivered OR suppressed recipient (enumeration safety: a suppressed
+ * address must look exactly like a sent one) and `"unavailable"` only when mail cannot leave at
+ * all (`email_unavailable`).
+ */
+export async function sendSignInEmail(
+  env: Env,
+  db: Db,
+  to: string,
+  content: {
+    code: string;
+    link: string | null;
+    purpose: "signin" | "confirm";
+  },
+  now: number,
+): Promise<"sent" | "unavailable"> {
+  const spaced = `${content.code.slice(0, 3)} ${content.code.slice(3)}`;
+  const confirm = content.purpose === "confirm";
+  const subject = confirm
+    ? "Confirm your email for Polaris Key"
+    : "Sign in to Polaris Key";
+  const lines = [
+    confirm
+      ? `Your confirmation code is ${spaced}. It works once and expires in 10 minutes.`
+      : `Your sign-in code is ${spaced}. It works once and expires in 10 minutes.`,
+  ];
+  if (content.link) {
+    lines.push(
+      "Or use the button to sign in. Opened on another device, it confirms the sign-in you started.",
+    );
+  }
+  const footer =
+    "If you did not ask for this, you can ignore this email. Nothing changes until it is used.";
+  const result = await deliverEmail(
+    env,
+    db,
+    {
+      sender: { kind: "platform" },
+      to,
+      subject,
+      text:
+        lines.join("\n\n") +
+        (content.link ? `\n\n${content.link}` : "") +
+        `\n\n${footer}`,
+      html: renderEmail({
+        subject,
+        heading: confirm ? "Confirm your email" : "Sign in to Polaris Key",
+        paragraphs: lines,
+        ...(content.link
+          ? { action: { label: "Sign in", url: content.link } }
+          : {}),
+        footer,
+        origin: emailAssetOrigin(content.link, env.CONSOLE_ORIGIN),
+      }),
+    },
+    now,
+  );
+  return result.ok || result.reason === "suppressed" ? "sent" : "unavailable";
+}
+
+/**
  * One notice to one address, through Core's send choke point (`deliverEmail`). No binding or no
  * address: nothing is sent. True only when it went out; an unavailable or suppressed recipient
  * answers false, and nothing here throws on a provider error.

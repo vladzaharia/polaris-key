@@ -217,6 +217,10 @@ PLATFORM_REPOSITORY_OWNER_ID = "79390"
 # I-18: the deploy-wide daily cap on one product's passthrough mail (default 500 in code; a
 # product's email_product_caps row wins).
 # EMAIL_PRODUCT_DAILY_CAP = "500"
+# I-07: Cloudflare Turnstile on the login card's email start. The site key is public; set it
+# here per environment and the secret with `wrangler secret put TURNSTILE_SECRET_KEY --env <env>`
+# (RUNBOOK "Login card"). Without the secret the card asks for no token.
+# TURNSTILE_SITE_KEY = "0x4AAAAAAA…"
 # I-18: sign-in and account mail. The binding may send only from these addresses: today's
 # noreply@plrs.im, and the auth sending subdomain's noreply@auth.plrs.im, which the Worker uses
 # once EMAIL_SENDER_ADDRESS above names it (RUNBOOK "Sign-in email").
@@ -387,6 +391,8 @@ PKEY_ENVIRONMENT = "test"
 #   PLATFORM_OIDC_ISSUER, PLATFORM_OIDC_CLIENT_ID, PLATFORM_OIDC_CLIENT_SECRET.
 # Optional portal-specific secret:
 #   PORTAL_SESSION_SECRET (falls back to ADMIN_SESSION_SECRET when omitted).
+# Login card (I-07): TURNSTILE_SECRET_KEY, with the TURNSTILE_SITE_KEY var above. Copied
+#   avatars live in the BLOBS bucket under the `avatars/` prefix (no extra binding).
 # Console's own Pocket ID client (I-03; set all three in ONE `wrangler secret bulk`):
 #   ADMIN_OIDC_ISSUER, ADMIN_OIDC_CLIENT_ID, ADMIN_OIDC_CLIENT_SECRET. Until they are set the
 #   console signs in through PLATFORM_OIDC_*; the portal never reads them.

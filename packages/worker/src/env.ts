@@ -239,6 +239,15 @@ export interface Env {
    *  secret: a var or a secret. A console value (Platform → Store connections) wins over it. */
   PLATFORM_APPLE_TEAM_ID?: string;
   EMAIL?: SendEmail;
+  /**
+   * I-07 — Cloudflare Turnstile on the login card's email start (S-16 §5.4 item 4). The site key
+   * is public (a var; the portal reads it from `/api/capabilities`), the secret key is a secret
+   * (`wrangler secret put TURNSTILE_SECRET_KEY --env prod`). With no secret configured the
+   * Worker does not ask for a token (local development and tests); production sets both
+   * (RUNBOOK "Login card").
+   */
+  TURNSTILE_SITE_KEY?: string;
+  TURNSTILE_SECRET_KEY?: string;
 
   // additional platform secrets/vars resolved by name
   [key: string]: unknown;

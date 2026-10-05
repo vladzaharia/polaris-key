@@ -3,8 +3,9 @@
  *
  * ── WHY THE ROUTES DID NOT MOVE WITH THE FILES ──────────────────────────────────────────────
  *
- * `/login`, `/callback`, `/logout`, `/magic/verify`, `/api/*`, `/download/<token>` and
- * `/media/<product>/<asset>` (PX-W1) are ROOT
+ * `/login`, `/callback`, `/logout`, `/magic/verify`, `/api/*` (the login card's `/api/signin/*`
+ * among them, I-07), `/download/<token>`, `/media/<product>/<asset>` (PX-W1) and
+ * `/media/avatar/<key>` (I-07) are ROOT
  * paths, reserved ahead of every product slug by `router.ts`. They stay exactly where they
  * were, and they must: the portal is one account across every tenant on the deployment — an
  * account can hold licences for several products at once — so there is no `<product>` to scope
@@ -32,6 +33,7 @@ import {
 } from "./api.js";
 import { portalSecurityHeaders } from "./headers.js";
 import { handlePortalMedia } from "./media.js";
+import { serveAvatar } from "../card/avatars.js";
 
 function portalShell(): Response {
   return new Response(
@@ -88,13 +90,17 @@ export async function handlePortal(
 
   if (clean === "/login") return handlePortalLogin(req, env, db);
   if (clean === "/callback") return handlePortalCallback(req, env, db, now);
-  if (clean === "/logout") return handlePortalLogout(req);
+  if (clean === "/logout") return handlePortalLogout(req, env, db, now);
   if (clean === "/magic/verify") return handleMagicVerify(req, env, db, now);
   if (clean === "/api" || clean.startsWith("/api/")) {
     return handlePortalApi(req, env, db, clean, now, opts.hooksFor);
   }
   // PX-W1: the same-origin media proxy (`media.ts`): `/media/<product>/<asset>`, public. Every
   // other path under `/media` is its not-found, never the SPA shell.
+  // I-07: copied provider avatars, `/media/avatar/<key>` (`avatar` is a reserved product slug,
+  // so this never shadows a product's art).
+  const avatar = clean.match(/^\/media\/avatar\/([^/]+)$/);
+  if (avatar) return serveAvatar(req, env, avatar[1] ?? "");
   if (clean === "/media" || clean.startsWith("/media/")) {
     const media = clean.match(/^\/media\/([^/]+)\/([^/]+)$/);
     return handlePortalMedia(

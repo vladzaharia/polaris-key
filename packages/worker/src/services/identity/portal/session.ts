@@ -1,4 +1,5 @@
 import type { Env } from "../../../core/platform.js";
+import { ACCOUNT_SESSION_COOKIE } from "../../../core/accountCookies.js";
 
 /**
  * `__Host-` prefixed for the same reason as the admin cookie (R1-08): it is the only way to
@@ -6,10 +7,10 @@ import type { Env } from "../../../core/platform.js";
  * §5.4 orders ahead of the real one. The portal cookie is already `Path=/` with no `Domain`,
  * so the prefix costs nothing here beyond invalidating sessions issued before the deploy.
  */
-export const PORTAL_COOKIE = "__Host-pkey_portal";
+export const PORTAL_COOKIE = ACCOUNT_SESSION_COOKIE;
 export const PORTAL_CSRF_HEADER = "X-PKey-Portal-CSRF";
 
-const SESSION_TTL_SECONDS = 14 * 24 * 60 * 60;
+export const SESSION_TTL_SECONDS = 14 * 24 * 60 * 60;
 
 export interface PortalSession {
   accountId: string;
@@ -20,12 +21,19 @@ export interface PortalSession {
   /** When the person signed in (unix seconds). Absent on sessions issued before PX-W5; see
    *  `portalSessionAuthenticatedAt`, which derives it from `exp` for those. */
   iat?: number;
+  /** I-07: the server-side session (`account_sessions`) this cookie names, by a random id whose
+   *  peppered hash is the row's key. A cookie without one, or whose row is revoked, expired or
+   *  gone, is refused by the portal (`accountSessions.ts`), which is what makes a session
+   *  revocable and "sign out everywhere" real. */
+  sid?: string;
 }
 
 export interface PortalSessionIdentity {
   accountId: string;
   name?: string | null;
   email?: string | null;
+  /** The server-side session id (`startAccountSession` mints it). */
+  sid?: string;
 }
 
 function base64UrlEncode(bytes: Uint8Array): string {
@@ -112,6 +120,7 @@ export async function issuePortalSession(
     csrf: randomToken(16),
     exp: now + SESSION_TTL_SECONDS,
     iat: now,
+    ...(identity.sid ? { sid: identity.sid } : {}),
   };
   const body = base64UrlEncodeString(JSON.stringify(session));
   const key = await sessionKey(env);
