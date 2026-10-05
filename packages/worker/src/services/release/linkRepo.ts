@@ -58,6 +58,7 @@ import type { ManifestIngest } from "../../core/registry.js";
 import { serializeWebOrigins } from "../../core/cors.js";
 import { stmtUpsertManifestPublisher } from "../../core/publisher.js";
 import { manifestSnapshotStatement } from "../../core/manifestSnapshot.js";
+import { reservedNamesMode } from "../../core/reservedNames.js";
 
 export type LinkRepoResult =
   | {
@@ -206,7 +207,9 @@ export async function linkRepo(
     };
   }
 
-  const result = parseManifest(files);
+  const result = parseManifest(files, {
+    reservedNames: await reservedNamesMode(env, db),
+  });
   if (!result.ok)
     return {
       ok: false,

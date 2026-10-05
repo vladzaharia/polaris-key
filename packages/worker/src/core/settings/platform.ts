@@ -2,10 +2,11 @@
  * The platform slice (ST-03, notes/S-18 §4.2 and Appendix A.1): instance-wide settings, and the
  * platform defaults and bounds that product settings of the same key inherit (`productLink`).
  *
- * A-13's four editable keys live here now, under their registry keys, with their old
- * SCREAMING_CASE names as aliases (S-18 §4.1). Their `platform_settings` rows keep the old names
- * (`storage.storedAs`), so no migration rewrites them and the A-13 store and admin route
- * (`core/platformSettings.ts`, which derives `PLATFORM_SETTINGS` from this slice) are unchanged.
+ * A-13's four editable keys (and LX-05's `licensing.reservedNames`) live here now, under their
+ * registry keys, with their old SCREAMING_CASE names as aliases (S-18 §4.1). Their
+ * `platform_settings` rows keep the old names (`storage.storedAs`), so no migration rewrites them
+ * and the A-13 store and admin route (`core/platformSettings.ts`, which derives `PLATFORM_SETTINGS`
+ * from this slice) are unchanged.
  *
  * Everything here is reviewed against AT-2 (THREAT-MODEL "Platform settings and operations"):
  * `rules.ts` refuses an origin, the privilege root, the admin IdP, a security gate, key
@@ -13,6 +14,7 @@
  * Adding an entry is a THREAT-MODEL §9 review trigger.
  */
 
+import { DEFAULT_RESERVED_NAMES_MODE } from "@polaris-key/manifest";
 import { setting } from "./define.js";
 import type { SettingDef } from "./types.js";
 
@@ -140,6 +142,37 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     readers: ["core/blobGc.ts"],
     storage: { kind: "scalar", storedAs: "BLOB_GC_GRACE_DAYS" },
     since: "A-13",
+  }),
+
+  // ── Licensing (LX-05, S-19 §7.4, decision 15) ───────────────────────────────────────────
+  // How an incompatible declaration of a reserved entitlement name (`channels`, `deviceLimit`,
+  // `app.*`, `license.*`, `pkey.*`) is treated at manifest ingest and on console catalog writes.
+  // `warn` for the window (two minor releases or 60 days, whichever is later); LX-05b flips the
+  // default to `error`. Neither value changes what a device is signed: the Worker's policy
+  // injection still overwrites every system key after the merge. Platform-only (no productLink).
+  setting({
+    key: "licensing.reservedNames",
+    aliases: ["LICENSING_RESERVED_NAMES"],
+    scope: "platform",
+    service: "platform",
+    area: "licensing",
+    label: "Reserved entitlement names",
+    description:
+      "How a product catalog flag that declares a system key (channels, deviceLimit, app.*, license.*, pkey.*) with an incompatible type is treated: warn and accept it, or refuse the manifest or catalog.",
+    keywords: ["reserved", "entitlement", "system key", "catalog"],
+    docs: PLATFORM_DOCS,
+    // Ordered: `up` is toward `error`. Refusing can stop a product's next resync, so it is
+    // confirmed; relaxing is not.
+    value: { kind: "enum", values: ["warn", "error"] },
+    defaultValue: DEFAULT_RESERVED_NAMES_MODE,
+    merge: "cascade",
+    varName: "LICENSING_RESERVED_NAMES",
+    precedence: "runtime",
+    ownership: "operator",
+    confirm: { up: "L1", down: "L0" },
+    readers: ["core/reservedNames.ts"],
+    storage: { kind: "scalar", storedAs: "LICENSING_RESERVED_NAMES" },
+    since: "LX-05",
   }),
 
   // ── Identity (registered for I-09 and I-10a; I-04 §7 step 3, S-18 §5.5) ────────────────

@@ -483,7 +483,7 @@
       "kind": "flag",
       "category": "Compatibility",
       "label": "Device limit",
-      "description": "Maximum concurrently-authorized devices. Absent => the tier or product default; 0 => no new device can activate.",
+      "description": "Maximum concurrently-authorized devices. Absent => the tier's limit, else the product default; 0 refuses every new activation (it does not mean unlimited).",
       "schema": {
         "type": "integer",
         "minimum": 0,

@@ -32,6 +32,7 @@
  * Product-less, Core-owned, no outbound call.
  */
 
+import type { ReservedNamesMode } from "@polaris-key/manifest";
 import type { Db, DbStatement } from "../db/types.js";
 import { PLATFORM_SLICE } from "./settings/platform.js";
 import type { SettingDef } from "./settings/types.js";
@@ -48,7 +49,8 @@ export type PlatformSettingKey =
   | "LAZY_DELTAS"
   | "LAZY_DELTA_MAX_BYTES"
   | "BLOB_GC_MODE"
-  | "BLOB_GC_GRACE_DAYS";
+  | "BLOB_GC_GRACE_DAYS"
+  | "LICENSING_RESERVED_NAMES";
 
 /** The typed value each setting resolves to. */
 export interface PlatformSettingValues {
@@ -56,6 +58,7 @@ export interface PlatformSettingValues {
   LAZY_DELTA_MAX_BYTES: number;
   BLOB_GC_MODE: "on" | "off";
   BLOB_GC_GRACE_DAYS: number;
+  LICENSING_RESERVED_NAMES: ReservedNamesMode;
 }
 
 export type Precedence = "runtime" | "ceiling";
@@ -69,7 +72,7 @@ interface BaseDef {
   key: PlatformSettingKey;
   /** The settings-registry key this entry is derived from (ST-03), e.g. `deltas.lazy.mode`. */
   registryKey: string;
-  area: "background-jobs";
+  area: "background-jobs" | "licensing";
   label: string;
   description: string;
   /** The `[vars]` name read as the deploy-time value (the same name as the key today). */
@@ -100,7 +103,19 @@ export interface IntegerSettingDef extends BaseDef {
   confirm: { raise: ConfirmLevel; lower: ConfirmLevel };
 }
 
-export type PlatformSettingDef = SwitchSettingDef | IntegerSettingDef;
+/** One of a short, fixed list of string values (a segmented control in the console). */
+export interface ChoiceSettingDef extends BaseDef {
+  kind: "choice";
+  options: readonly { value: string; label: string }[];
+  defaultValue: string;
+  /** Confirm level for changing TO each value. */
+  confirm: Readonly<Record<string, ConfirmLevel>>;
+}
+
+export type PlatformSettingDef =
+  | SwitchSettingDef
+  | IntegerSettingDef
+  | ChoiceSettingDef;
 
 function positiveInteger(raw: string): number | undefined {
   const n = Number(raw.trim());
@@ -119,6 +134,11 @@ const VAR_PARSERS: Record<string, (raw: string) => number | undefined> = {
   },
 };
 
+/** Each A-13 choice key's option labels, in the registry's enum order (LX-05). */
+const CHOICE_LABELS: Record<string, Readonly<Record<string, string>>> = {
+  LICENSING_RESERVED_NAMES: { warn: "Warn", error: "Refuse" },
+};
+
 /** The A-13 store's view of one settings-registry entry (`core/settings/platform.ts`). */
 function fromRegistry(def: SettingDef): PlatformSettingDef {
   const storedAs =
@@ -127,13 +147,13 @@ function fromRegistry(def: SettingDef): PlatformSettingDef {
     !storedAs ||
     !def.varName ||
     !def.precedence ||
-    def.area !== "background-jobs"
+    (def.area !== "background-jobs" && def.area !== "licensing")
   )
     throw new Error(`${def.key} is not an A-13 store entry`);
   const base = {
     key: storedAs as PlatformSettingKey,
     registryKey: def.key,
-    area: "background-jobs" as const,
+    area: def.area as "background-jobs" | "licensing",
     label: def.label,
     description: def.description,
     varName: def.varName,
@@ -163,6 +183,25 @@ function fromRegistry(def: SettingDef): PlatformSettingDef {
       max: def.value.max,
       parseVar,
       confirm: { raise: def.confirm.up, lower: def.confirm.down },
+    };
+  }
+  if (def.value.kind === "enum" && "up" in def.confirm) {
+    const labels = CHOICE_LABELS[storedAs];
+    if (!labels) throw new Error(`${storedAs} has no option labels`);
+    // An ordered enum: `up` confirms a change toward the last value, `down` toward the first.
+    const values = def.value.values;
+    const { up, down } = def.confirm;
+    return {
+      ...base,
+      kind: "choice",
+      options: values.map((value) => ({
+        value,
+        label: labels[value] ?? value,
+      })),
+      defaultValue: def.defaultValue as string,
+      confirm: Object.fromEntries(
+        values.map((v, i) => [v, i === 0 ? down : up]),
+      ),
     };
   }
   throw new Error(`${def.key} has a value kind the A-13 store cannot hold`);
@@ -197,6 +236,12 @@ function parseSwitch(raw: string): "on" | "off" | undefined {
   return v === "on" || v === "off" ? v : undefined;
 }
 
+function isChoice(def: ChoiceSettingDef, value: unknown): value is string {
+  return (
+    typeof value === "string" && def.options.some((o) => o.value === value)
+  );
+}
+
 /** Validates a stored or submitted value against the entry; `undefined` when it is not valid. */
 export function validateSettingValue(
   def: PlatformSettingDef,
@@ -204,6 +249,7 @@ export function validateSettingValue(
 ): string | number | undefined {
   if (def.kind === "switch")
     return value === "on" || value === "off" ? value : undefined;
+  if (def.kind === "choice") return isChoice(def, value) ? value : undefined;
   return typeof value === "number" &&
     Number.isSafeInteger(value) &&
     value >= def.min &&
@@ -217,6 +263,10 @@ function parseVarValue(
   raw: unknown,
 ): string | number | undefined {
   if (typeof raw !== "string") return undefined;
+  if (def.kind === "choice") {
+    const v = raw.trim().toLowerCase();
+    return isChoice(def, v) ? v : undefined;
+  }
   return def.kind === "switch" ? parseSwitch(raw) : def.parseVar(raw);
 }
 
@@ -229,6 +279,7 @@ export function settingConfirmLevel(
   if (before === after) return "L0";
   if (def.kind === "switch")
     return after === "on" ? def.confirm.on : def.confirm.off;
+  if (def.kind === "choice") return def.confirm[String(after)] ?? "L1";
   return Number(after) > Number(before) ? def.confirm.raise : def.confirm.lower;
 }
 

@@ -1,12 +1,15 @@
 /**
  * Platform → Settings (notes/S-13 §9.1, chunk 4P-1; T4). The instance-wide settings page:
  *
- * - **Background jobs**: the four runtime-editable settings of the A-13 registry (`LAZY_DELTAS`,
+ * - **Background jobs**: the four background-job settings of the A-13 registry (`LAZY_DELTAS`,
  *   `LAZY_DELTA_MAX_BYTES`, `BLOB_GC_MODE`, `BLOB_GC_GRACE_DAYS`), each its own save scope with its
  *   effective value and where it came from (`SourceBadge`: code default, deploy var, set in
  *   console). A deploy-time `off` on a kill switch is a hard off: the row is locked and says why.
  *   Every write carries `expectedVersion`; a 409 shows a reload-and-retry flow. Confirm levels
  *   come from the registry (`confirm`), per direction of change (ADMIN.md §5.2).
+ * - **Licensing**: the reserved entitlement-name severity (`LICENSING_RESERVED_NAMES`, S-19 §7.4,
+ *   LX-05) and, read-only, every registered product whose catalog declares a reserved name and
+ *   whether the declaration is compatible (`GET /platform/reserved-names`).
  * - The read-only inventory: identity and access, delivery, email and the code limits, all
  *   deploy-time.
  * - **Keyring**: the KEK keyring's state, read-only (`GET /products/kek`), plus the KEK
@@ -23,10 +26,12 @@ import {
   ApiError,
   type PlatformActivityItem,
   type PlatformConfirmLevel,
+  type PlatformChoiceSetting,
   type PlatformCursor,
   type PlatformDeployValue,
   type PlatformIntegerSetting,
   type PlatformKekStatus,
+  type PlatformReservedNames,
   type PlatformSetting,
   type PlatformSettingsView,
   type PlatformSwitchSetting,
@@ -48,7 +53,8 @@ import { ErrorState } from "../../ui/ErrorState.js";
 import { Form, FormField, useAdminForm } from "../../ui/form.js";
 import { NumberInput, numberRangeError } from "../../ui/NumberInput.js";
 import { SaveBar } from "../../ui/SaveBar.js";
-import { PageSkeleton } from "../../ui/Skeleton.js";
+import { SegmentedControl } from "../../ui/SegmentedControl.js";
+import { PageSkeleton, Skeleton } from "../../ui/Skeleton.js";
 import { SourceBadge } from "../../ui/SourceBadge.js";
 import { StatusPill } from "../../ui/StatusPill.js";
 import { Switch } from "../../ui/Switch.js";
@@ -72,6 +78,10 @@ export function fetchPlatformKek(): Promise<PlatformKekStatus> {
   return api.platformKek();
 }
 
+export function fetchPlatformReservedNames(): Promise<PlatformReservedNames> {
+  return api.platformReservedNames();
+}
+
 const MIB = 1_048_576;
 
 // ── Values and confirm levels ────────────────────────────────────────────────────────────────
@@ -84,6 +94,10 @@ export function formatSettingValue(
   if (setting.kind === "switch") {
     return value === "on" ? "On" : value === "off" ? "Off" : String(value);
   }
+  if (setting.kind === "choice")
+    return (
+      setting.options.find((o) => o.value === value)?.label ?? String(value)
+    );
   if (typeof value !== "number") return String(value);
   if (setting.unit === "days")
     return `${formatCount(value)} ${value === 1 ? "day" : "days"}`;
@@ -99,6 +113,7 @@ export function confirmLevel(
   if (before === after) return "L0";
   if (setting.kind === "switch")
     return after === "on" ? setting.confirm.on : setting.confirm.off;
+  if (setting.kind === "choice") return setting.confirm[String(after)] ?? "L1";
   return Number(after) > Number(before)
     ? setting.confirm.raise
     : setting.confirm.lower;
@@ -124,6 +139,10 @@ function parsedDeployValue(
   if (setting.kind === "switch") {
     const v = raw.toLowerCase();
     return v === "on" || v === "off" ? v : undefined;
+  }
+  if (setting.kind === "choice") {
+    const v = raw.toLowerCase();
+    return setting.options.some((o) => o.value === v) ? v : undefined;
   }
   const n = Number(raw);
   return Number.isFinite(n) && n > 0 ? n : undefined;
@@ -181,6 +200,17 @@ function consequencesOf(
         "The bucket's 180-day age lock still bounds every deletion.",
         reach,
       ];
+    case "LICENSING_RESERVED_NAMES":
+      return after === "error"
+        ? [
+            "A manifest or catalog whose flag declares a reserved name with an incompatible type is refused at link, resync and console publish.",
+            "A product listed below as incompatible fails its next resync until its catalog is fixed. Signed documents do not change.",
+            reach,
+          ]
+        : [
+            "Incompatible reserved-name declarations are accepted again, with a warning.",
+            reach,
+          ];
     case "LAZY_DELTA_MAX_BYTES":
       return [
         `The delta consumer encodes payloads up to ${next} on either side of a pair (was ${before}).`,
@@ -205,6 +235,7 @@ function isConflict(error: unknown): boolean {
 
 const SECTIONS = [
   { id: "platform-jobs", title: "Background jobs" },
+  { id: "platform-licensing", title: "Licensing" },
   { id: "platform-identity", title: "Identity & access" },
   { id: "platform-delivery", title: "Delivery" },
   { id: "platform-email", title: "Email" },
@@ -310,24 +341,19 @@ export function PlatformSettingsPage(): React.ReactElement {
             </Callout>
           </div>
         ) : null}
-        {view.settings.map((s) =>
-          s.kind === "switch" ? (
-            <SwitchSettingRow
+        {view.settings
+          .filter((s) => s.area !== "licensing")
+          .map((s) => (
+            <EditableRow
               key={s.key}
               setting={s}
               storeAvailable={view.storeAvailable}
               propagationSeconds={view.propagationSeconds}
             />
-          ) : (
-            <IntegerSettingRow
-              key={s.key}
-              setting={s}
-              storeAvailable={view.storeAvailable}
-              propagationSeconds={view.propagationSeconds}
-            />
-          ),
-        )}
+          ))}
       </SettingsSection>
+
+      <LicensingSection view={view} />
 
       {/* A section none of whose values this deployment reports is left out, not drawn empty. */}
       {showIdentity ? (
@@ -604,7 +630,9 @@ function ChangeDialog({
     ? `Revert ${setting.label.toLowerCase()}?`
     : setting.kind === "switch"
       ? `${verb} ${setting.label.toLowerCase()}?`
-      : `Change ${setting.label.toLowerCase()} to ${next}?`;
+      : setting.kind === "choice"
+        ? `Set ${setting.label.toLowerCase()} to ${next.toLowerCase()}?`
+        : `Change ${setting.label.toLowerCase()} to ${next}?`;
   return (
     <ConfirmDialog
       open
@@ -619,7 +647,9 @@ function ChangeDialog({
           ? `Revert to ${next}`
           : setting.kind === "switch"
             ? `${verb} ${setting.label.toLowerCase()}`
-            : `Save ${next}`
+            : setting.kind === "choice"
+              ? `Set to ${next.toLowerCase()}`
+              : `Save ${next}`
       }
       typedConfirmation={
         pending.level === "L3"
@@ -855,6 +885,230 @@ function SwitchSettingRow({
         disabled={locked || busy}
         onCheckedChange={(on) => run(writes.change(on ? "on" : "off"))}
       />
+    </SettingsRow>
+  );
+}
+
+/** One editable setting, by kind. */
+function EditableRow(props: RowProps<PlatformSetting>): React.ReactElement {
+  const { setting } = props;
+  if (setting.kind === "switch")
+    return <SwitchSettingRow {...props} setting={setting} />;
+  if (setting.kind === "choice")
+    return <ChoiceSettingRow {...props} setting={setting} />;
+  return <IntegerSettingRow {...props} setting={setting} />;
+}
+
+function ChoiceSettingRow({
+  setting,
+  storeAvailable,
+  propagationSeconds,
+}: RowProps<PlatformChoiceSetting>): React.ReactElement {
+  const writes = useSettingWrites(setting, propagationSeconds);
+  const [busy, setBusy] = React.useState(false);
+  const id = `platform-setting-${setting.key}`;
+  const run = (p: Promise<void>) => {
+    setBusy(true);
+    p.catch(() => undefined).finally(() => setBusy(false));
+  };
+  return (
+    <SettingsRow
+      label={setting.label}
+      htmlFor={id}
+      help={<SettingHelp setting={setting} />}
+      source={
+        <SettingSource
+          setting={setting}
+          onRevert={() => run(writes.revert())}
+        />
+      }
+      footer={
+        <>
+          <RowNotes setting={setting} />
+          <ConflictNote
+            setting={setting}
+            state={writes.conflict}
+            reloading={writes.reloading}
+            onReload={() => void writes.reload()}
+            onDismiss={writes.clearConflict}
+          />
+          {writes.dialog}
+        </>
+      }
+    >
+      <RevertButton
+        setting={setting}
+        disabled={!storeAvailable || busy}
+        onRevert={() => run(writes.revert())}
+      />
+      <SegmentedControl
+        id={id}
+        size="sm"
+        aria-label={setting.label}
+        options={setting.options}
+        value={setting.value}
+        disabled={!storeAvailable || busy}
+        onChange={(v) => {
+          if (v !== setting.value) run(writes.change(v));
+        }}
+      />
+    </SettingsRow>
+  );
+}
+
+// ── Licensing ────────────────────────────────────────────────────────────────────────────────
+
+const RESERVED_TYPE_WORDS: Record<string, string> = {
+  string: "string",
+  integer: "integer",
+  "string-array": "array of strings",
+};
+
+/**
+ * Platform → Settings → Licensing (S-19 §7.4, LX-05): the reserved-names severity, the reserved
+ * keys with the rule the platform applies, and every registered product that declares one.
+ */
+function LicensingSection({
+  view,
+}: {
+  view: PlatformSettingsView;
+}): React.ReactElement {
+  const report = useQuery(
+    {
+      queryKey: qk.platformReservedNames(),
+      queryFn: fetchPlatformReservedNames,
+    },
+    queryClient,
+  );
+  const settings = view.settings.filter((s) => s.area === "licensing");
+  const data = report.data;
+  return (
+    <SettingsSection
+      id="platform-licensing"
+      title="Licensing"
+      description="A product's catalog flag may declare a system key the platform sets itself. A compatible declaration is always valid; this decides what happens to an incompatible one."
+    >
+      {settings.map((s) => (
+        <EditableRow
+          key={s.key}
+          setting={s}
+          storeAvailable={view.storeAvailable}
+          propagationSeconds={view.propagationSeconds}
+        />
+      ))}
+      {report.isPending ? (
+        <div className="space-y-2 px-5 py-4" aria-busy>
+          <Skeleton className="h-5 w-48" />
+          <Skeleton className="h-16 w-full" />
+        </div>
+      ) : !data ? (
+        <div className="px-5 py-4">
+          <ErrorState
+            error={report.error}
+            onRetry={() => void report.refetch()}
+          />
+        </div>
+      ) : (
+        <>
+          <SettingsRow
+            label="Reserved keys"
+            help={
+              <>
+                A declaration must keep the key&apos;s type and may only narrow
+                it. Names under{" "}
+                {data.prefixes.map((p, i) => (
+                  <React.Fragment key={p}>
+                    {i > 0
+                      ? i === data.prefixes.length - 1
+                        ? " and "
+                        : ", "
+                      : null}
+                    <code className="font-mono">{p}</code>
+                  </React.Fragment>
+                ))}{" "}
+                are reserved for future system keys.
+              </>
+            }
+            align="block"
+          >
+            <ul className="divide-y divide-border" aria-label="Reserved keys">
+              {data.keys.map((k) => (
+                <li
+                  key={k.key}
+                  className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2"
+                >
+                  <span>
+                    <code className="font-mono text-xs text-fg-strong">
+                      {k.key}
+                    </code>{" "}
+                    <span className="text-xs text-fg-muted">
+                      {RESERVED_TYPE_WORDS[k.type] ?? k.type}
+                    </span>
+                  </span>
+                  <span className="text-right text-xs text-fg-muted">
+                    {k.rule}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </SettingsRow>
+          {data.products.length === 0 ? (
+            <div className="px-5 py-4">
+              <EmptyState
+                kind="first-run"
+                variant="inline"
+                title="No product declares a reserved name"
+                description="Registered products whose catalog declares one are listed here with whether each declaration is compatible."
+              />
+            </div>
+          ) : (
+            data.products.map((p) => (
+              <ReservedNamesProductRow key={p.slug} product={p} />
+            ))
+          )}
+        </>
+      )}
+    </SettingsSection>
+  );
+}
+
+function ReservedNamesProductRow({
+  product,
+}: {
+  product: PlatformReservedNames["products"][number];
+}): React.ReactElement {
+  const bad = product.declarations.filter((d) => !d.compatible);
+  return (
+    <SettingsRow
+      label={product.name}
+      help={
+        <>
+          <span className="block font-mono text-xs">
+            {product.slug} · catalog v{product.catalogVersion}
+          </span>
+          <ul
+            className="mt-1 space-y-1"
+            aria-label={`${product.name} declarations`}
+          >
+            {product.declarations.map((d) => (
+              <li key={d.key}>
+                <code className="font-mono text-xs">{d.key}</code>
+                {d.compatible
+                  ? " · compatible"
+                  : ` · ${d.problem ?? "incompatible"}`}
+              </li>
+            ))}
+          </ul>
+        </>
+      }
+    >
+      {bad.length > 0 ? (
+        <StatusPill tone="warning">
+          {bad.length === 1 ? "1 incompatible" : `${bad.length} incompatible`}
+        </StatusPill>
+      ) : (
+        <span className="text-fg-muted">Compatible</span>
+      )}
     </SettingsRow>
   );
 }

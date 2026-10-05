@@ -64,6 +64,7 @@ import {
 } from "../../core/publisher.js";
 import { randomId } from "../../core/platform.js";
 import { manifestSnapshotStatement } from "../../core/manifestSnapshot.js";
+import { reservedNamesMode } from "../../core/reservedNames.js";
 
 export type ResyncResult =
   | {
@@ -199,7 +200,9 @@ async function applyRepoManifest(
     };
   }
 
-  const result = parseManifest(files);
+  const result = parseManifest(files, {
+    reservedNames: await reservedNamesMode(env, db),
+  });
   if (!result.ok)
     return {
       ok: false,

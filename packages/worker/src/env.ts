@@ -82,6 +82,13 @@ export interface Env {
    */
   BLOB_GC_GRACE_DAYS?: string;
   /**
+   * S-19 §7.4 (LX-05): `warn` or `error`, the severity of an incompatible reserved entitlement-name
+   * declaration at manifest ingest and on console catalog writes. A `[vars]` value, unset in every
+   * environment; read only through the platform settings store (`runtime`): a console value wins,
+   * then this, then the code default `warn`.
+   */
+  LICENSING_RESERVED_NAMES?: string;
+  /**
    * Lazy hot-pair deltas (P4-17, `core/deltaDemand.ts`, `services/release/packs/deltas/`): the
    * deployment's kill switch. On lets an opted-in product (`lazy_delta_settings`) count demand
    * and generate deltas. A `[vars]` value, read only through the platform settings store (A-13,
