@@ -52,7 +52,8 @@ from .commerce import (
     CommerceClient,
     CommerceProduct,
 )
-from .config.client import DEFAULT_ENV_PREFIX, ConfigClient
+from .config.client import DEFAULT_ENV_PREFIX, ConfigClient, ConfigSetting
+from .core.events import EVENT_KINDS, Event, EventBus
 from .config.mint import MintedToken
 from .identity.client import (
     IdentityClient,
@@ -290,6 +291,10 @@ __all__ = [
     "LicenseClient",
     "LicenseInfo",
     "ConfigClient",
+    "ConfigSetting",
+    "Event",
+    "EventBus",
+    "EVENT_KINDS",
     "DevicesClient",
     "IdentityClient",
     "SignInPrompt",

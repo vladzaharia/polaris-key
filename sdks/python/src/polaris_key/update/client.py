@@ -398,6 +398,8 @@ class UpdateClient:
         #: The update-health journal (SDK parity pass §3.13), set by the facade: a decision
         #: offering a newer build records ``update_offered`` once per release.
         self.journal: Any = None
+        #: ``client.events`` (set by the facade): an offering decision emits ``updateAvailable``.
+        self.events: Any = None
         #: The app build's boot guard (:class:`~polaris_key.update.bootguard.BootGuard`), set by
         #: the facade.
         self.guard: Any = None
@@ -689,9 +691,17 @@ class UpdateClient:
         ``code-ready``, ``store`` or ``platform`` with a release), once per release."""
         journal = self.journal
         d = check.decision
-        if journal is None or d.release is None:
+        if d.release is None or d.action not in ("binary", "code-ready", "store", "platform"):
             return
-        if d.action not in ("binary", "code-ready", "store", "platform"):
+        if self.events is not None:
+            self.events.emit(
+                "updateAvailable",
+                version=d.release.version,
+                action=d.action,
+                mandatory=bool(d.mandatory),
+                channel=check.channel,
+            )
+        if journal is None:
             return
         try:
             journal.offered(
