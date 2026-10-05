@@ -166,6 +166,7 @@ class ErrorCode:
     OWNED_ELSEWHERE: Final = "owned_elsewhere"
     EMAIL_MISMATCH: Final = "email_mismatch"
     STEP_UP_REQUIRED: Final = "step_up_required"
+    NOT_ELIGIBLE: Final = "not_eligible"
     DOWNLOAD_AUTH_REQUIRED: Final = "download_auth_required"
     DELIVERY_GATE_MISSING: Final = "delivery_gate_missing"
     UPSTREAM_RATE_LIMITED: Final = "upstream_rate_limited"
@@ -311,6 +312,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "owned_elsewhere",
     "email_mismatch",
     "step_up_required",
+    "not_eligible",
     "download_auth_required",
     "delivery_gate_missing",
     "upstream_rate_limited",
@@ -458,6 +460,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "owned_elsewhere": "wire",
         "email_mismatch": "wire",
         "step_up_required": "wire",
+        "not_eligible": "wire",
         "download_auth_required": "wire",
         "delivery_gate_missing": "wire",
         "upstream_rate_limited": "wire",

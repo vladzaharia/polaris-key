@@ -48,6 +48,7 @@ public object ErrorCode {
     public const val ownedElsewhere: String = "owned_elsewhere"
     public const val emailMismatch: String = "email_mismatch"
     public const val stepUpRequired: String = "step_up_required"
+    public const val notEligible: String = "not_eligible"
     public const val downloadAuthRequired: String = "download_auth_required"
     public const val deliveryGateMissing: String = "delivery_gate_missing"
     public const val upstreamRateLimited: String = "upstream_rate_limited"
@@ -193,6 +194,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "owned_elsewhere",
     "email_mismatch",
     "step_up_required",
+    "not_eligible",
     "download_auth_required",
     "delivery_gate_missing",
     "upstream_rate_limited",
@@ -338,6 +340,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "owned_elsewhere" to "wire",
     "email_mismatch" to "wire",
     "step_up_required" to "wire",
+    "not_eligible" to "wire",
     "download_auth_required" to "wire",
     "delivery_gate_missing" to "wire",
     "upstream_rate_limited" to "wire",

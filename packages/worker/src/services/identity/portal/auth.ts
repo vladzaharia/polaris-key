@@ -166,6 +166,7 @@ function mapClaims(payload: Record<string, unknown>): {
   email?: string;
   emailVerified: boolean;
   name?: string;
+  groups?: string[];
 } {
   const email =
     typeof payload.email === "string" ? payload.email.toLowerCase() : undefined;
@@ -182,6 +183,12 @@ function mapClaims(payload: Record<string, unknown>): {
     email,
     emailVerified,
     name: name || undefined,
+    // PX-W10: kept so Discover can evaluate a product's `groupRoleMap` for this account. The
+    // same filter the product sign-in applies (`oidc.ts` `mapClaims`): strings only; no claim
+    // at all is "not known", not "no groups".
+    groups: Array.isArray(payload.groups)
+      ? payload.groups.filter((g): g is string => typeof g === "string")
+      : undefined,
   };
 }
 
@@ -357,6 +364,7 @@ export async function handlePortalCallback(
       subject: identity.sub,
       email: identity.emailVerified ? identity.email : undefined,
       displayName: identity.name,
+      groups: identity.groups,
     },
     now,
   );
