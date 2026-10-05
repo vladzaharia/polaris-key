@@ -197,7 +197,12 @@ export function useProductDownloads(
   product: string,
   enabled: boolean,
 ): UseQueryResult<PortalDownloads | null> {
-  return useQuery({ ...downloadsQuery(product), enabled });
+  return useQuery({
+    queryKey: qk.portalDownloads(product),
+    queryFn: () => fetchDownloads(product),
+    staleTime: DOWNLOADS_STALE_MS,
+    enabled,
+  });
 }
 
 /**
@@ -254,19 +259,17 @@ export function useProduct(product: string): UseQueryResult<PortalProduct> {
 }
 
 /** The downloads query for one product, shared by the Library and the product page. */
-function downloadsQuery(product: string) {
-  return {
-    queryKey: qk.portalDownloads(product),
-    queryFn: async (): Promise<PortalDownloads | null> => {
-      try {
-        return await portalApi.downloads(product);
-      } catch (err) {
-        if (err instanceof PortalApiError && err.status === 404) return null;
-        throw err;
-      }
-    },
-    staleTime: 5 * 60_000,
-  };
+const DOWNLOADS_STALE_MS = 5 * 60_000;
+
+async function fetchDownloads(
+  product: string,
+): Promise<PortalDownloads | null> {
+  try {
+    return await portalApi.downloads(product);
+  } catch (err) {
+    if (err instanceof PortalApiError && err.status === 404) return null;
+    throw err;
+  }
 }
 
 /**
@@ -279,7 +282,12 @@ export function useDownloadsFor(
   enabled: boolean,
 ): { bySlug: ReadonlyMap<string, PortalDownloads | null>; pending: boolean } {
   const results = useQueries({
-    queries: products.map((p) => ({ ...downloadsQuery(p), enabled })),
+    queries: products.map((p) => ({
+      queryKey: qk.portalDownloads(p),
+      queryFn: () => fetchDownloads(p),
+      staleTime: DOWNLOADS_STALE_MS,
+      enabled,
+    })),
   });
   const key = results.map((r) => r.dataUpdatedAt).join(",");
   const bySlug = React.useMemo(() => {
