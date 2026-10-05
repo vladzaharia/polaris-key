@@ -52,6 +52,12 @@ interface Opened {
   page: Page;
   violations: () => Promise<string[]>;
   requests: string[];
+  /**
+   * Closes the context. The catch-all route passes static assets through, and a font fetch can
+   * still be in flight when a test ends; dropping the routes first (Playwright's own advice)
+   * keeps that callback from rejecting into whichever test runs next.
+   */
+  close: () => Promise<void>;
 }
 
 async function open(
@@ -120,21 +126,15 @@ async function open(
   return {
     page,
     requests,
+    close: async () => {
+      await ctx.unrouteAll({ behavior: "ignoreErrors" });
+      await ctx.close();
+    },
     violations: () =>
       page.evaluate(() =>
         (window as unknown as { __v: string[] }).__v.splice(0),
       ),
   };
-}
-
-/**
- * Closes a page's context once its route handler is gone: a request still in flight when the
- * context closes would otherwise reject `route.fulfill` after the test has passed.
- */
-async function closeContext(page: Page): Promise<void> {
-  const ctx = page.context();
-  await ctx.unrouteAll({ behavior: "ignoreErrors" });
-  await ctx.close();
 }
 
 async function noHorizontalScroll(page: Page): Promise<void> {
@@ -269,7 +269,7 @@ describe("the customer site under the Worker's CSP", () => {
             await o.violations(),
             `${screen.name} ${theme} ${width}`,
           ).toEqual([]);
-          await closeContext(o.page);
+          await o.close();
         }
       }
     });
@@ -299,7 +299,7 @@ describe("Library on GET /api/library (PX-08)", () => {
       .getByRole("link", { name: /Discover/ })
       .waitFor();
     expect(await o.violations()).toEqual([]);
-    await closeContext(o.page);
+    await o.close();
   });
 });
 
@@ -330,7 +330,7 @@ describe("focused flows (PX-10)", () => {
       "DELETE /api/licenses/orbit-survey/lic_orbit-survey/devices/work",
     );
     expect(await o.violations()).toEqual([]);
-    await closeContext(o.page);
+    await o.close();
   });
 
   it("drops an undeclared return URL", async () => {
@@ -345,7 +345,7 @@ describe("focused flows (PX-10)", () => {
         .getAttribute("href"),
     ).toBe("#/p/orbit-survey");
     expect(await o.page.content()).not.toContain("evil.example");
-    await closeContext(o.page);
+    await o.close();
   });
 });
 
@@ -367,7 +367,7 @@ describe("package access (PX-11)", () => {
       "POST /api/licenses/tidewater/lic_tidewater/registry-tokens",
     );
     expect(await o.violations()).toEqual([]);
-    await closeContext(o.page);
+    await o.close();
   });
 });
 
@@ -405,7 +405,7 @@ describe("main flows", () => {
       .toBe("H1");
     expect(o.requests).toContain("POST /api/claim/license-key");
     expect(await o.violations()).toEqual([]);
-    await closeContext(o.page);
+    await o.close();
   });
 
   it("opens /activate?key=… as the Library with the modal prefilled", async () => {
@@ -425,7 +425,7 @@ describe("main flows", () => {
     await o.page.keyboard.press("Escape");
     await h1(o.page, "Your library");
     expect(await o.violations()).toEqual([]);
-    await closeContext(o.page);
+    await o.close();
   });
 
   it("shows the inline errors of a refused key", async () => {
@@ -439,7 +439,7 @@ describe("main flows", () => {
     await dialog.getByText(/We couldn't find that key/).waitFor();
     await shoot(o.page, "activate-errors-desktop-dark");
     expect(await o.violations()).toEqual([]);
-    await closeContext(o.page);
+    await o.close();
   });
 
   it("removes a device with the inline confirmation", async () => {
@@ -464,7 +464,7 @@ describe("main flows", () => {
       true,
     );
     expect(await o.violations()).toEqual([]);
-    await closeContext(o.page);
+    await o.close();
   });
 
   it("jumps to a product with ⌘K from 8 products", async () => {
@@ -478,7 +478,7 @@ describe("main flows", () => {
     await o.page.keyboard.press("Enter");
     await h1(o.page, "Glyphsmith");
     expect(await o.violations()).toEqual([]);
-    await closeContext(o.page);
+    await o.close();
   });
 
   it("filters and searches the library, kept in the URL", async () => {
@@ -490,7 +490,7 @@ describe("main flows", () => {
     await o.page.getByText("Showing 1 of 12 ·").waitFor();
     expect(await o.page.evaluate(() => location.hash)).toContain("q=orbit");
     expect(await o.violations()).toEqual([]);
-    await closeContext(o.page);
+    await o.close();
   });
 
   it("signs in with an email link: the honest sent screen", async () => {
@@ -504,7 +504,7 @@ describe("main flows", () => {
     await shoot(o.page, "signin-sent-mobile-dark");
     expect(o.requests).toContain("POST /api/magic/start");
     expect(await o.violations()).toEqual([]);
-    await closeContext(o.page);
+    await o.close();
   });
 
   it("switches the theme from Account → Appearance", async () => {
@@ -515,6 +515,6 @@ describe("main flows", () => {
       await o.page.evaluate(() => document.documentElement.dataset.theme),
     ).toBe("light");
     expect(await o.violations()).toEqual([]);
-    await closeContext(o.page);
+    await o.close();
   });
 });

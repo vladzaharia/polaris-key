@@ -1,16 +1,22 @@
-# I-24 Named-user seats: user claim in the licence `profile`, seat holders on the device binding, per-user caps
+# I-24 Plan named-user seats (approved 2026-10-05): user claim in the licence `profile`, seat holders on the device binding, per-user caps; implemented by I-24a and I-24b
 
 | Field       | Value                                                                                                                                       |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (later)                                                                  |
-| Size        | 1–2 engineer-weeks                                                                                                                          |
+| Size        | 0.3–0.5 engineer-weeks                                                                                                                      |
 | Depends on  | [I-05](I-05-accounts-core.md)                                                                                                               |
-| Unblocks    | [LX-24](LX-24-per-seat-features.md)                                                                                                         |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                       |
-| Plan mode   | yes: `pkey-wire-planner` writes `plans/I-24.md` first; it needs human approval before code                                                  |
+| Unblocks    | [I-24a](I-24a-named-user-seats-server.md), [I-24b](I-24b-named-user-seats-sdks.md)                                                          |
+| Role        | `pkey-wire-planner` (planning only)                                                                                                         |
+| Plan mode   | yes: planning only since the split; [`plans/I-24.md`](../plans/I-24.md) was approved on 2026-10-05 and is executed by I-24a and I-24b       |
 | Gates       | plan mode; signed corpus regeneration; all six SDKs (`parity:check`); D1 migration; `TABLE_OWNERS`; generated docs pages (`gen-docs` drift) |
-| Human input | none                                                                                                                                        |
+| Human input | none (the plan was approved on 2026-10-05)                                                                                                  |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                   |
+
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/I-24.md`](../plans/I-24.md):** approved on 2026-10-05 with every recommendation accepted. Q8 splits the implementation into **I-24a** (contract, corpus, client-core, Worker, console, portal) and **I-24b** (six SDKs and four UI kits), each depending on I-08 and I-09 through the chain. This package is now the planning package and is done; the scope below is executed by I-24a and I-24b.
 
 ## Goal
 
