@@ -69,13 +69,13 @@ Five steps Steam neither lets an API do nor reports. You tick each when it is do
 word, never a verification: the page shows it as unverified. Ticks are kept per product and per app,
 and every tick and untick is audited (`distribution.steam.checklist.tick`, `…untick`).
 
-| Step              | Notes                                                                       |
-| ----------------- | --------------------------------------------------------------------------- |
-| App fee paid      | $100 per app, in Steamworks                                                 |
-| 30 days passed    | Steam's wait between paying and release; the page shows the date from the fee tick |
-| Coming Soon live  | the page must be up at least two weeks; the page shows the earliest release |
-| Store review      | typically 3 to 5 business days; submit at least 7 ahead                     |
-| Build review      | once approved, later builds need no review                                  |
+| Step             | Notes                                                                              |
+| ---------------- | ---------------------------------------------------------------------------------- |
+| App fee paid     | $100 per app, in Steamworks                                                        |
+| 30 days passed   | Steam's wait between paying and release; the page shows the date from the fee tick |
+| Coming Soon live | the page must be up at least two weeks; the page shows the earliest release        |
+| Store review     | typically 3 to 5 business days; submit at least 7 ahead                            |
+| Build review     | once approved, later builds need no review                                         |
 
 ## Limits
 
@@ -89,14 +89,14 @@ Every call counts against the day; the page shows what is left.
 Narrative-only (not in the wire spec), under
 `/manage/api/products/<slug>/distribution/storefronts/steam`. Platform admins only.
 
-| Method | Path                     | Does                                                                                                         |
-| ------ | ------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| Method | Path                     | Does                                                                                                                                                |
+| ------ | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET`  | (none)                   | the plan: what is API and what is a link, the app and key, links, checklist, copy card, asset pack, recent operations and the budget. No Steam call |
-| `GET`  | `apps`                   | the apps the key may act on, and whether the product's app is among them                                     |
-| `GET`  | `builds`                 | branches, builds, the declared channels' branches and the public branch's build                              |
-| `POST` | `branches/<branch>/live` | `{ buildId, description? }` with an `Idempotency-Key`; `public` answers 409 with App Admin's link            |
-| `GET`  | `pack`                   | the asset pack, as a download                                                                                |
-| `PUT`  | `checklist`              | `{ item, done }`, where `item` is `fee_paid`, `release_wait`, `coming_soon`, `store_review` or `build_review` |
+| `GET`  | `apps`                   | the apps the key may act on, and whether the product's app is among them                                                                            |
+| `GET`  | `builds`                 | branches, builds, the declared channels' branches and the public branch's build                                                                     |
+| `POST` | `branches/<branch>/live` | `{ buildId, description? }` with an `Idempotency-Key`; `public` answers 409 with App Admin's link                                                   |
+| `GET`  | `pack`                   | the asset pack, as a download                                                                                                                       |
+| `PUT`  | `checklist`              | `{ item, done }`, where `item` is `fee_paid`, `release_wait`, `coming_soon`, `store_review` or `build_review`                                       |
 
 A request Steam's write gate refuses answers 422 with `reason: "steam_gate_refused"`; a stopped key
 answers 429 (or 502 for the 403 that stopped it) with `reason: "steam_stopped"`.

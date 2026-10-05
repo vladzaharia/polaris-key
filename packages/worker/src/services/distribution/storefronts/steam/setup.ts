@@ -82,7 +82,8 @@ function branchesOf(v: unknown): Record<string, string> {
   if (!v || typeof v !== "object" || Array.isArray(v)) return {};
   const out: Record<string, string> = {};
   for (const [channel, branch] of Object.entries(v as Record<string, unknown>))
-    if (typeof branch === "string" && BRANCH.test(branch)) out[channel] = branch;
+    if (typeof branch === "string" && BRANCH.test(branch))
+      out[channel] = branch;
   return out;
 }
 
@@ -115,7 +116,10 @@ export async function resolveSteamSetup(
   const primary = outlets[0];
   if (!primary) {
     // A product being set up for Steam: the platform pin names the app (no own key only).
-    if (own.length === 0 && (await resolvePlatformCredential(env, db, STEAM_PLATFORM_CREDENTIAL))) {
+    if (
+      own.length === 0 &&
+      (await resolvePlatformCredential(env, db, STEAM_PLATFORM_CREDENTIAL))
+    ) {
       const pinned = await platformPin(db, STEAM_PLATFORM_CREDENTIAL, product);
       if (pinned !== null && STEAM_NUMERIC_ID.test(pinned))
         return {
@@ -150,12 +154,25 @@ export async function resolveSteamSetup(
     credentialId: string,
     credentialSource: "product" | "platform",
   ): SteamSetupResolution => ({
-    setup: { product, appId, branches, outletIds, credentialId, credentialSource },
+    setup: {
+      product,
+      appId,
+      branches,
+      outletIds,
+      credentialId,
+      credentialSource,
+    },
     inert: null,
   });
 
   if (own.length === 0) {
-    const f = await platformFallback(env, db, product, STEAM_PLATFORM_CREDENTIAL, appId);
+    const f = await platformFallback(
+      env,
+      db,
+      product,
+      STEAM_PLATFORM_CREDENTIAL,
+      appId,
+    );
     if (!f.ok)
       return inert(
         f.reason,

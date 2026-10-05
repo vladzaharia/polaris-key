@@ -162,4 +162,3 @@ export const STEAM_ADAPTER: StorefrontAdapter = {
     projection: { ...PROJECTION, ...CI_STEP_PROJECTION },
   },
 };
-

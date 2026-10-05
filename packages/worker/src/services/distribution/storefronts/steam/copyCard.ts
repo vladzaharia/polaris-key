@@ -43,7 +43,11 @@ export interface CopyCard {
 }
 
 const worst = (a: FitStatus, b: FitStatus): FitStatus =>
-  a === "red" || b === "red" ? "red" : a === "amber" || b === "amber" ? "amber" : "green";
+  a === "red" || b === "red"
+    ? "red"
+    : a === "amber" || b === "amber"
+      ? "amber"
+      : "green";
 
 /** The copy card for the model (one locale entry per projected locale, the default first). */
 export function steamCopyCard(input: ProjectionInput): CopyCard {

@@ -104,7 +104,12 @@ function budgetKey(setup: SteamSetup): BudgetKey {
 
 /** The gated client for the product's app, wired to its key, its budget slot and the clock. */
 export function steamClientFor(ctx: AdminCtx, setup: SteamSetup): SteamClient {
-  const meter = storeMeter(ctx.env, "steam", ctx.product.slug, budgetKey(setup));
+  const meter = storeMeter(
+    ctx.env,
+    "steam",
+    ctx.product.slug,
+    budgetKey(setup),
+  );
   return new SteamClient({
     key: () =>
       openSteamPublisherKey(
@@ -133,9 +138,14 @@ function failure(e: unknown): Response {
       denied: e.reason,
     });
   if (e instanceof StoreUnavailable)
-    return err(409, ErrorCode.BadRequest, "the Steam publisher key could not be opened", {
-      reason: "credential_unavailable",
-    });
+    return err(
+      409,
+      ErrorCode.BadRequest,
+      "the Steam publisher key could not be opened",
+      {
+        reason: "credential_unavailable",
+      },
+    );
   if (e instanceof StoreVendorError) {
     if (e.code === "budget_stopped" || e.status === 403)
       return err(
@@ -263,7 +273,12 @@ async function getPlan(ctx: AdminCtx): Promise<Response> {
       finishedAt: r.finished_at,
     })),
     budget: rate
-      ? { limit: rate.limit, remaining: rate.remaining, stopped: rate.stopped === true, until: rate.until ?? null }
+      ? {
+          limit: rate.limit,
+          remaining: rate.remaining,
+          stopped: rate.stopped === true,
+          until: rate.until ?? null,
+        }
       : null,
   });
 }
@@ -383,10 +398,15 @@ async function postSetLive(ctx: AdminCtx, branch: string): Promise<Response> {
     const b = (await client.betas(setup.appId)).find((x) => x.name === branch);
     if (!b)
       throw new Refused(
-        err(404, ErrorCode.NotFound, `app ${setup.appId} has no branch ${branch}: create it in Steamworks App Admin first`, {
-          reason: "unknown_branch",
-          link: links(setup.appId).appAdmin,
-        }),
+        err(
+          404,
+          ErrorCode.NotFound,
+          `app ${setup.appId} has no branch ${branch}: create it in Steamworks App Admin first`,
+          {
+            reason: "unknown_branch",
+            link: links(setup.appId).appAdmin,
+          },
+        ),
       );
     return branchResource(b);
   };
@@ -400,7 +420,12 @@ async function postSetLive(ctx: AdminCtx, branch: string): Promise<Response> {
         naturalKey: `${setup.appId}/${branch}/${build}`,
         idempotencyKey: key,
       },
-      request: { appId: setup.appId, branch, buildId: build, description: description ?? null },
+      request: {
+        appId: setup.appId,
+        branch,
+        buildId: build,
+        description: description ?? null,
+      },
       session,
       now,
       find,
@@ -415,9 +440,14 @@ async function postSetLive(ctx: AdminCtx, branch: string): Promise<Response> {
         `${outcome === "existing" ? "Found" : "Set"} build ${build} live on Steam branch ${branch} of app ${setup.appId}${after.attributes?.buildId === build ? "" : " (Steam does not show it yet)"}`,
     });
     if (r.outcome === "conflict")
-      return err(409, ErrorCode.BadRequest, "this Idempotency-Key was used for another request", {
-        reason: "idempotency_conflict",
-      });
+      return err(
+        409,
+        ErrorCode.BadRequest,
+        "this Idempotency-Key was used for another request",
+        {
+          reason: "idempotency_conflict",
+        },
+      );
     if (r.outcome === "replayed")
       return adminJson({
         outcome: "replayed",
@@ -439,9 +469,14 @@ async function getPack(ctx: AdminCtx): Promise<Response> {
   const { env, db, product } = ctx;
   const row = await packRow(ctx);
   if (!row || !env.BLOBS || !(await hasRef(db, product.slug, row.blob)))
-    return err(404, ErrorCode.NotFound, "no Steam asset pack yet: run pkey listing assets in CI", {
-      reason: "no_pack",
-    });
+    return err(
+      404,
+      ErrorCode.NotFound,
+      "no Steam asset pack yet: run pkey listing assets in CI",
+      {
+        reason: "no_pack",
+      },
+    );
   return blobResponse(ctx.req, env.BLOBS, row.blob, {
     sha256: row.sha256,
     gated: true,
@@ -472,7 +507,15 @@ async function putChecklist(ctx: AdminCtx): Promise<Response> {
     });
   const item = body.item as (typeof STEAM_CHECKLIST)[number]["item"];
   const done = body.done as boolean;
-  const label = await setSteamChecklistTick(db, product.slug, appId, item, done, session.sub, now);
+  const label = await setSteamChecklistTick(
+    db,
+    product.slug,
+    appId,
+    item,
+    done,
+    session.sub,
+    now,
+  );
   await audit(
     db,
     product.slug,
@@ -482,5 +525,7 @@ async function putChecklist(ctx: AdminCtx): Promise<Response> {
     { kind: "steam-checklist", id: `${appId}/${item}` },
     `${done ? "Ticked" : "Unticked"} the Steam step "${label}" for app ${appId} (an operator assertion; not verified)`,
   );
-  return adminJson({ checklist: await steamChecklistView(db, product.slug, appId) });
+  return adminJson({
+    checklist: await steamChecklistView(db, product.slug, appId),
+  });
 }

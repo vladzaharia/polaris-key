@@ -180,7 +180,8 @@ export const STEAM_WRITE_DENIED = {
 export const STEAM_DENY_REASONS: Readonly<
   Record<keyof typeof STEAM_WRITE_DENIED, string>
 > = {
-  deletes: "owner rule: never delete (leaderboards, cloud files, game-server accounts, sessions, workshop items)",
+  deletes:
+    "owner rule: never delete (leaderboards, cloud files, game-server accounts, sessions, workshop items)",
   players:
     "acting on players (bans, reports, lobbies, notifications, market listings) is no part of store provisioning",
   payments:

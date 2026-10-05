@@ -92,7 +92,11 @@ export class SteamClient {
     if (method === "GET")
       for (const [k, v] of Object.entries(params))
         if (!/^[a-z_]{1,32}$/.test(k) || v.length > 256)
-          throw new StoreVendorError(400, "invalid_parameter", "steam: invalid read parameter");
+          throw new StoreVendorError(
+            400,
+            "invalid_parameter",
+            "steam: invalid read parameter",
+          );
     // 2. The budget.
     if (this.#budget && (await this.#budget.stopped()))
       throw new StoreVendorError(
@@ -104,7 +108,11 @@ export class SteamClient {
     const key = await this.#key();
     const url = new URL(path, STEAM_WEB_API);
     if (url.origin !== STEAM_WEB_API)
-      throw new StoreVendorError(400, "invalid_path", "steam: refusing another host");
+      throw new StoreVendorError(
+        400,
+        "invalid_path",
+        "steam: refusing another host",
+      );
     const fields = new URLSearchParams({ key, ...params });
     let init: RequestInit;
     if (method === "GET") {
@@ -125,12 +133,20 @@ export class SteamClient {
     try {
       res = await this.#fetch(url.toString(), { ...init, redirect: "manual" });
     } catch {
-      throw new StoreVendorError(0, null, `steam ${label(path)}: network failure`);
+      throw new StoreVendorError(
+        0,
+        null,
+        `steam ${label(path)}: network failure`,
+      );
     }
     if (res.status === 403) {
       await res.body?.cancel().catch(() => undefined);
       await this.#budget?.stop().catch(() => undefined);
-      throw new StoreVendorError(403, "forbidden", `steam ${label(path)}: HTTP 403`);
+      throw new StoreVendorError(
+        403,
+        "forbidden",
+        `steam ${label(path)}: HTTP 403`,
+      );
     }
     const ok = res.status >= 200 && res.status < 300;
     if (isRedirect(res) || !ok) {
@@ -146,11 +162,20 @@ export class SteamClient {
       text = await readCappedText(
         res,
         MAX_STEAM_RESPONSE_BYTES,
-        () => new StoreVendorError(502, "too_large", `steam ${label(path)}: answer too large`),
+        () =>
+          new StoreVendorError(
+            502,
+            "too_large",
+            `steam ${label(path)}: answer too large`,
+          ),
       );
     } catch (e) {
       if (e instanceof StoreVendorError) throw e;
-      throw new StoreVendorError(502, null, `steam ${label(path)}: unreadable answer`);
+      throw new StoreVendorError(
+        502,
+        null,
+        `steam ${label(path)}: unreadable answer`,
+      );
     }
     if (text.trim() === "") return {};
     try {
@@ -160,7 +185,11 @@ export class SteamClient {
     } catch {
       /* fall through */
     }
-    throw new StoreVendorError(502, null, `steam ${label(path)}: unreadable answer`);
+    throw new StoreVendorError(
+      502,
+      null,
+      `steam ${label(path)}: unreadable answer`,
+    );
   }
 
   /** `GetPartnerAppListForWebAPIKey`: the apps this key may act on. */
@@ -205,8 +234,15 @@ export class SteamClient {
     const r = body.response;
     if (r && typeof r === "object") {
       const o = r as Record<string, unknown>;
-      if (o.success === false || (typeof o.result === "number" && o.result !== 1))
-        throw new StoreVendorError(422, "set_live_refused", "steam SetAppBuildLive: refused");
+      if (
+        o.success === false ||
+        (typeof o.result === "number" && o.result !== 1)
+      )
+        throw new StoreVendorError(
+          422,
+          "set_live_refused",
+          "steam SetAppBuildLive: refused",
+        );
     }
   }
 }
