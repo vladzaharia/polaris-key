@@ -32,7 +32,8 @@
       "status": "implemented"
     },
     "core.sync": {
-      "status": "implemented"
+      "status": "implemented",
+      "note": "client.events (license, config, updateAvailable, packs) as one SharedFlow, config.setting(key) StateFlows and config.changes; on Android PolarisKeyLifecycle syncs on foreground (throttled; ETags and backoff apply). A periodic background sync is the host's WorkManager worker (no WorkManager dependency)."
     },
     "core.local": {
       "status": "implemented"
@@ -170,7 +171,7 @@
           "reason": "runtime"
         }
       ],
-      "note": ":update's InstallDriver port; :android's PlayInstallDriver (play: In-App Updates, flexible or immediate by the decision's urgency and optionally Play's priority and staleness, completing a downloaded update, staging-aware) and DirectInstallDriver (direct: the verified record's one payload downloaded to private storage, size and SHA-256 checked, then :platform's verified PackageInstaller session, every refusal surfaced as swap-refused), against FakeAppUpdateManager and an installer fake (PlayInstallDriverTest, DirectInstallDriverTest); the flavour boundary holds (tools/check_flavours.sh). A JVM desktop build has none: JvmInstallDriver throws the typed runtime N/A. The internal-track and self-update device runs are the owner's (P6-12 brief)."
+      "note": ":update's InstallDriver port; :android's PlayInstallDriver (play: In-App Updates, flexible or immediate by the decision's urgency and optionally Play's priority and staleness, completing a downloaded update, staging-aware) and DirectInstallDriver (direct: the verified record's one payload downloaded to private storage, size and SHA-256 checked, then :platform's verified PackageInstaller session, every refusal surfaced as swap-refused), against FakeAppUpdateManager and an installer fake (PlayInstallDriverTest, DirectInstallDriverTest); the flavour boundary holds (tools/check_flavours.sh). A Play flexible update reports its download and finishes with a restart (ProgressiveInstallDriver: progress, finish, resume). A JVM desktop build's default is JvmInstallDriver, the typed runtime N/A; :sdk's opt-in DesktopInstallDriver downloads the installer through release.fetch and opens it (DesktopInstallDriverTest), and the jvm exception stays until the registry and supports() follow (SP-00). The internal-track and self-update device runs are the owner's (P6-12 brief)."
     },
     "update.bootguard": {
       "status": "implemented",
@@ -312,7 +313,7 @@
     },
     "ui.kit": {
       "status": "implemented",
-      "note": "P6-11's :ui (polaris-key-ui, Jetpack Compose + Material 3, Android): PolarisBoot over :core's stage machine, the gate (every terminal state and the grace banner), activation, sign-in with QR, settings, devices, the update banner and prompt and pack progress, each with a StateFlow state holder; neutral over the host's MaterialTheme by default, Polaris Key branding behind PolarisBranding.PolarisKey and the Powered-by badge behind showPoweredBy. Proof: every screen's Roborazzi snapshots (light, dark, 200 % font, phone, tablet; neutral and branded) plus the branding, contrast and TalkBack suites."
+      "note": "Android only: there is no JVM desktop kit yet (SP-K12's Compose Multiplatform target), and the registry allows no jvm exception for ui.kit until SP-00 adds one (notes/SDK-PARITY-PASS.md SP-01). P6-11's :ui (polaris-key-ui, Jetpack Compose + Material 3, Android): PolarisKeyApp (the one-call wiring, LocalPolarisKey and the remember* helpers), PolarisBoot over :core's stage machine, the gate (every terminal state and the grace banner), activation, sign-in with QR, settings, devices, the update banner and prompt and pack progress, each with a StateFlow state holder; neutral over the host's MaterialTheme by default, Polaris Key branding behind PolarisBranding.PolarisKey and the Powered-by badge behind showPoweredBy. Proof: every screen's Roborazzi snapshots (light, dark, 200 % font, phone, tablet; neutral and branded) plus the branding, contrast and TalkBack suites."
     },
     "commerce.receipt": {
       "status": "implemented",

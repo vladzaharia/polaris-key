@@ -411,7 +411,7 @@ jobs:
         working-directory: sdks/kotlin
         run: >-
           ./gradlew --no-daemon -Ppkey.jvmOnly=true :core:test :license:test :config:test :identity:test
-          :release:test :update:test :packs:test :sdk:test :conformance:test checkModuleBoundaries
+          :release:test :update:test :packs:test :sdk:test :conformance:test :sample-cli:test checkModuleBoundaries
           :core:publishCorePublicationToLocalRepository :license:publishLicensePublicationToLocalRepository
           :config:publishConfigPublicationToLocalRepository :identity:publishIdentityPublicationToLocalRepository
           :release:publishReleasePublicationToLocalRepository :update:publishUpdatePublicationToLocalRepository

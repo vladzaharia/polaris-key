@@ -56,6 +56,9 @@ include(":update")
 include(":packs")
 include(":sdk")
 include(":conformance")
+// The runnable JVM CLI sample (SP-K14); not published.
+include(":sample-cli")
+project(":sample-cli").projectDir = file("samples/cli")
 
 val jvmOnly = providers.gradleProperty("pkey.jvmOnly").orNull == "true"
 val localSdkDir =

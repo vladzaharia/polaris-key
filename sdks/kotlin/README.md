@@ -155,7 +155,29 @@ client.identity.waitForSignIn(prompt)
 - **`:config`**: `ConfigClient.config(key, default)` and `configSource` (enforced or hidden, then
   local, environment, remote default, fallback), `listUserConfig`, `secret`, `fetchSchema` (null
   on any failure), `mintToken` (edge-mint, cached in memory only and bound to the device token).
-  `ConfigResolution` is the pure resolver `config-matrix.json` pins.
+  `ConfigResolution` is the pure resolver `config-matrix.json` pins. **Local overrides**
+  (notes/SDK-PARITY-PASS.md §3.11): `set(key, value)` persists one (it beats a remote default,
+  never an enforced or hidden key: `managed_by_admin`), checked against the catalog entry's schema
+  once `fetchCatalog()` has run, else against the document's JSON type (`invalid-options`);
+  `clear(key)` and `clearAll()` remove them. They live in `local-config.json` beside the token
+  store (on Android, the Keystore store's no-backup directory), or any `StateSlot` passed as
+  `ConfigClientOptions.localStore`. `setting(key)` is a live `StateFlow` of the key's effective
+  value and `changes` a `SharedFlow<ConfigChange>` of every change (a local override or a new
+  document). `fetchCatalog()` / `catalog` type the served catalog (label, description, schema,
+  widget) for a settings screen.
+- **`client.events`**: one multi-subscriber `SharedFlow<PolarisEvent>`: `License` (a sync that
+  changed the documents, an activation), `Config` (a key's value moved), `UpdateAvailable` (a
+  decision offered a newer build; also `update.offers`) and `Packs` (pack progress).
+- **Channels**: `channelChoices()` lists the current channel, `stable` and every channel the licence
+  grants, and `lockedBy` names the outlet when its capabilities forbid a switch (store, Steam,
+  package-managed builds). `setChannel(channel)` switches at runtime (persisted beside the store;
+  `null` returns to the build's channel), refused `channel_not_allowed` when the outlet locks it or
+  the licence does not grant it, then syncs so documents and decisions follow.
+- **Java callers** (SP-K11): `PolarisKeyFutures(client)` wraps the suspend API as
+  `CompletableFuture`s (`start`, `sync`, `status`, `isEntitled`, `licenseInfo`, `activate`,
+  `enroll`, `setConfig`, `decide`, `install`, `fetch`, `setChannel`, `crashTags`, …;
+  `PolarisKeyFutures.create(options)` builds the client), and every options class has
+  `@JvmOverloads` constructors.
 - **Devices** (in `:core`, as the registry files them): `registerDevice`, `listDevices`,
   `renameDevice`, `deauthorizeDevice`, the report, and two ports: `FingerprintSource`
   (`JvmFingerprintSource` on a desktop) and `DeviceFactsSource` (`JvmDeviceFactsSource`); the
@@ -223,6 +245,19 @@ skipVersion)`, `releaseRecord(hash)`, `buildUrl(version, buildId)` and `install(
   `PolarisKeyCore`. `BootGuard` is the GUARD stage over a host's `UpdateSlots` (apply a staged update,
   count unconfirmed launches, roll back after two with `skipVersion`, the confirmation rows); outlet
   signals come through `OutletSignalReader` (Android's reader is `:android`'s).
+  `client.bootGuard(slots)` builds one over `boot-guard.json` beside the token store, journaling to
+  `client.updateEvents`. A driver that keeps working after `install()` returns (a Play flexible
+  update) is a `ProgressiveInstallDriver`: `progress` is a `StateFlow<InstallStage>` (`Idle`,
+  `Downloading(done, total)`, `ReadyToRestart`, `Failed`), `finish()` installs the downloaded update
+  and `resume()` re-reads the platform on return to the foreground. `update.installDriver` is the
+  driver in use.
+- **JVM desktop installs** (SP-K12, opt-in): `DesktopInstallDriver { client }` as
+  `UpdateClientOptions.installDriver` downloads a `binary` decision's installer through
+  `release.fetch` (verified, under the artifact's own name, in `updates/` beside the store) and
+  opens it with the desktop (`java.awt.Desktop`, reached by reflection so Android never links it);
+  a `store` decision opens the listing. Both journal `update_applied`. Headless, the installer is
+  still downloaded and the result is `Failed(unsupported)` naming its path. The JVM's default stays
+  `JvmInstallDriver`, the registry's `runtime` N/A that `supports()` reports.
 - **`:packs`**: `PackEngine` (`load`, `ensure`, `ensureReleases`, `estimate`, `state`, `rollback`,
   `confirm`, `recoverState`, `revocations`, `isAvailable`, `packFor`, `registerHandler`, progress
   events) over the `PackStorage` port (`DirPackStorage` under the store's data directory, never a
@@ -389,11 +424,31 @@ client.update.install(check)   // In-App Updates (play) or the verified PackageI
   one `payload` artifact, downloaded into `filesDir/pkey/<product>/updates/apk/`, size and SHA-256
   checked, then `ApkInstaller`'s verified session; every refusal is `swap-refused` with its reasons.
   `DirectInstallDriver.launchOutcome(context)` reads the journaled result at the next launch.
+- **Lifecycle** (SP-K08): `PolarisKeyLifecycle.install(application, client)` (from
+  `Application.onCreate`) tracks the current activity (`AndroidOptions(activity =
+lifecycle::currentActivity)`), syncs when the app comes to the foreground (once a minute at most;
+  ETags and backoff still apply) and calls the install driver's `resume()`. `PlayInstallDriver`
+  reports a flexible update's download through `progress`, journals `update_downloaded` when Play
+  has it, and `finish()` completes it (`update_applied`); pass the activity's result for
+  `InAppUpdates.REQUEST_CODE` to `activityResult(requestCode, resultCode)`. A periodic background
+  sync is your own WorkManager worker calling `client.sync()`: the SDK adds no WorkManager
+  dependency.
 - **`PlayPackTransport`** (`packs.transport.play`): on play, `PadPackTransport` re-reads each carried
   pack's PAD location on every call (never persisted), finds `pkey/` or `pkey#tcf_*/`, and hands
   `:packs` an embedded baseline the marker, record and stamp pin verify; `ensure(packId)` waits for
   COMPLETED, asking the confirm hook before Play's cellular dialog. On direct it answers
   `Unsupported(outlet)`. A pack delivered mid-session mounts at the facet's next start.
+
+## Samples
+
+`samples/cli` (`:sample-cli`) is a runnable command-line app on `polaris-key-sdk` alone: `status`,
+`activate <key>`, `config <key>`, `set <key> <json>`, `channels`, `update` and `tags`.
+
+```sh
+PKEY_PRODUCT=djdl PKEY_TRUST=k1=<base64url key> ./gradlew :sample-cli:run --args="status"
+```
+
+Its test drives every command against a scripted Worker, so it builds and runs with the JVM modules.
 
 ## Build and test
 
@@ -401,7 +456,7 @@ client.update.install(check)   // In-App Updates (play) or the verified PackageI
 cd sdks/kotlin
 # JVM modules (JDK 17; no Android SDK needed with -Ppkey.jvmOnly=true)
 ./gradlew -Ppkey.jvmOnly=true :core:test :license:test :config:test :identity:test :release:test \
-          :update:test :packs:test :sdk:test :conformance:test checkModuleBoundaries
+          :update:test :packs:test :sdk:test :conformance:test :sample-cli:test checkModuleBoundaries
 python3 tools/check_16k_alignment.py   # zstd-jni's Android natives are 16 KB page aligned
 # Android modules
 ./gradlew :platform:testPlayDebugUnitTest :platform:testDirectDebugUnitTest \
