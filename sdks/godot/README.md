@@ -475,7 +475,7 @@ func _ready() -> void:
 
 ```gdscript
 var speed: float = PolarisKey.config.get_value("dice.animSpeed", 1.0)
-PolarisKey.config.set_override_store(PKeyConfigFileStore.new("user://settings.cfg"))
+PolarisKey.config.set_override_store(PKeyConfigFileStore.new("user://settings.cfg"))  # optional
 PolarisKey.config.set_compiled_catalog(preload("res://catalog_generated.gd"))
 PolarisKey.config.bind_property($Dice, "roll_speed", "dice.animSpeed", 1.0)
 var minted := await PolarisKey.config.mint_token("leaderboard")   # minted.token, minted.expires_at
@@ -484,6 +484,11 @@ var minted := await PolarisKey.config.mint_token("leaderboard")   # minted.token
 - Precedence is client-core's: enforced or hidden (remote) > local override > environment >
   remote default > fallback. An enforced or hidden key ignores the player's saved value without
   deleting it from `settings.cfg`.
+- **Settings persist by default.** Until the game installs its own store, the local layer is a
+  `PKeyConfigFileStore` at `PKeyOptions.settings_path` (`user://pkey_settings.cfg`), so a change
+  made in `PKeySettingsPanel` survives a restart with no code. `set_override_store()` replaces
+  it (point a `PKeyConfigFileStore` at your own `settings.cfg` to keep one file);
+  `persist_settings = false` keeps the layer in memory.
 - The local layer is read at call time. `PKeyConfigFileStore` finds a key at its catalog
   `accessor` (`section.key` -> `[section] key`), then in an explicit table, then at the key
   itself.

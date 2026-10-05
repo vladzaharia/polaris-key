@@ -103,6 +103,13 @@ const CONFIG_ENV_NEVER := 2
 @export var auto_attest := true
 
 @export_group("Config")
+## Persist the player's settings by default (SDK parity §3.11): when the game has not installed its
+## own override store, PolarisKey.config keeps the local layer in a PKeyConfigFileStore at
+## `settings_path`, so a PKeySettingsPanel change survives a restart. Off: an in-memory layer
+## (the game installs its own store with config.set_override_store()).
+@export var persist_settings := true
+## Where the default settings store lives (a ConfigFile; your own settings.cfg works too).
+@export var settings_path := "user://pkey_settings.cfg"
 ## The config environment layer (`PKEY_CONFIG_*` variables and `--pkey-config key=value`
 ## arguments). Auto: on in debug builds and on desktop, off in release builds on mobile and web.
 @export_enum("Auto", "Always", "Never") var config_env_layer := CONFIG_ENV_AUTO
