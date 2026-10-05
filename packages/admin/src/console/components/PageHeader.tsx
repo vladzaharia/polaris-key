@@ -116,6 +116,22 @@ export function PageHeader({
     return () => io.disconnect();
   }, [sticky]);
 
+  // A ghost Refresh that ends the header row has no frame, so its 12 px of padding would leave
+  // the visible ink ("Refresh") short of the content edge every other header action meets. When
+  // it is the last thing on the row, a matching negative margin puts the ink on the edge. Below
+  // 640 px the inline secondaries are hidden and the primary action has its own row, so the
+  // question is asked per breakpoint.
+  const refreshTrailsPhone = Boolean(
+    freshness && !freshness.auto && mobileMenu.length === 0,
+  );
+  const refreshTrailsWide = Boolean(
+    freshness &&
+    !freshness.auto &&
+    inline.length === 0 &&
+    desktopMenu.length === 0 &&
+    !primaryAction,
+  );
+
   const hasCluster =
     Boolean(freshness) ||
     inline.length > 0 ||
@@ -172,6 +188,13 @@ export function PageHeader({
                 <Button
                   variant="ghost"
                   size="sm"
+                  data-trailing-ghost={
+                    refreshTrailsPhone || refreshTrailsWide ? "" : undefined
+                  }
+                  className={cn(
+                    refreshTrailsPhone && "-mr-3",
+                    refreshTrailsWide ? "sm:-mr-3" : "sm:mr-0",
+                  )}
                   loading={freshness.refreshing}
                   iconStart={<RefreshCw aria-hidden />}
                   onClick={freshness.onRefresh}

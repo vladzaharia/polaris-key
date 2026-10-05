@@ -24,10 +24,16 @@
  *                   that is not right-aligned with tabular figures, page-header actions that do
  *                   not end at the header's right edge, a grid of form fields capped short of its
  *                   card's content edge, or a switch whose help line describes the other state.
+ *                   Edges are measured by visible ink: a frameless control (a labelled ghost
+ *                   button) ends where its label and icon end, not where its padding does.
+ *                   pill-right: a pill in a card header (`[data-card-header]`) sits at the
+ *                   header's right edge: nothing but controls after it, and the header's ink
+ *                   ends at its content edge (pills mean attention, ADMIN.md §5.11).
  *   overflow        The page or a scroll container scrolls sideways, a table scrolls sideways inside
  *                   its own wrapper (at desktop width; on a phone, a DataTable not drawn as cards),
- *                   or a text box clips or spills its text without an intended scroller or a way to
- *                   read the whole text.
+ *                   a text box clips or spills its text without an intended scroller or a way to
+ *                   read the whole text, or a button's non-text child (an icon, a service dot)
+ *                   ends past the button's border box (child-spill; the top bar included).
  */
 
 export interface LayoutViolation {
@@ -167,6 +173,17 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
   };
   const REPLACED =
     "img,svg,input,select,textarea,button,canvas,video,[role=switch],[role=combobox],[role=checkbox],[role=radio],progress,meter";
+  /**
+   * A frameless, labelled control (a ghost or link button, a bare link styled as one): no border,
+   * no fill, and a text label. Its padding is invisible, so its edge is its ink (label and icon),
+   * not its box. An icon-only button stays measured by its box: the square hit target is the
+   * shape a viewer reads.
+   */
+  const frameless = (e: Element): boolean =>
+    e.matches("button,a[href],[role=button]") &&
+    !hasBox(e) &&
+    !e.hasAttribute("data-icon") &&
+    (e.textContent || "").trim().length > 0;
   /** Boxes of the visible "ink" under `root`: text runs, replaced elements and controls. */
   const ink = (root: Element): DOMRect[] => {
     const rects: DOMRect[] = [];
@@ -182,9 +199,13 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
     }
     for (const e of Array.from(root.querySelectorAll(REPLACED))) {
       if (hidden(e)) continue;
-      // An svg inside a button is covered by the button.
-      if (e.tagName.toLowerCase() === "svg" && e.closest("button") !== null)
-        continue;
+      // An svg inside a framed button is covered by the button; inside a frameless one it is
+      // ink of its own.
+      const host =
+        e.tagName.toLowerCase() === "svg" ? e.closest("button") : null;
+      if (host !== null && !frameless(host)) continue;
+      // A frameless control is its ink (its label is a text run, its icon an svg), not its box.
+      if (e !== host && frameless(e)) continue;
       rects.push(e.getBoundingClientRect());
     }
     return rects;
@@ -210,7 +231,9 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
       if (hidden(e)) continue;
       const r = e.getBoundingClientRect();
       // A control's frame is its edge at any width: a full-width button ends where its box
-      // ends, not where its centred label does.
+      // ends, not where its centred label does. A frameless one has no frame to see: its text
+      // and icon (counted by `ink`) are its edge.
+      if (frameless(e)) continue;
       if (e.matches(REPLACED) || (hasBox(e) && e.matches("a[href]")))
         take(r.right, e);
       else if (hasBox(e) && r.width < ref * 0.9) take(r.right, e);
@@ -402,6 +425,39 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
           detail: `"${(e.textContent || "").trim().slice(0, 60)}" spills ${e.scrollWidth - e.clientWidth}px out of its box`,
           cause: `${short(e)} white-space:${s.whiteSpace} overflow-wrap:${s.overflowWrap}`,
         });
+      }
+    }
+  }
+
+  // A button's non-text child (an icon, a row of service dots) that ends past the button's
+  // border box: squeezed out of a shrinking trigger, it spills over its neighbour (or is cut off
+  // by the button's own overflow clip). The top bar is checked too: the product switcher lives
+  // there.
+  const topbar = document.querySelector("[data-shell=topbar]");
+  for (const root of topbar ? [...roots, topbar] : roots) {
+    for (const b of Array.from(
+      root.querySelectorAll("button,a[href],[role=button],[role=combobox]"),
+    )) {
+      if (hidden(b)) continue;
+      const br = b.getBoundingClientRect();
+      for (const e of Array.from(b.querySelectorAll("*"))) {
+        if (hidden(e)) continue;
+        // Text runs are the overflow rule's business (truncation with a disclosure is fine).
+        if ((e.textContent || "").trim() && e.tagName.toLowerCase() !== "svg")
+          continue;
+        if (e.closest("svg") !== e && e.closest("svg") !== null) continue;
+        const r = e.getBoundingClientRect();
+        const past = Math.max(r.right - br.right, br.left - r.left);
+        if (past <= 1) continue;
+        out.push({
+          rule: "overflow",
+          kind: "child-spill",
+          where: where(e),
+          detail: `a non-text child of a ${b.tagName.toLowerCase()} ends ${Math.round(past)}px past the control's border box (child ${Math.round(r.left)}–${Math.round(r.right)}, control ${Math.round(br.left)}–${Math.round(br.right)})`,
+          cause: `control {${short(b)} w:${Math.round(br.width)} overflow:${cs(b).overflowX}} child {${short(e)}}`,
+          html: snip(b),
+        });
+        break;
       }
     }
   }
@@ -950,6 +1006,71 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
         cause: `${short(grid)} > ${short(last)}`,
         html: snip(last),
       });
+  }
+  // f. Pills sit at the right edge of their card header (pills mean attention, ADMIN.md §5.11):
+  //    nothing but controls after a pill, and the header's ink ends at its content edge.
+  for (const root of roots) {
+    for (const h of Array.from(root.querySelectorAll("[data-card-header]"))) {
+      if (hidden(h)) continue;
+      const pills = Array.from(h.querySelectorAll("[data-status=pill]")).filter(
+        (p) => !hidden(p),
+      );
+      if (pills.length === 0) continue;
+      const hr = h.getBoundingClientRect();
+      const last = pills.reduce((a, b) =>
+        b.getBoundingClientRect().right > a.getBoundingClientRect().right
+          ? b
+          : a,
+      );
+      const lr = last.getBoundingClientRect();
+      // Ink to the right of the pill, on its line, that is not inside a control.
+      const onLine = (r: DOMRect) =>
+        r.left >= lr.right - 1 && r.bottom > lr.top && r.top < lr.bottom;
+      const CTRL = "button,a[href],[role=button],[data-status=pill]";
+      const after: DOMRect[] = [];
+      const walker = document.createTreeWalker(h, NodeFilter.SHOW_TEXT);
+      const range = document.createRange();
+      for (let t = walker.nextNode(); t; t = walker.nextNode()) {
+        const p = t.parentElement;
+        if (!p || !t.textContent?.trim() || hidden(p) || p.closest(CTRL))
+          continue;
+        range.selectNodeContents(t);
+        for (const r of Array.from(range.getClientRects()))
+          if (r.width > 0 && onLine(r)) after.push(r);
+      }
+      // The cluster's right end: the last pill, or a control after it (by its ink when it is
+      // frameless). Text before the pill (a truncated name) is not the cluster: a clipped text
+      // run reports its full, unclipped width.
+      let right = lr.right;
+      inkEdge = last;
+      for (const c of Array.from(
+        h.querySelectorAll("button,a[href],[role=button]"),
+      )) {
+        if (hidden(c)) continue;
+        const cr = c.getBoundingClientRect();
+        if (cr.left < lr.left) continue;
+        const x = frameless(c)
+          ? Math.max(...ink(c).map((r) => r.right), cr.left)
+          : cr.right;
+        if (x > right) {
+          right = x;
+          inkEdge = c;
+        }
+      }
+      const edge = contentRight(h);
+      if (after.length > 0 || Math.abs(edge - right) > 2)
+        out.push({
+          rule: "right-align",
+          kind: "pill-right",
+          where: where(last),
+          detail:
+            after.length > 0
+              ? `a pill in a card header is followed by ${after.length} piece(s) of non-control content`
+              : `the card header's pill cluster ends at x=${Math.round(right)}${edgeName()}, header content edge x=${Math.round(edge)} (${Math.round(edge - right)}px short)`,
+          cause: `header {${short(h)} justify:${cs(h).justifyContent}} pill {${short(last)}}`,
+          html: snip(h),
+        });
+    }
   }
   return { violations: out, scrollers: metrics };
 }

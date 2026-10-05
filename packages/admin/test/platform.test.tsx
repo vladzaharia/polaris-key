@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { configureAxe } from "vitest-axe";
-import { PENDING, boot, resetConsole } from "./consoleHarness.js";
+import { ALL_ON, PENDING, boot, resetConsole } from "./consoleHarness.js";
 
 /**
  * The Platform section (notes/S-13 §9.1, owner decision 3 of 2026-10-04): a sidebar group, the
@@ -171,6 +171,50 @@ describe("the Platform section in the sidebar", () => {
         .getAttribute("aria-current"),
     ).toBe("page");
     expect(document.title).toBe("Deployment · Polaris Key");
+  });
+});
+
+describe("the Platform section inside a product (owner, 2026-10-04)", () => {
+  it("is hidden from the sidebar; the switcher, the version chip and ⌘K still reach it", async () => {
+    boot("#/p/djdl", { services: ALL_ON, extra: platformRoutes() });
+    await screen.findByRole("heading", { level: 1, name: "DJDL" });
+    expect(
+      within(nav()).queryByRole("button", { name: "Platform" }),
+    ).toBeNull();
+    expect(nav().querySelector("[data-section=platform]")).toBeNull();
+    // The product's own sections still follow the one-open-section rule.
+    expect(
+      within(nav())
+        .getByRole("button", { name: "Core" })
+        .getAttribute("aria-expanded"),
+    ).toBe("true");
+
+    // The product switcher: a Platform entry beside All products.
+    await userEvent.click(
+      screen.getByRole("button", { name: /^Product: DJDL \(djdl\)/ }),
+    );
+    const entry = await screen.findByRole("link", { name: "Platform" });
+    expect(entry.getAttribute("href")).toBe("#/platform");
+    const footer = entry.parentElement!;
+    expect(
+      within(footer)
+        .getAllByRole("link")
+        .map((a) => a.textContent),
+    ).toEqual(["All products", "Platform", "New product"]);
+    await userEvent.keyboard("{Escape}");
+
+    // The account menu's version chip goes to Deployment.
+    await userEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    const chip = await screen.findByRole("menuitem", { name: /Version/ });
+    expect(chip.getAttribute("href")).toBe("#/platform/deployment");
+  });
+
+  it("comes back on Products and on the Platform pages", async () => {
+    boot("#/products", { extra: platformRoutes() });
+    await screen.findByRole("heading", { level: 1, name: "Products" });
+    expect(
+      within(nav()).getByRole("button", { name: "Platform" }),
+    ).toBeTruthy();
   });
 });
 

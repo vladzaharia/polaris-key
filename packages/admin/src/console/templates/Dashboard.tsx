@@ -152,7 +152,10 @@ export function Panel({
     >
       {/* The title takes the free width and the action stays top-right; only an action wider
           than what is left (a phone) wraps under the title. */}
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3">
+      <div
+        data-card-header=""
+        className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3"
+      >
         <div className="min-w-0 flex-1">
           <Heading id={id} className="text-base font-bold text-fg-strong">
             {title}
@@ -161,6 +164,8 @@ export function Panel({
             <p className="text-sm text-fg-muted">{description}</p>
           ) : null}
         </div>
+        {/* A labelled ghost button that ends the header meets the edge by its ink (the trailing
+            ghost rule in styles.css; the header is a data-card-header). */}
         {action ? <div className="max-w-full">{action}</div> : null}
       </div>
       <div className="min-w-0 flex-1 p-4">{children}</div>
@@ -226,7 +231,10 @@ export function AttentionList({
       aria-labelledby={id}
       className="rounded-lg border border-border bg-surface-raised"
     >
-      <div className="flex items-center justify-between border-b border-border px-4 py-2">
+      <div
+        data-card-header=""
+        className="flex items-center justify-between border-b border-border px-4 py-2"
+      >
         <h2 id={id} className="text-sm font-bold text-fg-strong">
           {title}
         </h2>

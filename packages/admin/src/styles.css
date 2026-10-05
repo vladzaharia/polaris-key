@@ -211,6 +211,38 @@
   }
 }
 
+@layer base {
+  /* A labelled ghost button has no frame, so its padding is invisible: where it ends a row, the
+     padding would leave its visible ink (label and icon) short of the edge every other row end
+     meets. A matching negative end margin puts the ink on the edge. "Ends a row": the last child
+     of a row that pushes its content to the end (or of that row's last group), or the last
+     control of a card header. Icon-only buttons keep their square hit target on the edge. The
+     layout lint measures ink, so a row this misses fails it (e2e/layoutProbe.ts). */
+  [data-variant="ghost"] {
+    --ghost-pad: 1rem;
+  }
+  [data-variant="ghost"][data-size="xs"] {
+    --ghost-pad: 0.5rem;
+  }
+  [data-variant="ghost"][data-size="sm"] {
+    --ghost-pad: 0.75rem;
+  }
+  [data-variant="ghost"][data-size="lg"] {
+    --ghost-pad: 1.5rem;
+  }
+  :is(.justify-between, .justify-end, [data-card-header])
+    > [data-variant="ghost"]:not([data-icon]):last-child,
+  :is(.justify-between, .justify-end, [data-card-header])
+    > :last-child
+    > [data-variant="ghost"]:not([data-icon]):last-child,
+  [data-card-header]
+    > :last-child
+    > :last-child
+    > [data-variant="ghost"]:not([data-icon]):last-child {
+    margin-inline-end: calc(var(--ghost-pad) * -1);
+  }
+}
+
 @utility pk-scroll {
   scrollbar-width: thin;
   scrollbar-color: var(--pk-border-subtle) transparent;
