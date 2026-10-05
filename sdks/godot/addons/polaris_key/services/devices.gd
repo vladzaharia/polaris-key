@@ -57,7 +57,7 @@ const STORE_SIGNALS := ["appStore", "testFlight"]
 var fingerprint_host: PKeyHostIo = null
 ## Called after deauthorize() wiped the local state (the autoload re-emits its state).
 var on_wiped: Callable
-## The platform attest() answers for ("" means PKeyHeaders.platform()). Tests set it.
+## The platform attest() answers for ("" means PKeyHeaders.update_platform()). Tests set it.
 var attest_platform := ""
 ## The native facades attest() uses (null: PKeyApple.shared() / PKeyAndroid.shared()). Tests set them.
 var apple: PKeyApple = null
@@ -352,7 +352,7 @@ func report() -> bool:
 ## PKeyOptions.play_cloud_project_number.
 func attest() -> PKeyResult:
 	var feature := PKeyConstants.Feature.DEVICES_ATTEST
-	var platform := attest_platform if attest_platform != "" else PKeyHeaders.platform()
+	var platform := attest_platform if attest_platform != "" else PKeyHeaders.update_platform()
 	if platform != PKeyConstants.Platform.IOS and platform != PKeyConstants.Platform.ANDROID:
 		return PKeyResult.unsupported(feature, PKeyConstants.UnsupportedReason.RUNTIME, "Device attestation needs an iOS or Android store install; a %s build stays at the basic trust level." % (platform if platform != "" else "desktop"))
 	var gate: PKeyResult
@@ -455,7 +455,7 @@ static func _not_store_install(d: Dictionary) -> String:
 ## plugin's presence, this launch's distributor read on iOS (none yet: no evidence against), and
 ## the plugin flavour and installer on Android.
 static func attest_outlet_detail() -> String:
-	match PKeyHeaders.platform():
+	match PKeyHeaders.update_platform():
 		PKeyConstants.Platform.IOS:
 			var a := PKeyApple.shared()
 			if a.unsupported_reason() != "":

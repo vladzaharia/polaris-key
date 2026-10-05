@@ -58,7 +58,7 @@ def _passes(fn: Callable[[str], Optional[str]], row: Dict[str, Any]) -> bool:
 
 
 def test_headers_version_and_floors() -> None:
-    assert _CORPUS["headersVersion"] == 1
+    assert _CORPUS["headersVersion"] == 2
     assert len(_CORPUS["platformCases"]) >= 31
     assert len(_CORPUS["archCases"]) >= 31
 
@@ -109,3 +109,16 @@ def test_a_captured_request_carries_the_canonical_values() -> None:
     assert headers["x-pkey-arch"] == canonical_arch(platform.machine())
     assert headers["x-pkey-sdk"] == "python"
     assert SDK_NAME == SdkId.PYTHON == "python"
+
+
+def test_update_platform_is_a_build_target_only() -> None:
+    """WIRE-CONTRACT-V4 §5.2 rule 5 (SP-08): ``tvos``, ``visionos`` and ``watchos`` are header
+    values only, so they give no update platform; the six build targets pass through."""
+    from polaris_key.update.client import update_platform
+
+    for value in ("macos", "ios", "android", "windows", "linux", "web"):
+        assert update_platform(value) == value
+    for value in ("tvos", "visionos", "watchos"):
+        assert canonical_platform(value) == value
+        assert update_platform(value) is None
+    assert update_platform(None) is None

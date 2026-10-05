@@ -71,7 +71,7 @@ const GATE_MATRIX := "res://tests/corpus/v2/gate-matrix.json"
 const HEADERS := "res://tests/corpus/v2/headers.json"
 const UPDATE_MATRIX := "res://tests/corpus/v2/update-matrix.json"
 const OUTLET_MATRIX := "res://tests/corpus/v2/outlet-matrix.json"
-const HEADERS_VERSION := 1
+const HEADERS_VERSION := 2
 const CORPUS_VERSION := 2
 const FLOORS := {
 	"jwsCases": 36,
@@ -1134,6 +1134,13 @@ func _header_cases(t: PKeyTestContext, corpus: Dictionary) -> void:
 		var doctored := sample.duplicate()
 		doctored["expect"] = "macos" if sample["expect"] == "linux" else "linux"
 		t.check("%s: a doctored row fails the same comparison" % name, _header_passes(fn, sample) and not _header_passes(fn, doctored))
+	# WIRE-CONTRACT-V4 §5.2 rule 5: the update platform is the header value only for a build
+	# target; tvos, visionos and watchos are header values only (SP-08).
+	for v in ["macos", "ios", "android", "windows", "linux", "web"]:
+		t.check("update_platform_for(%s) is itself" % v, PKeyHeaders.update_platform_for(v) == v, PKeyHeaders.update_platform_for(v))
+	for v in ["tvos", "visionos", "watchos", ""]:
+		t.check("update_platform_for(%s) is none" % JSON.stringify(v), PKeyHeaders.update_platform_for(v) == "", PKeyHeaders.update_platform_for(v))
+	t.check("update_platform() follows platform() on a build target", PKeyHeaders.update_platform() == PKeyHeaders.update_platform_for(PKeyHeaders.platform()), PKeyHeaders.update_platform())
 
 
 # ── gate-matrix (§5, §5.1): the build-gate port and the licence gate ─────────────────────

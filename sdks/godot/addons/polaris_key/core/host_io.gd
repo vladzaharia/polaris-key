@@ -10,7 +10,7 @@ extends RefCounted
 
 ## "windows", "macos", "linux", "ios", "android", "web", or "" for anything else.
 func platform() -> String:
-	return PKeyHeaders.platform()
+	return PKeyHeaders.update_platform()
 
 
 ## The program's stdout, or null when it could not run or exited non-zero. Desktop only:

@@ -281,7 +281,7 @@ func _enter_tree() -> void:
 		PKeyJws.progress_listener = _on_verify_progress
 	# iOS: this launch's AppDistributor read starts now (P5-05), so outlet detection usually has
 	# it; it is raced against 2 s and never cached across launches.
-	if name == "PolarisKey" and PKeyHeaders.platform() == PKeyConstants.Platform.IOS:
+	if name == "PolarisKey" and PKeyHeaders.update_platform() == PKeyConstants.Platform.IOS:
 		PKeyApple.start_launch_reads()
 
 
