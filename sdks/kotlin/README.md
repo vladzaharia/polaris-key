@@ -139,8 +139,16 @@ client.identity.waitForSignIn(prompt)
 
 - **`:license`**: `LicenseClient.status()` (the §5 gate over the verified cache and the clock
   floor), `activate`, `enroll`, `deactivate` (remote best-effort, local wipe mandatory),
-  `entitlements`, `isEntitled`, `profile`, `licenseId`, `entitledChannels` (the grants, raw, or
-  `["stable"]`). A 401 re-acquires once per pass (§5): `POST /license/token`, or re-registration
+  `entitlements`, `entitlementValue`, `isEntitled`, `licenseInfo` (licence id, tier, tier label,
+  device limit, profile, channels), `profile`, `licenseId`, `entitledChannels` (the grants, raw, or
+  `["stable"]`). **`isEntitled` answers `false` whenever the gate is not usable** (revoked,
+  expired, blocked, never activated; S-19 G11), whatever the last document said; it used to read
+  the document alone. Activation answers a typed `ActivationResult` whose every refusal carries the
+  server's registry `code`: `DeviceLimit`, `Unauthorized`, `FingerprintRequired`,
+  `HardwareMismatch`, `EnrollDisabled`, `EnrollClaimed`, `LicenseDisabled`, `LicenseExpired`,
+  `AttestationRequired`, `RateLimited(retryAfterSeconds)`, `Refused(code, status, message)` for any
+  other 4xx, and `Error` (`network` or `server-error`). An unknown 403 is `Refused`, never
+  `DeviceLimit` (notes/SDK-PARITY-PASS.md §3.1). A 401 re-acquires once per pass (§5): `POST /license/token`, or re-registration
   for a registered-without-licence device (P1b-06).
 - **`:config`**: `ConfigClient.config(key, default)` and `configSource` (enforced or hidden, then
   local, environment, remote default, fallback), `listUserConfig`, `secret`, `fetchSchema` (null

@@ -310,6 +310,12 @@ object KotlinReplay {
         ActivationResult.FingerprintRequired -> "fingerprint-required"
         is ActivationResult.HardwareMismatch -> "hardware-mismatch"
         ActivationResult.EnrollDisabled -> "enroll-disabled"
+        ActivationResult.EnrollClaimed -> "enroll-claimed"
+        ActivationResult.LicenseDisabled -> "license-disabled"
+        ActivationResult.LicenseExpired -> "license-expired"
+        ActivationResult.AttestationRequired -> "attestation-required"
+        is ActivationResult.RateLimited -> "rate-limited"
+        is ActivationResult.Refused -> "refused"
         is ActivationResult.Error -> "error"
     }
 
