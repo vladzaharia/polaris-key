@@ -293,6 +293,17 @@ export function validateServices(
   if (services.update.enabled && !services.distribution.enabled) {
     errors.push("update_requires_distribution");
   }
+  // Cloud Sync (plans/U-01.md §0): a user setting is a catalog `config` key, so with Config off
+  // there is nothing to sync; and the Cloud Sync principal is the account signed in through the
+  // product, so with Identity off no device could ever have one. Both edges hold in both
+  // directions: Cloud Sync cannot be turned on without them, nor either of them turned off while
+  // Cloud Sync is on.
+  if (services.sync.enabled && !services.config.enabled) {
+    errors.push("sync_requires_config");
+  }
+  if (services.sync.enabled && !services.identity.enabled) {
+    errors.push("sync_requires_identity");
+  }
   // `requires-identity` says "register, but only behind a product login". With Identity off
   // there is no login to stand behind, so the endpoint could never say yes to anyone — a
   // product in this state has silently taken registration away rather than restricted it.

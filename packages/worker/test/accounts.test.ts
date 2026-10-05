@@ -155,6 +155,7 @@ async function setIdentityServices(
         distribution: { enabled: false },
         update: { enabled: false },
         identity: { enabled: services.identity },
+        sync: { enabled: false },
       },
     }),
     "manifest",

@@ -33,7 +33,9 @@ import {
   Box,
   Boxes,
   CircleArrowUp,
+  Cloud,
   CloudUpload,
+  Database,
   FilePen,
   FileStack,
   Fingerprint,
@@ -136,7 +138,9 @@ export type ProductPageId =
   | "feed"
   // identity
   | "portal"
-  | "sign-in";
+  | "sign-in"
+  // sync
+  | "sync-data";
 
 export type PageId = GlobalPageId | ProductPageId;
 
@@ -613,6 +617,25 @@ export const SECTIONS: NavSection[] = [
         path: "identity/sign-in",
         icon: LogIn,
         docs: "/docs/services/identity/oidc/",
+        inNav: true,
+        ready: true,
+      },
+    ],
+  },
+  {
+    key: "sync",
+    label: "Cloud Sync",
+    service: "sync",
+    accent: "sync",
+    glyph: Cloud,
+    docs: "/docs/services/sync/",
+    items: [
+      {
+        page: "sync-data",
+        label: "Data",
+        path: "sync/data",
+        icon: Database,
+        docs: "/docs/services/sync/",
         inNav: true,
         ready: true,
       },

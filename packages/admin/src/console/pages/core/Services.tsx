@@ -94,6 +94,8 @@ const ERROR_TARGETS: Record<string, (ServiceSlug | "registration")[]> = {
   update_requires_distribution: ["update", "distribution"],
   registration_requires_identity: ["identity", "registration"],
   config_without_activation: ["config", "license", "registration"],
+  sync_requires_config: ["sync", "config"],
+  sync_requires_identity: ["sync", "identity"],
 };
 
 /** What turning a service off does, in the docs' words (services-enablement). */
@@ -108,6 +110,7 @@ const DISABLE_CONSEQUENCES: Record<ServiceSlug, string> = {
     "Distribution stops serving downloads and store rollouts are no longer managed here.",
   update: "The update feed answers not-configured: clients see no updates.",
   identity: "Product sign-in and the customer portal stop working.",
+  sync: "Cloud Sync's endpoints answer not-found: settings stay on each device and nothing syncs.",
 };
 
 function readDraft(data: ServicesResponse): Draft {

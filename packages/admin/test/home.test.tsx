@@ -61,6 +61,7 @@ function registry(): Record<string, unknown> {
       distribution: { enabled: false },
       update: { enabled: false },
       identity: { enabled: false },
+      sync: { enabled: false },
     }),
     modifiedAt: 1_000,
   };

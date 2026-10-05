@@ -77,6 +77,7 @@ async function world(bind = true): Promise<World> {
         distribution: { enabled: false },
         update: { enabled: false },
         identity: { enabled: false },
+        sync: { enabled: false },
       },
     }),
     "manifest",

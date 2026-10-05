@@ -179,6 +179,7 @@ async function services(
         distribution: { enabled: on.distribution },
         update: { enabled: on.distribution },
         identity: { enabled: false },
+        sync: { enabled: false },
       },
     }),
     "manifest",
@@ -514,6 +515,7 @@ async function ingestWithDistributionOff(w: World, mode: string) {
       distribution: { enabled: false },
       update: { enabled: false },
       identity: { enabled: false },
+      sync: { enabled: false },
     },
     NOW,
   );
@@ -547,6 +549,7 @@ async function ingestManifest(
       distribution: { enabled: on.distribution },
       update: { enabled: on.distribution },
       identity: { enabled: false },
+      sync: { enabled: false },
     },
     NOW,
   );

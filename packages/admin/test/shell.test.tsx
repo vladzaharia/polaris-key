@@ -95,6 +95,7 @@ describe("sections by enablement (D-15)", () => {
         "Distribution",
         "Update",
         "Identity",
+        "Cloud Sync",
       ]),
     );
   });
@@ -115,6 +116,7 @@ describe("sections by enablement (D-15)", () => {
         "Config",
         "Distribution",
         "Identity",
+        "Cloud Sync",
       ]),
     );
     expect(within(nav()).queryByRole("link", { name: "Releases" })).toBeNull();

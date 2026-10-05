@@ -28,6 +28,7 @@
  */
 
 import { Catalog } from "@polaris-key/catalog";
+import { validateCatalogCloudSync } from "@polaris-key/manifest";
 import { ErrorCode } from "../../../core/errors.js";
 import { getActiveSchema, insertSchema } from "../../../core/data.js";
 import {
@@ -104,6 +105,7 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
       entries: catalog.entries,
     });
     if (unrepresentable) return unrepresentable;
+    const active = await getActiveSchema(db, slug);
     if (body.expectedVersion !== undefined) {
       const expected = body.expectedVersion;
       if (
@@ -115,7 +117,6 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
           fields: ["expectedVersion"],
         });
       }
-      const active = await getActiveSchema(db, slug);
       const current = active?.catalog_version ?? 0;
       if (current !== expected) {
         return err(
@@ -126,6 +127,26 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
         );
       }
     }
+    // Cloud Sync (U-04, plans/U-01.md §3): the `user` blocks and the catalog's `cloudSync` block
+    // pass the manifest's own rules. The console's editor edits entries only, so a body without
+    // `cloudSync` carries the active version's block forward rather than dropping it; it is
+    // checked against the new entries either way (a removed flag or rename target refuses).
+    const cloudSync =
+      typeof catalogJson === "object" &&
+      catalogJson !== null &&
+      "cloudSync" in catalogJson
+        ? (catalogJson as { cloudSync?: unknown }).cloudSync
+        : activeCloudSync(active?.catalog_json);
+    const syncIssues = validateCatalogCloudSync({
+      entries: catalog.entries,
+      cloudSync,
+      tierIds: new Set((await listTiers(db, slug)).map((t) => t.id)),
+    });
+    if (syncIssues.length > 0) {
+      return err(422, ErrorCode.BadRequest, "invalid catalog", {
+        fields: syncIssues.map((i) => `${i.path}: ${i.message}`),
+      });
+    }
     const version = await nextSchemaVersion(db, slug);
     await deactivateSchemas(db, slug);
     await insertSchema(db, {
@@ -134,6 +155,7 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
       catalog_json: JSON.stringify({
         schemaVersion: version,
         entries: catalog.entries,
+        ...(cloudSync === undefined ? {} : { cloudSync }),
       }),
       active: 1,
       created_at: now,
@@ -150,6 +172,16 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
     return adminJson({ ok: true, schemaVersion: version });
   }
   return err(405, ErrorCode.BadRequest, "method not allowed");
+}
+
+/** The `cloudSync` block of a stored catalog, or `undefined`. */
+function activeCloudSync(json: string | undefined): unknown {
+  if (json === undefined) return undefined;
+  try {
+    return (JSON.parse(json) as { cloudSync?: unknown }).cloudSync;
+  } catch {
+    return undefined;
+  }
 }
 
 function entryCount(json: string): number {

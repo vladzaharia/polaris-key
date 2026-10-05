@@ -1338,6 +1338,7 @@ describe("admin services enablement", () => {
     distribution: { enabled: false },
     update: { enabled: false },
     identity: { enabled: false },
+    sync: { enabled: false },
   };
 
   async function world(): Promise<{
@@ -1390,6 +1391,7 @@ describe("admin services enablement", () => {
       distribution: { enabled: false },
       update: { enabled: false },
       identity: { enabled: false },
+      sync: { enabled: false },
     });
     // Nothing declared, so the policy is null and the wire enforces the derivation.
     expect(body.registration).toBeNull();
@@ -1416,6 +1418,7 @@ describe("admin services enablement", () => {
       distribution: { enabled: true },
       update: { enabled: true },
       identity: { enabled: false },
+      sync: { enabled: false },
     });
     const product = await loadProduct(w.env, w.db, "djdl");
     expect(product?.services.update.enabled).toBe(true);
@@ -1436,7 +1439,7 @@ describe("admin services enablement", () => {
     expect(status).toBe(200);
     const row = await getProduct(w.db, "djdl");
     expect(row?.services_json).toBe(
-      '{"license":{"enabled":true},"config":{"enabled":true},"release":{"enabled":true},"distribution":{"enabled":false},"update":{"enabled":false},"identity":{"enabled":false},"zeta":{"enabled":true}}',
+      '{"license":{"enabled":true},"config":{"enabled":true},"release":{"enabled":true},"distribution":{"enabled":false},"update":{"enabled":false},"identity":{"enabled":false},"sync":{"enabled":false},"zeta":{"enabled":true}}',
     );
     // The console still cannot patch a slug it does not know.
     const bad = await call(w, "PATCH", "", {
@@ -1456,6 +1459,46 @@ describe("admin services enablement", () => {
     const after = await call(w, "GET");
     expect(after.body.source).toBe("manifest");
     expect(after.body.services).toMatchObject({ update: { enabled: false } });
+  });
+
+  it("PATCH refuses Cloud Sync without Config and Identity, and either of them off under it (U-04)", async () => {
+    const w = await world();
+    // Defaults: License + Config on, Identity off. Cloud Sync needs Identity.
+    const noIdentity = await call(w, "PATCH", "", {
+      services: { sync: { enabled: true } },
+    });
+    expect(noIdentity.status).toBe(422);
+    expect(noIdentity.body.errors).toEqual(["sync_requires_identity"]);
+    const noConfig = await call(w, "PATCH", "", {
+      services: {
+        config: { enabled: false },
+        identity: { enabled: true },
+        sync: { enabled: true },
+      },
+    });
+    expect(noConfig.status).toBe(422);
+    expect(noConfig.body.errors).toContain("sync_requires_config");
+    // With both, it turns on; then Identity (or Config) cannot go off under it.
+    const on = await call(w, "PATCH", "", {
+      services: { identity: { enabled: true }, sync: { enabled: true } },
+    });
+    expect(on.status).toBe(200);
+    const identityOff = await call(w, "PATCH", "", {
+      services: { identity: { enabled: false } },
+    });
+    expect(identityOff.status).toBe(422);
+    expect(identityOff.body.errors).toEqual(["sync_requires_identity"]);
+    const configOff = await call(w, "PATCH", "", {
+      services: { config: { enabled: false } },
+    });
+    expect(configOff.status).toBe(422);
+    expect(configOff.body.errors).toContain("sync_requires_config");
+    const after = await call(w, "GET");
+    expect(after.body.services).toMatchObject({
+      config: { enabled: true },
+      identity: { enabled: true },
+      sync: { enabled: true },
+    });
   });
 
   it("a service's admin context carries Core's hooks, gated on the product's enablement (P2b-01)", async () => {
@@ -1498,6 +1541,7 @@ describe("admin services enablement", () => {
           distribution: { enabled: true },
           update: { enabled: true },
           identity: { enabled: false },
+          sync: { enabled: false },
         }),
         "manifest",
         NOW,
@@ -1582,6 +1626,7 @@ describe("admin services enablement", () => {
         distribution: { enabled: true },
         update: { enabled: true },
         identity: { enabled: true },
+        sync: { enabled: false },
       }),
       "manifest",
       NOW + 1,
@@ -1694,6 +1739,7 @@ describe("admin product setup: Sparkle warning", () => {
       distribution: { enabled: true },
       update: { enabled: opts.update },
       identity: { enabled: false },
+      sync: { enabled: false },
     };
     await setServices(
       db,

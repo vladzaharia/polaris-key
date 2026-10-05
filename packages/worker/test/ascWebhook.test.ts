@@ -624,6 +624,7 @@ describe("not configured: the service not-found shape", () => {
           distribution: { enabled: false },
           update: { enabled: false },
           identity: { enabled: false },
+          sync: { enabled: false },
         },
       }),
       "manifest",

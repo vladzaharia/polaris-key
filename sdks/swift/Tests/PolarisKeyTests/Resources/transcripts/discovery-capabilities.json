@@ -90,7 +90,8 @@
                   "release": { "enabled": false },
                   "distribution": { "enabled": false },
                   "update": { "enabled": false },
-                  "identity": { "enabled": false }
+                  "identity": { "enabled": false },
+                  "sync": { "enabled": false }
                 }
               }
             }

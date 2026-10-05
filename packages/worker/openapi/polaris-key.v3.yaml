@@ -117,8 +117,8 @@ paths:
         `version` is the DISCOVERY document's own version (still `2`) and `protocolVersion`
         is the wire version (`4`) — they are deliberately different numbers. `schemaVersion`
         is the product's catalog version, a third orthogonal counter. `services` always
-        carries all six slugs in the canonical order license, config, release, distribution,
-        update, identity, so a client can iterate it rather than probe. `core.endpoints.register`
+        carries all seven slugs in the canonical order license, config, release, distribution,
+        update, identity, sync, so a client can iterate it rather than probe. `core.endpoints.register`
         is OMITTED when the product's registration policy is `requires-license`.
       parameters: [{ $ref: "#/components/parameters/Product" }]
       responses:
@@ -232,8 +232,14 @@ paths:
                           authDeviceEntry: https://key.plrs.im/djdl/identity/auth/device
                           authDeviceVerify: https://key.plrs.im/djdl/identity/auth/device/verify
                           authDevicePoll: https://key.plrs.im/djdl/identity/auth/device/poll
+                      sync:
+                        enabled: true
+                        settings: false
+                        collections: false
+                        saves: false
+                        endpoints: { pull: null, push: null, saves: null }
                 configOnly:
-                  summary: A config-only product — the other five are bare `enabled:false`
+                  summary: A config-only product — the other six are bare `enabled:false`
                   value:
                     services:
                       license: { enabled: false }
@@ -252,6 +258,7 @@ paths:
                       distribution: { enabled: false }
                       update: { enabled: false }
                       identity: { enabled: false }
+                      sync: { enabled: false }
         "404": { $ref: "#/components/responses/LegacyNotFound" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
     options:
@@ -12061,9 +12068,11 @@ components:
             below; test/serviceTable.test.ts pins it to tools/services.json). Core knows the
             shape of no service: an enabled one contributes its own fragment verbatim, a
             disabled one is exactly `{"enabled": false}` and nothing else.
-          required: [license, config, release, distribution, update, identity]
+          required:
+            [license, config, release, distribution, update, identity, sync]
           properties:
             distribution: { $ref: "#/components/schemas/DistributionFragment" }
+            sync: { $ref: "#/components/schemas/SyncFragment" }
           additionalProperties: { $ref: "#/components/schemas/ServiceFragment" }
     ServiceFragment:
       type: object
@@ -12126,6 +12135,41 @@ components:
             install: https://key.plrs.im/acme/distribution/install.sh
             builds: https://key.plrs.im/acme/distribution/builds/{selector}/{buildId}
             blobs: https://key.plrs.im/acme/distribution/blobs/sha256/{sha256}
+    SyncFragment:
+      description: >
+        Cloud Sync's fragment (U-04; plans/U-01.md §2.5). `{"enabled": false}` when off. When on,
+        `settings`, `collections` and `saves` say which kinds of Cloud Sync data the product
+        serves, and each endpoint is a URL or `null`: an SDK uses an endpoint only when it is
+        present. Each capability turns true, and its endpoint appears, when the package serving
+        it ships (settings and pull/push with U-05, which also adds `limits`).
+      oneOf:
+        - type: object
+          required: [enabled]
+          additionalProperties: false
+          properties:
+            enabled: { type: boolean, const: false }
+        - type: object
+          required: [enabled, settings, collections, saves, endpoints]
+          additionalProperties: true
+          properties:
+            enabled: { type: boolean, const: true }
+            settings: { type: boolean }
+            collections: { type: boolean }
+            saves: { type: boolean }
+            endpoints:
+              type: object
+              required: [pull, push, saves]
+              properties:
+                pull: { type: [string, "null"] }
+                push: { type: [string, "null"] }
+                saves: { type: [string, "null"] }
+      examples:
+        - { enabled: false }
+        - enabled: true
+          settings: false
+          collections: false
+          saves: false
+          endpoints: { pull: null, push: null, saves: null }
     Jwks:
       type: object
       description: >
@@ -12737,6 +12781,42 @@ components:
         entries:
           type: array
           items: { $ref: "#/components/schemas/ConfigEntry" }
+        cloudSync:
+          type: object
+          description: >
+            The data shape of the product's Cloud Sync data (U-04): `collections`, `open`,
+            `saves` and `migrations`. Limits and access policy are product settings, never here.
+            A console publish that omits it keeps the active version's block.
+          properties:
+            collections:
+              type: array
+              items:
+                type: object
+                required: [name, access]
+                properties:
+                  name: { type: string }
+                  access: { type: string, enum: [owner, ownerRead, server] }
+                  conflict:
+                    { type: string, enum: [revision, lastWrite, merge, union] }
+                  schema: { type: object, additionalProperties: true }
+                  onAttach:
+                    {
+                      type: string,
+                      enum: [keepCloud, keepLocal, merge, prompt],
+                    }
+            open: { type: boolean }
+            saves: { type: object, additionalProperties: true }
+            migrations:
+              type: array
+              items:
+                type: object
+                required: [toSchemaVersion]
+                properties:
+                  toSchemaVersion: { type: integer }
+                  rename:
+                    { type: object, additionalProperties: { type: string } }
+                  mapValues: { type: object, additionalProperties: true }
+                  drop: { type: array, items: { type: string } }
     ConfigEntry:
       type: object
       description: >
@@ -12777,7 +12857,7 @@ components:
             scopes:
               {
                 type: array,
-                items: { type: string, enum: [profile, license, device] },
+                items: { type: string, enum: [profile, license, device, user] },
               }
             advanced: { type: boolean }
             unit: { type: string }
@@ -12798,6 +12878,18 @@ components:
           }
         deprecated: { type: boolean }
         since: { type: string }
+        user:
+          type: object
+          description: >
+            CONFIG entries only: makes the key a user setting (U-04). `sync` says where its value
+            roams; `conflict` how concurrent writes resolve (default `lastWrite`); `listed`
+            whether settings panels show it (default true).
+          required: [sync]
+          additionalProperties: false
+          properties:
+            sync: { type: string, enum: [user, platform, device, local] }
+            conflict: { type: string, enum: [lastWrite, max, min, merge] }
+            listed: { type: boolean }
     MintedToken:
       type: object
       description: >

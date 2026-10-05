@@ -39,6 +39,7 @@ function state(over: Partial<ServicesResponse> = {}): ServicesResponse {
       distribution: { enabled: true },
       update: { enabled: true },
       identity: { enabled: true },
+      sync: { enabled: false },
     },
     registration: null,
     effectiveRegistration: "requires-license",
@@ -127,6 +128,32 @@ describe("Core → Services", () => {
     expect(screen.queryAllByText(msg)).toHaveLength(0);
   });
 
+  it("refuses Cloud Sync without Config and Identity, and Identity off while Cloud Sync is on (U-04)", async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByRole("switch", { name: /Cloud Sync/ });
+    // Config is off in this state: turning Cloud Sync on names the missing edge and its fix.
+    await user.click(sw("Cloud Sync"));
+    const needsConfig = SERVICE_ERROR_MESSAGES.sync_requires_config!;
+    expect((await screen.findAllByText(needsConfig)).length).toBeGreaterThan(0);
+    await user.click(
+      screen.getAllByRole("button", { name: "Turn on Config" })[0]!,
+    );
+    expect(sw("Config").getAttribute("aria-checked")).toBe("true");
+    expect(screen.queryAllByText(needsConfig)).toHaveLength(0);
+    // Now Cloud Sync is on: Identity cannot go off without it.
+    await user.click(sw("Identity"));
+    const needsIdentity = SERVICE_ERROR_MESSAGES.sync_requires_identity!;
+    expect((await screen.findAllByText(needsIdentity)).length).toBeGreaterThan(
+      0,
+    );
+    await user.click(
+      screen.getAllByRole("button", { name: "Turn off Cloud Sync too" })[0]!,
+    );
+    expect(sw("Cloud Sync").getAttribute("aria-checked")).toBe("false");
+    expect(screen.queryAllByText(needsIdentity)).toHaveLength(0);
+  });
+
   it("saves the whole set through the save bar, marking changed rows (SVC-3)", async () => {
     const user = userEvent.setup();
     updateServices.mockResolvedValue(state());
@@ -146,6 +173,7 @@ describe("Core → Services", () => {
           distribution: { enabled: true },
           update: { enabled: true },
           identity: { enabled: true },
+          sync: { enabled: false },
         },
         registration: null,
       },
@@ -184,6 +212,7 @@ describe("Core → Services", () => {
       "identity",
       "license",
       "release",
+      "sync",
       "update",
     ]);
     // Exactly one flag moved; every other known slug is echoed at the value the GET reported.
@@ -194,6 +223,7 @@ describe("Core → Services", () => {
       distribution: { enabled: true },
       update: { enabled: true },
       identity: { enabled: true },
+      sync: { enabled: false },
     });
     // An undeclared policy stays undeclared: a save must not freeze the derivation.
     expect(body.registration).toBeNull();

@@ -1,5 +1,10 @@
 import * as React from "react";
 import { SUPPORTED_FORMATS } from "@polaris-key/catalog";
+import type {
+  UserSettingConflict,
+  UserSettingPolicy,
+  UserSettingSync,
+} from "@polaris-key/catalog";
 import type { ConfigEntry, ConfigKind, ManagementState } from "../../../api.js";
 import { KIND_LABELS } from "../../../lib/labels.js";
 import {
@@ -37,6 +42,22 @@ const TYPE_LABELS: Record<SchemaType, string> = {
   array: "List (JSON)",
   object: "Object (JSON)",
 };
+
+/** Where a user setting's value roams (S-17 §5.3), in the console's words. */
+const USER_SYNC_OPTIONS: { value: UserSettingSync; label: string }[] = [
+  { value: "user", label: "Everywhere the person signs in" },
+  { value: "platform", label: "Per platform family" },
+  { value: "device", label: "Per device" },
+  { value: "local", label: "Never leaves the device" },
+];
+
+/** How concurrent writes resolve. `max`/`min` need a number schema, `merge` an object. */
+const USER_CONFLICT_OPTIONS: { value: UserSettingConflict; label: string }[] = [
+  { value: "lastWrite", label: "Last write wins" },
+  { value: "max", label: "Keep the highest" },
+  { value: "min", label: "Keep the lowest" },
+  { value: "merge", label: "Merge members" },
+];
 
 const WIDGETS = [
   "password",
@@ -163,8 +184,11 @@ export function CatalogEntryForm({
                 // A secret has no plaintext default; a management default is config-only.
                 if (kind === "secret")
                   next = withField(next, "default", undefined);
-                if (kind !== "config")
+                if (kind !== "config") {
                   next = withField(next, "managementDefault", undefined);
+                  // A user setting is a config key (Cloud Sync rule 1).
+                  next = withField(next, "user", undefined);
+                }
                 if (kind !== "flag") {
                   next = withField(next, "userGrant", undefined);
                   next = withField(next, "grantLabel", undefined);
@@ -476,6 +500,14 @@ export function CatalogEntryForm({
         </FormField>
       ) : null}
 
+      {entry.kind === "config" ? (
+        <UserSettingFields
+          user={entry.user}
+          error={issue("user")}
+          onChange={(user) => set("user", user)}
+        />
+      ) : null}
+
       {entry.kind === "flag" ? (
         <div className="grid gap-4 sm:grid-cols-2">
           <Checkbox
@@ -573,6 +605,91 @@ export function CatalogEntryForm({
         />
       </fieldset>
     </div>
+  );
+}
+
+/**
+ * The entry's `user` block (S-17 §5.10: "User setting" with scope, conflict and listed). A user
+ * setting's value is chosen by the person and kept on their device by the Config SDK; with Cloud
+ * Sync on and the person signed in, it syncs. The operator can still enforce the key, which is
+ * why an enforced or hidden management default refuses the block (rule 2).
+ */
+function UserSettingFields({
+  user,
+  error,
+  onChange,
+}: {
+  user: UserSettingPolicy | undefined;
+  error: string | undefined;
+  onChange: (next: UserSettingPolicy | undefined) => void;
+}): React.ReactElement {
+  return (
+    <fieldset className="space-y-4 rounded-md border border-border p-4">
+      <legend className="px-1 text-sm font-bold text-fg-strong">
+        User setting
+      </legend>
+      <Checkbox
+        label="People choose this value"
+        description="Kept on each device by the Config SDK; with Cloud Sync on, it syncs for people who sign in."
+        checked={user !== undefined}
+        onCheckedChange={(on) => onChange(on ? { sync: "user" } : undefined)}
+      />
+      {user ? (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField name="user-sync" label="Syncs" value={user.sync}>
+              {(f) => (
+                <Select
+                  {...f}
+                  value={user.sync}
+                  options={USER_SYNC_OPTIONS}
+                  onChange={(v) =>
+                    onChange({
+                      ...user,
+                      sync: (v ?? "user") as UserSettingSync,
+                    })
+                  }
+                />
+              )}
+            </FormField>
+            <FormField
+              name="user-conflict"
+              label="When two devices disagree"
+              value={user.conflict ?? "lastWrite"}
+            >
+              {(f) => (
+                <Select
+                  {...f}
+                  value={user.conflict ?? "lastWrite"}
+                  options={USER_CONFLICT_OPTIONS}
+                  onChange={(v) =>
+                    onChange(
+                      withField(
+                        user,
+                        "conflict",
+                        v === "lastWrite" ? undefined : v,
+                      ),
+                    )
+                  }
+                />
+              )}
+            </FormField>
+          </div>
+          <Checkbox
+            label="Show in settings panels"
+            checked={user.listed !== false}
+            onCheckedChange={(on) =>
+              onChange(withField(user, "listed", on ? undefined : false))
+            }
+          />
+        </>
+      ) : null}
+      {error ? (
+        <p role="alert" className="text-xs text-danger">
+          {error}
+        </p>
+      ) : null}
+    </fieldset>
   );
 }
 

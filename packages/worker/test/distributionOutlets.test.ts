@@ -561,6 +561,7 @@ describe("enablement gates the ingest and the hook", () => {
       distribution: { enabled: true },
       update: { enabled: false },
       identity: { enabled: false },
+      sync: { enabled: false },
     };
     const out = manifestIngestStatements(
       registry,
@@ -597,6 +598,7 @@ describe("enablement gates the ingest and the hook", () => {
       distribution: { enabled: false },
       update: { enabled: false },
       identity: { enabled: false },
+      sync: { enabled: false },
     };
     const out = manifestIngestStatements(
       registry,
