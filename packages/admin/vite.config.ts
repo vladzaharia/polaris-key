@@ -284,7 +284,8 @@ export default defineConfig({
     globals: true,
     include: ["test/**/*.test.{ts,tsx}", "src/**/*.test.{ts,tsx}"],
     setupFiles: ["test/setup.ts"],
-    // Room for several 5 s async waits (test/setup.ts) inside one test.
-    testTimeout: 20_000,
+    // Room for several 10 s async waits (test/setup.ts) inside one test; CI runners run the
+    // whole turbo test graph in parallel and are much slower than a laptop.
+    testTimeout: 40_000,
   },
 });
