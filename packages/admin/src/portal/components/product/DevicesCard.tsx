@@ -1,5 +1,13 @@
 import * as React from "react";
-import { Info, Laptop, Monitor, Smartphone } from "lucide-react";
+import {
+  Glasses,
+  Info,
+  Laptop,
+  Monitor,
+  Smartphone,
+  Tv,
+  Watch,
+} from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
 import { announce } from "../../../ui/LiveRegion.js";
@@ -8,7 +16,11 @@ import { formatRelative } from "../../../lib/format.js";
 import type { PortalDevice, PortalLicenseDetail } from "../../api.js";
 import { useRemoveDevice } from "../../data.js";
 import { portalErrorCopy } from "../../errors.js";
-import { devicesText, normalisePlatform, osName } from "../../model/library.js";
+import {
+  devicesText,
+  deviceFamily,
+  deviceOsName,
+} from "../../model/library.js";
 import { ErrorPanel } from "../States.js";
 import { SeatMeter } from "../SeatMeter.js";
 import { SectionCard } from "./Card.js";
@@ -110,13 +122,19 @@ function DeviceGlyph({
 }: {
   platform: string | null;
 }): React.ReactElement {
-  const p = normalisePlatform(platform);
+  const k = deviceFamily(platform);
   const Icon =
-    p === "ios" || p === "android"
+    k === "ios" || k === "android"
       ? Smartphone
-      : p === "macos"
+      : k === "macos"
         ? Laptop
-        : Monitor;
+        : k === "tvos"
+          ? Tv
+          : k === "visionos"
+            ? Glasses
+            : k === "watchos"
+              ? Watch
+              : Monitor;
   return <Icon aria-hidden className="size-5" />;
 }
 
@@ -143,9 +161,8 @@ export function DeviceRow({
   React.useEffect(() => {
     if (confirming) headingRef.current?.focus();
   }, [confirming]);
-  const platform = normalisePlatform(device.platform);
   const meta = [
-    platform ? osName(platform) : null,
+    deviceOsName(device.platform),
     device.appVersion,
     `last seen ${formatRelative(device.lastSeen * 1000)}`,
   ]
