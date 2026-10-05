@@ -89,7 +89,8 @@ export const CORS_MAX_AGE = "600";
  * Deliberately absent (cookie-bearing or navigation-only; they stay first-party):
  * `identity/session`, `identity/session/license`, `identity/auth/start`,
  * `identity/auth/callback`, `identity/auth/logout`, `identity/auth/device`,
- * `identity/auth/device/verify`, `config/mint/{mintId}/auth`, and the CI routes — Release's
+ * `identity/auth/device/verify`, `identity/auth/choose` (I-26), `config/mint/{mintId}/auth`,
+ * and the CI routes — Release's
  * policy routes (`release/channels/{channel}/{promote,pin,unpin}`,
  * `release/releases/{releaseId}/yank`), its publishing routes and Distribution's rollout routes
  * (`distribution/rollouts/{outlet}/{channel}[/{verb}]`) and its F-Droid route
