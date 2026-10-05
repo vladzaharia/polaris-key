@@ -12,6 +12,7 @@ import {
   Bird,
   Braces,
   Coffee,
+  Cog,
   Container,
   Gamepad2,
   Hexagon,
@@ -39,7 +40,7 @@ export const SYSTEM_PRODUCT_SLUG = "polaris-key";
 
 export const PLATFORM_SCOPE: FeedScope = { kind: "platform" };
 
-/** The tier-1 ecosystems, in the console's order. */
+/** The ecosystems, in the console's order. */
 export const ECOSYSTEMS: readonly FeedEcosystem[] = [
   "npm",
   "pypi",
@@ -47,6 +48,7 @@ export const ECOSYSTEMS: readonly FeedEcosystem[] = [
   "swift",
   "maven",
   "godot",
+  "cargo",
 ];
 
 export function isEcosystem(v: string | undefined): v is FeedEcosystem {
@@ -60,6 +62,7 @@ export const ECOSYSTEM_LABELS: Record<FeedEcosystem, string> = {
   swift: "Swift",
   maven: "Maven / Gradle",
   godot: "Godot",
+  cargo: "Cargo",
 };
 
 /** The clients each feed answers: its setup declaration's (`@polaris-key/manifest` FEED_SETUP). */
@@ -75,6 +78,7 @@ export const ECOSYSTEM_ICONS: Record<FeedEcosystem, LucideIcon> = {
   swift: Bird,
   maven: Coffee,
   godot: Gamepad2,
+  cargo: Cog,
 };
 
 /** Access modes as the Feeds pages name them (a registry client presents a token, not a device). */
@@ -112,6 +116,8 @@ export const YANK_EFFECTS: Record<FeedEcosystem, string> = {
   maven:
     "Maven has no yank. The console marks the version yanked; with Hide yanked versions on, it also leaves maven-metadata.xml.",
   godot: "A yanked version leaves the asset listings.",
+  cargo:
+    "A yanked version stays in the index marked yanked: an existing Cargo.lock still builds, and new resolutions skip it.",
 };
 
 /** The feed page in this scope (its default tab, or `tab`). */
@@ -316,4 +322,5 @@ export const FEED_PANEL_TITLES: Record<FeedEcosystem, string> = {
   maven: "Maven",
   oci: "Retention",
   godot: "Asset listing",
+  cargo: "Sparse index",
 };

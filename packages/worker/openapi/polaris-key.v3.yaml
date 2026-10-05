@@ -10789,6 +10789,364 @@ paths:
         "200": { description: Headers only. }
         "401": { description: Not a valid URL token for this owner. }
         "404": { $ref: "#/components/responses/NotFound" }
+  /cargo/{owner}/config.json:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          description: "The owner (product slug).",
+          schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+        }
+    get:
+      operationId: cargoConfig
+      tags: [registry]
+      summary: Cargo sparse-registry configuration (registry host only)
+      description: >
+        F-30. The `config.json` Cargo reads first from a sparse registry
+        (`index = "sparse+https://pkg.plrs.im/cargo/<owner>/"`). `dl` is the content-addressed
+        download template `…/files/{sha256-checksum}/{crate}-{version}.crate`. There is no
+        `api`: crates publish with `pkey release publish`, never Cargo's `crates/new`. A
+        non-public feed answers an anonymous request 401; Cargo (1.74 and later) retries with its
+        registry token as a bare `Authorization: <token>`, and the admitted answer carries
+        `auth-required: true`, so Cargo sends the token on every later request.
+      responses:
+        "200":
+          description: The configuration.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [dl]
+                properties:
+                  dl: { type: string }
+                  auth-required: { type: boolean }
+        "304": { description: "Not modified (`If-None-Match`)." }
+        "401":
+          {
+            description: "A non-public feed (`WWW-Authenticate: Basic`); Cargo retries with its registry token.",
+          }
+        "403": { description: "The token's licence is not usable." }
+        "404": { description: "The not-found (`no-store`)." }
+    head:
+      operationId: cargoConfigHead
+      tags: [registry]
+      summary: Cargo sparse-registry configuration, headers only (registry host only)
+      description: F-30. As `GET /cargo/{owner}/config.json`, with no body.
+      responses:
+        "200": { description: "The configuration's headers." }
+        "404": { description: "The not-found." }
+  /cargo/{owner}/1/{name}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          description: "The owner (product slug).",
+          schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+        }
+      - {
+          name: name,
+          in: path,
+          required: true,
+          description: "The crate's name in lower case.",
+          schema: { type: string },
+        }
+    get:
+      operationId: cargoIndex1
+      tags: [registry]
+      summary: Cargo sparse-index file, a one-character name under `1/` (registry host only)
+      description: >
+        F-30. One crate's index file in Cargo's sparse protocol (RFC 2789): JSON Lines, one line
+        per published version, oldest first, each with `name`, `vers`, `deps`, `cksum` (the
+        `.crate`'s SHA-256), `features`, `yanked` and `links`, plus `rust_version`, and
+        `features2` with `v: 2` when a feature uses the `dep:` or `?/` syntax. A yanked version
+        keeps its line with `yanked: true`. The path is the crate's name in lower case under
+        Cargo's prefix (a one-character name under `1/`); any other spelling, an unknown crate, a feed that is off and an
+        unknown owner all answer the same not-found, which Cargo reads as "no such crate".
+        Served as `application/json` with `ETag: "<sha256 of the body>"`.
+      responses:
+        "200":
+          description: The index file.
+          content:
+            application/json:
+              schema: { type: string }
+        "304": { description: "Not modified (`If-None-Match`)." }
+        "401":
+          {
+            description: "A non-public feed or crate (`WWW-Authenticate: Basic`); Cargo retries with its registry token.",
+          }
+        "403":
+          {
+            description: "The token's licence is not usable, or not entitled to this crate.",
+          }
+        "404": { description: "The not-found (`no-store`)." }
+    head:
+      operationId: cargoIndex1Head
+      tags: [registry]
+      summary: Cargo sparse-index file, a one-character name under `1/`, headers only (registry host only)
+      description: F-30. As `GET /cargo/{owner}/1/{name}`, with no body.
+      responses:
+        "200": { description: "The index file's headers." }
+        "404": { description: "The not-found." }
+  /cargo/{owner}/2/{name}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          description: "The owner (product slug).",
+          schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+        }
+      - {
+          name: name,
+          in: path,
+          required: true,
+          description: "The crate's name in lower case.",
+          schema: { type: string },
+        }
+    get:
+      operationId: cargoIndex2
+      tags: [registry]
+      summary: Cargo sparse-index file, a two-character name under `2/` (registry host only)
+      description: >
+        F-30. One crate's index file in Cargo's sparse protocol (RFC 2789): JSON Lines, one line
+        per published version, oldest first, each with `name`, `vers`, `deps`, `cksum` (the
+        `.crate`'s SHA-256), `features`, `yanked` and `links`, plus `rust_version`, and
+        `features2` with `v: 2` when a feature uses the `dep:` or `?/` syntax. A yanked version
+        keeps its line with `yanked: true`. The path is the crate's name in lower case under
+        Cargo's prefix (a two-character name under `2/`); any other spelling, an unknown crate, a feed that is off and an
+        unknown owner all answer the same not-found, which Cargo reads as "no such crate".
+        Served as `application/json` with `ETag: "<sha256 of the body>"`.
+      responses:
+        "200":
+          description: The index file.
+          content:
+            application/json:
+              schema: { type: string }
+        "304": { description: "Not modified (`If-None-Match`)." }
+        "401":
+          {
+            description: "A non-public feed or crate (`WWW-Authenticate: Basic`); Cargo retries with its registry token.",
+          }
+        "403":
+          {
+            description: "The token's licence is not usable, or not entitled to this crate.",
+          }
+        "404": { description: "The not-found (`no-store`)." }
+    head:
+      operationId: cargoIndex2Head
+      tags: [registry]
+      summary: Cargo sparse-index file, a two-character name under `2/`, headers only (registry host only)
+      description: F-30. As `GET /cargo/{owner}/2/{name}`, with no body.
+      responses:
+        "200": { description: "The index file's headers." }
+        "404": { description: "The not-found." }
+  /cargo/{owner}/3/{first}/{name}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          description: "The owner (product slug).",
+          schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+        }
+      - {
+          name: first,
+          in: path,
+          required: true,
+          description: "The name's first character.",
+          schema: { type: string },
+        }
+      - {
+          name: name,
+          in: path,
+          required: true,
+          description: "The crate's name in lower case.",
+          schema: { type: string },
+        }
+    get:
+      operationId: cargoIndex3
+      tags: [registry]
+      summary: Cargo sparse-index file, a three-character name under `3/<first character>/` (registry host only)
+      description: >
+        F-30. One crate's index file in Cargo's sparse protocol (RFC 2789): JSON Lines, one line
+        per published version, oldest first, each with `name`, `vers`, `deps`, `cksum` (the
+        `.crate`'s SHA-256), `features`, `yanked` and `links`, plus `rust_version`, and
+        `features2` with `v: 2` when a feature uses the `dep:` or `?/` syntax. A yanked version
+        keeps its line with `yanked: true`. The path is the crate's name in lower case under
+        Cargo's prefix (a three-character name under `3/<first character>/`); any other spelling, an unknown crate, a feed that is off and an
+        unknown owner all answer the same not-found, which Cargo reads as "no such crate".
+        Served as `application/json` with `ETag: "<sha256 of the body>"`.
+      responses:
+        "200":
+          description: The index file.
+          content:
+            application/json:
+              schema: { type: string }
+        "304": { description: "Not modified (`If-None-Match`)." }
+        "401":
+          {
+            description: "A non-public feed or crate (`WWW-Authenticate: Basic`); Cargo retries with its registry token.",
+          }
+        "403":
+          {
+            description: "The token's licence is not usable, or not entitled to this crate.",
+          }
+        "404": { description: "The not-found (`no-store`)." }
+    head:
+      operationId: cargoIndex3Head
+      tags: [registry]
+      summary: Cargo sparse-index file, a three-character name under `3/<first character>/`, headers only (registry host only)
+      description: F-30. As `GET /cargo/{owner}/3/{first}/{name}`, with no body.
+      responses:
+        "200": { description: "The index file's headers." }
+        "404": { description: "The not-found." }
+  /cargo/{owner}/{prefix1}/{prefix2}/{name}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          description: "The owner (product slug).",
+          schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+        }
+      - {
+          name: prefix1,
+          in: path,
+          required: true,
+          description: "The name's first two characters.",
+          schema: { type: string },
+        }
+      - {
+          name: prefix2,
+          in: path,
+          required: true,
+          description: "The name's third and fourth characters.",
+          schema: { type: string },
+        }
+      - {
+          name: name,
+          in: path,
+          required: true,
+          description: "The crate's name in lower case.",
+          schema: { type: string },
+        }
+    get:
+      operationId: cargoIndex
+      tags: [registry]
+      summary: Cargo sparse-index file, a longer name under `<characters 1-2>/<characters 3-4>/` (registry host only)
+      description: >
+        F-30. One crate's index file in Cargo's sparse protocol (RFC 2789): JSON Lines, one line
+        per published version, oldest first, each with `name`, `vers`, `deps`, `cksum` (the
+        `.crate`'s SHA-256), `features`, `yanked` and `links`, plus `rust_version`, and
+        `features2` with `v: 2` when a feature uses the `dep:` or `?/` syntax. A yanked version
+        keeps its line with `yanked: true`. The path is the crate's name in lower case under
+        Cargo's prefix (a longer name under `<characters 1-2>/<characters 3-4>/`); any other spelling, an unknown crate, a feed that is off and an
+        unknown owner all answer the same not-found, which Cargo reads as "no such crate".
+        Served as `application/json` with `ETag: "<sha256 of the body>"`.
+      responses:
+        "200":
+          description: The index file.
+          content:
+            application/json:
+              schema: { type: string }
+        "304": { description: "Not modified (`If-None-Match`)." }
+        "401":
+          {
+            description: "A non-public feed or crate (`WWW-Authenticate: Basic`); Cargo retries with its registry token.",
+          }
+        "403":
+          {
+            description: "The token's licence is not usable, or not entitled to this crate.",
+          }
+        "404": { description: "The not-found (`no-store`)." }
+    head:
+      operationId: cargoIndexHead
+      tags: [registry]
+      summary: Cargo sparse-index file, a longer name under `<characters 1-2>/<characters 3-4>/`, headers only (registry host only)
+      description: F-30. As `GET /cargo/{owner}/{prefix1}/{prefix2}/{name}`, with no body.
+      responses:
+        "200": { description: "The index file's headers." }
+        "404": { description: "The not-found." }
+  /cargo/{owner}/files/{sha256}/{file}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          description: "The owner (product slug).",
+          schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+        }
+      - {
+          name: sha256,
+          in: path,
+          required: true,
+          description: "The crate's SHA-256 (lower-case hex), the index line's `cksum`.",
+          schema: { type: string, pattern: "^[0-9a-f]{64}$" },
+        }
+      - {
+          name: file,
+          in: path,
+          required: true,
+          description: "`<crate>-<version>.crate`, the crate's name as its index line spells it.",
+          schema: { type: string },
+        }
+    get:
+      operationId: cargoCrate
+      tags: [registry]
+      summary: Cargo crate download (registry host only)
+      description: >
+        F-30. The `dl` template's target: one version's `.crate`, named by its SHA-256, so the URL
+        is immutable. The hash, the crate name and the version must all match a published
+        version of the owner's crate, and the owner must hold the blob's reference; anything
+        else is the not-found. Served as `application/octet-stream` with `attachment`,
+        `ETag: "<sha256>"`, `Repr-Digest`, `Accept-Ranges: bytes` and, on a public feed,
+        `cache-control: public, max-age=31536000, immutable, no-transform`.
+      responses:
+        "200":
+          description: The bytes.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "206": { description: "A satisfiable `Range`." }
+        "304": { description: "Not modified (`If-None-Match`)." }
+        "401":
+          {
+            description: "A non-public feed or crate (`WWW-Authenticate: Basic`).",
+          }
+        "403":
+          {
+            description: "The token's licence is not usable, or not entitled to this crate.",
+          }
+        "404": { description: "The not-found (`no-store`)." }
+        "416": { description: "An unsatisfiable `Range`." }
+    head:
+      operationId: cargoCrateHead
+      tags: [registry]
+      summary: Cargo crate download, headers only (registry host only)
+      description: F-30. As `GET /cargo/{owner}/files/{sha256}/{file}`, with no body.
+      responses:
+        "200": { description: "The crate's headers." }
+        "404": { description: "The not-found." }
 components:
   securitySchemes:
     ciToken:

@@ -216,7 +216,7 @@ describe("registry tokens: the store (§6.1)", () => {
     expect((await m({ expiresInDays: 365 })).ok).toBe(true);
     expect((await m({ label: "" })).ok).toBe(false);
     expect((await m({ label: "x".repeat(65) })).ok).toBe(false);
-    expect((await m({ ecosystems: ["cargo"] })).ok).toBe(false);
+    expect((await m({ ecosystems: ["go"] })).ok).toBe(false);
     expect((await m({ ecosystems: [] })).ok).toBe(false);
     // `publish` is reserved for F-22 and F-23.
     expect((await m({ scopes: ["publish"] })).ok).toBe(false);

@@ -302,6 +302,29 @@ const SAMPLES: Record<string, RegistryPackage> = {
       ),
     ),
   ),
+  cargo: pkg(
+    "cargo",
+    "acme-sdk",
+    V.map((v) =>
+      version(
+        v,
+        [
+          {
+            name: `acme-sdk-${v}.crate`,
+            type: "crate",
+            sha256: hex(`crate ${v}`),
+            size: 100,
+          },
+        ],
+        {
+          name: "acme-sdk",
+          version: v,
+          deps: [{ name: "serde", req: "^1", kind: "normal", registry: null }],
+          features: { default: ["std"], std: [] },
+        },
+      ),
+    ),
+  ),
 };
 
 /** Two feed-settings values a render can be given; a `package`-stamped renderer ignores both. */
@@ -340,6 +363,13 @@ const PARAMS: Record<string, Record<string, string>> = {
     digest: `sha256:${"a".repeat(64)}`,
   },
   godot: { id: "1", publisher: "acme", asset: "acme_tool", file: "a.zip" },
+  cargo: {
+    name: "acme-sdk",
+    first: "a",
+    prefix1: "ac",
+    prefix2: "me",
+    file: "acme-sdk-1.0.0.crate",
+  },
 };
 
 /**
