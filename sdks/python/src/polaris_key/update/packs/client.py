@@ -42,6 +42,7 @@ from .engine import (
     PackProgress,
     PacksSnapshot,
     RevocationsSnapshot,
+    _target,
 )
 from .provides import PackProvider
 from .sets import parse_content_stamp, stamp_holds
@@ -170,6 +171,9 @@ class PacksClient:
         self._zstd_info: Optional[ZstdInfo] = None
         self._refused: List[Dict[str, str]] = []
         self._lock = threading.RLock()
+        #: The update-health journal (SDK parity pass §3.13), set by the facade: a pack switch
+        #: records ``update_applied`` and a failed install ``pack_failed``.
+        self.journal: Any = None
 
     @property
     def configured(self) -> bool:
@@ -184,13 +188,77 @@ class PacksClient:
         ``pack-no-variant``, a ``plan-*`` or applier code, or ``network-error``, after which the
         next ``ensure`` resumes the download)."""
         self._ctx.require_service("release", Feature.PACKS_STATE)
-        return self._start().ensure(pack_ids)
+        engine = self._start()
+        return self._journalled(lambda: engine.ensure(pack_ids), engine, list(pack_ids))
 
     def ensure_releases(self, targets: Sequence[Any]) -> List[Dict[str, Any]]:
         """Install exact releases: a ``packs`` decision's ``install`` list (plans/P4-13.md §2.6).
         Raises ``pack-revoked`` for a release a verified revocation names."""
         self._ctx.require_service("release", Feature.PACKS_STATE)
-        return self._start().ensure_releases(targets)
+        engine = self._start()
+        ids = [str(_target(t)[0]) for t in targets]
+        return self._journalled(lambda: engine.ensure_releases(targets), engine, ids)
+
+    def pack_installs(self) -> List[Dict[str, Any]]:
+        """The newest finished installs for ``devices/report``'s ``packInstalls`` (P4-17); empty
+        before packs start."""
+        if self._engine is None:
+            return []
+        try:
+            return self._engine.pack_installs()
+        except Exception:
+            return []
+
+    def _journalled(
+        self, run: Callable[[], List[Dict[str, Any]]], engine: PackEngine, ids: List[str]
+    ) -> List[Dict[str, Any]]:
+        """Run an install and journal its update-health events: ``update_applied`` per pack
+        whose active release changed, ``pack_failed`` (with the refusal's code) when it raised."""
+        journal = self.journal
+        if journal is None:
+            return run()
+        try:
+            before = {pid: dict(i) for pid, i in engine.state().active.items()}
+        except Exception:
+            before = {}
+        try:
+            out = run()
+        except PackError as e:
+            pid = getattr(e, "pack_id", None) or (ids[0] if ids else None)
+            if pid:
+                journal.record(
+                    "pack_failed",
+                    deliverable=pid,
+                    release=self._pinned_version(pid) or "unknown",
+                    from_release=(before.get(pid) or {}).get("version"),
+                    code=e.code,
+                )
+            raise
+        for install in out:
+            pid = install.get("packId")
+            prior = before.get(pid) if isinstance(pid, str) else None
+            if not isinstance(pid, str) or (
+                prior is not None and prior.get("recordSha256") == install.get("recordSha256")
+            ):
+                continue
+            journal.record(
+                "update_applied",
+                deliverable=pid,
+                release=str(install.get("version") or "unknown"),
+                from_release=(prior or {}).get("version"),
+            )
+        return out
+
+    def _pinned_version(self, pack_id: str) -> Optional[str]:
+        try:
+            stamp = self._read_stamp() or {}
+        except Exception:
+            return None
+        for p in stamp.get("pins") or ():
+            if isinstance(p, dict) and p.get("pack") == pack_id:
+                v = (p.get("release") or {}).get("version")
+                return v if isinstance(v, str) else None
+        return None
 
     def revocations(self) -> RevocationsSnapshot:
         """The stored and this process's verified revocations, and ``relearn`` (plans/P4-13.md

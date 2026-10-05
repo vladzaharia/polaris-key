@@ -31,7 +31,7 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature config.schema release.changelog release.download
 # @pkey-feature identity.devicecode config.mint
 # @pkey-feature update.feed release.record update.decide
-# @pkey-feature packs.apply.chunk
+# @pkey-feature packs.apply.chunk commerce.receipt
 
 from __future__ import annotations
 
@@ -135,6 +135,26 @@ def _act(
             out["result"] = "ok"
             out["token"] = minted.token
             out["expiresAt"] = minted.expiresAt
+    elif action == "commerceBinding":
+        try:
+            b = client.commerce.binding()
+        except PolarisError as e:
+            out["result"] = e.code
+        else:
+            out["result"] = "ok"
+            out["bindingId"] = b.bindingId
+            out["products"] = [dataclasses.asdict(p) for p in b.products]
+    elif action == "commerceClaim":
+        r = client.commerce.claim(args["store"], args["payload"])
+        if r.kind == "ok":
+            out["result"] = "ok"
+            out["flag"] = r.flag
+            out["state"] = r.state
+            out["granted"] = r.granted
+        else:
+            out["result"] = r.code
+            if r.reason is not None:
+                out["reason"] = r.reason
     elif action == "discover":
         out["result"] = client.discover().kind
     elif action == "sync":

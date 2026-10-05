@@ -1593,8 +1593,8 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "update.feed": CapabilityRow("implemented", "update", ()),
         "update.decide": CapabilityRow("implemented", "update", ()),
         "update.content": CapabilityRow("implemented", "update", ()),
-        "update.driver": CapabilityRow("planned", "update", ()),
-        "update.bootguard": CapabilityRow("planned", "update", ()),
+        "update.driver": CapabilityRow("implemented", "update", ()),
+        "update.bootguard": CapabilityRow("implemented", "update", ()),
         "outlet.detect": CapabilityRow("implemented", "update", ()),
         "packs.record": CapabilityRow("implemented", "release", ()),
         "packs.revoke": CapabilityRow("implemented", "release", ()),
@@ -1622,9 +1622,9 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "packs.transport.flatpak": CapabilityRow("planned", "distribution", ()),
         "ui.stages": CapabilityRow("implemented", "sdk", ()),
         "ui.kit": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
-        "commerce.receipt": CapabilityRow("planned", "license", ()),
+        "commerce.receipt": CapabilityRow("implemented", "license", ()),
     }
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "7f1bbda8fe6c6afc09c067a88532900ef065f17ca29d6037dcef95da98799056"
+CAPABILITY_DIGEST: Final[str] = "003174497cf1effdaeaf25ef200e7196c9d572a7407ab7b7583556a82b099b77"

@@ -58,7 +58,7 @@
     "identity.oidc": {
       "status": "planned",
       "unowned": true,
-      "note": "No browser sign-in in the Python SDK, and no work package ports it."
+      "note": "Browser redirect sign-in waits on the native redirect-token route (I-15, SDK parity pass wire item W4). Until then identity.sign_in_with_browser() opens the device-code verificationUriComplete in the system browser and polls (identity.devicecode); the deprecated /identity/auth/poll is never used."
     },
     "identity.devicecode": { "status": "implemented" },
     "release.changelog": { "status": "implemented" },
@@ -81,14 +81,12 @@
       "note": "core/decide.py decide_update with content (feed_content, select_pack_rows, prestage, the content blocks and boot required for revoked required content); client.update.decide() builds content from the content stamp, the pack state, the variant preferences and the stored revocations (run_update_check steps 10-14)."
     },
     "update.driver": {
-      "status": "planned",
-      "unowned": true,
-      "note": "Only appcast_url() today; the Velopack hand-off has no work package (P3-06 excludes it)."
+      "status": "implemented",
+      "note": "update/drivers.py: client.update.install(decision) over VelopackDriver (the velopack package's UpdateManager on discovery's Velopack feed; unsupported dependency without it), SelfReplaceDriver (a frozen single-file executable replaced with the release.fetch-verified build, the old one kept for the boot guard's rollback) and StoreLinkDriver (a store decision's listing); each records update_downloaded and update_applied. tests/test_drivers.py."
     },
     "update.bootguard": {
-      "status": "planned",
-      "unowned": true,
-      "note": "P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02."
+      "status": "implemented",
+      "note": "update/bootguard.py BootGuard: update.mark_boot_attempt() at launch (client.boot() calls it) and update.confirm_boot() once healthy (boot() confirms per stage-matrix.json's bootConfirmation), slots in the state directory; after maxFailedBoots unconfirmed launches it rolls back through the install driver when one can (update_reverted, boot_rolled_back), otherwise reports boot_rolled_back with code no-previous once. tests/test_boot.py drives the guardCases."
     },
     "outlet.detect": {
       "status": "implemented",
@@ -202,9 +200,8 @@
     "ui.stages": { "status": "implemented" },
     "ui.kit": { "status": "na", "runtime": "headless", "reason": "runtime" },
     "commerce.receipt": {
-      "status": "planned",
-      "unowned": true,
-      "note": "P6-01 builds the Worker bridge and leaves the SDK side planned with no owner."
+      "status": "implemented",
+      "note": "polaris_key.commerce: binding() and claim(store, payload) over the P6-01 bridge, plus claim_steam(ticket_hex, dlc_app_id), claim_play() and claim_app_store(), which sync on success; the host's Steamworks binding supplies the ticket, so there is no store dependency. Refusals keep the server's code and reason (ClaimNotOwned, ClaimAttestationRequired, ClaimRefused). tests/test_commerce.py and the commerce-claim transcript."
     }
   }
 }

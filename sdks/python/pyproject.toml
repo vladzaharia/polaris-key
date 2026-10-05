@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "polaris-key"
 version = "0.1.0"
-description = "Product-agnostic Python client for Polaris Key (Core + License/Config/Release/Update over wire contract v3)."
+description = "Product-agnostic Python client for Polaris Key: Core plus License, Config, Devices, Identity, Release, Update, Packs and Commerce (wire contracts v3 and v4)."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
