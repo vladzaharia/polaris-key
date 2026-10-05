@@ -70,6 +70,7 @@ export interface Env {
    * The Cloudflare Images binding (S-20 §6.3 step 6, §6.6). OPTIONAL: `core/hostedAssets.ts` reads
    * an ingested image's dimensions with `.info()` when it is bound, and records none otherwise.
    * HA-03 binds it in `wrangler.toml` and builds the variant ladder with it.
+   * @inventory binding delivery
    */
   IMAGES?: ImagesBinding;
   /**
