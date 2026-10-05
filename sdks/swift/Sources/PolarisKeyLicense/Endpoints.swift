@@ -24,7 +24,12 @@ import PolarisKeyCore
 /// The outcome of an activation-like call (`/license/{activate,enroll,token}`).
 public enum ActivationResult: Sendable, Equatable {
     case ok(token: String, schemaVersion: Int)
-    case deviceLimit(limit: Int?, deviceCount: Int?)
+    /// Every seat is taken. `manageURL` (PX-W8, WIRE-CONTRACT-V4 §5.3) is the customer-portal
+    /// link that frees one, present while the product's portal is on and already validated by
+    /// `ManageLink.read`. Add the app's return with `ManageLink.withReturn` and, on an
+    /// `/activate` link, the key with `ManageLink.withKey`. It is never an auth failure: open it
+    /// only behind a user action.
+    case deviceLimit(limit: Int?, deviceCount: Int?, manageURL: String? = nil)
     case unauthorized
     /// The tier requires a hardware fingerprint this host could not produce.
     case fingerprintRequired
@@ -118,7 +123,8 @@ public enum LicenseEndpoints {
             if body?.code == "fingerprint_required" { return .fingerprintRequired }
             return .deviceLimit(
                 limit: body?.limit ?? body?.error?.limit,
-                deviceCount: body?.deviceCount ?? body?.error?.deviceCount)
+                deviceCount: body?.deviceCount ?? body?.error?.deviceCount,
+                manageURL: ManageLink.read(body?.manageUrl, body?.error?.manageUrl))
         case 401:
             return .unauthorized
         case 404:
@@ -166,22 +172,38 @@ private struct ForbiddenBody: Decodable {
         let code: String?
         let limit: Int?
         let deviceCount: Int?
+        let manageUrl: String?
+
+        private enum CodingKeys: String, CodingKey {
+            case code, limit, deviceCount, manageUrl
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            code = try? c.decode(String.self, forKey: .code)
+            limit = try? c.decode(Int.self, forKey: .limit)
+            deviceCount = try? c.decode(Int.self, forKey: .deviceCount)
+            manageUrl = try? c.decode(String.self, forKey: .manageUrl)
+        }
     }
     let error: Nested?
     let errorCode: String?
     let limit: Int?
     let deviceCount: Int?
+    /// PX-W8: read leniently, so a malformed link never costs the caller `limit`/`deviceCount`.
+    let manageUrl: String?
 
     var code: String? { errorCode ?? error?.code }
 
     private enum CodingKeys: String, CodingKey {
-        case error, limit, deviceCount
+        case error, limit, deviceCount, manageUrl
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         limit = try c.decodeIfPresent(Int.self, forKey: .limit)
         deviceCount = try c.decodeIfPresent(Int.self, forKey: .deviceCount)
+        manageUrl = try? c.decode(String.self, forKey: .manageUrl)
         // `error` is a string in the flat shape and an object in the nested one.
         errorCode = try? c.decode(String.self, forKey: .error)
         error = errorCode == nil ? try? c.decode(Nested.self, forKey: .error) : nil

@@ -19,6 +19,11 @@ import PolarisKeyCore
 import PolarisKeyLicense
 import SwiftUI
 
+#if canImport(CoreImage) && !os(watchOS)
+    import CoreImage
+    import CoreImage.CIFilterBuiltins
+#endif
+
 /// An observable wrapper that bridges the `LicenseClient` actor into SwiftUI. It snapshots the
 /// gate state on the main actor so views update; call `refresh()`/`activate(key:)` to drive the
 /// client and re-snapshot.
@@ -28,20 +33,44 @@ public final class PolarisGateModel: ObservableObject {
     @Published public private(set) var profile: DocProfile?
     @Published public private(set) var isWorking = false
     @Published public var lastError: String?
+    /// PX-W8: the portal link that frees a seat, after the last activation was refused with
+    /// `device_limit`; nil otherwise. It already carries the app's return URL and, on an
+    /// `/activate` link, the key as a fragment. Never an auth failure: the gate only offers it.
+    @Published public private(set) var manageURL: String?
 
     private let client: LicenseClient
     private let syncAction: @Sendable () async -> Void
+    private let returnURL: String?
+    private let copy: PolarisCopy
 
-    /// - Parameter sync: a Core sync pass. Defaults to a no-op, which is correct for a
-    ///   local-only build (§7.3) where "retry" cannot mean a network call.
+    /// - Parameters:
+    ///   - sync: a Core sync pass. Defaults to a no-op, which is correct for a local-only build
+    ///     (§7.3) where "retry" cannot mean a network call.
+    ///   - returnURL: where the portal sends the person back once a seat is free (a declared
+    ///     return target of the product, PX-10); nil adds none.
     public init(
         license: LicenseClient,
         initialState: LicenseState = LicenseState(status: .needsActivation),
-        sync: @escaping @Sendable () async -> Void = {}
+        sync: @escaping @Sendable () async -> Void = {},
+        returnURL: String? = nil,
+        copy: PolarisCopy = PolarisCopy()
     ) {
         self.client = license
         self.syncAction = sync
         self.state = initialState
+        self.returnURL = returnURL
+        self.copy = copy
+    }
+
+    /// The link the gate offers for a refused activation: the served `manageUrl` with the key
+    /// fragment (only on an `/activate` link) and the app's return added. Pure, for tests.
+    nonisolated public static func offeredManageURL(
+        _ served: String?, key: String, returnURL: String?
+    ) -> String? {
+        guard let served, ManageLink.isValid(served) else { return nil }
+        var url = ManageLink.withKey(served, key)
+        if let returnURL, !returnURL.isEmpty { url = ManageLink.withReturn(url, returnURL) }
+        return url
     }
 
     /// Pull the latest gate state from the client (no network).
@@ -63,11 +92,13 @@ public final class PolarisGateModel: ObservableObject {
         isWorking = true
         defer { isWorking = false }
         let result = await client.activate(key: key)
+        manageURL = nil
         switch result {
         case .ok:
             lastError = nil
-        case .deviceLimit:
-            lastError = "This license has reached its device limit."
+        case .deviceLimit(_, _, let served):
+            lastError = copy.deviceLimitMessage
+            manageURL = Self.offeredManageURL(served, key: key, returnURL: returnURL)
         case .unauthorized:
             lastError = "That license key wasn't accepted."
         case .fingerprintRequired:
@@ -132,6 +163,7 @@ public struct PolarisLoginView<Content: View>: View {
             allowedRange: model.state.allowedRange,
             isWorking: model.isWorking,
             lastError: model.lastError,
+            manageURL: model.manageURL,
             licenseKey: $licenseKey,
             theme: theme,
             onSignIn: onSignIn,
@@ -155,6 +187,7 @@ struct PolarisGateSurface<Content: View>: View {
     let allowedRange: AllowedRange?
     let isWorking: Bool
     let lastError: String?
+    var manageURL: String? = nil
     @Binding var licenseKey: String
     let theme: PolarisTheme
     let onSignIn: () -> Void
@@ -165,6 +198,7 @@ struct PolarisGateSurface<Content: View>: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.polarisKeyBranding) private var environmentBranding
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.openURL) private var openURL
     @ScaledMetric(relativeTo: .body) private var scaledCardPadding: CGFloat = 28
 
     private var branding: PolarisBranding { theme.resolvedBranding(environmentBranding) }
@@ -277,10 +311,45 @@ struct PolarisGateSurface<Content: View>: View {
                 .multilineTextAlignment(.center)
                 .accessibilityAddTraits(.isStaticText)
             }
+            if let link = manageURL, let url = URL(string: link) {
+                freeDeviceAction(url)
+            }
             if isWorking {
                 ProgressView()
                     .accessibilityLabel("Working")
             }
+        }
+    }
+
+    /// PX-W8: "Free up a device" for a `device_limit` refusal. A button that opens the portal on
+    /// macOS and iOS; a QR code on tvOS, where the link is opened on a phone. The person then
+    /// returns and presses Activate again, so the button above is the "Try again".
+    @ViewBuilder private func freeDeviceAction(_ url: URL) -> some View {
+        switch PolarisManagePresentation.current {
+        case .qr:
+            VStack(spacing: 8) {
+                PolarisQRCode(text: url.absoluteString)
+                    .frame(width: 200, height: 200)
+                    .accessibilityLabel(theme.copy.freeDeviceButton)
+                Text(theme.copy.freeDeviceScanCaption)
+                    .font(font(.caption)).foregroundStyle(palette.textMuted)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        case .button:
+            Button {
+                openURL(url)
+            } label: {
+                Text(theme.copy.freeDeviceButton)
+                    .font(font(.body))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .buttonBorderShape(.roundedRectangle(radius: PolarisGateLayout.controlRadius))
+            .modifier(OptionalTint(color: accentTextTint))
+            .accessibilityLabel(theme.copy.freeDeviceButton)
+            .accessibilityHint("Opens your account in the browser to free up a device.")
         }
     }
 
@@ -481,6 +550,52 @@ enum PolarisGateLayout {
     static let cardPaddingMax: CGFloat = 36
 }
 
+/// How the gate offers a refusal link (PX-W8): a button where a browser is at hand, a QR code on
+/// a TV.
+public enum PolarisManagePresentation: Sendable, Equatable {
+    case button
+    case qr
+
+    public static var current: PolarisManagePresentation {
+        #if os(tvOS)
+            return .qr
+        #else
+            return .button
+        #endif
+    }
+}
+
+/// A QR code for a link, drawn with Core Image. Only the tvOS gate shows one.
+struct PolarisQRCode: View {
+    let text: String
+
+    var body: some View {
+        #if canImport(CoreImage) && !os(watchOS)
+            if let image = Self.render(text) {
+                Image(decorative: image, scale: 1)
+                    .interpolation(.none)
+                    .resizable()
+                    .scaledToFit()
+            } else {
+                Text(text).font(.caption2)
+            }
+        #else
+            Text(text).font(.caption2)
+        #endif
+    }
+
+    #if canImport(CoreImage) && !os(watchOS)
+        static func render(_ text: String) -> CGImage? {
+            let filter = CIFilter.qrCodeGenerator()
+            filter.message = Data(text.utf8)
+            filter.correctionLevel = "M"
+            guard let output = filter.outputImage else { return nil }
+            let scaled = output.transformed(by: CGAffineTransform(scaleX: 8, y: 8))
+            return CIContext().createCGImage(scaled, from: scaled.extent)
+        }
+    #endif
+}
+
 /// `.tint(color)` when a colour is given; otherwise the view inherits the environment's tint, so
 /// a native gate takes the host app's accent.
 private struct OptionalTint: ViewModifier {
@@ -558,6 +673,15 @@ private struct OptionalTint: ViewModifier {
                 .environment(\.dynamicTypeSize, .accessibility3)
                 .previewLayout(.fixed(width: 393, height: 852))
                 .previewDisplayName("Activation, accessibility type")
+            PolarisGateSurface(
+                status: .needsActivation, allowedRange: nil, isWorking: false,
+                lastError: PolarisCopy().deviceLimitMessage,
+                manageURL: "https://key.plrs.im/activate?product=aurora&next=free-device",
+                licenseKey: .constant("pkey_aurora_ABCDEFGHIJKLMNOPQRSTUV"), theme: aurora,
+                onSignIn: {}, onActivate: { _ in }, onRefresh: {}, content: { EmptyView() }
+            )
+            .previewLayout(.fixed(width: 393, height: 852))
+            .previewDisplayName("Device limit with Free up a device")
             surface(.grace)
                 .environment(\.dynamicTypeSize, .accessibility3)
                 .previewLayout(.fixed(width: 393, height: 852))

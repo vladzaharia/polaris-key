@@ -33,6 +33,11 @@ public struct PolarisCopy: Sendable {
     public var versionTooNewTitle: String
     public var channelNotEntitledTitle: String
     public var versionBlockSubtitle: String
+    /// PX-W8: the device-limit message, and the action that opens the refusal's `manageUrl`.
+    public var deviceLimitMessage: String
+    public var freeDeviceButton: String
+    /// Shown under the QR code on a TV, where the link is scanned on a phone.
+    public var freeDeviceScanCaption: String
 
     public init(
         productName: String = "this app",
@@ -54,7 +59,11 @@ public struct PolarisCopy: Sendable {
         versionTooOldTitle: String = "Update required",
         versionTooNewTitle: String = "Version not yet allowed",
         channelNotEntitledTitle: String = "Channel not entitled",
-        versionBlockSubtitle: String = "Your current version isn't permitted to run."
+        versionBlockSubtitle: String = "Your current version isn't permitted to run.",
+        deviceLimitMessage: String = "This license has reached its device limit.",
+        freeDeviceButton: String = "Free up a device",
+        freeDeviceScanCaption: String =
+            "Scan with your phone to free up a device, then try again."
     ) {
         self.productName = productName
         self.welcomeTitle = welcomeTitle ?? "Welcome to \(productName)"
@@ -75,6 +84,9 @@ public struct PolarisCopy: Sendable {
         self.versionTooNewTitle = versionTooNewTitle
         self.channelNotEntitledTitle = channelNotEntitledTitle
         self.versionBlockSubtitle = versionBlockSubtitle
+        self.deviceLimitMessage = deviceLimitMessage
+        self.freeDeviceButton = freeDeviceButton
+        self.freeDeviceScanCaption = freeDeviceScanCaption
     }
 }
 

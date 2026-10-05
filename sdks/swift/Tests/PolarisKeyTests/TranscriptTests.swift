@@ -4,6 +4,7 @@
 // @pkey-feature identity.devicecode config.mint
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk
+// @pkey-feature license.manage
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read
 // from the generator-owned mirror in Resources/transcripts/): drive `PolarisKeyClient` through every
@@ -175,11 +176,16 @@ enum SwiftReplay {
                 }
             }
             out["documents"] = .object(docs)
-        case "activate":
-            out["result"] = .string(
-                activationKind(await client.activate(key: step.args["key"]?.stringValue ?? "")))
-        case "enroll":
-            out["result"] = .string(activationKind(await client.enroll()))
+        case "activate", "enroll":
+            let r =
+                step.action == "activate"
+                ? await client.activate(key: step.args["key"]?.stringValue ?? "")
+                : await client.enroll()
+            out["result"] = .string(activationKind(r))
+            // PX-W8: the refusal link, exactly as served; null when the result carries none.
+            if case .deviceLimit(_, _, let manageURL) = r {
+                out["manageUrl"] = manageURL.map(JSONValue.string) ?? .null
+            }
         case "register":
             switch await client.core.registerDevice(fingerprint: registerFingerprint) {
             case .ok: out["result"] = .string("ok")
