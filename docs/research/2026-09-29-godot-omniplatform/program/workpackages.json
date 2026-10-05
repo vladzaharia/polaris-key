@@ -2127,7 +2127,7 @@
         "owner decision 2026-10-04"
       ],
       "brief": "wp/P6-05-kotlin-sdk.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P6-06",
@@ -4277,7 +4277,7 @@
       "optional": false,
       "refs": ["notes/S-12 §10.1", "plans/F-01.md §6.9"],
       "brief": "wp/F-12-console-feed-settings.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "F-20",
@@ -4313,7 +4313,7 @@
       "optional": false,
       "refs": ["notes/S-12 §7.2"],
       "brief": "wp/F-21-registry-auth.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "F-22",
@@ -4549,7 +4549,7 @@
       "optional": false,
       "refs": ["notes/S-14 §10 (A-17g)", "notes/S-15 §11 (changes to A-17g)"],
       "brief": "wp/A-17g-console-asc-distribute.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "A-18a",
@@ -4601,7 +4601,7 @@
         "notes/S-15 §11 (A-18b)"
       ],
       "brief": "wp/A-18b-listing-model.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "A-18c",

@@ -104,6 +104,13 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test -- email
 
 - I-07 sends through this; I-06's Apple relay addresses receive mail once the registration is done.
 
+**Integration note (2026-10-04, wave integration `integ/wave-big`).** Merged with the rest of its
+wave; its migration is now `0066_email_delivery.sql` (renumbered after main's `0062` and the
+wave's `0063`–`0065`), and portal wave 1's notice templates send through `deliverEmail`. I-18
+stays `in-review`: acceptance criterion 3 (staging SPF, DKIM and DMARC alignment, recorded in the
+PR) needs the owner's DNS onboarding and Apple registration (RUNBOOK "Sign-in email (I-18)"). Set
+it `done` once both Authentication-Results headers are recorded.
+
 The role agent sets `--set I-18 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set I-18 done`.
