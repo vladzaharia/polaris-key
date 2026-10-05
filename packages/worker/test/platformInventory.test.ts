@@ -174,6 +174,19 @@ describe("the platform inventory (ST-02)", () => {
     );
   });
 
+  it("fails when the secrets comment names a secret Env no longer has", () => {
+    const wrangler = inputs.wrangler.replace(
+      "# Required secrets",
+      "#   STALE_REMOVED_SECRET, OLD_KEY (secrets).\n# Required secrets",
+    );
+    expect(wrangler).not.toBe(inputs.wrangler);
+    const { errors } = inventoryErrors({ ...inputs, wrangler });
+    expect(errors).toEqual([
+      "packages/worker/wrangler.toml: secrets comment block names OLD_KEY, which is not an Env var or secret",
+      "packages/worker/wrangler.toml: secrets comment block names STALE_REMOVED_SECRET, which is not an Env var or secret",
+    ]);
+  });
+
   it("fails when a wrangler config declares a var or binding Env lacks", () => {
     const { errors } = inventoryErrors({
       ...inputs,

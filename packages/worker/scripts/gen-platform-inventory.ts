@@ -227,6 +227,22 @@ export function checkWrangler(
         errors.push(`${file}: binding ${b} is an Env ${e.kind}, not a binding`);
     }
   }
+  // The other direction: every name the secrets comment block tells operators to set must still
+  // be an Env var or secret. Prose tokens (ONE, KEK, OCI) carry no underscore; a trailing
+  // underscore (`PLATFORM_OIDC_*`) is a prefix that must still match some Env var or secret.
+  const settable = entries.filter(
+    (e) => e.kind === "var" || e.kind === "secret",
+  );
+  for (const tok of [...m.secretsBlock].sort()) {
+    if (!NAME_RE.test(tok) || !tok.includes("_")) continue;
+    const ok = tok.endsWith("_")
+      ? settable.some((e) => e.name.startsWith(tok))
+      : settable.some((e) => e.name === tok);
+    if (!ok)
+      errors.push(
+        `${WRANGLER_PATH}: secrets comment block names ${tok}, which is not an Env var or secret`,
+      );
+  }
   for (const e of entries) {
     if (e.kind === "binding") {
       if (!m.bindings.has(e.name))
