@@ -1,0 +1,135 @@
+---
+title: "Settings reference"
+description: "Every platform, product and service setting in the settings registry: its key, value, default, merge rule, ownership, manifest field and confirmation level."
+---
+
+{/* GENERATED PAGE — do not edit. Regenerate with `pnpm gen:settings`.
+    Source of truth: the settings registry (packages/worker/src/core/settings/ and each service's
+    settings.ts), emitted by packages/worker/scripts/gen-settings.ts. */}
+
+The settings registry describes every setting Polaris Key has: 42 entries (9 platform, 33 product, 0 entity), 14 of them registered ahead of the work package that wires them. This page is generated from the registry and checked against it in CI, so it cannot drift from it. An entry registered ahead of its work package is not offered in the console yet.
+
+How to read the columns:
+
+- **Merge**: `cascade`, the nearest scope wins; `policy`, a higher scope bounds the value (`bound: max` caps it, `min` floors it, `lock` fixes it).
+- **Ownership**: `operator`, set in the console or the API; `manifest`, set only in `.pkey/` (the console shows it read-only); `claimable`, seeded by the manifest, and a console edit claims it until **Revert**; `narrow-only`, the console may only narrow the manifest's value; `read-only`, a code constant, deploy value or derived value.
+- **Manifest**: the `.pkey/` field as `<document>:<path>`.
+- **Confirm**: the confirmation a change needs, by the console's destructive levels: L0 none (an undo toast), L1 a confirmation listing the consequences, L2 a danger confirmation, L3 a typed confirmation. `reason required` adds a reason to every write.
+
+## Platform
+
+One value per deployment, edited under **Platform → Settings**. A deploy var, where one is named, is the value before any console edit; `deploy: ceiling` means a deploy-time `off` is a hard off the console cannot turn on.
+
+| Key | Setting | Value | Default | Merge | Deploy var | Confirm | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `deltas.lazy.mode` | [Lazy deltas](/docs/admin/platform-settings/): Lets products opted in to lazy hot-pair deltas count demand and generate deltas. Off stops the subsystem in both Worker scripts. | on or off | `"off"` | policy, bound: lock, deploy: ceiling | `LAZY_DELTAS` | L1 on, L0 off | also `LAZY_DELTAS` |
+| `deltas.lazy.maxBytes` | [Lazy delta size cap](/docs/admin/platform-settings/): The largest payload, on either side of a pair, the delta consumer will encode. It can only be lowered below the measured 32 MiB ceiling. | integer 1048576–33554432 bytes | `33554432` | cascade, deploy: runtime | `LAZY_DELTA_MAX_BYTES` | L1 up, L0 down | also `LAZY_DELTA_MAX_BYTES` |
+| `blobs.gc.mode` | [Blob collector](/docs/admin/platform-settings/): Runs the nightly collector that deletes blob-store objects nothing has referenced for the grace period. Off only costs storage. | on or off | `"on"` | policy, bound: lock, deploy: ceiling | `BLOB_GC_MODE` | L1 on, L0 off | also `BLOB_GC_MODE` |
+| `blobs.gc.graceDays` | [Blob collector grace period](/docs/admin/platform-settings/): How long an object stays unreferenced before the collector may delete it. The bucket's 180-day age lock still bounds every deletion. | integer 1–365 days | `30` | cascade, deploy: runtime | `BLOB_GC_GRACE_DAYS` | L0 up, L1 down | also `BLOB_GC_GRACE_DAYS` |
+| `licensing.reservedNames` | [Reserved entitlement names](/docs/admin/platform-settings/): How a product catalog flag that declares a system key (channels, deviceLimit, app.*, license.*, pkey.*) with an incompatible type is treated: warn and accept it, or refuse the manifest or catalog. | one of `warn`, `error` | `"warn"` | cascade, deploy: runtime | `LICENSING_RESERVED_NAMES` | L1 up, L0 down | also `LICENSING_RESERVED_NAMES` |
+| `identity.keyEntryRefusals` | [Key-entry refusals](/docs/services/identity/): Lets Identity products refuse key entry past the per-licence limit and on owned licences. Counting runs either way; turn it on once the SDKs that show the refusals are released. | on or off | `"off"` | policy, bound: lock, deploy: runtime | — | L1 | registered ahead of I-09; devices see it (refusal) |
+| `identity.keyEntry.limit` | [Key-entry limit ceiling](/docs/services/identity/): The most key entries any product may allow per floating licence. A product may set a lower limit, never a higher one; there is no unlimited value while Identity is on. | integer 1–100 | `100` | policy, bound: max | — | L1 up, L2 down | registered ahead of ST-16 |
+| `license.defaults.deviceLimit` | [Default device limit](/docs/services/license/policy/): The device limit a product starts from when it sets none of its own. A change reaches every product that inherits it. | integer 1–1000000 | `5` | cascade | — | L2 | registered ahead of ST-16 |
+| `license.defaults.maxOfflineDays` | [Default offline window](/docs/services/license/policy/): How many days a device may run offline when its product sets no window of its own. A change reaches every product that inherits it. | integer 0–365 days | `30` | cascade | — | L2 | registered ahead of ST-16; devices see it (document) |
+
+## Product
+
+One value per product. A service's settings are product settings whose key starts with the service's namespace; they are shown while the service is on.
+
+### Core
+
+| Key | Setting | Value | Default | Merge | Ownership | Manifest | Confirm | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `core.name` | [Product name](/docs/admin/products/): The display name shown in the console, the portal and the discovery document. | text, at most 200 characters | `""` | cascade | claimable | `product:name` | L0 on change | devices see it (discovery) |
+| `core.adminGroup` | [Admin group](/docs/admin/products/): The identity-provider group named by the manifest as this product's administrators. Manifest-only (owner decision 1). | text, at most 200 characters | unset | cascade | manifest | `product:adminGroup` | L1 on change | reason required; security-widening |
+| `core.web.origins` | [Web origins](/docs/build/onboarding/): Browser origins allowed to call this product's endpoints (the CORS allow-list). Adding one lets that site's scripts call the product. | list of up to 50: text, at most 2048 characters | `[]` | cascade | claimable | `product:web.origins` | L1 on change | reason required; security-widening; devices see it (header) |
+| `core.services` | [Services](/docs/admin/services-enablement/): Which opt-in services this product runs. A service that is off does not exist from outside. | structured (ServicesMap (core/services.ts)) | unset | cascade | claimable | `product:modules` | L1 on change | devices see it (discovery) |
+| `core.trustPolicy` | [Device trust policy](/docs/services/core/device-trust/): Which attestation a device must present to enrol (App Attest, Play Integrity) and whether it is enforced. Relaxing it lets unattested clients enrol. | structured (TrustPolicy (core/deviceTrust.ts)) | unset | cascade | operator | — | L2 on change | reason required; security-widening |
+
+### License
+
+| Key | Setting | Value | Default | Merge | Ownership | Manifest | Confirm | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `license.defaults.deviceLimit` | [Default device limit](/docs/services/license/policy/): How many devices a licence may activate when neither its tier nor the licence sets a limit. | integer 1–1000000 | `5` | cascade, inherits platform | claimable | `product:licensing.defaultDeviceLimit` | L1 | — |
+| `license.defaults.maxOfflineDays` | [Default offline window](/docs/services/license/policy/): How many days a device may run without reaching the server when neither its tier nor the licence sets a window. | integer 0–365 days | `30` | cascade, inherits platform | claimable | `product:licensing.defaultMaxOfflineDays` | L1 | devices see it (document) |
+| `license.fingerprint` | [Fingerprint policy](/docs/services/core/fingerprints/): Which hashed hardware components identify a device, and how many may change before it counts as a new device. | structured (fingerprint (product.schema.json)) | unset | cascade | claimable | `product:fingerprint` | L1 on change | — |
+| `license.autoIssue` | [Auto-issue](/docs/services/license/enrollment/): Mints a licence on first activation (anonymously, on sign-in, or both) instead of requiring a key. Turning it on gives the product away at the chosen tier. | structured (autoIssue (product.schema.json)) | unset | cascade | claimable | `product:autoIssue` | L1 on change | reason required |
+| `license.tiers` | [Tiers](/docs/services/license/model/): The product's tiers: device limit, expiry, channels, version window and profile per tier. Each row is claimed on its own (S-18 D3). | structured (tiers (product.schema.json)) | `[]` | cascade | claimable | `product:tiers` | L1 on change | devices see it (document) |
+| `licensing.entitlementModel` | [Entitlement model](/docs/services/license/model/): Whether devices see the combined entitlements of every grant their holder has, or only their own licence's (the legacy model). New products start combined. | one of `legacy`, `combined` | `"combined"` | cascade | claimable | `product:licensing.entitlementModel` | L2 on change | registered ahead of LX-06; devices see it (document) |
+| `licensing.entitlementHolder` | [Entitlement holder](/docs/services/license/model/): Whose entitlements a device sees: the licence's own (device) or its owner account's whole set (owner). Owner lets a shared key reach everything the owner holds. | one of `device`, `owner` | `"device"` | cascade | claimable | `product:licensing.entitlementHolder` | L1 on change | registered ahead of LX-06; reason required; devices see it (document) |
+| `licensing.clampGraceToExpiry` | [Clamp offline grace to expiry](/docs/services/license/model/): Ends a device's offline grace no later than its licence's expiry, so an expired licence cannot keep running offline. | true or false | `true` | cascade | claimable | `product:licensing.clampGraceToExpiry` | L0 on, L1 off | registered ahead of LX-06; devices see it (document) |
+| `licensing.anchorPolicy` | [Anchor licence choice](/docs/services/license/model/): Which of a holder's licences a device runs on: the highest-ranked tier, the one with most free seats, or the oldest. | one of `rank-first`, `most-free-seats`, `oldest` | `"rank-first"` | cascade | claimable | `product:licensing.anchorPolicy` | L1 on change | registered ahead of LX-06 |
+| `licensing.reanchor` | [Re-anchor](/docs/services/license/model/): When a device may move to a better anchor licence: never, on activation, or on every refresh. | one of `never`, `onActivation`, `onRefresh` | `"onActivation"` | cascade | claimable | `product:licensing.reanchor` | L1 on change | registered ahead of LX-06 |
+| `licensing.refundGraceHours` | [Refund grace](/docs/services/license/model/): Hours a refunded or charged-back grant keeps working before it is revoked. Zero revokes at once. | integer 0–720 hours | `0` | cascade | claimable | `product:licensing.refundGraceHours` | L1 up, L0 down | registered ahead of LX-06 |
+| `licensing.dunningGraceDays` | [Billing-retry grace](/docs/services/license/model/): Days a subscription grant keeps working while the store retries a failed renewal. Zero follows the store's own billing grace only. | integer 0–60 days | `0` | cascade | claimable | `product:licensing.dunningGraceDays` | L1 up, L0 down | registered ahead of LX-06 |
+
+### Config
+
+| Key | Setting | Value | Default | Merge | Ownership | Manifest | Confirm | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `config.catalog` | [Config catalog](/docs/services/config/catalog/): The product's catalog of config keys, flags and secrets, claimed as one unit: a console edit claims the whole catalog. | structured (schema.schema.json) | unset | cascade | claimable | `schema:entries` | L1 on change | — |
+| `config.profiles` | [Profiles](/docs/services/config/profiles/): Reusable managed-payload baselines tiers point at. Each row is claimed on its own (S-18 D3). | structured (profiles (product.schema.json)) | `[]` | cascade | claimable | `product:profiles` | L1 on change | devices see it (document) |
+| `config.edgeMint.recipes` | [Edge-mint recipes](/docs/services/config/edge-mint/): Recipes that mint short-lived third-party credentials at the edge for licensed devices. Each recipe still needs an operator approval. | structured (edgeMint (product.schema.json)) | unset | cascade | claimable | `product:edgeMint` | L1 on change | reason required |
+
+### Release
+
+| Key | Setting | Value | Default | Merge | Ownership | Manifest | Confirm | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `release.compatWindow` | [Compatibility window](/docs/services/release/compatibility/): The oldest and newest app versions a licence document admits. Builds outside it are refused at activation and refresh. | structured (\{ min, max \} semver bounds) | unset | cascade | claimable | `product:compatMin` | L1 on change | devices see it (discovery, document) |
+| `release.artifactPolicy` | [Artifact policy](/docs/services/release/artifacts/): Which channels, architectures and installers a GitHub release must carry before it is accepted. | structured (artifactPolicy (release.schema.json)) | unset | cascade | manifest | `release:artifactPolicy` | L0 on change | — |
+| `release.sparkleEd25519Pub` | [Sparkle update key](/docs/services/release/github-sync/): The Ed25519 public key appcast signatures are checked against. Whoever holds the matching private key can sign updates. | text, at most 64 characters | unset | cascade | manifest | `release:sparkleEd25519Pub` | L2 on change | reason required; security-widening |
+
+### Distribution
+
+| Key | Setting | Value | Default | Merge | Ownership | Manifest | Confirm | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `distribution.access` | [Download access](/docs/services/distribution/delivery/): Who may download each deliverable's bytes: anyone, a registered device, a licensed one, or an entitled one. Loosening it gives the files away. | structured (dist_access rows (access.ts)) | unset | cascade | claimable | `release:access.artifacts` | L1 on change | reason required; security-widening |
+| `distribution.capabilities` | [Outlet capabilities](/docs/services/distribution/): What an install that arrived through each outlet may do (fetch new code, run downloaded scripts, sell things). The starting point is the compiled default for the outlet's kind; an operator may only narrow it. | structured (CapabilitySet per outlet (capabilities.ts)) | unset | cascade | operator | — | L1 on change | — |
+| `distribution.outlets` | [Outlets](/docs/services/distribution/): The places the product is distributed (direct, App Store, Play, Steam, …) with each store's identity for it. | structured (outlets (distribution.schema.json)) | unset | cascade | manifest | `distribution:outlets` | L0 on change | — |
+| `distribution.commerce` | [Commerce](/docs/services/distribution/commerce/): Which store purchases unlock what, and whether sandbox and test purchases count. Operator-only by design: a repo push must never decide which purchases unlock a flag. | structured (commerce settings (commerce/settings.ts)) | unset | cascade | operator | — | L1 on change | reason required |
+
+### Update
+
+| Key | Setting | Value | Default | Merge | Ownership | Manifest | Confirm | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `update.metadataAccess` | [Release metadata access](/docs/services/update/): Who may read release metadata and update feeds: anyone, a registered device, or a licensed one. Loosening it exposes what the product ships. | one of `public`, `authenticated`, `licensed`, `entitled` | `"public"` | cascade | claimable | `release:access.metadata` | L1 on change | reason required; security-widening |
+| `update.operatorPolicy` | [Operator update policy](/docs/services/update/): Operator-owned update requirements no manifest can loosen: a required Sparkle signature and the minimum OS. | structured (operator_policy_json (update/admin.ts)) | unset | cascade | operator | — | L1 on change | reason required |
+
+### Identity
+
+| Key | Setting | Value | Default | Merge | Ownership | Manifest | Confirm | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `identity.keyEntry.limit` | [Key-entry limit](/docs/services/identity/): How many times a floating licence's key may be entered on new devices while Identity is on. Past it, key entry is refused with a link to the portal. | integer 1–100 | `10` | policy, bound: max | claimable | `product:identity.keyEntryLimit` | L1 up, L0 down | registered ahead of I-09; devices see it (discovery, refusal) |
+| `identity.oidc` | [OIDC sign-in](/docs/services/identity/oidc/): The identity provider products sign users in with: issuer, client and group-to-role map. Changing the issuer moves who can sign in, so it is manifest-only and passes the issuer allowlist. | structured (oidc (product.schema.json)) | unset | cascade | manifest | `product:oidc` | L2 on change | reason required; security-widening |
+| `identity.browserSessionDays` | [Browser session length](/docs/services/identity/sessions/): How long a product sign-in in the browser lasts. A product may shorten it, never lengthen it past the platform's 30 days. | integer 1–30 days | `30` | policy, bound: max | operator | — | L1 up, L0 down | registered ahead of ST-15 |
+| `identity.syncTierOnSignIn` | [Sync tier on sign-in](/docs/services/identity/oidc/): Whether a sign-in may move a licence to the tier the identity provider reports. Upgrade-only never lowers a tier. | one of `off`, `upgradeOnly` | `"off"` | cascade | claimable | `product:oidc.syncTierOnSignIn` | L1 on change | registered ahead of LX-06; reason required |
+
+## Entity
+
+No entity-scope settings (a tier, licence, channel, feed, outlet or pack) are registered yet; their values are edited on the entity's own page.
+
+## Fixed on purpose
+
+Things that look configurable but are not settings, and why. The coverage test (`settings-coverage.test.ts`) accepts nothing else without a registry entry.
+
+| Thing | Why it is not a setting | Where it shows |
+| --- | --- | --- |
+| Refund, void and chargeback handling | Always revokes that one grant (S-19 decision 5); a keep-access-after-refund switch would override a store's revocation. | Distribution → Commerce |
+| Relink undo window (72 hours) | Owner decision (S-16); it bounds a security-sensitive support action. | Docs |
+| Rate-limit buckets, admin session (8 hours), audit retention (180 days), blob lock age, CI and registry token lifetimes, body caps | The S-13 §8.2 deny-list: deploy-time forever. | Docs |
+| Wire constants (document expiry, size and count maximums), discovery cache (300 s) | Changing one is a wire event (AGENTS.md rule 2), not a setting. | Docs: the reference section |
+| Dormant account deletion (36 months) | Platform retention is deny-listed; a product may only shorten its own data's retention. | Docs |
+| Subject-feed cursor retention | Part of I-04's pull contract. | Docs |
+| Grants, entitlements, catalog flags and account overrides | Customer data and customer configuration, not Polaris behaviour. | License → Licenses; Config → Catalog |
+| Cloudflare bindings (D1, KV, R2, queues, Durable Objects, rate limiters) | Infrastructure wiring declared in wrangler.toml and the platform inventory (ST-02), changed by a deploy. | Platform → Settings (the read-only inventory) |
+| Credential and key material (the KEK, pepper, session secrets, OIDC client secrets, store and GitHub App keys) | Key material (the AT-2 deny-list): reported as present or absent, never as a value. Store credential slots are console-managed through platform_credentials, a settings-shaped table. | Platform → Settings (secrets, by presence); Platform → Store connections |
+| Origins (console, blob and package hosts) | The S-13 §8.2 deny-list: an origin is deploy-time forever. | Platform → Settings (the read-only inventory) |
+| The privilege root and the admin identity provider (admin group, platform and admin OIDC issuer and client, issuer allowlist) | The S-13 §8.2 deny-list: who may administer is fixed at deploy. | Platform → Settings (the read-only inventory) |
+| Key-encryption key identity (active key id and flag) | Key material (the AT-2 deny-list); rotated by the keyring runbook. | Platform → Settings (the KEK keyring) |
+| Storage location (blob bucket name, R2 parent account) | A bucket name is on the S-13 §8.2 deny-list; both are fixed by the deployment. | Platform → Settings (the read-only inventory) |
+| Deployment identity (environment, release tag, git SHA, platform repository and deploy environment, GitHub App id) | Written by the deploy pipeline; it describes the running build. | Platform → Deployment |
+| Release yanks, deprecations, rollouts, readiness overrides and submissions | Operational actions on records, not configuration. | Release → Releases; Distribution → Rollouts and Matrix |
+| Sync and link records (how a product was linked and last synced) | Records of what happened: release_source says whether a product is linked to a repository (changed by Link and Unlink), product_sync_state.source says whether a sync was manual or a webhook. | Core → Settings; Core → Overview |
+| Customer licence links | Customer data: how a portal account came to hold a licence, not Polaris behaviour. | License → Licenses |
+| Outlet signing-key fingerprints | Key-material records, registered by an operator or observed at an outlet; they describe keys, not behaviour. | Distribution → Outlets & feeds |
+| Document versions (apiVersion, schemaVersion) and the product slug | The slug is the product's identity and never changes; apiVersion selects a manifest shape; schemaVersion stamps the catalog and is written with it (config.catalog) as one unit. | Core → Overview; pkey validate |

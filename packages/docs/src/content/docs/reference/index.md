@@ -9,7 +9,9 @@ Every page in this section is **generated** — `packages/docs/scripts/gen-refer
 the real source (validator code, protocol constants, migrations, the OpenAPI spec, the
 conformance corpus, the parity registry and manifests) and a freshness test byte-compares each
 committed page against a fresh run, so these tables cannot drift from the code they describe.
-Regenerate with `pnpm --filter @polaris-key/docs gen`; never edit them by hand.
+Regenerate with `pnpm --filter @polaris-key/docs gen`; never edit them by hand. The settings
+reference is the exception to the emitter: `pnpm gen:settings` writes it from the settings
+registry, and the worker suite byte-compares it.
 
 | Page                                                                  | Extracted from                                               |
 | --------------------------------------------------------------------- | ------------------------------------------------------------ |
@@ -21,3 +23,4 @@ Regenerate with `pnpm --filter @polaris-key/docs gen`; never edit them by hand.
 | [D1 data model](/docs/reference/data-model/)                          | the migrations, replayed to the live schema                  |
 | [Conformance corpus v2](/docs/reference/corpus/)                      | the corpus files themselves                                  |
 | [SDK parity matrix](/docs/reference/parity/)                          | the feature registry and every SDK's `parity.json`           |
+| [Settings reference](/docs/reference/settings/) | the settings registry (`pnpm gen:settings`) |
