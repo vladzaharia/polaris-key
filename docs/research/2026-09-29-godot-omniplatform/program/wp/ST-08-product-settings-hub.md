@@ -12,6 +12,12 @@
 | Human input | none                                                                                                                                                                                                                   |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                              |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/PX-W17.md`](../plans/PX-W17.md):** call `applyServiceTransitions`, and show the dry-run count in the confirm.
+
 ## Goal
 
 Each product has one settings hub at `#/p/<slug>/settings/<area>` with an All settings table, a web-origins editor, redirects from the old pages and a phone layout.

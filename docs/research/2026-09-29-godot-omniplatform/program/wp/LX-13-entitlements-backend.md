@@ -12,6 +12,13 @@
 | Human input | none                                                                                                      |
 | Repo        | `vladzaharia/polaris-key`                                                                                 |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/LX-01.md`](../plans/LX-01.md):** Q4: `entitlements.changed` is delivered through `entitlement_events` with a pull cursor, and webhooks come later, so drop "webhook" from the scope. The I-05 follow-ups: `mergeAccounts`' batch moves account-held grants, keeps the survivor's `dist_holder_bindings` row, inserts `dist_binding_aliases` for the absorbed binding, re-keys first-held `dist_purchases` and bumps both versions. Account deletion and per-product removal clear `grants.account_id` holders according to D25 and D27 (D27 pending legal review).
+- **[`plans/PX-W17.md`](../plans/PX-W17.md):** use `identityEnabled` to decide whether to create licence-held grants.
+
 ## Goal
 
 Developer backends can manage entitlements: an admin grants API, `subjects/<s>/entitlements`, an `entitlements.changed` event and webhook, account-merge re-keying inside I-05's merge batch, and deletion of account-held grants.

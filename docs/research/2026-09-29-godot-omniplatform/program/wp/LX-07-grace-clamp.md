@@ -12,6 +12,12 @@
 | Human input | none                                                                                    |
 | Repo        | `vladzaharia/polaris-key`                                                               |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/LX-01.md`](../plans/LX-01.md):** Q7: add one informative §3.6 sentence now ("`graceUntil` may be earlier when the licence expires sooner").
+
 ## Goal
 
 Offline grace is clamped to licence expiry on every product by default, after a report lists the affected licences, with a per-product opt-out (`licensing.clampGraceToExpiry`); grace is never clamped to a grant's expiry.
