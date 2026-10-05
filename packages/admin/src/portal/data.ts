@@ -110,7 +110,11 @@ async function fetchSession(): Promise<PortalMe | null> {
     setPortalCsrf(me.csrf);
     return me;
   } catch (err) {
-    if (err instanceof PortalApiError && err.status === 401) return null;
+    if (err instanceof PortalApiError && err.status === 401) {
+      // The link was confirmed on another device: this tab signs in now (I-07).
+      if (await portalApi.finishPendingSignIn()) return fetchSession();
+      return null;
+    }
     throw err;
   }
 }
