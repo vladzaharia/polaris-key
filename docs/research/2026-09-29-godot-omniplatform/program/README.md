@@ -254,7 +254,10 @@ plan; I-05…I-25 were re-cut from the note's table, so their ids now mean diffe
 first revision's (none had started). The SDK row is split by toolchain into I-10a and I-10b; the
 old I-10 brief is kept with status `dropped` because its id is not reused. I-08, I-09, I-10a and
 I-10b execute I-04's plan (`planRef`); I-21 and I-22 execute I-20's (layer 2); I-13, I-15, I-24 and
-I-25 get their own plans. I-24 and I-25 are optional (S-16 "later").
+I-25 get their own plans. I-24 and I-25 are optional (S-16 "later"). I-24's plan was approved on 2026-10-05 and splits the work
+(its Q8): I-24 is now the planning package, and **I-24a** (contract, corpus, client-core, Worker,
+console, portal) and **I-24b** (six SDKs and four UI kits) execute it (`planRef`). I-24a depends
+on I-08 and I-09.
 
 Phase U (Cloud Sync) follows notes/S-17 §6. Ids follow the note; its U-11, U-15 and U-24 rows, each
 split into halves by phase in the note, become U-11a…c, U-15a…c and U-24a…b so the graph can
@@ -265,8 +268,9 @@ Phase PX (customer portal) follows `docs/design/PORTAL.md` §11, approved by the
 2026-10-04. Ids keep the spec's own form, which `check.mjs` accepts as a special case: PX-01…PX-22
 for the front end (§11.1 phase A, §11.3 phase B) and PX-W1…PX-W17 for the Worker additions (§11.2);
 each package's stage names the spec phase. Sizes map S → 0.1–0.2, M → 0.4–0.8 and L → 1–1.6
-engineer-weeks. PX-W8, PX-W9, PX-W13 and PX-W17 execute I-04's plan (`planRef`; PORTAL.md's "one
-contract plan"); PX-W3 gets its own. PX-20 is the rolling quality bar: it starts after PX-01 and is
+engineer-weeks. PX-W8, PX-W9, PX-W13 and PX-W17 were planned under I-04 (PORTAL.md's "one contract plan"), but
+each gained its own plan refining I-04, approved on 2026-10-05, so they no longer carry `planRef`;
+PX-W3 has its own plan too. PX-20 is the rolling quality bar: it starts after PX-01 and is
 marked done last. PORTAL.md §10.3 and §11 cite the first revision of phase I; the graph maps them
 onto the re-cut ids:
 
@@ -287,6 +291,17 @@ and account settings), I-07 (email gate and profile import), I-08 (passthrough a
 I-09 (key-entry limits) and U-12 (the portal Cloud Sync section). Each PX brief names its overlap.
 PORTAL.md is the approved spec; whichever package lands first owns the shared code, and the lead
 narrows the other's scope.
+
+Phase SP (SDK parity pass) follows `notes/SDK-PARITY-PASS.md`, whose owner questions were answered
+on 2026-10-05. Its ids use the two-letter prefix SP, which `check.mjs` accepts. Only the plan-mode
+items are in the graph so far: **SP-00** (the registry and corpus plan, note §5.0); **SP-08**,
+**SP-09** and **SP-10** (the wire items W8, W9 and W10 of note §6, numbered after them); and
+**SP-11** (the product presentation accent colour from the owner's UI-kit answers). The other wire
+items map onto existing packages (W1 I-09 and PX-W9, W2 PX-W8, W3 LX-17 to LX-19, W4 I-08, I-10a,
+I-10b, I-13, I-15 and PX-W13, W5 I-13, I-14, I-21 and I-22, W6 phase U, W7 LX-11, LX-20, LX-23 and
+LX-25, W11 I-24a, I-24b and LX-24, W12 LX-13, I-25 and U-16). The note's non-wire task list (SP-01
+to SP-03 and the per-SDK SP-N, SP-R, SP-P, SP-S, SP-K and SP-G tasks) becomes packages when the lead
+schedules its waves (note §7).
 
 ---
 

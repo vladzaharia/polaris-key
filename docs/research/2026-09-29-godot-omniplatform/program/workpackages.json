@@ -68,6 +68,14 @@
       "title": "Licensing model: licences, grants, entitlements (S-19)"
     },
     {
+      "id": "SP",
+      "title": "SDK parity pass (notes/SDK-PARITY-PASS.md)"
+    },
+    {
+      "id": "HA",
+      "title": "Hosted assets: Polaris Key hosts every file it serves (S-20)"
+    },
+    {
       "id": "X",
       "title": "Optional SDKs"
     },
@@ -2489,13 +2497,13 @@
     },
     {
       "id": "I-09",
-      "title": "Key-entry limits and attach on the device wire: entry counter, `key_entry_limit` with `portalUrl`, `license_owned` with `signInUrl`, `POST /<p>/identity/attach`, discovery fields; the limits and the key-entry refusal only behind the product's Identity toggle",
+      "title": "Key-entry refusal `license_owned` with `signInUrl`, attach, subject and sign-out on the device wire (`POST /<p>/identity/attach`), discovery fields and the `identity:` manifest block; the entry counter and `key_entry_limit` with `manageUrl` ride PX-W9; all only behind the product's Identity toggle",
       "phase": "I",
       "stage": "layer-1, phase-1a",
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [0.8, 1.1],
-      "deps": ["I-04", "I-05", "ST-01b", "ST-03"],
+      "deps": ["I-04", "I-05", "ST-01b", "ST-03", "ST-04"],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -2515,11 +2523,11 @@
         "notes/S-16 §8 I-09",
         "notes/S-16 §10 D20 D24 D26",
         "notes/S-18 §5.5, §6.3 (identity settings as `product_settings` rows)",
-        "notes/S-19 §7.5 steps 1–3 (anchorPolicy rank-first, inline until LX-10)"
+        "notes/S-19 §7.5 steps 1–3 (anchorPolicy rank-first, inline until LX-10)",
+        "plans/I-09.md (approved 2026-10-05)"
       ],
       "brief": "wp/I-09-key-entry-attach.md",
-      "status": "todo",
-      "planRef": "I-04"
+      "status": "todo"
     },
     {
       "id": "I-10",
@@ -2985,22 +2993,15 @@
     },
     {
       "id": "I-24",
-      "title": "Named-user seats: user claim in the licence `profile`, seat holders on the device binding, per-user caps",
+      "title": "Plan named-user seats (approved 2026-10-05): user claim in the licence `profile`, seat holders on the device binding, per-user caps; implemented by I-24a and I-24b",
       "phase": "I",
       "stage": "later",
       "lane": "corpus",
-      "role": "pkey-implementer",
-      "estimateWeeks": [1, 2],
+      "role": "pkey-wire-planner",
+      "estimateWeeks": [0.3, 0.5],
       "deps": ["I-05"],
       "planMode": true,
-      "gates": [
-        "plan-mode",
-        "corpus",
-        "all-sdks",
-        "migration",
-        "table-owners",
-        "docs-generated"
-      ],
+      "gates": ["plan-mode", "human-approval"],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": true,
@@ -3009,10 +3010,70 @@
         "notes/S-16 §5.3",
         "notes/S-16 §8 I-24",
         "notes/S-16 §10 D9",
-        "notes/S-17 §6 (I-24 reuses the device binding)"
+        "notes/S-17 §6 (I-24 reuses the device binding)",
+        "plans/I-24.md (approved 2026-10-05)"
       ],
       "brief": "wp/I-24-named-user-seats.md",
-      "status": "todo"
+      "status": "done"
+    },
+    {
+      "id": "I-24a",
+      "title": "Named-user seats, server half: `profile.user` and the `license.maxUsers` / `license.devicesPerUser` policy keys in the contract, `licenseDocCases` rows and `licenseUserCases`, client-core readers, seat-holder and invite tables, `device_limit` with `scope: \"user\"`, console and portal seat panels",
+      "phase": "I",
+      "stage": "later",
+      "lane": "corpus",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1, 1.4],
+      "deps": ["I-24", "I-05", "I-08", "I-09"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "corpus",
+        "drift-gate",
+        "migration",
+        "table-owners",
+        "rule-10",
+        "threat-model",
+        "docs-generated",
+        "workerd"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "plans/I-24.md §2, §3, §4, §6 and the client-core part of §5",
+        "notes/S-16 §8 I-24",
+        "notes/S-19 §7.3.1"
+      ],
+      "brief": "wp/I-24a-named-user-seats-server.md",
+      "status": "todo",
+      "planRef": "I-24"
+    },
+    {
+      "id": "I-24b",
+      "title": "Named-user seats in the SDKs: Node, React, Python, Swift, Godot and Kotlin read the user claim and policy keys, `device_limit` `scope: \"user\"` and `account_required` copy, plus the React, SwiftUI, Godot and Compose kits",
+      "phase": "I",
+      "stage": "later",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1, 1.4],
+      "deps": ["I-24", "I-24a", "I-10a", "I-10b"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "all-sdks",
+        "drift-gate",
+        "ui-snapshots",
+        "ci:macos",
+        "ci:android"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": ["plans/I-24.md §5 (SDKs and UI kits)", "notes/S-16 §8 I-24"],
+      "brief": "wp/I-24b-named-user-seats-sdks.md",
+      "status": "todo",
+      "planRef": "I-24"
     },
     {
       "id": "I-25",
@@ -3052,10 +3113,11 @@
         "notes/S-17 §5",
         "notes/S-17 §6 U-01",
         "notes/S-17 §7.3",
-        "notes/S-19 §10.3 decision 19 (Cloud Sync quotas byEntitlement + byTier) and §8 U-01 row"
+        "notes/S-19 §10.3 decision 19 (Cloud Sync quotas byEntitlement + byTier) and §8 U-01 row",
+        "plans/U-01.md (approved 2026-10-05)"
       ],
       "brief": "wp/U-01-cloud-sync-plan.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "U-02",
@@ -3427,7 +3489,9 @@
         "threat-model",
         "wrangler"
       ],
-      "humanInputs": ["an R2 bucket for save blobs per environment"],
+      "humanInputs": [
+        "a dedicated R2 bucket for save blobs per environment, binding `SYNC_SAVES`, no bucket lock (plans/U-01.md Q4), plus an EU twin if U-24 offers residency"
+      ],
       "repo": "polaris-key",
       "optional": false,
       "refs": [
@@ -5059,7 +5123,7 @@
     },
     {
       "id": "PX-W3",
-      "title": "Licensed R2 downloads (G3): signed short-lived bytes URL or streaming through `/download/<token>`",
+      "title": "Licensed R2 downloads (G3) through a download ticket: a signed, short-lived, file-bound bytes-host URL (plan approved 2026-10-05)",
       "phase": "PX",
       "stage": "phase W: Worker additions",
       "lane": "worker",
@@ -5068,13 +5132,16 @@
       "deps": ["PX-W2"],
       "planMode": true,
       "gates": ["plan-mode", "threat-model", "rule-10", "workerd"],
-      "humanInputs": ["plan approval (plans/PX-W3.md)"],
+      "humanInputs": [
+        "a `DOWNLOAD_TICKET_KEY` signing key pair provisioned per environment (plans/PX-W3.md Q3)"
+      ],
       "repo": "polaris-key",
       "optional": false,
       "refs": [
         "design/PORTAL §10.2 G3",
         "design/PORTAL §11.2 PX-W3",
-        "notes/S-19 §10.3 decision 18 (download grant renamed download ticket)"
+        "notes/S-19 §10.3 decision 18 (download grant renamed download ticket)",
+        "plans/PX-W3.md (approved 2026-10-05)"
       ],
       "brief": "wp/PX-W3-licensed-r2-downloads.md",
       "status": "todo"
@@ -5167,7 +5234,7 @@
     },
     {
       "id": "PX-W8",
-      "title": "`manageUrl` (G15b) on `device_limit` and on the key-entries refusal, jointly with I-04: contract, `errors.json`, corpus and transcripts, client-core and every SDK and UI kit",
+      "title": "`manageUrl` (G15b) on `device_limit` and on `key_entry_limit` (one name, owner 2026-10-05): contract, `core/manageUrl.ts` builder, transcript, client-core `readManageUrl`, every SDK and UI kit",
       "phase": "PX",
       "stage": "phase W: Worker additions",
       "lane": "corpus",
@@ -5179,20 +5246,23 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["design/PORTAL §10.2 G15", "design/PORTAL §11.2 PX-W8"],
+      "refs": [
+        "design/PORTAL §10.2 G15",
+        "design/PORTAL §11.2 PX-W8",
+        "plans/PX-W8.md (approved 2026-10-05)"
+      ],
       "brief": "wp/PX-W8-manage-url.md",
-      "status": "todo",
-      "planRef": "I-04"
+      "status": "todo"
     },
     {
       "id": "PX-W9",
-      "title": "Key-entry counting (G21): per-key limit setting, atomic counter for portal and app entries, portal responses, the app refusal (wire part rides PX-W8)",
+      "title": "Key-entry counting (G21): per-licence limit setting, atomic counter for app, browser and portal entries, `keyEntries` everywhere, the `key_entry_limit` refusal with `manageUrl`, portal preview and responses",
       "phase": "PX",
       "stage": "phase W: Worker additions",
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [0.4, 0.8],
-      "deps": ["I-04"],
+      "deps": ["I-04", "ST-01b", "ST-03"],
       "planMode": true,
       "gates": ["plan-mode", "migration", "table-owners", "workerd"],
       "humanInputs": [],
@@ -5201,11 +5271,11 @@
       "refs": [
         "design/PORTAL §4.6",
         "design/PORTAL §10.2 G21",
-        "design/PORTAL §11.2 PX-W9"
+        "design/PORTAL §11.2 PX-W9",
+        "plans/PX-W9.md (approved 2026-10-05)"
       ],
       "brief": "wp/PX-W9-key-entry-counting.md",
-      "status": "todo",
-      "planRef": "I-04"
+      "status": "todo"
     },
     {
       "id": "PX-W10",
@@ -5272,13 +5342,13 @@
     },
     {
       "id": "PX-W13",
-      "title": "Passthrough request metadata (G28): client records with presentation and reserved-name check, the request handle, `deviceLabel` from the SDKs, consent data",
+      "title": "Passthrough request metadata (G28): client records with presentation and the reserved-name check (warn first, then enforced), the request handle, `deviceName` label from the SDKs, consent data",
       "phase": "PX",
       "stage": "phase W: Worker additions",
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [0.4, 0.8],
-      "deps": ["I-04"],
+      "deps": ["I-04", "LX-05"],
       "planMode": true,
       "gates": ["plan-mode", "corpus", "threat-model", "all-sdks", "workerd"],
       "humanInputs": [],
@@ -5287,11 +5357,11 @@
       "refs": [
         "design/PORTAL §4.7",
         "design/PORTAL §10.2 G28",
-        "design/PORTAL §11.2 PX-W13"
+        "design/PORTAL §11.2 PX-W13",
+        "plans/PX-W13.md (approved 2026-10-05; reserved names warn first)"
       ],
       "brief": "wp/PX-W13-passthrough-metadata.md",
-      "status": "todo",
-      "planRef": "I-04"
+      "status": "todo"
     },
     {
       "id": "PX-W14",
@@ -5392,11 +5462,11 @@
       "refs": [
         "design/PORTAL §3.1",
         "design/PORTAL §10.2 G34",
-        "design/PORTAL §11.2 PX-W17"
+        "design/PORTAL §11.2 PX-W17",
+        "plans/PX-W17.md (approved 2026-10-05)"
       ],
       "brief": "wp/PX-W17-identity-per-product.md",
-      "status": "todo",
-      "planRef": "I-04"
+      "status": "todo"
     },
     {
       "id": "PX-08",
@@ -6327,10 +6397,11 @@
         "notes/S-19 owner decisions header",
         "notes/S-19 §7",
         "notes/S-19 §9 LX-01",
-        "notes/S-19 §10.3"
+        "notes/S-19 §10.3",
+        "plans/LX-01.md (approved 2026-10-05)"
       ],
       "brief": "wp/LX-01-licensing-plan.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "LX-02",
@@ -6855,7 +6926,7 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [0.6, 0.85],
-      "deps": ["LX-09", "I-24"],
+      "deps": ["LX-09", "I-24a"],
       "planMode": true,
       "gates": ["plan-mode"],
       "humanInputs": [],
@@ -6885,6 +6956,491 @@
         "notes/S-19 §10.3 decisions 11, 20"
       ],
       "brief": "wp/LX-25-redeem-codes.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-00",
+      "title": "SDK parity registry and corpus plan: the nine proposed parity ids with allowed N/As, `ui.cli` for Node and Python, `commerce.receipt` required on Node and Python, new transcripts and corpus rows, `copy.en.json` and its emitters, honest `planned` manifests",
+      "phase": "SP",
+      "stage": "wave 1",
+      "lane": "corpus",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1, 1.6],
+      "deps": ["P1b-01"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "corpus",
+        "drift-gate",
+        "all-sdks",
+        "docs-generated"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5.0 SP-00",
+        "notes/SDK-PARITY-PASS owner decisions (2026-10-05)",
+        "PARITY §5"
+      ],
+      "brief": "wp/SP-00-parity-registry-plan.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-08",
+      "title": "Canonical platform values `tvos`, `visionos` and `watchos` (wire item W8): `shared-protocol` platform enum, `headers.json` corpus rows, Worker acceptance, Swift sends them, Godot and React follow the enum",
+      "phase": "SP",
+      "stage": "wire items",
+      "lane": "corpus",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.8],
+      "deps": ["P1b-04"],
+      "planMode": true,
+      "gates": ["plan-mode", "corpus", "drift-gate", "all-sdks", "workerd"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §6 W8",
+        "notes/SDK-PARITY-PASS owner decisions (2026-10-05)"
+      ],
+      "brief": "wp/SP-08-apple-platform-values.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-09",
+      "title": "Velopack package route drops `Authorization` on its cross-origin 302 under licensed or entitled delivery (wire item W9, S-11 §5.2 follow-up)",
+      "phase": "SP",
+      "stage": "wire items",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.1, 0.2],
+      "deps": ["P3-09"],
+      "planMode": true,
+      "gates": ["plan-mode", "rule-10", "threat-model", "workerd"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["notes/SDK-PARITY-PASS §6 W9", "notes/S-11 §5.2"],
+      "brief": "wp/SP-09-velopack-auth-redirect.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-10",
+      "title": "Signed browser-session document for React cookie mode, kept for first-party apps beside bearer mode (wire item W10)",
+      "phase": "SP",
+      "stage": "wire items",
+      "lane": "corpus",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.8],
+      "deps": ["SP-00"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "corpus",
+        "drift-gate",
+        "protocol-version",
+        "workerd"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §3.17",
+        "notes/SDK-PARITY-PASS §6 W10",
+        "notes/SDK-PARITY-PASS owner decisions (2026-10-05) Q1"
+      ],
+      "brief": "wp/SP-10-signed-browser-session.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-11",
+      "title": "Product presentation accent colour: an optional accent in the product's presentation (manifest rule, discovery and the portal client record), read by every UI kit",
+      "phase": "SP",
+      "stage": "UI kits",
+      "lane": "corpus",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.8],
+      "deps": ["PX-W13"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "rule-9",
+        "drift-gate",
+        "all-sdks",
+        "ui-snapshots"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS owner decisions (2026-10-05), UI-kit answers",
+        "plans/PX-W13.md §2.2 (client record)"
+      ],
+      "brief": "wp/SP-11-presentation-accent.md",
+      "status": "dropped"
+    },
+    {
+      "id": "HA-01",
+      "title": "Hosted-asset core: `hosted_assets` table, `core/safeFetch.ts` guard, `core/hostedAssets.ts` ingest (cap, sniff, SHA-256, put, ref) and Content-Type on every R2 put",
+      "phase": "HA",
+      "stage": "phase 1: substrate",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1, 1.5],
+      "deps": [],
+      "planMode": false,
+      "gates": ["migration", "table-owners", "threat-model", "workerd"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-20 §6.2",
+        "notes/S-20 §6.3",
+        "notes/S-20 §4.6 #1",
+        "notes/S-20 §9 HA-01"
+      ],
+      "brief": "wp/HA-01-hosted-asset-core.md",
+      "status": "todo"
+    },
+    {
+      "id": "HA-02",
+      "title": "Media host `media*.plrs.im`: fourth custom domain, `MEDIA_ORIGIN`, `core/mediaHost.ts` confinement, content-addressed immutable routes and stable aliases",
+      "phase": "HA",
+      "stage": "phase 1: substrate",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 1],
+      "deps": ["HA-01"],
+      "planMode": false,
+      "gates": ["wrangler", "rule-10", "threat-model", "workerd"],
+      "humanInputs": [
+        "a deploy that attaches the custom domains img.plrs.im, img-staging.plrs.im and img-dev.plrs.im (the Worker routes create the DNS records)"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-20 §6.5",
+        "notes/S-20 owner decision 2",
+        "notes/S-20 §9 HA-02"
+      ],
+      "brief": "wp/HA-02-media-host.md",
+      "status": "todo"
+    },
+    {
+      "id": "HA-03",
+      "title": "Image variant ladder at ingest through the Images binding (WebP, fixed widths, never upscale), with an original-only fallback",
+      "phase": "HA",
+      "stage": "phase 1: substrate",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": ["HA-01"],
+      "planMode": false,
+      "gates": ["wrangler", "workerd", "threat-model"],
+      "humanInputs": [
+        "the Images binding enabled for the Worker on the Cloudflare account (free tier: 5,000 unique transformations a month)"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["notes/S-20 §6.6", "notes/S-20 owner decision 4"],
+      "brief": "wp/HA-03-image-variants.md",
+      "status": "todo"
+    },
+    {
+      "id": "HA-04",
+      "title": "Manifest asset refs: `.pkey/product` `presentation { icon, accent, accentDark }` and `.pkey/distribution` listing `icon`, `header`, `screenshots[]` taking an https URL or a repo path; `iconUrl`/`headerUrl` as deprecated aliases",
+      "phase": "HA",
+      "stage": "phase 1: substrate",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 0.9],
+      "deps": [],
+      "planMode": false,
+      "gates": ["rule-9", "docs-generated", "cli-bundle"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-20 owner decision 5",
+        "notes/S-20 §6.3",
+        "notes/S-20 §10.2 Q5"
+      ],
+      "brief": "wp/HA-04-manifest-presentation.md",
+      "status": "todo"
+    },
+    {
+      "id": "HA-05",
+      "title": "Pull on register and resync: queue `pkey-assets-<env>`, URL and repo-path sources (installation token at the synced commit), re-sync semantics, nightly re-check, console status",
+      "phase": "HA",
+      "stage": "phase 2: ingest",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1, 1.5],
+      "deps": ["HA-01", "HA-04"],
+      "planMode": false,
+      "gates": [
+        "migration",
+        "wrangler",
+        "threat-model",
+        "workerd",
+        "table-owners"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-20 §6.3",
+        "notes/S-20 §6.4",
+        "notes/S-20 owner decision 3"
+      ],
+      "brief": "wp/HA-05-pull-on-sync.md",
+      "status": "todo"
+    },
+    {
+      "id": "HA-06",
+      "title": "Files that are not on the web: console upload (claims a slot, Revert returns to the manifest), `pkey assets push`, publish Action `assets:` input, CI scope `assets:write`, Presentation page with delete-a-copy",
+      "phase": "HA",
+      "stage": "phase 2: ingest",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1, 1.5],
+      "deps": ["HA-02", "HA-05"],
+      "planMode": false,
+      "gates": [
+        "rule-10",
+        "console-csp-parity",
+        "cli-bundle",
+        "docs-generated"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["notes/S-20 §6.3", "notes/S-20 owner decision 11"],
+      "brief": "wp/HA-06-upload-paths.md",
+      "status": "todo"
+    },
+    {
+      "id": "HA-07",
+      "title": "Serve hosted copies everywhere: portal presentation and Discover on media URLs, `/media/<p>/*` becomes a 302, AltStore/SideStore sources, download-page icon, `dist_listing_assets` `source='manifest'`, listing-asset blob route closed (THREAT-MODEL fix)",
+      "phase": "HA",
+      "stage": "phase 3: serve",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1, 1.5],
+      "deps": ["HA-02", "HA-03", "HA-05"],
+      "planMode": false,
+      "gates": [
+        "console-csp-parity",
+        "portal-e2e",
+        "feeds-goldens",
+        "threat-model",
+        "migration"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-20 §4.1",
+        "notes/S-20 §4.2",
+        "notes/S-20 §4.6 #2",
+        "notes/S-20 §6.8"
+      ],
+      "brief": "wp/HA-07-serve-hosted-copies.md",
+      "status": "todo"
+    },
+    {
+      "id": "HA-08",
+      "title": "Release-file mirroring: pull GitHub and external release files into R2 on sync, webhook and descriptor ingest (verify `digest` and descriptor SHA-256), append an `r2` location, backfill existing releases, legacy aliases prefer the copy",
+      "phase": "HA",
+      "stage": "phase 3: serve",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1, 1.5],
+      "deps": ["HA-01", "HA-05"],
+      "planMode": false,
+      "gates": ["migration", "threat-model", "workerd", "wrangler"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-20 §4.3",
+        "notes/S-20 §6.3",
+        "notes/S-20 §6.8",
+        "notes/S-20 owner decision 6"
+      ],
+      "brief": "wp/HA-08-release-mirroring.md",
+      "status": "todo"
+    },
+    {
+      "id": "HA-09",
+      "title": "Portal licensed downloads prefer the mirrored R2 copy with PX-W3's download ticket over GitHub's `browser_download_url` (fixes private-repo 404s)",
+      "phase": "HA",
+      "stage": "phase 3: serve",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.2, 0.4],
+      "deps": ["HA-08", "PX-W3"],
+      "planMode": false,
+      "gates": ["portal-e2e", "threat-model"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["notes/S-20 §4.3 R3", "notes/S-20 §6.7"],
+      "brief": "wp/HA-09-portal-mirrored-downloads.md",
+      "status": "todo"
+    },
+    {
+      "id": "HA-10",
+      "title": "Hosting settings and quotas in S-18's registry: `assets.hosting.enabled`, `assets.releases.mirror`, `assets.quota.mediaBytes`, `assets.quota.releaseBytes`; usage in the console",
+      "phase": "HA",
+      "stage": "phase 4: operate",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["ST-03", "HA-05", "HA-08"],
+      "planMode": false,
+      "gates": ["rule-6", "rule-10", "threat-model", "console-csp-parity"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["notes/S-20 §6.10", "notes/S-20 owner decision 9"],
+      "brief": "wp/HA-10-hosting-settings.md",
+      "status": "todo"
+    },
+    {
+      "id": "HA-11",
+      "title": "Plan: `core.presentation` in discovery (name, developer, accent, accent dark, icon sizes and URL template) and UI-kit defaults across all SDKs",
+      "phase": "HA",
+      "stage": "phase 5: presentation in SDKs",
+      "lane": "worker",
+      "role": "pkey-wire-planner",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": ["HA-04"],
+      "planMode": true,
+      "gates": ["plan-mode", "human-approval"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-20 §6.9",
+        "notes/S-20 §7",
+        "notes/S-20 owner decision 10"
+      ],
+      "brief": "wp/HA-11-presentation-discovery-plan.md",
+      "status": "todo"
+    },
+    {
+      "id": "HA-12",
+      "title": "Discovery `core.presentation` in the Worker: contract text, `shared-protocol` type, transcripts and mirrors",
+      "phase": "HA",
+      "stage": "phase 5: presentation in SDKs",
+      "lane": "corpus",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["HA-11", "HA-02", "HA-07"],
+      "planMode": true,
+      "gates": ["plan-mode", "corpus", "drift-gate", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["notes/S-20 §6.9", "plans/HA-11.md"],
+      "brief": "wp/HA-12-presentation-discovery.md",
+      "status": "todo",
+      "planRef": "HA-11"
+    },
+    {
+      "id": "HA-13",
+      "title": "SDKs and UI kits read presentation: client-core, React, Node, Python, Swift, Kotlin (icon verified by SHA-256, accent default, integrator override wins)",
+      "phase": "HA",
+      "stage": "phase 5: presentation in SDKs",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1, 1.5],
+      "deps": ["HA-11", "HA-12"],
+      "planMode": true,
+      "gates": ["plan-mode", "all-sdks", "corpus-runner", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["notes/S-20 §6.9", "plans/HA-11.md"],
+      "brief": "wp/HA-13-sdks-presentation.md",
+      "status": "todo",
+      "planRef": "HA-11"
+    },
+    {
+      "id": "HA-14",
+      "title": "Godot SDK and UI kit read presentation: icon fetched, verified (SHA-256 in the SDK's own hasher) and cached under `user://`, `ui_accent` default",
+      "phase": "HA",
+      "stage": "phase 5: presentation in SDKs",
+      "lane": "godot",
+      "role": "pkey-godot-engineer",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": ["HA-11", "HA-12"],
+      "planMode": true,
+      "gates": ["plan-mode", "corpus-runner", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["notes/S-20 §6.9", "plans/HA-11.md"],
+      "brief": "wp/HA-14-godot-presentation.md",
+      "status": "todo",
+      "planRef": "HA-11"
+    },
+    {
+      "id": "HA-15",
+      "title": "Hosted assets close-out: production backfill, Polaris Key system product `presentation.icon` as data, docs page, glossary terms, THREAT-MODEL rows, DJDL migration note",
+      "phase": "HA",
+      "stage": "phase 4: operate",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["HA-07", "HA-08", "HA-10"],
+      "planMode": false,
+      "gates": ["docs-links", "docs-generated", "threat-model"],
+      "humanInputs": [
+        "an operator runs the production release-file backfill (HA-08's action) after deploy"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["notes/S-20 §6.1", "notes/S-20 §6.8", "notes/S-20 §6.12"],
+      "brief": "wp/HA-15-hosted-assets-closeout.md",
+      "status": "todo"
+    },
+    {
+      "id": "HA-16",
+      "title": "Optional: release-note images hosted (`notes-image:<urlhash>` slots) and rendered from the media host at render time; the signed `notes` text is never rewritten",
+      "phase": "HA",
+      "stage": "phase 6: optional",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["HA-05", "HA-07"],
+      "planMode": false,
+      "gates": ["threat-model", "portal-e2e", "feeds-goldens"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": ["notes/S-20 §4.4 N1", "notes/S-20 §7"],
+      "brief": "wp/HA-16-release-note-images.md",
+      "status": "todo"
+    },
+    {
+      "id": "HA-17",
+      "title": "Optional: store video and trailer slots: `trailer-master` hosted as MP4 (512 MiB cap, no transcoding), `youtube-url` as a URL slot (fixes the NOT NULL blob mismatch)",
+      "phase": "HA",
+      "stage": "phase 6: optional",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": ["HA-06"],
+      "planMode": false,
+      "gates": ["migration", "threat-model"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": ["notes/S-20 §4.2 L4"],
+      "brief": "wp/HA-17-store-video-slots.md",
       "status": "todo"
     }
   ]

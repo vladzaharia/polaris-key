@@ -10,10 +10,10 @@ sidebar:
 fused v2 document at `/<product>/config`; that route is gone rather than aliased, because a route
 that used to return a signed document must not quietly start returning half of one.
 
-## Authentication: a device token, and nothing else
+## Authentication: a device token, and a license that is still usable
 
-The route calls `core.validateDeviceToken` and stops there — no license lookup, no usability
-check, no license-scoped guard of any kind:
+The route calls `core.validateDeviceToken`. On a product with License **off**, that is the
+whole check — no license lookup, no usability check:
 
 ```
 GET /<product>/config/document
@@ -22,11 +22,26 @@ Authorization: Bearer pkeyt_…
 
 This is the wire-level proof of D-08, service independence: a product can run Config with License
 **disabled**, its devices register and hold real `pkeyt_` tokens, and every one of them still gets
-a config document. Contrast this with [`GET /<product>/license/document`](/docs/services/license/document/),
-which calls `license.requireLicensedDevice` — the same token check, plus "and the license is
-usable". Config takes the Core-only answer outright; License adds the extra clause. See
-[the device principal](/docs/services/core/device-principal/) for exactly what
-`validateDeviceToken` checks.
+a config document. See [the device principal](/docs/services/core/device-principal/) for exactly
+what `validateDeviceToken` checks.
+
+On a product that **runs** License, a device bound to a license that is no longer usable is
+refused. The document carries the product's secrets, so a device whose license an operator
+disabled, or that expired, or that no longer exists gets a `401` with the code `license_unusable`
+instead, and stops receiving them. The check runs before the ETag comparison, so such a device is
+never told its copy is current.
+
+A keyless device is not refused. Under an `open` or `requires-identity` registration policy a
+device of a licensed product can hold a token with no license behind it at all, and it still
+fetches config documents: there is no license to have lapsed. This is narrower than Core's
+`/devices` surfaces and the [edge-mint guard](/docs/services/config/edge-mint/), which on a
+licensed product require a usable license of every device.
+
+It is a `401`, like the one [`GET /<product>/license/document`](/docs/services/license/document/)
+answers for the same license, and not a `403`: a `403` on a document is the build gate's status,
+which a client reads as a version or channel block. On the `401` a client makes its single
+`POST /<product>/license/token` re-acquire, which an unusable license fails too, and its license
+state becomes `revoked`. The `sync-config-license-unusable` transcript pins that conversation.
 
 A missing or invalid token is `401 unauthorized`. Anything but `GET` is `405`.
 
