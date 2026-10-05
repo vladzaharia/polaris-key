@@ -237,7 +237,7 @@ export async function baseFacts(
       credential: cred,
       credentialLabel: status.label,
       source: status.source,
-      lastError: status.console.lastError,
+      lastError: status["console"].lastError,
     },
     app,
     linkParams: pin ? { appId: pin } : {},
