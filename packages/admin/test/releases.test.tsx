@@ -28,6 +28,8 @@ const updateReleaseChannel = vi.fn();
 const yankRelease = vi.fn();
 const unyankRelease = vi.fn();
 const distributionMatrix = vi.fn<() => Promise<DistributionMatrix>>();
+const ciPublisher = vi.fn();
+const ciTokens = vi.fn();
 vi.mock("../src/api.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/api.js")>()),
   api: {
@@ -40,6 +42,8 @@ vi.mock("../src/api.js", async (importOriginal) => ({
     yankRelease: (...a: unknown[]) => yankRelease(...a),
     unyankRelease: (...a: unknown[]) => unyankRelease(...a),
     distributionMatrix: () => distributionMatrix(),
+    ciPublisher: (slug: string) => ciPublisher(slug),
+    ciTokens: (slug: string) => ciTokens(slug),
   },
 }));
 
@@ -182,8 +186,12 @@ beforeEach(() => {
     yankRelease,
     unyankRelease,
     distributionMatrix,
+    ciPublisher,
+    ciTokens,
   ])
     f.mockReset();
+  ciPublisher.mockResolvedValue({ ok: true, policy: null });
+  ciTokens.mockResolvedValue({ ok: true, tokens: [] });
   product.mockResolvedValue({ product: PRODUCT });
   releaseHealth.mockResolvedValue({ health: HEALTH });
   releases.mockResolvedValue(STORE);
@@ -261,13 +269,15 @@ describe("Releases page (T2, ADMIN.md §6.3.1)", () => {
     expect(await rowOf("0.4.2")).toBeTruthy();
   });
 
-  it("says what fills the store when it is empty (first run)", async () => {
+  it("guides the first release instead of an empty table (first run, EXPERIENCE.md S2)", async () => {
     releases.mockResolvedValue({ releases: [], channels: [], floors: [] });
     mountList();
-    expect(await screen.findByText("No releases yet")).toBeTruthy();
     expect(
-      screen.getByText(/the linked repository publishes one/),
+      await screen.findByRole("heading", { name: "Ship your first release" }),
     ).toBeTruthy();
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(await screen.findByText("Polaris Key app installed")).toBeTruthy();
+    expect(screen.getByText("Waiting for the first release…")).toBeTruthy();
   });
 
   it("round-trips its filters through the URL, with a no-results state that clears them", async () => {
