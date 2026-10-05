@@ -276,6 +276,28 @@
   color: var(--pk-accent);
   text-decoration: none;
 }
+.footline .i,
+.pubnote .i {
+  width: 15px;
+  height: 15px;
+  vertical-align: -3px;
+  margin-right: 6px;
+}
+.footline + .footline {
+  margin-top: 6px;
+}
+.pubnote {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 4px 22px 12px;
+  font-size: 13px;
+  color: var(--pk-text-subtle);
+}
+.pubnote a {
+  color: var(--pk-accent);
+  text-decoration: none;
+}
 
 /* ---- page header for a storefront ---- */
 .shd {
@@ -1218,4 +1240,16 @@ table.trk td .sub {
 }
 .drawer.wz .dbody > * {
   flex: none;
+}
+
+/* critique pass: the catalogue's one scope line */
+.footline.scopeline {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+}
+.footline.scopeline .i {
+  flex: none;
+  margin-top: 2px;
+  vertical-align: 0;
 }

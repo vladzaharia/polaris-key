@@ -156,27 +156,27 @@ const card = ({
 
 const catalogue = `
   <div class="phd"><h1>Storefronts</h1><span class="meta chips">${plat("apple", "macOS")}${plat("iphone", "iOS")}<span>from your builds</span></span><div class="acts">${B("Publish 2.4.0", "btn-primary", "rocket")}</div></div>
-  <section class="grp"><h2>Live <span class="n">2</span></h2>
+  <section class="grp"><h2>Live <span class="n">3</span></h2>
     <div class="liverows">
-      ${liveRow("polaris-key", "Polaris Key", "2.4.0 on stable · 2.5.0-beta.2 on beta · built in", "dl.plrs.im/tonebox")}
-      ${liveRow("appstore", "App Store", "iOS 2.3.1 · macOS 2.3.1 · TestFlight 2.4.0 (12) · 2.4.0 in review", "apps.apple.com/app/tonebox")}
+      ${liveRow("polaris-key", "Polaris Key", "2.3.1 on stable · 2.5.0-beta.2 on beta · 2.4.0 ready to publish", "dl.plrs.im/tonebox")}
+      ${liveRow("appstore", "App Store", "iOS 2.3.1 · macOS 2.3.1 · TestFlight 2.4.0 (12) · 2.4.0 ready to submit", "apps.apple.com/app/tonebox")}
+      ${liveRow("homebrew", "Homebrew", "2.4.0 · updated by the release workflow 4 min ago", "brew install --cask acme/tap/tonebox")}
     </div>
   </section>
   <section class="grp"><h2>Setting up <span class="n">1</span></h2>
     <div class="cards">
-      ${card({ k: "homebrew", name: "Homebrew", fam: "Package manager · pull requests", pitch: "Next: choose the cask name people type in brew install.", cls: "cont", extra: `<div class="progress">${"<i class='on'></i>".repeat(2)}${"<i></i>".repeat(4)}</div>`, note: "Step 3 of 6 · The cask", action: B("Continue", "btn-primary btn-sm") })}
+      ${card({ k: "altstore", name: "AltStore and SideStore", fam: "Sideload source · feed", pitch: "Next: add the AltStore outlet to your repository with one command.", cls: "cont", extra: `<div class="progress">${"<i class='on'></i>".repeat(2)}${"<i></i>".repeat(2)}</div>`, note: "Step 3 of 4", action: B("Continue", "btn-primary btn-sm") })}
     </div>
   </section>
-  <section class="grp"><h2>Ready to set up <span class="n">4</span></h2>
+  <section class="grp"><h2>Ready to set up <span class="n">3</span></h2>
     <div class="cards">
-      ${card({ k: "steam", name: "Steam", fam: "App store · API and depots", pitch: "Sell on Steam for Mac, with Steam Deck players a branch away." })}
-      ${card({ k: "altstore", name: "AltStore and SideStore", fam: "Sideload source · feed", pitch: "Let iPhone users install outside the App Store from your own source." })}
-      ${card({ k: "itch", name: "itch.io", fam: "App store · CI", pitch: "Publish the Mac build to your itch.io page from the release workflow." })}
-      ${card({ k: "altstore", name: "AltStore PAL", fam: "Sideload source · feed", pitch: "The EU marketplace for iOS. Needs Apple’s alternative-distribution entitlement.", note: "EU only" })}
+      ${card({ k: "itch", name: "itch.io", fam: "App store · CI", pitch: "Publish the Mac build to your itch.io page from the release workflow.", note: "4 steps · an itch.io page" })}
+      ${card({ k: "steam", name: "Steam", fam: "App store · API and depots", pitch: "Sell Tonebox on Steam to Mac players.", note: "5 steps · Steamworks review" })}
+      ${card({ k: "altstore", name: "AltStore PAL", fam: "Sideload source · feed", pitch: "The EU marketplace for iOS. Needs Apple’s alternative-distribution entitlement.", note: "EU only · 4 steps" })}
     </div>
   </section>
   <section class="grp">
-    <div class="disclose">${icon("chevRight")}<span>Storefronts for other platforms <span class="muted">(10)</span></span><span class="icons">${["gplay", "msstore", "winget", "scoop", "flathub", "snap", "fdroid", "globe"].map((k) => sg(k, "sm")).join("")}</span></div>
+    <p class="footline scopeline">${icon("info")}<span>Only storefronts for macOS and iOS are shown. Shipping on another platform? <a href="#">Add it</a></span></p>
     <p class="footline">Tonebox also publishes 1 package · <a href="#">Packages →</a></p>
   </section>`;
 page({
@@ -186,6 +186,7 @@ page({
   item: "Storefronts",
   crumbs: ["Tonebox", "Storefronts"],
   main: catalogue,
+  progress: "Launched",
 });
 
 // ---------------------------------------------------------------- 51 · Homebrew wizard (not set up)
@@ -196,18 +197,17 @@ const shd = (k, name, meta, acts, back = "Storefronts") =>
 
 const brew = `
   ${shd("homebrew", "Homebrew", "Package manager · pull requests · macOS", B("", "btn-ghost btn-icon", "more"))}
-  ${steps(["Requirements", "Tap and token", "The cask", "Declare", "Builds", "Go live"], 2)}
+  ${steps(["Requirements", "The cask", "Add to your repository", "Go live"], 1)}
   <div class="wzgrid">
     <section class="wzbody">
       <header><h2>Choose the cask</h2><p>The name people type after <span class="mono">brew install --cask</span>.</p></header>
       <div class="row2c">
-        <div class="fld"><label>Tap ${src("check", "From step 2")}</label><div class="fin"><span class="mono">acme/homebrew-tap</span></div></div>
+        <div class="fld"><label>Tap ${src("check", "Found on GitHub")}</label><div class="fin"><span class="mono">acme/homebrew-tap</span></div></div>
         <div class="fld"><label>Cask token ${src("wand", "Derived from the slug")}</label><div class="fin focus"><span class="mono">tonebox</span><span class="ok">${icon("check")}Free in acme/tap</span></div></div>
       </div>
       <div class="fld"><label>Build</label>
         <div class="prl">
           <div class="qrow ok"><span class="qk">${icon("check")}</span><div class="qt"><b>macOS · Tonebox-2.4.0.dmg</b><span>Universal (arm64, x86_64) · notarized · from .pkey/release</span></div></div>
-          <div class="qrow na"><span class="qk">${icon("info")}</span><div class="qt"><b>No Linux build</b><span>A formula would serve Linux; Tonebox ships macOS and iOS</span></div></div>
         </div>
       </div>
       <div class="codebox"><header><span class="tab on">Casks/tonebox.rb</span><span class="tab">Preview of the first commit</span><span class="r">${B("", "btn-ghost btn-sm btn-icon", "copy")}</span></header><pre><span class="k">cask</span> <span class="s">"tonebox"</span> <span class="k">do</span>
@@ -217,11 +217,16 @@ const brew = `
   name <span class="s">"Tonebox"</span>
   desc <span class="s">"Pocket synth and sampler"</span>
   homepage <span class="s">"https://dl.plrs.im/tonebox"</span>
+  livecheck <span class="k">do</span>
+    url <span class="s">"https://dl.plrs.im/tonebox"</span>
+    strategy <span class="s">:json</span>
+  <span class="k">end</span>
+  auto_updates <span class="k">true</span>
   app <span class="s">"Tonebox.app"</span>
 <span class="k">end</span></pre></div>
-      <p class="stepnote">${icon("info")}The release workflow keeps the version and checksum current; you never edit this file by hand.</p>
+      <p class="stepnote">${icon("info")}<span><span class="mono">pkey storefronts sync</span> in your release workflow keeps the version and checksum current; you never edit this file by hand.</span></p>
     </section>
-    <aside class="wzaside"><h3>What this sets up</h3><p>A cask in your tap. Each release, the workflow opens a commit that bumps it, and Mac users get the update with <span class="mono">brew upgrade</span>.</p><p><b>Used by</b></p><ul><li>The Polaris Key page’s install hints</li><li>Publish 2.4.0</li></ul><a href="#">Homebrew in the docs</a></aside>
+    <aside class="wzaside"><h3>What this sets up</h3><p>A cask in your tap. Each release, the release workflow opens a pull request that bumps it, and Mac users get the update with <span class="mono">brew upgrade</span>.</p><p><b>Next</b></p><p>One command adds Homebrew to <span class="mono">.pkey/distribution</span>, then Polaris Key waits for the resync.</p><p><b>Used by</b></p><ul><li>The Polaris Key page’s install hints</li><li>Publish 2.4.0</li></ul><a href="#">Homebrew in the docs</a></aside>
   </div>
   <div class="wzfoot"><a class="btn btn-ghost ghost-m" href="#">Do this later</a><span class="grow"></span>${B("Back", "btn-secondary", "arrowLeft")}${B("Save and continue", "btn-primary")}</div>`;
 page({
@@ -231,6 +236,7 @@ page({
   item: "Storefronts",
   crumbs: ["Tonebox", "Storefronts", "Homebrew"],
   main: brew,
+  progress: "Launch · 5 of 8",
 });
 
 // ---------------------------------------------------------------- 52 · App Store live (status page)
@@ -262,8 +268,8 @@ const storeLive = `
   <div class="stgrid">
     <section class="panel"><header><h2>Live on the App Store</h2><span class="meta">read 3 min ago</span></header>
       <div class="tw"><table class="trk"><thead><tr><th>Platform · track</th><th>Live</th><th>Next</th></tr></thead><tbody>
-        <tr><td><b>iOS</b><span class="sub">App Store</span></td><td><b>2.3.1</b><span class="sub">since Sep 28</span></td><td><span class="bar"><i style="width:30%"></i></span>2.4.0 · phased, day 3 of 7</td></tr>
-        <tr><td><b>macOS</b><span class="sub">Mac App Store</span></td><td><b>2.3.1</b><span class="sub">since Sep 28</span></td><td>2.4.0 · in review for 21 h</td></tr>
+        <tr><td><b>iOS</b><span class="sub">App Store</span></td><td><b>2.3.1</b><span class="sub">since Sep 28</span></td><td>2.4.0 ready to submit · <a href="#">Publish</a></td></tr>
+        <tr><td><b>macOS</b><span class="sub">Mac App Store</span></td><td><b>2.3.1</b><span class="sub">since Sep 28</span></td><td>2.4.0 ready to submit · <a href="#">Publish</a></td></tr>
         <tr><td><b>TestFlight</b><span class="sub">External · 214 testers</span></td><td><b>2.4.0 (12)</b><span class="sub">public link on</span></td><td><span class="muted">—</span></td></tr>
       </tbody></table></div>
     </section>
@@ -271,8 +277,8 @@ const storeLive = `
   </div>
   <section class="panel" style="margin-top:16px"><header><h2>Recent</h2><span class="r"><a class="linkbtn sm" href="#">Releases tab</a></span></header>
     <div class="rows2">
+      <div class="r2"><span class="ri acc">${icon("upload")}</span><div class="rt"><div class="rl">2.4.0 (12) on TestFlight</div><div class="rd">uploaded by the release workflow · 6 min ago</div></div></div>
       <div class="r2"><span class="ri ok">${icon("check")}</span><div class="rt"><div class="rl">2.3.1 approved for iOS and macOS</div><div class="rd">Sep 27 · in review 19 h</div></div></div>
-      <div class="r2"><span class="ri acc">${icon("upload")}</span><div class="rt"><div class="rl">2.4.0 submitted for review</div><div class="rd">by Vlad · 21 h ago · Apple’s answer appears here</div></div></div>
     </div>
   </section>`;
 page({
@@ -288,17 +294,16 @@ page({
 const prow2 = (st, k, t, d, right = "") =>
   `<div class="prow2 ${st === "ex" ? "ex" : ""}"><span class="cb ${st === "on" ? "on" : st === "done" ? "done" : "off"}">${st === "on" || st === "done" ? icon("check") : ""}</span>${sg(k, "sm")}<div class="qt"><b>${t}</b><span>${d}</span></div>${right}</div>`;
 const publish = `<div class="pubscrim"><div class="pubdlg" role="dialog" aria-labelledby="pubh">
-  <header><div><h2 id="pubh">Publish 2.4.0</h2><p><span class="signed">${icon("sealCheck")}Signed</span><span>tonebox-2026-a · stable · macOS, iOS</span></p></div><span style="margin-left:auto">${B("", "btn-ghost btn-icon", "x")}</span></header>
+  <header><div><h2 id="pubh">Publish 2.4.0</h2><p><span class="signed">${icon("sealCheck")}Signed</span><span>tonebox-rk-2026 · stable · macOS, iOS · from CI 6 min ago</span></p></div><span style="margin-left:auto">${B("", "btn-ghost btn-icon", "x")}</span></header>
   <div class="pl">
     ${prow2("on", "polaris-key", "Polaris Key", "Starts a rollout on the download page and updater feeds", `<span class="sel">10% → 100% over 3 days${icon("chevDown")}</span>`)}
-    ${prow2("done", "appstore", "App Store · iOS", "Submitted yesterday · phased release, day 3 of 7")}
+    ${prow2("on", "appstore", "App Store · iOS", "Submits Tonebox-2.4.0.ipa for review", `<span class="sel">Phased release${icon("chevDown")}</span>`)}
     ${prow2("on", "appstore", "App Store · macOS", "Submits Tonebox-2.4.0.pkg for review", "")}
-    ${prow2("done", "homebrew", "Homebrew", "Done by the release workflow · commit 4f1e2a merged 4 min ago")}
-    ${prow2("on", "altstore", "AltStore and SideStore", "Lists 2.4.0 in the source when the rollout reaches 100%")}
-    ${prow2("ex", "steam", "Steam", "Not included: no macOS depot in 2.4.0 · How to add one")}
+    ${prow2("done", "homebrew", "Homebrew", "Done by the release workflow · pull request #41 merged 4 min ago")}
   </div>
+  <p class="pubnote">${icon("info")}<span>AltStore and SideStore is still setting up · <a href="#">Continue (step 3 of 4)</a></span></p>
   <div class="typed"><label for="ty">Type <b class="mono">2.4.0</b> to submit to the App Store</label><div class="fin focus" id="ty"><span class="mono">2.4.0</span></div></div>
-  <footer>${B("Cancel", "btn-ghost")}${B("Publish to 3 storefronts", "btn-primary", "rocket")}</footer>
+  <footer>${B("Cancel", "btn-ghost")}${B("Publish to 2 storefronts", "btn-primary", "rocket")}</footer>
 </div></div>`;
 page({
   file: "52b-publish-everywhere.html",
@@ -313,30 +318,26 @@ page({
 
 // ---------------------------------------------------------------- 53 · Connect your app
 const connect = `
-  <div class="phd"><h1>Connect your app</h1><span class="meta">Tonebox ships macOS and iOS</span></div>
-  ${steps(["Platform", "Install", "Configure", "Drop-in UI", "Verify"], 2)}
+  <div class="phd"><h1>Connect your app</h1><span class="meta">Swift · from your builds · <a href="#">Change</a></span></div>
+  ${steps(["Your app", "Add the SDK", "Run it"], 1)}
   <div class="wzgrid">
     <section class="wzbody">
-      <header><h2>Add the config file</h2><p>Everything the Swift SDK needs to trust Tonebox. It is not secret: commit it.</p></header>
-      <div class="choice"><div class="on">${sg("apple", "sm")}<div>Swift<span>macOS · iOS · from your builds</span></div></div><div>${sg("plus", "sm")}<div>Another SDK<span>Node, React, Python, Kotlin, Godot…</span></div></div></div>
-      <div class="codebox"><header><span class="tab on">PolarisKey.plist</span><span class="tab">AppDelegate.swift</span><span class="r">${B("Download", "btn-ghost btn-sm", "download")}${B("", "btn-ghost btn-sm btn-icon", "copy")}</span></header><pre><span class="c">&lt;!-- Add to the app target. Read by PolarisKeyClient.fromBundle() --&gt;</span>
-&lt;dict&gt;
-  &lt;key&gt;product&lt;/key&gt;          &lt;string&gt;<span class="s">tonebox</span>&lt;/string&gt;
-  &lt;key&gt;baseUrl&lt;/key&gt;          &lt;string&gt;<span class="s">https://key.plrs.im</span>&lt;/string&gt;
-  &lt;key&gt;pinnedKeys&lt;/key&gt;       &lt;dict&gt;
-    &lt;key&gt;<span class="s">tonebox-2026-a</span>&lt;/key&gt; &lt;string&gt;MCowBQYDK2VwAyEAq3Jd9Q…&lt;/string&gt;  <span class="c">&lt;!-- active --&gt;</span>
-    &lt;key&gt;<span class="s">tonebox-2026-b</span>&lt;/key&gt; &lt;string&gt;MCowBQYDK2VwAyEA7hLm2c…&lt;/string&gt;  <span class="c">&lt;!-- staged --&gt;</span>
-  &lt;/dict&gt;
-  &lt;key&gt;pinnedReleaseKeys&lt;/key&gt; &lt;dict&gt; &lt;key&gt;<span class="s">tonebox-rk-2026</span>&lt;/key&gt; &lt;string&gt;MCowBQ…&lt;/string&gt; &lt;/dict&gt;
-  &lt;key&gt;expectedServices&lt;/key&gt;
-    &lt;array&gt;&lt;string&gt;license&lt;/string&gt;&lt;string&gt;release&lt;/string&gt;&lt;string&gt;update&lt;/string&gt;&lt;/array&gt;
-&lt;/dict&gt;</pre></div>
-      <p class="stepnote">${icon("sealCheck")}Pins come from your signing and release keys, read just now. The app’s version comes from its bundle.</p>
-      <div class="livewait"><span class="pulse"></span><div>Waiting for the first check-in…<span class="s">Build and run the app. This step completes itself.</span></div><span class="grow"></span>${B("Create a test license", "btn-secondary btn-sm")}</div>
+      <header><h2>Add the SDK</h2><p>Run one command in the folder with your Xcode project. It installs the SDK and writes its config.</p></header>
+      <div class="codebox"><header><span class="tab on">One command</span><span class="tab">By hand</span><span class="r">${B("", "btn-ghost btn-sm btn-icon", "copy")}</span></header><pre><span class="c"># from pkg.plrs.im, never npmjs; refuses if a key does not match</span>
+npx --yes --@polaris-key:registry=https://pkg.plrs.im/npm/polaris-key/ \\
+  -p @polaris-key/cli pkey sdk add swift --product <span class="s">tonebox</span> \\
+  --expect <span class="s">tonebox-2026-a</span>@sha256:3f9c…41ad,<span class="s">tonebox-2026-b</span>@sha256:a07e…9b12 \\
+  --expect <span class="s">tonebox-rk-2026</span>@sha256:c5d1…07fe</pre></div>
+      <div class="prl">
+        <div class="qrow na"><span class="qk">${icon("package")}</span><div class="qt"><b>Adds PolarisKey 2.1.0 from pkg.plrs.im</b><span>The registry goes into Swift Package Manager first, so no look-alike package can win</span></div></div>
+        <div class="qrow na"><span class="qk">${icon("sealCheck")}</span><div class="qt"><b>Writes PolarisKey.plist</b><span>Product, server, your active and staged signing keys and your release key. Not secret: commit it</span></div></div>
+        <div class="qrow na"><span class="qk">${icon("sparkCode")}</span><div class="qt"><b>Prints two lines for your app</b><span class="mono">let polaris = try PolarisKeyClient.fromBundle()</span></div></div>
+      </div>
+      <div class="livewait"><span class="pulse"></span><div>Waiting for Tonebox to reach Polaris Key…<span class="s">Run the app after the command. This step completes itself.</span></div><span class="grow"></span>${B("Create a test license", "btn-secondary btn-sm")}</div>
     </section>
-    <aside class="wzaside"><h3>Installed from pkg.plrs.im</h3><p>Step 2 added the Polaris Key registry to Swift Package Manager, so <span class="mono">PolarisKey 2.1.0</span> resolves from Polaris Key, never from a look-alike.</p><p><b>Offline check</b></p><p class="mono" style="font-size:12px">pkey doctor --base-url https://key.plrs.im --product tonebox</p><a href="#">Swift SDK in the docs</a></aside>
+    <aside class="wzaside"><h3>Why the fingerprints</h3><p>They come from your keys, read just now through your signed-in session. The command checks the server's keys against them, so a build can only ever trust Tonebox's real keys.</p><p><b>Offline check</b></p><p class="mono" style="font-size:12px">pkey doctor --base-url https://key.plrs.im --product tonebox</p><a href="#">Swift SDK in the docs</a></aside>
   </div>
-  <div class="wzfoot"><a class="btn btn-ghost ghost-m" href="#">Do this later</a><span class="grow"></span>${B("Back", "btn-secondary", "arrowLeft")}${B("Copy and continue", "btn-primary", "copy")}</div>`;
+  <div class="wzfoot"><a class="btn btn-ghost ghost-m" href="#">Do this later</a><span class="grow"></span>${B("Back", "btn-secondary", "arrowLeft")}${B("Continue", "btn-primary")}</div>`;
 page({
   file: "53-connect-app.html",
   title: "Connect your app",
@@ -344,24 +345,24 @@ page({
   item: "Connect your app",
   crumbs: ["Tonebox", "Connect your app"],
   main: connect,
-  progress: "Launch · 3 of 10",
+  progress: "Launch · 1 of 8",
 });
 
 // ---------------------------------------------------------------- 54 · Publish from CI (drawer over Releases)
 const releasesEmpty = `<div class="phd"><h1>Releases</h1></div><section class="panel"><div class="empty"><div><h2>Ship your first release</h2><p>Releases come from CI, signed with Tonebox’s release key.</p><div class="ea">${B("Set up publishing from CI", "btn-primary")}</div></div><div></div></div></section>`;
 const ciDrawer = `<div class="drawerwrap"><aside class="drawer wz" role="dialog" aria-labelledby="cih">
   <header><div><div class="ctx">${icon("rocket")}Launch · First signed release</div><h2 id="cih">Publish from CI</h2></div><span style="margin-left:auto">${B("", "btn-ghost btn-icon", "x")}</span></header>
-  <div class="dstepper" aria-label="Step 2 of 5"><i class="on"></i><i class="cur"></i><i></i><i></i><i></i></div>
+  <div class="dstepper" aria-label="Step 2 of 4"><i class="on"></i><i class="cur"></i><i></i><i></i></div>
   <div class="dbody">
-    <div><h3 style="margin:0 0 2px;font-size:16px">Trust the release workflow</h3><p class="muted" style="margin:0;font-size:13.5px">Step 2 of 5 · The workflow publishes without a stored token.</p></div>
+    <div><h3 style="margin:0 0 2px;font-size:16px">Trust the release workflow</h3><p class="muted" style="margin:0;font-size:13.5px">Step 2 of 4 · The workflow publishes without a stored token.</p></div>
     <div class="prl">
-      <div class="qrow ok"><span class="qk">${icon("check")}</span><div class="qt"><b>acme/tonebox</b><span>Repository 812 334 019 · owner 40 112 · read through the Polaris Key app</span></div></div>
+      <div class="qrow ok"><span class="qk">${icon("check")}</span><div class="qt"><b>acme/tonebox</b><span>Linked through the Polaris Key GitHub App</span></div></div>
       <div class="qrow ok"><span class="qk">${icon("check")}</span><div class="qt"><b>Environment “release”</b><span>Required reviewers: 1</span></div></div>
       <div class="qrow no"><span class="qk">${icon("x")}</span><div class="qt"><b>No tag ruleset for v*</b><span>Protected tags stop anyone without access from publishing</span></div><div class="qa">${B("Fix in GitHub", "btn-secondary btn-sm", "external")}</div></div>
     </div>
-    <div class="fld"><label>Workflow ${src("wand", "Recommended")}</label><div class="fin"><span class="mono">.github/workflows/release.yml</span></div></div>
-    <div class="fld"><label>What it may do</label><div class="choice"><div class="on"><div>Release only<span>release:publish</span></div></div><div><div>Release and storefronts<span>+ distribution scopes</span></div></div><div><div>Everything<span>all CI scopes</span></div></div></div></div>
-    <p class="stepnote">${icon("info")}Next: your release key, then the workflow file with the Action pinned to a commit.</p>
+    <div class="row2c"><div class="fld"><label>Workflow ${src("wand", "Recommended")}</label><div class="fin"><span class="mono">.github/workflows/release.yml</span></div></div><div class="fld"><label>Environment ${src("check", "Found on GitHub")}</label><div class="fin"><span class="mono">release</span></div></div></div>
+    <div class="fld"><label>What it may do</label><div class="choice"><div><div>Release only<span>release:publish</span></div></div><div class="on"><div>Release and storefronts<span>Recommended: Distribution is on</span></div></div><div><div>Everything<span>all CI scopes</span></div></div></div></div>
+    <p class="stepnote">${icon("info")}<span>Next: one command, <span class="mono">pkey ci init</span>, writes the workflow, creates your release key and stores it in GitHub.</span></p>
   </div>
   <footer><a class="btn btn-ghost" href="#">Do this later</a><div class="r">${B("Back", "btn-secondary")}${B("Allow the workflow", "btn-primary")}</div></footer>
 </aside></div>`;
@@ -373,7 +374,7 @@ page({
   crumbs: ["Tonebox", "Releases"],
   main: releasesEmpty,
   overlay: ciDrawer,
-  progress: "Launch · 6 of 10",
+  progress: "Launch · 2 of 8",
 });
 
 // ---------------------------------------------------------------- 55 · Licensing quick start (drawer over Licenses)
@@ -412,7 +413,7 @@ page({
   crumbs: ["Tonebox", "Licenses"],
   main: licEmpty,
   overlay: licDrawer,
-  progress: "Launch · 4 of 10",
+  progress: "Launch · 3 of 8",
 });
 
 // ---------------------------------------------------------------- 56 · Goals and platforms (new product)
@@ -443,7 +444,7 @@ page({
   item: "Overview",
   crumbs: ["Tonebox", "Overview"],
   main: goals,
-  progress: "Launch · 1 of 2",
+  progress: "New product",
 });
 
 console.log("built");
