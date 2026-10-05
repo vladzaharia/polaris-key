@@ -88,9 +88,10 @@ did before. An edit reaches the feeds at once: the feed cache follows the listin
 The images come from CI, never from the console's own image tools:
 [`pkey listing assets`](/docs/build/ci/#listing-assets) derives every store icon from the icon
 master and composes every store's art from the key art and the wordmark. It fits each screenshot
-for each store, using a crop or pad only where you accept it. It then uploads the lot with its
-digests, sizes and alpha. Each derived row records the master it came from (`derivedFrom`), so
-Google Play's adapter can declare template outputs as not AI-generated. A screenshot fitted for a
+for each store, using a crop or pad only where you accept it. It then uploads every output that passed (a red one stays in CI) with its digests, sizes and
+alpha. Each derived row records the master it came from (`derivedFrom`), so Google Play's adapter
+can declare template outputs as not AI-generated; masters and fitted screenshots get no
+declaration. A screenshot fitted for a
 store is stored as `<store>:screenshot:<class>:<n>`, and each store's ZIP pack as `pack:<store>`.
 An image you upload yourself is never replaced by CI.
 

@@ -31,8 +31,13 @@
 >   the table holds one row per slot, and `pack:<store>` for the per-store ZIP packs. Both go
 >   through `listingAssetRule`.
 > - **`aiGeneratedState` lives in no column.** `aiGeneratedStateOf(row)` in
->   `core/storefront/listingModel.ts` answers `NotAiGenerated` for any row with `derivedFrom`, for
->   A-18e to use. The CLI's report and the Play pack carry it too, so no migration is needed.
+>   `core/storefront/listingModel.ts` answers `NotAiGenerated` for a row whose `derivedFrom` is a
+>   master (`icon-master`, `key-art`, `key-art-portrait`, `wordmark`), for A-18e to use; a master
+>   or a fitted screenshot (`screenshot:<class>`) gets null, since a person made its pixels. The
+>   CLI's report and the Play pack carry it too, so no migration is needed.
+> - **Red outputs are never stored.** `dist_listing_assets` has no status column, so `--upload`
+>   registers only `ok` and `warn` outputs; a red one (icon-only fallback, title slot with no
+>   wordmark, over the byte limit) stays in `--out` and is printed as not uploaded.
 > - **There is no generated CLI reference page.** The command is documented in `pkey help`,
 >   `/docs/build/ci/#listing-assets` and `/docs/admin/storefront-listing/`. The regenerated
 >   reference page is `reference/routes.mdx`, for the new route.
