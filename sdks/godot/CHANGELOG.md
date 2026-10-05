@@ -7,6 +7,14 @@ value in four places: `plugin.cfg`'s `version`, `PolarisKey.SDK_VERSION` (also s
 (`.github/workflows/release-godot.yml`) uses the section below whose heading is the tag's version
 as the GitHub Release notes, and the same text is the Asset Store version's changelog.
 
+## Unreleased
+
+The SDK parity pass (`notes/SDK-PARITY-PASS.md` §5.6).
+
+- **Behaviour change: `license.is_entitled(name)` answers `false` whenever the gate is not
+  usable** (S-19 G11). A revoked, expired or blocked licence no longer unlocks a grant its last
+  verified document still lists. `get_entitlements()` still reads the raw values.
+
 ## 0.1.0
 
 The first published version. Requires Godot 4.4 or later (4.6 or later recommended). Tested on
