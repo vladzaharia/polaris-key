@@ -12,6 +12,7 @@
 import { describe, expect, it } from "vitest";
 import { IDBFactory } from "fake-indexeddb";
 import {
+  BrowserAdapter,
   browserAdapter,
   resolveAuthMode,
 } from "../src/browser/browserAdapter.js";
@@ -174,10 +175,67 @@ describe("auth: which transport a page uses", () => {
       "bearer",
     );
     expect(resolveAuthMode("auto", BASE, BASE)).toBe("cookie");
-    expect(resolveAuthMode(undefined, BASE, "https://play.acme.example")).toBe(
+    expect(resolveAuthMode("bearer", BASE, BASE)).toBe("bearer");
+    expect(resolveAuthMode("cookie", BASE, "https://play.acme.example")).toBe(
       "cookie",
     );
-    expect(resolveAuthMode("bearer", BASE, BASE)).toBe("bearer");
+  });
+
+  it("defaults to auto (owner decision Q1): first-party is cookie, cross-origin is bearer", () => {
+    expect(resolveAuthMode(undefined, BASE, BASE)).toBe("cookie");
+    expect(resolveAuthMode(undefined, BASE, "https://play.acme.example")).toBe(
+      "bearer",
+    );
+    // An opaque origin (a sandboxed frame, a file: page) is never the Worker's own.
+    expect(resolveAuthMode(undefined, BASE, "null")).toBe("bearer");
+    // No page at all (a server render, this Node environment): cookie, and nothing loads.
+    expect(resolveAuthMode(undefined, BASE)).toBe("cookie");
+  });
+
+  it("a Tauri page is bearer, by its origin or by Tauri's globals", () => {
+    expect(resolveAuthMode(undefined, BASE, "tauri://localhost")).toBe(
+      "bearer",
+    );
+    expect(resolveAuthMode(undefined, BASE, "http://tauri.localhost")).toBe(
+      "bearer",
+    );
+    const g = globalThis as Record<string, unknown>;
+    for (const name of ["__TAURI_INTERNALS__", "__TAURI__"]) {
+      g[name] = {};
+      try {
+        // Even a page that claims the Worker's own origin is not first-party inside Tauri.
+        expect(resolveAuthMode(undefined, BASE, BASE)).toBe("bearer");
+      } finally {
+        delete g[name];
+      }
+    }
+    expect(resolveAuthMode(undefined, BASE, BASE)).toBe("cookie");
+  });
+
+  it("auto resolving to bearer without pinned keys never throws: it reports invalid-options in state and makes no request", async () => {
+    const calls: string[] = [];
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      pageOrigin: "https://play.acme.example",
+      offlineStore: null,
+      fetchImpl: (async (input: RequestInfo | URL) => {
+        calls.push(String(input));
+        return new Response("{}", { status: 500 });
+      }) as typeof fetch,
+    });
+    expect(adapter.mode).toBe("browser");
+    await settled(adapter);
+    const s = adapter.snapshot();
+    expect(s.error.identity?.code).toBe("invalid-options");
+    expect(s.error.identity?.message).toMatch(/trust\.pinnedKeys/);
+    expect(calls).toEqual([]);
+    await expect(adapter.submitKey("KEY")).rejects.toMatchObject({
+      code: "invalid-options",
+    });
+    await expect((adapter as BrowserAdapter).register()).rejects.toMatchObject({
+      code: "invalid-options",
+    });
+    expect(calls).toEqual([]);
   });
 
   it("refuses bearer mode without pinned keys: nothing verifies otherwise", () => {
@@ -193,6 +251,7 @@ describe("auth: which transport a page uses", () => {
 
   it("a cookie page answers the bearer-only features runtime-unsupported, and refuses them typed", async () => {
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       offlineStore: null,
       autoStart: false,

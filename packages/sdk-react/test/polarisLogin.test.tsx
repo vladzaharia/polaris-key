@@ -36,6 +36,7 @@ function renderLogin(
 describe("PolarisLogin — OIDC button", () => {
   it("renders the OIDC button when supported", async () => {
     const browser = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: makeFakeFetch(null),
       now: () => 2000,
@@ -97,6 +98,7 @@ describe("PolarisLogin — key card visibility", () => {
 
   it("browser shows the typed-key card", async () => {
     const browser = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: makeFakeFetch(null),
       now: () => 2000,

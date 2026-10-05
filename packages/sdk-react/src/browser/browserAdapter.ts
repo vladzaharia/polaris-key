@@ -277,17 +277,20 @@ export interface BrowserAdapterOptions {
    *  `trust.pinnedKeys` too: a feed verifies against the pinned product keys. */
   update?: BrowserUpdateConfig;
   /**
-   * How the page authenticates (SDK-PARITY-PASS §3.17):
+   * How the page authenticates (SDK-PARITY-PASS §3.17, owner decision Q1):
    *
-   *   "cookie" (the default)  the Worker's first-party session cookie. Same origin only: those
-   *                           routes never answer CORS. Signed-out pages sign in by redirect.
-   *   "bearer"                a `pkeyt_` device token in IndexedDB over the CORS-covered routes
-   *                           (the product lists the page under `web.origins`). Needs
-   *                           `trust.pinnedKeys`: every document is verified in-page.
-   *   "auto"                  bearer when the page's origin differs from `baseUrl`'s, else cookie.
+   *   "auto" (the default)  bearer when the page runs inside Tauri or on another origin than
+   *                         `baseUrl` (an opaque `"null"` origin counts as another), cookie
+   *                         when it is first-party.
+   *   "cookie"              the Worker's first-party session cookie. Same origin only: those
+   *                         routes never answer CORS. Signed-out pages sign in by redirect.
+   *   "bearer"              a `pkeyt_` device token in IndexedDB over the CORS-covered routes
+   *                         (the product lists the page under `web.origins`). Needs
+   *                         `trust.pinnedKeys`: every document is verified in-page.
    *
-   * Which one is the default is owner question Q1 (a token any script on the page can read, vs
-   * a same-origin-only cookie); until it is decided the default stays "cookie".
+   * An explicit "bearer" without `trust.pinnedKeys` throws `invalid-options` at construction.
+   * "auto" resolving to bearer without them does not throw (that would crash a render): the
+   * adapter makes no request and reports `invalid-options` as the identity error in its state.
    */
   auth?: "cookie" | "bearer" | "auto";
   /** Bearer mode's `core.store`. Defaults to IndexedDB (`indexedDbStore`), or to a page-lived
@@ -402,6 +405,9 @@ export class BrowserAdapter implements PolarisAdapter {
   private readonly bearerStore: BrowserStore | null = null;
   private readonly autoRegister: boolean;
   private started = false;
+  /** A configuration the adapter cannot run with that must not throw from the constructor
+   *  ("auto" resolved to bearer without pinned keys). Every load and verb reports it. */
+  private readonly configError: PolarisError | null = null;
 
   constructor(opts: BrowserAdapterOptions) {
     this.product = opts.productSlug;
@@ -465,12 +471,16 @@ export class BrowserAdapter implements PolarisAdapter {
     }
     this.authMode = resolveAuthMode(opts.auth, this.base, opts.pageOrigin);
     this.autoRegister = opts.autoRegister !== false;
-    if (this.authMode === "bearer") {
-      if (!this.pinned)
-        throw new PolarisError(
-          "invalid-options",
-          'auth: "bearer" verifies every document in-page and needs trust.pinnedKeys.',
-        );
+    if (this.authMode === "bearer" && !this.pinned) {
+      const err = new PolarisError(
+        "invalid-options",
+        opts.auth === "bearer"
+          ? 'auth: "bearer" verifies every document in-page and needs trust.pinnedKeys.'
+          : "This page is cross-origin to the Worker (or inside Tauri), so it authenticates with a device token, which verifies every document in-page and needs trust.pinnedKeys.",
+      );
+      if (opts.auth === "bearer") throw err;
+      this.configError = err;
+    } else if (this.authMode === "bearer" && this.pinned) {
       this.bearerStore =
         opts.store ??
         (opts.offlineStore === undefined
@@ -720,6 +730,21 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   private async load(): Promise<void> {
+    if (this.configError) {
+      this.store.set(() =>
+        projectState(
+          "browser",
+          { license: null, config: {} },
+          { activation: null, now: this.clock(), highWaterMark: 0 },
+          {
+            error: withError(noErrors(), "identity", this.configError!),
+            localOverrides: this.localOverrides,
+            capabilities: this.capabilities,
+          },
+        ),
+      );
+      return;
+    }
     if (this.bearer) return this.loadBearer();
     const sessionRequest = this.fetchSession();
     const capabilities = this.loadCapabilities().catch(() => undefined);
@@ -825,6 +850,7 @@ export class BrowserAdapter implements PolarisAdapter {
   /** The bearer session, or the typed refusal a cookie page gives for a bearer-only verb. */
   private requireBearer(feature: string, detail: string): BearerSession {
     if (this.bearer) return this.bearer;
+    if (this.configError) throw this.configError;
     throw new UnsupportedError(
       { supported: false, feature, reason: "runtime", detail },
       feature === Feature.devicesManage
@@ -847,6 +873,7 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   async refresh(): Promise<void> {
+    if (this.configError) throw this.fail("license", this.configError);
     if (this.bearer) return this.refreshBearer();
     this.setBusy("license", true);
     this.setBusy("config", true);
@@ -908,6 +935,7 @@ export class BrowserAdapter implements PolarisAdapter {
   /** Cookie mode: the OIDC redirect (never resolves: the page unloads). Bearer mode: a
    *  device-code sign-in whose handle carries the URL and code, completed in the background. */
   async signInWithOidc(): Promise<OidcSignInHandle | void> {
+    if (this.configError) throw this.fail("identity", this.configError);
     if (this.bearer) {
       const flow = await this.beginSignIn();
       void flow.wait().catch(() => undefined);
@@ -934,6 +962,7 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   async submitKey(key: string): Promise<void> {
+    if (this.configError) throw this.fail("license", this.configError);
     if (!this.capabilities.license.enabled) {
       throw this.fail(
         "license",
@@ -994,6 +1023,7 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   async signOut(): Promise<void> {
+    if (this.configError) throw this.fail("identity", this.configError);
     this.setBusy("identity", true);
     if (this.bearer) {
       try {
@@ -1654,20 +1684,49 @@ const BEARER_ONLY = new Set<string>([
   Feature.commerceReceipt,
 ]);
 
-/** `auth` resolved: "auto" is bearer when the page is on another origin than the Worker. */
+/** True when the page runs inside a Tauri webview: Tauri's injected globals, or its custom
+ *  protocol / `tauri.localhost` origin. A Tauri page is never first-party to the Worker. */
+export function isTauriPage(pageOrigin?: string | null): boolean {
+  const g = globalThis as Record<string, unknown>;
+  if (g.__TAURI_INTERNALS__ !== undefined || g.__TAURI__ !== undefined)
+    return true;
+  if (!pageOrigin || pageOrigin === "null") return false;
+  try {
+    const u = new URL(pageOrigin);
+    return u.protocol === "tauri:" || u.hostname === "tauri.localhost";
+  } catch {
+    return false;
+  }
+}
+
+/** The page's own origin, SSR-safe: null where there is no `window.location`. */
+function currentPageOrigin(): string | null {
+  try {
+    return typeof window !== "undefined" && window.location
+      ? window.location.origin
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * `auth` resolved (owner decision Q1). "auto" (the default) is bearer when the page runs inside
+ * Tauri or on another origin than the Worker (an opaque `"null"` origin counts as another),
+ * and cookie when the page is first-party. With no page at all (a server render) it is cookie:
+ * nothing loads there anyway.
+ */
 export function resolveAuthMode(
   requested: "cookie" | "bearer" | "auto" | undefined,
   base: string,
   pageOrigin?: string,
 ): BrowserAuthMode {
   if (requested === "bearer") return "bearer";
-  if (requested !== "auto") return "cookie";
-  const page =
-    pageOrigin ??
-    (typeof window !== "undefined" && window.location
-      ? window.location.origin
-      : null);
-  if (!page) return "cookie";
+  if (requested === "cookie") return "cookie";
+  const page = pageOrigin ?? currentPageOrigin();
+  if (isTauriPage(page)) return "bearer";
+  if (page === null) return "cookie";
+  if (page === "null") return "bearer";
   try {
     return new URL(base).origin === page ? "cookie" : "bearer";
   } catch {

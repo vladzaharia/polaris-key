@@ -53,6 +53,7 @@ const json = (body: unknown, status = 200): Response =>
 describe("BrowserAdapter — construction + first load", () => {
   it("loads the session and projects the documents to an ok snapshot", async () => {
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: makeFakeFetch(makeDoc()),
       now: () => NOW_SEC,
@@ -70,6 +71,7 @@ describe("BrowserAdapter — construction + first load", () => {
 
   it("derives the clock floor from the session document (§4.2)", async () => {
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: makeFakeFetch(makeDoc({ issuedAt: 1234 })),
       now: () => NOW_SEC,
@@ -81,6 +83,7 @@ describe("BrowserAdapter — construction + first load", () => {
 
   it("an unauthenticated session lands on needs-activation with a null activation", async () => {
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: makeFakeFetch(null),
       now: () => NOW_SEC,
@@ -94,6 +97,7 @@ describe("BrowserAdapter — construction + first load", () => {
   it("scopes the session request under /<product>/identity (§R1)", async () => {
     const fetchImpl = vi.fn(makeFakeFetch(makeDoc()));
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: fetchImpl as unknown as typeof fetch,
       now: () => NOW_SEC,
@@ -107,6 +111,7 @@ describe("BrowserAdapter — construction + first load", () => {
   it("uses a custom baseUrl and strips trailing slashes", async () => {
     const fetchImpl = vi.fn(makeFakeFetch(makeDoc()));
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       baseUrl: "https://example.test//",
       fetchImpl: fetchImpl as unknown as typeof fetch,
@@ -121,6 +126,7 @@ describe("BrowserAdapter — construction + first load", () => {
   it("sends the X-PKey-* metadata headers, and none of the withdrawn X-Polaris-* ones", async () => {
     const fetchImpl = vi.fn(makeFakeFetch(makeDoc()));
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: fetchImpl as unknown as typeof fetch,
       now: () => NOW_SEC,
@@ -146,6 +152,7 @@ describe("BrowserAdapter — construction + first load", () => {
 
   it("reports the current device from the verified session document", async () => {
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: makeFakeFetch(makeDoc()),
       now: () => NOW_SEC,
@@ -195,6 +202,7 @@ describe("BrowserAdapter — signInWithOidc redirect", () => {
   it("navigates to the identity auth entrypoint with a return_to and never returns a handle", async () => {
     const navigate = vi.fn();
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: makeFakeFetch(null),
       navigate,
@@ -215,6 +223,7 @@ describe("BrowserAdapter — submitKey", () => {
   it("posts a license key to the identity session route and refreshes the session", async () => {
     const fetchImpl = vi.fn(makeFakeFetch(makeDoc()));
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: fetchImpl as unknown as typeof fetch,
       now: () => NOW_SEC,
@@ -235,6 +244,7 @@ describe("BrowserAdapter — submitKey", () => {
 
   it("surfaces rejected keys as sign-in-failed on the LICENSE slice", async () => {
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: fetchWith((url) =>
         url.includes("/identity/session/license")
@@ -258,6 +268,7 @@ describe("BrowserAdapter — submitKey", () => {
 
   it("humanizes a device-limit 403", async () => {
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: fetchWith((url) =>
         url.includes("/identity/session/license")
@@ -289,6 +300,7 @@ describe("BrowserAdapter — an unknown 403 is never the device limit (SDK-PARIT
     ["key_entry_limit", "refused"],
   ])("403 %s → %s, keeping the server's code", async (code, kind) => {
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: fetchWith((url) =>
         url.includes("/identity/session/license")
@@ -310,6 +322,7 @@ describe("BrowserAdapter — signOut", () => {
   it("posts logout (echoing CSRF) and resets to needs-activation", async () => {
     const fetchImpl = vi.fn(makeFakeFetch(makeDoc()));
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: fetchImpl as unknown as typeof fetch,
       now: () => NOW_SEC,
@@ -335,6 +348,7 @@ describe("BrowserAdapter — signOut", () => {
 
   it("treats a 401 logout as success (already signed out)", async () => {
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: fetchWith((url) =>
         url.includes("/identity/session")
@@ -355,6 +369,7 @@ describe("BrowserAdapter — signOut", () => {
 
   it("surfaces a non-401 logout failure as sign-out-failed on the IDENTITY slice", async () => {
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: fetchWith((url) =>
         url.includes("/identity/session")
@@ -378,6 +393,7 @@ describe("BrowserAdapter — 401 / refresh handling", () => {
   it("a hard 401 after a live session ⇒ revoked", async () => {
     let authed = true;
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: fetchWith((url) => {
         if (!url.includes("/identity/session")) return null;
@@ -403,6 +419,7 @@ describe("BrowserAdapter — 401 / refresh handling", () => {
     const fetchImpl = (async () =>
       new Response(null, { status: 401 })) as unknown as typeof fetch;
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl,
       now: () => NOW_SEC,
@@ -417,6 +434,7 @@ describe("BrowserAdapter — 401 / refresh handling", () => {
     const fetchImpl = (async () =>
       new Response("boom", { status: 503 })) as unknown as typeof fetch;
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl,
       now: () => NOW_SEC,
@@ -447,6 +465,7 @@ describe("BrowserAdapter — 401 / refresh handling", () => {
       throw new Error("network down");
     }) as unknown as typeof fetch;
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl,
       now: () => NOW_SEC,
@@ -466,6 +485,7 @@ describe("BrowserAdapter — update checks", () => {
   it("calls GET /<product>/update/version and compares the HOST version", async () => {
     const seen: string[] = [];
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       version: "1.0.0",
       fetchImpl: fetchWith(
@@ -494,6 +514,7 @@ describe("BrowserAdapter — update checks", () => {
 
   it("reports no update when the host is already current", async () => {
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       version: "2.0.0",
       fetchImpl: fetchWith(
@@ -514,6 +535,7 @@ describe("BrowserAdapter — update checks", () => {
 describe("BrowserAdapter — config / secret / entitlement accessors", () => {
   it("getConfig reads the config document, getSecret refuses (config.secret web N/A), isEntitled reflects flags", async () => {
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: makeFakeFetch(makeDoc()),
       now: () => NOW_SEC,
@@ -537,6 +559,7 @@ describe("BrowserAdapter — config / secret / entitlement accessors", () => {
 
   it("exposes mode + the BrowserAdapter class as the factory's product", () => {
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: makeFakeFetch(null),
       now: () => NOW_SEC,

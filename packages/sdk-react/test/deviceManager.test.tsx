@@ -194,6 +194,7 @@ describe("DeviceManager — the roster", () => {
 describe("DeviceManager — device-management-unsupported", () => {
   it("a browser session degrades to the current device plus an explanation", async () => {
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: makeFakeFetch(makeDoc()),
       now: () => NOW_SEC,
@@ -217,6 +218,7 @@ describe("DeviceManager — device-management-unsupported", () => {
 
   it("with no device knowable at all it renders the explanatory screen", async () => {
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: makeFakeFetch(null),
       now: () => NOW_SEC,
