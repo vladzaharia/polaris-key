@@ -52,6 +52,56 @@ Today every resync overwrites the product name, the licence defaults, web origin
 - `web.origins` keeps `omitClears: true` (`resync.ts` today).
 - I-09 and U-05 depend on this package: they write their settings as `product_settings` rows and create no bespoke tables.
 
+**Corrections from the code and decisions taken (recorded by the implementer, 2026-10-05; the
+owner delegated open questions to the lead, who takes the recommended option):**
+
+- **No `ON DELETE CASCADE`** on `product_settings.product`, unlike S-18 §4.3's sketch: R11-01
+  (`test/attack/R11-data.test.ts`) pins that no product-scoped table declares `ON DELETE`, the same
+  correction ST-01a made. Migration `0074_product_settings.sql`; `LATEST_MIGRATION` bumped.
+- **The claim module is `packages/worker/src/core/settingsClaims.ts`** (Core-owned, beside ST-01a's
+  `core/manifestSnapshot.ts`); `CLAIM_KEYS` lists the five column-backed keys. ST-04's resolver
+  should read claims through it rather than querying `product_settings` again.
+- **Claims are written only on repo-linked products** (`release_source = 'github'`): a manual
+  product has no manifest to claim from and can never be linked later (`linkRepo` refuses an
+  existing slug). Tier and profile rows written by the console are always marked `console`.
+- **`core.adminGroup` manifest-only** is enforced by refusing a console write on a linked product
+  (409 `manifest_only`) rather than accepting a value the next resync would replace; manual
+  products keep the editor.
+- **System product**: every console claim is refused (409 `manifest_authoritative`): name (already
+  refused by F-03), the licence defaults, the admin group and the catalog publish. Tier and
+  profile writes are not refused there, because `linkSystemProduct` applies neither, so no
+  manifest owns those rows.
+- **Revert route**: `DELETE /manage/api/products/<slug>/claims/<key>` (admin API, narrative-only
+  per `routeCoverage.test.ts`, so no OpenAPI entry: rule 10 does not apply). Claims ride on the
+  product view (`claims`), so no GET route was added. Revert of tier and profile rows is left to
+  ST-17's drift view (Revert/Keep); ST-01b reverts the five column-backed keys.
+- **Profiles**: setting only managed-secret values on a profile (`PUT config/profiles/<id>`) does
+  NOT claim the row, since a manifest cannot express a secret value and the R2 carry-forward
+  already keeps them; any other value edit, a rename or a create claims it. The R2 test that a
+  console plain-config value is replaced by the manifest was changed to the new rule (it is now
+  kept, with the row claimed).
+- **Claim vs conflict** for a console row holding a manifest id: a claim (skipped silently,
+  listed in `claimed`) when the last applied snapshot already declared that id; a conflict
+  (reported in `refused` as `console_row_conflict`) when the id is new to the manifest. With no
+  snapshot every such collision is a conflict.
+- **"Declared fields only"** (S-18 §4.5 item 1) is not distinguishable from the parsed manifest
+  today: `parseManifest` fills `defaultMaxOfflineDays`, `defaultDeviceLimit` and `adminGroup` with
+  defaults when omitted, so an unclaimed omitted field still resets to the parser default, as
+  before. Distinguishing it needs a `shared-manifest` change and belongs with ST-17's plan function
+  or ST-19's registry-manifest parity.
+- **Per-field audit** uses the existing `audit` columns (`action = 'setting.resync' |
+  'setting.revert'`, `target_kind = 'setting' | 'tier' | 'profile'`, `target_id` = the key or row
+  id, before → after in `summary`); a claim is named in the console write's own audit row
+  (`product.update` "claimed for the console: …", `schema.publish`, `tier.*`, `profile.*`). ST-04 adds the structured
+  `before_json`/`after_json`/`origin`/`setting_key` columns.
+- **The web-origins console editor is ST-08's**; the per-field acceptance test for
+  `core.web.origins` claims it the way a console write would (column + claim in one batch).
+- **P0-12 tests changed meaning**: with one batch a refused or throwing push writes nothing, so the
+  two `linkRepo.test.ts` cases that pinned "a half-applied push still drops the approval" now pin
+  "a refused or throwing push widens nothing and the approval stands". The `finally` sweep stays.
+- **The pre-sweep** (`invalidateWidenedEdgeMintApprovals` before the batch) now runs after every
+  check instead of before them, so a refused resync writes nothing at all.
+
 ## Steps
 
 1. Migration and rehearsal.
@@ -61,11 +111,11 @@ Today every resync overwrites the product name, the licence defaults, web origin
 
 ## Acceptance criteria
 
-- [ ] A console edit to each claimable field survives a following resync (test per field).
-- [ ] A console-only tier or profile survives a resync whose manifest omits it (test).
-- [ ] A resync refused by a referenced-tier guard leaves every row unchanged (test).
-- [ ] Revert restores the snapshot value at once, or says "applies at the next resync" when no snapshot exists (test).
-- [ ] A console claim on a `system = 1` product is refused (test).
+- [x] A console edit to each claimable field survives a following resync (test per field).
+- [x] A console-only tier or profile survives a resync whose manifest omits it (test).
+- [x] A resync refused by a referenced-tier guard leaves every row unchanged (test).
+- [x] Revert restores the snapshot value at once, or says "applies at the next resync" when no snapshot exists (test).
+- [x] A console claim on a `system = 1` product is refused (test).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
