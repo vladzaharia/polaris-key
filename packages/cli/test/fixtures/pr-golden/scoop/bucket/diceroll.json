@@ -1,0 +1,20 @@
+{
+    "version": "1.2.0",
+    "description": "Roll the bones",
+    "homepage": "https://diceroll.example.test",
+    "architecture": {
+        "64bit": {
+            "url": "https://key.example.test/diceroll/distribution/blobs/sha256/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "arm64": {
+            "url": "https://key.example.test/diceroll/distribution/blobs/sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+    },
+    "bin": "Diceroll/diceroll.exe",
+    "checkver": {
+        "url": "https://key.example.test/diceroll/distribution/scoop/stable.json",
+        "jsonpath": "$.version"
+    }
+}

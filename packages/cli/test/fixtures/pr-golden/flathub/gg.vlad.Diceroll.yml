@@ -1,0 +1,62 @@
+# Created with Polaris Key (pkey storefront flathub init): the skeleton of the first submission.
+# Before opening the PR to flathub/flathub (base branch new-pr): add the icon, a 256x256 PNG
+# installed as /app/share/icons/hicolor/256x256/apps/gg.vlad.Diceroll.png, and check finish-args.
+# Updates after that: Flathub's external-data checker follows x-checker-data, or
+# pkey storefront flathub pr opens the update PR.
+
+id: gg.vlad.Diceroll
+runtime: org.freedesktop.Platform
+runtime-version: "24.08"
+sdk: org.freedesktop.Sdk
+command: diceroll
+finish-args:
+  - --share=ipc
+  - --socket=x11
+  - --socket=pulseaudio
+  - --device=dri
+modules:
+  - name: diceroll
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 apply_extra -t /app/bin
+      - install -Dm755 diceroll.sh /app/bin/diceroll
+      - install -Dm644 gg.vlad.Diceroll.metainfo.xml -t /app/share/metainfo
+      - install -Dm644 gg.vlad.Diceroll.desktop -t /app/share/applications
+    sources:
+      - type: extra-data
+        filename: diceroll-aarch64.tar.gz
+        only-arches:
+          - aarch64
+        url: https://key.example.test/diceroll/distribution/blobs/sha256/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
+        sha256: dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
+        size: 50000000
+        x-checker-data:
+          type: json
+          url: https://key.example.test/diceroll/distribution/flathub/stable.json
+          version-query: .version
+          url-query: .releases[] | select(.arch == "aarch64") | .url
+      - type: extra-data
+        filename: diceroll-x86_64.tar.gz
+        only-arches:
+          - x86_64
+        url: https://key.example.test/diceroll/distribution/blobs/sha256/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+        sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+        size: 51000000
+        x-checker-data:
+          type: json
+          url: https://key.example.test/diceroll/distribution/flathub/stable.json
+          version-query: .version
+          url-query: .releases[] | select(.arch == "x86_64") | .url
+      - type: script
+        dest-filename: apply_extra
+        commands:
+          - if [ -f diceroll-aarch64.tar.gz ]; then tar -xf diceroll-aarch64.tar.gz && rm diceroll-aarch64.tar.gz; fi
+          - if [ -f diceroll-x86_64.tar.gz ]; then tar -xf diceroll-x86_64.tar.gz && rm diceroll-x86_64.tar.gz; fi
+      - type: script
+        dest-filename: diceroll.sh
+        commands:
+          - exec /app/extra/diceroll "$@"
+      - type: file
+        path: gg.vlad.Diceroll.metainfo.xml
+      - type: file
+        path: gg.vlad.Diceroll.desktop
