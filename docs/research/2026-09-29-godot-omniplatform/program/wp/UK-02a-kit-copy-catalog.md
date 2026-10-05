@@ -12,6 +12,20 @@
 | Human input | none                                                                                                                                                                                                                                                                                                                          |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                     |
 
+## Owner decision (2026-10-05): licence choice at sign-in
+
+The owner decided on 2026-10-05 that every sign-in that binds a device asks the person which licence to use (**Choose a licence for this device**, with an inline **Replace a device** on full licences), never silently mints a second auto-issued licence, and treats the rank-first rule as the preselected default only. The verbatim decision, the card API and the delegated decisions are in [`plans/I-04.md`](../plans/I-04.md), "Owner decision (2026-10-05): licence choice at sign-in"; that section wins over this brief where they differ. **The device wire does not change** (`PROTOCOL_VERSION` 4, no corpus change).
+
+For this package: **add the copy keys** for the renamed device-limit screen:
+
+- `deviceLimit.title`: "Replace a device";
+- `deviceLimit.primary`: "Replace {device}";
+- `deviceLimit.consequence`: "{device} will need to sign in again";
+- `deviceLimit.confirm`: "Replace {device}? It will need to sign in again.".
+
+They replace "Remove <device> and continue". The hosted card's `LicenseChoiceStep` copy lives in
+the portal, not in this catalog.
+
 ## Goal
 
 One ICU catalog holds every kit string, every SDK gets its generated catalog in the launch locales, and the drift gate fails on a hand edit.

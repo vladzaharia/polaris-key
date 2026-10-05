@@ -22,6 +22,25 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 - **[`plans/PX-W13.md`](../plans/PX-W13.md):** inherit PX-W13's device-label helper (`deviceName`), which PX-W13 ships in every SDK.
 - **[`plans/PX-W17.md`](../plans/PX-W17.md):** replay the `identity.toggle` transcript, add the `identity.toggle` parity row and the UI-kit "Identity off" snapshot.
 
+## Owner decision (2026-10-05): licence choice at sign-in
+
+The owner decided on 2026-10-05 that every sign-in that binds a device asks the person which licence to use (**Choose a licence for this device**, with an inline **Replace a device** on full licences), never silently mints a second auto-issued licence, and treats the rank-first rule as the preselected default only. The verbatim decision, the card API and the delegated decisions are in [`plans/I-04.md`](../plans/I-04.md), "Owner decision (2026-10-05): licence choice at sign-in"; that section wins over this brief where they differ. **The device wire does not change** (`PROTOCOL_VERSION` 4, no corpus change).
+
+For this package:
+
+- **No new SDK call.** Replay the device steps of `devicecode-choose.json`,
+  `devicecode-replace.json`, `devicecode-choice-required.json` and `devicecode-autoissue.json`.
+  React also replays `redirect-web-choose.json`.
+- **Polling.** Keep polling `pending` until `expires_in`, because choosing on the card can take a
+  while.
+- **After `ready`,** show the bound tier from the licence document ("Signed in · Standard
+  licence").
+- **Constants.** `gen:constants` adds `license_choice_required`, and no SDK branches on it.
+- **React kit naming.** The device-limit screen is **Replace a device**, its primary is
+  **Replace <device>**, and its consequence line is "<device> will need to sign in again".
+  **Replace a device** opens `manageUrl`, exactly where **Free up a device** used to lead. There is
+  no in-app device list until I-13.
+
 ## Goal
 
 Node, React and Python handle layer 1 identity end to end: `activate(key)` surfaces `key_entry_limit` (deep link and QR) and `license_owned` (offer sign-in) without wiping state; device-code passthrough lands on the card; React web apps sign in by the web redirect and exchange the code; `attach`, `subject`, `signOut` and `openAccount` exist; and React's activation component shows the refusals and the "add to your Library" prompt.

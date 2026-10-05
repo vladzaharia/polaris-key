@@ -1,16 +1,16 @@
 # I-09 Key-entry refusal `license_owned` with `signInUrl`, attach, subject and sign-out on the device wire (`POST /<p>/identity/attach`), discovery fields and the `identity:` manifest block; the entry counter and `key_entry_limit` with `manageUrl` ride PX-W9; all only behind the product's Identity toggle
 
-| Field       | Value                                                                                                                                                                                                           |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1a)                                                                                                                          |
-| Size        | 0.8–1.1 engineer-weeks                                                                                                                                                                                          |
-| Depends on  | [I-04](I-04-account-contract-plan.md), [I-05](I-05-accounts-core.md), [ST-01b](ST-01b-resync-claims.md), [ST-03](ST-03-settings-registry.md), [ST-04](ST-04-settings-resolver.md)                               |
-| Unblocks    | [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md), [I-11](I-11-portal-library.md), [I-24a](I-24a-named-user-seats-server.md), [LX-10](LX-10-anchor-choice.md) |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                           |
-| Plan mode   | yes: executes the approved [`plans/I-09.md`](../plans/I-09.md) (approved 2026-10-05), which refines [`plans/I-04.md`](../plans/I-04.md)                                                                         |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; rule 10 (OpenAPI + `routeCoverage`); D1 migration; `TABLE_OWNERS`; THREAT-MODEL                                            |
-| Human input | none                                                                                                                                                                                                            |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                       |
+| Field       | Value                                                                                                                                                                                                                                            |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1a)                                                                                                                                                           |
+| Size        | 0.8–1.1 engineer-weeks                                                                                                                                                                                                                           |
+| Depends on  | [I-04](I-04-account-contract-plan.md), [I-05](I-05-accounts-core.md), [ST-01b](ST-01b-resync-claims.md), [ST-03](ST-03-settings-registry.md), [ST-04](ST-04-settings-resolver.md)                                                                |
+| Unblocks    | [I-08](I-08-app-passthrough.md), [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md), [I-11](I-11-portal-library.md), [I-24a](I-24a-named-user-seats-server.md), [LX-10](LX-10-anchor-choice.md) |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                            |
+| Plan mode   | yes: executes the approved [`plans/I-09.md`](../plans/I-09.md) (approved 2026-10-05), which refines [`plans/I-04.md`](../plans/I-04.md)                                                                                                          |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; rule 10 (OpenAPI + `routeCoverage`); D1 migration; `TABLE_OWNERS`; THREAT-MODEL                                                                             |
+| Human input | none                                                                                                                                                                                                                                             |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                        |
 
 ## Amendments from approved plans (2026-10-05)
 
@@ -20,6 +20,22 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 - **[`plans/I-09.md`](../plans/I-09.md):** approved on 2026-10-05 with every recommendation accepted: a signed-in device that already runs on a usable licence keeps its anchor (Q1); attach never re-anchors in I-09 (Q2); I-09 depends on ST-04 (Q3); counting starts at zero with no backfill (Q4); `identity.keyEntryRefusals` is one platform switch, default off (Q5). Table owner `core`; a new `discovery-identity.json` transcript instead of re-recording `discovery-capabilities.json`; `accountPortal` moves here; the attach transcript is seeded until I-08 re-records it; `identity.keyEntryRefusals` is a platform entry.
 - **[`plans/PX-W8.md`](../plans/PX-W8.md) and owner:** `key_entry_limit` carries `manageUrl` (not `portalUrl`), built by PX-W8's `core/manageUrl.ts`; `license_owned` keeps `signInUrl`. The portal paths are root paths: `/activate?product=<slug>` and `/signin?product=<slug>`.
 - **[`plans/PX-W9.md`](../plans/PX-W9.md):** Q1 split: PX-W9 owns the counter (`core/keyEntries.ts`), the settings rows, I-04 §2.2 step 4, `keyEntries`, the `key_entry_limit` code and the `keyentry-limit.json` and `keyentry-identity-off.json` transcripts. I-09 keeps step 3 (`license_owned`), attach, subject and sign-out, the discovery members and the `identity:` manifest block.
+
+## Owner decision (2026-10-05): licence choice at sign-in
+
+The owner decided on 2026-10-05 that every sign-in that binds a device asks the person which licence to use (**Choose a licence for this device**, with an inline **Replace a device** on full licences), never silently mints a second auto-issued licence, and treats the rank-first rule as the preselected default only. The verbatim decision, the card API and the delegated decisions are in [`plans/I-04.md`](../plans/I-04.md), "Owner decision (2026-10-05): licence choice at sign-in"; that section wins over this brief where they differ. **The device wire does not change** (`PROTOCOL_VERSION` 4, no corpus change).
+
+For this package (`plans/I-09.md`, the same-named section):
+
+- **`chooseAnchorInline` becomes `rankAnchorCandidates`.** It returns the ordered candidates with
+  their seat state, plus `keep`, `create` and `preselected`.
+- **`bindSignedInDevice(…, choice)`** binds only to the explicit choice. The auto-issue mint runs
+  only when there are no candidates, or on `kind: "create"`.
+- **Q1 sets only the preselected row.** Attach is unchanged on the wire.
+- I-08 registers `license_choice_required`.
+- **Acceptance (additions).**
+  - A test that no second auto-issued licence is minted while a usable one exists.
+  - A test that `rankAnchorCandidates` lists full licences as `full`, without hiding them.
 
 ## Goal
 

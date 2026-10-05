@@ -1192,6 +1192,22 @@ export async function listDiscoverCandidates(
   return rows.map((r) => r.slug);
 }
 
+/**
+ * Every product the account holds a licence for, linked by any route (a key claim, a store
+ * purchase, a sign-in, a Discover add, an operator grant): the products its library lists, before
+ * the portal toggle hides any. Discover never offers or counts one of these.
+ */
+export async function listHeldProducts(
+  db: Db,
+  accountId: string,
+): Promise<Set<string>> {
+  const rows = await db.all<{ product: string }>(
+    "SELECT DISTINCT product FROM licenses WHERE account_id = ?",
+    accountId,
+  );
+  return new Set(rows.map((r) => r.product));
+}
+
 /** Does the account already hold any licence for this product (linked by any route)? */
 export async function accountHoldsProduct(
   db: Db,

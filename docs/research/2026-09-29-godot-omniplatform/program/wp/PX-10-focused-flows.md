@@ -5,7 +5,7 @@
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                                                               |
 | Size        | 0.4–0.8 engineer-weeks                                                                                                                                                                   |
 | Depends on  | [PX-04](PX-04-product-page-today.md), [PX-W1](PX-W1-library-api-media.md)                                                                                                                |
-| Unblocks    | none                                                                                                                                                                                     |
+| Unblocks    | [I-26](I-26-legacy-oidc-license-choice.md)                                                                                                                                               |
 | Role        | `pkey-implementer`                                                                                                                                                                       |
 | Plan mode   | no                                                                                                                                                                                       |
 | Gates       | the PORTAL.md §11 green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components |
@@ -17,6 +17,20 @@
 The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
 
 - **[`plans/PX-W8.md`](../plans/PX-W8.md):** `next=` from activate is carried by PX-17, because this package is done.
+
+## Owner decision (2026-10-05): licence choice at sign-in
+
+The owner decided on 2026-10-05 that every sign-in that binds a device asks the person which licence to use (**Choose a licence for this device**, with an inline **Replace a device** on full licences), never silently mints a second auto-issued licence, and treats the rank-first rule as the preselected default only. The verbatim decision, the card API and the delegated decisions are in [`plans/I-04.md`](../plans/I-04.md), "Owner decision (2026-10-05): licence choice at sign-in"; that section wins over this brief where they differ. **The device wire does not change** (`PROTOCOL_VERSION` 4, no corpus change).
+
+This package is done. For the record:
+
+- **Its focused flow is the fallback** behind the sign-in card's **Free a device** link:
+  `/#/p/<slug>/free-device?for=<licenseId>&return=…`.
+- **A return to the card** (the same-origin `/signin?request=rq_…`) must pass the return-URL
+  allowlist. PX-14 carries that change.
+- **Its Remove handler is extracted** into `freeAccountDevice()` by I-08. Behaviour does not
+  change: the same ownership check, `portalDeviceDisconnect` budget, audit row and email. The
+  card's inline **Replace a device** calls the same function.
 
 ## Goal
 
