@@ -29662,6 +29662,14 @@ var CI_PLANE = {
         uploadBuild: ["upload"],
         release: ["upload"]
       }
+    },
+    {
+      id: "steam",
+      label: "Steamworks",
+      outletKinds: ["steam"],
+      ciOps: {
+        uploadBuild: ["run-app-build"]
+      }
     }
   ]
 };
