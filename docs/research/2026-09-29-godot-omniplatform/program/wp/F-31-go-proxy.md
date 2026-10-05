@@ -40,13 +40,25 @@ Deferred: there is no Go SDK. Zero-config public use also needs a `go-import` HT
 
 - Document `GOPROXY` together with `GONOSUMDB`, not `GOPRIVATE`, which disables the proxy.
 
+## Corrections found while implementing
+
+- **[correction]** The access ladder's step 1 reads , which 0058 seeded for
+  the six tier-1 ecosystems only, so a new feed also needs its policy row: migration
+  (and ). No new table, so is
+  unchanged.
+- **[correction]** The go command sends credentials (, GOAUTH, URL user info) only over
+  https, so the harness's authenticated run reaches the plain-http local Worker through a
+  forwarder that adds the same Basic header.
+- The console's feed tables () are keyed by , so the feed also
+  shows there (labels, icon, yank copy, namespace copy).
+
 ## Steps
 
 1. Renderer or adapter, then routes, then matrix, then docs.
 
 ## Acceptance criteria
 
-- [ ] The client matrix is green. `routeCoverage` passes. The green gate passes (`AGENTS.md`).
+- [x] The client matrix is green. `routeCoverage` passes. The green gate passes (`AGENTS.md`).
 
 ## Verify
 
