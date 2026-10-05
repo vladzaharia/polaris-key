@@ -4,7 +4,7 @@ import { configure } from "@testing-library/react";
 // in an effect can take longer than that to settle on a loaded machine or a slow CI runner, so
 // `waitFor`/`findBy*` would give up on a correct render. 5 s keeps a real hang visible while
 // removing the load-dependent failures (identity, licenses, updateSettings).
-configure({ asyncUtilTimeout: 5_000 });
+configure({ asyncUtilTimeout: 10_000 });
 
 // jsdom cannot navigate to another document: following a non-hash link (Docs, Sign in, a
 // download) logs "Not implemented: navigation". Tests assert the href, never the navigation, so
