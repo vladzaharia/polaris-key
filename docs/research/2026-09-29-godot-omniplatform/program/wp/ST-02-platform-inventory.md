@@ -25,7 +25,7 @@ Platform settings that exist only as deploy variables are invisible to operators
 - `AGENTS.md` (always) and `CLAUDE.md`.
 - [S-18 owner decisions](../../notes/S-18-settings-architecture.md) (the 2026-10-04 header block; it wins over the sections below it).
 - [S-18 §2.2](../../notes/S-18-settings-architecture.md#22-settings-with-no-proper-home), [S-18 §4.13](../../notes/S-18-settings-architecture.md#413-drift-gates-keeping-configure-everything-true), [S-18 §6.2](../../notes/S-18-settings-architecture.md#62-work-packages) row ST-02.
-- `packages/worker/src/env.ts`, `packages/worker/wrangler.jsonc`.
+- `packages/worker/src/env.ts`, `packages/worker/wrangler.toml` (and `wrangler.deltas.toml`).
 
 ## Scope
 
@@ -42,6 +42,16 @@ Platform settings that exist only as deploy variables are invisible to operators
 ## Design notes
 
 - Generated files are never hand-edited (rule 3).
+- **Corrections from the code (2026-10-04, the implementer):** the Worker's config is
+  `packages/worker/wrangler.toml`, not `wrangler.jsonc`. "The inventory" the 16 names were missing
+  from is the hand-kept pair of lists in `GET /manage/api/platform/settings`
+  (`admin/handlers/platformSettings.ts`, S-18 §2.4); that handler now reads the generated
+  inventory, so the names reach the API (and the console's Secrets, Delivery and Email sections)
+  without a second list. Four names `src/` read only through `Env`'s index signature
+  (`BLOBS_BUCKET_NAME`, `R2_ACCOUNT_ID`, `R2_PARENT_ACCESS_KEY_ID`,
+  `R2_PARENT_SECRET_ACCESS_KEY`) are now declared members, and `--check` also refuses a new such
+  read. The tag is `@inventory <kind> <area>` (S-18 §4.13 names only the kind; the area is what
+  the console groups by). Output: `packages/worker/src/platformInventory.generated.ts`.
 
 ## Steps
 
