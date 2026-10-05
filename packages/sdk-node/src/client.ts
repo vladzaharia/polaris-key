@@ -217,8 +217,11 @@ export class PolarisKeyClient {
     );
     // Device-code sign-in raises the same acquisition event activation does: a signed-in
     // device holds a licensed token exactly as an activated one does, and syncs the same way.
-    this.identity = new IdentityClient(this.core, this.tokens, () =>
-      this.onLicenseAcquired(),
+    this.identity = new IdentityClient(
+      this.core,
+      this.tokens,
+      () => this.onLicenseAcquired(),
+      () => this.license.deactivate(),
     );
     this.release = new ReleaseClient(
       this.core,

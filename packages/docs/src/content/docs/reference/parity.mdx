@@ -135,7 +135,7 @@ Planned entries no work package owns yet. Each needs an owner before the gap can
 
 | SDK | Feature | Note |
 | --- | --- | --- |
-| Node | `identity.oidc` | No browser sign-in in the Node SDK, and no work package ports it. |
+| Node | `identity.oidc` | Browser redirect sign-in for native hosts waits on I-15's redirect token route (wire item W4); /identity/auth/poll is deprecated and never used. The interim is identity.signInWithBrowser(): device code opened in the system browser (SDK parity pass §3.12). |
 | Node | `update.driver` | Only appcastUrl() today; the Velopack, electron-updater or single-executable hand-off has no work package (P3-04 excludes it). |
 | Node | `packs.transport.steam` | P5-08 covers Godot only; Node desktop hosts have no Steam-depot transport owner. |
 | Node | `packs.transport.msix` | No work package owns the MSIX optional-package transport (P5-08 Out). |

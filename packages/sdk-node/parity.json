@@ -61,7 +61,7 @@
     "identity.oidc": {
       "status": "planned",
       "unowned": true,
-      "note": "No browser sign-in in the Node SDK, and no work package ports it."
+      "note": "Browser redirect sign-in for native hosts waits on I-15's redirect token route (wire item W4); /identity/auth/poll is deprecated and never used. The interim is identity.signInWithBrowser(): device code opened in the system browser (SDK parity pass §3.12)."
     },
     "identity.devicecode": { "status": "implemented" },
     "release.changelog": { "status": "implemented" },

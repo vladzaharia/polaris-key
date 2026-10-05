@@ -77,6 +77,11 @@ export {
 } from "./config/client.js";
 export {
   IdentityClient,
+  openInBrowser,
+  type AttachOptIn,
+  type CurrentIdentity,
+  type ShownIdentity,
+  type SignInWithBrowserOptions,
   type SignInPoll,
   type SignInPrompt,
   type SignInResult,
