@@ -48,6 +48,7 @@ import {
   AttentionList,
   DashboardTemplate,
   Panel,
+  PanelRow,
   type AttentionItem,
 } from "../templates/Dashboard.js";
 
@@ -1186,13 +1187,14 @@ export function Operations(): React.ReactElement {
           </Panel>
         )
       }
+      // The side's panels stack to about the cron card's height; the rest pair up below, so no
+      // card is stretched far past its own content.
       side={
         op ? (
-          <div className="space-y-6">
+          <>
             <HeartbeatsPanel op={op} />
             <QueuesPanel op={op} />
-            <ProbesPanel op={op} />
-          </div>
+          </>
         ) : (
           <Panel title="Heartbeats">
             <Skeleton className="h-48" />
@@ -1202,7 +1204,10 @@ export function Operations(): React.ReactElement {
     >
       {op ? (
         <>
-          <StoragePanel op={op} />
+          <PanelRow>
+            <ProbesPanel op={op} />
+            <StoragePanel op={op} />
+          </PanelRow>
           <ConnectorsPanel connectors={op.connectors} />
           <RefusalsPanel op={op} />
         </>

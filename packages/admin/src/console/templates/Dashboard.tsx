@@ -6,7 +6,12 @@
  *   Attention list (only when non-empty)
  *   2–4 StatTiles (each its own query: its own skeleton or error)
  *   Primary panel (2/3) | Side panel (1/3)   ← `split`: 2-1 (default) or 1-1; the side panel
- *                                              drops below under 1024 px
+ *                                              drops below under 1024 px. Keep the two cells'
+ *                                              natural heights close: the shorter cell's last
+ *                                              panel stretches to the taller cell, so a tall
+ *                                              stack of side panels leaves the primary half
+ *                                              empty (and a lone short side panel, the side)
+ *   PanelRow: further panels, 50/50
  *   Further full-width panels (tables: deploy history, cron runs…)
  *
  * The template is layout only. Each tile and panel loads independently, so one failing query
@@ -92,6 +97,28 @@ export function DashboardTemplate({
           {children}
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * A full-width row of equal-weight panels (50/50 from 1024 px, stacked below): each panel is its
+ * own stretch cell, so the pair shares its edges. Pair panels of close natural height; a panel
+ * that is much taller than its neighbour belongs on its own row, or the shorter one is left with
+ * a well of empty card under its content.
+ */
+export function PanelRow({
+  children,
+}: {
+  children: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {React.Children.toArray(children).map((child, i) => (
+        <div key={i} className={STRETCH_CELL}>
+          {child}
+        </div>
+      ))}
     </div>
   );
 }

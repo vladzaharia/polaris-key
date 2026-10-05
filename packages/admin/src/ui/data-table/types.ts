@@ -6,7 +6,7 @@ declare module "@tanstack/react-table" {
   interface ColumnMeta<TData extends RowData, TValue> {
     /**
      * 1: always shown, and the fields of a mobile card. 2: shown by default. 3: hidden by default
-     * below 1280 px (the operator can show it from "Columns").
+     * below 1440 px (the operator can show it from "Columns").
      */
     priority?: 1 | 2 | 3;
     /** Hidden until the operator shows it from "Columns", at every width (Licenses' Channels, Deliverables' low-value detail). */

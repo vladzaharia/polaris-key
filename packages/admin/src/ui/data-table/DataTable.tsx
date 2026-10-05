@@ -329,7 +329,8 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   };
 
   // Column visibility: persisted per table id; `defaultHidden` columns, and priority 3 below
-  // 1280 px, start hidden.
+  // 1440 px, start hidden. A 1280 px laptop leaves the table under 1000 px beside the sidebar,
+  // where the low-priority columns would push Actions off the edge.
   const hasMatchMedia =
     typeof window !== "undefined" && typeof window.matchMedia === "function";
   const [hidden, setHidden] = React.useState<string[]>(() => {
@@ -343,7 +344,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       }
     }
     const narrow =
-      hasMatchMedia && !window.matchMedia("(min-width: 1280px)").matches;
+      hasMatchMedia && !window.matchMedia("(min-width: 1440px)").matches;
     return columns
       .filter(
         (c) => c.meta?.defaultHidden || (narrow && c.meta?.priority === 3),
@@ -359,7 +360,10 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   };
 
   const isPhone = useMediaQuery("(max-width: 767px)");
-  const isMobileCards = isPhone && mobile === "cards";
+  // Cards below 1024 px (a phone, a tablet, a narrow window): a wide table there would scroll
+  // sideways and hide its right-most columns, Actions included.
+  const isCardWidth = useMediaQuery("(max-width: 1023px)");
+  const isMobileCards = isCardWidth && mobile === "cards";
 
   const serverSide =
     pagination.mode === "cursor" ||
