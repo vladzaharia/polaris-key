@@ -42,14 +42,14 @@ Deferred: there is no Go SDK. Zero-config public use also needs a `go-import` HT
 
 ## Corrections found while implementing
 
-- **[correction]** The access ladder's step 1 reads , which 0058 seeded for
+- **[correction]** The access ladder's step 1 reads `dist_registry_policy`, which 0058 seeded for
   the six tier-1 ecosystems only, so a new feed also needs its policy row: migration
-  (and ). No new table, so is
+  `0072_go_registry_policy.sql` (and `LATEST_MIGRATION`). No new table, so `TABLE_OWNERS` is
   unchanged.
-- **[correction]** The go command sends credentials (, GOAUTH, URL user info) only over
+- **[correction]** The go command sends credentials (`.netrc`, GOAUTH, URL user info) only over
   https, so the harness's authenticated run reaches the plain-http local Worker through a
   forwarder that adds the same Basic header.
-- The console's feed tables () are keyed by , so the feed also
+- The console's feed tables (`packages/admin`) are keyed by `FeedEcosystem`, so the feed also
   shows there (labels, icon, yank copy, namespace copy).
 
 ## Steps
