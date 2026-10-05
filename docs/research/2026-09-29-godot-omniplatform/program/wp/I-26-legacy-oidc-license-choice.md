@@ -171,17 +171,17 @@ the recommended option. Where the code disagreed with this brief, the code won.
 
 ## Acceptance criteria
 
-- [ ] A person whose linked account owns a usable licence gets the chooser and **no new licence
+- [x] A person whose linked account owns a usable licence gets the chooser and **no new licence
       row** on every flow kind: device code, `state` poll and `returnTo` (tests).
-- [ ] Picking a licence binds the device to it, and `ready` carries a token for it (test). A licence
+- [x] Picking a licence binds the device to it, and `ready` carries a token for it (test). A licence
       that is not the account's, or is no longer usable, is refused (test).
-- [ ] Full licences are listed disabled with the free-device link. **Create a new free licence**
+- [x] Full licences are listed disabled with the free-device link. **Create a new free licence**
       appears only when the policy grants a tier and every licence is full (tests).
-- [ ] Without the binder cookie the chooser is refused and nothing is minted (test).
-- [ ] With no link, no usable licence, or a `provider: custom` product, the behaviour is
+- [x] Without the binder cookie the chooser is refused and nothing is minted (test).
+- [x] With no link, no usable licence, or a `provider: custom` product, the behaviour is
       byte-identical to today, and `pnpm gen:transcripts -- --check` is unchanged.
-- [ ] OpenAPI and `routeCoverage` are updated, and the THREAT-MODEL note is written.
-- [ ] The green gate passes (`AGENTS.md`), including `test:workerd`.
+- [x] OpenAPI and `routeCoverage` are updated, and the THREAT-MODEL note is written.
+- [x] The green gate passes (`AGENTS.md`), including `test:workerd`.
 
 ## Verify
 
