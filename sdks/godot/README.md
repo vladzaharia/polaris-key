@@ -1281,6 +1281,12 @@ challenge's `play.cloudProjectNumber`, else `PKeyOptions.play_cloud_project_numb
   re-registration, mints a new device token and resets the device to `basic` on the Worker. Call
   `attest()` once the device holds its final token — after `activate`/`enroll`/`register`, not
   before. A token refresh keeps the level.
+- **Attest and retry, automatically.** When a product's trust policy wants an attested device, an
+  edge-mint (`config.mint_token`), a gated download (the sidecar pack, the APK, a pack object) or
+  a commerce claim answers 403 `attestation_required`. The addon then runs `attest()` once and
+  retries the call once (`PKeyCore.with_attestation`). Where `attest()` is unsupported, or it
+  fails, the caller gets the original refusal, with `detail.attestation` naming why the attest
+  did not happen. Set `PKeyOptions.auto_attest = false` to always get the refusal.
 - **A rare 422.** Challenges live in KV; very occasionally the attest request reaches a Cloudflare
   location the challenge has not propagated to yet and answers `attestation_rejected`. Call
   `attest()` again (it fetches a fresh challenge).

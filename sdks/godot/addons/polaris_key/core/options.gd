@@ -96,6 +96,11 @@ const CONFIG_ENV_NEVER := 2
 ## (PolarisKey.devices.attest() on a Play install). Empty: the one the Worker's attestation
 ## challenge carries (`play.cloudProjectNumber`, set by the operator). Digits only.
 @export var play_cloud_project_number := ""
+## Attest and retry (SDK parity §3.10): when an edge-mint, a gated download or a commerce claim
+## answers 403 `attestation_required`, run PolarisKey.devices.attest() once and retry once. Only
+## iOS and Android store installs can attest; elsewhere the refusal comes back unchanged. Off: the
+## caller always gets the refusal.
+@export var auto_attest := true
 
 @export_group("Config")
 ## The config environment layer (`PKEY_CONFIG_*` variables and `--pkey-config key=value`

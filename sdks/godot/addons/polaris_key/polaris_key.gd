@@ -102,6 +102,7 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	devices = PKeyDevices.new(core)
 	devices.install(core)
 	devices.on_wiped = _emit_state
+	core.attest_hook = devices.attest
 	license = PKeyLicense.new(core, devices)
 	license.install(core)
 	license.on_acquired = _on_license_acquired
