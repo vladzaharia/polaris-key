@@ -109,7 +109,7 @@ function magicErrorText(err: unknown): string {
   if (err instanceof PortalApiError) {
     if (err.status === 429 || err.code === "rate_limited")
       return "Too many sign-in emails. Try again in a few minutes.";
-    if (err.code === "email_not_configured")
+    if (err.code === "email_unavailable" || err.code === "email_not_configured")
       return "We can't send email right now. Try another way to sign in.";
     if (err.status === 422)
       return "Enter a full email address, like name@example.com.";

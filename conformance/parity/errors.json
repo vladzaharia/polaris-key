@@ -190,10 +190,40 @@
       "description": "The customer portal's requested sign-in method is turned off."
     },
     {
-      "code": "email_not_configured",
+      "code": "email_unavailable",
       "kind": "wire",
       "service": "identity",
-      "description": "Email sign-in was requested but the platform has no email sender configured."
+      "description": "503: mail cannot leave at all (no sender configured, the sender throttled, capped or failing). A fact about the platform that names no recipient. The login card offers another way to sign in; \"Email me the download\" answers it too (I-07, I-18)."
+    },
+    {
+      "code": "turnstile_failed",
+      "kind": "wire",
+      "service": "identity",
+      "description": "403 from the login card's POST /api/signin/email/start: the deploy has Cloudflare Turnstile on and the token was missing, invalid, or could not be verified (fail closed). Nothing was sent (I-07)."
+    },
+    {
+      "code": "signin_expired",
+      "kind": "wire",
+      "service": "identity",
+      "description": "400 from the login card: this browser's email sign-in or email gate is gone (used, expired, cancelled, or started in another browser). Its cookie is cleared; start again (I-07)."
+    },
+    {
+      "code": "invalid_code",
+      "kind": "wire",
+      "service": "identity",
+      "description": "400 from the login card: the emailed 6-digit code is wrong. `triesLeft` says how many attempts the code has left; it dies after 5 (I-07)."
+    },
+    {
+      "code": "email_in_use",
+      "kind": "wire",
+      "service": "identity",
+      "description": "409 from the login card: the proven address belongs to another Polaris Key account. Nothing was created or joined; the card offers to join that account (with proof of both) or to use a different email. Never answered before the address was proven (I-07)."
+    },
+    {
+      "code": "terms_required",
+      "kind": "wire",
+      "service": "identity",
+      "description": "400 from the login card's email gate: the product requires its terms and this version was not accepted (I-07)."
     },
     {
       "code": "license_owned",

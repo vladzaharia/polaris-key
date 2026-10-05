@@ -1067,7 +1067,7 @@ async function handleEmailDownload(
     return notFound();
   }
   if (!portalEmailConfigured(env)) {
-    return err(503, "email_not_configured", "email is not configured");
+    return err(503, "email_unavailable", "email is not configured");
   }
   const limited = await requireActionRateLimit(
     req,

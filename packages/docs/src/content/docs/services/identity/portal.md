@@ -332,7 +332,7 @@ requires the session cookie
   a download token, so a forwarded email opens a sign-in and nothing more. It needs a license for
   the product linked to the account, portal release downloads on and the Release service on
   (otherwise `404`, the same answer as an unknown product). It answers `422` for an unknown
-  platform, `503 email_not_configured` without an `EMAIL` binding, and `202` when sent. Limited
+  platform, `503 email_unavailable` without an `EMAIL` binding, and `202` when sent. Limited
   to 5 an hour per account and product; the bucket fails closed.
 
 ## Emails
