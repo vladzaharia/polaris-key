@@ -123,6 +123,11 @@ function base(): Docs {
       },
       devices: { registration: "requires-license" },
       web: { origins: ["https://app.acme.example", "http://localhost:8060"] },
+      presentation: {
+        icon: { src: "./.pkey/art/icon.png", sha256: "a".repeat(64) },
+        accent: "#3b1f1f",
+        accentDark: "#E8B4B4",
+      },
       licensing: {
         profiles: [
           { id: "base", name: "Base profile", payload: { config: {} } },
@@ -437,11 +442,11 @@ function base(): Docs {
         name: "Acme",
         subtitle: "A cozy desktop",
         description: "Line one.\nLine two.",
-        iconUrl: "https://acme.example/icon.png",
-        headerUrl: "https://acme.example/header.png",
+        icon: "https://acme.example/icon.png",
+        header: { src: "art/header.webp" },
         tintColor: "#3b1f1f",
         category: "games",
-        screenshots: ["https://acme.example/1.png"],
+        screenshots: ["https://acme.example/1.png", "art/shots/2.jpg"],
         website: "https://acme.example",
         developerName: "Acme Inc.",
         supportUrl: "https://acme.example/support",
@@ -1863,6 +1868,50 @@ const MUTATIONS: Mutation[] = [
     schema: "rejects",
     mutate: (d) => (mint(d).ttlSeconds = 0),
   },
+  // HA-04: `.pkey/product` `presentation { icon, accent, accentDark }`.
+  {
+    code: "invalid_presentation",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).presentation = "brand.png"),
+  },
+  {
+    code: "invalid_presentation",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).presentation.accent = "teal"),
+  },
+  {
+    code: "invalid_presentation",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).presentation.accentDark = "#12345"),
+  },
+  {
+    code: "invalid_asset_ref",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).presentation.icon = "../shared/icon.png"),
+  },
+  {
+    code: "invalid_asset_ref",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).presentation.icon = "ftp://acme.example/icon.png"),
+  },
+  {
+    code: "invalid_asset_ref",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) =>
+      (p(d).presentation.icon = { src: "icon.png", hash: "a".repeat(64) }),
+  },
+  {
+    code: "invalid_asset_ref",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).presentation.icon = `${"a/".repeat(260)}icon.png`),
+  },
   {
     code: "invalid_web_origins",
     file: "product",
@@ -2329,11 +2378,84 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (dist(d).listing.name = "two\nlines"),
   },
   {
-    code: "invalid_listing",
+    code: "invalid_asset_ref",
     file: "distribution",
     schema: "rejects",
     mutate: (d) =>
       (dist(d).listing.screenshots = ["https://a.example/1.png", 7]),
+  },
+  {
+    code: "invalid_listing",
+    file: "distribution",
+    schema: "rejects",
+    // More than 16 screenshots is the list's shape, not one ref's spelling.
+    mutate: (d) =>
+      (dist(d).listing.screenshots = Array.from(
+        { length: 17 },
+        (_, i) => `art/${i}.png`,
+      )),
+  },
+  // HA-04: listing art as asset refs (an https URL or a repo path, optionally { src, sha256 }).
+  {
+    code: "invalid_asset_ref",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (dist(d).listing.icon = "http://acme.example/icon.png"),
+  },
+  {
+    code: "invalid_asset_ref",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (dist(d).listing.header = "art/../../secrets/header.png"),
+  },
+  {
+    code: "invalid_asset_ref",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (dist(d).listing.header = { src: "/etc/header.png" }),
+  },
+  {
+    code: "invalid_asset_ref",
+    file: "distribution",
+    schema: "rejects",
+    // SVG is never an accepted image (it can carry script).
+    mutate: (d) => (dist(d).listing.screenshots = ["art/shot.svg"]),
+  },
+  {
+    code: "invalid_asset_ref",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) =>
+      (outlet(d, "altstore-beta").listing = {
+        icon: { src: "icon.png", sha256: "ABC" },
+      }),
+  },
+  {
+    code: "listing_field_conflict",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) =>
+      (dist(d).listing.iconUrl = "https://acme.example/old-icon.png"),
+  },
+  {
+    code: "listing_field_conflict",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) =>
+      (outlet(d, "altstore-beta").listing = {
+        header: "art/beta-header.png",
+        headerUrl: "https://acme.example/beta-header.png",
+      }),
+  },
+  {
+    // A warning, not an error: the alias still validates and normalises into `icon`.
+    code: "listing_url_field_deprecated",
+    file: "distribution",
+    schema: "accepts",
+    mutate: (d) => {
+      delete dist(d).listing.icon;
+      dist(d).listing.iconUrl = "https://acme.example/icon.png";
+    },
   },
   {
     code: "invalid_listing",
