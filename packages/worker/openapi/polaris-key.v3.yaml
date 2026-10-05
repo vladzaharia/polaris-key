@@ -9861,7 +9861,8 @@ paths:
         a section only for a service that is on), its status, and every linked licence, best
         first (status precedence, then the later expiry), each with its seats, its entitlements
         and its authorized devices; a device past the dormancy window is `dormant` and holds no
-        seat. `404` when the account holds no licence for the product, or the developer has the
+        seat. Each licence also carries its `purchase` (G8): a store purchase, the developer, a
+        sign-in or a free auto-issue, with its store grants. `404` when the account holds no licence for the product, or the developer has the
         portal off for it. Session-authenticated by the portal cookie; `cache-control: no-store`.
       parameters: [{ $ref: "#/components/parameters/Product" }]
       responses:
@@ -9904,6 +9905,17 @@ paths:
                         activeSeatCount: 1
                         deviceCount: 2
                         dormantCount: 1
+                        purchase:
+                          source: store
+                          store: steam
+                          stores: [steam]
+                          grants:
+                            - store: steam
+                              state: active
+                              grantedAt: 1790000000
+                              revokedAt: null
+                              flag: pro
+                              label: Pro effects
                         entitlements: []
                         devices:
                           - deviceId: dev-studio
@@ -11547,6 +11559,41 @@ components:
                   addedAt:
                     type: [integer, "null"]
                     description: When the account's first licence for the product was linked.
+    PortalPurchase:
+      type: object
+      description: >
+        A licence's purchase source (portal gap G8). `source` is `store` while a store purchase
+        verified by the commerce bridge is active on the licence ("Bought on Steam"); otherwise it
+        is how the licence was minted: `developer` (issued by the developer), `sign_in` (minted
+        at sign-in) or `free` (auto-issued to a device). A refunded or revoked purchase stays in
+        `grants` as `revoked`. A grant names its flag and label only when the developer shows
+        that flag in the portal (`userGrant`); otherwise both are null. No purchase key is ever
+        returned.
+      required: [source, store, stores, grants]
+      properties:
+        source:
+          type: string
+          enum: [store, developer, sign_in, free]
+        store:
+          type: [string, "null"]
+          description: For `store`, the store of the earliest active purchase.
+          enum: [app-store, play, steam, null]
+        stores:
+          type: array
+          description: Every store with an active purchase on the licence, earliest first.
+          items: { type: string, enum: [app-store, play, steam] }
+        grants:
+          type: array
+          items:
+            type: object
+            required: [store, state, grantedAt, revokedAt, flag, label]
+            properties:
+              store: { type: string, enum: [app-store, play, steam] }
+              state: { type: string, enum: [active, revoked] }
+              grantedAt: { type: integer }
+              revokedAt: { type: [integer, "null"] }
+              flag: { type: [string, "null"] }
+              label: { type: [string, "null"] }
     PortalProduct:
       allOf:
         - $ref: "#/components/schemas/PortalPresentation"
@@ -11566,8 +11613,15 @@ components:
                 allOf:
                   - $ref: "#/components/schemas/PortalLicenseSeats"
                   - type: object
-                    required: [entitlements, devices]
+                    required: [purchase, entitlements, devices]
                     properties:
+                      purchase:
+                        oneOf:
+                          - type: "null"
+                          - $ref: "#/components/schemas/PortalPurchase"
+                        description: >
+                          Where the licence came from (G8), read through License's
+                          `licenseProvenance` hook; `null` while License is off for the product.
                       entitlements:
                         type: array
                         items:

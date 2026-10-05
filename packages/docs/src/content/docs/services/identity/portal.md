@@ -128,7 +128,12 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
 - **`GET /api/products/<product>`** — one of those products: the presentation, `services` (each
   service's own toggle), the status, and every linked license best first with its seats,
   entitlements and authorized devices, each marked `dormant` once it is past the 90-day dormancy
-  window (a dormant device holds no seat). `404` for a product the account holds nothing for.
+  window (a dormant device holds no seat), and its `purchase`: where it came from (`source` is
+  `store` while a verified store purchase is active on it, else `developer`, `sign_in` or
+  `free`), the stores, and each store grant with its state and dates. A grant names its flag only
+  when the developer shows that flag in the portal; no purchase key is ever returned. The facts
+  are License's, read through its `licenseProvenance` descriptor hook, so `purchase` is `null`
+  while License is off. `404` for a product the account holds nothing for.
 - **`GET /media/<product>/<asset>`** — public, no session: the product's `icon` or `header` art
   from its listing, fetched by the Worker and served from this origin, because the portal's CSP is
   `img-src 'self' data:`. Only `https` sources on GitHub-hosted names (`github.com`,
