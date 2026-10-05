@@ -247,7 +247,28 @@ public actor PacksClient {
     /// download), or `PolarisError` `service-unavailable` when the product runs no Release service.
     public func ensure(_ packIds: [String]) async throws -> [PackInstall] {
         try await core.requireService(.release, feature: Feature.packsState)
-        return try await start().ensure(packIds)
+        let engine = try await start()
+        let before = (try? await engine.state().running) ?? [:]
+        do {
+            let installed = try await engine.ensure(packIds)
+            for i in installed where before[i.packId]?.version != i.version {
+                // P6-03: a pack switch is an applied update for the pack's deliverable.
+                await core.journal.record(
+                    UpdateEvent.updateApplied, release: "\(i.packId)@\(i.version)",
+                    fromRelease: before[i.packId].map { "\(i.packId)@\($0.version)" },
+                    channel: core.channel, deliverable: i.packId,
+                    packSetId: await engine.packSetId())
+                core.emit(.packs(packId: i.packId, result: "installed"))
+            }
+            return installed
+        } catch let e as PackError {
+            let packId = e.packId ?? packIds.first ?? "pack"
+            await core.journal.record(
+                UpdateEvent.packFailed, release: packId, channel: core.channel,
+                deliverable: packId, code: e.code)
+            core.emit(.packs(packId: packId, result: e.code))
+            throw e
+        }
     }
 
     /// The install state and this process's running set.

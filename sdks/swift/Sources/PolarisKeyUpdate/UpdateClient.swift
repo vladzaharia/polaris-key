@@ -254,7 +254,7 @@ public actor UpdateClient {
     /// The pack facet (`ensure`, `state`, `registerHandler`, progress events). Cross-platform:
     /// it lives in PolarisKeyPacks and links no Sparkle.
     public nonisolated let packs: PacksClient
-    private let core: CoreContext
+    let core: CoreContext
     private let configured: ConfiguredUpdate?
     /// The in-process detection, once started: never cached past this client (§2.9). The task,
     /// not its result, so concurrent `decide()` / `outlet()` calls share one detection.
@@ -262,6 +262,8 @@ public actor UpdateClient {
     /// The v4 calls run one at a time: each is a read-modify-write of the cache slices, and the
     /// actor alone would let two interleave at their network awaits.
     private var tail: Task<Void, Never>?
+    /// The releases already journalled as offered this process.
+    private var offered: Set<String> = []
 
     /// A client for `check()` and the Sparkle helpers. `decide()` and `releaseRecord()` raise
     /// `not-configured` on it: they need `UpdateClientOptions.pinnedReleaseKeys`.
@@ -314,7 +316,10 @@ public actor UpdateClient {
     private func resolvedOutlet(_ c: ConfiguredUpdate) async -> (outlet: ResolvedOutlet, detected: DetectedOutlet?) {
         // The host's `detected` is reported as given, even when its `outlet` wins (as in Node and
         // Python); nil when it passed none.
-        if let outlet = c.outlet { return (outlet, c.options.detected) }
+        if let outlet = c.outlet {
+            if let id = outlet.id { core.journal.outlet.set(id) }
+            return (outlet, c.options.detected)
+        }
         if let detection { return await detection.value }
         let options = c.options
         let task = Task { () -> (outlet: ResolvedOutlet, detected: DetectedOutlet?) in
@@ -328,7 +333,10 @@ public actor UpdateClient {
             return (outlet: outlet, detected: Optional(detected))
         }
         detection = task
-        return await task.value
+        let value = await task.value
+        // The outlet id events and reports carry (P6-03).
+        if let id = value.outlet.id { core.journal.outlet.set(id) }
+        return value
     }
 
     /// `GET /<p>/update/version` — the newest build, and whether we are behind it.
@@ -428,7 +436,23 @@ extension UpdateClient {
     public func decide(
         channel: String? = nil, staged: StagedUpdate? = nil, skipVersion: String? = nil
     ) async throws -> UpdateCheck {
-        try await serialized { try await self.decideNow(channel: channel, staged: staged, skipVersion: skipVersion) }
+        let check = try await serialized {
+            try await self.decideNow(channel: channel, staged: staged, skipVersion: skipVersion)
+        }
+        await noteOffer(check)
+        return check
+    }
+
+    /// P6-03 `update_offered`, once per offered release per process, and the facade's
+    /// `updateAvailable` event.
+    private func noteOffer(_ check: UpdateCheck) async {
+        guard let release = check.decision.offeredRelease, release.version != core.version,
+            offered.insert(release.version).inserted
+        else { return }
+        await core.journal.record(
+            UpdateEvent.updateOffered, release: release.version, fromRelease: core.version,
+            channel: check.channel)
+        core.emit(.updateAvailable(version: release.version))
     }
 
     /// The verified feed `decide()` would decide from (§2.5 steps 1–10), without the record. It

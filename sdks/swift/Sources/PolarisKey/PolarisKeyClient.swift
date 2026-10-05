@@ -169,6 +169,8 @@ public actor PolarisKeyClient {
     public nonisolated let devices: DevicesClient
     /// Store purchases to licence flags: binding, claim, and the StoreKit one-calls.
     public nonisolated let commerce: CommerceClient
+    /// The download page's model (`downloadModel()`, `thisPlatform()`).
+    public nonisolated let distribution: DistributionClient
     /// The pinned release keys this client was built with (`client.update` reads them).
     public nonisolated let pinnedReleaseKeys: TrustSet
     /// Per-module state the other targets attach (`client.update` in PolarisKeyUpdate), keyed by
@@ -194,6 +196,12 @@ public actor PolarisKeyClient {
         self.core = core
         let hub = PolarisEventHub()
         self.events = hub
+        core.setEventSink { event in
+            switch event {
+            case .updateAvailable(let version): hub.emit(.updateAvailable(version: version))
+            case .packs(let packId, let result): hub.emit(.packs(packId: packId, result: result))
+            }
+        }
         // An edge-mint 401 gets the same single re-acquire a document fetch does, through the
         // same closure, so a registered-without-licence device re-registers there too (§5).
         self.config = ConfigClient(
@@ -210,6 +218,7 @@ public actor PolarisKeyClient {
                 fingerprintEnabled: options.license.fingerprint, events: hub)
         }
         self.release = ReleaseClient(core: core)
+        self.distribution = DistributionClient(core: core)
         self.pinnedReleaseKeys = options.pinnedReleaseKeys
         self.commerce = CommerceClient(
             core: core, store: options.storeClient ?? defaultStoreClient()
@@ -402,7 +411,8 @@ public actor PolarisKeyClient {
     /// empty report is a truthful one.
     @discardableResult
     private static func report(
-        core: CoreContext, probes: [ProbeDeclaration], engine: Capabilities
+        core: CoreContext, probes: [ProbeDeclaration], engine: Capabilities,
+        extras: [String: JSONValue] = [:]
     ) async -> Bool {
         let cache = await core.cache()
         var config: [String: JSONValue] = [:]
@@ -422,7 +432,42 @@ public actor PolarisKeyClient {
             locale: facts.locale, timezone: facts.timezone, probes: facts.probes,
             config: config, entitlements: entitlements, caps: caps,
             content: packSetId.map { SnapshotContent(packSetId: $0) })
-        return await core.reportSnapshot((try? JSONEncoder().encode(body)) ?? Data("{}".utf8))
+        guard
+            let encoded = try? JSONEncoder().encode(body),
+            case .object(var fields)? = try? JSONDecoder().decode(JSONValue.self, from: encoded)
+        else { return await core.reportSnapshot(Data("{}".utf8)) }
+        // The gate this device renders, the outlet the update client resolved, and the queued
+        // update-health events (P6-03), wherever the SDK knows them (REPORT_KEYS).
+        let licenseOn = await core.enabled(.license)
+        fields["gate"] = .object([
+            "status": .string(await gateState(core, licenseOn: licenseOn).status.rawValue)
+        ])
+        if let outlet = core.journal.outlet.current { fields["outlet"] = .string(outlet) }
+        var updates = await core.journal.pending()
+        // A host's extras fill only the allowlisted keys the SDK left empty; its `updates` ride
+        // after the journal's, within the same cap.
+        for (key, value) in extras where REPORT_EXTRA_KEYS.contains(key) {
+            if key == "updates", case .array(let more) = value {
+                let decoded = more.compactMap { v -> UpdateEventEntry? in
+                    guard let d = try? JSONEncoder().encode(v) else { return nil }
+                    return try? JSONDecoder().decode(UpdateEventEntry.self, from: d)
+                }
+                updates.append(contentsOf: decoded)
+            } else if fields[key] == nil {
+                fields[key] = value
+            }
+        }
+        updates = Array(updates.prefix(MAX_REPORT_UPDATE_EVENTS))
+        if !updates.isEmpty,
+            let d = try? JSONEncoder().encode(updates),
+            let v = try? JSONDecoder().decode(JSONValue.self, from: d)
+        {
+            fields["updates"] = v
+        }
+        let data = (try? JSONEncoder().encode(JSONValue.object(fields))) ?? Data("{}".utf8)
+        let ok = await core.reportSnapshot(data)
+        if ok { await core.journal.markReported(updates.map(\.eventId)) }
+        return ok
     }
 
     // ── Telemetry (§6) ───────────────────────────────────────────────────────────────────
@@ -436,6 +481,15 @@ public actor PolarisKeyClient {
     @discardableResult
     public func report() async -> Bool {
         await PolarisKeyClient.report(core: core, probes: probes, engine: capabilityEngine)
+    }
+
+    /// `report()` plus host-supplied keys: only the Worker's allowlisted report keys
+    /// (`REPORT_EXTRA_KEYS`), never overriding what the SDK itself sends; `updates` entries are
+    /// appended to the journal's (a bridged renderer's events), within the 16-event cap.
+    @discardableResult
+    public func report(extras: [String: JSONValue]) async -> Bool {
+        await PolarisKeyClient.report(
+            core: core, probes: probes, engine: capabilityEngine, extras: extras)
     }
 
     /// The React-bridge contract, assembled from the managers that own each piece.
@@ -575,6 +629,13 @@ public actor PolarisKeyClient {
         refreshTask = nil
     }
 }
+
+/// The device-report keys a host may add through `report(extras:)`: the Worker's `REPORT_KEYS`.
+public let REPORT_EXTRA_KEYS: Set<String> = [
+    "os", "hardware", "runtime", "locale", "timezone", "probes", "sdk", "sdkVersion",
+    "appVersion", "platform", "arch", "gate", "config", "entitlements", "timestamp", "engine",
+    "outlet", "content", "updates", "caps", "packInstalls",
+]
 
 /// `{...facts, config, entitlements}` — the flat shape the Worker's report allowlist reads.
 private struct SnapshotBody: Encodable {
