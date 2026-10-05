@@ -93,7 +93,7 @@ public object PolarisBrandTokens {
     }
 
     /** Section ids: core plus every service slug. */
-    public val serviceIds: List<String> = listOf("core", "license", "config", "release", "distribution", "update", "identity")
+    public val serviceIds: List<String> = listOf("core", "license", "config", "release", "distribution", "update", "identity", "sync")
 
     /** The dark theme (default). */
     public object Dark {
@@ -183,6 +183,7 @@ public object PolarisBrandTokens {
         "distribution" to BrandAccent(solid = Color(0xFF39D075), fg = Color(0xFF39D075), on = Color(0xFF060912), subtle = Color(0xFF0C211E), bit = Color(0xFF39D075)),
         "update" to BrandAccent(solid = Color(0xFFFE8001), fg = Color(0xFFFE8001), on = Color(0xFF060912), subtle = Color(0xFF241710), bit = Color(0xFFFE8001)),
         "identity" to BrandAccent(solid = Color(0xFFD77DF2), fg = Color(0xFFD77DF2), on = Color(0xFF060912), subtle = Color(0xFF1F172D), bit = Color(0xFFD77DF2)),
+        "sync" to BrandAccent(solid = Color(0xFF14F8E1), fg = Color(0xFF14F8E1), on = Color(0xFF060912), subtle = Color(0xFF08262B), bit = Color(0xFF14F8E1)),
     )
 
     private val accentsLight: Map<String, BrandAccent> = mapOf(
@@ -193,6 +194,7 @@ public object PolarisBrandTokens {
         "distribution" to BrandAccent(solid = Color(0xFF05773B), fg = Color(0xFF05773B), on = Color(0xFFFFFFFF), subtle = Color(0xFFDEEBEB), bit = Color(0xFF05773B)),
         "update" to BrandAccent(solid = Color(0xFFB95800), fg = Color(0xFFAA5000), on = Color(0xFFFFFFFF), subtle = Color(0xFFF0E8E6), bit = Color(0xFFB95800)),
         "identity" to BrandAccent(solid = Color(0xFF9E34AE), fg = Color(0xFF9E34AE), on = Color(0xFFFFFFFF), subtle = Color(0xFFEDE4F7), bit = Color(0xFF9E34AE)),
+        "sync" to BrandAccent(solid = Color(0xFF086260), fg = Color(0xFF086260), on = Color(0xFFFFFFFF), subtle = Color(0xFFDEE9EF), bit = Color(0xFF086260)),
     )
 
     /** A section's accent. Unknown ids answer the core (platform) violet. */
