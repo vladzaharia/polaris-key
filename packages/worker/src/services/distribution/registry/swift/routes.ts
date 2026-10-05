@@ -22,8 +22,8 @@
  *     unsupported one (`protocol.ts`);
  *   - errors as `application/problem+json`; an unknown package, version or owner, a disabled
  *     feed and a missing object all answer the host's one not-found;
- *   - documents from the renders (`render.ts`), read through `readRegistryObject`, so a lost
- *     object is rendered again from D1 on the read;
+ *   - documents from the renders (`render.ts`), read through `readFreshRegistryObject`, so a
+ *     lost object, or one whose render stamp no longer matches D1, is rendered again on the read;
  *   - manifests and archives from the blob store by SHA-256 (`blobResponse`): the SIGNED manifest
  *     copies the CLI uploaded, never copies taken from the zip (§5.3), immutable for a year;
  *   - `Link` headers built from the registry origin when answering: `latest-version` on the
@@ -44,7 +44,7 @@ import {
 import { authorizeFeedRead } from "../authorize.js";
 import { registryCacheHeaders } from "../cache.js";
 import {
-  readRegistryObject,
+  readFreshRegistryObject,
   renderedObjectResponse,
   type MaterialiseDeps,
   type RegistryRenderer,
@@ -223,13 +223,19 @@ function packageRoute(
   };
 }
 
-/** One rendered object of the package, or `null`. */
+/**
+ * One rendered object of the package, or `null`. Stamp-checked against D1
+ * (`readFreshRegistryObject`), so a publish, yank or channel move shows up on the next read even
+ * when no drain has re-rendered the package yet: a stored render that predates the change is
+ * rendered again first. Reading R2 unchecked left 0.8.19 off the release list (and its metadata
+ * a not-found) until the next cron drain, past the feed-drift check's window.
+ */
 function readObject(
   read: PackageRead,
   ctx: RegistryRouteContext,
   key: string,
 ): Promise<R2ObjectBody | null> {
-  return readRegistryObject(read.deps, {
+  return readFreshRegistryObject(read.deps, {
     ecosystem: "swift",
     owner: ctx.product.slug,
     key,
