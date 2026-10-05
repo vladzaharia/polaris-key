@@ -38,7 +38,11 @@ import {
 import type { PortalDownloads } from "../src/services/identity/portal/downloads.js";
 import type { Env } from "../src/env.js";
 import { dispatch } from "../src/dispatch.js";
-import { handlePortalApi, handlePortalDownload } from "./portalHarness.js";
+import {
+  handlePortalApi,
+  handlePortalDownload,
+  seedRepositoryVisibility,
+} from "./portalHarness.js";
 import { NOW, makeEnv, seedLicenseWithKey } from "./seed.js";
 import { KvMock } from "./kvMock.js";
 import {
@@ -526,6 +530,27 @@ describe("licensed R2 downloads from the portal", () => {
     expect((await fetchUrl(w, url)).status).toBe(200);
   });
 
+  it("a licensed file whose source is a PRIVATE GitHub repository stays not_hosted, tickets or not (Q7)", async () => {
+    const w = await world("licensed");
+    const p = await account(w);
+    await w.db.run(
+      `UPDATE release_artifacts
+          SET source_url = 'https://objects.githubusercontent.com/diceroll/' || artifact_id
+        WHERE product = ?`,
+      SLUG,
+    );
+    await seedRepositoryVisibility(w.env, w.db, SLUG, "private");
+    const body = await listing(w, p);
+    const reasons = new Set(
+      body.platforms.flatMap((x) => x.files.map((f) => f.reason)),
+    );
+    expect([...reasons]).toEqual(["not_hosted"]);
+    const { artifact_id } = await artifactOf(w, "app@1.2.0", WIN);
+    const refused = await mint(w, p, "app@1.2.0", artifact_id);
+    expect(refused.status).toBe(409);
+    expect(await refused.json()).toMatchObject({ error: "not_hosted" });
+  });
+
   it("fails closed: with the key or the bytes host unset, files are not_hosted and nothing mints", async () => {
     for (const env of [
       { DOWNLOAD_TICKET_KEY: undefined },
@@ -540,7 +565,11 @@ describe("licensed R2 downloads from the portal", () => {
       );
       expect([...reasons]).toEqual(["not_hosted"]);
       const { artifact_id } = await artifactOf(w, "app@1.2.0", WIN);
-      expect((await mint(w, p, "app@1.2.0", artifact_id)).status).toBe(404);
+      // The owner is told why (fix/portal-download-404's mint refusals): 409 not_hosted, and
+      // still nothing minted.
+      const refused = await mint(w, p, "app@1.2.0", artifact_id);
+      expect(refused.status).toBe(409);
+      expect(await refused.json()).toMatchObject({ error: "not_hosted" });
     }
   });
 

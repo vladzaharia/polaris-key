@@ -12,6 +12,15 @@
 | Human input | an R2 bucket or prefix for copied avatars per environment (shared with I-07's request)                                                                                                                                         |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                      |
 
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- Profile import and avatars are already built on `wp/I-07-login-card-email-gate` (`card/profile.ts`, `card/avatars.ts`). Reconcile with them before building; copy per SIGN-IN.md §3.5 (`signin.profile.*`).
+
 ## Goal
 
 Provider profile claims are stored per identity link at link time; the account has a `profile` with sources and explicit flags, refreshed on sign-in only while not explicit; `GET/PATCH /api/me/profile` and `POST /api/me/profile/picture` exist; provider pictures are fetched server-side from allowlisted hosts, re-encoded to WebP and PNG at 256 and 96 px, stored content-addressed in R2 and served same-origin through `GET /media/avatar/:asset`.

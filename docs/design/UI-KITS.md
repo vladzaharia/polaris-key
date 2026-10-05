@@ -165,11 +165,11 @@ screen:
 - **Polaris Key appears only as an optional "Powered by Polaris Key"** line or badge (`poweredBy`,
   off by default, §4.5). No kit screen shows the Pinned K, the Star Cut or the "Polaris Key" name
   otherwise. Two exceptions, both true statements about who handles a step:
-  - the sign-in footnote "Polaris Key handles sign-in. <Developer> never sees your passkeys."
-    (EXPERIENCE §8 passthrough footer);
+  - the sign-in footnote "Polaris Key signs you in for <App>. <Developer> never sees your codes or
+    passkeys." (`signin.footer`, SIGN-IN.md D-15);
   - the device-code URL. The product's `deviceCodeUrl` (for example `driftkart.gg/tv`) is used when
-    set, otherwise `key.plrs.im/tv` on TV and console and `key.plrs.im/activate` in desktop
-    hand-offs.
+    set, otherwise `key.plrs.im/tv` on TV and console and `key.plrs.im/device` in desktop and
+    phone hand-offs (SIGN-IN.md D-16; `/activate` is only the license-key route).
 - **Service cues are off on product screens.** Users neither know nor care that License is
   chartreuse. In product-facing kit screens the six service accents do not appear at all. They
   return only for integrators who opt in: `theme.serviceCues: true` adds the small tinted glyph tiles
@@ -213,11 +213,13 @@ One identity, rendered in each platform's current idiom. These stay identical ev
 | **Windows**                                     | Fluent 2                            | The `windows` platform variant for Electron, Tauri, Compose Desktop and Qt Quick. **Chrome:** a Mica title bar with caption buttons on the right (`DwmSetWindowAttribute` `DWMWA_SYSTEMBACKDROP_TYPE` natively). **Controls:** 32 px at radius 4; overlays at radius 8. **Focused steps:** a `ContentDialog` on a smoke layer, with the footer buttons at equal width, primary first. **Focus:** the Fluent two-tone ring                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | **Linux (GNOME)**                               | libadwaita                          | The `linux` platform variant: a header bar with only the close button, window radius 12, 34 px controls at radius 8, a pill suggested-action for the primary, and focused steps in an `AdwDialog` (radius 12, a soft libadwaita shadow with a 7 % edge in light, never a drawn dark outline)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | **Godot**                                       | Modern game UI                      | **Scheme:** `colorScheme` defaults to `"dark"`; light is opt-in. **Glass:** panels over a 35–45 % scrim, with an opaque `surface-raised` at 0.94 under `gl_compatibility`, on web exports and when `ui_reduce_transparency` is set; blur at half resolution in one cached pass. **Controls:** 60 px, with a 3 px focus ring at a 2 px offset plus an accent glow; scale 1.03 only on tiles and rows, from the centre. **Identity and type:** a `product.wordmark` texture beside the icon, and `typography.display` for the game's heading face. **Input:** `PKeyInputGlyphs` (monochrome filled glyphs that follow the last input device and honour the confirm-button swap). **Also:** a type floor (§1.5 rule 5), title-safe areas, a host-set toast anchor, UI sound hooks and optional haptics                                                                                                         |
-| **Terminal** (Node, Python)                     | 2026 CLI (gh, uv, clack)            | **Colour:** ANSI-16 for status roles by default, so output follows the user's terminal theme; truecolor only for the product chip, and only with `COLORTERM=truecolor`; light background detected via OSC 11, then `COLORFGBG`. **Layout:** 80 columns, degrading to 60, with keys truncated in the middle; a continuous rail on every line. **Feedback:** a braille spinner in `mute`; a half-block QR, hidden below 70 columns or 20 rows. **Interaction:** OSC 8 links, OSC 52 copy, masked key entry, `--json` on every verb. **Fallbacks:** `NO_COLOR` and ascii symbols                                                                                                                                                                                                                                                                                                                               |
+| **Terminal** (Node, Python)                     | 2026 CLI (gh, uv, clack)            | **Colour:** ANSI-16 for status roles by default, so output follows the user's terminal theme; truecolor only for the product chip, and only with `COLORTERM=truecolor`; light background detected via OSC 11, then `COLORFGBG`. **Layout:** 80 columns, degrading to 60, with keys truncated in the middle; a continuous rail on every line. **Feedback:** a braille spinner in `mute`; a half-block QR, hidden below 70 columns or 20 rows, and never for sign-in (SIGN-IN.md D-67, D-68: browser and loopback, or a device code without a QR when headless). **Interaction:** OSC 8 links, OSC 52 copy, masked key entry, `--json` on every verb. **Fallbacks:** `NO_COLOR` and ascii symbols                                                                                                                                                                                                             |
 | **Qt** (Python)                                 | Platform variants above             | **Qt:** Qt Quick (QML with `MultiEffect` blur and `Behavior` springs) is the drop-in, rendering the macOS, Windows or Linux variant. QWidget is layer (b) only, with its limits stated: QSS has no blur, transitions or transforms. There is no Tk kit (owner, 2026-10-05)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 
-**Desktop dialog model.** Focused steps (Activate, SignInHandoff, DeviceLimit) are sheets on macOS
-and in-window dialogs on Windows (`ContentDialog`) and Linux (`AdwDialog`). The update prompt and
+**Desktop dialog model.** Focused steps (Activate, SignInHandoff, LicenseChoice, DeviceLimit) are
+sheets on macOS and in-window dialogs on Windows (`ContentDialog`) and Linux (`AdwDialog`); the
+sign-in waiting step, the code view and the in-app license choice are drawn in SIGN-IN.md frames
+18, 24 and 28–31. The update prompt and
 Settings are real windows on desktop. This replaces UK-10's "dialogs as real windows".
 
 ### 1.5 Nothing dated: the hard rules
@@ -518,30 +520,31 @@ React exports bare names from `@polaris-key/react`. Headless names follow each l
 (`useActivate`, `ActivateModel`, `rememberActivateState`, `PKeyActivateController`,
 `ActivateViewModel`).
 
-| Component             | What it is                                                                                                                                                                          | States                                                                                                                        | Priority |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------- |
-| **PolarisKeyGate**    | The drop-in root. Boots, gates, and runs every flow below as needed; renders the app when licensed; adds the grace banner, update prompt and toasts                                 | booting · needs-activation · licensed · grace · blocked (revoked, expired, version too old/new, channel not entitled) · error | must     |
-| **Boot**              | First-paint screen while the stage machine runs (`ui.stages`): product hero, a neutral indicator, consent for metered downloads, offline and blocked stops                          | progress · consent · fetching · offline · blocked · error                                                                     | must     |
-| **Welcome**           | The gate's first screen: product hero, Sign in, Use a license key, and the extras the product supports (trial, restore purchase, activate offline)                                  | default · busy · capability-limited (only the paths the build supports, GO)                                                   | must     |
-| **SignIn**            | Method chooser: platform-native first (Sign in with Apple, Google on Android), email via the hosted card, Steam, Use another device                                                 | default · busy · method error · no method enabled                                                                             | must     |
-| **SignInHandoff**     | "Finish in your browser": the RFC 8628 user code, a QR, Open browser again, the countdown; moves on by itself                                                                       | starting · waiting · link copied · confirm · ok · denied · expired · cancelled                                                | must     |
-| **Activate**          | License key entry with live verdict: the key field names the product and tier as soon as it parses, catches cut-short keys (EXPERIENCE P2), paste button, Return submits            | empty · typing · parsed · cut short · busy · rejected · device limit (hands to DeviceLimit) · done                            | must     |
-| **OfflineActivation** | Request code (text + QR), load or drop a response file, paste box                                                                                                                   | default · loaded · rejected signature · done                                                                                  | must     |
-| **DeviceLimit**       | The focused "Replace a device" flow (PORTAL §4.25; renamed 2026-10-05): seat meter, devices as radio rows, least recent preselected, consequences, "Replace <device>"               | default · busy · removed · failed · browser mode (links to the portal)                                                        | must     |
-| **Devices**           | Device list: icon by form factor, friendly name, platform and last seen, "This device", rename (inline, not an always-open form, RE), Remove with an L1 inline confirm              | loading · list · renaming · confirming · empty · browser mode                                                                 | must     |
-| **UpdatePrompt**      | Available / downloading / ready / mandatory / blocked / store outlet, with notes and the right verb per outlet ("Update on the App Store", "Restart when ready", "Get it on Steam") | available · downloading · ready · mandatory · blocked · store · platform · revoked-required-content · up to date              | must     |
-| **UpdateProgress**    | Compact download and install progress for app updates and content packs: toast, pill, or inline row                                                                                 | queued · downloading · installing · paused (metered) · failed · done                                                          | must     |
-| **ReleaseNotes**      | The changelog for one or many versions, from `ReleaseClient.changelog()`                                                                                                            | loading · list · empty · error                                                                                                | must     |
-| **StatusScreen**      | Blocking states with their fix: revoked ("Use a different key", "Sign out"), expired ("Renew"), version too old ("Update"), too new, channel not entitled                           | one per state, each with a primary fix                                                                                        | must     |
-| **GraceBanner**       | Offline grace: deadline and countdown, Reconnect, dismissible per session (the prop doc already promises it, RE)                                                                    | days left · last day · expired → StatusScreen                                                                                 | must     |
-| **AccountAndLicense** | The settings pane: product and tier, holder, Manage (portal), Devices, Cloud Sync status, Updates (automatic, channel, check now, version), managed settings, Sign out, Powered-by  | loading · signed in · key-only (no account) · offline                                                                         | must     |
-| **Settings**          | Config-catalog-driven settings with typed controls (switch, slider, select, text), categories, search above 12 rows, provenance as text, locked rows "Set by <org>", reset          | loading · list · dirty · saving · locked · error                                                                              | must     |
-| **Paywall**           | Entitlement-gated upsell: what a tier adds, purchase or redeem; StoreKit 2 views on Apple, Play Billing on Android, the portal elsewhere                                            | loading · offers · purchasing · purchased · restore · not available here                                                      | must     |
-| **EntitlementGate**   | Renders children only when an entitlement holds; otherwise a slot or the Paywall                                                                                                    | entitled · not entitled · loading                                                                                             | must     |
-| **CloudSyncStatus**   | A small status: synced time, syncing, conflict, offline; opens details                                                                                                              | synced · syncing · offline · conflict · error                                                                                 | should   |
-| **About**             | Product, version, build, licenses (OSS notices), the Powered-by badge, Copy diagnostics                                                                                             | default                                                                                                                       | should   |
-| **ChannelPicker**     | Release channel choice, locked when the outlet fixes it                                                                                                                             | default · locked                                                                                                              | should   |
-| **Toast**             | Bottom-right (bottom full width on phones), one line plus a consequence, ≤ 2 actions, 6 s with a visible timer, errors persist (EXPERIENCE §7)                                      | info · success · warning · error · with progress                                                                              | must     |
+| Component             | What it is                                                                                                                                                                                                                                                                          | States                                                                                                                                       | Priority |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| **PolarisKeyGate**    | The drop-in root. Boots, gates, and runs every flow below as needed; renders the app when licensed; adds the grace banner, update prompt and toasts                                                                                                                                 | booting · needs-activation · licensed · grace · blocked (revoked, expired, version too old/new, channel not entitled) · error                | must     |
+| **Boot**              | First-paint screen while the stage machine runs (`ui.stages`): product hero, a neutral indicator, consent for metered downloads, offline and blocked stops                                                                                                                          | progress · consent · fetching · offline · blocked · error                                                                                    | must     |
+| **Welcome**           | The gate's first screen: product hero, Sign in, Use a license key, and the extras the product supports (trial, restore purchase, activate offline)                                                                                                                                  | default · busy · capability-limited (only the paths the build supports, GO)                                                                  | must     |
+| **SignIn**            | Method chooser: the logo-only provider row (native Apple and Google behind it), passkey, email via the hosted card, Sign in on your phone or computer (SIGN-IN.md §5.1)                                                                                                             | default · busy · method error · no method enabled                                                                                            | must     |
+| **SignInHandoff**     | "Finish in your browser": the RFC 8628 user code, a QR, Open browser again, the countdown; moves on by itself                                                                                                                                                                       | starting · waiting · link copied · confirm · ok · denied · expired · cancelled                                                               | must     |
+| **Activate**          | License key entry with live verdict: the key field names the product and tier as soon as it parses, catches cut-short keys (EXPERIENCE P2), paste button, Return submits                                                                                                            | empty · typing · parsed · cut short · busy · rejected · device limit (hands to DeviceLimit) · done                                           | must     |
+| **OfflineActivation** | Request code (text + QR), load or drop a response file, paste box                                                                                                                                                                                                                   | default · loaded · rejected signature · done                                                                                                 | must     |
+| **DeviceLimit**       | The focused **Replace a device** flow (PORTAL §4.25; SIGN-IN.md §3.7, D-08): seat meter, devices as radio rows, least recent preselected, the "Replace <device>?" confirm, **Replace and continue**                                                                                 | default · busy · removed · failed · browser mode (opens `manageUrl`)                                                                         | must     |
+| **LicenseChoice**     | "Choose a license for this device" after a native sign-in (SIGN-IN.md §3.6; I-13 `choose`): license rows (tier pill with "{n} of {limit} devices" and a seat meter, or "Account-wide · unlimited devices"; SIGN-IN.md O-11), full licenses without a radio, inline Replace a device | loading · many · one · current · keep · new · create · all full · account-wide · mixed · replace open · raced · none (keys) · none (no keys) | must     |
+| **Devices**           | Device list: icon by form factor, friendly name, platform and last seen, "This device", rename (inline, not an always-open form, RE), Remove with an L1 inline confirm                                                                                                              | loading · list · renaming · confirming · empty · browser mode                                                                                | must     |
+| **UpdatePrompt**      | Available / downloading / ready / mandatory / blocked / store outlet, with notes and the right verb per outlet ("Update on the App Store", "Restart when ready", "Get it on Steam")                                                                                                 | available · downloading · ready · mandatory · blocked · store · platform · revoked-required-content · up to date                             | must     |
+| **UpdateProgress**    | Compact download and install progress for app updates and content packs: toast, pill, or inline row                                                                                                                                                                                 | queued · downloading · installing · paused (metered) · failed · done                                                                         | must     |
+| **ReleaseNotes**      | The changelog for one or many versions, from `ReleaseClient.changelog()`                                                                                                                                                                                                            | loading · list · empty · error                                                                                                               | must     |
+| **StatusScreen**      | Blocking states with their fix: revoked ("Use a different key", "Sign out"), expired ("Renew"), version too old ("Update"), too new, channel not entitled                                                                                                                           | one per state, each with a primary fix                                                                                                       | must     |
+| **GraceBanner**       | Offline grace: deadline and countdown, Reconnect, dismissible per session (the prop doc already promises it, RE)                                                                                                                                                                    | days left · last day · expired → StatusScreen                                                                                                | must     |
+| **AccountAndLicense** | The settings pane: product and tier, holder, Manage (portal), Devices, Cloud Sync status, Updates (automatic, channel, check now, version), managed settings, Sign out, Powered-by                                                                                                  | loading · signed in · key-only (no account) · offline                                                                                        | must     |
+| **Settings**          | Config-catalog-driven settings with typed controls (switch, slider, select, text), categories, search above 12 rows, provenance as text, locked rows "Set by <org>", reset                                                                                                          | loading · list · dirty · saving · locked · error                                                                                             | must     |
+| **Paywall**           | Entitlement-gated upsell: what a tier adds, purchase or redeem; StoreKit 2 views on Apple, Play Billing on Android, the portal elsewhere                                                                                                                                            | loading · offers · purchasing · purchased · restore · not available here                                                                     | must     |
+| **EntitlementGate**   | Renders children only when an entitlement holds; otherwise a slot or the Paywall                                                                                                                                                                                                    | entitled · not entitled · loading                                                                                                            | must     |
+| **CloudSyncStatus**   | A small status: synced time, syncing, conflict, offline; opens details                                                                                                                                                                                                              | synced · syncing · offline · conflict · error                                                                                                | should   |
+| **About**             | Product, version, build, licenses (OSS notices), the Powered-by badge, Copy diagnostics                                                                                                                                                                                             | default                                                                                                                                      | should   |
+| **ChannelPicker**     | Release channel choice, locked when the outlet fixes it                                                                                                                                                                                                                             | default · locked                                                                                                                             | should   |
+| **Toast**             | Bottom-right (bottom full width on phones), one line plus a consequence, ≤ 2 actions, 6 s with a visible timer, errors persist (EXPERIENCE §7)                                                                                                                                      | info · success · warning · error · with progress                                                                                             | must     |
 
 **Styled parts** shared by the screens, each exported on its own: `ProductHeader`, `KeyField`,
 `CodeDisplay` (user code + copy), `QrCode` (forced black on white, with a larger view), `SeatMeter`,
@@ -644,9 +647,10 @@ Mockups: [web](ui-kits/shots/web-gate-dark.png), [web 390](ui-kits/shots/web-gat
   way in the middle, keeping the prefix and the last six characters ("pkey_tidewater_7Q2M…3WPLDA"),
   because those are what people compare against the purchase email; the field scrolls to the caret
   while editing. A key wrapping mid-token inside a field reads as broken.
-- **Live verdict.** The key parses as you type: `pkey_<product>_<22>` puts a verdict under the field
-  ("✓ Tidewater Studio Pro · Lifetime · 3 devices", with only the icon in success colour), and the
-  product header gains the tier. A cut-short key gets "This key is cut short. After tidewater\_ come
+- **Live verdict.** The key parses as you type: `pkey_<product>_<22>` puts "Key for Tidewater Studio" under the
+  field from the prefix alone; the tier and terms ("✓ Tidewater Studio Pro · Lifetime · 3 devices",
+  with only the icon in success colour) and the header's tier follow the server's answer, never
+  before it (SIGN-IN.md D-20). A cut-short key gets "This key is cut short. After tidewater\_ come
   22 characters, and this has 10." Errors are inline under the field, `aria-invalid`, announced, and
   cleared on edit.
 - **Device limit is not an error string:** Activate hands off to **DeviceLimit** with the device
@@ -654,20 +658,43 @@ Mockups: [web](ui-kits/shots/web-gate-dark.png), [web 390](ui-kits/shots/web-gat
 
 #### SignIn and SignInHandoff
 
+> **Sign-in is specified in [SIGN-IN.md](SIGN-IN.md) (2026-10-05).** Its §5 matrix says which steps
+> a kit renders natively and which hand off to the browser, and its §5.2 holds the `signin.*` copy
+> keys. It supersedes this section, Welcome and Activate, and DeviceLimit where they differ, and
+> adds the **LicenseChoice** component (with **Replace a device**) used after a native sign-in.
+>
+> **Desktop kits** (macOS 15+ SwiftUI and AppKit, Compose Desktop, Qt Quick, Electron and Tauri,
+> Godot desktop, the terminals) follow SIGN-IN.md §3.17 and §4.15 (D-60–D-77, frames 23–34):
+>
+> - the Welcome window's chooser leads with **Continue in browser**, keeps the logo-only provider
+>   row as shortcuts, and has no passkey or "Sign in on your phone or computer" row (D-69);
+> - sign-in runs in the **default browser** with a loopback redirect (a registered scheme when the
+>   app cannot listen), and the window shows the waiting step in its desktop dialog: "Finish in
+>   your browser", **Open browser again**, **Cancel** and **Use a code instead** (D-61, D-62,
+>   D-66);
+> - **no QR on any desktop surface** (D-67): the code view shows the URL, the code with **Copy**
+>   and **Open browser**. That supersedes the QR line below for desktop sheets and the QR in the
+>   macOS `desktop-sign-in` mockup;
+> - the tab ends on the hosted desktop ReturnStep ("You can close this tab and return to <App>",
+>   no timer), and the app comes to the front with the toast "Signed in as <name> · <Tier>
+>   license" (D-63–D-65);
+> - sign-out is the platform dialog from Settings → Account (D-71), and an ended sign-in is a
+>   non-blocking banner while grace holds (D-72).
+
 Mockups: [web](ui-kits/shots/web-sign-in-light.png), [iOS](ui-kits/shots/ios-sign-in-dark.png),
 [Android](ui-kits/shots/android-sign-in-dark.png),
 [macOS](ui-kits/shots/desktop-sign-in-dark.png), [Godot TV](ui-kits/shots/godot-sign-in-dark.png),
 [terminal](ui-kits/shots/terminal-sign-in-dark.png).
 
-- **Methods** follow PORTAL §4.1's provider rules:
-  - **Sign in with Apple** whenever the product ships on Apple platforms, as the system
-    `SignInWithAppleButton` / `ASAuthorizationAppleIDButton` (App Review requires it);
-  - **a passkey** row;
-  - **Credential Manager first on Android** (passkey and Google accounts in one system sheet);
-  - Steam where the product sells on Steam;
-  - email through the hosted card (`ASWebAuthenticationSession` / Custom Tabs / the system
-    browser);
-  - **Use another device** (device code).
+- **Methods** follow PORTAL §4.1's provider rules and the owner's logo-only row (SIGN-IN.md D-21):
+  - the **provider row**: Apple, Google and Steam as the product ships, logo only, equal width, in
+    that order. Apple runs native `ASAuthorization` behind a logo-only button drawn to Apple's
+    logo-only guidelines (App Review 4.8 is met by equal prominence). Google runs through
+    Credential Manager on Android. Steam goes through the hosted card;
+  - **Sign in with a passkey** (the platform passkey sheet);
+  - **Continue with email** through the hosted card (`ASWebAuthenticationSession` / Custom Tabs /
+    the system browser);
+  - **Sign in on your phone or computer** (device code).
 
   The iOS method sheet is titled "Sign in to <Product>", with no second product icon and no X at
   the medium detent.
@@ -678,18 +705,19 @@ Mockups: [web](ui-kits/shots/web-sign-in-light.png), [iOS](ui-kits/shots/ios-sig
     everywhere:** two groups of four joined by a hyphen, `WDJB-MJHT`, exactly as the activate page
     asks for it. TV and handheld sizes only get larger type and tracking; the terminal shows the
     same string in reverse video. No spaced-out letters, no space in place of the hyphen;
-  - "Or go to key.plrs.im/activate", with copy;
+  - "Or go to key.plrs.im/device", with copy;
   - "Check the code there matches this one";
   - the determinate countdown ring with "code expires in 4:12";
   - **Open browser again** (primary) and **Cancel** (secondary).
 
-  The QR sits beside the code when the card is ≥ 560 px (desktop sheets, web), and behind "Scan with
-  your phone instead" when narrower. The screen moves on by itself.
+  The QR sits beside the code when the card is ≥ 560 px (web), and behind "Scan with your phone
+  instead" when narrower. **Desktop sheets, dialogs and terminals show no QR** (SIGN-IN.md D-67).
+  The screen moves on by itself.
 
 - **TV and consoles** (tvOS, Android TV, Godot on console or Steam Deck in game mode) open on the
   device-code path:
   - the product's `deviceCodeUrl`, or `key.plrs.im/tv`;
-  - the code as two groups of four, with a gap and no hyphen;
+  - the code as two groups of four joined by a hyphen, as everywhere (SIGN-IN.md D-17);
   - a QR tile in 92 % white with an 8 px quiet zone;
   - focusable **Use a license key instead** and **Cancel**, so the screen is never a dead end
     without B.
@@ -718,10 +746,11 @@ PORTAL §4.25 in every kit, top to bottom:
    (Mac mini, towers), tablet, phone, handheld; `laptop_windows`, `laptop_mac`, `desktop_mac`,
    `tablet_android` and `phone_android` in Material Symbols.
 6. Selection: `accent-subtle` plus one indicator (§1.5 rule 2).
-7. The consequence line, "<device> will need to sign in again."
-8. **Replace <device>** as the primary, after one confirm: "Replace <device>? It will need to sign
-   in again." On macOS it reads "Replace “<device>”". It stacks full width when the label runs past
-   half the row.
+7. The confirm block under the list follows the selection (SIGN-IN.md §3.7): "Replace <device>?",
+   then "<device> signs out of <Product> and <this device> takes its seat. <device> can sign in
+   again later if a seat is free."
+8. **Replace and continue** as the primary and **Back** (SIGN-IN.md D-08). On macOS the confirm
+   reads "Replace “<device>”?". The buttons stack full width when a label runs past half the row.
 
 **Naming and data source (owner decision, 2026-10-05).** The component is titled **Replace a
 device** in every kit, matching the sign-in card's inline Replace (`plans/I-04.md`, "Owner

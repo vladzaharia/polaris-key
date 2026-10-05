@@ -213,13 +213,23 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   — the downloads surface, gated by _three_ independent things at once: the portal's own
   `releasesEnabled` toggle, whether the product runs the Release service at all
   (`services_json`), and — for a `licensed`-access artifact — whether the account holds a usable
-  license for that product. Minting a token is refused up front if the artifact's stored source
-  URL is not a redirectable `https` GitHub-storage host and the file cannot be served from the
-  bytes host either (below), so nothing is ever minted that could only fail later. The listing itself omits `signature` and `checksum` artifacts (`.sig` and
-  `.sha256` sidecars): they are verification material, not downloads. As shipped, a download
-  therefore needs a signed-in account **and** a license for the product linked to it (a usable
-  one for `licensed` access); there is no anonymous path, and the redirect target is a
-  GitHub-storage host or this deployment's bytes host.
+  license for that product. Minting a token is refused up front when nothing can hand a browser
+  the bytes, so nothing is ever minted that could only fail later: a `public` file redirects to
+  Distribution's bytes host, which serves every location (R2, and GitHub through the Release
+  installation token, so a private repository's files too); any other file to its stored
+  GitHub-storage URL, and only when the repository is public (a private one answers an
+  anonymous browser with 404), or, when it has no GitHub-storage URL, to the bytes host with a
+  short-lived download ticket (below) when the deployment has tickets configured and the file a
+  recorded SHA-256. An account with no linked license for the product gets the same `404` for
+  every refusal; an owner is told why: `404 file_not_found` (the release or file is gone),
+  `403 license_inactive` or `403 not_entitled`, and `409 not_hosted` (nothing here serves it
+  yet), the same reasons the downloads view gives per file. Path segments are percent-decoded
+  once, so an id such as `file:App-1.0.dmg` matches whether or not the client encoded it. The
+  listing itself omits `signature` and `checksum` artifacts (`.sig` and `.sha256` sidecars): they
+  are verification material, not downloads. As shipped, a download therefore needs a signed-in
+  account **and** a license for the product linked to it (a usable one for `licensed` access);
+  there is no anonymous path, and the redirect target is always the bytes host or a
+  GitHub-storage host.
 - **`GET /api/products/<product>/downloads[?channel=<channel>]`** — one product's downloads and
   store links, shaped for the product page's "Get it" section. Answered only for an account with
   a license for the product linked to it, behind the same three gates as `GET /api/releases`
@@ -232,8 +242,9 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   every arch is, Apple silicon first on a Mac and the detected arch first when the browser said.
   Each file carries `canDownload` and, when false, a `reason`: `license_inactive` (no usable
   license), `not_entitled` (the license's channels or update window do not reach the release) or
-  `not_hosted` (covered, but nothing here can hand the bytes to a browser: no GitHub storage
-  URL and no bytes-host copy, or a licensed file on a deployment without download tickets). When the newest release is not
+  `not_hosted` (covered, but nothing here can hand the bytes to a browser: no bytes-host copy
+  and no GitHub storage URL in a public repository, or a licensed file on a deployment without
+  download tickets or whose only source is a private repository). When the newest release is not
   covered, the recommendation falls back to the newest one that is (`latest: false`). The
   product facts come from Distribution's `customerDownloads` hook, read through Core; whether the
   account may download is the same decision the token mint makes, so every file marked
@@ -243,8 +254,9 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   here, at redemption, not assumed to still hold from mint time — portal enabled, releases
   enabled, account active, license still linked, licensed access still held — and the token is
   spent with a single conditional `UPDATE … WHERE used_at IS NULL`, so two concurrent redemptions
-  of the same token cannot both win; exactly one sees the row change. The redirect goes to the
-  artifact's GitHub storage URL, or, for a `public` file, to its bytes-host URL. A non-public file
+  of the same token cannot both win; exactly one sees the row change. The redirect goes, for a
+  `public` file, to its bytes-host URL, otherwise to the artifact's GitHub storage URL when the
+  repository is public. A non-public file
   held only on R2 goes to its canonical bytes-host URL with a **download ticket** appended
   (`https://dl.plrs.im/<product>/distribution/files/<releaseId>/<name>?ticket=…`): minted only
   here, after every check, bound to that one file by name and SHA-256, valid for 120 seconds and
