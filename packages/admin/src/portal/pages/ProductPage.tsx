@@ -28,8 +28,10 @@ import {
   presentSections,
   readUaHints,
   resolveDevice,
+  seatLimitFor,
   SECTION_LABEL,
   seatsFor,
+  showsDeviceCount,
   withSeats,
 } from "../model/product.js";
 import {
@@ -119,6 +121,10 @@ function ProductBody({
     [product.downloads, device],
   );
   const pkg = usePackageAccess(product.slug, selected.id);
+  // Per-licence seat limits (PX-W1) from the same product view; the library only carries the
+  // best licence's.
+  const seatLimit = seatLimitFor(product, view.data, selected.id);
+  const showCount = showsDeviceCount(product, selected);
   const sections = presentSections(product, releasesOn, {
     packageAccess: pkg.data?.available === true,
   });
@@ -244,7 +250,7 @@ function ProductBody({
             <div className="order-2">
               <LicenseCard
                 product={product}
-                detail={detail.data}
+                detail={devicesDetail}
                 loading={detail.isPending}
                 error={detail.error}
                 onRetry={retry}
@@ -252,6 +258,8 @@ function ProductBody({
                 onSelect={(id) =>
                   setParams({ license: id === product.best.id ? null : id })
                 }
+                seatLimit={seatLimit}
+                showDeviceCount={showCount}
               />
             </div>
             {has("devices") ? (
@@ -259,13 +267,8 @@ function ProductBody({
                 <DevicesCard
                   productName={product.name}
                   emailConfigured={caps.auth.magic}
-                  seatLimit={
-                    seats
-                      ? seats.limit
-                      : selected.id === product.best.id
-                        ? product.seats?.limit
-                        : null
-                  }
+                  seatLimit={seatLimit}
+                  showCount={showCount}
                   detail={devicesDetail}
                   loading={detail.isPending || seatsPending}
                   error={detail.error}

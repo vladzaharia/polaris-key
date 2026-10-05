@@ -65,9 +65,17 @@ export function ProductStatusPill({
     </StatusPill>
   );
   if (!onArt) return pill;
+  // On art (issues only; healthy is silence, UX-03): a solid plate the pill sits in, made tall
+  // enough to give the word room (owner, fix/portal-discover-dedupe-icon).
   return (
-    <span className="inline-flex rounded-full bg-surface-overlay shadow-elevation-2">
-      {pill}
+    <span className="inline-flex h-8 items-center rounded-full bg-surface-overlay shadow-elevation-2">
+      <StatusPill
+        tone={status.tone}
+        icon={ICON[status.kind]}
+        className={cn("h-8 px-3.5 font-bold", className)}
+      >
+        {status.label}
+      </StatusPill>
     </span>
   );
 }

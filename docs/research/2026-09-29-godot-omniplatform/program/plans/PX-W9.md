@@ -43,14 +43,14 @@ field is empty only without one.
 
 ## Owner decision (2026-10-05): licence choice at sign-in
 
-The owner decided on 2026-10-05 that sign-in shows a **Choose a licence for this device** step and
+The owner decided on 2026-10-05 that sign-in shows a **Choose a license for this device** step and
 can replace a device inline. The full text is in [`plans/I-04.md`](I-04.md), "Owner decision
 (2026-10-05): licence choice at sign-in". **Effect on this plan:** none on the wire or on the
 counter. These rules are added to §12.2's list of things that never count:
 
 - choosing a licence at sign-in;
-- **Keep the licence this device uses**;
-- **Create a new free licence**;
+- **Keep the license this device uses**;
+- **Create a new free license**;
 - replacing a device from the card.
 
 A licence added through the card's KeyStep counts once, as a `portal` submission (D20), exactly as

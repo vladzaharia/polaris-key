@@ -66,7 +66,7 @@ describe("portal shell and data layer (PX-01)", () => {
       screen.getByRole("button", { name: "Activate license" }),
     ).toBeTruthy();
     expect(
-      screen.getByRole("button", { name: `Account: ${ACCOUNT.email}` }),
+      screen.getByRole("button", { name: `Account: ${ACCOUNT.name}` }),
     ).toBeTruthy();
     expect(document.title).toBe("Library · Polaris Key");
     // Never "Polaris Key Portal".

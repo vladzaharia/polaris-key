@@ -8,6 +8,7 @@ import { mediaResponseHeaders } from "../../worker/src/services/identity/portal/
 import {
   portalMedia,
   portalRoutes,
+  type Handler,
   type PortalScenario,
 } from "./portalFixtures.js";
 
@@ -63,7 +64,13 @@ interface Opened {
 async function open(
   scenario: PortalScenario,
   path: string,
-  opts: { theme?: "dark" | "light"; width?: number; height?: number } = {},
+  opts: {
+    theme?: "dark" | "light";
+    width?: number;
+    height?: number;
+    /** Replies that replace the scenario's own for these routes. */
+    routes?: Record<string, Handler>;
+  } = {},
 ): Promise<Opened> {
   const theme = opts.theme ?? "dark";
   const ctx = await browser.newContext({
@@ -79,7 +86,7 @@ async function open(
       ),
     );
   }, theme);
-  const routes = portalRoutes(scenario);
+  const routes = { ...portalRoutes(scenario), ...opts.routes };
   const requests: string[] = [];
   await ctx.route("**/*", async (route) => {
     const req = route.request();
@@ -205,6 +212,60 @@ const SCREENS: {
     ready: (p) => h1(p, "Nightfall"),
   },
   {
+    // No art at all: the letter tile alone beside the name, no banner.
+    name: "product-no-cover",
+    scenario: "twelve",
+    path: "/#/p/hollow-pines",
+    ready: (p) => h1(p, "Hollow Pines"),
+  },
+  {
+    // Cover art and no icon: the letter tile in front of the cover.
+    name: "product-no-icon",
+    scenario: "twelve",
+    path: "/#/p/glyphsmith",
+    ready: (p) => h1(p, "Glyphsmith"),
+  },
+  {
+    // Account-wide: the Standard pill with "Account-wide · 1 of 5 devices", and its devices.
+    name: "product-account-wide",
+    scenario: "accountWide",
+    path: "/#/p/quill",
+    ready: async (p) => {
+      await h1(p, "Quill");
+      await p.getByText("Account-wide · 1 of 5 devices").waitFor();
+      await p.getByText("Living room PC").first().waitFor();
+    },
+  },
+  {
+    // Held by key and account-wide: the key licence drops its counter, keeps its devices.
+    name: "product-both-key",
+    scenario: "accountWide",
+    path: "/#/p/drift-kart",
+    ready: async (p) => {
+      await h1(p, "Drift Kart");
+      await p.getByText("Activated").first().waitFor();
+      await p
+        .getByRole("button", { name: /^Remove / })
+        .first()
+        .waitFor();
+    },
+  },
+  {
+    name: "product-both-account-wide",
+    scenario: "accountWide",
+    path: "/#/p/drift-kart?license=lic_drift-kart-acct",
+    ready: async (p) => {
+      await h1(p, "Drift Kart");
+      await p.getByText("Account-wide · 1 of 3 devices").waitFor();
+    },
+  },
+  {
+    name: "library-account-wide",
+    scenario: "accountWide",
+    path: "/#/?view=list",
+    ready: (p) => h1(p, "Your library"),
+  },
+  {
     name: "product-not-found",
     scenario: "three",
     path: "/#/p/unknown-thing",
@@ -274,6 +335,234 @@ describe("the customer site under the Worker's CSP", () => {
       }
     });
   }
+});
+
+/** What paints at the middle of the icon's top quarter, the part that overlaps the cover. */
+async function iconOnTop(
+  page: Page,
+): Promise<{ overlaps: boolean; onTop: boolean }> {
+  return page.evaluate(() => {
+    const header = document.querySelector("[data-cover]")!;
+    const icon = header.querySelector<HTMLElement>("[data-art]")!;
+    const banner = header.previousElementSibling as HTMLElement | null;
+    const r = icon.getBoundingClientRect();
+    const x = r.left + r.width / 2;
+    const y = r.top + r.height / 4;
+    const b = banner?.getBoundingClientRect();
+    return {
+      overlaps: !!b && r.top < b.bottom && r.bottom > b.bottom,
+      onTop: document.elementFromPoint(x, y) === icon,
+    };
+  });
+}
+
+describe("product header: the icon in front of the cover (§4.20)", () => {
+  for (const [slug, scenario, name] of [
+    ["nightfall", "three", "Nightfall"],
+    ["glyphsmith", "twelve", "Glyphsmith"],
+  ] as const) {
+    it(`${name}: the icon overlaps the cover's lower edge and paints over it, both themes, 1440, 1280 and 390`, async () => {
+      for (const theme of ["dark", "light"] as const) {
+        for (const width of [1440, 1280, 390]) {
+          const o = await open(scenario, `/#/p/${slug}`, {
+            theme,
+            width,
+            height: width === 390 ? 844 : 900,
+          });
+          await h1(o.page, name);
+          expect(await o.page.getAttribute("[data-cover]", "data-cover")).toBe(
+            "image",
+          );
+          expect(await iconOnTop(o.page), `${theme} ${width}`).toEqual({
+            overlaps: true,
+            onTop: true,
+          });
+          const art = await o.page.evaluate(() => {
+            const header = document.querySelector("[data-cover]")!;
+            const icon = header.querySelector<HTMLElement>("[data-art]")!;
+            const s = getComputedStyle(icon);
+            const banner =
+              header.previousElementSibling!.getBoundingClientRect();
+            return {
+              image: icon.tagName === "IMG",
+              frame:
+                icon.tagName === "IMG"
+                  ? [
+                      s.backgroundColor,
+                      s.borderTopWidth,
+                      s.borderTopLeftRadius,
+                      s.padding,
+                    ]
+                  : null,
+              ratio: banner.width / banner.height,
+              height: banner.height,
+            };
+          });
+          // An icon image is its own frame: no tile background, border, radius or padding.
+          if (art.image)
+            expect(art.frame).toEqual([
+              "rgba(0, 0, 0, 0)",
+              "0px",
+              "0px",
+              "0px",
+            ]);
+          // 16:9 on phones; a 3:1 band, at most 416 px tall, on desktop.
+          if (width === 390) expect(art.ratio).toBeCloseTo(16 / 9, 1);
+          else {
+            expect(art.height).toBeLessThanOrEqual(416.5);
+            expect(art.ratio).toBeGreaterThanOrEqual(2.9);
+          }
+          await shoot(o.page, `header-${slug}-${width}-${theme}`);
+          await o.close();
+        }
+      }
+    });
+  }
+
+  it("without a cover the icon stands alone beside the name, with no letter banner", async () => {
+    for (const width of [1440, 390]) {
+      const o = await open("twelve", "/#/p/hollow-pines", { width });
+      await h1(o.page, "Hollow Pines");
+      expect(await o.page.getAttribute("[data-cover]", "data-cover")).toBe(
+        "none",
+      );
+      const box = await o.page.evaluate(() => {
+        const header = document.querySelector("[data-cover]")!;
+        const icon = header
+          .querySelector("[data-art]")!
+          .getBoundingClientRect();
+        const h = header.querySelector("h1")!.getBoundingClientRect();
+        return {
+          banners: document.querySelectorAll(
+            "main [data-art='fallback'].aspect-video",
+          ).length,
+          beside: h.left >= icon.right,
+          letter: header.querySelector("[data-art]")!.textContent,
+        };
+      });
+      expect(box).toEqual({ banners: 0, beside: true, letter: "H" });
+      await o.close();
+    }
+  });
+});
+
+describe("library cards: 16:9 art, the status inset on its plate, no byline", () => {
+  for (const [scenario, path] of [
+    ["three", "/"],
+    ["twelve", "/#/?view=grid"],
+  ] as const) {
+    it(`${scenario}: both themes at 1440, 1280 and 390`, async () => {
+      for (const theme of ["dark", "light"] as const) {
+        for (const width of [1440, 1280, 390]) {
+          const o = await open(scenario, path, {
+            theme,
+            width,
+            height: width === 390 ? 844 : 900,
+          });
+          await h1(o.page, "Your library");
+          await o.page.getByRole("article", { name: "Nightfall" }).waitFor();
+          // Both icons decoded, so their shape is read.
+          await expect
+            .poll(() =>
+              o.page.evaluate(() =>
+                ["nightfall", "tidewater"].every((p) => {
+                  const i = document.querySelector<HTMLImageElement>(
+                    `article[aria-labelledby='tile-${p}'] img[data-art]`,
+                  );
+                  return !!i && i.complete && i.naturalWidth > 0;
+                }),
+              ),
+            )
+            .toBe(true);
+          const card = await o.page.evaluate(() => {
+            const article = [...document.querySelectorAll("article")].find(
+              (a) => a.getAttribute("aria-labelledby") === "tile-nightfall",
+            )!;
+            const art = article.querySelector<HTMLElement>("[data-art]")!;
+            // Healthy is silence on art (UX-03): Nightfall has no plate; the issue plate
+            // (owner's padding) is measured on Ember Tactics, which has expired.
+            const emberArt = document.querySelector<HTMLElement>(
+              "article[aria-labelledby='tile-ember-tactics'] [data-art]",
+            )!;
+            const plate = emberArt.querySelector<HTMLElement>("span.absolute")!;
+            const a = art.getBoundingClientRect();
+            const e = emberArt.getBoundingClientRect();
+            const p = plate.getBoundingClientRect();
+            const pill = plate.firstElementChild!.getBoundingClientRect();
+            const icon = article.querySelector<HTMLElement>("img[data-art]")!;
+            const s = getComputedStyle(icon);
+            // A full-bleed square icon (Tidewater's) gets the store's corner mask, nothing more.
+            const square = document.querySelector<HTMLElement>(
+              "article[aria-labelledby='tile-tidewater'] img[data-art]",
+            )!;
+            const q = getComputedStyle(square);
+            return {
+              ratio: a.width / a.height,
+              healthyPlate:
+                (art.querySelector("span.absolute")?.childElementCount ?? 0) >
+                0,
+              insetRight: e.right - p.right,
+              insetBottom: e.bottom - p.bottom,
+              plateHeight: pill.height,
+              byline: article.textContent!.includes("Lanternworks"),
+              iconFrame: [
+                s.backgroundColor,
+                s.borderTopWidth,
+                s.borderTopLeftRadius,
+              ],
+              shapes: [icon.dataset.shape, square.dataset.shape],
+              squareFrame: [q.backgroundColor, q.borderTopWidth],
+              squareRadius: parseFloat(q.borderTopLeftRadius),
+            };
+          });
+          expect(card.ratio, `${scenario} ${theme} ${width}`).toBeCloseTo(
+            16 / 9,
+            1,
+          );
+          expect(card.insetRight).toBeGreaterThanOrEqual(16);
+          expect(card.healthyPlate).toBe(false);
+          expect(card.insetBottom).toBeGreaterThanOrEqual(16);
+          expect(card.insetRight).toBe(card.insetBottom);
+          expect(card.plateHeight).toBeGreaterThanOrEqual(32);
+          expect(card.byline).toBe(false);
+          expect(card.iconFrame).toEqual(["rgba(0, 0, 0, 0)", "0px", "0px"]);
+          expect(card.shapes).toEqual(["shaped", "square"]);
+          expect(card.squareFrame).toEqual(["rgba(0, 0, 0, 0)", "0px"]);
+          expect(card.squareRadius).toBeGreaterThan(0);
+          await shoot(o.page, `cards-${scenario}-${width}-${theme}`);
+          await o.close();
+        }
+      }
+    });
+  }
+});
+
+describe("Discover count (G24): never counts what the library holds", () => {
+  it("count 0 hides the nav pill and the phone bar's dot, and the library's Discover line", async () => {
+    const library = (
+      portalRoutes("three")["/api/library"] as () => {
+        body: { products: unknown[] };
+      }
+    )().body;
+    for (const width of [1440, 390]) {
+      const o = await open("three", "/", {
+        width,
+        routes: {
+          "/api/library": { body: { ...library, discoverCount: 0 } },
+        },
+      });
+      await h1(o.page, "Your library");
+      const nav = o.page.getByRole("navigation", {
+        name: width === 390 ? "Phone" : "Main",
+      });
+      const discover = nav.getByRole("link", { name: /Discover/ });
+      await discover.waitFor();
+      expect((await discover.innerText()).trim()).toBe("Discover");
+      expect(await discover.locator("span.rounded-full").count()).toBe(0);
+      expect(await o.page.getByText(/in Discover/).count()).toBe(0);
+      await o.close();
+    }
+  });
 });
 
 describe("Library on GET /api/library (PX-08)", () => {
@@ -464,6 +753,52 @@ describe("main flows", () => {
     expect(o.requests.some((r) => r.startsWith("DELETE /api/licenses/"))).toBe(
       true,
     );
+    expect(await o.violations()).toEqual([]);
+    await o.close();
+  });
+
+  it("an account-wide licence lists its devices and removes one remotely", async () => {
+    const o = await open("accountWide", "/#/p/quill/devices");
+    await h1(o.page, "Quill");
+    await o.page.getByText("Account-wide · 1 of 5 devices").waitFor();
+    await o.page
+      .getByRole("button", { name: "Remove Living room PC" })
+      .first()
+      .click();
+    await o.page
+      .getByRole("heading", { name: "Remove Living room PC?" })
+      .waitFor();
+    await o.page
+      .getByRole("button", { name: "Remove Living room PC", exact: true })
+      .last()
+      .click();
+    await o.page.getByText("Living room PC was removed").first().waitFor();
+    expect(
+      o.requests.some(
+        (r) => r === "DELETE /api/licenses/quill/lic_quill/devices/quill-tv",
+      ),
+    ).toBe(true);
+    expect(await o.violations()).toEqual([]);
+    await o.close();
+  });
+
+  it("with a key and an account-wide licence, the key licence hides its counter", async () => {
+    const o = await open("accountWide", "/#/p/drift-kart");
+    await h1(o.page, "Drift Kart");
+    const card = o.page.getByRole("region", { name: "Drift Kart license" });
+    await card.getByText("Activated").waitFor();
+    const picker = card.getByRole("combobox");
+    expect((await picker.locator("option").allTextContents()).sort()).toEqual([
+      "Standard · Account-wide",
+      "Standard · Key",
+    ]);
+    expect(await card.getByText(/\d+ (of \d+ )?devices?$/).count()).toBe(0);
+    const devices = o.page.getByRole("region", { name: "Devices" });
+    await devices.getByText("Mara's MacBook Pro").waitFor();
+    expect(await devices.getByText(/in use/).count()).toBe(0);
+    await picker.selectOption({ label: "Standard · Account-wide" });
+    await card.getByText("Account-wide · 1 of 3 devices").waitFor();
+    await devices.getByText("Mara's Steam Deck").waitFor();
     expect(await o.violations()).toEqual([]);
     await o.close();
   });

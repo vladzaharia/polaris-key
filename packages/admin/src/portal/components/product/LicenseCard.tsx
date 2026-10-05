@@ -3,20 +3,29 @@ import { Info } from "lucide-react";
 import { Skeleton } from "../../../ui/Skeleton.js";
 import type { PortalLicenseDetail } from "../../api.js";
 import type { LibraryProduct } from "../../model/library.js";
-import { formatDay, licenseStatus, tierLabel } from "../../model/library.js";
-import { coversVersions } from "../../model/product.js";
+import { formatDay, licenseStatus } from "../../model/library.js";
+import {
+  coversVersions,
+  licenseCountLine,
+  licenseOptionLabel,
+  tierName,
+} from "../../model/product.js";
+import { StatusPill } from "../../../ui/StatusPill.js";
 import { KeyMask } from "../KeyMask.js";
 import { isIssueStatus, ProductStatusPill } from "../ProductStatus.js";
 import { ErrorPanel } from "../States.js";
 import { SectionCard } from "./Card.js";
 
 /**
- * The License card (§4.20): the facts as text (tier, updates, versions, activation, offline
- * days), the masked key and what the license includes as a plain list. The status shows once,
+ * The License card (§4.20): the tier as a neutral pill with the device count beside it, the
+ * facts as text (updates, versions, activation, offline days), the masked key and what the license includes as a plain list. The status shows once,
  * in the header (EXPERIENCE §0.6 P4): this card adds an issue pill only when the license it
  * describes has a different issue from the one the header shows. With
  * several licenses for the product, a switcher ("2 licenses · Pro, Edu") picks the one this
- * card, Devices and Package access describe. Get a new key waits for G7.
+ * card, Devices and Package access describe; each option names the tier and how the licence is
+ * held ("Pro · Key", "Standard · Account-wide"). The tier is a neutral pill with the device count
+ * beside it ("0 of 5 devices", "Account-wide · 1 of 5 devices"; owner, 2026-10-05). Get a new key
+ * waits for G7.
  */
 export function LicenseCard({
   product,
@@ -26,6 +35,8 @@ export function LicenseCard({
   onRetry,
   selectedId,
   onSelect,
+  seatLimit = null,
+  showDeviceCount = true,
 }: {
   product: LibraryProduct;
   detail: PortalLicenseDetail | undefined;
@@ -34,6 +45,10 @@ export function LicenseCard({
   onRetry: () => void;
   selectedId: string;
   onSelect: (id: string) => void;
+  /** The selected licence's seat limit as activation enforces it; null when unknown. */
+  seatLimit?: number | null;
+  /** False on a key licence when an account-wide one covers the product's devices. */
+  showDeviceCount?: boolean;
 }): React.ReactElement {
   const now = Math.floor(Date.now() / 1000);
   const switcherId = React.useId();
@@ -57,9 +72,7 @@ export function LicenseCard({
         <div className="mb-4 space-y-1">
           <label htmlFor={switcherId} className="text-sm text-fg-muted">
             {product.licenses.length} licenses ·{" "}
-            {product.licenses
-              .map((l) => tierLabel(l.tier) ?? "Standard")
-              .join(", ")}
+            {product.licenses.map((l) => tierName(l)).join(", ")}
           </label>
           <select
             id={switcherId}
@@ -69,8 +82,7 @@ export function LicenseCard({
           >
             {product.licenses.map((l) => (
               <option key={l.id} value={l.id}>
-                {tierLabel(l.tier) ?? "Standard"} ·{" "}
-                {licenseStatus(l, now).label}
+                {licenseOptionLabel(l, licenseStatus(l, now))}
               </option>
             ))}
           </select>
@@ -88,7 +100,13 @@ export function LicenseCard({
           className="border-0 p-0 shadow-none"
         />
       ) : (
-        <LicenseFacts product={product} detail={detail} now={now} />
+        <LicenseFacts
+          product={product}
+          detail={detail}
+          now={now}
+          seatLimit={seatLimit}
+          showDeviceCount={showDeviceCount}
+        />
       )}
     </SectionCard>
   );
@@ -98,16 +116,21 @@ function LicenseFacts({
   product,
   detail,
   now,
+  seatLimit,
+  showDeviceCount,
 }: {
   product: LibraryProduct;
   detail: PortalLicenseDetail;
   now: number;
+  seatLimit: number | null;
+  showDeviceCount: boolean;
 }): React.ReactElement {
   const status = licenseStatus(detail, now);
-  const tier = tierLabel(detail.tier);
+  const inUse = detail.devices.filter((d) => d.status === "authorized").length;
+  const countLine = licenseCountLine(detail, inUse, seatLimit, showDeviceCount);
   const updates =
     detail.expiresAt === null
-      ? "For life"
+      ? "Lifetime"
       : detail.expiresAt <= now
         ? `Ended ${formatDay(detail.expiresAt)}`
         : `Until ${formatDay(detail.expiresAt)}`;
@@ -117,6 +140,15 @@ function LicenseFacts({
   const includedId = React.useId();
   return (
     <div className="space-y-5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        {/* The tier is an identity label, not a status: a quiet neutral pill (owner, 2026-10-05). */}
+        <StatusPill tone="neutral" icon={false}>
+          {tierName(detail)}
+        </StatusPill>
+        {countLine ? (
+          <span className="text-sm text-fg-strong">{countLine}</span>
+        ) : null}
+      </div>
       {status.kind === "expired" || status.kind === "suspended" ? (
         <p className="rounded-lg border border-danger-border bg-danger-subtle p-3 text-sm text-fg">
           {status.kind === "expired"
@@ -125,12 +157,6 @@ function LicenseFacts({
         </p>
       ) : null}
       <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
-        {tier ? (
-          <div>
-            <dt className="text-xs text-fg-muted">Tier</dt>
-            <dd className="mt-0.5 text-fg-strong">{tier}</dd>
-          </div>
-        ) : null}
         <div>
           <dt className="text-xs text-fg-muted">Updates included</dt>
           <dd className="mt-0.5 text-fg-strong">{updates}</dd>

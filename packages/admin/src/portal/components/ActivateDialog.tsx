@@ -452,7 +452,9 @@ function ConfirmStep({
             tint={null}
             src={p.iconUrl}
             size={64}
-            className="relative -mt-8 ml-4 border-[3px] border-surface-overlay shadow-elevation-2"
+            lift
+            className="relative -mt-8 ml-4"
+            tileClassName="border-[3px] border-surface-overlay"
           />
         </div>
         <p className="flex items-center gap-2 text-sm text-fg-muted">

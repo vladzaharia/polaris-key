@@ -12,6 +12,15 @@
 | Human input | none                                                                                             |
 | Repo        | `vladzaharia/polaris-key`                                                                        |
 
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- Portal docs: Account-wide licences ("unlimited devices", Devices with Remove), the tier pill and "Lifetime", Replace a device from sign-in vs Remove in the portal (SIGN-IN.md D-08, O-11).
+
 ## Goal
 
 The docs describe the redesigned Polaris Key customer site: naming, Library and Discover, Activate license, sign-in methods and Cloud Sync for end users; listing art and app branding data for developers; ADMIN.md's portal parts are marked superseded by PORTAL.md.

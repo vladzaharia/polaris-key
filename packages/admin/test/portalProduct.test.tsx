@@ -12,6 +12,7 @@ import {
   detail,
   device,
   fetchedRequests,
+  libraryFor,
   license,
   mockFetch,
   NOW_S,
@@ -148,12 +149,64 @@ describe("product page on today's data (PX-04)", () => {
     expect(await axeViolations()).toEqual([]);
   });
 
+  it("puts the icon in front of the cover, and stands it alone without one (§4.20)", async () => {
+    const item = (over: Record<string, unknown>) =>
+      routes({
+        "/api/library": libraryFor([nightfall], undefined, over),
+      });
+    // No cover: no banner, the letter tile beside the name.
+    mockFetch(item({}));
+    renderPortal();
+    await page();
+    let header = document.querySelector("[data-cover]")!;
+    expect(header.getAttribute("data-cover")).toBe("none");
+    expect(header.previousElementSibling?.getAttribute("data-art")).toBeNull();
+    expect(header.querySelector("[data-art]")!.textContent).toBe("N");
+    cleanup();
+
+    // A cover and an icon: the banner, then the icon tile stacked in front of it.
+    mockFetch(
+      item({
+        iconUrl: "/media/nightfall/icon?v=1",
+        headerUrl: "/media/nightfall/header?v=1",
+      }),
+    );
+    renderPortal();
+    await page();
+    header = document.querySelector("[data-cover]")!;
+    expect(header.getAttribute("data-cover")).toBe("image");
+    expect(header.previousElementSibling?.getAttribute("data-art")).toBe(
+      "image",
+    );
+    const icon = header.querySelector("img[data-art]")!;
+    expect(icon.className).toMatch(/\brelative\b/);
+    expect(icon.className).toMatch(/\bz-10\b/);
+    expect(icon.className).toMatch(/-mt-/);
+    cleanup();
+
+    // A cover and no icon: the letter tile in front of the cover.
+    mockFetch(item({ headerUrl: "/media/nightfall/header?v=1" }));
+    renderPortal();
+    await page();
+    header = document.querySelector("[data-cover]")!;
+    expect(header.getAttribute("data-cover")).toBe("image");
+    const tile = header.querySelector("[data-art='fallback']")!;
+    expect(tile.textContent).toBe("N");
+    expect(tile.className).toMatch(/\bz-10\b/);
+  });
+
   it("shows the license facts, the masked key and what it includes", async () => {
     mockFetch(routes());
     renderPortal();
     await page();
     const card = screen.getByRole("region", { name: "Nightfall license" });
-    expect(within(card).getByText("For life")).toBeTruthy();
+    expect(within(card).getByText("Lifetime")).toBeTruthy();
+    expect(within(card).queryByText("For life")).toBeNull();
+    // The tier is a neutral pill with the device count beside it.
+    const tier = within(card).getByText("Deluxe").closest("[data-status]")!;
+    expect(tier.getAttribute("data-status")).toBe("pill");
+    expect(tier.getAttribute("data-tone")).toBe("neutral");
+    expect(within(card).getByText("2 devices")).toBeTruthy();
     expect(within(card).getByText("Up to 1.x")).toBeTruthy();
     expect(within(card).getByText("30 days")).toBeTruthy();
     expect(
@@ -173,9 +226,11 @@ describe("product page on today's data (PX-04)", () => {
     // Healthy is silence: no "Active" pill in the header or on the License card.
     expect(within(screen.getByRole("main")).queryByText("Active")).toBeNull();
     const card = screen.getByRole("region", { name: "Nightfall license" });
-    const tier = within(card).getByText("Tier");
-    expect(tier.tagName).toBe("DT");
-    expect(tier.nextElementSibling?.textContent).toBe("Deluxe");
+    // The tier is a neutral pill on the License card (owner, 2026-10-05, overriding UX-03's
+    // "tier as text" for this card only); the facts stay as text.
+    expect(within(card).getByText("Deluxe")).toBeTruthy();
+    expect(within(card).queryByText("Tier")).toBeNull();
+    expect(within(card).getByText("Updates included").tagName).toBe("DT");
     const included = within(card).getByRole("list", { name: "Included" });
     expect(
       within(included)
@@ -206,7 +261,7 @@ describe("product page on today's data (PX-04)", () => {
     const card = await screen.findByRole("region", {
       name: "Nightfall license",
     });
-    await within(card).findByText("Tier");
+    await within(card).findByText("Updates included");
     expect(within(h1.parentElement!).getByText("Expired")).toBeTruthy();
     expect(within(card).queryByText("Expired")).toBeNull();
   });
@@ -537,7 +592,51 @@ describe("product page on today's data (PX-04)", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("an account-bound product has no Devices section", async () => {
+  it("an account-wide licence: Standard pill, Account-wide beside it, and its devices with Remove", async () => {
+    window.history.replaceState(null, "", "/#/p/quill");
+    const quill = license({
+      product: "quill",
+      identityProvider: "oidc",
+      keyCount: 0,
+      activeKeyCount: 0,
+    });
+    const removed: string[] = [];
+    mockFetch(
+      signedIn([quill], {
+        "/api/licenses/quill/lic_quill": detail(quill, {
+          keys: [],
+          devices: [device({ deviceId: "q1", label: "Living room PC" })],
+        }),
+        "/api/products/quill": productView("quill", [
+          { id: "lic_quill", deviceLimit: 5 },
+        ]),
+        "DELETE /api/licenses/quill/lic_quill/devices/q1": () => {
+          removed.push("q1");
+          return { ok: true, deviceId: "q1" };
+        },
+      }),
+    );
+    renderPortal();
+    await screen.findByRole("heading", { level: 1, name: "Quill" });
+    const card = await screen.findByRole("region", { name: "Quill license" });
+    await within(card).findByText("Account-wide · 1 of 5 devices");
+    expect(within(card).getByText("Standard")).toBeTruthy();
+    expect(screen.queryByText("Signed-in app")).toBeNull();
+    expect(screen.queryByText(/any device/i)).toBeNull();
+    const devices = screen.getByRole("region", { name: "Devices" });
+    expect(within(devices).getByText(/of 5 devices/)).toBeTruthy();
+    await userEvent.click(
+      within(devices).getByRole("button", { name: "Remove Living room PC" }),
+    );
+    expect(within(devices).getByText(/asks you to sign in again/)).toBeTruthy();
+    await userEvent.click(
+      within(devices).getByRole("button", { name: "Remove Living room PC" }),
+    );
+    await waitFor(() => expect(removed).toEqual(["q1"]));
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("an account-wide licence never claims a limit it doesn't know", async () => {
     window.history.replaceState(null, "", "/#/p/quill");
     const quill = license({
       product: "quill",
@@ -547,16 +646,94 @@ describe("product page on today's data (PX-04)", () => {
     });
     mockFetch(
       signedIn([quill], {
-        "/api/licenses/quill/lic_quill": detail(quill, {
-          keys: [],
-          devices: [],
-        }),
+        "/api/licenses/quill/lic_quill": detail(quill, { keys: [] }),
       }),
     );
     renderPortal();
-    await screen.findByRole("heading", { level: 1, name: "Quill" });
-    expect(screen.getAllByText("Signed-in app").length).toBeGreaterThan(0);
-    expect(screen.queryByRole("region", { name: "Devices" })).toBeNull();
+    const card = await screen.findByRole("region", { name: "Quill license" });
+    await within(card).findByText("Activated");
+    expect(within(card).getByText("Account-wide")).toBeTruthy();
+    expect(within(card).queryByText(/of \d+ devices?/)).toBeNull();
+  });
+
+  describe("a key licence and an account-wide licence for one product", () => {
+    const key = license({
+      product: "quill",
+      id: "lic_key",
+      activatedAt: NOW_S - 60 * DAY,
+    });
+    const acct = license({
+      product: "quill",
+      id: "lic_acct",
+      identityProvider: "oidc",
+      keyCount: 0,
+      activeKeyCount: 0,
+    });
+    const both = (extra = {}) =>
+      signedIn([key, acct], {
+        "/api/licenses/quill/lic_key": detail(key, {
+          devices: [device({ deviceId: "k1", label: "Studio Mac" })],
+        }),
+        "/api/licenses/quill/lic_acct": detail(acct, {
+          keys: [],
+          devices: [device({ deviceId: "a1", label: "Living room PC" })],
+        }),
+        "/api/products/quill": productView("quill", [
+          { id: "lic_acct", deviceLimit: 5 },
+          { id: "lic_key", deviceLimit: 3 },
+        ]),
+        ...extra,
+      });
+
+    it("names each licence by tier and how it's held in the picker", async () => {
+      window.history.replaceState(null, "", "/#/p/quill");
+      mockFetch(both());
+      renderPortal();
+      const card = await screen.findByRole("region", { name: "Quill license" });
+      const picker = within(card).getByRole("combobox");
+      const options = within(picker)
+        .getAllByRole("option")
+        .map((o) => o.textContent);
+      expect(options.sort()).toEqual([
+        "Standard · Account-wide",
+        "Standard · Key",
+      ]);
+    });
+
+    it("the key licence hides its device counter but keeps the device list", async () => {
+      window.history.replaceState(null, "", "/#/p/quill?license=lic_key");
+      mockFetch(both());
+      renderPortal();
+      const card = await screen.findByRole("region", { name: "Quill license" });
+      await within(card).findByText("Activated");
+      expect(within(card).getByText("Standard")).toBeTruthy();
+      expect(within(card).queryByText(/devices?$/)).toBeNull();
+      const devices = screen.getByRole("region", { name: "Devices" });
+      await within(devices).findByText("Studio Mac");
+      expect(within(devices).queryByText(/in use/)).toBeNull();
+      expect(
+        within(devices).queryByRole("img", { name: /devices? in use/ }),
+      ).toBeNull();
+      await userEvent.click(
+        within(devices).getByRole("button", { name: "Remove Studio Mac" }),
+      );
+      expect(
+        within(devices).getByText("Its seat is free straight away."),
+      ).toBeTruthy();
+    });
+
+    it("the account-wide licence keeps its counter", async () => {
+      window.history.replaceState(null, "", "/#/p/quill?license=lic_acct");
+      mockFetch(both());
+      renderPortal();
+      const card = await screen.findByRole("region", { name: "Quill license" });
+      await within(card).findByText("Account-wide · 1 of 5 devices");
+      const devices = screen.getByRole("region", { name: "Devices" });
+      await within(devices).findByText("Living room PC");
+      expect(
+        within(devices).getByRole("img", { name: "1 of 5 devices in use" }),
+      ).toBeTruthy();
+    });
   });
 });
 
@@ -724,3 +901,38 @@ describe("product page correctness (UX-04)", () => {
     ).toBeTruthy();
   });
 });
+
+/** A minimal `GET /api/products/<p>`: the per-licence seat limits the product page reads. */
+function productView(
+  product: string,
+  licenses: { id: string; deviceLimit: number }[],
+) {
+  return {
+    product,
+    name: product,
+    developerName: null,
+    tintColor: null,
+    website: null,
+    iconUrl: null,
+    headerUrl: null,
+    support: null,
+    services: { license: true },
+    status: "active",
+    addedAt: NOW_S - 30 * DAY,
+    licenses: licenses.map((l) => ({
+      id: l.id,
+      tier: null,
+      status: "active",
+      licenseStatus: "active",
+      activatedAt: NOW_S - 30 * DAY,
+      expiresAt: null,
+      maxOfflineDays: null,
+      deviceLimit: l.deviceLimit,
+      activeSeatCount: 1,
+      deviceCount: 1,
+      dormantCount: 0,
+      entitlements: [],
+      devices: [],
+    })),
+  };
+}

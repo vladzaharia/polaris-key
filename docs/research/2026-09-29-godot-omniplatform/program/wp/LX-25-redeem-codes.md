@@ -65,6 +65,11 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test
 mise exec node@22 -- pnpm parity:check
 ```
 
+## S-21 note (2026-10-05)
+
+Codes are not a storefront listing path ([S-21](../../notes/S-21-polaris-storefront.md) Q14). They enter through the portal's
+Activate modal, next to licence keys, and the created grant then shows in the Library.
+
 ## Hand-off
 
 - None.

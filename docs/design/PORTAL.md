@@ -27,6 +27,22 @@
 >   rotation is needed (PX-W17 Q3). Cloud Sync requires Identity (PX-W17 Q4, I-04 §0, S-17).
 >   Subjects exist for every product, and product users only for Identity products (PX-W17 Q5).
 
+> **Sign-in is specified in [SIGN-IN.md](SIGN-IN.md) (2026-10-05).** It is the single source of
+> truth for every sign-in step: the login card's steps, license choice and **Replace a device**, the
+> key on-ramp, device approval, the Worker pages, the emails and the kits. It **supersedes this
+> document where they differ** in §3.3–§3.4 (sign-in routes and entry points), §4.1–§4.11,
+> §4.18–§4.19, §4.23–§4.25 and §4.29. Contradictions it resolved are fixed in place below (its §7
+> lists them).
+>
+> **License vocabulary (owner, 2026-10-05; SIGN-IN.md O-11, D-53–D-58).** Account-bound licenses
+> (today's "Signed-in app") are labelled **Account-wide**, with "unlimited devices". Wherever a
+> license is shown (License card, switcher, Library note, LicenseChoiceStep) the tier is a neutral
+> pill ("Standard") with "0 of 5 devices" or "Account-wide · unlimited devices" beside it. "For
+> life" is **Lifetime**. When an account holds a seat license and an Account-wide license for one
+> product, the seat license hides its device counter and meter. **Devices**, with **Remove**, shows
+> for both kinds. The Worker reports the kind as `access: "seats" | "account"` (`plans/I-04.md`
+> §F.6).
+
 **Status:** draft for owner approval, revised with the owner decisions of 2026-10-04 (Appendix C,
 and the second round in Appendix E)
 · **Scope:** the customer-facing site at `key.plrs.im`: the SPA at `packages/admin/src/portal`
@@ -72,7 +88,7 @@ is not the developer's console, and it does not sell anything.
    for (auto-issue policy, tier, group membership, email domain) without issuing anything; **Add to
    library** mints the license on the spot.
 3. **One obvious next action per product,** chosen from the license model and the device in hand:
-   _Download for macOS_, _Get it on the App Store_, _Activate on Steam_, _Free up a device_,
+   _Download for macOS_, _Get it on the App Store_, _Activate on Steam_, _Free a device_,
    _Open Quill_, _Set up package access_.
 4. **Every product has one complete page:** get it, Cloud Sync (when the product has it), what's
    new, license, devices, package access, help. Nothing about a product lives anywhere else.
@@ -224,11 +240,11 @@ turns Identity on. **Identity** is a per-product _service_:
 | App sign-in (§4.7–4.9)                       | Yes: `/authorize`, native redirect, device code        | **Never.** No "<App> wants you to sign in"; the broker refuses the request (§3.3)                                                                                                       |
 | Connected products, "<Product> knows you as" | Listed, with the method it uses                        | Not listed; no identity card on the product page                                                                                                                                        |
 | Cloud Sync                                   | When the product has the Cloud Sync service on         | **Never.** Cloud Sync requires Identity: its principal is the device's sign-in (`devices.subject`), and the console refuses Cloud Sync without Identity (S-17 owner's final answers, 1) |
-| Key-entry limits (§4.6)                      | Available: at zero the app signs the person in instead | Not offered: the app has no way to sign in instead (derived from this decision; for owner confirmation)                                                                                 |
+| Key-entry limits (§4.6)                      | Available: at zero the app signs the person in instead | Not counted. The account upgrade is offered, always skippable, never forced (I-09, I-11, S-16; SIGN-IN.md §3.9)                                                                         |
 
 **Pairwise ids toward developers.** A developer never sees the account id. Each product with
-Identity gets its own stable **pairwise subject** for the person (`sub` = keyed hash of account and
-product, S-16 product user), so two developers cannot match one person across products, and the
+Identity gets its own stable **pairwise subject** for the person (`sub` = a random subject stored per
+account and product, I-05; no key to rotate), so two developers cannot match one person across products, and the
 same developer's two products see two ids unless they share an Identity tenant. Webhooks, Cloud
 Sync and license data shown to a developer carry that product's pairwise id, never the account id
 or the person's other sign-in methods. Profile and email reach an app only after the consent step
@@ -237,7 +253,9 @@ or the person's other sign-in methods. Profile and email reach an app only after
 The library aggregates by **product**. When a person holds several licenses for one product, the
 product page shows the best one (by status precedence, §5.3) with a license switcher in the
 License card ("2 licenses · Pro, Edu"). Per-license sections (Devices, Package access) follow the
-switcher.
+switcher. Each license in the card and the switcher shows its tier as a neutral pill, then "2 of 3
+devices" for a seat license or "Account-wide · unlimited devices" for an Account-wide one; seat
+licenses drop the counter when the product also has an Account-wide license (SIGN-IN.md O-11).
 
 ### 3.2 Global elements
 
@@ -258,23 +276,23 @@ Account is not a top-level page: it lives behind the account menu.
 Hash routing stays for the signed-in SPA (ADMIN.md lead decision Q2). Product ids in URLs are product
 **slugs**. The login card lives on real paths because apps and emails link to it.
 
-| Route                                  | Screen                                                       | Notes                                                                                                       |
-| -------------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| `#/`                                   | **Library** (default)                                        | `?view=grid\|list`, `?q=`, `?filter=attention\|games\|apps`, `?sort=recent\|name`                           |
-| `#/discover`                           | Discover                                                     | `?added=<product>` shows the just-added state after a reload                                                |
-| `/activate?key=…` → `#/?activate=…`    | **Library with the Activate license modal open, key filled** | Path form for apps and emails (short, printable); signed out → login card, then here. Never a separate page |
-| `#/p/:product`                         | Product page                                                 | `?license=<id>` picks a license when there are several                                                      |
-| `#/p/:product/:section`                | Product page scrolled to a section                           | `get`, `sync` (only when the product has Cloud Sync), `new`, `license`, `devices`, `package`, `help`        |
-| `#/p/:product/free-device`             | Focused flow: device limit                                   | `?for=<label>&return=<url>`; target of G15 `manageUrl`                                                      |
-| `#/p/:product/download`                | Focused flow: one download                                   | `?platform=macos\|windows\|linux…`; for email links and in-app "Download update"                            |
-| `#/account` / `#/account/:section`     | Account                                                      | `profile`, `methods`, `products`, `sessions`, `appearance`, `data`                                          |
-| `#/account/link`                       | Link an existing account (login card, §4.11)                 | Proof of both identities in one session                                                                     |
-| `#/account/approve?code=`              | Approve a new device (dialog over Account, §4.24)            | Target of the QR code; the code is typed when absent                                                        |
-| `/signin`                              | The login card                                               | `?product=<slug>` gives product context; `returnTo` kept                                                    |
-| `/signin/confirm-email`                | The email gate (§4.29), a step of the login card             | Server-held state per sign-in; not skippable; keeps the app `request` handle and `returnTo`                 |
-| `/authorize?…` (S-16 broker / I-16 OP) | **The login card with the app header** (passthrough)         | Only for products with **Identity on**; otherwise an error card ("<App> doesn't use Polaris Key sign-in")   |
-| `/tv` (and `/device`)                  | Device-code entry → login card with the app header and code  | RFC 8628 `verification_uri`; `verification_uri_complete` pre-fills the code                                 |
-| `/signin/device`                       | Sign in with another device: QR and code (§4.23)             | Polled; completes when a signed-in session approves                                                         |
+| Route                                              | Screen                                                      | Notes                                                                                                                                                                         |
+| -------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `#/`                                               | **Library** (default)                                       | `?view=grid\|list`, `?q=`, `?filter=attention\|games\|apps`, `?sort=recent\|name`                                                                                             |
+| `#/discover`                                       | Discover                                                    | `?added=<product>` shows the just-added state after a reload                                                                                                                  |
+| `/activate?product=…` (`#key=…`) → `#/?activate=…` | **Library with the Activate license modal open**            | The key fills only from a `#key=` fragment an app adds, or a printed `?key=`; the Worker never puts a key in a URL. Signed out → login card, then here. Never a separate page |
+| `#/p/:product`                                     | Product page                                                | `?license=<id>` picks a license when there are several                                                                                                                        |
+| `#/p/:product/:section`                            | Product page scrolled to a section                          | `get`, `sync` (only when the product has Cloud Sync), `new`, `license`, `devices`, `package`, `help`                                                                          |
+| `#/p/:product/free-device`                         | Focused flow: device limit                                  | `?for=<label>&return=<url>`; target of G15 `manageUrl`                                                                                                                        |
+| `#/p/:product/download`                            | Focused flow: one download                                  | `?platform=macos\|windows\|linux…`; for email links and in-app "Download update"                                                                                              |
+| `#/account` / `#/account/:section`                 | Account                                                     | `profile`, `methods`, `products`, `sessions`, `appearance`, `data`                                                                                                            |
+| `#/account/link`                                   | Link an existing account (login card, §4.11)                | Proof of both identities in one session                                                                                                                                       |
+| `#/account/approve?code=`                          | Approve a new device (dialog over Account, §4.24)           | Target of the QR code; the code is typed when absent                                                                                                                          |
+| `/signin`                                          | The login card                                              | `?product=<slug>` gives product context; `returnTo` kept                                                                                                                      |
+| `/signin/confirm-email`                            | The email gate (§4.29), a step of the login card            | Server-held state per sign-in; not skippable; keeps the app `request` handle and `returnTo`                                                                                   |
+| `/authorize?…` (S-16 broker / I-16 OP)             | **The login card with the app header** (passthrough)        | Only for products with **Identity on**; otherwise an error card ("<App> doesn't use Polaris Key sign-in")                                                                     |
+| `/tv` (and `/device`)                              | Device-code entry → login card with the app header and code | RFC 8628 `verification_uri`; `verification_uri_complete` pre-fills the code                                                                                                   |
+| `/signin/device`                                   | Sign in with another device: QR and code (§4.23)            | Polled; completes when a signed-in session approves                                                                                                                           |
 
 **Redirects (stable links, anti-pattern A10):** `#/licenses` → `#/`; `#/licenses/:p/:id` →
 `#/p/:p/license?license=:id`; `#/downloads` → `#/`; `#/profile` → `#/account`; `#/claim?key=` →
@@ -285,18 +303,18 @@ product declares (S-16 manifest redirect allowlist); otherwise the flow ends on 
 
 ### 3.4 Entry points
 
-| From                                              | Lands on                                                                                                |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| App: `device_limit` error (needs G15)             | `#/p/:product/free-device?for=<this device>&return=<app>`                                               |
-| App: key refused, no key entries left (S-16, G21) | `/activate?key=<key>&product=<slug>` → login card with product context → Library with the modal (§4.18) |
-| App: "Sign in" (web, native, Godot), Identity on  | `/authorize…` → login card with the app header (§4.7)                                                   |
-| First sign-in with a provider (any entry)         | The email gate (§4.29), then where the flow was going                                                   |
-| TV or console: device code                        | `/tv` → login card with the app header and the code (§4.9)                                              |
-| Developer's "Manage your license" link            | `/signin?product=<slug>` → login card with context → product page                                       |
-| "License added" / "Device removed" emails         | `#/p/:product` or `#/p/:product/devices`                                                                |
-| "Sign-in method added/removed" emails             | `#/account/methods`                                                                                     |
-| "Email me the download" email                     | `#/p/:product/download?platform=…`                                                                      |
-| Typed `key.plrs.im`                               | Library                                                                                                 |
+| From                                              | Lands on                                                                                                                            |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| App: `device_limit` error (needs G15)             | `#/p/:product/free-device?for=<this device>&return=<app>`                                                                           |
+| App: key refused, no key entries left (S-16, G21) | `manageUrl` `/activate?product=<slug>` (the app may add `#key=`) → login card with product context → Library with the modal (§4.18) |
+| App: "Sign in" (web, native, Godot), Identity on  | `/authorize…` → login card with the app header (§4.7)                                                                               |
+| First sign-in with a provider (any entry)         | The email gate (§4.29), then where the flow was going                                                                               |
+| TV or console: device code                        | `/tv` → login card with the app header and the code (§4.9)                                                                          |
+| Developer's "Manage your license" link            | `/signin?product=<slug>` → login card with context → product page                                                                   |
+| "License added" / "Device removed" emails         | `#/p/:product` or `#/p/:product/devices`                                                                                            |
+| "Sign-in method added/removed" emails             | `#/account/methods`                                                                                                                 |
+| "Email me the download" email                     | `#/p/:product/download?platform=…`                                                                                                  |
+| Typed `key.plrs.im`                               | Library                                                                                                                             |
 
 ---
 
@@ -307,6 +325,9 @@ width and on a phone; light renders sit beside them in [portal/](portal/) with t
 suffix. The mockup data is invented (Mara Fennick, Sam Okafor and twelve fictional products).
 
 ### 4.1 The login card
+
+> **See [SIGN-IN.md](SIGN-IN.md) §3** for the canonical step model (§4.1–§4.11, §4.29 here are
+> its sources). Where they differ, SIGN-IN.md wins.
 
 ![Sign in, desktop](portal/01-signin-desktop-dark.png)
 
@@ -443,9 +464,10 @@ S-16 owner decision (2026-10-04): a license key has a limited, product-configura
 
 - **While entries remain:** a key card (product icon, name, tier, the masked key
   `pkey_nightfall_…Tz4g`, **Key works**), "Keep
-  Nightfall in an account", a segmented **entries meter** ("2 of 5 key entries left · This was entry
+  Nightfall in an account", a segmented **entries meter** ("2 of 5 key entries left · This will be entry
   3", used segments in `warning`), email with **Create account**, the product's providers, and
-  **Skip for now and open Nightfall** (ghost). "Already have an account? Sign in".
+  **Skip for now** (ghost), shown only when an app sent the person; it returns to the app
+  (SIGN-IN.md D-36). "Already have an account? Sign in".
 - **Entries used up:** the key card shows **No entries left**; "Create an account to keep
   Nightfall"; a `danger` notice "This key has used all 5 entries. From now on Nightfall is opened
   through an account. It takes a minute, and your license moves in with you."; **no skip**; "Sign in
@@ -453,7 +475,7 @@ S-16 owner decision (2026-10-04): a license key has a limited, product-configura
   devices it's already on. Only typing the key again needs an account."
 - The license then attaches under the S-16 claim rules (an owned license never moves by key; an
   email-bound license attaches only to that verified email).
-- **Apps** refuse the key at the limit and deep-link to `/activate?key=…` (§3.4). Existing licensed
+- **Apps** refuse the key at the limit with `manageUrl` (`/activate?product=…`, §3.4). Existing licensed
   installs are never affected: device tokens, refresh, offline grace and the signed license document
   keep working.
 - Passkeys are not offered here: S-16 registers passkeys only after an email is verified.
@@ -509,22 +531,13 @@ to sign in", and "<Developer> · <where>":
   only when you continue to their app."), an opt-in checkbox "Add a passkey after this, so next time
   is one tap", **Create account and continue**, and the terms line naming both Polaris Key's terms
   and the developer's.
-- **Choose a licence for this device** (owner decision, 2026-10-05; EXPERIENCE.md §8
-  `LicenseChoiceStep`; contract in `plans/I-04.md`). It comes after authentication and before
-  Confirm, whenever the account holds a usable licence for the app, even a single one.
-  - **Rows.** Each row shows the tier, origin, "2 of 5 devices" and the expiry. The rank-first
-    rule only preselects a row; **Keep the licence this device uses** is preselected when the
-    device already runs on one.
-  - **Full licences** are disabled with "No free devices". They offer **Replace a device**, which
-    expands that licence's devices in place: least recent preselected, **Active now** marked, and
-    one confirm, "Replace Work laptop? It will need to sign in again.". They also offer **Free a
-    device** (§4.25, returning here).
-  - **No licence.** "A free <Tier> licence will be created for you" when the app auto-issues,
-    otherwise the purchase link and **Have a license key?**.
-  - **No silent second licence.** A second free licence is never minted silently. **Create a new
-    free licence** appears only when every licence is full and the app auto-issues.
-  - **Primary button.** It reads **Use this licence and continue**. When Confirm follows, its
-    licence line shows the chosen licence with **Change**.
+- **Choose a license for this device** (owner decision, 2026-10-05): SIGN-IN.md §3.6 (the step)
+  and §3.7 (**Replace a device**) are canonical; contract in `plans/I-04.md`, "Owner decision
+  (2026-10-05): licence choice at sign-in". It comes after authentication and before Confirm on
+  every sign-in that binds a device, even with one license. Rank-first only preselects; full
+  licenses show "No free devices" with **Replace a device** and **Free a device** (§4.25, returning
+  here); a second free license is never minted silently. The primary is **Use this license and
+  continue**.
 - **Confirm** (every first sign-in to an app, and whenever what it gets changes): the person row
   (avatar, name, email, **Not you?**), "Continue to Tidewater Studio as Mara?", and **what it
   gets** as a list: its license ("Your Tidewater Pro license · Lifetime · this Mac becomes device 3
@@ -532,7 +545,9 @@ to sign in", and "<Developer> · <where>":
   **your profile and email** (name, picture, address). "It gets its own id for you, and won't see
   your other products or how you sign in." (the pairwise id, §3.1). **Continue to Tidewater
   Studio** and **Cancel**. **Decided:** shown on the first sign-in to each app and again whenever
-  what it gets changes; later sign-ins skip it.
+  what it gets changes; later sign-ins skip it. **The license line is the license the person chose**
+  in SIGN-IN.md §3.6's LicenseChoiceStep, with **Change** to go back to it (SIGN-IN.md §3.8,
+  frame 07). Confirm always follows the choice as its own step.
 - **Return:** a success mark, "You're signed in to Tidewater Studio", **Return to Tidewater
   Studio** (re-fires the redirect / app link), "You can close this tab. Open your library".
 
@@ -548,9 +563,9 @@ to sign in", and "<Developer> · <where>":
   when you're done." then the §4.1 methods (Drift Kart ships only on Steam, so its provider row has
   one button: the one-button case), and "Didn't start this on
   a TV? Cancel it. Someone may be trying to use your account."
-- Signed in already: straight to **Choose a licence for this device** (§4.8), then the confirm step
-  with the device name. A full licence's **Replace a device** works here too, so the TV never needs a
-  trip to the portal.
+- Signed in already: straight to **Choose a license for this device** (§4.8), then Confirm when it
+  is due. A full license's **Replace a device** works here too, so the TV never needs a trip to the
+  portal.
 - Done: "Drift Kart is signed in on Living room TV · Look at your TV: it continues by itself", the
   person row with the method used, and **Sign the TV out** for the wrong account.
 
@@ -630,7 +645,7 @@ claim error "owned by another account" (§4.19).
   and a Grid/List toggle, all in the URL (§3.3); a non-"All" filter shows "Showing 3 of 12 · Show
   all" (A4).
 - **Needs attention shelf:** only items the person can act on, each with a solid primary action:
-  device limit → **Free up a device**; expires within 14 days → **Renew with <developer>** (G16, else
+  device limit → **Free a device**; expires within 14 days → **Renew with <developer>** (G16, else
   "Contact"); Steam key not activated → **Activate on Steam**; expired with a newer version →
   **Renew**. Never news. Hidden when empty.
 - **All products:** 4-column compact grid (3 at 761–1179 px), or the **list**: icon · Product ·
@@ -742,8 +757,9 @@ The `KeyField`:
 
 ![Deep link](portal/30-activate-link-desktop-dark.png)
 
-`/activate?key=…` (from an app at its entry limit, an email, a printed card) opens **Library** with
-the modal open and the key filled in and checked. With `product=` from an app, a notice names it:
+`/activate?product=…` (from an app at its entry limit, an email) opens **Library** with the modal
+open; the key is filled in and checked only from a `#key=` fragment the app added or a printed
+`?key=` card, never from a Worker-built URL. With `product=` from an app, a notice names it:
 "Mossgarden sent you here. This key has no entries left in the game. Add it to your account and the
 game signs you in instead." The help line reads "Filled in from your link. Check it matches the key
 you have." Signed out, the login card (with product context) runs first and returns here.
@@ -754,16 +770,16 @@ you have." Signed out, the login card (with product context) runs first and retu
 
 Inline under the field (S-16 claim rules), never a toast:
 
-| Case                         | Copy and action                                                                                                                                                                                        |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Not a license key**        | No `pkey_` prefix, shown at once: "That isn't a Polaris Key license key. Ours start with pkey\_. This one looks like a Steam key: activate it in Steam." (the Steam line only for the 5×3 Steam shape) |
-| **Incomplete key**           | Right prefix, wrong length or a character outside `A–Z a–z 0–9 - _`: "This key is cut short. After mossgarden\_ come 22 characters, and this has 15. Copy the whole key again."                        |
-| **Unknown key**              | "We couldn't find that key. Capital letters matter, and l, 1, O and 0 are easy to mix up, so paste the key instead of typing it."                                                                      |
-| **Owned by another account** | "This Nightfall license is already in another Polaris Key account. A license never moves by its key." Notice: "If that account is yours too, sign in to it and join the two. Link an existing account" |
-| **Verified-email mismatch**  | "Lumen RAW was bought with m•••@proton.me. It joins only the account with that email verified." **Add and verify that email** (unless the product sets `claimByKey`)                                   |
-| **No key entries left**      | **Decided:** a `warning` notice, not a block, when signed in: "This key has used all 5 entries. Add it here and Ember Tactics signs you in instead of asking for the key." **Continue** stays enabled. |
-| Already yours                | "Mossgarden is already in your library." **Open it**                                                                                                                                                   |
-| Product portal off           | "Little Fern manages this license elsewhere."                                                                                                                                                          |
+| Case                         | Copy and action                                                                                                                                                                                           |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Not a license key**        | No `pkey_` prefix, shown at once: "That isn't a Polaris Key license key. Ours start with pkey\_. This one looks like a Steam key: activate it in Steam." (the Steam line only for the 5×3 Steam shape)    |
+| **Incomplete key**           | Right prefix, wrong length or a character outside `A–Z a–z 0–9 - _`: "This key is cut short. After mossgarden\_ come 22 characters, and this has 15. Copy the whole key again."                           |
+| **Unknown key**              | "We couldn't find that key. Capital letters matter, and l, 1, O and 0 are easy to mix up, so paste the key instead of typing it."                                                                         |
+| **Owned by another account** | "This Nightfall license is already in another Polaris Key account. A license never moves by its key." Notice: "If that account is yours too, sign in to it and join the two. Link an existing account"    |
+| **Verified-email mismatch**  | "Lumen RAW was bought with m•••@proton.me. It joins only the account with that email verified." **Add and verify that email** (unless the product sets `claimByKey`)                                      |
+| **No key entries left**      | **Decided:** a `warning` notice, not a block, when signed in: "This key has no entries left in Ember Tactics. Add it to your account and Ember Tactics signs you in instead." **Continue** stays enabled. |
+| Already yours                | "Mossgarden is already in your library." **Open it**                                                                                                                                                      |
+| Product portal off           | "Little Fern manages this license elsewhere."                                                                                                                                                             |
 
 The masked email shows the first character and the domain only. All lookups share the claim rate
 bucket (THREAT-MODEL: enumeration).
@@ -776,8 +792,12 @@ bucket (THREAT-MODEL: enumeration).
 
 <img src="portal/31-product-sync-mobile-dark.png" alt="Product page, phone" width="260">
 
-**Header:** back link to Library, the 320 px key-art banner (16:9, full-bleed on phones), the
-112 px icon overlapping its lower edge, the name as `h1`, "by <developer>", status pill and tier,
+**Header:** back link to Library, the key-art banner (the listing's 16:9 header: all of it,
+full-bleed, on phones; a centred 3:1 band capped at 416 px from 761 px; `object-fit: cover`, centred,
+as the library card's 16:9 crop is), the 112 px icon (80 on phones) in front of its lower edge,
+half over it, drawn edge to edge with no tile of ours (the developer's own shape is the frame; a
+full-bleed square icon gets only the store's corner mask; only the letter fallback is a tile); without a cover the icon stands beside the name, with no banner;
+the name as `h1`, "by <developer>", status pill and tier,
 and the **primary action** with an overflow menu (Copy link, Contact developer, Remove from
 library).
 
@@ -829,10 +849,23 @@ with **Not included** and its reason as text; the key is masked as `pkey_tidewat
 (G7); devices show "+1 not using a seat"; package tokens show prefix, last used, expiry and the
 amber "Expires in 6 days" pill.
 
+**License card, tier and devices (owner, 2026-10-05):** the tier ("Standard" when the licence has
+none) is a quiet neutral pill, an identity label rather than a status, with the device count beside
+it on the same line: "0 of 5 devices" for a key licence, "Account-wide · 1 of 5 devices" for an
+account-bound one (signed in, no key; "Account-wide" alone while the limit is unknown). Activation
+still enforces a seat limit on account-wide licences, so the page never calls them unlimited. Only
+an issue status (Expired, Suspended, Device limit reached, Expires in …) sits on that line, as a
+right-aligned pill. "Updates included" reads **Lifetime** for a licence with no end. With several
+licences the picker names each by tier and how it is held ("Standard · Key", "Standard ·
+Account-wide"), adding the status only when it wants attention. When the account holds a key
+licence and an account-wide licence for the same product, the key licence shows no device counter
+(on the License card or in Devices); the account-wide licence keeps its counter. **Devices** is
+shown for both kinds, always with the device list and **Remove** (remote deauthorize, §4.22).
+
 **States:** loading (skeleton header and two skeleton cards); not found (§4.28); load error
 (`ErrorState` with Retry); license expired (a `danger` callout with **Renew with <developer>**);
-suspended by the developer; account-bound product (Get it becomes **Open Quill** plus store links;
-no key, no Devices).
+suspended by the developer; account-wide product (Get it becomes **Open Quill** plus store links;
+no key; Devices lists the signed-in devices with **Remove**).
 
 ### 4.21 Package token created
 
@@ -848,7 +881,8 @@ scope and expiry, and the snippet with the real token inlined.
 
 **Remove** expands the row in place into a `danger-subtle` panel with the consequences (the seat is
 free straight away with the new count; the app on that device asks to activate next time; an email
-confirms it), **Remove Studio PC** and **Keep it**. Focus moves to the panel heading.
+confirms it), **Remove Studio PC** and **Keep it**. Focus moves to the panel heading. On an Account-wide license there is no seat to free: the panel reads "Studio PC signs out of
+<Product>. It can sign in again any time." (SIGN-IN.md D-58).
 
 ### 4.23 Sign in with another device
 
@@ -863,7 +897,7 @@ code. "Waiting for you to approve it on the other device" polls until approved, 
 
 ![Approve](portal/40-other-device-approve-desktop-dark.png)
 
-On the signed-in session: "Approve a new device? · Code K7QP-2MXD asks to sign in to your account",
+On the signed-in session: "Approve a new device? · Code KRQP-BMXD asks to sign in to your account",
 the requesting device (browser and OS, coarse location, when), a `warning` notice "Only approve if
 you started this yourself, on a device in front of you. Nobody from Polaris Key or a developer will
 ever ask you for this.", **Deny** and **Approve and sign it in**. Approval is audited, emailed, and
@@ -875,8 +909,9 @@ the new session appears in "Where you're signed in".
 
 This flow is also the fallback behind the sign-in card's **Free a device** link (§4.8, 2026-10-05). Otherwise it is unchanged: minimal chrome with **Back to Orbit Survey without changes**; "Your license is on 2 of 2
 devices" with a full red meter; devices as radio cards with the least recently used preselected;
-consequences; **Remove Work laptop and continue**; then "Go back to Orbit Survey and press Try
-again".
+consequences; **Remove Work laptop**; then "Go back to Orbit Survey and press Try again". This
+flow only frees the seat. Inside the sign-in card the same situation is **Replace a device**, which
+also binds the waiting device (SIGN-IN.md §3.7).
 
 ### 4.26 Account
 
@@ -1100,7 +1135,7 @@ New components live in `packages/admin/src/portal/components/` unless the consol
 | `LinkAccounts`                                                                                                                                              | Two proven account cards, consequences, join.                                                                                                                                                                                                                                                      |
 | `DeviceApproval`                                                                                                                                            | New-device side (QR, code, poll) and approving side (dialog with device details, deny/approve).                                                                                                                                                                                                    |
 | `ProductArt`                                                                                                                                                | `variant: "banner" \| "tile" \| "thumb" \| "icon"`; proxied art (G1) with the flat tint-and-icon / tint-and-letter fallback. No gradients.                                                                                                                                                         |
-| `LibraryTile`, `LibraryHero`, `LibraryList`, `AttentionShelf`, `LibraryToolbar`, `QuickAction`                                                              | As in the converged design: art with the status pill on a solid plate, icon overlapping, name, developer, meta, platform glyphs, note, outlined quick action and overflow; the one-product hero; the list on `ui/data-table`; the shelf; the URL-synced toolbar; quick-action resolution (§5.4).   |
+| `LibraryTile`, `LibraryHero`, `LibraryList`, `AttentionShelf`, `LibraryToolbar`, `QuickAction`                                                              | As in the converged design: 16:9 art, the status on a padded plate, icon overlapping, name, meta, platform glyphs, note, outlined quick action and overflow; the one-product hero; the list on `ui/data-table`; the shelf; the URL-synced toolbar; quick-action resolution (§5.4).                 |
 | `DiscoverTile`                                                                                                                                              | Art, icon, name, developer, offer terms, platforms, "why you can add it", **Add to library** → added state (green edge, **In your library**, **Open**).                                                                                                                                            |
 | `ActivateDialog`                                                                                                                                            | Steps enter → confirm (art header, product, tier, terms, key echo) → done; inline errors (§4.19); `prefill` and `fromProduct` props for the deep link. Mounted once in `PortalShell`, opened from anywhere.                                                                                        |
 | `JumpPalette`                                                                                                                                               | ⌘K (§4.27).                                                                                                                                                                                                                                                                                        |
@@ -1122,11 +1157,11 @@ client-side from existing fields before then. Precedence, first match wins:
 | --------------------- | --------------------------------------- | -------------------------------------------------- | ---------------------- |
 | Suspended             | alert · "Suspended" · danger            | "Suspended by <developer>."                        | Contact <developer>    |
 | Expired               | alert · "Expired" · danger              | "Updates ended at 1.8" (or "Ended 4 Sep 2026")     | Renew with <developer> |
-| Device limit reached  | alert · "Device limit reached" · danger | "2 of 2 devices"                                   | Free up a device       |
+| Device limit reached  | alert · "Device limit reached" · danger | "2 of 2 devices"                                   | Free a device          |
 | Key not activated     | key · "Key not activated" · info        | "Steam key"                                        | Activate on Steam      |
 | Expires soon (≤ 14 d) | clock · "Expires in 9 days" · warning   | "Studio · ends 13 Oct"                             | Renew with <developer> |
 | Offline grace ended   | alert · "Needs a check-in" · warning    | "Open <product> while online"                      | none                   |
-| Signed-in app         | user · "Signed-in app" · neutral        | "Sign in on any device"                            | none                   |
+| Account-wide          | user · "Account-wide" · neutral         | tier first, e.g. "Standard · Account-wide"         | none                   |
 | Active                | check · "Active" · success              | tier and devices, e.g. "Lifetime · 2 of 3 devices" | none                   |
 
 A past date is never shown as "Expires …": it is "Ended <date>" or "Updates ended at <version>".
@@ -1136,9 +1171,9 @@ Expiry inside 14 days uses relative days; otherwise "until 14 Mar 2027".
 
 | Product state                           | Desktop                                                        | Phone                                                  |
 | --------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------ |
-| Device limit reached                    | Free up a device                                               | Free up a device                                       |
+| Device limit reached                    | Free a device                                                  | Free a device                                          |
 | Steam key held, not activated           | Activate on Steam                                              | Activate on Steam                                      |
-| Account-bound (no key, no seats)        | Open <product> (website / app scheme)                          | Get it on the App Store / Google Play, else Open       |
+| Account-wide (signed in, no key)        | Open <product> (website / app scheme)                          | Get it on the App Store / Google Play, else Open       |
 | Build for this OS exists and is covered | Download for <OS>                                              | Store link for this OS, else **Email me the download** |
 | Covered builds exist, none for this OS  | See downloads (with "Windows and Linux only" as the meta line) | Email me the download / See downloads                  |
 | Expired, an older build is covered      | Download <last covered version>                                | Email me the download                                  |
@@ -1326,11 +1361,11 @@ new with the owner decisions of 2026-10-04**, and **G31–G34 with the second ro
 | **G12** | Server-side sessions, sessions list, export            | I-15                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Sign out only                                                              | I-15's gates                                                                                                                                                                                               | (I-15)              |
 | **G13** | Registry tokens                                        | F-21                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Card hidden                                                                | F-21's gates                                                                                                                                                                                               | (F-21)              |
 | **G14** | F-20 path mismatch                                     | Decide `/api/…` vs a `/portal` alias before F-21                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | n/a                                                                        | F-21 plan                                                                                                                                                                                                  | owner               |
-| **G15** | Deep links from apps and emails                        | (a) SPA routes; (b) `manageUrl` on `device_limit` **and on the key-entries refusal** (pointing at `/activate?key=`); (c) email links                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | (a) and (c) work alone                                                     | **(b) is a wire change: plan mode, contract → errors.json → corpus → six SDKs**                                                                                                                            | PX-W8 (with I-04)   |
+| **G15** | Deep links from apps and emails                        | (a) SPA routes; (b) `manageUrl` on `device_limit` **and on the key-entries refusal** (pointing at `/activate?product=`; the key is never in a URL); (c) email links                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | (a) and (c) work alone                                                     | **(b) is a wire change: plan mode, contract → errors.json → corpus → six SDKs**                                                                                                                            | PX-W8 (with I-04)   |
 | **G16** | Developer support and renewal links                    | `supportUrl`/`supportEmail` per product                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Help card hidden                                                           | Rule 9 if validated                                                                                                                                                                                        | PX-W1               |
 | **G18** | Notice copy                                            | Product names, device labels, deep links, "Polaris Key" sender                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | n/a                                                                        | none                                                                                                                                                                                                       | PX-W7               |
 | **G19** | Public products                                        | Link out to `dl.plrs.im/<product>`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | n/a                                                                        | none                                                                                                                                                                                                       | PX-09               |
-| **G21** | **Key-entry counting** (S-16)                          | Per license key: `entriesLimit` (product setting, default from the product's policy), `entriesUsed`, incremented atomically on every successful key entry in the portal **and** in apps (activation by key); responses carry `entriesLeft`/`entriesLimit`; at zero, apps get a new refusal with `manageUrl` (G15b) and the portal forces the upgrade                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Upgrade always skippable, no count                                         | Part of the I-04 contract (**plan mode**); D1 migration; `TABLE_OWNERS`; corpus                                                                                                                            | (I-04), PX-W9       |
+| **G21** | **Key-entry counting** (S-16)                          | Per license key: a limit (product setting `identity.keyEntry.limit`), counted atomically on every successful key entry in the portal **and** in apps (activation by key); responses carry `keyEntries {used, limit}`; at zero, apps get a new refusal with `manageUrl` (G15b) and the portal forces the upgrade                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Upgrade always skippable, no count                                         | Part of the I-04 contract (**plan mode**); D1 migration; `TABLE_OWNERS`; corpus                                                                                                                            | (I-04), PX-W9       |
 | **G22** | Key preview before adding                              | `POST /api/activate/preview` → product name, developer, art, tier, terms; or a typed refusal (`unknown`, `license_owned`, `email_mismatch` with masked email, `already_yours`, `portal_off`) and `entriesLeft`; never ownership details; same rate bucket as add                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Modal adds directly, errors after                                          | Rule 10; THREAT-MODEL (enumeration)                                                                                                                                                                        | PX-W5               |
 | **G23** | "Email me the download"                                | `POST /api/products/:p/email-download {platform}`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | "Open this page on your computer"                                          | Rule 10                                                                                                                                                                                                    | PX-W7               |
 | **G24** | **Discover eligibility listing**                       | `GET /api/discover` → for each product with a policy that **would auto-issue** to this account (auto-issue rule, `groupRoleMap` over the account's connected identities, tier rules, verified-email-domain auto-link): presentation (G1), the tier, limits and terms that would be issued, and a `reason` (`free_with_account`, `group:<label>`, `email_domain:<domain>`, `beta`). Evaluated by the same policy function as first-load auto-issue, in **dry-run** mode: no rows written. Excludes purchase-only and operator-issued products, products already held, and products with `discover: false`                                                                                                                                                                                                            | Discover hidden from the nav                                               | Rule 10; rule 6 (policy through a Core hook if it lives in License); unit tests asserting dry-run writes nothing                                                                                           | PX-W10              |
@@ -1343,7 +1378,7 @@ new with the owner decisions of 2026-10-04**, and **G31–G34 with the second ro
 | **G31** | **Email-gate state**                                   | Per account `emailConfirmedAt` (null until the gate passes) and, per sign-in, a server-held gate record bound to the sign-in transaction (provider, the provider's address, `email_verified` as asserted, relay detection for `privaterelay.appleid.com`, the app `request` handle). `POST /api/signin/confirm-email {choice: provider\|typed, email?, termsVersion?}`: a provider-verified address (Google `email_verified: true`, Apple) confirms at once; otherwise it sends a code on the I-02 store and `POST …/verify {code}` confirms. Session and app tokens are not issued until the gate passes. Terms acceptances stored per account, product and terms version, re-asked when the version changes. A confirmed email owned by another account returns `email_in_use` with a link hand-off (both proven) | None: the gate is required before the first provider sign-in ships (PX-12) | Rule 10; D1 migration + `TABLE_OWNERS`; THREAT-MODEL (unverified provider emails, relay addresses, account takeover through a claimed email); enumeration-safe responses (`email_in_use` only after proof) | PX-W15              |
 | **G32** | **Profile import and choice**                          | At link time store the provider's profile claims per identity link: Google `name`, `picture`; Apple `name` from the first authorisation only (I-20); Steam `personaname` and `avatarfull` through `ISteamUser/GetPlayerSummaries` (I-12); Game Center alias. Account `profile {displayName, displayNameSource, pictureAssetId, pictureSource, explicitName, explicitPicture}`; refresh imported values on sign-in only while not explicit. `GET/PATCH /api/me/profile`; the consent step and the I-16 ID token read the same record                                                                                                                                                                                                                                                                                 | Initials and the email as the name                                         | Rule 10; D1 migration; THREAT-MODEL (profile claims are untrusted display data: length limits, reserved names, no HTML)                                                                                    | PX-W16              |
 | **G33** | **Avatar copy and upload**                             | Fetch provider pictures server-side once per change (allowlisted hosts only: `lh3.googleusercontent.com`, `avatars.steamstatic.com`), re-encode to WebP and PNG at 256 and 96 px, strip metadata, store content-addressed in R2, serve same-origin through the media proxy (`GET /media/avatar/:asset`); `POST /api/me/profile/picture` for uploads (PNG or JPEG, ≤ 5 MB, decoded and re-encoded, square crop) with a per-account rate limit; old assets garbage-collected                                                                                                                                                                                                                                                                                                                                          | Initials                                                                   | Rule 10; THREAT-MODEL (SSRF on fetch, image-parser bugs, storage abuse); CSP browser test                                                                                                                  | PX-W16              |
-| **G34** | **One account, Identity per product**                  | `services.identity` on the product (own toggle, alongside `services.cloudSync`); every app-sign-in entry (`/authorize`, I-13 redirect, RFC 8628, the broker) refuses a product with Identity off (`identity_disabled`, a friendly error card); licenses attach to the account regardless; product users created only for Identity products with a **pairwise subject** (keyed HMAC of account and product, key per deployment, rotation documented); every developer-facing surface (ID tokens, webhooks, console user views, Cloud Sync metadata) uses the pairwise id, never the account id; Cloud Sync authorises through the license on the device, not through Identity                                                                                                                                        | Today: Identity is implicit for every product                              | Part of **I-04/I-06** (plan mode where the ID token or SDK contract changes); rule 10; THREAT-MODEL (cross-product correlation); corpus if the token shape changes                                         | PX-W17 (with I-06)  |
+| **G34** | **One account, Identity per product**                  | `services.identity` on the product (own toggle, alongside `services.cloudSync`); every app-sign-in entry (`/authorize`, I-13 redirect, RFC 8628, the broker) refuses a product with Identity off (`identity_disabled`, a friendly error card); licenses attach to the account regardless; product users created only for Identity products with a **pairwise subject** (random and stored per account and product, I-05); every developer-facing surface (ID tokens, webhooks, console user views, Cloud Sync metadata) uses the pairwise id, never the account id; Cloud Sync requires Identity: its principal is the device's sign-in                                                                                                                                                                             | Today: Identity is implicit for every product                              | Part of **I-04/I-06** (plan mode where the ID token or SDK contract changes); rule 10; THREAT-MODEL (cross-product correlation); corpus if the token shape changes                                         | PX-W17 (with I-06)  |
 
 Notes:
 
@@ -1612,7 +1647,7 @@ this document wins.
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
 | 11  | Required email confirmation on the first provider sign-in: prefilled (relay included), keep or switch, no code for provider-verified addresses, a code otherwise, empty for Steam, optional terms, inside the app card too | §4.29, 43–49, G31, PX-W15, PX-21                 |
 | 12  | Profile import (Google name and picture; Apple name on first consent, no picture; Steam persona and avatar) and Account → Profile with per-provider choice and upload; explicit choices stick                              | §4.29, §4.30, 36–38, 50, G32, G33, PX-W16, PX-22 |
-| 13  | One Polaris Key account across all products; Identity is a per-product service; app sign-in only with Identity on; licenses attach to accounts regardless; Cloud Sync depends on the account; pairwise ids                 | §3.1, §3.3, §4.7, §4.26, 12, 36, G34, PX-W17     |
+| 13  | One Polaris Key account across all products; Identity is a per-product service; app sign-in only with Identity on; licenses attach to accounts regardless; Cloud Sync requires Identity (amended 2026-10-05); pairwise ids | §3.1, §3.3, §4.7, §4.26, 12, 36, G34, PX-W17     |
 | 14  | Q-5, Q-6, Q-7 settled as recommended                                                                                                                                                                                       | §12, §4.8, §4.16, §4.19                          |
 | 15  | QA nit: 31's TOC marked Cloud Sync while the render starts at Get it                                                                                                                                                       | 31 re-rendered with Get it current; §4.20        |
 
