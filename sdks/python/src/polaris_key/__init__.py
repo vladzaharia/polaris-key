@@ -37,6 +37,7 @@ from __future__ import annotations
 from ._version import DIST_NAME, SDK_NAME, SDK_VERSION, __version__
 from .client import DeviceInfo, PolarisKeyClient, SyncState
 from .boot import ActivationOutcome, BootOutcome
+from .aio import AsyncClient, AsyncPolarisKeyClient
 from .update.bootguard import BootGuard, BootGuardOutcome
 
 #: ``polaris_key.create(**opts)`` — the one-call constructor: build, ``init()`` and (unless
@@ -281,6 +282,8 @@ __all__ = [
     "BootGuard",
     "BootGuardOutcome",
     "create",
+    "AsyncPolarisKeyClient",
+    "AsyncClient",
     # supports() and typed "unsupported here" (P1b-10)
     "Support",
     "Supported",
