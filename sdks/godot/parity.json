@@ -108,12 +108,30 @@
     "devices.attest": {
       "status": "implemented",
       "except": [
-        { "runtime": "linux", "reason": "runtime" },
-        { "runtime": "macos", "reason": "runtime" },
-        { "runtime": "windows", "reason": "runtime" },
-        { "runtime": "web", "reason": "runtime" },
-        { "runtime": "ios", "reason": "outlet" },
-        { "runtime": "android", "reason": "outlet" }
+        {
+          "runtime": "linux",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "ios",
+          "reason": "outlet"
+        },
+        {
+          "runtime": "android",
+          "reason": "outlet"
+        }
       ],
       "note": "P6-02: PolarisKey.devices.attest() (services/devices.gd) posts devices/attest/challenge, then devices/attest with an App Attest attestation (PKeyApple.app_attest over PolarisKeyPlatform's DCAppAttestService ops, clientDataHash = SHA-256 of the challenge's requestHash; the key id kept in the Keychain, re-attested with a fresh key when a reinstall, migration or restore killed it) or a standard Play Integrity token (PKeyAndroid.integrity_token over polaris-key-platform's play flavour, the requestHash verbatim, the cloud project number from the challenge or PKeyOptions.play_cloud_project_number). Unsupported runtime on desktop and web (and where App Attest does not run, the simulator); outlet on an iOS install that is not App Store or TestFlight, an Android install Google Play did not make or the direct plugin build, and a mobile build without the native plugin. Server codes are surfaced verbatim."
     },
@@ -125,6 +143,10 @@
     "identity.devicecode": {
       "status": "implemented",
       "note": "PolarisKey.identity (P1-07): begin_sign_in with background polling on the server's cadence, cancel, the opt-in confirm-identity step and licence attach, and a pure-GDScript QR encoder with PKeyQrRect for verification_uri_complete. On web it runs too (OS.shell_open becomes window.open; Worker CORS needed)."
+    },
+    "identity.devicelabel": {
+      "status": "planned",
+      "wp": "PX-W13"
     },
     "release.changelog": {
       "status": "implemented"

@@ -131,6 +131,10 @@
     "identity.devicecode": {
       "status": "implemented"
     },
+    "identity.devicelabel": {
+      "status": "planned",
+      "wp": "PX-W13"
+    },
     "release.changelog": {
       "status": "implemented"
     },

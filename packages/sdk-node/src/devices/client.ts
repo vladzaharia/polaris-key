@@ -126,21 +126,28 @@ export class DevicesClient {
     const f = this.ctx.fetcher();
     let res: Response;
     try {
-      const init: RequestInit = fingerprint
-        ? {
-            method: "POST",
-            headers: {
-              ...this.ctx.headers(),
-              "content-type": "application/json",
-            },
-            body: JSON.stringify({ fingerprint }),
-            signal: this.ctx.deadline(),
-          }
-        : {
-            method: "POST",
-            headers: this.ctx.headers(),
-            signal: this.ctx.deadline(),
-          };
+      // PX-W13 §8 Q2: the device label rides along, seeding the device's name in the lists.
+      const label = this.ctx.deviceLabel();
+      const body = {
+        ...(fingerprint ? { fingerprint } : {}),
+        ...(label ? { deviceName: label } : {}),
+      };
+      const init: RequestInit =
+        Object.keys(body).length > 0
+          ? {
+              method: "POST",
+              headers: {
+                ...this.ctx.headers(),
+                "content-type": "application/json",
+              },
+              body: JSON.stringify(body),
+              signal: this.ctx.deadline(),
+            }
+          : {
+              method: "POST",
+              headers: this.ctx.headers(),
+              signal: this.ctx.deadline(),
+            };
       res = await f(this.ctx.url("devices/register"), init);
     } catch (e) {
       return { kind: "error", message: (e as Error).message };

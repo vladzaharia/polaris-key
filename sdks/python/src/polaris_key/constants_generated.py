@@ -618,6 +618,7 @@ class Feature:
     DEVICES_ATTEST: Final = "devices.attest"
     IDENTITY_OIDC: Final = "identity.oidc"
     IDENTITY_DEVICECODE: Final = "identity.devicecode"
+    IDENTITY_DEVICELABEL: Final = "identity.devicelabel"
     RELEASE_CHANGELOG: Final = "release.changelog"
     RELEASE_DOWNLOAD: Final = "release.download"
     RELEASE_RECORD: Final = "release.record"
@@ -690,6 +691,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "devices.attest",
     "identity.oidc",
     "identity.devicecode",
+    "identity.devicelabel",
     "release.changelog",
     "release.download",
     "release.record",
@@ -1606,6 +1608,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "devices.attest": CapabilityRow("na", "core", (CapabilityNa("python", "runtime"),)),
         "identity.oidc": CapabilityRow("planned", "identity", ()),
         "identity.devicecode": CapabilityRow("implemented", "identity", ()),
+        "identity.devicelabel": CapabilityRow("planned", "identity", ()),
         "release.changelog": CapabilityRow("implemented", "release", ()),
         "release.download": CapabilityRow("implemented", "release", ()),
         "release.record": CapabilityRow("implemented", "release", ()),
@@ -1647,4 +1650,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "7f1bbda8fe6c6afc09c067a88532900ef065f17ca29d6037dcef95da98799056"
+CAPABILITY_DIGEST: Final[str] = "8db75cba04092fe559bf8ee23726f8531c1df133b36a90c77aff285abad6e82f"

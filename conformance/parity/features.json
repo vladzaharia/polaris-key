@@ -511,8 +511,8 @@
       "title": "Device label sent on device-code sign-in, activation and registration (WIRE-CONTRACT-V4 §12.7.1)",
       "service": "identity",
       "proof": [
-        { "kind": "corpus", "file": "device-label.json", "wp": "PX-W13" },
-        { "kind": "transcript", "wp": "PX-W13" }
+        { "kind": "corpus", "file": "device-label.json" },
+        { "kind": "transcript" }
       ],
       "allowedNa": [
         {

@@ -345,6 +345,7 @@ class Feature:
 	const DEVICES_ATTEST := "devices.attest"
 	const IDENTITY_OIDC := "identity.oidc"
 	const IDENTITY_DEVICECODE := "identity.devicecode"
+	const IDENTITY_DEVICELABEL := "identity.devicelabel"
 	const RELEASE_CHANGELOG := "release.changelog"
 	const RELEASE_DOWNLOAD := "release.download"
 	const RELEASE_RECORD := "release.record"
@@ -385,7 +386,7 @@ class Feature:
 
 
 ## Every `Feature` value, in source order.
-const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "license.gate", "license.activate", "license.enroll", "license.deactivate", "license.entitlements", "license.channels", "license.reregister", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "devices.attest", "identity.oidc", "identity.devicecode", "release.changelog", "release.download", "release.record", "update.check", "update.feed", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "packs.record", "packs.revoke", "packs.delegation", "packs.delta.feed", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.kit", "commerce.receipt"]
+const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "license.gate", "license.activate", "license.enroll", "license.deactivate", "license.entitlements", "license.channels", "license.reregister", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "devices.attest", "identity.oidc", "identity.devicecode", "identity.devicelabel", "release.changelog", "release.download", "release.record", "update.check", "update.feed", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "packs.record", "packs.revoke", "packs.delegation", "packs.delta.feed", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.kit", "commerce.receipt"]
 
 
 ## Why a feature is unsupported here: the `supports()` reason enum (PARITY §2.2).
@@ -984,6 +985,7 @@ static func capabilities() -> Dictionary:
 		"devices.attest": {"status": "implemented", "service": "core", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}, {"runtime": "ios", "reason": "outlet"}, {"runtime": "android", "reason": "outlet"}]},
 		"identity.oidc": {"status": "planned", "service": "identity", "na": []},
 		"identity.devicecode": {"status": "implemented", "service": "identity", "na": []},
+		"identity.devicelabel": {"status": "planned", "service": "identity", "na": []},
 		"release.changelog": {"status": "implemented", "service": "release", "na": []},
 		"release.download": {"status": "implemented", "service": "release", "na": []},
 		"release.record": {"status": "implemented", "service": "release", "na": []},
@@ -1024,4 +1026,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "3305611b07ac0e625a384e9be91b97dc6f3394bbc98b27b2f945b6f69b2b876d"
+const CAPABILITY_DIGEST := "fa51e06486ebcff2d86e19ab0d04b4ee26f48274979076613a639d9c381fc1e2"

@@ -20,6 +20,7 @@
 // deadline, and gets the same treatment when the network simply fails. Putting that in one
 // place is what keeps a new service from shipping a call with no timeout on it (R4-08).
 
+import { resolveDeviceLabel } from "./deviceLabel.js";
 import { arch, platform } from "node:os";
 import type { TrustSet } from "@polaris-key/jws";
 import {
@@ -140,6 +141,12 @@ export interface CoreOptions {
    * release-enabled product gets the right answer with no round trip at all.
    */
   expectedServices?: ServiceSlug[];
+  /**
+   * This device's label (WIRE-CONTRACT-V4 §12.7.1): what the sign-in page and the customer's
+   * device list call it. Omitted, the platform default (the hostname, without `.local`, `.lan` or
+   * `.home`); `""` sends none. Sent on device-code sign-in, activation and registration.
+   */
+  deviceName?: string;
 }
 
 /** The status taxonomy every signed-document GET collapses to (§5). One shape for both
@@ -177,6 +184,7 @@ export class CoreContext {
 
   private readonly fetchImpl?: typeof fetch;
   private readonly expectedServices?: ServiceSlug[];
+  private readonly deviceNameOption?: string;
   private discovered: ServicesMap | null = null;
   private deviceIdValue = "";
 
@@ -190,6 +198,7 @@ export class CoreContext {
 
   constructor(opts: CoreOptions & { localOnly?: boolean }) {
     this.product = opts.productSlug;
+    this.deviceNameOption = opts.deviceName;
     this.baseUrl = normalizeBaseUrl(opts.baseUrl ?? DEFAULT_BASE);
     this.version = opts.version;
     this.channel = opts.channel ?? channelForVersion(opts.version);
@@ -210,6 +219,12 @@ export class CoreContext {
 
   async init(): Promise<void> {
     this.deviceIdValue = await this.store.getDeviceId();
+  }
+
+  /** The label to send (§12.7.1): `override`, else the `deviceName` option, else the platform
+   *  default; `null` sends none. */
+  deviceLabel(override?: string): string | null {
+    return resolveDeviceLabel(override, this.deviceNameOption);
   }
 
   get deviceId(): string {

@@ -108,6 +108,7 @@ def _activation_like(
     path: str,
     headers: Dict[str, str],
     fingerprint: Optional[dict] = None,
+    device_name: Optional[str] = None,
 ) -> ActivationResult:
     """The three mint/rotate endpoints share a response ladder, so they share a reader.
 
@@ -122,13 +123,17 @@ def _activation_like(
     # connection, so the caller could never branch on the one thing it can actually fix.
     ctx.http()
     try:
+        body: Dict[str, object] = {}
         if fingerprint:
-            res = ctx.request(
-                "POST", ctx.url(path), headers=headers, json={"fingerprint": fingerprint}
-            )
+            body["fingerprint"] = fingerprint
+        if device_name:
+            # PX-W13 §8 Q2: activation only (never enroll or token rotation).
+            body["deviceName"] = device_name
+        if body:
+            res = ctx.request("POST", ctx.url(path), headers=headers, json=body)
         else:
-            # No body at all when there is no fingerprint, so a host that opted out sends
-            # a byte-identical request to one that has nothing to report.
+            # No body at all when there is neither a fingerprint nor a label, so a host that
+            # opted out sends a byte-identical request to one that has nothing to report.
             res = ctx.request("POST", ctx.url(path), headers=headers)
     except PolarisError:
         raise
@@ -191,6 +196,7 @@ def activate_with_key(
         "license/activate",
         ctx.headers({"authorization": f"Bearer {key}"}),
         fingerprint,
+        ctx.device_label(),
     )
 
 

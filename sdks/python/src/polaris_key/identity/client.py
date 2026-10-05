@@ -71,6 +71,9 @@ class SignInPrompt:
     interval: int
     #: When the code expires on THIS client's clock (epoch seconds).
     expiresAt: int
+    #: The label the sign-in page shows (WIRE-CONTRACT-V4 §12.7.1): the Worker's echo, else
+    #: (an older Worker) the label sent; ``None`` when there is none.
+    deviceName: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -142,9 +145,11 @@ class IdentityClient:
         """
         self._ctx.require_service("identity", Feature.IDENTITY_DEVICECODE)
         body: Dict[str, str] = {"deviceId": self._ctx.device_id}
-        name = (device_name or "").strip()
-        if name:
-            body["deviceName"] = name
+        # §12.7.1: the per-call name, else the client's ``device_name``, else the platform
+        # default, normalised exactly as the Worker will store it. ``""`` sends none.
+        label = self._ctx.device_label(device_name)
+        if label:
+            body["deviceName"] = label
         res = self._post("identity/auth/device/start", body)
         if res.status_code != 200:
             raise PolarisError(
@@ -171,6 +176,11 @@ class IdentityClient:
             expiresIn=_whole_seconds(b["expiresIn"]),
             interval=_whole_seconds(b["interval"]),
             expiresAt=self._ctx.now() + _whole_seconds(b["expiresIn"]),
+            deviceName=(
+                (b["deviceName"] if isinstance(b["deviceName"], str) else None)
+                if "deviceName" in b
+                else label
+            ),
         )
 
     def poll_sign_in(self, prompt: SignInPrompt) -> SignInPoll:
