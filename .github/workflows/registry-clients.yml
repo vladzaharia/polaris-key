@@ -162,7 +162,7 @@ jobs:
           # F-22: native-client publish. Each publishes with the client's own tool and the
           # harness's publish token (run.mjs `seedPublish`), then installs what it published.
           - client: npm-publish
-            name: npm publish
+            name: npm native publish (local registry)
             ecosystem: npm
             os: ubuntu-latest
           - client: twine

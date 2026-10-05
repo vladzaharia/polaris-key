@@ -52,6 +52,11 @@ F-08 publishes image layouts through tickets. Native push is a convenience for a
 - **Who pushes.** plans/F-20.md §10 left `publish` to F-22/F-23: F-23 enables it (owner-bound,
   header-presented, implies `read`), and a `pkeyci_` with `release:publish` pushes too. The console
   mint gains **Push images**.
+- **Integration with F-22 (integ/feeds-2).** F-22 landed the same `publish` scope with stricter
+  mint rules, so the two share one: a publish token names its publish ecosystems (npm, PyPI,
+  Swift, Maven and, for `docker push`, OCI), lasts 1 to 30 days and is never minted for the system
+  product, whose OCI pushes `registryPublisher` also refuses. The console's separate **Push
+  images** switch gave way to F-22's **Access: Read and publish**, which offers OCI.
 - **Uploads earn refs through a new Core function**, `landUpload` (an upload is not named by its
   hash), and hold objects with the `oci-push` ref, which the bytes host's blob route ignores.
 - **Read-after-write.** The conformance suite's push workflow requires a pushed blob to be
