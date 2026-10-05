@@ -49,6 +49,7 @@
  * exception: a rate-limited cache miss is `429 rate_limited`, so a client can back off.
  */
 
+import { listingImageUrl } from "@polaris-key/manifest";
 import {
   isAllowedStorageHost,
   type Db,
@@ -60,10 +61,15 @@ import { getPortalProductSettings } from "./repo.js";
 import { portalSecurityHeaders } from "./headers.js";
 import type { PortalHooksFor } from "./api.js";
 
-/** The two proxied listing fields, their path names and byte caps. */
+/**
+ * The two proxied listing slots, their path names and byte caps. Each slot's source is read with
+ * `listingImageUrl` (HA-04): the normalised `icon` / `header` ref when it is an https URL, or the
+ * legacy `iconUrl` / `headerUrl` of a listing row stored before HA-04. A repo-path ref has no
+ * URL to proxy; HA-05 hosts it and HA-07 moves the portal to the media host.
+ */
 export const MEDIA_ASSETS = {
-  icon: { field: "iconUrl", maxBytes: 1024 * 1024 },
-  header: { field: "headerUrl", maxBytes: 5 * 1024 * 1024 },
+  icon: { maxBytes: 1024 * 1024 },
+  header: { maxBytes: 5 * 1024 * 1024 },
 } as const;
 
 export type MediaAsset = keyof typeof MEDIA_ASSETS;
@@ -122,7 +128,7 @@ export async function mediaUrlFor(
   asset: MediaAsset,
   listing: Record<string, unknown> | null,
 ): Promise<string | null> {
-  const source = mediaSourceUrl(listing?.[MEDIA_ASSETS[asset].field]);
+  const source = mediaSourceUrl(listingImageUrl(listing, asset));
   if (!source) return null;
   const v = await mediaVersion(source.toString());
   return `/media/${encodeURIComponent(product)}/${asset}?v=${v}`;
@@ -280,9 +286,7 @@ export async function handlePortalMedia(
   const delivery = hooksFor(loaded, now).delivery();
   const listing = delivery ? await delivery.listing() : null;
   const spec = MEDIA_ASSETS[asset];
-  const source = mediaSourceUrl(
-    (listing as Record<string, unknown> | null)?.[spec.field],
-  );
+  const source = mediaSourceUrl(listingImageUrl(listing, asset));
   if (!source) return refused();
 
   const version = await mediaVersion(source.toString());
