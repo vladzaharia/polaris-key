@@ -51,6 +51,14 @@ Corrections against the code, made in this branch:
 - **Host check.** The plan named `isAllowedDownloadRedirectHost`, which also admits GitHub's
   storage hosts. A ticket verifies on the bytes host only, so the route mints only for a URL on
   the bytes host (`isBytesHost`), and only for a URL with no query.
+- **Merge with main after PX-W3 (fix round 1).** Main's `fix/portal-download-404` reordered the
+  portal's `downloadTarget` (public files go to the bytes host first; a GitHub URL only for a
+  public repository) while PX-W3 added the ticket branch to the same function. The resolution
+  keeps both: public → bytes host; GitHub URL only when the repository is public; a non-public
+  file with no GitHub URL → bytes host with a ticket; a licensed file in a private repository
+  stays `not_hosted` (PX-W3 plan Q7, now pinned by a test with tickets configured). PX-W3's
+  fail-closed test now expects main's owner refusal (`409 not_hosted`) instead of `404`. PX-W3's
+  own branch needs the same resolution when it re-merges main.
 - **`referrer-policy: no-referrer`** is already on every answer (`harden` →
   `appSecurityHeaders`), so the redirect adds no header of its own; the tests assert it.
 - **The workerd case** drives the route's minting half (`ticketedDeliveryUrl`) and verifies the
