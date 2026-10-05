@@ -29892,11 +29892,59 @@ function checkStep(step) {
   if (refusal)
     throw new Error(refusalMessage(store, step.command, step.argv, refusal));
 }
+function vdfTokens(vdf, escapes) {
+  const tokens = [];
+  let i = 0;
+  while (i < vdf.length) {
+    const c = vdf[i];
+    if (/\s/.test(c)) {
+      i++;
+    } else if (c === "/" && vdf[i + 1] === "/") {
+      while (i < vdf.length && vdf[i] !== "\n") i++;
+    } else if (c === "{" || c === "}") {
+      tokens.push(c);
+      i++;
+    } else if (c === '"') {
+      let value = "";
+      i++;
+      while (i < vdf.length && vdf[i] !== '"') {
+        if (escapes && vdf[i] === "\\" && i + 1 < vdf.length) i++;
+        value += vdf[i];
+        i++;
+      }
+      i++;
+      tokens.push(value);
+    } else {
+      let value = "";
+      while (i < vdf.length && !/[\s{}"]/.test(vdf[i])) value += vdf[i++];
+      tokens.push(value);
+    }
+  }
+  return tokens;
+}
 function vdfSetliveProblem(vdf) {
-  for (const m of vdf.matchAll(/"setlive"\s+"([^"]*)"/gi)) {
-    const branch = m[1].trim().toLowerCase();
+  for (const escapes of [true, false]) {
+    const problem = setliveTokensProblem(vdfTokens(vdf, escapes));
+    if (problem) return problem;
+  }
+  const raw = /setlive[\s"\\]*(default|public)(?=["\s{}\\]|$)/i.exec(vdf);
+  if (raw)
+    return `sets the build live on the ${raw[1].toLowerCase()} branch, which only a person does in Steamworks`;
+  return null;
+}
+function setliveTokensProblem(tokens) {
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i].trim().toLowerCase();
+    if (token === "#include" || token === "#base")
+      return `pulls in another file with ${token}, which this check cannot follow; inline it`;
+    if (token !== "setlive") continue;
+    const value = tokens[i + 1];
+    if (value === void 0 || value === "{" || value === "}")
+      return "has a setlive key without a branch name";
+    const branch = value.trim().toLowerCase();
     if (branch === "default" || branch === "public")
       return `sets the build live on the ${branch} branch, which only a person does in Steamworks`;
+    i++;
   }
   return null;
 }
@@ -29918,9 +29966,17 @@ async function runFileChecks(step, cwd) {
     }
   }
 }
+function toolEnv(env) {
+  const out = {};
+  for (const [k, v] of Object.entries(env))
+    if (!k.startsWith("PKEY_") && !k.startsWith("ACTIONS_ID_TOKEN_"))
+      out[k] = v;
+  return out;
+}
 var defaultSpawn = (tool, argv2, cwd) => new Promise((resolve, reject) => {
   const child = spawn(tool, [...argv2], {
     cwd,
+    env: toolEnv(process.env),
     stdio: "inherit",
     shell: false
   });
@@ -29932,8 +29988,17 @@ var defaultSpawn = (tool, argv2, cwd) => new Promise((resolve, reject) => {
   );
   child.on("close", (code) => resolve(code ?? -1));
 });
+function checkToolPath(toolPath, tool) {
+  const base = path19.basename(toolPath.replace(/\\/g, "/")).replace(/\.(exe|sh|cmd|bat)$/i, "");
+  if (base.toLowerCase() !== tool.toLowerCase())
+    throw new Error(
+      `--tool-path must point at ${tool} itself, not ${path19.basename(toolPath)}.`
+    );
+}
 async function runStoreSteps(steps, o) {
   for (const step of steps) checkStep(step);
+  if (o.toolPath !== void 0)
+    for (const step of steps) checkToolPath(o.toolPath, step.tool);
   for (const step of steps) await runFileChecks(step, o.cwd);
   const report = o.report !== false;
   if (!report) {
