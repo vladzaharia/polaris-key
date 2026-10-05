@@ -56,7 +56,6 @@ import {
   type TokenSource,
 } from "./core/token.js";
 import { TrustManager } from "./core/trust.js";
-import { buildSnapshot, reportSnapshot } from "./core/telemetry.js";
 import { ConfigClient, type ConfigClientOptions } from "./config/client.js";
 import { LicenseClient, type LicenseClientOptions } from "./license/client.js";
 import { reacquireToken } from "./license/endpoints.js";
@@ -222,6 +221,17 @@ export class PolarisKeyClient {
     // `devices/report` carries the active pack set's id (plans/P4-01.md §2.11).
     this.devices.packSetId = () => this.update.packs.packSetId();
     this.devices.packInstalls = () => this.update.packs.packInstalls();
+    // The update-health half of the report (§3.13): the gate, the outlet and the journal's
+    // pending events, marked sent once a report carrying them was accepted.
+    this.devices.reportExtras = async () => ({
+      gate: this.license.status().status,
+      outlet: this.update.outlet?.id ?? null,
+      updates: await this.update.journal.pending().catch(() => []),
+    });
+    this.devices.reportAccepted = async (extras) => {
+      const ids = (extras.updates ?? []).map((e) => e.eventId);
+      if (ids.length > 0) await this.update.journal.markSent(ids);
+    };
 
     this.refreshIntervalSeconds = opts.refreshIntervalSeconds;
     this.onChange = opts.onChange;
@@ -387,18 +397,7 @@ export class PolarisKeyClient {
     if (!token) return;
     // A token write since init() may have fallen back to the file; report what is true now.
     await this.storeStatus();
-    const packSetId = await this.update.packs.packSetId().catch(() => null);
-    await reportSnapshot(
-      this.core,
-      token,
-      buildSnapshot(
-        this.cache,
-        this.probes ?? [],
-        this.caps(),
-        packSetId,
-        this.update.packs.packInstalls(),
-      ),
-    );
+    await this.devices.report();
   }
 
   private async onLicenseAcquired(): Promise<void> {

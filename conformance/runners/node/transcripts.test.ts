@@ -34,7 +34,8 @@
 // TypeScript's `private` is compile-time only), against the blobs template the last discover
 // returned. `range` is the fetch's status; `bytes` the body it returned, as a string.
 
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import {
@@ -361,6 +362,9 @@ async function replay(t: Transcript): Promise<void> {
     store,
     fetchImpl,
     requestTimeoutMs: 0,
+    // The update-health journal and other persisted state live in a throwaway directory, so a
+    // replay never reads what an earlier one wrote (or writes into the developer's home).
+    stateDir: mkdtempSync(join(tmpdir(), "pkey-replay-state-")),
     ...(services ? { expectedServices: services as never } : {}),
     ...(u
       ? {

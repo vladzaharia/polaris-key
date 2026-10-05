@@ -117,6 +117,14 @@ export {
   type UpdateDecideOptions,
   type VersionCheck,
 } from "./update/client.js";
+// The update-health journal (SDK parity pass §3.13, P6-03).
+export {
+  MAX_UPDATE_EVENTS_PER_REPORT,
+  UpdateJournal,
+  type UpdateEventEntry,
+  type UpdateEventInput,
+} from "./update/journal.js";
+export { type SnapshotExtras } from "./core/telemetry.js";
 // Outlet detection (plans/P3-01.md §2.9): this runtime's readers, and client-core's mapping.
 export {
   processOutletEnvironment,

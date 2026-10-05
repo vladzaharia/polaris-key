@@ -95,6 +95,7 @@ import type { TokenManager } from "../core/token.js";
 import type { TrustManager } from "../core/trust.js";
 import { readOutletSignals, type OutletReaderEnvironment } from "./outlet.js";
 import { PacksClient, type NodePacksOptions } from "../packs/client.js";
+import { UpdateJournal } from "./journal.js";
 import {
   appcastUrlFrom,
   updateEndpointsFrom,
@@ -441,9 +442,26 @@ async function readCapped(res: Response, limit: number): Promise<string> {
   return new TextDecoder("utf-8").decode(bytes);
 }
 
+/** The `deliverable` claim of a pack record, else the pack id. */
+function packDeliverable(record: string, packId: string): string {
+  try {
+    const payload = JSON.parse(
+      new TextDecoder().decode(base64UrlDecode(record.split(".")[1] ?? "")),
+    ) as { deliverable?: unknown };
+    if (typeof payload.deliverable === "string") return payload.deliverable;
+  } catch {
+    // An unreadable record names no deliverable.
+  }
+  return packId;
+}
+
 export class UpdateClient {
   /** The pack facet (`ensure`, `state`, `registerHandler`, progress events). */
   readonly packs: PacksClient;
+  /** The update-health journal (§3.13): events the next device report carries. */
+  readonly journal: UpdateJournal;
+  /** The releases this process already reported as offered. */
+  private readonly offered = new Set<string>();
   private readonly cache?: CacheManager;
   private readonly trust?: TrustManager;
   private readonly discoverNow?: () => Promise<unknown>;
@@ -467,11 +485,38 @@ export class UpdateClient {
       wiring.options === undefined
         ? null
         : configure(wiring.options, ctx.pinnedTrust);
+    this.journal = new UpdateJournal({
+      stateDir: ctx.dirs.state,
+      outlet: () => this.configured?.outlet.id ?? "unknown",
+      channel: () => ctx.channel,
+    });
+    const journal = this.journal;
     this.packs = new PacksClient(
       {
         ctx,
         tokens,
         discovery,
+        outcomes: {
+          installed: (installs) => {
+            for (const i of installs) {
+              const input = {
+                release: i.version,
+                deliverable: packDeliverable(i.record, i.packId),
+              };
+              void journal.record("update_downloaded", input);
+              if (i.activation === "hot")
+                void journal.record("update_applied", input);
+            }
+          },
+          failed: (packIds, code) => {
+            for (const id of packIds)
+              void journal.record("pack_failed", {
+                release: "unknown",
+                deliverable: id,
+                code,
+              });
+          },
+        },
         ...(wiring.discover ? { discover: wiring.discover } : {}),
         ...(wiring.cache ? { cache: wiring.cache } : {}),
         ...(wiring.trust ? { trust: wiring.trust } : {}),
@@ -865,6 +910,21 @@ export class UpdateClient {
     });
     this.feedMenu = r.content.deltas;
     if (r.revocations) await this.packs.recordRevocations(r.revocations);
+    // update_offered (§3.13): a decision that offers a newer build, once per release per run.
+    const d = r.check.decision;
+    if (d.action !== "none" && "release" in d) {
+      const release = d.release.version;
+      if (!this.offered.has(release)) {
+        this.offered.add(release);
+        await this.journal
+          .record("update_offered", {
+            release,
+            fromRelease: this.ctx.version,
+            channel: r.check.channel,
+          })
+          .catch(() => null);
+      }
+    }
     return r.check;
   }
 
