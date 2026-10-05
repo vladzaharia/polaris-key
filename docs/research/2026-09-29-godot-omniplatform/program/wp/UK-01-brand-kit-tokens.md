@@ -105,10 +105,10 @@ took the recommended option. UI-KITS.md §2.1, §3.3 and §8 were edited to matc
 
 ## Acceptance criteria
 
-- [ ] `pnpm gen:brand -- --check` covers every new output, and a hand edit to any of them fails it.
-- [ ] The §3.3 vector table passes in TypeScript, Swift, Kotlin, GDScript and Python.
-- [ ] The mockup render (`render.cjs`) runs with no console error and no missing font, and the new boards exist in both themes.
-- [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+- [x] `pnpm gen:brand -- --check` covers every new output, and a hand edit to any of them fails it (`test/kit.test.ts` edits each one in memory and expects exactly that path stale).
+- [x] The §3.3 vector table passes in TypeScript, Swift, Kotlin, GDScript and Python (every vector, bit for bit; Kotlin run locally with `./gradlew :ui:testDebugUnitTest`, which the gate does not run).
+- [x] The mockup render (`render.cjs`) runs with no console error and no missing font, and the new boards exist in both themes (172 shots).
+- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify
 
