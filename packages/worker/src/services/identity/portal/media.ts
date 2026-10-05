@@ -55,6 +55,11 @@ import {
   type Env,
 } from "../../../core/platform.js";
 import { loadProductPublic } from "../../../core/products.js";
+import {
+  SAFE_FETCH_MAX_REDIRECTS,
+  safeFetch,
+  type FetchImpl,
+} from "../../../core/safeFetch.js";
 import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
 import { getPortalProductSettings } from "./repo.js";
 import { portalSecurityHeaders } from "./headers.js";
@@ -72,8 +77,8 @@ export function isMediaAsset(v: string): v is MediaAsset {
   return Object.prototype.hasOwnProperty.call(MEDIA_ASSETS, v);
 }
 
-/** Redirect hops followed (each re-checked against the allowlist). */
-export const MEDIA_MAX_REDIRECTS = 3;
+/** Redirect hops followed (each re-checked against the allowlist): Core's guarded fetcher's. */
+export const MEDIA_MAX_REDIRECTS = SAFE_FETCH_MAX_REDIRECTS;
 /** The upstream fetch's budget, headers and body together. */
 export const MEDIA_FETCH_TIMEOUT_MS = 5000;
 /** `Cache-Control` of an answer whose `v` is current: a new source URL is a new `v`. */
@@ -162,78 +167,48 @@ function refused(status = 404): Response {
   });
 }
 
-type FetchImpl = (
-  input: Request | string,
-  init?: RequestInit,
-) => Promise<Response>;
-
 /**
  * Fetch `source` under rules 2–5: allowlisted hops only, bounded, and sniffed. `null` for any
- * refusal or failure.
+ * refusal or failure. The fetch itself is Core's guarded fetcher (`core/safeFetch.ts`, HA-01),
+ * narrowed to rule 2's GitHub-hosted names on every hop (`allowHost`) until HA-07 serves hosted
+ * copies instead; the cap, the redirect rule and the 5 s budget are unchanged.
  */
 export async function fetchMedia(
   source: URL,
   maxBytes: number,
   fetchImpl: FetchImpl = fetch,
 ): Promise<{ bytes: Uint8Array; type: string } | null> {
-  const signal = AbortSignal.timeout(MEDIA_FETCH_TIMEOUT_MS);
-  let url = source;
-  let res: Response | null = null;
+  const res = await safeFetch(source.toString(), {
+    maxBytes,
+    timeoutMs: MEDIA_FETCH_TIMEOUT_MS,
+    headers: { accept: "image/png, image/jpeg, image/webp, image/gif" },
+    allowHost: isAllowedStorageHost,
+    fetchImpl,
+  });
+  if (!res.ok || res.status !== 200) return null;
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
   try {
-    for (let hop = 0; ; hop++) {
-      res = await fetchImpl(url.toString(), {
-        method: "GET",
-        redirect: "manual",
-        headers: { accept: "image/png, image/jpeg, image/webp, image/gif" },
-        signal,
-      });
-      if (res.status < 300 || res.status >= 400) break;
-      await res.body?.cancel();
-      const location = res.headers.get("location");
-      if (!location || hop >= MEDIA_MAX_REDIRECTS) return null;
-      let next: URL;
-      try {
-        next = new URL(location, url);
-      } catch {
-        return null;
-      }
-      const checked = mediaSourceUrl(next.toString());
-      if (!checked) return null;
-      url = checked;
-    }
-    if (res.status !== 200 || !res.body) {
-      await res.body?.cancel();
-      return null;
-    }
-    const declared = Number(res.headers.get("content-length"));
-    if (Number.isFinite(declared) && declared > maxBytes) {
-      await res.body.cancel();
-      return null;
-    }
-    const reader = res.body.getReader();
-    const chunks: Uint8Array[] = [];
-    let total = 0;
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
       total += value.byteLength;
-      if (total > maxBytes) {
-        await reader.cancel();
-        return null;
-      }
       chunks.push(value);
     }
-    const bytes = new Uint8Array(total);
-    let offset = 0;
-    for (const c of chunks) {
-      bytes.set(c, offset);
-      offset += c.byteLength;
-    }
-    const type = sniffImageType(bytes);
-    return type ? { bytes, type } : null;
   } catch {
+    // Past the cap, the timeout, or a broken stream: all one refusal.
+    await reader.cancel().catch(() => undefined);
     return null;
   }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const c of chunks) {
+    bytes.set(c, offset);
+    offset += c.byteLength;
+  }
+  const type = sniffImageType(bytes);
+  return type ? { bytes, type } : null;
 }
 
 function cacheStore(): Cache | null {

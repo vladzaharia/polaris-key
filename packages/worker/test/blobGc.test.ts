@@ -28,6 +28,7 @@ import {
 } from "../src/core/blobGc.js";
 import { runBlobGc, type MaintenanceReport } from "../src/scheduled.js";
 import { promote, stagingKey } from "../src/core/blobs.js";
+import { ingest } from "../src/core/hostedAssets.js";
 import { asR2 } from "./r2Mock.js";
 import type { Env } from "../src/env.js";
 import { seedProduct } from "./seed.js";
@@ -793,5 +794,50 @@ describe("review fixes: tenancy (P4-14 S3)", () => {
         file,
       ),
     ).toEqual({ n: 0 });
+  });
+});
+
+describe("hosted assets (HA-01)", () => {
+  const png = (seed: number) => {
+    const out = new Uint8Array(4096).fill(seed);
+    out.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
+    return out;
+  };
+  const hexOf = async (b: Uint8Array) =>
+    [...new Uint8Array(await crypto.subtle.digest("SHA-256", b))]
+      .map((x) => x.toString(16).padStart(2, "0"))
+      .join("");
+
+  it("a hosted-asset ref is never dropped; a replaced copy's bytes are swept after grace and lock", async () => {
+    const { w } = await world();
+    const upload = (bytes: Uint8Array, now: number) =>
+      ingest(
+        { env: { BLOBS: asR2(w.r2) }, db: w.db, now },
+        SLUG,
+        "presentation.icon",
+        {
+          kind: "stream",
+          body: new Response(bytes).body!,
+          size: bytes.length,
+          sourceKind: "upload",
+          origin: "console",
+        },
+      );
+    const a = png(1);
+    const b = png(2);
+    expect(await upload(a, NOW)).toMatchObject({ ok: true });
+    const ka = key(await hexOf(a));
+    await tick(w, T);
+    await tick(w, T + GRACE);
+    await tick(w, T + 3 * GRACE);
+    expect(await stored(w, ka)).toBe(true);
+
+    const R = T + 3 * GRACE + 1;
+    expect(await upload(b, R)).toMatchObject({ ok: true });
+    await tick(w, R);
+    await tick(w, R + GRACE + 1);
+    await tick(w, R + 3 * GRACE);
+    expect(await stored(w, ka)).toBe(false);
+    expect(await stored(w, key(await hexOf(b)))).toBe(true);
   });
 });
