@@ -23,12 +23,14 @@ extends PKeyNativeFacade
 ##                         the facade quits the game at once
 ##   install_and_relaunch(feed_url)  all of the above (P3-10's hook)
 ##
-## **Public delivery only, for now.** The Worker answers each package with a cross-origin 302 to its
-## delivery URL on the bytes host, and Velopack (like the other measured updaters) drops
-## `Authorization` on a cross-origin redirect (notes/S-11 §5.2). Under `licensed` or `entitled`
-## delivery that second hop is refused. Discovery does not say which delivery a product uses, so
-## the facade cannot refuse up front: when a download fails with 401 or 403 it answers
-## `unsupported` (`product`) saying so, instead of a bare network error.
+## **Licensed and entitled delivery.** Velopack (ureq) drops `Authorization` on every redirect, so
+## under a non-public delivery the Worker's package route checks the file with the bearer it sees
+## and redirects with a short-lived download ticket that needs no header (SP-09). A download that
+## still fails with 401 or 403 (a ticket that expired before the request, a key rotated twice
+## inside its window) is retried ONCE: Velopack asks the route again for each package, which mints
+## a fresh ticket. A second 401 or 403 answers `unsupported` (`product`): the deployment cannot
+## sign Velopack downloads, or the licence does not cover this release. Tokens are never cleared
+## on either answer.
 ##
 ## Config keys beyond the base ones: `library` (the DLL path; default `velopack_libc.dll` beside
 ## the executable), `timeout_s` (the check's limit, default 60).
@@ -105,19 +107,33 @@ func check() -> PKeyResult:
 	return PKeyResult.success(d)
 
 
-## Download the update the last check() found. A coroutine; `progress` events meanwhile.
+## Download the update the last check() found. A coroutine; `progress` events meanwhile. A 401 or
+## 403 is retried once (a fresh download ticket from the package route, SP-09).
 func download() -> PKeyResult:
+	var first := await _download_once()
+	if not _refused(first):
+		return first
+	var second := await _download_once()
+	if not _refused(second):
+		return second
+	return unsupported(PKeyConstants.UnsupportedReason.PRODUCT, "Velopack: the download was refused twice (%s). This deployment cannot sign Velopack downloads, or the licence does not cover this release." % String(second.detail.get("message", "")))
+
+
+## One download attempt: a failed download is a NETWORK failure carrying Velopack's message.
+func _download_once() -> PKeyResult:
 	var request := int(_native().call("download_async"))
 	if request < 0:
 		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "Velopack: nothing to download, or a download is already running.")
 	var got := await wait_event(["downloaded", "download_failed"], request)
 	var d: Dictionary = got["detail"]
 	if got["event"] != "downloaded":
-		var message := String(d.get("message", "download failed"))
-		if refused_by_delivery(message):
-			return unsupported(PKeyConstants.UnsupportedReason.PRODUCT, "Velopack updates need public delivery for now: the package route's cross-origin redirect drops Authorization, so a licensed or entitled delivery refuses the download (%s)." % message)
-		return PKeyResult.failure(PKeyErrors.NETWORK, "Velopack: %s" % message, d)
+		return PKeyResult.failure(PKeyErrors.NETWORK, "Velopack: %s" % String(d.get("message", "download failed")), d)
 	return PKeyResult.success(d)
+
+
+## Whether an attempt failed because the delivery host refused it (401 or 403).
+static func _refused(r: PKeyResult) -> bool:
+	return not r.ok and r.code == PKeyErrors.NETWORK and refused_by_delivery(String((r.detail if r.detail is Dictionary else {}).get("message", "")))
 
 
 ## Hand the downloaded update to Update.exe and quit; it applies and (with `restart`) starts the
@@ -161,6 +177,6 @@ func install_and_relaunch(feed_url: String) -> int:
 
 
 ## Whether a download error is the delivery host refusing the request (401 or 403): what a
-## non-public delivery answers once the redirect has dropped Authorization.
+## non-public delivery answers when a download ticket was missing, expired or refused.
 static func refused_by_delivery(message: String) -> bool:
 	return RegEx.create_from_string("(?i)\\b(401|403)\\b|unauthori[sz]ed|forbidden").search(message) != null
