@@ -558,7 +558,9 @@ describe("Distribution → Listing", () => {
     expect(
       within(dialog).getByText(/nothing is sent for review until you submit/),
     ).toBeTruthy();
-    expect(within(dialog).queryByText(/sends the change for review/)).toBeNull();
+    expect(
+      within(dialog).queryByText(/sends the change for review/),
+    ).toBeNull();
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Push listing" }),
     );

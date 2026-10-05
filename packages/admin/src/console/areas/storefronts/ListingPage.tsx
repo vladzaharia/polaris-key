@@ -644,7 +644,13 @@ function PushDialog({
         errorCopy(e, { area: "distribution", thing: "Listing push" })
       }
       onConfirm={async () => {
-        await mutate("pushListing", slug, store.id, {}, { idempotencyKey: key });
+        await mutate(
+          "pushListing",
+          slug,
+          store.id,
+          {},
+          { idempotencyKey: key },
+        );
         toast.success(`Listing pushed to ${store.label}`);
       }}
     />
