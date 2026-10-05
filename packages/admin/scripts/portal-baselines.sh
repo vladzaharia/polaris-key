@@ -2,7 +2,7 @@
 # The portal's linux visual baselines (PX-20; packages/admin/e2e/portalHarness.ts).
 #
 # CI runs the portal quality bar in Playwright's own image (.github/workflows/ci.yml, job
-# `portal`), so the committed baselines are rendered in that same image. This script copies the
+# `console`), so the committed baselines are rendered in that same image. This script copies the
 # working tree (without node_modules, dist or .git) into a throwaway container of that image,
 # installs and builds the console there, runs e2e/portalQuality.e2e.test.ts and copies the linux
 # baselines back into e2e/__baselines__/portal/linux/.
@@ -25,7 +25,7 @@ ADMIN="$(cd "$(dirname "$0")/.." && pwd)"
 ROOT="$(cd "$ADMIN/../.." && pwd)"
 OUT="$ADMIN/e2e/__baselines__/portal"
 mkdir -p "$OUT/linux"
-PNPM="$(node -p "require('$ROOT/package.json').packageManager.split('@')[1]")"
+PNPM="$(mise exec node@22 -- node -p "require('$ROOT/package.json').packageManager.split('@')[1]")"
 
 docker run --rm --init --ipc=host --platform linux/amd64 \
   -e MODE="$MODE" -e PNPM="$PNPM" -e CI=1 \
