@@ -199,7 +199,11 @@
       "unowned": true,
       "note": "No work package owns the Flatpak extension transport (P5-08 Out)."
     },
-    "ui.stages": { "status": "implemented" },
+    "ui.stages": {
+      "status": "planned",
+      "unowned": true,
+      "note": "The boot stage machine lives in @polaris-key/client-core/stages (conformance/runners/node/stageMatrix.test.ts proves it), but @polaris-key/node neither re-exports nor drives it. SDK parity pass SP-N05 exports it and drives it from client.boot()."
+    },
     "ui.kit": { "status": "na", "runtime": "headless", "reason": "runtime" },
     "commerce.receipt": {
       "status": "planned",

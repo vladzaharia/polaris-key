@@ -586,8 +586,8 @@ Compose `Polaris*`, Godot `PKey*`, Python Tk `polaris_key.ui.tk.*`.
 | Portal links                          | ✗    | ✗     | ✗      | ✗     | ✗      | ✗     | §3.5  |
 | Distribution model                    | ✗    | ✗     | ✗      | ✗     | ✗      | ✗     | §3.8  |
 | Crash tags                            | ✗    | ✗     | ✗      | ✗     | ✗      | ✗     | §3.14 |
-| Generated pins/config (`pkey sdk`)    | ✗    | ✗     | ✗      | ✗     | ✗      | ◐     | §3.19 |
-| Mirror generator outside the monorepo | ✗    | ✗     | ✗      | ✗     | ✗      | ✗     | §3.19 |
+| Generated pins/config (`pkey sdk`)    | ✓    | ✓     | ✓      | ✓     | ✓      | ✓     | §3.19 |
+| Mirror generator outside the monorepo | ✓    | ✓     | ✓      | ✓     | ✓      | ✓     | §3.19 |
 | Runnable sample app                   | ✗    | ✗     | ✗      | ✗     | ✗      | ✗     | §5.7  |
 
 `?` means not confirmed by that audit. Treat it as ✗ until a test proves otherwise (SP-00 adds the
@@ -962,12 +962,16 @@ effort: under 2 days, under 1 week, and 1–3 weeks. The tasks are ordered withi
 
 ### 5.7 Docs and samples (all SDKs)
 
-- **SP-D01.** One "Integrate in 5 minutes" page per SDK, built on SP-02's generated config, with
-  tabs in each service guide (Python and Swift have no tabs today).
+- **SP-D01.** One "Integrate in 5 minutes" page per SDK, built on SP-02's generated config
+  (done: `build/quickstart/`). The per-SDK service-guide tabs are deferred to SP-D04. Correction:
+  no service guide has per-SDK tabs today, for any SDK; the guides hold one TypeScript, one Swift
+  and one Kotlin block in total.
 - **SP-D02.** One sample per primary host, in `examples/<sdk>-<host>/` and built in CI. Each
   appears in its SDK's task list above.
 - **SP-D03.** Recipes: device-limit recovery, server-side licence verification, Sentry tagging,
   attestation-gated products, and store outlets (hiding key entry).
+- **SP-D04.** Per-SDK tabs (Node, React, Python, Swift, Kotlin, Godot) in each service guide under
+  `services/`, one snippet per SDK per guide, built on the same generated config as SP-D01.
 - **Drift gates.** New docs pages go through the docs freshness gate. Sample builds join CI. They
   join the green gate only if fast.
 
