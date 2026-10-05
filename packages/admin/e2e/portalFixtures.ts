@@ -1,5 +1,5 @@
 import type { Request } from "playwright";
-import { artPng, type Rgb } from "./artPng.js";
+import { artPng, squirclePng, type Rgb } from "./artPng.js";
 
 /**
  * The portal API for the browser checks (portal.e2e.test.ts): the mockup cast of PORTAL.md
@@ -264,7 +264,15 @@ const PRESENTATION: Record<
 };
 
 /** Stand-in key art per product (PX-08: real images through the media proxy), as palettes. */
-const ART: Record<string, { bands: Rgb[]; disc: Rgb; icon?: false }> = {
+const ART: Record<
+  string,
+  {
+    bands: Rgb[];
+    disc: Rgb;
+    /** `false`: no icon. `squircle`: a shaped icon with transparent corners and a rim. */
+    icon?: false | { squircle: Rgb };
+  }
+> = {
   nightfall: {
     bands: [
       [34, 22, 58],
@@ -273,6 +281,8 @@ const ART: Record<string, { bands: Rgb[]; disc: Rgb; icon?: false }> = {
       [38, 26, 66],
     ],
     disc: [232, 220, 186],
+    // Shaped like a macOS icon (DJDL's Liquid Glass icon is one): it must show edge to edge.
+    icon: { squircle: [74, 196, 206] },
   },
   tidewater: {
     bands: [
@@ -311,6 +321,8 @@ export function portalMedia(pathname: string): Buffer | null {
   const m = pathname.match(/^\/media\/([a-z0-9-]+)\/(icon|header)$/);
   const art = m ? ART[m[1]!] : undefined;
   if (!m || !art || (m[2] === "icon" && art.icon === false)) return null;
+  if (m[2] === "icon" && art.icon)
+    return squirclePng(256, art.bands, art.disc, art.icon.squircle);
   return m[2] === "icon"
     ? artPng(256, 256, art.bands, art.disc)
     : artPng(640, 360, art.bands, art.disc);

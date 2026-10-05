@@ -321,9 +321,9 @@ describe("product header: the icon in front of the cover (§4.20)", () => {
     ["nightfall", "three", "Nightfall"],
     ["glyphsmith", "twelve", "Glyphsmith"],
   ] as const) {
-    it(`${name}: the icon overlaps the cover's lower edge and paints over it, both themes, 1440 and 390`, async () => {
+    it(`${name}: the icon overlaps the cover's lower edge and paints over it, both themes, 1440, 1280 and 390`, async () => {
       for (const theme of ["dark", "light"] as const) {
-        for (const width of [1440, 390]) {
+        for (const width of [1440, 1280, 390]) {
           const o = await open(scenario, `/#/p/${slug}`, {
             theme,
             width,
@@ -337,6 +337,42 @@ describe("product header: the icon in front of the cover (§4.20)", () => {
             overlaps: true,
             onTop: true,
           });
+          const art = await o.page.evaluate(() => {
+            const header = document.querySelector("[data-cover]")!;
+            const icon = header.querySelector<HTMLElement>("[data-art]")!;
+            const s = getComputedStyle(icon);
+            const banner =
+              header.previousElementSibling!.getBoundingClientRect();
+            return {
+              image: icon.tagName === "IMG",
+              frame:
+                icon.tagName === "IMG"
+                  ? [
+                      s.backgroundColor,
+                      s.borderTopWidth,
+                      s.borderTopLeftRadius,
+                      s.padding,
+                    ]
+                  : null,
+              ratio: banner.width / banner.height,
+              height: banner.height,
+            };
+          });
+          // An icon image is its own frame: no tile background, border, radius or padding.
+          if (art.image)
+            expect(art.frame).toEqual([
+              "rgba(0, 0, 0, 0)",
+              "0px",
+              "0px",
+              "0px",
+            ]);
+          // 16:9 on phones; a 3:1 band, at most 416 px tall, on desktop.
+          if (width === 390) expect(art.ratio).toBeCloseTo(16 / 9, 1);
+          else {
+            expect(art.height).toBeLessThanOrEqual(416.5);
+            expect(art.ratio).toBeGreaterThanOrEqual(2.9);
+          }
+          await shoot(o.page, `header-${slug}-${width}-${theme}`);
           await o.close();
         }
       }
@@ -368,6 +404,87 @@ describe("product header: the icon in front of the cover (§4.20)", () => {
       await o.close();
     }
   });
+});
+
+describe("library cards: 16:9 art, the status inset on its plate, no byline", () => {
+  for (const [scenario, path] of [
+    ["three", "/"],
+    ["twelve", "/#/?view=grid"],
+  ] as const) {
+    it(`${scenario}: both themes at 1440, 1280 and 390`, async () => {
+      for (const theme of ["dark", "light"] as const) {
+        for (const width of [1440, 1280, 390]) {
+          const o = await open(scenario, path, {
+            theme,
+            width,
+            height: width === 390 ? 844 : 900,
+          });
+          await h1(o.page, "Your library");
+          await o.page.getByRole("article", { name: "Nightfall" }).waitFor();
+          // Both icons decoded, so their shape is read.
+          await expect
+            .poll(() =>
+              o.page.evaluate(() =>
+                ["nightfall", "tidewater"].every((p) => {
+                  const i = document.querySelector<HTMLImageElement>(
+                    `article[aria-labelledby='tile-${p}'] img[data-art]`,
+                  );
+                  return !!i && i.complete && i.naturalWidth > 0;
+                }),
+              ),
+            )
+            .toBe(true);
+          const card = await o.page.evaluate(() => {
+            const article = [...document.querySelectorAll("article")].find(
+              (a) => a.getAttribute("aria-labelledby") === "tile-nightfall",
+            )!;
+            const art = article.querySelector<HTMLElement>("[data-art]")!;
+            const plate = art.querySelector<HTMLElement>("span.absolute")!;
+            const a = art.getBoundingClientRect();
+            const p = plate.getBoundingClientRect();
+            const pill = plate.firstElementChild!.getBoundingClientRect();
+            const icon = article.querySelector<HTMLElement>("img[data-art]")!;
+            const s = getComputedStyle(icon);
+            // A full-bleed square icon (Tidewater's) gets the store's corner mask, nothing more.
+            const square = document.querySelector<HTMLElement>(
+              "article[aria-labelledby='tile-tidewater'] img[data-art]",
+            )!;
+            const q = getComputedStyle(square);
+            return {
+              ratio: a.width / a.height,
+              insetRight: a.right - p.right,
+              insetBottom: a.bottom - p.bottom,
+              plateHeight: pill.height,
+              byline: article.textContent!.includes("Lanternworks"),
+              iconFrame: [
+                s.backgroundColor,
+                s.borderTopWidth,
+                s.borderTopLeftRadius,
+              ],
+              shapes: [icon.dataset.shape, square.dataset.shape],
+              squareFrame: [q.backgroundColor, q.borderTopWidth],
+              squareRadius: parseFloat(q.borderTopLeftRadius),
+            };
+          });
+          expect(card.ratio, `${scenario} ${theme} ${width}`).toBeCloseTo(
+            16 / 9,
+            1,
+          );
+          expect(card.insetRight).toBeGreaterThanOrEqual(16);
+          expect(card.insetBottom).toBeGreaterThanOrEqual(16);
+          expect(card.insetRight).toBe(card.insetBottom);
+          expect(card.plateHeight).toBeGreaterThanOrEqual(32);
+          expect(card.byline).toBe(false);
+          expect(card.iconFrame).toEqual(["rgba(0, 0, 0, 0)", "0px", "0px"]);
+          expect(card.shapes).toEqual(["shaped", "square"]);
+          expect(card.squareFrame).toEqual(["rgba(0, 0, 0, 0)", "0px"]);
+          expect(card.squareRadius).toBeGreaterThan(0);
+          await shoot(o.page, `cards-${scenario}-${width}-${theme}`);
+          await o.close();
+        }
+      }
+    });
+  }
 });
 
 describe("Discover count (G24): never counts what the library holds", () => {

@@ -11,7 +11,8 @@ import { ProductStatusPill } from "../ProductStatus.js";
 import { QuickActionButton } from "../QuickAction.js";
 
 /**
- * The product header (§4.20): back to Library, the 320 px banner (full-bleed 16:9 on phones),
+ * The product header (§4.20): back to Library, the banner (16:9 full-bleed on phones, a centred
+ * 3:1 band capped at 416 px on desktop),
  * the 112 px icon (80 on phones) in front of its lower edge, like an app store's product header;
  * without a cover the icon stands alone beside the name, and without an icon its letter tile
  * stands in. The name as the page's `h1` (focus lands here after adding a
@@ -49,7 +50,9 @@ export function ProductHeader({
           src={pres.headerUrl}
           variant="banner"
           onError={() => setCoverFailed(true)}
-          className="-mx-4 aspect-video desk:mx-0 desk:aspect-auto desk:h-80 desk:rounded-xl"
+          // The listing's 16:9 header (PORTAL.md Q-2): all of it on phones, full-bleed; on desktop
+          // a centred 3:1 band, capped at 26 rem so it never fills the first screen.
+          className="-mx-4 aspect-video desk:mx-0 desk:aspect-[3/1] desk:max-h-[26rem] desk:rounded-xl"
         />
       ) : null}
       <div
@@ -67,10 +70,12 @@ export function ProductHeader({
           tint={pres.tint}
           src={pres.iconUrl}
           size={112}
+          lift={hasCover}
+          tileClassName="border-4 border-surface-page max-desk:text-3xl"
           className={cn(
             // In front of the cover: the banner is positioned, so the icon needs its own
             // stacking position to paint over the banner's lower edge (§4.20).
-            "relative z-10 border-4 border-surface-page shadow-elevation-2 max-desk:size-20 max-desk:text-3xl",
+            "relative z-10 max-desk:size-20",
             // Half the tile over the cover: pinned to the row's top, not its end, on desktop.
             hasCover && "-mt-10 desk:-mt-16 desk:self-start",
           )}
