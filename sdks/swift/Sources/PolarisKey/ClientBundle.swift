@@ -12,6 +12,8 @@
 //   expectedServices   [String] the services the product runs (discovery still refines them)
 //   channel            String   the release channel this build follows
 //   refreshIntervalSeconds Number  opt-in polling
+//   keychainAccessGroup String  share the token with extensions (`<TeamID>.<group>`)
+//   appGroup           String   place the cache and state in an app group's container
 //
 // The version is the bundle's `CFBundleShortVersionString`, so it is never pasted either.
 
@@ -31,6 +33,8 @@ public struct PolarisKeyBundleConfig: Sendable, Equatable {
     public var expectedServices: [ServiceSlug]?
     public var channel: String?
     public var refreshIntervalSeconds: Double?
+    public var keychainAccessGroup: String?
+    public var appGroup: String?
 
     /// Parse the plist's dictionary. Throws `PolarisError(invalid-options)` naming the bad key.
     public init(plist: [String: Any]) throws {
@@ -68,6 +72,8 @@ public struct PolarisKeyBundleConfig: Sendable, Equatable {
         }
         self.channel = plist["channel"] as? String
         self.refreshIntervalSeconds = (plist["refreshIntervalSeconds"] as? NSNumber)?.doubleValue
+        self.keychainAccessGroup = plist["keychainAccessGroup"] as? String
+        self.appGroup = plist["appGroup"] as? String
     }
 
     /// Read `PolarisKey.plist` from `bundle`.
@@ -106,7 +112,8 @@ extension PolarisKeyClient {
             channel: config.channel, pinnedKeys: config.pinnedKeys, store: store,
             transport: transport, expectedServices: config.expectedServices,
             refreshIntervalSeconds: config.refreshIntervalSeconds,
-            pinnedReleaseKeys: config.pinnedReleaseKeys)
+            pinnedReleaseKeys: config.pinnedReleaseKeys, keychainAccessGroup: config.keychainAccessGroup,
+            appGroup: config.appGroup)
     }
 
     /// Read `PolarisKey.plist` and the bundle version, build the client and `start()` it (no

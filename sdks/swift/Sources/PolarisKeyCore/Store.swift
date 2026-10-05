@@ -341,12 +341,19 @@ public actor KeychainStore: Store {
     private let recordsDir: URL
     private let deviceURL: URL
     private let keychain: any KeychainAPI
+    /// The keychain access group the item lives in (SP-S15), or nil for the app's default.
+    public nonisolated let accessGroup: String?
 
-    public init(productSlug: String, configDir: URL? = nil) {
-        self.init(productSlug: productSlug, configDir: configDir, keychain: SystemKeychain())
+    /// `accessGroup` (`<TeamID>.<group>`, listed in the app's keychain-access-groups
+    /// entitlement) shares the token with the app's extensions. It applies to the data-protection
+    /// keychain only; the legacy macOS fallback keeps the default.
+    public init(productSlug: String, configDir: URL? = nil, accessGroup: String? = nil) {
+        self.init(
+            productSlug: productSlug, configDir: configDir, keychain: SystemKeychain(), accessGroup: accessGroup)
     }
 
-    init(productSlug: String, configDir: URL?, keychain: any KeychainAPI) {
+    init(productSlug: String, configDir: URL?, keychain: any KeychainAPI, accessGroup: String? = nil) {
+        self.accessGroup = accessGroup
         self.productSlug = productSlug
         // §8 — the keychain service tag is `pkey:<product>`, stable across wire-contract
         // revisions. The `plrs:` spelling Amendment A1 withdrew is never written or read.
@@ -375,7 +382,10 @@ public actor KeychainStore: Store {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
         ]
-        if dataProtection { query[kSecUseDataProtectionKeychain as String] = true }
+        if dataProtection {
+            query[kSecUseDataProtectionKeychain as String] = true
+            if let accessGroup { query[kSecAttrAccessGroup as String] = accessGroup }
+        }
         return query
     }
 

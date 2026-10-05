@@ -330,6 +330,16 @@ jobs:
             xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
               CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
           done
+      - name: Mac Catalyst build of every library
+        working-directory: sdks/swift
+        # SP-S16: Catalyst takes the iOS branches (identifierForVendor, no Sparkle: the Sparkle
+        # product is conditioned on .macOS and every Sparkle file is #if os(macOS)).
+        run: |
+          for scheme in PolarisKeyCore PolarisKeyLicense PolarisKeyConfig PolarisKeyRelease PolarisKeyIdentity \
+            PolarisKeyPacks PolarisKeyUpdate PolarisKeyUI PolarisKey PolarisKeyPlatform; do
+            xcodebuild -scheme "$scheme" -destination 'generic/platform=macOS,variant=Mac Catalyst' \
+              CODE_SIGNING_ALLOWED=NO -quiet build
+          done
       - name: hosted StoreKit / Keychain tests (iOS simulator)
         # XcodeGen 2.45.4, the release asset checked against its SHA-256.
         run: |

@@ -69,6 +69,14 @@ public struct CoreOptions: Sendable {
     public let cacheDir: URL?
     /// State BASE; `<product>` is appended. Default `<Application Support>/polaris-key/state`.
     public let stateDir: URL?
+    /// A keychain access group (`<TeamID>.<group>`) the token item is written to, so an app and
+    /// its extensions share one credential (SP-S15). Nil: the app's default group.
+    public let keychainAccessGroup: String?
+    /// An app-group identifier (`group.<…>`): every directory not given explicitly (config,
+    /// data, cache, state) is placed in the group's shared container, so extensions read the
+    /// same cache. Nil, or (on iOS) a group this process is not entitled to: the per-app
+    /// defaults. macOS answers a container path for any group; entitle the app for it.
+    public let appGroup: String?
 
     public init(
         productSlug: String,
@@ -85,8 +93,12 @@ public struct CoreOptions: Sendable {
         clock: (@Sendable () -> Int)? = nil,
         dataDir: URL? = nil,
         cacheDir: URL? = nil,
-        stateDir: URL? = nil
+        stateDir: URL? = nil,
+        keychainAccessGroup: String? = nil,
+        appGroup: String? = nil
     ) {
+        self.keychainAccessGroup = keychainAccessGroup
+        self.appGroup = appGroup
         self.productSlug = productSlug
         self.baseUrl = baseUrl
         self.version = version
@@ -334,12 +346,16 @@ public actor CoreContext {
         self.channel = options.channel ?? Semver.channelForVersion(options.version).rawValue
         self.pinnedTrust = options.pinnedKeys
         self.trustRefreshEnabled = options.trustRefresh
+        let groupRoots = options.appGroup.flatMap { ProductDirs.Roots.appGroup($0) }
         self.dirs = ProductDirs.resolve(
             productSlug: options.productSlug, configDir: options.configDir,
-            dataDir: options.dataDir, cacheDir: options.cacheDir, stateDir: options.stateDir)
+            dataDir: options.dataDir, cacheDir: options.cacheDir, stateDir: options.stateDir,
+            roots: groupRoots ?? .system())
         self.store =
             options.store
-            ?? KeychainStore(productSlug: options.productSlug, configDir: options.configDir)
+            ?? KeychainStore(
+                productSlug: options.productSlug, configDir: options.configDir ?? groupRoots?.config,
+                accessGroup: options.keychainAccessGroup)
         self.journal = UpdateJournal(store: self.store)
         let transport = options.transport ?? URLSessionTransport()
         self.transport = transport

@@ -137,6 +137,8 @@ public enum CoreEvent: Sendable, Equatable {
     case updateAvailable(version: String)
     /// A pack finished (`installed`) or failed (its error code).
     case packs(packId: String, result: String)
+    /// A local override of `key` changed (`config.set` / `clear`).
+    case config(key: String)
 }
 
 extension UpdateDecision {

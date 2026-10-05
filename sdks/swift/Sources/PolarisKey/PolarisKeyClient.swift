@@ -87,7 +87,9 @@ public struct PolarisKeyClientOptions: Sendable {
         requestTimeoutSeconds: Double = 15,
         pinnedReleaseKeys: TrustSet = [:],
         attest: AttestOptions = AttestOptions(),
-        storeClient: (any StoreClient)? = nil
+        storeClient: (any StoreClient)? = nil,
+        keychainAccessGroup: String? = nil,
+        appGroup: String? = nil
     ) {
         self.pinnedReleaseKeys = pinnedReleaseKeys
         self.attest = attest
@@ -96,9 +98,10 @@ public struct PolarisKeyClientOptions: Sendable {
             productSlug: productSlug, baseUrl: baseUrl, version: version, channel: channel,
             pinnedKeys: pinnedKeys, trustRefresh: trustRefresh, store: store,
             transport: transport, requestTimeoutSeconds: requestTimeoutSeconds,
-            expectedServices: expectedServices)
+            expectedServices: expectedServices, keychainAccessGroup: keychainAccessGroup, appGroup: appGroup)
         self.license = LicenseClientOptions(fingerprint: fingerprint)
-        self.config = ConfigClientOptions(localOverrides: localOverrides)
+        self.config = ConfigClientOptions(
+            localOverrides: localOverrides, local: LocalConfigOptions(suiteName: appGroup))
         self.probes = probes
         self.refreshIntervalSeconds = refreshIntervalSeconds
     }
@@ -200,6 +203,7 @@ public actor PolarisKeyClient {
             switch event {
             case .updateAvailable(let version): hub.emit(.updateAvailable(version: version))
             case .packs(let packId, let result): hub.emit(.packs(packId: packId, result: result))
+            case .config(let key): hub.emit(.config(key: key))
             }
         }
         // An edge-mint 401 gets the same single re-acquire a document fetch does, through the

@@ -56,12 +56,16 @@ public struct ConfigClientOptions: Sendable {
     /// Environment table to read overrides from. Injected rather than read from
     /// `ProcessInfo` here so the precedence rules are testable without mutating the process.
     public let environment: [String: String]?
+    /// Where `config.set` persists the user's own values (SP-S14). Default: UserDefaults.
+    public let local: LocalConfigOptions
 
     public init(
         localOverrides: [String: JSONValue] = [:],
         envPrefix: String = DEFAULT_CONFIG_ENV_PREFIX,
-        environment: [String: String]? = nil
+        environment: [String: String]? = nil,
+        local: LocalConfigOptions = LocalConfigOptions()
     ) {
+        self.local = local
         self.localOverrides = localOverrides
         self.envPrefix = envPrefix
         self.environment = environment
@@ -81,6 +85,11 @@ public actor ConfigClient {
     /// `Mint.swift`).
     private var minted: [String: (deviceToken: String, token: MintedToken)] = [:]
     private var minting: [String: (deviceToken: String, task: Task<MintedToken, Error>)] = [:]
+    /// `config.set` values, persisted in `localStore` (they beat `localOverrides`).
+    private let localStore: any LocalConfigStore
+    private var persisted: [String: JSONValue]
+    /// The catalog, fetched once per process when `set` first needs it.
+    private var catalog: ConfigCatalog?
 
     /// - Parameter reacquire: the §5 single re-acquire an edge-mint 401 gets — the facade's one
     ///   closure, the same a document 401 uses, so the route (`license/token`, or re-registration
@@ -95,6 +104,9 @@ public actor ConfigClient {
         self.envPrefix = options.envPrefix
         self.environment = options.environment ?? ProcessInfo.processInfo.environment
         self.reacquire = reacquire
+        let store = options.local.store ?? UserDefaultsLocalConfigStore(product: core.product, suiteName: options.local.suiteName)
+        self.localStore = store
+        self.persisted = store.load()
     }
 
     /// Mint a third-party token through the product's edge-mint recipe `recipeId`
@@ -179,6 +191,67 @@ public actor ConfigClient {
         await ConfigEndpoints.fetchSchema(core)
     }
 
+    /// The product's catalog, decoded (`fetchSchema()` as `ConfigCatalog`). Nil on any failure.
+    public func fetchCatalog() async -> ConfigCatalog? {
+        guard let data = await fetchSchema(), let decoded = ConfigCatalog.decode(data) else { return nil }
+        catalog = decoded
+        return decoded
+    }
+
+    // ── Persisted local overrides (SP-S14, notes/SDK-PARITY-PASS.md §3.11) ─────────────────
+
+    /// Keep `value` as the user's own value for the `config` key `key`, persisted across launches,
+    /// and raise `config(key:)`. It beats the environment and a remote `default`, never an
+    /// `enforced` or `hidden` entry.
+    ///
+    /// Throws `PolarisError` `invalid-options` when the key is locked by the signed document, or
+    /// when the catalog (fetched once when first needed) does not list it as a `config` key or
+    /// its schema `type` / `enum` refuses the value. Offline, without a catalog, the value is kept.
+    public func set(_ key: String, _ value: JSONValue) async throws {
+        if let entry = await doc()?.config[key], entry.state == .enforced || entry.state == .hidden {
+            throw PolarisError(
+                code: ErrorCode.invalidOptions,
+                message: "\(key) is managed by the product (\(entry.state.rawValue)); a local value would never apply.")
+        }
+        var known = catalog
+        if known == nil { known = await fetchCatalog() }
+        if let known {
+            guard let entry = known.entry(key), entry.kind == "config" else {
+                throw PolarisError(
+                    code: ErrorCode.invalidOptions, message: "\(key) is not a config key in this product's catalog.")
+            }
+            guard entry.accepts(value) else {
+                throw PolarisError(
+                    code: ErrorCode.invalidOptions,
+                    message: "\(key) takes a \(entry.schemaType ?? "value") the catalog allows; the value given does not match.")
+            }
+        }
+        if persisted[key] == value { return }
+        persisted[key] = value
+        localStore.save(persisted)
+        core.emit(.config(key: key))
+    }
+
+    /// Remove the user's own value for `key` (resolution falls back to the next layer) and raise
+    /// `config(key:)` when there was one.
+    public func clear(_ key: String) {
+        guard persisted.removeValue(forKey: key) != nil else { return }
+        localStore.save(persisted)
+        core.emit(.config(key: key))
+    }
+
+    /// Remove every value `set` kept.
+    public func clearAll() {
+        let keys = Array(persisted.keys)
+        guard !keys.isEmpty else { return }
+        persisted = [:]
+        localStore.save(persisted)
+        for k in keys.sorted() { core.emit(.config(key: k)) }
+    }
+
+    /// The values `set` kept, by key.
+    public func localValues() -> [String: JSONValue] { persisted }
+
     /// The product's active catalog version, as the last verified document stated it.
     public func schemaVersion() async -> Int? {
         await doc()?.schemaVersion
@@ -187,7 +260,7 @@ public actor ConfigClient {
     /// The resolution inputs: the last verified document plus this client's override layers.
     private func context() async -> ResolveContext {
         ResolveContext(
-            remote: await doc()?.config, localOverrides: localOverrides, env: environment,
+            remote: await doc()?.config, localOverrides: localOverrides.merging(persisted) { $1 }, env: environment,
             envPrefix: envPrefix)
     }
 
