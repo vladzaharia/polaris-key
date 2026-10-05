@@ -12,6 +12,7 @@ import {
   mintDownloadTicket,
   verifyDownloadTicket,
 } from "../src/core/downloadTicket.js";
+import { ticketedDeliveryUrl } from "../src/services/update/updaterFeeds.js";
 
 const FILE = {
   product: "djdl",
@@ -41,5 +42,49 @@ describe("download tickets on workerd", () => {
     expect(await verifyDownloadTicket(rotated, t!, at, now)).toBe(true);
     // No key: nothing minted.
     expect(await mintDownloadTicket({ ...env }, FILE, now)).toBeNull();
+  });
+});
+
+// SP-09: the Velopack package route's half. The route appends a ticket to the delivery URL it
+// redirects to (`ticketedDeliveryUrl`); the bytes host verifies what the URL carries.
+describe("the Velopack package route's ticketed Location on workerd (SP-09)", () => {
+  it("appends a ticket that the bytes host verifies for that file, and none off the bytes host", async () => {
+    const now = 1_800_000_000;
+    const e = { ...env, DOWNLOAD_TICKET_KEY: "c3AwOS13b3JrZXJkLWtleQ" };
+    const pkg = {
+      releaseId: "app@1.1.0",
+      name: "Djdl-1.1.0+win-delta.nupkg",
+      sha256: "b".repeat(64),
+    };
+    const url = `https://dl.workerd.test/djdl/distribution/files/${encodeURIComponent(pkg.releaseId)}/${encodeURIComponent(pkg.name)}`;
+    const location = await ticketedDeliveryUrl(e, "djdl", { ...pkg, url }, now);
+    const u = new URL(location);
+    expect(`${u.origin}${u.pathname}`).toBe(url);
+    const ticket = u.searchParams.get("ticket")!;
+    // The bytes route decodes the path segment, and binds the decoded name.
+    const at = {
+      product: "djdl",
+      releaseId: decodeURIComponent(u.pathname.split("/")[4]!),
+      name: decodeURIComponent(u.pathname.split("/")[5]!),
+      sha256: pkg.sha256,
+      host: u.hostname,
+    };
+    expect(await verifyDownloadTicket(e, ticket, at, now)).toBe(true);
+    expect(
+      await verifyDownloadTicket(
+        e,
+        ticket,
+        { ...at, host: "key.plrs.im" },
+        now,
+      ),
+    ).toBe(false);
+    // Off the bytes host, or with no key: the bare URL.
+    const off = url.replace("dl.workerd.test", "key.plrs.im");
+    expect(
+      await ticketedDeliveryUrl(e, "djdl", { ...pkg, url: off }, now),
+    ).toBe(off);
+    expect(
+      await ticketedDeliveryUrl({ ...env }, "djdl", { ...pkg, url }, now),
+    ).toBe(url);
   });
 });

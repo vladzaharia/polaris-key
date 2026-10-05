@@ -46,6 +46,7 @@ import { APP_DELIVERABLE_ID, RELEASE_PLATFORMS } from "@polaris-key/manifest";
 import { OUTLET_KINDS } from "@polaris-key/protocol/distribution";
 import { BUILD_ID_PATTERN } from "@polaris-key/protocol/release";
 import type { ServiceContext } from "../../core/registry.js";
+import type { Env } from "../../env.js";
 import type {
   CatalogChannelPolicy,
   CatalogSourceArtifact,
@@ -56,6 +57,17 @@ import type {
   ReleaseCatalog,
 } from "../../core/hooks.js";
 import { errorResponse, notFound } from "../../core/errors.js";
+import { bearer } from "../../core/platform.js";
+import {
+  accessRefusal,
+  fixedReleaseSelector,
+} from "../../core/entitledAccess.js";
+import {
+  DOWNLOAD_TICKET_PARAM,
+  mintDownloadTicket,
+} from "../../core/downloadTicket.js";
+import { isBytesHost } from "../../core/bytesHostname.js";
+import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
 import {
   cachedFeedBytes,
@@ -164,8 +176,11 @@ interface FeedPlan {
   cacheInputs: ReadonlyArray<readonly [string, string | null | undefined]>;
   contentType: string;
   publicCache: string;
-  /** `null` = not found. */
-  render: (r: RenderContext) => Promise<string | Uint8Array | null>;
+  /**
+   * `null` = not found. A `Response` is answered as it is (hardened): only a non-public render may
+   * return one (the Velopack package route's per-file refusal, SP-09), never a cached one.
+   */
+  render: (r: RenderContext) => Promise<string | Uint8Array | Response | null>;
   /**
    * The rendered string is a URL to answer with a 302 rather than a body (the Velopack package
    * route). Everything before the answer — rate limit, access, cache — is the feed's own.
@@ -185,6 +200,8 @@ export interface RenderContext {
   artifacts: ArtifactReadContext;
   /** `?outlet=`, when the route reads it. */
   outletParam: string | null;
+  /** The app deliverable's delivery access mode, the one this request was admitted under. */
+  mode: ReleaseAccess;
 }
 
 /** Run one updater feed request: rate limit, access, cache, render, headers. */
@@ -236,6 +253,7 @@ async function serveFeed(
     origin: url.origin,
     recorded,
     outletParam,
+    mode,
     artifacts: {
       env,
       db,
@@ -265,7 +283,7 @@ async function serveFeed(
     body =
       plan.contentType === CONTENT_TYPES.zsync
         ? await cachedFeedBytes(key, async () => {
-            const b = await plan.render(rctx);
+            const b = publicBody(await plan.render(rctx));
             return b === null
               ? null
               : typeof b === "string"
@@ -273,7 +291,7 @@ async function serveFeed(
                 : b;
           })
         : await cachedFeedText(key, async () => {
-            const b = await plan.render(rctx);
+            const b = publicBody(await plan.render(rctx));
             return b === null
               ? null
               : typeof b === "string"
@@ -281,7 +299,9 @@ async function serveFeed(
                 : new TextDecoder().decode(b);
           });
   } else {
-    body = await plan.render(rctx);
+    const rendered = await plan.render(rctx);
+    if (rendered instanceof Response) return harden(rendered);
+    body = rendered;
   }
   if (body === null) return harden(notFound());
   const cacheControl = mode === "public" ? plan.publicCache : PRIVATE_CACHE;
@@ -317,6 +337,18 @@ async function serveFeed(
       headers,
     }),
   );
+}
+
+/**
+ * A public render's body. A public answer is cached, so it can never be a `Response` (only the
+ * Velopack package route's non-public per-file refusal is one): treat one as a bug, fail closed.
+ */
+function publicBody(
+  b: string | Uint8Array | Response | null,
+): string | Uint8Array | null {
+  if (b instanceof Response)
+    throw new Error("a public feed render returned a Response");
+  return b;
 }
 
 // ── Shared reads ─────────────────────────────────────────────────────────────────────────────
@@ -560,6 +592,12 @@ export interface VelopackCandidate {
   asset: Omit<VelopackAsset, "SHA1">;
   artifact: CatalogSourceArtifact;
   url: string;
+  /** The release the package belongs to, and its STORED version (SP-09's per-file check). */
+  releaseId: string;
+  version: string;
+  /** The file's name and recorded SHA-256 (lowercase hex), what a download ticket binds. */
+  name: string;
+  sha256: string;
   /**
    * The full package this one is listed only with: the newest release's deltas go with its full
    * package, so a full package whose bytes give no SHA-1 takes its deltas out of the feed too.
@@ -619,6 +657,10 @@ export function velopackCandidatesFrom(
         },
         artifact: e.payload,
         url: e.url,
+        releaseId: e.releaseId,
+        version: e.version,
+        name: e.name,
+        sha256: e.sha256.toLowerCase(),
       };
       out.push(full);
     }
@@ -644,6 +686,10 @@ export function velopackCandidatesFrom(
         },
         artifact: a,
         url: a.url,
+        releaseId: e.releaseId,
+        version: e.version,
+        name: a.name,
+        sha256: a.sha256.toLowerCase(),
         ...(full ? { full } : {}),
       });
     }
@@ -747,7 +793,10 @@ const VELOPACK_TARGETS: ReadonlyArray<{ platform: string; arch: string }> =
  * delivery), the same cache, and the same selection (`velopackCandidates`) over every target a
  * feed can name, including the feed's rule that a package whose stored bytes do not give a SHA-1
  * is not listed. So it widens nothing: it redirects only to a URL the caller could read in the
- * feed, and that URL enforces the delivery access again on its own. `null` = not a package name.
+ * feed, and that URL enforces the delivery access again on its own. Under a non-public delivery
+ * the route also runs that URL's own per-file decision with the caller's bearer and, when it
+ * allows, appends a download ticket, because Velopack drops `Authorization` on the redirect
+ * (SP-09, `ticketedPackageUrl`). `null` = not a package name.
  */
 function serveVelopackPackage(
   ctx: ServiceContext,
@@ -781,13 +830,81 @@ function serveVelopackPackage(
             (!hit.full ||
               (await artifactSha1(r.artifacts, hit.full.artifact))) &&
             (await artifactSha1(r.artifacts, hit.artifact));
-          return listed ? hit.url : null;
+          if (!listed) return null;
+          return r.mode === "public" ? hit.url : ticketedPackageUrl(r, hit);
         }
         return null;
       },
     },
     recorded,
   );
+}
+
+/**
+ * SP-09 (plans/SP-09.md §6): the answer for a listed package under a NON-public delivery.
+ * Velopack's HTTP client drops `Authorization` on every redirect, so the second hop would be
+ * anonymous. The route therefore runs, with the bearer it saw, the bytes route's own `file`
+ * decision for this package (Core's `accessRefusal` over the release's STORED version, pinned)
+ * and answers its refusal if any; then it appends a download ticket (PX-W3's
+ * `core/downloadTicket.ts`) bound to the file by content, so the second hop needs no header.
+ *
+ * Fails closed to today's answer: with no signing key, no bytes host, or a URL off the bytes
+ * host, the bare URL (whose second hop refuses an anonymous client, as before). A ticket is
+ * never logged (THREAT-MODEL R12); the answer is `private, no-store`, and `harden` gives every
+ * answer `referrer-policy: no-referrer`.
+ */
+async function ticketedPackageUrl(
+  r: RenderContext,
+  hit: VelopackCandidate,
+): Promise<string | Response> {
+  const { ctx } = r;
+  const now = Math.floor(Date.now() / 1000);
+  const refused = await accessRefusal(
+    ctx.env,
+    ctx.db,
+    ctx.product,
+    bearer(ctx.req),
+    r.mode,
+    fixedReleaseSelector(hit.version),
+    true,
+    now,
+  );
+  if (refused) return refused;
+  return ticketedDeliveryUrl(ctx.env, ctx.product.slug, hit, now);
+}
+
+/**
+ * `file.url` with a download ticket for that file appended, or `file.url` unchanged when this
+ * deployment cannot mint one (no `DOWNLOAD_TICKET_KEY`, no bytes host), the URL is off the bytes
+ * host, or it already has a query. The caller has decided access; this only mints. Exported for
+ * the workerd lane (test-workerd/downloadTicket.test.ts).
+ */
+export async function ticketedDeliveryUrl(
+  env: Env,
+  product: string,
+  file: Pick<VelopackCandidate, "url" | "releaseId" | "name" | "sha256">,
+  now: number,
+): Promise<string> {
+  let target: URL;
+  try {
+    target = new URL(file.url);
+  } catch {
+    return file.url;
+  }
+  // Tickets verify on the bytes host only, so none is minted for a URL anywhere else.
+  if (target.search !== "" || !isBytesHost(target, env)) return file.url;
+  const ticket = await mintDownloadTicket(
+    env,
+    {
+      product,
+      releaseId: file.releaseId,
+      name: file.name,
+      sha256: file.sha256,
+    },
+    now,
+  );
+  if (!ticket) return file.url;
+  return `${file.url}?${DOWNLOAD_TICKET_PARAM}=${encodeURIComponent(ticket)}`;
 }
 
 // ── App Installer ────────────────────────────────────────────────────────────────────────────
