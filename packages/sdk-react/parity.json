@@ -90,17 +90,17 @@
       "status": "na",
       "runtime": ["web", "desktop-bridge"],
       "reason": "runtime",
-      "note": "New web and desktop-bridge N/As (P1b-01). On desktop the host's Node SDK registers."
+      "note": "New web and desktop-bridge N/As (P1b-01). On desktop the host's Node SDK registers. The web N/A is a design choice, not a runtime limit: closable by bearer mode (SDK parity pass §3.17, owner question Q1), as Godot web already does."
     },
     "devices.manage": {
       "status": "implemented",
       "except": [{ "runtime": "web", "reason": "runtime" }],
-      "note": "New web N/A (P1b-01). Through the desktop bridge only. A browser cookie session cannot call /<p>/devices, which authenticates with a device bearer; the browser adapter refuses with device-management-unsupported."
+      "note": "New web N/A (P1b-01). Through the desktop bridge only. A browser cookie session cannot call /<p>/devices, which authenticates with a device bearer; the browser adapter refuses with device-management-unsupported. The web N/A is a design choice, not a runtime limit: closable by bearer mode (SDK parity pass §3.17, owner question Q1), as Godot web already does."
     },
     "devices.report": {
       "status": "implemented",
       "except": [{ "runtime": "web", "reason": "runtime" }],
-      "note": "Desktop through invoke(\"devices\", \"report\"). POST /<p>/devices/report accepts only a device bearer, which a browser session does not hold; the browser adapter throws report-unsupported."
+      "note": "Desktop through invoke(\"devices\", \"report\"). POST /<p>/devices/report accepts only a device bearer, which a browser session does not hold; the browser adapter throws report-unsupported. The web N/A is a design choice, not a runtime limit: closable by bearer mode (SDK parity pass §3.17, owner question Q1), as Godot web already does."
     },
     "devices.attest": {
       "status": "na",

@@ -45,7 +45,10 @@
     "devices.facts": { "status": "implemented" },
     "devices.register": { "status": "implemented" },
     "devices.manage": { "status": "implemented" },
-    "devices.report": { "status": "implemented" },
+    "devices.report": {
+      "status": "implemented",
+      "note": "The report omits the gate, outlet, packInstalls and updates keys, which the Worker allowlists and Godot sends. SDK parity pass SP-P03 adds them (updates also needs telemetry.updates, SP-00)."
+    },
     "devices.attest": {
       "status": "na",
       "runtime": "python",

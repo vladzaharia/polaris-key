@@ -19,7 +19,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 55 | 6 | 0 | 7 |
+| Node | `node` | 54 | 6 | 0 | 8 |
 | React | `web`, `desktop-bridge` | 47 | 15 | 0 | 6 |
 | Python | `python` | 55 | 6 | 0 | 7 |
 | Swift | `macos`, `ios` | 56 | 5 | 0 | 7 |
@@ -125,7 +125,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Kotlin | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `ui.stages` | The boot stage machine: states, events, outcomes | `stage-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `ui.stages` | The boot stage machine: states, events, outcomes | `stage-matrix.json` | planned (unowned) | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `ui.kit` | Gate, activation, sign-in with QR, settings, devices, update banner, pack progress | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | planned (unowned) | ✓ | ✓ | headless: runtime |
 | `commerce.receipt` | Store purchase to licence entitlement | transcripts | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | ✓ | planned (unowned) | — |
 
@@ -141,6 +141,7 @@ Planned entries no work package owns yet. Each needs an owner before the gap can
 | Node | `packs.transport.steam` | P5-08 covers Godot only; Node desktop hosts have no Steam-depot transport owner. |
 | Node | `packs.transport.msix` | No work package owns the MSIX optional-package transport (P5-08 Out). |
 | Node | `packs.transport.flatpak` | No work package owns the Flatpak extension transport (P5-08 Out). |
+| Node | `ui.stages` | The boot stage machine lives in @polaris-key/client-core/stages (conformance/runners/node/stageMatrix.test.ts proves it), but @polaris-key/node neither re-exports nor drives it. SDK parity pass SP-N05 exports it and drives it from client.boot(). |
 | Node | `commerce.receipt` | P6-01 builds the Worker bridge and leaves the SDK side planned with no owner. |
 | React | `core.cache` | The browser adapter keeps no verified licence/config cache (only the signed update slices, P3-05); on desktop the host's Node SDK holds it. No work package gives the browser one. |
 | React | `core.local` | No local-only client in React; P1b-07 leaves it unowned. |
@@ -163,7 +164,7 @@ Planned entries no work package owns yet. Each needs an owner before the gap can
 | Swift | `ui.kit` | PolarisLoginView only; no work package builds the rest of the Swift kit. |
 | Swift | `commerce.receipt` | P5-05's PolarisKeyPlatform target carries the StoreKit 2 client (signed JWS, appAccountToken, deduplicated Transaction.updates, finish on demand); P6-01 builds the Worker bridge and leaves the SDK side planned with no owner. |
 | Godot | `core.store` | P1-02 ships the 0600 file store with surfaced failures and store_status() (file or indexeddb, degraded not-persistent). PKeyCore picks a platform store by default when its plugin is present (Keychain, then Keystore, then the file store): iOS, P5-05's Keychain store (core/store/keychain_store.gd, PKeyKeychainStore over PKeyApple: device id and token AfterFirstUnlockThisDeviceOnly with no access group); Android, P5-06's Keystore store (core/store/keystore_store.gd, PKeyKeystoreStore over PKeyAndroid: one AndroidKeyStore AES-256-GCM key per product, StrongBox where present, blobs in noBackupFilesDir, a lost key surfaced and re-enrolled). Both migrate from the file store and surface failures as keyring-error. No work package owns a desktop keyring, so the desktop runtimes keep the file store. |
-| Godot | `identity.oidc` | Native Godot has no completion path for the OIDC redirect; see P1-07, which ships device-code sign-in instead. |
+| Godot | `identity.oidc` | Native browser sign-in waits on the native redirect token route (I-15). No SDK builds on the deprecated, unadvertised /identity/auth/poll. Until I-15, sign-in is P1-07's device code, with the verification URL opened in the system browser. |
 | Godot | `packs.transport.msix` | No work package owns an MSIX transport for Godot (program README §9). |
 | Godot | `packs.transport.flatpak` | No work package owns a Flatpak transport for Godot (program README §9). |
 | Kotlin | `devices.attest` | P6-09 brings the standard Play Integrity API into :platform for native hosts; as in Swift (App Attest in PolarisKeyPlatform), no work package wires attestation into the Kotlin SDK client. |
