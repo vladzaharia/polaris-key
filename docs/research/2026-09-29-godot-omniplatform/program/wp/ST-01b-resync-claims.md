@@ -118,7 +118,7 @@ owner delegated open questions to the lead, who takes the recommended option):**
 - [x] A resync refused by a referenced-tier guard leaves every row unchanged (test).
 - [x] Revert restores the snapshot value at once, or says "applies at the next resync" when no snapshot exists (test).
 - [x] A console claim on a `system = 1` product is refused (test).
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 
