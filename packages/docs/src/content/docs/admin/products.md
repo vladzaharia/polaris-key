@@ -122,10 +122,21 @@ unreviewed branch — and re-applies each in place:
 - Product metadata (name, compat window, defaults) is overwritten unconditionally.
 - The catalog gets a new active `schemaVersion` **only when its content actually changed**.
 - `release_config` is updated in place; the release truth store re-syncs in the same batch.
-- `oidc_config`, `profiles`, `tiers`, `provisioning_config` and `edge_mint_config` are replaced
-  from the manifest — these have no live-admin override, so the manifest is always the last
-  word for them. Removing a tier or profile the manifest still lists as unused is refused (409)
-  while a license still references it.
+- `oidc_config`, `tiers`, `provisioning_config` and `edge_mint_config` are replaced from the
+  manifest — these have no live-admin override, so the manifest is always the last word for
+  them.
+- `profiles` are replaced from the manifest too, **except for their secret values**. A manifest
+  can't carry a secret value, so the secrets an operator set on a profile in the console are
+  carried forward, still sealed, onto every profile the manifest still lists. The pushed catalog
+  decides what counts: a value is carried only while its key is still a `secret` entry, or a
+  `config` entry flagged `secret: true`, in the catalog this push brings, and only if it is
+  stored sealed. A key the new catalog drops or stops calling secret loses its value, and a
+  plaintext value is never carried. A key the manifest's own profile payload declares wins, and
+  a profile the manifest drops is removed, secrets and all. Every other value on a profile
+  (plain config values and flags) follows the manifest, so set those in `.pkey/product` rather
+  than in the console.
+- Dropping a tier or profile from the manifest is refused (409) while a license still
+  references it.
 - **Services enablement and the fingerprint/auto-issue policies follow the ownership rule**:
   the manifest's values are written only while the row is still `manifest`-owned. Once an
   operator edits one of those live (claiming it as `admin`-owned), a resync no longer touches it

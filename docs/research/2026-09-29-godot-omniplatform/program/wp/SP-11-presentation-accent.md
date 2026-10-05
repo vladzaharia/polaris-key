@@ -1,5 +1,7 @@
 # SP-11 Product presentation accent colour: an optional accent in the product's presentation (manifest rule, discovery and the portal client record), read by every UI kit
 
+> **Dropped 2026-10-05 (lead, delegated decision):** superseded by S-20. The accent colour (and icon) in product presentation is built by [HA-04](HA-04-manifest-presentation.md) (manifest) and [HA-11](HA-11-presentation-discovery-plan.md)–HA-14 (discovery, SDKs and UI kits). Do not build this package separately.
+
 | Field       | Value                                                                                                                               |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (UI kits)                                                                            |

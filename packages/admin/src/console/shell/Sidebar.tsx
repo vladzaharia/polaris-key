@@ -84,9 +84,10 @@ export interface SidebarProps {
 /**
  * The console sidebar (ADMIN.md §2.1, components.md §1.4).
  *
- * Platform links (Home, Products) always come first, then the Platform section (instance-wide
- * pages, notes/S-13 §9.1), shown whether or not a product is in scope. With a product in scope,
- * one group per section follows, Core first and then each enabled service in canonical order (a
+ * Platform links (Home, Products) always come first. Off a product (Home, Products, the Platform
+ * pages) the Platform section (instance-wide pages, notes/S-13 §9.1) follows; inside a product it
+ * is hidden (owner, 2026-10-04) and reached through the product switcher, the account menu's
+ * version chip and ⌘K instead. With a product in scope, one group per section follows, Core first and then each enabled service in canonical order (a
  * disabled service's group is absent, not greyed out: a dimmed row invites a click that can only
  * fail).
  *
@@ -131,7 +132,10 @@ export function Sidebar({
           </li>
         ))}
       </ul>
-      {platformItems().length > 0 ? (
+      {/* Off a product only (owner, 2026-10-04): inside a product the Platform section confused
+          the product's own nav. From there it stays one step away: the product switcher's
+          "Platform" entry, the account menu's version chip (Deployment) and ⌘K. */}
+      {slug === null && platformItems().length > 0 ? (
         <SidebarGroup
           groupKey={PLATFORM_GROUP.key}
           label={PLATFORM_GROUP.label}

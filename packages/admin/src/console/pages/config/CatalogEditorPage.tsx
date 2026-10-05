@@ -463,7 +463,10 @@ function Editor({
                                   : "text-fg hover:bg-hover",
                               )}
                             >
-                              <span className="min-w-0 flex-1 truncate">
+                              <span
+                                className="min-w-0 flex-1 truncate"
+                                title={entry.key || undefined}
+                              >
                                 {entry.key || "(no key)"}
                               </span>
                               {change === "added" ? (
@@ -510,7 +513,9 @@ function Editor({
 
           <section
             aria-label={selected ? `Entry ${selected.key}` : "Entry"}
-            className="min-w-0 rounded-lg border border-border bg-surface-raised p-4"
+            // Its own height, not the key list's: a long list beside it would otherwise stretch
+            // the pane into a tall empty card.
+            className="min-w-0 self-start rounded-lg border border-border bg-surface-raised p-4"
           >
             {selected ? (
               <div className="space-y-4">
@@ -536,7 +541,7 @@ function Editor({
                 />
               </div>
             ) : (
-              <p className="py-12 text-center text-sm text-fg-muted">
+              <p className="flex items-center justify-center py-8 text-center text-sm text-fg-muted lg:min-h-48">
                 Choose an entry to edit it, or add one.
               </p>
             )}
