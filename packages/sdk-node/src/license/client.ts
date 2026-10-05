@@ -45,6 +45,21 @@ import {
 
 export type { ActivationResult };
 
+/** `license.licenseInfo()`: what an account screen shows (§3.3). */
+export interface LicenseInfo {
+  licenseId: string;
+  /** `license.tier`, the tier id. */
+  tier: string | null;
+  /** `license.tierLabel`, the tier's display name. */
+  tierLabel: string | null;
+  /** `deviceLimit`, the seats this licence holds. */
+  deviceLimit: number | null;
+  profile: DocProfile | null;
+  entitledChannels: string[];
+  /** The gate's status now. */
+  status: LicenseState["status"];
+}
+
 export interface LicenseClientOptions {
   /** Collect a hardware fingerprint at activation. Defaults to true; set false to opt out
    *  entirely (the server then records this device as `unverified`). */
@@ -104,9 +119,49 @@ export class LicenseClient {
     return this.cache.state.license?.doc ?? null;
   }
 
-  isEntitled(name: string): boolean {
+  /**
+   * Whether the licence grants the boolean entitlement `name`. FALSE whenever the gate is not
+   * usable (S-19 G11): a revoked, expired or blocked device holds a signed document that still
+   * lists its grants, and reading them past the gate would keep paid features on after a
+   * revocation. A behaviour change from earlier releases, which read the cached document alone.
+   */
+  isEntitled(name: string, now = nowSec()): boolean {
+    if (!isUsable(this.status(now))) return false;
     const e = this.doc?.entitlements[name];
     return Boolean(e && e.value === true);
+  }
+
+  /** The raw value of entitlement `name` (a number, string, list or object), or null when the
+   *  licence does not carry it or the gate is not usable (G11). */
+  entitlementValue(name: string, now = nowSec()): JSONValue | null {
+    if (!isUsable(this.status(now))) return null;
+    const e = this.doc?.entitlements[name];
+    return e === undefined ? null : e.value;
+  }
+
+  /**
+   * A summary of the licence for an account screen (SDK parity pass §3.3), read from the
+   * enforced entitlement names (`license.tier`, `license.tierLabel`, `deviceLimit`, `channels`)
+   * and the signed profile. Null when no licence document is held. The document carries no
+   * licence expiry or device count today (W3 adds `licenseExpiresAt`), so neither is invented.
+   */
+  licenseInfo(): LicenseInfo | null {
+    const doc = this.doc;
+    if (!doc) return null;
+    const str = (k: string): string | null => {
+      const v = doc.entitlements[k]?.value;
+      return typeof v === "string" ? v : null;
+    };
+    const limit = doc.entitlements["deviceLimit"]?.value;
+    return {
+      licenseId: doc.licenseId,
+      tier: str("license.tier"),
+      tierLabel: str("license.tierLabel"),
+      deviceLimit: typeof limit === "number" ? limit : null,
+      profile: doc.profile ?? null,
+      entitledChannels: this.entitledChannels(),
+      status: this.status().status,
+    };
   }
 
   getEntitlements(): Record<string, JSONValue> {

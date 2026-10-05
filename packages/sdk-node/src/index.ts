@@ -58,7 +58,16 @@ export {
   LicenseClient,
   type ActivationResult,
   type LicenseClientOptions,
+  type LicenseInfo,
 } from "./license/client.js";
+export { activationRefusal } from "./license/endpoints.js";
+// The error copy catalog (SDK parity pass §3.2): one sentence and title per code.
+export {
+  copy,
+  registerCopy,
+  setCopyLocale,
+  type CopyEntry,
+} from "./core/copy.js";
 export {
   ConfigClient,
   type ConfigClientOptions,

@@ -9,6 +9,7 @@
 export {
   activate,
   deactivate,
+  describeFailure,
   enroll,
   formatStoreStatus,
   getConfig,

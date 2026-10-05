@@ -22,6 +22,7 @@ import type { PolarisKeyClient } from "../client.js";
 import type { ActivationResult } from "../license/endpoints.js";
 import type { ServiceSlug } from "../discovery.js";
 import type { StoreStatus } from "@polaris-key/client-core";
+import { copy } from "../core/copy.js";
 
 /** A command's outcome: a success flag, a human-readable line, and optional structured
  *  data (e.g. the resolved gate status or a config value) for callers that want JSON. */
@@ -54,49 +55,50 @@ export type ClientFactory = (
 export const LINUX_NO_MACHINE_ID_HINT =
   "This host has no machine id (/etc/machine-id). In a container, mount the host's read-only, or create one and keep it in a volume.";
 
-/** Render a non-ok activation outcome. Shared by `activate` and `enroll` so the two can't
- *  drift into describing the same server response differently. */
-function describeFailure(
+/** The detail `copy` fills in for one refusal: the seat count, the changed components, the
+ *  retry delay. */
+function refusalDetail(
+  r: Exclude<ActivationResult, { kind: "ok" }>,
+): string | undefined {
+  switch (r.kind) {
+    case "device-limit":
+      return r.limit !== undefined
+        ? `${r.deviceCount ?? "?"}/${r.limit} devices in use`
+        : undefined;
+    case "hardware-mismatch":
+      return r.changed?.length ? r.changed.join(", ") : undefined;
+    case "rate-limited":
+      return r.retryAfterSeconds !== undefined
+        ? `retry in ${r.retryAfterSeconds}s`
+        : undefined;
+    default:
+      return undefined;
+  }
+}
+
+/** Render a non-ok activation outcome through the copy catalog (`core.copy`, §3.2). Shared by
+ *  `activate` and `enroll` so the two can't drift into describing the same server response
+ *  differently. The message names the remedy and the server's code, never a raw body. */
+export function describeFailure(
   r: Exclude<ActivationResult, { kind: "ok" }>,
   verb: string,
   platform: NodeJS.Platform = process.platform,
 ): CommandResult {
-  const fail = (message: string): CommandResult => ({
+  const key = r.kind === "refused" || r.kind === "error" ? r.code : r.kind;
+  let message = copy.message(key, refusalDetail(r));
+  // Keyless enrolment needs a machine anchor, which Linux reads only from the machine-id
+  // files (WIRE-CONTRACT-V3 §6.1 rule 2); most container images ship none.
+  if (
+    r.kind === "fingerprint-required" &&
+    verb === "Enrollment" &&
+    platform === "linux"
+  )
+    message += `\n${LINUX_NO_MACHINE_ID_HINT}`;
+  return {
     ok: false,
-    message: `${verb} failed: ${message}`,
+    message: `${verb} failed: ${message} [${r.code}]`,
     data: r,
-  });
-  switch (r.kind) {
-    case "device-limit": {
-      const detail =
-        r.limit !== undefined
-          ? ` (${r.deviceCount ?? "?"}/${r.limit} devices in use)`
-          : "";
-      return fail(`device limit reached${detail}.`);
-    }
-    case "unauthorized":
-      return fail("invalid or revoked credential.");
-    case "fingerprint-required":
-      return fail(
-        "a hardware fingerprint is required but could not be collected on this host." +
-          // Keyless enrolment needs a machine anchor, which Linux reads only from the
-          // machine-id files (WIRE-CONTRACT-V3 §6.1 rule 2); most container images ship none.
-          (verb === "Enrollment" && platform === "linux"
-            ? `\n${LINUX_NO_MACHINE_ID_HINT}`
-            : ""),
-      );
-    case "hardware-mismatch": {
-      const changed = r.changed?.length ? ` (${r.changed.join(", ")})` : "";
-      return fail(
-        `this machine's hardware changed${changed}. ` +
-          "The previous authorization was released — run the command again to re-bind.",
-      );
-    }
-    case "enroll-disabled":
-      return fail("this product does not offer keyless enrollment.");
-    case "error":
-      return fail(r.message || "unknown error.");
-  }
+  };
 }
 
 // ── license ────────────────────────────────────────────────────────────────────────────
