@@ -4160,8 +4160,8 @@ version answers `unsupported` (`version`) and installs nothing.
   being rolled back to. Residuals:
   - the install directory must be writable by the user, so anyone who can write there can swap
     `<exe>.new` between the verify and the rename, or plant `<exe>.previous` and its marker;
-  - the rollback does not re-verify `<exe>.previous`.
-    Both need write access to the directory that already holds the executable, which is
+  - the rollback does not re-verify `<exe>.previous`;
+  - both need write access to the directory that already holds the executable, which is
     equivalent to replacing it. A host that installs into a protected directory should use an
     installer-based driver instead.
 - **The bridge's trust boundary.** `exposePolarisBridge` registers `ipcMain` handlers that any
@@ -4192,7 +4192,7 @@ version answers `unsupported` (`version`) and installs nothing.
     reported as `keyring-unavailable`, with that detail;
   - a token that no longer decrypts (the OS key was reset) reads as null and reports
     `keyring-error`; the next activation writes a fresh one.
-    At most one of `token.enc` and `token` exists after a write. In the two plain-equivalent
+  - at most one of `token.enc` and `token` exists after a write. In the two plain-equivalent
     states the token is as safe as the user's home directory, the same residual as `FileStore`.
 
 ### Platform pack transports (P5-08)
