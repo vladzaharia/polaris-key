@@ -130,6 +130,7 @@ enum SwiftReplay {
                 out["result"] = .string("slow-down")
                 out["interval"] = .int(interval)
             case .ready: out["result"] = .string("ready")
+            case .confirm: out["result"] = .string("confirm")
             case .expired: out["result"] = .string("expired")
             case .error: out["result"] = .string("error")
             }
@@ -137,6 +138,7 @@ enum SwiftReplay {
             guard let prompt = session.prompt else { throw ReplayError("waitForSignIn before beginSignIn") }
             switch try await client.identity.waitForSignIn(prompt) {
             case .ready: out["result"] = .string("ready")
+            case .confirm: out["result"] = .string("confirm")
             case .expired: out["result"] = .string("expired")
             case .error: out["result"] = .string("error")
             }

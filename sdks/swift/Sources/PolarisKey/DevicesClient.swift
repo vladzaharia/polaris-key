@@ -114,9 +114,14 @@ public final class DevicesClient: Sendable {
     private let attestClient: any AppAttestClient
     private let keyStore: any AttestKeyStore
     private let outletCheck: @Sendable () -> String?
+    private let events: PolarisEventHub?
 
-    public init(core: CoreContext, license: LicenseClient, attest options: AttestOptions = AttestOptions()) {
+    public init(
+        core: CoreContext, license: LicenseClient, attest options: AttestOptions = AttestOptions(),
+        events: PolarisEventHub? = nil
+    ) {
         self.core = core
+        self.events = events
         self.license = license
         self.attestClient = options.client ?? DevicesClient.systemAttestClient()
         self.keyStore = options.keyStore ?? KeychainAttestKeyStore(product: core.product)
@@ -187,6 +192,7 @@ public final class DevicesClient: Sendable {
     public func deauthorize(_ deviceId: String) async throws {
         if deviceId == (await core.deviceId) {
             try await license.deactivate()
+            events?.emit(.license(await license.status()))
             return
         }
         try await core.deauthorizeDevice(deviceId)

@@ -164,7 +164,12 @@ let package = Package(
         ),
         .target(
             name: "PolarisKeyUI",
-            dependencies: ["PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyConfig"],
+            // The umbrella (never Sparkle) for `.polarisKey(client)` and the models that observe
+            // `client.changes`; Packs (no Sparkle) for the pack-progress view's events.
+            dependencies: [
+                "PolarisKey", "PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyConfig",
+                "PolarisKeyIdentity", "PolarisKeyRelease", "PolarisKeyPacks", "PolarisKeyPlatform",
+            ],
             // The launch kit's Rubik (with its OFL), the bit-less Pinned K and the "Powered by"
             // badges, unchanged from packages/brand/kit (tools/sync-brand-assets.sh;
             // BrandThemeTests checks the bytes).

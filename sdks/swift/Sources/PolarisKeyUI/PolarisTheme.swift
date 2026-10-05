@@ -38,6 +38,8 @@ public struct PolarisCopy: Sendable {
     public var activationMessages: [String: String]
     /// Shown when a sign-out could not clear the stored licence.
     public var signOutFailedMessage: String
+    /// Copy for every other kit component (sign-in, settings, devices, …).
+    public var kit = PolarisKitCopy()
 
     public init(
         productName: String = "this app",

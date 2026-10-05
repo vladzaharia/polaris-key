@@ -199,7 +199,7 @@ final class IdentityMintTests: XCTestCase {
         let acquired = expectation(description: "acquisition event")
         let client = identity(core, plane) { acquired.fulfill() }
         let result = try await client.waitForSignIn(try await client.beginSignIn())
-        XCTAssertEqual(result, .ready)
+        XCTAssertTrue(result.isReady, "\(result)")
         let times = plane.at(pollPath)
         XCTAssertEqual(times.count, 3)
         XCTAssertTrue(gaps(times, from: t0).allSatisfy { $0 >= 2 })
@@ -258,7 +258,7 @@ final class IdentityMintTests: XCTestCase {
             verificationUriComplete: "u?user_code=WDJB-MJHT", expiresIn: 600, interval: -3,
             expiresAt: t0 + 600)
         let result = try await identity(core, plane).waitForSignIn(prompt)
-        XCTAssertEqual(result, .ready)
+        XCTAssertTrue(result.isReady, "\(result)")
         XCTAssertEqual(gaps(plane.at(pollPath), from: t0), [1, 1])
     }
 
@@ -271,7 +271,7 @@ final class IdentityMintTests: XCTestCase {
         let prompt = try await client.beginSignIn()
         XCTAssertEqual(prompt.interval, 1)
         let result = try await client.waitForSignIn(prompt)
-        XCTAssertEqual(result, .ready)
+        XCTAssertTrue(result.isReady, "\(result)")
         XCTAssertEqual(gaps(plane.at(pollPath), from: t0), [1, 1])
     }
 
@@ -334,7 +334,7 @@ final class IdentityMintTests: XCTestCase {
         let (core, _) = try await core(plane, services: [.identity])
         let client = identity(core, plane)
         let result = try await client.waitForSignIn(try await client.beginSignIn())
-        XCTAssertEqual(result, .ready)
+        XCTAssertTrue(result.isReady, "\(result)")
         XCTAssertEqual(gaps(plane.at(pollPath), from: t0), [2, 2, 2])
     }
 
