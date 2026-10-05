@@ -17,7 +17,7 @@ import { activateEnrollDeactivate } from "./license.js";
 import { configSchemaFetch } from "./catalog.js";
 import { releaseChangelog, releaseChangelogEntitled } from "./release.js";
 import { edgeMint } from "./mint.js";
-import { syncErrors, syncEtag304 } from "./sync.js";
+import { syncConfigLicenseUnusable, syncErrors, syncEtag304 } from "./sync.js";
 import { updateFeedRollback, updateRecordByHash } from "./update.js";
 import { commerceClaim } from "./commerce.js";
 import { packsChunkRange } from "./packs.js";
@@ -27,6 +27,7 @@ export const SCENARIOS: Scenario[] = [
   discoveryFailure,
   syncEtag304,
   syncErrors,
+  syncConfigLicenseUnusable,
   activateEnrollDeactivate,
   registerOpen,
   registerReregister401,

@@ -40,6 +40,7 @@ public object ErrorCode {
     public const val enrollFailed: String = "enroll_failed"
     public const val managedByAdmin: String = "managed_by_admin"
     public const val catalogUnavailable: String = "catalog_unavailable"
+    public const val licenseUnusable: String = "license_unusable"
     public const val disabled: String = "disabled"
     public const val oidcError: String = "oidc_error"
     public const val unavailable: String = "unavailable"
@@ -189,6 +190,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "enroll_failed",
     "managed_by_admin",
     "catalog_unavailable",
+    "license_unusable",
     "disabled",
     "oidc_error",
     "unavailable",
@@ -338,6 +340,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "enroll_failed" to "wire",
     "managed_by_admin" to "wire",
     "catalog_unavailable" to "wire",
+    "license_unusable" to "wire",
     "disabled" to "wire",
     "oidc_error" to "wire",
     "unavailable" to "wire",

@@ -201,7 +201,7 @@ function htmlError(status: number, message: string): Response {
   return new Response(
     renderBrandPage({
       title: "Console sign-in",
-      eyebrow: "Polaris Key console",
+      surface: "console",
       heading: message,
       body: retry
         ? `<p class="actions"><a class="button" href="${escapeHtml("/manage/login")}">Sign in again</a></p>`

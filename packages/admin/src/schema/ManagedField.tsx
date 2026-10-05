@@ -83,7 +83,7 @@ export function ManagedField({
   const header = (
     <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
       <span className="font-bold text-fg-strong">{entry.label}</span>
-      <code className="font-mono text-xs font-normal text-fg-muted">
+      <code className="min-w-0 font-mono text-xs font-normal text-fg-muted [overflow-wrap:anywhere]">
         {entry.key}
       </code>
       {dirty ? (

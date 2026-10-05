@@ -5,6 +5,7 @@ import { formatRelative } from "../../lib/format.js";
 import { ActionMenu } from "../../ui/ActionMenu.js";
 import { Button } from "../../ui/Button.js";
 import { RefetchBar } from "../../ui/loading.js";
+import { Switch } from "../../ui/Switch.js";
 
 /** A secondary or danger page action (rendered inline or in "More actions"). */
 export interface PageAction {
@@ -30,6 +31,12 @@ export interface PageHeaderProps {
     onRefresh: () => void;
     refreshing?: boolean;
     now?: number;
+    /** An auto-refresh switch, last in the cluster (flush right). */
+    auto?: {
+      checked: boolean;
+      onCheckedChange: (checked: boolean) => void;
+      label: string;
+    };
   };
   /** The one primary action (a `Button`). */
   primaryAction?: React.ReactNode;
@@ -109,6 +116,22 @@ export function PageHeader({
     return () => io.disconnect();
   }, [sticky]);
 
+  // A ghost Refresh that ends the header row has no frame, so its 12 px of padding would leave
+  // the visible ink ("Refresh") short of the content edge every other header action meets. When
+  // it is the last thing on the row, a matching negative margin puts the ink on the edge. Below
+  // 640 px the inline secondaries are hidden and the primary action has its own row, so the
+  // question is asked per breakpoint.
+  const refreshTrailsPhone = Boolean(
+    freshness && !freshness.auto && mobileMenu.length === 0,
+  );
+  const refreshTrailsWide = Boolean(
+    freshness &&
+    !freshness.auto &&
+    inline.length === 0 &&
+    desktopMenu.length === 0 &&
+    !primaryAction,
+  );
+
   const hasCluster =
     Boolean(freshness) ||
     inline.length > 0 ||
@@ -121,7 +144,16 @@ export function PageHeader({
       {/* Title left; freshness, secondary actions and the primary action right. Below 640 px the
           "More actions" menu stays on the title row and the primary action takes its own
           full-width row. */}
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+      {/* A third column only when there is both a cluster and a primary action: an empty track
+          would keep its gap and stop the actions short of the right edge. */}
+      <div
+        className={cn(
+          "grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-3",
+          hasCluster &&
+            primaryAction &&
+            "sm:grid-cols-[minmax(0,1fr)_auto_auto]",
+        )}
+      >
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <h1
@@ -141,7 +173,13 @@ export function PageHeader({
           ) : null}
         </div>
         {hasCluster ? (
-          <div className="flex shrink-0 items-center justify-end gap-2">
+          <div
+            className={cn(
+              "flex shrink-0 items-center justify-end gap-2",
+              // With an auto-refresh switch the cluster is too wide to share a phone's title row.
+              freshness?.auto && "col-span-2 sm:col-span-1",
+            )}
+          >
             {freshness ? (
               <span className="inline-flex items-center gap-1 text-sm text-fg-muted">
                 <span className="hidden whitespace-nowrap sm:inline">
@@ -150,12 +188,27 @@ export function PageHeader({
                 <Button
                   variant="ghost"
                   size="sm"
+                  data-trailing-ghost={
+                    refreshTrailsPhone || refreshTrailsWide ? "" : undefined
+                  }
+                  className={cn(
+                    refreshTrailsPhone && "-mr-3",
+                    refreshTrailsWide ? "sm:-mr-3" : "sm:mr-0",
+                  )}
                   loading={freshness.refreshing}
                   iconStart={<RefreshCw aria-hidden />}
                   onClick={freshness.onRefresh}
                 >
                   Refresh
                 </Button>
+                {freshness.auto ? (
+                  <Switch
+                    className="ml-2"
+                    checked={freshness.auto.checked}
+                    onCheckedChange={freshness.auto.onCheckedChange}
+                    label={freshness.auto.label}
+                  />
+                ) : null}
               </span>
             ) : null}
             {inline.map((a) => (
@@ -183,7 +236,12 @@ export function PageHeader({
           </div>
         ) : null}
         {primaryAction ? (
-          <div className="col-span-2 sm:col-span-1 sm:col-start-3 sm:row-start-1 [&>:not(.sr-only)]:w-full sm:[&>:not(.sr-only)]:w-auto">
+          <div
+            className={cn(
+              "col-span-2 sm:col-span-1 sm:row-start-1 [&>:not(.sr-only)]:w-full sm:[&>:not(.sr-only)]:w-auto",
+              hasCluster ? "sm:col-start-3" : "sm:col-start-2",
+            )}
+          >
             {primaryAction}
           </div>
         ) : null}

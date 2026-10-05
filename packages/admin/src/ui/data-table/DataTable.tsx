@@ -329,7 +329,8 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   };
 
   // Column visibility: persisted per table id; `defaultHidden` columns, and priority 3 below
-  // 1280 px, start hidden.
+  // 1440 px, start hidden. A 1280 px laptop leaves the table under 1000 px beside the sidebar,
+  // where the low-priority columns would push Actions off the edge.
   const hasMatchMedia =
     typeof window !== "undefined" && typeof window.matchMedia === "function";
   const [hidden, setHidden] = React.useState<string[]>(() => {
@@ -343,7 +344,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       }
     }
     const narrow =
-      hasMatchMedia && !window.matchMedia("(min-width: 1280px)").matches;
+      hasMatchMedia && !window.matchMedia("(min-width: 1440px)").matches;
     return columns
       .filter(
         (c) => c.meta?.defaultHidden || (narrow && c.meta?.priority === 3),
@@ -359,7 +360,10 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   };
 
   const isPhone = useMediaQuery("(max-width: 767px)");
-  const isMobileCards = isPhone && mobile === "cards";
+  // Cards below 1024 px (a phone, a tablet, a narrow window): a wide table there would scroll
+  // sideways and hide its right-most columns, Actions included.
+  const isCardWidth = useMediaQuery("(max-width: 1023px)");
+  const isMobileCards = isCardWidth && mobile === "cards";
 
   const serverSide =
     pagination.mode === "cursor" ||
@@ -546,7 +550,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     return cn(
       "px-3 align-middle",
       alignClass(meta?.numeric ? "end" : meta?.align),
-      meta?.numeric && "tabular-nums",
+      (meta?.numeric || meta?.align === "end") && "tabular-nums",
       meta?.mono && "font-mono text-xs",
     );
   };
@@ -1009,7 +1013,8 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
         const rest = cells.filter(
           (c) =>
             c.column.id !== primaryId &&
-            (c.column.columnDef.meta?.priority ?? 2) === 1,
+            (c.column.columnDef.meta?.priority ?? 2) === 1 &&
+            !c.column.columnDef.meta?.quiet?.(row.original),
         );
         return (
           <li
@@ -1044,9 +1049,10 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                     <dt className="text-fg-muted">
                       {columnLabel(c.column.columnDef as DataColumn<T>)}
                     </dt>
+                    {/* Term left, value flush right: a card reads like a settings row. */}
                     <dd
                       className={cn(
-                        "min-w-0 text-fg",
+                        "flex min-w-0 flex-wrap items-center justify-end gap-x-2 text-right text-fg [&>*]:min-w-0",
                         c.column.columnDef.meta?.mono && "font-mono",
                       )}
                     >
