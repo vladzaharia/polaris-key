@@ -97,6 +97,13 @@ import {
   handleDiscover,
   handleDiscoverClaim,
 } from "./discover.js";
+import {
+  DEVICE_LOGIN_APPROVE_LIMIT,
+  handleDeviceLoginApprove,
+  handleDeviceLoginLookup,
+  handleDeviceLoginPoll,
+  handleDeviceLoginStart,
+} from "./deviceLogin.js";
 
 export function portalJson(
   body: unknown,
@@ -1284,6 +1291,14 @@ export async function handlePortalApi(
   if (segments[0] === "signin") {
     return handleCardApi(req, env, db, segments, now);
   }
+  // PX-W14 (G29): the new device's half of "Sign in with another device" is pre-auth: it has no
+  // session yet. The signed-in half (`lookup`, `approve`) is dispatched below.
+  if (segments[0] === "device-login" && segments.length === 2) {
+    if (segments[1] === "start")
+      return handleDeviceLoginStart(req, env, db, now);
+    if (segments[1] !== "lookup" && segments[1] !== "approve")
+      return handleDeviceLoginPoll(req, env, db, segments[1]!, now);
+  }
 
   const sessionResult = await requireSession(req, env, db, now);
   if (sessionResult instanceof Response) return sessionResult;
@@ -1301,6 +1316,32 @@ export async function handlePortalApi(
     req.method === "DELETE"
   ) {
     return handleMeDelete(req, env, db, session, now);
+  }
+  // PX-W14: the approver's half. Rate-limited per ACCOUNT alone (not account and client IP, as
+  // `requireActionRateLimit` keys it) before any code is looked up, so the budget is the bound on
+  // guessing someone else's code however many addresses the guesser rotates through.
+  if (
+    segments[0] === "device-login" &&
+    (segments[1] === "lookup" || segments[1] === "approve") &&
+    segments.length === 2
+  ) {
+    if (req.method !== "POST") return err(405, "method_not_allowed");
+    const allowed = await rateLimitOk(
+      env,
+      "_portal",
+      {
+        bucket: "portalDeviceApprove",
+        id: session.accountId,
+        limit: DEVICE_LOGIN_APPROVE_LIMIT,
+        windowSec: 60,
+      },
+      now,
+    );
+    if (!allowed) return err(429, "rate_limited", "too many attempts");
+    const body = await readBody(req);
+    return segments[1] === "lookup"
+      ? handleDeviceLoginLookup(req, env, session, body, now)
+      : handleDeviceLoginApprove(req, env, db, session, body, now);
   }
   await syncAccountLicenseLinks(db, session.accountId, now);
 

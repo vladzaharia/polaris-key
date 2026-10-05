@@ -102,7 +102,9 @@ export interface StartedSession {
 /**
  * Open an account session after a completed sign-in: one row, one signed cookie naming it.
  * `amr` records how the person signed in (`email`, `google`, `passkey`, …), shown on the sessions
- * list and read by step-up checks.
+ * list and read by step-up checks. `authenticatedAt` is for a session opened WITHOUT a sign-in of
+ * its own (PX-W14: a device signed in by another device's approval): the cookie then carries the
+ * approver's sign-in time, so it is never fresher than the proof behind it (`issuePortalSession`).
  */
 export async function startAccountSession(
   env: Env,
@@ -115,6 +117,7 @@ export async function startAccountSession(
     };
     req?: Request;
     amr: readonly string[];
+    authenticatedAt?: number;
   },
   now: number,
 ): Promise<StartedSession> {
@@ -152,6 +155,9 @@ export async function startAccountSession(
       sid,
     },
     now,
+    input.authenticatedAt === undefined
+      ? {}
+      : { authenticatedAt: input.authenticatedAt },
   );
   return { cookie: buildPortalSessionCookie(token), session, idHash };
 }

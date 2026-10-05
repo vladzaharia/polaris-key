@@ -90,6 +90,10 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/license/document` | license | The signed license document (pkey-license+jws) |
 | POST | `/{product}/license/enroll` | license | Keyless enrollment (auto-issue policy) |
 | POST | `/{product}/license/token` | license | Rotate/re-acquire the device token |
+| GET | `/api/device-login/{requestId}` | portal | Wait for the other device to approve this one |
+| POST | `/api/device-login/approve` | portal | Approve or deny a device asking to sign in |
+| POST | `/api/device-login/lookup` | portal | See what is asking to sign in, before deciding |
+| POST | `/api/device-login/start` | portal | Ask to sign in on this device by approving it from another one |
 | POST | `/api/discover/{product}/claim` | portal | Add a Discover product to the library |
 | GET | `/api/discover` | portal | The products the signed-in account could add for free |
 | GET | `/api/library` | portal | The signed-in account's library |

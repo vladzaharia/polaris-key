@@ -1356,6 +1356,12 @@ Notes:
   identity card and Cloud Sync (which requires Identity, S-17 owner's final answers, 1) depend on it.
 - **Rule 6.** Identity (where the portal lives) may not import Distribution, Update or License
   internals. G2, G4, G8, G24 and G25 go through descriptor hooks in `src/core/hooks.ts`.
+- **G29 as built (PX-W14).** Four routes, not three: `POST /api/device-login/lookup {code}` shows
+  the approver what is asking before deciding, and `approve` takes an explicit
+  `decision: approve|deny`. Codes are RFC 8628 consonants (`WDJB-MJHT`), 5 minutes, single use;
+  the poll answers `410 expired` unless it carries the starting browser's binding cookie; step-up is
+  a sign-in no older than 5 minutes, required when the asking device's country differs from the
+  approver's or either is unknown.
 - **G2 and G4 as built (PX-W2).** `GET /api/products/:p/downloads[?channel=]` reads Distribution's
   `customerDownloads` hook (account-free: files per platform and release, recommended picks, store
   links) and Core's `detectPlatform` (moved from `page/detect.ts` to `core/platformDetect.ts`), then

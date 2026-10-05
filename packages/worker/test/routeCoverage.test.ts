@@ -102,6 +102,11 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/api/sessions", ["get"]],
     ["/api/sessions/{sessionId}", ["delete"]],
     ["/api/sessions/sign-out-everywhere", ["post"]],
+    // PX-W14 (G29): sign in with another device.
+    ["/api/device-login/start", ["post"]],
+    ["/api/device-login/lookup", ["post"]],
+    ["/api/device-login/approve", ["post"]],
+    ["/api/device-login/{requestId}", ["get"]],
   ],
 };
 
@@ -501,6 +506,7 @@ function concrete(template: string): string {
     store: "snap",
     key: "0123456789abcdef0123456789abcdef",
     sessionId: "f".repeat(64),
+    requestId: `dl_${"A".repeat(43)}`,
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];

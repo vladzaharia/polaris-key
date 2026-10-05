@@ -32,7 +32,7 @@ import {
   type PageBuild,
   type PagePlatformGroup,
 } from "./model.js";
-import { qrSvg } from "./qr.js";
+import { qrSvg } from "../../../core/qr.js";
 
 /** The deep-link schemes the Worker builds (`model.ts`). Nothing else but `https:` is linked. */
 export const DEEP_LINK_SCHEMES = [

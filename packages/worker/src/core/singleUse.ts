@@ -32,6 +32,10 @@ export type SingleUseKind =
   | "device-flow"
   /** RFC 8628 user-code index (user code → device code), by normalised user code. */
   | "device-user"
+  /** A portal "sign in with another device" request (PX-W14, G29), by its poll handle. */
+  | "device-login"
+  /** Its code index (code → the request's address), by normalised code. */
+  | "device-login-code"
   /** An email one-time code (I-07), by (recipient, flow). */
   | "email-code"
   /** A recipient's wrong-code strikes and lockout (I-07), by recipient. */

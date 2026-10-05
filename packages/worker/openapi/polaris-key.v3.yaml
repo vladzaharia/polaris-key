@@ -10075,6 +10075,227 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
+  /api/device-login/start:
+    post:
+      operationId: startPortalDeviceLogin
+      tags: [portal]
+      summary: Ask to sign in on this device by approving it from another one
+      description: >
+        PX-W14 (docs/design/PORTAL.md §4.23, G29). Pre-auth: the device asking has no session.
+        Creates a request in the atomic single-use store that lives 5 minutes, with an 8-letter
+        code (RFC 8628 §6.1's consonant alphabet, shown `XXXX-XXXX`, case-insensitive on input)
+        and a poll handle. Records the requesting browser and OS (from the User-Agent) and its
+        coarse place (Cloudflare's edge geolocation), for the approver to see. Sets an `HttpOnly`,
+        `SameSite=Strict` binding cookie (`__Host-pkey_device_login`) that the poll requires. `qr`
+        is an SVG `data:` URI of `approveUrl` (the signed-in app's `#/account/approve?code=`).
+        10 starts per client network per 10 minutes (fails closed); `404 auth_method_disabled`
+        while the portal is off.
+      responses:
+        "201":
+          description: "The request. `cache-control: no-store`."
+          headers:
+            Set-Cookie:
+              description: "`__Host-pkey_device_login=…; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=300`"
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalDeviceLoginStart" }
+              examples:
+                started:
+                  value:
+                    id: dl_q3Jm1n0b6r2x9VYkU8sA4pQe7tWzLdH5fCgN0oRiXyE
+                    code: WDJB-MJHT
+                    qr: data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIC4uLg==
+                    approveUrl: https://key.plrs.im/#/account/approve?code=WDJB-MJHT
+                    expiresIn: 300
+                    interval: 3
+        "404":
+          description: "`auth_method_disabled`: the portal is off."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/device-login/lookup:
+    post:
+      operationId: lookupPortalDeviceLogin
+      tags: [portal]
+      summary: See what is asking to sign in, before deciding
+      description: >
+        PX-W14 (§4.24). Signed in, with the `X-PKey-Portal-CSRF` header. Takes `{ "code": "…" }`
+        and answers the pending request: the device (`label`, `browser`, `os`), its coarse
+        `location`, when it asked, how long it has left, the approver's own country, whether the
+        request comes from another place (`newLocation`, also true when either country is unknown)
+        and whether approving it would need a fresh sign-in (`stepUpRequired`). Reads only:
+        looking never approves. `410 expired` for an unknown, spent or expired code; `422` for one
+        that cannot be a code. Shares a per-account budget with the decision (10 a minute).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, description: "The 8-letter code; spaces, hyphens and case are ignored." }
+      responses:
+        "200":
+          description: The request.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [request]
+                properties:
+                  request: { $ref: "#/components/schemas/PortalDeviceLoginRequest" }
+              examples:
+                pending:
+                  value:
+                    request:
+                      code: WDJB-MJHT
+                      device: { label: Chrome on macOS, browser: Chrome, os: macOS }
+                      location: { city: Lisbon, region: Lisbon, country: PT, label: "Lisbon, Portugal" }
+                      requestedAt: 1700000000
+                      expiresIn: 248
+                      approverCountry: PT
+                      newLocation: false
+                      stepUpRequired: false
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "410":
+          description: "`expired`: no pending request has this code."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "422":
+          description: Not a code.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/device-login/approve:
+    post:
+      operationId: approvePortalDeviceLogin
+      tags: [portal]
+      summary: Approve or deny a device asking to sign in
+      description: >
+        PX-W14 (§4.24). Signed in, with the `X-PKey-Portal-CSRF` header. Takes `{ "code": "…",
+        "decision": "approve" | "deny" }`; there is no default, and anything else is a `422`, so
+        nothing is approved without an explicit choice. Approving a request from another place
+        (or one whose place is unknown) needs a sign-in no older than 5 minutes, otherwise
+        `401 step_up_required` and the code stays live for the retry. The decision spends the code
+        in one atomic step (of two racing decisions one lands, the other answers `410`), is
+        audited (`portal.device_login.approve` or `.deny`), and an approval emails the "A new
+        device signed in" security notice to every verified address on the account. The asking
+        device's next poll is signed in to this account.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, decision]
+              properties:
+                code: { type: string }
+                decision: { type: string, enum: [approve, deny] }
+      responses:
+        "200":
+          description: The decision landed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, status]
+                properties:
+                  ok: { type: boolean, const: true }
+                  status: { type: string, enum: [approved, denied] }
+        "401":
+          description: "No portal session, or `step_up_required` (with `maxAgeSeconds: 300`): sign in again first."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "410":
+          description: "`expired`: no pending request has this code (unknown, already decided or expired)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "422":
+          description: Not a code, or no explicit `decision`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/device-login/{requestId}:
+    get:
+      operationId: pollPortalDeviceLogin
+      tags: [portal]
+      summary: Wait for the other device to approve this one
+      description: >
+        PX-W14 (§4.23). Pre-auth, from the browser that started the request: needs the binding
+        cookie `start` set, and answers a missing or wrong one exactly like an expired request.
+        `pending` until a decision; then `denied`, or `approved` with the portal session cookie
+        set. The answer to a decision is given once: the record is taken in one atomic step, so
+        only one poll is ever signed in, and the next answers `410`. 60 polls per client network
+        per minute.
+      parameters:
+        - {
+            name: requestId,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^dl_[A-Za-z0-9_-]{43}$" },
+            description: "The poll handle `start` returned (`id`).",
+          }
+      responses:
+        "200":
+          description: "`pending` (with `expiresIn`, `interval`), `denied`, or `approved` (sets `__Host-pkey_portal`)."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, enum: [pending, approved, denied] }
+                  expiresIn: { type: integer }
+                  interval: { type: integer }
+        "403":
+          description: "`account_disabled`: the approving account can no longer sign in."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "410":
+          description: "`expired`: unknown, expired, already answered, or not this browser's request."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
   /media/{product}/{asset}:
     get:
       operationId: getPortalMedia
@@ -12201,6 +12422,44 @@ components:
         expiryDays:
           type: [integer, "null"]
           description: "The tier's policy length in days; null = lifetime."
+    PortalDeviceLoginStart:
+      type: object
+      required: [id, code, qr, approveUrl, expiresIn, interval]
+      properties:
+        id: { type: string, description: "The poll handle; never shown to a person." }
+        code: { type: string, description: "The 8-letter code, `XXXX-XXXX`." }
+        qr:
+          type: [string, "null"]
+          description: "An SVG `data:` URI of `approveUrl`, for an `<img>`."
+        approveUrl: { type: string }
+        expiresIn: { type: integer, description: Seconds. }
+        interval: { type: integer, description: "Seconds between polls." }
+    PortalDeviceLoginRequest:
+      type: object
+      required:
+        [code, device, location, requestedAt, expiresIn, approverCountry, newLocation, stepUpRequired]
+      properties:
+        code: { type: string }
+        device:
+          type: object
+          required: [label, browser, os]
+          properties:
+            label: { type: string, description: '"Chrome on macOS", "A device".' }
+            browser: { type: [string, "null"] }
+            os: { type: [string, "null"] }
+        location:
+          type: object
+          required: [city, region, country, label]
+          properties:
+            city: { type: [string, "null"] }
+            region: { type: [string, "null"] }
+            country: { type: [string, "null"], description: ISO 3166-1 alpha-2. }
+            label: { type: [string, "null"], description: '"Lisbon, Portugal".' }
+        requestedAt: { type: integer }
+        expiresIn: { type: integer }
+        approverCountry: { type: [string, "null"] }
+        newLocation: { type: boolean }
+        stepUpRequired: { type: boolean }
     PortalDiscoverClaim:
       type: object
       required: [added, product, license]
