@@ -1412,6 +1412,10 @@ earlier revision so briefs that cite them stay valid.
 8. **"Sign in with <Product>" and the domain story.** Layer 2; custom auth domains deferred;
    passkeys on `key.plrs.im`. _Decided._
 9. **Licence document.** No user claim until named-user seats (I-24). _Default unchanged._
+   _Amended 2026-10-04 (S-19 decision 2, accepted): D9 is read as a rule about the document's
+   content. No user claim is added, but the account signed in on a device may feed the document's
+   inputs (its licences and grants, S-19 §7.3.1). See `notes/S-19-licensing-model.md` §10.3
+   decision 2._
 10. **Hygiene now.** I-01 to I-03 ship ahead of the plan. _Decided; in progress._
 11. **D-14.** Replaced by a decision record written by I-04. _Decided._
 12. **Who builds the issuer.** Decide in I-20's plan, leaning in-house on `jose`. _Decided as a
