@@ -52,6 +52,13 @@ Cloud Sync is a new device-writable service: new routes, error codes, transcript
 - **No Cloud Sync without signing in, ever** (literal sign-in; owner, 2026-10-04, final answers). Floating licences, key-activated devices and products without Identity get local persistence only; settings upload at the first sign-in; U-26 (the licence-owned backup) stays retired. The SDK and UI kits offer sign-in on `account_required`.
 - **Defaults confirmed:** the MVP (about 64, now 67, agent-days) first, then the anonymous-to-signed-in merge and saves, before collections; per-product ceilings of 50 GiB, 100k users holding data and 2,000 pushes per second; 1 MiB with saves off for signed-in users with no licence for the product; the platform pays Cloudflare until per-product billing; web apps use a device token issued to an origin on the product's `web.origins` allowlist through I-08.
 
+## S-19 amendments (owner, 2026-10-04)
+
+- **Decision 19: Cloud Sync quotas are `byEntitlement` plus `byTier`.** Add `byEntitlement` (`sync.storageBytes` and `sync.slots`, catalog `combine: max`, read from the device's effective entitlement set, S-19 §7.3), and keep `byTier` evaluated on the **highest-rank contributing licence** (`tiers.rank`). This replaces §8 Q2's "largest limit among the account's usable licences" with "the effective set's value": the same result for numbers, one code path ([S-19 §8](../../notes/S-19-licensing-model.md#8-interactions-with-other-plans-exactly-what-changes) U-01 row, [§10.3](../../notes/S-19-licensing-model.md#103-owner-decisions-recommended-defaults-in-bold) decision 19).
+- `requiresFlag` reads the resolver (`resolveDeviceEntitlements`, LX-09), so it works on licence-less signed-in devices; `writes.requireLicense` reads the anchor's usability. U-02 builds on the resolver once LX-09 lands.
+- **Decision 18** renames PX-W3's "download grant" to **"download ticket"**; where this plan refers to download grants, use the new name.
+- Ceilings and quotas are `product_settings` rows (S-18 §5.4), not a `sync_product_settings` table.
+
 ## Design notes
 
 - **S-17 decisions 20–24, decided** (owner, 2026-10-04, final answers): 20, entitlement overrides stay on the licence and only `config` and `secrets` move; 21, a 30-day notice counted from I-07 and I-11 live, and a 90-day report; 22, Cloud Sync needs sign-in (no licence-owner line, so no leaked-key residual and no new-device alert); 23, web Cloud Sync uses I-08's web redirect, which needs Identity; 24, the developer-backend credential follows Identity (I-21 client credentials with `pkey:sync`, else I-25).
