@@ -1,5 +1,15 @@
 # Polaris Key customer portal: design specification
 
+> **Superseded in part (2026-10-05).** [EXPERIENCE.md](EXPERIENCE.md) is now the single
+> experience spec for the console and the portal. The login card's measures and steps here still
+> hold, but its component is the shared `AuthCard` used by the console and the Worker pages too. The
+> sections it replaces are listed in
+> [EXPERIENCE.md §14](EXPERIENCE.md#14-superseded-sections-in-adminmd-and-portalmd): §4.1
+> (ownership, footer line), §4.2 (header copy), §4.12 (footer advice), §4.20 (lead, status chips,
+> Get it), §4.26 (Appearance, Sign out, Delete), §5.1–5.3 and §6.1. §3.2's phone bottom bar,
+> §4.17–§4.19 (PX-17), §4.29 (PX-21) and §4.30 (PX-22) stand; EXPERIENCE.md §0.6 places them in the
+> shared card's step list.
+
 **Status:** draft for owner approval, revised with the owner decisions of 2026-10-04 (Appendix C,
 and the second round in Appendix E)
 · **Scope:** the customer-facing site at `key.plrs.im`: the SPA at `packages/admin/src/portal`
