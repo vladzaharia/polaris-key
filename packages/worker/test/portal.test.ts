@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
@@ -63,8 +64,9 @@ async function portalSession(
   email = "ada@example.com",
 ): Promise<{ cookie: string; csrf: string; accountId: string }> {
   const account = await getOrCreateAccountByEmail(db, email, NOW);
-  const { token, session } = await issuePortalSession(
+  const { token, session } = await issuePortalSessionRow(
     env,
+    db,
     {
       accountId: account.id,
       email: account.primary_email,
@@ -136,8 +138,28 @@ describe("customer portal", () => {
     expect(token).toBeTruthy();
     expect(kv.keys().some((key) => key.includes(token!))).toBe(false);
 
+    // I-07: the landing page (GET) consumes nothing; its button POSTs the token back, from the
+    // browser that asked (its flow cookie), which signs that browser in.
+    const flowCookie = cookieFromSetCookie(start.headers.get("set-cookie"));
+    const landing = await handleMagicVerify(
+      req("GET", `/magic/verify?token=${encodeURIComponent(token!)}`, {
+        cookie: flowCookie,
+      }),
+      env,
+      db,
+      NOW,
+    );
+    expect(landing.status).toBe(200);
+    expect(landing.headers.get("set-cookie")).toBeNull();
     const verified = await handleMagicVerify(
-      req("GET", `/magic/verify?token=${encodeURIComponent(token!)}`),
+      new Request("https://key.plrs.im/magic/verify", {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          cookie: flowCookie,
+        },
+        body: new URLSearchParams({ token: token! }).toString(),
+      }) as unknown as Request,
       env,
       db,
       NOW,

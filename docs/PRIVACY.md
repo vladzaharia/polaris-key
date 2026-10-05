@@ -130,6 +130,23 @@ email or payment data) for 30 days, with the connector event log.
 
 Used for: granting and revoking the purchased licence flag, and nothing else.
 
+### The Polaris Key account's sign-in (I-07, the login card on key.plrs.im)
+
+When a person signs in to their Polaris Key account, the Worker keeps, per browser session: when it
+started and was last seen (refreshed at most every five minutes), when it expires, how the person
+signed in (`email`, `google`, …) and a coarse label of the browser family and operating system
+("Firefox on Windows"; no versions, builds or device models). The person
+sees and ends these sessions themselves. A pending sign-in or email confirmation keeps the address
+being confirmed, the provider's identity and what the provider sent about the person, plus the
+city and country Cloudflare attaches to the request that started it (shown back as "requested at
+<time> from <place>" when the link is opened on another device). From an identity provider
+(Google, Apple, Steam) it keeps, per sign-in method: the name and locale the provider sent, and a
+copy of the provider's picture in R2 under an opaque random key (never the provider's URL; a
+peppered hash of it decides when to fetch again). The provider learns nothing about who views the
+copy.
+
+Used for: signing the person in, showing and ending their sessions, and filling their profile.
+
 ### Not collected
 
 Hostname, OS username, IP-derived geolocation, browsing or file activity, a list of installed
@@ -150,6 +167,9 @@ applications, and any raw hardware serial. None of these are read by any SDK.
 | Store purchases (hashed key, product, licence, state, re-check ids incl. a Steam ID) and the licence's store grants                                                                         | `dist_purchases`, `license_store_grants`        | Kept while the licence exists; a refund marks them revoked                                                                                                                |
 | Purchase binding (random UUID per licence)                                                                                                                                                  | `dist_purchase_bindings`                        | Kept while the licence exists                                                                                                                                             |
 | Store notifications (as received)                                                                                                                                                           | `dist_connector_events`                         | 30 days                                                                                                                                                                   |
+| Account sessions (times, sign-in method, browser label)                                                                                                                                     | `account_sessions`                              | 14 days while live; an ended session is pruned 30 days after it ended; deleted with the account                                                                           |
+| Pending email sign-ins and email gates (the address, the provider identity and profile, the requesting city and country)                                                                    | `SingleUseDO` (the sharded single-use store)    | Until used or expired: 10 minutes for a sign-in, 15 for an email gate                                                                                                     |
+| Provider profile per sign-in method (name, locale, picture reference) and the copied picture                                                                                                | `account_links.profile_json`, R2 `avatars/`     | Until the provider's picture changes (the old copy is removed) or the account is deleted                                                                                  |
 
 Deauthorizing a device — from the app, the admin panel, or the customer portal — routes
 through `setDeviceStatus()` in `packages/worker/src/repo.ts`, which purges both tables in the

@@ -43,7 +43,12 @@ public enum ErrorCode {
     public static let oidcError = "oidc_error"
     public static let unavailable = "unavailable"
     public static let authMethodDisabled = "auth_method_disabled"
-    public static let emailNotConfigured = "email_not_configured"
+    public static let emailUnavailable = "email_unavailable"
+    public static let turnstileFailed = "turnstile_failed"
+    public static let signinExpired = "signin_expired"
+    public static let invalidCode = "invalid_code"
+    public static let emailInUse = "email_in_use"
+    public static let termsRequired = "terms_required"
     public static let licenseOwned = "license_owned"
     public static let emailMismatch = "email_mismatch"
     public static let linkConflict = "link_conflict"
@@ -192,7 +197,12 @@ public let ERROR_CODE_VALUES: [String] = [
     "oidc_error",
     "unavailable",
     "auth_method_disabled",
-    "email_not_configured",
+    "email_unavailable",
+    "turnstile_failed",
+    "signin_expired",
+    "invalid_code",
+    "email_in_use",
+    "terms_required",
     "license_owned",
     "email_mismatch",
     "link_conflict",
@@ -341,7 +351,12 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "oidc_error": "wire",
     "unavailable": "wire",
     "auth_method_disabled": "wire",
-    "email_not_configured": "wire",
+    "email_unavailable": "wire",
+    "turnstile_failed": "wire",
+    "signin_expired": "wire",
+    "invalid_code": "wire",
+    "email_in_use": "wire",
+    "terms_required": "wire",
     "license_owned": "wire",
     "email_mismatch": "wire",
     "link_conflict": "wire",

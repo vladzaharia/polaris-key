@@ -396,6 +396,9 @@ export function setPortalCsrf(token: string): void {
   csrf = token;
 }
 
+/** This tab started an email sign-in that has not finished yet (I-07). */
+let signInPending = false;
+
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   const mutating = init.method != null && init.method !== "GET";
@@ -450,11 +453,31 @@ export const portalApi = {
   licenses: () => call<{ licenses: PortalLicenseSummary[] }>("/api/licenses"),
   license: (product: string, id: string) =>
     call<PortalLicenseDetail>(`/api/licenses/${enc(product)}/${enc(id)}`),
-  startMagic: (email: string) =>
-    call<{ ok: true }>("/api/magic/start", {
+  startMagic: async (email: string) => {
+    const out = await call<{ ok: true }>("/api/magic/start", {
       method: "POST",
       body: JSON.stringify({ email, returnTo: window.location.href }),
-    }),
+    });
+    signInPending = true;
+    return out;
+  },
+  /**
+   * I-07: a sign-in link opened on another device only confirms THIS tab's sign-in; this tab
+   * finishes it here (the Worker sets the session cookie). Asked only after this tab started
+   * an email sign-in.
+   */
+  finishPendingSignIn: async (): Promise<boolean> => {
+    if (!signInPending) return false;
+    try {
+      const out = await call<{ status: string }>("/api/signin/flow", {
+        method: "POST",
+      });
+      if (out.status !== "pending") signInPending = false;
+      return out.status === "signed_in";
+    } catch {
+      return false;
+    }
+  },
   claimKey: (key: string) =>
     call<{ ok: true; license: PortalLicenseSummary | null }>(
       "/api/claim/license-key",

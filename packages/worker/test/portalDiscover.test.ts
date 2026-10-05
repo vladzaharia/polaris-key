@@ -11,6 +11,7 @@
  * (tier, limits, entitlements), and the claim is idempotent, double submit included.
  */
 
+import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -62,9 +63,10 @@ interface Who {
   accountId: string;
 }
 
-async function issue(env: Env, accountId: string): Promise<Who> {
-  const { token, session } = await issuePortalSession(
+async function issue(env: Env, db: Db, accountId: string): Promise<Who> {
+  const { token, session } = await issuePortalSessionRow(
     env,
+    db,
     { accountId, email: EMAIL, name: "Mara" },
     NOW,
   );
@@ -88,7 +90,7 @@ async function platformAccount(
     },
     NOW,
   );
-  return issue(env, account.id);
+  return issue(env, db, account.id);
 }
 
 async function services(
@@ -375,7 +377,7 @@ describe("GET /api/discover (G24)", () => {
       NOW,
     );
     expect(
-      (await list(env, db, await issue(env, emailOnly.id))).body.offers,
+      (await list(env, db, await issue(env, db, emailOnly.id))).body.offers,
     ).toEqual([]);
 
     const who = await platformAccount(env, db);

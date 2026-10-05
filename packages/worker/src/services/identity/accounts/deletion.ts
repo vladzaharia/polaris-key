@@ -13,6 +13,7 @@
  * is the "also remove the licence from my Library" choice the removal screen offers.
  */
 
+import { deleteAccountAvatars } from "../card/avatars.js";
 import {
   accountLicenses,
   stmtDetachAccountLicenses,
@@ -178,6 +179,9 @@ export async function deleteAccount(
       now,
     });
   }
+  // I-07: the copied provider pictures go before the rows that name them (R2 objects have no
+  // foreign key; once the rows are gone nothing could find them).
+  await deleteAccountAvatars(env, db, accountId);
   const stmts: DbStatement[] = [];
   for (const s of subjects) {
     stmts.push(

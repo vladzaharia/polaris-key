@@ -73,6 +73,31 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test -- identity card ema
 mise exec node@22 -- pnpm --filter @polaris-key/worker test:workerd
 ```
 
+## Corrections from the code (implementer, 2026-10-04)
+
+- **The card's screens are not in this package.** PX-12 (login card v2) and PX-21 (email gate UI)
+  own the SPA screens; I-07 is the Worker half (`services/identity/card/`) and its routes, which
+  PX-12 and PX-21 call. Rendering the Turnstile widget therefore also lands with PX-12, together
+  with the portal CSP widening it needs (Cloudflare's challenge origin in `script-src` and
+  `frame-src`); I-07 verifies the token server-side and hands out the public site key from
+  `GET /api/capabilities`. The console and portal CSP are unchanged here, so CSP parity holds.
+- **The seam for provider front doors** is `beginProviderSignIn` (`card/gate.ts`): I-06's Apple,
+  Google and Steam callbacks, and later I-08, I-13 and I-14, call it with the verified identity and
+  the imported profile. Until I-06 lands nothing calls it in production; the tests drive it
+  directly. The existing Pocket ID callback (`/callback`) keeps signing in directly (I-17 moves
+  those users onto the card) and now opens a server-side session like every other sign-in.
+- **Avatars** use the existing `BLOBS` bucket under `avatars/`, so the "R2 bucket or prefix" human
+  input is satisfied by the prefix. The Worker has no image codec, so pictures are stored as
+  fetched after a magic-number check (PX-W16's "re-encode" is the stricter option the design
+  allows; recorded as a residual in THREAT-MODEL "Login card").
+- **Sessions:** the portal cookie keeps its signed form and now names an `account_sessions` row
+  (the table exists since I-05's `0068_a`); a cookie signed before this deploy is refused, so every
+  portal visitor signs in once afterwards (RUNBOOK "Login card").
+- **Migrations** `0074` (`account_links.profile_json`) and `0075`
+  (`accounts.nudge_shown_at`); no new tables, so the table-owner list is unchanged.
+- `POST /api/magic/start` stays as an alias of `POST /api/signin/email/start`; `/magic/verify` is
+  now the landing page (`GET` consumes nothing, `POST` completes or confirms).
+
 ## Hand-off
 
 - I-08 puts the passthrough header on this card; I-11 builds account settings on these sessions.

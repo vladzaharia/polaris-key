@@ -217,7 +217,8 @@ describe("every server-rendered page on the console host uses the shell", () => 
     );
     expect(res.status).toBe(400);
     const html = await expectBrandedPage(res);
-    expect(html).toContain("Missing magic-link token.");
+    // I-07: a link with no token reads as an expired one (the landing page names no reason).
+    expect(html).toContain("This sign-in link has expired.");
     expect(html).toContain('<span class="surface">account</span>');
   });
 

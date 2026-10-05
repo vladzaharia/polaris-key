@@ -14,8 +14,8 @@ this section.
 
 ## Why the routes are root-level
 
-`/login`, `/callback`, `/logout`, `/magic/verify`, `/api/*`, `/download/<token>` and
-`/media/<product>/<asset>` are reserved
+`/login`, `/callback`, `/logout`, `/magic/verify`, `/api/*` (the login card's `/api/signin/*`
+included), `/download/<token>`, `/media/<product>/<asset>` and `/media/avatar/<key>` are reserved
 ahead of every product slug and dispatched from the composition root, not from this service's
 product-scoped sub-router. That is a consequence of what the portal _is_: one account can hold
 licenses for several products at once, so there is no single `<product>` to hang these paths
@@ -37,13 +37,28 @@ both `releasesEnabled` and the Release service on.
 
 ## Signing in
 
-| Route                   | What it does                                                                |
-| ----------------------- | --------------------------------------------------------------------------- |
-| `GET /login`            | Begins platform OIDC and 302s to the IdP.                                   |
-| `GET /callback`         | The OIDC redirect URI: exchanges the code, verifies the ID token, signs in. |
-| `POST /api/magic/start` | Emails a one-time sign-in link.                                             |
-| `GET /magic/verify`     | Redeems that link.                                                          |
-| `POST /logout`          | Ends the portal session.                                                    |
+The login card on key.plrs.im is the only place a Polaris Key account's credentials are entered,
+for the portal and, through the passthrough, for every app. It is identifier-first: the email
+first, then the methods. Its Worker half lives in `services/identity/card/`; the card's screens
+are the portal SPA's.
+
+| Route                                   | What it does                                                                |
+| --------------------------------------- | --------------------------------------------------------------------------- |
+| `GET /login`                            | Begins platform OIDC and 302s to the IdP.                                   |
+| `GET /callback`                         | The OIDC redirect URI: exchanges the code, verifies the ID token, signs in. |
+| `POST /api/signin/email/start`          | Emails a 6-digit code and a magic link, bound to this browser.              |
+| `POST /api/signin/email/verify`         | Redeems the code in the browser that asked.                                 |
+| `GET /magic/verify`                     | The magic link's landing page. Consumes nothing.                            |
+| `POST /magic/verify`                    | The landing page's button: signs in here, or confirms the asking browser.   |
+| `POST /api/signin/flow`                 | The asking browser's poll after the link was confirmed on another device.   |
+| `GET`/`POST /api/signin/confirm-email`  | The email gate: the required first-provider-sign-in interstitial.           |
+| `POST /api/signin/confirm-email/verify` | The gate's code, for a typed or unverified address.                         |
+| `POST /api/signin/confirm-email/join`   | Takes the join offer, once both identities are proven.                      |
+| `POST /api/signin/confirm-email/cancel` | Abandons the sign-in.                                                       |
+| `GET /api/signin/confirm-email/picture` | The provider's picture, proxied for the gate.                               |
+| `POST /logout`                          | Ends this browser's session, server-side too.                               |
+
+`POST /api/magic/start` is the older name of the email start and runs the same handler.
 
 **OIDC.** `/login` uses the same `platformOidcConfig` a `platform`-provider product uses (see
 [Product OIDC](/docs/services/identity/oidc/)) — the portal and every platform-issuer product
@@ -52,18 +67,60 @@ so operators and customers do not share one. Rate-limited to 20 requests per min
 `state`, and `nonce` follow the same shape as the product flow, with the redirect URI fixed to
 `<origin>/callback` rather than a product-scoped path.
 
-**Magic links.** `POST /api/magic/start` takes `{ "email": "…" }`, rate-limited to 8 per minute
-per IP, and — only if the platform has an `EMAIL` binding configured — sends a link to
-`/magic/verify?token=…`. The token is single-use and expires in **10 minutes**: the record
-behind it lives in the Worker's atomic single-use store (a sharded Durable Object) and
-`/magic/verify` consumes it in one operation — read and delete together, before anything else is
-checked — so a link can never be redeemed twice, not even by two clicks that arrive at once. The
-portal OIDC `state` is held the same way. The email is explicit about the
-window: "This link expires in 10 minutes."
+**Email code and magic link.** `POST /api/signin/email/start` takes `{ "email": "…",
+"turnstileToken"?: "…", "returnTo"?: "…" }`. It opens a flow bound to this browser (a 10-minute
+`__Host-pkey_signin` cookie naming a record in the Worker's atomic single-use store) and, when
+every limit passes, sends one email carrying a 6-digit code and a link to
+`/magic/verify?token=…`. The answer is the same bytes for a known address, an unknown one, a
+locked-out or over-limit recipient and a suppressed one; only a deploy that cannot send mail at
+all answers `503 email_unavailable`. The limits are I-02's, in the platform scope: 8 starts a
+minute and 10 sends an hour per client address, 30 an hour per network, 5 an hour and 20 a day per
+recipient. A code lives 10 minutes and dies after 5 wrong attempts; 10 wrong attempts in an hour
+lock the recipient out of new codes for 15 minutes, silently. When the deploy sets
+`TURNSTILE_SECRET_KEY`, the start verifies a Cloudflare Turnstile token first and fails closed;
+`GET /api/capabilities` hands the card the public `turnstileSiteKey`.
 
-Both paths accept an optional `returnTo`, which must be same-origin and additionally may not
-target `/manage` — a magic link or an OIDC return cannot be used to pivot a visitor into the
-admin console.
+The link's landing page consumes nothing, so a mail scanner or a link prefetcher cannot burn it;
+its button `POST`s the token back. In the browser that asked, that signs in. Anywhere else the
+page says "Confirm sign-in, requested at <time> from <place>", and confirming only marks the
+asking browser's flow confirmed: that browser picks it up from `POST /api/signin/flow` and signs
+in there. A link opened on another device never signs that device in. A code and the link
+complete one flow once.
+
+**The email gate.** A provider front door (Apple, Google and Steam, later the platform
+identities and the passthrough) hands its verified identity and the profile the provider sent to
+`beginProviderSignIn`. On an identity's first sign-in, while its account has no confirmed email,
+or when a product's terms version is not yet accepted, that opens the gate (a 15-minute
+`__Host-pkey_gate` cookie) and redirects to the card's step. No account row and no session exist
+until it passes. The email is prefilled from the provider (an Apple private-relay address
+included) and can be switched to a typed one. An address the provider asserts as verified
+(Google `email_verified: true`, Apple) passes without a code; a typed address, or a provider
+address that is not verified, gets a 6-digit code under the same limits. Steam and other
+providers with no email start with an empty field. The confirmed address becomes the account's
+primary email and an email sign-in method. When a product requires terms, the gate does not pass
+until that version is ticked; acceptances are kept per account, product and version.
+
+If the confirmed address belongs to another account, the gate answers `409 email_in_use` and
+offers "Join with your existing Polaris Key account". It never joins silently and never by email
+match alone: the person proves that account too, in the same browser, by signing in to it with any
+of its methods (a fresh session, five minutes), or by the gate's code when the address is an
+active email sign-in method there. A new identity is then linked to that account; an identity that
+already had its own account is merged into it under the account rules (the email's account
+survives, and each product gets `subject.merged`). Declining means choosing a different email.
+
+**Profile import.** The gate shows what the provider sent (Google's name, picture and locale;
+Apple's name on first consent; Steam's persona name and avatar) for adjustment. The first
+provider fills the account's profile; a value nobody chose follows that provider on later
+sign-ins; a name typed in the gate sticks. Pictures are fetched server-side from the providers'
+hosts only (https, redirects re-checked, at most 2 MiB, PNG, JPEG, WebP or GIF by their magic
+numbers), copied into R2 under `avatars/` with an opaque random key, and served same-origin at
+`/media/avatar/<key>`. Account deletion removes them.
+
+After the first sign-in the answer carries `nudge: true` once, for the "add another way to sign
+in" card; it comes back after 30 days while the account still has a single sign-in method.
+
+Every return URL (`returnTo`) must be same-origin and may not target `/manage`, so a magic link,
+a provider return or an OIDC return cannot pivot a visitor into the admin console.
 
 **Logout** prefers `POST`, unconditionally accepted. A bare `GET` is tolerated only as a
 compatibility bridge for a browser holding a stale bundle, and only when the request is a
@@ -80,17 +137,29 @@ one carries the `__Host-` prefix — the only mechanism that stops a sibling sub
 planting a `Domain=`-scoped cookie of the same name that a browser would prefer over the real one
 (`R1-08`).
 
-The cookie's value is not opaque: it is a signed token — a base64url JSON body plus an
-HMAC-SHA256 signature — verified on every request rather than merely looked up. The signing key
-may, in practice, be the _same_ raw secret the admin console's session cookie uses
-(`PORTAL_SESSION_SECRET`, falling back to `ADMIN_SESSION_SECRET` when unset); what keeps the two
-realms from being interchangeable is a domain-separation tag mixed into the signed material
-before the signature is computed, so a token signed for one realm never verifies in the other
-even when the underlying key is shared (`R1-02`).
+The cookie's value is a signed token — a base64url JSON body plus an HMAC-SHA256 signature —
+verified on every request. The signing key may, in practice, be the _same_ raw secret the admin
+console's session cookie uses (`PORTAL_SESSION_SECRET`, falling back to `ADMIN_SESSION_SECRET`
+when unset); what keeps the two realms from being interchangeable is a domain-separation tag mixed
+into the signed material before the signature is computed, so a token signed for one realm never
+verifies in the other even when the underlying key is shared (`R1-02`).
+
+The token also names a server-side session: a row of `account_sessions`, keyed by the peppered
+hash of a random id the token carries. The row is the authority. A cookie is accepted only while
+its row exists, is not revoked and has not expired, and belongs to the account the cookie resolves
+to (after a merge, the survivor: the merge moved the rows). That is what makes sessions listable
+and revocable, and "sign out everywhere" real. A cookie signed before server-side sessions existed
+names no row and is refused, so each visitor signs in once after that deploy.
+
+The browser sends a host-only `Path=/` cookie to every path on the host, product routes included.
+So the rule "never readable or settable by product routes" is enforced by the dispatcher: a
+product route gets the request with the account realm's cookies removed (the session, the sign-in
+flow and the gate cookie), and any `Set-Cookie` it returns for them is dropped.
 
 ## The portal API surface
 
-Everything under `/api/*` except `capabilities` and `magic/start` requires the session cookie
+Everything under `/api/*` except `capabilities`, `magic/start` and the login card's `signin/*`
+requires the session cookie
 (`401 unauthorized` otherwise), and every mutating method additionally requires the
 `X-PKey-Portal-CSRF` header to match the session's CSRF value (`403` otherwise).
 
@@ -102,12 +171,24 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   ```json
   {
     "auth": { "oidc": true, "magic": true },
+    "turnstileSiteKey": null,
     "modules": { "licensing": true, "claim": true, "releases": true }
   }
   ```
 
-- **`GET /api/me`** — account summary (`id`, `name`, `email`) plus the CSRF token, after folding
-  in any newly-provable license links.
+  `turnstileSiteKey` is the public Cloudflare Turnstile site key the card renders on the email
+  start, or `null` when the deploy has Turnstile off.
+
+- **`GET /api/me`** — account summary (`id`, `name`, `email`, and `avatarUrl`, the copied
+  picture's same-origin URL or `null`) plus the CSRF token, after folding in any newly-provable
+  license links.
+- **`GET /api/sessions`** — the account's live sessions, newest first, each with when it started
+  and was last seen, its browser and operating system (`browser`, a coarse label such as
+  "Firefox on Windows"), how the person signed in (`methods`) and whether it is this
+  browser's (`current`). **`DELETE /api/sessions/<id>`** ends one; **`POST
+/api/sessions/sign-out-everywhere`** ends every one, this browser's included, and clears its
+  cookie. It also drops every device's binding to the account through Core's clearing hook,
+  releasing a seat only where the sign-in itself bound the device.
 - **`DELETE /api/me`** — the account holder erases their own account. Deletes every email,
   identity, and license-link row plus the account row itself in one atomic batch, then writes a
   single tombstone audit entry naming only the opaque `acct_…` id — nothing that still identifies
@@ -261,7 +342,7 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   a download token, so a forwarded email opens a sign-in and nothing more. It needs a license for
   the product linked to the account, portal release downloads on and the Release service on
   (otherwise `404`, the same answer as an unknown product). It answers `422` for an unknown
-  platform, `503 email_not_configured` without an `EMAIL` binding, and `202` when sent. Limited
+  platform, `503 email_unavailable` without an `EMAIL` binding, and `202` when sent. Limited
   to 5 an hour per account and product; the bucket fails closed.
 
 ## Emails
@@ -270,13 +351,14 @@ Every email is from **Polaris Key** (`PORTAL_EMAIL_FROM`, default `Polaris Key <
 and calls the service "Polaris Key", never "the portal". It names the product and the device by
 their names, not their slugs or ids, and links to the exact section of the signed-in app:
 
-| Email                | Subject (example)                           | Links to                           | Goes to                |
-| -------------------- | ------------------------------------------- | ---------------------------------- | ---------------------- |
-| Sign-in link         | Sign in to Polaris Key                      | `/magic/verify?token=…`            | the address typed      |
-| License added by key | Mossgarden is in your library               | `#/p/<product>`                    | the session's address  |
-| Download link        | Download Mossgarden for macOS               | `#/p/<product>/download?platform=` | the account's address  |
-| Device removed       | Studio PC was removed from Tidewater Studio | `#/p/<product>/devices`            | every verified address |
-| Account deleted      | Your Polaris Key account has been deleted   | nothing                            | every verified address |
+| Email                 | Subject (example)                           | Links to                           | Goes to                |
+| --------------------- | ------------------------------------------- | ---------------------------------- | ---------------------- |
+| Sign-in code and link | Sign in to Polaris Key                      | `/magic/verify?token=…`            | the address typed      |
+| Email confirmation    | Confirm your email for Polaris Key          | nothing (a code only)              | the address confirmed  |
+| License added by key  | Mossgarden is in your library               | `#/p/<product>`                    | the session's address  |
+| Download link         | Download Mossgarden for macOS               | `#/p/<product>/download?platform=` | the account's address  |
+| Device removed        | Studio PC was removed from Tidewater Studio | `#/p/<product>/devices`            | every verified address |
+| Account deleted       | Your Polaris Key account has been deleted   | nothing                            | every verified address |
 
 The security notices (a device removed, and the sign-in method and new-device templates the
 identity-linking work sends) carry "Wasn't you? Secure your account" and go to **every verified

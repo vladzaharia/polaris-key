@@ -34,6 +34,8 @@ export interface PortalAccountRow {
   status: string;
   display_name: string | null;
   primary_email: string | null;
+  /** I-07: the chosen picture's R2 key (`card/avatars.ts`); absent on a legacy catch-up row. */
+  avatar_key?: string | null;
   created_at: number;
   modified_at: number;
 }
