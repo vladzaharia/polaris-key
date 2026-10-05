@@ -110,8 +110,10 @@ export function licenseProvenance(ctx: HookContext): LicenseProvenance {
         }
       }
       const out: PurchaseSource[] = [];
+      const seen = new Set<string>();
       for (const id of licenseIds) {
-        if (!origins.has(id) || out.some((s) => s.licenseId === id)) continue;
+        if (!origins.has(id) || seen.has(id)) continue;
+        seen.add(id);
         out.push(purchaseSourceOf(id, origins.get(id), grants.get(id) ?? []));
       }
       return out;
