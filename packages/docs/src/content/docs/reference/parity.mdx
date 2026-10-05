@@ -22,7 +22,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | Node | `node` | 55 | 6 | 0 | 7 |
 | React | `web`, `desktop-bridge` | 47 | 15 | 0 | 6 |
 | Python | `python` | 55 | 6 | 0 | 7 |
-| Swift | `macos`, `ios` | 56 | 5 | 0 | 7 |
+| Swift | `macos`, `ios` | 60 | 5 | 0 | 3 |
 | Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 63 | 1 | 0 | 4 |
 | Kotlin | `android`, `jvm` | 59 | 5 | 0 | 4 |
 
@@ -73,7 +73,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `devices.register` | Keyless registration | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓ | ✓ | web, desktop-bridge: runtime |
 | `devices.manage` | List, rename, deauthorise | transcripts (not recorded) | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | ✓ | web: runtime |
 | `devices.report` | Telemetry (allowlisted keys) | transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | ✓ | web: runtime |
-| `devices.attest` | Device attestation (App Attest, Play Integrity) raising the trust level | unit | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (unowned); N/A (macos: runtime) | ✓; N/A (linux: runtime); N/A (macos: runtime); N/A (windows: runtime); N/A (web: runtime); N/A (ios: outlet); N/A (android: outlet) | planned (unowned); N/A (jvm: runtime) | node, python, web, desktop-bridge, macos, windows, linux, jvm, dotnet, tauri: runtime; any: outlet |
+| `devices.attest` | Device attestation (App Attest, Play Integrity) raising the trust level | unit | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | ✓; N/A (macos: runtime); N/A (ios: outlet) | ✓; N/A (linux: runtime); N/A (macos: runtime); N/A (windows: runtime); N/A (web: runtime); N/A (ios: outlet); N/A (android: outlet) | planned (unowned); N/A (jvm: runtime) | node, python, web, desktop-bridge, macos, windows, linux, jvm, dotnet, tauri: runtime; any: outlet |
 | `identity.oidc` | Browser sign-in | transcripts (not recorded) | planned (unowned) | ✓ | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | — |
 | `identity.devicecode` | Device-code sign-in (RFC 8628) with QR | transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | ✓ | web: runtime |
 
@@ -89,7 +89,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `update.decide` | The update decision | `update-matrix.json` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.content` | The content decision: feed pack sets, floors and revocations, packs and prestage | `update-matrix.json` `contentRows` + `cases.json` `feedContentCases` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.driver` | Hand off to the native updater, or a store link | device tests | planned (unowned) | planned (unowned) | planned (unowned) | ✓; N/A (ios: outlet) | ✓; N/A (ios: outlet) | ✓; N/A (jvm: runtime) | ios: outlet; jvm: runtime |
-| `update.bootguard` | Confirm a boot, roll back after N failures | `stage-matrix.json` | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | ✓ | ✓ | — |
+| `update.bootguard` | Confirm a boot, roll back after N failures | `stage-matrix.json` | planned (unowned) | planned (unowned) | planned (unowned) | ✓ | ✓ | ✓ | — |
 | `outlet.detect` | Outlet detection | `outlet-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 
 ## Packs
@@ -115,7 +115,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `packs.type.audio.bank` | `audio.bank` packs: the bank descriptor's middleware and version against the host's, hot reload through the host's middleware | unit | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | ✓ | N/A (android, jvm: runtime) | node, python, web, desktop-bridge, macos, ios, android, jvm: runtime |
 | `packs.type.ml.model` | `ml.model` packs: the model descriptor's runtime, quantisation and RAM/VRAM needs against the host's budget, a host load test before the path swaps | unit | ✓ | ✓ | ✓ | ✓ | N/A (linux, macos, windows, android, ios, web: runtime) | ✓ | linux, macos, windows, android, ios, web: runtime |
 | `packs.provides` | isAvailable(contentId) from provides | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `packs.transport.apple` | Apple Background Assets | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (unowned) | ✓; N/A (linux: runtime); N/A (windows: runtime); N/A (android: runtime); N/A (web: runtime) | N/A (android, jvm: runtime) | node, python, web, desktop-bridge, windows, linux, android, jvm, tauri: runtime |
+| `packs.transport.apple` | Apple Background Assets | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | ✓ | ✓; N/A (linux: runtime); N/A (windows: runtime); N/A (android: runtime); N/A (web: runtime) | N/A (android, jvm: runtime) | node, python, web, desktop-bridge, windows, linux, android, jvm, tauri: runtime |
 | `packs.transport.play` | Play Asset Delivery | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | ✓; N/A (linux: runtime); N/A (macos: runtime); N/A (windows: runtime); N/A (ios: runtime); N/A (web: runtime) | ✓; N/A (jvm: runtime) | node, python, web, desktop-bridge, macos, ios, windows, linux, jvm, tauri: runtime |
 | `packs.transport.steam` | Steam depots | device tests | planned (unowned) | N/A (web, desktop-bridge: runtime) | planned (unowned) | planned (unowned); N/A (ios: runtime) | ✓; N/A (android: runtime); N/A (ios: runtime); N/A (web: runtime) | planned (unowned); N/A (android: runtime) | web, desktop-bridge, ios, android: runtime |
 | `packs.transport.msix` | MSIX optional packages | device tests | planned (unowned) | N/A (web, desktop-bridge: runtime) | planned (unowned) | N/A (macos, ios: runtime) | planned (unowned); N/A (linux: runtime); N/A (macos: runtime); N/A (android: runtime); N/A (ios: runtime); N/A (web: runtime) | N/A (android, jvm: runtime) | web, desktop-bridge, macos, ios, android, linux, jvm: runtime; any: outlet |
@@ -127,7 +127,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `ui.stages` | The boot stage machine: states, events, outcomes | `stage-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `ui.kit` | Gate, activation, sign-in with QR, settings, devices, update banner, pack progress | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | planned (unowned) | ✓ | ✓ | headless: runtime |
-| `commerce.receipt` | Store purchase to licence entitlement | transcripts | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | ✓ | planned (unowned) | — |
+| `commerce.receipt` | Store purchase to licence entitlement | transcripts | planned (unowned) | planned (unowned) | planned (unowned) | ✓ | ✓ | planned (unowned) | — |
 
 ## Unowned gaps
 
@@ -155,13 +155,9 @@ Planned entries no work package owns yet. Each needs an owner before the gap can
 | Python | `packs.transport.msix` | No work package owns the MSIX optional-package transport (P5-08 Out). |
 | Python | `packs.transport.flatpak` | No work package owns the Flatpak extension transport (P5-08 Out). |
 | Python | `commerce.receipt` | P6-01 builds the Worker bridge and leaves the SDK side planned with no owner. |
-| Swift | `devices.attest` | P6-02 adds DCAppAttestService (generate, attest, assert) to PolarisKeyPlatform for native hosts; no work package wires attestation into the Swift SDK client. |
-| Swift | `identity.oidc` | Only through a host-supplied sign-in closure; no work package gives Swift its own browser sign-in. |
-| Swift | `update.bootguard` | P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02. |
-| Swift | `packs.transport.apple` | P5-05's PolarisKeyPlatform target carries the AssetPackManager client (iOS / macOS 26.4, behind #if compiler(\>=6.3)) behind its C surface; P5-08 wires the transport for Godot only, and no package adopts it as a Swift SDK pack transport. |
+| Swift | `identity.oidc` | No OIDC redirect flow yet: native browser sign-in waits on I-15. The interim is client.identity signInWithBrowser(), which opens the device-code verification URL in ASWebAuthenticationSession and polls identity.devicecode (never the deprecated /identity/auth/poll). |
 | Swift | `packs.transport.steam` | P5-08 covers Godot only; macOS Swift apps have no Steam-depot transport owner. |
-| Swift | `ui.kit` | PolarisLoginView only; no work package builds the rest of the Swift kit. |
-| Swift | `commerce.receipt` | P5-05's PolarisKeyPlatform target carries the StoreKit 2 client (signed JWS, appAccountToken, deduplicated Transaction.updates, finish on demand); P6-01 builds the Worker bridge and leaves the SDK side planned with no owner. |
+| Swift | `ui.kit` | PolarisLoginView, PolarisGate, PolarisSignIn and PolarisOfflineActivation over the @Observable PolarisKeyModel; the rest of the kit (PARITY §5.9) belongs to the UI-kit program (UK-*). |
 | Godot | `core.store` | P1-02 ships the 0600 file store with surfaced failures and store_status() (file or indexeddb, degraded not-persistent). PKeyCore picks a platform store by default when its plugin is present (Keychain, then Keystore, then the file store): iOS, P5-05's Keychain store (core/store/keychain_store.gd, PKeyKeychainStore over PKeyApple: device id and token AfterFirstUnlockThisDeviceOnly with no access group); Android, P5-06's Keystore store (core/store/keystore_store.gd, PKeyKeystoreStore over PKeyAndroid: one AndroidKeyStore AES-256-GCM key per product, StrongBox where present, blobs in noBackupFilesDir, a lost key surfaced and re-enrolled). Both migrate from the file store and surface failures as keyring-error. No work package owns a desktop keyring, so the desktop runtimes keep the file store. |
 | Godot | `identity.oidc` | Native Godot has no completion path for the OIDC redirect; see P1-07, which ships device-code sign-in instead. |
 | Godot | `packs.transport.msix` | No work package owns an MSIX transport for Godot (program README §9). |
