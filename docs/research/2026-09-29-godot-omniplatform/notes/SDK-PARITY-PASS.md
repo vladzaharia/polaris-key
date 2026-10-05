@@ -912,12 +912,18 @@ effort: under 2 days, under 1 week, and 1–3 weeks. The tasks are ordered withi
 13. **SP-G13. Translations:** generate `.po` files from `copy.en.json` and `copy.fr.json`.
     **S.**
 14. **SP-G14. `crash_tags()`, `portal.url()`, `distribution` model** (§3.5, §3.8, §3.14).
-    **S.**
+    **S.** _Godot: `portal.url()` is dropped per owner decision Q6 (no client-side portal URLs;
+    Manage devices waits for the server's `manageUrl`, PX-W8)._
 15. **SP-G15. Outlet:** a Windows MSIX package-identity reader in `pkey_win.dll`, and macOS
     `AppTransaction` through `PKeyApple`. **M.**
 16. **SP-G16. Web:** document the CORS allowlist step in the setup dock. Mitigate a cleared
     IndexedDB by reusing the bearer through `license/token` on re-entry of the same key, and
-    explain in the docs that a seat can be consumed. **S.**
+    explain in the docs that a seat can be consumed. **S.** _Godot status: the CORS step and the
+    seat explanation are done; the bearer reuse is **deferred**. `POST /license/token` needs the
+    current bearer and the matching `X-PKey-Device-Id`, and a cleared IndexedDB takes both (the
+    token and the stored device id live in `user://`), so nothing is left to reuse. Re-entering
+    the key without spending a seat needs a server-side rebind by key (a wire change, out of
+    this pass's scope)._
 17. **SP-G17. Sample project:** a minimal boot, gate, settings and commerce scene in `examples/`,
     until D-02 Diceroll. **M.**
 

@@ -220,26 +220,28 @@ GodotSteam (the overlay's store page; the DLC is claimed with a Web API ticket b
 binding once Steam says it is owned). On Play it answers unsupported with reason `dependency`
 until the addon drives Play Billing; buy with your billing plugin (`obfuscatedAccountId =
 commerce.binding_id`) and call `claim_play()`. A build that no store sells answers `outlet`.
+A `pending` App Store purchase (Ask to Buy, a slow payment) is not lost: on an App Store outlet
+commerce listens to `PKeyApple.transaction_updated` and claims each new transaction when it
+arrives, finishes it after the claim, syncs, and emits `app_store_update_claimed(result)`
+(refunds are not claimed; a failed claim stays unfinished for StoreKit to redeliver).
 `restore()` re-claims App Store current entitlements and owned Steam DLC. The lower-level
 `get_binding()`, `claim(store, payload)` and `claim_app_store(tx)` stay available.
 
-### Distribution, portal links and crash tags
+### Distribution and crash tags
 
 ```gdscript
 var m := await PolarisKey.distribution.download_model()  # the public download page's model
 var here := PolarisKey.distribution.this_platform()       # {platform, label, primary, others, builds}
-OS.shell_open(PolarisKey.portal.url("devices"))           # also account, library, activate,
-                                                          # free-device, download
 SentrySDK.set_tag("pkey.outlet", PolarisKey.crash_tags().get("pkey.outlet", ""))
 ```
 
 - `distribution.download_model()` reads `GET /<p>/distribution/download.json`, the unsigned,
   public document the hosted download page renders: show it ("Also on Steam, Flathub…"), never
   install from it. `this_platform()` picks this device's group with its primary action first.
-- `portal.url(flow, {key, for, return_to, platform})` builds customer-portal links from the base
-  URL and the portal's routes. The portal follows `return_to` only when it matches the product's
-  declared return URLs; a relative or `javascript:` value is dropped here. `PKeyActivationPanel`
-  shows **Manage devices** (the portal's free-a-device page) on `device-limit`.
+- The addon builds no customer-portal URLs. **Manage devices** links come from the server: once
+  the Worker sends a `manageUrl` on the `device_limit` refusal (PX-W8), `PKeyActivationPanel`
+  shows the button for it; until then the button stays hidden. Point players at the customer
+  portal in your own copy.
 - `crash_tags()` is `{release: "app@<version>[+<build>]", environment: <update channel>,
 "pkey.outlet": <outlet>}`, the convention update health maps a crash report to a rollout with.
   No crash SDK is bundled; give the values to yours (Sentry: `release`, `environment` and a
@@ -375,7 +377,9 @@ plugin, run it) on 4.4.1 and 4.7.2 before each zip reaches the feed.
   **Clearing site data can consume a seat**: the device token goes with it, and with no
   fingerprint the server cannot tell the browser is the same device, so entering the key again
   activates a new device against the licence's device limit. The old one stays listed until it
-  is freed from the portal (`PolarisKey.portal.url("free-device")`) or the console.
+  is freed in the customer portal (Devices) or in the console. The addon cannot reuse the old
+  token on re-entry: `license/token` needs the old bearer and device id, and the clear took
+  both. Avoiding the extra seat needs a server-side rebind by key (not available yet).
 - **Device-code sign-in sends no fingerprint**, so a `strict` tier refuses that path.
 - **Secrets are not secret in a game.** A `clientScoped` secret is readable by anyone with the
   build (and on web by any same-origin script); use edge-mint (`mint_token`) for third-party API
