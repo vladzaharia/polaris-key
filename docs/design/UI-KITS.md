@@ -165,11 +165,11 @@ screen:
 - **Polaris Key appears only as an optional "Powered by Polaris Key"** line or badge (`poweredBy`,
   off by default, §4.5). No kit screen shows the Pinned K, the Star Cut or the "Polaris Key" name
   otherwise. Two exceptions, both true statements about who handles a step:
-  - the sign-in footnote "Polaris Key handles sign-in. <Developer> never sees your passkeys."
-    (EXPERIENCE §8 passthrough footer);
+  - the sign-in footnote "Polaris Key signs you in for <App>. <Developer> never sees your codes or
+    passkeys." (`signin.footer`, SIGN-IN.md D-15);
   - the device-code URL. The product's `deviceCodeUrl` (for example `driftkart.gg/tv`) is used when
-    set, otherwise `key.plrs.im/tv` on TV and console and `key.plrs.im/activate` in desktop
-    hand-offs.
+    set, otherwise `key.plrs.im/tv` on TV and console and `key.plrs.im/device` in desktop and
+    phone hand-offs (SIGN-IN.md D-16; `/activate` is only the license-key route).
 - **Service cues are off on product screens.** Users neither know nor care that License is
   chartreuse. In product-facing kit screens the six service accents do not appear at all. They
   return only for integrators who opt in: `theme.serviceCues: true` adds the small tinted glyph tiles
@@ -523,11 +523,12 @@ React exports bare names from `@polaris-key/react`. Headless names follow each l
 | **PolarisKeyGate**    | The drop-in root. Boots, gates, and runs every flow below as needed; renders the app when licensed; adds the grace banner, update prompt and toasts                                 | booting · needs-activation · licensed · grace · blocked (revoked, expired, version too old/new, channel not entitled) · error | must     |
 | **Boot**              | First-paint screen while the stage machine runs (`ui.stages`): product hero, a neutral indicator, consent for metered downloads, offline and blocked stops                          | progress · consent · fetching · offline · blocked · error                                                                     | must     |
 | **Welcome**           | The gate's first screen: product hero, Sign in, Use a license key, and the extras the product supports (trial, restore purchase, activate offline)                                  | default · busy · capability-limited (only the paths the build supports, GO)                                                   | must     |
-| **SignIn**            | Method chooser: platform-native first (Sign in with Apple, Google on Android), email via the hosted card, Steam, Use another device                                                 | default · busy · method error · no method enabled                                                                             | must     |
+| **SignIn**            | Method chooser: the logo-only provider row (native Apple and Google behind it), passkey, email via the hosted card, Sign in on your phone or computer (SIGN-IN.md §5.1)             | default · busy · method error · no method enabled                                                                             | must     |
 | **SignInHandoff**     | "Finish in your browser": the RFC 8628 user code, a QR, Open browser again, the countdown; moves on by itself                                                                       | starting · waiting · link copied · confirm · ok · denied · expired · cancelled                                                | must     |
 | **Activate**          | License key entry with live verdict: the key field names the product and tier as soon as it parses, catches cut-short keys (EXPERIENCE P2), paste button, Return submits            | empty · typing · parsed · cut short · busy · rejected · device limit (hands to DeviceLimit) · done                            | must     |
 | **OfflineActivation** | Request code (text + QR), load or drop a response file, paste box                                                                                                                   | default · loaded · rejected signature · done                                                                                  | must     |
-| **DeviceLimit**       | The focused "remove a device to continue" flow (PORTAL §4.25): seat meter, devices as radio rows, least recent preselected, consequences, "Remove <device> and continue"            | default · busy · removed · failed · browser mode (links to the portal)                                                        | must     |
+| **DeviceLimit**       | The focused device-limit flow (PORTAL §4.25): seat meter, devices as radio rows, least recent preselected, consequences, "Replace <device>" (SIGN-IN.md D-08)                       | default · busy · removed · failed · browser mode (links to the portal)                                                        | must     |
+| **LicenseChoice**     | "Choose a license for this device" after a native sign-in (SIGN-IN.md §3.6): license cards with seat meters, full licenses disabled, inline Replace a device                        | loading · many · one · new · all full · replace open · raced · attach refused · none (keys) · none (no keys)                  | must     |
 | **Devices**           | Device list: icon by form factor, friendly name, platform and last seen, "This device", rename (inline, not an always-open form, RE), Remove with an L1 inline confirm              | loading · list · renaming · confirming · empty · browser mode                                                                 | must     |
 | **UpdatePrompt**      | Available / downloading / ready / mandatory / blocked / store outlet, with notes and the right verb per outlet ("Update on the App Store", "Restart when ready", "Get it on Steam") | available · downloading · ready · mandatory · blocked · store · platform · revoked-required-content · up to date              | must     |
 | **UpdateProgress**    | Compact download and install progress for app updates and content packs: toast, pill, or inline row                                                                                 | queued · downloading · installing · paused (metered) · failed · done                                                          | must     |
@@ -644,9 +645,10 @@ Mockups: [web](ui-kits/shots/web-gate-dark.png), [web 390](ui-kits/shots/web-gat
   way in the middle, keeping the prefix and the last six characters ("pkey_tidewater_7Q2M…3WPLDA"),
   because those are what people compare against the purchase email; the field scrolls to the caret
   while editing. A key wrapping mid-token inside a field reads as broken.
-- **Live verdict.** The key parses as you type: `pkey_<product>_<22>` puts a verdict under the field
-  ("✓ Tidewater Studio Pro · Lifetime · 3 devices", with only the icon in success colour), and the
-  product header gains the tier. A cut-short key gets "This key is cut short. After tidewater\_ come
+- **Live verdict.** The key parses as you type: `pkey_<product>_<22>` puts "Key for Tidewater Studio" under the
+  field from the prefix alone; the tier and terms ("✓ Tidewater Studio Pro · Lifetime · 3 devices",
+  with only the icon in success colour) and the header's tier follow the server's answer, never
+  before it (SIGN-IN.md D-20). A cut-short key gets "This key is cut short. After tidewater\_ come
   22 characters, and this has 10." Errors are inline under the field, `aria-invalid`, announced, and
   cleared on edit.
 - **Device limit is not an error string:** Activate hands off to **DeviceLimit** with the device
@@ -654,20 +656,25 @@ Mockups: [web](ui-kits/shots/web-gate-dark.png), [web 390](ui-kits/shots/web-gat
 
 #### SignIn and SignInHandoff
 
+> **Sign-in is specified in [SIGN-IN.md](SIGN-IN.md) (2026-10-05).** Its §5 matrix says which steps
+> a kit renders natively and which hand off to the browser, and its §5.2 holds the `signin.*` copy
+> keys. It supersedes this section, Welcome and Activate, and DeviceLimit where they differ, and
+> adds the **LicenseChoice** component (with **Replace a device**) used after a native sign-in.
+
 Mockups: [web](ui-kits/shots/web-sign-in-light.png), [iOS](ui-kits/shots/ios-sign-in-dark.png),
 [Android](ui-kits/shots/android-sign-in-dark.png),
 [macOS](ui-kits/shots/desktop-sign-in-dark.png), [Godot TV](ui-kits/shots/godot-sign-in-dark.png),
 [terminal](ui-kits/shots/terminal-sign-in-dark.png).
 
-- **Methods** follow PORTAL §4.1's provider rules:
-  - **Sign in with Apple** whenever the product ships on Apple platforms, as the system
-    `SignInWithAppleButton` / `ASAuthorizationAppleIDButton` (App Review requires it);
-  - **a passkey** row;
-  - **Credential Manager first on Android** (passkey and Google accounts in one system sheet);
-  - Steam where the product sells on Steam;
-  - email through the hosted card (`ASWebAuthenticationSession` / Custom Tabs / the system
-    browser);
-  - **Use another device** (device code).
+- **Methods** follow PORTAL §4.1's provider rules and the owner's logo-only row (SIGN-IN.md D-21):
+  - the **provider row**: Apple, Google and Steam as the product ships, logo only, equal width, in
+    that order. Apple runs native `ASAuthorization` behind a logo-only button drawn to Apple's
+    logo-only guidelines (App Review 4.8 is met by equal prominence). Google runs through
+    Credential Manager on Android. Steam goes through the hosted card;
+  - **Sign in with a passkey** (the platform passkey sheet);
+  - **Continue with email** through the hosted card (`ASWebAuthenticationSession` / Custom Tabs /
+    the system browser);
+  - **Sign in on your phone or computer** (device code).
 
   The iOS method sheet is titled "Sign in to <Product>", with no second product icon and no X at
   the medium detent.
@@ -678,7 +685,7 @@ Mockups: [web](ui-kits/shots/web-sign-in-light.png), [iOS](ui-kits/shots/ios-sig
     everywhere:** two groups of four joined by a hyphen, `WDJB-MJHT`, exactly as the activate page
     asks for it. TV and handheld sizes only get larger type and tracking; the terminal shows the
     same string in reverse video. No spaced-out letters, no space in place of the hyphen;
-  - "Or go to key.plrs.im/activate", with copy;
+  - "Or go to key.plrs.im/device", with copy;
   - "Check the code there matches this one";
   - the determinate countdown ring with "code expires in 4:12";
   - **Open browser again** (primary) and **Cancel** (secondary).
@@ -689,7 +696,7 @@ Mockups: [web](ui-kits/shots/web-sign-in-light.png), [iOS](ui-kits/shots/ios-sig
 - **TV and consoles** (tvOS, Android TV, Godot on console or Steam Deck in game mode) open on the
   device-code path:
   - the product's `deviceCodeUrl`, or `key.plrs.im/tv`;
-  - the code as two groups of four, with a gap and no hyphen;
+  - the code as two groups of four joined by a hyphen, as everywhere (SIGN-IN.md D-17);
   - a QR tile in 92 % white with an 8 px quiet zone;
   - focusable **Use a license key instead** and **Cancel**, so the screen is never a dead end
     without B.
@@ -719,8 +726,8 @@ PORTAL §4.25 in every kit, top to bottom:
    `tablet_android` and `phone_android` in Material Symbols.
 6. Selection: `accent-subtle` plus one indicator (§1.5 rule 2).
 7. The consequence line, "<Product> signs out on <device>."
-8. **Remove <device> and continue** as the primary. On macOS it reads "Remove “<device>” and
-   Continue". It stacks full width when the label runs past half the row.
+8. **Replace <device>** as the primary (SIGN-IN.md D-08: the action frees the seat and puts this
+   device in it). On macOS it reads "Replace “<device>”". It stacks full width when the label runs past half the row.
 
 Browser mode (no device API) links to the portal flow instead. The copy never shows `dev-2` or
 `macos` (RE).
