@@ -61,12 +61,21 @@ import { steamVdf } from "./transportSteam.js";
 import { buildFdroidFeed, FEEDS_USAGE } from "./feeds.js";
 import { feedsSetup, FEEDS_SETUP_USAGE } from "./feedSetup.js";
 import { formatImport, listingImport, LISTING_USAGE } from "./listing.js";
+import { listingAssets, LISTING_ASSETS_USAGE } from "./listingAssets.js";
 import {
   generatedKeyText,
   generateReleaseKey,
   KEYS_USAGE,
 } from "./releaseKeys.js";
 
+export {
+  listingAssets,
+  LISTING_ASSETS_USAGE,
+  REPORT_FORMAT as LISTING_ASSETS_REPORT_FORMAT,
+  type ListingAssetsOptions,
+  type ListingAssetsReport,
+  type ListingAssetsResult,
+} from "./listingAssets.js";
 export {
   ciClient,
   CiRequestError,
@@ -450,10 +459,10 @@ export async function runPkey(argv: string[], io: CliIo = {}): Promise<number> {
         return await cmdManifest(parsed, cwd, stdout);
       case "feeds":
         return await cmdFeeds(parsed, cwd, stdout, stderr, ci);
+      case "listing":
+        return await cmdListing(parsed, cwd, stdout, stderr, ci);
       case "transport":
         return await cmdTransport(parsed, cwd, stdout, stderr, ci);
-      case "listing":
-        return await cmdListing(parsed, cwd, stdout, ci);
       default:
         stderr.write(`Unknown command "${parsed.command}".\n\n${helpText()}`);
         return 2;
@@ -1221,6 +1230,62 @@ async function cmdFeeds(
   return 0;
 }
 
+/** `pkey listing import` (A-18c, `listing.ts`) and `pkey listing assets` (A-18d, `listingAssets.ts`). */
+async function cmdListing(
+  parsed: ParsedArgs,
+  cwd: string,
+  stdout: Pick<NodeJS.WriteStream, "write">,
+  stderr: Pick<NodeJS.WriteStream, "write">,
+  ci: CiIo,
+): Promise<number> {
+  switch (parsed.positional[0]) {
+    case "import":
+      return cmdListingImport(parsed, cwd, stdout, ci);
+    case "assets":
+      return cmdListingAssets(parsed, cwd, stdout, stderr, ci);
+    default:
+      throw new Error(`${LISTING_USAGE}\n${LISTING_ASSETS_USAGE}`);
+  }
+}
+
+/** `pkey listing assets` (A-18d, `listingAssets.ts`). */
+async function cmdListingAssets(
+  parsed: ParsedArgs,
+  cwd: string,
+  stdout: Pick<NodeJS.WriteStream, "write">,
+  stderr: Pick<NodeJS.WriteStream, "write">,
+  ci: CiIo,
+): Promise<number> {
+  const out = flagString(parsed, "out");
+  if (parsed.positional[0] !== "assets" || !out)
+    throw new Error(LISTING_ASSETS_USAGE);
+  await listingAssets({
+    cwd,
+    out,
+    icon: flagString(parsed, "icon"),
+    keyArt: flagString(parsed, "key-art"),
+    keyArtPortrait: flagString(parsed, "key-art-portrait"),
+    wordmark: flagString(parsed, "wordmark"),
+    screenshots: flagString(parsed, "screenshots"),
+    focal: flagString(parsed, "focal"),
+    focalPortrait: flagString(parsed, "focal-portrait"),
+    background: flagString(parsed, "background"),
+    accept: parsed.multi["accept"] ?? [],
+    pad: parsed.multi["pad"] ?? [],
+    locale: flagString(parsed, "locale"),
+    upload: flagBool(parsed, "upload"),
+    product: flagString(parsed, "product"),
+    baseUrl: flagString(parsed, "base-url"),
+    dryRun: flagBool(parsed, "dry-run"),
+    env: ci.env,
+    stdout,
+    stderr,
+    fetchImpl: ci.fetchImpl,
+    sleep: ci.sleep,
+  });
+  return 0;
+}
+
 const MANIFEST_USAGE = "Usage: pkey manifest schemas --out <dir>";
 
 /** `pkey manifest schemas --out <dir>` — vendor the `.pkey/` JSON Schemas (`schemas.ts`). */
@@ -1377,7 +1442,7 @@ function titleize(slug: string): string {
  * product's shared listing — the diff first, written only with `--apply`. The cookie is read from
  * the environment here, as `pkey bundle` does, so `listing.ts` never touches `process.env`.
  */
-async function cmdListing(
+async function cmdListingImport(
   parsed: ParsedArgs,
   cwd: string,
   stdout: Pick<NodeJS.WriteStream, "write">,
@@ -1471,6 +1536,10 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
   pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot --owner slug
               [--namespace key=value ...] [--package name [--version v]] [--origin url]
               [--token-env NAME] [--json]
+  pkey listing assets --out dir [--icon png] [--key-art png] [--key-art-portrait png]
+              [--wordmark png] [--screenshots dir] [--focal x,y] [--focal-portrait x,y]
+              [--background #rrggbb] [--accept store/class/name ...] [--pad store/class/name ...]
+              [--locale code] [--upload --product slug [--base-url url] [--dry-run]]
   pkey transport apple-ba package --deliverable packId --release v --from dir [--content-api n]
               [--variant key] [--out dir] [--platforms iOS[,macOS]] [--no-archive] [--no-report]
   pkey transport apple-ba upload --deliverable packId --release v [--dir dir] [--from dir] [--content-api n]
@@ -1551,6 +1620,18 @@ npm scope, uv explicit = true, Gradle exclusiveContent, SwiftPM --scope, a fully
 reference, the Godot editor URLs). --namespace sets the feed's namespace (scope=@acme,
 groupPrefixes=gg.acme,gg.acme.tools); --token-env NAME adds the credential lines, reading the
 registry token from that environment variable. Offline: nothing is sent anywhere.
+
+pkey listing assets derives every store's icons from one square icon master (Play 512, the
+Microsoft tile 300, Steam's 184 JPG and 256 icons, Flathub, Snap, winget and F-Droid; Android's
+adaptive layers only when the mark sits inside the central 66 of 108 dp), composes every store's
+art from logo-free key art and the wordmark (Play and F-Droid feature graphics, Steam's capsules
+and library set, the Microsoft super hero, poster and box art, the itch.io cover, the Snap banner;
+cropped around --focal, the wordmark only on slots that allow a title), and fits each screenshot
+under --screenshots (one directory per size class) for the App Store, Play, the Microsoft Store and
+Steam. A screenshot that does not fit gets a crop or pad proposal, used only for the images named
+with --accept or --pad. Everything goes under --out with report.json (the fit report), preview.html
+and one ZIP pack per store. --upload stores the masters, outputs and packs in the listing model
+(the token needs distribution:listing); nothing is pushed to a store. Needs the sharp library.
 
 pkey transport packages a published pack release (the --out cache of pkey release publish
 --deliverable <packId>, re-hashed against its record and linted again, so a pack with scripts

@@ -3479,17 +3479,17 @@ var require_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    function visit_(key, node, visitor, path22) {
-      const ctrl = callVisitor(key, node, visitor, path22);
+    function visit_(key, node, visitor, path23) {
+      const ctrl = callVisitor(key, node, visitor, path23);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path22, ctrl);
-        return visit_(key, ctrl, visitor, path22);
+        replaceNode(key, path23, ctrl);
+        return visit_(key, ctrl, visitor, path23);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path22 = Object.freeze(path22.concat(node));
+          path23 = Object.freeze(path23.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = visit_(i, node.items[i], visitor, path22);
+            const ci = visit_(i, node.items[i], visitor, path23);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -3500,13 +3500,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path22 = Object.freeze(path22.concat(node));
-          const ck = visit_("key", node.key, visitor, path22);
+          path23 = Object.freeze(path23.concat(node));
+          const ck = visit_("key", node.key, visitor, path23);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = visit_("value", node.value, visitor, path22);
+          const cv = visit_("value", node.value, visitor, path23);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -3527,17 +3527,17 @@ var require_visit = __commonJS({
     visitAsync.BREAK = BREAK;
     visitAsync.SKIP = SKIP;
     visitAsync.REMOVE = REMOVE;
-    async function visitAsync_(key, node, visitor, path22) {
-      const ctrl = await callVisitor(key, node, visitor, path22);
+    async function visitAsync_(key, node, visitor, path23) {
+      const ctrl = await callVisitor(key, node, visitor, path23);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path22, ctrl);
-        return visitAsync_(key, ctrl, visitor, path22);
+        replaceNode(key, path23, ctrl);
+        return visitAsync_(key, ctrl, visitor, path23);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path22 = Object.freeze(path22.concat(node));
+          path23 = Object.freeze(path23.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = await visitAsync_(i, node.items[i], visitor, path22);
+            const ci = await visitAsync_(i, node.items[i], visitor, path23);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -3548,13 +3548,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path22 = Object.freeze(path22.concat(node));
-          const ck = await visitAsync_("key", node.key, visitor, path22);
+          path23 = Object.freeze(path23.concat(node));
+          const ck = await visitAsync_("key", node.key, visitor, path23);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = await visitAsync_("value", node.value, visitor, path22);
+          const cv = await visitAsync_("value", node.value, visitor, path23);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -3581,23 +3581,23 @@ var require_visit = __commonJS({
       }
       return visitor;
     }
-    function callVisitor(key, node, visitor, path22) {
+    function callVisitor(key, node, visitor, path23) {
       if (typeof visitor === "function")
-        return visitor(key, node, path22);
+        return visitor(key, node, path23);
       if (identity.isMap(node))
-        return visitor.Map?.(key, node, path22);
+        return visitor.Map?.(key, node, path23);
       if (identity.isSeq(node))
-        return visitor.Seq?.(key, node, path22);
+        return visitor.Seq?.(key, node, path23);
       if (identity.isPair(node))
-        return visitor.Pair?.(key, node, path22);
+        return visitor.Pair?.(key, node, path23);
       if (identity.isScalar(node))
-        return visitor.Scalar?.(key, node, path22);
+        return visitor.Scalar?.(key, node, path23);
       if (identity.isAlias(node))
-        return visitor.Alias?.(key, node, path22);
+        return visitor.Alias?.(key, node, path23);
       return void 0;
     }
-    function replaceNode(key, path22, node) {
-      const parent = path22[path22.length - 1];
+    function replaceNode(key, path23, node) {
+      const parent = path23[path23.length - 1];
       if (identity.isCollection(parent)) {
         parent.items[key] = node;
       } else if (identity.isPair(parent)) {
@@ -4216,10 +4216,10 @@ var require_Collection = __commonJS({
     var createNode = require_createNode();
     var identity = require_identity();
     var Node = require_Node();
-    function collectionFromPath(schema, path22, value) {
+    function collectionFromPath(schema, path23, value) {
       let v = value;
-      for (let i = path22.length - 1; i >= 0; --i) {
-        const k = path22[i];
+      for (let i = path23.length - 1; i >= 0; --i) {
+        const k = path23[i];
         if (typeof k === "number" && Number.isInteger(k) && k >= 0) {
           const a = [];
           a[k] = v;
@@ -4238,7 +4238,7 @@ var require_Collection = __commonJS({
         sourceObjects: /* @__PURE__ */ new Map()
       });
     }
-    var isEmptyPath = (path22) => path22 == null || typeof path22 === "object" && !!path22[Symbol.iterator]().next().done;
+    var isEmptyPath = (path23) => path23 == null || typeof path23 === "object" && !!path23[Symbol.iterator]().next().done;
     var Collection = class extends Node.NodeBase {
       constructor(type, schema) {
         super(type);
@@ -4268,11 +4268,11 @@ var require_Collection = __commonJS({
        * be a Pair instance or a `{ key, value }` object, which may not have a key
        * that already exists in the map.
        */
-      addIn(path22, value) {
-        if (isEmptyPath(path22))
+      addIn(path23, value) {
+        if (isEmptyPath(path23))
           this.add(value);
         else {
-          const [key, ...rest] = path22;
+          const [key, ...rest] = path23;
           const node = this.get(key, true);
           if (identity.isCollection(node))
             node.addIn(rest, value);
@@ -4286,8 +4286,8 @@ var require_Collection = __commonJS({
        * Removes a value from the collection.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path22) {
-        const [key, ...rest] = path22;
+      deleteIn(path23) {
+        const [key, ...rest] = path23;
         if (rest.length === 0)
           return this.delete(key);
         const node = this.get(key, true);
@@ -4301,8 +4301,8 @@ var require_Collection = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path22, keepScalar) {
-        const [key, ...rest] = path22;
+      getIn(path23, keepScalar) {
+        const [key, ...rest] = path23;
         const node = this.get(key, true);
         if (rest.length === 0)
           return !keepScalar && identity.isScalar(node) ? node.value : node;
@@ -4320,8 +4320,8 @@ var require_Collection = __commonJS({
       /**
        * Checks if the collection includes a value with the key `key`.
        */
-      hasIn(path22) {
-        const [key, ...rest] = path22;
+      hasIn(path23) {
+        const [key, ...rest] = path23;
         if (rest.length === 0)
           return this.has(key);
         const node = this.get(key, true);
@@ -4331,8 +4331,8 @@ var require_Collection = __commonJS({
        * Sets a value in this collection. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path22, value) {
-        const [key, ...rest] = path22;
+      setIn(path23, value) {
+        const [key, ...rest] = path23;
         if (rest.length === 0) {
           this.set(key, value);
         } else {
@@ -6882,9 +6882,9 @@ var require_Document = __commonJS({
           this.contents.add(value);
       }
       /** Adds a value to the document. */
-      addIn(path22, value) {
+      addIn(path23, value) {
         if (assertCollection(this.contents))
-          this.contents.addIn(path22, value);
+          this.contents.addIn(path23, value);
       }
       /**
        * Create a new `Alias` node, ensuring that the target `node` has the required anchor.
@@ -6959,14 +6959,14 @@ var require_Document = __commonJS({
        * Removes a value from the document.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path22) {
-        if (Collection.isEmptyPath(path22)) {
+      deleteIn(path23) {
+        if (Collection.isEmptyPath(path23)) {
           if (this.contents == null)
             return false;
           this.contents = null;
           return true;
         }
-        return assertCollection(this.contents) ? this.contents.deleteIn(path22) : false;
+        return assertCollection(this.contents) ? this.contents.deleteIn(path23) : false;
       }
       /**
        * Returns item at `key`, or `undefined` if not found. By default unwraps
@@ -6981,10 +6981,10 @@ var require_Document = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path22, keepScalar) {
-        if (Collection.isEmptyPath(path22))
+      getIn(path23, keepScalar) {
+        if (Collection.isEmptyPath(path23))
           return !keepScalar && identity.isScalar(this.contents) ? this.contents.value : this.contents;
-        return identity.isCollection(this.contents) ? this.contents.getIn(path22, keepScalar) : void 0;
+        return identity.isCollection(this.contents) ? this.contents.getIn(path23, keepScalar) : void 0;
       }
       /**
        * Checks if the document includes a value with the key `key`.
@@ -6995,10 +6995,10 @@ var require_Document = __commonJS({
       /**
        * Checks if the document includes a value at `path`.
        */
-      hasIn(path22) {
-        if (Collection.isEmptyPath(path22))
+      hasIn(path23) {
+        if (Collection.isEmptyPath(path23))
           return this.contents !== void 0;
-        return identity.isCollection(this.contents) ? this.contents.hasIn(path22) : false;
+        return identity.isCollection(this.contents) ? this.contents.hasIn(path23) : false;
       }
       /**
        * Sets a value in this document. For `!!set`, `value` needs to be a
@@ -7015,13 +7015,13 @@ var require_Document = __commonJS({
        * Sets a value in this document. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path22, value) {
-        if (Collection.isEmptyPath(path22)) {
+      setIn(path23, value) {
+        if (Collection.isEmptyPath(path23)) {
           this.contents = value;
         } else if (this.contents == null) {
-          this.contents = Collection.collectionFromPath(this.schema, Array.from(path22), value);
+          this.contents = Collection.collectionFromPath(this.schema, Array.from(path23), value);
         } else if (assertCollection(this.contents)) {
-          this.contents.setIn(path22, value);
+          this.contents.setIn(path23, value);
         }
       }
       /**
@@ -9001,9 +9001,9 @@ var require_cst_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    visit.itemAtPath = (cst, path22) => {
+    visit.itemAtPath = (cst, path23) => {
       let item = cst;
-      for (const [field, index] of path22) {
+      for (const [field, index] of path23) {
         const tok = item?.[field];
         if (tok && "items" in tok) {
           item = tok.items[index];
@@ -9012,23 +9012,23 @@ var require_cst_visit = __commonJS({
       }
       return item;
     };
-    visit.parentCollection = (cst, path22) => {
-      const parent = visit.itemAtPath(cst, path22.slice(0, -1));
-      const field = path22[path22.length - 1][0];
+    visit.parentCollection = (cst, path23) => {
+      const parent = visit.itemAtPath(cst, path23.slice(0, -1));
+      const field = path23[path23.length - 1][0];
       const coll = parent?.[field];
       if (coll && "items" in coll)
         return coll;
       throw new Error("Parent collection not found");
     };
-    function _visit(path22, item, visitor) {
-      let ctrl = visitor(item, path22);
+    function _visit(path23, item, visitor) {
+      let ctrl = visitor(item, path23);
       if (typeof ctrl === "symbol")
         return ctrl;
       for (const field of ["key", "value"]) {
         const token = item[field];
         if (token && "items" in token) {
           for (let i = 0; i < token.items.length; ++i) {
-            const ci = _visit(Object.freeze(path22.concat([[field, i]])), token.items[i], visitor);
+            const ci = _visit(Object.freeze(path23.concat([[field, i]])), token.items[i], visitor);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -9039,10 +9039,10 @@ var require_cst_visit = __commonJS({
             }
           }
           if (typeof ctrl === "function" && field === "key")
-            ctrl = ctrl(item, path22);
+            ctrl = ctrl(item, path23);
         }
       }
-      return typeof ctrl === "function" ? ctrl(item, path22) : ctrl;
+      return typeof ctrl === "function" ? ctrl(item, path23) : ctrl;
     }
     exports.visit = visit;
   }
@@ -10804,8 +10804,8 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 
 // src/index.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { readFile as readFile17 } from "node:fs/promises";
-import path21 from "node:path";
+import { readFile as readFile18 } from "node:fs/promises";
+import path22 from "node:path";
 
 // ../shared-manifest/dist/index.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -11536,20 +11536,20 @@ function numberInWireRange(n) {
 function representabilityIssue(value) {
   return walk(value, "", 0);
 }
-function walk(value, path22, depth) {
+function walk(value, path23, depth) {
   if (typeof value === "string") {
-    return hasLoneSurrogate(value) ? { rule: "lone-surrogate", path: path22 } : null;
+    return hasLoneSurrogate(value) ? { rule: "lone-surrogate", path: path23 } : null;
   }
   if (typeof value === "number") {
-    return numberInWireRange(value) ? null : { rule: "number-out-of-range", path: path22 };
+    return numberInWireRange(value) ? null : { rule: "number-out-of-range", path: path23 };
   }
   if (value === null || typeof value !== "object")
     return null;
   if (depth + 1 > MAX_VALUE_DEPTH)
-    return { rule: "too-deep", path: path22 };
+    return { rule: "too-deep", path: path23 };
   if (Array.isArray(value)) {
     for (let k = 0; k < value.length; k++) {
-      const issue = walk(value[k], `${path22}/${k}`, depth + 1);
+      const issue = walk(value[k], `${path23}/${k}`, depth + 1);
       if (issue)
         return issue;
     }
@@ -11557,7 +11557,7 @@ function walk(value, path22, depth) {
   }
   const seen = /* @__PURE__ */ new Map();
   for (const [name, member] of Object.entries(value)) {
-    const memberPath = `${path22}/${escapePointer(name)}`;
+    const memberPath = `${path23}/${escapePointer(name)}`;
     if (hasLoneSurrogate(name))
       return { rule: "lone-surrogate", path: memberPath };
     if (name.includes("\0"))
@@ -12341,11 +12341,11 @@ function validateDistribution(errors, doc, ctx) {
       "apiVersion must be pkey.dev/v1 when present."
     );
   }
-  for (const path22 of capabilityPaths(doc)) {
+  for (const path23 of capabilityPaths(doc)) {
     add(
       errors,
       "distribution",
-      path22,
+      path23,
       "capabilities_not_manifest_writable",
       "outlet capabilities are operator-owned and cannot be set in .pkey/distribution; they default per outlet kind and an operator narrows them in the console."
     );
@@ -12519,13 +12519,13 @@ function validateTransports(errors, transports, ctx, kinds) {
       );
     }
   }
-  const checkMap = (path22, raw) => {
+  const checkMap = (path23, raw) => {
     if (raw === void 0) return;
     if (!isRecord(raw)) {
       add(
         errors,
         "distribution",
-        path22,
+        path23,
         "invalid_transport",
         "a transport map must be an object keyed by outlet id."
       );
@@ -12536,7 +12536,7 @@ function validateTransports(errors, transports, ctx, kinds) {
         add(
           errors,
           "distribution",
-          `${path22}/${outletId}`,
+          `${path23}/${outletId}`,
           "invalid_transport",
           `transports must be one of ${TRANSPORTS.join(", ")}.`
         );
@@ -12547,7 +12547,7 @@ function validateTransports(errors, transports, ctx, kinds) {
         add(
           errors,
           "distribution",
-          `${path22}/${outletId}`,
+          `${path23}/${outletId}`,
           "unknown_outlet_ref",
           `transport maps may only name outlets declared under outlets.`
         );
@@ -12555,7 +12555,7 @@ function validateTransports(errors, transports, ctx, kinds) {
         add(
           errors,
           "distribution",
-          `${path22}/${outletId}`,
+          `${path23}/${outletId}`,
           "transport_not_allowed",
           `transport ${transport} cannot carry a deliverable on a ${kind} outlet.`
         );
@@ -12605,11 +12605,11 @@ function capabilityPaths(doc) {
     { node: doc, path: "" }
   ];
   while (stack.length) {
-    const { node, path: path22 } = stack.pop();
+    const { node, path: path23 } = stack.pop();
     if (node === null || typeof node !== "object") continue;
     const entries = Array.isArray(node) ? node.map((v, i) => [String(i), v]) : Object.entries(node);
     for (const [key, child] of entries) {
-      const childPath = `${path22}/${key}`;
+      const childPath = `${path23}/${key}`;
       if (!Array.isArray(node) && key === "capabilities") found.push(childPath);
       stack.push({ node: child, path: childPath });
     }
@@ -12767,8 +12767,8 @@ function sortedRecord(v) {
   for (const key of Object.keys(v).sort(compare)) out[key] = v[key];
   return out;
 }
-function add(list2, file, path22, code, message) {
-  list2.push({ file, path: path22, code, message });
+function add(list2, file, path23, code, message) {
+  list2.push({ file, path: path23, code, message });
 }
 var DESCRIPTOR_VERSION = 1;
 var MAX_DESCRIPTOR_BYTES = 64 * 1024;
@@ -12853,8 +12853,8 @@ var MAX_HOLD_REASON = 200;
 function descriptorReleaseId(d) {
   return d.tag ?? `${d.deliverable}@${d.version}`;
 }
-function isContentAddressedKey(key, sha2564) {
-  return key === `blobs/sha256/${sha2564}` || key === `gated/blobs/sha256/${sha2564}`;
+function isContentAddressedKey(key, sha2565) {
+  return key === `blobs/sha256/${sha2565}` || key === `gated/blobs/sha256/${sha2565}`;
 }
 function canonicalDescriptorJson(value) {
   if (Array.isArray(value))
@@ -13031,7 +13031,7 @@ function versionFitsScheme(version, scheme) {
 }
 function validateReleaseDescriptor(descriptor, manifest) {
   const errors = [];
-  const err = (path22, code, message) => errors.push({ path: path22, code, message });
+  const err = (path23, code, message) => errors.push({ path: path23, code, message });
   if (!isRecord2(descriptor)) {
     err(
       "/",
@@ -13529,7 +13529,7 @@ var MAVEN_EXTENSION_RE = /^[a-z0-9][a-z0-9.]{0,15}$/;
 var MEDIA_TYPE_RE = /^[a-z0-9][a-z0-9.+-]*\/[a-z0-9][a-z0-9.+-]*$/;
 var OCI_TAG_RE = /^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$/;
 function validatePackageDescriptor(d, manifest, errors) {
-  const err = (path22, code, message) => errors.push({ path: path22, code, message });
+  const err = (path23, code, message) => errors.push({ path: path23, code, message });
   for (const key of Object.keys(d))
     if (!PACKAGE_DESCRIPTOR_FIELDS.has(key))
       err(
@@ -14981,7 +14981,7 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
     GROUP_NAME_RE,
     "product.adminGroup must be a plain group name (^[A-Za-z0-9][A-Za-z0-9 ._:@/-]{0,127}$)."
   );
-  for (const [key, path22] of [
+  for (const [key, path23] of [
     [productNode.compatMin ?? productRoot.compatMin, "/compatMin"],
     [productNode.compatMax ?? productRoot.compatMax, "/compatMax"]
   ]) {
@@ -14989,13 +14989,13 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
       add2(
         errors,
         "product",
-        path22,
+        path23,
         "invalid_semver",
         "Version bounds must be semver strings."
       );
     }
   }
-  for (const [key, path22] of [
+  for (const [key, path23] of [
     [
       productNode.defaultDeviceLimit ?? productRoot.defaultDeviceLimit ?? licensing.defaultDeviceLimit,
       "/licensing/defaultDeviceLimit"
@@ -15009,7 +15009,7 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
       add2(
         errors,
         "product",
-        path22,
+        path23,
         "invalid_number",
         "Value must be a non-negative integer."
       );
@@ -16606,9 +16606,9 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
             `conflicts names other declared packs; ${String(c)} is ${c === id ? "this pack" : "not a declared pack"}.`
           );
   }
-  const channels = def.channels;
-  if (channels !== void 0) {
-    if (!Array.isArray(channels) || channels.length === 0 || channels.length > MAX_PACK_CHANNELS || new Set(channels).size !== channels.length || !channels.every(isCanonicalChannelName))
+  const channels2 = def.channels;
+  if (channels2 !== void 0) {
+    if (!Array.isArray(channels2) || channels2.length === 0 || channels2.length > MAX_PACK_CHANNELS || new Set(channels2).size !== channels2.length || !channels2.every(isCanonicalChannelName))
       add2(
         errors,
         "release",
@@ -16726,14 +16726,14 @@ function isAttachableEntry(s) {
   }
   if (!s.startsWith("res://")) return false;
   const rest = s.slice(6);
-  const path22 = rest.endsWith("/") ? rest.slice(0, -1) : rest;
-  if (path22 === "" || path22.includes("..") || path22.includes("./")) return false;
-  for (let i = 0; i < path22.length; i++) {
-    const c = path22.charCodeAt(i);
-    if (c < 32 || c > 126 || ATTACHABLE_BAD_CHARS.has(path22[i]))
+  const path23 = rest.endsWith("/") ? rest.slice(0, -1) : rest;
+  if (path23 === "" || path23.includes("..") || path23.includes("./")) return false;
+  for (let i = 0; i < path23.length; i++) {
+    const c = path23.charCodeAt(i);
+    if (c < 32 || c > 126 || ATTACHABLE_BAD_CHARS.has(path23[i]))
       return false;
   }
-  const segments = path22.split("/");
+  const segments = path23.split("/");
   if (segments[0].toLowerCase() === ".pkey") return false;
   for (const seg of segments) {
     if (seg === "" || seg === "." || seg === "..") return false;
@@ -16880,9 +16880,9 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
       );
     }
   }
-  const channels = def.channels;
-  if (channels !== void 0) {
-    if (!isRecord3(channels) || Object.keys(channels).length > MAX_DELIVERABLE_CHANNELS) {
+  const channels2 = def.channels;
+  if (channels2 !== void 0) {
+    if (!isRecord3(channels2) || Object.keys(channels2).length > MAX_DELIVERABLE_CHANNELS) {
       add2(
         errors,
         "release",
@@ -16891,9 +16891,9 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
         `deliverables.app.channels must be an object of at most ${MAX_DELIVERABLE_CHANNELS} channels.`
       );
     } else {
-      const known = knownChannelNames(relRoot, Object.keys(channels));
+      const known = knownChannelNames(relRoot, Object.keys(channels2));
       const graph = /* @__PURE__ */ new Map();
-      for (const [name, decl] of Object.entries(channels)) {
+      for (const [name, decl] of Object.entries(channels2)) {
         if (!isCanonicalChannelName(name)) {
           add2(
             errors,
@@ -17369,10 +17369,10 @@ function normalizeAppDeliverable(raw) {
   const def = asRecord(raw)[APP_DELIVERABLE_ID];
   if (!isRecord3(def) || def.kind !== "app") return null;
   const versioning = asRecord(def.versioning);
-  const channels = {};
+  const channels2 = {};
   for (const [name, decl] of Object.entries(asRecord(def.channels))) {
     if (!isCanonicalChannelName(name) || !isRecord3(decl)) continue;
-    channels[name] = {
+    channels2[name] = {
       includes: (arrayAt(decl, "includes") ?? []).filter(
         isCanonicalChannelName
       )
@@ -17406,7 +17406,7 @@ function normalizeAppDeliverable(raw) {
       scheme: isOneOf(versioning.scheme, VERSION_SCHEMES) ? versioning.scheme : "semver",
       buildNumber: isOneOf(versioning.buildNumber, BUILD_NUMBER_SOURCES) ? versioning.buildNumber : null
     },
-    channels,
+    channels: channels2,
     artifacts
   };
   const contentApi = asRecord(def.content).contentApi;
@@ -17712,36 +17712,36 @@ function validateCatalogShape(catalog) {
   }
   return issues;
 }
-function constrained(errors, file, value, path22, code, re, message) {
+function constrained(errors, file, value, path23, code, re, message) {
   if (value === void 0 || value === null || value === "") return;
   if (typeof value !== "string" || !re.test(value)) {
-    add2(errors, file, path22, code, message);
+    add2(errors, file, path23, code, message);
   }
 }
-function releaseString(errors, value, path22, code, re, message) {
-  constrained(errors, "release", value, path22, code, re, message);
+function releaseString(errors, value, path23, code, re, message) {
+  constrained(errors, "release", value, path23, code, re, message);
 }
-function boundedText(errors, file, value, path22, code, max, label) {
+function boundedText(errors, file, value, path23, code, max, label) {
   if (value === void 0 || value === null || value === "") return;
   if (typeof value !== "string") {
-    add2(errors, file, path22, code, `${label} must be a string.`);
+    add2(errors, file, path23, code, `${label} must be a string.`);
     return;
   }
   if (value.length > max || CONTROL_CHAR_RE.test(value)) {
     add2(
       errors,
       file,
-      path22,
+      path23,
       code,
       `${label} must be at most ${max} characters and free of control characters.`
     );
   }
 }
-function constrainedList(errors, file, values, path22, code, re, message) {
+function constrainedList(errors, file, values, path23, code, re, message) {
   if (!Array.isArray(values)) return;
   for (const [i, value] of values.entries()) {
     if (typeof value !== "string" || !re.test(value)) {
-      add2(errors, file, `${path22}/${i}`, code, message);
+      add2(errors, file, `${path23}/${i}`, code, message);
     }
   }
 }
@@ -17949,8 +17949,8 @@ function isOneOf(value, allowed) {
 function notNull(v) {
   return v !== null;
 }
-function add2(list2, file, path22, code, message) {
-  list2.push({ file, path: path22, code, message });
+function add2(list2, file, path23, code, message) {
+  list2.push({ file, path: path23, code, message });
 }
 
 // src/bundle.ts
@@ -18105,8 +18105,8 @@ async function errorDetail(res) {
   try {
     parsed = JSON.parse(text);
   } catch {
-    const trimmed = text.trim();
-    return trimmed ? { message: clip(trimmed) } : {};
+    const trimmed2 = text.trim();
+    return trimmed2 ? { message: clip(trimmed2) } : {};
   }
   if (!isRecord4(parsed)) return {};
   const nested = isRecord4(parsed.error) ? parsed.error : {};
@@ -18486,9 +18486,9 @@ function ciClient(opts) {
   const f = opts.fetchImpl ?? fetch;
   const sleep = opts.sleep ?? defaultSleep;
   const maxAttempts = opts.maxAttempts ?? MAX_ATTEMPTS;
-  const url = (path22) => `${baseUrl}/${encodeURIComponent(product)}/${path22.replace(/^\/+/, "")}`;
-  async function postJson(path22, p) {
-    const target = url(path22);
+  const url = (path23) => `${baseUrl}/${encodeURIComponent(product)}/${path23.replace(/^\/+/, "")}`;
+  async function postJson(path23, p) {
+    const target = url(path23);
     const auth = p.auth !== false;
     if (auth && !opts.token)
       throw new Error(`${p.what}: no CI token (this is a bug in pkey).`);
@@ -18528,8 +18528,8 @@ function ciClient(opts) {
       await sleep(wait);
     }
   }
-  async function getJson(path22, p) {
-    const target = url(path22);
+  async function getJson(path23, p) {
+    const target = url(path23);
     if (!opts.token)
       throw new Error(`${p.what}: no CI token (this is a bug in pkey).`);
     let res;
@@ -18571,8 +18571,8 @@ async function readBody(res) {
       return parsed;
   } catch {
   }
-  const trimmed = text.trim();
-  return trimmed ? { message: clip2(trimmed) } : {};
+  const trimmed2 = text.trim();
+  return trimmed2 ? { message: clip2(trimmed2) } : {};
 }
 function renderRefusal(what, target, status, body) {
   const reason = typeof body.reason === "string" ? body.reason : void 0;
@@ -18797,8 +18797,8 @@ function signV4(input) {
 }
 function objectUrl(creds, key) {
   const base = creds.endpoint.replace(/\/+$/, "");
-  const path22 = [creds.bucket, ...key.split("/")].map(encodeSegment).join("/");
-  return new URL(`${base}/${path22}`);
+  const path23 = [creds.bucket, ...key.split("/")].map(encodeSegment).join("/");
+  return new URL(`${base}/${path23}`);
 }
 var TRANSIENT = /* @__PURE__ */ new Set([408, 429, 500, 502, 503, 504]);
 async function putFile(opts) {
@@ -19131,9 +19131,9 @@ function u64(buf, at) {
   return Number(v);
 }
 var ZipReader = class _ZipReader {
-  constructor(fh, path22, fileSize, entries, centralDirectoryOffset) {
+  constructor(fh, path23, fileSize, entries, centralDirectoryOffset) {
     this.fh = fh;
-    this.path = path22;
+    this.path = path23;
     this.fileSize = fileSize;
     this.entries = entries;
     this.centralDirectoryOffset = centralDirectoryOffset;
@@ -19143,8 +19143,8 @@ var ZipReader = class _ZipReader {
   fileSize;
   entries;
   centralDirectoryOffset;
-  static async open(path22) {
-    const fh = await open(path22, "r");
+  static async open(path23) {
+    const fh = await open(path23, "r");
     try {
       const { size } = await fh.stat();
       const tailLen = Math.min(size, 65557);
@@ -19157,32 +19157,32 @@ var ZipReader = class _ZipReader {
           break;
         }
       }
-      if (eocd < 0) throw new ZipError(`${path22} is not a ZIP archive`);
+      if (eocd < 0) throw new ZipError(`${path23} is not a ZIP archive`);
       let count = tail.readUInt16LE(eocd + 10);
       let cdSize = tail.readUInt32LE(eocd + 12);
       let cdOffset = tail.readUInt32LE(eocd + 16);
       if (count === 65535 || cdSize === 4294967295 || cdOffset === 4294967295) {
         const loc = eocd - 20;
         if (loc < 0 || tail.readUInt32LE(loc) !== ZIP64_LOCATOR_SIG)
-          throw new ZipError(`${path22}: ZIP64 locator missing`);
+          throw new ZipError(`${path23}: ZIP64 locator missing`);
         const recOffset = u64(tail, loc + 8);
         const rec = Buffer.alloc(56);
         await fh.read(rec, 0, 56, recOffset);
         if (rec.readUInt32LE(0) !== ZIP64_EOCD_SIG)
-          throw new ZipError(`${path22}: ZIP64 end record missing`);
+          throw new ZipError(`${path23}: ZIP64 end record missing`);
         count = u64(rec, 32);
         cdSize = u64(rec, 40);
         cdOffset = u64(rec, 48);
       }
       if (cdOffset + cdSize > size)
-        throw new ZipError(`${path22}: the central directory runs past the end`);
+        throw new ZipError(`${path23}: the central directory runs past the end`);
       const cd = Buffer.alloc(cdSize);
       await fh.read(cd, 0, cdSize, cdOffset);
       const entries = [];
       let p = 0;
       for (let i = 0; i < count; i++) {
         if (p + 46 > cd.length || cd.readUInt32LE(p) !== CDH_SIG)
-          throw new ZipError(`${path22}: a central directory entry is malformed`);
+          throw new ZipError(`${path23}: a central directory entry is malformed`);
         const flags = cd.readUInt16LE(p + 8);
         const method = cd.readUInt16LE(p + 10);
         const crc322 = cd.readUInt32LE(p + 16);
@@ -19223,7 +19223,7 @@ var ZipReader = class _ZipReader {
         });
         p = xEnd + commentLen;
       }
-      return new _ZipReader(fh, path22, size, entries, cdOffset);
+      return new _ZipReader(fh, path23, size, entries, cdOffset);
     } catch (e) {
       await fh.close();
       throw e;
@@ -19261,8 +19261,8 @@ var ZipReader = class _ZipReader {
     return this.fh.close();
   }
 };
-async function withZip(path22, fn) {
-  const zip = await ZipReader.open(path22);
+async function withZip(path23, fn) {
+  const zip = await ZipReader.open(path23);
   try {
     return await fn(zip);
   } finally {
@@ -19971,7 +19971,7 @@ function scanStrictJson(text) {
       else break;
     }
   };
-  const hex4 = () => {
+  const hex42 = () => {
     const h = text.slice(i, i + 4);
     if (!/^[0-9a-fA-F]{4}$/.test(h)) refuse2();
     i += 4;
@@ -20018,7 +20018,7 @@ function scanStrictJson(text) {
             out += "	";
             break;
           case "u":
-            out += String.fromCharCode(hex4());
+            out += String.fromCharCode(hex42());
             break;
           default:
             refuse2();
@@ -20194,9 +20194,9 @@ function isAcceptablePoint(enc32) {
   if (enc32.length !== 32) return false;
   const y = littleEndian(enc32) & (1n << 255n) - 1n;
   if (y >= ED25519_P2) return false;
-  const hex4 = hexOf2(enc32);
-  if (NEGATIVE_ZERO_ENCODINGS.includes(hex4)) return false;
-  return !SMALL_ORDER_ENCODINGS.includes(hex4);
+  const hex5 = hexOf2(enc32);
+  if (NEGATIVE_ZERO_ENCODINGS.includes(hex5)) return false;
+  return !SMALL_ORDER_ENCODINGS.includes(hex5);
 }
 function ed25519Prechecks(key, sig) {
   if (key.length !== 32 || sig.length !== 64) return false;
@@ -21153,16 +21153,16 @@ var DEVICES = /* @__PURE__ */ new Set([
   ..."123456789".split("").flatMap((d) => [`com${d}`, `lpt${d}`])
 ]);
 var asciiLower = (s) => s.replace(/[A-Z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 32));
-function pathSafe(path22) {
-  const n = utf8Length(path22);
+function pathSafe(path23) {
+  const n = utf8Length(path23);
   if (n < 1 || n > MAX_PACK_PATH_BYTES)
     return false;
-  for (let i = 0; i < path22.length; i++) {
-    const c = path22.charCodeAt(i);
-    if (c < 32 || c > 126 || BAD_CHARS.has(path22[i]))
+  for (let i = 0; i < path23.length; i++) {
+    const c = path23.charCodeAt(i);
+    if (c < 32 || c > 126 || BAD_CHARS.has(path23[i]))
       return false;
   }
-  const segments = path22.split("/");
+  const segments = path23.split("/");
   if (asciiLower(segments[0]) === ".pkey")
     return false;
   for (const s of segments) {
@@ -21179,21 +21179,21 @@ function checkPaths(paths) {
   const seen = /* @__PURE__ */ new Set();
   const lower = /* @__PURE__ */ new Set();
   const dirs = /* @__PURE__ */ new Set();
-  for (const path22 of paths) {
-    if (typeof path22 !== "string" || !pathSafe(path22))
-      return { ok: false, error: "files-unsafe-path", path: String(path22) };
-    if (seen.has(path22))
-      return { ok: false, error: "files-duplicate-path", path: path22 };
-    const lp = asciiLower(path22);
+  for (const path23 of paths) {
+    if (typeof path23 !== "string" || !pathSafe(path23))
+      return { ok: false, error: "files-unsafe-path", path: String(path23) };
+    if (seen.has(path23))
+      return { ok: false, error: "files-duplicate-path", path: path23 };
+    const lp = asciiLower(path23);
     if (lower.has(lp))
-      return { ok: false, error: "files-case-collision", path: path22 };
+      return { ok: false, error: "files-case-collision", path: path23 };
     const parts = lp.split("/");
     const prefixes = [];
     for (let k = 1; k < parts.length; k++)
       prefixes.push(parts.slice(0, k).join("/"));
     if (dirs.has(lp) || prefixes.some((x) => lower.has(x)))
-      return { ok: false, error: "files-path-conflict", path: path22 };
-    seen.add(path22);
+      return { ok: false, error: "files-path-conflict", path: path23 };
+    seen.add(path23);
     lower.add(lp);
     for (const x of prefixes)
       dirs.add(x);
@@ -21572,23 +21572,23 @@ function dataOnlyTextRefusal(bytes) {
       return "content";
   return null;
 }
-function dataOnlyExtension(path22) {
-  const last = path22.slice(path22.lastIndexOf("/") + 1);
+function dataOnlyExtension(path23) {
+  const last = path23.slice(path23.lastIndexOf("/") + 1);
   const dot = last.lastIndexOf(".");
   if (dot < 0)
     return null;
   return last.slice(dot + 1).replace(/[A-Z]/g, (c) => c.toLowerCase());
 }
-function dataOnlyPathRefusal(path22) {
-  if (typeof path22 !== "string" || !pathSafe(path22))
+function dataOnlyPathRefusal(path23) {
+  if (typeof path23 !== "string" || !pathSafe(path23))
     return "extension";
-  const ext = dataOnlyExtension(path22);
+  const ext = dataOnlyExtension(path23);
   if (ext === null || !DATA_ONLY_EXTENSIONS.includes(ext))
     return "extension";
   return null;
 }
-function dataOnlyRefusal(path22, head, tail, full) {
-  const p = dataOnlyPathRefusal(path22);
+function dataOnlyRefusal(path23, head, tail, full) {
+  const p = dataOnlyPathRefusal(path23);
   if (p !== null)
     return p;
   const h = head.subarray(0, DATA_ONLY_HEAD_BYTES);
@@ -21618,12 +21618,12 @@ function dataOnlyRefusal(path22, head, tail, full) {
   for (let k = 0; k + 4 <= t.length; k++)
     if (t[k] === 80 && startsWith(t, k, ZIP_EOCD))
       return "content";
-  if (DATA_ONLY_TEXT_EXTENSIONS.includes(dataOnlyExtension(path22)))
+  if (DATA_ONLY_TEXT_EXTENSIONS.includes(dataOnlyExtension(path23)))
     return full === void 0 ? "content" : dataOnlyTextRefusal(full);
   return null;
 }
-function dataOnlyFileRefusal(path22, bytes) {
-  return dataOnlyRefusal(path22, bytes.subarray(0, DATA_ONLY_HEAD_BYTES), bytes.subarray(Math.max(0, bytes.length - DATA_ONLY_TAIL_BYTES)), bytes);
+function dataOnlyFileRefusal(path23, bytes) {
+  return dataOnlyRefusal(path23, bytes.subarray(0, DATA_ONLY_HEAD_BYTES), bytes.subarray(Math.max(0, bytes.length - DATA_ONLY_TAIL_BYTES)), bytes);
 }
 
 // ../client-core/dist/packs/stamp.js
@@ -21740,7 +21740,7 @@ function sameLocale(a, b) {
   return asciiLower2(a.replace(/_/g, "-")) === asciiLower2(b.replace(/_/g, "-"));
 }
 var fail3 = { ok: false, detail: "table" };
-function parseL10nFile(path22, bytes) {
+function parseL10nFile(path23, bytes) {
   let text;
   try {
     text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
@@ -21769,7 +21769,7 @@ function parseL10nFile(path22, bytes) {
     const locale = bcp47Canonical(t.locale);
     if (locale === null)
       return { ok: false, detail: "locale" };
-    tables.push({ path: path22, locale, messages: t.messages });
+    tables.push({ path: path23, locale, messages: t.messages });
   }
   return { ok: true, tables };
 }
@@ -22051,9 +22051,9 @@ function parseCsv(text) {
 var DEFAULT_MAX_TYPE_FILE_BYTES = 16 * 1024 * 1024;
 var MAX_DESCRIPTOR_BYTES2 = 65536;
 var TYPE_TOKEN_PATTERN = /^[a-z][a-z0-9-]{0,31}$/;
-var refuse = (detail, path22, message) => ({
+var refuse = (detail, path23, message) => ({
   detail,
-  ...path22 !== void 0 ? { path: path22 } : {},
+  ...path23 !== void 0 ? { path: path23 } : {},
   ...message !== void 0 ? { message } : {}
 });
 var formatsOf = (v) => new Set(v ?? [1]);
@@ -23078,14 +23078,14 @@ function describeContent(out, content, pins) {
     );
 }
 async function writeContentStampFile(opts) {
-  const loaded = await loadManifest(opts.cwd);
-  const validation = validateLoadedManifest(loaded);
+  const loaded2 = await loadManifest(opts.cwd);
+  const validation = validateLoadedManifest(loaded2);
   if (!validation.ok)
     throw new Error(
       `.pkey/ is invalid; run pkey validate:
 ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}`
     );
-  const ctx = packContext(loaded);
+  const ctx = packContext(loaded2);
   if (ctx.slug !== opts.product)
     throw new Error(
       `--product ${opts.product} does not match .pkey/product's slug ${ctx.slug}.`
@@ -23302,8 +23302,8 @@ ${problems.map((p) => `  ${p}`).join("\n")}`
     );
   return out;
 }
-function blobKey(sha2564) {
-  return `blobs/sha256/${sha2564}`;
+function blobKey(sha2565) {
+  return `blobs/sha256/${sha2565}`;
 }
 function provenanceFrom(env) {
   const commit = env.GITHUB_SHA;
@@ -23407,8 +23407,8 @@ ${PUBLISH_USAGE}`);
   const fingerprint = opts.contentInterface !== void 0 ? await contentInterfaceFingerprint(opts.cwd, opts.contentInterface) : null;
   if (fingerprint !== null) out.write(`Content interface: ${fingerprint}
 `);
-  const loaded = await loadManifest(opts.cwd);
-  const validation = validateLoadedManifest(loaded);
+  const loaded2 = await loadManifest(opts.cwd);
+  const validation = validateLoadedManifest(loaded2);
   if (!validation.ok)
     throw new Error(
       `.pkey/ is invalid; run pkey validate:
@@ -23417,7 +23417,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
   for (const w of validation.warnings)
     opts.stderr.write(`warning: ${w.file}${w.path}: ${w.message}
 `);
-  const context = descriptorManifestOf(loaded);
+  const context = descriptorManifestOf(loaded2);
   const slug = context.product?.slug;
   if (slug !== opts.product)
     throw new Error(
@@ -23493,7 +23493,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     extracted,
     provenance: provenanceFrom(opts.env)
   });
-  const packs = packContext(loaded).packs;
+  const packs = packContext(loaded2).packs;
   const contentApi = app.content?.contentApi;
   const wantsContent = opts.contentStamp !== void 0 || opts.embedded !== void 0 || (opts.pins?.length ?? 0) > 0;
   if (packs.length === 0 && wantsContent)
@@ -24423,14 +24423,14 @@ function isPrePackageWorker(e) {
 async function publishPackage(opts) {
   const out = opts.stdout;
   if (!opts.dir?.trim()) throw new Error("--dir is required.");
-  const loaded = await loadManifest(opts.cwd);
-  const validation = validateLoadedManifest(loaded);
+  const loaded2 = await loadManifest(opts.cwd);
+  const validation = validateLoadedManifest(loaded2);
   if (!validation.ok)
     throw new Error(
       `.pkey/ is invalid; run pkey validate:
 ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}`
     );
-  const context = descriptorManifestOf(loaded);
+  const context = descriptorManifestOf(loaded2);
   if (context.product?.slug !== opts.product)
     throw new Error(
       `--product ${opts.product} does not match .pkey/product's slug ${context.product?.slug}.`
@@ -24825,24 +24825,24 @@ function readPck(b, name = "the payload") {
       const md5 = Buffer.from(b.subarray(p + 16, p + 32)).toString("hex");
       const flags = dv.getUint32(p + 32, true);
       p += 36;
-      const path22 = rawPath.startsWith("res://") ? rawPath.slice("res://".length) : rawPath;
+      const path23 = rawPath.startsWith("res://") ? rawPath.slice("res://".length) : rawPath;
       if (flags & PACK_FILE_ENCRYPTED)
         throw new PckError(
-          `${path22}: an encrypted entry; a published pack is never encrypted.`
+          `${path23}: an encrypted entry; a published pack is never encrypted.`
         );
       if (flags & (PACK_FILE_REMOVAL | PACK_FILE_DELTA))
         throw new PckError(
-          `${path22}: a patch pack's ${flags & PACK_FILE_REMOVAL ? "removal" : "delta"} entry (flags ${flags}); a published pack stands alone.`
+          `${path23}: a patch pack's ${flags & PACK_FILE_REMOVAL ? "removal" : "delta"} entry (flags ${flags}); a published pack stands alone.`
         );
       if (flags !== 0)
-        throw new PckError(`${path22}: unknown entry flags ${flags}.`);
-      if (!pckPathOk(path22))
+        throw new PckError(`${path23}: unknown entry flags ${flags}.`);
+      if (!pckPathOk(path23))
         throw new PckError(
-          `${path22}: an unsafe path (a \`..\`, \`.\` or empty segment, or a character the path rules refuse).`
+          `${path23}: an unsafe path (a \`..\`, \`.\` or empty segment, or a character the path rules refuse).`
         );
       if (offset + size > b.byteLength)
-        throw new PckError(`${path22}: its bytes run past the end of the file.`);
-      entries.push({ rawPath, path: path22, offset, size, md5, flags });
+        throw new PckError(`${path23}: its bytes run past the end of the file.`);
+      entries.push({ rawPath, path: path23, offset, size, md5, flags });
     }
     const all = checkPaths(entries.map((e) => e.path));
     if (!all.ok)
@@ -24858,9 +24858,9 @@ function readPck(b, name = "the payload") {
     );
   }
 }
-function pckPathOk(path22) {
-  if (!checkPaths([path22]).ok) return false;
-  return !(path22.includes("..") || path22.includes("./") || path22.includes("//") || path22.endsWith("/") || path22.endsWith("/."));
+function pckPathOk(path23) {
+  if (!checkPaths([path23]).ok) return false;
+  return !(path23.includes("..") || path23.includes("./") || path23.includes("//") || path23.endsWith("/") || path23.endsWith("/."));
 }
 function pad(n, align) {
   const r = n % align;
@@ -24906,11 +24906,11 @@ function writePck(src, header, keep) {
   dv.setUint32(p, keep.length, true);
   p += 4;
   for (const [i, e] of keep.entries()) {
-    const path22 = paths[i];
-    dv.setUint32(p, path22.byteLength, true);
+    const path23 = paths[i];
+    dv.setUint32(p, path23.byteLength, true);
     p += 4;
-    out.set(path22, p);
-    p += path22.byteLength;
+    out.set(path23, p);
+    p += path23.byteLength;
     dv.setBigUint64(p, BigInt(rel[i]), true);
     dv.setBigUint64(p + 8, BigInt(e.size), true);
     out.set(Buffer.from(e.md5, "hex"), p + 16);
@@ -25224,13 +25224,13 @@ async function listDelegations(client, deliverable) {
     ...nextSeq !== void 0 ? { nextSeq } : {}
   };
 }
-async function storedDelegation(client, sha2564) {
+async function storedDelegation(client, sha2565) {
   const { delegations } = await listDelegations(client);
-  const hit = delegations.find((d) => d.sha256 === sha2564);
+  const hit = delegations.find((d) => d.sha256 === sha2565);
   if (hit === void 0) return null;
-  if (typeof hit.jws !== "string" || sha256Hex3(hit.jws) !== sha2564)
+  if (typeof hit.jws !== "string" || sha256Hex3(hit.jws) !== sha2565)
     throw new Error(
-      `${client.url("release/publish/delegations")} answered delegation ${sha2564.slice(0, 12)}… without its JWS, or with one of another hash.`
+      `${client.url("release/publish/delegations")} answered delegation ${sha2565.slice(0, 12)}… without its JWS, or with one of another hash.`
     );
   return hit.jws;
 }
@@ -25239,16 +25239,16 @@ var trustOf = (declared) => {
   for (const k of declared) trust[k.kid] = k.publicKey;
   return trust;
 };
-async function checkDelegation(jws, sha2564, product, declared) {
+async function checkDelegation(jws, sha2565, product, declared) {
   const v = await verifyDelegation(jws, {
     releaseKeys: trustOf(declared),
     productTrust: {},
     expectedAud: product,
-    expectedHash: sha2564
+    expectedHash: sha2565
   });
   if (!v.ok)
     throw new Error(
-      `The delegation ${sha2564.slice(0, 12)}… does not verify against .pkey/release's releaseKeys (step ${v.step}); nothing was signed.`
+      `The delegation ${sha2565.slice(0, 12)}… does not verify against .pkey/release's releaseKeys (step ${v.step}); nothing was signed.`
     );
   return v.delegation;
 }
@@ -25278,8 +25278,8 @@ function parseDelegationTypes(types) {
   }
   return list2;
 }
-async function keepSignedDelegation(cwd, jws, sha2564) {
-  const file = path11.join(cwd, `pkey-delegation-${sha2564}.jws`);
+async function keepSignedDelegation(cwd, jws, sha2565) {
+  const file = path11.join(cwd, `pkey-delegation-${sha2565}.jws`);
   await writeFile6(file, `${jws}
 `, { mode: 384, flag: "wx" });
   return file;
@@ -25301,14 +25301,14 @@ ${DELEGATE_USAGE}`
     throw new Error(
       `--expires-in must be a whole number of days from 1 to ${MAX_DELEGATION_DAYS} (got ${String(opts.expiresInDays)}).`
     );
-  const loaded = await loadManifest(opts.cwd);
-  const validation = validateLoadedManifest(loaded);
+  const loaded2 = await loadManifest(opts.cwd);
+  const validation = validateLoadedManifest(loaded2);
   if (!validation.ok)
     throw new Error(
       `.pkey/ is invalid; run pkey validate:
 ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}`
     );
-  const ctx = packContext(loaded);
+  const ctx = packContext(loaded2);
   if (ctx.slug !== opts.product)
     throw new Error(
       `--product ${opts.product} does not match .pkey/product's slug ${ctx.slug}.`
@@ -25404,7 +25404,7 @@ Dry run: nothing signed or submitted.
     return { record, jws: null, sha256: null, kid: null, server: null };
   }
   const jws = await sign2(record);
-  const sha2564 = sha256Hex3(jws);
+  const sha2565 = sha256Hex3(jws);
   if (!opts.signRecord) {
     const v = await verifyJws(jws, trustOf(ctx.releaseKeys), {
       typ: "pkey-release+jws"
@@ -25413,11 +25413,11 @@ Dry run: nothing signed or submitted.
       throw new Error(
         "The signed delegation is not the record pkey built; nothing was submitted."
       );
-    await checkDelegation(jws, sha2564, opts.product, ctx.releaseKeys);
+    await checkDelegation(jws, sha2565, opts.product, ctx.releaseKeys);
   }
-  const kid = delegatedKid(sha2564);
+  const kid = delegatedKid(sha2565);
   out.write(
-    `Signed the delegation record (sha256 ${sha2564})
+    `Signed the delegation record (sha256 ${sha2565})
 Content kid: ${kid}
 `
   );
@@ -25430,20 +25430,20 @@ Content kid: ${kid}
   } catch (e) {
     let saved = null;
     try {
-      saved = await keepSignedDelegation(opts.cwd, jws, sha2564);
+      saved = await keepSignedDelegation(opts.cwd, jws, sha2565);
     } catch {
       saved = null;
     }
     throw new Error(
       `${e.message}
-` + (saved ? `The signed delegation was kept at ${saved} (public material only). Revoke it with pkey release revoke --delegation ${path11.relative(opts.cwd, saved)} --reason <text> if it may have leaked, or retry.` : `The signed delegation could not be kept beside the run; its sha256 is ${sha2564}.`)
+` + (saved ? `The signed delegation was kept at ${saved} (public material only). Revoke it with pkey release revoke --delegation ${path11.relative(opts.cwd, saved)} --reason <text> if it may have leaked, or retry.` : `The signed delegation could not be kept beside the run; its sha256 is ${sha2565}.`)
     );
   }
   out.write(
     `Delegated ${opts.prefix} to ${kid} (${String(server.outcome ?? "submitted")})
 `
   );
-  return { record, jws, sha256: sha2564, kid, server };
+  return { record, jws, sha256: sha2565, kid, server };
 }
 function localDelegatedChecks(pack, files) {
   if (!DELEGABLE_PACK_TYPES.includes(pack.type))
@@ -25699,8 +25699,8 @@ function attachableEntryProblem(s) {
     return canonicalUid(s) === null ? "not a canonical uid://" : null;
   if (!s.startsWith("res://")) return "neither res:// nor uid://";
   const rest = s.slice(6);
-  const path22 = rest.endsWith("/") ? rest.slice(0, -1) : rest;
-  return pckPathOk(path22) ? null : "not a normal res:// path";
+  const path23 = rest.endsWith("/") ? rest.slice(0, -1) : rest;
+  return pckPathOk(path23) ? null : "not a normal res:// path";
 }
 function parseAttachable(list2 = []) {
   const paths = /* @__PURE__ */ new Set();
@@ -25881,27 +25881,27 @@ function binaryRefs(b, start) {
     const next = u32();
     for (let i = 0; i < next; i++) {
       const type = text(str3());
-      const path22 = text(str3());
+      const path23 = text(str3());
       let uid = null;
       if (flags & FLAG_UIDS) {
         need(8);
         uid = dv.getBigInt64(pos, true);
         pos += 8;
       }
-      refs.push({ type, path: path22, uid });
+      refs.push({ type, path: path23, uid });
     }
     const nint = u32();
     const offsets = [];
     let tableEnd = 0;
     for (let i = 0; i < nint; i++) {
-      const path22 = text(str3());
+      const path23 = text(str3());
       need(8);
       const lo = dv.getUint32(pos, true);
       const hi = dv.getUint32(pos + 4, true);
       pos += 8;
-      if (i < nint - 1 && !path22.startsWith("local://"))
+      if (i < nint - 1 && !path23.startsWith("local://"))
         return {
-          why: `has a sub-resource path that is not local:// (${path22})${AMBIGUOUS}`
+          why: `has a sub-resource path that is not local:// (${path23})${AMBIGUOUS}`
         };
       offsets.push(hi > 2097151 ? -1 : hi * 4294967296 + lo);
     }
@@ -26140,9 +26140,9 @@ function isScript(p, kinds) {
 }
 var NATIVE_RE = /\.(so|dll|dylib|wasm|gdextension)$|\.so\.\d+(\.\d+)*$/i;
 var NATIVE_DIR_RE = /\.(framework|xcframework)$/i;
-function isNative(path22) {
-  if (NATIVE_RE.test(path22)) return true;
-  return path22.split("/").some((s) => NATIVE_DIR_RE.test(s));
+function isNative(path23) {
+  if (NATIVE_RE.test(path23)) return true;
+  return path23.split("/").some((s) => NATIVE_DIR_RE.test(s));
 }
 function resPath(p) {
   return p.startsWith("res://") ? p.slice("res://".length) : null;
@@ -27125,18 +27125,18 @@ async function publishPack(opts) {
     throw new Error(
       "--min-supported-seq must be a whole number of at least 1."
     );
-  const loaded = await loadManifest(opts.cwd);
-  const validation = validateLoadedManifest(loaded);
+  const loaded2 = await loadManifest(opts.cwd);
+  const validation = validateLoadedManifest(loaded2);
   if (!validation.ok)
     throw new Error(
       `.pkey/ is invalid; run pkey validate:
 ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}`
     );
   const ctx = packContext({
-    product: loaded.product,
-    schema: loaded.schema,
-    release: loaded.release,
-    distribution: loaded.distribution
+    product: loaded2.product,
+    schema: loaded2.schema,
+    release: loaded2.release,
+    distribution: loaded2.distribution
   });
   if (ctx.slug !== opts.product)
     throw new Error(
@@ -27424,7 +27424,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
       const ask = /* @__PURE__ */ new Map();
       for (const c of chains.values())
         for (const [sha, size] of c.index.bundles) ask.set(sha, size);
-      const list3 = [...ask].map(([sha2564, size]) => ({ sha256: sha2564, size }));
+      const list3 = [...ask].map(([sha2565, size]) => ({ sha256: sha2565, size }));
       if (client)
         for (let i = 0; i < list3.length; i += STAGE_ROUND_OBJECTS) {
           const ticket = await requestTicket(
@@ -27445,9 +27445,9 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
     }
     const objects = /* @__PURE__ */ new Map();
     const addObject = (bytes, label) => {
-      const sha2564 = sha256Hex2(bytes);
-      if (!objects.has(sha2564))
-        objects.set(sha2564, { sha256: sha2564, size: bytes.byteLength, bytes, label });
+      const sha2565 = sha256Hex2(bytes);
+      if (!objects.has(sha2565))
+        objects.set(sha2565, { sha256: sha2565, size: bytes.byteLength, bytes, label });
     };
     const reports = [];
     const recordVariants = [];
@@ -27970,14 +27970,14 @@ async function revokePackRelease(opts) {
       "--replacement names the revoked release itself; a replacement is another release."
     );
   checkReason(opts.reason);
-  const loaded = await loadManifest(opts.cwd);
-  const validation = validateLoadedManifest(loaded);
+  const loaded2 = await loadManifest(opts.cwd);
+  const validation = validateLoadedManifest(loaded2);
   if (!validation.ok)
     throw new Error(
       `.pkey/ is invalid; run pkey validate:
 ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}`
     );
-  const ctx = packContext(loaded);
+  const ctx = packContext(loaded2);
   if (ctx.slug !== opts.product)
     throw new Error(
       `--product ${opts.product} does not match .pkey/product's slug ${ctx.slug}.`
@@ -28025,10 +28025,10 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
   const trust = {};
   for (const k of ctx.releaseKeys) trust[k.kid] = k.publicKey;
   if (!opts.signRecord) await checkSignedRevocation(jws, record, trust);
-  const sha2564 = sha256Hex2(jws);
+  const sha2565 = sha256Hex2(jws);
   out.write(
     `Revocation of ${pack}@${version} (seq ${record.seq}, record ${record.revokes.slice(0, 12)}…)${record.replacement ? `, replacement ${record.replacement.version} (seq ${record.replacement.seq})` : ", no replacement"}
-Signed the revocation record (sha256 ${sha2564})
+Signed the revocation record (sha256 ${sha2565})
 `
   );
   if (opts.dryRun) {
@@ -28040,7 +28040,7 @@ ${jws}
 `
     );
     out.write("Dry run: nothing submitted.\n");
-    return { record, jws, sha256: sha2564, server: null };
+    return { record, jws, sha256: sha2565, server: null };
   }
   const server = await client.postJson(
     "release/publish/submit",
@@ -28050,20 +28050,20 @@ ${jws}
     `Revoked ${pack}@${version} (${String(server.outcome ?? "submitted")})
 `
   );
-  return { record, jws, sha256: sha2564, server };
+  return { record, jws, sha256: sha2565, server };
 }
 var REVOKE_DELEGATION_USAGE = "Usage: pkey release revoke --delegation <sha256 | file> --reason <text> --product <slug> [--release-key-file pem] [--base-url <url>] [--dry-run]";
 async function revokeDelegation(opts) {
   const out = opts.stdout;
   checkReason(opts.reason);
-  const loaded = await loadManifest(opts.cwd);
-  const validation = validateLoadedManifest(loaded);
+  const loaded2 = await loadManifest(opts.cwd);
+  const validation = validateLoadedManifest(loaded2);
   if (!validation.ok)
     throw new Error(
       `.pkey/ is invalid; run pkey validate:
 ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}`
     );
-  const ctx = packContext(loaded);
+  const ctx = packContext(loaded2);
   if (ctx.slug !== opts.product)
     throw new Error(
       `--product ${opts.product} does not match .pkey/product's slug ${ctx.slug}.`
@@ -28134,10 +28134,10 @@ ${REVOKE_DELEGATION_USAGE}`
   const trust = {};
   for (const k of ctx.releaseKeys) trust[k.kid] = k.publicKey;
   if (!opts.signRecord) await checkSignedRevocation(signed, record, trust);
-  const sha2564 = sha256Hex2(signed);
+  const sha2565 = sha256Hex2(signed);
   out.write(
     `Revocation of delegation ${hash.slice(0, 12)}… (${d.deliverable}, seq ${d.seq})${supplied ? ", supplied alongside" : ""}
-Signed the revocation record (sha256 ${sha2564})
+Signed the revocation record (sha256 ${sha2565})
 `
   );
   if (opts.dryRun) {
@@ -28149,7 +28149,7 @@ ${signed}
 `
     );
     out.write("Dry run: nothing submitted.\n");
-    return { record, jws: signed, sha256: sha2564, server: null, supplied };
+    return { record, jws: signed, sha256: sha2565, server: null, supplied };
   }
   const server = await client.postJson(
     "release/publish/submit",
@@ -28162,7 +28162,7 @@ ${signed}
     `Revoked delegation ${hash.slice(0, 12)}… (${String(server.outcome ?? "submitted")}); every pack release signed under it is refused from now on.
 `
   );
-  return { record, jws: signed, sha256: sha2564, server, supplied };
+  return { record, jws: signed, sha256: sha2565, server, supplied };
 }
 
 // src/distribution.ts
@@ -28195,12 +28195,12 @@ async function clientFor2(opts) {
   });
 }
 function normalizeFingerprint2(raw) {
-  const hex4 = raw.replace(/[\s:]/g, "").toLowerCase();
-  if (!/^[0-9a-f]{64}$/.test(hex4))
+  const hex5 = raw.replace(/[\s:]/g, "").toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(hex5))
     throw new Error(
       `--sha256 must be a SHA-256 fingerprint: 64 hex characters, colons allowed (got ${JSON.stringify(raw)}).`
     );
-  return hex4;
+  return hex5;
 }
 function jsonObjectFlag(name, raw) {
   if (raw === void 0) return void 0;
@@ -28319,8 +28319,8 @@ ${DISTRIBUTION_CI_USAGE}`
   }
   const client = await clientFor2(opts);
   const base = `distribution/rollouts/${encodeURIComponent(opts.outlet)}/${encodeURIComponent(opts.channel)}`;
-  const path22 = opts.command === "rollout" ? base : `${base}/${opts.command}`;
-  const body = await client.postJson(path22, {
+  const path23 = opts.command === "rollout" ? base : `${base}/${opts.command}`;
+  const body = await client.postJson(path23, {
     what: opts.command === "rollout" ? `Rolling out ${opts.releaseId} on ${opts.outlet}/${opts.channel}` : `${opts.command[0].toUpperCase()}${opts.command.slice(1)} on ${opts.outlet}/${opts.channel}`,
     body: {
       ...opts.releaseId ? { releaseId: opts.releaseId } : {},
@@ -28376,8 +28376,8 @@ function jwsPayload(jws) {
   return JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
 }
 async function loadTransportProduct(common) {
-  const loaded = await loadManifest(common.cwd);
-  const validation = validateLoadedManifest(loaded);
+  const loaded2 = await loadManifest(common.cwd);
+  const validation = validateLoadedManifest(loaded2);
   if (!validation.ok)
     throw new Error(
       `.pkey/ is invalid; run pkey validate:
@@ -28385,10 +28385,10 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     );
   const files = {};
   for (const [name, doc] of Object.entries({
-    product: loaded.product,
-    schema: loaded.schema,
-    release: loaded.release,
-    distribution: loaded.distribution
+    product: loaded2.product,
+    schema: loaded2.schema,
+    release: loaded2.release,
+    distribution: loaded2.distribution
   }))
     if (doc !== void 0) files[name] = JSON.stringify(doc);
   const parsed = parseManifest(files);
@@ -28484,30 +28484,30 @@ async function loadTransportPack(common, from) {
     marker: markerJson(pack.id, common.version, recordJws)
   };
 }
-function outletsFor(loaded, transport) {
-  return (loaded.distribution?.routes ?? []).filter(
-    (r) => r.deliverableId === loaded.pack.id && r.transport === transport
+function outletsFor(loaded2, transport) {
+  return (loaded2.distribution?.routes ?? []).filter(
+    (r) => r.deliverableId === loaded2.pack.id && r.transport === transport
   ).map((r) => r.outletId);
 }
-function packsOn(loaded, transport) {
+function packsOn(loaded2, transport) {
   return [
     ...new Set(
-      (loaded.distribution?.routes ?? []).filter((r) => r.transport === transport && r.deliverableId !== "app").map((r) => r.deliverableId)
+      (loaded2.distribution?.routes ?? []).filter((r) => r.transport === transport && r.deliverableId !== "app").map((r) => r.deliverableId)
     )
   ];
 }
-function requireRouted(loaded, transport) {
-  const outlets = outletsFor(loaded, transport);
+function requireRouted(loaded2, transport) {
+  const outlets = outletsFor(loaded2, transport);
   if (!outlets.length)
     throw new Error(
-      `${loaded.pack.id} is not bound to ${transport} on any outlet: add it under transports in .pkey/distribution (transports.packs.<outlet> or transports.deliverables.${loaded.pack.id}.<outlet>) and resync.`
+      `${loaded2.pack.id} is not bound to ${transport} on any outlet: add it under transports in .pkey/distribution (transports.packs.<outlet> or transports.deliverables.${loaded2.pack.id}.<outlet>) and resync.`
     );
   return outlets;
 }
-function pickVariants(loaded, wanted, fixed = []) {
+function pickVariants(loaded2, wanted, fixed = []) {
   if (wanted !== void 0) {
     const want = wanted === "default" ? "" : wanted;
-    const hit = loaded.variants.filter((v) => {
+    const hit = loaded2.variants.filter((v) => {
       if (!fixed.length) return v.key === want;
       const rest = Object.fromEntries(
         Object.entries(v.variant).filter(([a]) => !fixed.includes(a))
@@ -28516,23 +28516,23 @@ function pickVariants(loaded, wanted, fixed = []) {
     });
     if (!hit.length)
       throw new Error(
-        `--variant ${wanted} is not a published variant of ${loaded.pack.id} (published: ${loaded.variants.map((v) => v.key || "default").join(", ")}).`
+        `--variant ${wanted} is not a published variant of ${loaded2.pack.id} (published: ${loaded2.variants.map((v) => v.key || "default").join(", ")}).`
       );
     return hit;
   }
   const otherAxes = new Set(
-    loaded.variants.flatMap(
+    loaded2.variants.flatMap(
       (v) => Object.keys(v.variant).filter((a) => !fixed.includes(a))
     )
   );
   if (otherAxes.size)
     throw new Error(
-      `${loaded.pack.id} varies by ${[...otherAxes].join(", ")}, which this transport cannot target: choose one with --variant (published: ${loaded.variants.map((v) => v.key || "default").join(", ")}).`
+      `${loaded2.pack.id} varies by ${[...otherAxes].join(", ")}, which this transport cannot target: choose one with --variant (published: ${loaded2.variants.map((v) => v.key || "default").join(", ")}).`
     );
-  return loaded.variants;
+  return loaded2.variants;
 }
-function contentLevel(loaded, given) {
-  const level = given !== void 0 ? Number(given) : loaded.app?.content?.contentApi;
+function contentLevel(loaded2, given) {
+  const level = given !== void 0 ? Number(given) : loaded2.app?.content?.contentApi;
   if (level === void 0)
     throw new Error(
       "--content-api is required: .pkey/release declares no deliverables.app.content.contentApi."
@@ -28541,31 +28541,31 @@ function contentLevel(loaded, given) {
     throw new Error(
       `--content-api must be a whole number of at least 1 (got ${String(given)}).`
     );
-  const range = loaded.pack.requires.contentApi?.app;
+  const range = loaded2.pack.requires.contentApi?.app;
   if (range !== void 0) {
     const cmp = parseRange(range, CONTENT_API_RANGE_PATTERN);
     if (cmp && !contentApiInRange(cmp, level))
       throw new Error(
-        `${loaded.pack.id} requires contentApi ${range}; it cannot be bound to content level ${level}.`
+        `${loaded2.pack.id} requires contentApi ${range}; it cannot be bound to content level ${level}.`
       );
   }
   return level;
 }
-async function placePayload(loaded, v, dir, name) {
+async function placePayload(loaded2, v, dir, name) {
   await mkdir4(dir, { recursive: true });
   if (v.layout === "container") {
     const file = `${name}${v.ext}`;
     await cp2(v.location, path15.join(dir, file));
-    await writeFile9(path15.join(dir, `${file}${MARKER_SUFFIX}`), loaded.marker);
+    await writeFile9(path15.join(dir, `${file}${MARKER_SUFFIX}`), loaded2.marker);
     return [file, `${file}${MARKER_SUFFIX}`];
   }
   await cp2(v.location, dir, { recursive: true });
   const marker2 = path15.join(dir, ...TREE_MARKER_PATH.split("/"));
   await mkdir4(path15.dirname(marker2), { recursive: true });
-  await writeFile9(marker2, loaded.marker);
+  await writeFile9(marker2, loaded2.marker);
   return [".", TREE_MARKER_PATH];
 }
-async function reportTransport(common, loaded, outlets, state, platformRef) {
+async function reportTransport(common, loaded2, outlets, state, platformRef) {
   if (common.report === false) {
     common.stdout.write(
       `Not reporting ${state} on ${outlets.join(", ")} (--no-report)
@@ -28576,7 +28576,7 @@ async function reportTransport(common, loaded, outlets, state, platformRef) {
   for (const outlet of outlets)
     await reportDistribution({
       type: "availability",
-      product: loaded.slug,
+      product: loaded2.slug,
       baseUrl: common.baseUrl,
       env: common.env,
       stdout: common.stdout,
@@ -28585,7 +28585,7 @@ async function reportTransport(common, loaded, outlets, state, platformRef) {
       sleep: common.sleep,
       outlet,
       version: common.version,
-      deliverable: loaded.pack.id,
+      deliverable: loaded2.pack.id,
       state,
       platformRef: JSON.stringify(platformRef)
     });
@@ -28630,23 +28630,23 @@ function downloadPolicy(delivery) {
   return { onDemand: {} };
 }
 async function baPackage(o) {
-  const loaded = await loadTransportPack(o, o.from);
-  const outlets = requireRouted(loaded, "apple-ba");
-  const level = contentLevel(loaded, o.contentApi);
-  const assetPackId = assetPackIdFor(loaded, level);
-  const [v, ...more] = pickVariants(loaded, o.variant);
+  const loaded2 = await loadTransportPack(o, o.from);
+  const outlets = requireRouted(loaded2, "apple-ba");
+  const level = contentLevel(loaded2, o.contentApi);
+  const assetPackId = assetPackIdFor(loaded2, level);
+  const [v, ...more] = pickVariants(loaded2, o.variant);
   if (more.length || !v)
     throw new Error(
-      `${loaded.pack.id} has ${loaded.variants.length} variants; an asset pack carries one: choose it with --variant.`
+      `${loaded2.pack.id} has ${loaded2.variants.length} variants; an asset pack carries one: choose it with --variant.`
     );
   const out = path16.resolve(o.cwd, o.out ?? DEFAULT_BA_OUT);
   const dir = path16.join(out, assetPackId);
   await rm2(dir, { recursive: true, force: true });
   const contentDir = path16.join(dir, "pkey", assetPackId);
-  await placePayload(loaded, v, contentDir, assetPackId);
+  await placePayload(loaded2, v, contentDir, assetPackId);
   const manifest = {
     assetPackID: assetPackId,
-    downloadPolicy: downloadPolicy(loaded.pack.delivery),
+    downloadPolicy: downloadPolicy(loaded2.pack.delivery),
     fileSelectors: [{ directory: `pkey/${assetPackId}` }],
     platforms: o.platforms?.length ? o.platforms : ["iOS"]
   };
@@ -28655,11 +28655,11 @@ async function baPackage(o) {
   const inputs = {
     format: BA_INPUTS_FORMAT,
     assetPackId,
-    packId: loaded.pack.id,
+    packId: loaded2.pack.id,
     version: o.version,
     contentApi: level,
     variant: v.key,
-    recordSha256: loaded.recordSha256,
+    recordSha256: loaded2.recordSha256,
     payloadSha256: v.payload.sha256,
     manifestSha256: sha256Hex5(manifestText)
   };
@@ -28668,7 +28668,7 @@ async function baPackage(o) {
     prettyJson(inputs)
   );
   o.stdout.write(
-    `Wrote asset pack ${assetPackId} (${loaded.pack.id}@${o.version}, ${Object.keys(manifest.downloadPolicy)[0]}) at ${path16.relative(o.cwd, dir) || dir}
+    `Wrote asset pack ${assetPackId} (${loaded2.pack.id}@${o.version}, ${Object.keys(manifest.downloadPolicy)[0]}) at ${path16.relative(o.cwd, dir) || dir}
 `
   );
   let aar = null;
@@ -28686,7 +28686,7 @@ async function baPackage(o) {
     o.stdout.write(`Archived ${path16.relative(o.cwd, aar) || aar}
 `);
   }
-  await reportTransport(o, loaded, outlets, "pending", {
+  await reportTransport(o, loaded2, outlets, "pending", {
     assetPackIdentifier: assetPackId,
     contentApi: level
   });
@@ -28819,9 +28819,9 @@ async function baUpload(o) {
       `the packaged content under ${path16.relative(o.cwd, content) || content} hashes to ${packaged.sha256.slice(0, 12)}…, not the payload ${String(inputs.payloadSha256).slice(0, 12)}… the package step recorded: package again.`
     );
   if (o.from !== void 0) {
-    const loaded = await loadTransportPack(o, o.from);
-    const variant = loaded.variants.find((v2) => v2.key === inputs.variant);
-    if (inputs.recordSha256 !== loaded.recordSha256 || !variant || variant.payload.sha256 !== packaged.sha256 || packaged.marker !== loaded.marker)
+    const loaded2 = await loadTransportPack(o, o.from);
+    const variant = loaded2.variants.find((v2) => v2.key === inputs.variant);
+    if (inputs.recordSha256 !== loaded2.recordSha256 || !variant || variant.payload.sha256 !== packaged.sha256 || packaged.marker !== loaded2.marker)
       throw new AscUploadError(
         "asset-pack-inputs-mismatch",
         `the packaged content of ${assetPackId} is not ${product.pack.id}@${o.version}'s signed record in ${o.from} (record, payload or marker differ): package again from that cache.`
@@ -29149,19 +29149,19 @@ function padDirectories(variants, defaultTexture) {
   return out;
 }
 async function padModules(o) {
-  const loaded = await loadTransportPack(o, o.from);
-  const outlets = requireRouted(loaded, "play-pad");
+  const loaded2 = await loadTransportPack(o, o.from);
+  const outlets = requireRouted(loaded2, "play-pad");
   const names = resolvePadPackNames([
-    ...packsOn(loaded, "play-pad"),
-    loaded.pack.id
+    ...packsOn(loaded2, "play-pad"),
+    loaded2.pack.id
   ]);
-  const name = names.get(loaded.pack.id);
-  const delivery = o.delivery ?? (loaded.pack.delivery === "essential" || loaded.pack.delivery === "prefetch" ? "fast-follow" : "on-demand");
+  const name = names.get(loaded2.pack.id);
+  const delivery = o.delivery ?? (loaded2.pack.delivery === "essential" || loaded2.pack.delivery === "prefetch" ? "fast-follow" : "on-demand");
   if (delivery !== "fast-follow" && delivery !== "on-demand")
     throw new Error(
       `--delivery must be fast-follow or on-demand (install-time content is Godot's own assetPackInstallTime, an embedded baseline).`
     );
-  const variants = pickVariants(loaded, o.variant, ["texture"]);
+  const variants = pickVariants(loaded2, o.variant, ["texture"]);
   const dirs = padDirectories(variants, o.defaultTexture);
   const project = path17.resolve(o.cwd, o.project);
   const settingsFile = path17.join(project, "settings.gradle");
@@ -29183,7 +29183,7 @@ async function padModules(o) {
     ([, a], [, b]) => a < b ? -1 : 1
   )) {
     const target = v.layout === "container" ? path17.join(assets, d) : path17.join(assets, d, name);
-    await placePayload(loaded, v, target, name);
+    await placePayload(loaded2, v, target, name);
     written.push(v.layout === "container" ? d : `${d}/${name}`);
   }
   await mkdir6(moduleDir, { recursive: true });
@@ -29201,10 +29201,10 @@ async function padModules(o) {
     patched.push("build.gradle");
   }
   o.stdout.write(
-    `Wrote Play asset pack :${name} (${delivery}; ${written.join(", ")}) for ${loaded.pack.id}@${o.version}${patched.length ? `; patched ${patched.join(", ")}` : ""}
+    `Wrote Play asset pack :${name} (${delivery}; ${written.join(", ")}) for ${loaded2.pack.id}@${o.version}${patched.length ? `; patched ${patched.join(", ")}` : ""}
 `
   );
-  await reportTransport(o, loaded, outlets, "pending", {
+  await reportTransport(o, loaded2, outlets, "pending", {
     padPack: name,
     deliveryType: delivery
   });
@@ -29262,9 +29262,9 @@ async function steamVdf(o) {
     throw new Error(
       `--depot must be a numeric Steam depot id (got ${o.depot}).`
     );
-  const loaded = await loadTransportPack(o, o.from);
-  const outlets = requireRouted(loaded, "steam-depot");
-  const steam = (loaded.distribution?.outlets ?? []).filter(
+  const loaded2 = await loadTransportPack(o, o.from);
+  const outlets = requireRouted(loaded2, "steam-depot");
+  const steam = (loaded2.distribution?.outlets ?? []).filter(
     (x) => outlets.includes(x.id) && x.kind === "steam"
   );
   const app = o.app ?? steam.find((x) => x.identity.appId)?.identity.appId;
@@ -29286,24 +29286,24 @@ async function steamVdf(o) {
     throw new Error(
       `--setlive cannot target the ${branch} branch: Steam's default branch is set live in Steamworks by a person (SetLive applies to named branches only).`
     );
-  const [v, ...more] = pickVariants(loaded, o.variant);
+  const [v, ...more] = pickVariants(loaded2, o.variant);
   if (more.length || !v)
     throw new Error(
-      `${loaded.pack.id} has ${loaded.variants.length} variants; a depot carries one: choose it with --variant.`
+      `${loaded2.pack.id} has ${loaded2.variants.length} variants; a depot carries one: choose it with --variant.`
     );
   const out = path18.resolve(o.cwd, o.out ?? DEFAULT_STEAM_OUT);
   const contentRoot = path18.join(out, "content", o.depot);
   await rm4(contentRoot, { recursive: true, force: true });
   await placePayload(
-    loaded,
+    loaded2,
     v,
-    path18.join(contentRoot, STEAM_PACK_DIR, loaded.pack.id),
-    loaded.pack.id
+    path18.join(contentRoot, STEAM_PACK_DIR, loaded2.pack.id),
+    loaded2.pack.id
   );
   await mkdir7(out, { recursive: true });
   const appBuild = path18.join(out, `app_build_${app}.vdf`);
   const depotBuild = path18.join(out, `depot_build_${o.depot}.vdf`);
-  const desc = `pkey ${loaded.pack.id}@${o.version} (${loaded.recordSha256.slice(0, 12)})`;
+  const desc = `pkey ${loaded2.pack.id}@${o.version} (${loaded2.recordSha256.slice(0, 12)})`;
   await writeFile12(
     appBuild,
     appBuildVdf({
@@ -29315,10 +29315,10 @@ async function steamVdf(o) {
   );
   await writeFile12(depotBuild, depotBuildVdf({ depot: o.depot }));
   o.stdout.write(
-    `Wrote a content-only SteamPipe build of depot ${o.depot} (${loaded.pack.id}@${o.version}) for app ${app}${o.setlive ? `, set live on ${branch}` : `; set ${branch} live in Steamworks`}: steamcmd +login <account> +run_app_build ${path18.relative(o.cwd, appBuild) || appBuild} +quit
+    `Wrote a content-only SteamPipe build of depot ${o.depot} (${loaded2.pack.id}@${o.version}) for app ${app}${o.setlive ? `, set live on ${branch}` : `; set ${branch} live in Steamworks`}: steamcmd +login <account> +run_app_build ${path18.relative(o.cwd, appBuild) || appBuild} +quit
 `
   );
-  await reportTransport(o, loaded, outlets, "pending", {
+  await reportTransport(o, loaded2, outlets, "pending", {
     steamAppId: app,
     steamDepotId: o.depot,
     steamBranch: branch
@@ -29378,7 +29378,7 @@ function dictDiff(source, target) {
   }
   return out;
 }
-function buildFdroidIndex(inputs, timestamp, icon) {
+function buildFdroidIndex(inputs, timestamp, icon2) {
   const listing = inputs.listing ?? {};
   const name = listing.name ?? inputs.productName ?? inputs.product;
   const problems = [];
@@ -29448,11 +29448,11 @@ function buildFdroidIndex(inputs, timestamp, icon) {
       `The F-Droid repository cannot be built:
   ${problems.join("\n  ")}`
     );
-  const iconFile = icon ? {
+  const iconFile = icon2 ? {
     [LOCALE]: {
-      name: `/${icon.path}`,
-      sha256: icon.sha256,
-      size: icon.size
+      name: `/${icon2.path}`,
+      sha256: icon2.sha256,
+      size: icon2.size
     }
   } : void 0;
   const packages = {};
@@ -29568,17 +29568,17 @@ function indexV2Problems(index) {
 }
 function buildRepoFiles(inputs, timestamp, opts = {}) {
   const files = /* @__PURE__ */ new Map();
-  let icon;
+  let icon2;
   if (opts.icon) {
     const p = `icons/${opts.icon.name}`;
     files.set(p, opts.icon.bytes);
-    icon = {
+    icon2 = {
       path: p,
       sha256: sha2563(opts.icon.bytes),
       size: opts.icon.bytes.length
     };
   }
-  const index = buildFdroidIndex(inputs, timestamp, icon);
+  const index = buildFdroidIndex(inputs, timestamp, icon2);
   const problems = indexV2Problems(index);
   if (problems.length)
     throw new Error(
@@ -29785,17 +29785,17 @@ ${FEEDS_USAGE}`);
   const now = (opts.now ?? Date.now)();
   const prevTs = previous?.repo?.timestamp ?? 0;
   const timestamp = Math.max(now, prevTs + 1);
-  const icon = opts.icon ? {
+  const icon2 = opts.icon ? {
     name: path19.basename(opts.icon),
     bytes: await readFile15(path19.resolve(opts.cwd, opts.icon))
   } : void 0;
-  if (icon && !/^[A-Za-z0-9_~.-]+\.(png|jpe?g|webp)$/.test(icon.name))
+  if (icon2 && !/^[A-Za-z0-9_~.-]+\.(png|jpe?g|webp)$/.test(icon2.name))
     throw new Error(
       "--icon must be a .png, .jpg or .webp file with a plain name."
     );
   const repo = buildRepoFiles(inputs, timestamp, {
     previous,
-    ...icon ? { icon } : {}
+    ...icon2 ? { icon: icon2 } : {}
   });
   const stale = await staleOutFiles(dir, opts.cwd);
   for (const f of stale.files) await rm5(f, { force: true });
@@ -30073,10 +30073,10 @@ var ConfigParser = class {
         case "u":
         case "U": {
           const len = e === "u" ? 4 : 6;
-          const hex4 = this.src.slice(this.i, this.i + len);
-          if (!/^[0-9A-Fa-f]+$/.test(hex4) || hex4.length !== len)
+          const hex5 = this.src.slice(this.i, this.i + len);
+          if (!/^[0-9A-Fa-f]+$/.test(hex5) || hex5.length !== len)
             this.fail("invalid unicode escape");
-          out += String.fromCodePoint(parseInt(hex4, 16));
+          out += String.fromCodePoint(parseInt(hex5, 16));
           this.i += len;
           break;
         }
@@ -30353,7 +30353,7 @@ async function readGodotListing(dir, opts = {}) {
     if (p) wanted.push({ slot, setting, path: p });
   }
   for (const w of wanted) {
-    const icon = { slot: w.slot, path: w.path, setting: w.setting };
+    const icon2 = { slot: w.slot, path: w.path, setting: w.setting };
     const file = resolveResPath(root, w.path);
     if (!file) {
       warnings.push(
@@ -30363,14 +30363,14 @@ async function readGodotListing(dir, opts = {}) {
       warnings.push(`${w.setting} "${w.path}" does not exist in the project`);
     } else {
       const bytes = new Uint8Array(await readFile16(file));
-      icon.sha256 = createHash12("sha256").update(bytes).digest("hex");
+      icon2.sha256 = createHash12("sha256").update(bytes).digest("hex");
       const size = pngSize(bytes);
       if (size) {
-        icon.width = size.width;
-        icon.height = size.height;
+        icon2.width = size.width;
+        icon2.height = size.height;
       }
     }
-    listing.icons.push(icon);
+    listing.icons.push(icon2);
   }
   return { listing, presets: presetsRead, warnings };
 }
@@ -30502,6 +30502,1703 @@ function formatImport(r) {
   return lines3.join("\n");
 }
 
+// src/listingAssets.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { createHash as createHash14 } from "node:crypto";
+import { existsSync as existsSync2 } from "node:fs";
+import {
+  mkdir as mkdir9,
+  readdir as readdir9,
+  readFile as readFile17,
+  rm as rm6,
+  rmdir as rmdir2,
+  stat as stat8,
+  writeFile as writeFile14
+} from "node:fs/promises";
+import path21 from "node:path";
+
+// src/listing/io.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// src/listing/raster.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { createHash as createHash13 } from "node:crypto";
+var SCALE = 16384;
+var HALF = SCALE / 2;
+function makeRaster(width, height) {
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1)
+    throw new Error(
+      `a raster must be at least 1x1 pixels (got ${width}x${height})`
+    );
+  return { width, height, data: new Uint8Array(width * height * 4) };
+}
+function fill(width, height, color) {
+  const r = makeRaster(width, height);
+  const d = r.data;
+  for (let i = 0; i < d.length; i += 4) {
+    d[i] = color[0];
+    d[i + 1] = color[1];
+    d[i + 2] = color[2];
+    d[i + 3] = color[3];
+  }
+  return r;
+}
+function crop(src, rect) {
+  const { x, y, width, height } = rect;
+  if (x < 0 || y < 0 || x + width > src.width || y + height > src.height)
+    throw new Error(
+      `crop ${width}x${height}+${x}+${y} is outside the ${src.width}x${src.height} image`
+    );
+  const out = makeRaster(width, height);
+  for (let row = 0; row < height; row++) {
+    const from = ((y + row) * src.width + x) * 4;
+    out.data.set(src.data.subarray(from, from + width * 4), row * width * 4);
+  }
+  return out;
+}
+function taps(srcN, dstN) {
+  const start = new Int32Array(dstN);
+  const count = new Int32Array(dstN);
+  const offset = new Int32Array(dstN);
+  const weights = [];
+  for (let i = 0; i < dstN; i++) {
+    const ws = [];
+    let first;
+    if (dstN <= srcN) {
+      const lo = i * srcN;
+      const hi = (i + 1) * srcN;
+      first = Math.floor(lo / dstN);
+      const last = Math.ceil(hi / dstN) - 1;
+      for (let j = first; j <= last; j++) {
+        const overlap = Math.min(hi, (j + 1) * dstN) - Math.max(lo, j * dstN);
+        ws.push(Math.floor((overlap * SCALE * 2 + srcN) / (2 * srcN)));
+      }
+    } else {
+      const den = 2 * dstN;
+      const num = (2 * i + 1) * srcN - dstN;
+      if (num <= 0) {
+        first = 0;
+        ws.push(SCALE);
+      } else {
+        first = Math.floor(num / den);
+        const frac = num - first * den;
+        const w1 = Math.floor((frac * SCALE * 2 + den) / (2 * den));
+        if (first + 1 >= srcN || w1 === 0) ws.push(SCALE);
+        else ws.push(SCALE - w1, w1);
+      }
+    }
+    const sum = ws.reduce((a, b) => a + b, 0);
+    if (sum !== SCALE) {
+      let big = 0;
+      for (let k = 1; k < ws.length; k++) if (ws[k] > ws[big]) big = k;
+      ws[big] = ws[big] + (SCALE - sum);
+    }
+    start[i] = first;
+    count[i] = ws.length;
+    offset[i] = weights.length;
+    weights.push(...ws);
+  }
+  return { start, count, offset, weight: Int32Array.from(weights) };
+}
+function resize(src, width, height) {
+  if (width === src.width && height === src.height)
+    return { width, height, data: src.data.slice() };
+  const sw = src.width;
+  const sh = src.height;
+  const pre = new Uint32Array(sw * sh * 4);
+  const s = src.data;
+  for (let i = 0; i < s.length; i += 4) {
+    const a = s[i + 3];
+    pre[i] = s[i] * a;
+    pre[i + 1] = s[i + 1] * a;
+    pre[i + 2] = s[i + 2] * a;
+    pre[i + 3] = a * 255;
+  }
+  const hx = taps(sw, width);
+  const mid = new Uint32Array(width * sh * 4);
+  for (let y = 0; y < sh; y++) {
+    const rowIn = y * sw * 4;
+    const rowOut = y * width * 4;
+    for (let x = 0; x < width; x++) {
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      let a = 0;
+      const n = hx.count[x];
+      const o = hx.offset[x];
+      let p = rowIn + hx.start[x] * 4;
+      for (let k = 0; k < n; k++, p += 4) {
+        const w = hx.weight[o + k];
+        r += pre[p] * w;
+        g += pre[p + 1] * w;
+        b += pre[p + 2] * w;
+        a += pre[p + 3] * w;
+      }
+      const q = rowOut + x * 4;
+      mid[q] = Math.floor((r + HALF) / SCALE);
+      mid[q + 1] = Math.floor((g + HALF) / SCALE);
+      mid[q + 2] = Math.floor((b + HALF) / SCALE);
+      mid[q + 3] = Math.floor((a + HALF) / SCALE);
+    }
+  }
+  const vy = taps(sh, height);
+  const out = makeRaster(width, height);
+  const d = out.data;
+  const stride = width * 4;
+  for (let y = 0; y < height; y++) {
+    const n = vy.count[y];
+    const o = vy.offset[y];
+    const first = vy.start[y] * stride;
+    for (let x = 0; x < width; x++) {
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      let a = 0;
+      let p = first + x * 4;
+      for (let k = 0; k < n; k++, p += stride) {
+        const w = vy.weight[o + k];
+        r += mid[p] * w;
+        g += mid[p + 1] * w;
+        b += mid[p + 2] * w;
+        a += mid[p + 3] * w;
+      }
+      r = Math.floor((r + HALF) / SCALE);
+      g = Math.floor((g + HALF) / SCALE);
+      b = Math.floor((b + HALF) / SCALE);
+      a = Math.floor((a + HALF) / SCALE);
+      const q = (y * width + x) * 4;
+      if (a === 0) {
+        d[q] = d[q + 1] = d[q + 2] = d[q + 3] = 0;
+        continue;
+      }
+      d[q] = Math.min(255, Math.floor((r * 510 + a) / (2 * a)));
+      d[q + 1] = Math.min(255, Math.floor((g * 510 + a) / (2 * a)));
+      d[q + 2] = Math.min(255, Math.floor((b * 510 + a) / (2 * a)));
+      d[q + 3] = Math.min(255, Math.floor((2 * a + 255) / 510));
+    }
+  }
+  return out;
+}
+function composite(base, top, x, y) {
+  const bd = base.data;
+  const td = top.data;
+  const x0 = Math.max(0, x);
+  const y0 = Math.max(0, y);
+  const x1 = Math.min(base.width, x + top.width);
+  const y1 = Math.min(base.height, y + top.height);
+  for (let by = y0; by < y1; by++) {
+    for (let bx = x0; bx < x1; bx++) {
+      const t = ((by - y) * top.width + (bx - x)) * 4;
+      const sa = td[t + 3];
+      if (sa === 0) continue;
+      const b = (by * base.width + bx) * 4;
+      if (sa === 255) {
+        bd[b] = td[t];
+        bd[b + 1] = td[t + 1];
+        bd[b + 2] = td[t + 2];
+        bd[b + 3] = 255;
+        continue;
+      }
+      const da = bd[b + 3];
+      const keep = da * (255 - sa);
+      const outA = sa * 255 + keep;
+      for (let c = 0; c < 3; c++) {
+        const num = td[t + c] * sa * 255 + bd[b + c] * keep;
+        bd[b + c] = Math.floor((num * 2 + outA) / (2 * outA));
+      }
+      bd[b + 3] = Math.floor((outA * 2 + 255) / 510);
+    }
+  }
+  return base;
+}
+function flatten(src, color) {
+  return composite(
+    fill(src.width, src.height, [color[0], color[1], color[2], 255]),
+    src,
+    0,
+    0
+  );
+}
+function hasTransparency(src) {
+  const d = src.data;
+  for (let i = 3; i < d.length; i += 4) if (d[i] !== 255) return true;
+  return false;
+}
+function blur(src, radius) {
+  let cur = src;
+  for (let pass = 0; pass < 3; pass++) {
+    cur = boxPass(boxPass(cur, radius, true), radius, false);
+  }
+  return cur;
+}
+function boxPass(src, radius, horizontal) {
+  const { width, height } = src;
+  const out = makeRaster(width, height);
+  const n = radius * 2 + 1;
+  const len = horizontal ? width : height;
+  const lines3 = horizontal ? height : width;
+  const step = horizontal ? 4 : width * 4;
+  const s = src.data;
+  const d = out.data;
+  for (let line = 0; line < lines3; line++) {
+    const base = horizontal ? line * width * 4 : line * 4;
+    for (let c = 0; c < 4; c++) {
+      let sum = 0;
+      for (let k = -radius; k <= radius; k++) {
+        const i = Math.min(len - 1, Math.max(0, k));
+        sum += s[base + i * step + c];
+      }
+      for (let i = 0; i < len; i++) {
+        d[base + i * step + c] = Math.floor((sum * 2 + n) / (2 * n));
+        const add3 = Math.min(len - 1, i + radius + 1);
+        const drop = Math.max(0, i - radius);
+        sum += s[base + add3 * step + c] - s[base + drop * step + c];
+      }
+    }
+  }
+  return out;
+}
+function boundingBox(src, keep) {
+  let minX = src.width;
+  let minY = src.height;
+  let maxX = -1;
+  let maxY = -1;
+  const d = src.data;
+  for (let y = 0; y < src.height; y++)
+    for (let x = 0; x < src.width; x++) {
+      if (!keep(d, (y * src.width + x) * 4)) continue;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  return maxX < 0 ? null : { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
+}
+function colorDistance(d, i, color) {
+  return Math.max(
+    Math.abs(d[i] - color[0]),
+    Math.abs(d[i + 1] - color[1]),
+    Math.abs(d[i + 2] - color[2]),
+    Math.abs(d[i + 3] - color[3])
+  );
+}
+function pixelAt(src, x, y) {
+  const i = (y * src.width + x) * 4;
+  const d = src.data;
+  return [d[i], d[i + 1], d[i + 2], d[i + 3]];
+}
+function mulDiv(a, b, c) {
+  return Math.floor((2 * a * b + c) / (2 * c));
+}
+function containSize(w, h, boxW, boxH) {
+  if (w * boxH >= h * boxW)
+    return { width: boxW, height: Math.max(1, mulDiv(h, boxW, w)) };
+  return { width: Math.max(1, mulDiv(w, boxH, h)), height: boxH };
+}
+function coverRect(w, h, ratioW, ratioH, focal) {
+  let cw;
+  let ch;
+  if (w * ratioH > h * ratioW) {
+    ch = h;
+    cw = Math.min(w, Math.max(1, mulDiv(h, ratioW, ratioH)));
+  } else {
+    cw = w;
+    ch = Math.min(h, Math.max(1, mulDiv(w, ratioH, ratioW)));
+  }
+  const x = Math.min(w - cw, Math.max(0, Math.round(focal.x * w - cw / 2)));
+  const y = Math.min(h - ch, Math.max(0, Math.round(focal.y * h - ch / 2)));
+  return { x, y, width: cw, height: ch };
+}
+function channels(src, n) {
+  if (n === 4) return src.data;
+  const out = new Uint8Array(src.width * src.height * 3);
+  const d = src.data;
+  for (let i = 0, j = 0; i < d.length; i += 4, j += 3) {
+    out[j] = d[i];
+    out[j + 1] = d[i + 1];
+    out[j + 2] = d[i + 2];
+  }
+  return out;
+}
+function pixelSha256(width, height, n, pixels) {
+  return createHash13("sha256").update(`pkey-pixels/1 ${width}x${height}x${n}
+`).update(pixels).digest("hex");
+}
+
+// src/listing/io.ts
+var MAX_SIDE = 16384;
+var loaded = null;
+async function loadSharp() {
+  loaded ??= import("sharp").then((m) => m.default).catch((e) => {
+    loaded = null;
+    throw new Error(
+      `pkey listing assets needs the sharp image library (${e.message}). Install it beside pkey: npm install sharp`
+    );
+  });
+  return loaded;
+}
+async function decodeImage(bytes, what) {
+  const sharp = await loadSharp();
+  let meta;
+  try {
+    meta = await sharp(bytes, { failOn: "error" }).metadata();
+  } catch (e) {
+    throw new Error(
+      `${what} is not an image sharp can read (${e.message}).`
+    );
+  }
+  if (!meta.width || !meta.height)
+    throw new Error(`${what} has no pixel dimensions.`);
+  if (meta.width > MAX_SIDE || meta.height > MAX_SIDE)
+    throw new Error(
+      `${what} is ${meta.width}x${meta.height}; at most ${MAX_SIDE} px a side.`
+    );
+  const { data, info } = await sharp(bytes, { failOn: "error" }).rotate().toColourspace("srgb").ensureAlpha().raw({ depth: "uchar" }).toBuffer({ resolveWithObject: true });
+  if (info.channels !== 4)
+    throw new Error(`${what} decoded to ${info.channels} channels, not RGBA.`);
+  return {
+    raster: {
+      width: info.width,
+      height: info.height,
+      data: new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
+    },
+    alpha: meta.hasAlpha === true,
+    format: meta.format ?? "unknown"
+  };
+}
+async function encodeImage(raster, format, alpha) {
+  const sharp = await loadSharp();
+  const n = alpha ? 4 : 3;
+  const img = sharp(Buffer.from(channels(raster, n)), {
+    raw: { width: raster.width, height: raster.height, channels: n }
+  });
+  return format === "jpeg" ? img.jpeg({ quality: 92, chromaSubsampling: "4:4:4", mozjpeg: false }).toBuffer() : img.png({ compressionLevel: 9, palette: false }).toBuffer();
+}
+
+// src/listing/derive.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// src/listing/specs.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var PACK_STORES = [
+  "play",
+  "ms-store",
+  "steam",
+  "itch",
+  "snap",
+  "flathub",
+  "winget",
+  "fdroid"
+];
+var MASTER_RULES = {
+  "icon-master": "free",
+  "key-art": "none",
+  "key-art-portrait": "none",
+  wordmark: "title"
+};
+var MB = 1024 * 1024;
+var icon = (slot, store, name, size, format = "png", extra = {}) => ({
+  kind: "icon",
+  slot,
+  store,
+  name,
+  size,
+  format,
+  alpha: format === "png",
+  textAllowed: "free",
+  ...extra
+});
+var art = (slot, store, name, sizes, layout, extra = {}) => ({
+  kind: "compose",
+  slot,
+  store,
+  name,
+  sizes,
+  format: "png",
+  alpha: false,
+  textAllowed: layout ? "title" : "none",
+  ...layout ? { layout } : {},
+  ...extra
+});
+var centre = (boxW, boxH) => ({
+  boxW,
+  boxH,
+  cx: 0.5,
+  cy: 0.5
+});
+var upper = (boxW, boxH, cy) => ({
+  boxW,
+  boxH,
+  cx: 0.5,
+  cy
+});
+var SLOT_SPECS = [
+  // ── Derived from the icon master ──
+  icon("play:icon", "play", "icon", 512, "png", { maxBytes: 1 * MB }),
+  icon("ms-store:tile", "ms-store", "tile", 300),
+  icon("steam:community-icon", "steam", "community-icon", 184, "jpeg"),
+  icon("steam:shortcut-icon", "steam", "shortcut-icon", 256),
+  icon("flathub:icon", "flathub", "icon", 512),
+  icon("snap:icon", "snap", "icon", 512),
+  icon("winget:icon", "winget", "icon", 256),
+  icon("fdroid:icon", "fdroid", "icon", 512),
+  {
+    kind: "adaptive",
+    slot: "icon-adaptive-fg",
+    store: "play",
+    name: "adaptive-foreground",
+    layer: "fg",
+    format: "png",
+    alpha: true,
+    textAllowed: "free"
+  },
+  {
+    kind: "adaptive",
+    slot: "icon-adaptive-bg",
+    store: "play",
+    name: "adaptive-background",
+    layer: "bg",
+    format: "png",
+    alpha: false,
+    textAllowed: "none"
+  },
+  {
+    kind: "adaptive",
+    slot: "icon-adaptive-mono",
+    store: "play",
+    name: "adaptive-monochrome",
+    layer: "mono",
+    format: "png",
+    alpha: true,
+    textAllowed: "free"
+  },
+  // ── Composed from key art and the wordmark ──
+  art(
+    "play:feature-graphic",
+    "play",
+    "feature-graphic",
+    [[1024, 500]],
+    centre(0.7, 0.5),
+    {
+      maxBytes: 15 * MB
+    }
+  ),
+  art(
+    "fdroid:feature-graphic",
+    "fdroid",
+    "feature-graphic",
+    [[1024, 500]],
+    centre(0.7, 0.5)
+  ),
+  art(
+    "steam:header-capsule",
+    "steam",
+    "header-capsule",
+    [[920, 430]],
+    centre(0.75, 0.55)
+  ),
+  art(
+    "steam:main-capsule",
+    "steam",
+    "main-capsule",
+    [[1232, 706]],
+    centre(0.6, 0.5)
+  ),
+  art(
+    "steam:vertical-capsule",
+    "steam",
+    "vertical-capsule",
+    [[748, 896]],
+    upper(0.85, 0.3, 0.22),
+    {
+      portrait: true
+    }
+  ),
+  // "The logo should nearly fill the small capsule."
+  art(
+    "steam:small-capsule",
+    "steam",
+    "small-capsule",
+    [[462, 174]],
+    centre(0.92, 0.82)
+  ),
+  art(
+    "steam:library-capsule",
+    "steam",
+    "library-capsule",
+    [[600, 900]],
+    upper(0.85, 0.3, 0.22),
+    {
+      portrait: true
+    }
+  ),
+  art(
+    "steam:library-header",
+    "steam",
+    "library-header",
+    [[920, 430]],
+    centre(0.75, 0.55)
+  ),
+  // "No text": key art only. Steam overlays the logo inside the central 860x380 safe area.
+  art("steam:library-hero", "steam", "library-hero", [[3840, 1240]], null),
+  {
+    kind: "logo",
+    slot: "steam:library-logo",
+    store: "steam",
+    name: "library-logo",
+    box: [1280, 720],
+    format: "png",
+    alpha: true,
+    textAllowed: "title"
+  },
+  art(
+    "steam:page-background",
+    "steam",
+    "page-background",
+    [[1438, 810]],
+    null,
+    { blur: true }
+  ),
+  // "Must not include the product's title or other text."
+  art(
+    "ms-store:super-hero",
+    "ms-store",
+    "super-hero",
+    [
+      [3840, 2160],
+      [1920, 1080]
+    ],
+    null
+  ),
+  // Title required, in the top two thirds.
+  art(
+    "ms-store:poster",
+    "ms-store",
+    "poster",
+    [
+      [1440, 2160],
+      [720, 1080]
+    ],
+    upper(0.85, 0.25, 0.25),
+    { portrait: true }
+  ),
+  art(
+    "ms-store:box-art",
+    "ms-store",
+    "box-art",
+    [
+      [2160, 2160],
+      [1080, 1080]
+    ],
+    upper(0.8, 0.3, 0.3)
+  ),
+  art("itch:cover", "itch", "cover", [[630, 500]], centre(0.8, 0.4)),
+  art("snap:banner", "snap", "banner", [[1920, 640]], centre(0.6, 0.6))
+];
+var ADAPTIVE_SIZE = 432;
+var ADAPTIVE_MARGIN_DP = 21;
+var ADAPTIVE_CANVAS_DP = 108;
+var SCREENSHOT_CLASSES = [
+  "phone-portrait",
+  "tablet",
+  "desktop-16x9",
+  "desktop-16x10",
+  "tv",
+  "wear",
+  "xr"
+];
+var MAX_STORE_SCREENSHOTS = 16;
+var APPLE_SIZES = {
+  // iPhone 6.9", 6.7" and 6.5"-class display sizes, portrait.
+  "phone-portrait": [
+    [1320, 2868],
+    [1290, 2796],
+    [1260, 2736],
+    [1284, 2778],
+    [1242, 2688]
+  ],
+  // iPad 13" and 12.9".
+  tablet: [
+    [2064, 2752],
+    [2048, 2732]
+  ],
+  // Mac, 16:10.
+  "desktop-16x10": [
+    [2880, 1800],
+    [2560, 1600],
+    [1440, 900],
+    [1280, 800]
+  ]
+};
+function centreCrop(w, h, rw, rh) {
+  if (w * rh > h * rw) {
+    const cw = Math.floor(h * rw / rh);
+    return { x: Math.floor((w - cw) / 2), y: 0, width: cw, height: h };
+  }
+  const ch = Math.floor(w * rh / rw);
+  return { x: 0, y: Math.floor((h - ch) / 2), width: w, height: ch };
+}
+function padTo(w, h, rw, rh) {
+  if (w * rh > h * rw) return { width: w, height: Math.ceil(w * rh / rw) };
+  return { width: Math.ceil(h * rw / rh), height: h };
+}
+var SCREENSHOT_RULES = [
+  {
+    // Apple's own size classes, no alpha: the masters usually come from here, so a mismatch is
+    // red, never cropped (a crop would not make another device size).
+    store: "app-store",
+    classes: ["phone-portrait", "tablet", "desktop-16x10"],
+    check: (cls, width, height) => appleSizeCheck(cls, width, height)
+  },
+  {
+    // Each side 320 to 3840 px, the long side at most twice the short one; at least 1080 px to
+    // be eligible for featuring.
+    store: "play",
+    classes: ["phone-portrait", "tablet", "tv", "wear"],
+    check(_cls, width, height) {
+      const long = Math.max(width, height);
+      const short = Math.min(width, height);
+      const problems = [];
+      const notes = [];
+      if (short < 320) {
+        problems.push(`a side of ${short} px is under Play's 320 px minimum`);
+        return { fits: false, problems, notes };
+      }
+      if (long > 3840)
+        problems.push(`a side of ${long} px is over Play's 3840 px maximum`);
+      if (long > 2 * short)
+        problems.push(
+          `${width}x${height} is ${(long / short).toFixed(2)}:1, over Play's 2:1 ("can't be more than twice")`
+        );
+      if (short < 1080)
+        notes.push("under 1080 px: not eligible for Play's featuring");
+      if (problems.length === 0) return { fits: true, problems, notes };
+      if (long > 3840) return { fits: false, problems, notes };
+      const portrait = height >= width;
+      const crop2 = portrait ? centreCrop(width, height, 1, 2) : centreCrop(width, height, 2, 1);
+      const pad2 = portrait ? padTo(width, height, 1, 2) : padTo(width, height, 2, 1);
+      return { fits: false, problems, notes, proposal: { crop: crop2, pad: pad2 } };
+    }
+  },
+  {
+    // At least 1366x768 (or 768x1366 portrait).
+    store: "ms-store",
+    classes: ["desktop-16x9", "desktop-16x10", "tablet", "tv"],
+    check(_cls, width, height) {
+      const ok = width >= 1366 && height >= 768 || width >= 768 && height >= 1366;
+      return ok ? { fits: true, problems: [], notes: [] } : {
+        fits: false,
+        problems: [
+          `${width}x${height} is under the Microsoft Store's 1366x768`
+        ],
+        notes: []
+      };
+    }
+  },
+  {
+    // 16:9 at 1920x1080 or more; gameplay only (the operator's call).
+    store: "steam",
+    classes: ["desktop-16x9", "desktop-16x10", "tv"],
+    check(_cls, width, height) {
+      const problems = [];
+      const notes = [
+        "Steam wants gameplay: no menus, logos or text-only screens"
+      ];
+      const exact = width * 9 === height * 16;
+      if (exact && width >= 1920) return { fits: true, problems, notes };
+      problems.push(
+        exact ? `${width}x${height} is under Steam's 1920x1080` : `${width}x${height} is not 16:9`
+      );
+      if (exact) return { fits: false, problems, notes };
+      const crop2 = centreCrop(width, height, 16, 9);
+      const pad2 = padTo(width, height, 16, 9);
+      const proposal = {
+        ...crop2.width >= 1920 ? { crop: crop2 } : {},
+        ...pad2.width >= 1920 ? { pad: pad2 } : {}
+      };
+      if (!proposal.crop && !proposal.pad) {
+        problems.push(
+          `${width}x${height} is under Steam's 1920x1080 even padded`
+        );
+        return { fits: false, problems, notes };
+      }
+      return { fits: false, problems, notes, proposal };
+    }
+  }
+];
+function appleSizeCheck(cls, width, height) {
+  const sizes = APPLE_SIZES[cls] ?? [];
+  const ok = sizes.some(
+    ([w, h]) => w === width && h === height || w === height && h === width
+  );
+  return ok ? { fits: true, problems: [], notes: [] } : {
+    fits: false,
+    problems: [
+      `${width}x${height} is not an App Store ${cls} size (${sizes.map(([w, h]) => `${w}x${h}`).join(", ")})`
+    ],
+    notes: []
+  };
+}
+
+// src/listing/derive.ts
+function defaultBackground(icon2) {
+  if (icon2) {
+    const c = pixelAt(icon2, 0, 0);
+    if (c[3] === 255) return [c[0], c[1], c[2]];
+  }
+  return [0, 0, 0];
+}
+function parseColor(value) {
+  const m = /^#?([0-9a-fA-F]{6})$/.exec(value.trim());
+  if (!m) throw new Error(`${value} is not a colour like #1a2b3c.`);
+  const n = parseInt(m[1], 16);
+  return [n >> 16 & 255, n >> 8 & 255, n & 255];
+}
+function parseFocal(value) {
+  const m = /^\s*([01](?:\.\d+)?|\.\d+)\s*,\s*([01](?:\.\d+)?|\.\d+)\s*$/.exec(
+    value
+  );
+  const x = m ? Number(m[1]) : NaN;
+  const y = m ? Number(m[2]) : NaN;
+  if (!(x >= 0 && x <= 1 && y >= 0 && y <= 1))
+    throw new Error(
+      `${value} is not a focal point: give x,y as fractions from 0 to 1, e.g. 0.5,0.4.`
+    );
+  return { x, y };
+}
+function analyseAdaptive(icon2) {
+  const n = icon2.width;
+  const corners = [
+    pixelAt(icon2, 0, 0),
+    pixelAt(icon2, n - 1, 0),
+    pixelAt(icon2, 0, n - 1),
+    pixelAt(icon2, n - 1, n - 1)
+  ];
+  let background;
+  let mark;
+  if (corners.every((c) => c[3] === 0)) {
+    background = { transparent: true };
+    mark = boundingBox(icon2, (d, i) => d[i + 3] > 16);
+  } else if (corners.every(
+    (c) => c[3] === 255 && colorDistance(Uint8Array.from(c), 0, corners[0]) <= 8
+  )) {
+    const color = corners[0];
+    background = { transparent: false, color };
+    mark = boundingBox(icon2, (d, i) => colorDistance(d, i, color) > 24);
+  } else {
+    return {
+      derivable: false,
+      reason: "the master's background is neither transparent nor one colour",
+      background: { transparent: true },
+      mark: null
+    };
+  }
+  if (!mark)
+    return {
+      derivable: false,
+      reason: "the master has no visible mark",
+      background,
+      mark
+    };
+  const margin = Math.ceil(n * ADAPTIVE_MARGIN_DP / ADAPTIVE_CANVAS_DP);
+  const inside = mark.x >= margin && mark.y >= margin && mark.x + mark.width <= n - margin && mark.y + mark.height <= n - margin;
+  return inside ? { derivable: true, background, mark } : {
+    derivable: false,
+    reason: `the mark (${mark.width}x${mark.height} at ${mark.x},${mark.y}) reaches outside the central 66 of 108 dp (~61 %); draw the adaptive layers by hand`,
+    background,
+    mark
+  };
+}
+function keyed(icon2, a) {
+  if (a.background.transparent) return icon2;
+  const color = a.background.color;
+  const out = makeRaster(icon2.width, icon2.height);
+  const s = icon2.data;
+  const d = out.data;
+  for (let i = 0; i < s.length; i += 4) {
+    const dist = Math.max(
+      Math.abs(s[i] - color[0]),
+      Math.abs(s[i + 1] - color[1]),
+      Math.abs(s[i + 2] - color[2])
+    );
+    d[i] = s[i];
+    d[i + 1] = s[i + 1];
+    d[i + 2] = s[i + 2];
+    d[i + 3] = Math.min(255, Math.max(0, Math.floor((dist - 8) * 255 / 40)));
+  }
+  return out;
+}
+function adaptiveLayers(icon2, a, background) {
+  const fg = resize(keyed(icon2, a), ADAPTIVE_SIZE, ADAPTIVE_SIZE);
+  const bgColor = a.background.transparent ? background : [a.background.color[0], a.background.color[1], a.background.color[2]];
+  const bg = fill(ADAPTIVE_SIZE, ADAPTIVE_SIZE, [...bgColor, 255]);
+  const mono = makeRaster(ADAPTIVE_SIZE, ADAPTIVE_SIZE);
+  for (let i = 0; i < mono.data.length; i += 4) {
+    mono.data[i] = mono.data[i + 1] = mono.data[i + 2] = 255;
+    mono.data[i + 3] = fg.data[i + 3];
+  }
+  return { fg, bg, mono };
+}
+function trimmed(wordmark) {
+  const box = boundingBox(wordmark, (d, i) => d[i + 3] > 0);
+  return box ? crop(wordmark, box) : wordmark;
+}
+function placeWordmark(canvas, wordmark, spec) {
+  const layout = spec.layout;
+  const mark = trimmed(wordmark);
+  const boxW = Math.max(1, Math.round(canvas.width * layout.boxW));
+  const boxH = Math.max(1, Math.round(canvas.height * layout.boxH));
+  const size = containSize(mark.width, mark.height, boxW, boxH);
+  const notes = [];
+  if (size.width > mark.width)
+    notes.push(
+      `the wordmark is upscaled from ${mark.width}x${mark.height} to ${size.width}x${size.height}`
+    );
+  const scaled = resize(mark, size.width, size.height);
+  const x = Math.min(
+    canvas.width - size.width,
+    Math.max(0, Math.round(canvas.width * layout.cx - size.width / 2))
+  );
+  const y = Math.min(
+    canvas.height - size.height,
+    Math.max(0, Math.round(canvas.height * layout.cy - size.height / 2))
+  );
+  composite(canvas, scaled, x, y);
+  return notes;
+}
+function composeSlot(spec, masters, opts) {
+  const portraitArt = spec.portrait ? masters["key-art-portrait"] : void 0;
+  const source = portraitArt ?? masters["key-art"];
+  const sourceSlot = portraitArt ? "key-art-portrait" : "key-art";
+  const notes = [];
+  const bg = [...opts.background, 255];
+  if (!source) {
+    const icon2 = masters["icon-master"];
+    const [w2, h2] = spec.sizes[spec.sizes.length - 1];
+    if (!icon2)
+      return {
+        spec,
+        status: "missing",
+        derivedFrom: null,
+        notes: ["no key art and no icon master to make it from"]
+      };
+    const canvas2 = fill(w2, h2, bg);
+    const side = Math.max(1, Math.round(Math.min(w2, h2) * 0.6));
+    const scaled = resize(icon2, side, side);
+    composite(
+      canvas2,
+      scaled,
+      Math.round((w2 - side) / 2),
+      Math.round((h2 - side) / 2)
+    );
+    return {
+      spec,
+      status: "red",
+      raster: canvas2,
+      derivedFrom: "icon-master",
+      notes: [
+        "no key art: an icon-only fallback; this store needs key art",
+        ...spec.textAllowed === "none" ? [
+          "this slot allows no text, and the icon master may carry some: check the fallback"
+        ] : []
+      ]
+    };
+  }
+  if (spec.portrait && !portraitArt)
+    notes.push("no portrait key art: cropped from the landscape key art");
+  const focal = portraitArt ? opts.focalPortrait : opts.focal;
+  let chosen = spec.sizes[spec.sizes.length - 1];
+  let rect = coverRect(
+    source.width,
+    source.height,
+    chosen[0],
+    chosen[1],
+    focal
+  );
+  for (const size of spec.sizes) {
+    const r = coverRect(source.width, source.height, size[0], size[1], focal);
+    if (r.width >= size[0] && r.height >= size[1]) {
+      chosen = size;
+      rect = r;
+      break;
+    }
+  }
+  const [w, h] = chosen;
+  let status = "ok";
+  if (rect.width < w || rect.height < h) {
+    status = "warn";
+    notes.push(
+      `the key art covers only ${rect.width}x${rect.height} at this ratio: upscaled to ${w}x${h}; supply larger key art`
+    );
+  }
+  let canvas = resize(crop(source, rect), w, h);
+  if (spec.blur) canvas = blur(canvas, Math.max(2, Math.round(w / 96)));
+  if (hasTransparency(canvas)) canvas = flatten(canvas, opts.background);
+  if (spec.layout) {
+    if (masters.wordmark)
+      notes.push(...placeWordmark(canvas, masters.wordmark, spec));
+    else {
+      status = "red";
+      notes.push(
+        "a title slot without a wordmark: key art only; add the wordmark"
+      );
+    }
+  }
+  return { spec, status, raster: canvas, derivedFrom: sourceSlot, notes };
+}
+function deriveAll(masters, opts) {
+  const icon2 = masters["icon-master"];
+  const adaptive = icon2 ? analyseAdaptive(icon2) : null;
+  const layers = icon2 && adaptive?.derivable ? adaptiveLayers(icon2, adaptive, opts.background) : null;
+  const out = [];
+  for (const spec of SLOT_SPECS) {
+    switch (spec.kind) {
+      case "icon": {
+        if (!icon2) {
+          out.push({
+            spec,
+            status: "missing",
+            derivedFrom: null,
+            notes: ["no icon master"]
+          });
+          break;
+        }
+        const notes = [];
+        let status = "ok";
+        if (icon2.width < spec.size) {
+          status = "warn";
+          notes.push(
+            `upscaled from the ${icon2.width}x${icon2.height} master; supply a 1024x1024 master`
+          );
+        }
+        let raster = resize(icon2, spec.size, spec.size);
+        if (!spec.alpha) raster = flatten(raster, opts.background);
+        out.push({ spec, status, raster, derivedFrom: "icon-master", notes });
+        break;
+      }
+      case "adaptive": {
+        if (!icon2) {
+          out.push({
+            spec,
+            status: "missing",
+            derivedFrom: null,
+            notes: ["no icon master"]
+          });
+          break;
+        }
+        if (!layers) {
+          out.push({
+            spec,
+            status: "human",
+            derivedFrom: null,
+            notes: [adaptive?.reason ?? "not derivable"]
+          });
+          break;
+        }
+        out.push({
+          spec,
+          status: "ok",
+          raster: layers[spec.layer],
+          derivedFrom: "icon-master",
+          notes: []
+        });
+        break;
+      }
+      case "compose":
+        out.push(composeSlot(spec, masters, opts));
+        break;
+      case "logo": {
+        const wordmark = masters.wordmark;
+        if (!wordmark) {
+          out.push({
+            spec,
+            status: "missing",
+            derivedFrom: null,
+            notes: ["no wordmark: Steam's library logo is the wordmark export"]
+          });
+          break;
+        }
+        const mark = trimmed(wordmark);
+        const size = containSize(
+          mark.width,
+          mark.height,
+          spec.box[0],
+          spec.box[1]
+        );
+        const notes = [];
+        let status = "ok";
+        if (size.width > mark.width) {
+          status = "warn";
+          notes.push(
+            `upscaled from ${mark.width}x${mark.height}; supply a larger wordmark`
+          );
+        }
+        out.push({
+          spec,
+          status,
+          raster: resize(mark, size.width, size.height),
+          derivedFrom: "wordmark",
+          notes
+        });
+        break;
+      }
+    }
+  }
+  return out;
+}
+function applyPad(src, size, bg) {
+  const canvas = fill(size.width, size.height, [...bg, 255]);
+  return composite(
+    canvas,
+    src,
+    Math.floor((size.width - src.width) / 2),
+    Math.floor((size.height - src.height) / 2)
+  );
+}
+function fitScreenshots(inputs, accepted, background) {
+  const used = /* @__PURE__ */ new Set();
+  const outputs = [];
+  for (const rule of SCREENSHOT_RULES) {
+    for (const cls of rule.classes) {
+      const shots = inputs.filter((s) => s.cls === cls).sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+      if (shots.length > MAX_STORE_SCREENSHOTS)
+        throw new Error(
+          `${shots.length} ${cls} screenshots: a store slot holds at most ${MAX_STORE_SCREENSHOTS}.`
+        );
+      shots.forEach((shot, i) => {
+        const id = `${rule.store}/${cls}/${shot.name}`;
+        const index = i + 1;
+        const base = {
+          id,
+          store: rule.store,
+          cls,
+          name: shot.name,
+          index,
+          slot: `${rule.store}:screenshot:${cls}:${index}`,
+          source: { width: shot.raster.width, height: shot.raster.height }
+        };
+        const fit = rule.check(cls, shot.raster.width, shot.raster.height);
+        const notes = [...fit.notes];
+        const opaque = (r) => {
+          if (!hasTransparency(r)) return r;
+          notes.push(
+            "transparent pixels flattened: stores take opaque screenshots"
+          );
+          return flatten(r, background);
+        };
+        if (fit.fits) {
+          outputs.push({
+            ...base,
+            status: "fits",
+            method: "as-is",
+            problems: [],
+            notes,
+            raster: opaque(shot.raster)
+          });
+          return;
+        }
+        if (!fit.proposal) {
+          outputs.push({
+            ...base,
+            status: "red",
+            method: null,
+            problems: fit.problems,
+            notes
+          });
+          return;
+        }
+        const proposal = fit.proposal;
+        const choice = accepted.get(id);
+        if (choice) used.add(id);
+        const method = choice === "pad" ? "pad" : proposal.crop ? "crop" : "pad";
+        if (choice === "pad" && !proposal.pad)
+          throw new Error(
+            `--pad ${id}: no pad fits ${rule.store}; accept the crop instead.`
+          );
+        const raster = opaque(
+          method === "crop" ? crop(shot.raster, proposal.crop) : applyPad(shot.raster, proposal.pad, background)
+        );
+        const after = rule.check(cls, raster.width, raster.height);
+        if (!after.fits)
+          throw new Error(
+            `internal: the ${method} proposed for ${id} does not fit ${rule.store}`
+          );
+        outputs.push({
+          ...base,
+          status: choice ? "accepted" : "pending",
+          method,
+          proposal,
+          problems: fit.problems,
+          notes,
+          raster
+        });
+      });
+    }
+  }
+  return {
+    outputs,
+    unused: [...accepted.keys()].filter((id) => !used.has(id))
+  };
+}
+
+// src/listingAssets.ts
+var LISTING_ASSETS_USAGE = "Usage: pkey listing assets --out <dir> [--icon <png>] [--key-art <png>]\n              [--key-art-portrait <png>] [--wordmark <png>] [--screenshots <dir>]\n              [--focal x,y] [--focal-portrait x,y] [--background #rrggbb]\n              [--accept <store/class/name> ...] [--pad <store/class/name> ...] [--locale <code>]\n              [--upload --product <slug> [--base-url <url>] [--dry-run]]";
+var REPORT_FORMAT = "pkey-listing-assets/1";
+var SCREENSHOT_EXT = /\.(png|jpe?g|webp)$/i;
+var LOCALE_RE = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/;
+var sha2564 = (b) => createHash14("sha256").update(b).digest("hex");
+var hex4 = (c) => `#${c.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+async function loadMaster(cwd, slot, file) {
+  if (!file) return null;
+  const p = path21.resolve(cwd, file);
+  const bytes = await readFile17(p);
+  const decoded = await decodeImage(
+    bytes,
+    `--${slot === "icon-master" ? "icon" : slot} ${file}`
+  );
+  return { slot, path: p, bytes, decoded };
+}
+async function loadScreenshots(cwd, dir) {
+  if (!dir) return [];
+  const root = path21.resolve(cwd, dir);
+  const out = [];
+  const entries = (await readdir9(root, { withFileTypes: true })).sort(
+    (a, b) => a.name < b.name ? -1 : 1
+  );
+  for (const e of entries) {
+    if (e.name.startsWith(".")) continue;
+    if (!e.isDirectory() || !SCREENSHOT_CLASSES.includes(e.name))
+      throw new Error(
+        `--screenshots ${dir}: ${e.name} is not a size-class directory (${SCREENSHOT_CLASSES.join(", ")}).`
+      );
+    const cls = e.name;
+    const files = (await readdir9(path21.join(root, cls))).filter((f) => !f.startsWith(".")).sort();
+    for (const f of files) {
+      if (!SCREENSHOT_EXT.test(f) || !/^[A-Za-z0-9_.-]+$/.test(f))
+        throw new Error(
+          `--screenshots ${dir}/${cls}/${f}: screenshots are .png, .jpg or .webp files with plain names.`
+        );
+      const p = path21.join(root, cls, f);
+      const decoded = await decodeImage(
+        await readFile17(p),
+        `${dir}/${cls}/${f}`
+      );
+      out.push({
+        cls,
+        name: f.replace(SCREENSHOT_EXT, ""),
+        raster: decoded.raster,
+        file: `${cls}/${f}`,
+        path: p
+      });
+    }
+  }
+  const names = /* @__PURE__ */ new Set();
+  for (const s of out) {
+    const key = `${s.cls}/${s.name}`;
+    if (names.has(key))
+      throw new Error(
+        `--screenshots: two ${s.cls} files are named ${s.name} (ids must be unique).`
+      );
+    names.add(key);
+  }
+  return out;
+}
+async function clearOut(dir) {
+  if (!existsSync2(dir)) return;
+  const entries = await readdir9(dir);
+  if (entries.length === 0) return;
+  const reportPath = path21.join(dir, "report.json");
+  let previous;
+  try {
+    previous = JSON.parse(await readFile17(reportPath, "utf8"));
+  } catch {
+    previous = null;
+  }
+  if (!previous || previous.format !== REPORT_FORMAT || !Array.isArray(previous.files))
+    throw new Error(
+      `--out ${dir} is not empty and holds no ${REPORT_FORMAT} report.json: give an empty or new directory.`
+    );
+  const dirs = /* @__PURE__ */ new Set();
+  for (const rel of previous.files) {
+    if (typeof rel !== "string" || rel.startsWith("/") || rel.split("/").includes(".."))
+      continue;
+    const p = path21.join(dir, ...rel.split("/"));
+    await rm6(p, { force: true });
+    for (let d = path21.dirname(p); d.startsWith(dir) && d !== dir; d = path21.dirname(d))
+      dirs.add(d);
+  }
+  for (const d of [...dirs].sort((a, b) => b.length - a.length)) {
+    try {
+      await rmdir2(d);
+    } catch {
+    }
+  }
+}
+function acceptances(accept, pad2) {
+  const out = /* @__PURE__ */ new Map();
+  const split = (v) => v.split(",").map((s) => s.trim()).filter(Boolean);
+  for (const id of accept.flatMap(split)) out.set(id, "accept");
+  for (const id of pad2.flatMap(split)) {
+    if (out.has(id))
+      throw new Error(`${id} is named by both --accept and --pad.`);
+    out.set(id, "pad");
+  }
+  return out;
+}
+function previewHtml(report) {
+  const esc = (s) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+  const card = (title, status, file, meta, notes) => `<figure class="${esc(status)}"><figcaption><b>${esc(title)}</b> <i>${esc(status)}</i><br>${esc(meta)}${notes.map((n) => `<br><small>${esc(n)}</small>`).join("")}</figcaption>${file ? `<img src="${esc(file)}" alt="${esc(title)}" loading="lazy">` : ""}</figure>`;
+  const slots = report.slots.map(
+    (s) => card(
+      s.slot,
+      s.status,
+      s.file,
+      s.width ? `${s.width}x${s.height} ${s.format}${s.alpha ? " alpha" : ""}` : "",
+      s.notes
+    )
+  ).join("\n");
+  const shots = report.screenshots.map(
+    (s) => card(
+      s.id,
+      s.status,
+      s.file,
+      `${s.source.width}x${s.source.height}${s.width ? ` -> ${s.width}x${s.height} (${s.method})` : ""}`,
+      [...s.problems, ...s.notes]
+    )
+  ).join("\n");
+  return `<!doctype html>
+<meta charset="utf-8">
+<title>pkey listing assets</title>
+<style>
+body{font:14px system-ui,sans-serif;margin:24px;background:#f6f8ff;color:#060912}
+section{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+figure{margin:0;padding:8px;background:#fff;border:2px solid #ccd;border-radius:8px}
+figure.red,figure.missing{border-color:#c62828}figure.warn,figure.pending,figure.human{border-color:#d07a00}
+figure.ok,figure.fits,figure.accepted{border-color:#2e7d32}
+img{max-width:100%;height:auto;display:block;margin-top:8px;background:repeating-conic-gradient(#ddd 0 25%,#fff 0 50%) 0 0/16px 16px}
+</style>
+<h1>Listing assets</h1>
+<p>Generated by <code>pkey listing assets</code>. Nothing here has been pushed to a store.</p>
+<h2>Store art and icons</h2>
+<section>
+${slots}
+</section>
+<h2>Screenshots</h2>
+<section>
+${shots}
+</section>
+`;
+}
+async function listingAssets(opts) {
+  const out = opts.stdout;
+  if (!opts.out?.trim()) throw new Error(LISTING_ASSETS_USAGE);
+  if (!opts.icon && !opts.keyArt && !opts.keyArtPortrait && !opts.wordmark && !opts.screenshots)
+    throw new Error(`Give at least one input.
+${LISTING_ASSETS_USAGE}`);
+  if (opts.upload && !opts.product?.trim())
+    throw new Error(`--upload needs --product.
+${LISTING_ASSETS_USAGE}`);
+  if (!opts.upload && opts.dryRun)
+    throw new Error(
+      "--dry-run applies to --upload only (without --upload nothing is sent)."
+    );
+  const locale = opts.locale?.trim() || null;
+  if (locale !== null && !LOCALE_RE.test(locale))
+    throw new Error(`--locale ${locale} is not a locale code such as en-US.`);
+  const focal = opts.focal ? parseFocal(opts.focal) : { x: 0.5, y: 0.5 };
+  const focalPortrait = opts.focalPortrait ? parseFocal(opts.focalPortrait) : focal;
+  const accepted = acceptances(opts.accept ?? [], opts.pad ?? []);
+  const dir = path21.resolve(opts.cwd, opts.out);
+  if (existsSync2(dir) && !(await stat8(dir)).isDirectory())
+    throw new Error(`--out ${opts.out} is not a directory.`);
+  const masterList = (await Promise.all([
+    loadMaster(opts.cwd, "icon-master", opts.icon),
+    loadMaster(opts.cwd, "key-art", opts.keyArt),
+    loadMaster(opts.cwd, "key-art-portrait", opts.keyArtPortrait),
+    loadMaster(opts.cwd, "wordmark", opts.wordmark)
+  ])).filter((m) => m !== null);
+  const masters = {};
+  for (const m of masterList) masters[m.slot] = m.decoded.raster;
+  const icon2 = masters["icon-master"];
+  if (icon2 && icon2.width !== icon2.height)
+    throw new Error(
+      `--icon must be square (got ${icon2.width}x${icon2.height}); a 1024x1024 master is best.`
+    );
+  if (masters.wordmark && !masterList.find((m) => m.slot === "wordmark").decoded.alpha)
+    out.write(
+      "warning: the wordmark has no alpha channel; it is placed as an opaque rectangle.\n"
+    );
+  const background = opts.background ? parseColor(opts.background) : defaultBackground(icon2);
+  const shots = await loadScreenshots(opts.cwd, opts.screenshots);
+  const slots = deriveAll(masters, { focal, focalPortrait, background });
+  const fitted = fitScreenshots(shots, accepted, background);
+  if (fitted.unused.length)
+    throw new Error(
+      `${fitted.unused.join(", ")}: no screenshot proposal has ${fitted.unused.length === 1 ? "that id" : "those ids"}. Ids are <store>/<class>/<name>, as the report lists them; an image that already fits needs none.`
+    );
+  await clearOut(dir);
+  await mkdir9(dir, { recursive: true });
+  const files = [];
+  const writeRel = async (rel2, bytes) => {
+    const p = path21.join(dir, ...rel2.split("/"));
+    await mkdir9(path21.dirname(p), { recursive: true });
+    await writeFile14(p, bytes);
+    files.push(rel2);
+    return p;
+  };
+  const packEntries = /* @__PURE__ */ new Map();
+  const addToPack = (store, name, data, meta) => {
+    if (!PACK_STORES.includes(store)) return;
+    const list2 = packEntries.get(store) ?? [];
+    list2.push({ name, data, meta });
+    packEntries.set(store, list2);
+  };
+  const reportSlots = [];
+  for (const s of slots) {
+    const entry = {
+      slot: s.spec.slot,
+      store: s.spec.store,
+      status: s.status,
+      textAllowed: s.spec.textAllowed,
+      derivedFrom: s.derivedFrom,
+      notes: [...s.notes]
+    };
+    if (s.raster) {
+      const n = s.spec.alpha ? 4 : 3;
+      const bytes = await encodeImage(s.raster, s.spec.format, s.spec.alpha);
+      const ext = s.spec.format === "jpeg" ? "jpg" : "png";
+      const rel2 = `${s.spec.store}/${s.spec.name}.${ext}`;
+      await writeRel(rel2, bytes);
+      Object.assign(entry, {
+        file: rel2,
+        format: s.spec.format,
+        width: s.raster.width,
+        height: s.raster.height,
+        alpha: s.spec.alpha,
+        sha256: sha2564(bytes),
+        size: bytes.length,
+        pixelSha256: pixelSha256(
+          s.raster.width,
+          s.raster.height,
+          n,
+          channels(s.raster, n)
+        )
+      });
+      if (s.derivedFrom !== null && s.spec.store === "play")
+        entry.aiGeneratedState = "NotAiGenerated";
+      if (s.spec.maxBytes !== void 0 && bytes.length > s.spec.maxBytes) {
+        entry.status = "red";
+        entry.notes.push(
+          `${bytes.length} bytes is over the store's ${s.spec.maxBytes}-byte limit`
+        );
+      }
+      addToPack(s.spec.store, `${s.spec.name}.${ext}`, bytes, {
+        ...entry,
+        file: `${s.spec.name}.${ext}`
+      });
+    }
+    reportSlots.push(entry);
+  }
+  const reportShots = [];
+  for (const s of fitted.outputs) {
+    const src = shots.find((x) => x.cls === s.cls && x.name === s.name);
+    const entry = {
+      id: s.id,
+      store: s.store,
+      class: s.cls,
+      slot: s.slot,
+      status: s.status,
+      method: s.method,
+      source: { file: src.file, ...s.source },
+      ...s.proposal ? { proposal: s.proposal } : {},
+      problems: s.problems,
+      notes: s.notes
+    };
+    if (s.raster) {
+      const bytes = await encodeImage(s.raster, "png", false);
+      const rel2 = s.status === "pending" ? `proposals/${s.store}/${s.cls}/${s.name}.png` : `screenshots/${s.store}/${s.cls}/${String(s.index).padStart(2, "0")}-${s.name}.png`;
+      await writeRel(rel2, bytes);
+      Object.assign(entry, {
+        file: rel2,
+        format: "png",
+        width: s.raster.width,
+        height: s.raster.height,
+        alpha: false,
+        sha256: sha2564(bytes),
+        size: bytes.length,
+        pixelSha256: pixelSha256(
+          s.raster.width,
+          s.raster.height,
+          3,
+          channels(s.raster, 3)
+        )
+      });
+      if (s.status !== "pending")
+        addToPack(
+          s.store,
+          `screenshots/${s.cls}/${String(s.index).padStart(2, "0")}.png`,
+          bytes,
+          {
+            slot: s.slot,
+            file: `screenshots/${s.cls}/${String(s.index).padStart(2, "0")}.png`,
+            width: s.raster.width,
+            height: s.raster.height,
+            method: s.method,
+            sha256: sha2564(bytes)
+          }
+        );
+    }
+    reportShots.push(entry);
+  }
+  const packs = [];
+  for (const store of PACK_STORES) {
+    const entries = packEntries.get(store);
+    if (!entries?.length) continue;
+    const manifest = {
+      format: "pkey-listing-pack/1",
+      store,
+      locale,
+      generatedBy: "pkey listing assets",
+      files: entries.map((e) => e.meta)
+    };
+    const zip = zipStore([
+      ...entries.map((e) => ({ name: e.name, data: e.data })),
+      {
+        name: "assets.json",
+        data: new TextEncoder().encode(
+          `${JSON.stringify(manifest, null, 2)}
+`
+        )
+      }
+    ]);
+    const rel2 = `packs/${store}.zip`;
+    await writeRel(rel2, zip);
+    packs.push({
+      store,
+      slot: `pack:${store}`,
+      file: rel2,
+      format: "zip",
+      width: null,
+      height: null,
+      alpha: false,
+      sha256: sha2564(zip),
+      size: zip.length
+    });
+  }
+  const report = {
+    format: REPORT_FORMAT,
+    locale,
+    focal,
+    focalPortrait,
+    background: hex4(background),
+    masters: masterList.map((m) => ({
+      slot: m.slot,
+      file: path21.relative(opts.cwd, m.path).split(path21.sep).join("/"),
+      width: m.decoded.raster.width,
+      height: m.decoded.raster.height,
+      alpha: m.decoded.alpha,
+      sha256: sha2564(m.bytes),
+      size: m.bytes.length
+    })),
+    slots: reportSlots,
+    screenshots: reportShots,
+    packs,
+    files: []
+  };
+  await writeRel("preview.html", new TextEncoder().encode(previewHtml(report)));
+  report.files = [...files, "report.json"].sort();
+  await writeFile14(
+    path21.join(dir, "report.json"),
+    `${JSON.stringify(report, null, 2)}
+`
+  );
+  const relDir = path21.relative(opts.cwd, dir);
+  const rel = relDir === "" ? "." : relDir.startsWith("..") ? dir : relDir;
+  const count = (st) => reportSlots.filter((s) => s.status === st).length;
+  out.write(
+    `Wrote ${files.length + 1} files to ${rel}: ${count("ok")} ok, ${count("warn")} warn, ${count("red")} red, ${count("human")} human, ${count("missing")} missing; ${packs.length} store pack${packs.length === 1 ? "" : "s"}.
+`
+  );
+  for (const s of reportSlots)
+    if (s.status !== "ok")
+      out.write(
+        `  ${s.status.padEnd(7)} ${s.slot}${s.notes.length ? `: ${s.notes.join("; ")}` : ""}
+`
+      );
+  const pending = reportShots.filter((s) => s.status === "pending");
+  const red = reportShots.filter((s) => s.status === "red");
+  for (const s of red)
+    out.write(`  red     screenshot ${s.id}: ${s.problems.join("; ")}
+`);
+  if (pending.length) {
+    out.write(
+      `${pending.length} screenshot${pending.length === 1 ? " does" : "s do"} not fit as is; each proposal is previewed under ${rel}/proposals/ and is used only once accepted:
+`
+    );
+    for (const s of pending) {
+      const p = s.proposal;
+      const crop2 = p.crop ? `crop to ${p.crop.width}x${p.crop.height} (--accept ${s.id})` : null;
+      const pad2 = p.pad ? `pad to ${p.pad.width}x${p.pad.height} (--pad ${s.id})` : null;
+      out.write(
+        `  ${s.id} ${s.source.width}x${s.source.height}: ${s.problems.join("; ")}; ${[crop2, pad2].filter(Boolean).join(" or ")}
+`
+      );
+    }
+  }
+  out.write(`Look before accepting: ${path21.join(rel, "preview.html")}
+`);
+  const result = {
+    report,
+    dir,
+    uploaded: [],
+    registered: null
+  };
+  if (!opts.upload) return result;
+  const rows = [];
+  for (const m of masterList)
+    rows.push({
+      slot: m.slot,
+      file: m.path,
+      sha256: sha2564(m.bytes),
+      size: m.bytes.length,
+      width: m.decoded.raster.width,
+      height: m.decoded.raster.height,
+      alpha: m.decoded.alpha,
+      derivedFrom: null,
+      textAllowed: MASTER_RULES[m.slot]
+    });
+  const notUploaded = reportSlots.filter((s) => s.file && s.status === "red");
+  for (const s of reportSlots)
+    if (s.file && (s.status === "ok" || s.status === "warn"))
+      rows.push({
+        slot: s.slot,
+        file: path21.join(dir, ...s.file.split("/")),
+        sha256: s.sha256,
+        size: s.size,
+        width: s.width ?? null,
+        height: s.height ?? null,
+        alpha: s.alpha ?? false,
+        derivedFrom: s.derivedFrom,
+        textAllowed: s.textAllowed
+      });
+  for (const s of reportShots)
+    if (s.file && (s.status === "fits" || s.status === "accepted"))
+      rows.push({
+        slot: s.slot,
+        file: path21.join(dir, ...s.file.split("/")),
+        sha256: s.sha256,
+        size: s.size,
+        width: s.width ?? null,
+        height: s.height ?? null,
+        alpha: false,
+        derivedFrom: `screenshot:${s.class}`,
+        textAllowed: "free"
+      });
+  for (const p of packs)
+    rows.push({
+      slot: p.slot,
+      file: path21.join(dir, ...p.file.split("/")),
+      sha256: p.sha256,
+      size: p.size,
+      width: null,
+      height: null,
+      alpha: false,
+      derivedFrom: null,
+      textAllowed: "free"
+    });
+  const body = rows.map((r) => ({
+    slot: r.slot,
+    ...locale ? { locale } : {},
+    sha256: r.sha256,
+    size: r.size,
+    width: r.width,
+    height: r.height,
+    alpha: r.alpha,
+    derivedFrom: r.derivedFrom,
+    textAllowed: r.textAllowed
+  }));
+  const writeNotUploaded = () => {
+    if (notUploaded.length)
+      out.write(
+        `${notUploaded.length} red output${notUploaded.length === 1 ? " was" : "s were"} not uploaded: ${notUploaded.map((s) => s.slot).join(", ")}. Fix them (see the report) and run again.
+`
+      );
+  };
+  if (opts.dryRun) {
+    out.write(
+      `Dry run: would upload and register ${rows.length} listing assets; nothing sent.
+`
+    );
+    writeNotUploaded();
+    return result;
+  }
+  const token = await resolveCiToken({
+    baseUrl: opts.baseUrl,
+    product: opts.product,
+    env: opts.env,
+    out,
+    log: opts.stderr,
+    fetchImpl: opts.fetchImpl,
+    sleep: opts.sleep
+  });
+  const client = ciClient({
+    baseUrl: opts.baseUrl,
+    product: opts.product,
+    token,
+    fetchImpl: opts.fetchImpl,
+    sleep: opts.sleep,
+    log: opts.stderr
+  });
+  const unique = new Map(rows.map((r) => [r.sha256, r]));
+  const ticket = await client.postJson("release/publish/uploads", {
+    what: "Requesting an upload ticket",
+    body: {
+      objects: [...unique.values()].map((r) => ({
+        sha256: r.sha256,
+        size: r.size
+      }))
+    }
+  });
+  if (typeof ticket.ticket !== "string" || !Array.isArray(ticket.objects))
+    throw new Error("The uploads route answered without a ticket.");
+  mask(opts.env, out, ticket.ticket);
+  mask(opts.env, out, ticket.credentials.secretAccessKey);
+  mask(opts.env, out, ticket.credentials.sessionToken);
+  for (const o of ticket.objects) {
+    const r = unique.get(o.sha256);
+    if (!r)
+      throw new Error(
+        `The ticket names ${o.sha256}, which pkey did not ask for.`
+      );
+    await putFile({
+      creds: ticket.credentials,
+      key: o.key,
+      file: r.file,
+      size: r.size,
+      sha256: r.sha256,
+      fetchImpl: opts.fetchImpl,
+      sleep: opts.sleep,
+      log: opts.stderr
+    });
+    result.uploaded.push(r.slot);
+  }
+  const answer = await client.postJson("distribution/listing/assets", {
+    what: "Registering the listing assets",
+    body: { ticket: ticket.ticket, assets: body }
+  });
+  result.registered = { stored: answer.stored ?? [], kept: answer.kept ?? [] };
+  out.write(
+    `Registered ${result.registered.stored.length} listing assets for ${opts.product}` + (answer.kept?.length ? `; kept ${answer.kept.length} the operator uploaded (${answer.kept.map((k) => k.slot).join(", ")})` : "") + ". Nothing was pushed to a store: accept each output in the console first.\n"
+  );
+  writeNotUploaded();
+  if (pending.length)
+    out.write(
+      `${pending.length} pending screenshot proposal${pending.length === 1 ? " was" : "s were"} not uploaded.
+`
+    );
+  return result;
+}
+
 // src/index.ts
 async function runPkey(argv2, io = {}) {
   const parsed = parseArgs(argv2);
@@ -30542,10 +32239,10 @@ async function runPkey(argv2, io = {}) {
         return await cmdManifest(parsed, cwd, stdout);
       case "feeds":
         return await cmdFeeds(parsed, cwd, stdout, stderr, ci);
+      case "listing":
+        return await cmdListing(parsed, cwd, stdout, stderr, ci);
       case "transport":
         return await cmdTransport(parsed, cwd, stdout, stderr, ci);
-      case "listing":
-        return await cmdListing(parsed, cwd, stdout, ci);
       default:
         stderr.write(`Unknown command "${parsed.command}".
 
@@ -30591,7 +32288,7 @@ function parseArgs(argv2) {
   return { command, flags, multi, bare, positional };
 }
 async function cmdInit(parsed, cwd, stdout) {
-  const basename = path21.basename(cwd).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "") || "my-product";
+  const basename = path22.basename(cwd).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "") || "my-product";
   const slug = flagString(parsed, "product") ?? flagString(parsed, "slug") ?? basename;
   const name = flagString(parsed, "name") ?? titleize(slug);
   const modules = normalizeModules2(flagString(parsed, "modules"));
@@ -30610,7 +32307,7 @@ async function cmdInit(parsed, cwd, stdout) {
 `
   );
   for (const file of result.files)
-    stdout.write(`- ${path21.relative(cwd, file)}
+    stdout.write(`- ${path22.relative(cwd, file)}
 `);
   stdout.write("\nNext: pkey validate\n");
   return 0;
@@ -30646,7 +32343,7 @@ function located(manifest, cwd, msg) {
     release: manifest.releasePath,
     distribution: manifest.distributionPath
   }[msg.file];
-  return `${msg.file}${msg.path}${file ? ` (${path21.relative(cwd, file)})` : ""}`;
+  return `${msg.file}${msg.path}${file ? ` (${path22.relative(cwd, file)})` : ""}`;
 }
 var DISTRIBUTION_USAGE = `Usage: pkey distribution outlet-ids --outlet <id>
 ${DISTRIBUTION_CI_USAGE}`;
@@ -30674,7 +32371,7 @@ async function cmdDistribution(parsed, cwd, stdout, stderr, ci) {
   const ids = outletIdsFor(manifest, outlet);
   if (!ids) {
     stderr.write(
-      `outlet ${JSON.stringify(outlet)} is not declared in ${path21.relative(cwd, manifest.distributionPath)}
+      `outlet ${JSON.stringify(outlet)} is not declared in ${path22.relative(cwd, manifest.distributionPath)}
 `
     );
     return 1;
@@ -30782,7 +32479,7 @@ async function cmdBundle(parsed, cwd, stdout) {
     force: flagBool(parsed, "force"),
     cookie: process.env[ADMIN_COOKIE_ENV]
   });
-  const rel = path21.relative(cwd, result.file);
+  const rel = path22.relative(cwd, result.file);
   stdout.write(`Minted bundle ${result.bundleId}
 `);
   stdout.write(`- File: ${rel}
@@ -30861,15 +32558,15 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
       const dir = flagString(parsed, "dir");
       if (!product || !dir) throw new Error(PUBLISH_USAGE);
       const deliverable = flagString(parsed, "deliverable");
-      const releaseKeyPem = flagString(parsed, "release-key-file") ? await readFile17(
-        path21.resolve(cwd, flagString(parsed, "release-key-file")),
+      const releaseKeyPem = flagString(parsed, "release-key-file") ? await readFile18(
+        path22.resolve(cwd, flagString(parsed, "release-key-file")),
         "utf8"
       ) : void 0;
       const minSupportedSeq = flagString(parsed, "min-supported-seq") !== void 0 ? Number(flagString(parsed, "min-supported-seq")) : void 0;
       if (parsed.bare.has("pin"))
         throw new Error("--pin needs a value: --pin <packId>@<version>.");
-      const contentKeyPem = flagString(parsed, "content-key-file") ? await readFile17(
-        path21.resolve(cwd, flagString(parsed, "content-key-file")),
+      const contentKeyPem = flagString(parsed, "content-key-file") ? await readFile18(
+        path22.resolve(cwd, flagString(parsed, "content-key-file")),
         "utf8"
       ) : void 0;
       const delegation = flagString(parsed, "delegation");
@@ -31034,8 +32731,8 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
           ["replacement"],
           "no release replaces a delegation"
         );
-        const pem = flagString(parsed, "release-key-file") ? await readFile17(
-          path21.resolve(cwd, flagString(parsed, "release-key-file")),
+        const pem = flagString(parsed, "release-key-file") ? await readFile18(
+          path22.resolve(cwd, flagString(parsed, "release-key-file")),
           "utf8"
         ) : void 0;
         await revokeDelegation({
@@ -31050,8 +32747,8 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
         return 0;
       }
       if (!product || !releaseId || !reason) throw new Error(REVOKE_USAGE);
-      const releaseKeyPem = flagString(parsed, "release-key-file") ? await readFile17(
-        path21.resolve(cwd, flagString(parsed, "release-key-file")),
+      const releaseKeyPem = flagString(parsed, "release-key-file") ? await readFile18(
+        path22.resolve(cwd, flagString(parsed, "release-key-file")),
         "utf8"
       ) : void 0;
       await revokePackRelease({
@@ -31073,8 +32770,8 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
       if (!product || !prefix || !types || !publicKey)
         throw new Error(DELEGATE_USAGE);
       const expires = flagString(parsed, "expires-in");
-      const pem = flagString(parsed, "release-key-file") ? await readFile17(
-        path21.resolve(cwd, flagString(parsed, "release-key-file")),
+      const pem = flagString(parsed, "release-key-file") ? await readFile18(
+        path22.resolve(cwd, flagString(parsed, "release-key-file")),
         "utf8"
       ) : void 0;
       await delegateContentKey({
@@ -31098,7 +32795,7 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
         if (parsed.positional[1] !== "generate" || !outFile || kid)
           throw new Error(CONTENT_KEYS_USAGE);
         const generated2 = await generateContentKey({
-          out: path21.resolve(cwd, outFile)
+          out: path22.resolve(cwd, outFile)
         });
         stdout.write(generatedContentKeyText(generated2));
         return 0;
@@ -31107,7 +32804,7 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci) {
         throw new Error(KEYS_USAGE);
       const generated = await generateReleaseKey({
         kid,
-        out: path21.resolve(cwd, outFile),
+        out: path22.resolve(cwd, outFile),
         force: flagBool(parsed, "force")
       });
       stdout.write(generatedKeyText(generated));
@@ -31184,15 +32881,56 @@ ${FEEDS_SETUP_USAGE}`);
   });
   return 0;
 }
+async function cmdListing(parsed, cwd, stdout, stderr, ci) {
+  switch (parsed.positional[0]) {
+    case "import":
+      return cmdListingImport(parsed, cwd, stdout, ci);
+    case "assets":
+      return cmdListingAssets(parsed, cwd, stdout, stderr, ci);
+    default:
+      throw new Error(`${LISTING_USAGE}
+${LISTING_ASSETS_USAGE}`);
+  }
+}
+async function cmdListingAssets(parsed, cwd, stdout, stderr, ci) {
+  const out = flagString(parsed, "out");
+  if (parsed.positional[0] !== "assets" || !out)
+    throw new Error(LISTING_ASSETS_USAGE);
+  await listingAssets({
+    cwd,
+    out,
+    icon: flagString(parsed, "icon"),
+    keyArt: flagString(parsed, "key-art"),
+    keyArtPortrait: flagString(parsed, "key-art-portrait"),
+    wordmark: flagString(parsed, "wordmark"),
+    screenshots: flagString(parsed, "screenshots"),
+    focal: flagString(parsed, "focal"),
+    focalPortrait: flagString(parsed, "focal-portrait"),
+    background: flagString(parsed, "background"),
+    accept: parsed.multi["accept"] ?? [],
+    pad: parsed.multi["pad"] ?? [],
+    locale: flagString(parsed, "locale"),
+    upload: flagBool(parsed, "upload"),
+    product: flagString(parsed, "product"),
+    baseUrl: flagString(parsed, "base-url"),
+    dryRun: flagBool(parsed, "dry-run"),
+    env: ci.env,
+    stdout,
+    stderr,
+    fetchImpl: ci.fetchImpl,
+    sleep: ci.sleep
+  });
+  return 0;
+}
 var MANIFEST_USAGE = "Usage: pkey manifest schemas --out <dir>";
 async function cmdManifest(parsed, cwd, stdout) {
   const outDir = flagString(parsed, "out");
   if (parsed.positional[0] !== "schemas" || !outDir)
     throw new Error(MANIFEST_USAGE);
-  const written = await writeManifestSchemas(path21.resolve(cwd, outDir));
+  const written = await writeManifestSchemas(path22.resolve(cwd, outDir));
   stdout.write(`Wrote ${written.length} schemas:
 `);
-  for (const file of written) stdout.write(`- ${path21.relative(cwd, file)}
+  for (const file of written) stdout.write(`- ${path22.relative(cwd, file)}
 `);
   return 0;
 }
@@ -31308,13 +33046,13 @@ function flagBool(parsed, name) {
 function titleize(slug) {
   return slug.replace(/[-_]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
-async function cmdListing(parsed, cwd, stdout, ci) {
+async function cmdListingImport(parsed, cwd, stdout, ci) {
   const godot = flagString(parsed, "godot");
   if (parsed.positional[0] !== "import" || !godot)
     throw new Error(LISTING_USAGE);
   const fields = flagString(parsed, "fields");
   const result = await listingImport({
-    godot: path21.resolve(cwd, godot),
+    godot: path22.resolve(cwd, godot),
     product: flagString(parsed, "product"),
     presets: parsed.multi["preset"] ?? [],
     locale: flagString(parsed, "locale"),
@@ -31391,6 +33129,10 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
   pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot --owner slug
               [--namespace key=value ...] [--package name [--version v]] [--origin url]
               [--token-env NAME] [--json]
+  pkey listing assets --out dir [--icon png] [--key-art png] [--key-art-portrait png]
+              [--wordmark png] [--screenshots dir] [--focal x,y] [--focal-portrait x,y]
+              [--background #rrggbb] [--accept store/class/name ...] [--pad store/class/name ...]
+              [--locale code] [--upload --product slug [--base-url url] [--dry-run]]
   pkey transport apple-ba package --deliverable packId --release v --from dir [--content-api n]
               [--variant key] [--out dir] [--platforms iOS[,macOS]] [--no-archive] [--no-report]
   pkey transport apple-ba upload --deliverable packId --release v [--dir dir] [--from dir] [--content-api n]
@@ -31471,6 +33213,18 @@ npm scope, uv explicit = true, Gradle exclusiveContent, SwiftPM --scope, a fully
 reference, the Godot editor URLs). --namespace sets the feed's namespace (scope=@acme,
 groupPrefixes=gg.acme,gg.acme.tools); --token-env NAME adds the credential lines, reading the
 registry token from that environment variable. Offline: nothing is sent anywhere.
+
+pkey listing assets derives every store's icons from one square icon master (Play 512, the
+Microsoft tile 300, Steam's 184 JPG and 256 icons, Flathub, Snap, winget and F-Droid; Android's
+adaptive layers only when the mark sits inside the central 66 of 108 dp), composes every store's
+art from logo-free key art and the wordmark (Play and F-Droid feature graphics, Steam's capsules
+and library set, the Microsoft super hero, poster and box art, the itch.io cover, the Snap banner;
+cropped around --focal, the wordmark only on slots that allow a title), and fits each screenshot
+under --screenshots (one directory per size class) for the App Store, Play, the Microsoft Store and
+Steam. A screenshot that does not fit gets a crop or pad proposal, used only for the images named
+with --accept or --pad. Everything goes under --out with report.json (the fit report), preview.html
+and one ZIP pack per store. --upload stores the masters, outputs and packs in the listing model
+(the token needs distribution:listing); nothing is pushed to a store. Needs the sharp library.
 
 pkey transport packages a published pack release (the --out cache of pkey release publish
 --deliverable <packId>, re-hashed against its record and linted again, so a pack with scripts

@@ -910,6 +910,43 @@ the descriptor's `builds[].metadata` (IPA entitlements and privacy strings, APK 
   decides what a feed lists, never the bytes behind a URL. A wrong `appPermissions` makes AltStore refuse the install, and a wrong `signerSha256`
   makes F-Droid refuse the APK.
 
+### Listing asset derivation (A-18d)
+
+**What arrived.** `pkey listing assets` makes every store's icons, composed art, fitted
+screenshots and per-store packs in CI, and `POST /<p>/distribution/listing/assets`
+(`services/distribution/listing/assets.ts`; tests: `test/listingAssets.test.ts`) registers them
+into `dist_listing_assets`. A new opt-in CI scope, `distribution:listing`, buys an upload ticket
+(P2-02's uploads route accepts it) and registers the rows. It is not in `DEFAULT_CI_SCOPES`.
+
+- **Refs are earned the P2-02 way, and only listing refs count.** A register promotes only objects
+  of the caller's own ticket, verified in staging, and skips the ticket only for a key this product
+  already holds a `listing-asset` ref to. A release artifact's, pack object's or feed file's ref
+  does not count, so a digest alone never earns one (§3). Each row holds one ref
+  (`<slot>@<locale>`); a replaced row's ref is dropped in the same batch, so the collector reclaims
+  what nothing references.
+- **Nothing is served or pushed.** The route writes rows and refs only. No route serves these
+  objects, and no store receives them until a storefront adapter pushes them under the store
+  gate, after an operator accepts each output in the console. Screenshot crops are proposals,
+  applied only for the images the operator names, because a crop can cut UI.
+- **An operator's image wins.** A row with `source = admin` is never replaced by CI; the register
+  answers it as `kept`.
+- **Red outputs stay local.** The table has no status column, so a stored row would look
+  compliant. The CLI registers only `ok` and `warn` outputs; an icon-only fallback, a `title` slot
+  with no wordmark, or a file over the store's byte limit is printed as not uploaded.
+- **No false AI declaration.** `aiGeneratedStateOf` answers `NotAiGenerated` only for template
+  outputs (`derivedFrom` is a master), never for a master or a fitted screenshot, whose pixels a
+  person made.
+- **Validation.** Every row passes the listing model's validator: a known slot (the fixed slots,
+  numbered per-store screenshots up to 16, per-store packs), the slot's `textAllowed`, a locale
+  code, 1 to 16,384 pixels, and a known `derivedFrom`. At most 160 rows and 128 MiB per object.
+  Audited as `distribution.listing.assets`.
+- **The images are made in CI, not the Worker.** Decoding untrusted images happens in the
+  product's own CI (sharp/libvips), never in the Worker, which has no image library.
+- **Residual.** A `distribution:listing` token can replace any CI-made listing asset of its
+  product with any image whose bytes it holds. It cannot touch an operator's upload. Nothing
+  reaches a store until an operator accepts it. The images are listing art, so the token holds
+  nothing secret.
+
 ### The public download page (P2b-06)
 
 **What arrived.** A public, cookie-free download page per product (`services/distribution/

@@ -11,6 +11,7 @@
 import type { Db, DbStatement } from "../../../core/platform.js";
 import type {
   ListingApp,
+  ListingAssetInput,
   ListingLocale,
   ListingModel,
   ListingOverride,
@@ -303,6 +304,62 @@ export async function listAssets(
     "SELECT * FROM dist_listing_assets WHERE product = ? ORDER BY slot, locale",
     product,
   );
+}
+
+/** The stored assets' sources, keyed `<slot>\u0000<locale>` (A-18d's register skips `admin` rows). */
+export async function assetSources(
+  db: Db,
+  product: string,
+): Promise<Map<string, ListingSource>> {
+  const rows = await db.all<{
+    slot: string;
+    locale: string;
+    source: ListingSource;
+  }>(
+    "SELECT slot, locale, source FROM dist_listing_assets WHERE product = ?",
+    product,
+  );
+  return new Map(rows.map((r) => [`${r.slot}\u0000${r.locale}`, r.source]));
+}
+
+/**
+ * The statement that writes one validated asset row (A-18d), replacing the slot's row in that
+ * locale (`''` for every locale). The caller decides whether an `admin` row may be replaced.
+ */
+export function stmtUpsertAsset(
+  product: string,
+  a: ListingAssetInput,
+  source: ListingSource,
+  now: number,
+  by: string,
+): DbStatement {
+  return {
+    sql: `INSERT INTO dist_listing_assets
+            (product, slot, locale, blob, sha256, width, height, alpha, derived_from,
+             text_allowed, source, modified_at, modified_by)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(product, slot, locale) DO UPDATE SET
+            blob = excluded.blob, sha256 = excluded.sha256, width = excluded.width,
+            height = excluded.height, alpha = excluded.alpha,
+            derived_from = excluded.derived_from, text_allowed = excluded.text_allowed,
+            source = excluded.source, modified_at = excluded.modified_at,
+            modified_by = excluded.modified_by`,
+    params: [
+      product,
+      a.slot,
+      a.locale ?? "",
+      a.blob,
+      a.sha256,
+      a.width,
+      a.height,
+      a.alpha ? 1 : 0,
+      a.derivedFrom,
+      a.textAllowed,
+      source,
+      now,
+      by,
+    ],
+  };
 }
 
 // ── Writes ────────────────────────────────────────────────────────────────────────────────────
