@@ -75,12 +75,19 @@ import {
 } from "../core/services.js";
 import { classifyActivation } from "../core/activation.js";
 import {
+  BRIDGE_VERSION,
   resolveBridge,
   type BridgeActivation,
   type BridgeOidcBegin,
   type BridgeState,
   type PolarisBridge,
 } from "./bridge.js";
+
+/** The features the renderer reaches only through bridge v4 `invoke` verbs. */
+const V4_FEATURES = new Set<string>([
+  Feature.configMint,
+  Feature.commerceReceipt,
+]);
 
 export interface DesktopAdapterOptions {
   /** The bridge to drive. Defaults to `window.polarisKey`. */
@@ -621,11 +628,20 @@ export class DesktopAdapter implements PolarisAdapter {
   }
 
   supports(feature: string): Support {
+    if (V4_FEATURES.has(feature) && !this.speaksV4())
+      return {
+        supported: false,
+        feature,
+        reason: "version",
+        detail: `This desktop bridge (protocol v${this.bridge.version ?? 1}) predates bridge protocol v4, which carries ${feature}.`,
+      };
     return supportsIn(this.capabilityCtx, feature);
   }
 
   caps(): string[] {
-    return capsIn(this.capabilityCtx);
+    return capsIn(this.capabilityCtx).filter(
+      (f) => this.speaksV4() || !V4_FEATURES.has(f),
+    );
   }
 
   isEntitled(name: string): boolean {
@@ -712,11 +728,12 @@ export class DesktopAdapter implements PolarisAdapter {
 
   /** `invoke("config", "mint", {recipeId})`: the host's `client.config.mintToken()`. */
   async mintToken(recipeId: string): Promise<MintedToken> {
-    const r = await this.invoke<MintedToken>(
+    const r = await this.invokeV4<MintedToken>(
+      Feature.configMint,
+      "edge-mint",
       "config",
       "mint",
       { recipeId },
-      this.v4Unsupported(Feature.configMint, "edge-mint"),
     ).catch((e: unknown) => {
       throw this.fail("config", asPolarisError(e));
     });
@@ -725,11 +742,11 @@ export class DesktopAdapter implements PolarisAdapter {
 
   /** `invoke("commerce", "binding")`: the host's `client.commerce.binding()`. */
   async commerceBinding(): Promise<CommerceBinding> {
-    return this.invoke<CommerceBinding>(
+    return this.invokeV4<CommerceBinding>(
+      Feature.commerceReceipt,
+      "commerce",
       "commerce",
       "binding",
-      undefined,
-      this.v4Unsupported(Feature.commerceReceipt, "commerce"),
     );
   }
 
@@ -738,11 +755,12 @@ export class DesktopAdapter implements PolarisAdapter {
     store: CommerceStore,
     payload: CommercePayload,
   ): Promise<CommerceClaimResult> {
-    const r = await this.invoke<CommerceClaimResult>(
+    const r = await this.invokeV4<CommerceClaimResult>(
+      Feature.commerceReceipt,
+      "commerce",
       "commerce",
       "claim",
       { store, payload },
-      this.v4Unsupported(Feature.commerceReceipt, "commerce"),
     );
     if (r?.kind === "ok")
       this.apply(await this.bridge.getSyncState(), {
@@ -754,7 +772,7 @@ export class DesktopAdapter implements PolarisAdapter {
 
   /** `invoke("core", "discovery")`, or null on a host that does not answer it. */
   async discovery(): Promise<Record<string, unknown> | null> {
-    if (!this.bridge.invoke) return null;
+    if (!this.bridge.invoke || !this.speaksV4()) return null;
     try {
       const d = await this.bridge.invoke("core", "discovery");
       return d && typeof d === "object" ? (d as Record<string, unknown>) : null;
@@ -765,7 +783,7 @@ export class DesktopAdapter implements PolarisAdapter {
 
   /** `invoke("devices", "id")`: the host's device id (what an offline bundle is minted for). */
   async offlineDeviceId(): Promise<string | null> {
-    if (!this.bridge.invoke) return null;
+    if (!this.bridge.invoke || !this.speaksV4()) return null;
     try {
       const id = await this.bridge.invoke("devices", "id");
       return typeof id === "string" && id !== "" ? id : null;
@@ -776,7 +794,7 @@ export class DesktopAdapter implements PolarisAdapter {
 
   /** `invoke("core", "storeStatus")`: where the host keeps the token. */
   async storeStatus(): Promise<StoreStatus | null> {
-    if (!this.bridge.invoke) return null;
+    if (!this.bridge.invoke || !this.speaksV4()) return null;
     try {
       const st = (await this.bridge.invoke(
         "core",
@@ -788,6 +806,26 @@ export class DesktopAdapter implements PolarisAdapter {
     } catch {
       return null;
     }
+  }
+
+  /** True when the host reports bridge protocol v4 or later (an absent `version` is 1). A v3
+   *  host's `invoke` may answer only the v3 verbs, so a v4 verb is never sent to it. */
+  private speaksV4(): boolean {
+    return (this.bridge.version ?? 1) >= BRIDGE_VERSION;
+  }
+
+  /** A bridge v4 `invoke` verb: refused with the typed version N/A before anything crosses the
+   *  bridge when the host reports an older protocol or has no `invoke` at all. */
+  private async invokeV4<T>(
+    feature: string,
+    what: string,
+    service: string,
+    method: string,
+    args?: unknown,
+  ): Promise<T> {
+    const unsupported = this.v4Unsupported(feature, what);
+    if (!this.speaksV4()) throw unsupported;
+    return this.invoke<T>(service, method, args, unsupported);
   }
 
   private v4Unsupported(feature: string, what: string): PolarisError {

@@ -119,25 +119,35 @@ export type BridgeActivation =
  *  `version`; the adapter treats an absent value as 1 and degrades accordingly. A v3 host keeps
  *  working: every v4 verb it does not answer is refused with a typed `UnsupportedError`.
  *
- * ── WHAT v4 ADDS (SP-R07, implemented on the host side by SP-N10) ─────────────────────────
+ * ── WHAT v4 ADDS (SP-R07; the host side is pending SP-N10) ─────────────────────────────
+ *
+ * The renderer half below is implemented here. The Node Electron host still speaks v3
+ * (`@polaris-key/node`'s bridge reports version 3 and answers none of the v4 `invoke` verbs)
+ * until SP-N10 ships, so against today's host every v4 verb is refused typed.
  *
  *   * `beginSignIn({deviceName?})`; the begin result's `verificationUri`, `expiresAt`, `interval`;
  *     `pollSignIn`'s `ok` carrying `identity`.
  *   * `submitKey`'s `BridgeActivation` gains `fingerprint-required`, `enroll-disabled`,
  *     `hardware-mismatch` and `refused{code}`, so the renderer keeps the server's code (§3.1).
- *   * `invoke` verbs: `("config","mint",{recipeId})` → `{token, expiresAt}`;
+ *   * `invoke` verbs, sent only to a host whose `version` is 4 or later (a v3 host gets a typed
+ *     `UnsupportedError` with reason `version`, or `null` for the nullable reads, without the
+ *     call crossing the bridge): `("config","mint",{recipeId})` → `{token, expiresAt}`;
  *     `("commerce","binding")` → `{bindingId, products}`; `("commerce","claim",{store,payload})`
- *     → a `CommerceClaimResult`; `("packs","status")`, `("packs","ensure",{packIds})`;
- *     `("telemetry","report",{extras})`; `("core","discovery")`; `("core","storeStatus")`;
+ *     → a `CommerceClaimResult`; `("core","discovery")`; `("core","storeStatus")`;
  *     `("devices","id")`.
- *   * `onPackProgress(cb)`: pushed pack progress for `<PolarisPackProgress>`.
+ *
+ * Reserved, not yet used by this package: pack verbs (`("packs", …)`), telemetry extras and the
+ * `onPackProgress` push below are declared for a later revision; nothing here calls or
+ * subscribes to them.
  */
 export const BRIDGE_VERSION = 4;
 
-/** The bridge revisions this package accepts. */
+/** The bridge revisions this package accepts: v3 hosts keep working with the v4 verbs refused
+ *  typed; v4 hosts get everything. The v4 gate itself is `version >= BRIDGE_VERSION`. */
 export const BRIDGE_VERSIONS_ACCEPTED = [3, 4] as const;
 
-/** One pushed pack-progress event (bridge v4). */
+/** One pushed pack-progress event. Reserved for a later bridge revision: declared, not yet
+ *  subscribed by this package. */
 export interface BridgePackProgress {
   packId: string;
   phase: "queued" | "downloading" | "applying" | "ready" | "failed";
@@ -196,7 +206,8 @@ export interface PolarisBridge {
   importBundle?(jws: string): Promise<BridgeImportBundle>;
   /** Subscribe to pushed state changes; returns an unsubscribe. */
   on(event: "stateChanged", cb: (state: BridgeState) => void): () => void;
-  /** v4: subscribe to pushed pack progress; returns an unsubscribe. Absent on a v3 host. */
+  /** Reserved (later revision): pushed pack progress; returns an unsubscribe. This package does
+   *  not subscribe to it yet, so a host need not implement it. */
   onPackProgress?(cb: (p: BridgePackProgress) => void): () => void;
 }
 
