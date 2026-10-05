@@ -58,9 +58,6 @@ export function LibraryHero({
             >
               {product.name}
             </h2>
-            {pres.developer ? (
-              <p className="text-fg-muted">{pres.developer}</p>
-            ) : null}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -85,11 +82,9 @@ export function LibraryHero({
           <dt className="text-fg-muted">Devices</dt>
           <dd className="space-y-2 text-fg-strong">
             <span className="block">
-              {product.status.kind === "signedInApp"
-                ? "Any device"
-                : `${devicesText(product.deviceCount, product.seats?.limit)} in use`}
+              {`${devicesText(product.deviceCount, product.seats?.limit)} in use`}
             </span>
-            {product.seats && product.status.kind !== "signedInApp" ? (
+            {product.seats ? (
               <SeatMeter
                 inUse={product.seats.inUse}
                 limit={product.seats.limit}

@@ -357,6 +357,26 @@ const AUTO_LINK_ENABLED_SQL = `
   ) = 1`;
 
 /**
+ * Whether implicit auto-linking resolves ON for `product`: `AUTO_LINK_ENABLED_SQL` for one
+ * product, so a caller outside the link sweep (the legacy sign-in's licence chooser, I-26)
+ * applies the identical rule rather than a copy of it.
+ */
+export async function autoLinkEnabled(
+  db: Db,
+  product: string,
+): Promise<boolean> {
+  const row = await db.first<{ one: number }>(
+    `SELECT 1 AS one
+       FROM (SELECT ? AS product) l
+       LEFT JOIN portal_product_settings s ON s.product = l.product
+       LEFT JOIN oidc_config o ON o.product = l.product
+      WHERE ${AUTO_LINK_ENABLED_SQL}`,
+    product,
+  );
+  return row !== null;
+}
+
+/**
  * Every address the account verified (a delivered magic link, a platform IdP's
  * `email_verified: true` claim, a verified primary email). Security notices go to all of them
  * (PORTAL.md §6.3).
@@ -1190,6 +1210,22 @@ export async function listDiscoverCandidates(
     only ?? null,
   );
   return rows.map((r) => r.slug);
+}
+
+/**
+ * Every product the account holds a licence for, linked by any route (a key claim, a store
+ * purchase, a sign-in, a Discover add, an operator grant): the products its library lists, before
+ * the portal toggle hides any. Discover never offers or counts one of these.
+ */
+export async function listHeldProducts(
+  db: Db,
+  accountId: string,
+): Promise<Set<string>> {
+  const rows = await db.all<{ product: string }>(
+    "SELECT DISTINCT product FROM licenses WHERE account_id = ?",
+    accountId,
+  );
+  return new Set(rows.map((r) => r.product));
 }
 
 /** Does the account already hold any licence for this product (linked by any route)? */

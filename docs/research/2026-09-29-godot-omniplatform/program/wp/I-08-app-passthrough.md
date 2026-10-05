@@ -4,7 +4,7 @@
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1a)                                                                                                                                                                                                   |
 | Size        | 1.2–1.7 engineer-weeks                                                                                                                                                                                                                                                                   |
-| Depends on  | [I-04](I-04-account-contract-plan.md), [I-07](I-07-login-card-email.md)                                                                                                                                                                                                                  |
+| Depends on  | [I-04](I-04-account-contract-plan.md), [I-07](I-07-login-card-email.md), [I-09](I-09-key-entry-attach.md), [PX-W13](PX-W13-passthrough-metadata.md), [I-26](I-26-legacy-oidc-license-choice.md)                                                                                          |
 | Unblocks    | [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md), [I-15](I-15-native-redirect.md), [I-24a](I-24a-named-user-seats-server.md), [U-05](U-05-cloud-sync-do.md), [U-20](U-20-sdk-settings-react.md), [PX-14](PX-14-passthrough-header.md) |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                    |
 | Plan mode   | yes: executes the approved [`plans/I-04.md`](../plans/I-04.md) (no separate plan)                                                                                                                                                                                                        |
@@ -20,6 +20,55 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 - **[`plans/PX-W13.md`](../plans/PX-W13.md):** reuse PX-W13's request handle and `__Host-pk_req` binder for the R1-07 callback binding; write `account_product_grants.scope_hash` on Continue; Continue reads `AppConsentView`.
 - **[`plans/PX-W17.md`](../plans/PX-W17.md):** the passthrough context answers `identity_disabled`, and reads `identityEnabled`.
 - **[`plans/PX-W8.md`](../plans/PX-W8.md):** Q5: the sign-in seat refusal (`oidc.ts:944`) stays as it is in I-08; LX-18's `not_entitled` with `reason: device_limit` carries `manageUrl` from the same builder.
+
+## Owner decision (2026-10-05): licence choice at sign-in
+
+The owner decided on 2026-10-05 that every sign-in that binds a device asks the person which licence to use (**Choose a license for this device**, with an inline **Replace a device** on full licences), never silently mints a second auto-issued licence, and treats the rank-first rule as the preselected default only. The verbatim decision, the card API and the delegated decisions are in [`plans/I-04.md`](../plans/I-04.md), "Owner decision (2026-10-05): licence choice at sign-in"; that section wins over this brief where they differ. **The device wire does not change** (`PROTOCOL_VERSION` 4, no corpus change).
+
+For this package:
+
+- **Dependencies.** I-08 now depends on **I-09**, for `rankAnchorCandidates` and
+  `bindSignedInDevice(…, choice)`; on **PX-W13**, for the request handle, the binder and the
+  consent route; and on **I-26**, so that the two packages edit `oidc.ts` in sequence.
+- **Card API** (I-04 amendment §C). Add `GET /api/signin/requests/:handle/licenses`
+  (`LicenseChoiceView`) and `GET …/licenses/:licenseId/devices` (`ReplaceView`). The Continue
+  `POST` gains `choice` (`license` with an optional `replaceDeviceId`, `keep` or `create`). Every
+  binding route stores the choice in its flow or code record: device code with its QR, the web
+  redirect and, later, I-15.
+- **`freeAccountDevice()`.** Extract it from the portal's `handleDeviceDelete`. The portal DELETE
+  and the card's Replace call the same function, with the same ownership check, `portal_enabled`
+  check, `portalDeviceDisconnect` budget (20 per 60 s, shared by both surfaces), audit row
+  `portal.device.disconnect` and `deviceRemovedNotice` email. A blocked Replace answers
+  `429 rate_limited` with `retryAfter`.
+- **`errors.json`**: `license_choice_required` (409, identity).
+- **Transcripts**: `devicecode-choose.json`, `devicecode-replace.json`,
+  `devicecode-choice-required.json`, `devicecode-autoissue.json` and `redirect-web-choose.json`.
+- **OpenAPI and `routeCoverage`** for the two routes (rule 10), and THREAT-MODEL notes.
+- **Retire the legacy page.** When the card takes over the device page (PX-14), delete I-26's
+  legacy chooser page and keep its rule. `provider: platform` products with Identity on stop
+  calling `activateFromIdentity`'s `sub`-keyed mint.
+- **Acceptance (additions).**
+  - Sign-in never mints while the account holds a usable licence, unless `choice.kind` is
+    `create` (test).
+  - Continue without a choice answers 409 when the step was shown (test).
+  - Replace and the portal's Remove share one rate-limit budget and write the same audit row
+    (test).
+
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- **Two steps.** LicenseChoiceStep, then ConsentStep (first time or a scope change) showing the chosen license with **Change** (SIGN-IN.md §3.6, §3.8). With no Consent, **Use this license and continue** is the explicit Continue D22 requires.
+- **Card API per `plans/I-04.md` §C as amended by §F:** `LicenseChoice` gains `current` and `access` (`"seats" | "account"`, `seats.limit: null` for Account-wide); `keep` is true only for a licence outside `choices`; `create` gains `access`; `getLicense` gains `keyEntry`. `ReplaceView` answers `404 not_found` for an Account-wide licence.
+- **Replace in one D1 batch** (§F.3): `freeAccountDevice()` (already extracted on the I-26 branch, `portal/freeDevice.ts`) returns its statements and the Continue appends the guarded seat claim; `signin.replace.racedAfterFree` only if the claim cannot join the batch. The device-replaced email is the `deviceRemovedNotice` variant of SIGN-IN.md §3.15.
+- **Cancel returns `access_denied`** on every surface (§F.8): redirect `error=access_denied`, device code denies the code. No new poll answer.
+- **The device-code `confirm`/attach** is offered only after **Keep** (unchanged rule, I-04 decision 4). Drop approval-by-QR from scope: PX-W14 owns it (SIGN-IN.md D-18). `verification_uri` is `<origin>/device`; `/tv` is an alias for TV and console screens (D-16).
+- **ReturnStep variants** per SIGN-IN.md §3.10; the Worker device-code pages (`renderDeviceEntry`, `renderDeviceConfirmation`, `signedInPage`) become the card with the app header (§3.13, with UX-43).
+- **Transcripts:** add `devicecode-account-wide.json` (I-04 §F.6) to §C's list; `gen:transcripts` writes the Swift and Godot mirrors.
+- **THREAT-MODEL:** the ReplaceDevice row (fresh-session step-up, shared `portalDeviceDisconnect` budget, the confirm naming both devices, the notice). Retire I-26's page when the card ships, keeping its rule.
 
 ## Goal
 

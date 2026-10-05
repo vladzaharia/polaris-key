@@ -541,7 +541,8 @@ describe("releaseCatalog (Release)", () => {
     // P6-03 added `knownChannels`, P4-12 the five pack-set reads, P4-13 `revocations`, P4-18
     // `packPayload` (the payload URL's read), P4-29 `lazyDeltas` and
     // `lazyDeltaDevices` (the feed's delta menu and its rank), F-03 the three package reads,
-    // A-18b `releaseNotes` (the listing model's store-notes default).
+    // A-18b `releaseNotes` (the listing model's store-notes default), and the portal download
+    // fix `repositoryPublic` (may a browser follow a stored GitHub URL; reads, never writes).
     expect(Object.keys(catalog).sort()).toEqual([
       "accessSelector",
       "artifacts",
@@ -576,6 +577,7 @@ describe("releaseCatalog (Release)", () => {
       "release",
       "releaseNotes",
       "releases",
+      "repositoryPublic",
       "resolve",
       "revocations",
       "yanks",

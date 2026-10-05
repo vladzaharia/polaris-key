@@ -12,6 +12,15 @@
 | Human input | none                                                                                                                                                  |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                             |
 
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- `LicenseChoice` UI fixtures: loading, many, one, current, keep, new, create, all-full, account-wide, mixed, replace-open, raced, none-keys, none-no-keys, none-replaceable (SIGN-IN.md §6.2).
+
 ## Goal
 
 The presentation state machines are specified once as fixtures that every core can run, and the parity registry tracks the UI kit features in every SDK.

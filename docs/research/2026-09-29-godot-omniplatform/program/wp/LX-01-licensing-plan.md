@@ -1,16 +1,16 @@
 # LX-01 Plan the licensing model (OC): decision record, DDL, contributors and combine rules, anchor rule, expand and contract schedule, I-04, I-05, U-01 and I-20 amendments
 
-| Field       | Value                                                                                        |
-| ----------- | -------------------------------------------------------------------------------------------- |
-| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only) |
-| Size        | 0.4–0.55 engineer-weeks                                                                      |
-| Depends on  | [I-05](I-05-accounts-core.md)                                                                |
-| Unblocks    | [LX-08](LX-08-licensing-expand.md), [LX-18](LX-18-licensing-wire.md)                         |
-| Role        | `pkey-wire-planner` (planning only)                                                          |
-| Plan mode   | yes: planning only; [`plans/LX-01.md`](../plans/LX-01.md) was approved on 2026-10-05         |
-| Gates       | plan mode; owner approval of the plan                                                        |
-| Human input | plan approval (`plans/LX-01.md`)                                                             |
-| Repo        | `vladzaharia/polaris-key`                                                                    |
+| Field       | Value                                                                                                 |
+| ----------- | ----------------------------------------------------------------------------------------------------- |
+| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only)          |
+| Size        | 0.4–0.55 engineer-weeks                                                                               |
+| Depends on  | [I-05](I-05-accounts-core.md)                                                                         |
+| Unblocks    | [LX-08](LX-08-licensing-expand.md), [LX-18](LX-18-licensing-wire.md), [CM-01](CM-01-commerce-plan.md) |
+| Role        | `pkey-wire-planner` (planning only)                                                                   |
+| Plan mode   | yes: planning only; [`plans/LX-01.md`](../plans/LX-01.md) was approved on 2026-10-05                  |
+| Gates       | plan mode; owner approval of the plan                                                                 |
+| Human input | plan approval (`plans/LX-01.md`)                                                                      |
+| Repo        | `vladzaharia/polaris-key`                                                                             |
 
 ## Amendments from approved plans (2026-10-05)
 

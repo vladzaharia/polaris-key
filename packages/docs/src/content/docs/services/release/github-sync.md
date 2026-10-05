@@ -142,16 +142,28 @@ cadence; bursts are not coalesced.
 
 `resyncRepo` takes **no ref**. Earlier revisions of this pipeline read `payload.after` — an
 attacker- or reviewer-bypassable value inside the webhook body — and applied whatever
-commit it named. Today the Contents API is asked for `.pkey/schema`, `.pkey/product`, and
-`.pkey/release` with no `ref` parameter at all, which makes GitHub itself resolve the
-linked repository's own default branch, server-side, from the coordinates already stored
-in the product's release configuration. Nothing in the request body ever selects which
-commit gets applied — branch protection and required review on `.pkey/` stay meaningful,
-because the only path to "what got applied" runs through GitHub's own branch resolution,
-not through a payload field.
+commit it named. Today the pipeline first asks GitHub which commit the linked repository's
+default branch points at, resolved server-side from the coordinates already stored in the
+product's release configuration.
+It then reads every `.pkey/` document (`schema`, `product`, `release`, `distribution`) at
+**that one commit**. Nothing in the request body ever selects which commit gets applied —
+branch protection and required review on `.pkey/` stay meaningful, because the only path to
+"what got applied" runs through GitHub's own branch resolution, not through a payload field.
+Pinning every read to one commit also means a push landing mid-sync can never mix documents
+from two commits. Linking a repository reads the documents the same way.
 
-The push's commit SHA (`payload.after`) is still recorded — but only as an audit value, in
-the console's sync-state display, never as a fetch parameter.
+The push's commit SHA (`payload.after`) is still recorded — but only as an audit value,
+shown in the console as **Triggered by push**, never as a fetch parameter. It can name a
+feature-branch commit whose `.pkey/` was never applied.
+
+## The applied manifest is recorded
+
+Every apply — a link, a webhook or manual resync, and the platform's own deploy hook for the
+system product — records the manifest it applied in the same atomic write as the apply
+itself: the commit the documents were read at (for the deploy hook, the commit the deploy
+built), when, by which path, a SHA-256 over the raw documents, and the parsed manifest.
+Manifests name secrets but never carry their values, so the record holds none. Only the
+latest apply is kept per product.
 
 ## What a resync touches
 
@@ -199,7 +211,8 @@ _is_ the edit path.
 Every resync attempt — manual or webhook-triggered — writes one row recording what
 happened: its source (`manual` from the console button, or `webhook` from a push), whether
 it succeeded, when it was last checked and last actually synced, the commit SHA the push
-named, the changed paths that triggered it, which sections were updated, and any validation
+named (shown as **Triggered by push**; it is the push that started the sync, not the commit
+applied), the changed paths that triggered it, which sections were updated, and any validation
 errors. The **Last sync** section of the Releases page's **Repo sync** drawer is a direct
 read of that row, every list in full — it is how an operator confirms that a push actually
 landed, and reads the validation errors verbatim when it didn't. A `release` delivery never writes this row; its trace is the
