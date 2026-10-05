@@ -222,9 +222,11 @@ async function requireSession(
 ): Promise<{ session: PortalSession } | Response> {
   const session = await portalSessionFromRequest(env, req, now);
   if (!session) return unauthorized();
-  const account = await getPortalAccount(db, session.accountId);
+  // I-05: the id resolves through a merge tombstone (30 days), so a cookie of an absorbed
+  // account acts as the survivor, and every handler below reads the resolved id.
+  const account = await getPortalAccount(db, session.accountId, now);
   if (!account || account.status !== "active") return unauthorized();
-  return { session };
+  return { session: { ...session, accountId: account.id } };
 }
 
 export async function hasLinkedProductLicense(
@@ -495,7 +497,13 @@ async function handleMeDelete(
     accountDeletedNotice({ origin: new URL(req.url).origin }),
     now,
   );
-  await deletePortalAccount(db, session.accountId, now);
+  await deletePortalAccount(
+    db,
+    session.accountId,
+    now,
+    env,
+    new URL(req.url).origin,
+  );
   return portalJson({ ok: true, deleted: session.accountId }, 200, {
     "set-cookie": buildPortalClearCookie(),
   });
@@ -1263,17 +1271,16 @@ export async function handlePortalDownload(
   }
   const scope = parseJson<{ portalAccountId?: string }>(row.scope_json, {});
   if (!scope.portalAccountId) return notFound();
-  const account = await getPortalAccount(db, scope.portalAccountId);
+  const account = await getPortalAccount(db, scope.portalAccountId, now);
   if (!account || account.status !== "active") return notFound();
-  if (
-    !(await hasLinkedProductLicense(db, scope.portalAccountId, row.product))
+  if (!(await hasLinkedProductLicense(db, account.id, row.product))
   ) {
     return notFound();
   }
   if (
     !(await accountMayDownload(
       db,
-      scope.portalAccountId,
+      account.id,
       gate,
       mode,
       facts,

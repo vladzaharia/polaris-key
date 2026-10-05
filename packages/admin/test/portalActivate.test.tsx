@@ -322,7 +322,7 @@ describe("Activate license modal (PX-06)", () => {
   it("shows the preview's refusals inline in §4.19's words", async () => {
     for (const [answer, copy] of [
       [
-        { verdict: "owned_elsewhere", product: PREVIEW_PRODUCT },
+        { verdict: "license_owned", product: PREVIEW_PRODUCT },
         "This Mossgarden license is already in another Polaris Key account. A license never moves by its key.",
       ],
       [
