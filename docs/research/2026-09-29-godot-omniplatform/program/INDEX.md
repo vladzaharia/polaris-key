@@ -396,7 +396,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | --- | --- | --- | --- | --- | --- |
 | [LX-01](wp/LX-01-licensing-plan.md) ⚑ | Plan the licensing model (OC): decision record, DDL, contributors and combine rules, anchor rule, expand and contract schedule, I-04, I-05, U-01 and I-20 amendments | I-05 | wire-planner | 0.4–0.55 | done |
 | [LX-02](wp/LX-02-oidc-signin-fix.md) | OIDC sign-in stops renewing `expires_at` and changing tier on an existing licence; provisioning rewrites only its declared keys, secrets included | — | implementer | 0.3–0.4 | in-review |
-| [LX-03](wp/LX-03-claim-carries-grants.md) | Claim and migrate carry `license_store_grants` and store bindings to the target licence (old binding kept as an alias); seat-checked `moveDevices` | — | implementer | 0.3–0.4 | todo |
+| [LX-03](wp/LX-03-claim-carries-grants.md) | Claim and migrate carry `license_store_grants` and store bindings to the target licence (old binding kept as an alias); seat-checked `moveDevices` | — | implementer | 0.3–0.4 | in-review |
 | [LX-04](wp/LX-04-portal-doc-agreement.md) | Portal and licence document agree on flag defaults and tier channels; stale comments and docs (G14, G19) | — | implementer | 0.2–0.3 | todo |
 | [LX-05](wp/LX-05-reserved-names-warn.md) | Reserved entitlement names, warn phase: compatible-declaration rule, platform `licensing.reservedNames` setting, console list of registered products, djdl copy fix | — | implementer | 0.3–0.4 | todo |
 | [LX-05b](wp/LX-05b-reserved-names-error.md) ✋ | Reserved entitlement names, error phase: `licensing.reservedNames` flipped to `error` and the warn path removed | LX-05 | implementer | 0.1–0.15 | todo |

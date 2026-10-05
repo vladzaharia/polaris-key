@@ -18,7 +18,7 @@ import type {
 } from "../../core/registry.js";
 import { handleLicenseRoutes } from "./routes.js";
 import { handleLicenseAdmin } from "./admin/index.js";
-import { applyStoreGrant } from "./storeGrants.js";
+import { applyStoreGrant, storeGrantMergeStatements } from "./storeGrants.js";
 import { licenseProvenance } from "./provenance.js";
 import { LICENSE_SETTINGS_SLICE } from "./settings.js";
 
@@ -43,6 +43,8 @@ export const licenseService: ServiceDescriptor = {
   }),
   /** P6-01: a verified store purchase's flag on the buyer's licence (`storeGrants.ts`). */
   applyStoreGrant,
+  /** LX-03: a retired licence's store grants move to the survivor (`core/licenseMerge.ts`). */
+  licenseMerge: storeGrantMergeStatements,
   /** PX-W6 (G8): where each licence came from — store grants and origin (`provenance.ts`). */
   licenseProvenance,
 };

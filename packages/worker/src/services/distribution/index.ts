@@ -65,6 +65,7 @@ import { refreshReadiness } from "./readiness.js";
 import { pollConnectors } from "./connectors/index.js";
 import { runAutoHalt, type AutoHaltOutcome } from "./autoHalt.js";
 import { runCommerceTick, type CommerceTick } from "./commerce/recheck.js";
+import { commerceMergeStatements } from "./commerce/state.js";
 import {
   getOutlet,
   manifestIngestStatements as outletIngestStatements,
@@ -231,6 +232,12 @@ export const distributionService: ServiceDescriptor = {
    * an operator enables Distribution.
    */
   manifestIngestAlways: accessIngestStatements,
+  /**
+   * LX-03: a retired licence's purchases move to the survivor and its purchase binding becomes
+   * an alias of it (`commerce/state.ts`, `core/licenseMerge.ts`), whatever Distribution's
+   * enablement — a purchase left on the retired licence would be stranded when it is turned on.
+   */
+  licenseMerge: commerceMergeStatements,
   /** `/manage/api/products/<slug>/distribution/…` (`admin.ts`). */
   adminHandle: handleDistributionAdmin,
   /** The store-connector poll, on the connector cron (`connectors/`). */
