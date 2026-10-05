@@ -102,7 +102,24 @@ owner delegated open questions to the lead, who takes the recommended option):**
   two `linkRepo.test.ts` cases that pinned "a half-applied push still drops the approval" now pin
   "a refused or throwing push widens nothing and the approval stands". The `finally` sweep stays.
 - **The pre-sweep** (`invalidateWidenedEdgeMintApprovals` before the batch) now runs after every
-  check instead of before them, so a refused resync writes nothing at all.
+  check instead of before them, so a refused resync writes nothing at all. A
+  resync that THROWS after the pre-sweep (in `releaseStoreSync`'s GitHub read) still leaves the
+  sweep's approval deletions behind; that is accepted, as the sweep only narrows (a security
+  sweep), and is the one exception to "nothing written".
+- **The column-backed claim guard is in SQL** (review fix round 1): the resync reads the claims
+  early to report and audit them, but the `products` UPDATE (`col = CASE WHEN <claimed> THEN col
+ELSE ? END`), the schema deactivate/insert and the matching `setting.resync` audit rows
+  (`INSERT … SELECT … WHERE NOT <claimed>`, `unlessClaimed`) re-check the claim in the statement,
+  so a console save that claims a key between that read and the batch wins. Pinned by the
+  "mid-flight" case in `settingsClaims.test.ts`.
+- **Revert screens a catalog** (review fix round 1): a resync does not `compileAll()` a claimed
+  catalog, yet the snapshot records it, so Revert of `config.catalog` runs `compileAll()` first and
+  answers 409 `invalid_catalog` (claim kept, nothing written) when it fails.
+- **The dropped-profile guard counts licences plus the tiers that survive this resync**, where the
+  legacy path counted every stored tier (`countLicensesUsingProfile`). A push that drops tier T and
+  its profile P together (or re-points T away from P) used to be refused and is now applied; the
+  stored tier that referenced P is being removed or re-pointed in the same batch, so the old
+  refusal was spurious.
 
 ## Steps
 

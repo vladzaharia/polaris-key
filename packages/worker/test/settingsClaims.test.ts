@@ -342,6 +342,62 @@ describe("a console edit to a claimable field survives a following resync (ST-01
     expect(limit.summary).toMatch(/3 → 7/);
   });
 
+  it("a console save that claims a key while the resync is mid-flight still wins (guard in SQL)", async () => {
+    // The resync reads the claims early, then makes GitHub round trips before its batch. A
+    // console save landing in that window must not be overwritten: the guard is in each write.
+    const ctx = await linked();
+    const inner = github({
+      name: "Acme Two",
+      devices: 7,
+      schema: schemaJson("run.other"),
+    });
+    let raced = false;
+    const racing: FetchImpl = async (input, init) => {
+      if (!raced && String(input).includes("/releases?per_page")) {
+        raced = true;
+        await ctx.db.batch([
+          {
+            sql: "UPDATE products SET name = ? WHERE slug = ?",
+            params: ["Console", SLUG],
+          },
+          stmtClaim(SLUG, "core.name", "u1", NOW + 2),
+          {
+            sql: "UPDATE product_schema SET active = 0 WHERE product = ?",
+            params: [SLUG],
+          },
+          {
+            sql: `INSERT INTO product_schema (product, catalog_version, catalog_json, active, created_at)
+                  VALUES (?, 99, ?, 1, ?)`,
+            params: [SLUG, schemaJson("console.only"), NOW + 2],
+          },
+          stmtClaim(SLUG, "config.catalog", "u1", NOW + 2),
+        ]);
+      }
+      return inner(input, init);
+    };
+    const res = await resyncRepo(
+      ctx.env,
+      ctx.db,
+      SLUG,
+      NOW + 60,
+      racing,
+      manifestIngestFor(SERVICES),
+    );
+    expect(res.ok).toBe(true);
+    expect(raced).toBe(true);
+    const row = await productRow(ctx);
+    expect(row.name).toBe("Console");
+    // An unclaimed field in the same statement still follows the manifest.
+    expect(row.default_device_limit).toBe(7);
+    expect(await activeCatalog(ctx)).toEqual(["console.only"]);
+    const resyncAudits = (await audits(ctx, "setting.resync")).map(
+      (a) => a.target_id,
+    );
+    expect(resyncAudits).toContain("license.defaults.deviceLimit");
+    expect(resyncAudits).not.toContain("core.name");
+    expect(resyncAudits).not.toContain("config.catalog");
+  });
+
   it("the console's resync route answers what it kept as claimed", async () => {
     const ctx = await linked();
     await call(ctx, "PATCH", "", { name: "Mine" });

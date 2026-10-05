@@ -71,8 +71,11 @@ export {
 export {
   auditValue,
   claimedKeys,
+  claimGuardParams,
+  CLAIMED_SQL,
   RESYNC_ACTOR,
   stmtSettingAudit,
+  unlessClaimed,
   type ClaimKey,
 } from "./settingsClaims.js";
 export { getManifestSnapshot } from "./manifestSnapshot.js";

@@ -4660,9 +4660,16 @@ sit behind the portal session; the claim also needs the CSRF header.
   applied commit. (2) **Claims**: a console write to a claimable setting (`core.name`,
   `license.defaults.*`, `core.web.origins`, `config.catalog`) upserts a `source = 'console'` row in
   `product_settings`, and a console create or edit of a tier or profile marks that row `console`;
-  every later resync skips them (the guard is in each statement, so a console edit racing a push
-  is never overwritten). Revert deletes the claim and re-applies the last snapshot (ST-01a), audited
-  as `setting.revert`. `core.adminGroup` is manifest-only: the console refuses it on a linked
+  every later resync skips them. The guard is in each write statement, not only in the resync's
+  early read of the claims: the five column writes keep the column while a live `product_settings`
+  claim exists (`CASE WHEN EXISTS …`), the catalog deactivate/insert and their audit rows carry
+  `NOT EXISTS`, and tiers and profiles carry `WHERE source = 'manifest'`, so a console edit that
+  claims a key while a push is between its GitHub reads and its batch is never overwritten.
+  Revert deletes the claim and re-applies the last snapshot (ST-01a), audited as
+  `setting.revert`; a reverted catalog is screened with `compileAll()` first (409
+  `invalid_catalog`, claim kept), because a resync does not screen a claimed catalog yet still
+  records it in the snapshot, so Revert would otherwise be an unscreened path to `product_schema`
+  and to unbounded `pattern` complexity. `core.adminGroup` is manifest-only: the console refuses it on a linked
   product rather than storing a value the next push would silently replace. (3) **No half-applied
   refusal**: every check (OIDC issuer, publisher lookup, catalog compile, binary name, the
   referenced-tier and referenced-profile guards) runs before the first write and the apply is ONE

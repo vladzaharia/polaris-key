@@ -22,6 +22,8 @@ import type { Db, DbStatement, Env } from "../../core/platform.js";
 import {
   auditValue,
   claimedKeys,
+  claimGuardParams,
+  CLAIMED_SQL,
   countLicensesUsingTier,
   getActiveSchema,
   getManifestSnapshot,
@@ -49,6 +51,7 @@ import {
   stmtSettingAudit,
   stmtUpsertManifestProfile,
   stmtUpsertManifestTier,
+  unlessClaimed,
   type ClaimKey,
   type TierRow,
 } from "../../core/ingest.js";
@@ -469,18 +472,24 @@ async function applyRepoManifest(
   const updated: string[] = [];
   const stmts: DbStatement[] = [];
   const audits: DbStatement[] = [];
-  const auditSetting = (key: string, before: unknown, after: unknown): void => {
-    audits.push(
-      stmtSettingAudit(
-        slug,
-        now,
-        RESYNC_ACTOR,
-        "setting.resync",
-        "setting",
-        key,
-        `${key} set from the manifest${appliedSha ? ` at ${appliedSha.slice(0, 12)}` : ""}: ${auditValue(before)} → ${auditValue(after)}`,
-      ),
+  const auditSetting = (
+    key: string,
+    before: unknown,
+    after: unknown,
+    claimKey: ClaimKey | null = null,
+  ): void => {
+    const stmt = stmtSettingAudit(
+      slug,
+      now,
+      RESYNC_ACTOR,
+      "setting.resync",
+      "setting",
+      key,
+      `${key} set from the manifest${appliedSha ? ` at ${appliedSha.slice(0, 12)}` : ""}: ${auditValue(before)} → ${auditValue(after)}`,
     );
+    // A claimable key's audit row carries the same in-statement guard as its write, so a claim
+    // made after `claims` was read leaves neither the write nor an audit row claiming it happened.
+    audits.push(claimKey ? unlessClaimed(stmt, slug, claimKey, now) : stmt);
   };
 
   // The product row's manifest fields (S-18 §4.5 item 1). A field the console has claimed
@@ -518,8 +527,21 @@ async function applyRepoManifest(
       claimed.push(key);
       continue;
     }
-    sets.push(`${column} = ?`);
-    setParams.push(after as string | number | null);
+    // `claims` was read before the GitHub round trips above; a console save may have claimed the
+    // key since. The guard is therefore in the statement itself (the column keeps its value while
+    // a live claim exists), like `compat_source` below and the tiers' `source` guard.
+    if (key) {
+      sets.push(
+        `${column} = CASE WHEN ${CLAIMED_SQL} THEN ${column} ELSE ? END`,
+      );
+      setParams.push(
+        ...claimGuardParams(slug, key, now),
+        after as string | number | null,
+      );
+    } else {
+      sets.push(`${column} = ?`);
+      setParams.push(after as string | number | null);
+    }
     if (before !== after)
       auditSetting(
         key ?? "core.adminGroup",
@@ -527,6 +549,7 @@ async function applyRepoManifest(
           ? parseWebOrigins(before as string | null)
           : before,
         column === "web_origins_json" ? [...manifest.webOrigins] : after,
+        key,
       );
   }
   stmts.push({
@@ -590,28 +613,41 @@ async function applyRepoManifest(
   if (catalogClaimed) claimed.push("config.catalog");
   if (catalogChanged) {
     const version = await nextSchemaVersion(db, slug);
+    // Guarded in SQL as well: a console catalog publish that claims `config.catalog` after
+    // `claims` was read must not be deactivated and replaced by this push.
     stmts.push(
       {
-        sql: "UPDATE product_schema SET active = 0 WHERE product = ?",
-        params: [slug],
+        sql: `UPDATE product_schema SET active = 0
+                WHERE product = ? AND NOT ${CLAIMED_SQL}`,
+        params: [slug, ...claimGuardParams(slug, "config.catalog", now)],
       },
-      stmtInsertSchema({
-        product: slug,
-        catalog_version: version,
-        catalog_json: nextCatalogJson,
-        active: 1,
-        created_at: now,
-      }),
+      unlessClaimed(
+        stmtInsertSchema({
+          product: slug,
+          catalog_version: version,
+          catalog_json: nextCatalogJson,
+          active: 1,
+          created_at: now,
+        }),
+        slug,
+        "config.catalog",
+        now,
+      ),
     );
     audits.push(
-      stmtSettingAudit(
+      unlessClaimed(
+        stmtSettingAudit(
+          slug,
+          now,
+          RESYNC_ACTOR,
+          "setting.resync",
+          "setting",
+          "config.catalog",
+          `config.catalog published from the manifest as v${version}${appliedSha ? ` at ${appliedSha.slice(0, 12)}` : ""}`,
+        ),
         slug,
-        now,
-        RESYNC_ACTOR,
-        "setting.resync",
-        "setting",
         "config.catalog",
-        `config.catalog published from the manifest as v${version}${appliedSha ? ` at ${appliedSha.slice(0, 12)}` : ""}`,
+        now,
       ),
     );
     updated.push("schema");

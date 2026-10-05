@@ -134,6 +134,45 @@ export async function claimedKeys(
 }
 
 /**
+ * The claim guard as SQL, for a writer that must not overwrite a claimed key: true while `key` has
+ * a live console claim. Binds `[product, key, now]` (`claimGuardParams`). A resync reads the
+ * claims early (to report them and skip their audit rows) but several GitHub round trips pass
+ * before its batch runs, so a console save that claims a key in between must still win: the
+ * guard lives in each column write, never only in that earlier read.
+ */
+export const CLAIMED_SQL = `EXISTS (SELECT 1 FROM product_settings
+    WHERE product = ? AND key = ? AND source = 'console'
+      AND (expires_at IS NULL OR expires_at > ?))`;
+
+export function claimGuardParams(
+  product: string,
+  key: ClaimKey,
+  now: number,
+): [string, ClaimKey, number] {
+  return [product, key, now];
+}
+
+/**
+ * `stmt` (an `INSERT INTO t (cols) VALUES (?, ...)`) rewritten to insert nothing once `key` is
+ * claimed: `INSERT INTO t (cols) SELECT ?, ... WHERE NOT <CLAIMED_SQL>`.
+ */
+export function unlessClaimed(
+  stmt: DbStatement,
+  product: string,
+  key: ClaimKey,
+  now: number,
+): DbStatement {
+  const m = /^(\s*INSERT INTO [^(]+\([^)]*\))\s*VALUES\s*\(([^)]*)\)\s*$/s.exec(
+    stmt.sql,
+  );
+  if (!m) throw new Error("unlessClaimed: not a single-row INSERT ... VALUES");
+  return {
+    sql: `${m[1]} SELECT ${m[2]} WHERE NOT ${CLAIMED_SQL}`,
+    params: [...stmt.params, ...claimGuardParams(product, key, now)],
+  };
+}
+
+/**
  * Claim `key` for the console: "set to the same value keeps one" (S-18 §4.3): the claim is the
  * write, not the difference. A re-claim bumps `version` and clears any expiry.
  */
