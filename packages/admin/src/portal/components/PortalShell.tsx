@@ -202,7 +202,7 @@ function NavLink({
       href={to}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "relative inline-flex items-center gap-2 px-1 text-[0.9375rem]",
+        "relative inline-flex items-center gap-2.5 px-1 text-[0.9375rem]",
         active
           ? "font-bold text-fg-strong after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-full after:bg-accent"
           : "text-fg-muted hover:text-fg-strong",
@@ -210,13 +210,17 @@ function NavLink({
     >
       {label}
       {count ? (
-        accentCount ? (
-          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-subtle px-1.5 text-xs font-bold text-accent-fg">
-            {count}
-          </span>
-        ) : (
-          <span className="text-xs font-normal text-fg-muted">{count}</span>
-        )
+        <span
+          className={cn(
+            "inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium tabular-nums",
+            // Discover's count of offers is always the small violet count (§4.16).
+            active || accentCount
+              ? "bg-accent-subtle text-accent-fg"
+              : "bg-surface-raised text-fg-muted ring-1 ring-inset ring-border",
+          )}
+        >
+          {count}
+        </span>
       ) : null}
     </a>
   );
