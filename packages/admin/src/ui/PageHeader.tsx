@@ -1,11 +1,11 @@
 import * as React from "react";
 import { RefreshCw } from "lucide-react";
-import { cn } from "../../lib/cn.js";
-import { formatRelative } from "../../lib/format.js";
-import { ActionMenu } from "../../ui/ActionMenu.js";
-import { Button } from "../../ui/Button.js";
-import { RefetchBar } from "../../ui/loading.js";
-import { Switch } from "../../ui/Switch.js";
+import { cn } from "../lib/cn.js";
+import { formatRelative } from "../lib/format.js";
+import { ActionMenu } from "./ActionMenu.js";
+import { Button } from "./Button.js";
+import { RefetchBar } from "./loading.js";
+import { Switch } from "./Switch.js";
 
 /** A secondary or danger page action (rendered inline or in "More actions"). */
 export interface PageAction {
@@ -19,6 +19,12 @@ export interface PageHeaderProps {
   /** Above the title: `Breadcrumbs` on detail, editor and wizard pages. */
   eyebrow?: React.ReactNode;
   title: React.ReactNode;
+  /**
+   * The title's step on the type scale (EXPERIENCE.md §3): `default` is the `title` size every h1
+   * uses; `display` (30 px on phones, 40 px wide) is for the portal's Library and Product titles
+   * only.
+   */
+  size?: "default" | "display";
   /** Beside the title: a `StatusPill`, a count. */
   titleAside?: React.ReactNode;
   /** Scope and context, one line. */
@@ -59,7 +65,8 @@ export interface PageHeaderProps {
 const INLINE_SECONDARY = 2;
 
 /**
- * The page header every template shares (components.md §1.6, ADMIN.md §3): the page's one `<h1>`
+ * The page header every page in both apps shares (EXPERIENCE.md §4, components.md §1.6): the
+ * page's one `<h1>`
  * (focus lands on it after a navigation, ADMIN.md §5.6), one primary action, up to two secondary
  * actions and the rest in "More actions", with danger actions last.
  *
@@ -70,6 +77,7 @@ const INLINE_SECONDARY = 2;
 export function PageHeader({
   eyebrow,
   title,
+  size = "default",
   titleAside,
   description,
   meta,
@@ -159,7 +167,10 @@ export function PageHeader({
             <h1
               tabIndex={-1}
               data-page-title=""
-              className="text-2xl font-bold tracking-tight text-fg-strong outline-hidden"
+              className={cn(
+                "font-bold tracking-tight text-fg-strong outline-hidden",
+                size === "display" ? "text-3xl lg:text-display" : "text-2xl",
+              )}
             >
               {title}
             </h1>

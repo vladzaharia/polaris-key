@@ -123,58 +123,8 @@ export function PanelRow({
   );
 }
 
-/** A titled card for a dashboard panel, with an optional "View all →" link. */
-export function Panel({
-  title,
-  description,
-  action,
-  children,
-  className,
-  headingLevel = 2,
-}: {
-  title: React.ReactNode;
-  description?: React.ReactNode;
-  /** A link or button at the header's end. */
-  action?: React.ReactNode;
-  children: React.ReactNode;
-  className?: string;
-  headingLevel?: 2 | 3;
-}): React.ReactElement {
-  const Heading = headingLevel === 2 ? "h2" : "h3";
-  const id = React.useId();
-  return (
-    <section
-      aria-labelledby={id}
-      className={cn(
-        "flex flex-col rounded-lg border border-border bg-surface-raised",
-        className,
-      )}
-    >
-      {/* The title takes the free width and the action stays right, centred on the title; only
-          an action wider than what is left (a phone) wraps under the title. */}
-      <div
-        data-card-header=""
-        className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3"
-      >
-        <div className="min-w-0 flex-1">
-          <Heading id={id} className="text-base font-bold text-fg-strong">
-            {title}
-          </Heading>
-          {description ? (
-            <p className="text-sm text-fg-muted">{description}</p>
-          ) : null}
-        </div>
-        {/* A labelled ghost button that ends the header meets the edge by its ink (the trailing
-            ghost rule in styles.css; the header is a data-card-header). */}
-        {/* The action never sets the header's height: a 32 px sm button or a 36 px field beside a
-            24 px title would grow this header past its siblings' 49 px, so it hangs 6 px into the
-            padding (the layout lint's rhythm/header-height). */}
-        {action ? <div className="-my-1.5 max-w-full">{action}</div> : null}
-      </div>
-      <div className="min-w-0 flex-1 p-4">{children}</div>
-    </section>
-  );
-}
+/** A titled card for a dashboard panel: the shared `Section` (EXPERIENCE.md §3), from `ui/`. */
+export { Panel, type PanelProps } from "../../ui/Section.js";
 
 export type AttentionTone = "danger" | "warning" | "info";
 
