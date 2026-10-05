@@ -988,6 +988,11 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         }
       }
     },
+    "displayText": {
+      "description": "A name the sign-in card shows: no control, zero-width or bidirectional-formatting character and no leading or trailing whitespace (invalid_display_text, PX-W13).",
+      "type": "string",
+      "pattern": "^(?!\\\\s)(?![\\\\s\\\\S]*\\\\s$)[^\\\\u0000-\\\\u001f\\\\u007f-\\\\u009f\\\\u061c\\\\u200b-\\\\u200f\\\\u202a-\\\\u202e\\\\u2060-\\\\u2064\\\\u2066-\\\\u2069\\\\ufeff]*$"
+    },
     "listing": {
       "description": "Store-page metadata. A per-outlet listing is merged over the document's.",
       "type": "object",
@@ -995,7 +1000,8 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "name": {
           "type": "string",
           "maxLength": 200,
-          "pattern": "^[^\\\\u0000-\\\\u001f\\\\u007f]+$"
+          "pattern": "^[^\\\\u0000-\\\\u001f\\\\u007f]+$",
+          "allOf": [{ "$ref": "#/$defs/displayText" }]
         },
         "subtitle": {
           "type": "string",
@@ -1043,7 +1049,8 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "developerName": {
           "type": "string",
           "maxLength": 200,
-          "pattern": "^[^\\\\u0000-\\\\u001f\\\\u007f]+$"
+          "pattern": "^[^\\\\u0000-\\\\u001f\\\\u007f]+$",
+          "allOf": [{ "$ref": "#/$defs/displayText" }]
         },
         "supportUrl": {
           "description": "Where a customer gets help with the product: the customer portal's Help card and its renewal action.",
@@ -1074,7 +1081,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
     },
     "product": { "$ref": "#/$defs/productCore" },
     "slug": { "$ref": "#/$defs/slug" },
-    "name": { "$ref": "#/$defs/label" },
+    "name": { "$ref": "#/$defs/displayName" },
     "adminGroup": { "$ref": "#/$defs/groupName" },
     "compatMin": { "$ref": "#/$defs/semver" },
     "compatMax": { "$ref": "#/$defs/semver" },
@@ -1277,6 +1284,11 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "maxLength": 200,
       "pattern": "^[^\\\\u0000-\\\\u001f\\\\u007f]*$"
     },
+    "displayName": {
+      "description": "A name the sign-in card shows: a label, with no control, zero-width or bidirectional-formatting character and no leading or trailing whitespace (invalid_display_text, PX-W13).",
+      "allOf": [{ "$ref": "#/$defs/label" }],
+      "pattern": "^(?!\\\\s)(?![\\\\s\\\\S]*\\\\s$)[^\\\\u0000-\\\\u001f\\\\u007f-\\\\u009f\\\\u061c\\\\u200b-\\\\u200f\\\\u202a-\\\\u202e\\\\u2060-\\\\u2064\\\\u2066-\\\\u2069\\\\ufeff]*$"
+    },
     "longText": {
       "description": "Longer human text: at most 2000 chars, no control characters.",
       "type": "string",
@@ -1316,7 +1328,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "type": "object",
       "properties": {
         "slug": { "$ref": "#/$defs/slug" },
-        "name": { "$ref": "#/$defs/label" },
+        "name": { "$ref": "#/$defs/displayName" },
         "adminGroup": { "$ref": "#/$defs/groupName" },
         "compatMin": { "$ref": "#/$defs/semver" },
         "compatMax": { "$ref": "#/$defs/semver" },
@@ -11589,6 +11601,19 @@ function walk(value, path25, depth) {
 // ../shared-protocol/dist/config.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
+// ../shared-protocol/dist/identity.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var DISPLAY_TEXT_STRIP = [
+  [0, 31],
+  [127, 159],
+  [1564, 1564],
+  [8203, 8207],
+  [8234, 8238],
+  [8288, 8292],
+  [8294, 8297],
+  [65279, 65279]
+];
+
 // ../shared-protocol/dist/core.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
@@ -11755,6 +11780,116 @@ var BUILD_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 var DELEGATED_KID_PATTERN = /^pkd1-[0-9a-f]{64}$/;
 
 // ../shared-manifest/dist/index.js
+var DEFAULT_RESERVED_DISPLAY_NAMES_MODE = "warn";
+var DISPLAY_NAME_EXEMPT_SLUG = "polaris-key";
+var RESERVED_DISPLAY_TERMS = [
+  "polaris",
+  "polaris key",
+  "plrs",
+  "apple",
+  "app store",
+  "google",
+  "google play",
+  "steam",
+  "valve",
+  "epic games",
+  "microsoft",
+  "xbox",
+  "playstation",
+  "nintendo",
+  "itch io"
+];
+var CONFUSABLES = {
+  "0": "o",
+  "1": "l",
+  // Cyrillic
+  "а": "a",
+  "в": "b",
+  "е": "e",
+  "і": "i",
+  "ј": "j",
+  "к": "k",
+  "м": "m",
+  "н": "h",
+  "о": "o",
+  "р": "p",
+  "с": "c",
+  "ѕ": "s",
+  "т": "t",
+  "у": "y",
+  "х": "x",
+  "ԁ": "d",
+  "һ": "h",
+  "ѵ": "v",
+  "ԛ": "q",
+  "ԝ": "w",
+  // Greek
+  "α": "a",
+  "β": "b",
+  "ε": "e",
+  "ι": "i",
+  "κ": "k",
+  "ν": "v",
+  "ο": "o",
+  "ρ": "p",
+  "τ": "t",
+  "υ": "u",
+  "χ": "x",
+  "γ": "y"
+};
+function displayNameSkeleton(text) {
+  let s = "";
+  for (const ch of text) {
+    if (new RegExp("\\p{M}", "u").test(ch)) continue;
+    if (!/[\p{L}\p{N}]/u.test(ch)) {
+      s += " ";
+      continue;
+    }
+    for (const c of ch.normalize("NFKD").replace(new RegExp("\\p{M}", "gu"), "").toLowerCase())
+      s += CONFUSABLES[c] ?? c;
+  }
+  s = s.replace(/rn/g, "m").replace(/vv/g, "w");
+  return s.split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 0);
+}
+var TERM_WORDS = RESERVED_DISPLAY_TERMS.map(
+  (t) => displayNameSkeleton(t)
+);
+function byLength(terms) {
+  return terms.sort((a, b) => b.w.length - a.w.length);
+}
+function reservedDisplayTerm(text, extraTerms = []) {
+  const words = displayNameSkeleton(text);
+  const terms = byLength([
+    ...RESERVED_DISPLAY_TERMS.map((term, i) => ({ term, w: TERM_WORDS[i] })),
+    ...extraTerms.map((term) => ({ term, w: displayNameSkeleton(term) }))
+  ]);
+  for (const { term, w } of terms) {
+    if (w.length === 0) continue;
+    const joined = w.join("");
+    for (let i = 0; i < words.length; i++) {
+      if (words[i] === joined) return term;
+      if (i + w.length > words.length) continue;
+      let all = true;
+      for (let j = 0; j < w.length && all; j++) all = words[i + j] === w[j];
+      if (all) return term;
+    }
+  }
+  return null;
+}
+function invalidDisplayText(text) {
+  if (/^\s|\s$/u.test(text)) return true;
+  for (const ch of text) {
+    const cp3 = ch.codePointAt(0);
+    for (const [lo, hi] of DISPLAY_TEXT_STRIP)
+      if (cp3 >= lo && cp3 <= hi) return true;
+  }
+  return false;
+}
+function checkDisplayName(text, opts = {}) {
+  if (invalidDisplayText(text)) return "invalid";
+  if (opts.slug === DISPLAY_NAME_EXEMPT_SLUG) return null;
+  return reservedDisplayTerm(text, opts.extraTerms) ? "reserved" : null;
+}
 var DEFAULT_RESERVED_NAMES_MODE = "warn";
 var RESERVED_ENTITLEMENT_KEYS = [
   {
@@ -16046,6 +16181,106 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       manifest.distribution,
       distributionContext(relDoc)
     );
+  }
+  {
+    const mode = opts.reservedDisplayNames ?? DEFAULT_RESERVED_DISPLAY_NAMES_MODE;
+    const verdict = (v) => typeof v === "string" && v !== "" ? checkDisplayName(v, { slug: productSlug }) : null;
+    const listing = isRecord4(manifest.distribution) ? asRecord(manifest.distribution.listing) : {};
+    const name = verdict(productNode.name);
+    if (name === "invalid")
+      add2(
+        errors,
+        "product",
+        "/product/name",
+        "invalid_display_text",
+        "product.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace."
+      );
+    else if (name === "reserved" && mode === "error")
+      add2(
+        errors,
+        "product",
+        "/product/name",
+        "reserved_display_name",
+        "product.name uses a reserved platform or store name (Polaris Key, Apple, Google Play, Steam and others); an app may not present itself as one. Rename it, or ask the platform operator to approve it."
+      );
+    else if (name === "reserved")
+      add2(
+        warnings,
+        "product",
+        "/product/name",
+        "reserved_display_name",
+        "product.name uses a reserved platform or store name (Polaris Key, Apple, Google Play, Steam and others); the sign-in card shows the product slug instead. This becomes an error once the platform enforces reserved display names."
+      );
+    const listingName = verdict(listing.name);
+    if (listingName === "invalid")
+      add2(
+        errors,
+        "distribution",
+        "/listing/name",
+        "invalid_display_text",
+        "listing.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace."
+      );
+    else if (listingName === "reserved" && mode === "error")
+      add2(
+        errors,
+        "distribution",
+        "/listing/name",
+        "reserved_display_name",
+        "listing.name uses a reserved platform or store name; an app may not present itself as one. Rename it, or ask the platform operator to approve it."
+      );
+    else if (listingName === "reserved")
+      add2(
+        warnings,
+        "distribution",
+        "/listing/name",
+        "reserved_display_name",
+        "listing.name uses a reserved platform or store name; the sign-in card shows the product slug instead. This becomes an error once the platform enforces reserved display names."
+      );
+    const developer = verdict(listing.developerName);
+    if (developer === "invalid")
+      add2(
+        errors,
+        "distribution",
+        "/listing/developerName",
+        "invalid_display_text",
+        "listing.developerName must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace."
+      );
+    else if (developer === "reserved" && mode === "error")
+      add2(
+        errors,
+        "distribution",
+        "/listing/developerName",
+        "reserved_display_name",
+        "listing.developerName uses a reserved platform or store name; a developer may not present itself as one. Rename it, or ask the platform operator to approve it."
+      );
+    else if (developer === "reserved")
+      add2(
+        warnings,
+        "distribution",
+        "/listing/developerName",
+        "reserved_display_name",
+        "listing.developerName uses a reserved platform or store name; the sign-in card leaves the developer out instead. This becomes an error once the platform enforces reserved display names."
+      );
+    const outlets = isRecord4(manifest.distribution) ? asRecord(manifest.distribution.outlets) : {};
+    for (const [id, entry] of Object.entries(outlets)) {
+      const l = isRecord4(entry) ? asRecord(entry.listing) : {};
+      if (verdict(l.name) === "invalid")
+        add2(
+          errors,
+          "distribution",
+          `/outlets/${id}/listing/name`,
+          "invalid_display_text",
+          `outlets.${id}.listing.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.`
+        );
+      if (verdict(l.developerName) === "invalid")
+        add2(
+          errors,
+          "distribution",
+          `/outlets/${id}/listing/developerName`,
+          "invalid_display_text",
+          `outlets.${id}.listing.developerName must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.`
+        );
+    }
   }
   for (const [i, item] of (arrayAt(secrets, "required") ?? []).entries()) {
     const name = isRecord4(item) ? item.name : item;

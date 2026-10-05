@@ -228,6 +228,18 @@ table, `tools/services.json`.
       A product registered under one would be permanently shadowed; the validator emits
       `reserved_slug` and the console's manual-create path checks the same list.
 
+### 6a. Name the product as itself (display names, PX-W13)
+
+- [ ] `product.name`, `listing.name` and `listing.developerName` are what the customer's sign-in
+      card shows ("<App> wants you to sign in"). A control, zero-width or bidi character, or a
+      leading or trailing space, is `invalid_display_text` (an error, also in the JSON Schemas).
+- [ ] A platform or store name as whole words (Polaris Key, plrs, Apple, App Store, Google,
+      Google Play, Steam, Valve, Epic Games, Microsoft, Xbox, PlayStation, Nintendo, itch.io,
+      after folding case, width, accents, look-alikes and separators) is `reserved_display_name`:
+      a warning today, an error once the platform setting `IDENTITY_RESERVED_DISPLAY_NAMES` says
+      `error`. Either way the card shows such a product by its slug. Only the system product
+      `polaris-key` is exempt.
+
 ### 7. Register the product
 
 - [ ] **Repo-link (preferred).** In the console, link the product's repo. The worker fetches and

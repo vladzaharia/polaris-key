@@ -20,7 +20,8 @@ only corpus. `corpusVersion 2`,
 `stageMatrixVersion 3`, `headersVersion 1`,
 `configMatrixVersion 1`,
 `updateMatrixVersion 1`, `outletMatrixVersion 1`,
-`planMatrixVersion 2`, `contentCorpusVersion 2`.
+`planMatrixVersion 2`, `deviceLabelVersion 1`,
+`contentCorpusVersion 2`.
 Wire contract v4 (`docs/security/WIRE-CONTRACT-V4.md`) adds the `feedCases` and
 `releaseRecordCases` families, the strict-verifier `jwsCases`, a `nonWireIntegers` member
 beside `expect` on every case whose payload holds a number that cannot be a wire integer, and the
@@ -77,6 +78,10 @@ WIRE-CONTRACT-V4 §11.2: the capability defaults per outlet kind and their narro
 ## Install planner (`plan-matrix.json`): 28 planner rows, 11 variant and 22 target cases
 
 WIRE-CONTRACT-V4 §11.4: `plan` (request weight 16384), `selectVariant` and `planTarget`. Chunk targets are inline, so the planner never parses an index; the `plan-real-*` rows are the content set's own menu. The generator recomputes every row and case.
+
+## Device labels (`device-label.json`): 25 cases
+
+WIRE-CONTRACT-V4 §12.7.1 (PX-W13): the one normalisation of the device label every SDK sends as `deviceName` and the Worker stores. Every SDK runs every row, and the Worker runs them through `/identity/auth/device/start`. Non-ASCII code points are written escaped.
 
 ## Content corpus (`content/cases.json`): 71 blobs, 3,743,530 bytes
 

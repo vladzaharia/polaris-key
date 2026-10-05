@@ -623,7 +623,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
     expect(refused.ok).toBe(false);
     if (refused.ok) return;
     expect(refused.errors?.join("\n")).toContain(
-      'uses the reserved name "steam"',
+      "product.name uses a reserved platform or store name",
     );
 
     const linked = await linkRepo(

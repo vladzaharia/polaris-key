@@ -136,6 +136,7 @@ describe("PLATFORM_SETTINGS", () => {
       LAZY_DELTA_MAX_BYTES: "runtime",
       BLOB_GC_GRACE_DAYS: "runtime",
       LICENSING_RESERVED_NAMES: "runtime",
+      IDENTITY_RESERVED_DISPLAY_NAMES: "runtime",
     });
   });
 

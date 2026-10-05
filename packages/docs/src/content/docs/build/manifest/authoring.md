@@ -128,6 +128,27 @@ error after a window of two minor releases or 60 days, whichever is later. Platf
 Licensing lists every registered product with a reserved-name declaration and whether it is
 compatible.
 
+## Display names
+
+The customer's sign-in card says "<App> wants you to sign in" and names the developer, so the
+names an app is shown by are checked (PX-W13): `product.name`, and the `.pkey/distribution`
+document's `listing.name` and `listing.developerName`.
+
+- **`invalid_display_text`** (always an error). The name holds a control character, a zero-width
+  character or a bidirectional-formatting character (an override such as U+202E, an isolate, a
+  mark), or it starts or ends with whitespace. Per-outlet listing names are held to this rule
+  too. The JSON Schemas carry it as a pattern, so editors flag it as you type.
+- **`reserved_display_name`**. The name contains a platform or store name as whole words:
+  Polaris, Polaris Key, plrs, Apple, App Store, Google, Google Play, Steam, Valve, Epic Games,
+  Microsoft, Xbox, PlayStation, Nintendo or itch.io. Case, width, accents, look-alike letters
+  (Cyrillic and Greek), `0` for `o`, `1` for `l`, `rn` for `m` and separators are folded first,
+  so `P0laris-Key` and `ＳＴＥＡＭ` match, and a multi-word term written as one word (`GooglePlay`)
+  matches too. `Applesauce Games` and `Steamroller` do not. It is a **warning** today (`pkey
+validate` prints it and link and resync accept it); the platform setting
+  [`IDENTITY_RESERVED_DISPLAY_NAMES`](/docs/admin/platform-settings/#the-runtime-settings) turns
+  it into an error after a window of two minor releases or 60 days, whichever is later. Either
+  way, the sign-in card shows such a product by its slug in a neutral frame.
+
 ## Enabled services: `modules` + `devices.registration`
 
 Polaris Key is six opt-in services — **license, config, release, distribution, update,

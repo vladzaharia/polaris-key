@@ -6,7 +6,6 @@ import { type SecretDelivery } from "@polaris-key/protocol/config";
 import {
   DEFAULT_RESERVED_DISPLAY_NAMES_MODE,
   checkDisplayName,
-  reservedDisplayNameMessage,
   type ReservedDisplayNamesMode,
 } from "./displayName.js";
 import {
@@ -2425,75 +2424,120 @@ function validateDocuments(
 
   // PX-W13 (plans/PX-W13.md §3): the names the sign-in card shows an app by. Text with a control,
   // zero-width or bidi code point is always refused; a reserved name is reported with the
-  // platform's severity (`identity.reservedDisplayNames`, `warn` until the lead flips it). Two
-  // literal emit sites for the reserved rule, so the generated validation-codes page lists both
-  // severities. The system product may call itself Polaris Key.
+  // platform's severity (`identity.reservedDisplayNames`, `warn` until the lead flips it). The
+  // system product may call itself Polaris Key. Every emit site is literal so the generated
+  // validation-codes page lists each field and severity.
   {
     const mode =
       opts.reservedDisplayNames ?? DEFAULT_RESERVED_DISPLAY_NAMES_MODE;
+    const verdict = (v: unknown): null | "reserved" | "invalid" =>
+      typeof v === "string" && v !== ""
+        ? checkDisplayName(v, { slug: productSlug })
+        : null;
     const listing = isRecord(manifest.distribution)
       ? asRecord(manifest.distribution.listing)
       : {};
-    // [file, path, field, value, textOnly]: a per-outlet listing is merged over the document's
-    // for store pages only, so it is held to the text rule but not judged as the app's name.
-    const named: [
-      ValidationMessage["file"],
-      string,
-      string,
-      unknown,
-      boolean,
-    ][] = [
-      ["product", "/product/name", "product.name", productNode.name, false],
-      ["distribution", "/listing/name", "listing.name", listing.name, false],
-      [
+
+    const name = verdict(productNode.name);
+    if (name === "invalid")
+      add(
+        errors,
+        "product",
+        "/product/name",
+        "invalid_display_text",
+        "product.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.",
+      );
+    else if (name === "reserved" && mode === "error")
+      add(
+        errors,
+        "product",
+        "/product/name",
+        "reserved_display_name",
+        "product.name uses a reserved platform or store name (Polaris Key, Apple, Google Play, Steam and others); an app may not present itself as one. Rename it, or ask the platform operator to approve it.",
+      );
+    else if (name === "reserved")
+      add(
+        warnings,
+        "product",
+        "/product/name",
+        "reserved_display_name",
+        "product.name uses a reserved platform or store name (Polaris Key, Apple, Google Play, Steam and others); the sign-in card shows the product slug instead. This becomes an error once the platform enforces reserved display names.",
+      );
+
+    const listingName = verdict(listing.name);
+    if (listingName === "invalid")
+      add(
+        errors,
+        "distribution",
+        "/listing/name",
+        "invalid_display_text",
+        "listing.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.",
+      );
+    else if (listingName === "reserved" && mode === "error")
+      add(
+        errors,
+        "distribution",
+        "/listing/name",
+        "reserved_display_name",
+        "listing.name uses a reserved platform or store name; an app may not present itself as one. Rename it, or ask the platform operator to approve it.",
+      );
+    else if (listingName === "reserved")
+      add(
+        warnings,
+        "distribution",
+        "/listing/name",
+        "reserved_display_name",
+        "listing.name uses a reserved platform or store name; the sign-in card shows the product slug instead. This becomes an error once the platform enforces reserved display names.",
+      );
+
+    const developer = verdict(listing.developerName);
+    if (developer === "invalid")
+      add(
+        errors,
         "distribution",
         "/listing/developerName",
-        "listing.developerName",
-        listing.developerName,
-        false,
-      ],
-    ];
+        "invalid_display_text",
+        "listing.developerName must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.",
+      );
+    else if (developer === "reserved" && mode === "error")
+      add(
+        errors,
+        "distribution",
+        "/listing/developerName",
+        "reserved_display_name",
+        "listing.developerName uses a reserved platform or store name; a developer may not present itself as one. Rename it, or ask the platform operator to approve it.",
+      );
+    else if (developer === "reserved")
+      add(
+        warnings,
+        "distribution",
+        "/listing/developerName",
+        "reserved_display_name",
+        "listing.developerName uses a reserved platform or store name; the sign-in card leaves the developer out instead. This becomes an error once the platform enforces reserved display names.",
+      );
+
+    // A per-outlet listing is merged over the document's for store pages only, so it is held to
+    // the text rule but not judged as the app's name.
     const outlets = isRecord(manifest.distribution)
       ? asRecord(manifest.distribution.outlets)
       : {};
     for (const [id, entry] of Object.entries(outlets)) {
       const l = isRecord(entry) ? asRecord(entry.listing) : {};
-      for (const f of ["name", "developerName"] as const)
-        named.push([
+      if (verdict(l.name) === "invalid")
+        add(
+          errors,
           "distribution",
-          `/outlets/${id}/listing/${f}`,
-          `outlets.${id}.listing.${f}`,
-          l[f],
-          true,
-        ]);
-    }
-    for (const [file, path, field, value, textOnly] of named) {
-      if (typeof value !== "string" || value === "") continue;
-      const verdict = checkDisplayName(value, { slug: productSlug });
-      if (textOnly && verdict === "reserved") continue;
-      if (verdict === "invalid")
-        add(
-          errors,
-          file,
-          path,
+          `/outlets/${id}/listing/name`,
           "invalid_display_text",
-          `${field} must not hold control, zero-width or bidirectional-formatting characters, or start or end with a space.`,
+          `outlets.${id}.listing.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.`,
         );
-      else if (verdict === "reserved" && mode === "error")
+      if (verdict(l.developerName) === "invalid")
         add(
           errors,
-          file,
-          path,
-          "reserved_display_name",
-          reservedDisplayNameMessage(field, value, "error"),
-        );
-      else if (verdict === "reserved")
-        add(
-          warnings,
-          file,
-          path,
-          "reserved_display_name",
-          reservedDisplayNameMessage(field, value, "warn"),
+          "distribution",
+          `/outlets/${id}/listing/developerName`,
+          "invalid_display_text",
+          `outlets.${id}.listing.developerName must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.`,
         );
     }
   }

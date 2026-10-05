@@ -209,6 +209,27 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     since: "PX-W13",
   }),
 
+  // PX-W13 (§8 Q4, as amended): terms the platform reserves on top of the code's floor
+  // (`RESERVED_DISPLAY_TERMS` in @polaris-key/manifest). It can only add terms, never remove one.
+  setting({
+    key: "identity.reservedDisplayTerms",
+    scope: "platform",
+    service: "platform",
+    area: "identity",
+    label: "Extra reserved display terms",
+    description:
+      "Platform or store names, beyond the built-in list, that a product or developer name may not use.",
+    keywords: ["reserved", "display name", "spoofing"],
+    docs: "/docs/admin/platform-settings/",
+    value: { kind: "list", of: { kind: "string", maxLength: 64 }, max: 64 },
+    defaultValue: [],
+    merge: "cascade",
+    ownership: "operator",
+    confirm: { change: "L1" },
+    storage: { kind: "scalar" },
+    pending: { wp: "ST-04" },
+  }),
+
   // ── Identity (registered for I-09 and I-10a; I-04 §7 step 3, S-18 §5.5) ────────────────
   setting({
     key: "identity.keyEntryRefusals",

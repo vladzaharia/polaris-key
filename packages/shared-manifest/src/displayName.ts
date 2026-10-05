@@ -178,15 +178,3 @@ export function checkDisplayName(
   if (opts.slug === DISPLAY_NAME_EXEMPT_SLUG) return null;
   return reservedDisplayTerm(text, opts.extraTerms) ? "reserved" : null;
 }
-
-/** The validator's message for a reserved name, per mode. */
-export function reservedDisplayNameMessage(
-  field: string,
-  text: string,
-  mode: ReservedDisplayNamesMode,
-): string {
-  const term = reservedDisplayTerm(text) ?? "a reserved name";
-  return mode === "error"
-    ? `${field} "${text}" uses the reserved name "${term}"; an app may not present itself as a platform or store. Rename it, or ask the platform operator to approve it.`
-    : `${field} "${text}" uses the reserved name "${term}"; the sign-in card shows the product slug in a neutral frame instead. This becomes an error once the platform enforces reserved display names.`;
-}
