@@ -110,7 +110,8 @@
       "status": "implemented"
     },
     "devices.report": {
-      "status": "implemented"
+      "status": "implemented",
+      "note": "PolarisKeyClient.report(): the facts, the verified config and entitlement values, caps, content.packSetId, gate {status}, outlet, and the update-health journal (`updates`, at most 16 per report, marked sent once accepted; notes/SDK-PARITY-PASS.md §3.13). UpdateClient journals update_offered, the boot guard update_applied, update_reverted, boot_rolled_back and update_confirmed, PacksClient update_downloaded, update_applied and pack_failed, and both Android install drivers update_downloaded and update_applied (UpdateEventJournalTest, BootGuardEventsTest, DevicesTest, DirectInstallDriverTest)."
     },
     "devices.attest": {
       "status": "planned",

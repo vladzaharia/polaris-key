@@ -80,6 +80,8 @@ public object PolarisKeyAndroid {
                         buildUrl = { version, build -> client().update.buildUrl(version, build) },
                         download = { OkHttpBuildDownload(client().core) },
                         play = android.playUpdates,
+                        events = { self.get()?.core?.updateEvents },
+                        runningVersion = options.core.version,
                     )
                 } else {
                     u.installDriver

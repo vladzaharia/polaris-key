@@ -213,6 +213,18 @@ skipVersion)`, `releaseRecord(hash)`, `buildUrl(version, buildId)` and `install(
   `tools/check_flavours.sh`). Where the native library cannot load, `supports(packs.apply.delta)`
   answers `dependency`.
 
+**Update health.** Every update outcome is journaled for staged-rollout auto-halt (P6-03,
+notes/SDK-PARITY-PASS.md §3.13): `update.decide()` records `update_offered` once per offered
+release, `BootGuard` (pass `events = client.updateEvents`) records `update_applied`,
+`boot_rolled_back` (`failed-boots`, or `no-previous` when nothing could be restored),
+`update_reverted` and, on the first healthy launch of a new version (staged swap or
+platform-installed), `update_confirmed`; `PacksClient` records `update_downloaded`,
+`update_applied` and `pack_failed` per pack, and `:android`'s install drivers record
+`update_downloaded` and `update_applied`. The journal lives in `update-events.json` beside the
+token store (`Store.stateDirectory`; in memory for a store without one), never in the verified
+cache. `report()` carries the oldest 16 as `updates`, with `gate` and `outlet`, and drops them once
+the Worker accepted the report.
+
 **Typed catalog mirror.** `pnpm gen:mirrors --catalog catalog.json --out-dir <dir> --lang kotlin
 --kotlin-package com.example.catalog` writes `ConfigSchema.generated.kt`, a dependency-free
 `ProductCatalog` object (keys, entries, each entry's JSON schema and default; a secret's default is

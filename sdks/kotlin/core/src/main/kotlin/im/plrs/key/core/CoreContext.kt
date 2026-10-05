@@ -128,6 +128,16 @@ public class CoreContext(options: CoreOptions) {
     public val transport: PolarisTransport = options.transport ?: OkHttpTransport()
     public val requestTimeoutSeconds: Double = options.requestTimeoutSeconds
 
+    /**
+     * The update-health journal (notes/SDK-PARITY-PASS.md §3.13): `update-events.json` in the store's
+     * state directory, or memory when the store has none. Every update and pack emitter writes here;
+     * the device report carries the pending events.
+     */
+    public val updateEvents: UpdateEventJournal = UpdateEventJournal(
+        store.stateDirectory?.let { FileStateSlot(java.io.File(it, "update-events.json")) } ?: MemoryStateSlot(),
+        options.clock ?: { System.currentTimeMillis() / 1000 },
+    ).also { j -> j.context = { null to channel } }
+
     /** True when the transport refuses to dial (§7.3). */
     public val localOnly: Boolean = transport === NoNetworkTransport
     private val expectedServices = options.expectedServices

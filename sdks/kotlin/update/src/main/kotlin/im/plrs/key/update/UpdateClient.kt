@@ -56,6 +56,8 @@ import im.plrs.key.core.UpdateCheckError
 import im.plrs.key.core.UpdateCheckInput
 import im.plrs.key.core.UpdateCheckOutcome
 import im.plrs.key.core.UpdateContentHost
+import im.plrs.key.core.UpdateDecision
+import im.plrs.key.core.UpdateEvent
 import im.plrs.key.core.UpdateOutlet
 import im.plrs.key.core.VerifyReleaseRecordOptions
 import im.plrs.key.core.VerifyReleaseRecordResult
@@ -219,7 +221,7 @@ public class UpdateClient private constructor(
     public suspend fun detected(): DetectedOutlet? = configured?.let { resolvedOutlet(it).second }
 
     private suspend fun resolvedOutlet(c: ConfiguredUpdate): Pair<ResolvedOutlet, DetectedOutlet?> {
-        c.outlet?.let { return it to c.options.detected }
+        c.outlet?.let { noteOutlet(it); return it to c.options.detected }
         val d = detectionLock.withLock {
             detection ?: CompletableDeferred<Pair<ResolvedOutlet, DetectedOutlet?>>().also { detection = it }.also { deferred ->
                 val options = c.options
@@ -239,8 +241,17 @@ public class UpdateClient private constructor(
                 deferred.complete(outlet to detected)
             }
         }
-        return d.await()
+        return d.await().also { noteOutlet(it.first) }
     }
+
+    /** Every journaled update event names this install's outlet (its id, else its kind) and channel. */
+    private fun noteOutlet(outlet: ResolvedOutlet) {
+        val reported = outlet.id ?: outlet.kind.takeIf { it != OUTLET_UNKNOWN }
+        core.updateEvents.context = { reported to core.channel }
+    }
+
+    /** The outlet the device report names: its id, else its kind; null when unknown or without update options. */
+    public suspend fun reportedOutlet(): String? = outlet()?.let { it.id ?: it.kind.takeIf { k -> k != OUTLET_UNKNOWN } }
 
     /**
      * `GET /<p>/update/version` — the newest build, and whether we are behind it. Refuses with
@@ -306,6 +317,18 @@ public class UpdateClient private constructor(
     }
 
     // ── Internals ───────────────────────────────────────────────────────────────────────────
+
+    /** §3.13: a decision that offers a newer app build journals `update_offered` once per release. */
+    private fun noteOffer(check: UpdateCheck) {
+        val release = when (val d = check.decision) {
+            is UpdateDecision.CodeReady -> d.release
+            is UpdateDecision.Binary -> d.release
+            is UpdateDecision.Store -> d.release
+            is UpdateDecision.Platform -> d.release
+            else -> return
+        }
+        core.updateEvents.recordOnce(UpdateEvent.updateOffered, release.version, fromRelease = core.version)
+    }
 
     private fun requireKeys(): ConfiguredUpdate {
         val c = configured
@@ -428,6 +451,7 @@ public class UpdateClient private constructor(
                 core.commitUpdateSlices(run.feeds, run.releaseRecords)
                 content?.noteFeedDeltas(run.feed.content.deltas)
                 run.revocations?.let { content?.recordRevocations(it) }
+                noteOffer(run.check)
                 run.check
             }
         }

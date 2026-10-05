@@ -264,8 +264,29 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
         body["caps"] = JsonArray(caps().map { JsonPrimitive(it) })
         // The running pack set (plans/P4-01.md §2.9), omitted when this host has no packs.
         core.packSetId()?.let { body["content"] = JsonObject(mapOf("packSetId" to JsonPrimitive(it))) }
-        return core.reportSnapshot(JsonObject(body).toString().toByteArray(Charsets.UTF_8))
+        // The gate this device renders and its outlet (W/core/devices.ts REPORT_KEYS), as Godot sends them.
+        try {
+            body["gate"] = JsonObject(mapOf("status" to JsonPrimitive(license.status().status.wire)))
+            update.reportedOutlet()?.let { body["outlet"] = JsonPrimitive(it) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Best-effort facts: a report without them is still a report.
+        }
+        // §3.13 (P6-03): the oldest pending update-health events, at most 16, marked sent once the
+        // Worker took the report; a failed report keeps them for the next one.
+        val pending = core.updateEvents.pending()
+        if (pending.isNotEmpty()) body["updates"] = JsonArray(pending.map { it.json })
+        val ok = core.reportSnapshot(JsonObject(body).toString().toByteArray(Charsets.UTF_8))
+        if (ok && pending.isNotEmpty()) core.updateEvents.markSent(pending.map { it.eventId })
+        return ok
     }
+
+    /**
+     * The update-health journal (`update_offered` … `boot_rolled_back`): every SDK emitter writes
+     * here and [report] carries it. Hand it to a [im.plrs.key.update.BootGuard] the host builds.
+     */
+    public val updateEvents: im.plrs.key.core.UpdateEventJournal get() = core.updateEvents
 
     /**
      * plans/P4-29.md §2.4 step 1: before any check this process, the delta menu of the committed feed

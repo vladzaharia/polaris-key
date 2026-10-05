@@ -25,6 +25,8 @@ import im.plrs.key.core.PolarisException
 import im.plrs.key.core.ReleaseRecordDoc
 import im.plrs.key.core.UpdateCheck
 import im.plrs.key.core.UpdateDecision
+import im.plrs.key.core.UpdateEvent
+import im.plrs.key.core.UpdateEventJournal
 import im.plrs.key.platform.Digests
 import im.plrs.key.platform.direct.ApkInstaller
 import im.plrs.key.platform.direct.InstallJournal
@@ -62,6 +64,10 @@ public class DirectInstallDriver(
     /** The app-private directory the APK is downloaded into. */
     private val dir: File,
     private val options: InstallOptions = InstallOptions(),
+    /** Where `update_downloaded` and `update_applied` are journaled (notes/SDK-PARITY-PASS.md §3.13); null: nowhere. */
+    private val events: () -> UpdateEventJournal? = { null },
+    /** The running version, the events' `fromRelease`. */
+    private val runningVersion: String? = null,
 ) : InstallDriver {
     /** The last installer outcome (every refusal reason, the session), or null. */
     @Volatile public var lastOutcome: InstallOutcome? = null
@@ -120,6 +126,7 @@ public class DirectInstallDriver(
             part.delete()
             return InstallResult.Failed(ErrorCode.payloadMismatch, "the downloaded APK does not match the record's size and SHA-256; nothing was installed")
         }
+        events()?.record(UpdateEvent.updateDownloaded, d.release.version, fromRelease = runningVersion)
         apk.delete()
         if (!part.renameTo(apk)) {
             part.delete()
@@ -138,6 +145,8 @@ public class DirectInstallDriver(
             val why = outcome.verdict.refused.ifEmpty { listOfNotNull(outcome.error ?: "refused") }
             return InstallResult.Failed(ErrorCode.swapRefused, "apk-refused: ${why.joinToString(", ")}")
         }
+        // Handed off to PackageInstaller: the new version's first confirmed boot reports update_confirmed.
+        events()?.record(UpdateEvent.updateApplied, d.release.version, fromRelease = runningVersion)
         return InstallResult.Started
     }
 

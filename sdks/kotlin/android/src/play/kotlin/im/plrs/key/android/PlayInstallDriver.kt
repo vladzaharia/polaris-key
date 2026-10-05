@@ -29,6 +29,8 @@ import com.google.android.play.core.install.model.UpdateAvailability
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.UpdateCheck
 import im.plrs.key.core.UpdateDecision
+import im.plrs.key.core.UpdateEvent
+import im.plrs.key.core.UpdateEventJournal
 import im.plrs.key.platform.play.InAppUpdates
 import im.plrs.key.platform.play.UpdateStatus
 import im.plrs.key.update.InstallDriver
@@ -42,13 +44,17 @@ public class PlayInstallDriver(
     /** The activity In-App Updates' flows start from (the host's current one). */
     private val activity: () -> Activity?,
     private val policy: PlayUpdatePolicy = PlayUpdatePolicy(),
+    /** Where `update_downloaded` and `update_applied` are journaled (notes/SDK-PARITY-PASS.md §3.13); null: nowhere. */
+    private val events: () -> UpdateEventJournal? = { null },
+    /** The running version, the events' `fromRelease`. */
+    private val runningVersion: String? = null,
 ) : InstallDriver {
     /** The last status Play reported to this driver, or null. */
     @Volatile public var lastStatus: UpdateStatus? = null
         private set
 
     override suspend fun install(check: UpdateCheck): InstallResult = when (val d = check.decision) {
-        is UpdateDecision.Store -> inAppUpdate(d.mandatory || d.critical, d.listingUrl)
+        is UpdateDecision.Store -> inAppUpdate(d.mandatory || d.critical, d.listingUrl, d.release.version)
         // A `platform` answer: the platform updates this install by itself.
         is UpdateDecision.Platform -> InstallResult.NothingToInstall
         is UpdateDecision.Binary -> InstallResult.Failed(
@@ -58,7 +64,7 @@ public class PlayInstallDriver(
         else -> InstallResult.NothingToInstall
     }
 
-    private suspend fun inAppUpdate(decisionUrgent: Boolean, listingUrl: String?): InstallResult {
+    private suspend fun inAppUpdate(decisionUrgent: Boolean, listingUrl: String?, release: String): InstallResult {
         val offer = listingUrl?.let { "; offer the listing $it" } ?: ""
         val status = suspendCancellableCoroutine { cont -> updates.check { cont.resume(it) } }.getOrElse {
             return InstallResult.Failed(ErrorCode.platformError, "In-App Updates are unavailable (${it.message})$offer")
@@ -68,7 +74,9 @@ public class PlayInstallDriver(
             policy.immediatePriority?.let { status.priority >= it } == true ||
             policy.immediateAfterDays?.let { days -> status.stalenessDays?.let { it >= days } } == true
         if (status.readyToComplete || status.installStatus == InstallStatus.DOWNLOADED) {
+            events()?.recordOnce(UpdateEvent.updateDownloaded, release, fromRelease = runningVersion)
             val done = suspendCancellableCoroutine { cont -> updates.complete { cont.resume(it) } }
+            if (done.isSuccess) events()?.record(UpdateEvent.updateApplied, release, fromRelease = runningVersion)
             return if (done.isSuccess) InstallResult.Started else InstallResult.Failed(ErrorCode.platformError, "Play could not complete the downloaded update (${done.exceptionOrNull()?.message})$offer")
         }
         if (status.availability == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS &&

@@ -133,3 +133,61 @@ class BootGuardTest {
         assertNull(store.text)
     }
 }
+
+/** §3.13: the guard journals what it did (notes/SDK-PARITY-PASS.md). */
+class BootGuardEventsTest {
+    private fun meta(v: String) = SlotMeta(v, "a".repeat(64), 10)
+    private fun journal() = im.plrs.key.core.UpdateEventJournal(im.plrs.key.core.MemoryStateSlot()) { 100 }
+
+    @Test
+    fun anAppliedSwapAndItsConfirmationAreJournaled() = runBlocking {
+        val events = journal()
+        val slots = MemorySlots().apply { cur = meta("1.0.0"); stg = meta("1.1.0") }
+        val store = MemoryGuardStore()
+        BootGuard(store, slots, "1.0.0", events = events).confirmNow() // 1.0.0 was healthy
+        BootGuard(store, slots, "1.0.0", events = events).run()
+        val guard = BootGuard(store, slots, "1.1.0", events = events)
+        guard.run()
+        guard.confirmNow()
+        guard.confirmNow() // once per version
+        assertEquals(
+            listOf(im.plrs.key.core.UpdateEvent.updateApplied to "1.1.0", im.plrs.key.core.UpdateEvent.updateConfirmed to "1.1.0"),
+            events.events().map { it.event to it.release },
+        )
+        assertEquals("1.0.0", events.events().last().fromRelease)
+    }
+
+    @Test
+    fun aRollbackJournalsTheBadVersion() = runBlocking {
+        val events = journal()
+        val slots = MemorySlots().apply { cur = meta("1.1.0"); prev = meta("1.0.0") }
+        val store = MemoryGuardStore()
+        repeat(3) { BootGuard(store, slots, "1.1.0", events = events).run() }
+        val e = events.events()
+        assertEquals(listOf(im.plrs.key.core.UpdateEvent.bootRolledBack, im.plrs.key.core.UpdateEvent.updateReverted), e.map { it.event })
+        assertEquals("1.1.0", e[0].release)
+        assertEquals("failed-boots", e[0].code)
+        assertEquals("1.0.0", e[1].release)
+    }
+
+    @Test
+    fun withNoPreviousTheRollbackSaysSo() = runBlocking {
+        val events = journal()
+        val slots = MemorySlots().apply { cur = meta("1.1.0") }
+        val store = MemoryGuardStore()
+        repeat(3) { BootGuard(store, slots, "1.1.0", events = events).run() }
+        assertEquals("no-previous", events.events().single().code)
+    }
+
+    @Test
+    fun aPlatformInstalledUpdateIsConfirmedOnItsFirstHealthyLaunch() {
+        val events = journal()
+        val store = MemoryGuardStore()
+        BootGuard(store, null, "1.0.0", events = events).confirmNow()
+        assertTrue(events.events().isEmpty()) // a first install confirms nothing
+        BootGuard(store, null, "1.2.0", events = events).confirmNow()
+        val e = events.events().single()
+        assertEquals(im.plrs.key.core.UpdateEvent.updateConfirmed, e.event)
+        assertEquals("1.0.0", e.fromRelease)
+    }
+}
