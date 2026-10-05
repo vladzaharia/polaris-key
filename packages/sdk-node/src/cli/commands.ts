@@ -3,18 +3,12 @@
 // structured data). The commander / yargs adapters are thin shells over these, so the behavior
 // lives in exactly one place and is testable with no console / process side-effects.
 //
-// v3 groups the verbs by the service that owns them, which is the CLI's version of the same
-// carve the SDK just went through:
+// This file holds the original verbs (activate, enroll, deactivate, status, register,
+// config get, import-bundle); `kit.ts` holds the rest of the kit (SP-N14) and `CLI_VERBS`, the
+// table both adapters build from, grouped by the service that owns each verb.
 //
-//   license  activate · enroll · deactivate · status
-//   devices  register
-//   config   config <key>
-//   core     import-bundle
-//
-// `register` is the new one and the reason the grouping matters: it is a DEVICES verb, not a
-// licensing one. A config-only product (D-08) has no `activate` to run and its whole
-// provisioning story is `pkey register` — which under a licence-shaped CLI would have had
-// nowhere to live.
+// `register` is a DEVICES verb, not a licensing one: a config-only product (D-08) has no
+// `activate` to run and its whole provisioning story is `register`.
 
 import type { JSONValue } from "@polaris-key/protocol/core";
 import type { TrustSet } from "@polaris-key/jws";
