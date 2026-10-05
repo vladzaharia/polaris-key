@@ -622,6 +622,10 @@ jobs:
 - **The listing model fills the text.** winget's locale files and Flathub's MetaInfo come from the
   Listing editor; a missing required field or one over the store's limit stops the step with the
   field named.
+- **MetaInfo screenshots come only from Polaris's image host.** A MetaInfo never names your own
+  screenshot URLs or a download blob. Until hosted copies of your listing images are served, the
+  MetaInfo has no `<screenshots>` and the step warns; Flathub requires at least one, so add them
+  in the pull request yourself for now.
 - **The Scoop manifest's `autoupdate`**: Polaris-hosted builds have content-addressed URLs with
   no version in them, so `checkver` captures each architecture's SHA-256 from the feed and
   `autoupdate` builds the URL from it; the bucket's Excavator can follow the feed between pull
