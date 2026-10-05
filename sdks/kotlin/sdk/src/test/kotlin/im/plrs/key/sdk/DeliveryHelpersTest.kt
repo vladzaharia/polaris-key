@@ -3,8 +3,8 @@
 // The delivery helpers of the SDK parity pass (notes/SDK-PARITY-PASS.md §3.5–§3.8, §3.14): the
 // verified, resumable build download (discovery's builds template, the bearer and X-PKey headers,
 // Range windows with If-Range, nothing left at `to` unless size and SHA-256 match), the updater feed
-// URLs from discovery (a missing template is the typed `product` N/A), the download page model, the
-// portal links and the crash tags.
+// URLs from discovery (a missing template is the typed `product` N/A), the download page model and
+// the crash tags. There is no portal URL builder (owner decision Q6).
 
 package im.plrs.key.sdk
 
@@ -14,7 +14,6 @@ import im.plrs.key.core.InMemoryStore
 import im.plrs.key.core.PolarisException
 import im.plrs.key.core.PolarisRequest
 import im.plrs.key.core.PolarisResponse
-import im.plrs.key.core.PortalFlow
 import im.plrs.key.core.ReleaseRecordArtifact
 import im.plrs.key.core.ReleaseRecordBuild
 import im.plrs.key.core.ReleaseRecordDoc
@@ -22,7 +21,6 @@ import im.plrs.key.core.ServiceSlug
 import im.plrs.key.core.UnsupportedException
 import im.plrs.key.core.UnsupportedReason
 import im.plrs.key.core.UpdateEvent
-import im.plrs.key.core.portalUrl
 import im.plrs.key.core.fetchVerified
 import im.plrs.key.core.testing.ScriptedTransport
 import im.plrs.key.core.testing.ScriptedTransport.Companion.respond
@@ -199,25 +197,6 @@ class DeliveryHelpersTest {
         val here = c.distribution.thisPlatform("android")
         assertEquals("Get it on Google Play", here.primaryAction?.label)
         assertEquals(listOf("linux"), here.others.map { it.platform })
-    }
-
-    @Test
-    fun portalLinksFollowTheShippedRoutes() = runBlocking {
-        val base = "https://key.plrs.im"
-        assertEquals("https://key.plrs.im/#/account", portalUrl(base, "djdl", PortalFlow.account))
-        assertEquals("https://key.plrs.im/#/?activate=PKEY-1", portalUrl(base, "djdl", PortalFlow.activate, key = "PKEY-1"))
-        assertEquals("https://key.plrs.im/#/p/djdl/devices", portalUrl(base, "djdl", PortalFlow.devices))
-        assertEquals(
-            "https://key.plrs.im/#/p/djdl/free-device?for=dev1&return=diceroll%3A%2F%2Fback",
-            portalUrl(base, "djdl", PortalFlow.freeDevice, deviceId = "dev1", returnTo = "diceroll://back"),
-        )
-        // A returnTo outside the allowlist, or a plain-http / javascript one, is dropped, never fatal.
-        assertEquals("https://key.plrs.im/#/p/djdl/free-device?for=dev1", portalUrl(base, "djdl", PortalFlow.freeDevice, deviceId = "dev1", returnTo = "javascript:alert(1)"))
-        assertEquals("https://key.plrs.im/#/p/djdl/free-device?for=dev1", portalUrl(base, "djdl", PortalFlow.freeDevice, deviceId = "dev1", returnTo = "https://evil.example/x", allowedReturn = listOf("https://diceroll.app", "diceroll:")))
-        assertEquals("https://key.plrs.im/#/p/djdl/download?platform=linux", portalUrl(base, "djdl", PortalFlow.download, platform = "linux"))
-        // The facade names this device.
-        val c = client({ respond(404) })
-        assertTrue(c.portalUrl(PortalFlow.freeDevice).endsWith("/#/p/djdl/free-device?for=dev1"))
     }
 
     @Test

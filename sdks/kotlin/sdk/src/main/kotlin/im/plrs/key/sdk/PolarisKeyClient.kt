@@ -76,7 +76,6 @@ import im.plrs.key.packs.PacksClient
 import im.plrs.key.packs.PacksOptions
 import im.plrs.key.release.DistributionClient
 import im.plrs.key.release.ReleaseClient
-import im.plrs.key.core.PortalFlow
 import im.plrs.key.update.UpdateClient
 import im.plrs.key.update.UpdateClientOptions
 import im.plrs.key.core.RuntimeFamily
@@ -221,24 +220,6 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
 
     private val buildNumber: String? = options.update?.buildNumber
     private val updatePlatform: String? = options.update?.platform
-
-    /**
-     * The customer portal's URL for [flow] (notes/SDK-PARITY-PASS.md §3.5): `freeDevice` names this
-     * device unless [deviceId] is given; a `returnTo` outside [allowedReturn] (or not absolute) is
-     * dropped.
-     */
-    public suspend fun portalUrl(
-        flow: PortalFlow,
-        returnTo: String? = null,
-        key: String? = null,
-        platform: String? = null,
-        deviceId: String? = null,
-        allowedReturn: List<String>? = null,
-    ): String = im.plrs.key.core.portalUrl(
-        core.endpoints.baseUrl, product, flow,
-        deviceId = deviceId ?: if (flow == PortalFlow.freeDevice) core.deviceId() else null,
-        returnTo = returnTo, key = key, platform = platform ?: RuntimeFamily.platformHeader, allowedReturn = allowedReturn,
-    )
 
     /**
      * The channels this install may switch to, and why it may not (notes/SDK-PARITY-PASS.md §3.18

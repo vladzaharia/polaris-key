@@ -205,8 +205,9 @@ onProgress)` downloads one build of a verified release record (a `binary` decisi
   otherwise). `update.feedUrl(kind)` / `appcastUrl()` expand discovery's `appcast`, `winsparkle`,
   `velopack`, `appInstaller` and `zsync` templates (the typed `product` N/A when one is not
   advertised). `distribution.downloadModel()` / `thisPlatform()` type the public download page.
-  `portalUrl(flow)` builds the customer portal's `account`, `library`, `activate`, `devices`,
-  `freeDevice` and `download` links (a `returnTo` outside `allowedReturn` is dropped).
+  The SDK builds no customer-portal URLs (owner decision Q6): a "Manage devices" or "Sign in"
+  link is the server-supplied `manageUrl` / `signInUrl` on the refusal, once the Worker sends it
+  (PX-W8).
   `crashTags()` answers `release` (`app@<version>[+<build>]`), `environment` and `pkey.outlet`
   for your crash reporter.
 - **`:release`**: `changelog`, `installUrl`, `downloadUrl` (built, never fetched), `verifyRecord`
