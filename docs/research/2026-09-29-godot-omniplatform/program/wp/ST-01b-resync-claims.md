@@ -90,7 +90,7 @@ owner delegated open questions to the lead, who takes the recommended option):**
   before. Distinguishing it needs a `shared-manifest` change and belongs with ST-17's plan function
   or ST-19's registry-manifest parity.
 - **Per-field audit** uses the existing `audit` columns (`action = 'setting.resync' |
-  'setting.revert'`, `target_kind = 'setting' | 'tier' | 'profile'`, `target_id` = the key or row
+'setting.revert'`, `target_kind = 'setting' | 'tier' | 'profile'`, `target_id` = the key or row
   id, before → after in `summary`); a claim is named in the console write's own audit row
   (`product.update` "claimed for the console: …", `schema.publish`, `tier.*`, `profile.*`). ST-04 adds the structured
   `before_json`/`after_json`/`origin`/`setting_key` columns.
