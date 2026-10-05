@@ -236,8 +236,7 @@ function ServicesForm({
         // PX-W17: turning Identity off signs every signed-in device out; the dry run counts them
         // so the confirmation can say how many. A failed count leaves the generic line.
         const signedIn = turningOff.includes("identity")
-          ? await api
-              .servicesDryRun(slug, body)
+          ? await mutate("servicesDryRun", slug, body)
               .then((r) => r.signedInDevicesToClear)
               .catch(() => null)
           : null;
