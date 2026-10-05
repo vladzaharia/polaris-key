@@ -116,7 +116,7 @@ export const SHIPPED: ShippedState[] = [
     routes: { "/api/capabilities": WITH_PROVIDERS },
     ready: async (p) => {
       await h1(p, "Sign in to Polaris Key");
-      await p.getByRole("button", { name: "Continue with Steam" }).waitFor();
+      await p.getByRole("link", { name: "Continue with Steam" }).waitFor();
     },
   },
   {
