@@ -244,6 +244,8 @@ export function libraryItem(
 export function libraryFor(
   licenses: readonly PortalLicenseSummary[],
   discoverCount?: number,
+  /** Presentation (art, developer) applied to every item. */
+  over: Partial<PortalLibraryItem> = {},
 ): { products: PortalLibraryItem[]; discoverCount?: number } {
   const best = new Map<string, PortalLicenseSummary>();
   for (const l of licenses) {
@@ -256,6 +258,7 @@ export function libraryFor(
       .map((l) => ({
         ...libraryItem(l),
         licenseCount: licenses.filter((x) => x.product === l.product).length,
+        ...over,
       })),
     ...(discoverCount === undefined ? {} : { discoverCount }),
   };

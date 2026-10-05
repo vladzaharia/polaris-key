@@ -23,8 +23,11 @@
 --
 --   - `mode` includes `entitled`. Unlike the truth store's `release_artifacts.access` CHECK,
 --     which never admitted it (0007), an `entitled` value survives here.
---   - `entitlement` is reserved for a named entitlement a gated deliverable requires (paid packs,
---     P4-05 / commerce). Stored and shown; nothing enforces it yet.
+--   - `entitlement` is the named entitlement a gated deliverable requires (paid packs,
+--     P4-05 / commerce). Written as a reservation; enforced since P4-05 for a deliverable's own
+--     row (pack blobs, `blobAccess.ts`; registry reads, `registry/authorize.ts`). The `app` row's
+--     value is stored only: app delivery under `entitled` is Release's channel and version window.
+--     (Comment corrected by LX-04, S-19 G19; the schema is unchanged.)
 --   - `source` is `manifest` (a resync re-applies `.pkey/release` `access.artifacts` through
 --     Distribution's `manifestIngest`) or `admin` (an operator claimed it; the ingest skips it).
 --   - A deliverable with no row inherits the `app` row; a product with no `app` row is `public`,

@@ -42,9 +42,12 @@ import type { AdminSession } from "../../core/adminApi.js";
 import { handleIdentityRoutes } from "./routes.js";
 import { handleIdentityAdmin } from "./admin.js";
 import { authorizeRegistration } from "./registration.js";
+import { IDENTITY_SETTINGS_SLICE } from "./settings.js";
 
 export const identityService: ServiceDescriptor = {
   slug: "identity",
+  /** ST-03: this service's settings registry slice (`settings.ts`). */
+  settings: IDENTITY_SETTINGS_SLICE,
   handle: handleIdentityRoutes,
   adminHandle: (ctx: ServiceContext & { session: AdminSession }) =>
     handleIdentityAdmin(ctx),

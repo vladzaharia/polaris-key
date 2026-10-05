@@ -33,6 +33,21 @@ Minimise idle time. Sleep as little as reasonable:
 - Never sleep "just in case". While a gate or build runs, do other independent work in the task
   instead of waiting.
 
+## Test budget
+
+Waves must finish in well under an hour per work package. Tests are a means, not the work:
+
+- While building, run only the tests for what you changed (`vitest run <files>`, one SDK's suite).
+  Run the gate once, at hand-off.
+- The lead gate (`/Users/vlad/Repos/pk-wt/_lead/gate.sh`) is scoped by default: SDK suites and the
+  docs build run only when the branch touches them. A failed step retries once on its own; then
+  fix it and rerun **only that step** with `GATE_ONLY=<n>` (or `GATE_FROM=<n>`). Never rerun the
+  whole gate for one failure.
+- A failure in code the branch did not touch that passes on retry is a timing flake under load:
+  note it and move on. Do not raise timeouts in tests to get green.
+- Reviewers never run the gate. Fix rounds rerun the failing steps plus affected tests only.
+- Integration batches run one gate; CI on `main` is the full matrix, and a deploy waits for it.
+
 ## Plan mode
 
 Enter plan mode before any wire-touching change — `shared-protocol`, `shared-jws`, `client-core`,

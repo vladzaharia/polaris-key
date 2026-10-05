@@ -39,13 +39,15 @@ and `key_entry_limit`, with `license_owned` keeping `signInUrl`. Portal paths ar
 
 **UI-kit answers, recorded for reference.** The UI kit spec is updated separately.
 
-- Product presentation gains an optional **accent colour**. This is an all-languages change through
-  plan mode: package SP-11.
+- Product presentation gains an optional **accent colour**. SP-11 was dropped in favour of HA-04
+  (manifest `presentation { icon, accent, accentDark }`) and HA-11 to HA-14 (discovery, SDKs and
+  kit defaults); the UI kits consume that path (`docs/design/UI-KITS.md`, owner decisions).
 - **Launch locales:** English, `de`, `fr`, `es`, `pt-BR`, `it`, `ja`, `ko` and `zh-Hans`. There is
   no Arabic or other right-to-left locale yet.
 - **Apple floors** are raised to iOS 18 and macOS 15.
 - **Web components** are built on Lit 3.
-- The **UI kit build programme** is approved.
+- The **UI kit build programme** is approved. Its items are phase UK of the program graph; UK-40
+  is SP-K12 (Kotlin JVM desktop keyring and updater), and Tk (SP-P13, UK-30) is dropped.
 
 ## 0. Summary
 

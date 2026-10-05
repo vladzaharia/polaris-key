@@ -54,7 +54,11 @@ import {
   PORTAL_CSRF_HEADER,
   issuePortalSession,
 } from "../src/services/identity/portal/session.js";
-import { handlePortalApi, handlePortalDownload } from "./portalHarness.js";
+import {
+  handlePortalApi,
+  handlePortalDownload,
+  seedRepositoryVisibility,
+} from "./portalHarness.js";
 import {
   stmtSetArtifactModel,
   stmtUpsertBuild,
@@ -416,6 +420,8 @@ describe("an operator's `entitled` in dist_access gates every surface the same w
       "SELECT artifact_id FROM release_artifacts WHERE product = ? AND release_id = 'v1.1.0' AND name = 'djdl-arm64'",
       SLUG,
     );
+    // The file's source is its GitHub URL, which a browser can follow from a public repository.
+    await seedRepositoryVisibility(w.env, w.db, SLUG, "public");
     const path = `/api/releases/${SLUG}/v1.1.0/artifacts/${artifact!.artifact_id}/token`;
     const mint = () =>
       handlePortalApi(
@@ -436,6 +442,8 @@ describe("an operator's `entitled` in dist_access gates every surface the same w
     await entitled(w);
     const refused = await mint();
     expect(refused.status).toBe(403);
+    // The owner is told why (the listing's reason code), not handed a generic refusal.
+    expect(await refused.json()).toMatchObject({ error: "not_entitled" });
 
     // Granting the licence the beta channel lets the same account mint again.
     await w.db.run(
@@ -998,8 +1006,12 @@ describe("dist_access", () => {
     );
 
     // A non-public deliverable is never sent to the bytes host: the browser has no device token.
+    // The account owns the product, so the refusal says why: nothing here can serve it yet
+    // (licensed R2 bytes are PX-W3).
     await admin(w, "PUT", "/access", { mode: "licensed" });
-    expect((await mint()).status).toBe(404);
+    const gated = await mint();
+    expect(gated.status).toBe(409);
+    expect(await gated.json()).toMatchObject({ error: "not_hosted" });
   });
 
   it("0038 backfills the app row from release_config, normalised, with its owner", async () => {

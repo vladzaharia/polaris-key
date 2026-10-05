@@ -72,3 +72,55 @@ export function artPng(
     chunk("IEND", Buffer.alloc(0)),
   ]);
 }
+
+/**
+ * A `size`² RGBA icon the way macOS draws one: a full-canvas squircle (a superellipse, n = 5)
+ * with transparent corners, a thin rim and the product's disc, so the browser checks see the
+ * portal draw a shaped icon without a tile around it.
+ */
+export function squirclePng(
+  size: number,
+  bands: readonly Rgb[],
+  disc: Rgb,
+  rim: Rgb,
+): Buffer {
+  const raw = Buffer.alloc((size * 4 + 1) * size);
+  const half = size / 2;
+  const inset = size * 0.01;
+  const a = half - inset;
+  const n = 5;
+  const r = size * 0.24;
+  for (let y = 0; y < size; y++) {
+    const row = y * (size * 4 + 1);
+    raw[row] = 0;
+    const band =
+      bands[Math.min(bands.length - 1, Math.floor((y / size) * bands.length))]!;
+    for (let x = 0; x < size; x++) {
+      const dx = Math.abs(x + 0.5 - half) / a;
+      const dy = Math.abs(y + 0.5 - half) / a;
+      const f = dx ** n + dy ** n;
+      const o = row + 1 + x * 4;
+      if (f > 1) {
+        raw[o + 3] = 0;
+        continue;
+      }
+      const inDisc = (x - half) ** 2 + (y - half) ** 2 <= r * r;
+      const c = f > 0.86 ? rim : inDisc ? disc : band;
+      raw[o] = c[0];
+      raw[o + 1] = c[1];
+      raw[o + 2] = c[2];
+      raw[o + 3] = 255;
+    }
+  }
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(size, 0);
+  ihdr.writeUInt32BE(size, 4);
+  ihdr[8] = 8; // bit depth
+  ihdr[9] = 6; // truecolour with alpha
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk("IHDR", ihdr),
+    chunk("IDAT", deflateSync(raw)),
+    chunk("IEND", Buffer.alloc(0)),
+  ]);
+}

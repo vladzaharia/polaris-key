@@ -12,6 +12,16 @@
 | Human input | none (the plan was approved on 2026-10-05)                                                                                                                                                                                                                                                |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                 |
 
+## Owner decision (2026-10-05): licence choice at sign-in
+
+The owner decided on 2026-10-05 that every sign-in that binds a device asks the person which licence to use (**Choose a licence for this device**, with an inline **Replace a device** on full licences), never silently mints a second auto-issued licence, and treats the rank-first rule as the preselected default only. The verbatim decision, the card API and the delegated decisions are in [`plans/I-04.md`](../plans/I-04.md), "Owner decision (2026-10-05): licence choice at sign-in"; that section wins over this brief where they differ. **The device wire does not change** (`PROTOCOL_VERSION` 4, no corpus change).
+
+For this package: **seat-holder licences become candidates** in `rankAnchorCandidates`, with
+origin "seat". On a full per-user slot the row is `full`, and the sign-in refusal
+`device_limit` with `scope: "user"` becomes that full row. On seat-holder licences the card offers
+only the **Free a device** link, never the inline Replace, until this package defines how a seat
+holder releases their own devices.
+
 ## Goal
 
 A licence can hold named-user seats: the Worker signs `profile.user = {"subject":"ps_…"}` into the

@@ -21,6 +21,8 @@ import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleConfigDocument } from "../src/services/config/document.js";
 import { activateFromIdentity } from "../src/services/identity/oidc.js";
 import { countActiveDevices, getLicense, listAudit } from "../src/repo.js";
+import { licenseMergeFor } from "../src/core/licenseMerge.js";
+import { SERVICES } from "../src/mount.js";
 
 function hash(seed: string): string {
   return seed
@@ -445,7 +447,7 @@ describe("merge on sign-in", () => {
       await product(),
       IDENTITY,
       NOW,
-      { enrolledLicenseId: enrolled },
+      { enrolledLicenseId: enrolled, licenseMerge: licenseMergeFor(SERVICES) },
     );
     expect(result).toMatchObject({
       licenseId: identityLicense,
@@ -458,6 +460,122 @@ describe("merge on sign-in", () => {
     const old = await getLicense(db, "djdl", enrolled);
     expect(old?.status).toBe("disabled");
     expect(old?.enroll_hwid).toBeTruthy();
+    // LX-03: the moved device holds a seat ordinal on the identity's licence.
+    expect(
+      (
+        await db.first<{ seat_no: number | null }>(
+          "SELECT seat_no FROM devices WHERE product = 'djdl' AND device_id = 'dev-a'",
+        )
+      )?.seat_no,
+    ).toBe(1);
+  });
+
+  async function migrateSetup(): Promise<{
+    identityLicense: string;
+    enrolled: string;
+  }> {
+    const first = await activateFromIdentity(
+      db,
+      await product(),
+      IDENTITY,
+      NOW,
+    );
+    const identityLicense = (first as { licenseId: string }).licenseId;
+    const enrolled = await enrolledLicenseId("dev-a");
+    // A store purchase the anonymous licence holds (P6-01's rows, as the bridge writes them).
+    await db.run(
+      `INSERT INTO dist_purchase_bindings (product, binding_id, license_id, created_at)
+       VALUES ('djdl', '0f0e0d0c-0b0a-4908-8706-050403020100', ?, ?)`,
+      enrolled,
+      NOW,
+    );
+    await db.run(
+      `INSERT INTO dist_purchases (product, store, purchase_key_hash, store_product_id, license_id,
+         state, environment, first_seen, last_verified)
+       VALUES ('djdl', 'steam', 'h1', 'dlc', ?, 'active', 'steam', ?, ?)`,
+      enrolled,
+      NOW,
+      NOW,
+    );
+    await db.run(
+      `INSERT INTO license_store_grants (product, license_id, flag, store, purchase_key_hash,
+         state, granted_at)
+       VALUES ('djdl', ?, 'extras.skins', 'steam', 'h1', 'active', ?)`,
+      enrolled,
+      NOW,
+    );
+    return { identityLicense, enrolled };
+  }
+
+  async function purchaseHolders(): Promise<string[]> {
+    const rows = await db.all<{ license_id: string }>(
+      `SELECT license_id FROM license_store_grants WHERE product = 'djdl'
+       UNION ALL SELECT license_id FROM dist_purchases WHERE product = 'djdl'`,
+    );
+    return rows.map((r) => r.license_id);
+  }
+
+  it("LX-03: the migrate carries the enrolled licence's store grants, purchases and binding", async () => {
+    const { identityLicense, enrolled } = await migrateSetup();
+    const result = await activateFromIdentity(
+      db,
+      await product(),
+      IDENTITY,
+      NOW,
+      { enrolledLicenseId: enrolled, licenseMerge: licenseMergeFor(SERVICES) },
+    );
+    expect(result).toMatchObject({ merged: "migrated" });
+    expect(await purchaseHolders()).toEqual([identityLicense, identityLicense]);
+    expect(
+      await db.first(
+        "SELECT license_id, from_license_id FROM dist_purchase_binding_aliases WHERE product = 'djdl'",
+      ),
+    ).toEqual({ license_id: identityLicense, from_license_id: enrolled });
+    const audit = (await listAudit(db, "djdl")).find(
+      (a) => a.action === "license.merge",
+    );
+    expect(audit?.parent_id).toBe(enrolled);
+  });
+
+  it("LX-03: without Core's merge collector the migrate is refused and nothing moves", async () => {
+    const { enrolled } = await migrateSetup();
+    const result = await activateFromIdentity(
+      db,
+      await product(),
+      IDENTITY,
+      NOW,
+      { enrolledLicenseId: enrolled },
+    );
+    expect(result).toEqual({ error: "license-merge-unavailable" });
+    expect(await purchaseHolders()).toEqual([enrolled, enrolled]);
+    expect((await getLicense(db, "djdl", enrolled))?.status).toBe("active");
+    expect(await countActiveDevices(db, "djdl", enrolled)).toBe(1);
+  });
+
+  it("LX-03: a migrate beyond the identity licence's seats is refused in one piece", async () => {
+    const { identityLicense, enrolled } = await migrateSetup();
+    await db.run(
+      "UPDATE tiers SET policy_device_limit = 1 WHERE product = 'djdl' AND id = 'standard'",
+    );
+    await db.run(
+      `INSERT INTO devices (product, device_id, license_id, status, seat_no, first_seen, last_seen)
+       VALUES ('djdl', 'own', ?, 'authorized', 1, ?, ?)`,
+      identityLicense,
+      NOW,
+      NOW,
+    );
+    const result = await activateFromIdentity(
+      db,
+      await product(),
+      IDENTITY,
+      NOW,
+      { enrolledLicenseId: enrolled, licenseMerge: licenseMergeFor(SERVICES) },
+    );
+    expect(result).toEqual({ error: "device-limit" });
+    expect(await purchaseHolders()).toEqual([enrolled, enrolled]);
+    expect((await getLicense(db, "djdl", enrolled))?.status).toBe("active");
+    expect(await countActiveDevices(db, "djdl", enrolled)).toBe(1);
+    expect(await countActiveDevices(db, "djdl", identityLicense)).toBe(1);
   });
 
   it("leaves a non-enrolled license alone", async () => {
