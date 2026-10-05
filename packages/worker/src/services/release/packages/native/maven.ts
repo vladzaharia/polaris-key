@@ -201,7 +201,9 @@ async function handle({
   const m =
     tail === null
       ? null
-      : /^(?:-([A-Za-z0-9][A-Za-z0-9_.-]*?))?\.([a-z0-9][a-z0-9.]*)$/.exec(tail);
+      : /^(?:-([A-Za-z0-9][A-Za-z0-9_.-]*?))?\.([a-z0-9][a-z0-9.]*)$/.exec(
+          tail,
+        );
   if (!m) {
     await req.body?.cancel().catch(() => undefined);
     return bad(
@@ -248,8 +250,9 @@ async function handle({
       pomGroup !== group ||
       pomField(pom, "artifactId") !== artifact ||
       (pomField(pom, "version") ??
-        /<parent>[\s\S]*?<version>\s*([^<\s]+)\s*<\/version>/.exec(pom)?.[1]) !==
-        version
+        /<parent>[\s\S]*?<version>\s*([^<\s]+)\s*<\/version>/.exec(
+          pom,
+        )?.[1]) !== version
     )
       return bad(
         `the POM does not name ${group}:${artifact}:${version}`,

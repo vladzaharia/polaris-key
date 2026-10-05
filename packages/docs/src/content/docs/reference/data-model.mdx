@@ -93,6 +93,7 @@ this page or fails the freshness gate.
 | `release_delegated_records` | 0049_release_delegations.sql | `product`, `record_sha256`, `delegation_sha256` |
 | `release_lazy_deltas` | 0051_lazy_deltas.sql | `product`, `deliverable_id`, `build_id`, `from_sha256`, `to_sha256`, `method`, `state`, `reason`, `storage_key`, `artifact_sha256`, `artifact_bytes`, `descriptor_json`, `created_at`, `updated_at` |
 | `release_packages` | 0058_c_release_packages.sql | `product`, `ecosystem`, `name_norm`, `version`, `deliverable_id`, `release_id`, `name`, `state`, `state_message`, `files_json`, `metadata_json`, `source_json`, `published_at`, `deprecation_message (0058)` |
+| `release_native_uploads` | 0072_release_native_uploads.sql | `product`, `ecosystem`, `name_norm`, `version`, `deliverable_id`, `name`, `session_id`, `principal_id`, `principal_json`, `client`, `files_json`, `metadata_json`, `channel`, `state`, `error`, `release_id`, `touch_seq`, `created_at`, `updated_at` |
 
 ## distribution
 

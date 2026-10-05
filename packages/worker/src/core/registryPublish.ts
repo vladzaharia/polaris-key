@@ -145,7 +145,8 @@ export async function authorizeRegistryPublish(
     return {
       ok: false,
       refusal: "forbidden",
-      reason: "this registry token can only read; mint one with the publish scope",
+      reason:
+        "this registry token can only read; mint one with the publish scope",
     };
   if (
     resolved.ecosystems !== null &&

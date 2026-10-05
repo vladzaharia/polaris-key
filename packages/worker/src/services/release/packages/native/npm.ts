@@ -156,15 +156,14 @@ export const NPM_PUBLISH_ROUTE: RegistryRoute = publishRoute({
       [...parsed.body.attachments.keys()][0]!
     ] as Record<string, unknown>;
     if (typeof att.length === "number" && att.length !== tarball.byteLength)
-      return bad("the tarball's length is not the attachment's declared length");
+      return bad(
+        "the tarball's length is not the attachment's declared length",
+      );
     // npm's own digests of the bytes it meant to send.
     const dist = (m.dist ?? {}) as Record<string, unknown>;
     if (typeof dist.integrity === "string") {
       const want = /^sha512-([A-Za-z0-9+/=]+)$/.exec(dist.integrity.trim());
-      if (
-        want &&
-        hashOf("sha512", tarball, "base64") !== want[1]!.trim()
-      )
+      if (want && hashOf("sha512", tarball, "base64") !== want[1]!.trim())
         return bad(
           "the tarball does not match dist.integrity",
           "integrity-mismatch",
@@ -174,7 +173,10 @@ export const NPM_PUBLISH_ROUTE: RegistryRoute = publishRoute({
       typeof dist.shasum === "string" &&
       hashOf("sha1", tarball, "hex") !== dist.shasum.toLowerCase()
     )
-      return bad("the tarball does not match dist.shasum", "integrity-mismatch");
+      return bad(
+        "the tarball does not match dist.shasum",
+        "integrity-mismatch",
+      );
 
     const metadata: Record<string, unknown> = { name: declared.name, version };
     for (const k of PACKAGE_METADATA_KEYS.npm)
@@ -229,4 +231,3 @@ export const NPM_PUBLISH_ROUTE: RegistryRoute = publishRoute({
     );
   },
 });
-

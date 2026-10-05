@@ -114,7 +114,9 @@ export function parseNpmPublishBody(bytes: Uint8Array): NpmBodyResult {
   }
   let doc: unknown;
   try {
-    doc = JSON.parse(new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(small));
+    doc = JSON.parse(
+      new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(small),
+    );
   } catch {
     return { ok: false, message: "the body is not JSON" };
   }

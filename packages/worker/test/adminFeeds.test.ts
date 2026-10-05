@@ -830,6 +830,49 @@ describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", ()
     );
   });
 
+  it("mints a publish token (F-22): owner-bound, named publish feeds, at most 30 days, audited as such", async () => {
+    const res = await admin("POST", tokens(), {
+      label: "Laptop publish",
+      binding: "owner",
+      scopes: ["publish"],
+      ecosystems: ["npm", "maven"],
+    });
+    expect(res.status).toBe(201);
+    const minted = await res.json();
+    expect(minted.view).toMatchObject({
+      scopes: ["publish", "read"],
+      ecosystems: ["maven", "npm"],
+      expiresAt: NOW + 7 * 86_400,
+    });
+    const audit = await db.first<{ summary: string }>(
+      "SELECT summary FROM audit WHERE product = ? AND action = 'registry_token.create'",
+      OWNER,
+    );
+    expect(audit?.summary).toContain("; publish;");
+    for (const body of [
+      { scopes: ["publish"] },
+      { scopes: ["publish"], ecosystems: ["oci"] },
+      { scopes: ["publish"], ecosystems: ["npm"], expiresInDays: 31 },
+      { scopes: "publish", ecosystems: ["npm"] },
+    ])
+      expect(
+        (
+          await admin("POST", tokens(), {
+            label: "x",
+            binding: "owner",
+            ...body,
+          })
+        ).status,
+        JSON.stringify(body),
+      ).toBe(422);
+    const list = await (await admin("GET", tokens())).json();
+    expect(list.limits).toMatchObject({
+      publishDefaultDays: 7,
+      publishMaxDays: 30,
+      publishEcosystems: ["npm", "pypi", "swift", "maven"],
+    });
+  });
+
   it("refuses bad input and narrows to one licence", async () => {
     expect(
       (

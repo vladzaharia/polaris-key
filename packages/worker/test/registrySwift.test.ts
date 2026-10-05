@@ -507,7 +507,7 @@ async function rerender(): Promise<void> {
 }
 
 describe("Swift registry routes (F-06)", () => {
-  it("registers its routes, all Distribution's, under the swift ecosystem", () => {
+  it("registers its routes under the swift ecosystem: the reads and login Distribution's, publish Release's", () => {
     const swift = REGISTRY_ROUTES.filter((r) => r.ecosystem === "swift");
     expect(swift.map((r) => r.name)).toEqual([
       "swift.identifiers",
@@ -517,8 +517,13 @@ describe("Swift registry routes (F-06)", () => {
       "swift.releases",
       // F-21: SwiftPM's login, a credential route.
       "swift.login",
+      // F-22: swift package-registry publish, a Release ingest (test/registryPublish.test.ts).
+      "swift.publish",
     ]);
-    for (const r of swift) expect(r.service).toBe("distribution");
+    for (const r of swift)
+      expect(r.service).toBe(
+        r.name === "swift.publish" ? "release" : "distribution",
+      );
   });
 
   it("lists releases with a yanked problem, latest-version link and Content-Version (§4.1)", async () => {
@@ -857,7 +862,7 @@ describe("Swift registry routes (F-06)", () => {
     );
   });
 
-  it("login checks a registry token (F-21) and publish is 405 until F-22, decided before any owner is loaded", async () => {
+  it("login checks a registry token (F-21) and publish (F-22) needs one, each answering like the feed", async () => {
     // An unknown owner's login is the host's not-found; this owner's without a token is 401.
     const unknown = await get(`/swift/nobody/login`, null, { method: "POST" });
     expect(unknown.status).toBe(404);
@@ -869,14 +874,23 @@ describe("Swift registry routes (F-06)", () => {
     expect(login.headers.get("www-authenticate")).toMatch(/^Basic realm=/);
     // GET on the login path is no route at all.
     expect((await get(`/swift/${SLUG}/login`)).status).toBe(404);
-    for (const owner of [SLUG, "nobody"]) {
+    // F-22: publish is a route now; an unknown owner is the not-found, this one challenges.
+    for (const [owner, status] of [
+      [SLUG, 401],
+      ["nobody", 404],
+    ] as const) {
       const put = await get(`/swift/${owner}/acme/AcmeKit/1.0.0`, null, {
         method: "PUT",
       });
-      expect(put.status, owner).toBe(405);
+      expect(put.status, owner).toBe(status);
       expectSwift(put, `put ${owner}`);
-      expect(put.headers.get("allow")).toBe("GET, HEAD");
     }
+    // Any other write is still 405, decided from the path.
+    const del = await get(`/swift/${SLUG}/acme/AcmeKit/1.0.0`, null, {
+      method: "DELETE",
+    });
+    expect(del.status).toBe(405);
+    expect(del.headers.get("allow")).toBe("GET, HEAD");
     const options = await get(`${BASE}/acme/AcmeKit`, null, {
       method: "OPTIONS",
     });

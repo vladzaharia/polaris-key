@@ -2657,6 +2657,10 @@ export interface RegistryTokensDto {
     urlDefaultDays: number;
     perOwner: number;
     perLicense: number;
+    /** F-22: a publish token's default and longest expiry, and the ecosystems it may name. */
+    publishDefaultDays?: number;
+    publishMaxDays?: number;
+    publishEcosystems?: FeedEcosystem[];
   };
 }
 
@@ -2667,6 +2671,8 @@ export interface MintRegistryTokenBody {
   binding: "owner" | "license";
   licenseId?: string;
   presentation?: "header" | "url";
+  /** F-22: `["publish"]` for a native-client publish token (owner-bound, named ecosystems). */
+  scopes?: ("read" | "publish")[];
 }
 
 export interface MintedRegistryToken {
@@ -2732,10 +2738,12 @@ export interface FeedPackageVersion {
   stateMessage: string | null;
   publishedAt: number;
   source: {
-    kind: "oidc" | "static" | "console" | "unknown";
+    kind: "oidc" | "static" | "console" | "registry" | "unknown";
     publisher: string | null;
     runUrl: string | null;
     tokenId: string | null;
+    /** F-22: the native client that published (`npm`, `twine`, `swift`, `maven`), or null. */
+    client?: string | null;
   };
   size: number;
   files: FeedPackageFile[];

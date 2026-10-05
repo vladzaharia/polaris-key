@@ -108,7 +108,11 @@ export const SWIFT_PUBLISH_ROUTE: RegistryRoute = publishRoute({
             message:
               "the release is over the 32 MiB native-publish limit; publish it with pkey release publish, which uploads straight to the blob store",
           })
-        : problem(400, "swift-bad-publish", "the request body could not be read");
+        : problem(
+            400,
+            "swift-bad-publish",
+            "the request body could not be read",
+          );
     const parts = parseMultipart(body.bytes, boundary);
     if (parts === null)
       return problem(
@@ -234,6 +238,13 @@ export const SWIFT_PUBLISH_ROUTE: RegistryRoute = publishRoute({
           done.reason === "release_exists"
           ? { ...done, status: 409 }
           : done,
+      );
+    // Registry.md §4.6: a release that exists is a 409, even when the same bytes are sent again.
+    if (done.outcome === "unchanged")
+      return problem(
+        409,
+        "package-version-taken",
+        `${declared.name} ${version} is already published.`,
       );
     const origin = registryOrigin(ctx.env) ?? new URL(req.url).origin;
     return json(

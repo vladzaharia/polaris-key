@@ -1031,7 +1031,7 @@ separate them, exactly as for the bytes host. Its compensations, against `dl.plr
 | `sandbox` CSP with no sources on every answer | `BLOB_CSP`                                             | `REGISTRY_CSP` (the same value)                                                     |
 | `Cross-Origin-Resource-Policy: same-origin`   | no                                                     | yes                                                                                 |
 | CORS                                          | the product's `web.origins`, via `core/cors.ts`        | **none**: route headers dropped, `OPTIONS` is 405                                   |
-| Methods                                       | per route                                              | `GET` and `HEAD` only (405 otherwise)                                               |
+| Methods                                       | per route                                              | `GET` and `HEAD`; Swift's login and F-22's publish writes (405 otherwise)           |
 | Errors and throws                             | flat JSON; JSON 500                                    | flat JSON, `problem+json` (Swift) or OCI error JSON; JSON 500                       |
 | Service off for the owner                     | the not-found                                          | the not-found, and the feed ladder below answers it too                             |
 | The one HTML answer                           | `/` and the download page, under `inertDocumentPolicy` | `/`, and the PyPI simple page on its one flagged route, under `inertDocumentPolicy` |
@@ -1329,7 +1329,8 @@ which sends no credentials, carries a narrow URL token in its configured URL. Te
 **A new bearer asset.** A token is 256 random bits, stored only as an HMAC under
 `KEY_HASH_PEPPER` (a global unique index), shown once, never logged or echoed; the list shows the
 last four characters. Every token expires, at most 365 days out (default 90, 30 for a URL token,
-Q6), and is bound to one owner. Scope is `read`; `publish` is refused until F-22 and F-23. At most
+Q6), and is bound to one owner. Scope is `read`, or `publish` (F-22, below: owner-bound, named
+ecosystems, at most 30 days). At most
 10 live tokens per licence and 500 per owner. A deleted product's tokens stop at once (the lookup
 joins `products.status`, and the deletion batch revokes them); an erased portal account's tokens
 are revoked in the erasure batch (`account_deleted`); a disabled or expired licence's tokens stop
@@ -1392,6 +1393,78 @@ reads that bypass the Cache API) fails open. A refusal is a native 429.
 **One credential per host.** docker, SwiftPM and netrc hold one credential per registry host, so
 one machine can hold a token for only one owner on `pkg.plrs.im` (Q2, accepted and documented).
 Platform feeds stay public, so they never take the slot.
+
+### Native-client publish (F-22)
+
+**What it is.** Release's write routes on `pkg.plrs.im` (`services/release/packages/native/`):
+`PUT /npm/<owner>/<name>` (`npm publish`, pnpm, Yarn, Bun), `POST /pypi/<owner>/legacy/` (twine's
+legacy upload), `PUT /swift/<owner>/<scope>/<name>/<version>` (`swift package-registry publish`)
+and `PUT /maven/<owner>/…` (Maven and Gradle deploys). Each request is translated into the release
+descriptor `pkey release publish` sends and ingested through F-03's path, so every ingest rule
+(declared deliverable, namespace, ceiling, unique forever, Swift signing, no snapshots) applies
+unchanged. Tests: `test/registryPublish.test.ts` (with golden releases under
+`test/fixtures/registry/native/`), the publish rows of `registry-clients.yml`.
+
+**A publish secret where CI used to need none.** Trusted publishing exists so a repository holds
+no long-lived publish secret; a native client needs a credential it can send. The design keeps
+that property for CI and bounds it everywhere else:
+
+- **In CI, the credential is the 30-minute `pkeyci_`** `pkey auth github-oidc` exchanges for the
+  job's OIDC token (the same principal, publisher policy and `release:publish` scope as
+  `pkey release publish`). Nothing long-lived is stored; the docs and the console say so.
+- **A `pkeyr_` publish token** is the owner's own: owner-bound only (never a licence), header
+  only (never a Godot URL token), narrowed to explicitly named publish ecosystems (npm, PyPI,
+  Swift, Maven; never "every feed", never OCI or Godot), and short-lived: 1 to 30 days, 7 by
+  default, against the read token's 365. It is minted only by a platform admin in the console
+  (audited `registry_token.create`, naming "publish"), revocable within the 30-second resolution
+  window like every token, and its plaintext is shown once. Residual: a publish token pasted into
+  a CI secret is a long-lived-ish secret again (at most 30 days); a leak can publish new versions
+  (never replace one) under the owner's namespace until revoked, and every such version names the
+  token on its package record and in the audit.
+- **Everything else is refused before the body is read**: no credential, another owner's, a pull
+  or URL token is the native `401`; a read-only, licence-bound or narrowed-away token, or a CI
+  token without `release:publish`, is `403`. A licence holder can therefore never publish.
+
+**Bytes through the Worker.** A native client sends the package in its request, so unlike the CLI
+path the bytes transit the Worker: each request is capped at 32 MiB (`Content-Length` first, then
+counted), held once in memory, hashed and staged by the Worker itself under
+`staging/<owner>/<session>/` with R2 checking the SHA-256 (no client ever gets a staging
+credential), then promoted through `core/blobs.ts` `promote`. npm's `dist.integrity`/`shasum`,
+twine's `sha256_digest`/`md5_digest` and Maven's checksum sidecars must match the bytes received,
+so a corrupted upload is refused rather than served. The `registryPublish` budget (per token, 600
+a minute, fail closed) bounds storage writes.
+
+**The one place the Worker reads inside a package.** SwiftPM fetches `Package.swift` from the
+registry, and a native publish sends only the archive, so `swiftArchive.ts` reads the manifests
+out of the zip: only the central directory and entries named `Package.swift` /
+`Package@swift-<v>.swift` at the root or in the single top-level directory, at most 32, stored or
+deflated, unencrypted, at most 1 MiB each declared AND inflated (the inflater is cancelled past
+the cap, so a zip bomb costs at most 1 MiB per entry), CRC-checked; ZIP64 and split archives are
+refused. Every other byte of the archive is opaque. The manifests served are the archive's own
+bytes, which SwiftPM checksums (and, signed, carry their signatures), so this departs from the
+F-06 rule "never re-extracted from the archive" for native publishes only, without serving
+anything a client would not find in the archive it verifies. npm, twine and Maven need no read
+inside a package: their metadata arrives as JSON, form fields or a POM (parsed as text, bounded).
+
+**Multi-request versions.** twine and Maven send a version as several requests, and a version
+never gains files after it is published, so its files gather in an upload session
+(`release_native_uploads`, Release's) owned by the uploading token alone: another token's upload
+of the same version is refused while it is open, a staged file is never replaced by other bytes,
+and every refusal is checked per file by a dry run of the version as gathered, so the client is
+told. A session publishes on Maven's `maven-metadata.xml`, ten seconds after twine's last upload
+(held back while any request of the same token on the feed is in flight), or by the cron after
+ten idle minutes; a failure then is recorded on the row and audited (`release.publish.failed`).
+Residual: twine's "published" is eventual (the client is answered before the version exists).
+
+**Host rules unchanged.** The publish routes carry `FEED_PUBLISH_ROUTE`, name `service:
+"release"`, declare exactly one write method each, and are matched from the path before any
+owner loads, like Swift's login; every other write stays `405`. Their answers pass the same
+type allowlist, cookie stripping, sandbox CSP and no-CORS rules. A feed that is off, an unknown
+owner and Distribution off all answer the host's one not-found before any credential is judged.
+
+Review triggers (§9): a publish token longer than 30 days or not owner-bound; any read inside a
+package beyond Swift manifests; a raised native body cap; a write method on the host beyond these
+routes and Swift's login.
 
 ### App-updater feeds (P3-09)
 
@@ -4784,11 +4857,13 @@ than the `app` delivery-access row (it runs whatever the service's enablement); 
 service on starts running an ingest; a byte route is added to `BYTE_ROUTES`, a type to
 `BYTES_HOST_TYPES`, or anything else is hosted on a `plrs.im` sibling; a type is added to
 `REGISTRY_HOST_TYPES`, the PyPI HTML fallback is admitted anywhere but its one flagged route or
-under a looser policy, a registry route answers CORS or a method other than GET, HEAD and
-Swift's `POST …/login`, or `authorizeFeedRead` moves after the cache lookup (F-02); a new registry
+under a looser policy, a registry route answers CORS or a method other than GET, HEAD,
+Swift's `POST …/login` and F-22's four publish writes, or `authorizeFeedRead` moves after the cache lookup (F-02); a new registry
 principal kind, a registry token accepted in a URL outside Godot, any increase of
 `REGISTRY_TOKEN_TTL_SECONDS` or of the OCI pull token's lifetime, or a credentialed registry
-answer reaching the Cache API (F-21); the bucket-lock duration
+answer reaching the Cache API (F-21); a publish token longer than 30 days, not owner-bound or
+reaching OCI or Godot, any read inside a package beyond Swift manifests, or a raised native
+publish body cap (F-22); the bucket-lock duration
 changes; the admin authorization model changes; the wire contract
 version increments; any new field is added to `AdminSession` or `PortalSession` (see the
 domain-separation note in the audit report — the two realms share HMAC key material by default);

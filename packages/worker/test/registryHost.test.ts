@@ -232,7 +232,9 @@ describe("registry host: configuration", () => {
     expect(new Set(names).size).toBe(names.length);
     for (const r of REGISTRY_ROUTES) {
       // F-22: a publish is Release's ingest; every read and credential route is Distribution's.
-      expect(r.service).toBe(r[FEED_PUBLISH_ROUTE] ? "release" : "distribution");
+      expect(r.service).toBe(
+        r[FEED_PUBLISH_ROUTE] ? "release" : "distribution",
+      );
       expect(REGISTRY_ECOSYSTEMS).toContain(r.ecosystem);
       expect(RESERVED_ECOSYSTEMS.has(r.ecosystem), r.name).toBe(false);
     }

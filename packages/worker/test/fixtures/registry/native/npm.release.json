@@ -1,0 +1,33 @@
+{
+  "ecosystem": "npm",
+  "name": "@acme/sdk",
+  "version": "1.0.0",
+  "deliverable_id": "npm.sdk",
+  "release_id": "npm.sdk@1.0.0",
+  "state": "live",
+  "files_json": [
+    {
+      "name": "sdk-1.0.0.tgz",
+      "type": "npm-tarball",
+      "sha256": "d53fe295e38d9811b73fac46b0e5c8449362ac043aec68212d7b1c7633cefbe7",
+      "size": 256,
+      "sha512": "ec71186c949728d230a64dacdf9872a0bacac45d6e7fbb57b8f3ed42be21c0c437fcd2d8769d4eab9635cc5fc56084f2adee121cef8b05a0b05bd6fb886ff480",
+      "sha1": "8677d7422af2877f753659afdf15c6ab94dc422a"
+    }
+  ],
+  "metadata_json": {
+    "name": "@acme/sdk",
+    "version": "1.0.0",
+    "description": "The Acme SDK",
+    "license": "MIT",
+    "dependencies": {
+      "lodash": "^4.17.21"
+    },
+    "main": "index.js"
+  },
+  "source_json": {
+    "kind": "registry",
+    "tokenId": "rtok_<id>",
+    "client": "npm"
+  }
+}

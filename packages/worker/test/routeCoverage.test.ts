@@ -229,7 +229,10 @@ const REGISTRY_SERVER = "https://pkg.plrs.im";
 function mergeRegistryRows(
   rows: readonly (readonly [string, readonly string[], string])[],
 ): Array<[string, string[], string[]]> {
-  const byPath = new Map<string, { methods: Set<string>; owners: Set<string> }>();
+  const byPath = new Map<
+    string,
+    { methods: Set<string>; owners: Set<string> }
+  >();
   for (const [path, methods, owner] of rows) {
     const e = byPath.get(path) ?? { methods: new Set(), owners: new Set() };
     for (const m of methods) e.methods.add(m);
