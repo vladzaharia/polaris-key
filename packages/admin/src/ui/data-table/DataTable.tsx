@@ -1013,7 +1013,8 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
         const rest = cells.filter(
           (c) =>
             c.column.id !== primaryId &&
-            (c.column.columnDef.meta?.priority ?? 2) === 1,
+            (c.column.columnDef.meta?.priority ?? 2) === 1 &&
+            !c.column.columnDef.meta?.quiet?.(row.original),
         );
         return (
           <li

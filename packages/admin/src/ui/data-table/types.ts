@@ -24,6 +24,11 @@ declare module "@tanstack/react-table" {
     csv?: (row: TData) => string;
     /** The column cannot be hidden from the Columns menu. */
     alwaysVisible?: boolean;
+    /**
+     * The cell shows nothing a reader needs for this row (a healthy state: pills mean attention,
+     * ADMIN.md §5.11). A mobile card leaves the field out rather than print a bare label.
+     */
+    quiet?: (row: TData) => boolean;
   }
 }
 

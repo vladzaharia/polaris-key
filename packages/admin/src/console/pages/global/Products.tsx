@@ -123,24 +123,6 @@ const COLUMNS: DataColumn<ProductRow>[] = [
     },
   },
   {
-    id: "setup",
-    header: "Setup",
-    accessorKey: "attention",
-    meta: { priority: 1, csv: (row) => row.setup },
-    cell: ({ row }) =>
-      row.original.attention > 0 ? (
-        <StatusPill tone="warning" size="sm">
-          {row.original.attention === 1
-            ? "1 needs attention"
-            : `${row.original.attention} need attention`}
-        </StatusPill>
-      ) : (
-        <StatusPill tone="success" size="sm">
-          Setup complete
-        </StatusPill>
-      ),
-  },
-  {
     id: "source",
     header: "Source",
     accessorKey: "source",
@@ -160,6 +142,29 @@ const COLUMNS: DataColumn<ProductRow>[] = [
     accessorFn: (row) => row.product.createdAt,
     meta: { numeric: true, priority: 3 },
     cell: ({ row }) => <When seconds={row.original.product.createdAt} />,
+  },
+  // Last, flush right (pills mean attention, ADMIN.md §5.11): a product that needs something
+  // shows the one pill at the row's right edge; a healthy product shows nothing.
+  {
+    id: "setup",
+    header: "Setup",
+    accessorKey: "attention",
+    meta: {
+      priority: 1,
+      align: "end",
+      csv: (row) => row.setup,
+      quiet: (row) => row.attention === 0,
+    },
+    cell: ({ row }) =>
+      row.original.attention > 0 ? (
+        <StatusPill tone="warning" size="sm">
+          {row.original.attention === 1
+            ? "1 needs attention"
+            : `${row.original.attention} need attention`}
+        </StatusPill>
+      ) : (
+        <span className="sr-only">Setup complete</span>
+      ),
   },
 ];
 
