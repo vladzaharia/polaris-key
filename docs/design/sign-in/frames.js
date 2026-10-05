@@ -1,7 +1,7 @@
 /*
  * SIGN-IN.md key frames. Every frame renders at desktop (1440 wide) and phone (390 wide); the
  * theme comes from ?theme=dark|light. render.cjs screenshots every [data-shot] element.
- * Copy here is the copy in SIGN-IN.md §6 (copy keys); keep the two in step.
+ * Copy here is the copy in SIGN-IN.md §5.2 (copy keys); keep the two in step.
  */
 (function () {
   const params = new URLSearchParams(location.search);
@@ -56,6 +56,7 @@
       '<circle cx="12" cy="8" r="4"/><path d="M4 20c1-4 4-6 8-6s7 2 8 6"/>',
     ),
     qrscan: S('<path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/>'),
+    ban: S('<circle cx="12" cy="12" r="8.5"/><path d="M6 18L18 6"/>'),
     star: `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 1.5l2.6 6.3 6.9.5-5.3 4.4 1.7 6.7L12 15.8l-5.9 3.6 1.7-6.7L2.5 8.3l6.9-.5z"/></svg>`,
   };
 
@@ -128,6 +129,7 @@
     `<div class="person"><div class="avatar">MF</div><div><div class="n">Mara Fennick</div><div class="e">mara@fennick.studio</div></div><span class="x link">${x}</span></div>`;
   const meter = (used, limit) =>
     `<div class="meter" role="img" aria-label="${used} of ${limit} devices in use">${Array.from({ length: limit }, (_, i) => `<i class="${i < used ? "on" : ""}"></i>`).join("")}</div>`;
+  // Full and blocked rows are not radios (SIGN-IN §3.14, D-45): a glyph sits where the radio would.
   const lic = ({
     name,
     meta,
@@ -135,12 +137,24 @@
     limit,
     sel,
     full,
+    blocked,
     tag,
     tagKind,
     act,
     extra,
   }) =>
-    `<div class="lic ${sel ? "sel" : ""} ${full ? "full" : ""}"><div class="radio"></div><div class="ln">${name}</div>${tag ? `<span class="tag ${tagKind || ""}">${tag}</span>` : "<span></span>"}<div class="lm">${meta}</div>${limit ? meter(used, limit) : ""}${act ? `<div class="act">${act}</div>` : ""}${extra || ""}</div>`;
+    `<div class="lic ${sel ? "sel" : ""} ${full ? "full" : ""} ${blocked ? "blocked" : ""}">${full || blocked ? `<div class="nosel" aria-hidden="true">${I.ban}</div>` : `<div class="radio"></div>`}<div class="ln">${name}</div>${tag ? `<span class="tag ${tagKind || ""}">${tag}</span>` : "<span></span>"}<div class="lm">${meta}</div>${limit ? meter(used, limit) : ""}${act ? `<div class="act">${act}</div>` : ""}${extra || ""}</div>`;
+  const fullAct = `<div class="btn secondary inline">Replace a device</div><span class="link">Free a device</span>`;
+  const FULL = {
+    full: true,
+    tag: "No free devices",
+    tagKind: "warn",
+    act: fullAct,
+  };
+  const chosen = (name, meta) =>
+    `<div class="lic chosen"><div class="ln">${name}</div><span class="link" style="align-self:center">Change</span><div class="lm">${meta}</div></div>`;
+  const quiet = (key) =>
+    `<div class="links">${key ? `<span>${I.key} Use a license key instead</span>` : ""}<span>Cancel</span></div>`;
   const below = `<div class="below">Help · Privacy · Terms</div>`;
 
   // ---------- frames ----------
@@ -222,7 +236,7 @@
     foot: footer("Saltwind", "Tern Works"),
   });
 
-  // 05 LicenseChoiceStep: many licences, one full, one ended
+  // 05 LicenseChoiceStep: many licenses, one full; rank-first preselects, nothing binds until the primary
   F({
     id: "05-choice-many",
     head: appHeader({
@@ -235,17 +249,16 @@
     body: `${person()}
       <h1>Choose a license for this device</h1>
       <p class="lede">Tidewater Studio will use it on Mara's MacBook Pro.</p>
-      <div role="radiogroup" aria-label="Licenses" style="display:flex;flex-direction:column;gap:10px">
-      ${lic({ name: "Tidewater Studio Pro", meta: "Lifetime · on 2 of 3 devices", used: 2, limit: 3, sel: true })}
-      ${lic({ name: "Tidewater Studio Edu", meta: "Until 12 Jun 2027 · on 2 of 2 devices", used: 2, limit: 2, full: true, tag: "Full", act: `<div class="btn secondary inline">Replace a device</div>` })}
+      <div role="radiogroup" aria-label="Licenses for Tidewater Studio" style="display:flex;flex-direction:column;gap:10px">
+      ${lic({ name: "Tidewater Studio Pro", meta: "Bought from Harbor Audio · 2 of 3 devices · Lifetime", used: 2, limit: 3, sel: true })}
+      ${lic({ name: "Tidewater Studio Edu", meta: "Added with a key · 2 of 2 devices · Until 12 Jun 2027", used: 2, limit: 2, ...FULL })}
       </div>
-      <div class="disclose">${I.chev} 1 ended license</div>
-      ${btn("primary", "Continue to Tidewater Studio")}
-      <div class="links"><span>${I.key} Use a license key instead</span></div>`,
+      ${btn("primary", "Use this license and continue")}
+      ${quiet(true)}`,
     foot: footer("Tidewater Studio", "Harbor Audio"),
   });
 
-  // 06 Replace device, expanded on the full licence
+  // 06 Replace a device, expanded on the full license: one confirm that names both devices
   F({
     id: "06-choice-replace",
     head: appHeader({
@@ -257,33 +270,35 @@
     }),
     body: `${person()}
       <h1>Choose a license for this device</h1>
-      <div role="radiogroup" aria-label="Licenses" style="display:flex;flex-direction:column;gap:10px">
-      ${lic({ name: "Tidewater Studio Pro", meta: "Lifetime · on 2 of 3 devices", used: 2, limit: 3 })}
+      <div role="radiogroup" aria-label="Licenses for Tidewater Studio" style="display:flex;flex-direction:column;gap:10px">
+      ${lic({ name: "Tidewater Studio Pro", meta: "Bought from Harbor Audio · 2 of 3 devices · Lifetime", used: 2, limit: 3 })}
       ${lic({
         name: "Tidewater Studio Edu",
-        meta: "Until 12 Jun 2027 · on 2 of 2 devices",
+        meta: "Added with a key · 2 of 2 devices · Until 12 Jun 2027",
         used: 2,
         limit: 2,
         full: true,
-        tag: "Full",
+        tag: "No free devices",
+        tagKind: "warn",
         extra: `<div class="replace"><h2>Replace a device</h2>
-          <div class="devs" role="radiogroup" aria-label="Devices on this license">
-            <div class="dev sel"><div class="radio" style="border-color:var(--pk-accent)"><span style="width:10px;height:10px;border-radius:50%;background:var(--pk-accent)"></span></div>${I.laptop.replace("<svg", '<svg class="g"')}<div><div class="dn">Work laptop</div><div class="dm">Windows · last used 41 days ago</div></div><span class="tag">Least recent</span></div>
-            <div class="dev"><div class="radio"></div>${I.desktop.replace("<svg", '<svg class="g"')}<div><div class="dn">Studio iMac</div><div class="dm">macOS · last used today</div></div><span></span></div>
+          <div class="devs" role="radiogroup" aria-label="Devices on Tidewater Studio Edu">
+            <div class="dev sel"><div class="radio"></div>${I.laptop.replace("<svg", '<svg class="g"')}<div><div class="dn">Work laptop</div><div class="dm">Windows · last used 23 days ago</div></div><span class="tag">Least recent</span></div>
+            <div class="dev"><div class="radio"></div>${I.desktop.replace("<svg", '<svg class="g"')}<div><div class="dn">Studio iMac</div><div class="dm">macOS · last used 4 minutes ago</div></div><span class="tag active">Active now</span></div>
           </div>
-          <p class="small" style="color:var(--pk-text-muted)">Tidewater Studio signs out on Work laptop. You can add it back later. We'll email mara@fennick.studio to confirm.</p>
-          ${btn("primary", "Replace Work laptop")}
-          ${btn("ghost", "Keep my devices")}
+          <div class="confirm"><h3>Replace Work laptop?</h3>
+            <p>Work laptop signs out of Tidewater Studio and Mara's MacBook Pro takes its seat. Work laptop can sign in again later if a seat is free. We'll email you about it.</p>
+            ${btn("primary", "Replace and continue")}
+            ${btn("ghost", "Back")}
+          </div>
         </div>`,
       })}
-      </div>
-      <p class="small center">Or <span class="link">manage devices in Polaris Key</span></p>`,
+      </div>`,
     foot: footer("Tidewater Studio", "Harbor Audio"),
   });
 
-  // 07 One licence + first-time consent, merged frame
+  // 07 ConsentStep after the choice: the chosen license with Change (one decision per screen)
   F({
-    id: "07-choice-one-consent",
+    id: "07-consent",
     head: appHeader({
       icon: "tidewater",
       app: "Tidewater Studio",
@@ -294,7 +309,7 @@
     body: `${person()}
       <h1>Continue to Tidewater Studio as Mara?</h1>
       <div class="group-label">License for this device</div>
-      ${lic({ name: "Tidewater Studio Pro", meta: "Lifetime · this will be device 3 of 3", used: 2, limit: 3, sel: true })}
+      ${chosen("Tidewater Studio Pro", "Lifetime · this Mac becomes device 3 of 3")}
       <div class="group-label">Tidewater Studio will also get</div>
       <div class="items">
         <div class="item">${I.cloud}<div class="in">Cloud Sync</div><div class="im">Your presets, templates and preferences</div></div>
@@ -306,7 +321,7 @@
     foot: footer("Tidewater Studio", "Harbor Audio"),
   });
 
-  // 08 Zero licences, the product auto-issues: the new licence is shown, not silent
+  // 08 Zero licenses, the product auto-issues: the new license is shown and minted only on the primary
   F({
     id: "08-choice-new",
     head: appHeader({
@@ -319,13 +334,13 @@
     body: `${person()}
       <h1>Choose a license for this device</h1>
       <p class="lede">You don't have a Saltwind license yet. Tern Works gives you this one.</p>
-      ${lic({ name: "Saltwind Free", meta: "Free · this will be device 1 of 2", used: 0, limit: 2, sel: true, tag: "New", tagKind: "new" })}
-      ${btn("primary", "Continue to Saltwind")}
-      <div class="links"><span>${I.key} Use a license key instead</span></div>`,
+      ${lic({ name: "Saltwind Free", meta: "Free · created when you continue · device 1 of 2", used: 0, limit: 2, sel: true, tag: "New", tagKind: "new" })}
+      ${btn("primary", "Use this license and continue")}
+      ${quiet(true)}`,
     foot: footer("Saltwind", "Tern Works"),
   });
 
-  // 09 Every licence full: no silent second licence; Replace a device is the way in
+  // 09 Every paid license full: no New row, nothing preselected; Replace a device is the way in
   F({
     id: "09-choice-all-full",
     head: appHeader({
@@ -339,11 +354,11 @@
       <h1>Choose a license for this device</h1>
       <div class="notice warn">${I.warn}<span>Your licenses are on all their devices. Replace a device to use one here.</span></div>
       <div style="display:flex;flex-direction:column;gap:10px">
-      ${lic({ name: "Tidewater Studio Pro", meta: "Lifetime · on 3 of 3 devices", used: 3, limit: 3, full: true, tag: "Full", act: `<div class="btn secondary inline">Replace a device</div>` })}
-      ${lic({ name: "Tidewater Studio Edu", meta: "Until 12 Jun 2027 · on 2 of 2 devices", used: 2, limit: 2, full: true, tag: "Full", act: `<div class="btn secondary inline">Replace a device</div>` })}
+      ${lic({ name: "Tidewater Studio Pro", meta: "Bought from Harbor Audio · 3 of 3 devices · Lifetime", used: 3, limit: 3, ...FULL })}
+      ${lic({ name: "Tidewater Studio Edu", meta: "Added with a key · 2 of 2 devices · Until 12 Jun 2027", used: 2, limit: 2, ...FULL })}
       </div>
-      ${btn("primary disabled", "Continue to Tidewater Studio")}
-      <div class="links"><span>${I.key} Use a license key instead</span><span class="link">Manage devices in Polaris Key</span></div>`,
+      ${btn("primary disabled", "Use this license and continue")}
+      ${quiet(true)}`,
     foot: footer("Tidewater Studio", "Harbor Audio"),
   });
 
@@ -465,18 +480,84 @@
       ${btn("ghost", "Use another way to sign in")}`,
   });
 
-  // 18 Kit: native LicenseChoice after a native Apple sign-in (I-13 exchange), product as hero
+  // 18 Kit: native LicenseChoice after a native Apple sign-in (I-13 `choose`), product as hero
   F({
     id: "18-kit-choice",
     kit: true,
-    body: `<div class="phead"><div class="icon">${art.saltwind}</div>Saltwind</div>
+    body: `<div class="phead hero"><div class="icon">${art.saltwind}</div>Saltwind</div>
+      <div class="who">Signed in as Mara Fennick · <span class="link">Not you?</span></div>
       <h1>Choose a license for this device</h1>
       <p class="lede">Saltwind will use it on Mara's iPhone.</p>
-      ${lic({ name: "Saltwind Pro", meta: "Yearly · until 2 Feb 2027 · on 1 of 3 devices", used: 1, limit: 3, sel: true })}
-      ${lic({ name: "Saltwind Free", meta: "Free · on 2 of 2 devices", used: 2, limit: 2, full: true, tag: "Full", act: `<div class="btn secondary inline">Replace a device</div>` })}
+      ${lic({ name: "Saltwind Pro", meta: "Bought on the App Store · 1 of 3 devices · Yearly, until 2 Feb 2027", used: 1, limit: 3, sel: true })}
+      ${lic({ name: "Saltwind Free", meta: "Created when you signed in · 2 of 2 devices · Free", used: 2, limit: 2, full: true, tag: "No free devices", tagKind: "warn", act: `<div class="btn secondary inline">Replace a device</div>` })}
       <div style="flex:1"></div>
-      ${btn("primary", "Continue")}
+      ${btn("primary", "Use this license and continue")}
       <p class="small center">Polaris Key signs you in for Saltwind. Tern Works never sees your codes or passkeys.</p>`,
+  });
+
+  // 19 Every license full on an auto-issue product: Create a new free license is explicit, never preselected
+  F({
+    id: "19-choice-create",
+    head: appHeader({
+      icon: "saltwind",
+      app: "Saltwind",
+      dev: "Tern Works",
+      where: "on Mara's iPad",
+      whereIcon: "phone",
+    }),
+    body: `${person()}
+      <h1>Choose a license for this device</h1>
+      <div class="notice warn">${I.warn}<span>Your licenses are on all their devices. Replace a device, or create a new free license.</span></div>
+      <div role="radiogroup" aria-label="Licenses for Saltwind" style="display:flex;flex-direction:column;gap:10px">
+      ${lic({ name: "Saltwind Free", meta: "Created when you signed in · 2 of 2 devices · Free", used: 2, limit: 2, ...FULL })}
+      ${lic({ name: "Create a new free license", meta: "Free · a separate license · device 1 of 2", tag: "New", tagKind: "new" })}
+      </div>
+      ${btn("primary disabled", "Use this license and continue")}
+      ${quiet(false)}`,
+    foot: footer("Saltwind", "Tern Works"),
+  });
+
+  // 20 No license in this account, no auto-issue: the key is taken inline; never a dead end
+  F({
+    id: "20-choice-none",
+    head: appHeader({
+      icon: "nightfall",
+      app: "Nightfall",
+      dev: "Lanternworks",
+      where: "on Mara's PC",
+      whereIcon: "desktop",
+    }),
+    body: `${person()}
+      <h1>No Nightfall license in this account</h1>
+      <p class="lede">Bought it with another email? Sign in with that account instead.</p>
+      ${field("License key", "", { ph: '<span class="mono">pkey_nightfall_…</span>', help: "Paste the key from your receipt email." })}
+      ${btn("primary", "Add and use on this device")}
+      ${btn("secondary", "Get Nightfall")}
+      <div class="links"><span class="link">Use another account</span><span>Cancel</span></div>`,
+    foot: footer("Nightfall", "Lanternworks"),
+  });
+
+  // 21 Device already runs on a license the account doesn't hold: Keep, never naming it (P1-07)
+  F({
+    id: "21-choice-keep",
+    head: appHeader({
+      icon: "driftkart",
+      app: "Drift Kart",
+      dev: "Pitlane Games",
+      where: "on Living room TV",
+      whereIcon: "tv",
+      code: "WDJB-MJHT",
+    }),
+    body: `${person()}
+      <h1>Choose a license for this device</h1>
+      <p class="lede">Drift Kart will use it on Living room TV.</p>
+      <div role="radiogroup" aria-label="Licenses for Drift Kart" style="display:flex;flex-direction:column;gap:10px">
+      ${lic({ name: "Keep the license this device uses", meta: "Drift Kart keeps running as it does now.", sel: true })}
+      ${lic({ name: "Drift Kart Season Pass", meta: "Bought on Steam · 1 of 3 devices · Until 1 Mar 2027", used: 1, limit: 3 })}
+      </div>
+      ${btn("primary", "Use this license and continue")}
+      ${quiet(false)}`,
+    foot: footer("Drift Kart", "Pitlane Games"),
   });
 
   // ---------- render ----------
@@ -485,7 +566,7 @@
     if (only && !f.id.startsWith(only)) continue;
     for (const size of ["desktop", "phone"]) {
       const el = document.createElement("section");
-      el.className = `screen ${size} ${f.kit ? "kit" : ""}`;
+      el.className = `screen ${size} ${f.kit ? "kit" : ""} ${f.head ? "app" : ""}`;
       el.setAttribute("data-shot", `${f.id}-${size}`);
       if (f.kit) {
         el.innerHTML =

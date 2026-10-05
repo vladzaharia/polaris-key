@@ -160,16 +160,16 @@ body {
   border-bottom: 1px solid var(--hair);
 }
 .card-head .icon {
-  width: 52px;
-  height: 52px;
-  border-radius: 13px;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
   flex: none;
   overflow: hidden;
 }
 .card-head .t {
   color: var(--pk-text-strong);
-  font-size: 16px;
-  line-height: 22px;
+  font-size: 18px;
+  line-height: 24px;
 }
 .card-head .t b {
   font-weight: 600;
@@ -508,12 +508,27 @@ label.lab {
 .lic.full {
   background: var(--pk-surface-raised);
 }
-.lic.full > .radio {
-  opacity: 0.35;
+.lic .nosel {
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  color: var(--pk-warning);
 }
-.lic.full .ln,
-.lic.full .lm {
-  opacity: 0.7;
+.lic .nosel svg {
+  width: 20px;
+  height: 20px;
+}
+.lic.blocked .nosel {
+  color: var(--pk-text-subtle);
+}
+.lic.chosen {
+  grid-template-columns: 1fr auto;
+}
+.lic.chosen .lm {
+  grid-column: 1 / 3;
+}
+.lic .act .link {
+  font-size: 14px;
 }
 .radio {
   width: 20px;
@@ -918,4 +933,71 @@ label.lab {
 }
 .bigcode + .small {
   margin-top: 6px;
+}
+
+/* app contexts: the product is the hero, the Polaris Key lockup is a quiet frame (SIGN-IN D-48) */
+.app .lockup {
+  margin-bottom: 20px;
+  color: var(--pk-text-muted);
+  gap: 8px;
+}
+.app .lockup svg.mark {
+  width: 20px;
+  height: 20px;
+  color: var(--pk-text-muted);
+}
+.app .lockup .word {
+  font-size: 18px;
+  font-weight: 600;
+}
+.phone.app .lockup {
+  height: 44px;
+  margin: 0;
+}
+.phone.app .lockup svg.mark {
+  width: 18px;
+  height: 18px;
+}
+.phone.app .lockup .word {
+  font-size: 16px;
+}
+/* Replace confirm block */
+.confirm {
+  border-radius: 12px;
+  background: var(--pk-surface-sunken);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.confirm h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--pk-text-strong);
+}
+.confirm p {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--pk-text-default);
+}
+.tag.active {
+  background: var(--pk-success-subtle);
+  color: var(--pk-success);
+}
+.kit .phead.hero {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 22px;
+  font-weight: 700;
+}
+.kit .phead.hero .icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+}
+.kit .who {
+  font-size: 13px;
+  color: var(--pk-text-muted);
 }

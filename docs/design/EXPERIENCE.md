@@ -1030,15 +1030,15 @@ edge on phones.
 
 **The steps** (each one a component inside the card; the header and footer persist across them):
 
-| Step                | When                                                                                                                                                                         | Owner                                                     |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| `MethodsStep`       | First: identifier-first email, then the variant's methods                                                                                                                    | UX-40                                                     |
-| `CodeStep`          | After an email: one email with a 6-digit code and a magic link                                                                                                               | I-07 (Worker), UX-40 (card)                               |
-| `EmailGateStep`     | First sign-in through a provider; `ProfileImport`; no skip path                                                                                                              | PX-21 (built inside the card UX-40 promotes)              |
+| Step                | When                                                                                                                                                                      | Owner                                                    |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `MethodsStep`       | First: identifier-first email, then the variant's methods                                                                                                                 | UX-40                                                    |
+| `CodeStep`          | After an email: one email with a 6-digit code and a magic link                                                                                                            | I-07 (Worker), UX-40 (card)                              |
+| `EmailGateStep`     | First sign-in through a provider; `ProfileImport`; no skip path                                                                                                           | PX-21 (built inside the card UX-40 promotes)             |
 | `LicenseChoiceStep` | After authentication, every sign-in that binds an installation: "Choose a license for this device"; full licenses disabled; `ReplaceDevice` inline (SIGN-IN.md §3.6–§3.7) | UX-41, PX-14 (card), I-08 (routes), I-09 (ranking), I-26 |
-| `ConsentStep`       | First sign-in to an app or a scope change; after LicenseChoiceStep, showing the chosen license with **Change** (SIGN-IN.md §3.8)                                            | PX-14, UX-41                                              |
-| `KeyStep`           | "Have a license key?", "Use a license key instead", or no license without auto-issue; PX-17's confirm, which is itself the choice; I-09's verdicts                           | UX-41, PX-17, UX-05                                       |
-| `ReturnStep`        | Passthrough done: "It's yours", Return to <App>, timer with Stay here                                                                                                        | UX-41                                                     |
+| `ConsentStep`       | First sign-in to an app or a scope change; after LicenseChoiceStep, showing the chosen license with **Change** (SIGN-IN.md §3.8)                                          | PX-14, UX-41                                             |
+| `KeyStep`           | "Have a license key?", "Use a license key instead", or no license without auto-issue; PX-17's confirm, which is itself the choice; I-09's verdicts                        | UX-41, PX-17, UX-05                                      |
+| `ReturnStep`        | Passthrough done: "It's yours", Return to <App>, timer with Stay here                                                                                                     | UX-41                                                    |
 
 **`LicenseChoiceStep`, `ReplaceDevice` and `ConsentStep` are specified in SIGN-IN.md §3.6–§3.8**
 (owner decisions 2026-10-05; contract in `plans/I-04.md`, "Owner decision (2026-10-05): licence
