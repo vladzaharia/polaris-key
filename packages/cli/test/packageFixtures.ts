@@ -40,7 +40,7 @@ export function tgz(members: Record<string, string | Uint8Array>): Uint8Array {
   return new Uint8Array(gzipSync(Buffer.concat(blocks)));
 }
 
-const zip = (files: Record<string, string | Uint8Array>) =>
+export const zip = (files: Record<string, string | Uint8Array>) =>
   new Uint8Array(
     zipStore(
       Object.entries(files).map(([name, data]) => ({
@@ -199,6 +199,37 @@ export function godotAddon(version = "1.4.0"): Record<string, Uint8Array> {
   };
 }
 
+/** A Go module version as a ready module zip (F-31): every entry under `<module>@v<version>/`. */
+export function goModuleZip(version = "1.4.0"): Record<string, Uint8Array> {
+  const prefix = `go.acme.dev/sdk@v${version}/`;
+  return {
+    [`sdk-v${version}.zip`]: zip({
+      [`${prefix}go.mod`]: "module go.acme.dev/sdk\n\ngo 1.22\n",
+      [`${prefix}sdk.go`]: 'package sdk\n\nconst Version = "' + version + '"\n',
+      [`${prefix}internal/x/x.go`]: "package x\n",
+    }),
+  };
+}
+
+/**
+ * A Go module's source tree (F-31), with what `CreateFromDir` leaves out: a VCS directory, a
+ * nested module and a vendored package (but not vendor/modules.txt).
+ */
+export function goModuleTree(): Record<string, Uint8Array> {
+  const t = (s: string) => new TextEncoder().encode(s);
+  return {
+    "go.mod": t("module go.acme.dev/tool // the tool\n\ngo 1.23.0\n"),
+    "tool.go": t("package tool\n"),
+    LICENSE: t("MIT\n"),
+    "cmd/tool/main.go": t("package main\n\nfunc main() {}\n"),
+    ".git/HEAD": t("ref: refs/heads/main\n"),
+    "nested/go.mod": t("module go.acme.dev/tool/nested\n"),
+    "nested/n.go": t("package nested\n"),
+    "vendor/modules.txt": t("# none\n"),
+    "vendor/example.com/dep/dep.go": t("package dep\n"),
+  };
+}
+
 /** A `.pkey/release` declaring one package per ecosystem (the system product has no app). */
 export const PACKAGES_RELEASE_YAML = `apiVersion: pkey.dev/v1
 release:
@@ -246,4 +277,16 @@ release:
       artifacts:
         zip: { match: "acme_sdk-*.zip" }
         icon: { match: "icon.png" }
+    go.sdk:
+      kind: package
+      ecosystem: go
+      name: go.acme.dev/sdk
+      artifacts:
+        zip: { match: "sdk-*.zip" }
+    go.tool:
+      kind: package
+      ecosystem: go
+      name: go.acme.dev/tool
+      artifacts:
+        module: { match: "go.mod" }
 `;

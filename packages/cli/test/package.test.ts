@@ -29,6 +29,8 @@ import {
 } from "./publishFixture.js";
 import {
   godotAddon,
+  goModuleTree,
+  goModuleZip,
   mavenPublication,
   npmPackage,
   ociLayout,
@@ -69,7 +71,7 @@ async function extractIn(
   }
 }
 
-describe("the six package extractors (F-03)", () => {
+describe("the package extractors (F-03, F-31)", () => {
   it("npm: the tarball, and package.json's name, version and packument fields (never scripts)", async () => {
     const x = await extractIn(npmPackage(), "npm.sdk");
     expect(x.version).toBe("1.4.0");
@@ -179,6 +181,88 @@ describe("the six package extractors (F-03)", () => {
       description: 'Talks to "Acme"',
       script: "plugin.gd",
     });
+  });
+
+  // The go.sum hashes below are the go command's own: `go mod download -json` over a file://
+  // GOPROXY holding these exact bytes printed the same Sum and GoModSum (F-31).
+  it("Go: a ready module zip, its go.mod split out, and both go.sum hashes", async () => {
+    const x = await extractIn(goModuleZip(), "go.sdk");
+    expect(x.version).toBe("1.4.0");
+    expect(x.files.map((f) => [f.name, f.type])).toEqual([
+      ["sdk-v1.4.0.zip", "go-zip"],
+      ["go.mod", "go-mod"],
+    ]);
+    expect(x.metadata).toEqual({
+      name: "go.acme.dev/sdk",
+      version: "1.4.0",
+      h1: "h1:Zrywt9/DolgparIug2qjh+j1SkMLvJnRWEfLE4+WIKg=",
+      goModH1: "h1:hGp3Yf0s1XBOgYaFkUt7AuplLKIBUW4YHgjD4heiF8s=",
+      goVersion: "1.22",
+    });
+  });
+
+  it("Go: a source tree zipped as golang.org/x/mod/zip does, with --version", async () => {
+    const x = await extractIn(goModuleTree(), "go.tool", "0.2.0");
+    expect(x.files.map((f) => [f.name, f.type])).toEqual([
+      ["v0.2.0.zip", "go-zip"],
+      ["go.mod", "go-mod"],
+    ]);
+    // .git, the nested module and the vendored package are left out; vendor/modules.txt is not.
+    expect(x.metadata).toEqual({
+      name: "go.acme.dev/tool",
+      version: "0.2.0",
+      h1: "h1:jrdysMjW+q0vM0bqQTORt4+yLeQYC0gwknh4IjOy7qg=",
+      goModH1: "h1:U6MkTu5gv5aPdPWHTaUYg3G9nj4/Rn9dNu8f8qTtAvY=",
+      goVersion: "1.23.0",
+    });
+    await expect(extractIn(goModuleTree(), "go.tool")).rejects.toThrow(
+      /pass --version/,
+    );
+    await expect(extractIn(goModuleTree(), "go.tool", "2.0.0")).rejects.toThrow(
+      /ends in \/v2/,
+    );
+    await expect(
+      extractIn(goModuleTree(), "go.tool", "v0.2.0"),
+    ).rejects.toThrow(/without the v/);
+  });
+
+  it("Go: refuses a zip of another module, a go.mod naming another module and a bad path", async () => {
+    const { zip } = await import("./packageFixtures.js");
+    const other = {
+      "sdk-v1.0.0.zip": zip({
+        "go.acme.dev/other@v1.0.0/go.mod": "module go.acme.dev/other\n",
+      }),
+    };
+    await expect(extractIn(other, "go.sdk")).rejects.toThrow(
+      /not a module zip of go\.acme\.dev\/sdk/,
+    );
+    const lying = {
+      "sdk-v1.0.0.zip": zip({
+        "go.acme.dev/sdk@v1.0.0/go.mod": "module go.acme.dev/evil\n",
+      }),
+    };
+    await expect(extractIn(lying, "go.sdk")).rejects.toThrow(
+      /declares module go\.acme\.dev\/evil/,
+    );
+    const reserved = {
+      "sdk-v1.0.0.zip": zip({
+        "go.acme.dev/sdk@v1.0.0/go.mod": "module go.acme.dev/sdk\n",
+        "go.acme.dev/sdk@v1.0.0/aux.go": "package sdk\n",
+      }),
+    };
+    await expect(extractIn(reserved, "go.sdk")).rejects.toThrow(
+      /Windows reserved name/,
+    );
+    const folded = {
+      "sdk-v1.0.0.zip": zip({
+        "go.acme.dev/sdk@v1.0.0/go.mod": "module go.acme.dev/sdk\n",
+        "go.acme.dev/sdk@v1.0.0/A.go": "package sdk\n",
+        "go.acme.dev/sdk@v1.0.0/a.go": "package sdk\n",
+      }),
+    };
+    await expect(extractIn(folded, "go.sdk")).rejects.toThrow(
+      /differ only in case/,
+    );
   });
 
   it("refuses files that name another package", async () => {

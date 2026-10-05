@@ -1,6 +1,7 @@
-/** The six package extractors (F-03, plans/F-01.md §6.8), one per ecosystem. */
+/** The package extractors (F-03, plans/F-01.md §6.8; F-31 for Go), one per ecosystem. */
 
 import type { PackageEcosystem } from "@polaris-key/manifest";
+import { extractGo } from "./go.js";
 import { extractGodot } from "./godot.js";
 import { extractMaven } from "./maven.js";
 import { extractNpm } from "./npm.js";
@@ -26,5 +27,7 @@ export function extractPackage(
       return extractOci(input);
     case "godot":
       return extractGodot(input);
+    case "go":
+      return extractGo(input);
   }
 }

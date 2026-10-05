@@ -1,0 +1,8 @@
+# Go: this feed first, then the public proxy
+# Warning: Do not list these modules in GOPRIVATE: it sets GONOPROXY too, so Go skips every proxy, this feed included, and goes to the module path's host directly.
+# The feed answers only for its own modules (go.acme.dev) and 404s every other path, so Go moves on to the public proxy for everything else. GONOSUMDB keeps these modules away from the public checksum database, which cannot see them; go.sum still pins every hash.
+go env -w GOPROXY=https://pkg.plrs.im/go/acme,https://proxy.golang.org,direct
+go env -w GONOSUMDB=go.acme.dev
+
+# Depend on the module
+go get go.acme.dev/<module>@latest

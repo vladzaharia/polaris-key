@@ -11,6 +11,8 @@ import {
   PACKAGE_METADATA_KEYS,
   PACKAGE_NAME_MAX_LENGTH,
   PACKAGE_NAME_PATTERNS,
+  goMajorProblem,
+  goPathMajor,
   isPackageName,
   maxPackageFiles,
   packageNameNorm,
@@ -46,6 +48,49 @@ describe("PACKAGE_ECOSYSTEM_RULES", () => {
     expect(packageNameNorm("oci", "app/web")).toBe("app/web");
     expect(maxPackageFiles("oci")).toBe(4096);
     expect(maxPackageFiles("npm")).toBe(64);
+    expect(maxPackageFiles("go")).toBe(2);
+  });
+
+  it("takes Go module paths, and checks the major-version suffix against a version", () => {
+    for (const ok of [
+      "go.acme.dev/sdk",
+      "example.com/Acme/SDK_x~1",
+      "go.acme.dev/sdk/v2",
+      "a.b",
+    ])
+      expect(isPackageName("go", ok), ok).toBe(true);
+    for (const bad of [
+      "acme/sdk", // the first element is a host name with a dot
+      "Go.acme.dev/sdk", // ... in lower case
+      "go.acme.dev/.sdk",
+      "go.acme.dev/sdk.",
+      "go.acme.dev//sdk",
+      "go.acme.dev/sdk/",
+      "go.acme.dev/s dk",
+      "go_acme.dev/sdk",
+    ])
+      expect(isPackageName("go", bad), bad).toBe(false);
+    expect(packageNameNorm("go", "example.com/Acme/SDK")).toBe(
+      "example.com/acme/sdk",
+    );
+    expect(goPathMajor("go.acme.dev/sdk/v3")).toBe(3);
+    expect(goPathMajor("go.acme.dev/sdk")).toBeNull();
+    expect(goMajorProblem("go.acme.dev/sdk", "1.2.3")).toBeNull();
+    expect(goMajorProblem("go.acme.dev/sdk", "0.1.0")).toBeNull();
+    expect(goMajorProblem("go.acme.dev/sdk/v2", "2.0.0-rc.1")).toBeNull();
+    expect(goMajorProblem("go.acme.dev/sdk", "2.0.0")).toMatch(/ends in \/v2/);
+    expect(goMajorProblem("go.acme.dev/sdk/v3", "2.0.0")).toMatch(
+      /ends in \/v2/,
+    );
+    expect(goMajorProblem("go.acme.dev/sdk/v2", "1.0.0")).toMatch(
+      /no major suffix/,
+    );
+    expect(goMajorProblem("go.acme.dev/sdk/v1", "1.0.0")).toMatch(
+      /not a Go major-version suffix/,
+    );
+    expect(goMajorProblem("go.acme.dev/sdk/v02", "2.0.0")).toMatch(
+      /not a Go major-version suffix/,
+    );
   });
 
   it("checks names against each feed's namespace, refusing an empty one", () => {
@@ -59,6 +104,16 @@ describe("PACKAGE_ECOSYSTEM_RULES", () => {
       ["pypi", "Other", { names: ["acme-sdk"] }, false],
       ["oci", "anything", {}, true],
       ["godot", "acme_tool", { publisher: "acme" }, true],
+      ["go", "go.acme.dev/sdk/v2", { modulePrefixes: ["go.acme.dev"] }, true],
+      ["go", "go.acme.dev", { modulePrefixes: ["go.acme.dev"] }, true],
+      ["go", "go.acme.devx/sdk", { modulePrefixes: ["go.acme.dev"] }, false],
+      // Go module paths are case-sensitive: the namespace compares them exactly.
+      [
+        "go",
+        "example.com/Acme/sdk",
+        { modulePrefixes: ["example.com/acme"] },
+        false,
+      ],
     ];
     for (const [e, name, ns, inside] of cases)
       expect(

@@ -3002,6 +3002,7 @@ const PACKAGE_NAME_RULES: Readonly<Record<PackageEcosystem, string>> = {
   maven: "groupId:artifactId",
   oci: "an OCI repository path of lower-case components joined by '/'",
   godot: "1-64 of a-z, 0-9 and '_'",
+  go: "a Go module path (a lower-case host name with a dot, then '/'-separated elements of letters, digits and '-._~')",
 };
 
 /** A `deliverables.<packId>` entry against plans/P4-01.md §3's v1 subset. */
