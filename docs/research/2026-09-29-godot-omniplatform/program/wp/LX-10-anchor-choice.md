@@ -19,6 +19,23 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 - **[`plans/LX-01.md`](../plans/LX-01.md):** Q1: keep a usable anchor unless the holder has a candidate with a strictly higher `tiers.rank`, then move the device to it, seat-checked; the `id` tiebreak.
 - **[`plans/I-09.md`](../plans/I-09.md):** replace I-09's inline `core/anchor.ts` behind the same signature.
 
+## Owner decision (2026-10-05): licence choice at sign-in
+
+The owner decided on 2026-10-05 that every sign-in that binds a device asks the person which licence to use (**Choose a licence for this device**, with an inline **Replace a device** on full licences), never silently mints a second auto-issued licence, and treats the rank-first rule as the preselected default only. The verbatim decision, the card API and the delegated decisions are in [`plans/I-04.md`](../plans/I-04.md), "Owner decision (2026-10-05): licence choice at sign-in"; that section wins over this brief where they differ. **The device wire does not change** (`PROTOCOL_VERSION` 4, no corpus change).
+
+For this package (`plans/LX-01.md`, the same-named section):
+
+- **`chooseAnchor` orders, it does not choose.** It becomes `rankAnchorCandidates` behind I-09's
+  signature. The order (`rank-first`, `most-free-seats` or `oldest`, then the `id` tiebreak) only
+  sets the preselected row of the card's `LicenseChoiceStep`.
+- **Q1** (a strictly higher-rank candidate) preselects that licence over **Keep**. It never moves
+  a device by itself.
+- **Auto-issue** runs only when there are no candidates, or when the person picks **Create a new
+  free licence**.
+- **Enroll supersede on attach** runs only when the person picked the superseding licence.
+- **`signin-anchor.json`** asserts the preselection order, binding to the explicit pick, and full
+  rows with Replace instead of `not_entitled`.
+
 ## Goal
 
 Activation chooses the anchor by `anchorPolicy` (default `rank-first`) for sign-in, attach, Discover and base claims, handles licence-less devices, supersedes an enrolled free licence on attach and re-homes its grants; I-09's inline rule is replaced by `chooseAnchor`.
