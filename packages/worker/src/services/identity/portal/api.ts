@@ -69,7 +69,7 @@ import {
   type PortalSession,
 } from "./session.js";
 import { handleMagicStart } from "./auth.js";
-import { entitlementView } from "./entitlements.js";
+import { licenseGrants } from "./entitlements.js";
 import { libraryView, productView } from "./library.js";
 import {
   handleActivatePreview,
@@ -169,9 +169,6 @@ function licenseBase(row: PortalLicenseRow): Record<string, unknown> {
     activatedAt: row.activated_at,
     expiresAt: row.expires_at,
     maxOfflineDays: row.max_offline_days,
-    channels: parseJson<string[]>(row.channels_json, []),
-    minVersion: row.min_version,
-    maxVersion: row.max_version,
     identityProvider: row.sub ? "oidc" : "manual",
   };
 }
@@ -183,13 +180,19 @@ export async function shapeLicenseSummary(
 ): Promise<Record<string, unknown>> {
   const keys = await listVisibleKeys(db, row.product, row.id);
   const devices = await listVisibleDevices(db, row.product, row.id);
+  // `channels`, `minVersion`, `maxVersion` and `entitlements` come from the licence document's
+  // own resolution, not the licence row's columns (LX-04, S-19 G14; see `entitlements.ts`).
+  const grants = await licenseGrants(db, row, now);
   return {
     ...licenseBase(row),
+    channels: grants.channels,
+    minVersion: grants.minVersion,
+    maxVersion: grants.maxVersion,
     usable: licenseUsable(row, now),
     keyCount: keys.length,
     activeKeyCount: keys.filter((k) => k.status === "active").length,
     deviceCount: devices.filter((d) => d.status === "authorized").length,
-    entitlements: await entitlementView(db, row, now),
+    entitlements: grants.entitlements,
   };
 }
 
@@ -1228,10 +1231,18 @@ export async function handlePortalApi(
   // PX-W1: the library and the product page (`library.ts`). Reads only.
   if (head === "library" && rest.length === 0) {
     if (req.method !== "GET") return err(405, "method_not_allowed");
+    const view = await libraryView(db, session.accountId, now, hooksFor);
     return portalJson({
-      ...(await libraryView(db, session.accountId, now, hooksFor)),
+      ...view,
       // PX-W10: the Discover count in the nav (§4.16); the offers themselves are `GET /api/discover`.
-      discoverCount: await discoverCount(env, db, session.accountId, now),
+      // Never a product this same answer lists in the library.
+      discoverCount: await discoverCount(
+        env,
+        db,
+        session.accountId,
+        now,
+        new Set(view.products.map((p) => String(p.product))),
+      ),
     });
   }
   // PX-W10 (G24, G25): Discover's offers and "Add to library" (`discover.ts`).

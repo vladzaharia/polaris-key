@@ -15,7 +15,10 @@
  *      product (`unbound` otherwise). A claim additionally requires that licence to be the
  *      caller's (`binding_mismatch`): a transaction bound to one licence can never grant another.
  *   3. **First licence wins.** A purchase already recorded for a licence stays that licence's;
- *      any other licence is refused (`bound_elsewhere`) — whatever binding a replay carries.
+ *      any other licence is refused (`bound_elsewhere`) — whatever binding a replay carries. The
+ *      one exception is a licence merge (LX-03, `core/licenseMerge.ts`): the retired licence's
+ *      purchases move to the survivor and its binding becomes an alias of the survivor
+ *      (`commerceMergeStatements`), so "that licence" is then the survivor.
  *   4. **State.** `active` grants the mapped flag through Core's `applyStoreGrant` (License);
  *      `revoked` revokes it; `pending` records and grants nothing. A replay changes nothing (the
  *      grant is idempotent and `changed: false` comes back).
@@ -27,7 +30,8 @@
 
 import { ENTITLEMENT_PATTERN } from "@polaris-key/protocol/packs";
 import { isDeliverableId } from "@polaris-key/manifest";
-import type { Db } from "../../../core/platform.js";
+import type { Db, DbStatement } from "../../../core/platform.js";
+import type { LicenseMergeChange } from "../../../core/licenseMerge.js";
 import type { Store, StoreGrantWriter } from "../../../core/storeGrants.js";
 
 // ── hashing ──────────────────────────────────────────────────────────────────────────────────
@@ -177,19 +181,70 @@ export async function bindingFor(
   return row.binding_id;
 }
 
-/** The licence a binding names in this product, or null. */
+/**
+ * The licence a binding names in this product, or null. An alias (LX-03,
+ * `dist_purchase_binding_aliases`) wins over the binding's own row: the binding of a licence
+ * merged into another resolves to the survivor, so a purchase made or restored under it lands
+ * there and not on the retired row.
+ */
 export async function licenseOfBinding(
   db: Db,
   product: string,
   bindingId: string | null,
 ): Promise<string | null> {
   if (!bindingId) return null;
+  const alias = await db.first<{ license_id: string }>(
+    "SELECT license_id FROM dist_purchase_binding_aliases WHERE product = ? AND binding_id = ?",
+    product,
+    bindingId,
+  );
+  if (alias) return alias.license_id;
   const row = await db.first<{ license_id: string }>(
     "SELECT license_id FROM dist_purchase_bindings WHERE product = ? AND binding_id = ?",
     product,
     bindingId,
   );
   return row?.license_id ?? null;
+}
+
+/**
+ * LX-03: Distribution's share of a licence merge (`core/licenseMerge.ts`), in order:
+ *
+ *   1. aliases that already name the retired licence (it absorbed an earlier merge) re-point at
+ *      the survivor, so a chain of merges resolves in one read;
+ *   2. the retired licence's own binding becomes an alias of the survivor (its
+ *      `dist_purchase_bindings` row is kept: the binding is not re-issued, and the survivor keeps
+ *      its own binding for new purchases);
+ *   3. every purchase recorded for the retired licence is re-keyed to the survivor, so a restore,
+ *      a notification or a re-check of it acts on the survivor ("first licence wins" then names
+ *      the survivor).
+ *
+ * Statements only and idempotent: a replayed merge re-writes the same rows.
+ */
+export function commerceMergeStatements(
+  change: LicenseMergeChange,
+): DbStatement[] {
+  const { product, fromLicenseId: from, toLicenseId: to, now } = change;
+  return [
+    {
+      sql: `UPDATE dist_purchase_binding_aliases SET license_id = ?
+             WHERE product = ? AND license_id = ?`,
+      params: [to, product, from],
+    },
+    {
+      sql: `INSERT INTO dist_purchase_binding_aliases
+              (product, binding_id, license_id, from_license_id, created_at)
+            SELECT product, binding_id, ?, license_id, ?
+              FROM dist_purchase_bindings WHERE product = ? AND license_id = ?
+            ON CONFLICT (product, binding_id) DO UPDATE SET license_id = excluded.license_id`,
+      params: [to, now, product, from],
+    },
+    {
+      sql: `UPDATE dist_purchases SET license_id = ?
+             WHERE product = ? AND license_id = ?`,
+      params: [to, product, from],
+    },
+  ];
 }
 
 // ── purchases ────────────────────────────────────────────────────────────────────────────────

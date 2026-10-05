@@ -42,6 +42,7 @@ export function ProductArt({
   src,
   className,
   children,
+  onError,
 }: {
   slug: string;
   name: string;
@@ -52,6 +53,8 @@ export function ProductArt({
   className?: string;
   /** Overlays (the status plate) positioned inside the art. */
   children?: React.ReactNode;
+  /** Told when the image fails to load (the fallback then renders). */
+  onError?: () => void;
 }): React.ReactElement {
   const letter = letterOf(name);
   const background = tintFor(slug, tint);
@@ -68,7 +71,10 @@ export function ProductArt({
           alt=""
           loading="lazy"
           decoding="async"
-          onError={() => setFailed(true)}
+          onError={() => {
+            setFailed(true);
+            onError?.();
+          }}
           className="absolute inset-0 size-full object-cover"
         />
         {children}

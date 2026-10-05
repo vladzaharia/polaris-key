@@ -26,7 +26,7 @@
       "type": "object",
       "properties": {
         "key": {
-          "description": "Dotted identifier, unique within the catalog (e.g. run.concurrency).",
+          "description": "Dotted identifier, unique within the catalog (e.g. run.concurrency). On a flag, the names channels, deviceLimit, app.minVersion, app.maxVersion, license.tier and license.tierLabel, and every name under license., app. and pkey., are reserved entitlement names the platform sets itself: a declaration of one must match the system key's type (channels an array of strings, deviceLimit an integer, app.* and license.* strings) and may only narrow it. The validator reports an incompatible one (incompatible_reserved_name) as a warning or an error, as the platform's licensing.reservedNames setting says; this schema does not check it.",
           "type": "string",
           "pattern": "^[A-Za-z0-9._:-]{1,64}$"
         },

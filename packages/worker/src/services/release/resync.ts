@@ -44,10 +44,10 @@ import {
   type FetchImpl,
   getInstallationToken,
 } from "./githubApp.js";
-import { fetchRepoFile, getRepoIdentity } from "./github.js";
+import { getRepoIdentity } from "./github.js";
 import { isSafeBinaryName } from "./install.js";
 import { manifestIssuerRefusal } from "./linkRepo.js";
-import { MANIFEST_FILE_NAMES, MANIFEST_FILES } from "./manifestFiles.js";
+import { fetchPinnedManifestFiles } from "./manifestFetch.js";
 import { releaseStoreSync } from "./sync.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
 import { manifestDeliverableStatements } from "./deliverables.js";
@@ -63,6 +63,8 @@ import {
   stmtUpsertManifestPublisher,
 } from "../../core/publisher.js";
 import { randomId } from "../../core/platform.js";
+import { manifestSnapshotStatement } from "../../core/manifestSnapshot.js";
+import { reservedNamesMode } from "../../core/reservedNames.js";
 
 export type ResyncResult =
   | {
@@ -81,20 +83,6 @@ export type ResyncResult =
     }
   | { ok: false; error: string; errors?: string[] };
 
-async function readManifestFile(
-  token: string,
-  owner: string,
-  repo: string,
-  paths: string[],
-  fetchImpl: FetchImpl,
-): Promise<string | undefined> {
-  for (const path of paths) {
-    const text = await fetchRepoFile(token, owner, repo, path, fetchImpl);
-    if (text !== null) return text;
-  }
-  return undefined;
-}
-
 /**
  * Re-apply a linked repo's `.pkey/` to an existing product. Resolves the GitHub coordinates
  * from `release_config`; if the product was never linked (no gh coordinates) it's an error.
@@ -102,9 +90,12 @@ async function readManifestFile(
  * SECURITY (R6-05). This deliberately takes NO ref. It used to accept `payload.after` from
  * the webhook body, which made the manifest applied to production a function of a value in
  * the request body — an unreviewed branch or an old commit — structurally defeating branch
- * protection and required review on `.pkey/`. Omitting the ref makes the Contents API serve
- * the DB-configured repo's own default branch, resolved by GitHub, with nothing
- * caller-supplied in the path.
+ * protection and required review on `.pkey/`. The documents are read from the DB-configured
+ * repo's own default branch, pinned to the ONE head commit GitHub resolves for it
+ * (`fetchPinnedManifestFiles`, ST-01a), with nothing caller-supplied choosing the content.
+ *
+ * ST-01a. The apply's batch also writes the product's manifest snapshot
+ * (`product_manifest_snapshot`, origin `resync`, `applied_sha` = that pinned commit).
  *
  * P0-12. Whatever the outcome, an edge-mint approval the product has WIDENED is deleted once the
  * manifest has been applied (`invalidateWidenedEdgeMintApprovals`): the writes below are not one
@@ -191,18 +182,16 @@ async function applyRepoManifest(
     };
   }
 
-  const files: Record<string, string> = {};
+  // ST-01a: every document at one GitHub-resolved commit of the default branch (R6-05 kept).
+  let files: Record<string, string>;
+  let appliedSha: string;
   try {
-    for (const name of MANIFEST_FILE_NAMES) {
-      const text = await readManifestFile(
-        token,
-        owner,
-        repo,
-        MANIFEST_FILES[name],
-        fetchImpl,
-      );
-      if (text !== undefined) files[name] = text;
-    }
+    ({ files, sha: appliedSha } = await fetchPinnedManifestFiles(
+      token,
+      owner,
+      repo,
+      fetchImpl,
+    ));
   } catch (err) {
     return {
       ok: false,
@@ -211,7 +200,9 @@ async function applyRepoManifest(
     };
   }
 
-  const result = parseManifest(files);
+  const result = parseManifest(files, {
+    reservedNames: await reservedNamesMode(env, db),
+  });
   if (!result.ok)
     return {
       ok: false,
@@ -688,6 +679,19 @@ async function applyRepoManifest(
         now,
       );
   }
+
+  // ST-01a: the manifest this batch applies, recorded IN the batch — the snapshot lands exactly
+  // when the rows do. Not reported in `updated`: it is bookkeeping, not a manifest section.
+  stmts.push(
+    await manifestSnapshotStatement(
+      slug,
+      "resync",
+      appliedSha,
+      files,
+      manifest,
+      now,
+    ),
+  );
 
   let packSets: StoreOutcome | null = null;
   if (stmts.length > 0) {

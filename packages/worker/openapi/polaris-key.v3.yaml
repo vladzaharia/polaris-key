@@ -11712,7 +11712,8 @@ components:
           minimum: 0
           description: >
             How many products `GET /api/discover` offers this account (PX-W10): the Discover
-            count in the portal's nav.
+            count in the portal's nav. Never counts a product the account already holds, so
+            never one listed in `products`; `0` when there is nothing to add.
         products:
           type: array
           items:

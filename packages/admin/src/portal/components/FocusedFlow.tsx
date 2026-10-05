@@ -114,7 +114,9 @@ export function FlowCard({
           tint={tint}
           src={iconUrl}
           size={64}
-          className="relative -mt-8 border-[3px] border-surface-raised shadow-elevation-2"
+          lift
+          className="relative -mt-8"
+          tileClassName="border-[3px] border-surface-raised"
         />
         <p className="mt-3 text-sm text-fg-muted">
           {name}
