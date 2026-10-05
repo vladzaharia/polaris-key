@@ -6,7 +6,12 @@
  *   Attention list (only when non-empty)
  *   2–4 StatTiles (each its own query: its own skeleton or error)
  *   Primary panel (2/3) | Side panel (1/3)   ← `split`: 2-1 (default) or 1-1; the side panel
- *                                              drops below under 1024 px
+ *                                              drops below under 1024 px. Keep the two cells'
+ *                                              natural heights close: the shorter cell's last
+ *                                              panel stretches to the taller cell, so a tall
+ *                                              stack of side panels leaves the primary half
+ *                                              empty (and a lone short side panel, the side)
+ *   PanelRow: further panels, 50/50
  *   Further full-width panels (tables: deploy history, cron runs…)
  *
  * The template is layout only. Each tile and panel loads independently, so one failing query
@@ -19,6 +24,14 @@ import { cn } from "../../lib/cn.js";
 import { Button } from "../../ui/Button.js";
 import { StatusPill } from "../../ui/StatusPill.js";
 import { Link } from "../router.js";
+
+/**
+ * A cell of a side-by-side row of panels: the row's cells stretch to the tallest, and the cell's
+ * last panel grows to fill its cell, so neighbouring panels share their top and bottom edges
+ * instead of leaving the page running on under the shorter one.
+ */
+export const STRETCH_CELL =
+  "flex min-w-0 flex-col gap-6 [&>:last-child]:flex-1";
 
 export function DashboardTemplate({
   header,
@@ -60,14 +73,14 @@ export function DashboardTemplate({
           {primary || side ? (
             <div
               className={cn(
-                "grid grid-cols-1 items-start gap-6",
+                "grid grid-cols-1 gap-6",
                 half ? "lg:grid-cols-2" : "lg:grid-cols-3",
               )}
             >
               {primary ? (
                 <div
                   className={cn(
-                    "min-w-0",
+                    STRETCH_CELL,
                     half
                       ? !side && "lg:col-span-2"
                       : side
@@ -78,12 +91,34 @@ export function DashboardTemplate({
                   {primary}
                 </div>
               ) : null}
-              {side ? <div className="min-w-0">{side}</div> : null}
+              {side ? <div className={STRETCH_CELL}>{side}</div> : null}
             </div>
           ) : null}
           {children}
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * A full-width row of equal-weight panels (50/50 from 1024 px, stacked below): each panel is its
+ * own stretch cell, so the pair shares its edges. Pair panels of close natural height; a panel
+ * that is much taller than its neighbour belongs on its own row, or the shorter one is left with
+ * a well of empty card under its content.
+ */
+export function PanelRow({
+  children,
+}: {
+  children: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {React.Children.toArray(children).map((child, i) => (
+        <div key={i} className={STRETCH_CELL}>
+          {child}
+        </div>
+      ))}
     </div>
   );
 }
@@ -111,13 +146,16 @@ export function Panel({
     <section
       aria-labelledby={id}
       className={cn(
-        "rounded-lg border border-border bg-surface-raised",
+        "flex flex-col rounded-lg border border-border bg-surface-raised",
         className,
       )}
     >
-      {/* The title takes the free width and the action stays top-right; only an action wider
-          than what is left (a phone) wraps under the title. */}
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3">
+      {/* The title takes the free width and the action stays right, centred on the title; only
+          an action wider than what is left (a phone) wraps under the title. */}
+      <div
+        data-card-header=""
+        className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3"
+      >
         <div className="min-w-0 flex-1">
           <Heading id={id} className="text-base font-bold text-fg-strong">
             {title}
@@ -126,9 +164,14 @@ export function Panel({
             <p className="text-sm text-fg-muted">{description}</p>
           ) : null}
         </div>
-        {action ? <div className="max-w-full">{action}</div> : null}
+        {/* A labelled ghost button that ends the header meets the edge by its ink (the trailing
+            ghost rule in styles.css; the header is a data-card-header). */}
+        {/* The action never sets the header's height: a 32 px sm button or a 36 px field beside a
+            24 px title would grow this header past its siblings' 49 px, so it hangs 6 px into the
+            padding (the layout lint's rhythm/header-height). */}
+        {action ? <div className="-my-1.5 max-w-full">{action}</div> : null}
       </div>
-      <div className="p-4">{children}</div>
+      <div className="min-w-0 flex-1 p-4">{children}</div>
     </section>
   );
 }
@@ -140,6 +183,8 @@ export interface AttentionItem {
   tone: AttentionTone;
   /** The object the item is about: an `EntityLink`, a product name. */
   object: React.ReactNode;
+  /** The object's full text when `object` is markup (a link): the truncated name's tooltip. */
+  objectTitle?: string;
   /** One line: why it needs the operator. */
   reason: string;
   /** One action: a link (`href`) or a handler. */
@@ -191,7 +236,10 @@ export function AttentionList({
       aria-labelledby={id}
       className="rounded-lg border border-border bg-surface-raised"
     >
-      <div className="flex items-center justify-between border-b border-border px-4 py-2">
+      <div
+        data-card-header=""
+        className="flex items-center justify-between border-b border-border px-4 py-2"
+      >
         <h2 id={id} className="text-sm font-bold text-fg-strong">
           {title}
         </h2>
@@ -206,10 +254,19 @@ export function AttentionList({
             className="flex flex-col items-start gap-2 px-4 py-2.5 sm:flex-row sm:items-center"
           >
             <StatusPill tone={item.tone}>{TONE_WORD[item.tone]}</StatusPill>
-            <span className="shrink-0 text-sm font-bold text-fg-strong">
+            {/* The object never takes the reason's width: from 640 px it is capped at 40 % of the
+                row and truncates (full text in the tooltip), and the reason keeps a 16ch floor so
+                a long name cannot crush it to a letter per line. */}
+            <span
+              className="min-w-0 max-w-full truncate text-sm font-bold text-fg-strong sm:max-w-[40%]"
+              title={
+                item.objectTitle ??
+                (typeof item.object === "string" ? item.object : undefined)
+              }
+            >
               {item.object}
             </span>
-            <span className="min-w-0 flex-1 text-sm text-fg">
+            <span className="min-w-0 flex-1 text-sm text-fg sm:min-w-[16ch]">
               {item.reason}
             </span>
             {item.action ? (

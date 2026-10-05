@@ -279,7 +279,7 @@ function TierUsedBy({
         id: "expires",
         header: "Expires",
         accessorFn: (l) => l.expiresAt ?? Number.MAX_SAFE_INTEGER,
-        meta: { priority: 2 },
+        meta: { numeric: true, priority: 2 },
         cell: ({ row }) =>
           row.original.expiresAt == null ? (
             <span className="text-fg-muted">No expiry</span>
