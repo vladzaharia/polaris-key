@@ -833,10 +833,23 @@ with **Not included** and its reason as text; the key is masked as `pkey_tidewat
 (G7); devices show "+1 not using a seat"; package tokens show prefix, last used, expiry and the
 amber "Expires in 6 days" pill.
 
+**License card, tier and devices (owner, 2026-10-05):** the tier ("Standard" when the licence has
+none) is a quiet neutral pill, an identity label rather than a status, with the device count beside
+it on the same line: "0 of 5 devices" for a key licence, "Account-wide · 1 of 5 devices" for an
+account-bound one (signed in, no key; "Account-wide" alone while the limit is unknown). Activation
+still enforces a seat limit on account-wide licences, so the page never calls them unlimited. Only
+an issue status (Expired, Suspended, Device limit reached, Expires in …) sits on that line, as a
+right-aligned pill. "Updates included" reads **Lifetime** for a licence with no end. With several
+licences the picker names each by tier and how it is held ("Standard · Key", "Standard ·
+Account-wide"), adding the status only when it wants attention. When the account holds a key
+licence and an account-wide licence for the same product, the key licence shows no device counter
+(on the License card or in Devices); the account-wide licence keeps its counter. **Devices** is
+shown for both kinds, always with the device list and **Remove** (remote deauthorize, §4.22).
+
 **States:** loading (skeleton header and two skeleton cards); not found (§4.28); load error
 (`ErrorState` with Retry); license expired (a `danger` callout with **Renew with <developer>**);
-suspended by the developer; account-bound product (Get it becomes **Open Quill** plus store links;
-no key, no Devices).
+suspended by the developer; account-wide product (Get it becomes **Open Quill** plus store links;
+no key; Devices lists the signed-in devices with **Remove**).
 
 ### 4.21 Package token created
 
@@ -1130,7 +1143,7 @@ client-side from existing fields before then. Precedence, first match wins:
 | Key not activated     | key · "Key not activated" · info        | "Steam key"                                        | Activate on Steam      |
 | Expires soon (≤ 14 d) | clock · "Expires in 9 days" · warning   | "Studio · ends 13 Oct"                             | Renew with <developer> |
 | Offline grace ended   | alert · "Needs a check-in" · warning    | "Open <product> while online"                      | none                   |
-| Signed-in app         | user · "Signed-in app" · neutral        | "Sign in on any device"                            | none                   |
+| Account-wide          | user · "Account-wide" · neutral         | tier first, e.g. "Standard · Account-wide"         | none                   |
 | Active                | check · "Active" · success              | tier and devices, e.g. "Lifetime · 2 of 3 devices" | none                   |
 
 A past date is never shown as "Expires …": it is "Ended <date>" or "Updates ended at <version>".
@@ -1142,7 +1155,7 @@ Expiry inside 14 days uses relative days; otherwise "until 14 Mar 2027".
 | --------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------ |
 | Device limit reached                    | Free up a device                                               | Free up a device                                       |
 | Steam key held, not activated           | Activate on Steam                                              | Activate on Steam                                      |
-| Account-bound (no key, no seats)        | Open <product> (website / app scheme)                          | Get it on the App Store / Google Play, else Open       |
+| Account-wide (signed in, no key)        | Open <product> (website / app scheme)                          | Get it on the App Store / Google Play, else Open       |
 | Build for this OS exists and is covered | Download for <OS>                                              | Store link for this OS, else **Email me the download** |
 | Covered builds exist, none for this OS  | See downloads (with "Windows and Linux only" as the meta line) | Email me the download / See downloads                  |
 | Expired, an older build is covered      | Download <last covered version>                                | Email me the download                                  |
