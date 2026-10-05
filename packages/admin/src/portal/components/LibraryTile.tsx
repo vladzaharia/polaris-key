@@ -12,7 +12,7 @@ import { QuickActionButton } from "./QuickAction.js";
 
 /**
  * A library tile (§4.14, §4.15): art with the status on a solid plate, the icon overlapping, the
- * name (`h3`, the link to the product page), developer, the reason line, platform glyphs, an
+ * name (`h3`, the link to the product page; the developer is the product page's), the reason line, platform glyphs, an
  * optional note and the outlined quick action with the overflow menu. `compact` is the 8+ grid.
  */
 export function LibraryTile({
@@ -39,9 +39,17 @@ export function LibraryTile({
         tint={pres.tint}
         src={pres.headerUrl}
         variant="tile"
-        className={compact ? "h-[10.25rem]" : "h-56"}
+        // The listing's header is 16:9 (PORTAL.md Q-2): the card shows all of it, centred, the
+        // same art the product page's hero shows a centred band of.
+        className="aspect-video"
       >
-        <span className="absolute bottom-3 right-3">
+        {/* The header's safe bottom-right corner, inset by the card's own padding. */}
+        <span
+          className={cn(
+            "absolute",
+            compact ? "bottom-4 right-4" : "bottom-5 right-5",
+          )}
+        >
           <ProductStatusPill status={product.status} onArt />
         </span>
       </ProductArt>
@@ -55,7 +63,9 @@ export function LibraryTile({
             tint={pres.tint}
             src={pres.iconUrl}
             size={64}
-            className="relative border-[3px] border-surface-raised shadow-elevation-2"
+            lift
+            className="relative"
+            tileClassName="border-[3px] border-surface-raised"
           />
           {/* Below the art, never over it: the icon overlaps the art by 1.75 rem. */}
           <div className="min-w-0 pt-9">
@@ -73,9 +83,6 @@ export function LibraryTile({
                 {product.name}
               </a>
             </h3>
-            {pres.developer ? (
-              <p className="truncate text-sm text-fg-muted">{pres.developer}</p>
-            ) : null}
           </div>
         </div>
         <div className="mt-4 flex items-center justify-between gap-3 text-sm text-fg-muted">

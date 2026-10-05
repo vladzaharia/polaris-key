@@ -103,6 +103,7 @@ pnpm gen:corpus -- --check       # conformance drift gate (must regenerate in pl
 pnpm gen:transcripts -- --check  # HTTP-transcript drift gate (re-records through the Worker router)
 pnpm gen:services -- --check     # service-table drift gate (tools/services.json → every language)
 pnpm gen:constants -- --check    # SDK-constants drift gate (error codes, headers, enums, feature ids)
+pnpm gen:platform-inventory -- --check  # platform-inventory drift gate (Env ↔ inventory ↔ wrangler.toml)
 pnpm gen:brand -- --check        # brand-token drift gate (packages/brand → CSS, Tailwind, TS, JSON, GDScript, Swift, Kotlin)
 pnpm --filter @polaris-key/cli bundle:action -- --check  # Action-bundle drift gate (after pnpm build)
 pnpm parity:check                # every SDK's parity.json agrees with the feature registry
@@ -180,7 +181,7 @@ a deliberate, all-languages event: contract → catalog → corpus → SDKs, in 
 feature is not done until every implementation passes (client-core, Node, React, Python, Swift,
 Godot, and Kotlin for the features its parity manifest has implemented).
 
-**3. Generated files carry a GENERATED banner — regenerate, never hand-edit.** Seven families:
+**3. Generated files carry a GENERATED banner — regenerate, never hand-edit.** Eight families:
 
 | File(s)                                                                                                                                                                          | Written by                                                                                                                                                                              |
 | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -190,13 +191,14 @@ Godot, and Kotlin for the features its parity manifest has implemented).
 | `constants.generated.ts`, `constants_generated.py`, `Constants.generated.swift`, `constants_generated.gd`, `Constants.generated.kt`                                              | `pnpm gen:constants` from `conformance/parity/` (errors, enums, features), the service table and `@polaris-key/protocol/core`                                                           |
 | `actions/publish/dist/index.js`                                                                                                                                                  | `pnpm --filter @polaris-key/cli bundle:action` (esbuild) from `@polaris-key/cli` and the built workspace packages it imports                                                            |
 | `packages/cli/src/storefronts/ciPlane.generated.ts`                                                                                                                              | `pnpm gen:storefront-ci` from the Worker's CI plane (`packages/worker/src/core/storefront/ciPlane.ts`), its CI-plane storefront adapters (A-18h) and the PR plane (`prPlane.ts`, A-18i) |
+| `packages/worker/src/platformInventory.generated.ts`                                                                                                                             | `pnpm gen:platform-inventory` from the `@inventory` / `@editable` tags on `Env` in `packages/worker/src/env.ts` (ST-02)                                                                 |
 | `packages/brand/{css/tokens.css,css/theme.css,tokens.json,src/generated/*}`, `brand_tokens_generated.gd`, `BrandTokens.generated.swift`, `sdks/godot/addons/polaris_key/brand/*` | `pnpm gen:brand` from `packages/brand/src/tokens/` and the launch-kit copy in `packages/brand/kit/`                                                                                     |
 
 All are committed on purpose (reviewable diffs; the site and packages build without running
 generators) and all have a freshness check (`pnpm gen:services -- --check` for the service
 table, `pnpm gen:constants -- --check` for the SDK constants, `pnpm gen:brand -- --check` for the
 brand tokens, `pnpm --filter @polaris-key/cli bundle:action -- --check` for the Action bundle,
-`pnpm gen:storefront-ci -- --check` and the worker suite's `ciPlaneGenerated` test for the CI plane), so a hand edit fails CI rather than shipping. The
+`pnpm gen:storefront-ci -- --check` and the worker suite's `ciPlaneGenerated` test for the CI plane, `pnpm gen:platform-inventory -- --check` and the worker suite's `platformInventory` test for the platform inventory, which also fails when `Env`, `wrangler.toml` and the names `src/` reads disagree), so a hand edit fails CI rather than shipping. The
 Action bundle inlines `@polaris-key/manifest`, `@polaris-key/catalog` and `@polaris-key/protocol`
 from their built `dist/`, so a change to any of them, or to the CLI, rebundles after `pnpm build`. A new error code needs an entry in `conformance/parity/errors.json` first: the
 constants generator refuses a Worker code it lacks (and a boot-stage code pinned in

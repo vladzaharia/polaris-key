@@ -46,12 +46,17 @@ import {
   createPortalDownloadToken,
   markPortalDownloadUsed,
 } from "../src/services/identity/portal/repo.js";
-import { enableDownloads, handlePortalDownload } from "./portalHarness.js";
+import {
+  enableDownloads,
+  handlePortalDownload,
+  seedRepositoryVisibility,
+} from "./portalHarness.js";
 import {
   getOrCreateAccountByEmail,
   linkLicense,
 } from "../src/services/identity/portal/repo.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
+import { withDefaultHead } from "./githubHead.js";
 
 const SLUG = "djdl";
 
@@ -183,7 +188,7 @@ function stubFetch(
     }
     return new Response("nope", { status: 404 });
   };
-  return { fetchImpl, listCalls: () => listCalls };
+  return { fetchImpl: withDefaultHead(fetchImpl), listCalls: () => listCalls };
 }
 
 async function seedLinkedProduct(db: SqliteDb): Promise<void> {
@@ -843,6 +848,9 @@ describe("R6-12 /download/<token>", () => {
     await enableDownloads(db, SLUG);
     const accountId = await seedPortalAccount(db);
     await seedDownloadable(db, env, sourceUrl);
+    // A public repository: a stored GitHub URL is handed to a browser only then, so what each
+    // case below exercises is the host allowlist and the single-use claim.
+    await seedRepositoryVisibility(env, db, SLUG, "public");
     const token = await createPortalDownloadToken(env, db, {
       accountId,
       product: SLUG,

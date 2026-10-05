@@ -58,9 +58,6 @@ export function LibraryHero({
             >
               {product.name}
             </h2>
-            {pres.developer ? (
-              <p className="text-fg-muted">{pres.developer}</p>
-            ) : null}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">

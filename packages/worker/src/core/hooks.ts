@@ -563,6 +563,14 @@ export interface ReleaseCatalog {
    */
   installScript(origin: string): Promise<string | null>;
   /**
+   * Can a browser fetch this product's GitHub release assets by their stored download URLs,
+   * i.e. is the configured repository public? `false` when there is no configuration, the
+   * repository is private or internal, or the answer could not be read (cached an hour,
+   * `ghCache.isPublicRepository`). The customer portal asks before it redirects a browser to a
+   * GitHub URL: a private repository answers that browser with GitHub's 404.
+   */
+  repositoryPublic(): Promise<boolean>;
+  /**
    * The channels the product can serve (P6-03): the built-ins, its manual rules and any channel
    * an `app` release was published to — Release's one definition (`knownChannels`). Read-only;
    * Core's report path bounds update telemetry with it.

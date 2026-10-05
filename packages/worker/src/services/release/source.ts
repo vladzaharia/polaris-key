@@ -190,6 +190,27 @@ export async function openSource(
   }
 }
 
+/**
+ * The `releaseCatalog.repositoryPublic` implementation: is the configured repository public, so
+ * that a browser can follow an artifact's stored GitHub download URL? Every failure is `false`
+ * (`isPublicRepository`), which keeps a private repository's URLs away from browsers.
+ */
+export async function repositoryPublic(
+  ctx: SourceContext,
+  fetchImpl: FetchImpl = fetch,
+): Promise<boolean> {
+  const cfg = await getReleaseConfig(ctx.db, ctx.product.slug);
+  if (!cfg || !isResolved(cfg)) return false;
+  return isPublicRepository(
+    ctx.env,
+    ctx.product.slug,
+    cfg.gh_owner,
+    cfg.gh_repo,
+    () => installationToken(ctx.env, cfg, ctx.now, fetchImpl),
+    fetchImpl,
+  );
+}
+
 async function serveGithubLocation(
   { env, db, product, now }: SourceContext,
   cfg: ResolvedConfig,
