@@ -5,7 +5,7 @@
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)                                                            |
 | Size        | 0.4–0.8 engineer-weeks                                                                                                             |
 | Depends on  | [PX-W2](PX-W2-downloads-stores.md)                                                                                                 |
-| Unblocks    | [PX-09](PX-09-get-it-complete.md)                                                                                                  |
+| Unblocks    | [PX-09](PX-09-get-it-complete.md), [HA-09](HA-09-portal-mirrored-downloads.md)                                                     |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                              |
 | Plan mode   | yes: executes the approved [`plans/PX-W3.md`](../plans/PX-W3.md) (approved 2026-10-05)                                             |
 | Gates       | the PORTAL.md §11 green gate; plan mode; THREAT-MODEL; rule 10 (OpenAPI + `routeCoverage`); `typecheck:workerd` and `test:workerd` |

@@ -466,25 +466,31 @@ function FieldFrame({
           hideLabel && "sr-only",
         )}
       >
-        <LabelTag
-          id={`${id}-label`}
-          {...(group ? {} : { htmlFor: id })}
-          className="flex items-center gap-1.5 text-sm font-bold text-fg-strong"
-        >
-          {label}
-          {required ? (
-            <span className="text-xs font-normal text-fg-subtle">Required</span>
+        {/* The label and its "Optional" hint on the left (the hint outside the label, so it is
+            not part of the field's name); anything in `labelAside` flush right. */}
+        <span className="flex min-w-0 items-center gap-1.5">
+          <LabelTag
+            id={`${id}-label`}
+            {...(group ? {} : { htmlFor: id })}
+            className="flex items-center gap-1.5 text-sm font-bold text-fg-strong"
+          >
+            {label}
+            {required ? (
+              <span className="text-xs font-normal text-fg-subtle">
+                Required
+              </span>
+            ) : null}
+            {dirty ? (
+              <span className="inline-flex items-center">
+                <span aria-hidden className="size-1.5 rounded-full bg-accent" />
+                <span className="sr-only">changed</span>
+              </span>
+            ) : null}
+          </LabelTag>
+          {optional ? (
+            <span className="text-xs text-fg-subtle">Optional</span>
           ) : null}
-          {dirty ? (
-            <span className="inline-flex items-center">
-              <span aria-hidden className="size-1.5 rounded-full bg-accent" />
-              <span className="sr-only">changed</span>
-            </span>
-          ) : null}
-        </LabelTag>
-        {optional ? (
-          <span className="mr-auto text-xs text-fg-subtle">Optional</span>
-        ) : null}
+        </span>
         {labelAside}
       </div>
       {children}
