@@ -302,6 +302,30 @@ const SAMPLES: Record<string, RegistryPackage> = {
       ),
     ),
   ),
+  go: pkg(
+    "go",
+    "go.acme.dev/Sdk",
+    V.map((v) =>
+      version(
+        v,
+        [
+          {
+            name: `v${v}.zip`,
+            type: "go-zip",
+            sha256: hex(`go zip ${v}`),
+            size: 100,
+          },
+          {
+            name: "go.mod",
+            type: "go-mod",
+            sha256: hex(`go mod ${v}`),
+            size: 30,
+          },
+        ],
+        { name: "go.acme.dev/Sdk", version: v, h1: `h1:${v}` },
+      ),
+    ),
+  ),
 };
 
 /** Two feed-settings values a render can be given; a `package`-stamped renderer ignores both. */
@@ -340,6 +364,8 @@ const PARAMS: Record<string, Record<string, string>> = {
     digest: `sha256:${"a".repeat(64)}`,
   },
   godot: { id: "1", publisher: "acme", asset: "acme_tool", file: "a.zip" },
+  // The module path case-encoded as the go command sends it; a canonical version.
+  go: { module: "go.acme.dev/!sdk", version: "v1.0.0" },
 };
 
 /**

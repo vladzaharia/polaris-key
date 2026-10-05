@@ -2482,14 +2482,16 @@ export interface TierBody {
 
 // ── package feeds (F-11; worker `admin/handlers/feeds.ts`) ───────────────────────────
 
-/** The six tier-1 ecosystems a package feed serves (`@polaris-key/manifest` PACKAGE_ECOSYSTEMS). */
+/** The ecosystems a package feed serves (`@polaris-key/manifest` PACKAGE_ECOSYSTEMS): tier 1's six
+ *  and tier 3's Go (F-31). */
 export type FeedEcosystem =
   | "npm"
   | "pypi"
   | "swift"
   | "maven"
   | "oci"
-  | "godot";
+  | "godot"
+  | "go";
 
 /** Why a feed does not answer, in the order the registry's access ladder checks it. */
 export type FeedOffReason =

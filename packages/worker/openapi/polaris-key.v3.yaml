@@ -9799,6 +9799,212 @@ paths:
   # G1, G5, G16) and Discover (PX-W10, G24, G25). The rest of the portal API stays narrative (see
   # the header); these are pinned here and in `test/routeCoverage.test.ts` (PORTAL_KIND_PATHS). Root paths on the
   # console host, never CORS: they share this origin with the portal session cookie.
+  /go/{owner}/{module}/@v/list:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: goList
+      tags: [registry]
+      summary: A Go module's versions, the proxy's @v/list (registry host only)
+      description: >
+        F-31. The module proxy protocol's version list (https://go.dev/ref/mod#goproxy-protocol)
+        for `GOPROXY=https://pkg.plrs.im/go/{owner}`: one `v<version>` per line, every version
+        that is not yanked, oldest publication first, rendered from Release's package state. A
+        release version is semver without Go's `v`, which the feed adds. Sent as
+        `application/octet-stream` (the go command reads bytes). `Cache-Control: public,
+        max-age=60, stale-while-revalidate=60` with a strong ETag of the body's SHA-256; a feed
+        that is not public answers 401 with `WWW-Authenticate: Basic` (the go command answers it
+        from `.netrc` or GOAUTH) and `private, no-store`. An unknown owner, a module path the feed
+        does not hold and a feed that is off answer the plain 404, which tells the go command to
+        try the next GOPROXY entry.
+      parameters:
+        - $ref: "#/components/parameters/GoOwner"
+        - $ref: "#/components/parameters/GoModule"
+      responses:
+        "200":
+          description: The version list.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "304": { description: Not modified (the ETag matched). }
+        "401":
+          {
+            description: The feed is not public,
+            and no valid registry token was presented.,
+          }
+        "404": { description: No such owner, feed or module. }
+    head:
+      operationId: goListHead
+      tags: [registry]
+      summary: A Go module's versions, headers only (registry host only)
+      description: F-31. As the GET, with no body.
+      parameters:
+        - $ref: "#/components/parameters/GoOwner"
+        - $ref: "#/components/parameters/GoModule"
+      responses:
+        "200": { description: The version list's headers. }
+        "404": { description: No such owner, feed or module. }
+  /go/{owner}/{module}/@latest:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: goLatest
+      tags: [registry]
+      summary: A Go module's latest version info, the proxy's @latest (registry host only)
+      description: >
+        F-31. `{"Version", "Time"}` of the `stable` channel's head
+        (https://go.dev/ref/mod#goproxy-protocol), the version the go command takes when the list
+        is empty. A yanked version is never `@latest`; while the stable channel serves nothing
+        listed, the answer is the 404. Same caching and refusals as `@v/list`.
+      parameters:
+        - $ref: "#/components/parameters/GoOwner"
+        - $ref: "#/components/parameters/GoModule"
+      responses:
+        "200":
+          description: The version info.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GoVersionInfo" }
+        "304": { description: Not modified (the ETag matched). }
+        "401": { description: The feed is not public. }
+        "404":
+          { description: No such owner, feed or module, or no stable version. }
+    head:
+      operationId: goLatestHead
+      tags: [registry]
+      summary: A Go module's latest version info, headers only (registry host only)
+      description: F-31. As the GET, with no body.
+      parameters:
+        - $ref: "#/components/parameters/GoOwner"
+        - $ref: "#/components/parameters/GoModule"
+      responses:
+        "200": { description: The version info's headers. }
+        "404":
+          { description: No such owner, feed or module, or no stable version. }
+  /go/{owner}/{module}/@v/{version}.info:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: goInfo
+      tags: [registry]
+      summary: A Go module version's info, or a channel's canonical version (registry host only)
+      description: >
+        F-31. `{"Version", "Time"}` of one version (https://go.dev/ref/mod#goproxy-protocol). A
+        canonical version (`v1.4.0`) answers for every published version, yanked ones included,
+        so a go.sum that pins one keeps building. A channel name (`beta`) answers with the
+        canonical version the channel serves, as a VCS proxy answers for a branch, so
+        `go get <module>@beta` resolves the channel. Same caching and refusals as `@v/list`.
+      parameters:
+        - $ref: "#/components/parameters/GoOwner"
+        - $ref: "#/components/parameters/GoModule"
+        - $ref: "#/components/parameters/GoVersion"
+      responses:
+        "200":
+          description: The version info.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GoVersionInfo" }
+        "304": { description: Not modified (the ETag matched). }
+        "401": { description: The feed is not public. }
+        "404": { description: No such owner, feed, module, version or channel. }
+    head:
+      operationId: goInfoHead
+      tags: [registry]
+      summary: A Go module version's info, headers only (registry host only)
+      description: F-31. As the GET, with no body.
+      parameters:
+        - $ref: "#/components/parameters/GoOwner"
+        - $ref: "#/components/parameters/GoModule"
+        - $ref: "#/components/parameters/GoVersion"
+      responses:
+        "200": { description: The version info's headers. }
+        "404": { description: No such owner, feed, module, version or channel. }
+  /go/{owner}/{module}/@v/{version}.mod:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: goMod
+      tags: [registry]
+      summary: A Go module version's go.mod (registry host only)
+      description: >
+        F-31. The version's own `go.mod`, byte for byte as its module zip holds it
+        (https://go.dev/ref/mod#goproxy-protocol); the publishing CLI split it out, so the Worker
+        never unzips. From the blob store by SHA-256: `ETag: "<sha256>"`, `Range` (206) and
+        `Cache-Control: public, max-age=31536000, immutable, no-transform`. Canonical versions
+        only (a channel name is the 404), yanked ones included. Sent as
+        `application/octet-stream` with `Content-Disposition: attachment`.
+      parameters:
+        - $ref: "#/components/parameters/GoOwner"
+        - $ref: "#/components/parameters/GoModule"
+        - $ref: "#/components/parameters/GoVersion"
+      responses:
+        "200":
+          description: The go.mod.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "206": { description: The requested range. }
+        "304": { description: Not modified (the ETag matched). }
+        "401": { description: The feed is not public. }
+        "404": { description: No such owner, feed, module or version. }
+        "416": { description: The range cannot be satisfied. }
+    head:
+      operationId: goModHead
+      tags: [registry]
+      summary: A Go module version's go.mod, headers only (registry host only)
+      description: F-31. As the GET, with no body (`Content-Length` is the file's size).
+      parameters:
+        - $ref: "#/components/parameters/GoOwner"
+        - $ref: "#/components/parameters/GoModule"
+        - $ref: "#/components/parameters/GoVersion"
+      responses:
+        "200": { description: The go.mod's headers. }
+        "404": { description: No such owner, feed, module or version. }
+  /go/{owner}/{module}/@v/{version}.zip:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: goZip
+      tags: [registry]
+      summary: A Go module version's module zip (registry host only)
+      description: >
+        F-31. The version's module zip (https://go.dev/ref/mod#zip-files), every entry under
+        `<module>@<version>/`, as published. The go command checks it against go.sum (its `h1:`
+        hash, which the publishing CLI also recorded); GONOSUMDB keeps the feed's modules away
+        from the public checksum database. Same byte headers as `.mod`. Canonical versions only,
+        yanked ones included.
+      parameters:
+        - $ref: "#/components/parameters/GoOwner"
+        - $ref: "#/components/parameters/GoModule"
+        - $ref: "#/components/parameters/GoVersion"
+      responses:
+        "200":
+          description: The module zip.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "206": { description: The requested range. }
+        "304": { description: Not modified (the ETag matched). }
+        "401": { description: The feed is not public. }
+        "404": { description: No such owner, feed, module or version. }
+        "416": { description: The range cannot be satisfied. }
+    head:
+      operationId: goZipHead
+      tags: [registry]
+      summary: A Go module version's module zip, headers only (registry host only)
+      description: F-31. As the GET, with no body (`Content-Length` is the zip's size).
+      parameters:
+        - $ref: "#/components/parameters/GoOwner"
+        - $ref: "#/components/parameters/GoModule"
+        - $ref: "#/components/parameters/GoVersion"
+      responses:
+        "200": { description: The module zip's headers. }
+        "404": { description: No such owner, feed, module or version. }
   /api/library:
     get:
       operationId: getPortalLibrary
@@ -10973,6 +11179,28 @@ components:
       description: Forwarded to the artifact origin; a satisfiable range yields 206.
       schema: { type: string }
     # Maven feed (F-07)
+    GoOwner:
+      name: owner
+      in: path
+      required: true
+      description: The feed's owner, a product slug (the GOPROXY URL is `https://pkg.plrs.im/go/{owner}`).
+      schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" }
+    GoModule:
+      name: module
+      in: path
+      required: true
+      description: >
+        The module path, case-encoded as the go command sends it (`!x` for an upper-case `X`), and
+        spanning several path segments (`go.acme.dev/sdk/v2`).
+      schema: { type: string }
+    GoVersion:
+      name: version
+      in: path
+      required: true
+      description: >
+        A canonical version (`v1.4.0`, case-encoded like the module path), or, for `.info` only, a
+        channel name.
+      schema: { type: string }
     MavenOwner:
       name: owner
       in: path
@@ -11344,6 +11572,18 @@ components:
           examples:
             unauthorized: { value: { error: unauthorized } }
   schemas:
+    GoVersionInfo:
+      type: object
+      description: >
+        F-31. A Go module proxy's version info (https://go.dev/ref/mod#goproxy-protocol).
+      required: [Version, Time]
+      properties:
+        Version:
+          { type: string, description: "The canonical version, `v<semver>`." }
+        Time:
+          type: string
+          format: date-time
+          description: The version's publication time (RFC 3339, UTC, to the second).
     CompactJws:
       type: string
       description: A compact EdDSA JWS (header.payload.signature, base64url).

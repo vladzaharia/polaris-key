@@ -23,6 +23,7 @@ const LABELS: Record<FeedEcosystem, string> = {
   maven: "Maven",
   oci: "OCI",
   godot: "Godot",
+  go: "Go",
 };
 
 function base(eco: FeedEcosystem, owner: string): string {
@@ -31,7 +32,15 @@ function base(eco: FeedEcosystem, owner: string): string {
   return `${ORIGIN}/${eco}/${owner}/`;
 }
 
-const ECOS: FeedEcosystem[] = ["npm", "pypi", "swift", "maven", "oci", "godot"];
+const ECOS: FeedEcosystem[] = [
+  "npm",
+  "pypi",
+  "swift",
+  "maven",
+  "oci",
+  "godot",
+  "go",
+];
 
 function summary(
   eco: FeedEcosystem,
@@ -74,7 +83,7 @@ export function platformOverview(): FeedsOverviewDto {
     registryOrigin: ORIGIN,
     feeds,
     summary: {
-      feedsEnabled: 6,
+      feedsEnabled: 7,
       packages: 13,
       versions: 56,
       lastPublishedAt: T0 - 600,
@@ -146,6 +155,7 @@ const NAMESPACES: Record<
     maven: { groupPrefixes: ["im.plrs.key"] },
     oci: {},
     godot: { publisher: "polaris-key" },
+    go: {},
   },
   djdl: {
     npm: { scope: "@djdl" },
@@ -154,6 +164,7 @@ const NAMESPACES: Record<
     maven: {},
     oci: {},
     godot: {},
+    go: {},
   },
 };
 
@@ -211,6 +222,13 @@ const CAPS: Record<FeedEcosystem, FeedDetailDto["capabilities"]> = {
     channels: "tags",
     search: true,
   },
+  go: {
+    ...BASE_CAPS,
+    yank: true,
+    deprecate: false,
+    yankPolicy: false,
+    channels: "tags",
+  },
 };
 
 /** The adapters' extension settings (`settings.ext` keys, less `yankHidesFromIndex`). */
@@ -221,6 +239,7 @@ export const EXTENSIONS: Record<FeedEcosystem, string[]> = {
   maven: [],
   oci: ["retainUntaggedDays"],
   godot: ["categoryId", "supportLevel", "license", "minGodotVersion"],
+  go: [],
 };
 
 export function feedDetail(
