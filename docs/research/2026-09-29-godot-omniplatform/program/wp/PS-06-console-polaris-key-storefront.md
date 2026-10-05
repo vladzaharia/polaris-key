@@ -5,7 +5,7 @@
 | Phase       | PS: Polaris Key storefront: the Library as a distribution channel (S-21) (phase 3: console)                                                                          |
 | Size        | 1.5–2 engineer-weeks                                                                                                                                                 |
 | Depends on  | [A-18j](A-18j-console-storefronts.md), [PS-01](PS-01-polaris-key-adapter.md), [PS-02](PS-02-storefront-listing-settings.md), [PS-04](PS-04-storefront-portal-api.md) |
-| Unblocks    | [PS-11](PS-11-storefront-closeout.md)                                                                                                                                |
+| Unblocks    | [PS-11](PS-11-storefront-closeout.md), [CM-12](CM-12-console-commerce.md)                                                                                            |
 | Role        | `pkey-implementer`                                                                                                                                                   |
 | Plan mode   | no                                                                                                                                                                   |
 | Gates       | console CSP parity; docs help-link drift gate; rule 10 (narrative-only admin routes); THREAT-MODEL (admin mutations)                                                 |
