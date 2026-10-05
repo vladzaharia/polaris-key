@@ -12111,7 +12111,7 @@ var OUTLET_IDENTITY_FIELDS = {
   steam: ["appId", "branches"],
   itch: ["target", "gameId"],
   flathub: ["appId"],
-  snap: ["name"],
+  snap: ["name", "channels"],
   winget: ["packageIdentifier"],
   web: []
 };
@@ -12132,6 +12132,7 @@ var ITCH_TARGET_RE = /^[A-Za-z0-9_-]{1,64}\/[A-Za-z0-9_-]{1,64}$/;
 var FLATPAK_ID_RE = /^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$/;
 var MAX_FLATPAK_ID_LENGTH = 255;
 var SNAP_NAME_RE = /^[a-z0-9](?:-?[a-z0-9]){0,39}$/;
+var SNAP_CHANNEL_RE = /^(?:[a-z0-9][a-z0-9.-]{0,63}\/)?(?:stable|candidate|beta|edge)(?:\/[a-z0-9][a-z0-9-]{0,63})?$/;
 var WINGET_ID_RE = /^[A-Za-z0-9][A-Za-z0-9-]{0,31}(\.[A-Za-z0-9][A-Za-z0-9-]{0,31}){1,7}$/;
 var HOMEBREW_CASK_PATTERN = /^[a-z0-9][a-z0-9.@-]{0,99}$/;
 var HOMEBREW_FORMULA_PATTERN = /^[a-z0-9][a-z0-9.@+_-]{0,99}$/;
@@ -12205,6 +12206,11 @@ function fieldCheck(kind, field) {
       return pattern(ITCH_TARGET_RE, "a butler user/game target");
     case "name":
       return pattern(SNAP_NAME_RE, "a snap name");
+    case "channels":
+      return channelMap(
+        SNAP_CHANNEL_RE,
+        "snap channel ([<track>/]<risk>[/<branch>], risk stable, candidate, beta or edge)"
+      );
     case "packageIdentifier":
       return pattern(WINGET_ID_RE, "a winget package identifier");
     case "platforms":
@@ -12474,7 +12480,7 @@ function validateOutlet(errors, id, entry, ctx, kinds) {
         `outlets.${id}.artifact must name an id in .pkey/release deliverables.app.artifacts.`
       );
     }
-    if (field === "tracks" || field === "branches" || field === "flights") {
+    if (field === "tracks" || field === "branches" || field === "flights" || field === "channels") {
       for (const channel of Object.keys(value)) {
         if (!ctx.channels.has(channel)) {
           add(
