@@ -1,5 +1,32 @@
 # Polaris Key customer portal: design specification
 
+> **Superseded in part (2026-10-05).** [EXPERIENCE.md](EXPERIENCE.md) is now the single
+> experience spec for the console and the portal. The login card's measures and steps here still
+> hold, but its component is the shared `AuthCard` used by the console and the Worker pages too. The
+> sections it replaces are listed in
+> [EXPERIENCE.md §14](EXPERIENCE.md#14-superseded-sections-in-adminmd-and-portalmd): §4.1
+> (ownership, footer line), §4.2 (header copy), §4.12 (footer advice), §4.20 (lead, status chips,
+> Get it), §4.26 (Appearance, Sign out, Delete), §5.1–5.3 and §6.1. §3.2's phone bottom bar,
+> §4.17–§4.19 (PX-17), §4.29 (PX-21) and §4.30 (PX-22) stand; EXPERIENCE.md §0.6 places them in the
+> shared card's step list.
+
+> **Amended by approved plans (2026-10-05).** The owner approved PX-W8, PX-W9 and PX-W17 (in
+> `docs/research/2026-09-29-godot-omniplatform/program/plans/`). These corrections win over the
+> sections they name:
+>
+> - **G15 and §3.4.** Both refusals carry `manageUrl`: `device_limit` and `key_entry_limit`.
+>   `license_owned` keeps `signInUrl`. The Worker never puts the key in a URL. An app may append
+>   `#key=<key>` as a fragment, and the portal reads `#key=` as well as `?key=` (PX-W8 Q1–Q2). A
+>   floating-licence `device_limit` links to `/activate?product=<slug>&next=free-device` (PX-W8
+>   Q3). Portal paths are root paths (`/activate`, `/signin`), never `/portal/…`.
+> - **G21 and §4.6.** Every surface uses `keyEntries {used, limit}`, and "left" is computed in the
+>   UI; this replaces `entriesLimit`, `entriesUsed` and `entriesLeft` (PX-W9 Q5). The signed-out
+>   key step uses a read-only preview that never counts. The entry counts when the claim is
+>   submitted after sign-in, so the copy is "This will be entry 3" (PX-W9 Q4).
+> - **§3.1 and G34.** Pairwise subjects are random and stored (I-05), not a keyed HMAC, so no key
+>   rotation is needed (PX-W17 Q3). Cloud Sync requires Identity (PX-W17 Q4, I-04 §0, S-17).
+>   Subjects exist for every product, and product users only for Identity products (PX-W17 Q5).
+
 **Status:** draft for owner approval, revised with the owner decisions of 2026-10-04 (Appendix C,
 and the second round in Appendix E)
 · **Scope:** the customer-facing site at `key.plrs.im`: the SPA at `packages/admin/src/portal`
@@ -560,7 +587,7 @@ claim error "owned by another account" (§4.19).
 
 - A full-width **hero**: key art (left, 1.45 fr) and a side panel with icon, name, developer,
   status and tier, the **primary download** as a two-line button, an **Also yours on** row, a short
-  summary (license, devices, includes, plays on) and a link to the product page.
+  summary (license, devices, includes, runs on) and a link to the product page.
 - A closing line: "That's everything linked to <email>. There are 4 more you can add in Discover."
 - **Phone:** the art becomes a 16:9 strip; the primary action becomes the phone action.
 
