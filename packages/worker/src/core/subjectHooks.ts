@@ -46,6 +46,12 @@ export interface SubjectStore {
     ctx: SubjectStoreContext,
     args: { product: string; subject: string },
   ): Promise<unknown>;
+  /** How many bytes the subject's data for one product takes (the console Users page's account ×
+   *  product data size, I-12). Optional: a store without it counts as 0. */
+  size?(
+    ctx: SubjectStoreContext,
+    args: { product: string; subject: string },
+  ): Promise<number>;
 }
 
 const STORES = new Map<string, SubjectStore>();
@@ -90,6 +96,39 @@ export async function runSubjectDelete(
   for (const name of subjectStoreNames()) {
     await STORES.get(name)!.delete(ctx, args);
   }
+}
+
+/**
+ * Every store's export for one product, keyed by store name (the console's per-subject export,
+ * I-12; the portal's per-product export, I-11). A store without `export` is listed as `null`, so
+ * the export says the store exists and holds nothing it can hand out.
+ */
+export async function runSubjectExport(
+  ctx: SubjectStoreContext,
+  args: { product: string; subject: string },
+): Promise<Record<string, unknown>> {
+  const out: Record<string, unknown> = {};
+  for (const name of subjectStoreNames()) {
+    const store = STORES.get(name)!;
+    out[name] = store.export ? await store.export(ctx, args) : null;
+  }
+  return out;
+}
+
+/** The subject's data size for one product, per store and in total (bytes). */
+export async function subjectDataSize(
+  ctx: SubjectStoreContext,
+  args: { product: string; subject: string },
+): Promise<{ total: number; stores: Array<{ name: string; bytes: number }> }> {
+  const stores: Array<{ name: string; bytes: number }> = [];
+  let total = 0;
+  for (const name of subjectStoreNames()) {
+    const store = STORES.get(name)!;
+    const bytes = store.size ? Math.max(0, await store.size(ctx, args)) : 0;
+    stores.push({ name, bytes });
+    total += bytes;
+  }
+  return { total, stores };
 }
 
 // ── The clearing hook ───────────────────────────────────────────────────────────────────────

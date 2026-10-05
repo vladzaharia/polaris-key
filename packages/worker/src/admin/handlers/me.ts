@@ -12,7 +12,7 @@ import type { Env } from "../../env.js";
 import type { Db } from "../../db/types.js";
 import { listProducts, getActiveSchema } from "../../repo.js";
 import { isPlatformAdmin } from "../authz.js";
-import type { AdminSession } from "../session.js";
+import { STEP_UP_MAX_AGE_SECONDS, type AdminSession } from "../session.js";
 import { adminJson } from "../lib/respond.js";
 
 /** The deployments the console can name. */
@@ -59,5 +59,9 @@ export async function handleMe(
     products: adminProducts,
     environment: consoleEnvironment(env),
     sessionExpiresAt: session.exp,
+    // I-12: when the operator last signed in interactively, for the relink tool's step-up (a
+    // sign-in no older than `stepUpMaxAgeSeconds`). `null` for a session minted before I-12.
+    authAt: session.authAt ?? null,
+    stepUpMaxAgeSeconds: STEP_UP_MAX_AGE_SECONDS,
   });
 }

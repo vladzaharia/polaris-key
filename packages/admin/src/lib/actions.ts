@@ -94,9 +94,15 @@ export const ACTION_LEVELS = {
   // Store connections (A-16)
   "storeApp.assign": 1,
   "storeApp.release": 1,
+  // Users (I-12): an undo puts a licence back on the subject it was relinked from.
+  "user.undoRelink": 1,
 
   // L2 · irreversible or broad
   "key.revoke": 2,
+  // Users (I-12): a detach leaves the licence floating and out of the person's library; a relink
+  // moves it to another person of this product (step-up, reason, notices, 72-hour undo).
+  "user.detachLicense": 2,
+  "user.relink": 2,
   "device.deauthorize": 2,
   "sentry.confirm": 2,
   "release.yank": 2,
@@ -124,6 +130,9 @@ export const ACTION_LEVELS = {
   "signing.breakGlassActivate": 3,
   "kek.reseal": 3,
   "portalAccount.delete": 3,
+  // Users (I-12): the subject's data of this product (config overrides, Cloud Sync) is gone for
+  // good. The subject, its licences and the account stay.
+  "user.deleteData": 3,
   // A-17a (owner decision, 2026-10-04): releasing a held App Store version is typed. The Worker
   // compares `confirm` with the app's name in App Store Connect.
   "connector.releaseVersion": 3,
@@ -174,6 +183,7 @@ const TYPED: Partial<Record<ActionId, ActionPolicy["typed"]>> = {
   "signing.breakGlassActivate": "kid",
   "kek.reseal": "reseal",
   "portalAccount.delete": "delete",
+  "user.deleteData": "delete",
   "connector.releaseVersion": "appName",
   "connector.phasedComplete": "appName",
   "connector.iapAvailability": "appName",

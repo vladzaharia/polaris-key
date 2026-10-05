@@ -14,6 +14,7 @@ import type {
   PortalProductSettings,
   ProductDetail,
   ResyncResult,
+  SignInSettings,
   UpdatePortalSettingsBody,
 } from "../src/api.js";
 import { resetCache } from "../src/context.js";
@@ -33,6 +34,15 @@ const product = vi.fn<(slug: string) => Promise<{ product: ProductDetail }>>();
 const resyncProduct = vi.fn<(slug: string) => Promise<ResyncResult>>();
 const edgeMintRecipes =
   vi.fn<(slug: string) => Promise<EdgeMintRecipesResponse>>();
+const signInSettings =
+  vi.fn<(slug: string) => Promise<{ settings: SignInSettings }>>();
+const updateSignInSettings =
+  vi.fn<
+    (
+      slug: string,
+      patch: { passthroughName?: string | null },
+    ) => Promise<{ ok: true; settings: SignInSettings }>
+  >();
 
 vi.mock("../src/api.js", async () => {
   const actual =
@@ -46,6 +56,11 @@ vi.mock("../src/api.js", async () => {
       product: (slug: string) => product(slug),
       resyncProduct: (slug: string) => resyncProduct(slug),
       edgeMintRecipes: (slug: string) => edgeMintRecipes(slug),
+      signInSettings: (slug: string) => signInSettings(slug),
+      updateSignInSettings: (
+        slug: string,
+        patch: { passthroughName?: string | null },
+      ) => updateSignInSettings(slug, patch),
     },
   };
 });
@@ -97,6 +112,13 @@ const PRODUCT: ProductDetail = {
     update: { enabled: true },
     identity: { enabled: true },
   },
+};
+
+const SIGN_IN: SignInSettings = {
+  claimByKey: false,
+  passthroughName: null,
+  effectiveName: "DJDL",
+  appReview48Warning: false,
 };
 
 const CUSTOM: EdgeMintIdentity = {
@@ -165,6 +187,10 @@ beforeEach(() => {
   updatePortalSettings.mockResolvedValue({ ok: true, settings: PORTAL });
   product.mockResolvedValue({ product: PRODUCT });
   edgeMintRecipes.mockResolvedValue(mintResponse(CUSTOM));
+  signInSettings.mockReset();
+  updateSignInSettings.mockReset();
+  signInSettings.mockResolvedValue({ settings: SIGN_IN });
+  updateSignInSettings.mockResolvedValue({ ok: true, settings: SIGN_IN });
   // jsdom lacks these Radix-needed APIs.
   (
     Element.prototype as unknown as { hasPointerCapture: () => boolean }
@@ -680,6 +706,72 @@ describe("Identity → Sign-in", () => {
     const { container } = renderSignIn();
     await screen.findByRole("table", { name: "Groups and tiers" });
     expect(await axeViolations(container)).toEqual([]);
+  });
+});
+
+describe("Identity → Sign-in, through this product (I-12)", () => {
+  it("shows the app name, claimByKey as a read-out with a link to Portal, and no 4.8 warning by default", async () => {
+    renderSignIn();
+    const name = await screen.findByRole("textbox", { name: "App name" });
+    expect((name as HTMLInputElement).value).toBe("");
+    expect(screen.getByText(/DJDL wants you to sign in/)).toBeTruthy();
+    expect(
+      screen
+        .getByRole("link", { name: "Change on Portal" })
+        .getAttribute("href"),
+    ).toBe("#/p/djdl/identity/portal");
+    expect(screen.queryByText("App Review guideline 4.8")).toBeNull();
+  });
+
+  it("warns about App Review 4.8 when the server says so", async () => {
+    signInSettings.mockResolvedValue({
+      settings: { ...SIGN_IN, appReview48Warning: true },
+    });
+    renderSignIn();
+    expect(await screen.findByText("App Review guideline 4.8")).toBeTruthy();
+  });
+
+  it("saves the app name, and an empty name as null", async () => {
+    renderSignIn();
+    const name = await screen.findByRole("textbox", { name: "App name" });
+    await userEvent.type(name, "Mixer Pro");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save sign-in settings" }),
+    );
+    await waitFor(() =>
+      expect(updateSignInSettings).toHaveBeenCalledWith("djdl", {
+        passthroughName: "Mixer Pro",
+      }),
+    );
+  });
+
+  it("puts the server's refusal on the field", async () => {
+    const { ApiError } = await import("../src/api.js");
+    const refusal = new ApiError(422, ["passthroughName"], "bad_request");
+    refusal.message = "That name is reserved. Choose your app's own name.";
+    updateSignInSettings.mockRejectedValue(refusal);
+    renderSignIn();
+    const name = await screen.findByRole("textbox", { name: "App name" });
+    await userEvent.type(name, "Polaris Support");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save sign-in settings" }),
+    );
+    expect(
+      (await screen.findAllByText(/That name is reserved/)).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("is absent while Identity is off", async () => {
+    product.mockResolvedValue({
+      product: {
+        ...PRODUCT,
+        services: { ...PRODUCT.services!, identity: { enabled: false } },
+      },
+    });
+    renderSignIn();
+    await screen.findByText("Identity is off for this product");
+    expect(screen.queryByRole("textbox", { name: "App name" })).toBeNull();
+    expect(signInSettings).not.toHaveBeenCalled();
   });
 });
 

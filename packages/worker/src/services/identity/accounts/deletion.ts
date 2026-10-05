@@ -226,6 +226,16 @@ export async function deleteAccount(
       sql: "DELETE FROM account_passkeys WHERE account_id = ?",
       params: [accountId],
     },
+    // I-12: the relink history keeps its pairwise subjects (the developer's record) and loses the
+    // account id; undoing a relink away from this account then leaves the licence floating.
+    {
+      sql: "UPDATE license_relinks SET from_account_id = NULL WHERE from_account_id = ?",
+      params: [accountId],
+    },
+    {
+      sql: "UPDATE license_relinks SET to_account_id = NULL WHERE to_account_id = ?",
+      params: [accountId],
+    },
     { sql: "DELETE FROM accounts WHERE id = ?", params: [accountId] },
     {
       sql: `INSERT OR REPLACE INTO account_tombstones (id, email_hash, merged_into, deleted_at)

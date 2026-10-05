@@ -1,8 +1,10 @@
 /**
  * Identity → Sign-in (ADMIN.md §2.3, T3 read-only): the OIDC provider this product's customers
  * sign in with, the group → tier map that decides who a sign-in licenses, and where all of it is
- * authored. Product OIDC is manifest-fed (`.pkey/product`'s `oidc` block), so the page reads and
- * points; its one action is a resync.
+ * authored. Product OIDC is manifest-fed (`.pkey/product`'s `oidc` block), so that part reads and
+ * points; its one action is a resync. I-12 adds the one console-edited part, sign-in THROUGH this
+ * product (`SignInThroughProduct`: the passthrough header's app name and the App Review 4.8
+ * warning).
  *
  * Fixes IDN-2: the provider, issuer and client come from `config/mint` → `identity`, the same read
  * Edge mint shows. Fixes IDN-1: resync is an L1 action with a caution confirm and its consequences,
@@ -14,18 +16,24 @@ import { useQuery } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import {
   api,
+  ApiError,
   type EdgeMintIdentity,
   type ProductDetail,
+  type SignInSettings,
 } from "../../../api.js";
 import { confirmFor, triggerVariant } from "../../../lib/actions.js";
 import { docsUrl } from "../../../lib/docsLinks.js";
 import { Button } from "../../../ui/Button.js";
+import { Callout } from "../../../ui/Callout.js";
 import { CodeBlock } from "../../../ui/CodeBlock.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import { DescriptionList } from "../../../ui/DescriptionList.js";
 import { EmptyState } from "../../../ui/EmptyState.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
+import { Form, FormField, useAdminForm } from "../../../ui/form.js";
 import { IdChip } from "../../../ui/IdChip.js";
+import { Input } from "../../../ui/Input.js";
+import { SaveBar } from "../../../ui/SaveBar.js";
 import { PageSkeleton } from "../../../ui/Skeleton.js";
 import { toast } from "../../../ui/toast.js";
 import { EntityLink } from "../../components/EntityLink.js";
@@ -36,7 +44,7 @@ import { qk } from "../../data/queries.js";
 import { queryClient } from "../../data/queryClient.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";
-import { SettingsSection } from "../../templates/Settings.js";
+import { SettingsRow, SettingsSection } from "../../templates/Settings.js";
 import { releaseSourceOf } from "../../../lib/products.js";
 
 /** Resync needs a linked repo: `release/resync.ts` refuses (422) any other release source. */
@@ -108,8 +116,9 @@ export function SignInPage({ slug }: { slug: string }): React.ReactElement {
       title="Sign-in"
       description={
         <>
-          Authored in <code className="font-mono text-xs">.pkey/product</code>;
-          a resync applies a change.
+          The provider and groups are authored in{" "}
+          <code className="font-mono text-xs">.pkey/product</code>; a resync
+          applies a change.
         </>
       }
       primaryAction={
@@ -228,6 +237,7 @@ function SignInBody({
 
   return (
     <div className="space-y-6">
+      <SignInThroughProduct slug={slug} />
       <SettingsSection
         id="sign-in-provider"
         title="Provider"
@@ -394,6 +404,112 @@ function SignInBody({
           )}
         </div>
       </SettingsSection>
+    </div>
+  );
+}
+
+/** The passthrough header name's form draft (`""` is "use the product's name"). */
+type ThroughDraft = { passthroughName: string };
+
+/**
+ * Sign-in THROUGH this product (I-12; S-16 §5.2): the passthrough header's app name ("<App> wants
+ * you to sign in", also the <App> of "<App> via Polaris Key" mail), checked by the server's
+ * reserved-name validator; whether a licence can be added by key without its purchase email
+ * (edited on Portal, shown here); and the App Review 4.8 warning. Rendered only while Identity is
+ * on, like the rest of this page's body.
+ */
+export function SignInThroughProduct({
+  slug,
+}: {
+  slug: string;
+}): React.ReactElement | null {
+  const q = useQuery(
+    {
+      queryKey: qk.signInSettings(slug),
+      queryFn: () => api.signInSettings(slug).then((res) => res.settings),
+    },
+    queryClient,
+  );
+  if (q.isPending)
+    return <PageSkeleton template="form" label="sign-in settings" />;
+  if (q.isError)
+    return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;
+  return <SignInThroughForm slug={slug} settings={q.data} />;
+}
+
+function SignInThroughForm({
+  slug,
+  settings,
+}: {
+  slug: string;
+  settings: SignInSettings;
+}): React.ReactElement {
+  const form = useAdminForm<ThroughDraft>({
+    values: { passthroughName: settings.passthroughName ?? "" },
+    onSubmit: async (draft) => {
+      const name = draft.passthroughName.trim();
+      await mutate("updateSignInSettings", slug, {
+        passthroughName: name === "" ? null : name,
+      });
+      toast.success("Sign-in settings saved");
+    },
+    mapServerErrors: (e) =>
+      e instanceof ApiError && e.fields?.includes("passthroughName")
+        ? { passthroughName: e.message || "Check this value." }
+        : null,
+  });
+
+  return (
+    <div className="space-y-6">
+      {settings.appReview48Warning ? (
+        <Callout tone="warning" title="App Review guideline 4.8">
+          iPhone and iPad devices use this product, and it offers no native Sign
+          in with Apple. An iOS app that offers another sign-in must also offer
+          Sign in with Apple, or App Review may reject it.
+        </Callout>
+      ) : null}
+      <Form form={form} aria-label="Sign-in through this product">
+        <SettingsSection
+          id="sign-in-through"
+          title="Sign-in through this product"
+          description="What a person sees when your app sends them to sign in with their Polaris Key account."
+        >
+          <SettingsRow
+            label="App name"
+            help={`Shown as “${settings.effectiveName} wants you to sign in” and in the sender of sign-in mail. Leave empty to use the product's name.`}
+          >
+            <FormField
+              className="w-full sm:w-80"
+              hideLabel
+              name="passthroughName"
+              label="App name"
+            >
+              {(f) => (
+                <Input {...f} clearable maxLength={40} autoComplete="off" />
+              )}
+            </FormField>
+          </SettingsRow>
+          <SettingsRow
+            label="Add by key without the purchase email"
+            help="Off: a license that carries an email joins only an account with that email verified."
+          >
+            <span className="flex flex-wrap items-center justify-end gap-3 text-sm">
+              <span>{settings.claimByKey ? "On" : "Off"}</span>
+              <Link
+                to={r.portal(slug)}
+                className="text-accent-fg underline underline-offset-2"
+              >
+                Change on Portal
+              </Link>
+            </span>
+          </SettingsRow>
+        </SettingsSection>
+        <SaveBar
+          form={form}
+          saveLabel="Save sign-in settings"
+          section="Sign-in"
+        />
+      </Form>
     </div>
   );
 }

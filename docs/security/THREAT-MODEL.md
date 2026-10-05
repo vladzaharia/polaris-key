@@ -4670,6 +4670,47 @@ methods, never behind a product's Identity toggle. S-16 §5.4 item 2 (broker con
   buckets (`portalProviderStart`, `portalProviderCallback`, `appleNotifications`), all failing
   closed.
 
+### The console's Users page and the relink tool (I-12)
+
+Every product's console has a Users page (`/manage/api/products/<slug>/users…`,
+`admin/handlers/users.ts`, queries in `services/identity/accounts/productUsers.ts`). It is Core,
+not Identity: the account is platform-level, so a product with Identity off lists its licence
+owners too. S-16 §5.4 items 9 (no recovery desk: the developer's relink is the recovery path)
+and 12 (cross-tenant correlation) are the deltas.
+
+- **Cross-tenant correlation (item 12).** A row is keyed by this product's pairwise subject, and
+  every query carries the product. Every field a response carries is named in `productUsers.ts`;
+  none is the account id, a link, or another product's licence, session or datum (tests read
+  every route for product A and B of one account and find neither the account id nor B's
+  subject, licence or data). Search matches a subject prefix, an exact licence id or a buyer
+  email prefix, never the account's primary email, so the page is not an "is this person a
+  Polaris Key user" oracle. The account email is shown only with the person's consent for this
+  product (`account_product_grants.claims_json` holds `email`; D19). A subject minted only for a
+  support code stays unlisted until it holds a licence, a signed-in device or a sign-in.
+- **Relink (item 9).** The target is named only by a subject of THIS product (`target_not_found`
+  otherwise; never an email, never another product's subject). The operator needs an interactive
+  sign-in no older than 5 minutes (`session.authAt`, set from the ID token's `auth_time` when the
+  IdP sends one, else the callback time; `isSteppedUp`); `/manage/login?stepUp=1` sends
+  `prompt=login` and `max_age=0`, and the callback refuses a step-up whose `auth_time` is already
+  stale. A reason (1 to 500 characters) is mandatory. Both accounts are emailed at their verified
+  addresses BEFORE the owner pointer moves; the move is a conditional reassign (a concurrent change
+  answers `conflict` and nothing is recorded), it is audited with before and after, and the
+  `license_relinks` row (0072) keeps the reason, the actor and a 72-hour undo. The undo needs the
+  same step-up and a reason, and works only while the licence still sits on the target account (a
+  later relink, a detach or a deletion closes it). More than `RELINK_DAILY_ALERT_COUNT` (5) relinks
+  by one operator in 24 hours raises `identity.relink.alert` in the platform audit trail. An
+  account deletion clears the relink row's account ids, so an undo then leaves the licence
+  floating rather than resurrecting a deleted owner.
+- **What a developer can never do.** Disable, sign out, merge or delete an account, or touch its
+  links: no route exists. Per-subject data deletion runs the subject-store registry's deletes
+  (config overrides, Cloud Sync) and leaves the subject, its licences and the account.
+- **Residuals.** An IdP that ignores `prompt=login` AND sends no `auth_time` lets a silent SSO
+  count as a fresh sign-in (the callback time stands in); the console's IdP client (I-03) should be
+  configured to honour both. A
+  developer who already holds a buyer email can still find that buyer's row by it: the email is
+  the developer's own record. The step-up window is enforced server-side; the console's own check
+  only decides whether to offer the form or "Sign in again".
+
 ### Discover: free offers and "Add to library" (PX-W10)
 
 `GET /api/discover` lists the products whose licence policy would auto-issue to the signed-in

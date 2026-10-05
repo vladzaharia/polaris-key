@@ -69,6 +69,7 @@ import {
   Store,
   TrendingUp,
   UserRound,
+  UsersRound,
   Waypoints,
   type LucideIcon,
 } from "lucide-react";
@@ -103,6 +104,7 @@ export type ProductPageId =
   | "overview"
   | "services"
   | "devices"
+  | "users"
   | "keys"
   | "activity"
   | "settings"
@@ -258,6 +260,23 @@ export const SECTIONS: NavSection[] = [
         ready: true,
         // The routed device drawer (`devices/:deviceId`).
         record: { noun: "Device", ready: true },
+      },
+      {
+        // I-12: every product has users (its licence owners), whatever its Identity toggle.
+        page: "users",
+        label: "Users",
+        path: "users",
+        icon: UsersRound,
+        docs: "/docs/admin/users/",
+        inNav: true,
+        ready: true,
+        // `users/:subject[/:tab]`. `data` is reserved for the Cloud Sync Data tab (U-11a): the
+        // record shows it only while Cloud Sync is on, and answers a deep link with Overview.
+        record: {
+          noun: "User",
+          tabs: ["overview", "licenses", "devices", "activity", "data"],
+          ready: true,
+        },
       },
       {
         page: "keys",

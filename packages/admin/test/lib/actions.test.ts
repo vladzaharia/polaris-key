@@ -33,6 +33,7 @@ const SPEC: Record<0 | 1 | 2 | 3, ActionId[]> = {
     "connector.cancelSubmission",
     "connector.iapCreate",
     "connector.iapPrice",
+    "user.undoRelink",
   ],
   2: [
     "key.revoke",
@@ -50,6 +51,8 @@ const SPEC: Record<0 | 1 | 2 | 3, ActionId[]> = {
     "readiness.override",
     "catalog.publishRemovingKeys",
     "connector.exportCompliance",
+    "user.detachLicense",
+    "user.relink",
   ],
   3: [
     "product.delete",
@@ -62,6 +65,7 @@ const SPEC: Record<0 | 1 | 2 | 3, ActionId[]> = {
     "connector.iapAvailability",
     "connector.submitReview",
     "connector.iapPriceChange",
+    "user.deleteData",
   ],
 };
 

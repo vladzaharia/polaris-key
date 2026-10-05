@@ -91,6 +91,11 @@ const product = {
   },
 };
 
+/** Pairwise subjects: `ps_` and 22 base64url characters. */
+const USER_SUBJECTS = ["A", "B", "C", "D", "E"].map(
+  (c) => `ps_${c.repeat(11)}${c.toLowerCase().repeat(11)}`,
+);
+
 const devices = Array.from({ length: 6 }, (_, i) => ({
   deviceId: `dev_${String(i + 1).padStart(28, "0")}`,
   label: ["Studio Mac", "Ada's laptop", "Booth PC", "", "Stage iPad", ""][i],
@@ -247,6 +252,89 @@ export const CORE_ROUTES: Record<string, unknown> = {
     byAppVersion: [],
   },
   "/manage/api/products/djdl/devices": { devices, nextCursor: null },
+  // I-12: Core → Users, keyed by pairwise subject.
+  "/manage/api/products/djdl/users": {
+    identityOn: true,
+    users: Array.from({ length: 4 }, (_, i) => ({
+      subject: USER_SUBJECTS[i]!,
+      createdAt: NOW - (40 - i) * DAY,
+      contactEmail: i === 3 ? null : `buyer${i + 1}@example.com`,
+      contactSource: i === 3 ? null : i === 2 ? "consented" : "license",
+      licenses: i === 3 ? 0 : 1,
+      devices: i + 1,
+      signedInDevices: i,
+      lastSignInAt: i === 0 ? null : NOW - i * DAY,
+      mergedFrom: i === 1 ? 1 : 0,
+    })),
+    nextCursor: null,
+  },
+  [`/manage/api/products/djdl/users/${USER_SUBJECTS[0]}`]: {
+    user: {
+      subject: USER_SUBJECTS[0],
+      createdAt: NOW - 40 * DAY,
+      identityOn: true,
+      contact: { email: "buyer1@example.com", source: "license" },
+      name: null,
+      mergedFrom: [{ subject: USER_SUBJECTS[4], mergedAt: NOW - 3 * DAY }],
+      licenses: [
+        {
+          id: "lic_1",
+          name: "Studio Pro",
+          email: "buyer1@example.com",
+          tierId: null,
+          status: "active",
+          activatedAt: NOW - 30 * DAY,
+          expiresAt: null,
+        },
+      ],
+      devices: [
+        {
+          deviceId: devices[0]!.deviceId,
+          label: "Booth Mac",
+          status: "authorized",
+          platform: "macos",
+          appVersion: "2.4.0",
+          licenseId: "lic_1",
+          lastSeen: NOW - 3600,
+          signedIn: true,
+        },
+      ],
+      data: {
+        bytes: 2048,
+        stores: [{ name: "config-overrides", bytes: 2048 }],
+      },
+      signIns: [
+        { at: NOW - DAY, method: "steam" },
+        { at: NOW - 5 * DAY, method: "email" },
+      ],
+      events: [],
+      relinks: [
+        {
+          id: "rlk_1",
+          licenseId: "lic_1",
+          direction: "in",
+          otherSubject: USER_SUBJECTS[3],
+          reason: "Lost access to the old account (ticket 42)",
+          actorName: "Ada",
+          createdAt: NOW - 3600,
+          undoUntil: NOW + 70 * 3600,
+          undoneAt: null,
+          undoable: true,
+        },
+      ],
+      audit: [
+        {
+          id: "a1",
+          at: NOW - 3600,
+          action: "user.license.relink",
+          actorName: "Ada",
+          targetKind: "license",
+          targetId: "lic_1",
+          summary: null,
+        },
+      ],
+    },
+  },
   [`/manage/api/products/djdl/devices/${devices[0]!.deviceId}`]: {
     ...devices[0],
     fingerprint: {
@@ -505,3 +593,4 @@ export const CORE_ROUTES: Record<string, unknown> = {
 };
 
 export const DEVICE_ID = devices[0]!.deviceId;
+export const USER_SUBJECT = USER_SUBJECTS[0]!;
