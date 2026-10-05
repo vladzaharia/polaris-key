@@ -207,6 +207,15 @@ const SCREENS: {
     ready: (p) => h1(p, "Account"),
   },
   {
+    name: "product-package",
+    scenario: "three",
+    path: "/#/p/tidewater/package",
+    ready: async (p) => {
+      await h1(p, "Tidewater Studio");
+      await p.getByRole("heading", { name: /Package access/ }).waitFor();
+    },
+  },
+  {
     name: "device-limit",
     scenario: "twelve",
     path: "/#/p/orbit-survey/free-device?for=Mara%E2%80%99s%20Steam%20Deck&return=orbitsurvey%3A%2F%2Fretry",
@@ -326,6 +335,28 @@ describe("focused flows (PX-10)", () => {
         .getAttribute("href"),
     ).toBe("#/p/orbit-survey");
     expect(await o.page.content()).not.toContain("evil.example");
+    await o.page.context().close();
+  });
+});
+
+describe("package access (PX-11)", () => {
+  it("creates a token and shows it once in a dialog that Escape doesn't close", async () => {
+    const o = await open("three", "/#/p/tidewater/package");
+    await h1(o.page, "Tidewater Studio");
+    await o.page.getByRole("button", { name: "Create token" }).click();
+    const form = o.page.getByRole("dialog", { name: "Create a token" });
+    await form.getByLabel("Name").fill("Laptop 2");
+    await form.getByRole("button", { name: "Create token" }).click();
+    const shown = o.page.getByRole("dialog", { name: "Copy your token now" });
+    await shown.waitFor();
+    await shoot(o.page, "product-token-desktop-dark");
+    await o.page.keyboard.press("Escape");
+    await shown.getByText(/Close without copying\?/).waitFor();
+    expect(await shown.isVisible()).toBe(true);
+    expect(o.requests).toContain(
+      "POST /api/licenses/tidewater/lic_tidewater/registry-tokens",
+    );
+    expect(await o.violations()).toEqual([]);
     await o.page.context().close();
   });
 });

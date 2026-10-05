@@ -293,6 +293,58 @@ export interface PortalDownloads {
   stores: PortalStoreLink[];
 }
 
+// ── Package access (F-21; PORTAL.md §4.20, §4.21, G13) ───────────────────────────────────
+
+/** One private (non-public) feed a licensee may mint a token for. */
+export interface PortalPackageFeed {
+  ecosystem: string;
+  accessMode: string;
+  /** The feed's base URL on the registry host, when Distribution knows it. */
+  baseUrl: string | null;
+}
+
+/** One token as the portal lists it: never the plaintext or the hash. */
+export interface PortalRegistryToken {
+  tokenId: string;
+  label: string;
+  /** The plaintext's last four characters. */
+  hint: string;
+  scopes: string[];
+  /** `null` = every feed of the product. */
+  ecosystems: string[] | null;
+  presentation: "header" | "url";
+  createdAt: number;
+  expiresAt: number;
+  lastUsedAt: number | null;
+  revokedAt: number | null;
+  status: "active" | "expired" | "revoked";
+}
+
+/** `GET /api/licenses/<p>/<id>/registry-tokens`: the Package access card's state. */
+export interface PortalPackageAccess {
+  /** An enabled, non-public feed exists: only then is the card shown. */
+  available: boolean;
+  licenseUsable: boolean;
+  registryOrigin: string | null;
+  username: string;
+  feeds: PortalPackageFeed[];
+  tokens: PortalRegistryToken[];
+  limits: {
+    minDays: number;
+    maxDays: number;
+    defaultDays: number;
+    urlDefaultDays: number;
+    perLicense: number;
+  };
+}
+
+export interface PortalMintTokenInput {
+  label: string;
+  ecosystem?: string | null;
+  presentation?: "header" | "url";
+  expiresInDays?: number;
+}
+
 // ── Activate preview (PX-W5; G22) ──────────────────────────────────────────────────────────
 
 export type PortalPreviewVerdict =
@@ -427,6 +479,24 @@ export const portalApi = {
       body: JSON.stringify({ key }),
     }),
   releases: () => call<{ releases: PortalRelease[] }>("/api/releases"),
+  packageAccess: (product: string, id: string) =>
+    call<PortalPackageAccess>(
+      `/api/licenses/${enc(product)}/${enc(id)}/registry-tokens`,
+    ),
+  mintRegistryToken: (
+    product: string,
+    id: string,
+    input: PortalMintTokenInput,
+  ) =>
+    call<{ ok: true; token: string; view: PortalRegistryToken }>(
+      `/api/licenses/${enc(product)}/${enc(id)}/registry-tokens`,
+      { method: "POST", body: JSON.stringify(input) },
+    ),
+  revokeRegistryToken: (product: string, id: string, tokenId: string) =>
+    call<{ ok: true; view: PortalRegistryToken }>(
+      `/api/licenses/${enc(product)}/${enc(id)}/registry-tokens/${enc(tokenId)}`,
+      { method: "DELETE" },
+    ),
   /** G23: email the account's own address a link to this product's download for `platform`. */
   emailDownload: (product: string, platform: string) =>
     call<{ ok: true }>(`/api/products/${enc(product)}/email-download`, {

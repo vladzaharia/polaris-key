@@ -880,6 +880,74 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
       };
     };
   }
+  // PX-11: Tidewater's private npm feed and this licence's tokens (F-21's portal API).
+  const tokens = [
+    {
+      tokenId: "rt_ci",
+      label: "CI build server",
+      hint: "Hq2a",
+      scopes: ["read"],
+      ecosystems: null,
+      presentation: "header",
+      createdAt: NOW - 60 * DAY,
+      expiresAt: NOW + 90 * DAY,
+      lastUsedAt: (NOW - 3 * 3600) as number | null,
+      revokedAt: null,
+      status: "active",
+    },
+    {
+      tokenId: "rt_laptop",
+      label: "Laptop",
+      hint: "j3eX",
+      scopes: ["read"],
+      ecosystems: null,
+      presentation: "header",
+      createdAt: NOW - 84 * DAY,
+      expiresAt: NOW + 6 * DAY - 60,
+      lastUsedAt: null as number | null,
+      revokedAt: null,
+      status: "active",
+    },
+  ];
+  const tokensPath = "/api/licenses/tidewater/lic_tidewater/registry-tokens";
+  routes[tokensPath] = () => ({
+    body: {
+      available: true,
+      licenseUsable: true,
+      registryOrigin: "https://pkg.plrs.im",
+      username: "__token__",
+      feeds: [
+        {
+          ecosystem: "npm",
+          accessMode: "licensed",
+          baseUrl: "https://pkg.plrs.im/npm/tidewater/",
+        },
+      ],
+      tokens,
+      limits: {
+        minDays: 1,
+        maxDays: 365,
+        defaultDays: 90,
+        urlDefaultDays: 365,
+        perLicense: 10,
+      },
+    },
+  });
+  routes[`POST ${tokensPath}`] = (req) => {
+    const { label } = req.postDataJSON() as { label: string };
+    const view = {
+      ...tokens[0]!,
+      tokenId: "rt_new",
+      label,
+      hint: "Yj3e",
+      lastUsedAt: null,
+    };
+    tokens.push(view);
+    return {
+      status: 201,
+      body: { ok: true, token: "pkeyr_Lm9xT2qVb8sPzK4wNc7dRf1hYj3e", view },
+    };
+  };
   routes["DELETE /api/licenses/orbit-survey/lic_orbit-survey/devices/work"] =
     () => {
       removed.add("work");

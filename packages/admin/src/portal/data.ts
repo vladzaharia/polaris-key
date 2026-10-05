@@ -19,6 +19,8 @@ import {
   type PortalLicenseDetail,
   type PortalLicenseSummary,
   type PortalMe,
+  type PortalMintTokenInput,
+  type PortalPackageAccess,
   type PortalProduct,
   type PortalRelease,
 } from "./api.js";
@@ -48,6 +50,8 @@ const qk = {
   portalDownloads: (product: string) =>
     ["portal", "downloads", product] as const,
   portalProduct: (product: string) => ["portal", "product", product] as const,
+  portalRegistryTokens: (product: string, license: string) =>
+    ["portal", "registryTokens", product, license] as const,
 };
 
 export const portalKeys = {
@@ -194,6 +198,51 @@ export function useProductDownloads(
   enabled: boolean,
 ): UseQueryResult<PortalDownloads | null> {
   return useQuery({ ...downloadsQuery(product), enabled });
+}
+
+/**
+ * The Package access card's state for one licence (F-21). `null` when this Worker has no such
+ * route (404): the card stays hidden, as it does when no private feed exists.
+ */
+export function usePackageAccess(
+  product: string,
+  licenseId: string,
+): UseQueryResult<PortalPackageAccess | null> {
+  return useQuery({
+    queryKey: qk.portalRegistryTokens(product, licenseId),
+    queryFn: async () => {
+      try {
+        return await portalApi.packageAccess(product, licenseId);
+      } catch (err) {
+        if (err instanceof PortalApiError && err.status === 404) return null;
+        throw err;
+      }
+    },
+  });
+}
+
+export function useMintRegistryToken(product: string, licenseId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: PortalMintTokenInput) =>
+      portalApi.mintRegistryToken(product, licenseId, input),
+    onSuccess: () =>
+      void qc.invalidateQueries({
+        queryKey: qk.portalRegistryTokens(product, licenseId),
+      }),
+  });
+}
+
+export function useRevokeRegistryToken(product: string, licenseId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (tokenId: string) =>
+      portalApi.revokeRegistryToken(product, licenseId, tokenId),
+    onSuccess: () =>
+      void qc.invalidateQueries({
+        queryKey: qk.portalRegistryTokens(product, licenseId),
+      }),
+  });
 }
 
 /** One product in full (PX-W1, `GET /api/products/<p>`): seats, devices, `returnTo`. */
