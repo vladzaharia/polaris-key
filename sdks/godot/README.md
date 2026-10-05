@@ -102,7 +102,7 @@ One `PolarisKey` autoload, one sub-object per service, in the same shape as ever
 
 ```gdscript
 var r := await PolarisKey.license.activate_with_key(key)    # a PKeyActivationResult
-if not r.ok: show_error(r.kind)                             # device-limit, unauthorized, …
+if not r.ok: show_error(PKeyUiCopy.shared().for_code(r.code)) # words for r.code, never a raw body
 await PolarisKey.license.enroll()                           # keyless: the device's free licence
 if PolarisKey.license.is_entitled("soundtrack"): unlock_soundtrack()
 PolarisKey.license.get_entitlements()                       # {name: value}
@@ -112,8 +112,19 @@ PolarisKey.state_changed.connect(func(s): print(s["status"]))
 
 `PolarisKey.status()` is the gate's state: `status` is `ok`, `grace`, `expired`, `revoked`,
 `needs-activation` or a block reason, or `not-applicable` for a product without License, where
-`is_licensed()` is true. A 401 during a
-sync re-acquires the token once. The client gate is a user-experience gate, not DRM: see
+`is_licensed()` is true. `is_entitled(name)` is true only while the gate is usable: a revoked
+or expired licence unlocks nothing, even though `get_entitlements()` still reads the last verified
+values (S-19 G11). A 401 during a
+sync re-acquires the token once.
+
+`r.kind` sorts every activation outcome: `ok`, `device-limit` (`limit`, `device_count`),
+`unauthorized`, `fingerprint-required`, `enroll-disabled`, `enroll-claimed`, `license-disabled`,
+`license-expired`, `attestation-required`, `hardware-mismatch`, `rate-limited`, `unsupported`,
+`refused` and `error`. The mapping goes by the server's code, never by the status alone: a 403
+with any code other than the known ones (`registration_closed`, a code a later server adds) is
+`refused` with that code, never `device-limit`; a 5xx or a code-less answer is `error`. Every code
+has plain-words copy in `PKeyUiCopy` (`for_code(code, reason)`, `for_result(result)`), so a
+custom screen shows the same text the kit does. The client gate is a user-experience gate, not DRM: see
 [Platform caveats](#platform-caveats).
 
 ### Config

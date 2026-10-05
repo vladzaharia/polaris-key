@@ -56,4 +56,10 @@ static func message_for(r: PKeyActivationResult) -> Array:
 			return ["activation_rate_limited", null]
 		PKeyActivationResult.KIND_UNSUPPORTED:
 			return ["activation_unsupported", null]
+		PKeyActivationResult.KIND_LICENSE_EXPIRED:
+			return ["activation_license_expired", null]
+		PKeyActivationResult.KIND_ATTESTATION_REQUIRED:
+			return ["activation_attestation_required", null]
+		PKeyActivationResult.KIND_REFUSED:
+			return PKeyUiCopy.code_key(r.code)
 	return ["activation_error", null]
