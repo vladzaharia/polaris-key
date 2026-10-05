@@ -353,3 +353,35 @@ recorded response regenerates the transcripts in the same change; if an SDK repl
 fails, that SDK has to follow. To add a conversation, add a scenario under
 `packages/worker/test/transcripts/scenarios/`, list it in `scenarios/index.ts`, run
 `pnpm gen:transcripts`, and map any new action in each SDK's replayer.
+
+A replayer decides whether a transcript applies **before** it maps any step's action. A transcript
+whose features an SDK has not implemented can therefore use an action that SDK's replayer does
+not know yet, and it is skipped, never failed.
+
+### The SP-00 conversations
+
+`plans/SP-00.md` added five transcripts beside the existing ones (none was re-recorded). Each one
+is inert in every SDK until that SDK's task marks its feature `implemented` and maps the new
+action in its replayer:
+
+| Transcript                         | Proves                 | Steps                                                                                                                                                                                                                                                            |
+| ---------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `activate-refusals.json`           | `license.refusals`     | `enroll` refused `403 enroll_claimed`, then `403 license_disabled`; `activate` with an expired licence's key (`401 unauthorized` today), on drifted hardware (`409 hardware_mismatch`) and with the client's budget spent (`429 rate_limited`, no `Retry-After`) |
+| `boot-cold-register.json`          | `ui.boot`              | One `boot` on a fresh install of an open-registration product: discovery, keyless registration, trust, the config document and the report, ending at the stage machine's `ready` with the gate `not-applicable`                                                  |
+| `release-fetch-gated.json`         | `release.fetch`        | `discover`, then `releaseFetch` under licensed delivery: the whole payload (200), a resumed one with `Range` and `If-Range` (206), and, once the licence is disabled, `401 download_auth_required`                                                               |
+| `distribution-download-model.json` | `release.distribution` | `downloadModel`: the public `GET /<p>/distribution/download.json`, its platform groups and the group for `initial.platform`                                                                                                                                      |
+| `telemetry-report-updates.json`    | `telemetry.updates`    | Two `report` calls over a seventeen-event `initial.updateJournal`: sixteen events (the per-report cap), then the last one                                                                                                                                        |
+
+The three new actions are documented in `format.ts`:
+
+- `boot` is the SDK's one-call boot, with every request its stages make and `expect.bootOutcome`,
+  the stage machine's terminal outcome (`stage-matrix.json`'s `vocabulary.outcomes`).
+- `releaseFetch` takes a release record's build entry (`version`, `platform`, `arch`, `build`,
+  `size`, `sha256`) and an optional `partial`, the byte count of a partial download the replayer
+  seeds. It expands discovery's `distribution.endpoints.builds` template and reports the
+  verified `size` and `sha256`.
+- `downloadModel` is `distribution.downloadModel()`, with `expect.platforms` and `expect.current`.
+
+Two refusals in SDK-PARITY-PASS §3.1 are not recorded, because no route answers them today:
+`license_expired` (activation refuses every unusable licence as `unauthorized`) and
+`attestation_required` (activation and enrolment are not trust operations).
