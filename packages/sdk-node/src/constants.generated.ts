@@ -1391,8 +1391,8 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "update.feed": { status: "implemented", service: "update", na: [] },
   "update.decide": { status: "implemented", service: "update", na: [] },
   "update.content": { status: "implemented", service: "update", na: [] },
-  "update.driver": { status: "planned", service: "update", na: [] },
-  "update.bootguard": { status: "planned", service: "update", na: [] },
+  "update.driver": { status: "implemented", service: "update", na: [] },
+  "update.bootguard": { status: "implemented", service: "update", na: [] },
   "outlet.detect": { status: "implemented", service: "update", na: [] },
   "packs.record": { status: "implemented", service: "release", na: [] },
   "packs.revoke": { status: "implemented", service: "release", na: [] },
@@ -1450,15 +1450,15 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     service: "distribution",
     na: [],
   },
-  "ui.stages": { status: "planned", service: "sdk", na: [] },
+  "ui.stages": { status: "implemented", service: "sdk", na: [] },
   "ui.kit": {
     status: "na",
     service: "sdk",
     na: [{ runtime: "node", reason: "runtime" }],
   },
-  "commerce.receipt": { status: "planned", service: "license", na: [] },
+  "commerce.receipt": { status: "implemented", service: "license", na: [] },
 };
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "178f8cac7d679678f381650c80004c120ab937132e9135975f77215b77b20ff0";
+  "c81bcfc6be946f90367427aa7a65081b92ce991e0927dc1e1690b6cd7852261d";

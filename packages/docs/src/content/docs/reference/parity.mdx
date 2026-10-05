@@ -19,7 +19,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 54 | 6 | 0 | 8 |
+| Node | `node` | 58 | 6 | 0 | 4 |
 | React | `web`, `desktop-bridge` | 47 | 15 | 0 | 6 |
 | Python | `python` | 55 | 6 | 0 | 7 |
 | Swift | `macos`, `ios` | 56 | 5 | 0 | 7 |
@@ -88,8 +88,8 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `update.feed` | Verify pkey-feed+jws: freshness, seq | `cases.json` `feedCases` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.decide` | The update decision | `update-matrix.json` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.content` | The content decision: feed pack sets, floors and revocations, packs and prestage | `update-matrix.json` `contentRows` + `cases.json` `feedContentCases` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `update.driver` | Hand off to the native updater, or a store link | device tests | planned (unowned) | planned (unowned) | planned (unowned) | ✓; N/A (ios: outlet) | ✓; N/A (ios: outlet) | ✓; N/A (jvm: runtime) | ios: outlet; jvm: runtime |
-| `update.bootguard` | Confirm a boot, roll back after N failures | `stage-matrix.json` | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | ✓ | ✓ | — |
+| `update.driver` | Hand off to the native updater, or a store link | device tests | ✓ | planned (unowned) | planned (unowned) | ✓; N/A (ios: outlet) | ✓; N/A (ios: outlet) | ✓; N/A (jvm: runtime) | ios: outlet; jvm: runtime |
+| `update.bootguard` | Confirm a boot, roll back after N failures | `stage-matrix.json` | ✓ | planned (unowned) | planned (unowned) | planned (unowned) | ✓ | ✓ | — |
 | `outlet.detect` | Outlet detection | `outlet-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 
 ## Packs
@@ -125,9 +125,9 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Kotlin | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `ui.stages` | The boot stage machine: states, events, outcomes | `stage-matrix.json` | planned (unowned) | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `ui.stages` | The boot stage machine: states, events, outcomes | `stage-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `ui.kit` | Gate, activation, sign-in with QR, settings, devices, update banner, pack progress | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | planned (unowned) | ✓ | ✓ | headless: runtime |
-| `commerce.receipt` | Store purchase to licence entitlement | transcripts | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | ✓ | planned (unowned) | — |
+| `commerce.receipt` | Store purchase to licence entitlement | transcripts | ✓ | planned (unowned) | planned (unowned) | planned (unowned) | ✓ | planned (unowned) | — |
 
 ## Unowned gaps
 
@@ -135,14 +135,10 @@ Planned entries no work package owns yet. Each needs an owner before the gap can
 
 | SDK | Feature | Note |
 | --- | --- | --- |
-| Node | `identity.oidc` | No browser sign-in in the Node SDK, and no work package ports it. |
-| Node | `update.driver` | Only appcastUrl() today; the Velopack, electron-updater or single-executable hand-off has no work package (P3-04 excludes it). |
-| Node | `update.bootguard` | P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02. |
+| Node | `identity.oidc` | Browser redirect sign-in for native hosts waits on I-15's redirect token route (wire item W4); /identity/auth/poll is deprecated and never used. The interim is identity.signInWithBrowser(): device code opened in the system browser (SDK parity pass §3.12). |
 | Node | `packs.transport.steam` | P5-08 covers Godot only; Node desktop hosts have no Steam-depot transport owner. |
 | Node | `packs.transport.msix` | No work package owns the MSIX optional-package transport (P5-08 Out). |
 | Node | `packs.transport.flatpak` | No work package owns the Flatpak extension transport (P5-08 Out). |
-| Node | `ui.stages` | The boot stage machine lives in @polaris-key/client-core/stages (conformance/runners/node/stageMatrix.test.ts proves it), but @polaris-key/node neither re-exports nor drives it. SDK parity pass SP-N05 exports it and drives it from client.boot(). |
-| Node | `commerce.receipt` | P6-01 builds the Worker bridge and leaves the SDK side planned with no owner. |
 | React | `core.cache` | The browser adapter keeps no verified licence/config cache (only the signed update slices, P3-05); on desktop the host's Node SDK holds it. No work package gives the browser one. |
 | React | `core.local` | No local-only client in React; P1b-07 leaves it unowned. |
 | React | `config.mint` | P1b-08 ports edge-mint to Node, Python and Swift only. |
