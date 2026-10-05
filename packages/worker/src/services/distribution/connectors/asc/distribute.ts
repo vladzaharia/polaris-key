@@ -574,7 +574,8 @@ const preflight: ConnectorRead = distributeRead(async (f, q) => {
   });
 
   // A-18b: the shared listing model's Apple fit report. Advisory: App Store Connect's own listing
-  // is what review sees until A-18m pushes the model, so it never blocks `ready`.
+  // is what review sees, and the model reaches it only when the operator pushes it (A-18m's
+  // `listing/text` and `listing/screenshots`), so it never blocks `ready`.
   const releaseParam = q.get("releaseId");
   const listing = await appleListingInput(
     f.c.db,

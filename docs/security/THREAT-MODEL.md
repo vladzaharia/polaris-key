@@ -1848,6 +1848,64 @@ check. Two concurrent requests under one Idempotency-Key can both proceed (the `
 Apple's own duplicate refusal bound the harm). The 429 response shape has not been observed
 (A-17h).
 
+### Apple listing push: the widened App Store surface (A-18m)
+
+**What changed (S-15 owner decisions 1 and 2, 2026-10-04; a `core/storefront/rules/*` review
+trigger).** `ASC_WRITE_ALLOW` gains, all with a plain confirmation: the version localization's
+`description`, `keywords`, `marketingUrl` and `supportUrl` (beside A-17d's `whatsNew` and
+`promotionalText`); `POST`/`PATCH appInfoLocalizations` with `locale`, `name`, `subtitle` and
+`privacyPolicyUrl` only (never `privacyPolicyText` or `privacyChoicesUrl`); `POST appScreenshotSets`
+of three display types (`APP_IPHONE_67`, `APP_IPAD_PRO_3GEN_129`, `APP_DESKTOP`) on a version
+localization only (never a custom product page's or an experiment's); `POST appScreenshots`
+(a file name with an image extension, a size within 32 MiB); and `PATCH appScreenshots` with
+`uploaded: true` and an MD5 `sourceFileChecksum` only. These five operations left the deny
+classification (`uploads`, `listingOutsideSurface`), whose reasons were reworded; every spec write
+is still classified exactly once. Still denied: every `DELETE` (screenshots, sets, localizations),
+and the set's membership `PATCH …/relationships/appScreenshots`, which replaces the set and so
+drops screenshots. The handlers are `connectors/asc/listing.ts` (`listing/text`,
+`listing/screenshots`).
+
+**New outbound action: Apple's upload operations.** A reserved screenshot's bytes are PUT to the
+presigned URLs Apple answers the reserve with. That PUT is not an App Store Connect API operation, so
+it is gated by its own rule, `ASC_SCREENSHOT_UPLOAD` on the store-agnostic upload matcher, through
+`checkAscUpload` (`rules/appStore.ts`), called by `core/asc/upload.ts` for every operation before a
+byte is read: method `PUT` only; `https` on a host under `apple.com`, the default port, no
+credentials in the URL (`isAscUploadUrl`); PNG or JPEG of at most 32 MiB, as the blob store's record
+says (the type sniffed from the stored bytes, never from a request). The operations must cover the
+file exactly, in order. The PUT carries **no `Authorization`** (the URL is its own credential), never
+forwards an `Authorization`, `Cookie`, `Host` or `Proxy-` header Apple's answer might ask for, takes
+`Content-Type` only when it names the file's own type, does not follow redirects, and never puts the
+presigned URL in an error message or a ledger row.
+
+**Controls** (`test/ascWriteGate.test.ts`, `test/ascListingPush.test.ts`,
+`test/storefront/conformance.test.ts`):
+
+- **(a) Only the listing, only from the model.** The text pushed is the shared listing model's App
+  Store projection in one locale (`projection.ts`): a value over Apple's limits refuses the push
+  before anything is sent; keywords are packed whole under 100 bytes. Listing URLs must be
+  `http(s)` without credentials (a gate value check).
+- **(b) Only listing assets, only from the blob store** (decision 2). Screenshots are the stored
+  `app-store:screenshot:<class>:<n>` rows; a binary has no rule, and `uploadBuild` stays
+  `unsupported` (conformance item 3).
+- **(c) Never a delete.** A screenshot already in the set that the listing lacks is counted and left
+  (`otherScreenshots`, with the App Store Connect deep link). The never-list check of the
+  conformance suite still passes over the widened table.
+- **(d) Pinned app, ledger, audit.** As A-17d: the version is re-read with `include=app`, the app
+  info is listed under the pinned app, every check runs before the first write, one
+  `store_operations` row and one `distribution.asc.listing.*` audit row per write; natural keys are
+  the localization in that locale and the screenshot's checksum (or its file name, which carries
+  the SHA-256) within its set.
+
+**Attack tree: stolen admin session.** It can now also rewrite the App Store listing's text and add
+screenshots for a version being prepared, which App Review still sees before anything ships. It
+cannot remove a screenshot, send bytes anywhere but an `apple.com` host, or send the ASC bearer
+token with a PUT.
+
+**Residual risk.** The upload host rule trusts every `apple.com` host Apple names: a reserve answer
+that named another Apple host would receive a screenshot (never a token). The `apple.com` host
+pattern of the upload operations is inferred from Apple's documentation and is verified live by
+A-18k.
+
 ### Store connectors: App Store Connect (P5-02)
 
 **What it is.** `services/distribution/connectors/asc/` keeps a product's App Store and TestFlight
@@ -1976,8 +2034,8 @@ signed with a distribution certificate the key cannot create or export, and App 
 every App Store version. A thief could pause or complete a phased release, release a held
 version early, open a public TestFlight link, change metadata, or upload a build signed with
 certificates they already hold. Mitigations: the key is custodied by P5-01 (sealed, platform-admin
-writes only, every open audited); the connector itself never uploads and never submits for
-review; App Store Connect's own activity log is the second record; rotate by revoking the key in
+writes only, every open audited); the connector itself never uploads a build and never submits for
+review on its own (A-18m's listing push uploads only the listing's screenshots, from the blob store); App Store Connect's own activity log is the second record; rotate by revoking the key in
 Users and Access and PUTting a new one (the version marker drops cached tokens). Least privilege
 (App Manager, not Admin; a separate Developer-role key for CI uploads) is the operator's choice,
 documented in `services/distribution/app-store-connect.md`.
@@ -4531,7 +4589,8 @@ new vendor spec pin is adopted (`ASC_SPEC_PIN` or another adapter's `specPin`), 
 allow-list (`core/storefront/ci.ts` type, A-18h's lists) gains or loosens a command, an adapter
 declares `api` for `uploadBuild` or empties a never-list category, a check of
 `test/storefront/conformance.test.ts` is relaxed, anything but `core/asc/client.ts` sends a request
-to App Store Connect, or a field joins a store's audit projection (A-17a, A-18a); a platform store credential (A-16) is added, used
+to App Store Connect (and anything but `core/asc/upload.ts`, gated by `checkAscUpload`, PUTs to an
+upload operation; `isAscUploadUrl` or `ASC_SCREENSHOT_UPLOAD` loosened, A-18m), or a field joins a store's audit projection (A-17a, A-18a); a platform store credential (A-16) is added, used
 without the product's platform pin matching at setup, token and open, cached in a way a hit can
 skip the pin, allowed to fall through from a mis-pinned own credential, or written or opened by a
 file outside its allowlists; the device trust level starts being carried in a signed document or token, an operation trusts `attested` without going through `trustRefusal`, the trust policy becomes writable by anything but the platform-admin `trust-policy` resource, the App Attest root stops being the pinned constant, or a path other than a token rotation keeps the level across a new device token (P6-02); or a new way to obtain a device token or licence without an
