@@ -83,11 +83,11 @@ Discover is the second nav item ([PORTAL.md §4.16](../../../../design/PORTAL.md
 
 ## Acceptance criteria
 
-- [ ] A test proves listing writes nothing.
-- [ ] A parity test proves Discover claim ≡ first-load auto-issue (tier, limits, entitlements).
-- [ ] Claim is idempotent (double-submit test); OpenAPI and `routeCoverage` cover both routes.
-- [ ] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
-- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
+- [x] A test proves listing writes nothing.
+- [x] A parity test proves Discover claim ≡ first-load auto-issue (tier, limits, entitlements).
+- [x] Claim is idempotent (double-submit test); OpenAPI and `routeCoverage` cover both routes.
+- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
+- [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify
 
