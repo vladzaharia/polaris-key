@@ -1898,6 +1898,62 @@ comments, reads backslashes both ways a parser may, and refuses a script that us
 `#base`, since an included file is never checked. Steam itself also refuses `setlive` on
 `default`.
 
+### The PR plane: winget, the own Homebrew tap and Scoop bucket, Flathub (A-18i)
+
+**What it is.** winget, a product's own Homebrew tap, its own Scoop bucket and its Flathub app
+repository are written only through files in a GitHub repository (notes/S-15 §4.4). Their
+adapters (`core/storefront/stores/{winget,homebrew,scoop,flathub}.ts`) run on the PR plane:
+`core/storefront/prPlane.ts` declares, per store, the repository, a `pull-request` and a `status`
+command for the pseudo-tool `github` (the CLI's own client, never a spawned binary), the path
+templates a pull request may write, the natural key and the review labels. The CLI reads a
+generated copy (`ciPlane.generated.ts`, `prStores`) and runs `pkey storefront <store> pr|status`.
+
+| Store      | Repository                           | A PR may write                                                     | Never                                                                   |
+| ---------- | ------------------------------------ | ------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `winget`   | `microsoft/winget-pkgs`, from a fork | `manifests/<p>/<Pub>/<Pkg>/<v>/<id>{,.installer,.locale.<l>}.yaml` | another repository; merge, close, delete a branch                       |
+| `homebrew` | the identity's `homebrewTap`         | `Casks/<homebrewCask>.rb`                                          | `homebrew/cask` or any `Homebrew` organisation repo                     |
+| `scoop`    | the identity's `scoopBucket`         | `bucket/<app>.json`                                                | a `ScoopInstaller` bucket                                               |
+| `flathub`  | `flathub/<identity appId>`           | `<appId>.{yml,yaml,json}`, `<appId>.metainfo.xml`                  | `flathub/flathub` (the first submission is a person's); closing the app |
+
+**New CI secret (owner decision 7).** `PKEY_PR_TOKEN`, a GitHub token held as a CI environment
+secret and never in the Worker: fine-grained, `contents:write` and `pull_requests:write` on the
+own tap and bucket only; for winget a classic `public_repo` token only if A-18k shows a
+fine-grained one cannot open the PR (a classic token reaches every public repository the account
+can write, so it lives in its own GitHub environment with required reviewers); for Flathub the
+maintainer's token on `flathub/<appId>`. The Worker never calls GitHub and never sees the token.
+
+**Controls.**
+
+- **Two checks, neither trusting the other.** The CLI refuses a step whose argv is not the store's
+  `pull-request` command for the outlet identity, or that would write any path outside the
+  store's templates, before anything reaches GitHub; the Worker re-checks both when the step is
+  reported (`POST /<p>/distribution/report`, `type: "store-step"`): the repository against the
+  identity, every reported file path against the templates (no `..`, no leading `/`), the pull
+  request's URL against the argv's repository. A refused report writes nothing.
+- **Repositories bound to the identity.** The tap and bucket patterns (`HOMEBREW_TAP_PATTERN`,
+  `SCOOP_BUCKET_PATTERN` in `@polaris-key/manifest`) refuse the `Homebrew` and `ScoopInstaller`
+  organisations in any case, so a manifest cannot even declare an official repository; winget's is
+  a literal; Flathub's is `flathub/` plus the identity's app id.
+- **Additive writes only.** The client (`packages/cli/src/storefronts/github.ts`) forks, commits on
+  a `pkey/…` branch, moves that branch only to a descendant (`force: false`) and opens a pull
+  request. It has no merge, close, delete or force call; every winget version is reviewed by a
+  moderator and a tap or bucket PR is merged by a person or the repository's own automation.
+- **The natural key** (S-15 §6.3): an open or merged PR for (package, version) is the step; the CLI
+  reports it `existing: true` and writes nothing, so a re-run never opens a second PR.
+- **The token stays in CI.** Read from the environment, sent only to `api.github.com`, never in
+  argv, a report body, the ledger or a log line; the ledger keeps each file's path and SHA-256,
+  never its content.
+- **The inputs read** (`GET /<p>/distribution/pr/<store>`, `distribution:report`) answers only while
+  the app's delivery access is public (a PR-plane manifest sends strangers to the bytes, as the
+  feeds do), and holds no secret.
+
+**Residual risk.** A workflow that calls GitHub directly with the same token bypasses both checks;
+the token's own scope (fine-grained, two repositories) is the backstop, and the classic winget
+token is the widest credential the program asks for. A compromised Polaris Key account can change
+the outlet identity's tap or bucket to another repository the token can write; the token's scope
+bounds that too. The Flathub update PR rewrites the URLs of the app manifest's `extra-data`
+sources; its review is the app repository's own.
+
 ### App Store Connect writes: the write gate, the ledger and the budget (A-17a)
 
 **What it is.** The substrate every App Store Connect call goes through (notes/S-14 §7): the
@@ -5043,7 +5099,9 @@ out of a deny list such as `rules/appStoreDenied.ts`, a rule's attributes, relat
 checks or confirmation level loosened), a storefront adapter is added to `STOREFRONT_ADAPTERS`, a
 new vendor spec pin is adopted (`ASC_SPEC_PIN` or another adapter's `specPin`), a CI command
 allow-list (`core/storefront/ciPlane.ts`, the `ci.ts` check) gains or loosens a command, a pattern
-or an identity binding, a CI-plane step starts running without report-back, the store-step ingest
+or an identity binding, the PR plane (`core/storefront/prPlane.ts`) gains a repository, a command
+or a path template or loosens one, the CLI's GitHub client (`storefronts/github.ts`) gains a call
+that merges, closes, deletes or force-pushes, a CI-plane step starts running without report-back, the store-step ingest
 stops re-checking the command, an adapter
 declares `api` for `uploadBuild` or empties a never-list category, a check of
 `test/storefront/conformance.test.ts` is relaxed, anything but `core/asc/client.ts` sends a request
