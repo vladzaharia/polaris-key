@@ -45,6 +45,7 @@ import { getReleaseConfig } from "../src/services/release/index.js";
 // P2b-04: the appcast reads Distribution's delivery access, so it is driven the way the router
 // drives it (`releaseSurface.ts`).
 import { handleReleaseSurface as handleUpdate } from "./releaseSurface.js";
+import { withDefaultHead } from "./githubHead.js";
 
 const SLUG = "acme";
 const ADMIN_SECRET = "test-admin-session-secret";
@@ -144,7 +145,7 @@ const RELEASE: Release = {
 
 /** GitHub, stubbed: installation discovery, the token exchange, `.pkey/` contents, releases. */
 function github(files: Record<string, string>): FetchImpl {
-  return async (input) => {
+  return withDefaultHead(async (input) => {
     const url = String(input);
     if (url.includes("/installation"))
       return new Response(JSON.stringify({ id: 4242 }), { status: 200 });
@@ -166,7 +167,7 @@ function github(files: Record<string, string>): FetchImpl {
     if (url.includes("/releases?per_page"))
       return new Response(JSON.stringify([RELEASE]), { status: 200 });
     return new Response("not found", { status: 404 });
-  };
+  });
 }
 
 function pkey(product: string, release: string): FetchImpl {

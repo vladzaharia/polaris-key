@@ -87,7 +87,14 @@ export async function handleIdentityRoutes(
       case "verify":
         return handleAuthDeviceVerify(req, env, product);
       case "poll":
-        return handleAuthDevicePoll(req, env, db, product, now);
+        return handleAuthDevicePoll(
+          req,
+          env,
+          db,
+          product,
+          now,
+          ctx.licenseMerge,
+        );
       default:
         return null;
     }

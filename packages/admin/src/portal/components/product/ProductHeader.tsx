@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import type { LibraryProduct, QuickAction } from "../../model/library.js";
 import { tierLabel } from "../../model/library.js";
 import { href } from "../../router.js";
+import { cn } from "../../../lib/cn.js";
 import { ProductArt } from "../ProductArt.js";
 import { ProductIcon } from "../ProductIcon.js";
 import { ProductMenu } from "../ProductMenu.js";
@@ -10,8 +11,11 @@ import { ProductStatusPill } from "../ProductStatus.js";
 import { QuickActionButton } from "../QuickAction.js";
 
 /**
- * The product header (§4.20): back to Library, the 320 px banner (full-bleed 16:9 on phones),
- * the 112 px icon overlapping it, the name as the page's `h1` (focus lands here after adding a
+ * The product header (§4.20): back to Library, the banner (16:9 full-bleed on phones, a centred
+ * 3:1 band capped at 416 px on desktop),
+ * the 112 px icon (80 on phones) in front of its lower edge, like an app store's product header;
+ * without a cover the icon stands alone beside the name, and without an icon its letter tile
+ * stands in. The name as the page's `h1` (focus lands here after adding a
  * product), "by <developer>", status and tier, and the one lead action with the overflow menu.
  */
 export function ProductHeader({
@@ -25,6 +29,10 @@ export function ProductHeader({
 }): React.ReactElement {
   const pres = product.presentation;
   const tier = tierLabel(product.best.tier);
+  // No cover (or one the proxy failed to serve): the icon stands alone beside the name, rather
+  // than a letter banner with the same letter tile on top of it.
+  const [coverFailed, setCoverFailed] = React.useState(false);
+  const hasCover = Boolean(pres.headerUrl) && !coverFailed;
   return (
     <div className="space-y-0">
       <a
@@ -34,22 +42,43 @@ export function ProductHeader({
         <ArrowLeft aria-hidden className="size-4" />
         Library
       </a>
-      <ProductArt
-        slug={product.slug}
-        name={product.name}
-        tint={pres.tint}
-        src={pres.headerUrl}
-        variant="banner"
-        className="-mx-4 aspect-video desk:mx-0 desk:aspect-auto desk:h-80 desk:rounded-xl"
-      />
-      <div className="flex flex-col gap-4 px-0 desk:flex-row desk:items-end desk:gap-6 desk:px-6">
+      {hasCover ? (
+        <ProductArt
+          slug={product.slug}
+          name={product.name}
+          tint={pres.tint}
+          src={pres.headerUrl}
+          variant="banner"
+          onError={() => setCoverFailed(true)}
+          // The listing's 16:9 header (PORTAL.md Q-2): all of it on phones, full-bleed; on desktop
+          // a centred 3:1 band, capped at 26 rem so it never fills the first screen.
+          className="-mx-4 aspect-video desk:mx-0 desk:aspect-[3/1] desk:max-h-[26rem] desk:rounded-xl"
+        />
+      ) : null}
+      <div
+        data-cover={hasCover ? "image" : "none"}
+        className={cn(
+          "flex gap-4 desk:gap-6",
+          hasCover
+            ? "flex-col desk:flex-row desk:items-end desk:px-6"
+            : "flex-row flex-wrap items-center pt-2 desk:flex-nowrap",
+        )}
+      >
         <ProductIcon
           slug={product.slug}
           name={product.name}
           tint={pres.tint}
           src={pres.iconUrl}
           size={112}
-          className="-mt-14 border-4 border-surface-page shadow-elevation-2 max-desk:size-20 max-desk:text-3xl desk:-mt-16"
+          lift={hasCover}
+          tileClassName="border-4 border-surface-page max-desk:text-3xl"
+          className={cn(
+            // In front of the cover: the banner is positioned, so the icon needs its own
+            // stacking position to paint over the banner's lower edge (§4.20).
+            "relative z-10 max-desk:size-20",
+            // Half the tile over the cover: pinned to the row's top, not its end, on desktop.
+            hasCover && "-mt-10 desk:-mt-16 desk:self-start",
+          )}
         />
         <div className="min-w-0 flex-1 space-y-2 desk:pb-1">
           <h1
@@ -76,7 +105,7 @@ export function ProductHeader({
             ) : null}
           </div>
         </div>
-        <div className="flex gap-2 desk:pb-1">
+        <div className="flex gap-2 max-desk:w-full desk:pb-1">
           <QuickActionButton
             product={product}
             action={action}
