@@ -1,16 +1,23 @@
-# PX-W9 Key-entry counting (G21): per-key limit setting, atomic counter for portal and app entries, portal responses, the app refusal (wire part rides PX-W8)
+# PX-W9 Key-entry counting (G21): per-licence limit setting, atomic counter for app, browser and portal entries, `keyEntries` everywhere, the `key_entry_limit` refusal with `manageUrl`, portal preview and responses
 
 | Field       | Value                                                                                                                                              |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)                                                                            |
 | Size        | 0.4–0.8 engineer-weeks                                                                                                                             |
-| Depends on  | [I-04](I-04-account-contract-plan.md)                                                                                                              |
+| Depends on  | [I-04](I-04-account-contract-plan.md), [ST-01b](ST-01b-resync-claims.md), [ST-03](ST-03-settings-registry.md)                                      |
 | Unblocks    | [PX-12](PX-12-login-card-v2.md)                                                                                                                    |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                              |
-| Plan mode   | yes: executes the approved [`plans/I-04.md`](../plans/I-04.md) (no separate plan)                                                                  |
+| Plan mode   | yes: executes the approved [`plans/PX-W9.md`](../plans/PX-W9.md) (approved 2026-10-05), which refines [`plans/I-04.md`](../plans/I-04.md)          |
 | Gates       | the PORTAL.md §11 green gate; plan mode; D1 migration (next free number at the final gate); `TABLE_OWNERS`; `typecheck:workerd` and `test:workerd` |
 | Human input | none                                                                                                                                               |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                          |
+
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/PX-W8.md`](../plans/PX-W8.md):** the wire part (the `manageUrl` member and its builder) is settled in PX-W8.
+- **[`plans/PX-W9.md`](../plans/PX-W9.md):** approved on 2026-10-05 with every recommendation accepted except Q3, which the owner overrode: `key_entry_limit` carries `manageUrl`, not `portalUrl`. Scope per Q1 (the counter, the settings rows, I-04 §2.2 step 4, `keyEntries`, the `key_entry_limit` code, two transcripts and the portal surfaces). Dependencies ST-01b and ST-03 added. PX-W9 executes its own plan, not I-04's. The portal uses `keyEntries {used, limit}` on every surface (Q5); every licence key counts, including `addon` keys, and grants never do (Q6).
 
 ## Goal
 

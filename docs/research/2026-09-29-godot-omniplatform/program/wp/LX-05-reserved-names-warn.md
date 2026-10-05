@@ -1,16 +1,22 @@
 # LX-05 Reserved entitlement names, warn phase: compatible-declaration rule, platform `licensing.reservedNames` setting, console list of registered products, djdl copy fix
 
-| Field       | Value                                                                                   |
-| ----------- | --------------------------------------------------------------------------------------- |
-| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase A: independent fixes) |
-| Size        | 0.3–0.4 engineer-weeks                                                                  |
-| Depends on  | none                                                                                    |
-| Unblocks    | [LX-05b](LX-05b-reserved-names-error.md), [LX-09](LX-09-entitlement-resolver.md)        |
-| Role        | `pkey-implementer`                                                                      |
-| Plan mode   | no                                                                                      |
-| Gates       | rule 9 (validator rule, mutation table, JSON schema); drift gate (`--check`)            |
-| Human input | none                                                                                    |
-| Repo        | `vladzaharia/polaris-key`                                                               |
+| Field       | Value                                                                                                                      |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase A: independent fixes)                                    |
+| Size        | 0.3–0.4 engineer-weeks                                                                                                     |
+| Depends on  | none                                                                                                                       |
+| Unblocks    | [PX-W13](PX-W13-passthrough-metadata.md), [LX-05b](LX-05b-reserved-names-error.md), [LX-09](LX-09-entitlement-resolver.md) |
+| Role        | `pkey-implementer`                                                                                                         |
+| Plan mode   | no                                                                                                                         |
+| Gates       | rule 9 (validator rule, mutation table, JSON schema); drift gate (`--check`)                                               |
+| Human input | none                                                                                                                       |
+| Repo        | `vladzaharia/polaris-key`                                                                                                  |
+
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **Owner (2026-10-05):** PX-W13's `reserved_display_name` rule follows this package's warn-then-enforce pattern and reuses its validator warning path, so PX-W13 depends on LX-05. No extra scope here.
 
 ## Goal
 

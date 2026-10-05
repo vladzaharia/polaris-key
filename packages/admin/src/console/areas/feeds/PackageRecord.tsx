@@ -262,7 +262,7 @@ function versionColumns(): DataColumn<FeedPackageVersion>[] {
       id: "published",
       header: "Published",
       accessorFn: (v) => v.publishedAt,
-      meta: { priority: 1, label: "Published" },
+      meta: { numeric: true, priority: 1, label: "Published" },
       cell: ({ row }) => (
         <span className="flex flex-col gap-0.5">
           <Timestamp at={fromSeconds(row.original.publishedAt)} />
