@@ -54,7 +54,8 @@ const DEFAULT_WORKFLOW = ".github/workflows/release.yml";
  */
 export function workflowStep(slug: string): string {
   return [
-    "# In the release job, after the steps that build your files",
+    "# In the release job, after the steps that build your files.",
+    "# The job needs `permissions: id-token: write` (and `release-key` if .pkey/release declares releaseKeys).",
     "- uses: vladzaharia/polaris-key/actions/publish@<commit-sha>",
     "  with:",
     `    product: ${slug}`,

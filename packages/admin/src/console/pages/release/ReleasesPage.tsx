@@ -107,8 +107,11 @@ export function ReleasesPage({ slug }: { slug: string }): React.ReactElement {
     }
     if (!waited.current || releases.length === 0) return;
     waited.current = false;
+    // Newest first: by seq, then by publish time (never one compared against the other).
     const first = [...releases].sort(
-      (a, b) => (b.seq ?? b.publishedAt ?? 0) - (a.seq ?? a.publishedAt ?? 0),
+      (a, b) =>
+        (b.seq ?? -1) - (a.seq ?? -1) ||
+        (b.publishedAt ?? 0) - (a.publishedAt ?? 0),
     )[0]!;
     announce(`${first.version} published from CI`);
   }, [firstRun, releases]);
