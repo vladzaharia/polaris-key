@@ -148,7 +148,12 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
 - **`GET /api/products/<product>`** — one of those products: the presentation, `services` (each
   service's own toggle), the status, and every linked license best first with its seats,
   entitlements and authorized devices, each marked `dormant` once it is past the 90-day dormancy
-  window (a dormant device holds no seat), and `returnTo` (`{ origins, schemes }`): where the
+  window (a dormant device holds no seat), and its `purchase`: where it came from (`source` is
+  `store` while a verified store purchase is active on it, else `developer`, `sign_in` or
+  `free`), the stores, and each store grant with its state and dates. A grant names its flag only
+  when the developer shows that flag in the portal; no purchase key is ever returned. The facts
+  are License's, read through its `licenseProvenance` descriptor hook, so `purchase` is `null`
+  while License is off. The product also carries `returnTo` (`{ origins, schemes }`): where the
   focused flows (`#/p/<product>/free-device` and `#/p/<product>/download`) may send the person
   back to with `?return=` — the product's exact `web.origins`; app schemes are always empty until
   the manifest can declare them, so a scheme return ends on the product page. `404` for a product
@@ -183,14 +188,14 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   `{ "key": "pkey_…" }`; a string that is not exactly `pkey_<slug>_` plus 22 base64url characters
   is a `422`. Otherwise `200` with a `verdict`:
 
-  | `verdict`         | Also carries                                                       | Meaning                                                                        |
-  | ----------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
-  | `addable`         | `license` (tier, label, status, expiry, device limit), `platforms` | The key can be added.                                                          |
-  | `already_yours`   | the same, plus `license.id`                                        | Already in this account.                                                       |
-  | `owned_elsewhere` | nothing else                                                       | In another account; a license never moves by its key.                          |
-  | `email_mismatch`  | `maskedEmail` (`m•••@proton.me`)                                   | Carries an email this account has not verified, and the product needs it.      |
-  | `portal_off`      | nothing else                                                       | The product manages this license elsewhere (portal or key claim switched off). |
-  | `unknown`         | nothing else                                                       | No such key (or it was replaced), or no such product.                          |
+  | `verdict`        | Also carries                                                       | Meaning                                                                                    |
+  | ---------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+  | `addable`        | `license` (tier, label, status, expiry, device limit), `platforms` | The key can be added.                                                                      |
+  | `already_yours`  | the same, plus `license.id`                                        | Already in this account.                                                                   |
+  | `license_owned`  | nothing else                                                       | In another account; a license never moves by its key (named `owned_elsewhere` until I-05). |
+  | `email_mismatch` | `maskedEmail` (`m•••@proton.me`)                                   | Carries an email this account has not verified, and the product needs it.                  |
+  | `portal_off`     | nothing else                                                       | The product manages this license elsewhere (portal or key claim switched off).             |
+  | `unknown`        | nothing else                                                       | No such key (or it was replaced), or no such product.                                      |
 
   Every answer carries `product` (`null` for `unknown`, so a guessed key never reveals whether a
   product exists; otherwise `slug`, `name`, `branding`; `developerName`, `iconUrl` and
@@ -199,7 +204,7 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
 
 - **`POST /api/claim/license-key`** — link a license by presenting a typed `pkey_…` key. It acts
   on the same evaluation as the preview, so the two never disagree: `401` for an unknown key,
-  `404` when the product's portal or key claim is off, `409 owned_elsewhere`, and
+  `404` when the product's portal or key claim is off, `403 license_owned` (a `409 owned_elsewhere` until I-05), and
   `403 email_mismatch` with `maskedEmail`; a license already yours answers `200` without writing or
   emailing again. A new link emails the account and, when it is a different address, the
   license's own email. The preview and the claim share one budget: 10 per minute per account.
@@ -283,7 +288,7 @@ Two more default **off** (PX-W5, migration `0064`):
   the S-16 safety default: such a license joins only an account that verified that email. A
   license already in an account never moves by its key either way.
 
-`discoverEnabled` defaults **on** (PX-W10, migration `0068`): the product may be offered on
+`discoverEnabled` defaults **on** (PX-W10, migration `0071`): the product may be offered on
 Discover to accounts its auto-issue policy covers. Turning it off hides the offer without
 changing the policy, which keeps issuing on the product's own sign-in.
 

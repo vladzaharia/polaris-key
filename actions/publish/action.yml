@@ -115,6 +115,15 @@ inputs:
     description: P5-08, transport steps. false writes everything and reports nothing to Distribution.
     required: false
     default: "true"
+  storefront:
+    description: A-18h. Instead of publishing, run one CI-plane store step, only as a command the store's CI allow-list admits, reported before and after into Polaris Key's store ledger. itch-push (butler push dir <user/game>:<itch-platform[-channel]> --userversion version, the target from the itch outlet's identity; BUTLER_API_KEY from a CI environment secret in the step's env), snap-metadata (the listing model's Snap summary and description into snapcraft.yaml; dir is the file or its project directory; run it before the snap is built), snap-upload (snapcraft upload --release= the snap channels the snap outlet maps channel onto; dir is the .snap or a directory holding one; SNAPCRAFT_STORE_CREDENTIALS, a scoped export-login, in the step's env) or snap-upload-metadata (snapcraft upload-metadata). dry-run prints the checked command lines.
+    required: false
+  itch-platform:
+    description: A-18h, itch-push. The platform word the butler channel starts with (windows, linux, mac or android), which is how itch.io tags the upload; a channel other than stable suffixes it (windows-beta).
+    required: false
+  storefront-outlet:
+    description: A-18h, storefront steps. The outlet id whose identity binds the step, when .pkey/distribution declares more than one of the store's kind.
+    required: false
 outputs:
   release-id:
     description: The release id (the tag, else `<deliverable>@<version>`).

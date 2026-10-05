@@ -165,6 +165,8 @@ service needs another's state, it asks **Core**, which asks the service that pro
 - **`delivery`** (provided by Distribution) — transports, availability and, later, rollout and
   delivery URLs per outlet.
 - **`outletCapabilities`** (provided by Distribution) — what one outlet permits.
+- **`licenseProvenance`** (provided by License) — where each licence came from: the store
+  purchases granted onto it, or the developer, sign-in or free auto-issue that minted it.
 
 A hook answers `null` while the service that provides it is off for the product — its code never
 runs — and the consumer degrades explicitly. A hook never writes: a write across services would
@@ -174,8 +176,9 @@ be an import in disguise.
 
 - **product** — one tenant of Polaris Key, addressed by its `slug` (e.g. `djdl`). Every D1 row,
   KV key, signature, and admin route is product-scoped. (Not "app" or "gateway".)
-- **license** — an account that holds entitlements. Created manually by an admin or minted on
-  OIDC sign-in. Has a status, optional tier/profile, optional expiry, and per-license overrides.
+- **license** — a grant of entitlements, optionally attached to an **account** (a license with
+  no account is a **floating license**). Created manually by an admin or minted on OIDC sign-in.
+  Has a status, optional tier/profile, optional expiry, and per-license overrides.
 - **key** — a `pkey_<product>_…` activation secret a user redeems to activate a device. Shown to the
   user exactly once; stored only as a (peppered) hash.
 - **device** — an authorized install of the product, bound to a per-device bearer token
@@ -215,6 +218,33 @@ be an import in disguise.
   entitlements on their next license-document refresh; nothing is pushed. A downgrade below the
   active device count **grandfathers** existing devices and refuses new activations until the
   count drops.
+
+## The Polaris Key account
+
+One person, one account, across every product (layer 1 of the Identity design; Amendment A2 of
+the suite spec). The account is platform-level: it exists for every product, whatever the
+product's Identity toggle says. The Identity **service** gates only signing in _through_ a product.
+
+- **account** (Polaris Key account) — one person, global across products: a status, a primary
+  verified email, personal details, and its sign-in methods. Its id is internal to the Worker and
+  never reaches a developer, who sees **pairwise subjects** only. Replaces the portal account.
+- **sign-in method** (or **link**) — one verified `(issuer, subject)` attached to exactly one
+  account: an email address, the platform IdP, and later Apple, Google, Steam, a passkey or a
+  native platform identity. A tenant-scoped one (Game Center, Play Games, EOS, Apple's per-team
+  id) is recognised only inside products of its scope. Connecting or removing one needs a sign-in
+  no older than five minutes; the last one cannot be removed.
+- **Library** — the licenses attached to an account, across products (the portal's default page).
+- **floating license** — a license attached to no account. It works on devices exactly as an
+  attached one does, and the portal offers to add it to a Library.
+- **key entry** — one activation by typing or pasting a license key, in the portal or an app.
+- **pairwise subject** — the opaque id (`ps_…`) one product sees for one account: random, stored,
+  different for every product, never the account id. After an account merge the absorbed
+  account's subject stays valid as an alias of the survivor's.
+- **account × product data** — what an account holds for one product: managed config overrides
+  and Cloud Sync data, keyed by the pairwise subject. Merges and deletions reach it through Core's
+  subject-store registry.
+- **personal details** — the account's name, picture and locale. ("Profile" keeps its
+  managed-payload meaning; the portal's "Profile" section label is UI copy, not a domain noun.)
 
 ## Device identity
 

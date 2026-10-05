@@ -43,8 +43,10 @@ public enum ErrorCode {
     public static let unavailable = "unavailable"
     public static let authMethodDisabled = "auth_method_disabled"
     public static let emailNotConfigured = "email_not_configured"
-    public static let ownedElsewhere = "owned_elsewhere"
+    public static let licenseOwned = "license_owned"
     public static let emailMismatch = "email_mismatch"
+    public static let linkConflict = "link_conflict"
+    public static let lastLink = "last_link"
     public static let stepUpRequired = "step_up_required"
     public static let notEligible = "not_eligible"
     public static let downloadAuthRequired = "download_auth_required"
@@ -189,8 +191,10 @@ public let ERROR_CODE_VALUES: [String] = [
     "unavailable",
     "auth_method_disabled",
     "email_not_configured",
-    "owned_elsewhere",
+    "license_owned",
     "email_mismatch",
+    "link_conflict",
+    "last_link",
     "step_up_required",
     "not_eligible",
     "download_auth_required",
@@ -335,8 +339,10 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "unavailable": "wire",
     "auth_method_disabled": "wire",
     "email_not_configured": "wire",
-    "owned_elsewhere": "wire",
+    "license_owned": "wire",
     "email_mismatch": "wire",
+    "link_conflict": "wire",
+    "last_link": "wire",
     "step_up_required": "wire",
     "not_eligible": "wire",
     "download_auth_required": "wire",

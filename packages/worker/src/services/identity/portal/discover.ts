@@ -37,7 +37,7 @@
  * Purchase-only and operator-issued products never appear: with no mapped group and no
  * `oidcDefault` rule the policy grants nothing. Neither do products the account already holds,
  * products with the portal off, or products whose developer turned Discover off
- * (`portal_product_settings.discover_enabled`, migrations/0068).
+ * (`portal_product_settings.discover_enabled`, migrations/0071).
  */
 
 import { representabilityIssue } from "@polaris-key/catalog";
@@ -348,9 +348,24 @@ export async function handleDiscoverClaim(
 
   if (verdict.kind === "held" && candidate) {
     // Idempotent: the second submit of an add answers the licence the first one minted.
+    let found = verdict.license;
+    // I-05: a licence has one owner. The auto-issue licence keyed by this account's platform
+    // subject is linked here if it is still floating (the next sweep would do the same), and is
+    // never answered when another account owns it.
+    if (found && (found.account_id ?? null) === null) {
+      await linkLicense(
+        db,
+        session.accountId,
+        found.product,
+        found.id,
+        "oidc",
+        now,
+      );
+      found = await getLicense(db, found.product, found.id);
+    }
+    if (found && found.account_id !== session.accountId) found = null;
     const license =
-      verdict.license ??
-      (await heldLicense(db, session.accountId, verdict.product.slug));
+      found ?? (await heldLicense(db, session.accountId, verdict.product.slug));
     if (license) {
       return portalJson({
         added: false,
@@ -423,9 +438,8 @@ async function heldLicense(
   product: string,
 ): Promise<LicenseRow | null> {
   return db.first<LicenseRow>(
-    `SELECT l.* FROM portal_license_links link
-       JOIN licenses l ON l.product = link.product AND l.id = link.license_id
-      WHERE link.account_id = ? AND link.product = ?
+    `SELECT l.* FROM licenses l
+      WHERE l.account_id = ? AND l.product = ?
       ORDER BY CASE WHEN l.status = 'active' THEN 0 ELSE 1 END, l.activated_at DESC
       LIMIT 1`,
     accountId,

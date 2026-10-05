@@ -20,14 +20,16 @@ import {
   type ArtefactRef,
 } from "../../../core/singleUse.js";
 import {
-  getOrCreateAccountByEmail,
-  getOrCreateAccountByIdentity,
+  normalizeEmail,
   portalIdentityIssuerKey,
   rekeyLegacyPortalIdentities,
   portalAuthCapabilities,
   portalAudit,
+  recordLinkGroups,
   syncAccountLicenseLinks,
 } from "./repo.js";
+import { signIn, type SignInResult } from "../accounts/signIn.js";
+import { EMAIL_ISSUER, rekeyLegacyAccountLinks } from "../accounts/repo.js";
 import {
   buildPortalClearCookie,
   buildPortalSessionCookie,
@@ -357,18 +359,26 @@ export async function handlePortalCallback(
   // Keyed by issuer (S-16 G14). Re-key any pre-I-01 rows first, so the lookup finds them.
   const issuerKey = portalIdentityIssuerKey(cfg.issuer);
   await rekeyLegacyPortalIdentities(db, issuerKey);
-  const account = await getOrCreateAccountByIdentity(
+  await rekeyLegacyAccountLinks(db, issuerKey);
+  // I-05: every front door ends in one `signIn(verifiedIdentity)`.
+  const result = await signIn(
     db,
     {
-      provider: issuerKey,
+      issuerKey,
       subject: identity.sub,
-      email: identity.emailVerified ? identity.email : undefined,
-      displayName: identity.name,
-      groups: identity.groups,
+      kind: "oidc",
+      email: identity.emailVerified ? identity.email : null,
+      emailVerified: Boolean(identity.emailVerified && identity.email),
+      displayName: identity.name ?? null,
     },
     now,
   );
-  if (account.status !== "active") return htmlError(403, "Account disabled.");
+  const refused = signInRefusal(result);
+  if (refused) return refused;
+  const signedIn = result as Extract<SignInResult, { status: "signed_in" }>;
+  const account = signedIn.account;
+  // PX-W10: the platform IdP's `groups` claim, kept on this link for Discover (NULL = not sent).
+  await recordLinkGroups(db, signedIn.linkId, identity.groups);
   await syncAccountLicenseLinks(db, account.id, now);
   await portalAudit(db, {
     accountId: account.id,
@@ -377,6 +387,30 @@ export async function handlePortalCallback(
     now,
   });
   return issueRedirectSession(env, db, account, now, flow.returnTo ?? "/");
+}
+
+/**
+ * The page a sign-in that did not complete answers with. A join offer (an unknown identity whose
+ * verified email another account already uses) is never resolved silently: the login card (I-07)
+ * offers to join once the person proves the other account; until it lands, the page says so and
+ * names nobody.
+ */
+function signInRefusal(result: SignInResult): Response | null {
+  switch (result.status) {
+    case "signed_in":
+      return result.account.status === "active"
+        ? null
+        : htmlError(403, "Account disabled.");
+    case "join_offer":
+      return htmlError(
+        409,
+        "A Polaris Key account already uses this email address. Sign in with the method you used before. Adding another sign-in method to an account is not available yet; until it is, contact the product's support if you can no longer use that method.",
+      );
+    case "refused":
+      return result.reason === "account_disabled"
+        ? htmlError(403, "Account disabled.")
+        : htmlError(401, "Sign-in could not be verified.");
+  }
 }
 
 export async function handleMagicStart(
@@ -474,8 +508,19 @@ export async function handleMagicVerify(
   } catch {
     return htmlError(400, "This magic link has expired.");
   }
-  const account = await getOrCreateAccountByEmail(db, record.email, now);
-  if (account.status !== "active") return htmlError(403, "Account disabled.");
+  const result = await signIn(
+    db,
+    {
+      issuerKey: EMAIL_ISSUER,
+      subject: normalizeEmail(record.email),
+      kind: "email",
+    },
+    now,
+  );
+  const refused = signInRefusal(result);
+  if (refused) return refused;
+  const account = (result as Extract<SignInResult, { status: "signed_in" }>)
+    .account;
   await syncAccountLicenseLinks(db, account.id, now);
   await portalAudit(db, {
     accountId: account.id,

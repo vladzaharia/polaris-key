@@ -75,13 +75,38 @@ MSI/EXE API's package-by-URL can point at the release's own artifact with no upl
 - [U] for A-18k: whether Developer suffices instead of Manager; whether a redirecting
   `packageUrl` is accepted.
 
+## Corrections from the code (A-18f, 2026-10-04)
+
+Where the brief or S-15 and the code disagreed, the code won:
+
+- **Adapter id `microsoft-store`, not `msstore`.** The conformance suite requires an adapter's id to
+  equal its A-16 credential's store (`microsoft-store.partner-center` → `microsoft-store`) and every
+  deep-link id to start with the store id, so S-15 §6.5's `msstore.properties` is
+  `microsoft-store.properties`. The audit action segment stays `msstore`
+  (`distribution.msstore.<op>`).
+- **MSI/EXE metadata is written whole or patched.** The reference page (fetched 2026-10-04) has
+  `PUT` and `PATCH /submission/v1/product/{id}/metadata`; per-module paths
+  (`/metadata/{module}`) are reads only. The gate types a full-module `PUT` that carries
+  `availability`, and a `PATCH` that names `availability.pricing` or `freeTrial`.
+- **The JSON matcher gained a `map` shape** (`core/storefront/match/json.ts`): Microsoft keys
+  listings by language and prices by market, which a fixed-key object cannot express.
+- **Flight commit and flight finalize are typed too** (a flight submission goes to certification;
+  finalize releases to the whole flight).
+- **No route.** The steps are functions in `connectors/msstore/provision.ts`; the console that
+  calls them is A-18j's.
+- **Added [U] items for A-18k:** whether a classic `PUT` that omits `pricing` (or another
+  top-level field) keeps its current value (the step omits `pricing` unless the price changes); the
+  exact shape of the `listings/assets/create` answer (the step reads `primaryAssetUploadUrl`);
+  whether MSI/EXE products answer the classic `GET applications/{id}` that supplies the
+  `primaryName` phrase (if not, the typed confirmation refuses, never passes).
+
 ## Acceptance criteria
 
-- [ ] Every operation in the pinned list is allowed by a rule or denied with a reason.
-- [ ] The conformance suite passes for Microsoft, including the five denied `DELETE`s and typed
+- [x] Every operation in the pinned list is allowed by a rule or denied with a reason.
+- [x] The conformance suite passes for Microsoft, including the five denied `DELETE`s and typed
       commit, finalize and pricing.
-- [ ] P5-04's poller is unchanged and still GET-only.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] P5-04's poller is unchanged and still GET-only.
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 

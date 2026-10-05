@@ -45,7 +45,10 @@ import {
   accessIngestStatements,
   accessModeOf,
 } from "../src/services/distribution/access.js";
-import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
+import {
+  getOrCreateAccountByEmail,
+  linkLicense,
+} from "../src/services/identity/portal/repo.js";
 import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
@@ -399,17 +402,7 @@ describe("an operator's `entitled` in dist_access gates every surface the same w
       "ada@example.com",
       NOW,
     );
-    await w.db.run(
-      `INSERT INTO portal_license_links
-         (account_id, product, license_id, source, created_at, last_seen_at)
-       VALUES (?,?,?,?,?,?)`,
-      account.id,
-      SLUG,
-      licenseId,
-      "license-key",
-      NOW,
-      NOW,
-    );
+    await linkLicense(w.db, account.id, SLUG, licenseId, "license-key", NOW);
     const { token, session } = await issuePortalSession(
       w.env,
       {
@@ -954,17 +947,7 @@ describe("dist_access", () => {
       "ada@example.com",
       NOW,
     );
-    await w.db.run(
-      `INSERT INTO portal_license_links
-         (account_id, product, license_id, source, created_at, last_seen_at)
-       VALUES (?,?,?,?,?,?)`,
-      account.id,
-      SLUG,
-      licenseId,
-      "license-key",
-      NOW,
-      NOW,
-    );
+    await linkLicense(w.db, account.id, SLUG, licenseId, "license-key", NOW);
     // An R2-held file: no GitHub storage URL to redirect to.
     await w.db.run(
       "UPDATE release_artifacts SET source_url = NULL WHERE product = ? AND release_id = 'v1.1.0' AND name = 'djdl-arm64'",

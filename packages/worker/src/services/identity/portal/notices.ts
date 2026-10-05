@@ -320,3 +320,40 @@ export function accountDeletedNotice(input: { origin: string }): NoticeMessage {
     origin: input.origin,
   });
 }
+
+// ── Accounts (I-05) ──────────────────────────────────────────────────────────────────────────
+
+/** Two accounts were joined into one, after the person signed in to both (S-16 §5.1, D21). */
+export function accountsMergedNotice(input: { origin: string }): NoticeMessage {
+  return buildNotice({
+    subject: "Two Polaris Key accounts were joined",
+    paragraphs: [
+      "Two Polaris Key accounts were joined into one after someone signed in to both. Their sign-in methods and licenses are now on a single account.",
+    ],
+    action: {
+      label: "See your sign-in methods",
+      url: appLink(input.origin, "account/methods"),
+    },
+    secureUrl: appLink(input.origin, "account/methods"),
+    origin: input.origin,
+  });
+}
+
+/**
+ * I-04 §8 Q1: a license had links to several accounts and keeps one owner; this account was not
+ * it. Says which product, never which account owns it now.
+ */
+export function licenseLinkSupersededNotice(input: {
+  productName: string | null | undefined;
+  origin: string;
+}): NoticeMessage {
+  const name = displayValue(input.productName, "A");
+  return buildNotice({
+    subject: `A ${name} license left your library`,
+    paragraphs: [
+      `A ${name} license was linked to more than one Polaris Key account. A license now belongs to one account, and another account holds this one, so it has left your library.`,
+      "If you bought it, contact the developer: they can move it to your account.",
+    ],
+    origin: input.origin,
+  });
+}

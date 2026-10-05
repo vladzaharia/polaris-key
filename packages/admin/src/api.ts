@@ -1007,6 +1007,7 @@ export const CI_SCOPES = [
   "distribution:report",
   "distribution:rollout",
   "distribution:feeds",
+  "distribution:listing",
 ] as const;
 
 /** The blob collector's dry run for one product (`GET …/blob-gc`, P4-14). */

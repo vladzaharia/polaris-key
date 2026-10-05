@@ -595,6 +595,46 @@ describe("POST /api/discover/<p>/claim (G25)", () => {
     expect(rows).toHaveLength(1);
   });
 
+  it("a held claim links a floating auto-issue licence back, and never answers one another account owns (I-05)", async () => {
+    const env = portalEnv();
+    const db = makeTestDb();
+    await freeProduct(db, "mossgarden");
+    const who = await platformAccount(env, db);
+    const first = await claim(env, db, who, "mossgarden");
+    const id = first.body.license.id as string;
+
+    // Detached (floating): the claim relinks it to this account and answers it.
+    await db.run(
+      "UPDATE licenses SET account_id = NULL WHERE product = 'mossgarden' AND id = ?",
+      id,
+    );
+    const relinked = await claim(env, db, who, "mossgarden");
+    expect(relinked.status).toBe(200);
+    expect(relinked.body).toMatchObject({ added: false, license: { id } });
+    expect(
+      await db.first(
+        "SELECT account_id FROM licenses WHERE product = 'mossgarden' AND id = ?",
+        id,
+      ),
+    ).toEqual({ account_id: who.accountId });
+
+    // Owned by another account: refused, and nothing about the licence is answered.
+    const other = await getOrCreateAccountByIdentity(
+      db,
+      { provider: ISSUER, subject: "someone-else", email: "else@example.com" },
+      NOW,
+    );
+    await db.run(
+      "UPDATE licenses SET account_id = ? WHERE product = 'mossgarden' AND id = ?",
+      other.id,
+      id,
+    );
+    const refused = await claim(env, db, who, "mossgarden");
+    expect(refused.status).toBe(409);
+    expect(refused.body.error).toBe("not_eligible");
+    expect(JSON.stringify(refused.body)).not.toContain(id);
+  });
+
   it("is idempotent under a double submit: one licence, one audit, both answers the same", async () => {
     const env = portalEnv();
     const db = makeTestDb();
@@ -688,13 +728,13 @@ describe("POST /api/discover/<p>/claim (G25)", () => {
   });
 });
 
-describe("the stored groups claim (migrations/0068)", () => {
+describe("the stored groups claim (migrations/0071)", () => {
   it("records groups at sign-in, replaces them at the next, and NULLs a missing claim", async () => {
     const db = makeTestDb();
     const read = async () =>
       (
         await db.first<{ groups_json: string | null }>(
-          "SELECT groups_json FROM portal_account_identities WHERE subject = ?",
+          "SELECT groups_json FROM account_links WHERE subject = ?",
           SUB,
         )
       )?.groups_json;

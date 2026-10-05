@@ -59,8 +59,9 @@ Discover is the second nav item ([PORTAL.md §4.16](../../../../design/PORTAL.md
   auto-issue (`POST /<p>/license/enroll`, mode `anonymous`) is per machine, keyed by a hardware id,
   and is never an account's offer.
 - **The account's identity is its platform-IdP subject.** The portal kept no `groups` claim, so
-  migration `0068_portal_discover.sql` adds `portal_account_identities.groups_json` (written at
-  each portal OIDC sign-in) next to the opt-out column `portal_product_settings.discover_enabled`
+  migration `0071_portal_discover.sql` (0068 before integration) adds `account_links.groups_json`
+  (written at each portal OIDC sign-in on the link it signed in through; it was
+  `portal_account_identities` until I-05 moved sign-in methods to `account_links`) next to the opt-out column `portal_product_settings.discover_enabled`
   (default 1; console **Identity → Portal → Offer on Discover**; admin `PATCH` field
   `discoverEnabled`). The opt-out is a portal setting rather than a `.pkey/` manifest key, so rule 9
   does not apply. Candidates are restricted to platform-issuer products with auto-linking on (the
@@ -101,3 +102,10 @@ PX-16 builds the Discover page; PX-08 shows the count.
 
 The role agent sets `--set PX-W10 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set PX-W10 done`.
+
+## Integration corrections (wave ISP, merged after I-05)
+
+- I-05 made `licenses.account_id` the one owner pointer and `account_links` the sign-in methods.
+  Discover now reads the platform identity and its groups from `account_links` (verified email
+  only), "already holds" from `licenses.account_id`, and a held claim links a still-floating
+  auto-issue licence itself (review nit) and never answers a licence another account owns.

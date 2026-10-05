@@ -1,0 +1,25 @@
+-- A-18c (notes/S-15 §7.2): which import source each value of the shared listing came from, so an
+-- import can apply the precedence ("the store that is live wins", reorderable per field) against
+-- what an EARLIER import wrote, and never against what an operator typed.
+--
+-- `provenance_json` is a JSON object `{<field>: <source>}` on the two text rows of the model:
+--
+--   dist_listings         keys are the app-level fields (`name`, `developerName`, `category`,
+--                         `contentDescriptors`, `contactEmail`, `copyright`, `tint`, and the URLs
+--                         as `urls.website`, `urls.support`, `urls.privacy`, `urls.marketing`,
+--                         `urls.eula`)
+--   dist_listing_locales  keys are that locale's fields (`name`, `subtitle`, `shortDescription`,
+--                         `description`, `keywords`, `features`, `promotionalText`)
+--
+-- and each value is one of the import sources of `core/storefront/listingModel.ts`
+-- (`app-store`, `play`, `ms-store`, `godot`, `manifest`, `product`). A field with a value and NO
+-- key was typed by an operator: an import keeps it unless asked to overwrite. An operator's edit
+-- of a field removes its key; an import that writes a field sets it.
+--
+-- NULL is a row written before this column existed: on such a row an `import` row's values are
+-- read as `manifest` (the only import A-18b had) and an `admin` row's as typed.
+--
+-- The row-level `source` stays what 0065 says it is, the last writer of the row: an applied import
+-- sets it to `import`, an operator's edit to `admin`. Ownership is per field, here.
+ALTER TABLE dist_listings ADD COLUMN provenance_json TEXT;
+ALTER TABLE dist_listing_locales ADD COLUMN provenance_json TEXT;

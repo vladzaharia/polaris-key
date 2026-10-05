@@ -12,8 +12,23 @@ import type {
   ProductRow,
 } from "../../../core/data.js";
 import { parseServices } from "../../../core/services.js";
-import { stmtRevokeAccountRegistryTokens } from "../../../core/registryTokens.js";
+import {
+  attachLicenseAccount,
+  licenseAccountId,
+  subjectFor,
+} from "../../../core/accountSubjects.js";
+import { catchUpLegacyAccount } from "../accounts/legacy.js";
+import { deleteAccount } from "../accounts/deletion.js";
+import { signIn, type SignInResult } from "../accounts/signIn.js";
+import {
+  EMAIL_ISSUER,
+  getAccountRow,
+  insertLink,
+  resolveAccount,
+  verifiedAccountEmails,
+} from "../accounts/repo.js";
 
+/** The account fields the portal reads (I-05: a row of `accounts`). */
 export interface PortalAccountRow {
   id: string;
   status: string;
@@ -36,7 +51,7 @@ export interface PortalProductSettingsRow {
   key_reissue_enabled: number;
   /** PX-W5 / S-16: an email-carrying license may be claimed by key without that email. Default 0. */
   claim_by_key: number;
-  /** PX-W10 (G24): the product may be offered on Discover. Default 1 (migrations/0068). */
+  /** PX-W10 (G24): the product may be offered on Discover. Default 1 (migrations/0071). */
   discover_enabled: number;
   branding_json: string | null;
   created_at: number;
@@ -123,58 +138,57 @@ function parseJsonUnknown(raw: string | null): unknown {
   }
 }
 
+/**
+ * The portal's view of an account (I-05: `accounts`, which replaced `portal_accounts` and kept
+ * its ids). With `now`, an account absorbed by a merge in the last 30 days resolves to the
+ * survivor, so its signed cookie keeps working; an id the new tables do not know yet (an account
+ * a pre-I-05 Worker created during the deploy window) is copied across first.
+ */
 export async function getPortalAccount(
   db: Db,
   id: string,
+  now?: number,
 ): Promise<PortalAccountRow | null> {
-  return db.first<PortalAccountRow>(
-    "SELECT * FROM portal_accounts WHERE id = ?",
-    id,
-  );
+  const found =
+    now === undefined
+      ? await getAccountRow(db, id)
+      : await resolveAccount(db, id, now);
+  if (found) return found;
+  if (await catchUpLegacyAccount(db, id)) return getAccountRow(db, id);
+  return null;
 }
 
-async function insertPortalAccount(
-  db: Db,
-  input: { email?: string | null; displayName?: string | null },
-  now: number,
-): Promise<PortalAccountRow> {
-  const id = randomId("acct");
-  await db.run(
-    `INSERT INTO portal_accounts
-       (id, status, display_name, primary_email, created_at, modified_at)
-     VALUES (?, 'active', ?, ?, ?, ?)`,
-    id,
-    input.displayName ?? input.email ?? null,
-    input.email ? normalizeEmail(input.email) : null,
-    now,
-    now,
-  );
-  const row = await getPortalAccount(db, id);
-  if (!row) throw new Error("portal account insert failed");
-  return row;
+function signedInAccount(result: SignInResult): PortalAccountRow {
+  if (result.status !== "signed_in") {
+    throw new Error(`portal sign-in did not complete: ${result.status}`);
+  }
+  return result.account;
 }
 
+/**
+ * The account an email sign-in (a delivered magic link) belongs to, created on first sign-in.
+ * A thin wrapper over `signIn` for callers that hold an address the portal itself proved; it
+ * throws on a join offer (an address another account uses only as its primary email), which the
+ * magic-link handler answers itself.
+ */
 export async function getOrCreateAccountByEmail(
   db: Db,
   email: string,
   now: number,
   displayName?: string | null,
 ): Promise<PortalAccountRow> {
-  const normalized = normalizeEmail(email);
-  const existing = await db.first<PortalAccountRow>(
-    `SELECT a.* FROM portal_account_emails e
-      JOIN portal_accounts a ON a.id = e.account_id
-     WHERE e.email = ?`,
-    normalized,
+  return signedInAccount(
+    await signIn(
+      db,
+      {
+        issuerKey: EMAIL_ISSUER,
+        subject: normalizeEmail(email),
+        kind: "email",
+        displayName: displayName ?? null,
+      },
+      now,
+    ),
   );
-  if (existing) return existing;
-  const account = await insertPortalAccount(
-    db,
-    { email: normalized, displayName },
-    now,
-  );
-  await linkEmail(db, account.id, normalized, now);
-  return account;
 }
 
 /** The issuer-less key every portal identity carried before I-01 (migrations/0059). */
@@ -190,16 +204,12 @@ export function portalIdentityIssuerKey(issuer: string): string {
 }
 
 /**
- * Re-key pre-I-01 portal identities from the literal `"oidc"` to the platform issuer
- * (S-16 G14, migrations/0059). D1 SQL cannot read the issuer (a Worker secret), so the backfill
- * runs here, before each portal OIDC sign-in, and must run before the identity lookup or a
- * legacy user would get a second identity row. Idempotent; once no legacy row is left it is a
- * single empty primary-key search. The only writer of the literal was the platform-issuer flow,
- * so the re-key is exact. A pre-I-01 Worker that is still serving or rolled back to keeps writing
- * the literal (migrations/0059 lets it through for that reason); those rows are re-keyed here at
- * the user's next sign-in. `OR IGNORE` leaves a legacy row in place if the issuer-keyed row
- * already exists (possible only when such an older Worker served a user who had already been
- * re-keyed); the lookup then finds the issuer-keyed row, and a duplicate never aborts sign-in.
+ * Re-key pre-I-01 portal identities from the literal `"oidc"` to the platform issuer (S-16 G14,
+ * migrations/0059). The portal table is what a Worker rolled back to before I-05 reads; the
+ * account links the 0068 backfill copied from it are re-keyed by `rekeyLegacyAccountLinks`, which
+ * the portal callback runs right after this. Both must run before the identity lookup, or a
+ * legacy user would get a second account. Idempotent; once no legacy row is left it is a single
+ * empty search. `OR IGNORE` leaves a legacy row in place if the issuer-keyed row already exists.
  */
 export async function rekeyLegacyPortalIdentities(
   db: Db,
@@ -212,77 +222,66 @@ export async function rekeyLegacyPortalIdentities(
   );
 }
 
+/**
+ * The account a platform-IdP sign-in belongs to: a thin wrapper over `signIn` (the portal
+ * callback calls `signIn` itself). Throws on a join offer: an unknown identity whose verified
+ * email another account already uses is never attached to it silently (owner, 2026-10-04).
+ */
 export async function getOrCreateAccountByIdentity(
   db: Db,
   input: {
     /** The issuer URL that minted `subject` (migrations/0059), never a provider kind. */
     provider: string;
     subject: string;
+    /** Pass only an email the IdP marked verified. */
     email?: string | null;
     displayName?: string | null;
-    /** The IdP's `groups` claim (PX-W10, migrations/0068): what Discover evaluates a product's
-     *  `groupRoleMap` against. Omitted = not asserted, stored as NULL ("not known"). */
+    /** The IdP's `groups` claim (PX-W10): what Discover evaluates a product's `groupRoleMap`
+     *  against. Omitted = not asserted, stored as NULL ("not known"). */
     groups?: readonly string[];
   },
   now: number,
 ): Promise<PortalAccountRow> {
-  const groupsJson = input.groups ? JSON.stringify(input.groups) : null;
-  const existing = await db.first<PortalAccountRow>(
-    `SELECT a.* FROM portal_account_identities i
-      JOIN portal_accounts a ON a.id = i.account_id
-     WHERE i.provider = ? AND i.subject = ?`,
-    input.provider,
-    input.subject,
-  );
-  if (existing) {
-    await db.run(
-      `UPDATE portal_account_identities
-          SET email = ?, display_name = ?, groups_json = ?, last_seen_at = ?
-        WHERE provider = ? AND subject = ?`,
-      input.email ? normalizeEmail(input.email) : null,
-      input.displayName ?? null,
-      groupsJson,
-      now,
-      input.provider,
-      input.subject,
-    );
-    if (input.email) await linkEmail(db, existing.id, input.email, now);
-    return existing;
-  }
-
-  const emailAccount = input.email
-    ? await db.first<PortalAccountRow>(
-        `SELECT a.* FROM portal_account_emails e
-          JOIN portal_accounts a ON a.id = e.account_id
-         WHERE e.email = ?`,
-        normalizeEmail(input.email),
-      )
-    : null;
-  const account =
-    emailAccount ??
-    (await insertPortalAccount(
-      db,
-      { email: input.email ?? null, displayName: input.displayName ?? null },
-      now,
-    ));
-  await db.run(
-    `INSERT INTO portal_account_identities
-       (provider, subject, account_id, email, display_name, groups_json, created_at,
-        last_seen_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    input.provider,
-    input.subject,
-    account.id,
-    input.email ? normalizeEmail(input.email) : null,
-    input.displayName ?? null,
-    groupsJson,
-    now,
+  const result = await signIn(
+    db,
+    {
+      issuerKey: input.provider,
+      subject: input.subject,
+      kind: "oidc",
+      email: input.email ?? null,
+      emailVerified: Boolean(input.email),
+      displayName: input.displayName ?? null,
+    },
     now,
   );
-  if (input.email) await linkEmail(db, account.id, input.email, now);
+  const account = signedInAccount(result);
+  if (result.status === "signed_in")
+    await recordLinkGroups(db, result.linkId, input.groups);
   return account;
 }
 
+/**
+ * Store the `groups` claim the platform IdP asserted at this sign-in on the account link it
+ * signed in through (PX-W10, migrations/0071). Absent claim = NULL ("not known", fail closed):
+ * an account so marked sees no group offers until it next signs in, never a wrong one.
+ */
+export async function recordLinkGroups(
+  db: Db,
+  linkId: string,
+  groups: readonly string[] | undefined,
+): Promise<void> {
+  await db.run(
+    "UPDATE account_links SET groups_json = ? WHERE id = ?",
+    groups ? JSON.stringify(groups) : null,
+    linkId,
+  );
+}
+
+/**
+ * Add an address the caller has just proved to the account as a verified email sign-in method.
+ * A trusted primitive (no step-up): the interactive path is `linkIdentity`. An address that is
+ * already another account's method is left where it is (one link, one account).
+ */
 export async function linkEmail(
   db: Db,
   accountId: string,
@@ -290,50 +289,55 @@ export async function linkEmail(
   now: number,
 ): Promise<void> {
   const normalized = normalizeEmail(email);
-  await db.run(
-    `INSERT INTO portal_account_emails (email, account_id, verified_at, created_at)
-     VALUES (?, ?, ?, ?)
-     ON CONFLICT(email) DO UPDATE SET
-       verified_at = excluded.verified_at`,
-    normalized,
+  await insertLink(
+    db,
     accountId,
-    now,
+    {
+      issuerKey: EMAIL_ISSUER,
+      tenantScope: "",
+      subject: normalized,
+      kind: "email",
+      email: normalized,
+      emailVerified: true,
+      displayName: null,
+      amr: null,
+    },
     now,
   );
   await db.run(
-    `UPDATE portal_accounts
+    `UPDATE accounts
         SET primary_email = COALESCE(primary_email, ?),
+            primary_email_verified_at = CASE WHEN primary_email IS NULL OR primary_email = ?
+              THEN COALESCE(primary_email_verified_at, ?) ELSE primary_email_verified_at END,
             display_name = COALESCE(display_name, ?),
             modified_at = ?
       WHERE id = ?`,
     normalized,
     normalized,
     now,
+    normalized,
+    now,
     accountId,
   );
 }
 
+/**
+ * Attach a FLOATING licence to the account (first attach only; I-05's owner pointer). A licence
+ * another account owns is left alone: an owned licence never moves this way. Creates the
+ * (account, product) pairwise subject. `source` is kept for the call sites' readability.
+ */
 export async function linkLicense(
   db: Db,
   accountId: string,
   product: string,
   licenseId: string,
-  source: "email" | "oidc" | "license-key" | "admin",
+  _source: "email" | "oidc" | "license-key" | "admin",
   now: number,
 ): Promise<void> {
-  await db.run(
-    `INSERT INTO portal_license_links
-       (account_id, product, license_id, source, created_at, last_seen_at)
-     VALUES (?, ?, ?, ?, ?, ?)
-     ON CONFLICT(account_id, product, license_id) DO UPDATE SET
-       last_seen_at = excluded.last_seen_at`,
-    accountId,
-    product,
-    licenseId,
-    source,
-    now,
-    now,
-  );
+  await attachLicenseAccount(db, product, licenseId, accountId, now);
+  if ((await licenseAccountId(db, product, licenseId)) === accountId) {
+    await subjectFor(db, accountId, product, now);
+  }
 }
 
 /**
@@ -353,104 +357,77 @@ const AUTO_LINK_ENABLED_SQL = `
   ) = 1`;
 
 /**
- * Every address the portal verified for this account (a magic link it delivered, or a platform
- * IdP's `email_verified: true` claim). Security notices go to all of them (PORTAL.md §6.3).
+ * Every address the account verified (a delivered magic link, a platform IdP's
+ * `email_verified: true` claim, a verified primary email). Security notices go to all of them
+ * (PORTAL.md §6.3).
  */
 export async function listVerifiedAccountEmails(
   db: Db,
   accountId: string,
 ): Promise<string[]> {
-  const rows = await db.all<{ email: string }>(
-    "SELECT email FROM portal_account_emails WHERE account_id = ? AND verified_at > 0 ORDER BY created_at, email",
-    accountId,
-  );
-  return rows.map((row) => row.email);
+  return verifiedAccountEmails(db, accountId);
 }
 
 /**
- * Fold every license this account can prove it owns into `portal_license_links`.
+ * Attach every FLOATING licence this account can prove it owns (I-05: the owner pointer replaced
+ * `portal_license_links`). An owned licence is never touched, whoever owns it.
  *
- * Cross-product visibility is intentional (one portal account, every product the person holds
- * a license for). What was NOT intentional was the join being a bare, unqualified equality on
- * a tenant-supplied string:
+ * Cross-product visibility is intentional (one account, every product the person holds a licence
+ * for). What was NOT intentional was the join being a bare, unqualified equality on a
+ * tenant-supplied string:
  *
  * - **R5-01** — `WHERE lower(email) = ?` with no product predicate and no verification
- *   requirement. Any tenant running its own IdP could assert `email: ceo@victim-corp.example`
- *   (product-side `mapClaims` does not check `email_verified`), and the victim's next portal
- *   request wrote the attacker's license — with attacker-controlled `name` and branding —
- *   into the victim's account, along with `hasLinkedProductLicense` for the attacker's product.
- *   R5 proved this is an INJECTION primitive, not an extraction one, so the fix belongs on the
- *   write side: only emails the PORTAL itself verified may drive a link, and only into products
- *   that opted into auto-linking.
+ *   requirement. Any tenant running its own IdP could assert `email: ceo@victim-corp.example`,
+ *   and the victim's next portal request wrote the attacker's license into the victim's account.
+ *   The fix belongs on the write side: only emails the PORTAL itself verified may drive an
+ *   attach, and only into products that opted into auto-linking.
  * - **R5-02** — `WHERE sub = ?` with no product AND no issuer qualifier, so subjects minted by
- *   N mutually-untrusted IdPs shared one flat namespace and `evilco` could mint a license with
- *   `sub = "1000"` to collide with a platform-IdP subject. The left side of this join is ALWAYS
- *   a platform-IdP subject (`portal/auth.ts` keys it by the issuer from `platformOidcConfig`,
- *   migrations/0059), so the right side must be restricted to licenses whose product also
- *   authenticates against the platform issuer. That is the issuer qualifier, derived from
- *   `oidc_config` rather than from a new denormalised column the product-OIDC lane would have
- *   to populate.
+ *   N mutually-untrusted IdPs shared one flat namespace. The left side of this join is ALWAYS a
+ *   platform-IdP subject (the account's `oidc` links, keyed by the platform issuer), so the right
+ *   side is restricted to licences whose product also authenticates against the platform issuer.
+ *   A licence's `sub` therefore joins an account only through an existing link (plans/I-04.md
+ *   §6.1); legacy `sub`-only licences of custom-issuer products stay floating (§8 Q6).
  *
- * R11-08: both queries were also full `SCAN licenses` — across every tenant, twice per portal
- * request. `idx_licenses_email_lower` and `idx_licenses_sub_global` (0015) make them SEARCHes.
+ * R11-08: both queries are index SEARCHes (`idx_licenses_email_lower`, `idx_licenses_sub_global`).
  */
 export async function syncAccountLicenseLinks(
   db: Db,
   accountId: string,
   now: number,
 ): Promise<void> {
-  // Only addresses the portal itself verified — a magic link it delivered, or an
-  // `email_verified: true` claim from the PLATFORM IdP (portal/auth.ts:286).
-  const emails = await db.all<{ email: string }>(
-    "SELECT email FROM portal_account_emails WHERE account_id = ? AND verified_at > 0",
-    accountId,
-  );
-  for (const row of emails) {
-    const matches = await db.all<{ product: string; id: string }>(
-      `SELECT l.product AS product, l.id AS id
-         FROM licenses l
-         LEFT JOIN portal_product_settings s ON s.product = l.product
-         LEFT JOIN oidc_config o ON o.product = l.product
-        WHERE lower(l.email) = ? AND ${AUTO_LINK_ENABLED_SQL}`,
-      row.email,
+  const matches: Array<{ product: string; id: string }> = [];
+  for (const email of await verifiedAccountEmails(db, accountId)) {
+    matches.push(
+      ...(await db.all<{ product: string; id: string }>(
+        `SELECT l.product AS product, l.id AS id
+           FROM licenses l
+           LEFT JOIN portal_product_settings s ON s.product = l.product
+           LEFT JOIN oidc_config o ON o.product = l.product
+          WHERE lower(l.email) = ? AND l.account_id IS NULL AND ${AUTO_LINK_ENABLED_SQL}`,
+        email,
+      )),
     );
-    for (const license of matches) {
-      await linkLicense(
-        db,
-        accountId,
-        license.product,
-        license.id,
-        "email",
-        now,
-      );
-    }
   }
-
-  const identities = await db.all<{ subject: string }>(
-    "SELECT subject FROM portal_account_identities WHERE account_id = ?",
+  const subjects = await db.all<{ subject: string }>(
+    "SELECT subject FROM account_links WHERE account_id = ? AND kind = 'oidc'",
     accountId,
   );
-  for (const identity of identities) {
-    const matches = await db.all<{ product: string; id: string }>(
-      `SELECT l.product AS product, l.id AS id
-         FROM licenses l
-         LEFT JOIN portal_product_settings s ON s.product = l.product
-         LEFT JOIN oidc_config o ON o.product = l.product
-        WHERE l.sub = ?
-          AND COALESCE(o.provider, 'platform') = 'platform'
-          AND ${AUTO_LINK_ENABLED_SQL}`,
-      identity.subject,
+  for (const link of subjects) {
+    matches.push(
+      ...(await db.all<{ product: string; id: string }>(
+        `SELECT l.product AS product, l.id AS id
+           FROM licenses l
+           LEFT JOIN portal_product_settings s ON s.product = l.product
+           LEFT JOIN oidc_config o ON o.product = l.product
+          WHERE l.sub = ? AND l.account_id IS NULL
+            AND COALESCE(o.provider, 'platform') = 'platform'
+            AND ${AUTO_LINK_ENABLED_SQL}`,
+        link.subject,
+      )),
     );
-    for (const license of matches) {
-      await linkLicense(
-        db,
-        accountId,
-        license.product,
-        license.id,
-        "oidc",
-        now,
-      );
-    }
+  }
+  for (const license of matches) {
+    await linkLicense(db, accountId, license.product, license.id, "email", now);
   }
 }
 
@@ -460,10 +437,9 @@ export async function listPortalLicenses(
 ): Promise<PortalLicenseRow[]> {
   return db.all<PortalLicenseRow>(
     `SELECT l.*, p.name AS product_name, p.branding_json AS product_branding_json
-       FROM portal_license_links link
-       JOIN licenses l ON l.product = link.product AND l.id = link.license_id
+       FROM licenses l
        JOIN products p ON p.slug = l.product
-      WHERE link.account_id = ?
+      WHERE l.account_id = ?
         AND COALESCE(p.status, 'active') != 'deleted'
       ORDER BY p.name ASC, l.activated_at DESC, l.id DESC`,
     accountId,
@@ -478,10 +454,9 @@ export async function getPortalLicense(
 ): Promise<PortalLicenseRow | null> {
   return db.first<PortalLicenseRow>(
     `SELECT l.*, p.name AS product_name, p.branding_json AS product_branding_json
-       FROM portal_license_links link
-       JOIN licenses l ON l.product = link.product AND l.id = link.license_id
+       FROM licenses l
        JOIN products p ON p.slug = l.product
-      WHERE link.account_id = ? AND link.product = ? AND link.license_id = ?`,
+      WHERE l.account_id = ? AND l.product = ? AND l.id = ?`,
     accountId,
     product,
     licenseId,
@@ -535,7 +510,7 @@ export async function getPortalProductSettings(
       // Both PX-W5 switches default OFF, exactly as the migration's column defaults do.
       key_reissue_enabled: 0,
       claim_by_key: 0,
-      // Discover defaults ON, as the migration's column default does (migrations/0068).
+      // Discover defaults ON, as the migration's column default does (migrations/0071).
       discover_enabled: 1,
       branding_json: null,
       created_at: 0,
@@ -1052,67 +1027,23 @@ export async function prunePortalAudit(
 }
 
 /**
- * Erase a portal account and everything that identifies the person behind it.
+ * Erase an account and everything that identifies the person behind it (R11-09; I-05 moved the
+ * work to `deleteAccount` in `accounts/deletion.ts`, which also runs the registered stores'
+ * deletion hooks, clears every device binding, detaches the licences and emits `subject.deleted`).
  *
- * R11-09 called right-to-erasure "structurally unimplementable", and the sharpest edge was that
- * `portal_account_emails.email` is the PRIMARY KEY: there is nowhere to record "this address was
- * erased" without re-storing the address, so erasure can only mean *deleting the row*. That is
- * what happens here, and it is the correct answer rather than a compromise — a tombstone keyed
- * on the address would retain exactly the datum the account holder asked to have removed.
- *
- * What survives is deliberately non-identifying:
- *
- * - `licenses` are the PRODUCT's records, not the portal account's. A portal account is a *view*
- *   onto licences that already existed; deleting it must unlink, not destroy a tenant's customer
- *   record. Per-product erasure is `deleteProduct`'s PII scrub, and a per-subject erase endpoint
- *   remains reported.
- * - one final `portal.account.delete` row in `portal_audit`, carrying the opaque `acct_…`
- *   surrogate and no email, name or product. The account row it pointed at is gone, so the id no
- *   longer resolves to a person; what remains is a dated receipt that an erasure happened, which
- *   is the one record an erasure must not delete.
- *
- * The three child deletes are also implied by `ON DELETE CASCADE` (0017). They are still issued
- * explicitly and FIRST, in one batch with the parent delete, so the erasure is atomic and does
- * not depend on `PRAGMA foreign_keys` being on in whichever engine is underneath.
+ * `licenses` are the PRODUCT's records, not the account's: deleting the account detaches them
+ * (they become floating) and never destroys a tenant's customer record. What survives is
+ * deliberately non-identifying: an id-only tombstone, and one final `portal.account.delete` row in
+ * `portal_audit` carrying the opaque `acct_…` surrogate and no email, name or product.
  */
 export async function deletePortalAccount(
   db: Db,
   accountId: string,
   now: number,
+  env: Env,
+  origin = "",
 ): Promise<void> {
-  await db.batch([
-    {
-      sql: "DELETE FROM portal_account_emails WHERE account_id = ?",
-      params: [accountId],
-    },
-    {
-      sql: "DELETE FROM portal_account_identities WHERE account_id = ?",
-      params: [accountId],
-    },
-    {
-      sql: "DELETE FROM portal_license_links WHERE account_id = ?",
-      params: [accountId],
-    },
-    {
-      sql: "DELETE FROM portal_audit WHERE account_id = ?",
-      params: [accountId],
-    },
-    { sql: "DELETE FROM portal_accounts WHERE id = ?", params: [accountId] },
-    // F-21: every registry token this account minted, on every product, stops now.
-    stmtRevokeAccountRegistryTokens(accountId, now),
-    {
-      sql: `INSERT INTO portal_audit
-              (id, account_id, at, action, product, target_kind, target_id, summary)
-            VALUES (?, ?, ?, 'portal.account.delete', NULL, 'account', ?, ?)`,
-      params: [
-        randomId("paud"),
-        accountId,
-        now,
-        accountId,
-        "Portal account erased at the account holder's request",
-      ],
-    },
-  ]);
+  await deleteAccount({ db, env, now, origin }, accountId);
 }
 
 export async function portalAudit(
@@ -1148,9 +1079,9 @@ export async function listLinkedProducts(
 ): Promise<ProductRow[]> {
   return db.all<ProductRow>(
     `SELECT DISTINCT p.*
-       FROM portal_license_links link
-       JOIN products p ON p.slug = link.product
-      WHERE link.account_id = ?
+       FROM licenses l
+       JOIN products p ON p.slug = l.product
+      WHERE l.account_id = ?
         AND COALESCE(p.status, 'active') != 'deleted'
       ORDER BY p.name`,
     accountId,
@@ -1158,9 +1089,9 @@ export async function listLinkedProducts(
 }
 
 /**
- * Is this licence linked to any portal account OTHER than `accountId`? (PX-W5, the S-16 claim
- * rule "an owned licence never moves by its key".) Answers a boolean and nothing else: the
- * activate preview may say THAT a licence is held elsewhere, never by whom.
+ * Is this licence owned by an account OTHER than `accountId`? (The S-16 claim rule "an owned
+ * licence never moves by its key".) Answers a boolean and nothing else: the activate preview may
+ * say THAT a licence is held elsewhere, never by whom.
  */
 export async function licenseLinkedElsewhere(
   db: Db,
@@ -1168,15 +1099,8 @@ export async function licenseLinkedElsewhere(
   product: string,
   licenseId: string,
 ): Promise<boolean> {
-  const row = await db.first<{ one: number }>(
-    `SELECT 1 AS one FROM portal_license_links
-      WHERE product = ? AND license_id = ? AND account_id != ?
-      LIMIT 1`,
-    product,
-    licenseId,
-    accountId,
-  );
-  return row !== null;
+  const owner = await licenseAccountId(db, product, licenseId);
+  return owner !== null && owner !== accountId;
 }
 
 /** Has this account verified `email` (a magic link the portal delivered, or a verified IdP claim)? */
@@ -1185,13 +1109,9 @@ export async function accountHasVerifiedEmail(
   accountId: string,
   email: string,
 ): Promise<boolean> {
-  const row = await db.first<{ one: number }>(
-    `SELECT 1 AS one FROM portal_account_emails
-      WHERE account_id = ? AND email = ? AND verified_at > 0`,
-    accountId,
+  return (await verifiedAccountEmails(db, accountId)).includes(
     normalizeEmail(email),
   );
-  return row !== null;
 }
 
 /** The account's identity at the platform IdP, as its last portal sign-in recorded it (PX-W10). */
@@ -1199,7 +1119,7 @@ export interface PortalPlatformIdentity {
   subject: string;
   email: string | null;
   displayName: string | null;
-  /** `null` = not known (a row from before migrations/0068, or an IdP that sent no claim). */
+  /** `null` = not known (a row from before migrations/0071, or an IdP that sent no claim). */
   groups: string[] | null;
 }
 
@@ -1220,9 +1140,11 @@ export async function getPlatformIdentity(
     display_name: string | null;
     groups_json: string | null;
   }>(
-    `SELECT subject, email, display_name, groups_json FROM portal_account_identities
-      WHERE account_id = ? AND provider = ?
-      ORDER BY last_seen_at DESC, subject ASC
+    `SELECT subject, CASE WHEN email_verified = 1 THEN email END AS email, display_name,
+            groups_json
+       FROM account_links
+      WHERE account_id = ? AND issuer_key = ? AND tenant_scope = '' AND kind = 'oidc'
+      ORDER BY last_used_at DESC, subject ASC
       LIMIT 1`,
     accountId,
     issuerKey,
@@ -1277,7 +1199,7 @@ export async function accountHoldsProduct(
   product: string,
 ): Promise<boolean> {
   const row = await db.first<{ one: number }>(
-    `SELECT 1 AS one FROM portal_license_links
+    `SELECT 1 AS one FROM licenses
       WHERE account_id = ? AND product = ? LIMIT 1`,
     accountId,
     product,

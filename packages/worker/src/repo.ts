@@ -99,6 +99,10 @@ export interface LicenseRow {
   origin?: string;
   /** The hwid an enrolled license is bound to; NULL for every other origin. */
   enroll_hwid?: string | null;
+  /** I-05: the Polaris Key account the licence is attached to; NULL = floating. INTERNAL — the
+   *  global account id never reaches a developer-facing response, so every shaper names the
+   *  columns it emits. Written only through `core/accountSubjects.ts`. */
+  account_id?: string | null;
   modified_by: string | null;
   modified_at: number;
 }
@@ -148,7 +152,17 @@ export interface DeviceRow {
   attested_at?: number | null;
   /** The last attestation verdict summary (never a raw token or attestation object). */
   attestation_json?: string | null;
+  /** I-05 — the pairwise subject signed in on this device (S-17's binding), never the account
+   *  id. Written only by `core/accountSubjects.ts` (`setDeviceSubject`, the clearing hook) and by
+   *  `bindDevice`/`registerDeviceBinding` for a sign-in; `upsertDevice` preserves it. */
+  subject?: string | null;
+  /** I-05 — how the row was last bound: key | enroll | register | signin | store. NULL on rows
+   *  written before migrations/0068_d. `upsertDevice` keeps the stored value when omitted. */
+  bound_by?: DeviceBoundBy | null;
 }
+
+/** I-05 (plans/I-04.md §6.1): how a device row was last bound. */
+export type DeviceBoundBy = "key" | "enroll" | "register" | "signin" | "store";
 
 export interface ProfileRow {
   product: string;
@@ -1280,16 +1294,22 @@ export async function releaseDeviceSeat(
 }
 
 export async function upsertDevice(db: Db, row: DeviceRow): Promise<void> {
+  // I-05: `subject` is written on INSERT only (a first-ever bind through a sign-in) and otherwise
+  // preserved, like `seat_no`: the binding changes only through `core/accountSubjects.ts`, so a
+  // metadata touch or a token rotation can never set or drop it. `bound_by` keeps the stored
+  // value unless the caller names one (a fresh bind does; a touch does not).
   await db.run(
     `INSERT INTO devices (product, device_id, customer_id, license_id, status, first_seen, last_seen, ua, label,
-       overrides_json, reported_json, token_hash, platform, arch, app_version, sdk_name, sdk_version)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       overrides_json, reported_json, token_hash, platform, arch, app_version, sdk_name, sdk_version,
+       subject, bound_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(product, device_id) DO UPDATE SET
        customer_id = excluded.customer_id, license_id = excluded.license_id,
        status = excluded.status, last_seen = excluded.last_seen,
        ua = excluded.ua, token_hash = excluded.token_hash, platform = excluded.platform,
        arch = excluded.arch, app_version = excluded.app_version, sdk_name = excluded.sdk_name,
-       sdk_version = excluded.sdk_version`,
+       sdk_version = excluded.sdk_version,
+       bound_by = COALESCE(excluded.bound_by, devices.bound_by)`,
     row.product,
     row.device_id,
     row.customer_id,
@@ -1307,6 +1327,8 @@ export async function upsertDevice(db: Db, row: DeviceRow): Promise<void> {
     row.app_version ?? null,
     row.sdk_name ?? null,
     row.sdk_version ?? null,
+    row.subject ?? null,
+    row.bound_by ?? null,
   );
 }
 

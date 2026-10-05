@@ -55,6 +55,50 @@ There is no person record today: "the user" is four columns on `licenses` and a 
 - No account row exists until a credential is verified ([S-16 §5.5](../../notes/S-16-identity-service.md#55-privacy) retention).
 - Store grants on Steam sign-in go through a Core descriptor hook (rule 6), owned by I-14.
 
+## Corrections from the code (implementation, 2026-10-04)
+
+Where this brief and the code disagreed, the code was the fact:
+
+- **Rule 9 does not apply.** I-05 adds no `.pkey/` validator rule: `claimByKey` is still read
+  from `portal_product_settings.claim_by_key` (PX-W5) until I-09's manifest `identity:` block
+  (plans/I-04.md §3, owned by I-09). No mutation-table entry or schema change was needed.
+- **Index on the owner pointer** is `idx_licenses_account (account_id, product)` rather than
+  the plan's `(product, account_id)`: the Library and deletion read by account across products,
+  and the same index serves the (account, product) lookups.
+- **Portal Activate License** now answers `license_owned` (403) where PX-W5 answered
+  `owned_elsewhere` (409), as plans/I-04.md §2.1 and §4 require; `errors.json` replaces the
+  entry and the portal SPA follows. `email_mismatch` stays on the portal: `license_email_bound`
+  is I-09's wire code (§4), registered when its device attach emits it.
+- **Sessions** stay the portal's signed cookie; `account_sessions` is created as a shape for
+  I-07/I-11. "Sessions move on merge" is the tombstone: a cookie of the absorbed account resolves
+  to the survivor for 30 days (`resolveAccount`).
+- **The join offer** has no UI until I-07: the portal callback answers a 409 page that names
+  nobody, and `signIn` writes nothing. Previously the portal attached a new OIDC identity to an
+  account by verified email match; that is gone (owner: never by email match).
+- **The operator report** for §8 Q1 is the platform audit log (`account.license.superseded`,
+  written by `settleOwnershipConflicts` from the nightly job), which also emails the losing
+  account and revokes its registry tokens for that licence. Every path that clears or moves a
+  licence's owner (detach, relink, per-product removal with detach, deletion) first ends EVERY
+  account's portal link to that licence (`endLicenseLinks`), settling a not-yet-settled loser
+  inline, so the scheduled catch-up can never re-point a floating licence at that loser (review
+  fix round 1).
+- **The down script** lives at `packages/worker/scripts/rollback/0068_accounts.down.sql` (outside
+  `migrations/`, which wrangler applies whole). Removals made under I-05 are mirrored into
+  `portal_*` when they happen (a disable too), so a rollback never resurrects them.
+- **The join offer page** says plainly that adding a sign-in method is not available yet (it lands
+  with I-07's card and I-11's account page); until then an existing user who arrives through a new
+  identity signs in with the method they used before, or asks the product's support.
+- **Merge ordering (residual).** `mergeAccounts` runs the registered stores' merge hooks
+  (`runSubjectMerge`) before, and outside, the atomic D1 batch, as the brief allows (re-key while
+  both subjects still resolve). If the batch then fails, the stores are already keyed to the
+  survivor's subject while D1 still holds two accounts; the hooks must therefore be idempotent so a
+  retried merge replays them harmlessly. No store registers yet; the `SubjectStore.merge` contract
+  now says so, and U-03 (Config) and U-05 (Cloud Sync) must honour it. The batch's raw `UPDATE devices SET subject` leaves the KV token-record `subject` mirror
+  stale until the next activation; D1 is the authority, so this is cosmetic.
+- **The product-OIDC device flow** (`sub`-keyed licences) is unchanged apart from
+  `bound_by = 'signin'`: it attaches no account (§8 Q6) and sets no subject; passthrough sign-in
+  (I-08) does.
+
 ## Steps
 
 1. Migration and tables with the production-shaped rehearsal and a down path.

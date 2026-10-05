@@ -19,6 +19,7 @@ import type {
 import { handleLicenseRoutes } from "./routes.js";
 import { handleLicenseAdmin } from "./admin/index.js";
 import { applyStoreGrant } from "./storeGrants.js";
+import { licenseProvenance } from "./provenance.js";
 
 export const licenseService: ServiceDescriptor = {
   slug: "license",
@@ -39,6 +40,8 @@ export const licenseService: ServiceDescriptor = {
   }),
   /** P6-01: a verified store purchase's flag on the buyer's licence (`storeGrants.ts`). */
   applyStoreGrant,
+  /** PX-W6 (G8): where each licence came from — store grants and origin (`provenance.ts`). */
+  licenseProvenance,
 };
 
 // ── Compat surface for the not-yet-carved modules ────────────────────────────────────────────

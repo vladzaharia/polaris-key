@@ -939,7 +939,11 @@ export async function authorizeAndMint(
 ): Promise<string> {
   const row = await getLicense(db, product.slug, licenseId);
   if (!row) throw new Error("license not found");
-  const result = await authorizeDevice(env, db, product, row, deviceId, now);
+  // I-05: bound by a sign-in. The product-OIDC licence is `sub`-keyed and attached to no account
+  // (plans/I-04.md §8 Q6), so no pairwise subject is set here; passthrough sign-in (I-08) does.
+  const result = await authorizeDevice(env, db, product, row, deviceId, now, {
+    boundBy: "signin",
+  });
   if ("error" in result) throw new Error(result.error);
   return result.token;
 }
