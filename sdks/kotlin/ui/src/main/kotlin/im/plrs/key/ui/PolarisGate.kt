@@ -102,16 +102,28 @@ public data class PolarisActivationUi(
      * Never an auth failure: the screen only offers it.
      */
     val manageUrl: String? = null,
+    /**
+     * The same link without the key, which the Android TV QR code carries: a code on a shared
+     * screen can be scanned by anyone in the room, so it never holds the bearer key (the phone's
+     * `/activate` page asks for it instead). See docs/security/THREAT-MODEL.md.
+     */
+    val manageQrUrl: String? = null,
 )
 
 /**
  * The link the gate offers for a refused activation (PX-W8): the served `manageUrl` with the key
- * fragment (on an `/activate` link only) and [returnUrl] added, or null when there is none.
+ * fragment (on an `/activate` link only, and never when [forQr]) and [returnUrl] added, or null
+ * when there is none.
  */
-public fun offeredManageUrl(result: ActivationResult, key: String, returnUrl: String? = null): String? {
+public fun offeredManageUrl(
+    result: ActivationResult,
+    key: String,
+    returnUrl: String? = null,
+    forQr: Boolean = false,
+): String? {
     val served = (result as? ActivationResult.DeviceLimit)?.manageUrl ?: return null
     if (!ManageLink.isValid(served)) return null
-    val withKey = ManageLink.withKey(served, key)
+    val withKey = if (forQr) served else ManageLink.withKey(served, key)
     return if (returnUrl.isNullOrEmpty()) withKey else ManageLink.withReturn(withKey, returnUrl)
 }
 
@@ -190,7 +202,7 @@ public class PolarisGateState(
     }
 
     public fun onKeyChange(key: String) {
-        _activation.update { it.copy(key = key, error = null, manageUrl = null) }
+        _activation.update { it.copy(key = key, error = null, manageUrl = null, manageQrUrl = null) }
     }
 
     /** Activate with the key in the form. */
@@ -202,13 +214,18 @@ public class PolarisGateState(
         }
         if (_activation.value.busy) return
         scope.launch {
-            _activation.update { it.copy(busy = true, error = null, manageUrl = null) }
+            _activation.update { it.copy(busy = true, error = null, manageUrl = null, manageQrUrl = null) }
             val result = guarded { actions.activate(key) } ?: ActivationResult.Error("activation threw")
             if (result is ActivationResult.Ok) {
                 _activation.value = PolarisActivationUi()
             } else {
                 _activation.update {
-                    it.copy(busy = false, error = PolarisActivationError.Refused(result), manageUrl = offeredManageUrl(result, key, returnUrl))
+                    it.copy(
+                        busy = false,
+                        error = PolarisActivationError.Refused(result),
+                        manageUrl = offeredManageUrl(result, key, returnUrl),
+                        manageQrUrl = offeredManageUrl(result, key, returnUrl, forQr = true),
+                    )
                 }
             }
             reload()
@@ -392,7 +409,8 @@ public fun PolarisActivationScreen(
         } else {
             PolarisPrimaryButton(text = if (ui.busy) copy.activating else copy.activate, onClick = onActivate, busy = ui.busy)
         }
-        val manage = ui.manageUrl
+        // The QR code carries the key-free link: a code on a shared screen never holds the key.
+        val manage = if (manageAsQr) ui.manageQrUrl else ui.manageUrl
         if (manage != null) {
             Spacer(Modifier.height(16.dp))
             if (manageAsQr) {

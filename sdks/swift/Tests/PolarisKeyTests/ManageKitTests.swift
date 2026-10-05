@@ -34,6 +34,13 @@
                     activate, key: "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV", returnURL: "myapp://done"),
                 "https://key.plrs.im/activate?product=djdl&next=free-device&return=myapp%3A%2F%2Fdone#key=pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV"
             )
+            // A QR code on a shared screen never carries the key.
+            XCTAssertEqual(
+                PolarisGateModel.offeredManageURL(
+                    activate, key: "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV", returnURL: "myapp://done",
+                    presentation: .qr),
+                "https://key.plrs.im/activate?product=djdl&next=free-device&return=myapp%3A%2F%2Fdone"
+            )
             let free = "https://key.plrs.im/#/p/djdl/free-device?license=lic_1"
             XCTAssertEqual(
                 PolarisGateModel.offeredManageURL(free, key: "pkey_x", returnURL: nil), free)

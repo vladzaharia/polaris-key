@@ -127,7 +127,8 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
             PolarisActivationUi(
                 key = "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV",
                 error = PolarisActivationError.Refused(ActivationResult.DeviceLimit(1, 1, SAMPLE_MANAGE_URL)),
-                manageUrl = SAMPLE_MANAGE_URL,
+                manageUrl = "$SAMPLE_MANAGE_URL#key=pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV",
+                manageQrUrl = SAMPLE_MANAGE_URL,
             ),
             manageAsQr = true,
         )

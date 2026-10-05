@@ -171,7 +171,9 @@ if (r is ActivationResult.DeviceLimit && r.manageUrl != null) {
 ```
 
 The Compose gate (`:ui`) does this for you: pass `returnUrl` to `PolarisGateState` and the
-activation screen shows **Free up a device** (a QR code on Android TV).
+activation screen shows **Free up a device** (a QR code on Android TV). The QR code carries
+`PolarisActivationUi.manageQrUrl`, the link without the key: anyone who can see a TV can scan it,
+so the phone's page asks for the key. Leave `withKey` out of any QR you draw yourself.
 
 ## Update and packs
 

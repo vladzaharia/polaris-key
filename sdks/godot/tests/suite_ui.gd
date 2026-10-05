@@ -505,6 +505,7 @@ func _controllers(t: PKeyTestContext) -> void:
 	limited.manage_url = "https://key.plrs.im/activate?product=djdl&next=free-device"
 	var link := PKeyActivationController.manage_link(limited, "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV", "mygame://done")
 	t.check("manage: the offered link", link == "https://key.plrs.im/activate?product=djdl&next=free-device&return=mygame%3A%2F%2Fdone#key=pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV", link)
+	t.check("manage: a QR link never carries the key", PKeyActivationController.manage_link(limited, "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV", "mygame://done", true) == "https://key.plrs.im/activate?product=djdl&next=free-device&return=mygame%3A%2F%2Fdone")
 	limited.manage_url = "https://key.plrs.im/#/p/djdl/free-device?license=lic_1"
 	t.check("manage: the key never rides on a free-device link", PKeyActivationController.manage_link(limited, "pkey_x") == "https://key.plrs.im/#/p/djdl/free-device?license=lic_1")
 	limited.manage_url = null

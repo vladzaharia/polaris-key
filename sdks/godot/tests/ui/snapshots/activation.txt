@@ -111,5 +111,5 @@ Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
 Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
 Stack/Main/OfflineActivation: Button "Offline activation…" [focus 3]
 Stack/Main/Message: Label "This license has reached its device limit (1 of 1 devices)."
-Stack/Main/FreeDeviceQr: PKeyQrRect "https://key.plrs.im/activate?product=djdl&next=free-device&for=Linux%20x86_64&return=mygame%3A%2F%2Factivated#key=pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV"
+Stack/Main/FreeDeviceQr: PKeyQrRect "https://key.plrs.im/activate?product=djdl&next=free-device&for=Linux%20x86_64&return=mygame%3A%2F%2Factivated"
 Stack/Main/FreeDeviceCaption: Label "Scan with your phone to free up a device, then try again."

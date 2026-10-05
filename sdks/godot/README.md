@@ -714,7 +714,9 @@ await PolarisKey.identity.begin_sign_in()        # polls in the background; canc
   `#key=` to an `/activate` link and `PKeyManage.with_return(url, return_url)` adds `return=`.
   `PKeyActivationPanel` shows **Free up a device** under the error: a button that calls
   `OS.shell_open`, or a QR code where a joypad is the only input (a console, or a TV). Set
-  `return_url` on the panel, and `manage_mode` to force `button` or `qr`.
+  `return_url` on the panel, and `manage_mode` to force `button` or `qr`. The QR code never
+  carries the key (anyone who can see the screen can scan it): `manage_link(..., for_qr = true)`
+  leaves `#key=` out, and the phone's page asks for the key. Do the same in a custom QR.
 
 ## Update and release (`PolarisKey.update`, `PolarisKey.release`)
 

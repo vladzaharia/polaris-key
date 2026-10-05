@@ -35,6 +35,13 @@ Corrections to the brief, found against the code (the code is the fact):
 - **`key_entry_limit` is built, not emitted.** `core/manageUrl.ts` builds the `key_entry_limit`
   link (`kind: "key_entry_limit"`), but no route emits that refusal until I-09 ships. The SDKs read
   `manageUrl` from either envelope through one helper, so I-10a and I-10b only wire the outcome.
+- **The transcript has three steps, not the plan §4 list.** `license-device-limit.json` replays a
+  floating licence, an attached licence and the portal turned off. The `session/license` route and
+  the Device A 200 step are not in it: SDKs never call the browser route, so it is covered by the
+  Worker test `packages/worker/test/manageUrl.test.ts` instead.
+- **"When every seat is taken" lives in each SDK README.** `packages/docs` has no per-SDK
+  licensing guides, so the section the plan puts there went into the README of every SDK (Node,
+  Python, React, Swift, Kotlin, Godot).
 
 Decisions taken by the lead (owner delegated; recommended option each time):
 
@@ -50,6 +57,14 @@ Decisions taken by the lead (owner delegated; recommended option each time):
 - **Swift `.deviceLimit` gains `manageURL: String? = nil`.** Construction stays source-compatible;
   an exhaustive two-value pattern binding needs a third pattern (0.x, noted in the Swift README).
 - **UI kits get the functional link only** (lead instruction): the UK programme restyles the kits.
+- **A QR code never carries the key** (review round 1). The key is a bearer credential, and a QR
+  code on a shared TV screen can be scanned by anyone in the room. So the QR form of the link is
+  built without `#key=` (Swift `offeredManageURL(presentation: .qr)`, Kotlin
+  `PolarisActivationUi.manageQrUrl`, Godot `manage_link(..., for_qr = true)`); the phone opens
+  `/activate` with an empty field (plans/PX-W8.md Q2 allows it). The button form keeps `#key=`:
+  same device, same person. Recorded in `docs/security/THREAT-MODEL.md` ("Refusal links") and
+  WIRE-CONTRACT-V4 §5.3 item 5, which also make PX-17 drop `#key=` with `history.replaceState`
+  after reading it, since the browser keeps a fragment in its history.
 
 ## Goal
 

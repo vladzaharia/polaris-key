@@ -172,9 +172,9 @@ func manage_presentation() -> String:
 
 
 ## Render an activation result (also used by snapshots). `key` is the key just tried, which a
-## device-limit link to the portal's activate page carries as a fragment.
+## device-limit button link to the portal's activate page carries as a fragment (a QR code never).
 func show_result(r: PKeyActivationResult, key := "") -> void:
-	manage_url = PKeyActivationController.manage_link(r, key, return_url)
+	manage_url = PKeyActivationController.manage_link(r, key, return_url, manage_presentation() == "qr")
 	var m := PKeyActivationController.message_for(r)
 	message = c().text(m[0], m[1])
 	message_ok = r != null and r.ok

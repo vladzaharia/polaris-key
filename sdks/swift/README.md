@@ -300,7 +300,9 @@ if case .deviceLimit(_, _, let manageURL?) = await client.activate(key: key) {
 ```
 
 `PolarisLoginView` does this for you: pass `returnURL:` to `PolarisGateModel` and the gate shows
-**Free up a device** under the error (a button on macOS and iOS, a QR code on tvOS). Release note:
+**Free up a device** under the error (a button on macOS and iOS, a QR code on tvOS). The tvOS QR
+code never carries the key (anyone who can see the screen can scan it), so the phone's page asks
+for it; leave `withKey` out of any QR you draw yourself. Release note:
 the case gained a third associated value, so an exhaustive `case .deviceLimit(let l, let c)`
 binding needs a third pattern.
 

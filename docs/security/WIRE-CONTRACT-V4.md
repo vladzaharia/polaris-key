@@ -793,7 +793,11 @@ document, claim, header or error code changes, and `PROTOCOL_VERSION` stays 4.
    - `return=<app URL>`: into the query inside the fragment when the fragment holds a portal
      route (`#/…`), otherwise into the URL's query, replacing an earlier `return`. The portal
      accepts it only against the product's declared return targets.
-   - `#key=<key>`, on an `/activate` link only. A fragment never reaches a server or a log.
+   - `#key=<key>`, on an `/activate` link only, and only when the link opens in a browser on the
+     same device (a button). A fragment never reaches a server or a log, but the browser keeps it
+     in history, so the portal page drops it with `history.replaceState` once read (PX-17). A
+     link drawn as a QR code never carries the key: anyone who can see the screen can scan it,
+     so the phone's `/activate` page asks for the key instead (THREAT-MODEL.md, PX-W8).
 6. **Not an auth failure.** A client never wipes state, retries or opens the link on its own; it
    offers the link behind a user action (a button, or a QR code where a joypad is the only input).
 

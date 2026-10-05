@@ -64,11 +64,15 @@ public final class PolarisGateModel: ObservableObject {
 
     /// The link the gate offers for a refused activation: the served `manageUrl` with the key
     /// fragment (only on an `/activate` link) and the app's return added. Pure, for tests.
+    /// A `.qr` presentation never carries the key: a code on a shared TV screen can be scanned by
+    /// anyone in the room, so the phone's `/activate` page asks for the key instead
+    /// (docs/security/THREAT-MODEL.md).
     nonisolated public static func offeredManageURL(
-        _ served: String?, key: String, returnURL: String?
+        _ served: String?, key: String, returnURL: String?,
+        presentation: PolarisManagePresentation = .button
     ) -> String? {
         guard let served, ManageLink.isValid(served) else { return nil }
-        var url = ManageLink.withKey(served, key)
+        var url = presentation == .qr ? served : ManageLink.withKey(served, key)
         if let returnURL, !returnURL.isEmpty { url = ManageLink.withReturn(url, returnURL) }
         return url
     }
@@ -98,7 +102,9 @@ public final class PolarisGateModel: ObservableObject {
             lastError = nil
         case .deviceLimit(_, _, let served):
             lastError = copy.deviceLimitMessage
-            manageURL = Self.offeredManageURL(served, key: key, returnURL: returnURL)
+            manageURL = Self.offeredManageURL(
+                served, key: key, returnURL: returnURL,
+                presentation: PolarisManagePresentation.current)
         case .unauthorized:
             lastError = "That license key wasn't accepted."
         case .fingerprintRequired:

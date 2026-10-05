@@ -26,6 +26,11 @@ class ManageKitTest {
             "$activate&return=myapp%3A%2F%2Fdone#key=pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV",
             offeredManageUrl(ActivationResult.DeviceLimit(1, 1, activate), "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV", "myapp://done"),
         )
+        // A QR code on a shared screen never carries the key: the phone's /activate page asks.
+        assertEquals(
+            "$activate&return=myapp%3A%2F%2Fdone",
+            offeredManageUrl(ActivationResult.DeviceLimit(1, 1, activate), "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV", "myapp://done", forQr = true),
+        )
         val free = "https://key.plrs.im/#/p/djdl/free-device?license=lic_1"
         assertEquals(free, offeredManageUrl(ActivationResult.DeviceLimit(1, 1, free), "pkey_x"))
         assertNull(offeredManageUrl(ActivationResult.DeviceLimit(1, 1), "k"))
@@ -54,7 +59,9 @@ class ManageKitTest {
             "$activate&return=myapp%3A%2F%2Fdone#key=pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV",
             state.activation.value.manageUrl,
         )
+        assertEquals("$activate&return=myapp%3A%2F%2Fdone", state.activation.value.manageQrUrl)
         state.onKeyChange("pkey_other")
         assertNull(state.activation.value.manageUrl)
+        assertNull(state.activation.value.manageQrUrl)
     }
 }
