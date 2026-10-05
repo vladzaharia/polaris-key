@@ -577,7 +577,17 @@ if check.ok:
         "binary", "store", "platform", "code-ready", "blocked": $PKeyUpdatePrompt.show_result(check)
         "none": pass                                     # check.decision["reason"] says why
 var notes := await PolarisKey.release.changelog()        # notes.entries: Array[PKeyChangelogEntry]
+PolarisKey.update.set_channel("beta")                    # persisted; check/decide/feed use it
 ```
+
+**The player's channel.** `set_channel(channel)` persists the player's update channel
+(`<store_root>/<product>/updates/channel.json`); `check()`, `decide()` and `feed()` called without
+a channel use it, and the dev menu's picker calls it. An alias is stored canonically, a malformed
+name is `invalid-options`, and an outlet that owns the channel (`channelSwitch` false: Steam
+branches, the App Store, …) answers unsupported with reason `outlet`. Staged code from another
+channel is dropped. `get_channel()`, `clear_channel()` and `channel_changed(channel)` complete it.
+The server still decides entitlement (`channel_not_allowed`), and the licence gate's
+`X-PKey-Channel` stays this build's channel.
 
 **The decision (wire v4, P3-08).** `decide(channel, staged, skip_version)` runs plans/P3-01.md
 §2.5 in the same order as every SDK: it reads `update.endpoints.feed` and
