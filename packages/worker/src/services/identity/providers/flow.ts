@@ -8,7 +8,7 @@
  *   GET  /login/steam/callback          Steam's OpenID 2.0 positive assertion (state in return_to)
  *   POST /login/apple/notifications     Apple's server-to-server events
  *
- * **The flow.** One record per sign-in in the single-use store (`signin-flow`), addressed by the
+ * **The flow.** One record per sign-in in the single-use store (`provider-flow`), addressed by the
  * peppered hash of its `state` (so a listing is inert, as for the portal's own flows) and
  * consumed atomically by the first callback that presents it. It records which provider it was
  * started for, and a callback on another provider's path is refused: per-provider redirect URIs
@@ -100,7 +100,10 @@ export async function signInFlowKey(
   env: Env,
   state: string,
 ): Promise<ArtefactRef> {
-  return artefactRef("signin-flow", await hashKey(state, env.KEY_HASH_PEPPER));
+  return artefactRef(
+    "provider-flow",
+    await hashKey(state, env.KEY_HASH_PEPPER),
+  );
 }
 
 /** Test seam: the outbound fetch every provider call uses. */
