@@ -12,6 +12,34 @@
 | Human input | none for the pipeline; each product's key art, wordmark, screenshots and trailers are human-made (S-15 §7.4) |
 | Repo        | `vladzaharia/polaris-key`                                                                                    |
 
+> **Corrections from implementation (2026-10-04).** The code is the fact; where this brief and
+> the branch disagree, the branch wins.
+>
+> - **No brand-kit generator to reuse.** `packages/brand/kit` is a pre-built delivery
+>   (`BUILD-INFO.json`); the icon-set generator S-15 §7.2 describes is not in the repo. The CLI
+>   reuses the kit's pinned `sharp` (`^0.35.4`), and only for decoding and encoding. Every pixel
+>   operation (`packages/cli/src/listing/raster.ts`: area-average and bilinear resampling on
+>   premultiplied alpha, source-over, box blur, keying) is integer arithmetic, so the golden pixel
+>   hashes are identical on arm64 and x86_64. libvips' SIMD and float paths do not promise that.
+> - **Storing the outputs needed a route.** A-18b left `dist_listing_assets` without a writer, so
+>   this package adds `POST /<p>/distribution/listing/assets` (OpenAPI and `routeCoverage`), the
+>   opt-in CI scope `distribution:listing` (P2-02's uploads route accepts it), `listing-asset` blob
+>   refs earned the P2-02 way, and a THREAT-MODEL section. An operator's (`admin`) row is never
+>   replaced.
+> - **A-18b's slot table grew.** It gains numbered per-store screenshots
+>   (`<store>:screenshot:<class>:<n>`, stores `app-store|play|ms-store|steam`, n ≤ 16), because
+>   the table holds one row per slot, and `pack:<store>` for the per-store ZIP packs. Both go
+>   through `listingAssetRule`.
+> - **`aiGeneratedState` lives in no column.** `aiGeneratedStateOf(row)` in
+>   `core/storefront/listingModel.ts` answers `NotAiGenerated` for any row with `derivedFrom`, for
+>   A-18e to use. The CLI's report and the Play pack carry it too, so no migration is needed.
+> - **There is no generated CLI reference page.** The command is documented in `pkey help`,
+>   `/docs/build/ci/#listing-assets` and `/docs/admin/storefront-listing/`. The regenerated
+>   reference page is `reference/routes.mdx`, for the new route.
+> - **The Action bundle keeps `sharp` external.** `pkey listing assets` asks for it on first use,
+>   so the standalone `pkey.mjs` and the `pkey` image need `npm install sharp` for this one
+>   command.
+
 ## Goal
 
 `pkey listing assets` turns one icon master, one logo-free key art and one wordmark into every
@@ -69,10 +97,10 @@ makes it reproducible.
 
 ## Acceptance criteria
 
-- [ ] Golden-image tests (pixel hashes) cover every derived and composed slot from fixture inputs.
-- [ ] Each output's dimensions, alpha and format match S-15 §7.4's specification for its slot.
-- [ ] Screenshot fit proposals for the §5.6 cases are tested and require acceptance.
-- [ ] The CLI reference is regenerated; the green gate passes (`AGENTS.md`).
+- [x] Golden-image tests (pixel hashes) cover every derived and composed slot from fixture inputs.
+- [x] Each output's dimensions, alpha and format match S-15 §7.4's specification for its slot.
+- [x] Screenshot fit proposals for the §5.6 cases are tested and require acceptance.
+- [x] The CLI reference is regenerated; the green gate passes (`AGENTS.md`).
 
 ## Verify
 

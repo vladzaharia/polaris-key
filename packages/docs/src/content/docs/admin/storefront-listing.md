@@ -83,6 +83,17 @@ header and screenshots always come from the manifest). An override for the store
 `obtainium` applies to that feed alone. A product with no shared listing renders exactly what it
 did before. An edit reaches the feeds at once: the feed cache follows the listing.
 
+## Listing assets
+
+The images come from CI, never from the console's own image tools:
+[`pkey listing assets`](/docs/build/ci/#listing-assets) derives every store icon from the icon
+master and composes every store's art from the key art and the wordmark. It fits each screenshot
+for each store, using a crop or pad only where you accept it. It then uploads the lot with its
+digests, sizes and alpha. Each derived row records the master it came from (`derivedFrom`), so
+Google Play's adapter can declare template outputs as not AI-generated. A screenshot fitted for a
+store is stored as `<store>:screenshot:<class>:<n>`, and each store's ZIP pack as `pack:<store>`.
+An image you upload yourself is never replaced by CI.
+
 ## The console API
 
 Narrative-only (not in the wire spec), under `/manage/api/products/<slug>/distribution/listing`.
