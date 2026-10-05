@@ -20,6 +20,30 @@
 
 # S-19: the licensing model: licences, grants and entitlements
 
+> **Owner decisions (2026-10-04). These govern the note; where any section below says otherwise,
+> these win.** Work packages are registered as `LX-*` in
+> [`program/workpackages.json`](../program/workpackages.json), one brief each under
+> [`program/wp/`](../program/wp/).
+>
+> 1. **Decision 1 adopted: model OC.** A licence is an access contract; grants are entitlement
+>    reasons; a device's entitlements are combined over its contributors (§7.3.1); each device has
+>    exactly one anchor licence (§7.5).
+> 2. **Decision 2 accepted.** The signed-in account's licences and grants feed the licence
+>    document's _inputs_. S-16 D9 is read as a rule about the document's _content_ (no user claim
+>    until I-24, still true). S-17 decision 20's reasoning is amended and its outcome kept:
+>    entitlement overrides stay on the licence. Dated amendment notes point here from S-17
+>    (decision 20), S-16 (D9) and [`program/plans/I-04.md`](../program/plans/I-04.md).
+> 3. **Decision 4: `entitlementHolder: device`.** A device sees the entitlements of the account
+>    signed in on that device, or nobody's; a key-entry device sees its licence only.
+> 4. **All remaining defaults are accepted as recommended (decisions 3 and 5–23).** In particular:
+>    decision 3, `anchorPolicy: rank-first` (I-09 carries §7.5 steps 1–3 inline until LX-10);
+>    decision 18, PX-W3's "download grant" is renamed **"download ticket"** before it ships;
+>    decision 19, Cloud Sync quotas gain `byEntitlement` (`combine: max`) and keep `byTier` as the
+>    highest-rank contributing licence (U-01 §8 Q2).
+> 5. **Settings home (S-18).** S-18 is now written and accepted. S-19's per-product licensing
+>    settings (§7.13) are claimable `product_settings` rows registered in S-18's registry
+>    (S-18 §5.3), not a `products.licensing_json` column; LX-06 builds them that way.
+
 Evidence tags, as in the other notes: **[V]** read in the code, the docs or a vendor's primary
 page; **[M]** measured; **[S]** summarised from a secondary source; **[I]** inference or design;
 **[U]** not verified. Spelling: "licence" in prose, `license` in identifiers and in UI copy

@@ -44,6 +44,8 @@ Today the portal can only hand out tokens for artifacts reachable elsewhere ([PO
 - **Plan mode:** the plan is written first and approved by the owner before code.
 - **THREAT-MODEL:** token leakage, replay window, hotlinking, and licence revocation between mint and download.
 
+- **S-19 amendments (owner, 2026-10-04).** Decision 18: the "download grant" is renamed **"download ticket"** before this ships: the query parameter is `?ticket=`, the token label `pkey-download-ticket/1`, and the token shape `v1.<kid>.<exp>.<mac>` is unchanged. "Grant" is reserved for S-19's entitlement grants (S-19 §7.1). Decision 19 (Cloud Sync quotas `byEntitlement` plus `byTier`, highest-rank contributing licence) does not touch downloads, but the re-run entitlement checks call `resolveDeviceEntitlements` once LX-09 lands ([S-19 §8](../../notes/S-19-licensing-model.md#8-interactions-with-other-plans-exactly-what-changes) PX-W3 row).
+
 ## Steps
 
 1. Re-read the PORTAL.md sections above and the matching mockups in `docs/design/portal/`; verify this brief against the code and record any correction here.

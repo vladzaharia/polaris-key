@@ -21,6 +21,37 @@
 > corrected. No production database was read: live D1 values for `djdl` and `polaris-key` are
 > marked [U] and ST-01c reads them in the operator-reviewed dry run.
 
+> **Owner decisions (2026-10-04). These govern the note; where any section below says otherwise,
+> these win.** Work packages are registered as `ST-*` in
+> [`program/workpackages.json`](../program/workpackages.json), one brief each under
+> [`program/wp/`](../program/wp/).
+>
+> 1. **D2 accepted: model C.** A console edit to a claimable setting claims the field
+>    (`source = 'console'`); **Revert** deletes the claim and returns the field to the manifest
+>    value (§4.5). `admin_group` is manifest-only; `web.origins` is claimable. The system product
+>    `polaris-key` is **manifest-authoritative**, on and locked, with expiring **break-glass
+>    claims** only (reason required, L2, at most 7 days; §4.5 items 7–8; ST-20).
+> 2. **D5 accepted: live inheritance.** Platform values for product settings link live by default,
+>    with a fan-out preview and an L2 confirm when products would change (§4.4; ST-16). "Copy
+>    settings from product" is a separate one-time template action (ST-23).
+> 3. **D19 decided differently: "Revert all console values".** At migration (ST-01c) every
+>    manifest-declared field and row of a linked product reverts to its manifest value. There is
+>    **no preserve review, no per-product acknowledgement, no pending banner and no 30-day
+>    window**. Console-only rows that the manifest does not declare (console-only tiers and
+>    profiles, undeclared fields) stay, as `source = 'console'`. The dry-run classification of
+>    §4.14.2 steps 1–5 is still produced, but only as a report kept for the record (one audit row
+>    per product listing every value that changed), not as a gate. This replaces §4.14.1's
+>    "preserve" column, §4.14.2 step 6, §7.1 risk 1's "nothing changes until an operator
+>    acknowledges" and §7.3 D19. ST-01c is resized accordingly (about 2 agent-days, down from 3.5).
+> 4. **Every other default in §7.3 is accepted as recommended** (D1, D3, D4, D6–D17, D21, D22).
+> 5. **D20 is resolved by S-19:** the owner adopted S-19's model OC (S-19 decision 1), so the
+>    account is **not** a settings scope; `accountMerge` stays reserved and is not built (§5.3).
+>
+> Numbering note: this note's §5.3, §6.3 and Appendix A cite S-19's commerce rework as "LX-07"
+> and the grace clamp as "LX-08". In S-19's final table (S-19 §9) the commerce rework is
+> **LX-11**, the grace clamp **LX-07** and the expand step **LX-08**; the registered packages use
+> S-19's numbering.
+
 Evidence labels: **[V]** primary source read raw (repo file at the cited line, or a vendor document
 read directly); **[M]** measured here (migrated schema, screenshots, greps with counts); **[I]**
 inference; **[U]** unverified (a summary of a vendor page not re-read for this note, or a behaviour
@@ -1037,6 +1068,11 @@ dry run.** Rationale:
 
 #### 4.14.2 The backfill procedure (ST-01c)
 
+> **Owner decision D19 (2026-10-04) changes this procedure:** steps 1–5 still run, but only to
+> produce a report kept for the record. Step 6 (review, preserve, acknowledgement, pending banner,
+> 30-day default) is removed: every manifest-declared field and row reverts to its manifest value,
+> and console-only rows stay. See the owner-decisions header at the top of this note.
+
 ST-01a ships first and starts writing snapshots on every apply. ST-01c then runs one backfill per
 product. It is an admin action, `POST /products/<slug>/settings/backfill?dryRun=1`, and a platform
 batch over all products:
@@ -1534,6 +1570,8 @@ phases 0–1. **For every other decision the default applies unless the owner ob
    Resync honours claims per product only after acknowledgement, and a pending product defaults
    to no preserves after 30 days (§4.14.1–2).** Alternative: default `console` (preserve), which
    is rejected because it freezes manifest changes invisibly.
+   _Decided differently (owner, 2026-10-04): "Revert all console values", with no preserve
+   review and no 30-day window; console-only rows stay. See the header._
 
 **Default applies unless objected:**
 
