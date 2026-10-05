@@ -619,18 +619,21 @@ const CARGO_SETUP: FeedSetupDeclaration = {
     const name = str(v.get("package.name")) ?? "<crate>";
     const version = str(v.get("package.version"));
     const envVar = `CARGO_REGISTRIES_${cargoEnvName(registry)}_TOKEN`;
+    const authed = v.credential.kind === "env" || v.credential.kind === "token";
     const snippets: FeedSnippet[] = [
       {
         id: "config",
         clients: "Cargo",
         title: "Cargo: name the feed as a registry",
-        description:
-          "A sparse index (Cargo 1.68 and later). Nothing comes from it unless a dependency names it with registry =.",
+        description: authed
+          ? "A sparse index; Cargo 1.74 and later for a private one, which needs a credential provider named. Nothing comes from it unless a dependency names it with registry =."
+          : "A sparse index (Cargo 1.68 and later). Nothing comes from it unless a dependency names it with registry =.",
         filename: ".cargo/config.toml",
         language: "toml",
         code: lines(
           `[registries.${registry}]`,
           `index = ${JSON.stringify(`sparse+${baseUrl}`)}`,
+          authed && `credential-provider = "cargo:token"`,
         ),
       },
     ];
@@ -640,7 +643,7 @@ const CARGO_SETUP: FeedSetupDeclaration = {
         clients: "Cargo",
         title: "Cargo: the registry token",
         description:
-          "Cargo 1.74 and later send it on every request to a feed whose config.json says auth-required.",
+          "Cargo sends it on every request to a feed whose config.json says auth-required.",
         language: "sh",
         code: `export ${envVar}="$${v.credential.name}"`,
       });
@@ -650,7 +653,7 @@ const CARGO_SETUP: FeedSetupDeclaration = {
         clients: "Cargo",
         title: "Cargo: the registry token",
         description:
-          "Stored in ~/.cargo/credentials.toml. Cargo 1.74 and later send it on every request to a feed whose config.json says auth-required.",
+          "Stored in ~/.cargo/credentials.toml. Cargo sends it on every request to a feed whose config.json says auth-required.",
         language: "sh",
         code: `echo ${v.credential.value} | cargo login --registry ${registry}`,
       });
