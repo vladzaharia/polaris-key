@@ -19,12 +19,12 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 55 | 6 | 0 | 7 |
-| React | `web`, `desktop-bridge` | 47 | 15 | 0 | 6 |
-| Python | `python` | 55 | 6 | 0 | 7 |
-| Swift | `macos`, `ios` | 56 | 5 | 0 | 7 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 63 | 1 | 0 | 4 |
-| Kotlin | `android`, `jvm` | 59 | 5 | 0 | 4 |
+| Node | `node` | 55 | 6 | 1 | 7 |
+| React | `web`, `desktop-bridge` | 47 | 15 | 1 | 6 |
+| Python | `python` | 55 | 6 | 1 | 7 |
+| Swift | `macos`, `ios` | 56 | 5 | 1 | 7 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 63 | 1 | 1 | 4 |
+| Kotlin | `android`, `jvm` | 59 | 5 | 1 | 4 |
 
 ## Core
 
@@ -76,6 +76,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `devices.attest` | Device attestation (App Attest, Play Integrity) raising the trust level | unit | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (unowned); N/A (macos: runtime) | ✓; N/A (linux: runtime); N/A (macos: runtime); N/A (windows: runtime); N/A (web: runtime); N/A (ios: outlet); N/A (android: outlet) | planned (unowned); N/A (jvm: runtime) | node, python, web, desktop-bridge, macos, windows, linux, jvm, dotnet, tauri: runtime; any: outlet |
 | `identity.oidc` | Browser sign-in | transcripts (not recorded) | planned (unowned) | ✓ | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | — |
 | `identity.devicecode` | Device-code sign-in (RFC 8628) with QR | transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | ✓ | web: runtime |
+| `identity.toggle` | Identity off for a product: every sign-in entry fails fast, licences keep working | transcripts | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | — |
 
 ## Release and update
 

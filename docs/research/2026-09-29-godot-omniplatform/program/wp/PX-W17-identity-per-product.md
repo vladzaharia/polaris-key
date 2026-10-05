@@ -18,6 +18,43 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 - **[`plans/PX-W17.md`](../plans/PX-W17.md):** narrowed to this plan, approved on 2026-10-05 with every recommendation accepted: `identity_disabled` only where a person is looking and `404 not_found` for device and JSON routes (Q1); turning Identity off clears every binding after a console confirm with the count (Q2); pairwise subjects stay random-and-stored (Q3); Cloud Sync requires Identity (Q4); subjects everywhere, product users only with Identity on (Q5). The redirect targets the root path `/signin?product=<slug>&error=identity_disabled`.
 
+## Corrections and decisions from implementation (2026-10-05)
+
+The code is the fact; these record where it differed from the plan, and the open points the lead
+decided with the recommended option.
+
+- **Toggle and 404 already existed** (plan §1): `services.identity` in `products.services_json`
+  and `dispatchService`'s 404. PX-W17 adds only the 303, the transition hook, the bind guard and
+  the developer-surface members.
+- **`authorize` has no route yet.** It stays in `IDENTITY_NAVIGATION_ENTRIES`, so a link minted
+  for it already lands on the card; with Identity on it is still the registry's 404 until I-08
+  adds it. The OpenAPI 303 is on the three existing entries (`auth/start`, `auth/device`,
+  `auth/device/verify`) through the shared response `IdentityDisabledRedirect`.
+- **The portal passthrough context does not exist yet** (I-08). PX-W17 ships its refusal as
+  `identityDisabledResponse()` in `core/identityGate.ts` (403, nested), tested; I-08 calls it.
+- **Transcript steps.** The navigation, the JSON `Accept` 404 and `GET identity/subject` are not
+  SDK actions, so they are pinned in the Worker suite (`test/identityPerProduct.test.ts`), not the
+  transcript. `identity-disabled.json` records what an SDK replays: a stale `beginSignIn` (initial
+  services include Identity) that gets `404` → `service-unavailable`, `discover` (Identity off),
+  a `beginSignIn` with no request, and an account-owned licence's key activation with no
+  `keyEntries`. It uses only existing transcript actions.
+- **Parity.** The `wp` id pattern in `features.schema.json` and `manifest.schema.json` did not
+  accept `I-10a`, `I-10b` or `PX-W17`; it now accepts lettered and `PX-W` ids (every id in
+  `workpackages.json` matches). The `ui.kit.account` row (I-04 §4) does not exist yet, so its
+  "Identity off" snapshot state is left to the package that adds the row (I-10a/I-10b).
+- **`accountIdBoundary`'s dynamic half.** `routeCoverage` has no admin table, so the test reads a
+  fixed list of product-scoped console GETs (product, services, activity, devices, device summary
+  and detail, licences, licence detail, licence devices and keys), the device routes, the licence
+  document payload and `subject_events` (the subject feed has no reader route until I-12).
+- **Audit.** `services.identity_disabled` is written only when a binding was cleared, so a resync
+  of an Identity-off product with nothing to heal leaves no row.
+- **Console.** The Services page's existing turn-off confirmation now asks the dry run first and
+  adds "N signed-in devices will be signed out; installs and licences keep working." (Q2). The
+  Identity consequence line no longer says the customer portal stops (it is platform-wide). ST-05
+  and ST-08 reuse the same dry run.
+- **Deferred:** the `entitlementModel: combined` confirmation line (plan §6) waits for LX's
+  `licensing.entitlementModel`; no product can be on `combined` yet.
+
 ## Goal
 
 `services.identity` is a per-product toggle; every app-sign-in entry (`/authorize`, native redirect, RFC 8628, the broker) refuses a product with Identity off with `identity_disabled`; licenses attach to the account regardless; product users exist only for Identity products and carry a pairwise subject (keyed HMAC of account and product), which every developer-facing surface uses instead of the account id.

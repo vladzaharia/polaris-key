@@ -980,3 +980,48 @@ Version 3 (`plans/P4-01.md` §2.10) adds the pack rows. A new option, `essential
 `plan(input)` picks how to install a pack release: `noop`, `platform`, `delta`, `chunk`, `file` or `full`, by the cost `bytes + requests × PLAN_REQUEST_WEIGHT` (16 384) among the candidates the host's capabilities, memory budget and free disk allow, listing the others as `fallbacks`; `full` costs its `requests` (1 for a container, 2 for a tree, whose index it needs). Its refusals, `plan-transport-unsupported`, `plan-insufficient-disk` and `plan-no-strategy`, are verdicts it returns, never throws. `selectVariant` picks the variant: usable, its `requires.engine` absent or the host's, every axis it declares in the host's preference lists, the lowest tuple of preference indexes over the axis names in byte order; none is `pack-no-variant`. `planTarget` maps a variant and its files index onto the planner's input, dropping what a v1 SDK cannot use (an unknown codec, layout, format, scope, or an index above `MAX_FILES_INDEX_BYTES`). `planTarget`'s fourth argument, the parsed chunk index, maps `chunks` to `{indexBytes: chunks.bytes, records}` only for a usable `container` whose `chunks.format` is `pkey-chunks/1`, codec usable, `size` ≤ `MAX_CHUNK_INDEX_BYTES`, the index bound to the payload and no record's `len` above `MAX_CHUNK_BYTES`; otherwise `chunks` is null (`plans/P4-10.md` §2.5). A device fetches the target index before planning only when `chunks` is usable, `chunk` is in its strategies and it stores a seed index. A chunk run is one single-range request with `If-Range: "<bundle sha256>"`; for `Range: bytes=o-e` the `206` must say `bytes o-e/<size>`, and a `206` clipped at the object's end makes the records past it `chunk-bundle-truncated`; any other answer fails the strategy. `plan-matrix.json` (`planMatrixVersion` 2) pins 28 planner rows (A7's 23, rebuilt on the content set where they are real, two tree rows and P4-10's three `plan-real-chunk-*` rows), 11 variant cases and 22 target cases (eight with `chunkIndex`), each recomputed by the generator's reference; chunk targets stay inline, so the planner never parses an index. `plans/P4-01.md` §2.9 and §4.5 are the long form.
 
 **Feed-offered deltas** (`plans/P4-29.md` §2.4). `withFeedDeltas(variant, deltas) → {variant, feedIds}` merges the feed's menu (§2.4.2) into the planner's input: when `deltas` is non-null, the variant is usable, its layout is `container` and the menu has a key equal to `variant.payload.sha256`, each entry of that key is appended, in feed order, to a copy of `variant.deltas` as a `payload` delta, unless its `artifact.sha256` equals an existing delta id (a record delta wins); otherwise the variant is returned unchanged. `feedIds` lists the appended artifact hashes. `planTarget` and `plan` are then unchanged, so a feed delta is a candidate only when `delta` is in `caps.strategies`, its method is in `caps.patchMethods`, its `from` is installed, `memBytes ≤ caps.memBudget` and the disk check passes, and record deltas keep the lower `ord`: CI wins a cost tie. `applyDelta` is unchanged: the artifact against the entry (`delta-artifact-mismatch`), the base against `from` (`delta-base-mismatch`), §2.6's window against `memBytes`, and the output against the **record's** `payload` (`delta-apply-failed`). The engine reads the menu of the most recently committed feed of the canonical channel, fresh or stale, and tries **at most one feed-offered delta per install**: once one fails (a fetch error, a 404 or any verdict above) the remaining `feedIds` are skipped, while record deltas, `chunk`, `file` and `full` continue. `plan-matrix.json#feedDeltaCases` pins the merge and the plan (`withFeedDeltas` → `planTarget` → `plan`, compared by canonical JSON); `content/cases.json#feedDeltaApplyCases` pins the target-hash check.
+
+## 12. Accounts and Identity
+
+There is one Polaris Key account per person, platform-wide; it is never a per-product toggle. A
+product's `identity` service toggle gates only sign-in _through that product_
+(`plans/I-04.md` §2.1). Nothing in this section is signed and nothing here enters the licence
+document: `PROTOCOL_VERSION` stays 4. §12.2 to §12.6 are I-09's (key entry, the account
+contract) and are written when it lands.
+
+### 12.1 What the toggle scopes
+
+| Surface                                                                                                                                                                                                            | Scope                            |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------- |
+| The account, its links, the login card, Library, Discover, Activate License, portal licence attach, pairwise subjects (`ps_…`) and the licence owner's subject, the account override layer, the console Users page | **Platform-wide**, every product |
+| Passthrough sign-in through the product (device code, web redirect, native redirect, exchange); "Continue to <App>" grants; `attach`, `subject`, `signout`; the identity fragment's account members                | **Identity toggle on**           |
+| Key-entry counting and its refusals; the Users page's sign-in columns; layer 2                                                                                                                                     | **Identity toggle on**           |
+| Cloud Sync: `requires: [config, identity]`; principal `devices.subject` only                                                                                                                                       | **Identity and Cloud Sync on**   |
+
+A developer-facing surface names an account only by its pairwise subject for that product, never
+by the global account id (S-16 §5.1).
+
+### 12.7 A product with Identity off
+
+1. Device and JSON routes under `/<p>/identity/*` answer the registry's nested
+   `404 {"error":{"code":"not_found"}}`. An SDK reports it as `service-unavailable`
+   (`service-disabled` in React), keeping its device token and licence state.
+2. `POST /<p>/devices/register` keeps its single `registration_closed` body: the JSON API never
+   tells "Identity is off" from "absent".
+3. A **navigation** — `GET` or `HEAD` with `Sec-Fetch-Mode: navigate`, or an `Accept` header that
+   lists `text/html` with a non-zero quality — to `/<p>/identity/<entry>`, where `<entry>` is one
+   of `authorize`, `auth/start`, `auth/device` or `auth/device/verify`
+   (`IDENTITY_NAVIGATION_ENTRIES`), answers
+   `303 Location: <origin>/signin?product=<slug>&error=identity_disabled` with
+   `Cache-Control: no-store`. A `*/*` or JSON `Accept` is never a navigation. The redirect runs
+   in Core before dispatch, so no Identity code runs; I-21 appends `oauth/authorize`.
+4. The portal's passthrough context answers `403 {"error":{"code":"identity_disabled"}}`
+   (`IDENTITY_DISABLED_ERROR_PARAM` in `@polaris-key/protocol/identity`).
+5. Licences still attach to accounts (Activate License, Discover, verified email), and an owned
+   licence's key still activates a device. No device of the product carries a sign-in binding:
+   turning Identity off clears every binding (no seat is released, documents are unchanged), and
+   the Worker refuses to write one while the toggle is off.
+
+This discloses nothing new: discovery already publishes `identity: {enabled:false}` for every
+existing product, and an unknown slug keeps its 404. The transcript `identity-disabled.json`
+pins rules 1 and 5 for the SDKs; the Worker suite (`test/identityPerProduct.test.ts`) pins 2 to 4.

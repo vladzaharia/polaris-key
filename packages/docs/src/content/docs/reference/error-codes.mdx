@@ -8,10 +8,10 @@ description: "The PolarisErrorCode taxonomy (protocol), the worker's ErrorCode e
 
 Wire-v3 errors are nested — `{"error":{"code":…}}` — and the not-found body is ONE
 shape for "no such product", "service not enabled", and "no such route" (hide-don't-reveal).
-14 protocol codes; the worker enum maps each to its response site.
+15 protocol codes; the worker enum maps each to its response site.
 
 Every code, wire and client, is registered in `conformance/parity/errors.json`
-(144 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
+(145 codes), and `pnpm gen:constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -30,6 +30,7 @@ from it. A new code needs an entry there first.
 - `fingerprint_required`
 - `enroll_disabled`
 - `registration_closed`
+- `identity_disabled`
 
 ## Worker enum (`packages/worker/src/core/errors.ts`)
 
@@ -49,6 +50,7 @@ from it. A new code needs an entry there first.
 | `license_disabled` | `ErrorCode.LicenseDisabled` |
 | `value_not_representable` | `ErrorCode.ValueNotRepresentable` |
 | `document_not_representable` | `ErrorCode.DocumentNotRepresentable` |
+| `identity_disabled` | `ErrorCode.IdentityDisabled` |
 
 ## Client codes (`conformance/parity/errors.json`)
 
