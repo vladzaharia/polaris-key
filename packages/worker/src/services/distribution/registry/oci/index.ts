@@ -61,6 +61,10 @@ export const OCI_ADAPTER: FeedAdapter<"oci"> = defineFeedAdapter({
       "oci-crane",
       "oci-docker",
       "oci-podman",
+      // F-23's push lane: Release serves the push routes, but the clients are the OCI ecosystem's.
+      "oci-push-conformance",
+      "oci-push-crane",
+      "oci-push-docker",
     ],
   },
 });
