@@ -12,6 +12,12 @@
 | Human input | none                                                                                                       |
 | Repo        | `vladzaharia/polaris-key`                                                                                  |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/PX-W17.md`](../plans/PX-W17.md):** use `identityEnabled` to decide whether to create licence-held grants.
+
 ## Goal
 
 The portal shows what a person owns with sources, licence cards, "Apply to a licence", and downloads on the resolver; PORTAL.md is amended.

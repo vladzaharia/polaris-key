@@ -69,9 +69,6 @@ export function HowChannelsResolve(): React.ReactElement {
   );
 }
 
-const POLICY_ROW =
-  "grid grid-cols-[9rem_minmax(0,1fr)_auto] items-center gap-x-3";
-
 function Row({
   term,
   children,
@@ -80,9 +77,11 @@ function Row({
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <div className="grid gap-1 sm:grid-cols-[8rem_1fr] sm:gap-3">
-      <dt className="text-xs text-fg-muted sm:pt-0.5">{term}</dt>
-      <dd className="min-w-0 text-sm text-fg">{children}</dd>
+    <div className="grid gap-1 py-2 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-baseline sm:gap-6">
+      <dt className="text-sm text-fg-muted">{term}</dt>
+      <dd className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg sm:justify-end sm:text-right">
+        {children}
+      </dd>
     </div>
   );
 }
@@ -270,10 +269,11 @@ export function ChannelLane({
           <ActionMenu label={`More actions for ${c.channel}`} items={menu} />
         </div>
       </div>
-      <dl className="space-y-2">
+      {/* One term per row, the value flush right: every row of a lane ends on one edge. */}
+      <dl className="divide-y divide-border border-t border-border">
         <Row term="Pointer">
           {c.pointer ? (
-            <span className="inline-flex flex-wrap items-center gap-2">
+            <>
               <span className="font-mono text-xs">
                 {versionIn(releases, c.pointer)}
               </span>
@@ -282,7 +282,7 @@ export function ChannelLane({
                   Pinned
                 </StatusPill>
               ) : null}
-            </span>
+            </>
           ) : (
             <span>
               Newest eligible release
@@ -321,13 +321,16 @@ export function ChannelLane({
             )
           ) : (
             <ul
-              className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2 xl:grid-cols-3"
+              className="flex flex-col gap-1 sm:items-end"
               aria-label={`What ${c.channel} serves per platform`}
             >
               {platforms.map((p) => {
                 const line = servesLine(c, p, releases);
                 return (
-                  <li key={p} className="flex flex-wrap items-center gap-2">
+                  <li
+                    key={p}
+                    className="flex flex-wrap items-center gap-x-2 sm:justify-end"
+                  >
                     <span>{line.text}</span>
                     {line.why ? (
                       <span className="inline-flex items-center gap-1 text-xs text-warning">
@@ -341,125 +344,111 @@ export function ChannelLane({
             </ul>
           )}
         </Row>
-        <Row term="Policy">
-          {/* Label, value, action: each in its own column, actions flush right. */}
-          <ul className="flex max-w-2xl flex-col gap-1.5">
-            <li className={POLICY_ROW}>
-              <span>Minimum supported</span>
-              {c.minSupported ? (
-                <span className="font-mono text-xs">{c.minSupported}</span>
-              ) : (
-                <span className="text-fg-muted">None</span>
-              )}
-              <InlineEdit
-                label={c.minSupported ? "Change…" : "Set…"}
-                onClick={() => onAction({ kind: "minSupported", channel: c })}
-              />
-            </li>
-            <li className={POLICY_ROW}>
-              <span>Critical update</span>
-              <span>
-                {c.critical ? (
-                  <StatusPill tone="warning">Critical</StatusPill>
-                ) : (
-                  <span className="text-fg-muted">Not critical</span>
-                )}
-              </span>
-              <InlineEdit
-                label={c.critical ? "Clear…" : "Mark…"}
-                onClick={() => onAction({ kind: "critical", channel: c })}
-              />
-            </li>
-            {isApp ? (
-              <li className={POLICY_ROW}>
-                {floor ? (
-                  <>
-                    <span>Rollback floor</span>
-                    <span>
-                      <span className="font-mono text-xs">{floor.version}</span>
-                      <span className="text-xs text-fg-muted">
+        <Row term="Minimum supported">
+          {c.minSupported ? (
+            <span className="font-mono text-xs">{c.minSupported}</span>
+          ) : (
+            <span className="text-fg-muted">None</span>
+          )}
+          <InlineEdit
+            label={c.minSupported ? "Change…" : "Set…"}
+            onClick={() => onAction({ kind: "minSupported", channel: c })}
+          />
+        </Row>
+        <Row term="Critical update">
+          {c.critical ? (
+            <StatusPill tone="warning">Critical</StatusPill>
+          ) : (
+            <span className="text-fg-muted">Not critical</span>
+          )}
+          <InlineEdit
+            label={c.critical ? "Clear…" : "Mark…"}
+            onClick={() => onAction({ kind: "critical", channel: c })}
+          />
+        </Row>
+        {isApp ? (
+          <Row term="Rollback floor">
+            {floor ? (
+              <>
+                <span>
+                  <span className="font-mono text-xs">{floor.version}</span>
+                  <span className="text-xs text-fg-muted">
+                    {" "}
+                    · raised{" "}
+                    <Timestamp
+                      at={fromSeconds(floor.raisedAt)}
+                      format="relative"
+                    />
+                    {floor.loweredAt ? (
+                      <>
                         {" "}
-                        · raised{" "}
+                        · lowered{" "}
                         <Timestamp
-                          at={fromSeconds(floor.raisedAt)}
+                          at={fromSeconds(floor.loweredAt)}
                           format="relative"
-                        />
-                        {floor.loweredAt ? (
-                          <>
-                            {" "}
-                            · lowered{" "}
-                            <Timestamp
-                              at={fromSeconds(floor.loweredAt)}
-                              format="relative"
-                            />{" "}
-                            by {actorName(floor.loweredBy)}
-                          </>
-                        ) : null}
+                        />{" "}
+                        by {actorName(floor.loweredBy)}
+                      </>
+                    ) : null}
+                  </span>
+                </span>
+                <InlineEdit
+                  label="Lower…"
+                  onClick={() =>
+                    onAction({
+                      kind: "lowerFloor",
+                      channel: c.channel,
+                      floor,
+                    })
+                  }
+                />
+              </>
+            ) : (
+              <span className="text-fg-muted">None recorded yet</span>
+            )}
+          </Row>
+        ) : (
+          <Row term="Floors per content API line">
+            <ul
+              className="flex flex-col gap-1 sm:items-end"
+              aria-label={`${c.deliverable} floors on ${c.channel}`}
+            >
+              {c.packFloors?.length ? (
+                c.packFloors.map((f) => (
+                  <li
+                    key={f.contentApi}
+                    className="flex flex-wrap items-center gap-x-3 sm:justify-end"
+                  >
+                    <span>
+                      Content API {f.contentApi}: ≥{" "}
+                      <span className="font-mono text-xs">
+                        {f.minSupported}
                       </span>
                     </span>
                     <InlineEdit
-                      label="Lower…"
+                      label="Change…"
                       onClick={() =>
                         onAction({
-                          kind: "lowerFloor",
-                          channel: c.channel,
-                          floor,
+                          kind: "packFloor",
+                          channel: c,
+                          contentApi: f.contentApi,
                         })
                       }
                     />
-                  </>
-                ) : (
-                  <>
-                    <span>Rollback floor</span>
-                    <span className="text-fg-muted">None recorded yet</span>
-                  </>
-                )}
+                  </li>
+                ))
+              ) : (
+                <li className="text-fg-muted">None</li>
+              )}
+              <li>
+                <InlineEdit
+                  label="Add…"
+                  onClick={() => onAction({ kind: "packFloor", channel: c })}
+                />
               </li>
-            ) : (
-              <li className="space-y-1">
-                <span className="flex flex-wrap items-center gap-x-2">
-                  Floors per content API line
-                  <InlineEdit
-                    label="Add…"
-                    onClick={() => onAction({ kind: "packFloor", channel: c })}
-                  />
-                </span>
-                {c.packFloors?.length ? (
-                  <ul
-                    className="flex flex-col gap-1 pl-3"
-                    aria-label={`${c.deliverable} floors on ${c.channel}`}
-                  >
-                    {c.packFloors.map((f) => (
-                      <li
-                        key={f.contentApi}
-                        className="flex flex-wrap items-center gap-x-2"
-                      >
-                        <span>
-                          Content API {f.contentApi}: ≥{" "}
-                          <span className="font-mono text-xs">
-                            {f.minSupported}
-                          </span>
-                        </span>
-                        <InlineEdit
-                          label="Change…"
-                          onClick={() =>
-                            onAction({
-                              kind: "packFloor",
-                              channel: c,
-                              contentApi: f.contentApi,
-                            })
-                          }
-                        />
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="pl-3 text-fg-muted">None</p>
-                )}
-              </li>
-            )}
-          </ul>
-        </Row>
+            </ul>
+          </Row>
+        )}
       </dl>
       <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-2 text-sm">
         <Link

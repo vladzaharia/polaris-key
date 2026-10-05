@@ -6,7 +6,7 @@ declare module "@tanstack/react-table" {
   interface ColumnMeta<TData extends RowData, TValue> {
     /**
      * 1: always shown, and the fields of a mobile card. 2: shown by default. 3: hidden by default
-     * below 1280 px (the operator can show it from "Columns").
+     * below 1440 px (the operator can show it from "Columns").
      */
     priority?: 1 | 2 | 3;
     /** Hidden until the operator shows it from "Columns", at every width (Licenses' Channels, Deliverables' low-value detail). */
@@ -24,6 +24,11 @@ declare module "@tanstack/react-table" {
     csv?: (row: TData) => string;
     /** The column cannot be hidden from the Columns menu. */
     alwaysVisible?: boolean;
+    /**
+     * The cell shows nothing a reader needs for this row (a healthy state: pills mean attention,
+     * ADMIN.md §5.11). A mobile card leaves the field out rather than print a bare label.
+     */
+    quiet?: (row: TData) => boolean;
   }
 }
 
@@ -141,6 +146,7 @@ export interface DataTableProps<T> {
   onRetry?: () => void;
   /** The first-run state, shown when there are no rows and no filters. */
   empty?: React.ReactNode;
+  /** Below 1024 px: `cards` draws each row as a card; `scroll` keeps the table (it must fit). */
   mobile?: "cards" | "scroll";
   /** Extra controls at the end of the filter bar (Export, a date range). */
   toolbarActions?: React.ReactNode;
