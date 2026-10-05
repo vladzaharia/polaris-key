@@ -168,7 +168,7 @@ Every one is importable on its own, so a config-only daemon never pulls the lice
 | `polaris_key.release`  | changelog, install script, artifact URLs, verified `fetch()`                                                         |
 | `polaris_key.update`   | version check, the Sparkle appcast URL, the signed update decision (`decide`, `feed`, `release_record`, `build_url`) |
 | `polaris_key.commerce` | store purchase claims: `binding()`, `claim()`, `claim_steam()`, `claim_play()`, `claim_app_store()`                  |
-| `polaris_key.portal`   | portal links (`client.portal.url(flow)`); `polaris_key.copy` holds the localised message table                       |
+| `polaris_key.copy`     | the localised message table for every registry code and status                                                       |
 | `polaris_key.aio`      | `AsyncClient`: every sub-client as coroutines over the same core                                                     |
 | `polaris_key.local`    | the transportless profile                                                                                            |
 
@@ -330,11 +330,11 @@ if result.kind == "ok":
 `claim_play()` / `claim_app_store()` cover the other stores. Refusals keep the server's code
 (`ClaimNotOwned`, `ClaimAttestationRequired`, `ClaimRefused`).
 
-### Portal links and crash tags
+### Crash tags
 
-`client.portal.url(flow)` builds a portal link for `library`, `account`, `activate`,
-`devices`, `freeDevice` or `download`, with a checked `return_to`. `client.crash_tags()` returns
-the release, environment and outlet tags to set on a crash reporter such as Sentry.
+`client.crash_tags()` returns the release, environment and outlet tags to set on a crash
+reporter such as Sentry. The SDK builds no customer-portal URLs: a "Manage devices" link is the
+server-supplied `manageUrl` on a `device_limit` refusal, once the Worker sends it.
 
 ### `asyncio`
 

@@ -211,7 +211,6 @@ class AsyncPolarisKeyClient:
         self.update = _AsyncUpdate(sync_client.update)
         self.commerce = _AsyncFacet(sync_client.commerce)
         self.distribution = _AsyncFacet(sync_client.distribution)
-        self.portal = sync_client.portal
         self.events = _AsyncEvents(sync_client.events)
 
     @classmethod

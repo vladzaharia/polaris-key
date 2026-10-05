@@ -28,7 +28,7 @@ Every subpackage is importable on its own, so a config-only daemon can
     ``polaris_key.update``       version check, updater feed URLs, wire v4's signed decision,
                              install drivers, the boot guard and ``update.packs``
     ``polaris_key.commerce``     store purchase claims (Steam, Play, App Store)
-    ``polaris_key.portal``       portal links; ``polaris_key.copy`` localised messages
+    ``polaris_key.copy``         localised messages
     ``polaris_key.aio``          ``AsyncClient`` over the same core
     ``polaris_key.cli``          the CLI verb set for argparse, click and typer
     ``polaris_key.local``        the transportless profile
@@ -71,7 +71,6 @@ from .identity.client import (
     SignInResult,
 )
 from . import copy, qr
-from .portal import PORTAL_FLOWS, PortalClient
 # Generated constants (`pnpm gen:constants`, tools/gen-sdk-constants.ts), imported wholesale through
 # the generated ``__all__`` so a constant the generator gains reaches the package root unedited.
 from . import constants_generated as _constants_generated
@@ -314,8 +313,6 @@ __all__ = [
     "SignedInIdentity",
     "qr",
     "copy",
-    "PortalClient",
-    "PORTAL_FLOWS",
     "MintedToken",
     "ReleaseClient",
     "FetchedFile",

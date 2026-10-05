@@ -24,7 +24,6 @@ every load. There is no unsigned field left for a local attacker to poison.
 from __future__ import annotations
 
 import os
-import platform as _platform
 import threading
 import weakref
 from dataclasses import dataclass
@@ -73,8 +72,6 @@ from .devices.client import (
 from .devices.facts import ProbeDeclaration
 from .identity.client import IdentityClient
 from .distribution import DistributionClient
-from .portal import PortalClient, origin_of as portal_origin
-from .core.headers import canonical_platform
 from .discovery import (
     DiscoveryOk,
     ServicesMap,
@@ -271,13 +268,6 @@ class PolarisKeyClient:
             sync=lambda: self.sync(force=True),
             is_entitled=lambda flag: self.license.is_entitled(flag),
             outlet_kind=lambda: self.update.outlet.kind if self.update.outlet is not None else None,
-        )
-
-        #: Links into the customer portal (SDK parity pass §3.5).
-        self.portal = PortalClient(
-            product_slug,
-            lambda: portal_origin(self.core.base_url, self._discovery_doc),
-            platform=getattr(update, "platform", None) or canonical_platform(_platform.system()),
         )
 
         # `devices/report` carries the active pack set's id (plans/P4-01.md §2.11).

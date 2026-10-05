@@ -60,8 +60,8 @@ class ActivationOk:
 @dataclass(frozen=True)
 class ActivationDeviceLimit:
     """403 ``device_limit``: the licence has no free seat. ``limit`` and ``deviceCount`` when
-    the server sent them; a portal "Manage devices" link (``client.portal.url("devices")``) is
-    the remedy."""
+    the server sent them. The SDK builds no portal URL here (owner decision Q6): the
+    "Manage devices" link is the server-supplied ``manageUrl`` once the Worker sends it."""
 
     limit: Optional[int] = None
     deviceCount: Optional[int] = None
