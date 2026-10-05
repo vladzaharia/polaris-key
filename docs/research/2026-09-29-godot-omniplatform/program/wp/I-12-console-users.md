@@ -92,6 +92,19 @@ Developers only ever see data for their own products (owner). With no recovery d
 - **Deleting a user's product data is L3** (typed `delete`), like deleting a portal account; detach
   and relink are L2 and undo is L1 (`lib/actions.ts`, ADMIN.md §5.2).
 - **Migration** `license_relinks` is `0072` (main's highest was `0071` at the final gate).
+- **Amendment `plans/I-24.md` (seat holders on the Users page) is a follow-up for I-24a.** The
+  `license_seat_holders` table does not exist until I-24a lands, and I-24's plan puts the holders
+  in the licence record's Seats panel; I-24a adds them to the Users row when it creates the table.
+- **Amendment `plans/PX-W17.md` (build on `ownerSubject`/`subject`; product users only with
+  Identity on).** PX-W17 has not landed, so I-12 derives subjects with `subjectFor`, which yields
+  the same values `ownerSubject`/`subject` will expose. Subjects are listed for every product;
+  sign-in columns, sign-ins, signed-in devices and consent grants (the consented email and name)
+  are read only with Identity on, per PX-W17 recommendation 5. A grant kept after Identity is
+  turned off (PX-W17 Q2) is not shown.
+- **Relink and undo are compare-and-set on the checked owner.** `reassignLicense` takes
+  `expectedPreviousAccountId`: a licence that moved after the ownership check (during the notices)
+  answers `conflict` before anything is written, so no undo row or console audit is ever missing
+  for a move that happened.
 
 ## Verify
 

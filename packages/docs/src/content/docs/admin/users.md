@@ -25,14 +25,14 @@ stays off the list until one of those happens.
 
 ## The list
 
-| Column           | What it shows                                                                                                                           |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| **User**         | The person's id for this product.                                                                                                       |
-| **Contact**      | The buyer email on their license. The account's own email shows only when the person agreed to share it with this product, and says so. |
-| **Licenses**     | Their licenses of this product.                                                                                                         |
-| **Devices**      | Authorized devices on those licenses, or signed in with this person.                                                                    |
-| **Last sign-in** | Only with Identity on: their last sign-in to this product.                                                                              |
-| **First seen**   | When this product first had an id for them.                                                                                             |
+| Column           | What it shows                                                                                                                                             |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **User**         | The person's id for this product.                                                                                                                         |
+| **Contact**      | The buyer email on their license. With Identity on, the account's own email shows only when the person agreed to share it with this product, and says so. |
+| **Licenses**     | Their licenses of this product.                                                                                                                           |
+| **Devices**      | Authorized devices on those licenses, or signed in with this person.                                                                                      |
+| **Last sign-in** | Only with Identity on: their last sign-in to this product.                                                                                                |
+| **First seen**   | When this product first had an id for them.                                                                                                               |
 
 Search matches the start of a user id, an exact license id, or the start of a buyer email. It
 never searches account emails, so the page can't be used to find out whether someone has an

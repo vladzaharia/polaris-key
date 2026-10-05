@@ -257,10 +257,11 @@ export async function listProductUsers(
   );
   const page = rows.slice(0, limit);
   const users = page.map((r): ProductUserSummary => {
+    // A consent grant is product-user data (PX-W17 Q5): read only while Identity is on.
     const contact = contactOf(
       r.buyer_email,
       r.primary_email,
-      consentedClaims(r.claims_json),
+      opts.identityOn ? consentedClaims(r.claims_json) : new Set<string>(),
     );
     return {
       subject: r.subject,
@@ -456,7 +457,11 @@ export async function productUserDetail(
     accountId,
     product,
   );
-  const claims = consentedClaims(grant?.claims_json);
+  // A consent grant is product-user data (PX-W17 Q5): read only while Identity is on, so an
+  // Identity-off row shows the buyer email and never a consented name or address.
+  const claims = identityOn
+    ? consentedClaims(grant?.claims_json)
+    : new Set<string>();
   const account = await getAccountRow(db, accountId);
   const buyer = licenses.find((l) => l.email)?.email ?? null;
 
@@ -838,6 +843,7 @@ export async function relinkLicense(
     licenseId: args.licenseId,
     toAccountId,
     actor: `admin:${args.actor.sub}`,
+    expectedPreviousAccountId: args.from.accountId,
   });
   if (!moved.ok || moved.previousAccountId !== args.from.accountId)
     return { ok: false, reason: "conflict" };
@@ -935,6 +941,7 @@ export async function undoRelink(
     licenseId: r.license_id,
     toAccountId: r.from_account_id,
     actor: `admin:${args.actor.sub}`,
+    expectedPreviousAccountId: r.to_account_id,
   });
   if (!moved.ok || moved.previousAccountId !== r.to_account_id)
     return { ok: false, reason: "conflict" };

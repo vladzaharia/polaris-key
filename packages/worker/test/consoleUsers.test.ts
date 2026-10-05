@@ -476,6 +476,27 @@ describe("Identity off", () => {
     expect(row.body.user).not.toHaveProperty("signIns");
     for (const d of row.body.user.devices as Array<Record<string, unknown>>)
       expect(d).not.toHaveProperty("signedIn");
+    // A consent grant kept from when Identity was on is not product-user data now (PX-W17 Q5).
+    await w.db.run(
+      `INSERT INTO account_product_grants (account_id, product, claims_json, granted_at, modified_at)
+       VALUES (?, 'beta', '["email","name"]', ?, ?)`,
+      f.bob.accountId,
+      NOW,
+      NOW,
+    );
+    const bobRow = await w.json<{ user: { contact: unknown; name: unknown } }>(
+      "GET",
+      `/beta/users/${f.bobBeta}`,
+    );
+    expect(bobRow.body.user.contact).toEqual({ email: null, source: null });
+    expect(bobRow.body.user.name).toBeNull();
+    const listed = await w.json<{ users: Array<Record<string, unknown>> }>(
+      "GET",
+      "/beta/users",
+    );
+    expect(
+      listed.body.users.find((u) => u.subject === f.bobBeta)?.contactEmail,
+    ).toBeNull();
     expect(
       (await w.call("GET", "/beta/identity/sign-in-settings")).status,
     ).toBe(404);
@@ -681,6 +702,76 @@ describe("relink", () => {
       { now: later },
     );
     expect(again.body.code).toBe("undo_unavailable");
+  });
+
+  it("a licence that moves while the notices go out stays put: conflict, no undo row, no audit", async () => {
+    const w = await world();
+    const f = await fixture(w);
+    const owner = async () =>
+      (
+        await w.db.first<{ account_id: string | null }>(
+          "SELECT account_id FROM licenses WHERE id = 'lic-alpha-ada'",
+        )
+      )?.account_id;
+    // Between the ownership check and the move, someone else detaches the licence.
+    const send = w.env.EMAIL!.send.bind(w.env.EMAIL);
+    let interfere: (() => Promise<void>) | null = async () => {
+      await w.db.run(
+        "UPDATE licenses SET account_id = NULL WHERE product = 'alpha' AND id = 'lic-alpha-ada'",
+      );
+    };
+    w.env.EMAIL = {
+      send: async (m: never) => {
+        const run = interfere;
+        interfere = null;
+        if (run) await run();
+        return send(m);
+      },
+    } as unknown as Env["EMAIL"];
+    const r = await w.json("POST", path(f.adaAlpha), {
+      target: f.bobAlpha,
+      reason: "ticket 77",
+    });
+    expect(r.body.code).toBe("conflict");
+    expect(await owner()).toBeNull();
+    expect(
+      await w.db.first(
+        "SELECT id FROM license_relinks WHERE product = 'alpha'",
+      ),
+    ).toBeNull();
+    expect(
+      await w.db.first(
+        "SELECT id FROM audit WHERE product = 'alpha' AND action = 'user.license.relink'",
+      ),
+    ).toBeNull();
+
+    // The undo is held to the same rule: a licence moved on mid-undo is not pulled back.
+    await w.db.run(
+      "UPDATE licenses SET account_id = ? WHERE product = 'alpha' AND id = 'lic-alpha-ada'",
+      f.ada.accountId,
+    );
+    const done = await w.json<{ relinkId: string }>("POST", path(f.adaAlpha), {
+      target: f.bobAlpha,
+      reason: "ticket 78",
+    });
+    expect(done.status).toBe(200);
+    interfere = async () => {
+      await w.db.run(
+        "UPDATE licenses SET account_id = NULL WHERE product = 'alpha' AND id = 'lic-alpha-ada'",
+      );
+    };
+    const undo = await w.json(
+      "POST",
+      `/alpha/users/relinks/${done.body.relinkId}/undo`,
+      { reason: "undo while it moves" },
+    );
+    expect(undo.body.code).toBe("conflict");
+    expect(await owner()).toBeNull();
+    const row = await w.db.first<{ undone_at: number | null }>(
+      "SELECT undone_at FROM license_relinks WHERE id = ?",
+      done.body.relinkId,
+    );
+    expect(row?.undone_at).toBeNull();
   });
 
   it("cannot be undone after 72 hours, or once the licence moved on", async () => {

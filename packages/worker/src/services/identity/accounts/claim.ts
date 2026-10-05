@@ -233,7 +233,8 @@ export async function detachLicense(
 
 /**
  * The reversible reassign primitive behind I-12's developer relink tool (S-16 §5.4 item 9): move a
- * licence to `toAccountId` (or make it floating), whoever holds it now. The previous owner is
+ * licence to `toAccountId` (or make it floating), from `expectedPreviousAccountId` when given
+ * (compare-and-set; otherwise whoever holds it now). The previous owner is
  * returned and audited, so passing it back as `toAccountId` undoes the move. Devices bound by the
  * previous owner's sign-in lose the binding (`relinked`); the previous owner's registry tokens for
  * the licence are revoked. I-12 owns the step-up, the reason, the notice and the 72-hour undo.
@@ -246,6 +247,12 @@ export async function reassignLicense(
     toAccountId: string | null;
     /** Who did it (`admin:<sub>`); recorded, never shown to the person. */
     actor: string;
+    /**
+     * The owner the caller checked (`null`: floating). When given, the move happens only from
+     * this owner: a licence that moved in between answers `conflict` before anything is written,
+     * and the compare-and-set uses this value, not a fresh read. Omit only for "whoever holds it".
+     */
+    expectedPreviousAccountId?: string | null;
   },
 ): Promise<
   | { ok: true; previousAccountId: string | null }
@@ -254,7 +261,16 @@ export async function reassignLicense(
   const { db, env, now } = ctx;
   const license = await getLicense(db, args.product, args.licenseId);
   if (!license) return { ok: false, reason: "not_found" };
-  const previous = license.account_id ?? null;
+  const current = license.account_id ?? null;
+  if (
+    args.expectedPreviousAccountId !== undefined &&
+    current !== args.expectedPreviousAccountId
+  )
+    return { ok: false, reason: "conflict" };
+  const previous =
+    args.expectedPreviousAccountId !== undefined
+      ? args.expectedPreviousAccountId
+      : current;
   if (previous === args.toAccountId)
     return { ok: true, previousAccountId: previous };
   // As in detachLicense: no portal link to the licence survives the move (§8 Q1 losers settled).
