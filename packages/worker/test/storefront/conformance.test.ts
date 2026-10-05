@@ -80,6 +80,7 @@ import {
 import type { StoreResource } from "../../src/core/storefront/audit.js";
 import { PLATFORM_CREDENTIALS } from "../../src/core/platformCredentials.js";
 import { AscClient } from "../../src/core/asc/client.js";
+import { SteamClient } from "../../src/core/steam/client.js";
 import {
   FEED_ADAPTERS,
   feedCapabilityView,
@@ -104,6 +105,13 @@ const SPEC_FIXTURES: Partial<Record<StorefrontId, SpecFixture>> = {
   "app-store": JSON.parse(
     readFileSync(
       join(HERE, "..", "fixtures", "asc", "openapi-writes.json"),
+      "utf8",
+    ),
+  ) as SpecFixture,
+  // A-18g: the hand-written Steamworks Web API write list (no machine-readable spec exists).
+  steam: JSON.parse(
+    readFileSync(
+      join(HERE, "..", "fixtures", "steam", "webapi-writes.json"),
       "utf8",
     ),
   ) as SpecFixture,
@@ -132,6 +140,29 @@ const CLIENTS: Partial<Record<StorefrontId, () => CountingClient>> = {
       token: async () => {
         c.tokens++;
         return "t";
+      },
+      fetchImpl: async () => {
+        c.sends++;
+        return new Response("{}", { status: 200 });
+      },
+    });
+    return c;
+  },
+  steam: () => {
+    const c: CountingClient = {
+      tokens: 0,
+      sends: 0,
+      request: (method, path, body) =>
+        client.request(
+          method as "POST",
+          path,
+          (body ?? {}) as Record<string, string>,
+        ),
+    };
+    const client = new SteamClient({
+      key: async () => {
+        c.tokens++;
+        return "k";
       },
       fetchImpl: async () => {
         c.sends++;

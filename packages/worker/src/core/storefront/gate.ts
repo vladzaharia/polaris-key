@@ -16,7 +16,8 @@
  * The engine owns:
  *
  *   - the path policy (the adapter's `validPath`) and the paths refused for every method, reads
- *     included (`forbidden`: personal data, team membership);
+ *     included (`forbidden`: personal data, team membership), plus, where a store needs it, the
+ *     paths a read may take at all (`reads`: Steam's three read methods);
  *   - method and path-template match: a write passes only when a rule names its method and its
  *     template exactly (`{id}` stands for one plain segment);
  *   - the body, through the rule set's matcher (`match/jsonapi.ts`, `json.ts`, `form.ts`,
@@ -123,6 +124,12 @@ export interface GateRuleSet<R extends GateRule = GateRule> {
   readonly validPath: (path: string) => boolean;
   /** Paths refused for every method, reads included (`personal_data`). */
   readonly forbidden?: (path: string) => boolean;
+  /**
+   * When set, a read passes only on a path this admits (refused `not_allowed` otherwise). For a
+   * store whose API names writes as ordinary paths a `GET` might also reach (the Steam Web API's
+   * `POST` methods), so a read cannot stand in for a write the table refuses (A-18g).
+   */
+  readonly reads?: (path: string) => boolean;
   /** The body matcher (method syntax: a rule set of a narrower rule type is still a rule set). */
   match(
     rule: R,
@@ -232,6 +239,8 @@ export function compileGate<R extends GateRule>(
       if (set.forbidden?.(path)) throw set.deny(method, path, "personal_data");
       if (method === "GET") {
         if (body !== undefined) throw set.deny(method, path, "invalid_body");
+        if (set.reads && !set.reads(path))
+          throw set.deny(method, path, "not_allowed");
         return null;
       }
       const rule = find(method, path);
