@@ -163,6 +163,51 @@ describe("product page on today's data (PX-04)", () => {
     expect(within(card).queryByText(/Get a new key/)).toBeNull();
   });
 
+  it("says nothing when healthy and keeps the facts as text (UX-03)", async () => {
+    mockFetch(routes());
+    renderPortal();
+    await page();
+    // Healthy is silence: no "Active" pill in the header or on the License card.
+    expect(within(screen.getByRole("main")).queryByText("Active")).toBeNull();
+    const card = screen.getByRole("region", { name: "Nightfall license" });
+    const tier = within(card).getByText("Tier");
+    expect(tier.tagName).toBe("DT");
+    expect(tier.nextElementSibling?.textContent).toBe("Deluxe");
+    const included = within(card).getByRole("list", { name: "Included" });
+    expect(
+      within(included)
+        .getAllByRole("listitem")
+        .map((li) => li.textContent),
+    ).toEqual(["Original soundtrack", "Digital art book"]);
+  });
+
+  it("shows an issue once, in the header, not again on the License card (UX-03)", async () => {
+    const lapsed = license({
+      product: "nightfall",
+      tier: "deluxe",
+      expiresAt: NOW_S - 3 * DAY,
+    });
+    mockFetch(
+      signedIn([lapsed], {
+        "/api/releases": { releases },
+        "/api/licenses/nightfall/lic_nightfall": detail(lapsed, {
+          devices: [],
+        }),
+      }),
+    );
+    renderPortal();
+    const h1 = await screen.findByRole("heading", {
+      level: 1,
+      name: "Nightfall",
+    });
+    const card = await screen.findByRole("region", {
+      name: "Nightfall license",
+    });
+    await within(card).findByText("Tier");
+    expect(within(h1.parentElement!).getByText("Expired")).toBeTruthy();
+    expect(within(card).queryByText("Expired")).toBeNull();
+  });
+
   it("masks a key with its last 4 when the Worker sends them", async () => {
     mockFetch(
       routes({

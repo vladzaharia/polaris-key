@@ -6,13 +6,14 @@ import { href } from "../../router.js";
 import { ProductArt } from "../ProductArt.js";
 import { ProductIcon } from "../ProductIcon.js";
 import { ProductMenu } from "../ProductMenu.js";
-import { ProductStatusPill } from "../ProductStatus.js";
+import { isIssueStatus, ProductStatusPill } from "../ProductStatus.js";
 import { QuickActionButton } from "../QuickAction.js";
 
 /**
  * The product header (§4.20): back to Library, the 320 px banner (full-bleed 16:9 on phones),
  * the 112 px icon overlapping it, the name as the page's `h1` (focus lands here after adding a
- * product), "by <developer>", status and tier, and the one lead action with the overflow menu.
+ * product), "by <developer> · <tier>" as text, the status only as a right-aligned issue pill (healthy is
+ * silence), and the one lead action with the overflow menu.
  */
 export function ProductHeader({
   product,
@@ -59,7 +60,7 @@ export function ProductHeader({
           >
             {product.name}
           </h1>
-          <div className="flex flex-wrap items-center gap-2 text-fg-muted">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-fg-muted">
             {pres.developer ? (
               <span>
                 by{" "}
@@ -68,12 +69,20 @@ export function ProductHeader({
                 </span>
               </span>
             ) : null}
-            <ProductStatusPill status={product.status} />
             {tier ? (
-              <span className="inline-flex h-6 items-center rounded-md border border-border-strong px-2 text-xs text-fg-strong">
+              <span>
+                {pres.developer ? (
+                  <span aria-hidden className="mr-2">
+                    ·
+                  </span>
+                ) : null}
                 {tier}
               </span>
             ) : null}
+            <ProductStatusPill
+              status={product.status}
+              className={isIssueStatus(product.status) ? "ml-auto" : undefined}
+            />
           </div>
         </div>
         <div className="flex gap-2 desk:pb-1">

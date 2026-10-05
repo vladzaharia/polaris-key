@@ -101,7 +101,8 @@ describe("Library on today's data (PX-02)", () => {
     renderPortal();
     await library();
     const hero = await screen.findByRole("article", { name: "Nightfall" });
-    expect(within(hero).getByText("Active")).toBeTruthy();
+    // Healthy is silence: no "Active" pill (EXPERIENCE §11.3).
+    expect(within(hero).queryByText("Active")).toBeNull();
     expect(within(hero).getByText("Lifetime")).toBeTruthy();
     const download = within(hero).getByRole("button", {
       name: /^Download for macOS: Nightfall/,
