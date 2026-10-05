@@ -21,7 +21,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | --- | --- | --- | --- | --- | --- |
 | Node | `node` | 55 | 6 | 0 | 7 |
 | React | `web`, `desktop-bridge` | 47 | 15 | 0 | 6 |
-| Python | `python` | 56 | 6 | 0 | 6 |
+| Python | `python` | 57 | 6 | 0 | 5 |
 | Swift | `macos`, `ios` | 56 | 5 | 0 | 7 |
 | Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 63 | 1 | 0 | 4 |
 | Kotlin | `android`, `jvm` | 59 | 5 | 0 | 4 |
@@ -89,7 +89,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `update.decide` | The update decision | `update-matrix.json` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.content` | The content decision: feed pack sets, floors and revocations, packs and prestage | `update-matrix.json` `contentRows` + `cases.json` `feedContentCases` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.driver` | Hand off to the native updater, or a store link | device tests | planned (unowned) | planned (unowned) | planned (unowned) | ✓; N/A (ios: outlet) | ✓; N/A (ios: outlet) | ✓; N/A (jvm: runtime) | ios: outlet; jvm: runtime |
-| `update.bootguard` | Confirm a boot, roll back after N failures | `stage-matrix.json` | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | ✓ | ✓ | — |
+| `update.bootguard` | Confirm a boot, roll back after N failures | `stage-matrix.json` | planned (unowned) | planned (unowned) | ✓ | planned (unowned) | ✓ | ✓ | — |
 | `outlet.detect` | Outlet detection | `outlet-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 
 ## Packs
@@ -150,7 +150,6 @@ Planned entries no work package owns yet. Each needs an owner before the gap can
 | React | `commerce.receipt` | P6-01 builds the Worker bridge and leaves the SDK side planned with no owner. |
 | Python | `identity.oidc` | No browser sign-in in the Python SDK, and no work package ports it. |
 | Python | `update.driver` | Only appcast_url() today; the Velopack hand-off has no work package (P3-06 excludes it). |
-| Python | `update.bootguard` | P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02. |
 | Python | `packs.transport.steam` | P5-08 covers Godot only; Python desktop hosts have no Steam-depot transport owner. |
 | Python | `packs.transport.msix` | No work package owns the MSIX optional-package transport (P5-08 Out). |
 | Python | `packs.transport.flatpak` | No work package owns the Flatpak extension transport (P5-08 Out). |

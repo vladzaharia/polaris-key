@@ -36,6 +36,8 @@ from __future__ import annotations
 
 from ._version import DIST_NAME, SDK_NAME, SDK_VERSION, __version__
 from .client import DeviceInfo, PolarisKeyClient, SyncState
+from .boot import ActivationOutcome, BootOutcome
+from .update.bootguard import BootGuard, BootGuardOutcome
 
 #: ``polaris_key.create(**opts)`` — the one-call constructor: build, ``init()`` and (unless
 #: ``expected_services`` is pinned) discover. See :meth:`PolarisKeyClient.create`.
@@ -265,6 +267,10 @@ __all__ = [
     "canonical_arch",
     # facade
     "PolarisKeyClient",
+    "BootOutcome",
+    "ActivationOutcome",
+    "BootGuard",
+    "BootGuardOutcome",
     "create",
     # supports() and typed "unsupported here" (P1b-10)
     "Support",

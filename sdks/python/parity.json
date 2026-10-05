@@ -83,9 +83,8 @@
       "note": "Only appcast_url() today; the Velopack hand-off has no work package (P3-06 excludes it)."
     },
     "update.bootguard": {
-      "status": "planned",
-      "unowned": true,
-      "note": "P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02."
+      "status": "implemented",
+      "note": "update/bootguard.py BootGuard: update.mark_boot_attempt() at launch (client.boot() calls it) and update.confirm_boot() once healthy (boot() confirms per stage-matrix.json's bootConfirmation), slots in the state directory; after maxFailedBoots unconfirmed launches it rolls back through the install driver when one can (update_reverted, boot_rolled_back), otherwise reports boot_rolled_back with code no-previous once. tests/test_boot.py drives the guardCases."
     },
     "outlet.detect": {
       "status": "implemented",

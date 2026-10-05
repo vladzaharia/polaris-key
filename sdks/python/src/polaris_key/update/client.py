@@ -398,6 +398,11 @@ class UpdateClient:
         #: The update-health journal (SDK parity pass §3.13), set by the facade: a decision
         #: offering a newer build records ``update_offered`` once per release.
         self.journal: Any = None
+        #: The app build's boot guard (:class:`~polaris_key.update.bootguard.BootGuard`), set by
+        #: the facade.
+        self.guard: Any = None
+        #: The install driver :meth:`install` hands a decision to (``polaris_key.update.drivers``).
+        self.driver: Any = None
         #: plans/P4-29.md §2.4 step 1: the delta menu of the most recently committed feed, fresh
         #: or stale (``_UNSET`` until a check ran or the cache was read).
         self._feed_menu: Any = _UNSET
@@ -492,6 +497,21 @@ class UpdateClient:
         if manifest is None:
             return None
         return appcast_url_from(manifest, channel=channel, arch=arch)
+
+    # ── Boot guard (SDK parity pass §3.15) ─────────────────────────────────────────────
+    def mark_boot_attempt(self) -> Any:
+        """Count this launch as unconfirmed and run the guard's decision (see
+        :class:`~polaris_key.update.bootguard.BootGuard`). ``client.boot()`` calls it."""
+        if self.guard is None:
+            raise PolarisError("not-configured", "This client has no boot guard.")
+        return self.guard.mark_boot_attempt()
+
+    def confirm_boot(self) -> bool:
+        """This launch is healthy: reset the failed-boot count; the first confirmation of a new
+        build records ``update_confirmed``."""
+        if self.guard is None:
+            raise PolarisError("not-configured", "This client has no boot guard.")
+        return self.guard.confirm_boot()
 
     def feed_url(
         self,

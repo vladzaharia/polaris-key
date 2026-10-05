@@ -77,6 +77,7 @@ from .license.client import LicenseClient
 from .license.endpoints import ActivationOk, reacquire_token
 from .license.gate import LicenseState
 from .release.client import ReleaseClient
+from .update.bootguard import BootGuard
 from .update.client import UpdateClient, UpdateClientOptions
 
 __all__ = [
@@ -258,6 +259,10 @@ class PolarisKeyClient:
         self.update_journal = UpdateJournal(self.core.local_state_dir(), self._journal_context)
         self.update.journal = self.update_journal
         self.release.update = self.update
+        # The app build's boot guard (SDK parity pass §3.15), beside the token store.
+        self.update.guard = BootGuard(
+            self.core.local_state_dir(), lambda: self.core.version, journal=self.update_journal
+        )
         self.update.packs.journal = self.update_journal
         self.devices.journal = self.update_journal
         self.devices.gate_status = lambda: self.license.status().status
@@ -492,6 +497,26 @@ class PolarisKeyClient:
             lastVerifiedAt=state.lastVerifiedAt,
             highWaterMark=self.core.high_water_mark,
         )
+
+    # ── One-call boot (SDK parity pass §3.4) ───────────────────────────────────────────
+    def boot(self, **opts: Any) -> Any:
+        """Discover → guard → sync (registering or enrolling when no player is needed) → gate →
+        decide → required packs → ready, through the shared boot stage machine. Returns a
+        :class:`~polaris_key.boot.BootOutcome`; see :func:`polaris_key.boot.run_boot` for the
+        options (``on_stage``, ``consent``, ``metered``, ``answer``, ``enroll``,
+        ``auto_confirm``, …). A ``needs_activation`` outcome is for the UI to render."""
+        from .boot import run_boot
+
+        return run_boot(self, **opts)
+
+    def ensure_activated(self, *, enroll: bool = False) -> Any:
+        """Register (an ``open`` product without License) or, with ``enroll=True``, enrol
+        keylessly when nothing is held, then sync. Returns an
+        :class:`~polaris_key.boot.ActivationOutcome` whose ``kind`` is ``needs-activation`` when
+        the player must still act."""
+        from .boot import ensure_activated
+
+        return ensure_activated(self, enroll=enroll)
 
     # ── Offline bundles (§7) ────────────────────────────────────────────────────────
     def import_bundle(self, jws: str, now: Optional[int] = None) -> ImportBundleResult:
