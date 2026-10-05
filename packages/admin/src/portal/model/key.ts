@@ -316,7 +316,7 @@ export function entriesVerdict(
   return {
     code: "entries",
     tone: "warning",
-    message: `This key has used all ${entries.limit} ${entries.limit === 1 ? "entry" : "entries"}. Add it here and ${name} signs you in instead of asking for the key.`,
+    message: `This key has no entries left in ${name}. Add it to your account and the app signs you in instead.`,
   };
 }
 

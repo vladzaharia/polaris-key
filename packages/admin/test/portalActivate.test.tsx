@@ -194,7 +194,7 @@ describe("key verdicts (UX-05)", () => {
       code: "entries",
       tone: "warning",
       message:
-        "This key has used all 5 entries. Add it here and Ember Tactics signs you in instead of asking for the key.",
+        "This key has no entries left in Ember Tactics. Add it to your account and the app signs you in instead.",
     });
     expect(blocksResend(notice)).toBe(false);
   });
@@ -739,7 +739,7 @@ describe("Activate license modal (PX-06)", () => {
       name: "Add Mossgarden to your account?",
     });
     expect(within(confirm).getByRole("status").textContent).toBe(
-      "This key has used all 5 entries. Add it here and Mossgarden signs you in instead of asking for the key.",
+      "This key has no entries left in Mossgarden. Add it to your account and the app signs you in instead.",
     );
     const add = within(confirm).getByRole("button", {
       name: "Add Mossgarden",
