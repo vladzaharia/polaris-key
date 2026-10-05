@@ -218,6 +218,7 @@ describe("product scope", () => {
       "maven",
       "oci",
       "godot",
+      "go",
     ]);
     expect(body.feeds[0]).toMatchObject({
       status: "off",
@@ -655,9 +656,20 @@ describe("platform scope", () => {
     ]);
     const body = await (await admin("GET", platform())).json();
     expect(body).toMatchObject({ owner: SYSTEM_PRODUCT_SLUG });
+    // The bootstrap sets up the six feeds the platform's packages use; Go has no platform module
+    // (F-31), so its feed stays not set up.
     expect(
-      body.feeds.every((f: { status: string }) => f.status === "enabled"),
-    ).toBe(true);
+      body.feeds.map((f: { ecosystem: string; status: string }) => [
+        f.ecosystem,
+        f.status,
+      ]),
+    ).toEqual([
+      ...["npm", "pypi", "swift", "maven", "oci", "godot"].map((e) => [
+        e,
+        "enabled",
+      ]),
+      ["go", "off"],
+    ]);
     expect(body.feeds[0]).toMatchObject({
       packages: 1,
       baseUrl: "https://pkg.plrs.im/npm/polaris-key/",
@@ -801,7 +813,7 @@ describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", ()
     );
     expect(JSON.stringify(listed)).not.toContain(minted.token);
     expect(listed.username).toBe("__token__");
-    expect(listed.feeds).toHaveLength(6);
+    expect(listed.feeds).toHaveLength(7);
     expect(listed.limits).toMatchObject({
       defaultDays: 90,
       urlDefaultDays: 30,
