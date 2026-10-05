@@ -60,6 +60,7 @@ import { padModules, type PadDelivery } from "./transportPlayPad.js";
 import { steamVdf } from "./transportSteam.js";
 import { buildFdroidFeed, FEEDS_USAGE } from "./feeds.js";
 import { feedsSetup, FEEDS_SETUP_USAGE } from "./feedSetup.js";
+import { formatImport, listingImport, LISTING_USAGE } from "./listing.js";
 import {
   generatedKeyText,
   generateReleaseKey,
@@ -352,6 +353,25 @@ export {
   type SteamVdfResult,
 } from "./transportSteam.js";
 export {
+  formatImport,
+  listingImport,
+  LISTING_USAGE,
+  type ImportAnswer,
+  type ListingImportOptions,
+  type ListingImportResult,
+} from "./listing.js";
+export {
+  parseGodotConfig,
+  pngSize,
+  readGodotListing,
+  resolveResPath,
+  type GodotConfig,
+  type GodotIcon,
+  type GodotListing,
+  type GodotRead,
+  type GodotValue,
+} from "./godotProject.js";
+export {
   findDistributionFile,
   initManifest,
   loadManifest,
@@ -432,6 +452,8 @@ export async function runPkey(argv: string[], io: CliIo = {}): Promise<number> {
         return await cmdFeeds(parsed, cwd, stdout, stderr, ci);
       case "transport":
         return await cmdTransport(parsed, cwd, stdout, stderr, ci);
+      case "listing":
+        return await cmdListing(parsed, cwd, stdout, ci);
       default:
         stderr.write(`Unknown command "${parsed.command}".\n\n${helpText()}`);
         return 2;
@@ -1350,6 +1372,49 @@ function titleize(slug: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+/**
+ * `pkey listing import --godot <project>` (A-18c): read the Godot project and import it into the
+ * product's shared listing — the diff first, written only with `--apply`. The cookie is read from
+ * the environment here, as `pkey bundle` does, so `listing.ts` never touches `process.env`.
+ */
+async function cmdListing(
+  parsed: ParsedArgs,
+  cwd: string,
+  stdout: Pick<NodeJS.WriteStream, "write">,
+  ci: CiIo,
+): Promise<number> {
+  const godot = flagString(parsed, "godot");
+  if (parsed.positional[0] !== "import" || !godot)
+    throw new Error(LISTING_USAGE);
+  const fields = flagString(parsed, "fields");
+  const result = await listingImport({
+    godot: path.resolve(cwd, godot),
+    product: flagString(parsed, "product"),
+    presets: parsed.multi["preset"] ?? [],
+    locale: flagString(parsed, "locale"),
+    overwrite: flagBool(parsed, "overwrite"),
+    apply: flagBool(parsed, "apply"),
+    ...(fields
+      ? {
+          fields: fields
+            .split(",")
+            .map((f) => f.trim())
+            .filter(Boolean),
+        }
+      : {}),
+    dryRun: flagBool(parsed, "dry-run"),
+    baseUrl: flagString(parsed, "base-url"),
+    cookie: (ci.env as Record<string, string | undefined>)[ADMIN_COOKIE_ENV],
+    ...(ci.fetchImpl ? { fetchImpl: ci.fetchImpl } : {}),
+  });
+  stdout.write(
+    flagBool(parsed, "json") || flagBool(parsed, "dry-run")
+      ? `${JSON.stringify(flagBool(parsed, "dry-run") ? result.upload : result, null, 2)}\n`
+      : `${formatImport(result)}\n`,
+  );
+  return 0;
+}
+
 function helpText(): string {
   return `pkey - Polaris Key platform CLI
 
@@ -1363,6 +1428,9 @@ Commands:
   pkey bundle --product slug --device id --grace-days n [--no-config] [--license id]
               [--base-url url] [--out file] [--force]
   pkey manifest schemas --out dir
+  pkey listing import --godot project --product slug [--preset name ...] [--locale code]
+              [--overwrite] [--apply [--fields a,b]] [--json] [--base-url url]
+  pkey listing import --godot project --dry-run [--preset name ...]
 
 CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
   pkey auth github-oidc --product slug [--base-url url]

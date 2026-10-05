@@ -4619,7 +4619,7 @@
       "optional": false,
       "refs": ["notes/S-15 §7.2", "notes/S-15 §11 (A-18c)"],
       "brief": "wp/A-18c-listing-import.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "A-18d",
