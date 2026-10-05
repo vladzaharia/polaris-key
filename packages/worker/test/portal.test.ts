@@ -21,7 +21,11 @@ import {
   getOrCreateAccountByEmail,
   upsertPortalProductSettings,
 } from "../src/services/identity/portal/repo.js";
-import { handlePortalApi, handlePortalDownload } from "./portalHarness.js";
+import {
+  handlePortalApi,
+  handlePortalDownload,
+  seedRepositoryVisibility,
+} from "./portalHarness.js";
 import { seedDeliveryAccess } from "./releaseSurface.js";
 import { handleMagicVerify } from "../src/services/identity/portal/auth.js";
 import {
@@ -421,6 +425,8 @@ describe("customer portal", () => {
     // The delivery access is Distribution's per-deliverable answer since P2b-04 (it was the
     // per-artifact snapshot below): `licensed`, as the artifact row says.
     await seedDeliveryAccess(db, "djdl", "licensed");
+    // A licensed file reaches a browser through its GitHub URL only from a public repository.
+    await seedRepositoryVisibility(env, db, "djdl", "public");
 
     await db.run(
       `INSERT INTO release_metadata
@@ -669,6 +675,8 @@ describe("customer portal", () => {
     // The delivery access is Distribution's per-deliverable answer since P2b-04 (it was the
     // per-artifact snapshot below): `licensed`, as the artifact row says.
     await seedDeliveryAccess(db, "djdl", "licensed");
+    // A licensed file reaches a browser through its GitHub URL only from a public repository.
+    await seedRepositoryVisibility(env, db, "djdl", "public");
 
     await db.run(
       `INSERT INTO release_metadata
