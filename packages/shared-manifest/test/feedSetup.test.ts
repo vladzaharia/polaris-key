@@ -177,7 +177,7 @@ describe("renderFeedSetup", () => {
   });
 
   it("refuses inputs a snippet could not carry safely", () => {
-    expect(feedSetupProblem("cargo", ctx())).toMatch(/unknown ecosystem/);
+    expect(feedSetupProblem("cpan", ctx())).toMatch(/unknown ecosystem/);
     expect(feedSetupProblem("npm", ctx({ owner: "Acme Corp" }))).toMatch(
       /not a slug/,
     );

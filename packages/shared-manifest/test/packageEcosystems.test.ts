@@ -46,6 +46,12 @@ describe("PACKAGE_ECOSYSTEM_RULES", () => {
     expect(packageNameNorm("oci", "app/web")).toBe("app/web");
     expect(maxPackageFiles("oci")).toBe(4096);
     expect(maxPackageFiles("npm")).toBe(64);
+    // Cargo: crates.io's key, case-insensitive with `-` and `_` equal; one crate per version.
+    expect(packageNameNorm("cargo", "Acme_SDK-x")).toBe("acme-sdk-x");
+    expect(isPackageName("cargo", "acme_sdk")).toBe(true);
+    expect(isPackageName("cargo", "1acme")).toBe(false);
+    expect(isPackageName("cargo", `a${"x".repeat(64)}`)).toBe(false);
+    expect(maxPackageFiles("cargo")).toBe(1);
   });
 
   it("checks names against each feed's namespace, refusing an empty one", () => {
@@ -59,6 +65,7 @@ describe("PACKAGE_ECOSYSTEM_RULES", () => {
       ["pypi", "Other", { names: ["acme-sdk"] }, false],
       ["oci", "anything", {}, true],
       ["godot", "acme_tool", { publisher: "acme" }, true],
+      ["cargo", "anything", {}, true],
     ];
     for (const [e, name, ns, inside] of cases)
       expect(

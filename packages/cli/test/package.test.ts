@@ -28,6 +28,7 @@ import {
   SLUG,
 } from "./publishFixture.js";
 import {
+  cargoCrate,
   godotAddon,
   mavenPublication,
   npmPackage,
@@ -69,7 +70,7 @@ async function extractIn(
   }
 }
 
-describe("the six package extractors (F-03)", () => {
+describe("the package extractors (F-03, F-30)", () => {
   it("npm: the tarball, and package.json's name, version and packument fields (never scripts)", async () => {
     const x = await extractIn(npmPackage(), "npm.sdk");
     expect(x.version).toBe("1.4.0");
@@ -179,6 +180,105 @@ describe("the six package extractors (F-03)", () => {
       description: 'Talks to "Acme"',
       script: "plugin.gd",
     });
+  });
+
+  it("Cargo: the crate, and its normalised Cargo.toml's dependencies, features, links and rust-version", async () => {
+    const x = await extractIn(cargoCrate(), "cargo.sdk");
+    expect(x.files.map((f) => [f.name, f.type])).toEqual([
+      ["acme-sdk-1.4.0.crate", "crate"],
+    ]);
+    expect(x.version).toBe("1.4.0");
+    expect(x.metadata).toEqual({
+      name: "acme-sdk",
+      version: "1.4.0",
+      description: "The Acme SDK",
+      license: "MIT",
+      rustVersion: "1.74",
+      links: "acme",
+      deps: [
+        {
+          name: "serde",
+          req: "^1.0",
+          features: ["derive"],
+          optional: true,
+          default_features: true,
+          target: null,
+          kind: "normal",
+          registry: null,
+        },
+        {
+          name: "acme-core",
+          req: "^0.3",
+          features: [],
+          optional: false,
+          default_features: true,
+          target: null,
+          kind: "normal",
+          registry: "sparse+https://pkg.plrs.im/cargo/acme/",
+        },
+        {
+          name: "json",
+          req: "1",
+          features: [],
+          optional: false,
+          default_features: false,
+          target: null,
+          kind: "normal",
+          registry: null,
+          package: "serde_json",
+        },
+        {
+          name: "proptest",
+          req: "1",
+          features: [],
+          optional: false,
+          default_features: true,
+          target: null,
+          kind: "dev",
+          registry: null,
+        },
+        {
+          name: "libc",
+          req: "0.2",
+          features: [],
+          optional: false,
+          default_features: true,
+          target: "cfg(unix)",
+          kind: "normal",
+          registry: null,
+        },
+      ],
+      features: { default: ["std"], std: [], serde: ["dep:serde"] },
+    });
+  });
+
+  it("Cargo: refuses a manifest cargo package has not normalised", async () => {
+    const { tgz } = await import("./packageFixtures.js");
+    const local = {
+      "acme-sdk-1.4.0.crate": tgz({
+        "acme-sdk-1.4.0/Cargo.toml":
+          '[package]\nname = "acme-sdk"\nversion = "1.4.0"\n\n[dependencies.core]\nversion = "1"\nregistry = "acme"\n',
+      }),
+    };
+    await expect(extractIn(local, "cargo.sdk")).rejects.toThrow(
+      /by its local name/,
+    );
+    const git = {
+      "acme-sdk-1.4.0.crate": tgz({
+        "acme-sdk-1.4.0/Cargo.toml":
+          '[package]\nname = "acme-sdk"\nversion = "1.4.0"\n\n[dependencies]\ncore = { git = "https://example.com/core" }\n',
+      }),
+    };
+    await expect(extractIn(git, "cargo.sdk")).rejects.toThrow(/git dependency/);
+    const other = {
+      "acme-sdk-1.4.0.crate": tgz({
+        "acme-sdk-1.4.0/Cargo.toml":
+          '[package]\nname = "Acme-SDK"\nversion = "1.4.0"\n',
+      }),
+    };
+    await expect(extractIn(other, "cargo.sdk")).rejects.toThrow(
+      /packs Acme-SDK/,
+    );
   });
 
   it("refuses files that name another package", async () => {
@@ -332,6 +432,7 @@ describe("pkey release publish --deliverable <package> (F-03)", () => {
       ["maven.sdk", mavenPublication(), []],
       ["oci.cli", ociLayout(), ["--version", "1.4.0"]],
       ["godot.sdk", godotAddon(), []],
+      ["cargo.sdk", cargoCrate(), []],
     ];
     for (const [id, files, extra] of cases) {
       const cwd = await repo(files, PACKAGES_RELEASE_YAML);

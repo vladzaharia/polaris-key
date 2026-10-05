@@ -216,7 +216,7 @@ describe("registry tokens: the store (§6.1)", () => {
     expect((await m({ expiresInDays: 365 })).ok).toBe(true);
     expect((await m({ label: "" })).ok).toBe(false);
     expect((await m({ label: "x".repeat(65) })).ok).toBe(false);
-    expect((await m({ ecosystems: ["cargo"] })).ok).toBe(false);
+    expect((await m({ ecosystems: ["go"] })).ok).toBe(false);
     expect((await m({ ecosystems: [] })).ok).toBe(false);
     // F-22: `publish` must name its publish ecosystems (registryPublish.test.ts has the rest);
     // it implies `read` (F-23's push tokens are the same scope, naming OCI).

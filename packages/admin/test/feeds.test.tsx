@@ -374,6 +374,7 @@ describe("the Feeds overview", () => {
       "Swift",
       "Maven / Gradle",
       "Godot",
+      "Cargo",
     ]);
     expect(within(rows[0]!).getByText("Enabled")).toBeTruthy();
     expect(
@@ -382,7 +383,7 @@ describe("the Feeds overview", () => {
     expect(
       within(rows[0]!).getByRole("link", { name: "npm" }).getAttribute("href"),
     ).toBe("#/platform/feeds/npm");
-    expect(within(main()).getByText("6 of 6")).toBeTruthy();
+    expect(within(main()).getByText("7 of 7")).toBeTruthy();
     expect(
       within(main()).getByRole("heading", { name: "Owners" }),
     ).toBeTruthy();
@@ -402,6 +403,7 @@ describe("the Feeds overview", () => {
       "Swift",
       "Maven / Gradle",
       "Godot",
+      "Cargo",
       "Tokens",
     ]);
     // Nothing suggests a public registry, and nothing is "coming soon".
@@ -466,7 +468,7 @@ describe("the Feeds overview", () => {
     ).toBeTruthy();
     expect(
       within(table).getAllByText("This feed has no settings yet.").length,
-    ).toBe(3);
+    ).toBe(4);
     expect(
       within(main()).queryByRole("heading", { name: "Owners" }),
     ).toBeNull();
@@ -832,13 +834,13 @@ describe("a feed page", () => {
   });
 
   it("an unknown feed is a not-found page naming it", async () => {
-    boot("#/platform/feeds/cargo", { extra: feedRoutes() });
+    boot("#/platform/feeds/cpan", { extra: feedRoutes() });
     await heading("Feed not found");
-    expect(within(main()).getByText("There is no cargo feed")).toBeTruthy();
+    expect(within(main()).getByText("There is no cpan feed")).toBeTruthy();
   });
 
   it("passes axe on Settings, ecosystem panels included", async () => {
-    for (const eco of ["maven", "swift", "godot"]) {
+    for (const eco of ["maven", "swift", "godot", "cargo"]) {
       cleanup();
       resetConsole();
       boot(`#/platform/feeds/${eco}/settings`, { extra: feedRoutes() });
@@ -865,6 +867,7 @@ describe("a feed page", () => {
       "Swift",
       "Maven / Gradle",
       "Godot",
+      "Cargo",
       "Tokens",
     ]);
     expect(

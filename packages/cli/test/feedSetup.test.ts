@@ -70,8 +70,12 @@ describe("pkey feeds setup", () => {
     (c) => !c.credential || c.credential.kind === "env",
   );
 
-  it("covers most shared cases", () => {
-    expect(cliCases.length).toBeGreaterThanOrEqual(cases.length - 3);
+  it("covers every shared case but the shown-once token ones (the console's)", () => {
+    // `pkey feeds setup` names a token only through --token-env; a literal token or a Godot URL
+    // token is the console's token dialog alone.
+    for (const c of cases.filter((x) => !cliCases.includes(x)))
+      expect(["token", "godot-url"], c.id).toContain(c.credential?.kind);
+    expect(cliCases.length).toBeGreaterThanOrEqual(cases.length - 4);
   });
 
   for (const c of cliCases)
@@ -126,7 +130,7 @@ describe("pkey feeds setup", () => {
       "feeds",
       "setup",
       "--ecosystem",
-      "cargo",
+      "cpan",
       "--owner",
       "acme",
     ]);

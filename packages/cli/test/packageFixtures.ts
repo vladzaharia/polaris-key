@@ -246,4 +246,56 @@ release:
       artifacts:
         zip: { match: "acme_sdk-*.zip" }
         icon: { match: "icon.png" }
+    cargo.sdk:
+      kind: package
+      ecosystem: cargo
+      name: acme-sdk
+      artifacts:
+        crate: { match: "acme-sdk-*.crate" }
 `;
+
+/** A `cargo package` output: `<name>-<version>/` with a normalised Cargo.toml (F-30). */
+export function cargoCrate(version = "1.4.0"): Record<string, Uint8Array> {
+  const manifest = [
+    "[package]",
+    'edition = "2021"',
+    'rust-version = "1.74"',
+    'name = "acme-sdk"',
+    `version = "${version}"`,
+    'description = "The Acme SDK"',
+    'license = "MIT"',
+    'links = "acme"',
+    "",
+    "[dependencies.serde]",
+    'version = "^1.0"',
+    'features = ["derive"]',
+    "optional = true",
+    "",
+    "[dependencies.acme-core]",
+    'version = "^0.3"',
+    'registry-index = "sparse+https://pkg.plrs.im/cargo/acme/"',
+    "",
+    "[dependencies.json]",
+    'version = "1"',
+    'package = "serde_json"',
+    "default-features = false",
+    "",
+    "[dev-dependencies.proptest]",
+    'version = "1"',
+    "",
+    "[target.'cfg(unix)'.dependencies.libc]",
+    'version = "0.2"',
+    "",
+    "[features]",
+    'default = ["std"]',
+    "std = []",
+    'serde = ["dep:serde"]',
+    "",
+  ].join("\n");
+  return {
+    [`acme-sdk-${version}.crate`]: tgz({
+      [`acme-sdk-${version}/Cargo.toml`]: manifest,
+      [`acme-sdk-${version}/src/lib.rs`]: "pub fn hi() {}\n",
+    }),
+  };
+}

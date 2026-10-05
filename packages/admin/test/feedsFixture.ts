@@ -23,6 +23,7 @@ const LABELS: Record<FeedEcosystem, string> = {
   maven: "Maven",
   oci: "OCI",
   godot: "Godot",
+  cargo: "Cargo",
 };
 
 function base(eco: FeedEcosystem, owner: string): string {
@@ -31,7 +32,15 @@ function base(eco: FeedEcosystem, owner: string): string {
   return `${ORIGIN}/${eco}/${owner}/`;
 }
 
-const ECOS: FeedEcosystem[] = ["npm", "pypi", "swift", "maven", "oci", "godot"];
+const ECOS: FeedEcosystem[] = [
+  "npm",
+  "pypi",
+  "swift",
+  "maven",
+  "oci",
+  "godot",
+  "cargo",
+];
 
 function summary(
   eco: FeedEcosystem,
@@ -61,6 +70,7 @@ const PLATFORM_STATS: Partial<Record<FeedEcosystem, Partial<FeedSummary>>> = {
   maven: { packages: 6, versions: 18, lastPublishedAt: T0 - 90_000 },
   oci: { packages: 1, versions: 9, lastPublishedAt: T0 - 600 },
   godot: { packages: 1, versions: 4, lastPublishedAt: T0 - 172_800 },
+  cargo: { packages: 1, versions: 2, lastPublishedAt: T0 - 259_200 },
 };
 
 export function platformOverview(): FeedsOverviewDto {
@@ -74,9 +84,9 @@ export function platformOverview(): FeedsOverviewDto {
     registryOrigin: ORIGIN,
     feeds,
     summary: {
-      feedsEnabled: 6,
-      packages: 13,
-      versions: 56,
+      feedsEnabled: 7,
+      packages: 14,
+      versions: 58,
       lastPublishedAt: T0 - 600,
     },
     owners: [
@@ -146,6 +156,7 @@ const NAMESPACES: Record<
     maven: { groupPrefixes: ["im.plrs.key"] },
     oci: {},
     godot: { publisher: "polaris-key" },
+    cargo: {},
   },
   djdl: {
     npm: { scope: "@djdl" },
@@ -154,6 +165,7 @@ const NAMESPACES: Record<
     maven: {},
     oci: {},
     godot: {},
+    cargo: {},
   },
 };
 
@@ -211,6 +223,13 @@ const CAPS: Record<FeedEcosystem, FeedDetailDto["capabilities"]> = {
     channels: "tags",
     search: true,
   },
+  cargo: {
+    ...BASE_CAPS,
+    yank: true,
+    deprecate: false,
+    yankPolicy: false,
+    channels: "none",
+  },
 };
 
 /** The adapters' extension settings (`settings.ext` keys, less `yankHidesFromIndex`). */
@@ -221,6 +240,7 @@ export const EXTENSIONS: Record<FeedEcosystem, string[]> = {
   maven: [],
   oci: ["retainUntaggedDays"],
   godot: ["categoryId", "supportLevel", "license", "minGodotVersion"],
+  cargo: [],
 };
 
 export function feedDetail(

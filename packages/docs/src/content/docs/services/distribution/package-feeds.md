@@ -2,7 +2,7 @@
 sidebar:
   order: 10
 title: "Package feeds"
-description: "The registry host, pkg.plrs.im: package feeds for npm, PyPI, SwiftPM, Maven and Gradle, OCI and Godot clients, with one access check before every cached answer."
+description: "The registry host, pkg.plrs.im: package feeds for npm, PyPI, SwiftPM, Maven and Gradle, OCI, Godot and Cargo clients, with one access check before every cached answer."
 ---
 
 Package feeds let a product publish libraries and tools to the package managers its users
@@ -16,20 +16,21 @@ Every feed is under its owner (the product slug), so a product never shadows ano
 OCI is the exception the protocol forces: its root is `/v2/`, and the repository name starts with
 the owner.
 
-| Ecosystem | Base URL                                   | Clients                                    |
-| --------- | ------------------------------------------ | ------------------------------------------ |
-| npm       | `https://pkg.plrs.im/npm/<owner>/`         | npm, pnpm, Yarn Berry, Bun                 |
-| PyPI      | `https://pkg.plrs.im/pypi/<owner>/simple/` | pip, uv, Poetry                            |
-| Swift     | `https://pkg.plrs.im/swift/<owner>/`       | SwiftPM                                    |
-| Maven     | `https://pkg.plrs.im/maven/<owner>/`       | Gradle, Maven                              |
-| OCI       | `https://pkg.plrs.im/v2/<owner>/…`         | docker, podman, crane                      |
-| Godot     | `https://pkg.plrs.im/godot/<owner>/`       | the Godot editor's asset library, GodotEnv |
+| Ecosystem | Base URL                                    | Clients                                    |
+| --------- | ------------------------------------------- | ------------------------------------------ |
+| npm       | `https://pkg.plrs.im/npm/<owner>/`          | npm, pnpm, Yarn Berry, Bun                 |
+| PyPI      | `https://pkg.plrs.im/pypi/<owner>/simple/`  | pip, uv, Poetry                            |
+| Swift     | `https://pkg.plrs.im/swift/<owner>/`        | SwiftPM                                    |
+| Maven     | `https://pkg.plrs.im/maven/<owner>/`        | Gradle, Maven                              |
+| OCI       | `https://pkg.plrs.im/v2/<owner>/…`          | docker, podman, crane                      |
+| Godot     | `https://pkg.plrs.im/godot/<owner>/`        | the Godot editor's asset library, GodotEnv |
+| Cargo     | `sparse+https://pkg.plrs.im/cargo/<owner>/` | Cargo                                      |
 
 `GET /` is a static page naming the host, and `GET /v2/` is OCI's base answer
 (`Docker-Distribution-API-Version: registry/2.0`): `200` to a request bearing a valid pull token,
 and the standard `401` Bearer challenge naming `/v2/token` to any other once the deployment has its
-registry token key set (before that, always `200`). Cargo, Go and NuGet names are reserved and
-answer the not-found.
+registry token key set (before that, always `200`). Go and NuGet names are reserved and answer
+the not-found.
 
 ## What the host promises
 
@@ -70,14 +71,16 @@ mode reads the request's **registry token** (`pkeyr_…`) and judges who it belo
 | bound to a licence (minted in the portal, or by an operator for a licensee)              | admitted while it is active | also needs the package's delivery gate flag |
 
 A refused licence token is `403` (`forbidden`; OCI `DENIED`; Swift `problem+json`). The native
-challenge is `WWW-Authenticate: Basic realm="pkg.plrs.im"` for npm, PyPI, Maven, Swift and Godot,
+challenge is `WWW-Authenticate: Basic realm="pkg.plrs.im"` for npm, PyPI, Maven, Swift, Godot and Cargo,
 and OCI's `Bearer realm="https://pkg.plrs.im/v2/token",service=…,scope=…`. Device tokens
 (`pkeyt_…`) and licence keys (`pkey_…`) are never registry credentials.
 
 Each client sends the token its own way: Bearer for npm, pnpm, Yarn, Bun and SwiftPM (after
 `swift package-registry login`); Basic `__token__:<token>` for pip, uv, Poetry, Gradle and Maven;
 OCI clients run `docker login pkg.plrs.im -u __token__` and trade it at `/v2/token` for a
-five-minute pull token. The Godot editor sends no credentials, so a **Godot editor URL** token
+five-minute pull token. Cargo sends the bare token (`Authorization: <token>`, from
+`cargo login --registry <owner>` or `CARGO_REGISTRIES_<OWNER>_TOKEN`) once the feed's
+`config.json` says `auth-required`. The Godot editor sends no credentials, so a **Godot editor URL** token
 (read-only, Godot only) goes in its URL: `https://pkg.plrs.im/godot/<owner>/t/<token>/…`. The
 setup for each client is on [Installing from the feeds](/docs/build/install-from-feeds/#private-feeds).
 
@@ -463,6 +466,45 @@ Add the URL with no trailing slash: the editor appends its own paths. Each packa
   `4.4`; editors older than it, or of another major version, see nothing).
 - **Search** is filtered in memory over the owner's packages. Tags are not supported: a
   `#tag` search term matches nothing.
+
+## Cargo
+
+The Cargo feed is a read-only sparse index (Cargo 1.68 and later; 1.74 and later for a non-public
+feed). Name it as a registry and take a crate from it per dependency:
+
+```toml
+# .cargo/config.toml
+[registries.<owner>]
+index = "sparse+https://pkg.plrs.im/cargo/<owner>/"
+
+# Cargo.toml
+[dependencies]
+acme-sdk = { version = "1", registry = "<owner>" }
+```
+
+Cargo takes a crate from the feed only for a dependency that names it with `registry =`, so there
+is no namespace to set: every crate sits in the owner's own index.
+
+- **Publishing** is `pkey release publish` with a `kind: package`, `ecosystem: cargo` deliverable
+  whose artifact is the `.crate` that `cargo package` writes. `config.json` has no `api`, so
+  `cargo publish` refuses the registry. The CLI reads the crate's normalised `Cargo.toml` for the
+  index (dependencies of every kind and target, features, `links`, `rust-version`); the Worker never
+  unpacks a crate. A dependency on another registry must come from `cargo package`'s output, which
+  writes that registry's index URL; a dependency on this same feed resolves here.
+- **The index.** `config.json` names the download template,
+  `…/files/{sha256-checksum}/{crate}-{version}.crate`, so every crate URL is content-addressed.
+  Each crate's index file (`1/`, `2/`, `3/<c>/` or `<ab>/<cd>/` and the lower-case name) has one
+  JSON line per version, and Cargo checks every download against its `cksum`.
+- **Yank and channels.** A **yanked** version keeps its line marked `yanked`: an existing
+  `Cargo.lock` still builds, and a new resolution skips it. Cargo has no deprecation, so a
+  **deprecated** version is listed as live, and no channel tags: a pre-release is chosen by its
+  semver version (`=1.2.0-beta.1`). Versions are semver.
+- **Private feeds.** A non-public feed answers `config.json` `401` without a token; Cargo retries
+  with its registry token, and the answer says `auth-required: true`, so Cargo then sends the token
+  on every request. Cargo needs a credential provider named for such a registry:
+  `credential-provider = "cargo:token"` beside its `index`. A crate whose own delivery access is stricter than its feed's is refused to a
+  client the feed admits without a token, which Cargo reports as an error rather than a missing
+  crate: keep such crates on a non-public feed.
 
 ## Publishing with native clients
 

@@ -477,9 +477,21 @@ describe("d1RegistrySettings", () => {
     expect(await d1RegistrySettings(db).settings("djdl", "pypi")).toMatchObject(
       { policy: { ecosystem: "pypi", enabled: true }, feed: null },
     );
+    // F-30's migration seeds Cargo's policy row; Go (tier 3, reserved) has none yet.
     expect(
       await d1RegistrySettings(db).settings("djdl", "cargo"),
-    ).toMatchObject({ policy: null, feed: null });
+    ).toMatchObject({
+      policy: {
+        ecosystem: "cargo",
+        enabled: true,
+        maxPackageBytesCeiling: 52428800,
+      },
+      feed: null,
+    });
+    expect(await d1RegistrySettings(db).settings("djdl", "go")).toMatchObject({
+      policy: null,
+      feed: null,
+    });
   });
 
   it("deleting a product turns its packageFeeds off and stops its reads", async () => {
@@ -870,9 +882,9 @@ function deps(source: Map<string, RegistryPackage>): TestDeps {
 }
 
 describe("the materialiser", () => {
-  it("every feed package's ecosystem has its renderer and routes (F-04 to F-09)", () => {
+  it("every feed package's ecosystem has its renderer and routes (F-04 to F-09, F-30)", () => {
     expect([...RENDERERS.keys()].sort()).toEqual(
-      ["godot", "maven", "npm", "oci", "pypi", "swift"].sort(),
+      ["cargo", "godot", "maven", "npm", "oci", "pypi", "swift"].sort(),
     );
     for (const [ecosystem, renderer] of RENDERERS)
       expect(renderer.routes.length, ecosystem).toBeGreaterThan(0);

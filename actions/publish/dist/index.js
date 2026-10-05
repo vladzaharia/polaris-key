@@ -2149,12 +2149,12 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "required": ["pack", "release"]
     },
     "packageBlock": {
-      "description": "A package release's block (F-03, plans/F-01.md §3.2): the declared ecosystem and name, the files (r2 locations only, role payload, a type from the ecosystem's vocabulary) and the CLI extractor's metadata (at most 16 KiB, its name and version equal to the declaration and the descriptor). The validator additionally requires, which JSON Schema does not express here: each file's type belongs to its ecosystem's vocabulary and the files compose a release of it (one npm tarball, one Swift source archive, one Godot zip, …); a Maven file names its extension and only a Maven file a classifier; an OCI object names its mediaType; names are unique; an npm or Swift version is semver and an OCI version has no '+'; the metadata carries only its ecosystem's keys; and the ecosystem and name equal the deliverable's declaration in .pkey/release.",
+      "description": "A package release's block (F-03, plans/F-01.md §3.2): the declared ecosystem and name, the files (r2 locations only, role payload, a type from the ecosystem's vocabulary) and the CLI extractor's metadata (at most 16 KiB, its name and version equal to the declaration and the descriptor). The validator additionally requires, which JSON Schema does not express here: each file's type belongs to its ecosystem's vocabulary and the files compose a release of it (one npm tarball, one Swift source archive, one Godot zip, one Cargo crate, …); a Maven file names its extension and only a Maven file a classifier; an OCI object names its mediaType; names are unique; an npm, Swift or Cargo version is semver and an OCI version has no '+'; the metadata carries only its ecosystem's keys; and the ecosystem and name equal the deliverable's declaration in .pkey/release.",
       "type": "object",
       "required": ["ecosystem", "name", "files", "metadata"],
       "properties": {
         "ecosystem": {
-          "enum": ["npm", "pypi", "swift", "maven", "oci", "godot"]
+          "enum": ["npm", "pypi", "swift", "maven", "oci", "godot", "cargo"]
         },
         "name": {
           "type": "string",
@@ -2219,7 +2219,8 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
             "oci-manifest",
             "oci-index",
             "godot-zip",
-            "godot-icon"
+            "godot-icon",
+            "crate"
           ]
         },
         "sha256": {
@@ -3101,7 +3102,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       }
     },
     "packageDeliverable": {
-      "description": "A package deliverable (F-03, plans/F-01.md §3.1): one package a package feed on pkg.plrs.im serves, in one ecosystem, under a name in that ecosystem's grammar (expressed below per ecosystem). Its artifacts map entry ids to the file-name globs pkey release publish packs. It takes none of the app's or a pack's fields. A product may declare packages without deliverables.app. The validator additionally requires, which JSON Schema does not express here: no two package deliverables share an ecosystem and a normalised name (PEP 503 for PyPI, case-insensitive for npm, Swift and Maven: package_name_collision), and at most 64 package deliverables (too_many_package_deliverables). Declaring a package never enables a feed: feed settings are operator-owned.",
+      "description": "A package deliverable (F-03, plans/F-01.md §3.1): one package a package feed on pkg.plrs.im serves, in one ecosystem, under a name in that ecosystem's grammar (expressed below per ecosystem). Its artifacts map entry ids to the file-name globs pkey release publish packs. It takes none of the app's or a pack's fields. A product may declare packages without deliverables.app. The validator additionally requires, which JSON Schema does not express here: no two package deliverables share an ecosystem and a normalised name (PEP 503 for PyPI, case-insensitive for npm, Swift and Maven, case-insensitive with '-' and '_' equal for Cargo: package_name_collision), and at most 64 package deliverables (too_many_package_deliverables). Declaring a package never enables a feed: feed settings are operator-owned.",
       "type": "object",
       "required": ["kind", "ecosystem", "name", "artifacts"],
       "properties": {
@@ -3109,7 +3110,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           "const": "package"
         },
         "ecosystem": {
-          "enum": ["npm", "pypi", "swift", "maven", "oci", "godot"]
+          "enum": ["npm", "pypi", "swift", "maven", "oci", "godot", "cargo"]
         },
         "name": {
           "type": "string",
@@ -3268,6 +3269,24 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
             "properties": {
               "name": {
                 "pattern": "^[a-z0-9_]{1,64}$",
+                "maxLength": 64
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "ecosystem": {
+                "const": "cargo"
+              }
+            },
+            "required": ["ecosystem"]
+          },
+          "then": {
+            "properties": {
+              "name": {
+                "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$",
                 "maxLength": 64
               }
             }
@@ -4895,7 +4914,7 @@ var require_stringify = __commonJS({
         props.push(doc.directives.tagString(tag));
       return props.join(" ");
     }
-    function stringify(item, ctx, onComment, onChompKeep) {
+    function stringify2(item, ctx, onComment, onChompKeep) {
       if (identity.isPair(item))
         return item.toString(ctx, onComment, onChompKeep);
       if (identity.isAlias(item)) {
@@ -4924,7 +4943,7 @@ var require_stringify = __commonJS({
 ${ctx.indent}${str4}`;
     }
     exports.createStringifyContext = createStringifyContext;
-    exports.stringify = stringify;
+    exports.stringify = stringify2;
   }
 });
 
@@ -4935,7 +4954,7 @@ var require_stringifyPair = __commonJS({
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var identity = require_identity();
     var Scalar = require_Scalar();
-    var stringify = require_stringify();
+    var stringify2 = require_stringify();
     var stringifyComment = require_stringifyComment();
     function stringifyPair({ key, value }, ctx, onComment, onChompKeep) {
       const { allNullValues, doc, indent, indentStep, options: { commentString, indentSeq, simpleKeys } } = ctx;
@@ -4957,7 +4976,7 @@ var require_stringifyPair = __commonJS({
       });
       let keyCommentDone = false;
       let chompKeep = false;
-      let str4 = stringify.stringify(key, ctx, () => keyCommentDone = true, () => chompKeep = true);
+      let str4 = stringify2.stringify(key, ctx, () => keyCommentDone = true, () => chompKeep = true);
       if (!explicitKey && !ctx.inFlow && str4.length > 1024) {
         if (simpleKeys)
           throw new Error("With simple keys, single line scalar must not span more than 1024 characters");
@@ -5009,7 +5028,7 @@ ${indent}:`;
         ctx.indent = ctx.indent.substring(2);
       }
       let valueCommentDone = false;
-      const valueStr = stringify.stringify(value, ctx, () => valueCommentDone = true, () => chompKeep = true);
+      const valueStr = stringify2.stringify(value, ctx, () => valueCommentDone = true, () => chompKeep = true);
       let ws = " ";
       if (keyComment || vsb || vcb) {
         ws = vsb ? "\n" : "";
@@ -5153,7 +5172,7 @@ var require_addPairToJSMap = __commonJS({
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var log = require_log();
     var merge = require_merge();
-    var stringify = require_stringify();
+    var stringify2 = require_stringify();
     var identity = require_identity();
     var toJS = require_toJS();
     function addPairToJSMap(ctx, map, { key, value }) {
@@ -5189,7 +5208,7 @@ var require_addPairToJSMap = __commonJS({
       if (typeof jsKey !== "object")
         return String(jsKey);
       if (identity.isNode(key) && ctx?.doc) {
-        const strCtx = stringify.createStringifyContext(ctx.doc, {});
+        const strCtx = stringify2.createStringifyContext(ctx.doc, {});
         strCtx.anchors = /* @__PURE__ */ new Set();
         for (const node of ctx.anchors.keys())
           strCtx.anchors.add(node.anchor);
@@ -5258,12 +5277,12 @@ var require_stringifyCollection = __commonJS({
     "use strict";
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var identity = require_identity();
-    var stringify = require_stringify();
+    var stringify2 = require_stringify();
     var stringifyComment = require_stringifyComment();
     function stringifyCollection(collection, ctx, options) {
       const flow = ctx.inFlow ?? collection.flow;
-      const stringify2 = flow ? stringifyFlowCollection : stringifyBlockCollection;
-      return stringify2(collection, ctx, options);
+      const stringify3 = flow ? stringifyFlowCollection : stringifyBlockCollection;
+      return stringify3(collection, ctx, options);
     }
     function stringifyBlockCollection({ comment, items }, ctx, { blockItemPrefix, flowChars, itemIndent, onChompKeep, onComment }) {
       const { indent, options: { commentString } } = ctx;
@@ -5288,7 +5307,7 @@ var require_stringifyCollection = __commonJS({
           }
         }
         chompKeep = false;
-        let str5 = stringify.stringify(item, itemCtx, () => comment2 = null, () => chompKeep = true);
+        let str5 = stringify2.stringify(item, itemCtx, () => comment2 = null, () => chompKeep = true);
         if (comment2)
           str5 += stringifyComment.lineComment(str5, itemIndent, commentString(comment2));
         if (chompKeep && comment2)
@@ -5355,7 +5374,7 @@ ${indent}${line}` : "\n";
         }
         if (comment)
           reqNewline = true;
-        let str4 = stringify.stringify(item, itemCtx, () => comment = null);
+        let str4 = stringify2.stringify(item, itemCtx, () => comment = null);
         reqNewline || (reqNewline = lines3.length > linesAtValue || str4.includes("\n"));
         if (i < items.length - 1) {
           str4 += ",";
@@ -6740,7 +6759,7 @@ var require_stringifyDocument = __commonJS({
     "use strict";
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var identity = require_identity();
-    var stringify = require_stringify();
+    var stringify2 = require_stringify();
     var stringifyComment = require_stringifyComment();
     function stringifyDocument(doc, options) {
       const lines3 = [];
@@ -6755,7 +6774,7 @@ var require_stringifyDocument = __commonJS({
       }
       if (hasDirectives)
         lines3.push("---");
-      const ctx = stringify.createStringifyContext(doc, options);
+      const ctx = stringify2.createStringifyContext(doc, options);
       const { commentString } = ctx.options;
       if (doc.commentBefore) {
         if (lines3.length !== 1)
@@ -6777,7 +6796,7 @@ var require_stringifyDocument = __commonJS({
           contentComment = doc.contents.comment;
         }
         const onChompKeep = contentComment ? void 0 : () => chompKeep = true;
-        let body = stringify.stringify(doc.contents, ctx, () => contentComment = null, onChompKeep);
+        let body = stringify2.stringify(doc.contents, ctx, () => contentComment = null, onChompKeep);
         if (contentComment)
           body += stringifyComment.lineComment(body, "", commentString(contentComment));
         if ((body[0] === "|" || body[0] === ">") && lines3[lines3.length - 1] === "---") {
@@ -6785,7 +6804,7 @@ var require_stringifyDocument = __commonJS({
         } else
           lines3.push(body);
       } else {
-        lines3.push(stringify.stringify(doc.contents, ctx));
+        lines3.push(stringify2.stringify(doc.contents, ctx));
       }
       if (doc.directives?.docEnd) {
         if (doc.comment) {
@@ -8940,7 +8959,7 @@ var require_cst_stringify = __commonJS({
   "../../node_modules/.pnpm/yaml@2.9.0/node_modules/yaml/dist/parse/cst-stringify.js"(exports) {
     "use strict";
     init_define_PKEY_EMBEDDED_SCHEMAS();
-    var stringify = (cst) => "type" in cst ? stringifyToken(cst) : stringifyItem(cst);
+    var stringify2 = (cst) => "type" in cst ? stringifyToken(cst) : stringifyItem(cst);
     function stringifyToken(token) {
       switch (token.type) {
         case "block-scalar": {
@@ -8993,7 +9012,7 @@ var require_cst_stringify = __commonJS({
         res += stringifyToken(value);
       return res;
     }
-    exports.stringify = stringify;
+    exports.stringify = stringify2;
   }
 });
 
@@ -10710,7 +10729,7 @@ var require_public_api = __commonJS({
       }
       return doc;
     }
-    function parse(src, reviver, options) {
+    function parse2(src, reviver, options) {
       let _reviver = void 0;
       if (typeof reviver === "function") {
         _reviver = reviver;
@@ -10729,7 +10748,7 @@ var require_public_api = __commonJS({
       }
       return doc.toJS(Object.assign({ reviver: _reviver }, options));
     }
-    function stringify(value, replacer, options) {
+    function stringify2(value, replacer, options) {
       let _replacer = null;
       if (typeof replacer === "function" || Array.isArray(replacer)) {
         _replacer = replacer;
@@ -10751,10 +10770,10 @@ var require_public_api = __commonJS({
         return value.toString(options);
       return new Document.Document(value, _replacer, options).toString(options);
     }
-    exports.parse = parse;
+    exports.parse = parse2;
     exports.parseAllDocuments = parseAllDocuments;
     exports.parseDocument = parseDocument3;
-    exports.stringify = stringify;
+    exports.stringify = stringify2;
   }
 });
 
@@ -11996,6 +12015,35 @@ function normalizeReleaseKeys(raw) {
   }
   return out;
 }
+function crateNorm(name) {
+  return name.toLowerCase().replace(/_/g, "-");
+}
+var CARGO_PACKAGE_RULES = {
+  ecosystem: "cargo",
+  name: {
+    // crates.io's grammar: an ASCII letter, then letters, digits, `-` and `_`, at most 64.
+    pattern: /^[A-Za-z][A-Za-z0-9_-]{0,63}$/,
+    maxLength: 64,
+    norm: crateNorm
+  },
+  // One `cargo package` output per version.
+  fileTypes: ["crate"],
+  maxFiles: 1,
+  // What the index line needs from the normalised Cargo.toml (the CLI's extractor reads it):
+  // the dependency list, the feature table, `links` and `rust-version`.
+  metadataKeys: [
+    "description",
+    "license",
+    "rustVersion",
+    "links",
+    "deps",
+    "features"
+  ],
+  namespace: {
+    fields: {},
+    problem: () => null
+  }
+};
 var GODOT_PACKAGE_RULES = {
   ecosystem: "godot",
   name: {
@@ -12170,7 +12218,8 @@ var PACKAGE_ECOSYSTEMS = [
   "swift",
   "maven",
   "oci",
-  "godot"
+  "godot",
+  "cargo"
 ];
 var MAX_PACKAGE_DELIVERABLES = 64;
 var MAX_PACKAGE_ARTIFACT_ENTRIES = 16;
@@ -12189,7 +12238,8 @@ var PACKAGE_ECOSYSTEM_RULES = {
   swift: SWIFT_PACKAGE_RULES,
   maven: MAVEN_PACKAGE_RULES,
   oci: OCI_PACKAGE_RULES,
-  godot: GODOT_PACKAGE_RULES
+  godot: GODOT_PACKAGE_RULES,
+  cargo: CARGO_PACKAGE_RULES
 };
 function perEcosystem(pick) {
   return Object.fromEntries(
@@ -13792,7 +13842,7 @@ function validatePackageDescriptor(d, manifest, errors) {
       `package.name must be a ${eco} package name.`
     );
   if (typeof d.version === "string") {
-    if ((eco === "npm" || eco === "swift") && !SEMVER_RE.test(d.version))
+    if ((eco === "npm" || eco === "swift" || eco === "cargo") && !SEMVER_RE.test(d.version))
       err(
         "/version",
         "invalid_descriptor",
@@ -13931,7 +13981,7 @@ function validatePackageDescriptor(d, manifest, errors) {
       }
     }
     const count = (t) => types.filter((x) => x === t).length;
-    const composition = eco === "npm" ? count("npm-tarball") === 1 || "exactly one npm-tarball" : eco === "pypi" ? count("wheel") + count("sdist") >= 1 || "at least one wheel or sdist" : eco === "swift" ? count("source-archive") === 1 && count("source-archive-signature") <= 1 || "exactly one source-archive and at most one source-archive-signature" : eco === "maven" ? count("maven-file") >= 1 || "at least one maven-file" : eco === "oci" ? count("oci-manifest") + count("oci-index") >= 1 || "at least one oci-manifest or oci-index" : count("godot-zip") === 1 && count("godot-icon") <= 1 || "exactly one godot-zip and at most one godot-icon";
+    const composition = eco === "npm" ? count("npm-tarball") === 1 || "exactly one npm-tarball" : eco === "pypi" ? count("wheel") + count("sdist") >= 1 || "at least one wheel or sdist" : eco === "swift" ? count("source-archive") === 1 && count("source-archive-signature") <= 1 || "exactly one source-archive and at most one source-archive-signature" : eco === "maven" ? count("maven-file") >= 1 || "at least one maven-file" : eco === "oci" ? count("oci-manifest") + count("oci-index") >= 1 || "at least one oci-manifest or oci-index" : eco === "cargo" ? count("crate") === 1 || "exactly one crate" : count("godot-zip") === 1 && count("godot-icon") <= 1 || "exactly one godot-zip and at most one godot-icon";
     if (composition !== true && types.length === files.length)
       err(
         "/package/files",
@@ -14453,13 +14503,75 @@ var GODOT_SETUP = {
     ];
   }
 };
+function cargoEnvName(registry) {
+  return registry.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+}
+var CARGO_SETUP = {
+  clients: ["Cargo"],
+  inputs: ["baseUrl", "owner", "package.name", "package.version"],
+  feedPath: (owner) => `/cargo/${owner}/`,
+  render(v) {
+    const baseUrl = v.get("baseUrl");
+    const registry = v.get("owner");
+    const name = str(v.get("package.name")) ?? "<crate>";
+    const version = str(v.get("package.version"));
+    const envVar = `CARGO_REGISTRIES_${cargoEnvName(registry)}_TOKEN`;
+    const authed = v.credential.kind === "env" || v.credential.kind === "token";
+    const snippets = [
+      {
+        id: "config",
+        clients: "Cargo",
+        title: "Cargo: name the feed as a registry",
+        description: authed ? "A sparse index; Cargo 1.74 and later for a private one, which needs a credential provider named. Nothing comes from it unless a dependency names it with registry =." : "A sparse index (Cargo 1.68 and later). Nothing comes from it unless a dependency names it with registry =.",
+        filename: ".cargo/config.toml",
+        language: "toml",
+        code: lines(
+          `[registries.${registry}]`,
+          `index = ${JSON.stringify(`sparse+${baseUrl}`)}`,
+          authed && `credential-provider = "cargo:token"`
+        )
+      }
+    ];
+    if (v.credential.kind === "env")
+      snippets.push({
+        id: "token",
+        clients: "Cargo",
+        title: "Cargo: the registry token",
+        description: "Cargo sends it on every request to a feed whose config.json says auth-required.",
+        language: "sh",
+        code: `export ${envVar}="$${v.credential.name}"`
+      });
+    else if (v.credential.kind === "token")
+      snippets.push({
+        id: "token",
+        clients: "Cargo",
+        title: "Cargo: the registry token",
+        description: "Stored in ~/.cargo/credentials.toml. Cargo sends it on every request to a feed whose config.json says auth-required.",
+        language: "sh",
+        code: `echo ${v.credential.value} | cargo login --registry ${registry}`
+      });
+    snippets.push({
+      id: "dependency",
+      clients: "Cargo",
+      title: "Depend on the crate from this registry",
+      filename: "Cargo.toml",
+      language: "toml",
+      code: lines(
+        "[dependencies]",
+        `${name} = { version = ${JSON.stringify(version ?? "*")}, registry = ${JSON.stringify(registry)} }`
+      )
+    });
+    return snippets;
+  }
+};
 var FEED_SETUP = {
   npm: NPM_SETUP,
   pypi: PYPI_SETUP,
   swift: SWIFT_SETUP,
   maven: MAVEN_SETUP,
   oci: OCI_SETUP,
-  godot: GODOT_SETUP
+  godot: GODOT_SETUP,
+  cargo: CARGO_SETUP
 };
 function feedSetupBaseUrl(ecosystem, origin, owner) {
   return `${noSlash(origin)}${FEED_SETUP[ecosystem].feedPath(encodeURIComponent(owner))}`;
@@ -16518,7 +16630,8 @@ var PACKAGE_NAME_RULES = {
   swift: "scope.Name (SE-0292: a scope of 1-39 letters, digits or '-', a name of 1-100 letters, digits, '_' or '-')",
   maven: "groupId:artifactId",
   oci: "an OCI repository path of lower-case components joined by '/'",
-  godot: "1-64 of a-z, 0-9 and '_'"
+  godot: "1-64 of a-z, 0-9 and '_'",
+  cargo: "a crate name (an ASCII letter, then letters, digits, '-' and '_', at most 64 characters)"
 };
 function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
   const at = `/release/deliverables/${id}`;
@@ -19720,7 +19833,7 @@ function parseAxml(buf) {
     throw new MetadataError(
       "AndroidManifest.xml is not a compiled XML document"
     );
-  let strings = [];
+  let strings2 = [];
   let resIds = [];
   const out = [];
   let p = buf.readUInt16LE(2);
@@ -19729,7 +19842,7 @@ function parseAxml(buf) {
     const size = buf.readUInt32LE(p + 4);
     if (size < 8 || p + size > buf.length)
       throw new MetadataError("AndroidManifest.xml: a chunk runs past the end");
-    if (type === RES_STRING_POOL_TYPE) strings = readStringPool(buf, p);
+    if (type === RES_STRING_POOL_TYPE) strings2 = readStringPool(buf, p);
     else if (type === RES_XML_RESOURCE_MAP_TYPE) {
       const header = buf.readUInt16LE(p + 2);
       resIds = [];
@@ -19737,7 +19850,7 @@ function parseAxml(buf) {
         resIds.push(buf.readUInt32LE(q));
     } else if (type === RES_XML_START_ELEMENT_TYPE) {
       const ext = p + buf.readUInt16LE(p + 2);
-      const name = strings[buf.readUInt32LE(ext + 4)] ?? "";
+      const name = strings2[buf.readUInt32LE(ext + 4)] ?? "";
       const attrStart = buf.readUInt16LE(ext + 8);
       const attrSize = buf.readUInt16LE(ext + 10);
       const attrCount = buf.readUInt16LE(ext + 12);
@@ -19750,9 +19863,9 @@ function parseAxml(buf) {
         const dataType = buf[a + 15];
         const data = buf.readUInt32LE(a + 16);
         attrs.push({
-          name: strings[nameIdx] ?? "",
+          name: strings2[nameIdx] ?? "",
           resId: nameIdx < resIds.length ? resIds[nameIdx] : null,
-          string: dataType === TYPE_STRING ? strings[data] ?? null : raw !== 4294967295 ? strings[raw] ?? null : null,
+          string: dataType === TYPE_STRING ? strings2[data] ?? null : raw !== 4294967295 ? strings2[raw] ?? null : null,
           int: dataType === TYPE_INT_DEC || dataType === TYPE_INT_HEX ? data | 0 : null
         });
       }
@@ -24077,11 +24190,677 @@ import path10 from "node:path";
 // src/package/extract.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// src/package/godot.ts
+// src/package/cargo.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// src/package/files.ts
+// ../../node_modules/.pnpm/smol-toml@1.8.0/node_modules/smol-toml/dist/index.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// ../../node_modules/.pnpm/smol-toml@1.8.0/node_modules/smol-toml/dist/parse.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// ../../node_modules/.pnpm/smol-toml@1.8.0/node_modules/smol-toml/dist/struct.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// ../../node_modules/.pnpm/smol-toml@1.8.0/node_modules/smol-toml/dist/primitive.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// ../../node_modules/.pnpm/smol-toml@1.8.0/node_modules/smol-toml/dist/date.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var DATE_TIME_RE = /^(\d{4}-\d{2}-\d{2})?[T ]?(?:(\d{2}):\d{2}(?::\d{2}(?:\.\d+)?)?)?(Z|[-+]\d{2}:\d{2})?$/i;
+var TomlDate = class _TomlDate extends Date {
+  #hasDate = false;
+  #hasTime = false;
+  #offset = null;
+  constructor(date) {
+    let hasDate = true;
+    let hasTime = true;
+    let offset = "Z";
+    if (typeof date === "string") {
+      let match = date.match(DATE_TIME_RE);
+      if (match) {
+        if (!match[1]) {
+          hasDate = false;
+          date = `0000-01-01T${date}`;
+        }
+        hasTime = !!match[2];
+        hasTime && date[10] === " " && (date = date.replace(" ", "T"));
+        if (match[2] && +match[2] > 23) {
+          date = "";
+        } else {
+          offset = match[3] || null;
+          date = date.toUpperCase();
+          if (!offset && hasTime)
+            date += "Z";
+        }
+      } else {
+        date = "";
+      }
+    }
+    super(date);
+    if (!isNaN(this.getTime())) {
+      this.#hasDate = hasDate;
+      this.#hasTime = hasTime;
+      this.#offset = offset;
+    }
+  }
+  isDateTime() {
+    return this.#hasDate && this.#hasTime;
+  }
+  isLocal() {
+    return !this.#hasDate || !this.#hasTime || !this.#offset;
+  }
+  isDate() {
+    return this.#hasDate && !this.#hasTime;
+  }
+  isTime() {
+    return this.#hasTime && !this.#hasDate;
+  }
+  isValid() {
+    return this.#hasDate || this.#hasTime;
+  }
+  toISOString() {
+    let iso2 = super.toISOString();
+    if (this.isDate())
+      return iso2.slice(0, 10);
+    if (this.isTime())
+      return iso2.slice(11, 23);
+    if (this.#offset === null)
+      return iso2.slice(0, -1);
+    if (this.#offset === "Z")
+      return iso2;
+    let offset = +this.#offset.slice(1, 3) * 60 + +this.#offset.slice(4, 6);
+    offset = this.#offset[0] === "-" ? offset : -offset;
+    let offsetDate = new Date(this.getTime() - offset * 6e4);
+    return offsetDate.toISOString().slice(0, -1) + this.#offset;
+  }
+  static wrapAsOffsetDateTime(jsDate, offset = "Z") {
+    let date = new _TomlDate(jsDate);
+    date.#offset = offset;
+    return date;
+  }
+  static wrapAsLocalDateTime(jsDate) {
+    let date = new _TomlDate(jsDate);
+    date.#offset = null;
+    return date;
+  }
+  static wrapAsLocalDate(jsDate) {
+    let date = new _TomlDate(jsDate);
+    date.#hasTime = false;
+    date.#offset = null;
+    return date;
+  }
+  static wrapAsLocalTime(jsDate) {
+    let date = new _TomlDate(jsDate);
+    date.#hasDate = false;
+    date.#offset = null;
+    return date;
+  }
+};
+
+// ../../node_modules/.pnpm/smol-toml@1.8.0/node_modules/smol-toml/dist/error.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+function getLineColFromPtr(string, ptr) {
+  let lines3 = string.slice(0, ptr).split(/\r\n|\n|\r/g);
+  return [lines3.length, lines3.pop().length + 1];
+}
+function makeCodeBlock(string, line, column) {
+  let lines3 = string.split(/\r\n|\n|\r/g);
+  let codeblock = "";
+  let numberLen = (Math.log10(line + 1) | 0) + 1;
+  for (let i = line - 1; i <= line + 1; i++) {
+    let l = lines3[i - 1];
+    if (!l)
+      continue;
+    codeblock += i.toString().padEnd(numberLen, " ");
+    codeblock += ":  ";
+    codeblock += l;
+    codeblock += "\n";
+    if (i === line) {
+      codeblock += " ".repeat(numberLen + column + 2);
+      codeblock += "^\n";
+    }
+  }
+  return codeblock;
+}
+var TomlError = class extends Error {
+  line;
+  column;
+  codeblock;
+  constructor(message, options) {
+    const [line, column] = getLineColFromPtr(options.toml, options.ptr);
+    const codeblock = makeCodeBlock(options.toml, line, column);
+    super(`Invalid TOML document: ${message}
+
+${codeblock}`, options);
+    this.line = line;
+    this.column = column;
+    this.codeblock = codeblock;
+  }
+};
+
+// ../../node_modules/.pnpm/smol-toml@1.8.0/node_modules/smol-toml/dist/util.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+function indexOfNewline(str4, start = 0) {
+  let idx = str4.indexOf("\n", start);
+  if (str4.charCodeAt(idx - 1) === 13)
+    idx--;
+  return idx;
+}
+function skipComment(ctx) {
+  for (; ctx.p < ctx.s.length; ctx.p++) {
+    let c = ctx.s.charCodeAt(ctx.p);
+    if (c === 10)
+      break;
+    if (c === 13 && ctx.s.charCodeAt(ctx.p + 1) === 10) {
+      ctx.p++;
+      break;
+    }
+    if (c < 32 && c !== 9 || c === 127) {
+      throw new TomlError("control characters are not allowed in comments", {
+        toml: ctx.s,
+        ptr: ctx.p
+      });
+    }
+  }
+}
+function skipVoid(ctx, banNewLines, banComments) {
+  let c;
+  while (1) {
+    while ((c = ctx.s.charCodeAt(ctx.p)) === 32 || c === 9 || !banNewLines && (c === 10 || c === 13 && ctx.s.charCodeAt(ctx.p + 1) === 10))
+      ctx.p++;
+    if (banComments || c !== 35)
+      break;
+    skipComment(ctx);
+  }
+}
+function skipUntil(ctx, sep, end) {
+  let ptr = ctx.p;
+  if (!end) {
+    ptr = indexOfNewline(ctx.s, ptr);
+    ctx.p = ptr < 0 ? ctx.s.length : ptr;
+    return;
+  }
+  for (; ctx.p < ctx.s.length; ctx.p++) {
+    let c = ctx.s.charCodeAt(ctx.p);
+    if (c === 35) {
+      skipComment(ctx);
+    } else if (c === end || c === sep) {
+      return;
+    }
+  }
+  throw new TomlError("cannot find end of structure", {
+    toml: ctx.s,
+    ptr
+  });
+}
+
+// ../../node_modules/.pnpm/smol-toml@1.8.0/node_modules/smol-toml/dist/primitive.js
+var INT_REGEX = /^((0x[0-9a-fA-F](_?[0-9a-fA-F])*)|(([+-]|0[ob])?\d(_?\d)*))$/;
+var FLOAT_REGEX = /^[+-]?\d(_?\d)*(\.\d(_?\d)*)?([eE][+-]?\d(_?\d)*)?$/;
+var LEADING_ZERO = /^[+-]?0[0-9_]/;
+function parseString(ctx) {
+  let start = ctx.p;
+  let c = ctx.s.charCodeAt(ctx.p++);
+  let first = c;
+  let isLiteral = c === 39;
+  let isMultiline = c === ctx.s.charCodeAt(ctx.p) && c === ctx.s.charCodeAt(ctx.p + 1);
+  if (isMultiline) {
+    if ((c = ctx.s.charCodeAt(ctx.p += 2)) === 10)
+      ctx.p++;
+    else if (c === 13 && ctx.s.charCodeAt(ctx.p + 1) === 10)
+      ctx.p += 2;
+  }
+  let parsed = "";
+  let sliceStart = ctx.p;
+  let state = 0;
+  for (; ctx.p < ctx.s.length; ctx.p++) {
+    c = ctx.s.charCodeAt(ctx.p);
+    if (isMultiline && (c === 10 || c === 13 && ctx.s.charCodeAt(ctx.p + 1) === 10)) {
+      state = state && 3;
+    } else if (c < 32 && c !== 9 || c === 127) {
+      throw new TomlError("control characters are not allowed in strings", {
+        toml: ctx.s,
+        ptr: ctx.p
+      });
+    } else if ((!state || state === 3) && c === first && (!isMultiline || ctx.s.charCodeAt(ctx.p + 1) === first && ctx.s.charCodeAt(ctx.p + 2) === first)) {
+      if (isMultiline) {
+        if (ctx.s.charCodeAt(ctx.p + 3) === first)
+          ctx.p++;
+        if (ctx.s.charCodeAt(ctx.p + 3) === first)
+          ctx.p++;
+      }
+      if (!state)
+        parsed += ctx.s.slice(sliceStart, ctx.p);
+      ctx.p += isMultiline ? 3 : 1;
+      return parsed;
+    } else if (!state) {
+      if (!isLiteral && c === 92) {
+        parsed += ctx.s.slice(sliceStart, sliceStart = ctx.p);
+        state = 1;
+      }
+    } else if (state === 1) {
+      if (c === 120 || c === 117 || c === 85) {
+        let value = 0;
+        let len = c === 120 ? 2 : c === 117 ? 4 : 8;
+        for (let j = 0; j < len; j++, ctx.p++) {
+          let hex5 = ctx.s.charCodeAt(ctx.p + 1);
+          let digit = (
+            /* 0-9 */
+            hex5 >= 48 && hex5 <= 57 ? hex5 - 48 : (
+              /* A-F */
+              hex5 >= 65 && hex5 <= 70 ? hex5 - 65 + 10 : (
+                /* a-f */
+                hex5 >= 97 && hex5 <= 102 ? hex5 - 97 + 10 : -1
+              )
+            )
+          );
+          if (digit < 0)
+            throw new TomlError("invalid non-hex character in unicode escape", { toml: ctx.s, ptr: ctx.p + 1 });
+          value = value << 4 | digit;
+        }
+        if (value < 0 || value > 1114111 || value >= 55296 && value <= 57343) {
+          throw new TomlError("invalid unicode escape", { toml: ctx.s, ptr: ctx.p });
+        }
+        parsed += String.fromCodePoint(value);
+        sliceStart = ctx.p + 1;
+        state = 0;
+      } else if (c === 32 || c === 9) {
+        state = 2;
+      } else {
+        if (c === 98)
+          parsed += "\b";
+        else if (c === 116)
+          parsed += "	";
+        else if (c === 110)
+          parsed += "\n";
+        else if (c === 102)
+          parsed += "\f";
+        else if (c === 114)
+          parsed += "\r";
+        else if (c === 101)
+          parsed += "\x1B";
+        else if (c === 34)
+          parsed += '"';
+        else if (c === 92)
+          parsed += "\\";
+        else
+          throw new TomlError("unrecognized escape sequence", { toml: ctx.s, ptr: ctx.p });
+        sliceStart = ctx.p + 1;
+        state = 0;
+      }
+    } else if (c !== 32 && c !== 9) {
+      if (state === 2) {
+        throw new TomlError("invalid escape: only line-ending whitespace may be escaped", {
+          toml: ctx.s,
+          ptr: sliceStart
+        });
+      }
+      state = !isLiteral && c === 92 ? 1 : 0;
+      sliceStart = ctx.p;
+    }
+  }
+  throw new TomlError("unfinished string", { toml: ctx.s, ptr: start });
+}
+function sliceAndTrimEndOf(ctx, start, end) {
+  let value = ctx.s.slice(start, end);
+  let commentIdx = value.indexOf("#");
+  if (commentIdx > 0) {
+    skipComment({ s: value, p: commentIdx, d: 0 });
+    value = value.slice(0, commentIdx);
+  }
+  return value.trimEnd();
+}
+function parseValue(ctx, integersAsBigInt, end) {
+  let ptr = ctx.p;
+  let err = { toml: ctx.s, ptr };
+  skipUntil(ctx, 44, end);
+  let value = sliceAndTrimEndOf(ctx, ptr, ctx.p);
+  if (!value)
+    throw new TomlError("incomplete declaration: value expected", err);
+  if (value === "-inf")
+    return -Infinity;
+  if (value === "inf" || value === "+inf")
+    return Infinity;
+  if (value === "nan" || value === "+nan" || value === "-nan")
+    return NaN;
+  if (value === "-0")
+    return integersAsBigInt ? 0n : 0;
+  let isInt = INT_REGEX.test(value);
+  if (isInt || FLOAT_REGEX.test(value)) {
+    if (LEADING_ZERO.test(value)) {
+      throw new TomlError("leading zeroes are not allowed", err);
+    }
+    value = value.replace(/_/g, "");
+    let numeric = +value;
+    if (isNaN(numeric)) {
+      throw new TomlError("invalid number", err);
+    }
+    if (isInt) {
+      if ((isInt = !Number.isSafeInteger(numeric)) && !integersAsBigInt) {
+        throw new TomlError("integer value cannot be represented losslessly", err);
+      }
+      if (isInt || integersAsBigInt === true)
+        numeric = BigInt(value);
+    }
+    return numeric;
+  }
+  const date = new TomlDate(value);
+  if (!date.isValid())
+    throw new TomlError("invalid value", err);
+  return date;
+}
+
+// ../../node_modules/.pnpm/smol-toml@1.8.0/node_modules/smol-toml/dist/extract.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+function extractValue(ctx, end, integersAsBigInt) {
+  let ptr = ctx.p;
+  let c = ctx.s.charCodeAt(ptr);
+  if (c === 91 || c === 123) {
+    if (!ctx.d--) {
+      throw new TomlError("document contains excessively nested structures. aborting.", {
+        toml: ctx.s,
+        ptr
+      });
+    }
+    let value = c === 91 ? parseArray(ctx, integersAsBigInt) : parseInlineTable(ctx, integersAsBigInt);
+    ctx.d++;
+    return value;
+  }
+  if (c === 34 || c === 39) {
+    return parseString(ctx);
+  }
+  if (c === 116) {
+    if (ctx.s.charCodeAt(++ctx.p) !== 114 || ctx.s.charCodeAt(++ctx.p) !== 117 || ctx.s.charCodeAt(++ctx.p) !== 101)
+      throw new TomlError("invalid value", { toml: ctx.s, ptr });
+    ctx.p++;
+    return true;
+  }
+  if (c === 102) {
+    if (ctx.s.charCodeAt(++ctx.p) !== 97 || ctx.s.charCodeAt(++ctx.p) !== 108 || ctx.s.charCodeAt(++ctx.p) !== 115 || ctx.s.charCodeAt(++ctx.p) !== 101)
+      throw new TomlError("invalid value", { toml: ctx.s, ptr });
+    ctx.p++;
+    return false;
+  }
+  return parseValue(ctx, integersAsBigInt, end);
+}
+
+// ../../node_modules/.pnpm/smol-toml@1.8.0/node_modules/smol-toml/dist/struct.js
+var KEY_PART_RE = /^[a-zA-Z0-9-_]+[ \t]*$/;
+function parseKey(ctx, end = "=") {
+  let start = ctx.p;
+  let dot = start - 1;
+  let parsed = [];
+  let endPtr = ctx.s.indexOf(end, start);
+  if (endPtr < 0) {
+    throw new TomlError("incomplete key-value: cannot find end of key", {
+      toml: ctx.s,
+      ptr: start
+    });
+  }
+  do {
+    let c = ctx.s.charCodeAt(ctx.p = ++dot);
+    if (c !== 32 && c !== 9) {
+      if (c === 34 || c === 39) {
+        if (c === ctx.s.charCodeAt(ctx.p + 1) && c === ctx.s.charCodeAt(ctx.p + 2)) {
+          throw new TomlError("multiline strings are not allowed in keys", {
+            toml: ctx.s,
+            ptr: ctx.p
+          });
+        }
+        let part = parseString(ctx);
+        dot = ctx.s.indexOf(".", ctx.p);
+        let strEnd = ctx.s.slice(ctx.p, dot < 0 || dot > endPtr ? endPtr : dot);
+        let newLine = indexOfNewline(strEnd);
+        if (newLine > -1) {
+          throw new TomlError("newlines are not allowed in keys", {
+            toml: ctx.s,
+            ptr: newLine
+          });
+        }
+        if (strEnd.trimStart()) {
+          throw new TomlError("found extra tokens after the string part", {
+            toml: ctx.s,
+            ptr: ctx.p
+          });
+        }
+        if (endPtr < ctx.p) {
+          endPtr = ctx.s.indexOf(end, ctx.p);
+          if (endPtr < 0) {
+            throw new TomlError("incomplete key-value: cannot find end of key", {
+              toml: ctx.s,
+              ptr: start
+            });
+          }
+        }
+        parsed.push(part);
+      } else {
+        dot = ctx.s.indexOf(".", ctx.p);
+        let part = ctx.s.slice(ctx.p, dot < 0 || dot > endPtr ? endPtr : dot);
+        if (!KEY_PART_RE.test(part)) {
+          throw new TomlError("only letter, numbers, dashes and underscores are allowed in keys", {
+            toml: ctx.s,
+            ptr: ctx.p
+          });
+        }
+        parsed.push(part.trimEnd());
+      }
+    }
+  } while (dot + 1 && dot < endPtr);
+  ctx.p = endPtr + 1;
+  skipVoid(ctx, true, true);
+  return parsed;
+}
+function parseInlineTable(ctx, integersAsBigInt) {
+  let res = {};
+  let seen = /* @__PURE__ */ new Set();
+  let c;
+  ctx.p++;
+  while (ctx.p < ctx.s.length) {
+    skipVoid(ctx);
+    if ((c = ctx.s.charCodeAt(ctx.p)) === 125) {
+      ctx.p++;
+      return res;
+    }
+    let k;
+    let t = res;
+    let hasOwn = false;
+    let p = ctx.p;
+    let key = parseKey(ctx);
+    for (let i = 0; i < key.length; i++) {
+      if (i)
+        t = hasOwn ? t[k] : t[k] = {};
+      k = key[i];
+      if ((hasOwn = Object.hasOwn(t, k)) && (typeof t[k] !== "object" || seen.has(t[k]))) {
+        throw new TomlError("trying to redefine an already defined value", {
+          toml: ctx.s,
+          ptr: p
+        });
+      }
+      if (!hasOwn && k === "__proto__") {
+        Object.defineProperty(t, k, { enumerable: true, configurable: true, writable: true });
+      }
+    }
+    if (hasOwn) {
+      throw new TomlError("trying to redefine an already defined value", {
+        toml: ctx.s,
+        ptr: ctx.p
+      });
+    }
+    let value = extractValue(ctx, 125, integersAsBigInt);
+    seen.add(t[k] = value);
+    skipVoid(ctx);
+    if ((c = ctx.s.charCodeAt(ctx.p++)) === 125) {
+      return res;
+    }
+    if (c !== 44) {
+      throw new TomlError("expected comma or end of structure", { toml: ctx.s, ptr: ctx.p - 1 });
+    }
+  }
+  throw new TomlError("unfinished table encountered", {
+    toml: ctx.s,
+    ptr: ctx.p
+  });
+}
+function parseArray(ctx, integersAsBigInt) {
+  let res = [];
+  let c;
+  ctx.p++;
+  while (ctx.p < ctx.s.length) {
+    skipVoid(ctx);
+    if ((c = ctx.s.charCodeAt(ctx.p)) === 93) {
+      ctx.p++;
+      return res;
+    }
+    res.push(extractValue(ctx, 93, integersAsBigInt));
+    skipVoid(ctx);
+    if ((c = ctx.s.charCodeAt(ctx.p++)) === 93) {
+      return res;
+    }
+    if (c !== 44) {
+      throw new TomlError("expected comma or end of structure", { toml: ctx.s, ptr: ctx.p - 1 });
+    }
+  }
+  throw new TomlError("unfinished array encountered", {
+    toml: ctx.s,
+    ptr: ctx.p
+  });
+}
+
+// ../../node_modules/.pnpm/smol-toml@1.8.0/node_modules/smol-toml/dist/parse.js
+function peekTable(key, table, meta, type) {
+  let t = table;
+  let m = meta;
+  let k;
+  let hasOwn = false;
+  let state;
+  for (let i = 0; i < key.length; i++) {
+    if (i) {
+      t = hasOwn ? t[k] : t[k] = {};
+      m = (state = m[k]).c;
+      if (type === 0 && (state.t === 1 || state.t === 2)) {
+        return null;
+      }
+      if (state.t === 2) {
+        let l = t.length - 1;
+        t = t[l];
+        m = m[l].c;
+      }
+    }
+    k = key[i];
+    if ((hasOwn = Object.hasOwn(t, k)) && m[k]?.t === 0 && m[k]?.d) {
+      return null;
+    }
+    if (!hasOwn) {
+      if (k === "__proto__") {
+        Object.defineProperty(t, k, { enumerable: true, configurable: true, writable: true });
+        Object.defineProperty(m, k, { enumerable: true, configurable: true, writable: true });
+      }
+      m[k] = {
+        t: i < key.length - 1 && type === 2 ? 3 : type,
+        d: false,
+        i: 0,
+        c: {}
+      };
+    }
+  }
+  state = m[k];
+  if (state.t !== type && !(type === 1 && state.t === 3)) {
+    return null;
+  }
+  if (type === 2) {
+    if (!state.d) {
+      state.d = true;
+      t[k] = [];
+    }
+    t[k].push(t = {});
+    state.c[state.i++] = state = { t: 1, d: false, i: 0, c: {} };
+  }
+  if (state.d) {
+    return null;
+  }
+  state.d = true;
+  if (type === 1) {
+    t = hasOwn ? t[k] : t[k] = {};
+  } else if (type === 0 && hasOwn) {
+    return null;
+  }
+  return [k, t, state.c];
+}
+function parse(toml, { maxDepth = 1e3, integersAsBigInt } = {}) {
+  let ctx = { s: toml, p: 0, d: maxDepth };
+  let res = {};
+  let meta = {};
+  let tmp;
+  let tbl = res;
+  let m = meta;
+  skipVoid(ctx);
+  while (ctx.p < toml.length) {
+    if (toml.charCodeAt(ctx.p) === 91) {
+      let isTableArray = toml.charCodeAt(++ctx.p) === 91;
+      tmp = ctx.p += +isTableArray;
+      let k = parseKey(ctx, "]");
+      if (isTableArray) {
+        if (toml.charCodeAt(ctx.p - 1) !== 93) {
+          throw new TomlError("expected end of table declaration", {
+            toml,
+            ptr: ctx.p - 1
+          });
+        }
+        ctx.p++;
+      }
+      let p = peekTable(
+        k,
+        res,
+        meta,
+        isTableArray ? 2 : 1
+        /* Type.EXPLICIT */
+      );
+      if (!p) {
+        throw new TomlError("trying to redefine an already defined table or value", {
+          toml,
+          ptr: tmp
+        });
+      }
+      m = p[2];
+      tbl = p[1];
+    } else {
+      tmp = ctx.p;
+      let k = parseKey(ctx);
+      let p = peekTable(
+        k,
+        tbl,
+        m,
+        0
+        /* Type.DOTTED */
+      );
+      if (!p) {
+        throw new TomlError("trying to redefine an already defined table or value", {
+          toml,
+          ptr: tmp
+        });
+      }
+      p[1][p[0]] = extractValue(ctx, void 0, integersAsBigInt);
+    }
+    skipVoid(ctx, true);
+    if (ctx.p < toml.length && (tmp = toml.charCodeAt(ctx.p)) !== 10 && tmp !== 13) {
+      throw new TomlError("each key-value declaration must be followed by an end-of-line", {
+        toml,
+        ptr: ctx.p
+      });
+    }
+    skipVoid(ctx);
+  }
+  return res;
+}
+
+// ../../node_modules/.pnpm/smol-toml@1.8.0/node_modules/smol-toml/dist/stringify.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// src/package/tar.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { createReadStream as createReadStream3 } from "node:fs";
+import { createGunzip } from "node:zlib";
 
 // src/package/types.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -24092,7 +24871,63 @@ var PackageExtractError = class extends Error {
   }
 };
 
+// src/package/tar.ts
+var BLOCK = 512;
+function cString(buf, start, len) {
+  const end = buf.indexOf(0, start);
+  return buf.subarray(start, end === -1 || end > start + len ? start + len : end).toString("utf8");
+}
+function octal(buf, start, len) {
+  const s = cString(buf, start, len).trim();
+  return s === "" ? 0 : parseInt(s, 8);
+}
+async function readTarMember(file, want, maxBytes = 4 * 1024 * 1024) {
+  const stream = createReadStream3(file).pipe(createGunzip());
+  let buf = Buffer.alloc(0);
+  let longName = null;
+  try {
+    for await (const chunk of stream) {
+      buf = Buffer.concat([buf, chunk]);
+      for (; ; ) {
+        if (buf.length < BLOCK) break;
+        const header = buf.subarray(0, BLOCK);
+        if (header.every((b) => b === 0)) return null;
+        const size = octal(header, 124, 12);
+        const type = String.fromCharCode(header[156] ?? 48);
+        const padded = Math.ceil(size / BLOCK) * BLOCK;
+        if (buf.length < BLOCK + padded) break;
+        const body = buf.subarray(BLOCK, BLOCK + size);
+        const prefix = cString(header, 345, 155);
+        let name = longName ?? (prefix ? `${prefix}/` : "") + cString(header, 0, 100);
+        longName = null;
+        if (type === "L") longName = body.toString("utf8").replace(/\0+$/, "");
+        else if (type === "x") {
+          const m = /\d+ path=([^\n]*)\n/.exec(body.toString("utf8"));
+          if (m) longName = m[1];
+        } else if ((type === "0" || type === "\0") && want(name)) {
+          if (size > maxBytes)
+            throw new PackageExtractError(
+              `${name} in ${file} is ${size} bytes; pkey reads at most ${maxBytes}.`
+            );
+          return { path: name, data: Buffer.from(body) };
+        }
+        name = "";
+        buf = buf.subarray(BLOCK + padded);
+      }
+    }
+  } catch (e) {
+    if (e instanceof PackageExtractError) throw e;
+    throw new PackageExtractError(
+      `${file} is not a readable gzipped tar (${e.message}).`
+    );
+  } finally {
+    stream.destroy();
+  }
+  return null;
+}
+
 // src/package/files.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
 async function declaredFiles(input) {
   const globs = Object.values(input.declaration.artifacts).map((a) => a.match);
   const all = await scanDir(input.dir);
@@ -24117,7 +24952,167 @@ function exactlyOne(files, what) {
   return files[0];
 }
 
+// src/package/cargo.ts
+function isTable(v) {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+function strings(v, what) {
+  if (v === void 0) return [];
+  if (!Array.isArray(v) || v.some((x) => typeof x !== "string"))
+    throw new PackageExtractError(`${what} must be a list of strings.`);
+  return v;
+}
+var KINDS = [
+  ["dependencies", "normal"],
+  ["dev-dependencies", "dev"],
+  ["dev_dependencies", "dev"],
+  ["build-dependencies", "build"],
+  ["build_dependencies", "build"]
+];
+function depsOf(level, target) {
+  const out = [];
+  for (const [key, kind] of KINDS) {
+    const table = level[key];
+    if (table === void 0) continue;
+    if (!isTable(table))
+      throw new PackageExtractError(`Cargo.toml's [${key}] is not a table.`);
+    for (const [name, spec] of Object.entries(table)) {
+      const at = `${target ? `target.${target}.` : ""}${key}.${name}`;
+      if (typeof spec === "string") {
+        out.push({
+          name,
+          req: spec,
+          features: [],
+          optional: false,
+          default_features: true,
+          target,
+          kind,
+          registry: null
+        });
+        continue;
+      }
+      if (!isTable(spec))
+        throw new PackageExtractError(`Cargo.toml's ${at} is not a table.`);
+      if (spec.git !== void 0)
+        throw new PackageExtractError(
+          `Cargo.toml's ${at} is a git dependency; a published crate depends on registries only.`
+        );
+      if (spec.registry !== void 0 && spec["registry-index"] === void 0)
+        throw new PackageExtractError(
+          `Cargo.toml's ${at} names the registry ${JSON.stringify(spec.registry)} by its local name: publish the output of cargo package, which writes its index URL.`
+        );
+      if (spec.version === void 0 && spec.path !== void 0) {
+        if (kind === "dev") continue;
+        throw new PackageExtractError(
+          `Cargo.toml's ${at} is a path dependency with no version.`
+        );
+      }
+      const req = spec.version ?? "*";
+      if (typeof req !== "string")
+        throw new PackageExtractError(
+          `Cargo.toml's ${at}.version is not a string.`
+        );
+      const index = spec["registry-index"];
+      if (index !== void 0 && typeof index !== "string")
+        throw new PackageExtractError(
+          `Cargo.toml's ${at}.registry-index is not a string.`
+        );
+      const pkg = spec.package;
+      if (pkg !== void 0 && typeof pkg !== "string")
+        throw new PackageExtractError(
+          `Cargo.toml's ${at}.package is not a string.`
+        );
+      const defaults = spec["default-features"] ?? spec.default_features;
+      out.push({
+        name,
+        req,
+        features: strings(spec.features, `Cargo.toml's ${at}.features`),
+        optional: spec.optional === true,
+        default_features: defaults !== false,
+        target,
+        kind,
+        registry: index ?? null,
+        ...pkg !== void 0 ? { package: pkg } : {}
+      });
+    }
+  }
+  return out;
+}
+function cargoDeps(manifest) {
+  const out = depsOf(manifest, null);
+  const targets = manifest.target;
+  if (targets !== void 0) {
+    if (!isTable(targets))
+      throw new PackageExtractError("Cargo.toml's [target] is not a table.");
+    for (const [cfg, level] of Object.entries(targets))
+      if (isTable(level)) out.push(...depsOf(level, cfg));
+  }
+  return out;
+}
+function cargoFeatures(manifest) {
+  const raw = manifest.features;
+  if (raw === void 0) return {};
+  if (!isTable(raw))
+    throw new PackageExtractError("Cargo.toml's [features] is not a table.");
+  const out = {};
+  for (const [k, v] of Object.entries(raw))
+    out[k] = strings(v, `Cargo.toml's features.${k}`);
+  return out;
+}
+function cargoMetadata(text) {
+  let manifest;
+  try {
+    manifest = parse(text);
+  } catch (e) {
+    throw new PackageExtractError(
+      `the crate's Cargo.toml is not TOML (${e.message}).`
+    );
+  }
+  const pkg = manifest.package;
+  if (!isTable(pkg) || typeof pkg.name !== "string" || typeof pkg.version !== "string")
+    throw new PackageExtractError(
+      "the crate's Cargo.toml carries no [package] name and version."
+    );
+  const metadata = {
+    name: pkg.name,
+    version: pkg.version
+  };
+  if (typeof pkg.description === "string")
+    metadata.description = pkg.description;
+  if (typeof pkg.license === "string") metadata.license = pkg.license;
+  if (typeof pkg["rust-version"] === "string")
+    metadata.rustVersion = pkg["rust-version"];
+  if (typeof pkg.links === "string") metadata.links = pkg.links;
+  metadata.deps = cargoDeps(manifest);
+  metadata.features = cargoFeatures(manifest);
+  return { name: pkg.name, version: pkg.version, metadata };
+}
+async function extractCargo(input) {
+  const crate = exactlyOne(await declaredFiles(input), "crate (.crate)");
+  const member = await readTarMember(
+    crate.path,
+    (p) => /^[^/]+\/Cargo\.toml$/.test(p)
+  );
+  if (!member)
+    throw new PackageExtractError(
+      `${crate.name} has no <name>-<version>/Cargo.toml; is it the output of cargo package?`
+    );
+  const { name, version, metadata } = cargoMetadata(
+    member.data.toString("utf8")
+  );
+  if (name !== input.declaration.name)
+    throw new PackageExtractError(
+      `${crate.name} packs ${name}, but .pkey/release declares ${input.declaration.id} as ${input.declaration.name}.`
+    );
+  return {
+    version,
+    files: [{ path: crate.path, name: crate.name, type: "crate" }],
+    metadata
+  };
+}
+
 // src/package/godot.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
 function parsePluginCfg(text) {
   const out = /* @__PURE__ */ new Map();
   let section = "";
@@ -24255,66 +25250,6 @@ async function extractMaven(input) {
 
 // src/package/npm.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-
-// src/package/tar.ts
-init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createReadStream as createReadStream3 } from "node:fs";
-import { createGunzip } from "node:zlib";
-var BLOCK = 512;
-function cString(buf, start, len) {
-  const end = buf.indexOf(0, start);
-  return buf.subarray(start, end === -1 || end > start + len ? start + len : end).toString("utf8");
-}
-function octal(buf, start, len) {
-  const s = cString(buf, start, len).trim();
-  return s === "" ? 0 : parseInt(s, 8);
-}
-async function readTarMember(file, want, maxBytes = 4 * 1024 * 1024) {
-  const stream = createReadStream3(file).pipe(createGunzip());
-  let buf = Buffer.alloc(0);
-  let longName = null;
-  try {
-    for await (const chunk of stream) {
-      buf = Buffer.concat([buf, chunk]);
-      for (; ; ) {
-        if (buf.length < BLOCK) break;
-        const header = buf.subarray(0, BLOCK);
-        if (header.every((b) => b === 0)) return null;
-        const size = octal(header, 124, 12);
-        const type = String.fromCharCode(header[156] ?? 48);
-        const padded = Math.ceil(size / BLOCK) * BLOCK;
-        if (buf.length < BLOCK + padded) break;
-        const body = buf.subarray(BLOCK, BLOCK + size);
-        const prefix = cString(header, 345, 155);
-        let name = longName ?? (prefix ? `${prefix}/` : "") + cString(header, 0, 100);
-        longName = null;
-        if (type === "L") longName = body.toString("utf8").replace(/\0+$/, "");
-        else if (type === "x") {
-          const m = /\d+ path=([^\n]*)\n/.exec(body.toString("utf8"));
-          if (m) longName = m[1];
-        } else if ((type === "0" || type === "\0") && want(name)) {
-          if (size > maxBytes)
-            throw new PackageExtractError(
-              `${name} in ${file} is ${size} bytes; pkey reads at most ${maxBytes}.`
-            );
-          return { path: name, data: Buffer.from(body) };
-        }
-        name = "";
-        buf = buf.subarray(BLOCK + padded);
-      }
-    }
-  } catch (e) {
-    if (e instanceof PackageExtractError) throw e;
-    throw new PackageExtractError(
-      `${file} is not a readable gzipped tar (${e.message}).`
-    );
-  } finally {
-    stream.destroy();
-  }
-  return null;
-}
-
-// src/package/npm.ts
 var KEPT = [
   "description",
   "license",
@@ -24602,6 +25537,8 @@ function extractPackage(ecosystem, input) {
       return extractOci(input);
     case "godot":
       return extractGodot(input);
+    case "cargo":
+      return extractCargo(input);
   }
 }
 
@@ -35068,6 +36005,45 @@ process.exitCode = isActionInvocation(argv, process.env) ? await runAction({
   stdout: process.stdout,
   stderr: process.stderr
 }) : await runPkey(argv);
+/*! Bundled license information:
+
+smol-toml/dist/date.js:
+smol-toml/dist/error.js:
+smol-toml/dist/util.js:
+smol-toml/dist/primitive.js:
+smol-toml/dist/extract.js:
+smol-toml/dist/struct.js:
+smol-toml/dist/parse.js:
+smol-toml/dist/stringify.js:
+smol-toml/dist/index.js:
+  (*!
+   * Copyright (c) Squirrel Chat et al., All rights reserved.
+   * SPDX-License-Identifier: BSD-3-Clause
+   *
+   * Redistribution and use in source and binary forms, with or without
+   * modification, are permitted provided that the following conditions are met:
+   *
+   * 1. Redistributions of source code must retain the above copyright notice, this
+   *    list of conditions and the following disclaimer.
+   * 2. Redistributions in binary form must reproduce the above copyright notice,
+   *    this list of conditions and the following disclaimer in the
+   *    documentation and/or other materials provided with the distribution.
+   * 3. Neither the name of the copyright holder nor the names of its contributors
+   *    may be used to endorse or promote products derived from this software without
+   *    specific prior written permission.
+   *
+   * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+   * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+   * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+   * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+   * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+   * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+   * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+   * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+   * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+   * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+   *)
+*/
 /*!
 Third-party notices for actions/publish/dist/index.js
 =====================================================
@@ -35132,4 +36108,33 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+-------------------------------------------------------------------------------
+smol-toml 1.8.0 (https://github.com/squirrelchat/smol-toml), BSD-3-Clause licence
+-------------------------------------------------------------------------------
+
+Copyright (c) Squirrel Chat et al., All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+3. Neither the name of the copyright holder nor the names of its contributors
+   may be used to endorse or promote products derived from this software without
+   specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
