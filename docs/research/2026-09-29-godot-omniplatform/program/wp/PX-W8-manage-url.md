@@ -93,10 +93,10 @@ Without it an app can only say "device limit reached" ([PORTAL.md §3.4](../../.
 
 ## Acceptance criteria
 
-- [ ] `gen:corpus -- --check`, `gen:constants -- --check`, `parity:check` and every SDK's replayer pass.
-- [ ] Each SDK and UI kit surfaces `manageUrl` on both refusals (parity tests).
-- [ ] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
-- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
+- [x] `gen:corpus -- --check`, `gen:constants -- --check`, `parity:check` and every SDK's replayer pass.
+- [x] Each SDK and UI kit surfaces `manageUrl` on both refusals (parity tests). The helpers read either refusal; `key_entry_limit` is emitted once I-09 ships, and I-10a/I-10b wire that outcome.
+- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
+- [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify
 
