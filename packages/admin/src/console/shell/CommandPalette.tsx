@@ -219,7 +219,13 @@ export function CommandPalette({
                             {item.issue.label}
                           </StatusPill>
                         ) : null}
-                        {item.shortcut ? <Kbd keys={item.shortcut} /> : null}
+                        {item.shortcut ? (
+                          // A phone has no keyboard to press them with.
+                          <Kbd
+                            keys={item.shortcut}
+                            className="hidden sm:flex"
+                          />
+                        ) : null}
                       </Command.Item>
                     ))}
                   </Command.Group>
