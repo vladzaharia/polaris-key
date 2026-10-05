@@ -78,9 +78,8 @@
       "note": "core/decide.py decide_update with content (feed_content, select_pack_rows, prestage, the content blocks and boot required for revoked required content); client.update.decide() builds content from the content stamp, the pack state, the variant preferences and the stored revocations (run_update_check steps 10-14)."
     },
     "update.driver": {
-      "status": "planned",
-      "unowned": true,
-      "note": "Only appcast_url() today; the Velopack hand-off has no work package (P3-06 excludes it)."
+      "status": "implemented",
+      "note": "update/drivers.py: client.update.install(decision) over VelopackDriver (the velopack package's UpdateManager on discovery's Velopack feed; unsupported dependency without it), SelfReplaceDriver (a frozen single-file executable replaced with the release.fetch-verified build, the old one kept for the boot guard's rollback) and StoreLinkDriver (a store decision's listing); each records update_downloaded and update_applied. tests/test_drivers.py."
     },
     "update.bootguard": {
       "status": "implemented",

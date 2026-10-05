@@ -24,6 +24,7 @@ every load. There is no unsigned field left for a local attacker to poison.
 from __future__ import annotations
 
 import threading
+import weakref
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
 
@@ -259,6 +260,7 @@ class PolarisKeyClient:
         self.update_journal = UpdateJournal(self.core.local_state_dir(), self._journal_context)
         self.update.journal = self.update_journal
         self.release.update = self.update
+        self.update._client_ref = weakref.ref(self)
         # The app build's boot guard (SDK parity pass §3.15), beside the token store.
         self.update.guard = BootGuard(
             self.core.local_state_dir(), lambda: self.core.version, journal=self.update_journal

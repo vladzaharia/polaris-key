@@ -403,6 +403,8 @@ class UpdateClient:
         self.guard: Any = None
         #: The install driver :meth:`install` hands a decision to (``polaris_key.update.drivers``).
         self.driver: Any = None
+        #: A weak reference to the facade, for drivers (set by the facade).
+        self._client_ref: Any = None
         #: plans/P4-29.md §2.4 step 1: the delta menu of the most recently committed feed, fresh
         #: or stale (``_UNSET`` until a check ran or the cache was read).
         self._feed_menu: Any = _UNSET
@@ -497,6 +499,44 @@ class UpdateClient:
         if manifest is None:
             return None
         return appcast_url_from(manifest, channel=channel, arch=arch)
+
+    # ── Install drivers (SDK parity pass §3.16) ────────────────────────────────────────
+    def set_driver(self, driver: Any) -> None:
+        """Install the driver :meth:`install` hands decisions to
+        (``polaris_key.update.drivers``). A driver with ``rollback()`` becomes the boot guard's
+        rollback, and its ``staged()`` the guard's staged check."""
+        self.driver = driver
+        guard = self.guard
+        if guard is not None:
+            rb = getattr(driver, "rollback", None)
+            guard.rollback = rb if callable(rb) else None
+            st = getattr(driver, "staged", None)
+            guard.staged = st if callable(st) else (lambda: False)
+
+    def install(self, target: Any, *, on_progress: Optional[Callable[[int, int], None]] = None) -> Any:
+        """Hand a decision (an :class:`UpdateCheck` or its ``decision``) to the install driver
+        and return its :class:`~polaris_key.update.drivers.InstallOutcome`
+        (``restart-required``, ``handed-off``, ``store-opened`` or ``unsupported {reason}``).
+        A ``store`` decision opens its listing even without a driver; any other decision without
+        one is ``unsupported {dependency}``; ``none`` / ``blocked`` / ``packs`` are
+        ``unsupported {product}`` (nothing to install, or packs go through ``packs``)."""
+        from .drivers import StoreLinkDriver, decision_of, unsupported
+
+        decision = decision_of(target)
+        if decision is None:
+            raise _invalid("install() takes an UpdateCheck or an UpdateDecision")
+        if decision.action in ("none", "blocked", "packs"):
+            return unsupported(UnsupportedReason.PRODUCT, f"a {decision.action} decision has nothing to install")
+        driver = self.driver
+        if driver is None and decision.action == "store":
+            driver = StoreLinkDriver()
+        if driver is None:
+            return unsupported(
+                UnsupportedReason.DEPENDENCY,
+                "no install driver is set (client.update.set_driver(VelopackDriver(...)), …)",
+            )
+        client = self._client_ref() if self._client_ref is not None else None
+        return driver.install(client, decision, on_progress=on_progress)
 
     # ── Boot guard (SDK parity pass §3.15) ─────────────────────────────────────────────
     def mark_boot_attempt(self) -> Any:
