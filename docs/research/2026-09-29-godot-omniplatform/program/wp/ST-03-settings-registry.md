@@ -45,6 +45,34 @@ Settings live under six precedence patterns and five vocabularies ([S-18 §2.3](
 - S-19's per-product licensing settings are seeded as claimable entries (LX-06 implements them).
 - Amend THREAT-MODEL AT-2 for the registry.
 
+## Corrections from the code (ST-03 implementation, 2026-10-04)
+
+Where S-18 and the code disagreed, the code won:
+
+- **Outlet capabilities are operator-owned, not narrow-only from the manifest.** S-18 A.2 lists
+  `distribution.capabilities` as narrow-only; `.pkey/distribution` may not mention capabilities at
+  all (`capabilities_not_manifest_writable`, `services/distribution/capabilities.ts`). The entry is
+  `ownership: "operator"`, narrowing the compiled per-kind defaults.
+- **A platform default and a platform maximum are two values.** S-18 A.1 gives
+  `license.defaults.maxOfflineDays` both. The registry links one platform entry to a product key as
+  a default **or** a bound (`productLink`), and the rules refuse both on one entry; the platform
+  entry is registered as the default, and ST-16 adds the maximum under its own key.
+- **The A-13 store stays where it is.** `core/platformSettings.ts` keeps its store, resolver and
+  route; `PLATFORM_SETTINGS` is now derived from the registry's platform slice
+  (`core/settings/platform.ts`), and the `platform_settings` rows keep the SCREAMING_CASE names
+  (`storage.storedAs`), so no migration and no route change were needed.
+- **Shape additions to S-18 §4.2's `SettingDef`:** `ownership` is top-level (operator-only and
+  read-only entries need it too); `confirm` gains `{ change }` for unordered values; `storage` gains
+  `column` (until ST-01b moves a field) and `none`; `productLink` on platform entries (absent =
+  platform-only, which is what the "product-scope entry on a platform-only key" rule tests);
+  `securityWidening` and `widensWhen` drive rules 2 and 4; `pending: { wp }` marks entries
+  registered ahead of the package that wires them (no reader yet).
+- **The seed is a slice, not all of Appendix A.** 40 entries: A-13's four, the key-entry pair, the
+  platform product defaults, the existing security-widening product settings and the main
+  per-service settings, plus S-19's seven `licensing.*` entries (in
+  `services/license/licensingSettings.ts`, the one module that holds licence-model assumptions).
+  ST-06's coverage test lists the rest; the packages that build them register them.
+
 ## Steps
 
 1. Types and rules test.
@@ -53,9 +81,9 @@ Settings live under six precedence patterns and five vocabularies ([S-18 §2.3](
 
 ## Acceptance criteria
 
-- [ ] The boundaries test passes (rule 6).
-- [ ] A product-scope entry declared on a platform-only key fails the rules test.
-- [ ] A-13's keys resolve through their aliases (test).
+- [x] The boundaries test passes (rule 6).
+- [x] A product-scope entry declared on a platform-only key fails the rules test.
+- [x] A-13's keys resolve through their aliases (test).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

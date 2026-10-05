@@ -3458,6 +3458,45 @@ is no new privilege level and no outbound call.
   consumer re-read it at the start of each invocation. A setting that must take effect instantly
   does not belong in this store.
 
+### Platform settings and operations: the settings registry (ST-03, AT-2 amended)
+
+ST-03 adds one registry of every platform, product and service setting
+(`packages/worker/src/core/settings/`, notes/S-18 §4.2): Core's types and rules, the platform slice
+(`settings/platform.ts`), Core's product slice (`settings/core.ts`), and one slice per service
+contributed through its descriptor (`ServiceDescriptor.settings`), assembled once in `mount.ts`. It
+is data: it reads and writes no value and adds no route. A-13's four keys moved into the platform
+slice under registry keys (`deltas.lazy.mode`, `deltas.lazy.maxBytes`, `blobs.gc.mode`,
+`blobs.gc.graceDays`) with their old names as aliases; their `platform_settings` rows keep the old
+names and `PLATFORM_SETTINGS` is now derived from the slice, so the A-13 store, its route and every
+control above are unchanged. Entries registered ahead of the package that wires them carry
+`pending` and are not editable anywhere.
+
+The registry widens what the console will eventually be able to change (the resolver and generic
+API are ST-04 and ST-05), so AT-2 is amended here: one stolen admin session must not be able to
+widen access across the platform, or make itself permanent, through a setting.
+`test/settings-registry.test.ts` runs `checkRegistry` (`settings/rules.ts`) over the real
+composition root and refuses:
+
+- **at platform scope**, anything that names an origin, the privilege root, the admin IdP, a
+  security gate, key material, a session length, a rate limit, retention or a bucket (S-13 §8.2's
+  names, plus categories matched against every word of the key, its aliases and its `[vars]`
+  name), and any `securityWidening` entry;
+- **at product scope**, a security-widening setting (web origins, an OIDC issuer, trust policy,
+  redirect paths, a role map, access modes, the Sparkle key) that is not `critical` (reason
+  required), that `inherits` from platform (so one platform write cannot widen every product), or
+  whose widening direction needs less than L1; known keys and name patterns must carry the flag;
+- a product session length that could be lengthened: sessions are shorten-only, bounded `max` at
+  the code constant;
+- a `policy` bound on the restrictive side (an entry whose higher values widen access may only be
+  bounded `max` or locked);
+- a product entry that shares a key with a platform-only entry, or disagrees with the platform
+  default or bound it is linked to;
+- a slice that writes outside its own namespace or declares another owner (rule 6), and any
+  `accountMerge` (the account is not a settings scope, S-19 model OC).
+
+No new data is collected and nothing reaches a device: `wire` only labels which existing channel
+already carries a value.
+
 ### Self-reported operations (A-14)
 
 `GET /manage/api/platform/operations` (A-14, notes/S-13 §7.2 phase 1) sits behind the same
@@ -4692,6 +4731,11 @@ Obtain admin authority
 └── XSS on the platform origin ───────────► unauthenticated raw-HTML endpoints without CSP
 ```
 
+Holding the admin plane must not let the session widen itself or every product at once through a
+setting: the settings registry keeps every widening knob deploy-time at platform scope, and product
+security settings are `critical`, at least L1 to widen, and never inherited from platform
+("Platform settings and operations: the settings registry", ST-03).
+
 ### AT-3 — Ship malicious code to every installed client
 
 ```
@@ -4861,6 +4905,10 @@ reporting a binding's resource id or any secret-derived value, a route updates o
 entry's bounds widen (`LAZY_DELTA_MAX_BYTES` above the measured 32 MiB ceiling, or a grace below
 one day), the settings inventory starts reporting anything about a secret beyond its presence,
 or a path reads one of the four settings from the raw `[vars]` instead of through the resolver;
+or, for the settings registry (ST-03), an entry is added or loses `pending`, an entry's ownership,
+`securityWidening`, `critical`, `inherits`, `policyBound` or confirm levels change, a rule in
+`core/settings/rules.ts` is relaxed or a name leaves its deny-list, or a slice is contributed by
+anything but a service descriptor;
 or, for self-reported operations (A-14), the `DELTA_DLQ` binding is used for anything but
 `metrics()`, a request path starts persisting free-text error capture, a job-run or heartbeat
 writer stores request data or an untruncated message, or the Operations route gains an outbound
