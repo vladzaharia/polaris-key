@@ -520,6 +520,19 @@ func _controllers(t: PKeyTestContext) -> void:
 	var caps := PKeyActivationController.capabilities(true, true, true, true)
 	t.check("activation: Continue free is never offered on web", not caps["continue_free"] and caps["key_entry"] and caps["sign_in"] and caps["offline"])
 	t.check("activation: without License there is no key entry, no enrolment, no offline file", PKeyActivationController.capabilities(false, false, true, false) == {"key_entry": false, "sign_in": false, "continue_free": false, "offline": false})
+	# SDK parity §3.18: key entry is hidden on store outlets automatically (App Store 3.1.1, Play).
+	var store := PKeyActivationController.capabilities(true, true, true, false, true)
+	t.check("activation: a store outlet hides key entry and the offline file, keeps sign-in and enrolment", not store["key_entry"] and not store["offline"] and store["sign_in"] and store["continue_free"], str(store))
+	for kind in ["app-store", "testflight", "play", "play-testing"]:
+		t.check("activation: %s hides key entry" % kind, PKeyActivationController.store_hides_key_entry(kind))
+	for kind in ["direct", "steam", "itch", "ms-store", ""]:
+		t.check("activation: %s keeps key entry" % kind, not PKeyActivationController.store_hides_key_entry(kind))
+	var panel := PKeyActivationPanel.new()
+	panel.auto_sdk = false
+	_sc.add(panel)
+	panel.show_result(PKeyActivationResult.of(PKeyActivationResult.KIND_DEVICE_LIMIT, PKeyErrors.DEVICE_LIMIT, "", 403))
+	t.check("activation: device-limit without an SDK offers no Manage devices link", panel.last_kind == PKeyActivationResult.KIND_DEVICE_LIMIT and not panel._manage.visible)
+	_free(panel)
 	var screens := {}
 	for st in ["ok", "grace", "expired", "revoked", "needs-activation", "version-too-old", "version-too-new", "channel-not-entitled", "not-applicable"]:
 		screens[st] = PKeyGateController.screen_for(st)

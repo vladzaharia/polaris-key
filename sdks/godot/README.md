@@ -177,6 +177,28 @@ Downloadable content as `godot.pck` and `files.tree` releases, fetched, verified
 mounted at a boot. A build needs a content stamp at `res://pkey_packs/pkey-content.json` (written
 by CI) to have packs at all. See [Packs](#packs-polariskeyupdatepacks-p4-08).
 
+### Distribution, portal links and crash tags
+
+```gdscript
+var m := await PolarisKey.distribution.download_model()  # the public download page's model
+var here := PolarisKey.distribution.this_platform()       # {platform, label, primary, others, builds}
+OS.shell_open(PolarisKey.portal.url("devices"))           # also account, library, activate,
+                                                          # free-device, download
+SentrySDK.set_tag("pkey.outlet", PolarisKey.crash_tags().get("pkey.outlet", ""))
+```
+
+- `distribution.download_model()` reads `GET /<p>/distribution/download.json`, the unsigned,
+  public document the hosted download page renders: show it ("Also on Steam, Flathub…"), never
+  install from it. `this_platform()` picks this device's group with its primary action first.
+- `portal.url(flow, {key, for, return_to, platform})` builds customer-portal links from the base
+  URL and the portal's routes. The portal follows `return_to` only when it matches the product's
+  declared return URLs; a relative or `javascript:` value is dropped here. `PKeyActivationPanel`
+  shows **Manage devices** (the portal's free-a-device page) on `device-limit`.
+- `crash_tags()` is `{release: "app@<version>[+<build>]", environment: <update channel>,
+  "pkey.outlet": <outlet>}`, the convention update health maps a crash report to a rollout with.
+  No crash SDK is bundled; give the values to yours (Sentry: `release`, `environment` and a
+  `pkey.outlet` tag).
+
 ### What works here
 
 `PolarisKey.supports(PKeyConstants.Feature.LICENSE_ENROLL)` says, offline, whether a feature works

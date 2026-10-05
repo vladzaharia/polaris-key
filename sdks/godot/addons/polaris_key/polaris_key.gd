@@ -25,8 +25,11 @@ extends Node
 ## confirm_boot, the boot guard — the version check, its `update_available(check)` signal, the appcast
 ## URL), `release` (PKeyRelease: the changelog, the install and download URLs) and `commerce`
 ## (PKeyCommerce, P6-01: the purchase binding, claiming a store purchase as a licence flag, and
-## the App Store 3.1.3(b) outlet rule). `config`, `identity`, `update`, `release` and `commerce`
-## exist before `configure()`, so a signal connected early survives it.
+## the App Store 3.1.3(b) outlet rule), `distribution` (PKeyDistribution: the public download
+## model) and `portal` (PKeyPortal: account, devices and download links). `crash_tags()` returns
+## the release/environment/outlet tags for a crash reporter. `config`, `identity`, `update`,
+## `release`, `commerce`, `distribution` and `portal` exist before `configure()`, so a signal
+## connected early survives it.
 
 const SDK_VERSION := "0.1.0"
 
@@ -63,6 +66,12 @@ var update := PKeyUpdate.new()
 var release := PKeyRelease.new()
 ## Store purchases as licence flags (services/commerce.gd, P6-01). Refuses until configure().
 var commerce := PKeyCommerce.new()
+## Where the product can be got: the public download model (services/distribution.gd, SDK parity
+## §3.8). Refuses until configure().
+var distribution := PKeyDistribution.new()
+## Links into the customer portal: account, devices, free a device, download (services/portal.gd,
+## SDK parity §3.5). "" until configure().
+var portal := PKeyPortal.new()
 
 ## The PKeyBoot view `boot()` made (on a CanvasLayer under this node), or null.
 var boot_view: Node = null
@@ -108,6 +117,8 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	license.on_acquired = _on_license_acquired
 	license.on_changed = _on_license_wiped
 	commerce.attach(core, license)
+	distribution.attach(core)
+	portal.attach(core)
 	identity.attach(core, self)
 	identity.on_acquired = func() -> PKeySyncResult: return await sync(true)
 	return PKeyResult.success()
@@ -256,6 +267,28 @@ func build_info() -> Dictionary:
 		return stamp
 	var d := PKeyBuildStamp.editor_defaults()
 	return PKeyBuildStamp.fallback(d["channel"], d["product"])
+
+
+## The tags a crash reporter needs so Polaris Key's update health can map a crash to a rollout
+## (SDK parity §3.14; the convention W/services/distribution/sentry.ts reads):
+## {release: "<deliverable>@<version>[+<build>]", environment: <update channel>,
+## "pkey.outlet": <outlet>} ("pkey.outlet" is omitted when the outlet is unknown). No crash SDK is
+## bundled: hand these to yours, e.g. Sentry's `release`, `environment` and a `pkey.outlet` tag.
+func crash_tags(deliverable := "app") -> Dictionary:
+	var info := build_info()
+	var version := String(info.get("version", ""))
+	var build := str(info.get("build", ""))
+	var release_name := "%s@%s" % [deliverable, version]
+	if build != "" and build != "0":
+		release_name += "+" + build
+	var channel := update.get_channel() if core != null else ""
+	if channel == "":
+		channel = String(info.get("channel", ""))
+	var tags := {"release": release_name, "environment": channel}
+	var outlet := core.reported_outlet() if core != null else String(info.get("outlet", "") if info.get("outlet") is String else "")
+	if outlet != "":
+		tags["pkey.outlet"] = outlet
+	return tags
 
 
 ## Where the token lives: {backend, degraded?: {reason, detail?}}.
