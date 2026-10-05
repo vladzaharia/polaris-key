@@ -985,7 +985,7 @@ static func capabilities() -> Dictionary:
 		"devices.attest": {"status": "implemented", "service": "core", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}, {"runtime": "ios", "reason": "outlet"}, {"runtime": "android", "reason": "outlet"}]},
 		"identity.oidc": {"status": "planned", "service": "identity", "na": []},
 		"identity.devicecode": {"status": "implemented", "service": "identity", "na": []},
-		"identity.devicelabel": {"status": "planned", "service": "identity", "na": []},
+		"identity.devicelabel": {"status": "implemented", "service": "identity", "na": []},
 		"release.changelog": {"status": "implemented", "service": "release", "na": []},
 		"release.download": {"status": "implemented", "service": "release", "na": []},
 		"release.record": {"status": "implemented", "service": "release", "na": []},
@@ -1026,4 +1026,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "fa51e06486ebcff2d86e19ab0d04b4ee26f48274979076613a639d9c381fc1e2"
+const CAPABILITY_DIGEST := "52564fd37a5ded315a7bf72ec3bd49334984b0deebbb290236ef0241337a4497"

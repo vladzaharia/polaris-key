@@ -53,7 +53,7 @@ func _license_disabled(t: PKeyTestContext) -> void:
 		t.check("reregister: the re-register sends no Authorization", not reg[0]["headers"].has("authorization"))
 		t.check("reregister: the re-register keeps the device id", reg[0]["headers"].get("x-pkey-device") == h.F["device_id"])
 		var body := PKeyJson.parse(S.body_text(reg[0]))
-		t.check("reregister: the re-register sends the fingerprint", body["ok"] and body["value"] == {"fingerprint": PKeyFingerprint.hash_components(h.F["product"], host.host["expected"])}, S.body_text(reg[0]))
+		t.check("reregister: the re-register sends the fingerprint and the label", body["ok"] and body["value"] == {"fingerprint": PKeyFingerprint.hash_components(h.F["product"], host.host["expected"]), "deviceName": "Test Device"}, S.body_text(reg[0]))
 	var cfg: Array = h.requests("GET", "/config/document")
 	t.check("reregister: one retry, with the new token", cfg.size() == 2 and S.bearer(cfg[0]) == OLD and S.bearer(cfg[1]) == NEW, str(cfg.map(func(x): return S.bearer(x))))
 	t.check("reregister: the retry applies", r.documents == {"config": "applied"} and not r.unauthorized, str(r.documents))

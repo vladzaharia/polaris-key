@@ -5171,8 +5171,8 @@ const DEVICE_LABEL_CASES: DeviceLabelCase[] = [
   {
     id: "c0-controls",
     description:
-      "Step 2: the C0 controls outside step 1 (here NUL, BEL and ESC) are deleted, not spaced.",
-    raw: "Living\u0000room\u0007T\u001bV",
+      "Step 2: the C0 controls outside step 1 (here SOH, BEL and ESC) are deleted, not spaced. No row holds U+0000: a Godot String cannot.",
+    raw: "Living\u0001room\u0007T\u001bV",
     expect: "LivingroomTV",
   },
   {
@@ -5303,7 +5303,7 @@ const DEVICE_LABEL_CASES: DeviceLabelCase[] = [
   {
     id: "only-stripped-absent",
     description: "Only deleted code points: the label is absent.",
-    raw: "\u200b\u202e\u0000",
+    raw: "\u200b\u202e\u0001",
     expect: null,
   },
   {

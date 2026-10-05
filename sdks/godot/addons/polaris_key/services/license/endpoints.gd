@@ -37,6 +37,13 @@ static func deauthorize(core: PKeyCore, current: String) -> PKeyResult:
 
 static func _activation_like(core: PKeyCore, path: String, auth: Dictionary, fingerprint: Variant) -> Array:
 	var body = {"fingerprint": fingerprint} if fingerprint is Dictionary else null
+	# PX-W13 §8 Q2: the device label, on activation only (never enroll or token rotation).
+	if path == "license/activate":
+		var label := PKeyDeviceLabel.resolve("", core.options)
+		if label != "":
+			if body == null:
+				body = {}
+			body["deviceName"] = label
 	var r := await core.request("POST", path, body, false, auth)
 	return map_response(r, path == "license/enroll")
 

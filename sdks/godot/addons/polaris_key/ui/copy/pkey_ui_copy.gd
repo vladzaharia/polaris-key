@@ -97,6 +97,7 @@ const DEFAULTS := {
 	"sign_in_copy_link": "Copy link",
 	"sign_in_copied": "Link copied.",
 	"sign_in_expires": "The code expires in %s.",
+	"sign_in_device": "The sign-in page will show “%s”.",
 	"sign_in_confirm_title": "Is this you?",
 	"sign_in_confirm_body": "Signed in as %s.",
 	"sign_in_attach": "Also attach this device's license to my account",

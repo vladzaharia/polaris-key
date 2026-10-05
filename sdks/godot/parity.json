@@ -145,8 +145,8 @@
       "note": "PolarisKey.identity (P1-07): begin_sign_in with background polling on the server's cadence, cancel, the opt-in confirm-identity step and licence attach, and a pure-GDScript QR encoder with PKeyQrRect for verification_uri_complete. On web it runs too (OS.shell_open becomes window.open; Worker CORS needed)."
     },
     "identity.devicelabel": {
-      "status": "planned",
-      "wp": "PX-W13"
+      "status": "implemented",
+      "note": "PX-W13: PKeyDeviceLabel.normalize (UTF-32, one character per code point), PKeyOptions.device_name and send_device_name, the model-else-OS default, on begin_sign_in, activation and registration; PKeySignInPrompt.device_name is the echo, and PKeySignInDialog shows it under the code. A per-call name wins; opting out is send_device_name = false (an exported String cannot be null)."
     },
     "release.changelog": {
       "status": "implemented"

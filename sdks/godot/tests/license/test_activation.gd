@@ -88,17 +88,21 @@ func _ok_and_shape(t: PKeyTestContext) -> void:
 		t.check("activation: the X-PKey headers ride along", req["headers"].get("x-pkey-device") == h.F["device_id"] and req["headers"].get("x-pkey-version") == h.F["version"] and req["headers"].has("x-pkey-channel") and req["headers"].has("x-pkey-sdk"))
 		var body := PKeyJson.parse(S.body_text(req))
 		var expected_fp := PKeyFingerprint.hash_components(h.F["product"], host.host["expected"])
-		t.check("activation: the body is the hashed fingerprint", body["ok"] and body["value"] == {"fingerprint": expected_fp}, S.body_text(req))
+		# PX-W13 §8 Q2: the device label rides along on activation.
+		t.check("activation: the body is the hashed fingerprint and the device label", body["ok"] and body["value"] == {"fingerprint": expected_fp, "deviceName": "Test Device"}, S.body_text(req))
 	var docs: Array = h.requests("GET", "/license/document")
 	t.check("activation: the forced sync ran with the new token before returning", docs.size() == 1 and S.bearer(docs[0]) == TOKEN and not docs[0]["headers"].has("if-none-match"))
 	t.check("activation: the licence is ok once activation returns", sdk.license.status()["status"] == "ok" and sdk.license.is_licensed() and sdk.license.activation() == &"token", "%s after %s" % [sdk.license.status(), synced])
 	t.check("activation: state_changed reported ok", states.has("ok"), str(states))
 	sdk.queue_free()
 
-	# Fingerprinting off: no body and no content type, byte-identical to having nothing to send.
+	# Fingerprinting and the label off: no body and no content type, byte-identical to having
+	# nothing to send.
 	h.server.requests.clear()
 	h.plan["/license/activate"] = [S.json(401, {"error": "unauthorized"})]
-	var off = await h.sdk(PKeyMemoryStore.new(h.F["device_id"]), PackedStringArray(), func(o: PKeyOptions): o.fingerprint_enabled = false)
+	var off = await h.sdk(PKeyMemoryStore.new(h.F["device_id"]), PackedStringArray(), func(o: PKeyOptions):
+		o.fingerprint_enabled = false
+		o.send_device_name = false)
 	await off.license.activate_with_key(KEY)
 	reqs = h.requests("POST", "/license/activate")
 	t.check("activation: fingerprint_enabled = false sends no body", reqs.size() == 1 and (reqs[0]["body"] as PackedByteArray).is_empty() and not reqs[0]["headers"].has("content-type"))
@@ -154,7 +158,8 @@ func _refusals(t: PKeyTestContext) -> void:
 	t.check("enroll: on web nothing is sent", h.requests("POST", "/license/enroll").is_empty())
 	r = await web.license.activate_with_key(KEY)
 	var reqs: Array = h.requests("POST", "/license/activate")
-	t.check("activation: on web the key still goes, without a fingerprint body", r.kind == PKeyActivationResult.KIND_UNAUTHORIZED and reqs.size() == 1 and (reqs[0]["body"] as PackedByteArray).is_empty())
+	var web_body := PKeyJson.parse(S.body_text(reqs[0])) if reqs.size() == 1 else {"ok": false}
+	t.check("activation: on web the key still goes, without a fingerprint (the label only)", r.kind == PKeyActivationResult.KIND_UNAUTHORIZED and reqs.size() == 1 and web_body["ok"] and web_body["value"] == {"deviceName": "Test Device"}, S.body_text(reqs[0]) if reqs.size() == 1 else "")
 	web.queue_free()
 
 	h.server.requests.clear()
