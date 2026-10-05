@@ -212,12 +212,20 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   — the downloads surface, gated by _three_ independent things at once: the portal's own
   `releasesEnabled` toggle, whether the product runs the Release service at all
   (`services_json`), and — for a `licensed`-access artifact — whether the account holds a usable
-  license for that product. Minting a token is refused up front if the artifact's stored source
-  URL is not a redirectable `https` GitHub-storage host, so nothing is ever minted that could
-  only fail later. The listing itself omits `signature` and `checksum` artifacts (`.sig` and
-  `.sha256` sidecars): they are verification material, not downloads. As shipped, a download
-  therefore needs a signed-in account **and** a license for the product linked to it (a usable
-  one for `licensed` access); there is no anonymous path, and the redirect target is always a
+  license for that product. Minting a token is refused up front when nothing can hand a browser
+  the bytes, so nothing is ever minted that could only fail later: a `public` file redirects to
+  Distribution's bytes host, which serves every location (R2, and GitHub through the Release
+  installation token, so a private repository's files too); any other file only to its stored
+  GitHub-storage URL, and only when the repository is public (a private one answers an
+  anonymous browser with 404). An account with no linked license for the product gets the same
+  `404` for every refusal; an owner is told why: `404 file_not_found` (the release or file is
+  gone), `403 license_inactive` or `403 not_entitled`, and `409 not_hosted` (nothing here serves
+  it yet), the same reasons the downloads view gives per file. Path segments are percent-decoded
+  once, so an id such as `file:App-1.0.dmg` matches whether or not the client encoded it. The
+  listing itself omits `signature` and `checksum` artifacts (`.sig` and `.sha256` sidecars): they
+  are verification material, not downloads. As shipped, a download therefore needs a signed-in
+  account **and** a license for the product linked to it (a usable one for `licensed` access);
+  there is no anonymous path, and the redirect target is always the bytes host or a
   GitHub-storage host.
 - **`GET /api/products/<product>/downloads[?channel=<channel>]`** — one product's downloads and
   store links, shaped for the product page's "Get it" section. Answered only for an account with

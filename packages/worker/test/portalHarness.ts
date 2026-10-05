@@ -13,6 +13,7 @@ import { buildHooks } from "../src/core/hooks.js";
 import { serializeServices } from "../src/core/services.js";
 import { setServices } from "../src/repo.js";
 import { SERVICES } from "../src/mount.js";
+import { kvKey } from "../src/core/platform.js";
 import {
   handlePortalApi as portalApi,
   handlePortalDownload as portalDownload,
@@ -70,5 +71,47 @@ export async function enableDownloads(
     }),
     "manifest",
     now,
+  );
+}
+
+/**
+ * Record the product's GitHub repository visibility the way Release caches it
+ * (`ghCache.isPublicRepository`, one hour in HOT), with a resolved `release_config` so the
+ * lookup reaches the cache. The portal redirects a browser to a stored GitHub URL only for a
+ * public repository; a private one answers that browser with GitHub's 404.
+ */
+export async function seedRepositoryVisibility(
+  env: Env,
+  db: Db,
+  slug: string,
+  visibility: "public" | "private",
+  repo: { owner: string; name: string } = {
+    owner: "vladzaharia",
+    name: slug,
+  },
+): Promise<void> {
+  await db.run(
+    `INSERT INTO release_config
+       (product, gh_owner, gh_repo, gh_installation_id, metadata_access, artifacts_access)
+     VALUES (?, ?, ?, 42, 'public', 'public')
+     ON CONFLICT (product) DO UPDATE SET
+       gh_owner = COALESCE(release_config.gh_owner, excluded.gh_owner),
+       gh_repo = COALESCE(release_config.gh_repo, excluded.gh_repo),
+       gh_installation_id = COALESCE(release_config.gh_installation_id, 42)`,
+    slug,
+    repo.owner,
+    repo.name,
+  );
+  const cfg = await db.first<{ gh_owner: string; gh_repo: string }>(
+    "SELECT gh_owner, gh_repo FROM release_config WHERE product = ?",
+    slug,
+  );
+  await env.HOT.put(
+    kvKey(
+      slug,
+      "gh-repo-public",
+      `${cfg!.gh_owner}/${cfg!.gh_repo}`.toLowerCase(),
+    ),
+    visibility === "public" ? "1" : "0",
   );
 }
