@@ -55,7 +55,7 @@ export function cardPage(
   return new Response(
     renderBrandPage({
       title: page.title,
-      eyebrow: "Polaris Key account",
+      surface: "account",
       heading: page.heading,
       body: page.body ?? "",
     }),
