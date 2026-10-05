@@ -649,6 +649,19 @@ program.parseAsync(process.argv);
 Each verb is also a plain function (`signIn(client, io)`, `devicesList(client)`, …) returning
 `{ ok, message, data }`; refusals are described through the copy catalog with their code.
 
+## Samples and recipes
+
+Runnable samples live in the repository's `examples/` directory:
+`node-express` (verify a client's licence on a backend), `node-cli` (a commander CLI with the full
+kit and sign-in) and `node-electron` (main, preload and the React kit over the bridge).
+
+- **Device limit reached.** `activateWithKey` answers `device-limit` with `limit` and
+  `deviceCount`. The new device holds no credential, so a seat is freed from the account portal
+  or from a device that holds one (`client.deauthorizeDevice(id)`, `devices deauthorize <id>`),
+  then the key is entered again.
+- **Attestation-gated products.** A product whose device-trust policy requires platform
+  attestation refuses Node clients with `attestation-required`; Node has no attestation service.
+
 ## The frozen wire contract
 
 Documents are compact **JWS (EdDSA / Ed25519)**, domain-separated by `typ`
