@@ -24,7 +24,6 @@ import {
   COLLECTION_CONFLICTS,
   COLLECTION_ON_ATTACH,
   SAVE_CONFLICT_POLICIES,
-  USER_SETTING_CONFLICTS,
   USER_SETTING_SYNC_SCOPES,
   userSettingIssues,
   mergeMembersOverLimit,
@@ -49,7 +48,6 @@ export interface CloudSyncContext {
 
 const COLLECTION_RE = new RegExp(CLOUD_SYNC_COLLECTION_PATTERN);
 
-const USER_MEMBERS = new Set(["sync", "conflict", "listed"]);
 const CATALOG_MEMBERS = new Set(["collections", "open", "saves", "migrations"]);
 const COLLECTION_MEMBERS = new Set([
   "name",
