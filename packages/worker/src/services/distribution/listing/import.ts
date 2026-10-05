@@ -305,6 +305,20 @@ export async function runImport(
   const current = currentOf(stored);
   const textLocale = req.locale ?? current.defaultLocale ?? "en-US";
 
+  // The Godot upload is checked before any store is read: a malformed one costs no vendor call.
+  for (const spec of req.sources)
+    if (spec.source === "godot") {
+      const g = godotSnapshot(spec.godot);
+      if (!g.ok)
+        return {
+          ok: false,
+          status: 422,
+          reason: "invalid_import",
+          message: g.problems[0]!.message,
+          problems: g.problems,
+        };
+    }
+
   const reports: SourceReport[] = [];
   const snapshots: ListingSnapshot[] = [];
   let firstFailure: Extract<SourceOutcome, { ok: false }> | null = null;

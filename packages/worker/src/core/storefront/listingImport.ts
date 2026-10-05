@@ -113,7 +113,7 @@ export interface SnapshotIdentifier {
 /** One source's listing, in the model's shape. */
 export interface ListingSnapshot {
   source: ImportSource;
-  /** What it was read from (an app id, a package name, an outlet, a project), for the console. */
+  /** What it was read from (an app id, a package name, an outlet, a project), shown in the diff. */
   ref: string | null;
   /** The source's primary locale, when it has one. */
   defaultLocale: string | null;
