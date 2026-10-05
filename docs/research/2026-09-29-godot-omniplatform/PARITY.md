@@ -4,7 +4,9 @@
 [`CONTENT.md`](CONTENT.md) §13.
 **Evidence:** `notes/A2` (the current SDK surface, per capability), `notes/E9` (what every runtime
 can do natively), `notes/A7` (content operations run in six runtimes against shared vectors).
-**Status:** research proposal, 2026-09-30. Nothing here is implemented.
+**Status:** research proposal, 2026-09-30; the registry, manifests, corpus and gate (§3–§4) have
+since shipped. §5 was reconciled on 2026-10-04 by the SDK parity pass
+([`notes/SDK-PARITY-PASS.md`](notes/SDK-PARITY-PASS.md)), which also holds the current gap plan.
 
 ---
 
@@ -281,134 +283,325 @@ generators run with `--check` in the green gate.
 
 ## 5. The feature inventory
 
+**Reconciled 2026-10-04** by the SDK parity pass
+([`notes/SDK-PARITY-PASS.md`](notes/SDK-PARITY-PASS.md)). Six audits graded each cell against
+what the server **ships today**, with evidence paths. That note also holds the per-SDK task
+lists (`SP-*`), the shared spec for new helpers, and the items that need a wire change. The
+2026-09-29 baseline from notes/A2 §9 is superseded: those gaps were closed by P1b to P6.
+
 **Legend:**
 
 - ✓ implemented;
-- ◐ partial or inconsistent;
-- ✗ missing: a parity gap;
-- N/A typed unsupported by design, with the reason listed;
-- ○ new capability, not built in any SDK yet.
+- ◐ partial: works, but with a gap the footnote names;
+- ✗ missing against a shipped server feature: a parity gap with a task in the pass;
+- N/A typed unsupported by design, with the reason in the registry;
+- ○ not built in any SDK because the server part is still planned (⚑ = needs a wire change, see
+  the pass §6);
+- ⊕ a proposed new id (pass §3), which needs the SP-00 registry plan before any SDK tags a test
+  with it.
 
-**Current state** is from notes/A2 §9 (2026-09-29), spot-checked in the code. **Godot, Kotlin and
-C#** target every row, minus the N/As listed.
+**Columns.**
+
+- **React** covers both transports. "web" is the browser adapter; "bridge" is the Electron or
+  Tauri renderer over the desktop bridge.
+- **Kotlin** is Android unless a footnote names the JVM.
+- **Godot** covers every export target.
+
+**Kits** is graded separately in §5.9.
 
 ### 5.1 Core
 
-| Id              | Capability                                                  | Proven by          | Node | React | Python | Swift | Allowed N/A                 |
-| --------------- | ----------------------------------------------------------- | ------------------ | ---- | ----- | ------ | ----- | --------------------------- |
-| `core.verify`   | JWS verify, trust manifest (pinning, rotation), clock floor | `cases.json`       | ✓    | ✓     | ✓      | ✓     | —                           |
-| `core.cache`    | verified cache; construct and load offline                  | transcripts + unit | ✓    | ✓     | ✓      | ✓     | —                           |
-| `core.bundle`   | offline bundle import                                       | `cases.json`       | ✓    | ✓     | ✓      | ✓     | —                           |
-| `core.discover` | discovery and capabilities, fail-closed                     | transcripts        | ✓    | ✓     | ✓      | ✓     | —                           |
-| `core.sync`     | sync, `ETag`/`304`, backoff, refresh loop, change events    | transcripts        | ✓    | ✓     | ✓      | ✓     | —                           |
-| `core.local`    | local-only client (no network)                              | unit               | ✓    | ✗     | ✓      | ✓     | —                           |
-| `core.headers`  | canonical platform, arch and SDK header values              | `headers.json`     | ◐    | ◐     | ◐      | ◐     | —                           |
-| `core.errors`   | shared error codes                                          | generated registry | ◐    | ◐     | ◐      | ◐     | —                           |
-| `core.caps`     | `supports()` and capability telemetry                       | unit + parity gate | ○    | ○     | ○      | ○     | —                           |
-| `core.store`    | secure token store, surfaced failure, no silent downgrade   | unit               | ◐ ¹  | N/A   | ◐ ²    | ◐ ³   | web: `runtime` (no keyring) |
+| Id              | Capability                                                  | Proven by            | Node | React  | Python | Swift | Kotlin | Godot | Allowed N/A                                                     |
+| --------------- | ----------------------------------------------------------- | -------------------- | ---- | ------ | ------ | ----- | ------ | ----- | --------------------------------------------------------------- |
+| `core.verify`   | JWS verify, trust manifest (pinning, rotation), clock floor | `cases.json`         | ✓    | ◐ ¹    | ✓      | ✓     | ✓      | ✓     | —                                                               |
+| `core.cache`    | verified cache; construct and load offline                  | transcripts + unit   | ✓    | ✗ ²    | ✓      | ✓     | ✓      | ✓     | —                                                               |
+| `core.bundle`   | offline bundle import                                       | `cases.json`         | ✓    | ◐ ³    | ✓      | ✓     | ✓      | ✓     | —                                                               |
+| `core.discover` | discovery and capabilities, fail-closed                     | transcripts          | ✓    | ◐ ⁴    | ✓ ⁵    | ✓     | ✓      | ✓     | —                                                               |
+| `core.sync`     | sync, `ETag`/`304`, backoff, refresh loop, change events    | transcripts          | ◐ ⁶  | ◐ ⁷    | ◐ ⁶    | ◐ ⁶   | ◐ ⁶    | ✓     | —                                                               |
+| `core.local`    | local-only client (no network)                              | unit                 | ✓    | ✗      | ✓      | ✓     | ✓      | ✓     | —                                                               |
+| `core.headers`  | canonical platform, arch and SDK header values              | `headers.json`       | ✓    | ✓      | ◐ ⁸    | ◐ ⁹ ⚑ | ✓      | ✓     | —                                                               |
+| `core.errors`   | shared error codes                                          | generated registry   | ◐ ¹⁰ | ◐ ¹⁰   | ◐ ¹⁰   | ◐ ¹⁰  | ◐ ¹⁰   | ◐ ¹⁰  | —                                                               |
+| `core.caps`     | `supports()` and capability telemetry                       | unit + parity gate   | ✓    | ◐ ¹¹   | ✓      | ✓     | ✓      | ✓     | —                                                               |
+| `core.store`    | secure token store, surfaced failure, no silent downgrade   | unit                 | ◐ ¹² | N/A ¹³ | ✓      | ◐ ¹⁴  | ◐ ¹⁵   | ◐ ¹⁶  | web, desktop-bridge: `runtime`; node, python, jvm: `dependency` |
+| `core.copy` ⊕   | localised message for every registry code and gate status   | `copy.en.json` (new) | ✗    | ◐      | ✗      | ✗     | ◐      | ◐     | —                                                               |
 
-1. Node silently falls back to a 0600 file when its keyring addon cannot load, e.g. inside a
-   single-executable build (notes/E9 §12). Parity requires a surfaced `degraded` state.
-2. Python's keyring is an optional extra. Without it, tokens go to a 0600 file, which parity
-   requires the SDK to report.
-3. Swift's macOS keychain ignores its accessibility attribute without
-   `kSecUseDataProtectionKeychain` (README §9.1 #27).
+1. The web session document (`/identity/session`) is unsigned legacy JSON, so it is trusted from
+   TLS. Bearer mode (pass §3.17) reads the signed documents.
+2. Web only. An offline reload loses the licence. On the bridge, the Node host holds the cache.
+3. `<PolarisKeyProvider>` cannot pass `trust`, so a browser `importBundle` always refuses unless
+   the developer injects a hand-built adapter.
+4. The parsed discovery document is private to the adapter, and the URL builders use hard-coded
+   aliases.
+5. Services must be declared by hand, or `discover()` called explicitly. There is no
+   `auto_discover`.
+6. Change events cover the licence state only (Swift: one replaceable callback), with no config,
+   update or packs events. The refresh loop is off by default and is not lifecycle-aware.
+7. No `If-None-Match` and no backoff on the web, and no refresh on focus or `online`.
+8. Pyodide (`Emscripten`) maps to no platform.
+9. tvOS, visionOS and watchOS send no `X-PKey-Platform`. New canonical values are a wire change
+   (pass W8).
+10. The codes are mirrored everywhere. Node, Python, Swift and Kotlin collapse every activation
+    403 other than `fingerprint_required` into "device limit" or a raw body, which is a bug
+    (pass §3.1). Godot maps unknown 403s to a generic error with no code copy.
+11. A browser never sends its capability telemetry (no bearer).
+12. No Electron `safeStorage` store.
+13. A design choice, not a runtime limit: Godot web holds a bearer token in IndexedDB. Bearer mode
+    (pass §3.17, owner question Q1) would make this ✓ with surfaced degradation.
+14. No keychain access-group or app-group option, and the two keychain classes disagree (Q8).
+15. Android ✓. The JVM writes a 0600 file (allowed `dependency` N/A); OS keyrings are pass SP-K12.
+16. iOS and Android ✓. Desktop writes a 0600 file with no Keychain, DPAPI or libsecret store, and
+    no work package owns that (pass SP-G11). On the web, IndexedDB may be cleared.
 
 ### 5.2 License
 
-| Id                     | Capability                                  | Proven by          | Node | React | Python | Swift | Allowed N/A                      |
-| ---------------------- | ------------------------------------------- | ------------------ | ---- | ----- | ------ | ----- | -------------------------------- |
-| `license.gate`         | gate evaluation, every status               | `gate-matrix.json` | ✓    | ✓     | ✓      | ✓     | —                                |
-| `license.activate`     | activate with a key (+ fingerprint)         | transcripts        | ✓    | ✓     | ✓      | ✓     | —                                |
-| `license.enroll`       | keyless enrolment                           | transcripts        | ✓    | N/A   | ✓      | ✓     | web: `runtime` (no hardware ids) |
-| `license.deactivate`   | remote best-effort, local wipe mandatory    | transcripts        | ✓    | ✓     | ✓      | ✓     | —                                |
-| `license.entitlements` | entitlements, profile, licence id           | unit               | ✓    | ✓     | ✓      | ✓     | —                                |
-| `license.channels`     | `entitledChannels()`                        | unit               | ✓    | ✓     | ✓      | ✓     | —                                |
-| `license.reregister`   | re-register on 401 for licence-less devices | transcripts        | ✗    | ✗     | ✗      | ✗     | —                                |
+| Id                     | Capability                                  | Proven by          | Node | React | Python | Swift | Kotlin | Godot | Allowed N/A                    |
+| ---------------------- | ------------------------------------------- | ------------------ | ---- | ----- | ------ | ----- | ------ | ----- | ------------------------------ |
+| `license.gate`         | gate evaluation, every status               | `gate-matrix.json` | ✓    | ✓     | ✓      | ✓     | ✓      | ✓     | —                              |
+| `license.activate`     | activate with a key (+ fingerprint)         | transcripts        | ◐ ¹  | ◐ ²   | ◐ ¹    | ◐ ¹   | ◐ ¹    | ✓ ³   | —                              |
+| `license.enroll`       | keyless enrolment                           | transcripts        | ✓    | N/A   | ✓      | ✓     | ◐ ¹    | ✓     | web, desktop-bridge: `runtime` |
+| `license.deactivate`   | remote best-effort, local wipe mandatory    | transcripts        | ✓    | ✓     | ✓      | ✓     | ✓      | ✓     | —                              |
+| `license.entitlements` | entitlements, profile, licence id           | unit               | ◐ ⁴  | ◐ ⁵   | ◐ ⁴    | ◐ ⁴   | ◐ ⁴    | ◐ ⁴   | —                              |
+| `license.channels`     | `entitledChannels()`                        | unit               | ✓    | ✓     | ✓      | ✓     | ✓ ⁶    | ✓ ⁶   | —                              |
+| `license.reregister`   | re-register on 401 for licence-less devices | transcripts        | ✓    | N/A   | ✓      | ✓     | ✓      | ✓     | web, desktop-bridge: `runtime` |
+| licence document v2    | per-entry expiry, grants, 401 reasons       | —                  | ○ ⚑  | ○ ⚑   | ○ ⚑    | ○ ⚑   | ○ ⚑    | ○ ⚑   | LX-17, LX-18, LX-19 (pass W3)  |
+| key-entry refusals     | `key_entry_limit`, `license_owned`, attach  | —                  | ○ ⚑  | ○ ⚑   | ○ ⚑    | ○ ⚑   | ○ ⚑    | ○ ⚑   | I-09, I-10a, I-10b (pass W1)   |
+
+1. 403s collapse: `enroll_claimed`, `license_disabled` and `attestation_required` read as
+   "device limit" or as a raw body. A 429 is an untyped error (pass §3.1).
+2. Web: key entry works only on a page served from the Worker's own origin. Device-limit
+   remediation is missing. The bridge drops `limit` and `deviceCount`.
+3. An unknown 403 falls through to a generic error.
+4. `isEntitled` keeps answering from the cached document after revocation or expiry (S-19 G11).
+   Confirmed in Kotlin and Godot; assumed in the others until SP-00's gate-matrix row proves
+   otherwise. There are no `licenseInfo()` conveniences either (pass §3.3).
+5. `useEntitlement` is boolean only. Tier and non-boolean values need the deprecated
+   `usePolarisKey()`.
+6. Runtime channel switching is not SDK-owned: Kotlin fixes the channel at construction, and
+   Godot's dev menu only emits a signal (SP-K09, SP-G08).
 
 ### 5.3 Config
 
-| Id               | Capability                                         | Proven by            | Node | React | Python | Swift | Allowed N/A                                |
-| ---------------- | -------------------------------------------------- | -------------------- | ---- | ----- | ------ | ----- | ------------------------------------------ |
-| `config.resolve` | precedence (enforced, default, local, environment) | `config-matrix.json` | ✓    | ✓ ¹   | ✓      | ✓     | —                                          |
-| `config.list`    | user-visible config, enforced rows flagged         | `config-matrix.json` | ✓    | ✓     | ✓      | ✓     | —                                          |
-| `config.secret`  | `getSecret`                                        | transcripts          | ✓    | N/A   | ✓      | ✓     | web: `runtime` (the Worker strips secrets) |
-| `config.schema`  | catalog fetch (`/config/schema`)                   | transcripts          | ✓    | ✓     | ✓      | ✓     | —                                          |
-| `config.mint`    | edge-mint of third-party tokens                    | transcripts          | ✗    | ✗     | ✗      | ✗     | —                                          |
-| `config.mirror`  | typed catalog mirrors                              | unit                 | ✓    | ✓     | ✓      | ✓     | —                                          |
+| Id               | Capability                                                      | Proven by            | Node | React | Python | Swift | Kotlin | Godot | Allowed N/A                      |
+| ---------------- | --------------------------------------------------------------- | -------------------- | ---- | ----- | ------ | ----- | ------ | ----- | -------------------------------- |
+| `config.resolve` | precedence (enforced, default, local, environment)              | `config-matrix.json` | ✓    | ✓ ¹   | ✓      | ✓     | ✓      | ✓     | —                                |
+| `config.list`    | user-visible config, enforced rows flagged                      | `config-matrix.json` | ✓    | ✓     | ✓      | ✓     | ✓      | ✓     | —                                |
+| `config.secret`  | `getSecret`                                                     | transcripts          | ✓    | N/A   | ✓      | ✓     | ✓      | ✓     | web, desktop-bridge: `runtime`   |
+| `config.schema`  | catalog fetch (`/config/schema`)                                | transcripts          | ✓    | ✓     | ✓      | ✓ ²   | ✓ ²    | ✓     | —                                |
+| `config.mint`    | edge-mint of third-party tokens                                 | transcripts          | ✓    | ✗ ³   | ✓      | ✓     | ✓      | ✓     | —                                |
+| `config.mirror`  | typed catalog mirrors                                           | unit                 | ◐ ⁴  | ◐ ⁴   | ◐ ⁴    | ◐ ⁴   | ◐ ⁴    | ◐ ⁴   | —                                |
+| `config.local` ⊕ | persisted local overrides, `set`/`clear`, per-key change events | unit                 | ✗    | ◐ ⁵   | ✗      | ✗     | ✗      | ◐ ⁶   | —                                |
+| synced settings  | account layer, Cloud Sync settings                              | —                    | ○ ⚑  | ○ ⚑   | ○ ⚑    | ○ ⚑   | ○ ⚑    | ○ ⚑   | U-03, U-06, U-20, U-21 (pass W6) |
 
-1. The environment layer applies to desktop hosts only; in a browser it is empty by definition,
-   which the matrix pins rather than an N/A.
+1. The environment layer is empty in a browser by definition, which the matrix pins.
+2. Returns raw bytes, with no decoded catalog model.
+3. No verb on either transport. The bridge could forward to the Node host, and bearer mode
+   (pass §3.17) enables it on the web.
+4. The generator is the monorepo's `tools/gen-mirrors.ts`. Adopters cannot run it without the
+   repo (pass §3.19, `pkey mirror`). There are no typed accessors over the mirror either.
+5. `ConfigPanel` reports `onOverride(key, string)`. Persistence and type coercion are left to the
+   host.
+6. `set_override_store` exists, but the default store is in memory.
 
 ### 5.4 Devices and identity
 
-| Id                    | Capability                             | Proven by          | Node | React | Python | Swift | Allowed N/A    |
-| --------------------- | -------------------------------------- | ------------------ | ---- | ----- | ------ | ----- | -------------- |
-| `devices.fingerprint` | components, hashing, device id         | `fingerprint.json` | ◐ ¹  | N/A   | ◐ ¹    | ✓     | web: `runtime` |
-| `devices.facts`       | device facts and probes                | unit               | ✓    | N/A   | ✓      | ✓     | web: `runtime` |
-| `devices.register`    | keyless registration                   | transcripts        | ✓    | ✗     | ✓      | ✓     | —              |
-| `devices.manage`      | list, rename, deauthorise              | transcripts        | ✓    | ◐ ²   | ✓      | ✓     | —              |
-| `devices.report`      | telemetry (allowlisted keys)           | transcripts        | ✓    | ✓ ²   | ✓      | ✓ ³   | web: `runtime` |
-| `identity.oidc`       | browser sign-in                        | transcripts        | ✗    | ✓     | ✗      | ◐ ⁴   | —              |
-| `identity.devicecode` | device-code sign-in (RFC 8628) with QR | transcripts        | ✗ ⁵  | ✓     | ✗      | ✗     | —              |
+| Id                    | Capability                                    | Proven by                 | Node | React | Python | Swift | Kotlin | Godot | Allowed N/A                                 |
+| --------------------- | --------------------------------------------- | ------------------------- | ---- | ----- | ------ | ----- | ------ | ----- | ------------------------------------------- |
+| `devices.fingerprint` | components, hashing, device id                | `fingerprint.json`        | ✓    | N/A   | ✓      | ◐ ¹   | ✓      | ✓     | web, desktop-bridge: `runtime`              |
+| `devices.facts`       | device facts and probes                       | unit                      | ✓    | N/A   | ✓      | ✓     | ✓      | ✓     | web, desktop-bridge: `runtime`              |
+| `devices.register`    | keyless registration                          | transcripts               | ✓    | N/A ² | ✓      | ✓     | ✓      | ✓     | web, desktop-bridge: `runtime`              |
+| `devices.manage`      | list, rename, deauthorise                     | transcripts               | ✓ ³  | ◐ ²   | ◐ ⁴    | ✓     | ✓      | ✓     | web: `runtime`                              |
+| `devices.report`      | telemetry (allowlisted keys)                  | transcripts               | ◐ ⁵  | ◐ ²   | ◐ ⁵    | ◐ ⁵   | ◐ ⁵    | ✓     | web: `runtime`                              |
+| `devices.attest`      | App Attest / Play Integrity trust level       | transcripts               | N/A  | N/A   | N/A    | ✗ ⁶   | ✗ ⁶    | ✓     | every non-store runtime: `runtime`/`outlet` |
+| `telemetry.updates` ⊕ | update-health funnel events (P6-03)           | `telemetry-report.json`   | ✗    | ✗     | ✗      | ✗     | ✗      | ✓     | —                                           |
+| `identity.oidc`       | browser sign-in                               | transcripts               | ○ ⚑  | ◐ ⁷   | ○ ⚑    | ◐ ⁸ ⚑ | ○ ⚑    | ○ ⚑   | —                                           |
+| `identity.devicecode` | device-code sign-in (RFC 8628) with QR        | transcripts               | ◐ ⁹  | ◐ ¹⁰  | ◐ ⁹    | ◐ ⁹   | ✓      | ✓     | web: `runtime`                              |
+| identity layer 1      | passthrough, native redirect, subject, attach | —                         | ○ ⚑  | ○ ⚑   | ○ ⚑    | ○ ⚑   | ○ ⚑    | ○ ⚑   | I-08, I-10a/b, I-13, I-15 (pass W4, W5)     |
+| `portal.links` ⊕      | portal URLs for the shipped SPA routes        | `portal-links.json` (new) | ✗    | ✗     | ✗      | ✗     | ✗      | ✗     | — (server `manageUrl`: PX-W8, pass W2 ⚑)    |
 
-1. `wmic` is gone from Windows 11, so two components silently vanish; on Linux the anchor depends
-   on privilege (README §9.1 #23–24).
-2. Through the desktop bridge only.
-3. A public `report()` since P1b-07; before it, only as part of sync.
-4. Through a host-supplied closure.
-5. The Electron desktop host bridge implements it; the Node SDK does not.
+1. tvOS, visionOS and watchOS fall back to a random id with an almost empty fingerprint.
+2. These web N/As and partials are design choices. The cookie-session browser adapter holds no
+   bearer, while Godot web registers, manages and reports with one over CORS-covered routes. They
+   are closable by bearer mode (pass §3.17, Q1). On the bridge, `devices.report` takes no payload.
+3. A device stopped at `device_limit` holds no token, so it cannot free a seat. Recovery needs
+   `portal.links` now and `manageUrl` later (W2). This applies in every SDK.
+4. Errors collapse to SDK-local codes (`device_list_failed`, …) and drop the server's code.
+5. Missing report keys: Node, Python, Swift and Kotlin send no `updates`; Python also omits
+   `gate`, `outlet` and `packInstalls`; Swift omits `outlet`.
+6. The platform primitives exist (`PolarisKeyPlatform/AppAttest.swift`, Kotlin
+   `platform/Integrity.kt`) and Godot attests through them, but neither SDK calls the attest
+   routes. macOS and the JVM are allowed N/As.
+7. Same-origin only: the session cookie and the auth routes never answer CORS.
+8. Only through a host-supplied closure. The gate's Sign in button is a no-op by default.
+9. Node, Python and Swift do not send P1-07's `confirmIdentity` and `attachLicense` opt-in, and
+   Swift drops `identity` and `attached` from the poll. None of them renders a QR.
+10. On the bridge, `PolarisLogin` discards the verification URL and user code. Web device code
+    for TV and kiosk browsers would need bearer mode.
+
+Native browser sign-in (○ ⚑) waits on the native redirect token route (I-15). The deprecated,
+unadvertised `/identity/auth/poll` (`W/services/identity/index.ts`) is not a completion path for
+any SDK. In the meantime, "sign in with browser" is device code opened in the system browser
+(pass §3.12).
 
 ### 5.5 Release and update
 
-| Id                  | Capability                                            | Proven by            | Node | React | Python | Swift | Allowed N/A                     |
-| ------------------- | ----------------------------------------------------- | -------------------- | ---- | ----- | ------ | ----- | ------------------------------- |
-| `release.changelog` | changelog                                             | transcripts          | ✓    | ✓     | ✓      | ✓     | —                               |
-| `release.download`  | download and install URLs                             | transcripts          | ✓    | ✓     | ✓      | ✓     | —                               |
-| `release.record`    | verify `pkey-release+jws` against pinned release keys | `releaseRecordCases` | ○    | ○     | ○      | ○     | —                               |
-| `update.check`      | today's version check                                 | transcripts          | ✓    | ✓     | ✓      | ✓     | —                               |
-| `update.feed`       | verify `pkey-feed+jws`: freshness, `seq`              | `feedCases`          | ○    | ○     | ○      | ○     | —                               |
-| `update.decide`     | the update decision                                   | `update-matrix.json` | ○    | ○     | ○      | ○     | —                               |
-| `update.driver`     | hand off to the native updater, or a store link       | device tests         | ◐    | ✗     | ◐      | ✓ ¹   | iOS: `outlet` (store link only) |
-| `update.bootguard`  | confirm a boot, roll back after N failures            | `stage-matrix.json`  | ○    | ○     | ○      | ○     | —                               |
-| `outlet.detect`     | outlet detection                                      | `outlet-matrix.json` | ○    | ○     | ○      | ○     | —                               |
+| Id                       | Capability                                                            | Proven by            | Node | React | Python | Swift | Kotlin | Godot | Allowed N/A                     |
+| ------------------------ | --------------------------------------------------------------------- | -------------------- | ---- | ----- | ------ | ----- | ------ | ----- | ------------------------------- |
+| `release.changelog`      | changelog                                                             | transcripts          | ✓    | ◐ ¹   | ✓      | ✓     | ✓      | ✓     | —                               |
+| `release.download`       | download and install URLs                                             | transcripts          | ◐ ²  | ◐ ²   | ◐ ²    | ✓     | ✓      | ✓     | —                               |
+| `release.fetch` ⊕        | verified download: bearer, resume, size and sha256 vs record          | transcripts (new)    | ✗    | ✗     | ✗      | ✗     | ◐ ³    | ✓     | —                               |
+| `release.distribution` ⊕ | `download.json` model, `client.distribution`                          | transcript (new)     | ✗    | ✗     | ✗      | ✗     | ✗      | ✗     | —                               |
+| `release.record`         | verify `pkey-release+jws` against pinned release keys                 | `releaseRecordCases` | ✓    | ✓     | ✓      | ✓     | ✓      | ✓     | —                               |
+| `update.check`           | today's version check                                                 | transcripts          | ✓    | ✓     | ✓      | ✓     | ✓      | ✓     | —                               |
+| `update.feed`            | verify `pkey-feed+jws`: freshness, `seq`                              | `feedCases`          | ✓    | ◐ ¹   | ✓      | ✓     | ✓      | ✓     | —                               |
+| `update.feeds` ⊕         | updater feed URLs: appcast, WinSparkle, Velopack, AppInstaller, zsync | discovery transcript | ◐ ⁴  | ✗     | ◐ ⁴    | ◐ ⁴   | ✗      | ✓     | —                               |
+| `update.decide`          | the update decision                                                   | `update-matrix.json` | ✓    | ◐ ⁵   | ✓      | ✓     | ✓      | ✓     | —                               |
+| `update.content`         | content decision, pack floors, revocations                            | content corpus       | ✓    | ✓     | ✓      | ✓     | ✓      | ✓     | —                               |
+| `update.driver`          | hand off to the native updater, or a store link                       | device tests         | ✗    | ✗     | ✗      | ◐ ⁶   | ✓ ⁷    | ◐ ⁸   | iOS: `outlet`; jvm: `runtime` ⁷ |
+| `update.bootguard`       | confirm a boot, roll back after N failures                            | `stage-matrix.json`  | ✗    | ✗     | ✗      | ✗     | ✓ ⁹    | ✓     | —                               |
+| `outlet.detect`          | outlet detection                                                      | `outlet-matrix.json` | ◐ ¹⁰ | ✓     | ✓      | ✓     | ✓      | ◐ ¹⁰  | —                               |
+| `crash.tags` ⊕           | Sentry release, environment and outlet tags for auto-halt             | unit                 | ✗    | ✗     | ✗      | ✗     | ✗      | ✗     | —                               |
 
-1. Sparkle on macOS.
+1. On the web, entitled or licensed changelogs and feeds are refused because there is no bearer
+   (pass §3.17).
+2. The builders use the legacy `release/dl` and `release/install.sh` aliases instead of the
+   discovery `distribution.endpoints`.
+3. Android only (`OkHttpBuildDownload` inside the direct driver). There is no JVM helper.
+4. `appcastUrl()` (Sparkle) only.
+5. Through the Provider, `decideUpdate` always throws `not-configured`: there is no `update` or
+   `trust` prop.
+6. Sparkle on macOS needs many manual steps, and nothing hands off to a store on iOS.
+7. Android Play and direct drivers. The JVM N/A is questioned by pass SP-K12 and Q3, because the
+   server publishes desktop updater feeds.
+8. The native bridges are not distributed prebuilt (Q5), so they fall back to the download link.
+   The Velopack route under licensed delivery is a wire item (W9).
+9. No default `UpdateSlots` on the JVM, and `bootHost()` does not wire it.
+10. Node does not read the Windows `SignatureKind` and does not autoload the build stamp. Godot's
+    Windows MSIX reader is a stub, and macOS has no `AppTransaction`.
 
 ### 5.6 Packs
 
-| Id                        | Capability                                               | Proven by                  | Allowed N/A                                                             |
-| ------------------------- | -------------------------------------------------------- | -------------------------- | ----------------------------------------------------------------------- |
-| `packs.plan`              | the install planner                                      | `plan-matrix.json`         | —                                                                       |
-| `packs.index`             | chunk and files index parsing, path rules                | content corpus             | —                                                                       |
-| `packs.apply.full`        | full apply                                               | content corpus             | —                                                                       |
-| `packs.apply.file`        | file apply with type-neutral container rebuild           | content corpus             | —                                                                       |
-| `packs.apply.chunk`       | chunk sync from seeds, request runs                      | content corpus             | —                                                                       |
-| `packs.apply.delta`       | raw-prefix delta                                         | content corpus             | `dependency` or `version` only, never `runtime`                         |
-| `packs.state`             | install state, journal, atomic switch, confirm, GC roots | `stage-matrix.json` + unit | —                                                                       |
-| `packs.handlers`          | handler contract; `registerHandler` for custom types     | unit                       | —                                                                       |
-| `packs.provides`          | `isAvailable(contentId)` from `provides`                 | unit                       | —                                                                       |
-| `packs.transport.apple`   | Apple Background Assets                                  | device tests               | everything except Swift, Godot-iOS and Unity/MAUI via the Apple package |
-| `packs.transport.play`    | Play Asset Delivery                                      | device tests               | everything except Kotlin and Godot/Unity/MAUI Android via the AAR       |
-| `packs.transport.steam`   | Steam depots                                             | device tests               | web, iOS, Android                                                       |
-| `packs.transport.msix`    | MSIX optional packages                                   | device tests               | non-Windows; unpackaged apps                                            |
-| `packs.transport.flatpak` | Flatpak extensions                                       | device tests               | non-Linux                                                               |
+| Id                                                   | Capability                                          | Proven by                  | Node | React | Python | Swift | Kotlin | Godot | Allowed N/A                                                  |
+| ---------------------------------------------------- | --------------------------------------------------- | -------------------------- | ---- | ----- | ------ | ----- | ------ | ----- | ------------------------------------------------------------ |
+| `packs.record`, `revoke`, `delegation`, `delta.feed` | signed records, revocation, delegation, feed deltas | content corpus             | ✓    | ✓ ¹   | ✓      | ✓     | ✓      | ✓     | —                                                            |
+| `packs.plan`                                         | the install planner                                 | `plan-matrix.json`         | ✓    | ✓ ¹   | ✓      | ✓     | ✓      | ✓     | —                                                            |
+| `packs.index.files`, `.chunks`                       | chunk and files index parsing, path rules           | content corpus             | ✓    | ✓ ¹   | ✓      | ✓     | ✓      | ✓     | —                                                            |
+| `packs.apply.full`, `.file`, `.chunk`                | full, file and chunk apply                          | content corpus             | ✓    | ✓ ¹   | ✓      | ✓     | ✓      | ✓     | —                                                            |
+| `packs.apply.delta`                                  | raw-prefix delta                                    | content corpus             | ✓    | ✓ ¹   | ✓      | ✓     | ✓      | ◐ ²   | `dependency` or `version` only, never `runtime`              |
+| `packs.state`, `handlers`, `provides`                | state, journal, switch, handlers, `isAvailable`     | `stage-matrix.json` + unit | ✓    | ✓ ¹   | ✓      | ✓     | ✓      | ✓     | —                                                            |
+| `packs.type.l10n.table`, `data.json`                 | built-in handlers                                   | unit                       | ✓    | ✓ ¹   | ✓      | ✓     | ✓      | ✓     | —                                                            |
+| `packs.type.ml.model`                                | model handler                                       | unit                       | ✓    | ✓ ¹   | ✓      | ✓     | ✓      | N/A   | Godot: `runtime`                                             |
+| `packs.type.godot.zip`, `audio.bank`                 | engine-only handlers                                | unit                       | N/A  | N/A   | N/A    | N/A   | N/A    | ✓     | every non-Godot runtime: `runtime`                           |
+| `packs.transport.apple`                              | Apple Background Assets                             | device tests               | N/A  | N/A   | N/A    | ◐ ³   | N/A    | ✓     | everything except Swift and Godot-iOS (and later Unity/MAUI) |
+| `packs.transport.play`                               | Play Asset Delivery                                 | device tests               | N/A  | N/A   | N/A    | N/A   | ✓      | ✓     | everything except Kotlin and Godot-Android                   |
+| `packs.transport.steam`                              | Steam depots                                        | device tests               | ✗    | N/A   | ✗      | ✗ ⁴   | ✗ ⁴    | ✓     | web, desktop-bridge, iOS, Android                            |
+| `packs.transport.msix`                               | MSIX optional packages                              | device tests               | ✗    | N/A   | ✗      | N/A   | N/A    | ✗     | non-Windows; unpackaged apps; jvm                            |
+| `packs.transport.flatpak`                            | Flatpak extensions                                  | device tests               | ✗    | N/A   | ✗      | N/A   | N/A    | ✗     | non-Linux; jvm                                               |
 
-Every row is ○ today in every SDK. Packs are the first feature family designed parity-first:
-the registry entries, corpus and manifests come before the first SDK implementation.
+1. On the web, through `createBrowserPacks`, which is wired by hand. On the bridge there is no
+   packs surface at all; that is bridge v4 (pass SP-R07).
+2. Engines 4.4 and 4.5 never plan a delta (an allowed `version` N/A).
+3. `AssetPacks.swift` exists, but there is no `PackObjectTransport` adapter (SP-S08).
+4. macOS Steam builds and JVM desktop. No work package owns either yet.
 
 ### 5.7 UI and commerce
 
-| Id                 | Capability                                                                         | Proven by           | Node | React | Python | Swift | Allowed N/A              |
-| ------------------ | ---------------------------------------------------------------------------------- | ------------------- | ---- | ----- | ------ | ----- | ------------------------ |
-| `ui.stages`        | the boot stage machine: states, events, outcomes (in `client-core` and its ports)  | `stage-matrix.json` | ○    | ◐     | ○      | ○     | —                        |
-| `ui.kit`           | gate, activation, sign-in with QR, settings, devices, update banner, pack progress | snapshot tests      | N/A  | ✓     | N/A    | ◐ ¹   | headless SDKs: `runtime` |
-| `commerce.receipt` | store purchase → licence entitlement                                               | transcripts         | ○    | ○     | ○      | ○     | —                        |
+| Id                 | Capability                                                                         | Proven by             | Node  | React | Python | Swift | Kotlin | Godot | Allowed N/A                            |
+| ------------------ | ---------------------------------------------------------------------------------- | --------------------- | ----- | ----- | ------ | ----- | ------ | ----- | -------------------------------------- |
+| `ui.stages`        | the boot stage machine: states, events, outcomes (in `client-core` and its ports)  | `stage-matrix.json`   | ◐ ¹   | ◐ ¹   | ✓      | ✓     | ✓      | ✓     | —                                      |
+| `ui.boot` ⊕        | one-call boot driver over `ui.stages` (`client.boot()`, `ensureActivated()`)       | transcript (new)      | ✗     | ✗     | ✗      | ✗     | ◐ ²    | ✓     | —                                      |
+| `ui.kit`           | gate, activation, sign-in with QR, settings, devices, update banner, pack progress | snapshot tests        | N/A ³ | ◐     | N/A ³  | ◐     | ◐ ⁴    | ◐     | headless SDKs: `runtime` ³             |
+| `commerce.receipt` | store purchase → licence entitlement                                               | `commerce-claim.json` | ✗     | ✗     | ✗ ⁵    | ✗     | ✗      | ✓ ⁶   | —                                      |
+| commerce v2        | AppTransaction, subscriptions, restore `transferred`, redeem codes                 | —                     | ○ ⚑   | ○ ⚑   | ○ ⚑    | ○ ⚑   | ○ ⚑    | ○ ⚑   | LX-11, LX-20, LX-23, LX-25 (pass W7)   |
+| Cloud Sync         | saves, collections, live pokes                                                     | —                     | ○ ⚑   | ○ ⚑   | ○ ⚑    | ○ ⚑   | ○ ⚑    | ○ ⚑   | U-09, U-10, U-13, U-14, U-22 (pass W6) |
 
-1. `PolarisLoginView` only.
+1. `parity.json` overclaims: the stage machine lives only in `client-core`. `@polaris-key/node`
+   and `@polaris-key/react` neither re-export nor drive it (pass SP-01, SP-N05, SP-R06).
+2. `bootHost()` leaves `fetch` as a no-op and `guard` always `ok`.
+3. Pass SP-00 proposes replacing the `headless` N/A with a CLI kit (`ui.cli`) for Node and
+   Python. Python's optional Tk kit is owner question Q2.
+4. Android Compose only. There is nothing on the JVM, where `parity.json` overclaims (SP-01).
+5. LX-20 plans a Python `allowedNa`. Pass Q7 recommends reversing it.
+6. There is no `purchase()`/`restore()` one-call, no Play Billing or `claim_play()` helper, and
+   no StoreKit on macOS.
 
-**Headless SDKs** (Node, Python) implement `ui.stages` so a host can render it (a TUI, or Toga or
-Rich for Python), but ship no widget kit.
+**Electron and Tauri** are hosts, not SDKs (§1). Neither is served yet:
+
+- **Electron** has no main-process bridge host (`exposePolarisBridge`), no preload and no
+  `safeStorage` store (pass SP-N10, SP-N11).
+- **Tauri** has no Rust plugin (X-02). Until bearer mode, browser mode cannot authenticate from a
+  `tauri://` origin.
+
+### 5.8 Service coverage at a glance
+
+Every shipped service, against how far each SDK reaches it. ✓ means every shipped route of the
+service has a client call; ◐ means some are missing (named).
+
+| Service                   | Node                     | React                            | Python                   | Swift                    | Kotlin            | Godot   |
+| ------------------------- | ------------------------ | -------------------------------- | ------------------------ | ------------------------ | ----------------- | ------- |
+| Core                      | ✓                        | ◐ web: devices, report           | ✓                        | ◐ attest                 | ◐ attest          | ✓       |
+| License                   | ✓                        | ✓                                | ✓                        | ✓                        | ✓                 | ✓       |
+| Config                    | ✓                        | ◐ mint                           | ✓                        | ✓                        | ✓                 | ✓       |
+| Identity                  | ◐ attach opt-in          | ◐ same-origin; no device code UI | ◐ attach opt-in          | ◐ attach, identity       | ✓                 | ✓       |
+| Release                   | ✓                        | ◐ entitled on web                | ✓                        | ✓                        | ✓                 | ✓       |
+| Update                    | ◐ feed URLs              | ◐ feed URLs                      | ◐ feed URLs              | ◐ feed URLs              | ◐ feed URLs       | ✓       |
+| Distribution              | ◐ model, commerce, fetch | ◐ model, commerce, fetch         | ◐ model, commerce, fetch | ◐ model, commerce, fetch | ◐ model, commerce | ◐ model |
+| Update health (telemetry) | ✗                        | ✗                                | ✗                        | ✗                        | ✗                 | ✓       |
+
+### 5.9 UI kits and components
+
+The component names and required states are in pass §3.18. The kits are:
+
+- **React:** `@polaris-key/react`, for the web and the Electron or Tauri renderer.
+- **SwiftUI:** `PolarisKeyUI`.
+- **Compose:** Kotlin `:ui`, Android only today.
+- **Godot:** the `ui/` scenes.
+- **Node CLI:** `@polaris-key/node/cli`.
+- **Python CLI:** `polaris_key.cli`. An optional Tk kit is proposed (Q2).
+
+| Component                                             | React   | SwiftUI | Compose | Godot   | Node CLI     | Python CLI   |
+| ----------------------------------------------------- | ------- | ------- | ------- | ------- | ------------ | ------------ |
+| Boot shell                                            | ✗       | ✗       | ◐ ¹     | ✓       | ✗            | ✗            |
+| Gate (+ grace banner)                                 | ✓       | ✓       | ✓       | ✓       | ◐ status     | ◐ status     |
+| Activation (typed refusals, device-limit remediation) | ◐ ²     | ◐ ²     | ◐ ²     | ✓       | ◐ ²          | ◐ ²          |
+| Continue free (enrol)                                 | N/A web | ✗       | ✗       | ✓       | ✓            | ✓            |
+| Sign-in: device code with QR                          | ✗ ³     | ✗       | ✓       | ✓       | ✗            | ✗            |
+| Offline activation                                    | ✗       | ✗       | ✗       | ✓       | ◐ ⁴          | ◐ ⁴          |
+| Settings (typed, persisted)                           | ◐ ⁵     | ✗       | ◐ ⁵     | ◐ ⁵     | ◐ get        | ◐ get        |
+| Devices                                               | ◐ ⁶     | ✗       | ✓       | ✗       | ✗            | ✗            |
+| Account / sign out                                    | ◐ ⁷     | ✗       | ◐ ⁷     | ✗       | ✓ deactivate | ✓ deactivate |
+| Entitled gate / badge                                 | ✗       | ✗       | ✓ badge | ◐ badge | ✗            | ✗            |
+| Update prompt (notes, progress, install)              | ◐ ⁸     | ✗       | ◐ ⁸     | ◐ ⁸     | ✗            | ✗            |
+| What's new                                            | ✗       | ✗       | ✗       | ✗       | ✗            | ✗            |
+| Pack progress (runtime)                               | ✗       | ✗       | ✓       | ◐ ⁹     | ✗            | ✗            |
+| Channel picker / dev menu                             | ✗       | ✗       | ✗       | ◐ ¹⁰    | ✗            | ✗            |
+| Purchase / restore                                    | ✗       | ✗       | ✗       | ✗       | N/A          | N/A          |
+| Download button / "also on"                           | ✗       | ✗       | ✗       | ✗       | N/A          | N/A          |
+| Status banner                                         | ◐       | ✗       | ✓       | ✓       | N/A          | N/A          |
+| Localised copy (beyond English)                       | ✗       | ✗       | ◐ ¹¹    | ◐ ¹¹    | ✗            | ✗            |
+| Theming, brand opt-in                                 | ✓       | ✓       | ✓       | ✓       | N/A          | N/A          |
+
+1. `bootHost()` defaults are incomplete (§5.7 note 2).
+2. No refusal codes reach the UI, and no "Manage devices" link (`portal.links`). The CLI copy
+   covers about 8 codes.
+3. The bridge returns a code, but `PolarisLogin` discards it.
+4. `import-bundle` exists. There is no `offline-request` verb.
+5. React: raw string inputs, no persistence. Compose: read-only. Godot: complete, but in memory
+   unless the game sets a store.
+6. Desktop bridge only. On the web it points to the portal without a link.
+7. React has `PolarisLogout` but no account card. Compose signs out only through the devices row.
+8. React: the default action `window.open()`s a link. Compose: `onUpdate` is unwired. Godot: no
+   release notes or progress.
+9. Boot only.
+10. The dev menu exists, but the channel is not persisted.
+11. Compose: French is a debug-only fixture. Godot: `tr()` hooks with English only.
+
+**Missing kits:**
+
+- a Compose Desktop target (Q3);
+- a Tk kit for Python (Q2);
+- an Electron bridge host, which lets the React kit run in Electron;
+- the Tauri plugin (X-02);
+- Godot C# bindings (X-01).
 
 ---
 
@@ -505,7 +698,12 @@ must not.
 
 ## 8. Parity gaps to close now
 
-These exist before Godot adds anything. Each gets a registry entry, then a fix in every SDK that
+> **Superseded 2026-10-04.** P1b–P6 closed these rows, except React's edge-mint (now pass SP-R02). The current gap list, grouped
+> per SDK as tasks that need no wire change, is
+> [`notes/SDK-PARITY-PASS.md`](notes/SDK-PARITY-PASS.md) §5. The items that do need a wire change
+> are in its §6. The table is kept as the historical record.
+
+These existed before Godot added anything. Each gets a registry entry, then a fix in every SDK that
 lacks it:
 
 | Gap                                                             | SDKs                | Fix                                                                                 | Phase  |

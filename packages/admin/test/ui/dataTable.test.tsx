@@ -358,6 +358,44 @@ describe("DataTable", () => {
     expect(screen.getByRole("columnheader", { name: /Seats/ })).toBeTruthy();
   });
 
+  it("leaves a quiet field out of a mobile card (pills mean attention)", () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: query === "(max-width: 1023px)",
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+    try {
+      render(
+        <Harness
+          mobile="cards"
+          columns={[
+            COLUMNS[0]!,
+            {
+              id: "status",
+              header: "Status",
+              accessorKey: "status",
+              meta: {
+                priority: 1,
+                quiet: (r: Row) => r.status === "active",
+              },
+            },
+          ]}
+        />,
+      );
+      const cards = within(
+        screen.getByRole("list", { name: "Licenses" }),
+      ).getAllByRole("listitem");
+      const card = (name: string) =>
+        cards.find((c) => c.textContent?.includes(name))!;
+      expect(within(card("Studio Pro")).queryByText("Status")).toBeNull();
+      expect(within(card("Lab 3")).getByText("Status")).toBeTruthy();
+      expect(within(card("Lab 3")).getByText("expired")).toBeTruthy();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("renders no action menu for a row with no valid action", () => {
     render(
       <Harness
