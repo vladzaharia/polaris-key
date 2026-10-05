@@ -12,6 +12,13 @@
 | Human input | none                                                                                                                                                                             |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                        |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/I-24.md`](../plans/I-24.md):** seat holders on the Users page.
+- **[`plans/PX-W17.md`](../plans/PX-W17.md):** build on `ownerSubject` and `subject`; product users only with Identity on.
+
 ## Goal
 
 Each product's console has a Users page that lists only that product's pairwise subjects, with that product's licences, devices, sessions, data size and audit, per-subject export and data deletion, a reserved Data tab and account override editor, the developer relink tool, and, for products with Identity on, sign-in settings and branding. Nothing about other products or the global account is ever shown. The Users page is platform-level and exists for every product (owner, 2026-10-04: the account is part of Core and the portal), because licences of any product attach to accounts and the account override layer works without Identity (Cloud Sync requires Identity).

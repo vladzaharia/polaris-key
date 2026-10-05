@@ -1,4 +1,4 @@
-# PX-W3 Licensed R2 downloads (G3): signed short-lived bytes URL or streaming through `/download/<token>`
+# PX-W3 Licensed R2 downloads (G3) through a download ticket: a signed, short-lived, file-bound bytes-host URL (plan approved 2026-10-05)
 
 | Field       | Value                                                                                                                              |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------- |
@@ -7,10 +7,16 @@
 | Depends on  | [PX-W2](PX-W2-downloads-stores.md)                                                                                                 |
 | Unblocks    | [PX-09](PX-09-get-it-complete.md)                                                                                                  |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                              |
-| Plan mode   | yes: the plan [`plans/PX-W3.md`](../plans/PX-W3.md) needs human approval before code                                               |
+| Plan mode   | yes: executes the approved [`plans/PX-W3.md`](../plans/PX-W3.md) (approved 2026-10-05)                                             |
 | Gates       | the PORTAL.md §11 green gate; plan mode; THREAT-MODEL; rule 10 (OpenAPI + `routeCoverage`); `typecheck:workerd` and `test:workerd` |
-| Human input | plan approval (plans/PX-W3.md)                                                                                                     |
+| Human input | a `DOWNLOAD_TICKET_KEY` signing key pair provisioned per environment (plans/PX-W3.md Q3)                                           |
 | Repo        | `vladzaharia/polaris-key`                                                                                                          |
+
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/PX-W3.md`](../plans/PX-W3.md):** approved on 2026-10-05 with every recommendation accepted: a ticketed bytes-host URL (Q1), 120 s multi-use and bound to one file (Q2), a dedicated `DOWNLOAD_TICKET_KEY` pair (Q3, provisioned per environment by the owner), the portal's licence-only rule for `attested` products (Q4 (a), with a THREAT-MODEL row), the revocation residual accepted (Q5), no IP binding (Q6), private GitHub files left out (Q7). No migration; an OpenAPI parameter instead of a new route; a glossary entry for "download ticket". The plan supersedes the draft on branch `wp/PX-W3-licensed-downloads-plan` (`72676b8e`), which must not be merged.
 
 ## Goal
 

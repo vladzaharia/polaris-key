@@ -1,4 +1,4 @@
-# PX-W8 `manageUrl` (G15b) on `device_limit` and on the key-entries refusal, jointly with I-04: contract, `errors.json`, corpus and transcripts, client-core and every SDK and UI kit
+# PX-W8 `manageUrl` (G15b) on `device_limit` and on `key_entry_limit` (one name, owner 2026-10-05): contract, `core/manageUrl.ts` builder, transcript, client-core `readManageUrl`, every SDK and UI kit
 
 | Field       | Value                                                                                                                                                                                                                             |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -7,10 +7,16 @@
 | Depends on  | [I-04](I-04-account-contract-plan.md)                                                                                                                                                                                             |
 | Unblocks    | [PX-17](PX-17-activate-confirm.md)                                                                                                                                                                                                |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                             |
-| Plan mode   | yes: executes the approved [`plans/I-04.md`](../plans/I-04.md) (no separate plan)                                                                                                                                                 |
+| Plan mode   | yes: executes the approved [`plans/PX-W8.md`](../plans/PX-W8.md) (approved 2026-10-05), which refines [`plans/I-04.md`](../plans/I-04.md)                                                                                         |
 | Gates       | the PORTAL.md §11 green gate; plan mode; corpus and transcripts (`gen:corpus -- --check`, `gen:transcripts -- --check`); `gen:constants -- --check`, `parity:check`; every SDK's replayer; `typecheck:workerd` and `test:workerd` |
 | Human input | none                                                                                                                                                                                                                              |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                         |
+
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/PX-W8.md`](../plans/PX-W8.md):** approved on 2026-10-05 with every recommendation accepted: `manageUrl` on both refusals (Q1); the Worker emits no key, and the SDK may add `#key=` as a fragment (Q2); a floating licence links to `/activate?product=…&next=free-device` (Q3); the app's return URL travels as a client-side `return=` (Q4); sign-in seat refusals are left to LX-18 (Q5). Corrections: there is no signed-corpus impact; the portal is served at the root, so the paths are `/activate` and `/signin`; PX-10's `FreeDevicePage` already reads `for`, `return` and `license`; no `device_limit` transcript exists today. PX-W8 now executes its own plan, not I-04's.
 
 ## Goal
 
@@ -42,7 +48,7 @@ Without it an app can only say "device limit reached" ([PORTAL.md §3.4](../../.
 ## Design notes
 
 - **Plan mode:** executes I-04's approved plan (one contract plan for PX-W8, PX-W9, PX-W13 and PX-W17).
-- **Overlap with the re-cut S-16/S-17 graph:** I-09 also names the key-entry refusal with a portal URL (`key_entry_limit` with `portalUrl`). PORTAL.md is the approved UI and API spec for this surface; whichever package lands first owns the shared code and the other narrows its scope to what is left (the lead reconciles the briefs).
+- **Overlap with the re-cut S-16/S-17 graph:** I-09 also names the key-entry refusal with a portal URL (`key_entry_limit` with `portalUrl`, renamed `manageUrl` by the owner on 2026-10-05). PORTAL.md is the approved UI and API spec for this surface; whichever package lands first owns the shared code and the other narrows its scope to what is left (the lead reconciles the briefs).
 - **Dependency ids.** PORTAL.md §10.3 and §11 were written against the first revision of phase I; the graph maps them onto the re-cut S-16 ids (see README §8, phase PX): portal I-06 → I-05 (accounts, links, pairwise subjects), I-05 and I-20 (Google, Apple) and I-12's web Steam → I-06, I-08 (email login) → I-07, I-14 (passkeys) → I-16, I-13 (native redirect) → I-15, I-15 (sessions) → I-07, I-16 (per-product issuer) → I-08 for layer 1 (I-21 later), S-17 → U-05.
 
 ## Steps

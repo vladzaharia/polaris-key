@@ -40,6 +40,20 @@ describe("StatusPill", () => {
     expect(screen.getByText("Live")).toBeTruthy();
   });
 
+  it("draws a healthy state as quiet text, never a pill (pills mean attention)", () => {
+    const { container } = render(
+      <StatusPill tone="success">Enabled</StatusPill>,
+    );
+    const el = container.firstElementChild!;
+    expect(el.getAttribute("data-tone")).toBe("success");
+    expect(el.getAttribute("data-status")).toBe("text");
+    expect(el.className).not.toMatch(/rounded-full|border|bg-/);
+    expect(container.querySelector("svg")).not.toBeNull();
+    const issue = render(<StatusPill tone="warning">Needs setup</StatusPill>)
+      .container.firstElementChild!;
+    expect(issue.getAttribute("data-status")).toBe("pill");
+  });
+
   it("current is a ring and the word", () => {
     const { container } = render(
       <StatusPill domain="compat" state="current" />,

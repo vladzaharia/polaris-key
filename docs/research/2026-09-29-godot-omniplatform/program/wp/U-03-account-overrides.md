@@ -12,6 +12,13 @@
 | Human input | owner schedules the production migration run, no earlier than the notice window after I-07 and I-11 are both live in production (decision 21)                                                                 |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                     |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/U-01.md`](../plans/U-01.md):** `override_migration_report`; the account layer applies outside `if (license)`; provisioned secrets; the LX-09 seam (§6.3).
+- **[`plans/I-24.md`](../plans/I-24.md):** Q6: a device on a named-user seat gets the seat user's own account layer, not the licence owner's. Licence overrides still apply to every device of the licence.
+
 ## Goal
 
 The licence-level config override layer is gone on every product. Operators write user-level managed config for one account on one product (`account_overrides`), Core merges it where licence overrides sat, licence-key devices on owned licences keep their values through the owner fallback, floating licences get no account layer, and one platform-wide migration moves owned licences' overrides and drops unowned ones with an operator-visible report.

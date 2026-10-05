@@ -12,6 +12,13 @@
 | Human input | plan approval (`plans/LX-18.md`)                                                                              |
 | Repo        | `vladzaharia/polaris-key`                                                                                     |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/LX-01.md`](../plans/LX-01.md):** Q6: add `reason: "no_license"` to the licence-less 401, so new SDKs show `needs-activation` instead of `revoked`.
+- **[`plans/PX-W8.md`](../plans/PX-W8.md):** Q5: `not_entitled` with `reason: device_limit` on the sign-in path carries `manageUrl` from PX-W8's `core/manageUrl.ts` builder.
+
 ## Goal
 
 The device wire carries the model: per-entry `expiresAt`, `licenseExpiresAt`, `grants`, a 401 `reason`, and `not_entitled` reasons, in `shared-protocol`, client-core, parity and appended corpus cases.
