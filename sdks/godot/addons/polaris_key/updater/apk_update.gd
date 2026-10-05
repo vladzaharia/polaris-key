@@ -69,7 +69,11 @@ static func run(android: PKeyAndroid, request: Dictionary) -> PKeyApplyResult:
 		opts["progress"] = request["progress"]
 	var fetch := func() -> PKeyResult: return await PKeyDownload.fetch(request.get("transport"), url, dest, request.get("headers", {}), opts)
 	var attest: Callable = request.get("with_attestation", Callable())
-	var r: PKeyResult = await (attest.call(fetch) if attest.is_valid() else fetch.call())
+	var r: PKeyResult
+	if attest.is_valid():
+		r = await attest.call(fetch)
+	else:
+		r = await fetch.call()
 	if not r.ok:
 		return PKeyApplyResult.failed(r.code, r.message, r.detail)
 	var part: String = r.detail["path"]
