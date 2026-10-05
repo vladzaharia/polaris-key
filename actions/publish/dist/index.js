@@ -30486,6 +30486,16 @@ function metainfoMarkup(text, indent) {
   }
   return out;
 }
+var MEDIA_HOST_ORIGIN = "https://img.plrs.im";
+var HOSTED_ASSET_PATH = /^\/[a-z0-9][a-z0-9-]*\/a\/[0-9a-f]{64}$/;
+function isHostedAsset(url) {
+  try {
+    const u = new URL(url);
+    return u.origin === MEDIA_HOST_ORIGIN && HOSTED_ASSET_PATH.test(u.pathname) && !u.search && !u.hash && !u.username && !u.password;
+  } catch {
+    return false;
+  }
+}
 var str2 = (v) => typeof v === "string" && v.trim() !== "" ? v : null;
 function flathubAppId(i) {
   const id = str2(i.outlet.identity.appId);
@@ -30559,9 +30569,14 @@ function generateMetainfo(i, o = {}) {
     for (const k of keywords) x.push(`    <keyword>${xmlEscape(k)}</keyword>`);
     x.push("  </keywords>");
   }
-  if (i.app.screenshots.length) {
+  const screenshots = i.app.screenshots.filter(isHostedAsset);
+  if (screenshots.length < i.app.screenshots.length)
+    warnings.push(
+      "screenshots not on the media host dropped: MetaInfo takes only hosted copies (S-20)"
+    );
+  if (screenshots.length) {
     x.push("  <screenshots>");
-    i.app.screenshots.forEach(
+    screenshots.forEach(
       (s, n) => x.push(
         `    <screenshot${n === 0 ? ' type="default"' : ""}>`,
         `      <image>${xmlEscape(s)}</image>`,
@@ -30571,7 +30586,7 @@ function generateMetainfo(i, o = {}) {
     x.push("  </screenshots>");
   } else
     warnings.push(
-      "no screenshots: Flathub requires at least one (the manifest listing's screenshots)"
+      "no screenshots: Flathub requires at least one, served from the media host (S-20; HA-02/06/07)"
     );
   if (i.app.tint && i.app.tintDark)
     x.push(

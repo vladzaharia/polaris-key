@@ -174,6 +174,30 @@ export function metainfoMarkup(text: string, indent: string): string[] {
   return out;
 }
 
+/**
+ * S-20's media host (HA-02): the only origin a MetaInfo screenshot may name. Never a developer's
+ * raw URL or a `dl` blob URL (notes/S-20 §4.2 L6).
+ */
+export const MEDIA_HOST_ORIGIN = "https://img.plrs.im";
+const HOSTED_ASSET_PATH = /^\/[a-z0-9][a-z0-9-]*\/a\/[0-9a-f]{64}$/;
+
+/** A hosted copy on the media host: `https://img.plrs.im/<product>/a/<sha256>`. */
+export function isHostedAsset(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return (
+      u.origin === MEDIA_HOST_ORIGIN &&
+      HOSTED_ASSET_PATH.test(u.pathname) &&
+      !u.search &&
+      !u.hash &&
+      !u.username &&
+      !u.password
+    );
+  } catch {
+    return false;
+  }
+}
+
 const str = (v: unknown): string | null =>
   typeof v === "string" && v.trim() !== "" ? v : null;
 
@@ -260,9 +284,14 @@ export function generateMetainfo(
     for (const k of keywords) x.push(`    <keyword>${xmlEscape(k)}</keyword>`);
     x.push("  </keywords>");
   }
-  if (i.app.screenshots.length) {
+  const screenshots = i.app.screenshots.filter(isHostedAsset);
+  if (screenshots.length < i.app.screenshots.length)
+    warnings.push(
+      "screenshots not on the media host dropped: MetaInfo takes only hosted copies (S-20)",
+    );
+  if (screenshots.length) {
     x.push("  <screenshots>");
-    i.app.screenshots.forEach((s, n) =>
+    screenshots.forEach((s, n) =>
       x.push(
         `    <screenshot${n === 0 ? ' type="default"' : ""}>`,
         `      <image>${xmlEscape(s)}</image>`,
@@ -272,7 +301,7 @@ export function generateMetainfo(
     x.push("  </screenshots>");
   } else
     warnings.push(
-      "no screenshots: Flathub requires at least one (the manifest listing's screenshots)",
+      "no screenshots: Flathub requires at least one, served from the media host (S-20; HA-02/06/07)",
     );
   if (i.app.tint && i.app.tintDark)
     x.push(

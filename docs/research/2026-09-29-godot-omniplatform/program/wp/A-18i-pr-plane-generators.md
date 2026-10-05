@@ -120,6 +120,12 @@ archive>` (and `--command` for its alias); `.exe` is a portable installer, `.msi
   Scoop title-cases them into `$matchHashx`/`$matchHasharm` and substitutes case-sensitively), and
   `autoupdate.architecture.<arch>.url` is `…/blobs/sha256/$matchHash…`, with the hash read from
   the feed's JSON path. The Worker's feed is unchanged (P2b-05 owns it).
+- **MetaInfo screenshots wait for HA-02/06/07** (S-20 §4.2 L6). The first cut projected the
+  manifest listing's raw `screenshots` (and `iconUrl`) into the Worker's answer and the MetaInfo.
+  The Worker now projects `screenshots: []` and no `iconUrl`. The generator also keeps only
+  hosted copies (`https://img.plrs.im/<p>/a/<sha256>`, `isHostedAsset` in `flathub.ts`), drops
+  anything else with a warning, and omits `<screenshots>` with the "no screenshots" warning until
+  HA-07's hosted copies fill the field.
 - **Flathub's runtime** defaults to Freedesktop `25.08` (24.08 is end of life, which Flathub's
   linter refuses on a new submission); `--runtime-version` overrides it.
 - **The token** is `PKEY_PR_TOKEN`, a CI environment secret read from the job's environment.

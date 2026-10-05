@@ -13,8 +13,9 @@
  *   - the listing model's projection for the store's column (winget, Flathub; A-18b), with the
  *     release's per-locale store notes; the app-level fields the generators also read (the name,
  *     short description, website, developer, copyright, `tint` and `tintDark`, the content
- *     descriptors), and the manifest listing's icon and screenshot URLs, which the model does
- *     not hold;
+ *     descriptors); `screenshots` stays empty until S-20's media host serves hosted copies
+ *     (HA-02 with HA-06/HA-07): a storefront manifest never carries a developer's raw URL or a
+ *     `dl` blob URL (notes/S-20 §4.2 L6), so the manifest listing's own URLs are not projected;
  *   - the public URLs a manifest points back at: `download.json` (Homebrew's livecheck), the
  *     Scoop feed (its `checkver` and `autoupdate`), the Flathub checker feed (`x-checker-data`);
  *   - for Scoop, the feed's own manifest, rendered by the same renderer as `/scoop/<ch>.json`;
@@ -149,7 +150,7 @@ export interface PrInputs {
     contentDescriptors: Record<string, unknown> | null;
     /** Per locale: the localized name and subtitle (Flathub's `xml:lang` name and summary). */
     locales: Record<string, { name: string | null; subtitle: string | null }>;
-    iconUrl: string | null;
+    /** Hosted copies on S-20's media host only; empty until HA-02/06/07 land. */
     screenshots: string[];
   };
   links: {
@@ -166,7 +167,7 @@ export interface PrInputs {
 const str = (v: unknown): string | null =>
   typeof v === "string" && v !== "" ? v : null;
 
-/** `https:` URLs only (a manifest listing's icon and screenshots). */
+/** `https:` URLs only (the manifest's website). */
 const httpsOrNull = (v: unknown): string | null => {
   const s = str(v);
   if (!s) return null;
@@ -282,13 +283,8 @@ export async function prInputs(
         { name: str(v.name), subtitle: str(v.subtitle) },
       ]),
     ),
-    iconUrl: httpsOrNull(manifest.iconUrl),
-    screenshots: (Array.isArray(manifest.screenshots)
-      ? manifest.screenshots
-      : []
-    )
-      .map(httpsOrNull)
-      .filter((u): u is string => u !== null),
+    // S-20 §4.2 L6: never the manifest listing's raw URLs. HA-07's hosted copies fill this.
+    screenshots: [],
   };
 
   const base = `${fctx.origin}/${encodeURIComponent(slug)}/distribution`;

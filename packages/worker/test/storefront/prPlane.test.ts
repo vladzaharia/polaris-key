@@ -390,9 +390,11 @@ describe("the PR plane's CI read (A-18i)", () => {
       name: "Diceroll",
       shortDescription: "A cozy dice-rolling roguelite.",
       website: "https://diceroll.example.test",
-      iconUrl: "https://cdn.example.test/diceroll/icon.png",
-      screenshots: ["https://cdn.example.test/diceroll/1.png"],
+      // S-20 §4.2 L6: the manifest listing's raw URLs are never projected.
+      screenshots: [],
     });
+    expect(i.app).not.toHaveProperty("iconUrl");
+    expect(JSON.stringify(i)).not.toContain("cdn.example.test");
   });
 
   it("scoop: the feed's own manifest, byte-for-byte the public feed's", async () => {

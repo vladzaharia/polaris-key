@@ -60,7 +60,7 @@ export interface PrInputs {
     tintDark: string | null;
     contentDescriptors: Record<string, unknown> | null;
     locales: Record<string, { name: string | null; subtitle: string | null }>;
-    iconUrl: string | null;
+    /** Hosted copies on S-20's media host only (`https://img.plrs.im/<p>/a/<sha256>`). */
     screenshots: string[];
   };
   links: { downloadJson: string; scoopFeed: string; flathubFeed: string };

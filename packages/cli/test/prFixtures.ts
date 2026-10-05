@@ -53,10 +53,9 @@ const APP: PrInputs["app"] = {
     "en-US": { name: null, subtitle: "Roll the bones" },
     de: { name: "Würfelwurf", subtitle: "Wirf die Knochen" },
   },
-  iconUrl: "https://cdn.example.test/diceroll/icon.png",
   screenshots: [
-    "https://cdn.example.test/diceroll/1.png",
-    "https://cdn.example.test/diceroll/2.png",
+    `https://img.plrs.im/diceroll/a/${"1a".repeat(32)}`,
+    `https://img.plrs.im/diceroll/a/${"2b".repeat(32)}`,
   ],
 };
 

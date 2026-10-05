@@ -27,6 +27,7 @@ import {
   FLATHUB_RUNTIME_VERSION,
   generateFlathubSkeleton,
   generateMetainfo,
+  isHostedAsset,
   metainfoMarkup,
   oarsAttributes,
   updateFlathubManifest,
@@ -443,6 +444,36 @@ describe("PR-plane generator rules (A-18i)", () => {
     expect(warnings).toHaveLength(3);
     expect(file.content).toContain('<content_rating type="oars-1.1"/>');
     expect(file.content).not.toContain("<branding>");
+  });
+
+  it("the MetaInfo never emits a raw listing URL or a dl blob URL (S-20 §4.2 L6)", () => {
+    const raw = structuredClone(FLATHUB_INPUTS);
+    raw.app.screenshots = [
+      "https://cdn.example.test/diceroll/1.png",
+      `https://dl.plrs.im/diceroll/blobs/${"3c".repeat(32)}`,
+      `https://img.plrs.im.evil.test/diceroll/a/${"4d".repeat(32)}`,
+      `https://img.plrs.im/diceroll/a/${"5e".repeat(32)}?x=1`,
+      "http://img.plrs.im/diceroll/a/" + "6f".repeat(32),
+    ];
+    const { file, warnings } = generateMetainfo(raw);
+    expect(file.content).not.toContain("<screenshots>");
+    expect(file.content).not.toContain("cdn.example.test");
+    expect(file.content).not.toContain("dl.plrs.im");
+    expect(file.content).not.toContain("evil.test");
+    expect(
+      warnings.some((w) => w.startsWith("screenshots not on the media host")),
+    ).toBe(true);
+    expect(warnings.some((w) => w.startsWith("no screenshots"))).toBe(true);
+
+    const mixed = structuredClone(FLATHUB_INPUTS);
+    mixed.app.screenshots = [
+      "https://cdn.example.test/diceroll/1.png",
+      ...FLATHUB_INPUTS.app.screenshots,
+    ];
+    const kept = generateMetainfo(mixed).file.content;
+    expect(kept).not.toContain("cdn.example.test");
+    expect(kept.match(/<image>/g)).toHaveLength(2);
+    expect(isHostedAsset(FLATHUB_INPUTS.app.screenshots[0]!)).toBe(true);
   });
 
   it("updates an app repository's manifest in place, keeping comments", () => {
