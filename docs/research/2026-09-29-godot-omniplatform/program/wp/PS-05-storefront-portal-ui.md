@@ -5,7 +5,7 @@
 | Phase       | PS: Polaris Key storefront: the Library as a distribution channel (S-21) (phase 2: engine and portal)                                                |
 | Size        | 0.8–1.2 engineer-weeks                                                                                                                               |
 | Depends on  | [PS-04](PS-04-storefront-portal-api.md), [PX-16](PX-16-discover-page.md)                                                                             |
-| Unblocks    | [PS-11](PS-11-storefront-closeout.md)                                                                                                                |
+| Unblocks    | [PS-11](PS-11-storefront-closeout.md), [CM-16](CM-16-storefront-integration.md)                                                                      |
 | Role        | `pkey-implementer`                                                                                                                                   |
 | Plan mode   | no                                                                                                                                                   |
 | Gates       | the PORTAL.md §11 green gate; CSP browser test; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new components |

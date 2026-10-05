@@ -14,6 +14,7 @@ import {
   useCapabilities,
   useLicense,
   usePackageAccess,
+  useProduct,
 } from "../data.js";
 import { PackageAccessCard } from "../components/product/PackageAccessCard.js";
 import { consumeHeadingFocus } from "../focus.js";
@@ -23,7 +24,12 @@ import {
   tierLabel,
   type LibraryProduct,
 } from "../model/library.js";
-import { presentSections, SECTION_LABEL } from "../model/product.js";
+import {
+  presentSections,
+  seatLimitFor,
+  SECTION_LABEL,
+  showsDeviceCount,
+} from "../model/product.js";
 import {
   href,
   setParams,
@@ -103,6 +109,10 @@ function ProductBody({
     product.licenses.find((l) => l.id === requested) ?? product.best;
   const detail = useLicense(product.slug, selected.id);
   const pkg = usePackageAccess(product.slug, selected.id);
+  // Per-licence seat limits (PX-W1): the library only carries the best licence's.
+  const view = useProduct(product.slug);
+  const seatLimit = seatLimitFor(product, view.data, selected.id);
+  const showCount = showsDeviceCount(product, selected);
   const sections = presentSections(product, releasesOn, {
     packageAccess: pkg.data?.available === true,
   });
@@ -232,6 +242,8 @@ function ProductBody({
                 onSelect={(id) =>
                   setParams({ license: id === product.best.id ? null : id })
                 }
+                seatLimit={seatLimit}
+                showDeviceCount={showCount}
               />
             </div>
             {has("devices") ? (
@@ -239,11 +251,8 @@ function ProductBody({
                 <DevicesCard
                   productName={product.name}
                   emailConfigured={caps.auth.magic}
-                  seatLimit={
-                    selected.id === product.best.id
-                      ? product.seats?.limit
-                      : null
-                  }
+                  seatLimit={seatLimit}
+                  showCount={showCount}
                   detail={detail.data}
                   loading={detail.isPending}
                   error={detail.error}

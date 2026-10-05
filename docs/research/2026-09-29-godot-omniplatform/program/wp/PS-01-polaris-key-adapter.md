@@ -5,7 +5,7 @@
 | Phase       | PS: Polaris Key storefront: the Library as a distribution channel (S-21) (phase 1: substrate)         |
 | Size        | 0.5–0.8 engineer-weeks                                                                                |
 | Depends on  | [A-18a](A-18a-storefront-adapter-layer.md), [A-18b](A-18b-listing-model.md)                           |
-| Unblocks    | [PS-06](PS-06-console-polaris-key-storefront.md)                                                      |
+| Unblocks    | [PS-06](PS-06-console-polaris-key-storefront.md), [CM-03](CM-03-merchants.md)                         |
 | Role        | `pkey-implementer`                                                                                    |
 | Plan mode   | no                                                                                                    |
 | Gates       | adapter conformance suite (`test/storefront/conformance.test.ts`); THREAT-MODEL (storefront adapters) |
