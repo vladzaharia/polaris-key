@@ -60,7 +60,7 @@ Developers only ever see data for their own products (owner). With no recovery d
 - [x] A product with Identity off still has a Users page listing its licence owners' subjects, with no sign-in columns or sign-in settings (test).
 - [x] Relink refuses a target that is not an existing subject of this product, requires step-up and a reason, notifies both accounts and can be undone within 72 hours (tests).
 - [x] Console CSP parity holds; OpenAPI and `routeCoverage` updated.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Corrections from the code (implementation, 2026-10-04)
 
