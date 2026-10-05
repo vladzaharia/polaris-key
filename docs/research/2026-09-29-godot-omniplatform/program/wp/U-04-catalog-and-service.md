@@ -23,13 +23,24 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 Recorded by the implementer; the code is the fact. Decisions the brief and plan left open were
 taken with the recommended option, as the lead delegated.
 
-- **Settings registry slice deferred.** ST-03 (the settings registry types and generator) and
-  ST-01b (`product_settings`) are not merged, so there is no registry to register
-  `cloudSync.*` entries into and no `gen:settings`. U-04 validates `.pkey/product`'s
-  `cloudSync` block (rules 8, 8b, 10) and exports the ceilings and defaults
-  (`CLOUD_SYNC_CEILINGS`, `CLOUD_SYNC_DEFAULTS`) from `@polaris-key/catalog` for the registry to
-  import; the registry entries of plans/U-01.md §3 land with U-05 (which already depends on
-  ST-03). The product block is validated, not yet persisted.
+- **Settings registry slice registered; persistence waits for ST-01b** (fix round 1, after
+  ST-03 merged). `services/sync/settings.ts` (`SYNC_SETTINGS_SLICE`, namespace `cloudSync`,
+  attached as `syncService.settings`) registers plans/U-01.md §3's product-scope claimable
+  entries: `cloudSync.limits`, `cloudSync.limits.byTier`, `cloudSync.limits.byEntitlement`,
+  `cloudSync.unlicensed` and `cloudSync.writes` (security-widening, so `critical`). Their
+  defaults and the ceilings their value specs name are `CLOUD_SYNC_DEFAULTS` /
+  `CLOUD_SYNC_CEILINGS` from `@polaris-key/catalog`, the same constants validator rule 10 uses.
+  Every entry is `pending: U-05` (U-05 adds the readers), and storage is a scalar
+  `product_settings` row that ST-01b creates: until then `.pkey/product`'s `cloudSync` block is
+  validated (rules 8, 8b, 10) but not persisted. The operator-only per-product ceilings
+  (`cloudSync.ceiling.*`) and the platform `cloudSync.writesPaused` lock stay with U-05, which
+  enforces them. There is no `gen:settings` generator or settings reference page yet (ST-06).
+- **`gen-mirrors` drift is the generator test.** `pnpm gen:mirrors` needs `--catalog`/`--out-dir`
+  and the repo commits no mirror, so the drift gate is
+  `mise exec node@22 -- pnpm --filter @polaris-key/tools exec vitest run gen-mirrors.test.ts` (byte-exact per
+  language). Mirrors now always carry the user-settings block (`UserSettingKey = never` and an
+  empty `USER_SETTINGS` when a catalog declares none), so a downstream repo that commits a mirror
+  sees a one-time diff on upgrade; the release notes for the generator must say so.
 - **One implementation of the user-block rules.** Rules shape and 1–5 live once, in
   `@polaris-key/catalog` (`userSettingIssues`, `mergeMembersOverLimit`), called by the manifest
   validator, the Worker's console catalog publish (`PUT …/config/catalog`) and the console's

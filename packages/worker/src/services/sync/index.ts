@@ -11,7 +11,7 @@
  * (`sync_requires_config`, `sync_requires_identity`), so the console's Services toggle cannot turn
  * Cloud Sync on without both, nor turn Identity or Config off while Cloud Sync is on.
  *
- * U-04 lands the slug, the descriptor and its discovery fragment only. The device routes under
+ * U-04 lands the slug, the descriptor, its settings slice and its discovery fragment only. The device routes under
  * `/<p>/sync`, the per-principal Durable Object and the D1 directory are U-05's (§2.2, §6.2);
  * saves are U-10's and collections U-09's. Until a route exists the descriptor answers no route
  * (`null` → Core's not-found), and the fragment advertises no endpoint: an SDK uses an endpoint
@@ -22,10 +22,13 @@ import type {
   DiscoveryContext,
   ServiceDescriptor,
 } from "../../core/registry.js";
+import { SYNC_SETTINGS_SLICE } from "./settings.js";
 
 export const syncService: ServiceDescriptor = {
   slug: "sync",
   handle: async () => null,
+  /** Limits and access policy, claimable from `.pkey/product`'s `cloudSync` (plans/U-01.md §3). */
+  settings: SYNC_SETTINGS_SLICE,
   /**
    * Cloud Sync's slice of `/.well-known/polaris.json` (plans/U-01.md §2.5). Each capability turns
    * true, and its endpoint appears, only when the package that serves it has shipped: `settings`
