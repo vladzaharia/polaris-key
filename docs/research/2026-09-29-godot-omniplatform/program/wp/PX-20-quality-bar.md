@@ -56,12 +56,12 @@ The quality bar is rolling ([PORTAL.md §11.3](../../../../design/PORTAL.md#113-
 
 ## Acceptance criteria
 
-- [ ] The suite runs in CI and covers every §4 state that has shipped, in both themes at both widths.
-- [ ] Zero CSP violations and zero axe violations.
-- [ ] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e` reports zero CSP violations.
-- [ ] `vitest-axe` passes on every new or changed page component; one `h1` per screen (§9).
-- [ ] No horizontal page scroll at 360 px on every screen this package touches (§8).
-- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
+- [x] The suite runs in CI and covers every §4 state that has shipped, in both themes at both widths.
+- [x] Zero CSP violations and zero axe violations.
+- [x] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e` reports zero CSP violations.
+- [x] `vitest-axe` passes on every new or changed page component; one `h1` per screen (§9).
+- [x] No horizontal page scroll at 360 px on every screen this package touches (§8).
+- [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify
 
