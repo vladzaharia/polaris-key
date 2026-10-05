@@ -8,8 +8,10 @@
  *   GET   <base>/tokens[?license=<id>]     the owner's tokens (or one licence's), newest first,
  *                                          with the owner's feeds (for the setup snippets)
  *   POST  <base>/tokens                    {label, ecosystems?, expiresInDays?, binding,
- *                                          licenseId?, presentation?} — mint; the plaintext is
- *                                          in this answer only (`registry_token.create`)
+ *                                          licenseId?, presentation?, scopes?} — mint; the
+ *                                          plaintext is in this answer only
+ *                                          (`registry_token.create`). `scopes` `["read",
+ *                                          "publish"]` (F-23) mints an owner-bound push token
  *   POST  <base>/tokens/:tokenId/revoke    `registry_token.revoke`
  *   POST  <base>/tokens/revoke-all         {licenseId?} — `registry_token.revoke_all`
  *
@@ -50,6 +52,7 @@ const BODY_KEYS = [
   "binding",
   "licenseId",
   "presentation",
+  "scopes",
 ] as const;
 
 /** The scope's owner slug, or `null` (an unknown product, or no system product yet). */
@@ -169,6 +172,14 @@ async function create(
     body.presentation !== "url"
   )
     fields.push("presentation");
+  if (
+    body.scopes !== undefined &&
+    !(
+      Array.isArray(body.scopes) &&
+      body.scopes.every((s) => typeof s === "string")
+    )
+  )
+    fields.push("scopes");
   if (fields.length)
     return err(422, "bad_request", "invalid registry token", { fields });
   const res = await mintRegistryToken(
@@ -185,6 +196,8 @@ async function create(
       licenseId: (body.licenseId as string | undefined) ?? null,
       presentation:
         (body.presentation as "header" | "url" | undefined) ?? "header",
+      // F-23: `["read", "publish"]` mints a push token (owner-bound header tokens only).
+      ...(body.scopes !== undefined ? { scopes: body.scopes as string[] } : {}),
       createdBy: `admin:${session.email || session.sub}`,
     },
     now,
@@ -205,7 +218,7 @@ async function create(
     now,
     "registry_token.create",
     { kind: "registry_token", id: v.tokenId },
-    `Created registry token “${v.label}” (…${v.hint}; ${v.binding === "license" ? `licence ${v.licenseId}` : "owner"}; ${v.ecosystems ? v.ecosystems.join(", ") : "every feed"}${v.presentation === "url" ? "; Godot editor URL" : ""}; expires in ${Math.round((v.expiresAt - v.createdAt) / 86_400)} days)`,
+    `Created registry token “${v.label}” (…${v.hint}; ${v.binding === "license" ? `licence ${v.licenseId}` : "owner"}; ${v.ecosystems ? v.ecosystems.join(", ") : "every feed"}${v.presentation === "url" ? "; Godot editor URL" : ""}${v.scopes.includes("publish") ? "; can publish" : ""}; expires in ${Math.round((v.expiresAt - v.createdAt) / 86_400)} days)`,
   );
   return adminJson({ ok: true, token: res.token, view: v }, 201);
 }

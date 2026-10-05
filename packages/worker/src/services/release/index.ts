@@ -99,6 +99,10 @@ export const releaseService: ServiceDescriptor = {
 };
 
 // ── The service's public face ────────────────────────────────────────────────
+export {
+  OCI_PUSH_OPENAPI as RELEASE_REGISTRY_OPENAPI,
+  OCI_PUSH_ROUTES as RELEASE_REGISTRY_ROUTES,
+} from "./packages/ociPush.js";
 export { handleRelease, type ReleaseSurfaceKind } from "./surfaces.js";
 export {
   accessModeFor,

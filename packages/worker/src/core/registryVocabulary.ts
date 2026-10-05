@@ -18,12 +18,23 @@ export const REGISTRY_TOKEN_SHAPE = /^pkeyr_[A-Za-z0-9_-]{43,}$/;
 /** The username every client that needs one sends beside the token (Basic, docker login). */
 export const REGISTRY_TOKEN_USERNAME = "__token__";
 
-/** The scope vocabulary. `publish` is reserved for F-22 and F-23 and refused at mint until then. */
+/**
+ * The scope vocabulary. `publish` (F-23: native `docker push` to the owner's OCI feed; F-22's
+ * native publish adapters will read it too) is owner-bound and header-presented only, and implies
+ * `read` (plans/F-20.md §10): a mint that asks for it stores `["publish", "read"]`.
+ */
 export const REGISTRY_TOKEN_SCOPES = ["read", "publish"] as const;
 export type RegistryTokenScope = (typeof REGISTRY_TOKEN_SCOPES)[number];
 
 /** The scopes a mint accepts today. */
-export const MINTABLE_REGISTRY_SCOPES: readonly RegistryTokenScope[] = ["read"];
+export const MINTABLE_REGISTRY_SCOPES: readonly RegistryTokenScope[] = [
+  "read",
+  "publish",
+];
+
+/** The CI scope that lets a `pkeyci_` token push to its product's OCI feed (F-23): the same scope
+ *  a ticket publish needs, because a push writes the same release rows. */
+export const OCI_PUSH_CI_SCOPE = "release:publish";
 
 /** How a token is presented: in `Authorization` (every client), or in the Godot editor's URL. */
 export type RegistryTokenPresentation = "header" | "url";

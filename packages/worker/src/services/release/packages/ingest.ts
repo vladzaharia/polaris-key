@@ -125,10 +125,13 @@ export interface PackageFileRow {
 
 /** Who published, for `release_packages.source_json`. */
 export interface PackageSource {
-  kind: "oidc" | "static" | "console";
+  /** `registry`: an owner-bound `pkeyr_` publish token, through a native push (F-23). */
+  kind: "oidc" | "static" | "console" | "registry";
   publisher?: string;
   runUrl?: string;
   tokenId?: string;
+  /** F-23: the release came through a registry protocol (`docker push`), not a ticket. */
+  via?: "oci-push";
 }
 
 export interface PackageIngestOptions {

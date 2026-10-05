@@ -25,6 +25,7 @@ import { matchRoute } from "../src/router.js";
 import { CORS_SERVICE_PATHS, isCorsCoveredRoute } from "../src/core/cors.js";
 import { REGISTRY_OWNERLESS_ROUTES, REGISTRY_ROUTES } from "../src/mount.js";
 import { FEED_ADAPTERS } from "../src/services/distribution/registry/index.js";
+import { RELEASE_REGISTRY_OPENAPI } from "../src/services/release/index.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const spec = parseYaml(
@@ -217,7 +218,8 @@ const ALIAS_PATHS: Array<[string, string[]]> = [
  * The feed rows are each feed adapter's own `openapi` declaration (`FeedAdapter.openapi`, the
  * feed-adapter contract): a feed adds its paths there, in its own directory, and every check
  * below runs against them unchanged. `test/feedAdapters.test.ts` checks each adapter's rows
- * against its own routes.
+ * against its own routes. F-23's push rows are Release's (`RELEASE_REGISTRY_OPENAPI`), checked
+ * the same way by `test/registryPush.test.ts`.
  */
 const REGISTRY_SERVER = "https://pkg.plrs.im";
 const REGISTRY_PATHS: Array<[string, string[], string]> = [
@@ -229,6 +231,14 @@ const REGISTRY_PATHS: Array<[string, string[], string]> = [
       [...methods],
       owner,
     ]),
+  ),
+  // F-23: Release's push routes (native `docker push`), declared beside their code.
+  ...RELEASE_REGISTRY_OPENAPI.map(
+    ([path, methods, owner]): [string, string[], string] => [
+      path,
+      [...methods],
+      owner,
+    ],
   ),
 ];
 
@@ -340,11 +350,19 @@ describe("spec → router", () => {
 
 describe("registry host (F-02, rule 10)", () => {
   it("every registry path is documented on the registry server with tag registry", () => {
+    // One path may have several rows (F-23: the pull manifest route's GET/HEAD and the push
+    // route's PUT): the spec documents exactly their union.
+    const union = new Map<string, Set<string>>();
+    for (const [path, methods] of REGISTRY_PATHS)
+      for (const m of methods)
+        union.set(path, (union.get(path) ?? new Set()).add(m));
     for (const [path, methods] of REGISTRY_PATHS) {
       expect(spec.paths[path]?.servers, path).toEqual([
         expect.objectContaining({ url: REGISTRY_SERVER }),
       ]);
-      expect(specMethods(path).sort(), path).toEqual([...methods].sort());
+      expect(specMethods(path).sort(), path).toEqual(
+        [...union.get(path)!].sort(),
+      );
       for (const method of methods) {
         const op = spec.paths[path]![method] as { tags?: string[] };
         expect(op.tags, `${method} ${path}`).toEqual(["registry"]);
