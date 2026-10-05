@@ -4784,7 +4784,7 @@
       "optional": false,
       "refs": ["notes/S-15 §8", "notes/S-15 §6.1", "notes/S-15 §11 (A-18j)"],
       "brief": "wp/A-18j-console-storefronts.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "A-18k",

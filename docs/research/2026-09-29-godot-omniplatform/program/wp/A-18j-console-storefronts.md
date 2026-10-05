@@ -100,15 +100,32 @@ the area. The capability badge is one component used by storefront tiles and fee
 - Imported listing text renders escaped, never as HTML.
 - A pending step survives a closed tab as a `pending` ledger row.
 
+## Corrections from the code (recorded by the implementer)
+
+- **Adapters on main at hand-off:** App Store (A-17), Google Play (A-18e), Microsoft Store (A-18f),
+  itch.io and Snap (A-18h, CI plane). Steam (A-18g) and the PR plane (A-18i) had not landed: they
+  appear by registering, with no console change.
+- **A-17f was dropped before it started**, so it is absorbed: the New app wizard is the App Store
+  flow runtime (`services/distribution/storefronts/appStore.ts`) on A-17b's and A-17c's routes.
+- **Flow runtimes, not adapter logic.** A-18e and A-18f shipped their writes as functions with no
+  routes; the flow binds a subset (Play: listing text, accepted images, testers, typed send for
+  review; Microsoft: staged listing, typed commit). Unbound `api` steps are absent per the owner's
+  rule; Play release and rollout stay on P5-03's Rollouts page.
+- **Crop acceptance needed storage.** A-18d registers outputs but recorded no acceptance, so this
+  package adds migration `0072_dist_listing_asset_acceptance` (`accepted_sha256`, `_at`, `_by` on
+  `dist_listing_assets`) and the slot board routes; pushes send accepted assets only.
+- **Store connections' Set up** needs to know which stores have an adapter: the connections list
+  gains `storefront: boolean`.
+
 ## Acceptance criteria
 
-- [ ] The flow, the Listing editor and Set up work against fakes for every adapter that has
+- [x] The flow, the Listing editor and Set up work against fakes for every adapter that has
       landed; a new adapter registered in a test appears with no console change.
-- [ ] F-11's feed pages and the storefront tiles render capabilities through the same component.
-- [ ] Submit, release and price steps require the typed phrase; there is no delete control.
-- [ ] No "coming soon" or implementation-status copy (reviewer greps the new strings); no
+- [x] F-11's feed pages and the storefront tiles render capabilities through the same component.
+- [x] Submit, release and price steps require the typed phrase; there is no delete control.
+- [x] No "coming soon" or implementation-status copy (reviewer greps the new strings); no
       redundant subtitles; settings controls right-aligned per T4.
-- [ ] `adminCspParity`, the CSP e2e and `check:links` pass; ADMIN.md amended; the green gate passes
+- [x] `adminCspParity`, the CSP e2e and `check:links` pass; ADMIN.md amended; the green gate passes
       (`AGENTS.md`).
 
 ## Verify
