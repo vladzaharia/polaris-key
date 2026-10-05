@@ -339,9 +339,14 @@ export const SHIPPED: ShippedState[] = [
     scenario: "twelve",
     path: `/#/?activate=${KEY}`,
     ready: async (p) => {
-      const dialog = p.getByRole("dialog", { name: /Activate a license|Mossgarden/ });
+      const dialog = p.getByRole("dialog", {
+        name: /Activate a license|Mossgarden/,
+      });
       await dialog.getByRole("button", { name: "Continue" }).click();
-      await p.getByText(/already in your library/).first().waitFor();
+      await p
+        .getByText(/already in your library/)
+        .first()
+        .waitFor();
     },
   },
   // §4.20 Product page (PX-04, PX-08, PX-11).
@@ -481,10 +486,15 @@ export const SHIPPED: ShippedState[] = [
     path: "/",
     ready: async (p) => {
       await h1(p, "Your library");
+      // ⌘K listens only once the library has loaded (8+ products), after the h1 shows.
+      await p.getByText("Glyphsmith").first().waitFor();
       await p.keyboard.press("Control+k");
       await p.getByRole("dialog", { name: "Jump to a product" }).waitFor();
       await p.keyboard.type("glyph");
-      await p.getByRole("option", { name: /Glyphsmith/ }).first().waitFor();
+      await p
+        .getByRole("option", { name: /Glyphsmith/ })
+        .first()
+        .waitFor();
     },
   },
   // §4.28 Not found and errors (PX-01, PX-04).
@@ -529,31 +539,104 @@ export const SHIPPED: ShippedState[] = [
 ];
 
 export const PENDING: PendingState[] = [
-  { section: "4.1", title: "Login card: passkey button and conditional UI", wp: ["PX-12"] },
-  { section: "4.3", title: "Known account: \"You usually sign in with Steam\"", wp: ["PX-12"] },
-  { section: "4.4", title: "Enter the code (wrong, expired, too many tries, resend)", wp: ["PX-12", "PX-W4"] },
+  {
+    section: "4.1",
+    title: "Login card: passkey button and conditional UI",
+    wp: ["PX-12"],
+  },
+  {
+    section: "4.3",
+    title: 'Known account: "You usually sign in with Steam"',
+    wp: ["PX-12"],
+  },
+  {
+    section: "4.4",
+    title: "Enter the code (wrong, expired, too many tries, resend)",
+    wp: ["PX-12", "PX-W4"],
+  },
   { section: "4.5", title: "Use a license key", wp: ["PX-12"] },
-  { section: "4.6", title: "Key entry: account upgrade, skippable", wp: ["PX-12", "PX-W9"] },
-  { section: "4.6", title: "Key entry: account upgrade, forced", wp: ["PX-12", "PX-W9"] },
+  {
+    section: "4.6",
+    title: "Key entry: account upgrade, skippable",
+    wp: ["PX-12", "PX-W9"],
+  },
+  {
+    section: "4.6",
+    title: "Key entry: account upgrade, forced",
+    wp: ["PX-12", "PX-W9"],
+  },
   { section: "4.7", title: "App sign-in: web app card header", wp: ["PX-14"] },
-  { section: "4.8", title: "App sign-in: native app (known account, code, create, confirm, return)", wp: ["PX-14"] },
-  { section: "4.9", title: "App sign-in: device code (method choice, TV signed in)", wp: ["PX-14"] },
-  { section: "4.10", title: "Add another way to sign in (nudge)", wp: ["PX-15"] },
+  {
+    section: "4.8",
+    title:
+      "App sign-in: native app (known account, code, create, confirm, return)",
+    wp: ["PX-14"],
+  },
+  {
+    section: "4.9",
+    title: "App sign-in: device code (method choice, TV signed in)",
+    wp: ["PX-14"],
+  },
+  {
+    section: "4.10",
+    title: "Add another way to sign in (nudge)",
+    wp: ["PX-15"],
+  },
   { section: "4.11", title: "Link an existing account: join", wp: ["PX-15"] },
-  { section: "4.12", title: "Library, empty, with the Discover teaser", wp: ["PX-16"] },
+  {
+    section: "4.12",
+    title: "Library, empty, with the Discover teaser",
+    wp: ["PX-16"],
+  },
   { section: "4.16", title: "Discover, offers", wp: ["PX-16"] },
   { section: "4.16", title: "Discover, just added", wp: ["PX-16"] },
-  { section: "4.18", title: "Activate license: deep link from an app (product= notice)", wp: ["PX-17"] },
-  { section: "4.19", title: "Activate license: owned elsewhere, email mismatch, no entries left, portal off", wp: ["PX-17"] },
+  {
+    section: "4.18",
+    title: "Activate license: deep link from an app (product= notice)",
+    wp: ["PX-17"],
+  },
+  {
+    section: "4.19",
+    title:
+      "Activate license: owned elsewhere, email mismatch, no entries left, portal off",
+    wp: ["PX-17"],
+  },
   { section: "4.20", title: "Product page with Cloud Sync", wp: ["PX-18"] },
-  { section: "4.20", title: "Product page: Get it complete (Change platform, Extras, phone actions, Email me the download)", wp: ["PX-09"] },
-  { section: "4.20", title: "Product page: \"<Product> knows you as\" identity card", wp: ["PX-13"] },
-  { section: "4.23", title: "Sign in with another device: QR and code", wp: ["PX-15"] },
+  {
+    section: "4.20",
+    title:
+      "Product page: Get it complete (Change platform, Extras, phone actions, Email me the download)",
+    wp: ["PX-09"],
+  },
+  {
+    section: "4.20",
+    title: 'Product page: "<Product> knows you as" identity card',
+    wp: ["PX-13"],
+  },
+  {
+    section: "4.23",
+    title: "Sign in with another device: QR and code",
+    wp: ["PX-15"],
+  },
   { section: "4.24", title: "Approve a new device", wp: ["PX-15"] },
-  { section: "4.26", title: "Account: sign-in methods, sessions, connected products", wp: ["PX-13"] },
+  {
+    section: "4.26",
+    title: "Account: sign-in methods, sessions, connected products",
+    wp: ["PX-13"],
+  },
   { section: "4.26", title: "Account: disconnect with step-up", wp: ["PX-13"] },
   { section: "4.26", title: "Account: last-method guard", wp: ["PX-13"] },
-  { section: "4.29", title: "Email gate: provider verified, typed code, Steam empty, product terms", wp: ["PX-21"] },
-  { section: "4.29", title: "Email gate in an app: Hide My Email, TV with terms, real email instead", wp: ["PX-21"] },
+  {
+    section: "4.29",
+    title:
+      "Email gate: provider verified, typed code, Steam empty, product terms",
+    wp: ["PX-21"],
+  },
+  {
+    section: "4.29",
+    title:
+      "Email gate in an app: Hide My Email, TV with terms, real email instead",
+    wp: ["PX-21"],
+  },
   { section: "4.30", title: "Account → Profile, editing", wp: ["PX-22"] },
 ];

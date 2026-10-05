@@ -167,14 +167,43 @@ jobs:
           cache: pnpm
       - run: >-
           pnpm install --frozen-lockfile --filter=@polaris-key/conformance-browser...
-          --filter=@polaris-key/conformance-node... --filter=@polaris-key/admin...
+          --filter=@polaris-key/conformance-node...
       - run: pnpm --filter @polaris-key/conformance-browser exec playwright install --with-deps chromium
       - run: pnpm exec turbo run build --filter=@polaris-key/conformance-browser...
       - run: pnpm --filter @polaris-key/conformance-browser test
-      # The console's overlays under the Worker's exact CSP (style-src 'self'): zero violations and
-      # a real scroll lock behind every dialog, menu and drawer (packages/admin/e2e).
+
+  # The console and the customer portal in real Chromium under the Worker's exact CSP
+  # (packages/admin/e2e): the console's overlays (zero violations, a real scroll lock behind every
+  # dialog, menu and drawer) and the portal quality bar (PX-20, PORTAL.md §8-§9): every shipped §4
+  # state in both themes at 1440 and 390 px with zero CSP and axe violations, one h1, no horizontal
+  # scroll at 360 px and its visual baseline. It runs in Playwright's own image because the
+  # committed linux baselines are rendered there (packages/admin/scripts/portal-baselines.sh); on
+  # a failure the actual and diff images are uploaded.
+  console:
+    name: Console and portal (Chromium, CSP, axe, visual)
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      # The e2e harness imports the Worker's own security headers and media proxy, so the Worker's
+      # dependencies install too.
+      - run: >-
+          pnpm install --frozen-lockfile --filter=@polaris-key/admin...
+          --filter=@polaris-key/worker...
       - run: pnpm exec turbo run build --filter=@polaris-key/admin...
       - run: pnpm --filter @polaris-key/admin test:e2e
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: portal-visual-diff
+          path: packages/admin/e2e/__baselines__/portal/.out
+          if-no-files-found: ignore
 
   # P1b-05 Part D: the same runner in Firefox 155.0, the build bundled with playwright 1.63.0 (the
   # engine S-04 measured), in Playwright's own image, which already carries that browser. Firefox

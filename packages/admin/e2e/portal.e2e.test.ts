@@ -224,6 +224,8 @@ describe("main flows", () => {
   it("jumps to a product with ⌘K from 8 products", async () => {
     const o = await open("twelve", "/");
     await h1(o.page, "Your library");
+    // ⌘K listens only once the library has loaded (8+ products), after the h1 shows.
+    await o.page.getByText("Glyphsmith").first().waitFor();
     await o.page.keyboard.press("Control+k");
     const palette = o.page.getByRole("dialog", { name: "Jump to a product" });
     await palette.waitFor();

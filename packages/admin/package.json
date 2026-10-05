@@ -12,7 +12,8 @@
     "test": "vitest run",
     "lint": "prettier --check \"src/**/*.{ts,tsx}\" \"test/**/*.{ts,tsx}\"",
     "clean": "rm -rf dist",
-    "test:e2e": "vitest run -c vitest.e2e.config.ts"
+    "test:e2e": "vitest run -c vitest.e2e.config.ts",
+    "e2e:baselines": "scripts/portal-baselines.sh"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.1",

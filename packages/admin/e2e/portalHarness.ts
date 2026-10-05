@@ -28,7 +28,9 @@ import {
  * - `matchBaseline(page, name)`: the visual baseline (below).
  *
  * The page's clock is pinned to the fixtures' `FIXTURE_NOW`, in UTC and en-US, so relative times
- * and printed dates are the same on every run.
+ * and printed dates are the same on every run. The user agent is pinned to {@link USER_AGENT} (a
+ * Mac), so the portal's device detection ("Recommended for this Mac", ⌘K) does not follow the host
+ * OS and every platform renders the same screens.
  *
  * ## Visual baselines
  *
@@ -58,6 +60,9 @@ const UPDATE = process.env.PK_UPDATE_BASELINES === "1";
 const IN_CI = Boolean(process.env.CI);
 const SCALE = 2;
 export const CHANNEL_TOLERANCE = 48;
+/** The browser's user agent on every page: Chrome on a Mac, whatever the host. */
+export const USER_AGENT =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36";
 export const MAX_DIFF_RATIO = 0.004;
 
 /** Set `PK_SHOTS_DIR` to also save full-size screenshots there (the mockup comparison). */
@@ -120,6 +125,7 @@ export async function startPortal(): Promise<PortalHarness> {
     const ctx = await browser.newContext({
       viewport: { width: opts.width ?? 1440, height: opts.height ?? 900 },
       colorScheme: theme,
+      userAgent: USER_AGENT,
       locale: "en-US",
       timezoneId: "UTC",
       reducedMotion: "reduce",
@@ -267,7 +273,9 @@ export async function axe(page: Page): Promise<string[]> {
       v.nodes.map(
         (n) =>
           `${v.id} (${v.impact}): ${v.help} @ ${n.target.join(" ")}${
-            n.failureSummary ? ` | ${n.failureSummary.replace(/\s+/g, " ")}` : ""
+            n.failureSummary
+              ? ` | ${n.failureSummary.replace(/\s+/g, " ")}`
+              : ""
           }`,
       ),
     );
