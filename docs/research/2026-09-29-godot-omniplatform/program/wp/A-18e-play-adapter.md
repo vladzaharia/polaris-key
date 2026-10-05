@@ -94,13 +94,20 @@ The code is the fact where this brief and it disagreed:
   (`scripts/play-spec-writes.mjs`, fixture `test/fixtures/play/discovery-writes.json`).
 - **The lease is a D1 row, not a Durable Object or KV lock.** Acquisition must be atomic and KV
   has no compare-and-set; one D1 upsert that wins only over an expired row is (migration
-  `0070_store_edit_leases` (renumbered from 0068 at integration), `TABLE_OWNERS.distribution`, global by design in R11-05).
+  `0070_store_edit_leases`, renumbered from 0068 at integration; `TABLE_OWNERS.distribution`;
+  global by design in R11-05).
 - **`edits.delete` stays outside the gate.** P5-03 discards its throwaway edit with it and its
   tests require that; no gate rule may allow a `DELETE`. It is `GoogleApiClient.discardEdit`, a
   fixed method that can address only `edits/<editId>` and discards an uncommitted draft. The
   adapter's own `PlayEditSession.close()` uses it too, for an edit it opened and did not commit.
   This is an exception to the never-list's "all 12 DELETEs" and **awaits the lead's or owner's
   explicit acknowledgement** (review round 1).
+  - **Status at done (wave ISP integration, 2026-10-04): still awaiting the owner's
+    acknowledgement.** A-18e is marked done with this exception recorded, not accepted. A-18c's
+    Play listing import, which now takes the `import` lease, discards its read-only edit through
+    the same `discardEdit`. If the owner refuses the exception, the follow-up is a gate rule shape
+    for this one fixed `DELETE edits/{editId}` path (or an alternative that leaves no open edit),
+    owned by A-18e.
 - **The lease keeps its own clock.** Every acquire, renew and read takes the wall clock inside
   `lease.ts`; callers pass no `now`. The cron's `now` is computed once per run and reused for every
   product and connector, so a late Play tick would have written an already-expired lease and lost it
