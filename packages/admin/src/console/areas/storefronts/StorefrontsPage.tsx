@@ -18,7 +18,11 @@
 
 import * as React from "react";
 import { ArrowLeft, ArrowRight, Check, Plus } from "lucide-react";
-import type { StorefrontDto, StorefrontStepDto } from "../../../api.js";
+import type {
+  StorefrontDto,
+  StorefrontFollowUp,
+  StorefrontStepDto,
+} from "../../../api.js";
 import { Button } from "../../../ui/Button.js";
 import { Callout } from "../../../ui/Callout.js";
 import {
@@ -40,8 +44,8 @@ import { useStorefronts } from "./data.js";
 import { FitReport } from "./FitReport.js";
 import { ImportPanel } from "./ImportPanel.js";
 import { SlotBoard } from "./SlotBoard.js";
-import { StepCard } from "./StepCard.js";
-import { StepDialog, type StepIntent } from "./StepDialog.js";
+import { StepCard, stepKeyOf } from "./StepCard.js";
+import { followUpOf, StepDialog, type StepIntent } from "./StepDialog.js";
 
 export const FLOW_STEPS = [
   "choose",
@@ -234,6 +238,10 @@ function AddFlow({
   const [step, setStep] = useSearchParam("step", stepCodec);
   const [storesRaw, setStoresRaw] = useSearchParam("stores", storesCodec);
   const [intent, setIntent] = React.useState<StepIntent | null>(null);
+  // What each step's last run left to finish in the store's console (decision 6), by step key.
+  const [followUps, setFollowUps] = React.useState<
+    Record<string, StorefrontFollowUp>
+  >({});
   const known = new Set(stores.map((s) => s.id));
   const picked = storesRaw
     .split(",")
@@ -307,6 +315,7 @@ function AddFlow({
                       : x.phase === "submit",
                   )}
                   onIntent={setIntent}
+                  followUps={followUps}
                 />
               ))
             : null}
@@ -356,7 +365,20 @@ function AddFlow({
           )}
         </div>
       </div>
-      <StepDialog slug={slug} intent={intent} onClose={() => setIntent(null)} />
+      <StepDialog
+        slug={slug}
+        intent={intent}
+        onClose={() => setIntent(null)}
+        onDone={(result, done) => {
+          const key = done.stepKey;
+          if (!key) return;
+          const f = followUpOf(result);
+          setFollowUps((s) => {
+            const { [key]: _, ...rest } = s;
+            return f ? { ...rest, [key]: f } : rest;
+          });
+        }}
+      />
     </div>
   );
 }
@@ -528,11 +550,13 @@ function StorePhase({
   store,
   steps,
   onIntent,
+  followUps,
 }: {
   slug: string;
   store: StorefrontDto;
   steps: StorefrontStepDto[];
   onIntent: (i: StepIntent) => void;
+  followUps: Record<string, StorefrontFollowUp>;
 }): React.ReactElement {
   return (
     <Panel title={store.label} headingLevel={2}>
@@ -556,6 +580,7 @@ function StorePhase({
               step={s}
               readOnly={store.readOnly !== null}
               onIntent={onIntent}
+              followUp={followUps[stepKeyOf(store.id, s.id)] ?? null}
             />
           ))}
         </ol>

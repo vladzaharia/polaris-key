@@ -16,6 +16,7 @@ import type {
   ListingLocaleDto,
   ListingResponse,
   StorefrontDto,
+  StorefrontFollowUp,
 } from "../../../api.js";
 import { Button } from "../../../ui/Button.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
@@ -44,6 +45,8 @@ import {
   useStorefronts,
 } from "./data.js";
 import { FitReport } from "./FitReport.js";
+import { FollowUpNote } from "./FollowUpNote.js";
+import { followUpOf } from "./StepDialog.js";
 import { ImportPanel } from "./ImportPanel.js";
 import { SlotBoard } from "./SlotBoard.js";
 
@@ -562,6 +565,10 @@ function NoteRow({
 function PushTab({ slug }: { slug: string }): React.ReactElement {
   const q = useStorefronts(slug);
   const [pushing, setPushing] = React.useState<StorefrontDto | null>(null);
+  // What each store's last push left to finish in its console (decision 6), by store id.
+  const [followUps, setFollowUps] = React.useState<
+    Record<string, StorefrontFollowUp>
+  >({});
   if (q.isPending) return <Skeleton className="h-48 w-full" />;
   if (q.isError)
     return (
@@ -606,10 +613,26 @@ function PushTab({ slug }: { slug: string }): React.ReactElement {
           </SettingsRow>
         ))}
       </SettingsSection>
+      {stores
+        .filter((s) => followUps[s.id])
+        .map((s) => (
+          <FollowUpNote
+            key={s.id}
+            followUp={followUps[s.id]!}
+            storeLabel={s.label}
+          />
+        ))}
       <PushDialog
         slug={slug}
         store={pushing}
         onClose={() => setPushing(null)}
+        onDone={(store, result) =>
+          setFollowUps((s) => {
+            const { [store]: _, ...rest } = s;
+            const f = followUpOf(result);
+            return f ? { ...rest, [store]: f } : rest;
+          })
+        }
       />
     </>
   );
@@ -619,10 +642,12 @@ function PushDialog({
   slug,
   store,
   onClose,
+  onDone,
 }: {
   slug: string;
   store: StorefrontDto | null;
   onClose: () => void;
+  onDone: (store: string, result: unknown) => void;
 }): React.ReactElement | null {
   const key = React.useMemo(() => (store ? newIdempotencyKey() : ""), [store]);
   if (!store) return null;
@@ -637,14 +662,14 @@ function PushDialog({
         canStage
           ? "The change is staged: nothing is sent for review until you submit."
           : "The pending submission stays uncommitted: nothing goes to certification.",
-        "No image is deleted: older ones stay until you remove them in the store's console.",
+        "No image is deleted: older ones stay until you remove them in the store's console. The result counts them and links the page.",
       ]}
       confirmLabel="Push listing"
       describeError={(e) =>
         errorCopy(e, { area: "distribution", thing: "Listing push" })
       }
       onConfirm={async () => {
-        await mutate(
+        const result = await mutate(
           "pushListing",
           slug,
           store.id,
@@ -652,6 +677,7 @@ function PushDialog({
           { idempotencyKey: key },
         );
         toast.success(`Listing pushed to ${store.label}`);
+        onDone(store.id, result);
       }}
     />
   );

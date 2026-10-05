@@ -162,8 +162,32 @@ export type RunOutcome =
       resultIds: Record<string, string>;
       /** The vendor's re-read, projected. */
       after: unknown;
+      /** What the operator still finishes in the store's own console (see `RunFollowUp`). */
+      followUp?: RunFollowUp;
     }
   | FlowRefusal;
+
+/**
+ * Something a write leaves for the operator to finish in the store's own console, because Polaris
+ * Key never deletes it (decision 6: the older Play images a replaced set leaves behind). `link` is
+ * a deep-link row id (`core/storefront/deeplinks.ts`); the admin route renders it from the
+ * product's facts, exactly as a deep-linked step's link, and answers `FollowUpView`.
+ */
+export interface RunFollowUp {
+  link: string;
+  /** How many store objects are left (older images). */
+  count: number;
+  /** One sentence the console shows, naming the count. */
+  text: string;
+}
+
+/** A `RunFollowUp` as the console receives it: the link rendered, or the parameters it lacks. */
+export interface FollowUpView {
+  count: number;
+  text: string;
+  url: string | null;
+  missing: string[];
+}
 
 /** The rows a binding reads: this product's and the store's team rows. */
 export interface LedgerView {

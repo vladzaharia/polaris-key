@@ -10,7 +10,8 @@
  *                        details, in ONE edit committed with `changesNotSentForReview` (staged)
  *   writeListingAssets   the ACCEPTED Play images of the slot board (`slots.ts`), uploaded by
  *                        hash in one staged edit; old images are never deleted (decision 6), so
- *                        the result names how many remain and where to remove them
+ *                        the result's `followUp` names how many remain and links the Console
+ *                        page where they are removed (`google-play.main-store-listing`)
  *   testers              a testing track's Google Groups (a closed track is created first when
  *                        it is not a standard one), in one staged edit
  *   submit               TYPED (Play's default-language title): an edit committed WITHOUT
@@ -60,6 +61,7 @@ import {
 import type {
   FlowContext,
   FlowRuntime,
+  RunFollowUp,
   RunOutcome,
   StepBinding,
   StepRequest,
@@ -157,11 +159,12 @@ async function writeImages(
   c: FlowContext,
   s: PlayEditSession,
   key: string,
-): Promise<{ results: StoreWriteResult[]; oldImages: number } | RunOutcome> {
+): Promise<Written | RunOutcome> {
   const stored = await readListing(c.db, c.product);
   const fallback = stored?.model.app.defaultLocale ?? "en-US";
   const results: StoreWriteResult[] = [];
   let oldImages = 0;
+  let removeOldAt: string | null = null;
   for (const row of await playImages(c)) {
     const image = await playImageFromListingAsset(
       c.env,
@@ -189,8 +192,29 @@ async function writeImages(
     if (isPlayRefusal(r)) return r;
     results.push(r.result);
     oldImages += r.oldImages;
+    removeOldAt ??= r.removeOldAt;
   }
-  return { results, oldImages };
+  return {
+    writes: results,
+    ...(oldImages > 0 && removeOldAt
+      ? { followUp: oldImagesFollowUp(oldImages, removeOldAt) }
+      : {}),
+  };
+}
+
+/** A step's writes, and what they leave for the operator (older images, decision 6). */
+interface Written {
+  writes: StoreWriteResult[];
+  followUp?: RunFollowUp;
+}
+
+/** Decision 6: Polaris Key never deletes Play images; the operator removes the older ones. */
+function oldImagesFollowUp(count: number, link: string): RunFollowUp {
+  return {
+    link,
+    count,
+    text: `Google Play still has ${count} older image${count === 1 ? "" : "s"} in this listing. Polaris Key never deletes them: remove them in the Play Console's main store listing.`,
+  };
 }
 
 /** Run `fn` in one edit, then commit (staged or sent for review); refusals pass through. */
@@ -198,15 +222,20 @@ async function inEdit(
   c: FlowContext,
   key: string,
   commit: { stageOnly: boolean; typed?: boolean; production?: boolean },
-  fn: (s: PlayEditSession) => Promise<StoreWriteResult[] | RunOutcome>,
+  fn: (
+    s: PlayEditSession,
+  ) => Promise<StoreWriteResult[] | Written | RunOutcome>,
 ): Promise<RunOutcome> {
   return storeStep(async () => {
     const r = await withPlayEditSession(
       playCtx(c),
       "provisioning",
       async (s) => {
-        const writes = await fn(s);
-        if (!Array.isArray(writes)) return writes;
+        const done = await fn(s);
+        if (!Array.isArray(done) && !("writes" in done)) return done;
+        const { writes, followUp } = Array.isArray(done)
+          ? { writes: done, followUp: undefined }
+          : done;
         if (commit.production) s.touched.production = true;
         const committed = await playCommit(
           s,
@@ -216,7 +245,8 @@ async function inEdit(
           },
           key,
         );
-        return runOutcome([...writes, committed]);
+        const outcome = runOutcome([...writes, committed]);
+        return outcome.ok && followUp ? { ...outcome, followUp } : outcome;
       },
     );
     return isPlayRefusal(r)
@@ -299,7 +329,7 @@ export const GOOGLE_PLAY_FLOW: FlowRuntime = {
           run: run(stepPath(c.product, op), "Upload the accepted images", [
             `Google Play receives ${images.length} accepted image${images.length === 1 ? "" : "s"}; an image it already has is skipped by its hash.`,
             "Play records each one as not AI-generated: accept only images that are not.",
-            "Older images stay until you remove them in the Play Console: Polaris Key never deletes them.",
+            "Older images stay until you remove them in the Play Console: Polaris Key never deletes them. The result counts them and links the page where they are removed.",
           ]),
         };
       }
@@ -403,10 +433,9 @@ export const GOOGLE_PLAY_FLOW: FlowRuntime = {
       case "writeListingText":
         return inEdit(c, key, { stageOnly: true }, (s) => writeText(c, s, key));
       case "writeListingAssets":
-        return inEdit(c, key, { stageOnly: true }, async (s) => {
-          const r = await writeImages(c, s, key);
-          return "results" in r ? r.results : r;
-        });
+        return inEdit(c, key, { stageOnly: true }, (s) =>
+          writeImages(c, s, key),
+        );
       case "testers": {
         const track = typeof input.track === "string" ? input.track.trim() : "";
         const groups =
@@ -468,8 +497,8 @@ export const GOOGLE_PLAY_FLOW: FlowRuntime = {
         const text = await writeText(c, s, key);
         if (!Array.isArray(text)) return text;
         const images = await writeImages(c, s, key);
-        if (!("results" in images)) return images;
-        return [...text, ...images.results];
+        if (!("writes" in images)) return images;
+        return { ...images, writes: [...text, ...images.writes] };
       });
     },
   },

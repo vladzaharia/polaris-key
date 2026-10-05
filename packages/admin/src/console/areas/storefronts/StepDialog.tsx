@@ -13,7 +13,10 @@
  */
 
 import * as React from "react";
-import type { StorefrontStepRequest } from "../../../api.js";
+import type {
+  StorefrontFollowUp,
+  StorefrontStepRequest,
+} from "../../../api.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import { FormField } from "../../../ui/form.js";
 import { Input } from "../../../ui/Input.js";
@@ -29,6 +32,29 @@ export interface StepIntent {
   storeLabel: string;
   /** The success toast. */
   done: string;
+  /** The step the request runs, so its card can show what the run left to finish. */
+  stepKey?: string;
+}
+
+/** A run result's follow-up (`StorefrontRunResult.followUp`), or null when it has none. */
+export function followUpOf(result: unknown): StorefrontFollowUp | null {
+  const f = (result as { followUp?: unknown } | null)?.followUp;
+  if (typeof f !== "object" || f === null) return null;
+  const v = f as Partial<StorefrontFollowUp>;
+  return typeof v.count === "number" &&
+    v.count > 0 &&
+    typeof v.text === "string" &&
+    Array.isArray(v.missing)
+    ? {
+        count: v.count,
+        text: v.text,
+        url:
+          typeof v.url === "string" && v.url.startsWith("https://")
+            ? v.url
+            : null,
+        missing: v.missing.filter((m): m is string => typeof m === "string"),
+      }
+    : null;
 }
 
 export function StepDialog({
@@ -40,7 +66,7 @@ export function StepDialog({
   slug: string;
   intent: StepIntent | null;
   onClose: () => void;
-  onDone?: (result: Record<string, unknown>) => void;
+  onDone?: (result: Record<string, unknown>, intent: StepIntent) => void;
 }): React.ReactElement | null {
   const [values, setValues] = React.useState<Record<string, string>>({});
   const [appName, setAppName] = React.useState("");
@@ -95,7 +121,7 @@ export function StepDialog({
           { idempotencyKey: key },
         );
         toast.success(intent.done);
-        onDone?.(result);
+        onDone?.(result, intent);
         onClose();
       }}
     >

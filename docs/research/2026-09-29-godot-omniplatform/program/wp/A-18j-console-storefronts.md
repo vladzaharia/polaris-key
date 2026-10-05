@@ -116,6 +116,18 @@ the area. The capability badge is one component used by storefront tiles and fee
   `dist_listing_assets`) and the slot board routes; pushes send accepted assets only.
 - **Store connections' Set up** needs to know which stores have an adapter: the connections list
   gains `storefront: boolean`.
+- **The slot board's media host (S-20 note).** The brief says the board renders from HA-02's media
+  host and uploads through HA-06. HA-02 was still todo, and neither HA-02 nor HA-06 is a
+  dependency, so the board previews through its own `storefronts/slots/image` route (magic-byte
+  typed, `nosniff`) and adds no upload path of its own. Whoever lands HA-06 or ST-13 switches the
+  preview to the media host.
+- **Older Play images (decision 6).** A-18e's `playUploadImage` counts the older images and names
+  the `google-play.main-store-listing` row. The image step and the listing push return them as a
+  `followUp` (`{count, text, url, missing}`). The admin route renders the link from the product's
+  facts, just as it does for a deep-linked step. The console shows the count and the link on the
+  step card and in the Push tab. No Play deep link renders a URL yet: the facts carry no Play
+  Console `developerId`, and `appId` is the package name, not the Console's numeric id. Until that
+  changes, the note names the missing ids.
 
 ## Acceptance criteria
 

@@ -11,13 +11,18 @@
  * - **CI** steps wait for the next publish run and show the publish action's command line.
  * - **PR** steps name the repository CI opens the pull request against.
  *
- * What a step shows afterwards is the store's re-read (the plan refetches), never the request.
- * There is no delete control anywhere (owner rule).
+ * What a step shows afterwards is the store's re-read (the plan refetches), never the request,
+ * plus what the run left for the operator in the store's own console (`FollowUpNote`: the older
+ * Play images, counted and linked, decision 6). There is no delete control anywhere (owner rule).
  */
 
 import * as React from "react";
 import { Check, ExternalLink, RefreshCw } from "lucide-react";
-import type { StorefrontDto, StorefrontStepDto } from "../../../api.js";
+import type {
+  StorefrontDto,
+  StorefrontFollowUp,
+  StorefrontStepDto,
+} from "../../../api.js";
 import { Button } from "../../../ui/Button.js";
 import { CapabilityBadge } from "../../../ui/CapabilityBadge.js";
 import { CopyButton } from "../../../ui/CopyButton.js";
@@ -30,6 +35,11 @@ import { Link } from "../../router.js";
 import { productPage } from "../../routes.js";
 import type { ProductPageId } from "../../nav.js";
 import type { StepIntent } from "./StepDialog.js";
+import { FollowUpNote } from "./FollowUpNote.js";
+
+/** The key a run's follow-up is kept under (`StepIntent.stepKey`). */
+export const stepKeyOf = (store: string, step: string): string =>
+  `${store}/${step}`;
 
 /** How a step's state reads. Only a failure is a pill: pills mean attention. */
 function StepState({
@@ -146,12 +156,15 @@ export function StepCard({
   step,
   readOnly,
   onIntent,
+  followUp = null,
 }: {
   slug: string;
   store: StorefrontDto;
   step: StorefrontStepDto;
   readOnly: boolean;
   onIntent: (intent: StepIntent) => void;
+  /** What this step's last run left to finish in the store's console. */
+  followUp?: StorefrontFollowUp | null;
 }): React.ReactElement {
   const open = step.state !== "done";
   const verifying =
@@ -176,6 +189,7 @@ export function StepCard({
             request: step.run!,
             storeLabel: store.confirmationLabel,
             done: `${step.label}: sent to ${store.label}`,
+            stepKey: stepKeyOf(store.id, step.id),
           })
         }
       >
@@ -316,6 +330,9 @@ export function StepCard({
             </div>
           ))}
         </dl>
+      ) : null}
+      {followUp ? (
+        <FollowUpNote followUp={followUp} storeLabel={store.label} />
       ) : null}
       {step.ci ? (
         <div className="mt-3 space-y-1 text-sm">

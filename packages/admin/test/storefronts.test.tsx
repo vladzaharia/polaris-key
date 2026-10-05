@@ -437,6 +437,50 @@ describe("Distribution → Storefronts", () => {
     );
   });
 
+  it("a run that leaves older store images counts them and links the page that removes them (decision 6)", async () => {
+    bootWith(
+      `${PAGE}?flow=add&step=run&stores=google-play`,
+      routes({
+        [`POST ${SF("/google-play/steps/writeListingText")}`]: {
+          ok: true,
+          outcome: "written",
+          opId: "op1",
+          resultIds: {},
+          after: [],
+          followUp: {
+            count: 3,
+            text: "Google Play still has 3 older images in this listing.",
+            url: "https://play.google.com/console/developers/1/app/2/main-store-listing",
+            missing: [],
+          },
+        },
+      }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Send the listing text" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Send the listing text" }),
+    );
+    const card = await waitFor(() => {
+      const el = document.querySelector<HTMLElement>(
+        '[data-step="writeListingText"] [data-follow-up]',
+      );
+      expect(el).not.toBeNull();
+      return el!;
+    });
+    expect(card.getAttribute("data-follow-up")).toBe("3");
+    expect(card.textContent).toContain("3 older images");
+    expect(
+      within(card)
+        .getByRole("link", { name: /Open Google Play/ })
+        .getAttribute("href"),
+    ).toBe(
+      "https://play.google.com/console/developers/1/app/2/main-store-listing",
+    );
+  });
+
   it("a link step shows the copy card and the store's page; Mark as done records the operator's word", async () => {
     const { calls } = bootWith(
       `${PAGE}?flow=add&step=run&stores=google-play`,
@@ -573,6 +617,45 @@ describe("Distribution → Listing", () => {
         }),
       ]),
     );
+  });
+
+  it("a push that leaves older images counts them; a link the product cannot render names what it lacks", async () => {
+    bootWith(
+      `${LISTING}?tab=push`,
+      routes({
+        [`POST ${SF("/google-play/push-listing")}`]: {
+          ok: true,
+          outcome: "written",
+          opId: "op3",
+          resultIds: {},
+          after: [],
+          followUp: {
+            count: 2,
+            text: "Google Play still has 2 older images in this listing.",
+            url: null,
+            missing: ["developerId", "appId"],
+          },
+        },
+      }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Push listing" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Push listing" }),
+    );
+    const note = await waitFor(() => {
+      const el = document.querySelector<HTMLElement>("[data-follow-up]");
+      expect(el).not.toBeNull();
+      return el!;
+    });
+    expect(note.getAttribute("data-follow-up")).toBe("2");
+    expect(note.textContent).toContain("2 older images");
+    expect(note.textContent).toContain(
+      "The link opens once the product has its developerId, appId.",
+    );
+    expect(within(note).queryByRole("link")).toBeNull();
   });
 
   it("saves only what changed in the locale", async () => {

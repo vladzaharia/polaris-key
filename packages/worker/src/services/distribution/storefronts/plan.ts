@@ -312,11 +312,12 @@ function writesOf(adapter: StorefrontAdapter, support: Support): string[] {
   return [];
 }
 
-function linkOf(
-  support: Extract<Support, { mode: "deep-link" }>,
+/** A deep-link row rendered from the product's facts, or the parameters it still lacks. */
+export function factLink(
+  id: string,
   facts: StoreFacts,
-): FlowStepView["link"] {
-  const row = deepLink(support.link);
+): { url: string | null; missing: string[] } {
+  const row = deepLink(id);
   const params = row?.params ?? [];
   const missing = params.filter((p) => !(p in facts.linkParams));
   let url: string | null = null;
@@ -330,6 +331,14 @@ function linkOf(
       url = null;
     }
   }
+  return { url, missing };
+}
+
+function linkOf(
+  support: Extract<Support, { mode: "deep-link" }>,
+  facts: StoreFacts,
+): FlowStepView["link"] {
+  const { url, missing } = factLink(support.link, facts);
   const v = support.verify;
   return {
     url,

@@ -26,6 +26,9 @@ const calls = vi.hoisted(() => ({
   runs: [] as { op: string; input: unknown; typed: boolean; key: string }[],
   pushes: [] as { stageOnly: boolean }[],
   verified: { value: false },
+  followUp: {
+    value: null as null | { link: string; count: number; text: string },
+  },
 }));
 
 const TEST_STORE = {
@@ -130,6 +133,7 @@ const TEST_RUNTIME: FlowRuntime = {
       opId: "op-1",
       resultIds: {},
       after: { state: "written" },
+      ...(calls.followUp.value ? { followUp: calls.followUp.value } : {}),
     };
   },
   pushListing: {
@@ -142,6 +146,7 @@ const TEST_RUNTIME: FlowRuntime = {
         opId: "op-2",
         resultIds: {},
         after: null,
+        ...(calls.followUp.value ? { followUp: calls.followUp.value } : {}),
       };
     },
   },
@@ -276,6 +281,7 @@ beforeEach(async () => {
   calls.runs.length = 0;
   calls.pushes.length = 0;
   calls.verified.value = false;
+  calls.followUp.value = null;
   apple.apps.length = 0;
   apple.requests.length = 0;
   vi.useFakeTimers({ toFake: ["Date"], now: NOW * 1000 });
@@ -576,6 +582,48 @@ describe("Push listing", () => {
       KEY,
     );
     expect(bad.status).toBe(422);
+  });
+
+  it("a follow-up's deep link is rendered from the product's facts, with the count", async () => {
+    calls.followUp.value = {
+      link: "google-play.main-store-listing",
+      count: 3,
+      text: "3 older images stay.",
+    };
+    const push = await admin("POST", "/test-store/push-listing", {}, KEY);
+    expect(push.status).toBe(200);
+    // The product has no Console ids: the link names what it lacks instead of a broken URL.
+    expect(push.json.followUp).toEqual({
+      count: 3,
+      text: "3 older images stay.",
+      url: null,
+      missing: ["developerId", "appId"],
+    });
+    calls.followUp.value = {
+      link: "google-play.integrity",
+      count: 1,
+      text: "1 older image stays.",
+    };
+    const step = await admin(
+      "POST",
+      "/test-store/steps/writeListingText",
+      {},
+      { "idempotency-key": "11111111-2222-3333-4444-999999999999" },
+    );
+    expect(step.json.followUp).toEqual({
+      count: 1,
+      text: "1 older image stays.",
+      url: "https://play.google.com/console/developers/app/protect-with-play",
+      missing: [],
+    });
+    calls.followUp.value = null;
+    const none = await admin(
+      "POST",
+      "/test-store/steps/writeListingText",
+      {},
+      { "idempotency-key": "11111111-2222-3333-4444-aaaaaaaaaaaa" },
+    );
+    expect(none.json).not.toHaveProperty("followUp");
   });
 
   it("always stages a push where the store stages: stageOnly false is refused, absent stages", async () => {

@@ -75,9 +75,15 @@ a listing, an image, a user, a payment or a signing key on any store.
 | itch.io, Snap   | none: their steps run in CI                                                                                                              | the store page                                                                                                           |
 
 Google Play's release and staged rollout stay on the [Rollouts](/docs/services/distribution/rollouts/)
-page. Replacing Play images never deletes the old ones: the result says how many remain and where to
-remove them in the Play Console. A Microsoft submission someone created or edited in Partner Center
-is never adopted or changed; the step names it and links to it.
+page. Replacing Play images never deletes the old ones. After the image step or a listing push,
+the card says how many older images Google Play still holds and links the Play Console's main store
+listing, where you remove them. Until the product has the Play Console's developer and app ids, the
+card names the missing ids instead of the link. The note lasts until you leave the page. A
+Microsoft submission someone created or edited in Partner Center is never adopted or changed; the
+step names it and links to it.
+
+A link step stays done once it is done: a later check replays the recorded result, even if the
+object was removed on the store since.
 
 ## The slot board
 
@@ -114,6 +120,12 @@ the stored result), except the check and accept routes.
 | `GET`  | `storefronts/slots`                     | the slot board                                                                                                                  |
 | `GET`  | `storefronts/slots/image?slot=&locale=` | an asset's preview (PNG, JPEG or WebP only)                                                                                     |
 | `POST` | `storefronts/slots/accept`              | `{slot, locale?, sha256}`: accept exactly those bytes; `409 asset_changed` when they changed since you looked                   |
+
+A step or push answers `{ok, outcome, opId, resultIds, after}`, where `after` is the store's re-read.
+It can also carry `followUp: {count, text, url, missing}`, for what the write left for you to finish
+in the store's console, such as Google Play's older images. `url` is `null` while the link lacks
+the ids listed in `missing`. The check route treats `poll: true` (sent while the page polls) the
+same as `{}`.
 
 Many API steps call the route that already performs them (the App Store's bundle IDs, setup
 controls and assignment) instead of these. The audit actions are

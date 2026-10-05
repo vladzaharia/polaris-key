@@ -18,7 +18,8 @@
  *     POST …/distribution/storefronts/<store>/steps/<op>/check
  *                                                           a deep-linked step: `{}` runs its
  *                                                           verifier read (`poll: true` while the
- *                                                           page polls), `{assert: true}` records
+ *                                                           page polls is advisory: the server
+ *                                                           treats it as `{}`), `{assert: true}` records
  *                                                           an operator-asserted step done
  *     POST …/distribution/storefronts/<store>/push-listing  "Push listing" (`{stageOnly?}` +
  *                                                           `Idempotency-Key`), through the
@@ -59,13 +60,21 @@ import { flowStores } from "./index.js";
 import { handleSlotsAdmin } from "./slots.js";
 import {
   baseFacts,
+  factLink,
   flowOp,
   isPlanOp,
   ledgerOf,
   OP_LABELS,
   storeView,
 } from "./plan.js";
-import type { FlowContext, FlowRefusal, FlowStore } from "./runtime.js";
+import type {
+  FlowContext,
+  FlowRefusal,
+  FlowStore,
+  FollowUpView,
+  RunOutcome,
+  StoreFacts,
+} from "./runtime.js";
 
 type AdminCtx = ServiceContext & { session: AdminSession };
 
@@ -81,6 +90,29 @@ function flowCtx(ctx: AdminCtx): FlowContext {
     hooks: ctx.hooks,
     session: ctx.session,
     now: ctx.now,
+  };
+}
+
+/**
+ * A run's outcome as the console receives it: a follow-up's deep-link row is rendered from the
+ * product's facts (the same rendering as a deep-linked step), so the console shows the link and
+ * the count, or which parameters the link still lacks.
+ */
+function withFollowUp(
+  r: Extract<RunOutcome, { ok: true }>,
+  facts: StoreFacts,
+): Omit<Extract<RunOutcome, { ok: true }>, "followUp"> & {
+  followUp?: FollowUpView;
+} {
+  const { followUp, ...rest } = r;
+  if (!followUp) return rest;
+  return {
+    ...rest,
+    followUp: {
+      count: followUp.count,
+      text: followUp.text,
+      ...factLink(followUp.link, facts),
+    },
   };
 }
 
@@ -215,7 +247,7 @@ async function run(
       : {}),
   });
   if (!r.ok) return refusal(r);
-  return adminJson(r);
+  return adminJson(withFollowUp(r, facts));
 }
 
 async function check(
@@ -227,7 +259,6 @@ async function check(
   if (support.mode !== "deep-link") return unknownStep();
   const body = await readBody(ctx.req);
   const assert = body.assert === true;
-  const poll = body.poll === true;
   const c = flowCtx(ctx);
   let facts = await baseFacts(c, adapter);
   if (runtime?.facts) facts = await runtime.facts(c, facts);
@@ -323,7 +354,6 @@ async function check(
     return adminJson({ ok: true, state: "done", satisfied: true });
   }
 
-  void poll;
   const outcome = await runtime!.verify!(c, op, facts, ledger);
   if ("ok" in outcome) return refusal(outcome);
   if (!outcome.satisfied)
@@ -410,5 +440,5 @@ async function pushListing(
     stageOnly: runtime.pushListing.stageOnly,
   });
   if (!r.ok) return refusal(r);
-  return adminJson(r);
+  return adminJson(withFollowUp(r, facts));
 }

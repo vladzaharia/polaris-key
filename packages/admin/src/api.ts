@@ -1497,6 +1497,17 @@ export interface StorefrontRunResult {
   opId: string;
   resultIds: Record<string, string>;
   after: unknown;
+  /** What the operator still finishes in the store's own console (decision 6: the older Play
+   *  images a replaced set leaves, which Polaris Key never deletes). */
+  followUp?: StorefrontFollowUp;
+}
+
+/** A run's follow-up: one sentence with the count, and the store page (or what its link lacks). */
+export interface StorefrontFollowUp {
+  count: number;
+  text: string;
+  url: string | null;
+  missing: string[];
 }
 
 /** `POST …/steps/<op>/check`. */
