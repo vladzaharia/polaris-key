@@ -40,6 +40,28 @@ System keys share the product flag namespace with no rule (G13, [S-19 §4.3](../
 
 - Warn window: two minor releases or 60 days, whichever is later; LX-05b flips it.
 
+## Corrections from the code (LX-05 implementation, 2026-10-04)
+
+- **Setting key.** The A-13 platform registry (`packages/worker/src/core/platformSettings.ts`) keys
+  every entry by its upper-snake `[vars]` name, so S-19's `licensing.reservedNames` is registered as
+  **`LICENSING_RESERVED_NAMES`** (area `licensing`, `runtime` precedence, default `warn`; confirm
+  L1 to `error`, L0 to `warn`). The registry had only `switch` and `integer` kinds; LX-05 adds a
+  `choice` kind (worker, settings API, console row) for it.
+- **Severity is passed in, not read by the validator.** `@polaris-key/manifest` is pure, so
+  `validateManifestDocuments`, `validateIngestDocuments` and `parseManifest` take an optional
+  `{ reservedNames: "warn" | "error" }` (default `warn`); the Worker's link, resync and platform
+  deploy-hook ingest pass the platform setting. The console's catalog writes (Config's
+  `PUT config/catalog`, manual product create) apply the same severity, so `error` cannot be
+  bypassed through the console.
+- **One module.** What is reserved and what is compatible lives only in
+  `packages/shared-manifest/src/reservedNames.ts`; the Worker's `core/reservedNames.ts` answers the
+  severity. The console list is `GET /manage/api/platform/reserved-names` (admin, narrative-only
+  under rule 10) shown on Platform → Settings → Licensing.
+- **Unknown reserved-prefix names.** A name under `app.` is compatible as a string (S-19 §7.4 "`app.*`
+  semver string"); any other name under `license.` or `pkey.` that is not a system key has no
+  compatible form and is reported. `examples` is allowed as a presentation field alongside the
+  fields §7.4 lists.
+
 ## Steps
 
 1. Rule and mutation entry.

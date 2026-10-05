@@ -6,7 +6,6 @@ import { type SecretDelivery } from "@polaris-key/protocol/config";
 import {
   DEFAULT_RESERVED_NAMES_MODE,
   reservedNameDeclarations,
-  reservedNameMessage,
   type ReservedNamesMode,
 } from "./reservedNames.js";
 import {
@@ -1459,15 +1458,26 @@ function validateDocuments(
   // flags are entitlements, and License reads them with Config off.
   if (manifest.schema !== undefined) {
     const mode = opts.reservedNames ?? DEFAULT_RESERVED_NAMES_MODE;
+    // Two literal emit sites (not one with a computed list) so the generated validation-codes
+    // page lists both severities; LX-05b deletes the warning branch.
     for (const decl of reservedNameDeclarations(manifest.schema)) {
       if (decl.compatible) continue;
-      add(
-        mode === "error" ? errors : warnings,
-        "schema",
-        `/entries/${decl.index}`,
-        "incompatible_reserved_name",
-        reservedNameMessage(decl, mode),
-      );
+      if (mode === "error")
+        add(
+          errors,
+          "schema",
+          `/entries/${decl.index}`,
+          "incompatible_reserved_name",
+          `${decl.key} is a reserved entitlement name the platform sets itself: ${decl.problem}. Incompatible reserved-name declarations are refused on this platform.`,
+        );
+      else
+        add(
+          warnings,
+          "schema",
+          `/entries/${decl.index}`,
+          "incompatible_reserved_name",
+          `${decl.key} is a reserved entitlement name the platform sets itself: ${decl.problem}. This is a warning for now; it becomes an error when the platform switches licensing.reservedNames to error.`,
+        );
     }
   }
 

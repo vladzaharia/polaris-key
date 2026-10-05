@@ -3407,15 +3407,15 @@ privilege level.
 
 ### Platform settings and operations: the runtime settings store (A-13)
 
-A-13 makes four deploy settings editable from the console without a deploy, through
+A-13 makes four deploy settings (and, since LX-05, a fifth) editable from the console without a deploy, through
 `platform_settings` (migration 0056) and `GET`/`PATCH`/`DELETE /manage/api/platform/settings`
 behind the same gates as the rest of the Platform section (session, `PLATFORM_ADMIN_GROUP`, the
 per-subject limiter, CSRF on mutations, and `handlePlatform`'s second platform-admin check). There
 is no new privilege level and no outbound call.
 
 - **What is editable is a closed list in code.** `PLATFORM_SETTINGS` (`core/platformSettings.ts`)
-  declares `LAZY_DELTAS`, `LAZY_DELTA_MAX_BYTES`, `BLOB_GC_MODE` and `BLOB_GC_GRACE_DAYS`, and
-  nothing else: a D1 row with any other key is ignored, and a value outside an entry's validator
+  declares `LAZY_DELTAS`, `LAZY_DELTA_MAX_BYTES`, `BLOB_GC_MODE`, `BLOB_GC_GRACE_DAYS` and
+  `LICENSING_RESERVED_NAMES` (below), and nothing else: a D1 row with any other key is ignored, and a value outside an entry's validator
   is never applied (the resolver falls through to `[vars]` or the code default). Each is a
   background job's kill switch or tunable. The worst a hostile session can do with them is waste
   delta CPU (bounded by each product's daily cap and the 32 MiB ceiling, which the size cap can
@@ -3424,6 +3424,18 @@ is no new privilege level and no outbound call.
   180-day R2 age lock still bounds every deletion, and the collector deletes only unreferenced
   objects; see "Readiness holds, pack gates and the blob collector"). None changes what a device
   is offered or what is signed.
+- **`LICENSING_RESERVED_NAMES` (LX-05, S-19 §7.4) is a validation severity, not a gate.** It is
+  `warn` or `error` (`runtime` precedence, default `warn`) and decides only whether a product
+  catalog flag that declares a reserved entitlement name (`channels`, `deviceLimit`, `app.*`,
+  `license.*`, `pkey.*`) with an incompatible type is accepted with a warning or refused at link,
+  resync, the platform deploy hook and the console catalog writes. A hostile session that sets
+  `warn` gains nothing: the policy injection in `core/entitlements.ts` overwrites every system
+  key after the profile and override merge in both modes, so no declaration can change a seat
+  limit, a channel set or a version window a device is signed. Setting `error` can only make a
+  product's next resync fail (an availability nuisance the operator sees on Platform → Settings
+  → Licensing, which lists every incompatible declaration); it is confirmed (L1) and audited.
+  The report route `GET /manage/api/platform/reserved-names` is read-only and returns catalog
+  keys and product names, nothing secret.
 - **Why nothing else may join it (AT-2).** Whoever takes the admin plane already reaches A2, A3,
   A5 and A6 through the API for as long as the session lasts. A runtime knob that _widens_ what a
   session can do (a longer session TTL, a raised rate limit, a looser `OIDC_ISSUER_ALLOWLIST`, a
