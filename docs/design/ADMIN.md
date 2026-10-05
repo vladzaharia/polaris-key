@@ -10,6 +10,13 @@
 > §6.10. Settings follow the S-18 hub and licensing follows S-19 (both owner-approved); EXPERIENCE.md
 > §0.8 reconciles its work packages with the `ST`, `LX` and `PX` packages.
 
+> **Setup and storefronts are specified in [SETUP.md](SETUP.md) (2026-10-05).** It supersedes
+> this document's T6 wizard rules where they differ (one wizard pattern with page and drawer
+> hosts, resumable from server-side state, ending in a live verification), §2.3's Distribution rows
+> (Storefronts, Listing, App Store, Commerce, Outlets & feeds and Outlet credentials become one
+> Storefronts catalogue with one page per storefront) and the empty states of every page it lists
+> in its §4.7.
+
 > **Sign-in is specified in [SIGN-IN.md](SIGN-IN.md) (2026-10-05).** It supersedes this document's
 > sign-in parts where they differ: §2.7's Sign in row, T8's Session expired row (the console now
 > renders "Your session ended" in place on the shared card, not a dialog) and §6.10.1.
