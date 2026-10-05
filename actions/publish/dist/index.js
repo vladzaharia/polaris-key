@@ -24070,9 +24070,11 @@ function goModHash1(data) {
 function parseGoMod(text) {
   const out = {};
   for (const raw of text.split(/\r?\n/)) {
-    const line = raw.replace(/\/\/.*$/, "").trim();
-    const m = /^module\s+(?:"([^"]+)"|`([^`]+)`|(\S+))$/.exec(line);
+    const m = /^module\s+(?:"([^"]+)"|`([^`]+)`|([^\s"`]+?))\s*(?:\/\/.*)?$/.exec(
+      raw.trim()
+    );
     if (m && out.module === void 0) out.module = m[1] ?? m[2] ?? m[3];
+    const line = raw.replace(/\/\/.*$/, "").trim();
     const g = /^go\s+([0-9][0-9A-Za-z.]*)$/.exec(line);
     if (g && out.go === void 0) out.go = g[1];
   }
@@ -24101,15 +24103,24 @@ function goFilePathProblem(rel) {
   }
   return null;
 }
-function goVendored(rel) {
-  let rest;
-  if (rel.startsWith("vendor/")) rest = rel.slice("vendor/".length);
+function goLangAtLeast124(go) {
+  const m = /^(\d+)(?:\.(\d+))?/.exec(go ?? "");
+  if (!m) return false;
+  const major = Number(m[1]);
+  const minor = Number(m[2] ?? "0");
+  return major > 1 || major === 1 && minor >= 24;
+}
+function goVendored(rel, go) {
+  const lang124 = goLangAtLeast124(go);
+  if (lang124 && rel === "vendor/modules.txt") return true;
+  let i;
+  if (rel.startsWith("vendor/")) i = "vendor/".length;
   else {
     const j = rel.indexOf("/vendor/");
     if (j < 0) return false;
-    rest = rel.slice(j + "/vendor/".length);
+    i = lang124 ? j + "/vendor/".length : "/vendor/".length;
   }
-  return rest.includes("/");
+  return rel.slice(i).includes("/");
 }
 function isLicense(rel) {
   return rel === "LICENSE";
@@ -24143,6 +24154,10 @@ function checkModuleFiles(files) {
 }
 async function goModuleFiles(root) {
   const out = [];
+  const rootMod = await readFile6(path7.join(root, "go.mod"), "utf8").catch(
+    () => null
+  );
+  const go = rootMod === null ? void 0 : parseGoMod(rootMod).go;
   async function walk2(dir, rel) {
     const entries = await readdir4(dir, { withFileTypes: true });
     entries.sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
@@ -24154,7 +24169,7 @@ async function goModuleFiles(root) {
         const nested = await lstat2(path7.join(full, "go.mod")).catch(() => null);
         if (nested?.isFile()) continue;
         await walk2(full, r);
-      } else if (e.isFile() && !goVendored(r)) out.push(r);
+      } else if (e.isFile() && !goVendored(r, go)) out.push(r);
     }
   }
   await walk2(root, "");
@@ -24190,6 +24205,8 @@ async function readModuleZip(zipPath, zipName, module) {
     const prefix = `${module}@${goVersion}/`;
     const files = [];
     const rels = [];
+    const rootModEntry = z.entries.find((e) => e.name === `${prefix}go.mod`);
+    const go = rootModEntry ? parseGoMod(Buffer.from(await z.read(rootModEntry)).toString("utf8")).go : void 0;
     for (const e of z.entries) {
       if (!e.name.startsWith(prefix))
         throw new PackageExtractError(
@@ -24200,7 +24217,7 @@ async function readModuleZip(zipPath, zipName, module) {
           `${zipName}: ${e.name} is a directory entry; a module zip holds files only.`
         );
       const rel = e.name.slice(prefix.length);
-      if (goVendored(rel))
+      if (goVendored(rel, go))
         throw new PackageExtractError(
           `${zipName}: ${rel} is inside a vendored package, which a module zip never holds.`
         );
