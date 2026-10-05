@@ -313,7 +313,8 @@ describe("focused flows (PX-10)", () => {
     await shoot(o.page, "device-limit-done-mobile-dark");
     expect(
       await o.page
-        .getByRole("link", { name: "Return to Orbit Survey" })
+        .getByRole("link", { name: "Back to Orbit Survey" })
+        .last()
         .getAttribute("href"),
     ).toBe("orbitsurvey://retry");
     expect(o.requests).toContain(
@@ -331,7 +332,7 @@ describe("focused flows (PX-10)", () => {
     await h1(o.page, "Your license is on 2 of 2 devices");
     expect(
       await o.page
-        .getByRole("link", { name: "Back to Orbit Survey" })
+        .getByRole("link", { name: "See Orbit Survey in your library" })
         .getAttribute("href"),
     ).toBe("#/p/orbit-survey");
     expect(await o.page.content()).not.toContain("evil.example");

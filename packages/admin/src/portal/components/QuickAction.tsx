@@ -18,14 +18,18 @@ import {
   type LibraryProduct,
   type QuickAction,
 } from "../model/library.js";
+import { settleAction } from "../model/product.js";
+import { useRoute } from "../router.js";
 
 /**
  * The one next action for a product (§5.4) as a button. Outlined (`quiet`) on tiles and rows;
- * the hero and the product header pass `lead` for the solid primary.
+ * the hero and the product header pass `lead` for the solid primary. A product without downloads
+ * offers "Get it from <developer>", and a "View details" that would point at the page already
+ * open renders nothing (`settleAction`, §0.6 P3).
  */
 export function QuickActionButton({
   product,
-  action,
+  action: proposed,
   lead = false,
   twoLine = false,
   size = "lg",
@@ -38,9 +42,12 @@ export function QuickActionButton({
   twoLine?: boolean;
   size?: "md" | "lg";
   className?: string;
-}): React.ReactElement {
+}): React.ReactElement | null {
   const start = useStartDownload();
   const email = useEmailDownload();
+  const route = useRoute();
+  const action = settleAction(product, proposed, route);
+  if (!action) return null;
   const variant = lead ? "primary" : "quiet";
   if (action.kind === "email") {
     const onClick = (): void => {
