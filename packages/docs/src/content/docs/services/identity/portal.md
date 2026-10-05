@@ -183,7 +183,8 @@ requires the session cookie
   picture's same-origin URL or `null`) plus the CSRF token, after folding in any newly-provable
   license links.
 - **`GET /api/sessions`** — the account's live sessions, newest first, each with when it started
-  and was last seen, its user agent, how the person signed in (`methods`) and whether it is this
+  and was last seen, its browser and operating system (`browser`, a coarse label such as
+  "Firefox on Windows"), how the person signed in (`methods`) and whether it is this
   browser's (`current`). **`DELETE /api/sessions/<id>`** ends one; **`POST
 /api/sessions/sign-out-everywhere`** ends every one, this browser's included, and clears its
   cookie. It also drops every device's binding to the account through Core's clearing hook,

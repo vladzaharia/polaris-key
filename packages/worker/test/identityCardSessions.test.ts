@@ -12,6 +12,7 @@ import {
 import { issuePortalSession } from "../src/services/identity/portal/session.js";
 import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
 import { subjectFor } from "../src/core/accountSubjects.js";
+import { browserLabel } from "../src/services/identity/portal/accountSessions.js";
 
 // I-07: account sessions (S-16 §5.4 item 7): host-only, revocable, listable, "sign out
 // everywhere"; a cookie is good only while its server-side row is.
@@ -179,6 +180,62 @@ describe("account sessions", () => {
       expect(session).toContain(attr);
     }
     expect(session).not.toMatch(/Domain=/i);
+  });
+});
+
+describe("the session's browser label", () => {
+  it("keeps the browser family and operating system, never the identification string", () => {
+    expect(
+      browserLabel(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:131.0) Gecko/20100101 Firefox/131.0",
+      ),
+    ).toBe("Firefox on Windows");
+    expect(
+      browserLabel(
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15",
+      ),
+    ).toBe("Safari on macOS");
+    expect(
+      browserLabel(
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/129.0 Mobile/15E148 Safari/604.1",
+      ),
+    ).toBe("Chrome on iOS");
+    expect(
+      browserLabel(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36 Edg/129.0",
+      ),
+    ).toBe("Edge on Windows");
+    expect(browserLabel("curl/8.7.1")).toBeNull();
+    expect(browserLabel(null)).toBeNull();
+  });
+
+  it("is what the session list shows", async () => {
+    const w = await seededWorld();
+    const d = new Device(w);
+    await d.send("POST", "/api/signin/email/start", {
+      email: "ada@example.com",
+    });
+    const code = /(\d{3}) (\d{3})/.exec(w.mail[0]!.text)!;
+    await d.send(
+      "POST",
+      "/api/signin/email/verify",
+      { code: code[1]! + code[2]! },
+      {
+        headers: {
+          "user-agent":
+            "Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0",
+        },
+      },
+    );
+    await d.me();
+    const list = (await (await d.send("GET", "/api/sessions")).json()) as {
+      sessions: Array<{ browser: string | null }>;
+    };
+    expect(list.sessions.map((s) => s.browser)).toEqual(["Firefox on Linux"]);
+    const raw = await w.db.first<{ user_agent: string }>(
+      "SELECT user_agent FROM account_sessions",
+    );
+    expect(raw?.user_agent).toBe("Firefox on Linux");
   });
 });
 

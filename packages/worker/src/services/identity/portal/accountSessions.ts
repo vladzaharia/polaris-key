@@ -31,8 +31,40 @@ import {
 export const SESSION_TOUCH_SECONDS = 5 * 60;
 /** Ended (revoked or expired) rows are pruned this long after they end. */
 export const SESSION_PRUNE_AFTER_SECONDS = 30 * 86_400;
-/** The stored user agent is cut to this many characters. */
-const USER_AGENT_MAX = 256;
+/**
+ * The coarse label a session keeps instead of the browser's identification string: the browser
+ * family and the operating system ("Firefox on Windows"), enough for a person to recognise a
+ * session in the list, and nothing that fingerprints them (no versions, builds or devices).
+ */
+export function browserLabel(ua: string | null | undefined): string | null {
+  if (!ua) return null;
+  const browser = /Edg(e|A|iOS)?\//.test(ua)
+    ? "Edge"
+    : /OPR\/|Opera/.test(ua)
+      ? "Opera"
+      : /Firefox\/|FxiOS\//.test(ua)
+        ? "Firefox"
+        : /Chrome\/|CriOS\//.test(ua)
+          ? "Chrome"
+          : /Safari\//.test(ua)
+            ? "Safari"
+            : null;
+  const os = /iPhone|iPad|iPod/.test(ua)
+    ? "iOS"
+    : /Android/.test(ua)
+      ? "Android"
+      : /CrOS/.test(ua)
+        ? "ChromeOS"
+        : /Windows/.test(ua)
+          ? "Windows"
+          : /Mac OS X|Macintosh/.test(ua)
+            ? "macOS"
+            : /Linux/.test(ua)
+              ? "Linux"
+              : null;
+  if (browser && os) return `${browser} on ${os}`;
+  return browser ?? os ?? null;
+}
 
 export interface AccountSessionRow {
   id_hash: string;
@@ -88,7 +120,7 @@ export async function startAccountSession(
 ): Promise<StartedSession> {
   const sid = randomSecret(32);
   const idHash = await sessionIdHash(env, sid);
-  const ua = input.req?.headers.get("user-agent")?.slice(0, USER_AGENT_MAX);
+  const label = browserLabel(input.req?.headers.get("user-agent"));
   await db.run(
     `INSERT INTO account_sessions
        (id_hash, account_id, created_at, last_seen_at, expires_at, revoked_at, user_agent, amr_json)
@@ -98,7 +130,7 @@ export async function startAccountSession(
     now,
     now,
     now + SESSION_TTL_SECONDS,
-    ua ?? null,
+    label,
     JSON.stringify(input.amr),
   );
   // Ended rows of this account are pruned as new ones open: the table holds live sessions plus a
@@ -161,7 +193,8 @@ export interface AccountSessionView {
   createdAt: number;
   lastSeenAt: number;
   expiresAt: number;
-  userAgent: string | null;
+  /** The browser family and operating system ("Firefox on Windows"), when known. */
+  browser: string | null;
   /** How the person signed in: `email`, `google`, `passkey`, … */
   methods: string[];
   /** The session this request came from. */
@@ -199,7 +232,7 @@ export async function listAccountSessions(
     createdAt: r.created_at,
     lastSeenAt: r.last_seen_at,
     expiresAt: r.expires_at,
-    userAgent: r.user_agent,
+    browser: r.user_agent,
     methods: parseAmr(r.amr_json),
     current: r.id_hash === currentIdHash,
   }));

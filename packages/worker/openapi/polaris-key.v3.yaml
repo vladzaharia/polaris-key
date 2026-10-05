@@ -10383,7 +10383,11 @@ paths:
                         createdAt: { type: integer }
                         lastSeenAt: { type: integer }
                         expiresAt: { type: integer }
-                        userAgent: { type: [string, "null"] }
+                        browser:
+                          {
+                            type: [string, "null"],
+                            description: "The browser family and operating system, for example `Firefox on Windows`; never the full identification string.",
+                          }
                         methods: { type: array, items: { type: string } }
                         current: { type: boolean }
         "401":
