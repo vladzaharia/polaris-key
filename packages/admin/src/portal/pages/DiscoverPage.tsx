@@ -13,6 +13,7 @@ import { ErrorPanel } from "../components/States.js";
 import { useClaimDiscover, useDiscover, useLibraryView } from "../data.js";
 import { portalErrorCopy } from "../errors.js";
 import { addedOfferFromLibrary, mergeAdded } from "../model/discover.js";
+import { withoutHeld } from "../model/owned.js";
 import { href, navigate, setParams, useDocumentTitle } from "../router.js";
 
 interface TileError {
@@ -66,7 +67,9 @@ export function DiscoverPage({
     return item ? addedOfferFromLibrary(item) : null;
   }, [addedParam, added, library.data]);
 
-  const offers = discover.data ?? [];
+  // The server's offers never include what the library holds (`withoutHeld`, G24); the tiles
+  // added on this page are merged in afterwards, so a just-added product keeps its tile.
+  const offers = withoutHeld(discover.data ?? [], library.data?.products);
   const addedTiles = [...added.values()];
   if (fromReload && !offers.some((o) => o.product === fromReload.product))
     addedTiles.push(fromReload);

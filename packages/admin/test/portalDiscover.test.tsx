@@ -223,6 +223,65 @@ describe("Discover (PX-16)", () => {
     expect(await axeViolations()).toEqual([]);
   });
 
+  it("never shows a held product an older answer still offers, and keeps a just-added tile", async () => {
+    // A Worker that does not leave held products out (an answer that crossed a licence change).
+    let held: PortalLicenseSummary[] = [];
+    mockFetch(
+      signedIn(held, {
+        "/api/licenses": () => ({ licenses: held }),
+        "/api/library": () => libraryFor(held, 2),
+        "/api/discover": () => ({ offers: [QUILL, MOSSGARDEN] }),
+        "POST /api/discover/mossgarden/claim": () => {
+          held = [MOSS_LICENSE];
+          return {
+            added: true,
+            product: "mossgarden",
+            license: {
+              id: MOSS_LICENSE.id,
+              tier: "lifetime",
+              tierLabel: "Lifetime",
+              status: "active",
+              usable: true,
+              expiresAt: null,
+              deviceLimit: 5,
+            },
+          };
+        },
+      }),
+    );
+    renderPortal();
+    await discoverPage();
+    const moss = await tile("Mossgarden");
+    await userEvent.click(
+      within(moss).getByRole("button", { name: "Add to library: Mossgarden" }),
+    );
+    // Held now, and still in the stale offers: the tile stays, in its just-added state.
+    expect(
+      await within(moss).findByRole("link", { name: "Open Mossgarden" }),
+    ).toBeTruthy();
+    await waitFor(() =>
+      expect(
+        fetchedRequests().filter((r) => r === "GET /api/library").length,
+      ).toBeGreaterThan(1),
+    );
+    expect((await tile("Mossgarden")).getAttribute("data-state")).toBe("added");
+  });
+
+  it("drops an offer for a product the library already holds", async () => {
+    mockFetch(
+      signedIn([MOSS_LICENSE], {
+        "/api/licenses": () => ({ licenses: [MOSS_LICENSE] }),
+        "/api/library": () => libraryFor([MOSS_LICENSE], 2),
+        "/api/discover": () => ({ offers: [QUILL, MOSSGARDEN] }),
+      }),
+    );
+    renderPortal();
+    await discoverPage();
+    await tile("Quill");
+    expect(screen.queryByRole("article", { name: "Mossgarden" })).toBeNull();
+    expect(screen.getAllByRole("article")).toHaveLength(1);
+  });
+
   it("Add mints once on a double click, then shows the just-added state", async () => {
     mockFetch(discoverWorker([QUILL, MOSSGARDEN]));
     renderPortal();
