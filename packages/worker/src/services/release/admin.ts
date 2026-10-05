@@ -82,7 +82,7 @@ import {
   resolveInState,
   type DeliverableState,
 } from "./resolve.js";
-import { resyncRepo } from "./resync.js";
+import { resyncNotes, resyncRepo } from "./resync.js";
 import {
   appPinsByRelease,
   delegationsView,
@@ -313,11 +313,9 @@ export async function handleReleaseAdmin(
     commit_sha: null,
     changed_paths_json: null,
     updated_json: JSON.stringify(result.updated),
-    // P3-03: parts the sync refused while applying the rest (`release_key_is_product_key`).
-    errors_json: result.refused ? JSON.stringify(result.refused) : null,
-    message: result.refused
-      ? result.refused.map((r) => `${r.code}: ${r.message}`).join("; ")
-      : null,
+    // P3-03: parts the sync refused while applying the rest (`release_key_is_product_key`);
+    // ST-01b: the console-row conflicts it kept.
+    ...resyncNotes(result),
   });
   await audit(
     db,
@@ -335,6 +333,7 @@ export async function handleReleaseAdmin(
     ...(result.refused ? { refused: result.refused } : {}),
     // ST-01b: what it left alone because the console claimed it.
     ...(result.claimed ? { claimed: result.claimed } : {}),
+    ...(result.conflicts ? { conflicts: result.conflicts } : {}),
     ...(result.packSets ? { packSets: result.packSets } : {}),
   });
 }

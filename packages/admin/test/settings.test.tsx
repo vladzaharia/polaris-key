@@ -295,6 +295,7 @@ describe("Core → Settings", () => {
       slug: "djdl",
       updated: ["product"],
       claimed: ["core.name", "tier:gold"],
+      conflicts: [{ path: "/tiers/silver", message: "kept the console tier" }],
     });
     mount();
     await user.click(
@@ -309,6 +310,7 @@ describe("Core → Settings", () => {
         "Kept as set in the console: Display name, tier gold.",
       ),
     ).toBeTruthy();
+    expect(screen.getByText(/kept the console tier/)).toBeTruthy();
   });
 
   it("explains why a manual product cannot resync", async () => {

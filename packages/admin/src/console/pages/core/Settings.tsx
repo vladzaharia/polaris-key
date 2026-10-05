@@ -495,10 +495,15 @@ export function ResyncResultPanel({
   const updated = result.updated ?? [];
   const refused = result.refused ?? [];
   const claimed = result.claimed ?? [];
+  const conflicts = result.conflicts ?? [];
   const packs = result.packSets;
   return (
     <Callout
-      tone={refused.length || (packs && !packs.ok) ? "warning" : "success"}
+      tone={
+        refused.length || conflicts.length || (packs && !packs.ok)
+          ? "warning"
+          : "success"
+      }
       title="Resync finished"
       live
       action={
@@ -518,6 +523,18 @@ export function ResyncResultPanel({
           <ul className="list-disc pl-5">
             {refused.map((x) => (
               <li key={`${x.code}:${x.path}`}>
+                <span className="font-mono text-xs">{x.path}</span>: {x.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {conflicts.length ? (
+        <div className="mt-2">
+          <p className="font-bold">Conflicts</p>
+          <ul className="list-disc pl-5">
+            {conflicts.map((x) => (
+              <li key={x.path}>
                 <span className="font-mono text-xs">{x.path}</span>: {x.message}
               </li>
             ))}

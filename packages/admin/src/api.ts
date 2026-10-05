@@ -980,6 +980,8 @@ export interface ResyncResult {
    * and console-owned rows (`tier:<id>`, `profile:<id>`).
    */
   claimed?: string[];
+  /** ST-01b: console rows holding an id the manifest newly declares; kept, manifest row skipped. */
+  conflicts?: { path: string; message: string }[];
   /** The pack-set re-resolution, when it stored sets or failed (P4-12). */
   packSets?:
     | { ok: true; sets: number }

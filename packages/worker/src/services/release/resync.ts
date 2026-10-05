@@ -101,8 +101,35 @@ export type ResyncResult =
        * Absent when none.
        */
       claimed?: string[];
+      /**
+       * ST-01b (S-18 §4.5 item 3): console rows holding the id of a row the manifest newly
+       * declares. The console row is kept and the manifest's row is not applied. Absent when none.
+       */
+      conflicts?: { path: string; message: string }[];
     }
   | { ok: false; error: string; errors?: string[] };
+
+/**
+ * The `product_sync_state` notes for an applied resync: the parts it refused (P3-03) and the
+ * console-row conflicts it kept (ST-01b), as stored JSON and as one readable line.
+ */
+export function resyncNotes(result: Extract<ResyncResult, { ok: true }>): {
+  errors_json: string | null;
+  message: string | null;
+} {
+  const lines = [
+    ...(result.refused ?? []).map((r) => `${r.code}: ${r.message}`),
+    ...(result.conflicts ?? []).map((c) => `conflict ${c.path}: ${c.message}`),
+  ];
+  const notes = [
+    ...(result.refused ?? []),
+    ...(result.conflicts ?? []).map((c) => ({ conflict: true, ...c })),
+  ];
+  return {
+    errors_json: notes.length > 0 ? JSON.stringify(notes) : null,
+    message: lines.length > 0 ? lines.join("; ") : null,
+  };
+}
 
 /**
  * Re-apply a linked repo's `.pkey/` to an existing product. Resolves the GitHub coordinates
@@ -357,6 +384,7 @@ async function applyRepoManifest(
   const nextTierIds = new Set(manifest.tiers.map((t) => t.id));
   const refused: { code: string; path: string; message: string }[] = [];
   const claimed: string[] = [];
+  const conflicts: { path: string; message: string }[] = [];
   const skip = (
     kind: "tier" | "profile",
     id: string,
@@ -366,8 +394,7 @@ async function applyRepoManifest(
     if (!owned.has(id)) return false;
     if (before.has(id)) claimed.push(`${kind}:${id}`);
     else
-      refused.push({
-        code: "console_row_conflict",
+      conflicts.push({
         path: `/${kind === "tier" ? "tiers" : "profiles"}/${id}`,
         message: `a ${kind} with id ${id} was created in the console; it is kept, and the manifest's ${kind} is not applied until one of them is renamed`,
       });
@@ -903,6 +930,7 @@ async function applyRepoManifest(
     updated,
     ...(refused.length > 0 ? { refused } : {}),
     ...(claimed.length > 0 ? { claimed } : {}),
+    ...(conflicts.length > 0 ? { conflicts } : {}),
     ...(packSets && (!packSets.ok || packSets.sets > 0) ? { packSets } : {}),
   };
 }

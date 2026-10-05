@@ -82,8 +82,10 @@ owner delegated open questions to the lead, who takes the recommended option):**
   kept, with the row claimed).
 - **Claim vs conflict** for a console row holding a manifest id: a claim (skipped silently,
   listed in `claimed`) when the last applied snapshot already declared that id; a conflict
-  (reported in `refused` as `console_row_conflict`) when the id is new to the manifest. With no
-  snapshot every such collision is a conflict.
+  (reported in the result's own `conflicts` list, S-18 §4.5 item 4's shape, and in
+  `product_sync_state`'s message) when the id is new to the manifest. It is not a `refused` code:
+  that would be a new wire error code in `conformance/parity/errors.json` and every SDK's
+  constants for an admin-only answer. With no snapshot every such collision is a conflict.
 - **"Declared fields only"** (S-18 §4.5 item 1) is not distinguishable from the parsed manifest
   today: `parseManifest` fills `defaultMaxOfflineDays`, `defaultDeviceLimit` and `adminGroup` with
   defaults when omitted, so an unclaimed omitted field still resets to the parser default, as

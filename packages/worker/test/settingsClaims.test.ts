@@ -448,12 +448,10 @@ describe("tiers and profiles carry a per-row source (ST-01b)", () => {
         { id: "gold", label: "Manifest gold" },
       ],
     });
-    expect(res.refused).toEqual([
-      expect.objectContaining({
-        code: "console_row_conflict",
-        path: "/tiers/gold",
-      }),
+    expect(res.conflicts).toEqual([
+      expect.objectContaining({ path: "/tiers/gold" }),
     ]);
+    expect(res.refused ?? []).toEqual([]);
     expect(
       (await rows(ctx, "tiers")).find((t) => t.id === "gold"),
     ).toMatchObject({ label: "Console gold", source: "console" });
