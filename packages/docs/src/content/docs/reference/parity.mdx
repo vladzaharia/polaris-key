@@ -53,7 +53,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `license.entitlements` | Entitlements, profile, licence id | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `license.channels` | entitledChannels() | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `license.reregister` | Re-register on 401 for licence-less devices | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓ | ✓ | web, desktop-bridge: runtime |
-| `license.refusals` | Typed activation results: every refusal by its body code, never a collapsed 403 | transcripts (not recorded) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | — |
+| `license.refusals` | Typed activation results: every refusal by its body code, never a collapsed 403 | transcripts | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | — |
 
 ## Config
 
@@ -76,7 +76,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `devices.register` | Keyless registration | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓ | ✓ | web, desktop-bridge: runtime |
 | `devices.manage` | List, rename, deauthorise | transcripts (not recorded) | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | ✓ | web: runtime |
 | `devices.report` | Telemetry (allowlisted keys) | transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | ✓ | web: runtime |
-| `telemetry.updates` | Update-health events: the journalled update events on devices/report | transcripts (not recorded) | planned (unowned) | planned (unowned); N/A (web: runtime) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | web: runtime |
+| `telemetry.updates` | Update-health events: the journalled update events on devices/report | transcripts | planned (unowned) | planned (unowned); N/A (web: runtime) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | web: runtime |
 | `devices.attest` | Device attestation (App Attest, Play Integrity) raising the trust level | unit | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (unowned); N/A (macos: runtime) | ✓; N/A (linux: runtime); N/A (macos: runtime); N/A (windows: runtime); N/A (web: runtime); N/A (ios: outlet); N/A (android: outlet) | planned (unowned); N/A (jvm: runtime) | node, python, web, desktop-bridge, macos, windows, linux, jvm, dotnet, tauri: runtime; any: outlet |
 | `identity.oidc` | Browser sign-in | transcripts (not recorded) | planned (unowned) | ✓ | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | — |
 | `identity.devicecode` | Device-code sign-in (RFC 8628) with QR | transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | ✓ | web: runtime |
@@ -88,8 +88,8 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `release.changelog` | Changelog | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `release.download` | Download and install URLs | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `release.record` | Verify pkey-release+jws against pinned release keys | `cases.json` `releaseRecordCases` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `release.fetch` | Verified download: bearer delivery, Range resume, size and SHA-256 checked | transcripts (not recorded) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | — |
-| `release.distribution` | The distribution download model: platforms and the current build | transcripts (not recorded) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | — |
+| `release.fetch` | Verified download: bearer delivery, Range resume, size and SHA-256 checked | transcripts | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | — |
+| `release.distribution` | The distribution download model: platforms and the current build | transcripts | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | — |
 | `update.check` | Today's version check | transcripts (not recorded) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.feed` | Verify pkey-feed+jws: freshness, seq | `cases.json` `feedCases` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.feeds` | Native updater feed URLs: appcast, WinSparkle, Velopack, App Installer, zsync | `feed-url-matrix.json` | planned (unowned) | planned (unowned); N/A (web: runtime) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | web: runtime |
@@ -134,7 +134,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Kotlin | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `ui.stages` | The boot stage machine: states, events, outcomes | `stage-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `ui.boot` | One-call boot: discovery, register, trust, documents and report to a stage outcome | transcripts (not recorded) + `stage-matrix.json` | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | — |
+| `ui.boot` | One-call boot: discovery, register, trust, documents and report to a stage outcome | transcripts + `stage-matrix.json` | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | — |
 | `ui.kit` | Gate, activation, sign-in with QR, settings, devices, update banner, pack progress | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | planned (unowned) | ✓ | ✓ | headless: runtime |
 | `ui.cli` | Terminal UI: status, activate, deactivate, sign-in and devices verbs | unit | planned (unowned) | N/A (web, desktop-bridge: runtime) | planned (unowned) | N/A (macos, ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | N/A (android, jvm: runtime) | web, desktop-bridge, macos, ios, windows, linux, android, jvm, dotnet, unity, tauri: runtime |
 | `commerce.receipt` | Store purchase to licence entitlement | transcripts | planned (LX-20) | planned (LX-20) | planned (LX-20) | planned (LX-20) | ✓ | planned (LX-20) | — |

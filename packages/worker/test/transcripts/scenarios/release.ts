@@ -18,6 +18,16 @@
 // `/release/changelog` names no channel, which `entitledSelectorFor` classifies as stable, the
 // channel every grant holds — so the 401 is the refusal these transcripts pin. Every SDK surfaces
 // the refusal body's own code rather than inventing one.
+//
+// ── RELEASE-FETCH-GATED (SP-00, `release.fetch`; SDK-PARITY-PASS §3.6) ──────────────────────
+//
+// A verified download under LICENSED delivery (`dist_access` mode `licensed`): the build route
+// from discovery's `distribution.endpoints.builds` template, streamed with the device bearer and
+// the metadata headers, resumed with `Range` + `If-Range` (the payload's strong ETag is its
+// SHA-256), and checked against the size and SHA-256 its release record pins. The fixture is
+// `deliveryWorld` (distribution.ts): release 1.0.0's payloads are in R2, so no GitHub call is made.
+// An unentitled device (its licence disabled) is refused `401 download_auth_required`, the
+// licensed mode's flat refusal (`core/entitledAccess.ts` `accessRefusal`).
 
 import { vi, expect } from "vitest";
 import {
@@ -39,6 +49,12 @@ import {
 import type { World } from "../recorder.js";
 import type { ServicesMap } from "../../../src/core/services.js";
 import { TEST_RSA_PKCS8 } from "../../releaseFixtures.js";
+import {
+  buildPayload,
+  deliveryWorld,
+  RELEASE_VERSION,
+} from "./distribution.js";
+import { discovery, releaseFetch } from "../client.js";
 import { seedDeliveryAccess } from "../../releaseSurface.js";
 
 /**
@@ -331,4 +347,137 @@ export const releaseChangelogEntitled: Scenario = {
         return r.transcript();
       }),
     ),
+};
+
+/** The build the device fetches, and how many bytes the resumed fetch already holds. */
+const FETCH_BUILD = "linux-x64";
+const PARTIAL = 32;
+
+export const releaseFetchGated: Scenario = {
+  id: "release-fetch-gated",
+  record: () =>
+    pinned("release-fetch-gated", async (pin) => {
+      const world = await deliveryWorld({ access: "licensed" });
+      const { licenseId, key } = await seedLicense(world);
+      const token = await activated(world, key);
+      const payload = buildPayload(FETCH_BUILD);
+      const etag = `"${payload.sha256}"`;
+      const r = new TranscriptRecorder({
+        id: "release-fetch-gated",
+        description:
+          "A verified download under licensed delivery. After discovery, releaseFetch() expands distribution.endpoints.builds with the version as the selector and the build id of the release record's entry for the device's platform and arch, and streams it with the device bearer and the metadata headers (gated delivery needs both); the result reports the size and SHA-256 it verified against the record. A second fetch resumes a partial download the replayer seeds (the first `partial` bytes): Range from that offset and If-Range with the payload's strong ETag, answered 206. Once an operator disables the licence, the device is no longer entitled and the fetch is refused 401 download_auth_required, surfaced by its code; no file is produced.",
+        features: ["release.fetch"],
+        requires: ["core.store", "core.discover", "release.record"],
+        product: PRODUCT,
+        now: T0,
+        world,
+        pinned: pin,
+        initial: {
+          deviceId: DEVICE,
+          token,
+          version: VERSION,
+          services: ["license", "config", "release", "distribution"],
+          platform: "linux",
+        },
+      });
+      const target = {
+        version: RELEASE_VERSION,
+        platform: "linux",
+        arch: "x86_64",
+        build: FETCH_BUILD,
+        size: payload.size,
+        sha256: payload.sha256,
+      };
+
+      await r.step(
+        { action: "discover" },
+        async (s) => {
+          const res = await discovery(s, PRODUCT);
+          expect(res.status).toBe(200);
+          const doc = (await res.json()) as {
+            services: { distribution: { endpoints: { builds: string } } };
+          };
+          expect(doc.services.distribution.endpoints.builds).toBe(
+            `${BASE_URL}/${PRODUCT}/distribution/builds/{selector}/{buildId}`,
+          );
+        },
+        {
+          result: "ok",
+          services: {
+            license: true,
+            config: true,
+            release: true,
+            distribution: true,
+            update: false,
+            identity: false,
+          },
+        },
+      );
+
+      await r.step(
+        {
+          action: "releaseFetch",
+          args: target,
+          note: "The whole payload, with the device bearer.",
+        },
+        async (s) => {
+          const res = await releaseFetch(s, PRODUCT, target);
+          expect(res.status).toBe(200);
+          expect(res.headers.get("etag")).toBe(etag);
+          expect(await res.text()).toBe(payload.text);
+        },
+        {
+          result: "ok",
+          size: payload.size,
+          sha256: payload.sha256,
+          tokenHeld: true,
+        },
+      );
+
+      await r.step(
+        {
+          action: "releaseFetch",
+          args: { ...target, partial: PARTIAL },
+          now: T0 + 60,
+          note: "Resumed: the replayer seeds the first `partial` bytes; Range + If-Range, 206.",
+        },
+        async (s) => {
+          const res = await releaseFetch(s, PRODUCT, target, PARTIAL);
+          expect(res.status).toBe(206);
+          expect(res.headers.get("content-range")).toBe(
+            `bytes ${PARTIAL}-${payload.size - 1}/${payload.size}`,
+          );
+          expect(await res.text()).toBe(payload.text.slice(PARTIAL));
+        },
+        {
+          result: "ok",
+          size: payload.size,
+          sha256: payload.sha256,
+          tokenHeld: true,
+        },
+      );
+
+      await world.db.run(
+        "UPDATE licenses SET status = 'disabled' WHERE product = ? AND id = ?",
+        PRODUCT,
+        licenseId,
+      );
+      await r.step(
+        {
+          action: "releaseFetch",
+          args: target,
+          now: T0 + 120,
+          note: "The licence is disabled: the device is not entitled to the bytes.",
+        },
+        async (s) => {
+          const res = await releaseFetch(s, PRODUCT, target);
+          expect(res.status).toBe(401);
+          expect(((await res.json()) as { error: string }).error).toBe(
+            "download_auth_required",
+          );
+        },
+        { result: "refused", code: "download_auth_required", tokenHeld: true },
+      );
+      return r.transcript();
+    }),
 };
