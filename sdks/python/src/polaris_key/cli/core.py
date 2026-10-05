@@ -301,7 +301,9 @@ def _describe_activation_failure(
             1, [f"{verb} failed: this product does not offer keyless enrollment."]
         )
     message = getattr(r, "message", "") or "unknown error."
-    return CommandResult(1, [f"{verb} failed: {message}"])
+    code = getattr(r, "code", None)
+    suffix = f" ({code})" if isinstance(code, str) and code not in message else ""
+    return CommandResult(1, [f"{verb} failed: {message}{suffix}"])
 
 
 # ── license ─────────────────────────────────────────────────────────────────────────

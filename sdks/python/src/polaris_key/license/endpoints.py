@@ -28,8 +28,15 @@ __all__ = [
     "ActivationFingerprintRequired",
     "ActivationHardwareMismatch",
     "ActivationEnrollDisabled",
+    "ActivationEnrollClaimed",
+    "ActivationLicenseDisabled",
+    "ActivationLicenseExpired",
+    "ActivationAttestationRequired",
+    "ActivationRateLimited",
+    "ActivationRefused",
     "ActivationError",
     "ActivationResult",
+    "activation_result_from",
     "activate_with_key",
     "enroll",
     "reacquire_token",
@@ -52,14 +59,20 @@ class ActivationOk:
 
 @dataclass(frozen=True)
 class ActivationDeviceLimit:
+    """403 ``device_limit``: the licence has no free seat. ``limit`` and ``deviceCount`` when
+    the server sent them; a portal "Manage devices" link (``client.portal.url("devices")``) is
+    the remedy."""
+
     limit: Optional[int] = None
     deviceCount: Optional[int] = None
     kind: str = "device-limit"
+    code: str = "device_limit"
 
 
 @dataclass(frozen=True)
 class ActivationUnauthorized:
     kind: str = "unauthorized"
+    code: str = "unauthorized"
 
 
 @dataclass(frozen=True)
@@ -67,6 +80,7 @@ class ActivationFingerprintRequired:
     """The tier requires a hardware fingerprint this host could not produce."""
 
     kind: str = "fingerprint-required"
+    code: str = "fingerprint_required"
 
 
 @dataclass(frozen=True)
@@ -74,6 +88,7 @@ class ActivationEnrollDisabled:
     """The product does not offer keyless enrollment."""
 
     kind: str = "enroll-disabled"
+    code: str = "enroll_disabled"
 
 
 @dataclass(frozen=True)
@@ -84,12 +99,74 @@ class ActivationHardwareMismatch:
     drift: Optional[int] = None
     changed: Optional[List[str]] = None
     kind: str = "hardware-mismatch"
+    code: str = "hardware_mismatch"
+
+
+@dataclass(frozen=True)
+class ActivationEnrollClaimed:
+    """403 ``enroll_claimed``: this machine's free licence now belongs to an account. Signing
+    in (``client.identity``) reaches it; enrolling again never will."""
+
+    kind: str = "enroll-claimed"
+    code: str = "enroll_claimed"
+
+
+@dataclass(frozen=True)
+class ActivationLicenseDisabled:
+    """403 ``license_disabled``: an operator disabled the licence."""
+
+    kind: str = "license-disabled"
+    code: str = "license_disabled"
+
+
+@dataclass(frozen=True)
+class ActivationLicenseExpired:
+    """403 ``license_expired``: the licence has expired."""
+
+    kind: str = "license-expired"
+    code: str = "license_expired"
+
+
+@dataclass(frozen=True)
+class ActivationAttestationRequired:
+    """403 ``attestation_required``: the product's device-trust policy wants an attested
+    device. CPython has no attestation service (``devices.attest`` is a runtime N/A), so this
+    is final here."""
+
+    kind: str = "attestation-required"
+    code: str = "attestation_required"
+
+
+@dataclass(frozen=True)
+class ActivationRateLimited:
+    """429: too many attempts. ``retryAfterSeconds`` from ``Retry-After`` when sent."""
+
+    retryAfterSeconds: Optional[int] = None
+    kind: str = "rate-limited"
+    code: str = "rate_limited"
+
+
+@dataclass(frozen=True)
+class ActivationRefused:
+    """Any other 4xx: the server's own ``code`` (a registry code, or one this SDK predates),
+    the HTTP ``status`` and the server's ``message``. Never collapsed into another kind, so a
+    code the Worker gains later is reported as itself."""
+
+    code: str
+    status: int
+    message: str = ""
+    kind: str = "refused"
 
 
 @dataclass(frozen=True)
 class ActivationError:
+    """No usable answer: a transport failure (``code`` ``network-error``, ``status`` ``None``)
+    or a 5xx / malformed 200 (``server-error``, with the status)."""
+
     message: str
     kind: str = "error"
+    code: str = "network-error"
+    status: Optional[int] = None
 
 
 ActivationResult = Union[
@@ -99,8 +176,107 @@ ActivationResult = Union[
     ActivationFingerprintRequired,
     ActivationHardwareMismatch,
     ActivationEnrollDisabled,
+    ActivationEnrollClaimed,
+    ActivationLicenseDisabled,
+    ActivationLicenseExpired,
+    ActivationAttestationRequired,
+    ActivationRateLimited,
+    ActivationRefused,
     ActivationError,
 ]
+
+#: The ``server-error`` code an ``ActivationError`` carries for a 5xx or an unusable 200.
+_SERVER_ERROR = "server-error"
+
+
+def _wire_code(body: Dict[str, Any]) -> Optional[str]:
+    """The body's error code: the flat ``{"error": "x"}`` or the nested
+    ``{"error": {"code": "x"}}``."""
+    raw = body.get("error")
+    if isinstance(raw, str) and raw:
+        return raw
+    if isinstance(raw, dict) and isinstance(raw.get("code"), str) and raw["code"]:
+        return raw["code"]
+    return None
+
+
+def _field(body: Dict[str, Any], name: str) -> Any:
+    """A detail field at the top level (where the Worker puts it) or inside a nested error."""
+    if name in body:
+        return body[name]
+    nested = body.get("error")
+    return nested.get(name) if isinstance(nested, dict) else None
+
+
+def _int_or_none(v: Any) -> Optional[int]:
+    return v if isinstance(v, int) and not isinstance(v, bool) else None
+
+
+def _retry_after(res: Any) -> Optional[int]:
+    try:
+        raw = res.headers.get("retry-after")
+    except Exception:
+        return None
+    if raw is None:
+        return None
+    try:
+        n = int(str(raw).strip())
+    except ValueError:
+        return None
+    return n if n >= 0 else None
+
+
+def activation_result_from(status: int, body: Dict[str, Any], res: Any = None) -> ActivationResult:
+    """Map one non-200 activation answer to its kind (spec §3.1).
+
+    The body's ``error`` code decides, never the status alone: an unknown 403 is
+    :class:`ActivationRefused` with the server's code, never ``device-limit``. Two tolerances
+    for older bodies: a 403 with no code but a numeric ``limit`` is ``device-limit``, a 404
+    with no code is ``enroll-disabled``, and a 409 with no code is ``hardware-mismatch``.
+    """
+    code = _wire_code(body)
+    message = body.get("message") if isinstance(body.get("message"), str) else ""
+    if status >= 500:
+        return ActivationError(
+            message=message or f"activation failed with status {status}",
+            code=_SERVER_ERROR,
+            status=status,
+        )
+    if code == "device_limit" or (
+        code is None and status == 403 and _int_or_none(_field(body, "limit")) is not None
+    ):
+        return ActivationDeviceLimit(
+            limit=_int_or_none(_field(body, "limit")),
+            deviceCount=_int_or_none(_field(body, "deviceCount")),
+        )
+    if code == "hardware_mismatch" or (code is None and status == 409):
+        changed = _field(body, "changed")
+        return ActivationHardwareMismatch(
+            drift=_int_or_none(_field(body, "drift")),
+            changed=[c for c in changed if isinstance(c, str)] if isinstance(changed, list) else None,
+        )
+    if code == "fingerprint_required":
+        return ActivationFingerprintRequired()
+    if code == "enroll_claimed":
+        return ActivationEnrollClaimed()
+    if code == "license_disabled":
+        return ActivationLicenseDisabled()
+    if code == "license_expired":
+        return ActivationLicenseExpired()
+    if code == "attestation_required":
+        return ActivationAttestationRequired()
+    if code == "enroll_disabled" or (code is None and status == 404):
+        return ActivationEnrollDisabled()
+    if code == "rate_limited" or status == 429:
+        return ActivationRateLimited(retryAfterSeconds=_retry_after(res) if res is not None else None)
+    if code == "unauthorized" or (code is None and status == 401):
+        return ActivationUnauthorized()
+    return ActivationRefused(
+        # A refusal that names no code is the registry's `http-error`.
+        code=code if code is not None else "http-error",
+        status=status,
+        message=message,
+    )
 
 
 def _activation_like(
@@ -109,7 +285,8 @@ def _activation_like(
     headers: Dict[str, str],
     fingerprint: Optional[dict] = None,
 ) -> ActivationResult:
-    """The three mint/rotate endpoints share a response ladder, so they share a reader.
+    """The three mint/rotate endpoints share a response ladder, so they share a reader
+    (:func:`activation_result_from`).
 
     Codes are read from BOTH the v3 nested body (``{"error":{"code":…}}``) and the flat v2
     shape, because a 403 that says "device limit" and a 403 that says "fingerprint
@@ -139,35 +316,15 @@ def _activation_like(
         b = _json_or_empty(res)
         token = b.get("token")
         if not isinstance(token, str):
-            return ActivationError(message="activation response carried no token")
+            return ActivationError(
+                message="activation response carried no token", code=_SERVER_ERROR, status=200
+            )
         schema_version = b.get("schemaVersion")
         return ActivationOk(
             token=token,
             schemaVersion=schema_version if isinstance(schema_version, int) else 0,
         )
-    if res.status_code == 409:
-        b = _json_or_empty(res)
-        nested = b.get("error") if isinstance(b.get("error"), dict) else {}
-        return ActivationHardwareMismatch(
-            drift=b.get("drift", nested.get("drift")),
-            changed=b.get("changed", nested.get("changed")),
-        )
-    if res.status_code == 403:
-        b = _json_or_empty(res)
-        raw_error = b.get("error")
-        nested = raw_error if isinstance(raw_error, dict) else {}
-        code = raw_error if isinstance(raw_error, str) else nested.get("code")
-        if code == "fingerprint_required":
-            return ActivationFingerprintRequired()
-        return ActivationDeviceLimit(
-            limit=b.get("limit", nested.get("limit")),
-            deviceCount=b.get("deviceCount", nested.get("deviceCount")),
-        )
-    if res.status_code == 401:
-        return ActivationUnauthorized()
-    if res.status_code == 404:
-        return ActivationEnrollDisabled()
-    return ActivationError(message=_text_or_empty(res))
+    return activation_result_from(res.status_code, _json_or_empty(res), res)
 
 
 def enroll(
@@ -233,10 +390,3 @@ def _json_or_empty(res: Any) -> Dict[str, Any]:
         return body if isinstance(body, dict) else {}
     except Exception:
         return {}
-
-
-def _text_or_empty(res: Any) -> str:
-    try:
-        return res.text
-    except Exception:
-        return ""

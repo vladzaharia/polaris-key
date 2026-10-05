@@ -36,9 +36,11 @@ __all__ = [
     "RegisterClosed",
     "RegisterRateLimited",
     "RegisterNotConfigured",
+    "RegisterRefused",
     "RegisterError",
     "RegisterResult",
     "DeviceManagementUnsupportedError",
+    "DeviceRefusedError",
     "DevicesClient",
     "REGISTER_PATH",
     "DEVICES_PATH",
@@ -109,6 +111,17 @@ class RegisterNotConfigured:
 
 
 @dataclass(frozen=True)
+class RegisterRefused:
+    """Any other 4xx (``attestation_required``, ``bad_request``, …): the server's own
+    ``code`` and HTTP ``status``, never folded into ``registration-closed``."""
+
+    code: str
+    status: int
+    message: str = ""
+    kind: str = "refused"
+
+
+@dataclass(frozen=True)
 class RegisterError:
     message: str
     kind: str = "error"
@@ -119,12 +132,35 @@ RegisterResult = Union[
     RegisterClosed,
     RegisterRateLimited,
     RegisterNotConfigured,
+    RegisterRefused,
     RegisterError,
 ]
 
 
 class DeviceManagementUnsupportedError(RuntimeError):
     code = "device-management-unsupported"
+
+
+class DeviceRefusedError(PolarisError):
+    """A roster call (list, rename, deauthorize) the server refused. ``code`` is the server's
+    own code (``unauthorized``, ``forbidden``, ``not_found``, ``rate_limited``, …); only an
+    answer that names none falls back to the call's ``device_*_failed`` code. ``status`` is the
+    HTTP status."""
+
+    def __init__(self, code: str, message: str, status: int) -> None:
+        super().__init__(code, message)
+        self.status = status
+
+
+def _refusal(res: Any, fallback: str, what: str) -> DeviceRefusedError:
+    body = _json_or_empty(res)
+    raw = body.get("error")
+    code = raw if isinstance(raw, str) and raw else (
+        raw.get("code") if isinstance(raw, dict) and isinstance(raw.get("code"), str) else None
+    )
+    return DeviceRefusedError(
+        code or fallback, f"{what} failed: {res.status_code}", res.status_code
+    )
 
 
 class DevicesClient:
@@ -208,11 +244,20 @@ class DevicesClient:
                 return RegisterError(message="registration response was malformed")
             return RegisterOk(token=token, deviceId=device_id)
         if res.status_code == 403:
-            return RegisterClosed()
+            code = _code_of(res)
+            if code in (None, "registration_closed"):
+                return RegisterClosed()
+            return RegisterRefused(code=code, status=403, message=_message_of(res))
         if res.status_code == 429:
             return RegisterRateLimited()
         if res.status_code == 404:
             return RegisterNotConfigured()
+        if 400 <= res.status_code < 500:
+            return RegisterRefused(
+                code=_code_of(res) or "http-error",
+                status=res.status_code,
+                message=_message_of(res),
+            )
         return RegisterError(message=_text_or_empty(res))
 
     # ── Roster ──────────────────────────────────────────────────────────────────────
@@ -225,9 +270,8 @@ class DevicesClient:
             headers=self._ctx.headers({"authorization": f"Bearer {token}"}),
         )
         if not res.is_success:
-            raise PolarisError(
-                "device_list_failed", f"device list failed: {res.status_code}"
-            )
+            # Fallback code "device_list_failed" when the answer names none.
+            raise _refusal(res, "device_list_failed", "device list")
         body = _json_or_empty(res)
         devices = body.get("devices")
         if not isinstance(devices, list):
@@ -249,9 +293,7 @@ class DevicesClient:
             json={"label": label},
         )
         if not res.is_success:
-            raise PolarisError(
-                "device_rename_failed", f"device rename failed: {res.status_code}"
-            )
+            raise _refusal(res, "device_rename_failed", "device rename")
 
     def deauthorize(self, device_id: str) -> None:
         """``DELETE /<p>/devices/:id`` — release another device's seat."""
@@ -262,10 +304,7 @@ class DevicesClient:
             headers=self._ctx.headers({"authorization": f"Bearer {token}"}),
         )
         if not res.is_success:
-            raise PolarisError(
-                "device_deauthorize_failed",
-                f"device deauthorize failed: {res.status_code}",
-            )
+            raise _refusal(res, "device_deauthorize_failed", "device deauthorize")
 
     # ── Telemetry ───────────────────────────────────────────────────────────────────
     def report(self) -> bool:
@@ -306,3 +345,17 @@ def _text_or_empty(res: Any) -> str:
         return res.text
     except Exception:
         return ""
+
+
+def _code_of(res: Any) -> Optional[str]:
+    raw = _json_or_empty(res).get("error")
+    if isinstance(raw, str) and raw:
+        return raw
+    if isinstance(raw, dict) and isinstance(raw.get("code"), str) and raw["code"]:
+        return raw["code"]
+    return None
+
+
+def _message_of(res: Any) -> str:
+    m = _json_or_empty(res).get("message")
+    return m if isinstance(m, str) else ""
