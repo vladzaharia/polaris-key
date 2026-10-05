@@ -89,7 +89,7 @@ Nine files and the content corpus, one directory, so a runner can point at `corp
 There is exactly one corpus: v1 was deleted when wire contract v2 shipped, so there is no
 dual-shape ambiguity for a runner to pick the wrong side of. Version constants travel with the
 files themselves — `corpusVersion` **2**, `gateMatrixVersion` **2**, `fingerprintVersion` **1**,
-`stageMatrixVersion` **3**, `headersVersion` **1**, `configMatrixVersion` **1**,
+`stageMatrixVersion` **3**, `headersVersion` **2**, `configMatrixVersion` **1**,
 `updateMatrixVersion` **1**, `outletMatrixVersion` **1**, `planMatrixVersion` **2**,
 `contentCorpusVersion` **2** — and case counts, generated straight from the corpus files, live at
 [Conformance corpus v2](/docs/reference/corpus/).
@@ -208,7 +208,7 @@ in the same change.
 `buildHeadersCorpus` writes one row per spelling; its self-check ties every canonical value to
 `conformance/parity/enums.json` and requires an identity row for each, so a new vocabulary value
 needs a corpus case, and every runner asserts that its generated table equals the rows. A new
-spelling (a row plus a table entry) keeps `headersVersion`. `buildConfigMatrix` checks every
+spelling (a row plus a table entry) keeps `headersVersion`; a changed row bumps it (SP-08 took it to 2 when the `visionOS` and `tvOS` rows gained values). `buildConfigMatrix` checks every
 expectation against a generator-local reference of §2.2.1 that imports nothing from the SDKs,
 and fails on a missing or redundant `expectNoEnv`, an unsorted list, an unused source or JSON
 type, a number some SDK would read differently, or a rule whose edges are not pinned. A new row

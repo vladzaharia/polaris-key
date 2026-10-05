@@ -37,12 +37,34 @@ enums, and the compatibility story for old Workers (an unknown value today) and 
 
 ## Steps
 
-1. Plan, then contract and corpus, then Worker, then SDKs.
+1. Plan, then contract and corpus, then Worker, then SDKs: the approved
+   [`plans/SP-08.md`](../plans/SP-08.md) §2–§7. Build targets stay `RELEASE_PLATFORMS` (six
+   values; contract §5.2 rule 5). Acceptance is the plan's §9.
+
+## Corrections found in the code (implementer, 2026-10-05)
+
+- **`headersVersion` goes to 2, not 1.** `PLATFORM_CASES` already held `swift-visionos`
+  (`visionOS` → no value) and `swift-tvos` (`tvOS` → no value). The self-check refuses two rows
+  that fold alike with different expects, so those two rows change in place: `swift-visionos`
+  becomes `swift-godot-visionos` (`visionOS` → `visionos`, Godot's `OS.get_name()` confirmed as
+  `"visionOS"` in `platform/visionos/os_visionos.mm`) and `swift-tvos` expects `tvos`. headers.json's
+  own rule bumps the version for a changed row, so it is 2, and every runner's pin (Node, React,
+  Worker, Python, Swift, Godot, Kotlin) follows. Four rows are appended: `canonical-tvos`,
+  `canonical-visionos`, `canonical-watchos` and `swift-watchos`. `PROTOCOL_VERSION` stays 4.
+- **Migration number is `0074`** (main's highest at the final gate was `0073`); `LATEST_MIGRATION`
+  follows. The 0040 replay test now applies 0040 and 0074 in order, because it compares against
+  today's normaliser, which maps `tvOS` and `visionOS` now.
+- **Python's rule 5 guard** lives in `update/client.py` as the module-level `update_platform()`.
+- **Portal:** `FreeDevicePage` had a second copy of `DeviceGlyph`. Both use the new
+  `deviceFamily()`, and device rows name the OS (`Apple TV`, `Apple Vision Pro`, `Apple Watch`)
+  through `deviceOsName()`. The download vocabulary (`PlatformKey`) stays six.
+- **Godot:** `devices.gd`'s device report keeps `PKeyHeaders.platform()` (device metadata, like the
+  header). Every build-target call site reads `PKeyHeaders.update_platform()`.
 
 ## Acceptance criteria
 
-- [ ] `gen:corpus -- --check` and `parity:check` pass; the Worker accepts the three values.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] `gen:corpus -- --check` and `parity:check` pass; the Worker accepts the three values.
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 

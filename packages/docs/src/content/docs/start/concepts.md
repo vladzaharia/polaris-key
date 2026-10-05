@@ -311,9 +311,11 @@ for product.
   `arm64`, `x86_64`, `universal`, `armv7`, `wasm32`, `any` (`universal` and `any` match every
   arch).
 - **platform** — the OS family a running binary was built for, as a client sends it in
-  `X-PKey-Platform` (WIRE-CONTRACT-V3 §5.2): `macos`, `ios` (iPadOS too), `android`, `windows`,
-  `linux` or `web`. An SDK maps its runtime's own spelling (`darwin`, `win32`, `Windows`) to
-  these through one table, and omits the header for a spelling the table lacks.
+  `X-PKey-Platform` (WIRE-CONTRACT-V4 §5.2): `macos`, `ios` (iPadOS too), `tvos`, `visionos`,
+  `watchos`, `android`, `windows`, `linux` or `web`. An SDK maps its runtime's own spelling
+  (`darwin`, `win32`, `Windows`) to these through one table, and omits the header for a spelling
+  the table lacks. `tvos`, `visionos` and `watchos` are header values only: builds, outlets and
+  the update feed use the six build platforms above.
 - **arch** — the CPU architecture a running binary was built for, sent in `X-PKey-Arch`:
   `arm64`, `x86_64`, `armv7` or `wasm32`. A browser sends none. (`universal` and `any` are
   artifact values, never header values.)
