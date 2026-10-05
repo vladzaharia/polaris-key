@@ -42,7 +42,7 @@ import { audit, type AdminSession } from "../../../../core/adminApi.js";
 import { getRollout, rolloutRecord } from "../../rollouts.js";
 import type { ConnectorControl } from "../index.js";
 import { auditConnector } from "../state.js";
-import { PlayError, type FetchImpl } from "./client.js";
+import { PLAY_ROLLOUT_CONTROL, PlayError, type FetchImpl } from "./client.js";
 import {
   isPriority,
   parseTrack,
@@ -243,11 +243,13 @@ export async function applyPlayControl(
     if (!planned.ok)
       return refuse(planned.status, planned.reason, planned.message);
     plan = planned;
-    await run.publisher.patchTrack(editId, req.track, {
-      track: req.track,
-      releases: plan.releases,
-    });
-    await run.publisher.commitEdit(editId);
+    await run.publisher.patchTrack(
+      editId,
+      req.track,
+      { track: req.track, releases: plan.releases },
+      PLAY_ROLLOUT_CONTROL,
+    );
+    await run.publisher.commitEdit(editId, PLAY_ROLLOUT_CONTROL);
     committed = true;
   } finally {
     if (!committed) await run.publisher.deleteEdit(editId);

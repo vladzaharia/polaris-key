@@ -135,6 +135,13 @@ commit invalidates the open ones — so the connector never holds one open betwe
 a read that fails (an edit invalidated mid-read, rate limiting) **writes nothing**: the next tick
 reads again. A 429 is retried with backoff.
 
+Every caller that opens an edit first takes the app's **edit lease**: the poll, the controls,
+the Store connections app list with track status, and storefront provisioning. While another
+caller holds it — a provisioning run uploading listing images inside one edit, say — the poll
+**skips its tick** (it reports `edit-lease-held` and opens nothing), a control answers
+`409 edit_lease_held`, and the app list shows that app as busy. A lease lasts minutes at most,
+so a crashed holder never blocks the connector for long.
+
 ## How Play maps
 
 A track release names one or more **version codes**. Each one is matched to the release build
@@ -234,6 +241,10 @@ not fight it. With the setting off, the connector makes no Reporting API call at
   record an HTTP status, never a response.
 - Nothing a repo pushes can turn on the auto-halt or change the priority policy: both are
   operator settings, and every change is audited.
+- Every request to the Android Publisher API passes Polaris Key's Play write gate before a token
+  is minted: deletes, Console users and permissions, signing keys and payment actions are never
+  sent. The one exception is discarding the connector's own throwaway edit, which removes nothing
+  published.
 
 The full analysis is in the threat model (`docs/security/THREAT-MODEL.md`, "Store connectors:
 Google Play").

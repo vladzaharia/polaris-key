@@ -1643,7 +1643,8 @@ line.
   the app's name as the store reports it (the adapter's `confirmation`), compared by the shared
   `confirm.ts` before the handler asserts `typedConfirmation` to the gate.
 - **(e) The Play edit lease** (A-18e): a poll tick during a provisioning edit neither invalidates
-  it nor runs (a skipped conformance item until then).
+  it nor runs (conformance item 10, for every adapter that declares a shared edit). See "Google
+  Play writes" below.
 - **(f) Every callback URL fixed server-side to the Worker's origin** (`isOwnHookUrl` in the
   engine; A-17a's `hookOrigin` rule, generalised).
 - **(g) Imported listing text is data**: rendered escaped in the console, never as HTML (A-18b,
@@ -1661,6 +1662,73 @@ cap; no adapter declares `api` for `uploadBuild`, which the suite asserts.
 or `PLATFORM_KEK` compromise bypasses every adapter's gate at once. The deep-link shapes are
 undocumented by most stores (a broken link misleads, it grants nothing). Rows written before
 A-18a keep their old `op_id`; a replay of such an intent re-reads its natural key before sending.
+
+### Google Play writes: the edit lease, the write gate and the adapter (A-18e)
+
+**What it is.** Google Play is the second storefront adapter (`core/storefront/stores/googlePlay.ts`,
+rule table `core/storefront/rules/googlePlay.ts`, runtime
+`services/distribution/connectors/play/storefront.ts`). It writes a product's Play listing
+(details, per-language text, listing images from the blob store), closed-testing tracks and their
+Google Groups, release notes on tracks, one-time products from the commerce map
+(`dist_store_products`, store `play`) and their prices, and commits the edit. AAB upload stays in
+CI and data safety in the Console (S-15 decisions 2 and 4).
+
+**Why it matters.** The Play service account has one OAuth scope (`androidpublisher`) that reaches
+every one of the API's 145 methods: Console users and grants, app signing enrolment and key
+rotation, refunds and cancellations, deletes of listings, images and products. Its Console
+permissions are the only vendor-side limit, and S-15 decision 4's "Manage store presence" also
+covers prices. Play's only write path is an **edit**: a service account may hold one, and any new
+edit, commit or Console change invalidates every other open one.
+
+**Controls.**
+
+- **The edit lease** (`connectors/play/lease.ts`, D1 `store_edit_leases`, migration 0068). Every
+  Play caller that opens an edit takes the package's lease first, in one atomic upsert that wins
+  only over an expired row: P5-03's poll (a held lease skips the tick, `edit-lease-held`), its
+  controls (409 `edit_lease_held`), A-16's `?tracks=1` lister (the app shows busy) and the adapter's
+  session (`provisioning`, or `import` for a read-only edit), all before any token is minted. The
+  holder renews before each step and after a long upload; a lost lease stops the session
+  (`PlayEditLeaseLost`). TTLs are minutes, so a crashed holder blocks nobody for long. Tests:
+  `test/playLease.test.ts`, conformance item 10.
+- **The write gate**, deny-by-default and consulted by every gated `GoogleApiClient` before its
+  token thunk: P5-03's poll and controls, A-16's lister and the adapter all build gated clients
+  (`PlayPublisher` refuses an ungated one). Twelve allow rules; the other 88 writes of the pinned
+  discovery document (revision `20261001`, SHA-256 over canonical JSON because Google reorders the
+  keys on every fetch) are denied by group, and a revision bump fails CI until each new write is
+  classified. Every `DELETE`, the Permissions API (refused for reads too), signing keys, payment
+  actions, binaries, policy declarations and subscriptions are refused. Bodies are matched key by
+  key; uploads by content type (PNG, JPEG) and the 15 MiB cap; the commit only with
+  `changesInReviewBehavior=ERROR_IF_IN_REVIEW`.
+- **Typed confirmation** (Play's default-language title, compared by `playTypedConfirmation`):
+  the commit of an edit that touched production or a release status, a production release
+  `completed` or at a `userFraction` of 1.0, and a one-time product price after the initial one.
+  A commit carries no body, so the handler tells the gate what its edit holds
+  (`resourceState`: `PLAY_EDIT_SCOPE`), and a missing scope is treated as production.
+- **The ledger, budget and audit** of A-18a: every adapter write is one `performStoreWrite` step
+  with a natural-key pre-read (listing by language, image by hash with the ledger's own upload row
+  as fallback, track by name, product by id); each request spends the local 3,000-per-minute
+  counter; tester groups are stored as a count, never an address.
+- **No image deletes in v1** (decision 6): a replacement is uploaded and the operator removes the
+  old image in the Console (`google-play.main-store-listing`).
+
+**Accepted exceptions, each pinned by a test.**
+
+- **`edits.delete` of a throwaway edit** is sent outside the gate (`GoogleApiClient.discardEdit`),
+  as P5-03 always has: no gate rule may allow a `DELETE`, and an open edit must not be left behind.
+  It is a fixed method that can address nothing but `edits/<editId>` (the id re-checked), and it
+  discards an uncommitted draft, never anything published.
+- **P5-03's rollout controls** (fraction, halt, resume, complete, priority, and the vitals
+  auto-halt) assert `PLAY_EDIT_SCOPE.rolloutControl`, the one scope the gate does not type: they
+  keep their own confirmations (`confirmRollback`) and their tests unchanged. A typed production
+  `complete`, as A-17a made Apple's, is a proposed follow-up.
+- **P6-01's purchase client** (`commerce/play.ts`) is not gated: it reads purchases and acknowledges
+  them, outside the storefront surface (the `commerceRuntime` deny group says so).
+
+**Residual risk.** As for every adapter, the gate is code in the Worker that holds the key. The
+lease serialises only Polaris Key's callers: an operator's Console change, or another tool using the
+same service account, still invalidates an open edit, which then fails cleanly at its next
+request. Permission sufficiency, edit expiry and quota behaviour are unverified until A-18k's live
+check.
 
 ### App Store Connect writes: the write gate, the ledger and the budget (A-17a)
 
@@ -4486,7 +4554,9 @@ record naming the caller's binding, or a sandbox path open by default;
 a new product-secret usage or sealed kind is introduced (it must say which paths may open it,
 and that no manifest can grant it); an outlet-credential kind is added, or a file is added to an
 allowlist in `test/outletCredentialReach.test.ts` (it must say why that file needs a store
-credential, and the open must stay audited); a change is made to any
+credential, and the open must stay audited); a Play caller opens an edit without the package's edit lease, a request is sent outside
+the Play gate other than `discardEdit`, or a caller asserts `PLAY_EDIT_SCOPE.rolloutControl` outside
+P5-03's controls (A-18e); a change is made to any
 `core/storefront/rules/*` table (an entry added to an allow table such as `ASC_WRITE_ALLOW` or moved
 out of a deny list such as `rules/appStoreDenied.ts`, a rule's attributes, relationships, value
 checks or confirmation level loosened), a storefront adapter is added to `STOREFRONT_ADAPTERS`, a

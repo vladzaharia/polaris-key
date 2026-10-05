@@ -175,6 +175,7 @@ async function readTracks(
       origin: ANDROID_PUBLISHER_ORIGIN,
       packageName,
       token: teamToken(o, ANDROID_PUBLISHER_SCOPE),
+      gated: true,
       ...(o.fetchImpl ? { fetchImpl: o.fetchImpl } : {}),
     }),
   );

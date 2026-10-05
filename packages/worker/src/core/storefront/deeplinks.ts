@@ -9,7 +9,9 @@
  *     URL-encoded and must be a plain identifier, so a stored id cannot redirect the operator.
  *   - `verify` is how the console learns the step is done: a read the adapter's gate allows,
  *     polled every `every` seconds until `until` seconds have passed (S-14 §5.1: 10 s for up to
- *     15 minutes, plus "Check now"), or the operator's own assertion.
+ *     15 minutes, plus "Check now"), or the operator's own assertion. The read's placeholders are
+ *     the row's params or ids the verifier obtains itself (Play's `{editId}`: every Play read is
+ *     inside an edit the verifier opens under the edit lease).
  *
  * A `deep-link` operation in an adapter's capabilities names a row by id; the conformance suite
  * fails a link id with no row and a verifier read the gate would refuse.
@@ -18,7 +20,7 @@
 /** How a deep-linked step is verified. */
 export type DeepLinkVerify =
   | {
-      /** A GET path, with the row's own `{params}`, that the adapter's gate admits. */
+      /** A GET path the adapter's gate admits (placeholders: the row's params or verifier-held ids). */
       readonly read: string;
       readonly every: number;
       readonly until: number;
@@ -81,6 +83,89 @@ export const DEEP_LINKS: readonly DeepLinkTemplate[] = [
     store: "app-store",
     template: "https://developer.apple.com/account/resources/identifiers/list",
     params: [],
+    verify: "operator-assertion",
+  },
+  // ── Google Play (A-18e; S-15 §4.1, §6.5). Play documents ONE deep-link form, the Integrity
+  // link [V]; every other shape is the Console's current URL [I] (`{developerId}` and `{appId}`
+  // are the Console's own numeric ids, which the operator's Console URL shows), so a moved page is
+  // a one-line fix here. ──
+  {
+    id: "google-play.create-app",
+    store: "google-play",
+    template:
+      "https://play.google.com/console/developers/{developerId}/create-new-app",
+    params: ["developerId"],
+    // The app exists once Reporting's `apps:search` lists the package AND a read-only edit opens
+    // on it (`connectors/play/storefront.ts` `verifyPlayApp`); the gate admits the edit's reads.
+    verify: {
+      read: "/androidpublisher/v3/applications/{packageName}/edits/{editId}/details",
+      ...POLL,
+    },
+  },
+  {
+    id: "google-play.store-settings",
+    store: "google-play",
+    template:
+      "https://play.google.com/console/developers/{developerId}/app/{appId}/store-settings",
+    params: ["developerId", "appId"],
+    verify: "operator-assertion",
+  },
+  {
+    id: "google-play.content-rating",
+    store: "google-play",
+    template:
+      "https://play.google.com/console/developers/{developerId}/app/{appId}/app-content/content-rating-overview",
+    params: ["developerId", "appId"],
+    verify: "operator-assertion",
+  },
+  {
+    id: "google-play.app-content",
+    store: "google-play",
+    template:
+      "https://play.google.com/console/developers/{developerId}/app/{appId}/app-content/overview",
+    params: ["developerId", "appId"],
+    verify: "operator-assertion",
+  },
+  {
+    id: "google-play.monetization-setup",
+    store: "google-play",
+    template:
+      "https://play.google.com/console/developers/{developerId}/app/{appId}/monetization-setup",
+    params: ["developerId", "appId"],
+    verify: "operator-assertion",
+  },
+  {
+    id: "google-play.integrity",
+    store: "google-play",
+    template:
+      "https://play.google.com/console/developers/app/protect-with-play",
+    params: [],
+    verify: "operator-assertion",
+  },
+  {
+    id: "google-play.managed-publishing",
+    store: "google-play",
+    template:
+      "https://play.google.com/console/developers/{developerId}/app/{appId}/publishing",
+    params: ["developerId", "appId"],
+    verify: "operator-assertion",
+  },
+  {
+    id: "google-play.testers",
+    store: "google-play",
+    template:
+      "https://play.google.com/console/developers/{developerId}/app/{appId}/tracks",
+    params: ["developerId", "appId"],
+    verify: "operator-assertion",
+  },
+  {
+    // Decision 6: no deleting Play images in v1. After a screenshot set is replaced, the old images
+    // are removed here by the operator.
+    id: "google-play.main-store-listing",
+    store: "google-play",
+    template:
+      "https://play.google.com/console/developers/{developerId}/app/{appId}/main-store-listing",
+    params: ["developerId", "appId"],
     verify: "operator-assertion",
   },
 ];

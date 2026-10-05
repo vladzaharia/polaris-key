@@ -83,15 +83,42 @@ edit on every tick (§5.3). Without a lease, the next poll would silently kill a
 - Budget: a local sliding counter of 3,000 per minute per bucket (no rate header).
 - Audit redaction: Play tester groups are stored as a count.
 
+## Corrections (as built)
+
+The code is the fact where this brief and it disagreed:
+
+- **The spec pin is over canonical JSON.** Google serves revision `20261001` with its object keys
+  in a different order on every fetch (two fetches on 2026-10-04 hashed `cafd73b4…` and
+  `98ccad1c…`), so S-15's raw-byte `bcbce36e…53ad51cf` cannot be reproduced. `PLAY_SPEC_PIN` is the
+  revision plus the SHA-256 of the document with sorted keys and no whitespace, `b8a7f31d…c6605ec4`
+  (`scripts/play-spec-writes.mjs`, fixture `test/fixtures/play/discovery-writes.json`).
+- **The lease is a D1 row, not a Durable Object or KV lock.** Acquisition must be atomic and KV
+  has no compare-and-set; one D1 upsert that wins only over an expired row is (migration
+  `0068_store_edit_leases`, `TABLE_OWNERS.distribution`, global by design in R11-05).
+- **`edits.delete` stays outside the gate.** P5-03 discards its throwaway edit with it and its
+  tests require that; no gate rule may allow a `DELETE`. It is `GoogleApiClient.discardEdit`, a
+  fixed method that can address only `edits/<editId>` and discards an uncommitted draft.
+- **P5-03's controls are gated, not ledgered or typed.** They have no `Idempotency-Key` and the
+  vitals auto-halt has no session, so `performStoreWrite` cannot run them unchanged; they pass the
+  gate with `PLAY_EDIT_SCOPE.rolloutControl` and keep `confirmRollback`. A typed production
+  `complete` (as A-17a did for Apple) is a proposed follow-up that changes P5-03's tests.
+- **The app-created verifier opens a read-only edit only.** `apps:search` is Reporting's
+  team-scoped call (A-16's lister); a product's own credential cannot make it, and an edit that
+  opens proves more (the app exists and the account may edit it).
+- **No console routes.** The runtime is functions (`connectors/play/storefront.ts`); A-18j adds
+  the routes and pages that call them, so no OpenAPI change lands here.
+- **Ids.** The adapter is `google-play` (the A-16 credential slot's store); A-18b's listing column
+  stays `play`. P6-01's purchase client is not gated (the gate's `commerceRuntime` deny group).
+
 ## Acceptance criteria
 
-- [ ] The lease exists; P5-03 poll and controls and A-16's lister use it; the lease-race
+- [x] The lease exists; P5-03 poll and controls and A-16's lister use it; the lease-race
       conformance test passes.
-- [ ] Every write in the pinned discovery document is classified; a revision bump fails CI until
+- [x] Every write in the pinned discovery document is classified; a revision bump fails CI until
       reclassified.
-- [ ] The conformance suite passes for Play, including never-list, typed confirmation and
+- [x] The conformance suite passes for Play, including never-list, typed confirmation and
       idempotency over every plan step.
-- [ ] Every P5-03 and A-16 Play test passes unchanged.
+- [x] Every P5-03 and A-16 Play test passes unchanged.
 - [ ] The green gate passes (`AGENTS.md`).
 
 ## Verify
