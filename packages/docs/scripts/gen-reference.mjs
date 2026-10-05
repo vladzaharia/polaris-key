@@ -403,6 +403,7 @@ const TABLE_OWNERS = {
     "dist_readiness",
     "dist_store_products",
     "dist_purchase_bindings",
+    "dist_purchase_binding_aliases",
     "dist_purchases",
     "dist_registry_owners",
     "dist_registry_feeds",

@@ -61,16 +61,20 @@ import {
 } from "../../core/rateLimit.js";
 import {
   appendAudit,
+  auditStatement,
   claimEnrolledLicense,
   getLicense,
   countActiveDevices,
   getLicenseBySub,
   getTier,
   insertLicense,
-  moveDevices,
   seatActiveSince,
   type LicenseRow,
 } from "../../core/data.js";
+import {
+  mergeLicenseInto,
+  type LicenseMerge,
+} from "../../core/licenseMerge.js";
 import { allowsOidcDefault } from "../../core/fingerprint.js";
 import {
   authorizeDevice,
@@ -787,7 +791,14 @@ export async function activateFromIdentity(
    *  (P1-06). The one HTTP route that does is `/device/poll`, and only on the device-code
    *  holder's explicit opt-in after the player accepted the signed-in identity on the device,
    *  for the licence the flow's own device holds a token on (P1-07). */
-  opts: { enrolledLicenseId?: string | null } = {},
+  opts: {
+    enrolledLicenseId?: string | null;
+    /** LX-03: Core's licence-merge collector (`ServiceContext.licenseMerge`). The migrate arm
+     *  needs it to carry the enrolled licence's store grants, purchases and binding to the
+     *  identity's licence; without it the migrate is refused (`license-merge-unavailable`)
+     *  rather than strand them on a disabled row. */
+    licenseMerge?: LicenseMerge;
+  } = {},
 ): Promise<
   { licenseId: string; merged?: "claimed" | "migrated" } | { error: string }
 > {
@@ -852,32 +863,61 @@ export async function activateFromIdentity(
   // Case 2 — a claimable enrolled license AND an existing identity license: migrate the
   // devices onto the identity's license and retire the enrolled row, so the user keeps their
   // machines but ends up on the license that already holds their entitlements.
+  //
+  // LX-03 (notes/S-19 §4.3 G6): one batch (`mergeLicenseInto`) moves the devices SEAT-CHECKED
+  // against the limit the identity's license carries after this activation rewrites its tier and
+  // overrides (below), carries what every service holds for the enrolled license (its store
+  // grants and purchases; its purchase binding stays resolvable as an alias of the identity's
+  // license), retires the enrolled row and writes the audit row — or writes none of it.
   if (claimable && existing && licenseUsable(existing, now)) {
-    await moveDevices(db, product.slug, claimable.id, existing.id);
-    // R3-05: `enroll_hwid` is deliberately NOT cleared. The retired row keeps occupying
-    // `idx_licenses_enroll_hwid`, which is the only guard on "one free license per machine";
-    // clearing it let the same machine enrol again immediately and repeat the merge with a
-    // second identity, without limit.
-    await db.run(
-      `UPDATE licenses SET status = 'disabled', modified_by = 'oidc',
-         modified_at = ? WHERE product = ? AND id = ?`,
+    if (!opts.licenseMerge) return { error: "license-merge-unavailable" };
+    const limit = await licenseDeviceLimit(
+      db,
+      product,
+      {
+        ...existing,
+        tier_id: tierId,
+        expires_at: expiresAt,
+        overrides_json: JSON.stringify(overrides),
+      },
       now,
-      product.slug,
-      claimable.id,
     );
-    await appendAudit(db, {
-      product: product.slug,
-      id: randomId("aud"),
-      at: now,
-      actor_sub: identity.sub,
-      actor_name: identity.name ?? null,
-      actor_email: identity.email ?? null,
-      action: "license.merge",
-      target_kind: "license",
-      target_id: existing.id,
-      parent_id: claimable.id,
-      summary: `Migrated devices from auto-issued license ${claimable.id}`,
-    });
+    const merged = await mergeLicenseInto(
+      db,
+      opts.licenseMerge,
+      {
+        product: product.slug,
+        fromLicenseId: claimable.id,
+        toLicenseId: existing.id,
+        now,
+      },
+      limit,
+      [
+        // R3-05: `enroll_hwid` is deliberately NOT cleared. The retired row keeps occupying
+        // `idx_licenses_enroll_hwid`, which is the only guard on "one free license per machine";
+        // clearing it let the same machine enrol again immediately and repeat the merge with a
+        // second identity, without limit.
+        {
+          sql: `UPDATE licenses SET status = 'disabled', modified_by = 'oidc',
+                  modified_at = ? WHERE product = ? AND id = ?`,
+          params: [now, product.slug, claimable.id],
+        },
+        auditStatement({
+          product: product.slug,
+          id: randomId("aud"),
+          at: now,
+          actor_sub: identity.sub,
+          actor_name: identity.name ?? null,
+          actor_email: identity.email ?? null,
+          action: "license.merge",
+          target_kind: "license",
+          target_id: existing.id,
+          parent_id: claimable.id,
+          summary: `Migrated devices and store purchases from auto-issued license ${claimable.id}`,
+        }),
+      ],
+    );
+    if (merged === "device_limit") return { error: "device-limit" };
   }
 
   if (existing) {
@@ -1738,6 +1778,9 @@ interface DevicePollAsk {
   attachLicense: boolean | null;
   /** The device token the poll carried (`Authorization: Bearer`), naming the licence to attach. */
   token: string | null;
+  /** LX-03: Core's licence-merge collector, which an attach that migrates needs
+   *  (`activateFromIdentity`). */
+  licenseMerge?: LicenseMerge;
 }
 
 const NO_ASK: DevicePollAsk = {
@@ -1769,11 +1812,12 @@ function shownIdentity(identity: OidcIdentity): {
  *    row with every authorized device still on it. It is offered only while those devices
  *    (dormant or not) fit the limit the row will carry AFTER the claim rewrites its tier and
  *    overrides to the identity's.
- *  - migrate (the identity has a usable licence): `moveDevices` re-points EVERY device on the
- *    anonymous licence at it without `authorizeDevice`'s seat check. It is offered only while
- *    the moved devices (dormant or not) plus the destination's seat-holding devices fit the
+ *  - migrate (the identity has a usable licence): `planDeviceMove` re-points EVERY authorized
+ *    device on the anonymous licence at it, each taking a seat ordinal there. It is offered only
+ *    while the moved devices (dormant or not) plus the destination's seat-holding devices fit the
  *    limit the destination will carry AFTER `activateFromIdentity` rewrites its tier and
- *    overrides to the identity's mapped tier and provisioning.
+ *    overrides to the identity's mapped tier and provisioning. Since LX-03 the move itself
+ *    re-checks the same bound inside the merge, so this offer is no longer the only guard.
  *  Both limits come from `postActivationDeviceLimit`. The attach can still fill the victim's
  *  free seats (see THREAT-MODEL, R1-07).
  *  Like the pre-count in `authorizeDevice`, this is a read, not a claim. Nothing is attachable
@@ -1808,8 +1852,9 @@ async function attachableLicense(
   if ((await tierFingerprintMode(db, product, tier.tierId)) === "strict")
     return null;
   // `moving` has NO dormancy floor. A claim keeps every row on the licence and a migrate
-  // (`moveDevices`) re-points every row, dormant ones included, the latter with
-  // `seat_no = NULL`. A dormant device has given up its ordinal (`releaseDormantSeats`), so the
+  // (`planDeviceMove`) re-points every row, dormant ones included (LX-03: each authorized one
+  // takes an ordinal, and the move counts them the same way). A dormant device has given up its
+  // ordinal (`releaseDormantSeats`), so the
   // starter can fill that seat again with a new device; the dormant one then comes back without
   // claiming a seat (`validateDeviceToken` rebuilds its token record from the device row, and
   // nothing on that path calls `claimDeviceSeat`). Counting only recently seen devices would let
@@ -1930,6 +1975,7 @@ async function pollAuthFlow(
     }
     const result = await activateFromIdentity(db, product, identity, now, {
       enrolledLicenseId,
+      licenseMerge: ask.licenseMerge,
     });
     if ("error" in result) {
       // The callback checked this; it can still change underneath a waiting flow (the
@@ -2015,6 +2061,8 @@ export async function handleAuthDevicePoll(
   db: Db,
   product: Product,
   now: number,
+  /** LX-03: `ServiceContext.licenseMerge`, for an attach that migrates. */
+  licenseMerge?: LicenseMerge,
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
   let body: Record<string, unknown>;
@@ -2087,6 +2135,7 @@ export async function handleAuthDevicePoll(
       attachLicense:
         typeof body.attachLicense === "boolean" ? body.attachLicense : null,
       token: bearer(req),
+      licenseMerge,
     },
   );
   const bodyOut = (await res
