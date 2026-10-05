@@ -97,6 +97,16 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/media/{product}/{asset}` | portal | A product's listing art, served same-origin |
 | GET | `https://pkg.plrs.im/` | registry | The registry host's landing page (registry host only) |
 | HEAD | `https://pkg.plrs.im/` | registry | The registry host's landing page, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/go/{owner}/{module}/@latest` | registry | A Go module's latest version info, the proxy's @latest (registry host only) |
+| HEAD | `https://pkg.plrs.im/go/{owner}/{module}/@latest` | registry | A Go module's latest version info, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/go/{owner}/{module}/@v/{version}.info` | registry | A Go module version's info, or a channel's canonical version (registry host only) |
+| HEAD | `https://pkg.plrs.im/go/{owner}/{module}/@v/{version}.info` | registry | A Go module version's info, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/go/{owner}/{module}/@v/{version}.mod` | registry | A Go module version's go.mod (registry host only) |
+| HEAD | `https://pkg.plrs.im/go/{owner}/{module}/@v/{version}.mod` | registry | A Go module version's go.mod, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/go/{owner}/{module}/@v/{version}.zip` | registry | A Go module version's module zip (registry host only) |
+| HEAD | `https://pkg.plrs.im/go/{owner}/{module}/@v/{version}.zip` | registry | A Go module version's module zip, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/go/{owner}/{module}/@v/list` | registry | A Go module's versions, the proxy's @v/list (registry host only) |
+| HEAD | `https://pkg.plrs.im/go/{owner}/{module}/@v/list` | registry | A Go module's versions, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/godot/{owner}/asset-library/api/asset/{id}` | registry | Godot ≤ 4.6 Asset Library: one asset (registry host only) |
 | HEAD | `https://pkg.plrs.im/godot/{owner}/asset-library/api/asset/{id}` | registry | Godot ≤ 4.6 Asset Library: one asset, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/godot/{owner}/asset-library/api/asset` | registry | Godot ≤ 4.6 Asset Library: search (registry host only) |
