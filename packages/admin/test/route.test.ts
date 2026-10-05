@@ -500,6 +500,7 @@ describe("the nav model (nav.ts)", () => {
       "overview",
       "services",
       "devices",
+      "users",
       "keys",
       "activity",
       "settings",

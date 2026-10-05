@@ -88,6 +88,11 @@ export type WriteMethod =
   | "deauthorizeDevice"
   | "resetDeviceFingerprint"
   | "deauthorizeProductDevice"
+  | "deleteProductUserData"
+  | "detachProductUserLicense"
+  | "relinkProductUserLicense"
+  | "undoRelink"
+  | "updateSignInSettings"
   | "resetProductDeviceFingerprint"
   | "mintBundle"
   | "updateFingerprintPolicy"
@@ -168,6 +173,18 @@ const device = (slug: string, licenseId?: string): Target[] =>
         exact(qk.licenses(slug)),
         prefix(qk.license(slug, licenseId)),
       ];
+
+/**
+ * I-12: a Users write. A detach, relink or undo moves a licence's owner (the license list and
+ * record show the holder) and can clear a device's signed-in binding; a data deletion changes the
+ * row's data size. Every user row, since a relink touches two subjects.
+ */
+const users = (slug: string): Target[] => [
+  prefix(qk.users(slug)),
+  prefix(qk.licenses(slug)),
+  prefix(qk.devices(slug)),
+  prefix(qk.activity(slug)),
+];
 
 /** §5.4 "key mint / revoke": the record, and the list's key counts. */
 const licenseKey = (slug: string, id: string): Target[] => [
@@ -261,6 +278,30 @@ export const MUTATIONS: MutationTable = {
   updatePortalSettings: {
     label: "portal settings",
     invalidates: (slug) => [prefix(qk.portal(slug))],
+  },
+  updateSignInSettings: {
+    label: "sign-in settings",
+    // `claimByKey` is the same column the Portal page edits.
+    invalidates: (slug) => [
+      prefix(qk.signInSettings(slug)),
+      prefix(qk.portal(slug)),
+    ],
+  },
+  deleteProductUserData: {
+    label: "user data delete",
+    invalidates: (slug) => users(slug),
+  },
+  detachProductUserLicense: {
+    label: "user license detach",
+    invalidates: (slug) => users(slug),
+  },
+  relinkProductUserLicense: {
+    label: "user license relink",
+    invalidates: (slug) => users(slug),
+  },
+  undoRelink: {
+    label: "user license relink undo",
+    invalidates: (slug) => users(slug),
   },
   putProductSecret: {
     label: "secret set",

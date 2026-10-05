@@ -423,6 +423,10 @@ export const r = {
     productPage(slug, "devices", { query }),
   device: (slug: string, deviceId: string) =>
     productPage(slug, "devices", { id: deviceId }),
+  users: (slug: string, query?: QueryInit) =>
+    productPage(slug, "users", { query }),
+  user: (slug: string, subject: string, tab?: string) =>
+    productPage(slug, "users", { id: subject, tab }),
   keys: (slug: string) => productPage(slug, "keys"),
   activity: (slug: string, query?: QueryInit) =>
     productPage(slug, "activity", { query }),

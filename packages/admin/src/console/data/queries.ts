@@ -97,6 +97,10 @@ export const qk = {
   devicesSummary: (slug: string) => product(slug, "core", "devices", "summary"),
   device: (slug: string, id: string) =>
     product(slug, "core", "devices", "record", id),
+  /** I-12: the product's users, keyed by pairwise subject. */
+  users: (slug: string) => product(slug, "core", "users"),
+  user: (slug: string, subject: string) =>
+    product(slug, "core", "users", "record", subject),
   activity: (slug: string) => product(slug, "core", "activity"),
   secrets: (slug: string) => product(slug, "core", "secrets"),
   keys: (slug: string) => product(slug, "core", "keys"),
@@ -206,6 +210,9 @@ export const qk = {
 
   // identity
   portal: (slug: string) => product(slug, "identity", "portal"),
+  /** I-12: sign-in through this product (the passthrough header name, claimByKey, 4.8). */
+  signInSettings: (slug: string) =>
+    product(slug, "identity", "sign-in-settings"),
 };
 
 function qkFeeds(scope: FeedScope): QueryKey {

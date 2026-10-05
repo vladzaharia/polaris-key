@@ -207,6 +207,17 @@ full digest, so a screenshot of the panel cannot be used to correlate a device e
 admin can clear a device's binding, which is audited and lets the device re-bind on its next
 check-in without losing its seat.
 
+A product's **Users** page (Core → Users) shows each person by a random id that exists for that
+product only (`ps_…`); another product's console sees a different id for the same person. It
+shows that product's licences, devices, data size and console audit, and, with Identity on, the
+person's sign-ins to that product by method kind ("Steam") only. It never shows the Polaris Key
+account id, the account's sign-in methods, or anything from another product. The contact email
+is the licence's buyer email; the account's own email appears only when the person agreed to
+share it with that product. An admin can export that product's data for the person as JSON,
+delete it, detach a licence, or move a licence to another person of the same product (a fresh
+admin sign-in, a recorded reason, an email to both people first, and 72 hours to undo). No admin
+can delete, disable, sign out or merge an account, or change its sign-in methods.
+
 ## What an end user can see
 
 The customer portal already lists a user's own devices with their platform, versions, and
