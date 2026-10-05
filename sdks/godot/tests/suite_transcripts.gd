@@ -4,6 +4,7 @@ extends RefCounted
 # @pkey-feature release.changelog release.download update.feed release.record update.decide
 # @pkey-feature commerce.receipt
 # @pkey-feature packs.apply.chunk
+# @pkey-feature license.manage
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen:transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
@@ -142,12 +143,16 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 				if r.documents[slice] != "skipped":
 					docs[slice] = r.documents[slice]
 			out["documents"] = docs
-		"activate":
-			var r: PKeyActivationResult = await sdk.license.activate_with_key(step["args"]["key"])
+		"activate", "enroll":
+			var r: PKeyActivationResult
+			if step["action"] == "activate":
+				r = await sdk.license.activate_with_key(step["args"]["key"])
+			else:
+				r = await sdk.license.enroll()
 			out["result"] = String(r.kind)
-		"enroll":
-			var r: PKeyActivationResult = await sdk.license.enroll()
-			out["result"] = String(r.kind)
+			# PX-W8: the refusal link, exactly as served; null when the result carries none.
+			if r.kind == PKeyActivationResult.KIND_DEVICE_LIMIT:
+				out["manageUrl"] = r.manage_url
 		"deactivate":
 			var r: PKeyResult = await sdk.license.deactivate()
 			out["result"] = "ok" if r.ok else String(r.code)

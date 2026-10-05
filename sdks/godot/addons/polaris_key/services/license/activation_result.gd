@@ -7,7 +7,8 @@ extends PKeyResult
 ## with the extra fields read at the top level first and inside `error` second.
 ##
 ##   ok                    200: the token is stored (source activate or enroll) and a sync ran
-##   device-limit          403 device_limit: every seat is taken (`limit`, `device_count`)
+##   device-limit          403 device_limit: every seat is taken (`limit`, `device_count`,
+##                         and `manage_url`, the portal link that frees one)
 ##   unauthorized          401: the key is unknown or revoked
 ##   fingerprint-required  403 fingerprint_required: the tier (or keyless enrolment, always)
 ##                         needs a hardware fingerprint this host did not send
@@ -45,6 +46,11 @@ var schema_version := 0
 ## device-limit: the seat limit and the devices holding one, or null when the body omits them.
 var limit: Variant = null
 var device_count: Variant = null
+## device-limit (PX-W8): the customer-portal link that frees a seat, validated, or null when the
+## Worker sent none (the product's portal is off, or an older Worker). Add the game's return with
+## `PKeyManage.with_return` and, on an `/activate` link, the key with `PKeyManage.with_key`.
+## Never an auth failure: open it only behind a player action.
+var manage_url: Variant = null
 ## hardware-mismatch: how many stored components drifted and which, or null when omitted.
 var drift: Variant = null
 var changed: Variant = null

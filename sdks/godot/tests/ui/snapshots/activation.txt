@@ -94,3 +94,22 @@ Stack/Main/SignIn: Button "Sign in" [focus 3]
 Stack/Main/ContinueFree: Button "Continue free" [focus 4]
 Stack/Main/OfflineActivation: Button "Offline activation…" [focus 5]
 Stack/Main/Message: Label "This license has reached its device limit (3 of 3 devices)."
+== device limit, free up a device (button) ==
+Stack/Main/Title: Label "Activate"
+Stack/Main/Subtitle: Label "Enter a license key to continue."
+Stack/Main/KeyLabel: Label "License key"
+Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
+Stack/Main/OfflineActivation: Button "Offline activation…" [focus 4]
+Stack/Main/Message: Label "This license has reached its device limit (1 of 1 devices)."
+Stack/Main/FreeDevice: Button "Free up a device" [focus 3]
+== device limit, free up a device (QR) ==
+Stack/Main/Title: Label "Activate"
+Stack/Main/Subtitle: Label "Enter a license key to continue."
+Stack/Main/KeyLabel: Label "License key"
+Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
+Stack/Main/OfflineActivation: Button "Offline activation…" [focus 3]
+Stack/Main/Message: Label "This license has reached its device limit (1 of 1 devices)."
+Stack/Main/FreeDeviceQr: PKeyQrRect "https://key.plrs.im/activate?product=djdl&next=free-device&for=Linux%20x86_64&return=mygame%3A%2F%2Factivated#key=pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV"
+Stack/Main/FreeDeviceCaption: Label "Scan with your phone to free up a device, then try again."
