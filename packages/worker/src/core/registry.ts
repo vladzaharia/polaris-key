@@ -31,6 +31,7 @@ import {
   type ServiceHooks,
 } from "./hooks.js";
 import type { QueuedRender } from "./registryQueue.js";
+import type { ServiceSettingsSlice } from "./settings/types.js";
 import type {
   StoreGrantChange,
   StoreGrantContext,
@@ -167,6 +168,12 @@ export interface ServiceDescriptor extends DescriptorHooks {
   slug: ServiceSlug;
   /** Handle a product-scoped request. `null` = no route matched inside this service. */
   handle(ctx: ServiceContext): Promise<Response | null>;
+  /**
+   * This service's settings (ST-03, `core/settings/`): the product-scope registry entries under
+   * the namespaces it owns. Data only, read by `buildSettingsRegistry` at the composition root,
+   * so Core learns a service's settings without importing it (rule 6).
+   */
+  settings?: ServiceSettingsSlice;
   /**
    * This service's fragment of `/.well-known/polaris.json` (design spec §4.3). Only called when
    * enabled — Core emits `{enabled:false}` and nothing else for the rest.
