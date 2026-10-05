@@ -1,0 +1,280 @@
+{
+  "transcriptVersion": 1,
+  "id": "activate-refusals",
+  "description": "Every refusal the activation and enrolment routes answer today, each surfaced by its body code and never collapsed into another kind: enrolment for a machine whose free licence an account has claimed (403 enroll_claimed), then whose free licence an operator disabled (403 license_disabled); activation with an expired licence's key (today a 401 unauthorized: the Worker refuses every unusable licence alike); activation on hardware that drifted past the threshold from the seat's binding (409 hardware_mismatch); and activation once the per-client budget is spent (429 rate_limited, no Retry-After). No refusal mints a token. attestation_required is not recorded: activation and enrolment are not trust operations.",
+  "features": ["license.refusals"],
+  "requires": ["core.store", "license.activate"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "enroll",
+      "note": "This machine's free licence belongs to an account now: sign in instead.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/license/enroll",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": { "fingerprint": { "components": {}, "hwid": "" } },
+                "match": "shape",
+                "allowedKeys": ["fingerprint"]
+              }
+            },
+            "response": {
+              "status": 403,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "error": "enroll_claimed",
+                "message": "this machine's free license has been claimed; sign in to use it"
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "enroll-claimed",
+        "code": "enroll_claimed",
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "enroll",
+      "note": "An operator disabled this machine's free licence.",
+      "args": {},
+      "now": 1700000060,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/license/enroll",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": { "fingerprint": { "components": {}, "hwid": "" } },
+                "match": "shape",
+                "allowedKeys": ["fingerprint"]
+              }
+            },
+            "response": {
+              "status": 403,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "error": "license_disabled",
+                "message": "this machine's free license has been disabled"
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "license-disabled",
+        "code": "license_disabled",
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "activate",
+      "note": "An expired licence's key. Today's Worker answers 401 unauthorized, not license_expired.",
+      "args": { "key": "pkey_djdl_7P5zN8kLecyosef-uz9SuA" },
+      "now": 1700000120,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/license/activate",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {key}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": { "fingerprint": { "components": {}, "hwid": "" } },
+                "match": "shape",
+                "allowedKeys": ["fingerprint"]
+              }
+            },
+            "response": {
+              "status": 401,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "unauthorized" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "unauthorized",
+        "code": "unauthorized",
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "activate",
+      "note": "The hardware drifted past the threshold: re-activation is required (409, not 403).",
+      "args": { "key": "pkey_djdl_BQJvLxbJCMT7KGeHf6SG7g" },
+      "now": 1700000180,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/license/activate",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {key}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": { "fingerprint": { "components": {}, "hwid": "" } },
+                "match": "shape",
+                "allowedKeys": ["fingerprint"]
+              }
+            },
+            "response": {
+              "status": 409,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "error": "hardware_mismatch",
+                "message": "hardware changed; re-activation required",
+                "drift": 3,
+                "changed": ["machineUuid", "boardSerial", "cpuModel"]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "hardware-mismatch",
+        "code": "hardware_mismatch",
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "activate",
+      "note": "Too many activation attempts from this client. Today's 429 carries no Retry-After.",
+      "args": { "key": "pkey_djdl_BQJvLxbJCMT7KGeHf6SG7g" },
+      "now": 1700000600,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/license/activate",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {key}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": { "fingerprint": { "components": {}, "hwid": "" } },
+                "match": "shape",
+                "allowedKeys": ["fingerprint"]
+              }
+            },
+            "response": {
+              "status": 429,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "error": "rate_limited",
+                "message": "too many activation attempts"
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "rate-limited",
+        "code": "rate_limited",
+        "tokenHeld": false
+      }
+    }
+  ]
+}
