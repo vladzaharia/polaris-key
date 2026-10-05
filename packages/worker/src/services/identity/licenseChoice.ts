@@ -126,6 +126,23 @@ export async function legacyChoiceAccount(
   return owned.some((l) => licenseUsable(l, now)) ? account.id : null;
 }
 
+/** Whether the chooser's account is still active and still holds the `oidc` link for `sub`. */
+export async function choiceAccountStillLinked(
+  db: Db,
+  accountId: string,
+  sub: string,
+): Promise<boolean> {
+  const account = await getAccountRow(db, accountId);
+  if (!account || account.status !== "active") return false;
+  const link = await db.first<{ one: number }>(
+    `SELECT 1 AS one FROM account_links
+      WHERE account_id = ? AND subject = ? AND kind = 'oidc' AND tenant_scope = ''`,
+    accountId,
+    sub,
+  );
+  return link !== null;
+}
+
 async function accountProductLicenses(
   db: Db,
   accountId: string,
@@ -155,6 +172,8 @@ export interface LegacyChoiceRow {
   tierName: string;
   /** Display only; never authorises anything. */
   origin: string;
+  /** A sign-in licence (origin `oidc`): shown as "Account-wide" beside its real seat count. */
+  accountWide: boolean;
   seats: { used: number; limit: number };
   expiresAt: number | null;
   activatedAt: number;
@@ -173,7 +192,7 @@ export interface LegacyChoiceView {
   /** A row id, `"create"`, or `null` when nothing can be chosen. */
   preselected: string | null;
   /** Offered only when the policy auto-issues to this person and every row is full. */
-  create: { tierName: string } | null;
+  create: { tierName: string | null } | null;
 }
 
 /** "Active now": seen in the last 10 minutes (owner decision §B). */
@@ -190,7 +209,7 @@ function originLabel(kind: PurchaseSourceKind, store: string | null): string {
     case "store":
       return `Bought on ${store ? (STORE_NAMES[store] ?? store) : "a store"}`;
     case "sign_in":
-      return "Signed-in app";
+      return "Account-wide";
     case "free":
       return "Free";
     default:
@@ -294,6 +313,7 @@ export async function legacyLicenseChoices(
         ? "free"
         : "full";
     const source = sources.get(l.id);
+    const kind = source ? source.kind : originKind(l.origin);
     const owned = l.account_id === input.accountId;
     let replace: ReplaceDevice[] | null = null;
     if (state === "full" && owned && portalOn) {
@@ -313,10 +333,9 @@ export async function legacyLicenseChoices(
     }
     rows.push({
       id: l.id,
-      tierName: tier?.label ?? (l.tier_id ? l.tier_id : "Licence"),
-      origin: source
-        ? originLabel(source.kind, source.store)
-        : originLabel(originKind(l.origin), null),
+      tierName: tier?.label ?? (l.tier_id ? l.tier_id : "Standard"),
+      origin: originLabel(kind, source?.store ?? null),
+      accountWide: kind === "sign_in",
       seats: { used, limit },
       expiresAt: l.expires_at,
       activatedAt: l.activated_at,
@@ -324,7 +343,7 @@ export async function legacyLicenseChoices(
       ...(strict
         ? {
             blockedReason:
-              "This licence needs a device check that this sign-in can't do.",
+              "This license needs a device check that this sign-in can't do.",
           }
         : {}),
       own: own?.id === l.id,
@@ -349,7 +368,7 @@ export async function legacyLicenseChoices(
     const tier = input.grantTierId
       ? await getTier(db, product.slug, input.grantTierId)
       : null;
-    create = { tierName: tier?.label ?? "free" };
+    create = { tierName: tier?.label ?? null };
   }
   const firstFree = rows.find((r) => r.state === "free");
   return {
@@ -385,8 +404,7 @@ function lastUsedText(at: number, now: number): string {
 /** A one-line notice above the rows, set by the previous POST. */
 export type ChoiceNotice =
   | { kind: "rate_limited"; retryAfter: number }
-  | { kind: "unavailable" }
-  | { kind: "replaced"; device: string };
+  | { kind: "unavailable" };
 
 function noticeHtml(notice: ChoiceNotice | null | undefined): string {
   if (!notice) return "";
@@ -394,9 +412,7 @@ function noticeHtml(notice: ChoiceNotice | null | undefined): string {
     case "rate_limited":
       return `<p class="alert" role="alert">Too many device changes. Try again in ${Math.max(1, Math.floor(notice.retryAfter))} seconds.</p>`;
     case "unavailable":
-      return `<p class="alert" role="alert">That licence can't take this device any more. Choose again.</p>`;
-    case "replaced":
-      return `<p class="notice" role="status">${escapeHtml(notice.device)} was signed out.</p>`;
+      return `<p class="alert" role="alert">That license can't take this device any more. Choose again.</p>`;
   }
 }
 
@@ -406,9 +422,7 @@ function meta(parts: string[]): string {
 
 function rowHtml(row: LegacyChoiceRow, checked: boolean, now: number): string {
   const expiry =
-    row.expiresAt === null
-      ? "No expiry"
-      : `Expires ${formatDay(row.expiresAt)}`;
+    row.expiresAt === null ? "Lifetime" : `Expires ${formatDay(row.expiresAt)}`;
   const disabled = row.state !== "free";
   const radio = `<input type="radio" name="license" value="${escapeHtml(row.id)}"${checked ? " checked" : ""}${disabled ? " disabled" : ""}>`;
   const note =
@@ -419,8 +433,13 @@ function rowHtml(row: LegacyChoiceRow, checked: boolean, now: number): string {
         : "";
   const head =
     `<label class="choice${disabled ? " is-disabled" : ""}">${radio}` +
-    `<span class="choice-body"><span class="choice-title">${escapeHtml(row.tierName)}</span>` +
-    meta([row.origin, devicesText(row.seats), expiry]) +
+    `<span class="choice-body"><span class="choice-title tiered"><span class="tag">${escapeHtml(row.tierName)}</span>` +
+    `<span class="choice-seats">${escapeHtml(
+      row.accountWide
+        ? `Account-wide · ${devicesText(row.seats)}`
+        : devicesText(row.seats),
+    )}</span></span>` +
+    meta([...(row.accountWide ? [] : [row.origin]), expiry]) +
     note +
     `</span></label>`;
   if (row.state !== "full") return `<li>${head}</li>`;
@@ -448,7 +467,7 @@ function rowHtml(row: LegacyChoiceRow, checked: boolean, now: number): string {
       .join("");
     replace =
       `<details class="replace"><summary>Replace a device</summary>` +
-      `<p class="muted small">Sign out one of this licence's devices to make room for this one.</p>` +
+      `<p class="muted small">Sign out one of this license's devices to make room for this one.</p>` +
       devices +
       `<button class="button secondary" type="submit" name="action" value="replace:${escapeHtml(row.id)}">Replace</button>` +
       `</details>`;
@@ -468,6 +487,8 @@ export function chooserBody(input: {
   view: LegacyChoiceView;
   notice?: ChoiceNotice | null;
   now: number;
+  /** The label is client-supplied (`deviceName`), so the page says where it came from. */
+  namedByDevice?: boolean;
 }): string {
   const { view } = input;
   const rows = view.rows
@@ -475,26 +496,30 @@ export function chooserBody(input: {
     .join("");
   const create = view.create
     ? `<li><label class="choice"><input type="radio" name="license" value="create"${view.preselected === "create" ? " checked" : ""}>` +
-      `<span class="choice-body"><span class="choice-title">Create a new free licence</span>` +
-      meta([`A free ${view.create.tierName} licence for this device`]) +
+      `<span class="choice-body"><span class="choice-title tiered">${view.create.tierName ? `<span class="tag">${escapeHtml(view.create.tierName)}</span>` : ""}<span class="choice-seats">Create a new free license</span></span>` +
+      meta(["A new free license for this device"]) +
       `</span></label></li>`
     : "";
   const canContinue = view.preselected !== null;
   const empty =
     view.rows.length === 0 && !view.create
-      ? `<p class="muted">None of your licences can be used right now.</p>`
+      ? `<p class="muted">None of your licenses can be used right now.</p>`
       : "";
   return (
-    `<p class="muted">Your account already has a ${escapeHtml(input.productName)} licence. Choose the one this device should use.</p>` +
-    `<dl><dt>Device</dt><dd>${escapeHtml(input.deviceLabel)}</dd></dl>` +
+    `<p class="muted">Your account already has a ${escapeHtml(input.productName)} license. Choose the one this device should use.</p>` +
+    `<dl><dt>Device</dt><dd>${escapeHtml(input.deviceLabel)}` +
+    (input.namedByDevice
+      ? `<span class="hint">Named by the device</span>`
+      : "") +
+    `</dd></dl>` +
     noticeHtml(input.notice) +
     `<form method="post" action="${escapeHtml(input.action)}">` +
     `<input type="hidden" name="choice" value="${escapeHtml(input.token)}">` +
-    `<fieldset class="choices"><legend class="sr-only">Licences</legend><ul class="choices">${rows}${create}</ul></fieldset>` +
+    `<fieldset class="choices"><legend class="sr-only">Licenses</legend><ul class="choices">${rows}${create}</ul></fieldset>` +
     empty +
     `<div class="actions stack">` +
     (canContinue
-      ? `<button class="button" type="submit" name="action" value="use">Use this licence</button>`
+      ? `<button class="button" type="submit" name="action" value="use">Use this license</button>`
       : "") +
     `<button class="button secondary" type="submit" name="action" value="cancel" formnovalidate>Cancel</button>` +
     `</div></form>`
@@ -509,7 +534,7 @@ export function replaceConfirmBody(input: {
   tierName: string;
 }): string {
   return (
-    `<p>${escapeHtml(input.device)} will need to sign in again. This device takes its place on your ${escapeHtml(input.tierName)} licence.</p>` +
+    `<p>${escapeHtml(input.device)} will need to sign in again. This device takes its place on your ${escapeHtml(input.tierName)} license.</p>` +
     `<form method="post" action="${escapeHtml(input.action)}">` +
     `<input type="hidden" name="choice" value="${escapeHtml(input.token)}">` +
     `<div class="actions stack">` +

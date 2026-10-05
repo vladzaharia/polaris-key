@@ -155,6 +155,17 @@ the recommended option. Where the code disagreed with this brief, the code won.
   developer", "Signed-in app", "Free"); display only.
 - **Primary copy** is "Use this licence" (this brief), not the card's "Use this licence and
   continue" (decision 3 is the card's).
+- **Review fixes (2026-10-05):** US "license" in all UI copy and audit summaries; sign-in
+  licences read "Account-wide" beside their real seat count (the tier's limit is enforced, never
+  "unlimited"); the tier is a neutral tag pill with the count beside it, origin and expiry on the
+  meta line; "Lifetime" instead of "No expiry"; tier fallback "Standard"; the Create row reads
+  "A new free license for this device"; the device row says "Named by the device"; the audit
+  row is written only after the flow update succeeds; the chooser re-checks that the account is
+  still active and linked on every render and POST.
+- **Behaviour change to note:** an identity whose own `sub`-keyed licence an operator disabled
+  used to be refused at the callback ("not entitled"). If the account owns another usable
+  licence, that person now reaches the chooser (the disabled licence is not listed) and can bind
+  the device to the account's licence.
 - **Rate limit** of the chooser route: new bucket `authChoose`, 60/60 s per IP, fail-closed.
 - **Audit**: `identity.signin.license_chosen` (product audit, target the licence; `null` target
   for Create) and its console verb.

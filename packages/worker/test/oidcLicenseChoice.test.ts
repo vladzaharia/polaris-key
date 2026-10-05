@@ -3,7 +3,7 @@
  * (2026-10-05): licence choice at sign-in"; delegated decisions 1, 2 and 13).
  *
  * On a `provider: platform` product, a person whose Polaris Key account already owns a usable
- * licence is shown "Choose a licence for this device" instead of being auto-issued a second
+ * licence is shown "Choose a license for this device" instead of being auto-issued a second
  * `sub`-keyed licence. Every flow kind (device code, the legacy state poll, the browser
  * `return_to` flow) mints nothing until the choice; the chooser answers only the browser that
  * started or confirmed the flow (`__Host-pk_lcb`); Replace frees a device through the portal's
@@ -448,11 +448,12 @@ describe("I-26 device-code flow", () => {
 
     const page = await readChooser(flow.binder!);
     expect(page.res.status).toBe(200);
-    expect(page.html).toContain("Choose a licence for this device");
+    expect(page.html).toContain("Choose a license for this device");
     expect(page.html).toContain("Steam Deck");
-    expect(page.html).toContain("Standard");
+    expect(page.html).toContain('<span class="tag">Standard</span>');
+    expect(page.html).toContain("Named by the device");
     expect(page.html).toContain("0 of 3 devices");
-    expect(page.html).toContain("No expiry");
+    expect(page.html).toContain("Lifetime");
     // The page never names the flow.
     expect(page.html).not.toContain(flow.state);
     expect(page.rows).toEqual([
@@ -478,7 +479,7 @@ describe("I-26 device-code flow", () => {
     );
     expect(audit).toEqual({
       target_id: "lic_std",
-      summary: "Chose this licence to sign in Steam Deck",
+      summary: "Chose this license to sign in Steam Deck",
     });
   });
 
@@ -496,7 +497,7 @@ describe("I-26 device-code flow", () => {
     });
     expect(foreign.status).toBe(303);
     page = await readChooser(flow.binder!);
-    expect(page.html).toContain("That licence can't take this device any more");
+    expect(page.html).toContain("That license can't take this device any more");
     expect((await devicePoll(flow, NOW + 10)).status).toBe("pending");
 
     // Disabled between the render and the submit: re-checked, refused.
@@ -536,7 +537,7 @@ describe("I-26 device-code flow", () => {
     await callback(flow.state, flow.nonce, flow.binder);
     const page = await readChooser(flow.binder!);
     expect(page.rows.map((r) => r.id).sort()).toEqual(["lic_own", "lic_std"]);
-    expect(page.html).toContain("Signed-in app");
+    expect(page.html).toContain("Account-wide · 0 of 2 devices");
     await postChooser(flow.binder, {
       choice: page.token,
       action: "use",
@@ -664,7 +665,7 @@ describe("I-26 rows", () => {
       `href="${ORIGIN}/#/p/djdl/free-device?license=lic_start&amp;for=Steam%20Deck"`,
     );
     expect(page.html).toContain("<summary>Replace a device</summary>");
-    expect(page.html).not.toContain("Create a new free licence");
+    expect(page.html).not.toContain("Create a new free license");
   });
 
   it("offers Create a new free licence only when the policy grants and every row is full", async () => {
@@ -674,7 +675,9 @@ describe("I-26 rows", () => {
     const flow = await startDeviceFlow();
     await callback(flow.state, flow.nonce, flow.binder);
     const page = await readChooser(flow.binder!);
-    expect(page.html).toContain("Create a new free licence");
+    expect(page.html).toContain("Create a new free license");
+    expect(page.html).toContain("A new free license for this device");
+    expect(page.html).not.toContain("free free");
     expect(page.rows).toContainEqual({
       id: "create",
       checked: true,
@@ -690,6 +693,41 @@ describe("I-26 rows", () => {
     expect(await licenseCount()).toBe(before + 1);
   });
 
+  it('a grant with no tier reads "A new free license for this device"', async () => {
+    await db.run(
+      "UPDATE oidc_config SET group_role_map_json = ? WHERE product = 'djdl'",
+      JSON.stringify({ members: { role: "user" } }),
+    );
+    await insertLic({ id: "lic_start", tier: "starter", account: accountId });
+    await authorizeAndMint(env, db, product, "lic_start", "work-laptop", NOW);
+    const flow = await startDeviceFlow();
+    await callback(flow.state, flow.nonce, flow.binder);
+    const page = await readChooser(flow.binder!);
+    expect(page.html).toContain(
+      '<span class="choice-seats">Create a new free license</span>',
+    );
+    expect(page.html).toContain("A new free license for this device");
+    expect(page.html).not.toContain("free free");
+  });
+
+  it("ends the chooser when the account is disabled meanwhile", async () => {
+    await insertLic({ id: "lic_std", tier: "std", account: accountId });
+    const flow = await startDeviceFlow();
+    await callback(flow.state, flow.nonce, flow.binder);
+    await db.run(
+      "UPDATE accounts SET status = 'disabled' WHERE id = ?",
+      accountId,
+    );
+    const res = await getChooser(flow.binder);
+    expect(res.status).toBe(403);
+    expect((await devicePoll(flow, NOW + 10)).status).toBe("timeout");
+    expect(
+      await db.first(
+        "SELECT 1 FROM audit WHERE action = 'identity.signin.license_chosen'",
+      ),
+    ).toBeNull();
+  });
+
   it("no Create when the policy grants nothing", async () => {
     await db.run(
       "UPDATE oidc_config SET group_role_map_json = ? WHERE product = 'djdl'",
@@ -702,7 +740,7 @@ describe("I-26 rows", () => {
     // A purchased licence works from the app even when the group map entitles nothing.
     expect(cb.status).toBe(303);
     const page = await readChooser(flow.binder!);
-    expect(page.html).not.toContain("Create a new free licence");
+    expect(page.html).not.toContain("Create a new free license");
     expect(page.html).not.toContain('value="use"');
   });
 
@@ -934,7 +972,7 @@ describe("I-26 Replace a device", () => {
     page = await readChooser(flow.binder!);
     await postChooser(flow.binder, { choice: page.token, action: "back" });
     page = await readChooser(flow.binder!);
-    expect(page.html).toContain("Choose a licence for this device");
+    expect(page.html).toContain("Choose a license for this device");
   });
 
   it("shares the portal's portalDeviceDisconnect budget", async () => {

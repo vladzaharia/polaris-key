@@ -2883,12 +2883,18 @@ starter's device. The chooser therefore applies the fix direction above, for thi
   <label>") and the security email to every verified address. Nothing is written before the
   explicit "Replace and continue".
 
-Residual: the cookie binds the browser that _started or confirmed_ the flow. In the R1-07
-pattern the starter confirms with curl and holds the cookie, so the victim's callback is refused
-— closed for the chooser path. Flows outside the trigger (no linked account, no usable licence,
-`provider: custom`) keep the R1-07 behaviour described above until I-08 moves sign-in onto the
-login card with PX-W13's binder. Pinned by `test/oidcLicenseChoice.test.ts` (› "I-26 browser
-binder").
+Residual (open, owned by I-08 / PX-W13): the cookie binds the browser that _started or confirmed_
+the flow, not the person who owns the device. In the plain R1-07 pattern the starter confirms
+with curl and holds the cookie, so the victim's callback is refused. In the
+`verificationUriComplete` variant, though, the starter sends the victim the confirmation link:
+the victim confirms **in their own browser**, receives the binder, signs in, and is shown the
+chooser — and could bind one of their purchased licenses to the starter's device. The only speed
+bump is the device label, which the chooser and the confirmation page show (marked "Named by the
+device" on the chooser) but which is client-supplied `deviceName` text the starter chooses.
+Closing it needs the device-code holder and the browser bound together, which is I-08's login
+card with PX-W13's `__Host-pk_req` binder. Flows outside the trigger (no linked account, no
+usable license, `provider: custom`) keep the R1-07 behaviour described above. Pinned by
+`test/oidcLicenseChoice.test.ts` (› "I-26 browser binder").
 
 **Unchanged.** The legacy `/identity/auth/device/verify?device_code=` page stays for flows in
 flight across the deploy. Confirmation on both routes is one function: the Fetch Metadata /

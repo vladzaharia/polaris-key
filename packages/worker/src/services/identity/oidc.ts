@@ -89,6 +89,7 @@ import {
   binderClearCookie,
   binderSetCookie,
   chooserBody,
+  choiceAccountStillLinked,
   legacyChoiceAccount,
   legacyLicenseChoices,
   readBinder,
@@ -2195,6 +2196,13 @@ interface ChooserContext {
   deviceLabel: string;
 }
 
+/** Drop the flow and its index, and answer "Start again": nothing is minted. */
+async function endChooser(env: Env, c: ChooserContext): Promise<Response> {
+  await deleteArtefact(env, c.stateKey);
+  await deleteArtefact(env, c.indexKey);
+  return startAgainPage();
+}
+
 async function chooserView(
   req: Request,
   db: Db,
@@ -2202,7 +2210,11 @@ async function chooserView(
   c: ChooserContext,
   now: number,
   hooks: ServiceHooks | undefined,
-): Promise<LegacyChoiceView> {
+): Promise<LegacyChoiceView | null> {
+  // The account may have been disabled, deleted or unlinked since the callback: the chooser then
+  // ends rather than offering that account's licences or its Replace.
+  if (!(await choiceAccountStillLinked(db, c.accountId, c.identity.sub)))
+    return null;
   const grant = await identityTier(db, product, c.identity, now);
   return legacyLicenseChoices(db, product, {
     accountId: c.accountId,
@@ -2321,6 +2333,7 @@ export async function handleAuthChoose(
   }
 
   const view = await chooserView(req, db, product, c, now, hooks);
+  if (!view) return endChooser(env, c);
 
   if (action.startsWith("replace:")) {
     const licenseId = action.slice("replace:".length);
@@ -2365,6 +2378,7 @@ export async function handleAuthChoose(
       // Re-read: someone may have taken the freed seat in between (a race). The freed device
       // stays freed (audited and emailed), and the person chooses again.
       const after = await chooserView(req, db, product, c, now, hooks);
+      if (!after) return endChooser(env, c);
       const fresh = after.rows.find((r) => r.id === pending.licenseId);
       if (fresh?.state !== "free") return notice({ kind: "unavailable" });
       return completeChoice(req, env, db, product, c, fresh, now);
@@ -2393,6 +2407,7 @@ async function renderChooser(
   hooks: ServiceHooks | undefined,
 ): Promise<Response> {
   const view = await chooserView(req, db, product, c, now, hooks);
+  if (!view) return endChooser(env, c);
   const token = b64url(randomBytes(24));
   const minted = await updateArtefact(env, c.stateKey, {
     expect: { choiceOpen: true },
@@ -2421,9 +2436,9 @@ async function renderChooser(
     await updateArtefact(env, c.stateKey, { unset: ["choiceReplace"] });
   }
   return choicePage(200, {
-    title: "Choose a licence for this device",
+    title: "Choose a license for this device",
     eyebrow: product.name,
-    heading: "Choose a licence for this device",
+    heading: "Choose a license for this device",
     body: chooserBody({
       productName: product.name,
       deviceLabel: c.deviceLabel,
@@ -2432,6 +2447,7 @@ async function renderChooser(
       view,
       notice: c.flow.choiceNotice ?? null,
       now,
+      namedByDevice: Boolean(c.flow.viaDeviceCode),
     }),
   });
 }
@@ -2450,22 +2466,24 @@ async function completeChoice(
   // Through the identity's own activation: a new licence, or the identity's own `sub`-keyed one
   // (the deferred P1-07 activation, attach opt-in included, stays as it is today).
   const activate = choice === "create" || choice.own;
-  await appendAudit(db, {
-    product: product.slug,
-    id: randomId("aud"),
-    at: now,
-    actor_sub: identity.sub,
-    actor_name: identity.name ?? null,
-    actor_email: identity.email ?? null,
-    action: "identity.signin.license_chosen",
-    target_kind: "license",
-    target_id: choice === "create" ? null : choice.id,
-    parent_id: null,
-    summary:
-      choice === "create"
-        ? `Chose a new free licence to sign in ${c.deviceLabel}`
-        : `Chose this licence to sign in ${c.deviceLabel}`,
-  });
+  // The audit row is written only once the choice is actually recorded on the flow.
+  const audit = () =>
+    appendAudit(db, {
+      product: product.slug,
+      id: randomId("aud"),
+      at: now,
+      actor_sub: identity.sub,
+      actor_name: identity.name ?? null,
+      actor_email: identity.email ?? null,
+      action: "identity.signin.license_chosen",
+      target_kind: "license",
+      target_id: choice === "create" ? null : choice.id,
+      parent_id: null,
+      summary:
+        choice === "create"
+          ? `Chose a new free license to sign in ${c.deviceLabel}`
+          : `Chose this license to sign in ${c.deviceLabel}`,
+    });
   await deleteArtefact(env, c.indexKey);
   const cookies = [binderClearCookie()];
 
@@ -2479,6 +2497,7 @@ async function completeChoice(
       unset: CHOICE_FIELDS,
     });
     if (!done.ok) return startAgainPage();
+    await audit();
     return signedInPage(cookies);
   }
 
@@ -2495,6 +2514,7 @@ async function completeChoice(
   }
   const done = await updateArtefact(env, c.stateKey, { unset: CHOICE_FIELDS });
   if (!done.ok) return startAgainPage();
+  await audit();
   return completeBrowserFlow(
     req,
     env,
