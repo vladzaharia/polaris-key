@@ -53,6 +53,10 @@ jobs:
       # enums, feature ids, versions) must match its sources, and conformance/parity/errors.json
       # must list every wire code the Worker's source emits (tools/gen-sdk-constants.ts).
       - run: pnpm gen:constants -- --check
+      # Platform-inventory drift (ST-02): every Env member in packages/worker/src/env.ts carries an
+      # @inventory tag, src/platformInventory.generated.ts matches them, wrangler.toml names every
+      # var and secret (secrets in its required-secrets comment) and declares nothing Env lacks.
+      - run: pnpm gen:platform-inventory -- --check
       # Brand-token drift: @polaris-key/brand's generated outputs (tokens.css, the Tailwind v4 theme,
       # tokens.json, the TS constants and kit templates, the Godot and Swift token files) must match
       # packages/brand/src/tokens/ and the launch-kit copy (packages/brand/scripts/gen.ts).

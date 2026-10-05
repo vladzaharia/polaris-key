@@ -5874,7 +5874,7 @@
       "optional": false,
       "refs": ["notes/S-18 §2.2", "notes/S-18 §4.13", "notes/S-18 §6.2 ST-02"],
       "brief": "wp/ST-02-platform-inventory.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "ST-03",

@@ -3450,7 +3450,13 @@ is no new privilege level and no outbound call.
 - **The inventory never reveals a secret.** `GET …/settings` reports deploy-time values that are
   not credentials (the environment, the admin group name, the IdP issuer and client id, the
   parsed issuer allowlist, the origins, the bucket, the account and GitHub App ids, kid names)
-  and every secret as `{ name, set }` only: never a value, a length, a prefix or a hash. It warns
+  and every secret as `{ name, set }` only: never a value, a length, a prefix or a hash. Since
+  ST-02 both lists are generated from the `@inventory var|secret` tags on `Env` (`env.ts` →
+  `platformInventory.generated.ts`) rather than hand-kept, so a new member cannot be left out,
+  and a member cannot be added untagged (`pnpm gen:platform-inventory -- --check`). The tag is
+  now what keeps a value out of the response: `test/platformInventory.test.ts` refuses a
+  credential-shaped name (`*_SECRET`, `*_KEY`, `*_KEYS`, `*_PEPPER`, `*PRIVATE_KEY`, the store
+  credentials, `PLATFORM_KEK`) tagged anything but `secret`. It warns
   when the console still borrows the platform IdP client (`ADMIN_OIDC_*` unset, I-03), when
   `PLATFORM_KEK_ID` is set, and when `PORTAL_SESSION_SECRET` is unset (the portal then signs with
   `ADMIN_SESSION_SECRET`).
@@ -3521,8 +3527,8 @@ credential and no outbound host.**
   dead-letter queue `pkey-deltas-dlq-<env>` as a producer so the Operations page can call
   `metrics()`; Cloudflare offers no read-only queue binding. A source check
   (`test/platformOperations.test.ts`) asserts no file calls `.send` or `.sendBatch` on it and
-  that only `env.ts`, `core/operations.ts` (which hands it straight to `queueStatus`) and the
-  binding-presence list name it. The residual risk, accepted: code running in the request Worker
+  that only `env.ts`, `core/operations.ts` (which hands it straight to `queueStatus`), the
+  binding-presence list and the generated platform inventory (ST-02, one data row) name it. The residual risk, accepted: code running in the request Worker
   could enqueue junk into a queue that has no consumer and whose messages expire after 4 days.
   It reaches no device and no signed document.
 - **Probes are bounded.** Each binding probe has a 3-second limit and is fault-isolated, so a
@@ -4923,6 +4929,7 @@ reporting a binding's resource id or any secret-derived value, a route updates o
 `PLATFORM_SETTINGS`, a setting's precedence changes from `ceiling` to `runtime`, a registry
 entry's bounds widen (`LAZY_DELTA_MAX_BYTES` above the measured 32 MiB ceiling, or a grace below
 one day), the settings inventory starts reporting anything about a secret beyond its presence,
+an `Env` member's `@inventory` tag changes from `secret` to `var` (ST-02),
 or a path reads one of the four settings from the raw `[vars]` instead of through the resolver;
 or, for the settings registry (ST-03), an entry is added or loses `pending`, an entry's ownership,
 `securityWidening`, `critical`, `inherits`, `policyBound` or confirm levels change, a rule in
