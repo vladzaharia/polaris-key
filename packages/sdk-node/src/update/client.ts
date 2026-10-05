@@ -58,6 +58,7 @@ import {
   type InstalledBuild,
   type StagedUpdate,
   type UpdateCheck,
+  type UpdateDecision,
 } from "@polaris-key/protocol/update";
 import {
   PolarisError,
@@ -99,6 +100,14 @@ import { PacksClient, type NodePacksOptions } from "../packs/client.js";
 import { UpdateJournal } from "./journal.js";
 import { loadBuildStamp } from "./stamp.js";
 import { BootGuard, type BootAttempt } from "./bootguard.js";
+import type {
+  InstallContext,
+  InstallDriver,
+  InstallOptions,
+  InstallOutcome,
+} from "./drivers/types.js";
+import { releaseFetch } from "../release/fetch.js";
+import { openInBrowser } from "../identity/client.js";
 import {
   appcastUrlFrom,
   serviceEndpoint,
@@ -179,6 +188,12 @@ export interface UpdateClientOptions {
    *  baselines, variant preferences and the store directory. Pack records verify against
    *  `pinnedReleaseKeys`. */
   packs?: NodePacksOptions;
+  /** The install driver `install(decision)` hands decisions to (§3.16): one of
+   *  `@polaris-key/node/update/drivers/*`, or the host's own. Its `rollback`, when it has one,
+   *  becomes the boot guard's. `useDriver()` sets it later. */
+  driver?: InstallDriver;
+  /** Open a URL (a store listing); default the OS opener. */
+  openUrl?: (url: string) => Promise<boolean> | boolean;
   /** The device's architecture. Defaults to `os.arch()`'s canonical value. */
   arch?: Arch;
 }
@@ -519,6 +534,8 @@ export class UpdateClient {
   readonly journal: UpdateJournal;
   /** The app boot guard (§3.15): slots in the state directory. */
   readonly guard: BootGuard;
+  private installDriver: InstallDriver | null = null;
+  private readonly openUrl: (url: string) => Promise<boolean> | boolean;
   /** Called when `decide()` offers a newer build (the facade emits `events.updateAvailable`). */
   onUpdateAvailable: (check: UpdateCheck) => void = () => undefined;
   /** The releases this process already reported as offered. */
@@ -553,6 +570,8 @@ export class UpdateClient {
     });
     const journal = this.journal;
     this.guard = new BootGuard(ctx.dirs.state, ctx.version, journal);
+    if (wiring.options?.driver) this.useDriver(wiring.options.driver);
+    this.openUrl = wiring.options?.openUrl ?? openInBrowser;
     this.packs = new PacksClient(
       {
         ctx,
@@ -608,6 +627,85 @@ export class UpdateClient {
    *  null when the host named the outlet, turned detection off, or configured no updates. */
   get detected(): DetectedOutlet | null {
     return this.configured?.detected ?? null;
+  }
+
+  /** The configured install driver, or null. */
+  get driver(): InstallDriver | null {
+    return this.installDriver;
+  }
+
+  /** Set (or clear) the install driver. Its `rollback` becomes the boot guard's. */
+  useDriver(driver: InstallDriver | null): void {
+    this.installDriver = driver;
+    this.guard.opts = driver?.rollback
+      ? { rollback: (v) => driver.rollback!(v) }
+      : {};
+  }
+
+  /**
+   * Install what a decision offers (§3.16): a `binary` decision goes to the configured driver
+   * (electron-updater, Velopack, single-executable self-replace, store link); a `store`
+   * decision goes to the driver, else opens its listing. Every other decision, and a `binary`
+   * one with no driver, answers `unsupported` with its reason rather than doing nothing.
+   * Download and hand-off are recorded in the update-health journal (§3.13).
+   */
+  async install(
+    decision: UpdateDecision,
+    opts: InstallOptions = {},
+  ): Promise<InstallOutcome> {
+    if (decision.action !== "binary" && decision.action !== "store") {
+      const detail =
+        decision.action === "packs"
+          ? "a packs decision is installed by update.packs.ensure()."
+          : decision.action === "code-ready"
+            ? "a Node host runs no code packs."
+            : decision.action === "platform"
+              ? "the platform's own updater installs this build."
+              : `there is nothing to install (${decision.action}).`;
+      return {
+        kind: "unsupported",
+        reason: decision.action === "platform" ? "outlet" : "product",
+        detail,
+      };
+    }
+    const ctx = this.installContext(opts);
+    if (this.installDriver) return this.installDriver.install(decision, ctx);
+    if (decision.action === "store") {
+      if (decision.listingUrl && (await ctx.openUrl(decision.listingUrl)))
+        return { kind: "storeOpened", url: decision.listingUrl };
+      return {
+        kind: "unsupported",
+        reason: decision.listingUrl ? "runtime" : "product",
+        detail: decision.listingUrl
+          ? `no URL opener could open ${decision.listingUrl}.`
+          : "the store decision names no listing URL.",
+      };
+    }
+    return {
+      kind: "unsupported",
+      reason: "dependency",
+      detail:
+        "no install driver is configured: pass update.driver (electronUpdaterDriver, velopackDriver, seaSelfReplaceDriver, storeLinkDriver) or download with release.fetch().",
+    };
+  }
+
+  private installContext(opts: InstallOptions): InstallContext {
+    return {
+      ...opts,
+      currentVersion: this.ctx.version,
+      stateDir: this.ctx.dirs.state,
+      fetch: (target, o) => {
+        this.ctx.requireService("release", Feature.releaseDownload);
+        return releaseFetch(this.ctx, this.tokens, this, target, o);
+      },
+      record: async (sha256) => (await this.releaseRecord(sha256)).record,
+      feedUrl: (kind, o) => this.feedUrl(kind, o ?? {}),
+      journal: async (event, input) => {
+        await this.journal.record(event, input).catch(() => null);
+      },
+      openUrl: async (url) =>
+        Promise.resolve(this.openUrl(url)).catch(() => false),
+    };
   }
 
   /** Count this launch before the app does anything that could crash (§3.15). On the third

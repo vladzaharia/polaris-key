@@ -3,7 +3,9 @@
   "version": "0.0.0",
   "license": "MIT",
   "type": "module",
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/electron/preload.js"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -66,6 +68,38 @@
     "./server": {
       "types": "./dist/server.d.ts",
       "default": "./dist/server.js"
+    },
+    "./electron": {
+      "types": "./dist/electron/index.d.ts",
+      "default": "./dist/electron/index.js"
+    },
+    "./electron/preload": {
+      "types": "./dist/electron/preload.d.ts",
+      "default": "./dist/electron/preload.js"
+    },
+    "./electron/renderer": {
+      "types": "./dist/electron/renderer.d.ts",
+      "default": "./dist/electron/renderer.js"
+    },
+    "./update/drivers": {
+      "types": "./dist/update/drivers/index.d.ts",
+      "default": "./dist/update/drivers/index.js"
+    },
+    "./update/drivers/electron-updater": {
+      "types": "./dist/update/drivers/electronUpdater.d.ts",
+      "default": "./dist/update/drivers/electronUpdater.js"
+    },
+    "./update/drivers/velopack": {
+      "types": "./dist/update/drivers/velopack.d.ts",
+      "default": "./dist/update/drivers/velopack.js"
+    },
+    "./update/drivers/sea": {
+      "types": "./dist/update/drivers/sea.d.ts",
+      "default": "./dist/update/drivers/sea.js"
+    },
+    "./update/drivers/store-link": {
+      "types": "./dist/update/drivers/storeLink.d.ts",
+      "default": "./dist/update/drivers/storeLink.js"
     }
   },
   "files": [

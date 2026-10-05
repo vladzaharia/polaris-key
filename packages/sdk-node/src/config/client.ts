@@ -12,7 +12,7 @@
 // effect, and the remote value still wins. That is the whole point of the management state —
 // see packages/docs/src/content/docs/start/concepts.md.
 
-import type { JSONValue } from "@polaris-key/protocol/core";
+import type { JSONValue, ManagedEntry } from "@polaris-key/protocol/core";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
 import { Catalog, type ProductCatalog } from "@polaris-key/catalog";
 import { join } from "node:path";
@@ -116,6 +116,12 @@ export class ConfigClient {
 
   private get doc(): ConfigDoc | null {
     return this.cache.state.config?.doc ?? null;
+  }
+
+  /** The CONFIG document's managed entries as last verified (the desktop bridge's
+   *  `BridgeState.config`), or null before any config document. */
+  entries(): Record<string, ManagedEntry> | null {
+    return this.doc?.config ?? null;
   }
 
   private context(): ResolveContext {

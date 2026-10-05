@@ -29,7 +29,8 @@
           "reason": "dependency",
           "note": "When @napi-rs/keyring cannot load (a single-executable build, no Secret Service) the token is in a 0600 file; supports() reports dependency (P1b-10)."
         }
-      ]
+      ],
+      "note": "KeyringStore by default; an Electron main process uses SafeStorageStore (@polaris-key/node/electron), whose status() reports keyring-unavailable when safeStorage cannot encrypt or falls back to basic_text, and keyring-error when the stored token no longer decrypts (SP-N11)."
     },
     "license.gate": { "status": "implemented" },
     "license.activate": { "status": "implemented" },
@@ -84,9 +85,8 @@
       "note": "client-core decideUpdate with content (feedContent, selectPackRows, prestage, the content blocks and boot required for revoked required content); client.update.decide() builds content from the content stamp, the pack state, the variant preferences and the stored revocations (runUpdateCheck steps 10-14)."
     },
     "update.driver": {
-      "status": "planned",
-      "unowned": true,
-      "note": "Only appcastUrl() today; the Velopack, electron-updater or single-executable hand-off has no work package (P3-04 excludes it)."
+      "status": "implemented",
+      "note": "client.update.install(decision) answers an InstallOutcome (restartRequired, handedOff, storeOpened, unsupported{reason}) through the configured driver: electronUpdaterDriver (the found version must equal the signed decision's and the downloaded file must hash to an artifact of its record), velopackDriver (the discovery Velopack feed), seaSelfReplaceDriver (release.fetch-verified bytes, <exe>.previous kept as the boot guard's rollback) and storeLinkDriver, under @polaris-key/node/update/drivers/*; none imports its updater (SP-N09)."
     },
     "update.bootguard": {
       "status": "implemented",

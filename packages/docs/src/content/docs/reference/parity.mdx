@@ -19,7 +19,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 57 | 6 | 0 | 5 |
+| Node | `node` | 58 | 6 | 0 | 4 |
 | React | `web`, `desktop-bridge` | 47 | 15 | 0 | 6 |
 | Python | `python` | 55 | 6 | 0 | 7 |
 | Swift | `macos`, `ios` | 56 | 5 | 0 | 7 |
@@ -88,7 +88,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `update.feed` | Verify pkey-feed+jws: freshness, seq | `cases.json` `feedCases` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.decide` | The update decision | `update-matrix.json` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.content` | The content decision: feed pack sets, floors and revocations, packs and prestage | `update-matrix.json` `contentRows` + `cases.json` `feedContentCases` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `update.driver` | Hand off to the native updater, or a store link | device tests | planned (unowned) | planned (unowned) | planned (unowned) | ✓; N/A (ios: outlet) | ✓; N/A (ios: outlet) | ✓; N/A (jvm: runtime) | ios: outlet; jvm: runtime |
+| `update.driver` | Hand off to the native updater, or a store link | device tests | ✓ | planned (unowned) | planned (unowned) | ✓; N/A (ios: outlet) | ✓; N/A (ios: outlet) | ✓; N/A (jvm: runtime) | ios: outlet; jvm: runtime |
 | `update.bootguard` | Confirm a boot, roll back after N failures | `stage-matrix.json` | ✓ | planned (unowned) | planned (unowned) | planned (unowned) | ✓ | ✓ | — |
 | `outlet.detect` | Outlet detection | `outlet-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 
@@ -136,7 +136,6 @@ Planned entries no work package owns yet. Each needs an owner before the gap can
 | SDK | Feature | Note |
 | --- | --- | --- |
 | Node | `identity.oidc` | Browser redirect sign-in for native hosts waits on I-15's redirect token route (wire item W4); /identity/auth/poll is deprecated and never used. The interim is identity.signInWithBrowser(): device code opened in the system browser (SDK parity pass §3.12). |
-| Node | `update.driver` | Only appcastUrl() today; the Velopack, electron-updater or single-executable hand-off has no work package (P3-04 excludes it). |
 | Node | `packs.transport.steam` | P5-08 covers Godot only; Node desktop hosts have no Steam-depot transport owner. |
 | Node | `packs.transport.msix` | No work package owns the MSIX optional-package transport (P5-08 Out). |
 | Node | `packs.transport.flatpak` | No work package owns the Flatpak extension transport (P5-08 Out). |

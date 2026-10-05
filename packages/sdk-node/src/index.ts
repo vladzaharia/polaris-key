@@ -189,6 +189,14 @@ export {
   type BootGuardOptions,
   type BootSlots,
 } from "./update/bootguard.js";
+// Install drivers (§3.16): the interface here, the adapters under ./update/drivers/*.
+export type {
+  InstallContext,
+  InstallDriver,
+  InstallOptions,
+  InstallOutcome,
+  InstallableDecision,
+} from "./update/drivers/types.js";
 // Server-side licence verification and crash tags (§2.1, §3.14).
 export {
   crashTagsFor,
