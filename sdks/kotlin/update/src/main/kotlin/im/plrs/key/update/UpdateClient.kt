@@ -47,6 +47,8 @@ import im.plrs.key.core.ReleaseRecordPin
 import im.plrs.key.core.ReleaseRecordStep
 import im.plrs.key.core.ResolvedOutlet
 import im.plrs.key.core.RuntimeFamily
+import im.plrs.key.core.FileStore
+import java.io.File
 import im.plrs.key.core.Semver
 import im.plrs.key.core.ServiceSlug
 import im.plrs.key.core.StagedUpdate
@@ -121,7 +123,10 @@ public data class UpdateClientOptions(
     val platform: String? = null,
     /** The device's `Arch` value. Default: this runtime's. */
     val arch: String? = null,
-    /** The platform installer. Default [JvmInstallDriver] (typed `runtime` N/A); Android's are P6-12's. */
+    /**
+     * The platform installer. Default [JvmInstallDriver], the marker [UpdateClient.install] replaces
+     * with the JVM desktop driver (UK-40); Android's are P6-12's.
+     */
     val installDriver: InstallDriver = JvmInstallDriver,
 )
 
@@ -296,13 +301,30 @@ public class UpdateClient private constructor(
     }
 
     /**
-     * Hand a decision to the platform's installer ([UpdateClientOptions.installDriver]). On a JVM
-     * desktop there is none: [JvmInstallDriver] throws the typed `runtime` N/A (registry
-     * `update.driver` jvm), and the host offers [buildUrl] as a download link instead.
+     * Hand a decision to the platform's installer ([UpdateClientOptions.installDriver]). Left at the
+     * default on a JVM desktop, that is [desktopDriver] (UK-40): the installer for this OS and arch,
+     * downloaded, verified against the signed record and opened. On Android the :android module
+     * replaces the default with the flavour's driver.
      */
     public suspend fun install(check: UpdateCheck): InstallResult {
         val driver = configured?.options?.installDriver ?: JvmInstallDriver
+        if (driver === JvmInstallDriver && !RuntimeFamily.isAndroid) return desktopDriver.install(check)
         return driver.install(check)
+    }
+
+    /**
+     * The JVM desktop driver [install] uses by default: records from [releaseRecord], bytes from
+     * [buildUrl] through [OkHttpArtifactFetch], installers under
+     * `<FileStore.defaultDirectory(product)>/updates/installer`, opened by [SystemInstallerOpener].
+     * PolarisKeyDesktop builds its own over the app's data directory.
+     */
+    public val desktopDriver: DesktopInstallDriver by lazy {
+        DesktopInstallDriver(
+            records = { sha -> releaseRecord(sha).record },
+            buildUrl = { version, build -> buildUrl(version, build) },
+            fetch = OkHttpArtifactFetch(core),
+            dir = File(FileStore.defaultDirectory(core.product), "updates/installer"),
+        )
     }
 
     // ── Internals ───────────────────────────────────────────────────────────────────────────

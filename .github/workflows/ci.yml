@@ -427,6 +427,76 @@ jobs:
           path: |
             sdks/kotlin/*/build/reports/
 
+  # UK-40 (SP-K12): the Kotlin SDK's JVM desktop parity on the three desktop OSes. The keyring store's
+  # storage contract runs against the REAL OS keyring (PKEY_KEYRING_TESTS=1): the login Keychain on
+  # macOS, Credential Manager on Windows, and Secret Service on Linux through gnome-keyring in a
+  # dbus-run-session, unlocked headless; a Linux session whose Secret Service is unreachable or
+  # refuses skips that one test and prints the recorded `core.store` jvm `dependency` N/A. macOS and
+  # Linux run the :core, :update and :sdk suites whole; Windows runs the desktop suites (the keyring
+  # store, the install driver and its fetch, the slots, the desktop entry point, capabilities).
+  kotlin-desktop:
+    name: Kotlin SDK JVM desktop (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-15, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    env:
+      PKEY_KEYRING_TESTS: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - name: Secret Service (gnome-keyring) for the headless session
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y gnome-keyring dbus-x11
+      - name: JVM desktop suites (Linux, Secret Service)
+        if: runner.os == 'Linux'
+        working-directory: sdks/kotlin
+        run: >-
+          dbus-run-session -- bash -c 'printf pkey | gnome-keyring-daemon --unlock --components=secrets >/dev/null;
+          ./gradlew --no-daemon -Ppkey.jvmOnly=true :core:test :update:test :sdk:test'
+      - name: JVM desktop suites (macOS, login Keychain)
+        if: runner.os == 'macOS'
+        working-directory: sdks/kotlin
+        run: ./gradlew --no-daemon -Ppkey.jvmOnly=true :core:test :update:test :sdk:test
+      - name: JVM desktop suites (Windows, Credential Manager)
+        if: runner.os == 'Windows'
+        working-directory: sdks/kotlin
+        run: >-
+          ./gradlew --no-daemon -Ppkey.jvmOnly=true
+          :core:test --tests 'im.plrs.key.core.KeyringStoreTest' --tests 'im.plrs.key.core.CapabilitiesTest'
+          :update:test --tests 'im.plrs.key.update.DesktopInstallDriverTest' --tests 'im.plrs.key.update.DirUpdateSlotsTest'
+          --tests 'im.plrs.key.update.BootGuardTest'
+          :sdk:test --tests 'im.plrs.key.sdk.PolarisKeyDesktopTest'
+      - name: The real-keyring contract ran (or recorded its Linux N/A)
+        working-directory: sdks/kotlin
+        run: |
+          python3 - <<'PY'
+          import os, sys, xml.etree.ElementTree as ET
+          root = ET.parse("core/build/test-results/test/TEST-im.plrs.key.core.KeyringStoreTest.xml").getroot()
+          case = next(c for c in root.iter("testcase") if c.get("name") == "theContractHoldsOnTheRealOsKeyring")
+          if case.find("skipped") is not None:
+              if os.environ["RUNNER_OS"] != "Linux":
+                  sys.exit("the real-keyring contract must run on " + os.environ["RUNNER_OS"])
+              print("recorded N/A: core.store jvm dependency (no usable Secret Service in this session)")
+          else:
+              print("the real-keyring contract ran on " + os.environ["RUNNER_OS"])
+          PY
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: kotlin-desktop-reports-${{ matrix.os }}
+          path: |
+            sdks/kotlin/*/build/reports/
+
   # P5-06/P6-09/P6-10/P6-12: the Android platform AAR (sdks/kotlin :platform, polaris-key-platform-{play,direct}),
   # the Godot Android binding over it alone (sdks/godot/native/android, built as :godot) and the Kotlin
   # SDK's Android glue over the SDK and the platform (:android, polaris-key-android-{play,direct}), on JDK 17 and the
