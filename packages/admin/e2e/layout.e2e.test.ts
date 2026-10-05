@@ -16,14 +16,16 @@ import {
  * The console's layout lint: a permanent regression gate over EVERY console page.
  *
  * Each page (enumerated from `nav.ts`, plus every record, tab, drawer and dialog the fixtures
- * reach) is opened in the BUILT console, under the Worker's CSP, at 1440×900 and 390×844, in the
+ * reach) is opened in the BUILT console, under the Worker's CSP, at 1440×900, 1280×800 (a laptop),
+ * 768×1024 (a tablet) and 390×844, in the
  * dark and the light theme, over realistic data (`layoutFixtures.ts`): a populated product, a
  * product with a long name and an empty product. `probeLayout` (`layoutProbe.ts`) then measures
  * the page inside the console's own scroll container (`main#content`), every open drawer's scroller
  * and the document, and fails on any breach of the four invariants:
  *
  *   1. no trailing space below the last visible content (beyond the page's bottom padding);
- *   2. side-by-side cards share their outer height and footer edge (desktop);
+ *   2. side-by-side cards share their outer height and footer edge, and no card runs far past its
+ *      own content, whatever sits beside it (from 1024px);
  *   3. settings-style rows, switches, numeric/date table columns and header actions are flush right;
  *   4. no sideways scroll, no clipped or spilled text.
  *
@@ -145,7 +147,7 @@ function cases(): Case[] {
 }
 
 const CASES = cases();
-/** `PK_LAYOUT_VIEWPORTS=1280x720,1920x1080` swaps the two gate viewports for others locally. */
+/** `PK_LAYOUT_VIEWPORTS=1280x720,1920x1080` swaps the gate viewports for others locally. */
 const VIEWPORTS: { label: string; width: number; height: number }[] = process
   .env.PK_LAYOUT_VIEWPORTS
   ? process.env.PK_LAYOUT_VIEWPORTS.split(",").map((v) => {
@@ -154,6 +156,10 @@ const VIEWPORTS: { label: string; width: number; height: number }[] = process
     })
   : [
       { label: "desktop", width: 1440, height: 900 },
+      // A common laptop: the content column is under 1000px beside the sidebar.
+      { label: "laptop", width: 1280, height: 800 },
+      // A tablet or a narrow window: no sidebar, but too narrow for wide tables.
+      { label: "tablet", width: 768, height: 1024 },
       { label: "phone", width: 390, height: 844 },
     ];
 const THEMES = ["dark", "light"] as const;
@@ -214,7 +220,9 @@ afterAll(async () => {
   lines.push(
     `── ${total} violation(s) over ${Object.keys(report).length} page loads ──`,
   );
-  console.log(lines.join("\n"));
+  // Straight to stdout: the runner shows console output only for failing tests, and the report
+  // is wanted on a green run too.
+  process.stdout.write(`${lines.join("\n")}\n`);
   if (REPORT) writeFileSync(REPORT, JSON.stringify(report, null, 2));
 });
 

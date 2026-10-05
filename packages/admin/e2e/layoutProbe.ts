@@ -14,6 +14,10 @@
  *                   their footers (a short closing block holding an action) do not share a bottom
  *                   edge, or a card stretched to its row's height leaves more than a row of empty
  *                   space under its content (stretch-gap: pair cards of close natural heights).
+ *                   grown-card: any card, wherever it sits, that ends more than a row below its
+ *                   own content (a panel grown to match a neighbouring stack, a pane stretched to
+ *                   a long list's height); a placeholder is exempt only when its line is
+ *                   actually centred in its box.
  *   right-align     A settings-style row (label left, control or value right) whose control/value
  *                   does not end at the row's content edge, rows in one card that end at different
  *                   x, a switch that is not flush right in its row, a numeric/date/count table column
@@ -535,7 +539,7 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
   /**
    * Empty px between a card's last text or control and its bottom edge. Content centred in its
    * box (a placeholder's one line, as much space above as below) is a deliberate empty state, not
-   * trailing space: it counts as 0.
+   * trailing space: it counts as 0. Text at the top of a tall box is not centred, and counts.
    */
   const emptyBelow = (card: Element): number => {
     const r = card.getBoundingClientRect();
@@ -545,12 +549,24 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
       top = Math.min(top, x.top);
       bottom = Math.max(bottom, x.bottom);
     }
+    // Boxed blocks (a bar of a chart, a progress track, a field's frame) are content too; a
+    // nested card is measured on its own.
+    for (const e of Array.from(card.querySelectorAll("*"))) {
+      if (hidden(e) || !hasBox(e) || cardLike(e)) continue;
+      const er = e.getBoundingClientRect();
+      if (er.height >= r.height * 0.9) continue;
+      top = Math.min(top, er.top);
+      bottom = Math.max(bottom, er.bottom);
+    }
     const below = r.bottom - px(cs(card).borderBottomWidth) - bottom;
     const above = top - r.top - px(cs(card).borderTopWidth);
+    // A placeholder line centred in its box (as much space above as below) is a deliberate empty
+    // state; a box with its line at the top and the rest empty is a well of empty card.
     return Math.abs(above - below) <= 24 ? 0 : below;
   };
   /** Max px a stretched card may leave empty under its content (its own padding plus a row). */
   const STRETCH_GAP = 96;
+  const stretchReported = new Set<Element>();
   if (opts.rows) {
     for (const root of roots) {
       for (const c of Array.from(root.querySelectorAll("*"))) {
@@ -603,6 +619,7 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
           const worst = Math.max(...empties);
           if (worst > STRETCH_GAP) {
             const i = empties.indexOf(worst);
+            stretchReported.add(row[i]!);
             out.push({
               rule: "equal-height",
               kind: "stretch-gap",
@@ -634,6 +651,33 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
               });
           }
         }
+      }
+    }
+  }
+
+  // Any card grown past its content, whatever it sits beside: a panel that grows to fill a
+  // stretch cell (`[&>:last-child]:flex-1`) whose neighbour is a stack of panels, a pane stretched
+  // to the height of a long list beside it, a min-height. Measured against the card's own
+  // content, so the shape of the neighbouring cell does not matter.
+  if (opts.rows) {
+    for (const root of roots) {
+      for (const card of Array.from(root.querySelectorAll("*"))) {
+        if (stretchReported.has(card) || !cardLike(card)) continue;
+        if (card.matches("[role=dialog],[role=alertdialog]")) continue;
+        if (cs(card).position === "fixed") continue;
+        const empty = emptyBelow(card);
+        if (empty <= STRETCH_GAP) continue;
+        const s = cs(card);
+        const parent = card.parentElement;
+        const ps = parent ? cs(parent) : null;
+        out.push({
+          rule: "equal-height",
+          kind: "grown-card",
+          where: where(card),
+          detail: `a card ${Math.round(card.getBoundingClientRect().height)}px tall leaves ${Math.round(empty)}px empty under its content`,
+          cause: `card {${short(card)} ${heightRules(card)} align-self:${s.alignSelf}} parent {${parent ? short(parent) : "?"} display:${ps?.display} flex-direction:${ps?.flexDirection} align-items:${ps?.alignItems} h:${parent ? Math.round(parent.getBoundingClientRect().height) : "?"}}`,
+          html: snip(card),
+        });
       }
     }
   }
