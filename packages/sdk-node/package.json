@@ -50,6 +50,10 @@
     "./cli": {
       "types": "./dist/cli/index.d.ts",
       "default": "./dist/cli/index.js"
+    },
+    "./commerce": {
+      "types": "./dist/commerce/index.d.ts",
+      "default": "./dist/commerce/index.js"
     }
   },
   "files": [

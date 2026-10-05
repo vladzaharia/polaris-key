@@ -109,6 +109,14 @@ export {
 } from "./devices/facts.js";
 export { ReleaseClient, type ChangelogEntry } from "./release/client.js";
 export {
+  CommerceClient,
+  type BindingResult,
+  type ClaimResult,
+  type CommerceProduct,
+  type CommerceRefusal,
+  type CommerceStore,
+} from "./commerce/client.js";
+export {
   UpdateClient,
   UpdateError,
   type FeedCheck,

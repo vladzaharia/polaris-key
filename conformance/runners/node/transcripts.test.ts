@@ -7,7 +7,7 @@
 // @pkey-feature config.schema release.changelog release.download
 // @pkey-feature identity.devicecode config.mint
 // @pkey-feature update.feed release.record update.decide
-// @pkey-feature packs.apply.chunk
+// @pkey-feature packs.apply.chunk commerce.receipt
 //
 // Which transcripts run is DATA: `applies()` reads `packages/sdk-node/parity.json`, so a
 // transcript for a feature Node has not implemented is listed as skipped rather than failing,
@@ -290,6 +290,34 @@ async function act(
         out.code = e.code;
       }
       break;
+    case "commerceBinding": {
+      const r = await client.commerce.binding();
+      if (r.kind === "ok") {
+        out.result = "ok";
+        out.bindingId = r.bindingId;
+        out.products = r.products as JsonValue;
+      } else {
+        out.result = r.code;
+        if (r.reason !== undefined) out.reason = r.reason;
+      }
+      break;
+    }
+    case "commerceClaim": {
+      const r = await client.commerce.claim(
+        String(step.args.store) as never,
+        (step.args.payload ?? {}) as Record<string, unknown>,
+      );
+      if (r.kind === "ok") {
+        out.result = "ok";
+        out.flag = r.flag;
+        out.state = r.state;
+        out.granted = r.granted;
+      } else {
+        out.result = r.code;
+        if (r.reason !== undefined) out.reason = r.reason;
+      }
+      break;
+    }
     case "downloadUrl":
       out.url = client.release.downloadUrl(
         String(step.args.version),

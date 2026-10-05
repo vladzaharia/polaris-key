@@ -19,7 +19,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 55 | 6 | 0 | 7 |
+| Node | `node` | 56 | 6 | 0 | 6 |
 | React | `web`, `desktop-bridge` | 47 | 15 | 0 | 6 |
 | Python | `python` | 55 | 6 | 0 | 7 |
 | Swift | `macos`, `ios` | 56 | 5 | 0 | 7 |
@@ -127,7 +127,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `ui.stages` | The boot stage machine: states, events, outcomes | `stage-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `ui.kit` | Gate, activation, sign-in with QR, settings, devices, update banner, pack progress | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | planned (unowned) | ✓ | ✓ | headless: runtime |
-| `commerce.receipt` | Store purchase to licence entitlement | transcripts | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | ✓ | planned (unowned) | — |
+| `commerce.receipt` | Store purchase to licence entitlement | transcripts | ✓ | planned (unowned) | planned (unowned) | planned (unowned) | ✓ | planned (unowned) | — |
 
 ## Unowned gaps
 
@@ -141,7 +141,6 @@ Planned entries no work package owns yet. Each needs an owner before the gap can
 | Node | `packs.transport.steam` | P5-08 covers Godot only; Node desktop hosts have no Steam-depot transport owner. |
 | Node | `packs.transport.msix` | No work package owns the MSIX optional-package transport (P5-08 Out). |
 | Node | `packs.transport.flatpak` | No work package owns the Flatpak extension transport (P5-08 Out). |
-| Node | `commerce.receipt` | P6-01 builds the Worker bridge and leaves the SDK side planned with no owner. |
 | React | `core.cache` | The browser adapter keeps no verified licence/config cache (only the signed update slices, P3-05); on desktop the host's Node SDK holds it. No work package gives the browser one. |
 | React | `core.local` | No local-only client in React; P1b-07 leaves it unowned. |
 | React | `config.mint` | P1b-08 ports edge-mint to Node, Python and Swift only. |

@@ -202,9 +202,8 @@
     "ui.stages": { "status": "implemented" },
     "ui.kit": { "status": "na", "runtime": "headless", "reason": "runtime" },
     "commerce.receipt": {
-      "status": "planned",
-      "unowned": true,
-      "note": "P6-01 builds the Worker bridge and leaves the SDK side planned with no owner."
+      "status": "implemented",
+      "note": "client.commerce: binding(), claim(store, payload) and the store helpers claimSteam(ticketHex, dlcAppId), claimAppStore(jws), claimPlay(productId, token). No store SDK dependency: the host passes what its store handed it (SDK parity pass §3.9, SP-N04)."
     }
   }
 }

@@ -66,6 +66,7 @@ import {
 } from "./devices/client.js";
 import { IdentityClient } from "./identity/client.js";
 import { ReleaseClient } from "./release/client.js";
+import { CommerceClient } from "./commerce/client.js";
 import { UpdateClient, type UpdateClientOptions } from "./update/client.js";
 import {
   discoverProduct,
@@ -144,6 +145,8 @@ export class PolarisKeyClient {
   readonly identity: IdentityClient;
   readonly release: ReleaseClient;
   readonly update: UpdateClient;
+  /** Store purchases to licence flags (§3.9). */
+  readonly commerce: CommerceClient;
 
   private readonly cache: CacheManager;
   private readonly tokens: TokenManager;
@@ -206,6 +209,9 @@ export class PolarisKeyClient {
       this.onLicenseAcquired(),
     );
     this.release = new ReleaseClient(this.core, this.tokens);
+    this.commerce = new CommerceClient(this.core, this.tokens, () =>
+      this.sync({ force: true }).then(() => undefined),
+    );
     this.update = new UpdateClient(
       this.core,
       this.tokens,
