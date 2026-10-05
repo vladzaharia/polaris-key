@@ -33,7 +33,11 @@ import {
   type LicenseRow,
   type TierRow,
 } from "../../core/data.js";
-import { authorizationError, shapeLicense } from "./activation.js";
+import {
+  authorizationError,
+  refusalManageUrl,
+  shapeLicense,
+} from "./activation.js";
 import {
   deviceMetadata,
   readFingerprint,
@@ -244,7 +248,11 @@ export async function handleEnroll(
     now,
     { ...deviceMetadata(req), fingerprint, boundBy: "enroll" },
   );
-  if ("error" in authorized) return authorizationError(authorized);
+  if ("error" in authorized)
+    return authorizationError(
+      authorized,
+      await refusalManageUrl(env, db, req, product, license, authorized),
+    );
 
   return json({
     token: authorized.token,

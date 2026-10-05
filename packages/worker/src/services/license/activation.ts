@@ -41,10 +41,35 @@ import {
 } from "../../core/devices.js";
 import { requireLicensedDevice } from "./auth.js";
 import { authorizeDevice, type AuthzError } from "./authz.js";
+import { buildManageUrl } from "../../core/manageUrl.js";
+
+/**
+ * The refusal link for an `authorizeDevice` failure (PX-W8, WIRE-CONTRACT-V4 §5.3): a
+ * `manageUrl` for `device_limit` while the product's portal is on, else `undefined`. Built
+ * only on that one refusal, so the success path never reads the portal settings.
+ */
+export async function refusalManageUrl(
+  env: Env,
+  db: Db,
+  req: Request,
+  product: Product,
+  license: LicenseRow,
+  err: AuthzError,
+): Promise<string | undefined> {
+  if (err.error !== "device_limit") return undefined;
+  return buildManageUrl(env, db, req, product, {
+    kind: "device_limit",
+    license,
+  });
+}
 
 /** Map an `authorizeDevice` failure to its HTTP response. Shared by /activate and /enroll so
- *  both surfaces report identical codes for identical causes. */
-export function authorizationError(err: AuthzError): Response {
+ *  both surfaces report identical codes for identical causes. `manageUrl` (from
+ *  `refusalManageUrl`) rides on `device_limit` only, and only when defined. */
+export function authorizationError(
+  err: AuthzError,
+  manageUrl?: string,
+): Response {
   switch (err.error) {
     case "unauthorized":
       return errorResponse(401, ErrorCode.Unauthorized);
@@ -52,6 +77,7 @@ export function authorizationError(err: AuthzError): Response {
       return errorResponse(403, ErrorCode.DeviceLimit, "device limit reached", {
         limit: err.limit,
         deviceCount: err.deviceCount,
+        ...(manageUrl !== undefined ? { manageUrl } : {}),
       });
     case "fingerprint_required":
       return errorResponse(
@@ -144,7 +170,11 @@ async function activateWithKey(
       boundBy: "key",
     },
   );
-  if ("error" in authorized) return authorizationError(authorized);
+  if ("error" in authorized)
+    return authorizationError(
+      authorized,
+      await refusalManageUrl(env, db, req, product, license, authorized),
+    );
   await touchKey(db, product.slug, keyHash, now);
 
   return json({
