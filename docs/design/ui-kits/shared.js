@@ -71,8 +71,28 @@
     more: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
     flag: '<path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.33 2q2 0 3.67-.67a1 1 0 0 1 1.33.94v9.47a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.53"/>',
     play: '<path d="M6 4v16a1 1 0 0 0 1.52.85l13-8a1 1 0 0 0 0-1.7l-13-8A1 1 0 0 0 6 4z"/>',
+    macmini:
+      '<rect width="18" height="7" x="3" y="9" rx="2.5"/><path d="M7 19h10"/>',
+    desktop:
+      '<rect width="20" height="13" x="2" y="3" rx="2"/><path d="M8 21h8M12 16v5"/>',
+    passkey:
+      '<circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 11-5.7"/><circle cx="18" cy="14.5" r="2.5"/><path d="M18 17v5M18 19.5h2"/>',
+    link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
     bell: '<path d="M10.27 21a2 2 0 0 0 3.46 0M3.26 15.33A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.67C19.41 13.96 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.41 5.96-2.74 7.33"/>',
   };
+  // Brand marks the platforms require (Sign in with Apple, Google) — drawn as the platform does.
+  window.appleLogo = (s = 18) =>
+    `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.2-.8-1.6 0-3.1 1-4 2.4-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.1-.8s1.9.8 3.2.8c1.3 0 2.1-1.2 2.9-2.4.9-1.4 1.3-2.7 1.3-2.8-.1 0-2.4-.9-2.4-3.9zM14 5.3c.7-.8 1.1-1.9 1-3-1 0-2.1.6-2.8 1.4-.6.7-1.2 1.8-1 2.9 1 .1 2.1-.5 2.8-1.3z"/></svg>`;
+  window.googleG = (s = 18) =>
+    `<svg width="${s}" height="${s}" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>`;
+
+  // Determinate countdown ring (UI-KITS §1.5 rule 4): `left` is the fraction of the code's life left.
+  window.countdown = (left = 0.78, s = 20, cls = "k-countdown") => {
+    const r = (s - 2) / 2,
+      c = 2 * Math.PI * r;
+    return `<svg class="${cls}" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}" aria-hidden="true"><circle class="track" cx="${s / 2}" cy="${s / 2}" r="${r}"/><circle class="left" cx="${s / 2}" cy="${s / 2}" r="${r}" stroke-dasharray="${c.toFixed(2)}" stroke-dashoffset="${(c * (1 - left)).toFixed(2)}"/></svg>`;
+  };
+
   window.icon = function (name, size = 20, extra = "") {
     return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${P[name] || ""}</svg>`;
   };
@@ -133,6 +153,18 @@
     });
     document.querySelectorAll("[data-qr]").forEach((el) => {
       el.innerHTML = qr(+(el.dataset.size || 160), +(el.dataset.qr || 7));
+    });
+    document.querySelectorAll("[data-countdown]").forEach((el) => {
+      el.innerHTML = countdown(
+        +(el.dataset.countdown || 0.78),
+        +(el.dataset.size || 20),
+      );
+    });
+    document.querySelectorAll("[data-apple]").forEach((el) => {
+      el.innerHTML = appleLogo(+(el.dataset.size || 18));
+    });
+    document.querySelectorAll("[data-google]").forEach((el) => {
+      el.innerHTML = googleG(+(el.dataset.size || 18));
     });
     document.querySelectorAll("[data-k]").forEach((el) => {
       el.innerHTML = pinnedK(+(el.dataset.size || 14));

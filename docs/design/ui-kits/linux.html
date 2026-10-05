@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>
+      UI kits · Linux (GNOME / libadwaita: Electron, Tauri, Compose Desktop, Qt
+      Quick)
+    </title>
+    <link rel="stylesheet" href="shared.css" />
+    <script src="shared.js"></script>
+    <style>
+      /* Adwaita-friendly platform variant: header bar with the close button only, 12 px window
+         radius, 34 px controls, pill suggested action, AdwDialog for focused steps. */
+      :root {
+        --g-win: #222226;
+        --g-view: #1d1d20;
+        --g-card: #2e2e32;
+        --g-hb: #2e2e32;
+        --g-ctl: rgb(255 255 255 / 0.1);
+        --g-text: #ffffff;
+        --g-mute: rgb(255 255 255 / 0.62);
+        --g-sep: rgb(255 255 255 / 0.08);
+      }
+      [data-theme="light"] {
+        --g-win: #fafafb;
+        --g-view: #ffffff;
+        --g-card: #ffffff;
+        --g-hb: #ebebed;
+        --g-ctl: rgb(0 0 6 / 0.08);
+        --g-text: rgb(0 0 6 / 0.82);
+        --g-mute: rgb(0 0 6 / 0.55);
+        --g-sep: rgb(0 0 6 / 0.08);
+      }
+      .shot {
+        position: relative;
+        overflow: hidden;
+        border-radius: 12px;
+        isolation: isolate;
+        display: grid;
+        place-items: center;
+        padding: 48px;
+      }
+      .shot::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -2;
+        background: linear-gradient(160deg, #2b3a45, #1a1c22 70%);
+      }
+      [data-theme="light"] .shot::before {
+        background: linear-gradient(160deg, #cfdce4, #e9ebee 70%);
+      }
+      .win {
+        position: relative;
+        border-radius: 12px;
+        overflow: hidden;
+        background: var(--g-win);
+        color: var(--g-text);
+        font-size: 15px;
+        line-height: 21px;
+        box-shadow:
+          0 0 0 1px rgb(0 0 0 / 0.5),
+          0 20px 50px rgb(0 0 0 / 0.45);
+      }
+      [data-theme="light"] .win {
+        box-shadow:
+          0 0 0 1px rgb(0 0 6 / 0.12),
+          0 20px 50px rgb(0 0 6 / 0.18);
+      }
+      .hb {
+        height: 46px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        font-weight: 600;
+        font-size: 15px;
+      }
+      .hb .close {
+        position: absolute;
+        right: 10px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--g-ctl);
+        display: grid;
+        place-items: center;
+      }
+      .gb {
+        height: 34px;
+        padding: 0 18px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font: 600 15px/1 var(--pk-font-sans);
+        background: var(--g-ctl);
+        color: var(--g-text);
+      }
+      .gb.pill {
+        border-radius: 999px;
+        height: 40px;
+        padding: 0 28px;
+      }
+      .gb.suggested {
+        background: var(--kit-accent);
+        color: #fff;
+      }
+      .gentry {
+        min-height: 34px;
+        border-radius: 8px;
+        background: var(--g-ctl);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 6px 6px 12px;
+      }
+      .gentry.focus {
+        outline: 2px solid
+          color-mix(in oklab, var(--kit-focus) 70%, transparent);
+        outline-offset: -2px;
+      }
+      .gentry .mono {
+        flex: 1;
+        font-size: 13.5px;
+        line-height: 19px;
+        overflow-wrap: anywhere;
+      }
+      .dlg {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        translate: -50% -50%;
+        width: 440px;
+        border-radius: 14px;
+        background: var(--g-view);
+        box-shadow:
+          0 0 0 1px rgb(0 0 0 / 0.3),
+          0 14px 40px rgb(0 0 0 / 0.4);
+        padding: 22px 24px 24px;
+        display: grid;
+        gap: 16px;
+        z-index: 6;
+      }
+      .dim {
+        position: absolute;
+        inset: 0;
+        background: rgb(0 0 0 / 0.35);
+        z-index: 5;
+      }
+      [data-theme="light"] .dim {
+        background: rgb(0 0 6 / 0.12);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="board">
+      <figure>
+        <figcaption>
+          linux · gate (header bar, pill suggested action)
+        </figcaption>
+        <div class="shot" data-shot="gate">
+          <div class="win" style="width: 520px">
+            <div class="hb">
+              <span class="close" data-icon="x" data-size="14"></span>
+            </div>
+            <div
+              style="
+                padding: 20px 48px 44px;
+                display: grid;
+                justify-items: center;
+                text-align: center;
+                gap: 22px;
+              "
+            >
+              <div class="k-appicon" data-art="tidewater" data-size="96"></div>
+              <div style="display: grid; gap: 4px">
+                <h1 style="margin: 0; font: 600 26px/32px var(--pk-font-sans)">
+                  Welcome to Tidewater Studio
+                </h1>
+                <span style="color: var(--g-mute); font-size: 13px"
+                  >by Harbor Audio</span
+                >
+                <p style="margin: 8px 0 0; color: var(--g-mute)">
+                  Sign in or add your license to start.
+                </p>
+              </div>
+              <div style="display: grid; gap: 10px; width: 280px">
+                <span class="gb pill suggested">Sign in</span>
+                <span class="gb pill">Use a license key</span>
+              </div>
+              <div
+                style="
+                  display: flex;
+                  gap: 20px;
+                  font-size: 14px;
+                  color: var(--g-mute);
+                "
+              >
+                <span>Start a 14-day trial</span><span>Activate offline</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>linux · activate (AdwDialog)</figcaption>
+        <div class="shot" data-shot="activate">
+          <div class="win" style="width: 640px; height: 520px">
+            <div class="hb" style="background: var(--g-hb)">
+              Tidewater Studio<span
+                class="close"
+                data-icon="x"
+                data-size="14"
+              ></span>
+            </div>
+            <div class="dim"></div>
+            <div class="dlg">
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 10px;
+                  font-weight: 600;
+                "
+              >
+                <span
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="32"
+                  style="border-radius: 8px"
+                ></span
+                >Tidewater Studio<span
+                  style="color: var(--g-mute); font-weight: 400"
+                  >· Pro</span
+                >
+              </div>
+              <div style="display: grid; gap: 4px">
+                <h2 style="margin: 0; font: 600 20px/26px var(--pk-font-sans)">
+                  Add your license
+                </h2>
+                <span style="color: var(--g-mute); font-size: 14px"
+                  >Your key is in the purchase email from Harbor Audio.</span
+                >
+              </div>
+              <div>
+                <div
+                  style="font-weight: 600; font-size: 14px; margin-bottom: 6px"
+                >
+                  License key
+                </div>
+                <div class="gentry focus">
+                  <span class="mono">pkey_tidewater_7Q2MXK9RV4TC8HJN3WPLDA</span
+                  ><span
+                    class="gb"
+                    style="height: 26px; padding: 0 10px; font-size: 13px"
+                    >Paste</span
+                  >
+                </div>
+                <div
+                  style="
+                    display: flex;
+                    gap: 8px;
+                    align-items: center;
+                    margin-top: 8px;
+                    font-size: 14px;
+                    color: var(--g-mute);
+                  "
+                >
+                  <span
+                    style="color: var(--pk-success)"
+                    data-icon="checkCircle"
+                    data-size="15"
+                  ></span
+                  ><span
+                    ><b style="font-weight: 600; color: var(--g-text)"
+                      >Tidewater Studio Pro</b
+                    >&#8201;·&#8201;Lifetime&#8201;·&#8201;3 devices</span
+                  >
+                </div>
+              </div>
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: 1fr 1fr;
+                  gap: 10px;
+                  margin-top: 4px;
+                "
+              >
+                <span class="gb">Cancel</span
+                ><span class="gb suggested">Activate</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+    </main>
+  </body>
+</html>

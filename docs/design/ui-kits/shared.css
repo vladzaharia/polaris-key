@@ -1,30 +1,86 @@
 /*
- * UI-kit mockups: shared base. Colours, type, radii, elevation and motion come only from the
- * generated @polaris-key/brand tokens; the --kit-* aliases below are the kit theme API
- * (UI-KITS.md §3) expressed as CSS custom properties, so a mockup restyles exactly the way a
- * shipped kit does.
+ * UI-kit mockups: shared base. Colours, radii, elevation and motion come from the generated
+ * @polaris-key/brand tokens; the --kit-* aliases below are the kit theme API (UI-KITS.md §3)
+ * expressed as CSS custom properties, so a mockup restyles exactly the way a shipped kit does.
+ *
+ * Critique round 1 (2026-10-05) changed the foundations:
+ *   - Rubik ships as a variable font (wght 300–900) and JetBrains Mono is the kit mono, both
+ *     from ./fonts/ (UK-01 moves them into packages/brand). Weights: 400 body and row titles,
+ *     500 labels and buttons, 600 headings; 700 only for the product name on the Welcome hero.
+ *   - The default accent is the PRODUCT's, derived from its icon (§3.3 resolver). The fixture
+ *     Tidewater Studio resolves to teal; violet appears only under accent: "core".
+ *   - Chromatic primaries carry a white label in both schemes; the resolver darkens `solid`
+ *     until white reaches 4.5:1 and flips to ink only for light accents (Drift Kart orange).
+ *   - Fields are filled (no border), focus is a 2 px outline with no glow, loading is a
+ *     determinate countdown ring, a top-edge shimmer bar or a skeleton.
  */
-@import url("../../../packages/brand/fonts/fonts.css");
 @import url("../../../packages/brand/css/tokens.css");
 
+@font-face {
+  font-family: "Rubik";
+  font-style: normal;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url("./fonts/rubik-var-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("./fonts/jetbrains-mono-var-latin.woff2") format("woff2");
+}
+
 :root {
-  /* Kit theme API (§3): accent, radius, density. Defaults are the Polaris Key look. */
-  --kit-accent: var(--pk-accent);
-  --kit-accent-fg: var(--pk-accent-fg);
-  --kit-accent-on: var(--pk-accent-on);
-  --kit-accent-subtle: var(--pk-accent-subtle);
-  --kit-radius-control: 0.75rem; /* 12 px: 48 px controls */
-  --kit-radius-card: 1.375rem; /* 22 px: the AuthCard radius (EXPERIENCE §8) */
-  --kit-radius-tile: var(--pk-radius-xl);
-  --kit-control-h: 3rem;
-  --kit-gap: 1rem;
-  --kit-highlight: rgb(255 255 255 / 0.06);
+  --pk-font-weight-medium: 500;
+  --pk-font-weight-semibold: 600;
+  --kit-mono:
+    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Resolved product accent (§3.3) for the fixture Tidewater Studio, derived from its icon.
+     Dark scheme: solid #0f8075 (white 4.81:1, page 4.14:1), fg #4fd8c4 (10.7:1). */
+  --kit-accent: #0f8075;
+  --kit-accent-fg: #4fd8c4;
+  --kit-accent-on: #ffffff;
+  --kit-accent-subtle: #0c2628;
+  --kit-focus: #4fd8c4;
+
+  --kit-radius-control: 12px;
+  --kit-radius-card: 22px;
+  --kit-radius-group: 16px;
+  --kit-control-h: 44px; /* comfortable on (pointer: fine); 48 on coarse; 36 compact */
+  --kit-highlight: rgb(255 255 255 / 0.05);
   --kit-hairline: color-mix(in oklab, var(--pk-border-subtle) 80%, transparent);
-  --kit-scrim: rgb(2 4 8 / 0.56);
+  --kit-fill: color-mix(
+    in oklab,
+    var(--pk-surface-sunken) 60%,
+    var(--pk-surface-raised)
+  );
+  --kit-tonal: color-mix(in oklab, var(--pk-text-strong) 8%, transparent);
+  --kit-tonal-hover: color-mix(
+    in oklab,
+    var(--pk-text-strong) 12%,
+    transparent
+  );
+  --kit-danger-solid: #c83b2c; /* white 4.6:1 */
+  --kit-scrim: rgb(2 4 8 / 0.5);
+  --kit-scrim-blur: 16px;
 }
 [data-theme="light"] {
+  --kit-accent: #0d7268;
+  --kit-accent-fg: #0b6b62;
+  --kit-accent-on: #ffffff;
+  --kit-accent-subtle: #dff2ef;
+  --kit-focus: #0d7268;
   --kit-highlight: rgb(255 255 255 / 0.9);
-  --kit-scrim: rgb(6 9 18 / 0.28);
+  --kit-fill: color-mix(
+    in oklab,
+    var(--pk-surface-sunken) 70%,
+    var(--pk-surface-raised)
+  );
+  --kit-danger-solid: #be2323;
+  --kit-scrim: rgb(6 9 18 / 0.14);
+  --kit-scrim-blur: 12px;
 }
 
 * {
@@ -48,7 +104,8 @@ body {
   display: block;
 }
 .mono {
-  font-family: var(--pk-font-mono);
+  font-family: var(--kit-mono);
+  font-variant-ligatures: none;
 }
 .tnum {
   font-variant-numeric: tabular-nums;
@@ -58,7 +115,7 @@ body {
 .board {
   display: flex;
   flex-wrap: wrap;
-  gap: 48px;
+  gap: 56px;
   padding: 48px;
   align-items: flex-start;
 }
@@ -68,171 +125,263 @@ body {
   gap: 12px;
 }
 .board figcaption {
-  font: 700 13px/1 var(--pk-font-sans);
+  font: 500 13px/1.3 var(--pk-font-sans);
   color: var(--pk-text-muted);
-  letter-spacing: 0.02em;
+}
+.board figcaption code {
+  font: 400 12px var(--kit-mono);
+  color: var(--pk-text-subtle);
 }
 
-/* ---- The kit's web primitives (web, Electron/Tauri renderers, the desktop board) ---- */
+/* ---- The kit root: container queries, never the viewport ---- */
+.kit {
+  container: page / inline-size;
+  font-family: var(--pk-font-sans);
+  font-size: 15px;
+  line-height: 22px;
+  color: var(--pk-text-default);
+}
+
+/* ---- Web primitives (web, Electron/Tauri renderers, Windows/Linux boards) ---- */
 .k-h1 {
-  font: 700 clamp(1.5rem, 1.1rem + 1.2vw, 1.75rem) / 1.15 var(--pk-font-sans);
-  letter-spacing: var(--pk-tracking-tight);
+  font: 600 clamp(1.625rem, 1rem + 2.4cqi, 2.125rem) / 1.15 var(--pk-font-sans);
+  letter-spacing: -0.02em;
   color: var(--pk-text-strong);
   margin: 0;
   text-wrap: balance;
 }
 .k-h2 {
-  font: 700 1.0625rem/1.3 var(--pk-font-sans);
+  font: 600 1.0625rem/1.35 var(--pk-font-sans);
+  letter-spacing: -0.01em;
   color: var(--pk-text-strong);
   margin: 0;
+  text-wrap: balance;
 }
 .k-lede {
   color: var(--pk-text-muted);
   margin: 0;
   text-wrap: pretty;
 }
-.k-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+.k-meta {
   font-size: 13px;
+  line-height: 18px;
   color: var(--pk-text-muted);
+}
+.k-overline {
+  font: 500 13px/18px var(--pk-font-sans);
+  color: var(--pk-text-muted);
+  margin: 0;
 }
 .k-card {
   background: var(--pk-surface-raised);
-  border: 1px solid var(--kit-hairline);
   border-radius: var(--kit-radius-card);
   box-shadow:
+    inset 0 0 0 1px var(--kit-hairline),
     inset 0 1px 0 var(--kit-highlight),
     var(--pk-elevation-3);
 }
+[data-theme="light"] .k-card {
+  box-shadow:
+    0 0 0 1px rgb(6 9 18 / 0.05),
+    0 1px 2px rgb(6 9 18 / 0.04),
+    0 24px 48px -16px rgb(6 9 18 / 0.14);
+}
+
+/* Product header on focused steps (§1.2): the product is the strongest line in the header. */
+.k-product {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font: 500 15px/20px var(--pk-font-sans);
+  color: var(--pk-text-strong);
+}
+.k-product .tier {
+  color: var(--pk-text-muted);
+  font-weight: 400;
+}
+
 .k-btn {
   appearance: none;
   border: 0;
-  font: 700 15px/1 var(--pk-font-sans);
+  font: 500 15px/1 var(--pk-font-sans);
   height: var(--kit-control-h);
-  padding: 0 20px;
+  min-width: 96px;
+  padding: 0 18px;
   border-radius: var(--kit-radius-control);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   cursor: pointer;
+  white-space: nowrap;
   transition:
     background-color var(--pk-duration-fast) var(--pk-ease-standard),
-    transform var(--pk-duration-fast) var(--pk-ease-standard),
-    box-shadow var(--pk-duration-fast) var(--pk-ease-standard);
-  white-space: nowrap;
+    transform var(--pk-duration-fast) var(--pk-ease-standard);
 }
-.k-btn:active {
+.k-btn:active,
+.k-btn.pressed {
   transform: scale(0.98);
 }
 .k-btn.primary {
   background: var(--kit-accent);
   color: var(--kit-accent-on);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.22),
-    0 1px 2px rgb(0 0 0 / 0.2);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.14);
 }
-.k-btn.primary:hover {
-  background: color-mix(in oklab, var(--kit-accent) 88%, var(--pk-text-strong));
+.k-btn.primary:hover,
+.k-btn.primary.hover {
+  background: color-mix(in oklab, var(--kit-accent) 90%, white);
 }
 .k-btn.secondary {
-  background: color-mix(in oklab, var(--pk-text-strong) 7%, transparent);
+  background: var(--kit-tonal);
   color: var(--pk-text-strong);
 }
-.k-btn.secondary:hover {
-  background: color-mix(in oklab, var(--pk-text-strong) 11%, transparent);
+.k-btn.secondary:hover,
+.k-btn.secondary.hover {
+  background: var(--kit-tonal-hover);
 }
-.k-btn.quiet {
+.k-btn.ghost {
   background: transparent;
   color: var(--pk-text-default);
-  padding: 0 12px;
+  min-width: 0;
 }
-.k-btn.quiet:hover {
-  background: color-mix(in oklab, var(--pk-text-strong) 6%, transparent);
+.k-btn.ghost:hover {
+  background: var(--kit-tonal);
 }
 .k-btn.danger {
-  background: var(--pk-danger);
-  color: var(--pk-danger-on);
+  background: var(--kit-danger-solid);
+  color: #fff;
 }
 .k-btn.block {
   width: 100%;
 }
 .k-btn.sm {
-  height: 2.25rem;
+  height: 32px;
+  min-width: 0;
   font-size: 14px;
-  padding: 0 14px;
-  border-radius: 0.625rem;
+  padding: 0 12px;
+  border-radius: 10px;
 }
 .k-btn[aria-disabled="true"] {
   opacity: 0.42;
   cursor: not-allowed;
 }
-.k-btn.focus {
-  outline: 2px solid var(--pk-focus);
+.k-btn.focus-visible {
+  outline: 2px solid var(--kit-focus);
   outline-offset: 2px;
 }
 .k-iconbtn {
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
   display: grid;
   place-items: center;
   color: var(--pk-text-muted);
-  background: color-mix(in oklab, var(--pk-text-strong) 6%, transparent);
+  background: transparent;
+  flex: none;
+}
+.k-iconbtn.tonal {
+  background: var(--kit-tonal);
 }
 
-.k-label {
-  font-weight: 700;
+/* Quiet links: one row, text-muted, underline on hover only. */
+.k-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 20px;
   font-size: 14px;
+  line-height: 20px;
+  color: var(--pk-text-muted);
+}
+.k-links a,
+.k-link {
+  color: inherit;
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+.k-links a:hover,
+.k-link.hover {
+  text-decoration: underline;
+}
+.k-link.accent {
+  color: var(--kit-accent-fg);
+  font-weight: 500;
+}
+
+/* Fields: filled, inner hairline, no border; focus is one 2 px outline (no halo). */
+.k-label {
+  font: 500 14px/20px var(--pk-font-sans);
   color: var(--pk-text-strong);
   display: block;
   margin-bottom: 8px;
 }
 .k-field {
-  height: var(--kit-control-h);
+  min-height: var(--kit-control-h);
   border-radius: var(--kit-radius-control);
-  background: var(--pk-surface-sunken);
-  border: 1px solid var(--pk-border-subtle);
+  background: var(--kit-fill);
+  box-shadow: inset 0 0 0 1px var(--kit-hairline);
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 14px;
+  gap: 8px;
+  padding: 0 6px 0 14px;
   color: var(--pk-text-strong);
 }
 .k-field.focus {
-  border-color: var(--pk-focus);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--pk-focus) 28%, transparent);
+  box-shadow: none;
+  outline: 2px solid var(--kit-focus);
+  outline-offset: 0;
+}
+.k-field.invalid {
+  box-shadow: inset 0 0 0 1px var(--pk-danger-border);
 }
 .k-field .mono {
-  font-size: 14.5px;
-  letter-spacing: 0.01em;
+  font-size: 14px;
+  line-height: 20px;
+  padding-block: 12px;
+  overflow-wrap: anywhere;
+  flex: 1;
+  min-width: 0;
+}
+.k-field .ph {
+  color: var(--pk-text-subtle);
+  flex: 1;
 }
 .k-help {
   font-size: 13px;
+  line-height: 18px;
   color: var(--pk-text-muted);
   margin-top: 8px;
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
 }
-.k-help.ok {
+.k-verdict {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font: 500 14px/20px var(--pk-font-sans);
+  color: var(--pk-text-default);
+}
+.k-verdict .ic {
   color: var(--pk-success);
 }
-.k-divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--pk-text-subtle);
-  font-size: 13px;
+.k-verdict .dim {
+  color: var(--pk-text-muted);
+  font-weight: 400;
 }
-.k-divider::before,
-.k-divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--pk-border-subtle);
+.k-error {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--pk-text-default);
+}
+.k-error .ic {
+  color: var(--pk-danger);
+  margin-top: 2px;
 }
 
 /* Product identity: the product is the hero (UI-KITS §1.2). */
@@ -243,41 +392,35 @@ body {
   width: max-content;
   height: max-content;
   line-height: 0;
+  position: relative;
+  box-shadow: 0 8px 24px -8px rgb(0 0 0 / 0.5);
+}
+.k-appicon::after {
+  /* 2026 icon rim: a hairline specular edge, not a stroke */
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
   box-shadow:
-    0 0 0 1px rgb(255 255 255 / 0.08) inset,
-    0 8px 24px -6px rgb(0 0 0 / 0.45);
+    inset 0 0 0 0.5px rgb(255 255 255 / 0.18),
+    inset 0 1px 0 rgb(255 255 255 / 0.22);
+  pointer-events: none;
 }
 .k-appicon svg {
   display: block;
 }
 [data-theme="light"] .k-appicon {
-  box-shadow: 0 8px 20px -8px rgb(6 9 18 / 0.35);
+  box-shadow:
+    0 0 0 0.5px rgb(6 9 18 / 0.08),
+    0 8px 20px -8px rgb(6 9 18 / 0.3);
 }
-
-/* Service cue: a small tinted glyph in the service accent (never a large fill). */
-.k-cue {
-  width: 28px;
-  height: 28px;
-  border-radius: 9px;
+.k-monogram {
   display: grid;
   place-items: center;
-  flex: none;
-}
-.k-cue.license {
-  background: var(--pk-service-license-subtle);
-  color: var(--pk-service-license-fg);
-}
-.k-cue.update {
-  background: var(--pk-service-update-subtle);
-  color: var(--pk-service-update-fg);
-}
-.k-cue.identity {
-  background: var(--pk-service-identity-subtle);
-  color: var(--pk-service-identity-fg);
-}
-.k-cue.config {
-  background: var(--pk-service-config-subtle);
-  color: var(--pk-service-config-fg);
+  border-radius: 22.5%;
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-strong);
+  font-weight: 600;
 }
 
 /* Status: icon + word, only for issues (EXPERIENCE §7). */
@@ -285,11 +428,11 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 24px;
-  padding: 0 10px;
+  height: 22px;
+  padding: 0 9px;
   border-radius: 999px;
-  font-size: 12.5px;
-  font-weight: 700;
+  font: 500 12px/1 var(--pk-font-sans);
+  letter-spacing: 0.01em;
   white-space: nowrap;
 }
 .k-pill.warning {
@@ -300,79 +443,96 @@ body {
   background: var(--pk-danger-subtle);
   color: var(--pk-danger);
 }
-.k-pill.info {
-  background: var(--pk-info-subtle);
-  color: var(--pk-info);
-}
 .k-pill.neutral {
-  background: color-mix(in oklab, var(--pk-text-strong) 7%, transparent);
+  background: var(--kit-tonal);
   color: var(--pk-text-muted);
 }
 
-/* Seat meter: segments, one per seat. */
+/* Seat meter: neutral (a full license is a limit, not an error), always with its caption. */
 .k-meter {
   display: flex;
   gap: 4px;
+  align-items: center;
 }
 .k-meter i {
-  flex: 1;
+  width: 28px;
   height: 6px;
-  border-radius: 999px;
+  border-radius: 3px;
   background: color-mix(in oklab, var(--pk-text-strong) 10%, transparent);
 }
 .k-meter i.on {
-  background: var(--pk-danger);
+  background: color-mix(in oklab, var(--pk-text-strong) 80%, transparent);
+}
+.k-meter i.over {
+  background: var(--pk-warning);
+}
+.k-meter span {
+  margin-left: 8px;
+  font-size: 13px;
+  color: var(--pk-text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
-/* Selectable device rows. */
-.k-choice {
+/* One inset grouped list: hairline dividers inset past the glyph, no boxes inside boxes. */
+.k-list {
+  background: var(--kit-fill);
+}
+.k-list.raised {
+  background: var(--pk-surface-raised);
+  box-shadow: inset 0 0 0 1px var(--kit-hairline);
+  border-radius: var(--kit-radius-group);
+  overflow: hidden;
+}
+.k-item {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
-  border-radius: 14px;
-  background: color-mix(in oklab, var(--pk-text-strong) 4%, transparent);
-  border: 1.5px solid transparent;
-}
-.k-choice.on {
-  background: var(--kit-accent-subtle);
-  border-color: var(--kit-accent);
-}
-.k-choice .dev {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
-  background: var(--pk-surface-raised);
-  color: var(--pk-text-default);
-  box-shadow: 0 0 0 1px var(--pk-border-subtle) inset;
-}
-.k-choice b {
+  gap: 16px;
+  min-height: 64px;
+  padding: 10px 16px 10px 18px;
+  position: relative;
   color: var(--pk-text-strong);
-  font-size: 15px;
 }
-.k-choice small {
+.k-item + .k-item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 54px;
+  height: 1px;
+  background: var(--kit-hairline);
+}
+.k-item.sel {
+  background: var(--kit-accent-subtle);
+}
+.k-item.sel + .k-item::before,
+.k-item.sel::before {
+  opacity: 0;
+}
+.k-item > .ic:first-child {
+  color: var(--pk-text-muted);
+}
+.k-item .t {
+  flex: 1;
+  min-width: 0;
+}
+.k-item .t > span {
+  display: block;
+  font-size: 15px;
+  line-height: 20px;
+}
+.k-item .t small {
   display: block;
   color: var(--pk-text-muted);
   font-size: 13px;
+  line-height: 18px;
 }
-.k-radio {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 2px solid var(--pk-border-strong);
-  flex: none;
-  margin-left: auto;
-}
-.k-choice.on .k-radio {
-  border: 6px solid var(--kit-accent);
-  background: var(--kit-accent-on);
+.k-item .chk {
+  color: var(--kit-accent-fg);
 }
 
 /* Progress: a neutral track, the fill in the accent; never the star. */
 .k-progress {
-  height: 6px;
+  height: 4px;
   border-radius: 999px;
   background: color-mix(in oklab, var(--pk-text-strong) 10%, transparent);
   overflow: hidden;
@@ -381,47 +541,110 @@ body {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--kit-accent);
+  background: var(--kit-accent-fg);
 }
-.k-ring {
+/* Indeterminate waits: a 2 px shimmer along the container's top edge. */
+.k-shimmer {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  overflow: hidden;
+  border-radius: inherit;
+}
+.k-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  left: 30%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--kit-accent-fg),
+    transparent
+  );
+}
+/* Determinate countdown ring: drains over the code's lifetime (stroke-dashoffset, linear). */
+.k-countdown {
   width: 20px;
   height: 20px;
-  border-radius: 50%;
-  border: 2.5px solid
-    color-mix(in oklab, var(--pk-text-strong) 14%, transparent);
-  border-top-color: var(--pk-text-muted);
+  flex: none;
+  transform: rotate(-90deg);
+}
+.k-countdown circle {
+  fill: none;
+  stroke-width: 2;
+}
+.k-countdown .track {
+  stroke: color-mix(in oklab, var(--pk-text-strong) 12%, transparent);
+}
+.k-countdown .left {
+  stroke: var(--kit-accent-fg);
+  stroke-linecap: round;
+}
+/* Skeleton: content-shaped, static shimmer only. */
+.k-skel {
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--pk-text-strong) 6%, transparent),
+    color-mix(in oklab, var(--pk-text-strong) 10%, transparent),
+    color-mix(in oklab, var(--pk-text-strong) 6%, transparent)
+  );
 }
 
-/* Settings rows (EXPERIENCE §6): label left, control right, equal height. */
+/* Settings rows (EXPERIENCE §6): label left, control right, 52 / 64 px rows. */
+.k-group-h {
+  font: 500 13px/18px var(--pk-font-sans);
+  color: var(--pk-text-muted);
+  margin: 0 0 8px 4px;
+}
 .k-group {
   background: var(--pk-surface-raised);
-  border-radius: var(--kit-radius-tile);
-  border: 1px solid var(--kit-hairline);
+  border-radius: var(--kit-radius-group);
+  box-shadow: inset 0 0 0 1px var(--kit-hairline);
   overflow: hidden;
+}
+[data-theme="light"] .k-group {
+  box-shadow:
+    0 0 0 1px rgb(6 9 18 / 0.05),
+    0 1px 2px rgb(6 9 18 / 0.04);
 }
 .k-row {
   display: flex;
   align-items: center;
   gap: 14px;
-  min-height: 60px;
-  padding: 12px 18px;
+  min-height: 52px;
+  padding: 8px 16px;
+  position: relative;
 }
-.k-row + .k-row {
-  border-top: 1px solid var(--kit-hairline);
+.k-row.two {
+  min-height: 64px;
+}
+.k-row + .k-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 0;
+  height: 1px;
+  background: var(--kit-hairline);
 }
 .k-row .t {
   flex: 1;
   min-width: 0;
 }
-.k-row .t b {
+.k-row .t > span {
   display: block;
   color: var(--pk-text-strong);
-  font-size: 14.5px;
+  font-size: 15px;
+  line-height: 20px;
 }
 .k-row .t small {
   display: block;
   color: var(--pk-text-muted);
   font-size: 13px;
+  line-height: 18px;
 }
 .k-row .v {
   color: var(--pk-text-muted);
@@ -431,8 +654,8 @@ body {
   gap: 8px;
 }
 .k-switch {
-  width: 44px;
-  height: 26px;
+  width: 40px;
+  height: 24px;
   border-radius: 999px;
   background: color-mix(in oklab, var(--pk-text-strong) 18%, transparent);
   position: relative;
@@ -443,37 +666,41 @@ body {
   position: absolute;
   top: 3px;
   left: 3px;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
 }
 .k-switch.on {
   background: var(--kit-accent);
 }
 .k-switch.on::after {
-  left: 21px;
+  left: 19px;
 }
-.k-switch.locked {
-  opacity: 0.55;
+.k-locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pk-text-muted);
+  font-size: 14px;
 }
 .k-seg {
   display: inline-flex;
-  padding: 3px;
+  padding: 2px;
   border-radius: 10px;
-  background: color-mix(in oklab, var(--pk-text-strong) 7%, transparent);
-  font-size: 13.5px;
+  background: var(--kit-tonal);
+  font-size: 13px;
 }
 .k-seg span {
-  padding: 5px 12px;
+  padding: 4px 12px;
   border-radius: 8px;
   color: var(--pk-text-muted);
 }
 .k-seg span.on {
   background: var(--pk-surface-overlay);
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
   box-shadow: var(--pk-elevation-1);
 }
 [data-theme="light"] .k-seg span.on {
@@ -487,45 +714,21 @@ body {
   font-size: 12px;
   color: var(--pk-text-subtle);
 }
-
-.k-callout {
-  display: flex;
-  gap: 10px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: color-mix(in oklab, var(--pk-text-strong) 4%, transparent);
-  color: var(--pk-text-default);
-  font-size: 13.5px;
-}
-.k-callout .ic {
-  color: var(--pk-text-muted);
-  margin-top: 1px;
-}
 .k-kbd {
-  font: 700 11px/1 var(--pk-font-sans);
+  font: 500 11px/1 var(--pk-font-sans);
   padding: 3px 6px;
   border-radius: 5px;
-  border: 1px solid var(--pk-border-subtle);
+  background: var(--kit-tonal);
   color: var(--pk-text-muted);
 }
+/* Release notes: a 13 px label over plain lines at a 6 px rhythm, no bullets. */
 .k-notes {
   margin: 0;
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 8px;
+  gap: 6px;
   font-size: 14px;
-}
-.k-notes li {
-  display: flex;
-  gap: 10px;
-}
-.k-notes li::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--pk-text-subtle);
-  margin-top: 8px;
-  flex: none;
+  line-height: 20px;
+  color: var(--pk-text-default);
 }

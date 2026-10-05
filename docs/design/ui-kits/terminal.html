@@ -2,55 +2,59 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>UI kits · Terminal (Node and Python CLI prompts)</title>
+    <title>UI kits · Terminal (Node and Python CLIs; Textual)</title>
     <link rel="stylesheet" href="shared.css" />
     <script src="shared.js"></script>
     <style>
-      /* Truecolor output from the brand tokens; NO_COLOR and ANSI-16 fallbacks per UI-KITS §4.6. */
+      /* A real cell grid: 14 px JetBrains Mono at line-height 1.2 (8.4 × 16.8 px cells), 80
+         columns unless stated. Status roles map to ANSI-16 by default (ok green, warn yellow,
+         err red, mute bright black) so they follow the user's terminal theme; truecolor is used
+         only for the product accent, and only when COLORTERM=truecolor. One cell size: no big
+         text, no rounded tiles. */
       .shot {
-        width: 820px;
-        border-radius: 16px;
+        border-radius: 12px;
         overflow: hidden;
-        background: #0b0e17;
+        background: var(--t-bg);
         box-shadow:
-          0 0 0 1px #262b38,
+          0 0 0 1px var(--t-frame),
           0 24px 50px -16px rgb(0 0 0 / 0.5);
-        font: 14.5px/1.6 var(--pk-font-mono);
-        color: #dbe4ff;
-        --a: #9a5cff;
-        --ok: #56d57b;
-        --warn: #c38d18;
-        --err: #f2513f;
-        --mute: #969eb2;
+        font: 14px/1.2 var(--kit-mono);
+        font-variant-ligatures: none;
+        color: var(--t-fg);
+        --t-bg: #101114;
+        --t-frame: #26282e;
+        --t-fg: #d7dae0;
+        --a: #4fd8c4; /* truecolor product accent */
+        --ok: #5fd38d;
+        --warn: #e5c07b;
+        --err: #ef6b73;
+        --mute: #7f848e;
         --strong: #ffffff;
-        --lic: #c6e940;
-        --upd: #fe8001;
-        --idn: #d77df2;
+        --cyan: #56b6c2;
       }
       [data-theme="light"] .shot {
-        background: #fbfcff;
-        color: #262d40;
+        --t-bg: #fbfbfc;
+        --t-frame: #dcdee3;
+        --t-fg: #24292f;
+        --a: #0b6b62;
+        --ok: #1a7f37;
+        --warn: #9a6700;
+        --err: #cf222e;
+        --mute: #6e7781;
+        --strong: #0b0d10;
+        --cyan: #1b7c83;
         box-shadow:
-          0 0 0 1px #dadee9,
+          0 0 0 1px var(--t-frame),
           0 24px 50px -16px rgb(6 9 18 / 0.2);
-        --a: #7a2fff;
-        --ok: #167337;
-        --warn: #814d00;
-        --err: #be2323;
-        --mute: #5d667b;
-        --strong: #060912;
-        --lic: #556e00;
-        --upd: #aa5000;
-        --idn: #9e34ae;
       }
       .tbar {
-        height: 40px;
+        height: 34px;
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 0 16px;
-        border-bottom: 1px solid rgb(127 127 127 / 0.18);
-        font: 600 12.5px/1 var(--pk-font-sans);
+        padding: 0 14px;
+        border-bottom: 1px solid var(--t-frame);
+        font: 500 12px/1 var(--pk-font-sans);
         color: var(--mute);
       }
       .tbar i {
@@ -68,7 +72,7 @@
       }
       pre {
         margin: 0;
-        padding: 18px 22px 22px;
+        padding: 14px 16.8px 16.8px;
         font: inherit;
         white-space: pre;
       }
@@ -89,87 +93,637 @@
       }
       .s {
         color: var(--strong);
-        font-weight: 700;
+        font-weight: 600;
       }
-      .lic {
-        color: var(--lic);
+      .cy {
+        color: var(--cyan);
       }
-      .upd {
-        color: var(--upd);
+      .u {
+        text-decoration: underline;
+        text-underline-offset: 2px;
       }
-      .idn {
-        color: var(--idn);
+      .chip {
+        background: var(--a);
+        color: var(--t-bg);
+        font-weight: 600;
       }
-      .bar {
-        color: var(--a);
+      .rev {
+        background: var(--strong);
+        color: var(--t-bg);
+        font-weight: 600;
       }
-      .qrwrap {
+      .cell {
         display: inline-block;
-        line-height: 0;
+        width: 8.4px;
+        text-align: center;
+        overflow: visible;
+      }
+      .bx {
+        display: inline-block;
+        width: 8.4px;
+        height: 16.8px;
         vertical-align: top;
-        padding: 6px;
-        background: #fff;
-        border-radius: 4px;
+        position: relative;
+      }
+      .bx::before,
+      .bx::after {
+        content: "";
+        position: absolute;
+        background: currentColor;
+      }
+      .bx.v::before {
+        left: 3.7px;
+        width: 1px;
+        top: 0;
+        bottom: 0;
+      }
+      .bx.tl::before {
+        left: 3.7px;
+        width: 1px;
+        top: 8.4px;
+        bottom: 0;
+      }
+      .bx.tl::after {
+        left: 3.7px;
+        right: 0;
+        height: 1px;
+        top: 8.4px;
+      }
+      .bx.bl::before {
+        left: 3.7px;
+        width: 1px;
+        top: 0;
+        height: 8.9px;
+      }
+      .bx.bl::after {
+        left: 3.7px;
+        right: 0;
+        height: 1px;
+        top: 8.4px;
+      }
+      .cols80 {
+        width: calc(80 * 8.4px + 33.6px);
+      }
+      .cols60 {
+        width: calc(60 * 8.4px + 33.6px);
+      }
+      .strip {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+      }
+      .strip > div {
+        border-top: 1px solid var(--t-frame);
+      }
+      .strip > div:nth-child(odd) {
+        border-right: 1px solid var(--t-frame);
+      }
+      .strip .lbl {
+        font: 500 11px/1 var(--pk-font-sans);
+        color: var(--mute);
+        padding: 10px 16.8px 0;
+      }
+      .nocolor * {
+        color: var(--t-fg) !important;
+        background: none !important;
+      }
+      .nocolor .s,
+      .nocolor .chip {
+        color: var(--t-fg) !important;
+      }
+      .ansi16 {
+        --a: var(--cyan);
+      }
+      /* Textual */
+      .tx {
+        display: grid;
+        grid-template-columns: calc(22 * 8.4px) 1fr;
+        grid-template-rows: 16.8px 1fr 16.8px;
+        height: calc(24 * 16.8px);
+      }
+      .tx .hd,
+      .tx .ft {
+        grid-column: 1 / -1;
+        padding: 0 8.4px;
+      }
+      .tx .hd {
+        background: color-mix(in oklab, var(--a) 22%, var(--t-bg));
+        color: var(--strong);
+      }
+      .tx .ft {
+        background: color-mix(in oklab, var(--t-fg) 8%, var(--t-bg));
+      }
+      .tx .side {
+        border-right: 1px solid
+          color-mix(in oklab, var(--t-fg) 18%, transparent);
+        padding: 16.8px 0;
+      }
+      .tx .side div {
+        padding: 0 16.8px;
+      }
+      .tx .side .on {
+        background: color-mix(in oklab, var(--a) 18%, var(--t-bg));
+        color: var(--strong);
+      }
+      .tx .main {
+        padding: 16.8px 25.2px;
       }
     </style>
   </head>
   <body>
     <main class="board">
       <figure>
-        <figcaption>terminal · sign-in (device code)</figcaption>
-        <div class="shot" data-shot="sign-in">
-          <div class="tbar"><i></i><i></i><i></i>tidewater — zsh</div>
-          <pre><span class="m">$</span> tidewater login
-<span class="m">┌</span>  <span class="s">Tidewater Studio</span> <span class="m">· sign in</span>
-<span class="m">│</span>
-<span class="idn">◆</span>  Open <span class="s">key.plrs.im/tv</span> on any device and enter
-<span class="m">│</span>
-<span class="m">│</span>     <span class="s" style="font-size: 26px; letter-spacing: 0.14em">WDJB-MJHT</span>       <span class="qrwrap" data-qr="9" data-size="92"></span>
-<span class="m">│</span>
-<span class="m">│</span>  <span class="a">◒</span> Waiting for you to sign in <span class="m">· 4:52 · press</span> o <span class="m">to open the browser</span>
-<span class="m">└</span></pre>
+        <figcaption>
+          terminal · sign-in (device code, half-block QR, 80 × 24)
+        </figcaption>
+        <div class="shot cols80" data-shot="sign-in">
+          <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
+          <pre id="signin"></pre>
         </div>
       </figure>
-
+      <figure>
+        <figcaption>terminal · activate (masked key entry)</figcaption>
+        <div class="shot cols80" data-shot="activate">
+          <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
+          <pre id="activate"></pre>
+        </div>
+      </figure>
       <figure>
         <figcaption>terminal · device limit picker</figcaption>
-        <div class="shot" data-shot="device-limit">
-          <div class="tbar"><i></i><i></i><i></i>tidewater — zsh</div>
-          <pre><span class="m">$</span> tidewater activate
-<span class="m">┌</span>  <span class="s">Tidewater Studio</span> <span class="m">· activate</span>
-<span class="m">│</span>
-<span class="lic">◇</span>  License key <span class="m">· pkey_tidewater_7Q2M···WPLDA</span>  <span class="ok">✓ Tidewater Studio Pro · Lifetime</span>
-<span class="m">│</span>
-<span class="warn">▲</span>  <span class="s">Your license is on 3 of 3 devices</span>  <span class="err">■■■</span>
-<span class="m">│</span>  Remove one to use it on <span class="s">build-server-02</span>. You can add it back later.
-<span class="m">│</span>
-<span class="a">◆</span>  Which device?
-<span class="m">│</span>  <span class="a">●</span> <span class="s">Work laptop</span>    <span class="m">Windows 11 · last used 41 days ago</span>
-<span class="m">│</span>  <span class="m">○</span> Mara’s iPad    <span class="m">iPadOS 26 · used yesterday</span>
-<span class="m">│</span>  <span class="m">○</span> MacBook Pro    <span class="m">macOS 26 · used today</span>
-<span class="m">└</span>  <span class="m">↑/↓ choose · enter remove and continue · esc cancel</span></pre>
+        <div class="shot cols80" data-shot="device-limit">
+          <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
+          <pre id="dl"></pre>
         </div>
       </figure>
-
       <figure>
         <figcaption>terminal · status and update progress</figcaption>
-        <div class="shot" data-shot="update">
-          <div class="tbar"><i></i><i></i><i></i>tidewater — zsh</div>
-          <pre><span class="m">$</span> tidewater status
-  <span class="s">Tidewater Studio Pro</span>      <span class="m">Lifetime · mara@fennick.studio</span>
-  Devices                   2 of 3
-  Version                   2.4.1 <span class="m">· checked 2 min ago</span>
-  Offline grace             <span class="warn">▲ 3 days left</span> <span class="m">· connect to renew</span>
-
-<span class="m">$</span> tidewater update
-<span class="upd">◆</span>  <span class="s">Tidewater Studio 2.5</span> <span class="m">· 61 MB</span>
-<span class="m">│</span>  • Stem export in one click, with loudness matching
-<span class="m">│</span>  • Track freeze now works with every plug-in
-<span class="m">│</span>
-<span class="m">│</span>  <span class="bar">━━━━━━━━━━━━━━━━━━━━━━━━━</span><span class="m">───────────────</span>  62% <span class="m">· 38 of 61 MB · 20 s</span>
-<span class="m">└</span>  <span class="m">Ctrl-C to stop · --json for scripts · NO_COLOR respected</span></pre>
+        <div class="shot cols80" data-shot="update">
+          <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
+          <pre id="update"></pre>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
+          terminal · blocked status with the fix as a command
+        </figcaption>
+        <div class="shot cols80" data-shot="status-error">
+          <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
+          <pre id="err"></pre>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>terminal · grouped help</figcaption>
+        <div class="shot cols80" data-shot="help">
+          <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
+          <pre id="help"></pre>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
+          terminal · fallbacks: truecolor, ANSI-16, NO_COLOR, ascii symbols
+        </figcaption>
+        <div
+          class="shot"
+          data-shot="fallbacks"
+          style="width: calc(160 * 8.4px + 67px)"
+        >
+          <div class="tbar"><i></i><i></i><i></i>the same output four ways</div>
+          <div class="strip">
+            <div>
+              <div class="lbl">truecolor (COLORTERM=truecolor)</div>
+              <pre class="fb"></pre>
+            </div>
+            <div class="ansi16">
+              <div class="lbl">ANSI-16 (default)</div>
+              <pre class="fb"></pre>
+            </div>
+            <div class="nocolor">
+              <div class="lbl">NO_COLOR=1</div>
+              <pre class="fb"></pre>
+            </div>
+            <div>
+              <div class="lbl">ascii symbols (TERM=dumb or --ascii)</div>
+              <pre class="fb ascii"></pre>
+            </div>
+          </div>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
+          terminal · 60 columns (QR hidden below 70, meta wraps, keys truncate
+          in the middle)
+        </figcaption>
+        <div class="shot cols60" data-shot="narrow">
+          <div class="tbar"><i></i><i></i><i></i>tidewater — 60 × 24</div>
+          <pre id="narrow"></pre>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>terminal · Textual app (optional, Python)</figcaption>
+        <div class="shot cols80" data-shot="textual">
+          <div class="tx" id="tx">
+            <div class="hd">
+              <span class="s">Tidewater Studio</span> <span>· account</span>
+            </div>
+            <div class="side">
+              <div class="on">Account</div>
+              <div>Devices</div>
+              <div>Updates</div>
+              <div>About</div>
+            </div>
+            <div class="main" id="txmain"></div>
+            <div class="ft">
+              <span class="s">↑↓</span> <span class="m">move</span>
+              <span class="s">enter</span> <span class="m">open</span>
+              <span class="s">q</span> <span class="m">quit</span>
+            </div>
+          </div>
         </div>
       </figure>
     </main>
+    <script>
+      // Every character occupies exactly one cell, as in a terminal: glyphs outside the font's
+      // subset are pinned to the cell width, and box-drawing rails are drawn edge to edge.
+      const BOX = { "│": "v", "┌": "tl", "└": "bl" };
+      const esc = (t) =>
+        [...t]
+          .map((ch) => {
+            if (BOX[ch]) return `<span class="bx ${BOX[ch]}"></span>`;
+            const e = ch === "&" ? "&amp;" : ch === "<" ? "&lt;" : ch;
+            return ch.charCodeAt(0) > 0x2000 && ch !== "’" && ch !== "…"
+              ? `<span class="cell">${e}</span>`
+              : e;
+          })
+          .join("");
+      // A line is a list of [class, text] segments; `len` is its visible width in cells.
+      const L = (...segs) => ({
+        html: segs
+          .map(([c, t]) => (c ? `<span class="${c}">${esc(t)}</span>` : esc(t)))
+          .join(""),
+        len: segs.reduce((n, [, t]) => n + [...t].length, 0),
+      });
+      const pad = (l, col) => l.html + " ".repeat(Math.max(0, col - l.len));
+      const R = (...segs) => L(["m", "│"], ["", "  "], ...segs);
+      const put = (id, lines) =>
+        (document.getElementById(id).innerHTML = lines
+          .map((l) => (typeof l === "string" ? l : l.html))
+          .join("\n"));
+      const keys = (...pairs) =>
+        pairs.flatMap(([k, a], i) => [
+          ...(i ? [["m", " · "]] : []),
+          ["s", k],
+          ["m", " " + a],
+        ]);
+
+      // Half-block QR (same deterministic matrix as the other boards), black on white, 2-cell quiet zone.
+      function qrMatrix(seed = 9) {
+        const n = 29;
+        let s = seed;
+        const rnd = () =>
+          (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+        const m = Array.from({ length: n }, () => Array(n).fill(0));
+        const finder = (x0, y0) => {
+          for (let y = 0; y < 7; y++)
+            for (let x = 0; x < 7; x++)
+              m[y0 + y][x0 + x] =
+                x === 0 ||
+                y === 0 ||
+                x === 6 ||
+                y === 6 ||
+                (x > 1 && x < 5 && y > 1 && y < 5)
+                  ? 1
+                  : 0;
+        };
+        const inF = (x, y) =>
+          (x < 8 && y < 8) || (x > n - 9 && y < 8) || (x < 8 && y > n - 9);
+        for (let y = 0; y < n; y++)
+          for (let x = 0; x < n; x++) {
+            if (inF(x, y)) continue;
+            if (x === 6 || y === 6) {
+              m[y][x] = (x + y) % 2 === 0 ? 1 : 0;
+              continue;
+            }
+            m[y][x] = rnd() > 0.52 ? 1 : 0;
+          }
+        finder(0, 0);
+        finder(n - 7, 0);
+        finder(0, n - 7);
+        const q = 2,
+          N = n + 2 * q;
+        const g = Array.from({ length: N + 1 }, (_, y) =>
+          Array.from({ length: N }, (_, x) =>
+            y >= q && y < n + q && x >= q && x < n + q ? m[y - q][x - q] : 0,
+          ),
+        );
+        // Drawn as one SVG per text row so each half-block fills its cell exactly, as a terminal
+        // renders ▀ ▄ █ (fonts leave gaps at line-height 1.2; terminals do not).
+        const out = [];
+        for (let y = 0; y < N; y += 2) {
+          let r = "";
+          for (let x = 0; x < N; x++) {
+            if (g[y][x]) r += `<rect x="${x}" y="0" width="1" height="1"/>`;
+            if (g[y + 1][x]) r += `<rect x="${x}" y="1" width="1" height="1"/>`;
+          }
+          out.push(
+            `<svg width="${(N * 8.4).toFixed(1)}" height="16.8" viewBox="0 0 ${N} 2" preserveAspectRatio="none" shape-rendering="crispEdges" style="vertical-align: top; display: inline-block"><rect width="${N}" height="2" fill="#fff"/><g fill="#000">${r}</g></svg>`,
+          );
+        }
+        return out; // 17 lines × 33 cells
+      }
+
+      // 1. Sign in
+      const Q = qrMatrix(9);
+      const left = [
+        L(["a", "◆"], ["", "  "], ["s", "Sign in on any device"]),
+        R(),
+        R(["", "Go to "], ["s u", "key.plrs.im/activate"]),
+        R(["", "and enter this code:"]),
+        R(),
+        R(["rev", " W D J B - M J H T "]),
+        R(),
+        R(["", "Check the code there matches"]),
+        R(["", "this one."]),
+        R(),
+        R(["m", "⠹"], ["", " Waiting… "], ["m", "· expires in 4:52"]),
+        R(),
+        R(...keys(["c", "copy"], ["o", "open"], ["esc", "cancel"])),
+      ];
+      const lines = [
+        L(["m", "$ "], ["", "tidewater login"]),
+        L(["m", "┌  "], ["chip", " Tidewater Studio "], ["m", " · sign in"]),
+        L(["m", "│"]),
+      ];
+      for (let i = 0; i < Q.length; i++) {
+        const l = left[i] || R();
+        lines.push({ html: pad(l, 44) + Q[i] });
+      }
+      lines.push(
+        R(),
+        R([
+          "m",
+          "Polaris Key handles sign-in. Harbor Audio never sees your passkeys.",
+        ]),
+        L(["m", "└"]),
+      );
+      put("signin", lines);
+
+      // 2. Activate
+      put("activate", [
+        L(["m", "$ "], ["", "tidewater activate"]),
+        L(["m", "┌  "], ["chip", " Tidewater Studio "], ["m", " · activate"]),
+        L(["m", "│"]),
+        L(
+          ["a", "◆"],
+          ["", "  "],
+          ["s", "License key"],
+          ["m", "  (from your purchase email)"],
+        ),
+        R(
+          ["", "pkey_tidewater_"],
+          ["m", "•••••••••••••••••"],
+          ["", "WPLDA"],
+          ["rev", " "],
+        ),
+        R(
+          ["ok", "✓"],
+          ["", " Tidewater Studio Pro"],
+          ["m", " · Lifetime · 3 devices"],
+        ),
+        L(["m", "│"]),
+        L(
+          ["m", "└  "],
+          ...keys(
+            ["enter", "activate"],
+            ["ctrl-v", "paste"],
+            ["esc", "cancel"],
+          ),
+        ),
+        "",
+        L([
+          "m",
+          "  The key is read from the prompt or stdin, never from an argument.",
+        ]),
+      ]);
+
+      // 3. Device limit
+      const dl = (cols, narrow) => [
+        L(["m", "$ "], ["", "tidewater activate"]),
+        L(["m", "┌  "], ["chip", " Tidewater Studio "], ["m", " · activate"]),
+        L(["m", "│"]),
+        L(
+          ["ok", "◇"],
+          ["", "  License key "],
+          ["m", narrow ? "· pkey_tide…PLDA" : "· pkey_tidewater_7Q2M…3WPLDA"],
+        ),
+        R(["ok", "✓"], ["", " Tidewater Studio Pro"], ["m", " · Lifetime"]),
+        L(["m", "│"]),
+        L(
+          ["warn", "▲"],
+          ["", "  "],
+          ["s", "Your license is on 3 of 3 devices"],
+        ),
+        R(["m", "●●● 3 of 3 in use"]),
+        ...(narrow
+          ? [
+              R(
+                ["", "Remove one to use it on "],
+                ["s", "build-server-02"],
+                ["", "."],
+              ),
+              R(["", "You can add it back later."]),
+            ]
+          : [
+              R(
+                ["", "Remove one to use it on "],
+                ["s", "build-server-02"],
+                ["", ". You can add it back later."],
+              ),
+            ]),
+        L(["m", "│"]),
+        L(["a", "◆"], ["", "  "], ["s", "Which device?"]),
+        R(["a", "●"], ["", " "], ["s", "Work laptop"]),
+        R(
+          ["", "  "],
+          [
+            "m",
+            narrow
+              ? "Windows 11 · 41 days ago"
+              : "Windows 11 · last used 41 days ago · least recent",
+          ],
+        ),
+        ...(narrow ? [R(["", "  "], ["m", "least recent"])] : []),
+        R(
+          ["m", "○"],
+          ["", " Mara’s iPad   "],
+          ["m", narrow ? "yesterday" : "iPadOS 26 · last used yesterday"],
+        ),
+        R(
+          ["m", "○"],
+          ["", " MacBook Pro   "],
+          ["m", narrow ? "today" : "macOS 26 · last used today"],
+        ),
+        L(["m", "│"]),
+        R(["m", "Tidewater Studio signs out on Work laptop."]),
+        L(
+          ["m", "└  "],
+          ...keys(["↑↓", "choose"], ["enter", "remove"], ["esc", "cancel"]),
+        ),
+      ];
+      put("dl", dl(80));
+      put("narrow", dl(60, true));
+
+      // 4. Status and update
+      const bar = (p, w) =>
+        `<span class="a">${esc("━".repeat(Math.round(p * w)))}</span><span class="m">${esc("━".repeat(w - Math.round(p * w)))}</span>`;
+      put("update", [
+        L(["m", "$ "], ["", "tidewater status"]),
+        L(
+          ["s", "Tidewater Studio Pro"],
+          ["m", " · Lifetime · mara@fennick.studio"],
+        ),
+        L(["m", "  Devices              "], ["", "2 of 3"]),
+        L(
+          ["m", "  Version              "],
+          ["", "2.4.1"],
+          ["m", " · checked 2 min ago"],
+        ),
+        L(
+          ["m", "  Works offline until  "],
+          ["", "Oct 8 "],
+          ["warn", "(3 days)"],
+          ["m", " · go online to renew"],
+        ),
+        "",
+        L(["m", "$ "], ["", "tidewater update"]),
+        L(["m", "┌  "], ["chip", " Tidewater Studio "], ["m", " · update"]),
+        L(["m", "│"]),
+        L(
+          ["a", "◆"],
+          ["", "  "],
+          ["s", "Tidewater Studio 2.5"],
+          ["m", " · 61 MB"],
+        ),
+        R(["", "Stem export in one click, with loudness matching"]),
+        R(["", "Track freeze now works with every plug-in"]),
+        R(["m", "Release notes: "], ["m u", "tidewater.app/releases/2.5"]),
+        L(["m", "│"]),
+        {
+          html: `<span class="m">${esc("│")}</span>  ${bar(0.62, 36)}  62% <span class="m">${esc("· 38 of 61 MB · 20 s left")}</span>`,
+        },
+        L(["m", "└  "], ...keys(["ctrl-c", "cancel"])),
+      ]);
+
+      // 5. Status error
+      put("err", [
+        L(["m", "$ "], ["", "tidewater status"]),
+        L(
+          ["err", "✗"],
+          ["", "  "],
+          ["s", "Tidewater Studio"],
+          ["", " · license revoked"],
+        ),
+        R(["", "Harbor Audio revoked this key on Oct 2, after a refund."]),
+        L(["m", "│"]),
+        R(["", "To keep using Tidewater Studio:"]),
+        R(["s", "tidewater activate"], ["m", "   add a different key"]),
+        R(
+          ["s", "tidewater login   "],
+          ["m", "   use the license on your account"],
+        ),
+        L(["m", "└  "], ["m", "exit 3 · --json for scripts"]),
+      ]);
+
+      // 6. Help
+      const cmd = (c, d) => L(["", "  "], ["s", c.padEnd(17)], ["", d]);
+      put("help", [
+        L(["s", "tidewater"], ["m", " · Tidewater Studio license and updates"]),
+        "",
+        L(["m", "Usage  "], ["", "tidewater <command> [options]"]),
+        "",
+        L(["s", "License"]),
+        cmd("login", "Sign in with your Harbor Audio account"),
+        cmd("activate", "Add a license key (prompts; never an argument)"),
+        cmd("status", "License, devices and offline time"),
+        cmd("devices", "List, rename and remove devices"),
+        cmd("logout", "Sign out on this device"),
+        "",
+        L(["s", "Updates"]),
+        cmd("update", "Download and install the latest version"),
+        cmd("channel <name>", "Switch between stable and beta"),
+        "",
+        L(["s", "Options"]),
+        cmd("--json", "Machine-readable output, on every command"),
+        cmd("--no-color", "Plain text (also NO_COLOR=1)"),
+        cmd("--ascii", "ASCII symbols only"),
+        cmd("-h, --help", "Help for a command"),
+      ]);
+
+      // 7. Fallbacks
+      const fb = (ascii) =>
+        [
+          ascii
+            ? L(
+                ["m", "+  "],
+                ["chip", " Tidewater Studio "],
+                ["m", " - activate"],
+              )
+            : L(
+                ["m", "┌  "],
+                ["chip", " Tidewater Studio "],
+                ["m", " · activate"],
+              ),
+          L(["m", ascii ? "|" : "│"]),
+          L(
+            ["warn", ascii ? "!" : "▲"],
+            ["", "  "],
+            ["s", "Your license is on 3 of 3 devices"],
+          ),
+          L(
+            ["m", ascii ? "|" : "│"],
+            ["", "  "],
+            ["a", ascii ? "(*)" : "●"],
+            ["", " "],
+            ["s", "Work laptop"],
+            ["m", ascii ? " - least recent" : " · least recent"],
+          ),
+          L(
+            ["m", ascii ? "|" : "│"],
+            ["", "  "],
+            ["m", ascii ? "( )" : "○"],
+            ["", " Mara’s iPad"],
+          ),
+          L(
+            ["m", ascii ? "`" : "└"],
+            ["", "  "],
+            ...keys(["enter", "remove"], ["esc", "cancel"]),
+          ),
+        ]
+          .map((l) => l.html)
+          .join("\n");
+      document
+        .querySelectorAll(".fb")
+        .forEach((p) => (p.innerHTML = fb(p.classList.contains("ascii"))));
+
+      // 8. Textual main pane
+      document.getElementById("txmain").innerHTML = [
+        L(["s", "Tidewater Studio Pro"], ["m", " · Lifetime"]),
+        L(["m", "mara@fennick.studio"]),
+        "",
+        L(["m", "Devices         "], ["", "2 of 3"]),
+        L(["m", "Cloud Sync      "], ["", "synced 2 min ago"]),
+        L(["m", "Version         "], ["", "2.4.1 "], ["m", "· up to date"]),
+        "",
+        L(["m", "From Harbor Audio"]),
+        L(
+          ["", "Share crash reports  "],
+          ["", "On "],
+          ["m", "· set by Fennick Studio"],
+        ),
+        "",
+        L(["rev", " Manage license "], ["", "  "], ["", "[ Sign out ]"]),
+      ]
+        .map((l) => (typeof l === "string" ? l : l.html))
+        .join("<br>");
+    </script>
   </body>
 </html>
