@@ -7019,7 +7019,7 @@
       "optional": false,
       "refs": ["notes/SDK-PARITY-PASS §6 W9", "notes/S-11 §5.2"],
       "brief": "wp/SP-09-velopack-auth-redirect.md",
-      "status": "todo"
+      "status": "awaiting-approval"
     },
     {
       "id": "SP-10",
