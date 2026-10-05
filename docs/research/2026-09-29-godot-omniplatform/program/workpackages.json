@@ -6977,7 +6977,8 @@
       "refs": [
         "notes/SDK-PARITY-PASS §5.0 SP-00",
         "notes/SDK-PARITY-PASS owner decisions (2026-10-05)",
-        "PARITY §5"
+        "PARITY §5",
+        "plans/SP-00.md (approved 2026-10-05; decisions delegated to Claude)"
       ],
       "brief": "wp/SP-00-parity-registry-plan.md",
       "status": "todo"
