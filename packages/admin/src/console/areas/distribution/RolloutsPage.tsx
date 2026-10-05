@@ -186,6 +186,7 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
       header: "Updated",
       accessorKey: "updatedAt",
       meta: {
+        numeric: true,
         priority: 2,
         csv: (r) => new Date(fromSeconds(r.updatedAt)).toISOString(),
       },

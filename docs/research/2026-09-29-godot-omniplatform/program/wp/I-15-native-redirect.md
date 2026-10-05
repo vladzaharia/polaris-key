@@ -12,6 +12,13 @@
 | Human input | none                                                                                                                                                                  |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                             |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/PX-W13.md`](../plans/PX-W13.md):** §2.5: the request carries `deviceName` under §2.1 and the entry creates a `native` handle.
+- **[`plans/PX-W13.md`](../plans/PX-W13.md):** offer a pushed-request step (RFC 9126 style, `POST /<p>/identity/request` → `{request, authorizeUrl}`), because a label in an `authorize` query string would be a display query parameter.
+
 ## Goal
 
 Desktop and mobile apps sign in by a native redirect: loopback, claimed-HTTPS and registered-scheme redirect URIs on I-08's code-exchange route, `signIn({redirect})` in all six SDKs with the system browser only, and `/auth/poll` retired.

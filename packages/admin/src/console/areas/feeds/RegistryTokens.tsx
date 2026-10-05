@@ -199,14 +199,14 @@ function columns(withBinding: boolean): DataColumn<RegistryTokenDto>[] {
       id: "expiresAt",
       header: "Expires",
       accessorKey: "expiresAt",
-      meta: { priority: 2, label: "Expires" },
+      meta: { numeric: true, priority: 2, label: "Expires" },
       cell: ({ row }) => <Timestamp at={fromSeconds(row.original.expiresAt)} />,
     },
     {
       id: "lastUsedAt",
       header: "Last used",
       accessorFn: (t) => t.lastUsedAt ?? 0,
-      meta: { priority: 3, label: "Last used" },
+      meta: { numeric: true, priority: 3, label: "Last used" },
       cell: ({ row }) =>
         row.original.lastUsedAt ? (
           <Timestamp at={fromSeconds(row.original.lastUsedAt)} />

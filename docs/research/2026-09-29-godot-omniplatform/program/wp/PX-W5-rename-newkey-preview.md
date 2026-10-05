@@ -12,6 +12,12 @@
 | Human input | none                                                                                                                                                                                       |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                  |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/PX-W13.md`](../plans/PX-W13.md):** a portal rename always wins over the label PX-W13 seeds into `devices.label`; PX-W13 writes the label only while it is `NULL`.
+
 ## Goal
 
 The portal can rename a device (`PATCH /api/licenses/:p/:id/devices/:deviceId {label}`), issue a new key once with step-up and a notice where the product opts in (`POST /api/licenses/:p/:id/keys`), and preview a key before adding it (`POST /api/activate/preview`) with typed refusals (`unknown`, `owned_elsewhere`, `email_mismatch` with masked email, `already_yours`, `portal_off`) and `entriesLeft`, never revealing ownership details.
