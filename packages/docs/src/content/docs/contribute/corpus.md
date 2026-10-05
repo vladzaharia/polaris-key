@@ -159,7 +159,7 @@ over it and needs a PR of its own with the guard deliberately relaxed. `.prettie
 
 `cases.json`, `gate-matrix.json`, `fingerprint.json`, `stage-matrix.json`, `headers.json`,
 `config-matrix.json`, `update-matrix.json`, `outlet-matrix.json`, `plan-matrix.json`,
-`content/cases.json`, and both mirrors are all output.
+`sync-scenarios.json`, `content/cases.json`, and both mirrors are all output.
 `pnpm gen:corpus -- --check` regenerates every one of them **in memory** and fails if any
 committed file differs — mirrors included. A red drift job means a wire-affecting change wasn't
 reflected in the corpus; regenerate and commit the result in the same PR:
@@ -213,6 +213,15 @@ expectation against a generator-local reference of §2.2.1 that imports nothing 
 and fails on a missing or redundant `expectNoEnv`, an unsorted list, an unused source or JSON
 type, a number some SDK would read differently, or a rule whose edges are not pinned. A new row
 keeps `configMatrixVersion`; a changed row or rule bumps it.
+
+`sync-scenarios.json` (`plans/U-01.md` §4.1, U-18) is **literal data** and **append-only**:
+`tools/sync-scenarios.ts` writes every scenario and its expectations by hand and imports nothing
+from `client-core`, so the reference state machine `@polaris-key/client-core/cloud-sync` is
+checked against it like any other SDK, by `conformance/runners/node/syncScenarios.test.ts` (the
+template every SDK's runner copies). Its self-check fixes the step, call and assert vocabulary,
+requires every listed rule to have a scenario, checks HLC and `clientId` syntax, and refuses a
+fresh `mutationId` at or below one the same client already sent. A new scenario keeps
+`syncScenariosVersion`; a vocabulary or expectation change bumps it.
 
 `update-matrix.json` and `outlet-matrix.json` (wire contract v4) are hand-authored from the
 plan's row lists (`plans/P3-01.md` §4.6, §4.7) and **append-only** as well. The generator carries

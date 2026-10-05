@@ -1091,6 +1091,9 @@ public let OUTLET_MATRIX_VERSION = 1
 /// `planMatrixVersion` of conformance/corpus/v2/plan-matrix.json.
 public let PLAN_MATRIX_VERSION = 2
 
+/// `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json.
+public let SYNC_SCENARIOS_VERSION = 1
+
 /// `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
 public let CONTENT_CORPUS_VERSION = 2
 

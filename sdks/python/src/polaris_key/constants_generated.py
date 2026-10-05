@@ -81,6 +81,7 @@ __all__ = [
     "UPDATE_MATRIX_VERSION",
     "OUTLET_MATRIX_VERSION",
     "PLAN_MATRIX_VERSION",
+    "SYNC_SCENARIOS_VERSION",
     "CONTENT_CORPUS_VERSION",
     "MAX_WIRE_INTEGER",
     "MAX_JSON_DEPTH",
@@ -1337,6 +1338,10 @@ OUTLET_MATRIX_VERSION: Final[int] = 1
 
 #: `planMatrixVersion` of conformance/corpus/v2/plan-matrix.json.
 PLAN_MATRIX_VERSION: Final[int] = 2
+
+
+#: `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json.
+SYNC_SCENARIOS_VERSION: Final[int] = 1
 
 
 #: `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.

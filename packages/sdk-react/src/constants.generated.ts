@@ -1178,6 +1178,9 @@ export const OUTLET_MATRIX_VERSION = 1;
 /** `planMatrixVersion` of conformance/corpus/v2/plan-matrix.json. */
 export const PLAN_MATRIX_VERSION = 2;
 
+/** `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json. */
+export const SYNC_SCENARIOS_VERSION = 1;
+
 /** `contentCorpusVersion` of conformance/corpus/v2/content/cases.json. */
 export const CONTENT_CORPUS_VERSION = 2;
 

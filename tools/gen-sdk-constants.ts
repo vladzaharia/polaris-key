@@ -23,7 +23,8 @@
 //                                       PACK_LIMIT_EXPORTS (plans/P4-01.md §2.13)
 //   conformance/corpus/v2/*.json        corpusVersion, gateMatrixVersion, fingerprintVersion,
 //                                       stageMatrixVersion, updateMatrixVersion,
-//                                       outletMatrixVersion, planMatrixVersion, and
+//                                       outletMatrixVersion, planMatrixVersion,
+//                                       syncScenariosVersion, and
 //                                       content/cases.json's contentCorpusVersion
 //
 // Outputs, each with a GENERATED banner (TypeScript is prettier-formatted, as sign-corpus.ts
@@ -120,6 +121,7 @@ export interface Sources {
     updateMatrixVersion: number;
     outletMatrixVersion: number;
     planMatrixVersion: number;
+    syncScenariosVersion: number;
     contentCorpusVersion: number;
   };
 }
@@ -448,6 +450,10 @@ export function loadSources(root = ROOT): Sources {
       updateMatrixVersion: corpus("update-matrix.json", "updateMatrixVersion"),
       outletMatrixVersion: corpus("outlet-matrix.json", "outletMatrixVersion"),
       planMatrixVersion: corpus("plan-matrix.json", "planMatrixVersion"),
+      syncScenariosVersion: corpus(
+        "sync-scenarios.json",
+        "syncScenariosVersion",
+      ),
       contentCorpusVersion: corpus(
         "content/cases.json",
         "contentCorpusVersion",
@@ -754,6 +760,11 @@ export function buildModel(sources: Sources): Model {
       name: "PLAN_MATRIX_VERSION",
       doc: "`planMatrixVersion` of conformance/corpus/v2/plan-matrix.json.",
       value: sources.corpus.planMatrixVersion,
+    },
+    {
+      name: "SYNC_SCENARIOS_VERSION",
+      doc: "`syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json.",
+      value: sources.corpus.syncScenariosVersion,
     },
     {
       name: "CONTENT_CORPUS_VERSION",
