@@ -16,6 +16,10 @@
  *                                                             to the live state unless
  *                                                             `propagate` is off)
  *   DELETE …/applications/<pkg>/edits/<id>                     edits.delete
+ *   GET    …/applications/<pkg>/edits/<id>/details             edits.details.get (A-18c)
+ *   GET    …/applications/<pkg>/edits/<id>/listings            edits.listings.list (A-18c)
+ *   GET    …/applications/<pkg>/edits/<id>/listings/<lang>/<imageType>
+ *                                                             edits.images.list (A-18c)
  *   GET    https://playdeveloperreporting.googleapis.com/v1beta1/apps/<pkg>/<set>
  *   POST   https://playdeveloperreporting.googleapis.com/v1beta1/apps/<pkg>/<set>:query
  *   GET    https://playdeveloperreporting.googleapis.com/v1beta1/apps:search   (A-16) every app
@@ -107,6 +111,15 @@ export class PlayFake {
       displayName: "djdl",
     },
   ];
+  /** The store listing the edits API answers (A-18c's import reads it; nothing writes it). */
+  details: Json = {
+    defaultLanguage: "en-US",
+    contactWebsite: "https://djdl.example",
+    contactEmail: "support@djdl.example",
+  };
+  listings: Json[] = [];
+  /** `<language>/<imageType>` → the images `edits.images.list` answers. */
+  images: Record<string, Json[]> = {};
   /** When false, a commit succeeds but the live state does not change yet. */
   propagate = true;
   /** When true, a commit answers 400 (a change is in review; ERROR_IF_IN_REVIEW). */
@@ -298,6 +311,26 @@ export class PlayFake {
         valid: true,
       });
       return json(200, { id, expiryTimeSeconds: "1790003600" });
+    }
+    const listing =
+      /^edits\/([^/:]+)\/(details|listings)(?:\/([^/]+)\/([^/]+))?$/.exec(path);
+    if (listing) {
+      const e = this.edits.get(listing[1]!);
+      if (!e || !e.valid)
+        return googleError(400, "This Edit has been deleted.", "editDeleted");
+      if (method !== "GET") return googleError(405, "read only", "notAllowed");
+      if (listing[2] === "details")
+        return json(200, structuredClone(this.details));
+      if (listing[3] === undefined)
+        return json(200, {
+          kind: "androidpublisher#listingsListResponse",
+          listings: structuredClone(this.listings),
+        });
+      return json(200, {
+        images: structuredClone(
+          this.images[`${decodeURIComponent(listing[3])}/${listing[4]}`] ?? [],
+        ),
+      });
     }
     const m = /^edits\/([^/:]+)(:commit)?(?:\/tracks(?:\/(.+))?)?$/.exec(path);
     if (!m) return googleError(404, "Not Found", "notFound");
