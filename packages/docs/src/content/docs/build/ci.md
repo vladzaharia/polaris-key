@@ -420,6 +420,116 @@ command replaces only the files it writes there, and refuses the working directo
 it, or a directory that holds anything else (keep the keystore and the APKs outside it). See
 [Storefront feeds](/docs/services/distribution/feeds/#the-f-droid-repository).
 
+## Storefront steps (itch.io and Snap)
+
+itch.io and the Snap Store take builds only through their own CLIs, `butler` and `snapcraft`,
+whose credentials stay in CI and never reach Polaris Key. The Action runs them for you with the
+`storefront` input, and only as commands the store's **CI allow-list** admits. Each step is
+reported to Polaris Key before and after it runs, so the store's ledger shows CI steps beside the
+console's.
+
+```yaml
+jobs:
+  itch:
+    runs-on: ubuntu-latest
+    environment: itch # holds BUTLER_API_KEY; add required reviewers for production
+    permissions: { id-token: write, contents: read }
+    steps:
+      - uses: actions/checkout@v4
+      # … export the Linux build into build/linux, install butler …
+      - uses: vladzaharia/polaris-key/actions/publish@<sha>
+        with:
+          product: your-product
+          storefront: itch-push
+          itch-platform: linux # windows, linux, mac or android
+          dir: build/linux
+          version: ${{ github.ref_name }}
+          channel: beta # stable pushes to "linux"; beta pushes to "linux-beta"
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+
+  snap:
+    runs-on: ubuntu-latest
+    environment: snap # holds SNAPCRAFT_STORE_CREDENTIALS
+    permissions: { id-token: write, contents: read }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: vladzaharia/polaris-key/actions/publish@<sha>
+        with: { product: your-product, storefront: snap-metadata, dir: . }
+      # … snapcraft pack into dist/ …
+      - uses: vladzaharia/polaris-key/actions/publish@<sha>
+        with:
+          {
+            product: your-product,
+            storefront: snap-upload,
+            dir: dist,
+            channel: beta,
+          }
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+      - uses: vladzaharia/polaris-key/actions/publish@<sha>
+        with:
+          { product: your-product, storefront: snap-upload-metadata, dir: dist }
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+```
+
+| `storefront`           | Runs                                                                                    |
+| ---------------------- | --------------------------------------------------------------------------------------- |
+| `itch-push`            | `butler push <dir> <target>:<itch-platform[-channel]> --userversion <version>`          |
+| `snap-metadata`        | Writes the listing model's Snap summary and description into `snapcraft.yaml`           |
+| `snap-upload`          | `snapcraft upload <snap> --release=<snap channels>`                                     |
+| `snap-upload-metadata` | `snapcraft upload-metadata <snap>` (the summary, description and icon the snap carries) |
+
+- **The target and channels come from `.pkey/distribution`, never from the workflow.** itch's
+  `target` is the outlet's `user/game`; a snap is released only to the snap channels its outlet's
+  `channels` map declares for `channel` (see
+  [Distribution manifest](/docs/build/manifest/distribution/)). A step for an undeclared game or
+  channel is refused before the tool starts, and again by Polaris Key.
+- **itch.io channel names tag platforms.** The channel starts with the platform word (`windows`,
+  `linux`, `mac`, `android`); a release channel other than `stable` suffixes it (`windows-beta`),
+  so each keeps its own file on the page. Uploads have no review: a pushed channel is live.
+- **`snap-metadata` runs before the snap is built**, because `upload-metadata` reads the text
+  from the snap itself. It needs a listing in the console (the Listing editor); a missing summary
+  or a value over the Snap Store's limit stops the step with the field named. Title, screenshots
+  and banner stay in the Snap Store dashboard.
+- **A step already done in this run is skipped**, so re-running a failed job does not push twice.
+  `dry-run: true` checks and prints the command lines and runs nothing.
+
+### Credentials
+
+Keep each store's credential in its own GitHub environment, with required reviewers for the jobs
+that release to production channels:
+
+- **itch.io:** `BUTLER_API_KEY` from your itch.io account's API keys. It is **unscoped**: it can
+  push to every game of the account, which is why the environment and its reviewers matter.
+- **Snap Store:** a scoped, expiring login, stored as `SNAPCRAFT_STORE_CREDENTIALS`:
+
+  ```sh
+  snapcraft export-login --snaps your-snap --channels stable,beta \
+    --acls package_push,package_release --expires 2027-01-01 snap-credentials.txt
+  ```
+
+  Never grant `package_manage` (collaborators) or `package_upload`; the allow-list never runs
+  `close`, `release`, `promote` or a collaborator command.
+
+### Other store tools
+
+`pkey storefront exec` runs any other allow-listed command, with its arguments after `--`, and
+reports it the same way (`pkey storefront allow-list` prints every list):
+
+```sh
+node pkey.mjs storefront exec steam run-app-build --op uploadBuild -- \
+  +login "$STEAM_BUILDER" +run_app_build build/app_480.vdf +quit
+node pkey.mjs storefront exec msstore publish --op uploadBuild -- \
+  publish build/Dice.msixupload --appId 9NBLGGH4R315
+```
+
+A Steam build script may set a build live only on a named branch, never `default` or `public`.
+`msstore publish` is refused while the console has a Microsoft Store draft staged for the product.
+Epic's `BuildPatchTool` may only `-mode=UploadBinary`, with its secret passed by
+`-ClientSecretEnvVar`.
+
 ## Other CI systems
 
 Outside GitHub Actions there is no OIDC token to exchange. An operator issues a **static**

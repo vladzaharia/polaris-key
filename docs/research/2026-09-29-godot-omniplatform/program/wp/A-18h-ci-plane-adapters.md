@@ -79,6 +79,29 @@ mise exec node@22 -- pnpm --filter @polaris-key/cli test -- storefronts
 mise exec node@22 -- pnpm --filter @polaris-key/worker test -- storefront ingest
 ```
 
+## Corrections from the code (A-18h implementation)
+
+- **"P2-06's ingest"** is `POST /<p>/distribution/report` (P2b-03's report route on P2-06's CI
+  token plumbing). The report-back is a new report type there, `store-step`, not a new route.
+- **The snap outlet identity had no channels**, so "channels in the outlet's identity" had nothing
+  to check against. `.pkey/distribution` `snap` gains `channels` (declared channel → snap
+  channel), validated like Steam's `branches` (no new error code; schema updated).
+- **steamcmd's `setlive` is in the app build VDF, not argv.** The allow-list declares a file
+  check the CLI runs on the script (`steam-vdf-setlive-named`); the Worker never sees the file.
+- **upload-metadata reads the snap itself**, so "upload-metadata from A-18b's projection" needs
+  the projection in CI before the build: a CI read route, `GET /<p>/distribution/listing/<store>`
+  (rule 10: OpenAPI and `routeCoverage`), and `pkey storefront snap metadata`, which writes the
+  summary and description into snapcraft.yaml.
+- **The CLI's copy** is a generated TypeScript module with a banner
+  (`packages/cli/src/storefronts/ciPlane.generated.ts`, `pnpm gen:storefront-ci`), not a bare
+  JSON file, so it carries the GENERATED banner rule 3 asks for; AGENTS.md lists it as a seventh
+  family.
+- **Steam, Microsoft and Epic** have no adapters yet (A-18g, A-18f; Epic never, decision 8). Their
+  allow-lists live in `core/storefront/ciPlane.ts` under the ledger ids `steam`, `msstore` and
+  `epic`, run through `pkey storefront exec`; A-18g and A-18f attach them as their adapters' `ci`.
+  The msstore guard reads Worker-plane rows `submission.create` and `submission.commit`, the op
+  names A-18f must use.
+
 ## Hand-off
 
 A-18i reuses the allow-list for PR-opening steps. A-18j shows CI steps as "waiting for the next

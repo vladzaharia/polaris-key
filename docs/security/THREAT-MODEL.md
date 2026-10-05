@@ -1631,7 +1631,7 @@ line.
   rule twice, or a rule also on the deny list; a client consults it before its token thunk.
 - **(b) A CI command allow-list** for the publish action: a vendor CLI runs only as one of its
   adapter's declared argv templates, with parameters matched by pattern (the type and its check
-  land here; A-18h declares the first lists).
+  land here; A-18h declares the lists: see "The CI plane" below).
 - **(c) The conformance suite as a required check** (a named step of the required JS/TS job): per
   adapter, every spec write classified; the never-list (deletes, users and permissions, signing
   keys, payments) refused by the gate for every method it names and absent from every CI
@@ -1650,8 +1650,9 @@ line.
   A-18c, A-18j).
 
 **Boundaries.** `core/adapters/` imports nothing; `core/storefront/` imports no service, and its
-declaration modules import only the adapter layer, so the CLI's copy is a generated JSON (A-18h)
-and no store knowledge lives in the console.
+declaration modules import only the adapter layer, so the CLI's copy is generated
+(`packages/cli/src/storefronts/ciPlane.generated.ts`, A-18h) and no store knowledge lives in the
+console.
 
 **Listing assets, not binaries (S-15 decision 2).** The Worker may push listing images and
 screenshots from the blob store through an upload rule that fixes the content type and a byte
@@ -1661,6 +1662,53 @@ cap; no adapter declares `api` for `uploadBuild`, which the suite asserts.
 or `PLATFORM_KEK` compromise bypasses every adapter's gate at once. The deep-link shapes are
 undocumented by most stores (a broken link misleads, it grants nothing). Rows written before
 A-18a keep their old `op_id`; a replay of such an intent re-reads its natural key before sending.
+
+### The CI plane: storefront command allow-lists and report-back (A-18h)
+
+**What it is.** itch.io and the Snap Store take builds only through vendor CLIs whose credentials
+live in CI (A15), so their adapters (`core/storefront/stores/{itch,snap}.ts`) run on the CI
+plane, and Steam's, Microsoft's and Epic's build tools are constrained the same way.
+`core/storefront/ciPlane.ts` declares one command allow-list per store; the CLI reads a generated
+copy (`pnpm gen:storefront-ci`, freshness-tested in the worker suite) and the publish action runs
+a tool only through `pkey storefront`:
+
+| Store     | Tool             | Allowed                                                                              | Never (asserted unreachable)                                                      |
+| --------- | ---------------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| `itch`    | `butler`         | `push <dir> <identity target>:<platform[-suffix]> --userversion <v>`                 | any other command; collections and page edits have no CLI                         |
+| `snap`    | `snapcraft`      | `upload <snap> --release=<channels the identity maps>`; `upload-metadata <snap>`     | `close`, `collaborate`, `release`, `register`, `promote`, `--acls package_manage` |
+| `steam`   | `steamcmd`       | `+login <account> +run_app_build <vdf> +quit`, the script's `setlive` a named branch | a `setlive` on `default` or `public`; `+app_set_config`                           |
+| `msstore` | `msstore`        | `publish <package> --appId <identity productId>`, never over a Worker-staged draft   | `submission delete`, `rollout halt` and `finalize`                                |
+| `epic`    | `BuildPatchTool` | `-mode=UploadBinary` with the secret by `-ClientSecretEnvVar`                        | `DeleteBinary`, `UnlabelBinary`, `LabelBinary`, `-ClientSecret=`                  |
+
+**Controls.**
+
+- **Two checks, neither trusting the other.** The CLI refuses a command line before the tool
+  starts; the Worker refuses it again when the step is reported back
+  (`POST /<p>/distribution/report`, `type: "store-step"`, `services/distribution/storeSteps.ts`),
+  so a `store_operations` row (`plane = 'ci'`) never records a command the allow-list refuses.
+- **Identity binding.** A bound parameter (itch's target, a snap's channels, the Microsoft Store
+  product id) must hold against the declared outlet's identity: a leaked report token cannot
+  record, and the CLI will not run, a push to another game or an undeclared channel.
+- **No shell, no secrets in argv.** Tools are spawned without a shell; every parameter pattern
+  refuses a leading `-`, a `..` segment and shell metacharacters; credentials reach the tools from
+  the job's environment (`BUTLER_API_KEY`, `SNAPCRAFT_STORE_CREDENTIALS`, the BuildPatchTool
+  secret by variable name), never the command line, so the ledger's command line holds none.
+- **The ledger guards the CI plane.** msstore `publish` opens its row with a `pending` report the
+  Worker refuses (409 `worker_draft_staged`) while the ledger shows a Worker-plane draft for the
+  product, and the CLI will not run it without report-back. A step already done in the same run
+  answers `replayed`, so a re-run attempt does not push twice.
+- **The conformance suite** runs every store's never-list command lines against its allow-list,
+  checks that no literal spells a never-token, that no value can smuggle an option or a path
+  escape, and that every command admits its sample.
+- **The listing read** (`GET /<p>/distribution/listing/<store>`, `distribution:report`) serves only
+  a store whose adapter writes listing text on the CI plane (Snap): product listing text, never a
+  secret, never another store's projection.
+
+**Residual risk.** The allow-list constrains what Polaris Key's own CLI runs and records; a
+workflow that calls a vendor tool directly bypasses it, and the butler key is unscoped. The
+backstop is A15's placement: one GitHub environment per store with required reviewers for
+production channels. A Steam build script is checked for `setlive` by the CLI only (the Worker
+never sees the file).
 
 ### App Store Connect writes: the write gate, the ledger and the budget (A-17a)
 
@@ -4491,7 +4539,9 @@ credential, and the open must stay audited); a change is made to any
 out of a deny list such as `rules/appStoreDenied.ts`, a rule's attributes, relationships, value
 checks or confirmation level loosened), a storefront adapter is added to `STOREFRONT_ADAPTERS`, a
 new vendor spec pin is adopted (`ASC_SPEC_PIN` or another adapter's `specPin`), a CI command
-allow-list (`core/storefront/ci.ts` type, A-18h's lists) gains or loosens a command, an adapter
+allow-list (`core/storefront/ciPlane.ts`, the `ci.ts` check) gains or loosens a command, a pattern
+or an identity binding, a CI-plane step starts running without report-back, the store-step ingest
+stops re-checking the command, an adapter
 declares `api` for `uploadBuild` or empties a never-list category, a check of
 `test/storefront/conformance.test.ts` is relaxed, anything but `core/asc/client.ts` sends a request
 to App Store Connect, or a field joins a store's audit projection (A-17a, A-18a); a platform store credential (A-16) is added, used
