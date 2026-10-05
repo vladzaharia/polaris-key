@@ -185,9 +185,7 @@ async function evaluateOffer(
   if (preview.existing) {
     return { kind: "held", product, license: preview.existing };
   }
-  const tier = preview.tierId
-    ? await getTier(db, slug, preview.tierId)
-    : null;
+  const tier = preview.tierId ? await getTier(db, slug, preview.tierId) : null;
   // The seat limit the minted licence will enforce: `licenseDeviceLimit` over the row
   // `activateFromIdentity` would insert (its tier and provisioned overrides; no licence
   // profiles, as a new licence has none).
@@ -232,7 +230,11 @@ export async function discoverOffers(
   accountId: string,
   now: number,
 ): Promise<
-  Array<{ product: ProductPublic; reason: DiscoverReason; terms: DiscoverTerms }>
+  Array<{
+    product: ProductPublic;
+    reason: DiscoverReason;
+    terms: DiscoverTerms;
+  }>
 > {
   const identity = await discoverIdentity(env, db, accountId);
   if (!identity) return [];
@@ -375,7 +377,14 @@ export async function handleDiscoverClaim(
   }
   const license = await getLicense(db, product.slug, licenseId);
   if (!license) return notEligible();
-  await linkLicense(db, session.accountId, product.slug, licenseId, "oidc", now);
+  await linkLicense(
+    db,
+    session.accountId,
+    product.slug,
+    licenseId,
+    "oidc",
+    now,
+  );
 
   const who = identity.email ?? identity.sub;
   const added = await recordDiscoverClaim(db, {
