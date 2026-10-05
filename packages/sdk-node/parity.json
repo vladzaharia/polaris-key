@@ -64,6 +64,7 @@
       "note": "No browser sign-in in the Node SDK, and no work package ports it."
     },
     "identity.devicecode": { "status": "implemented" },
+    "identity.toggle": { "status": "planned", "wp": "I-10a" },
     "release.changelog": { "status": "implemented" },
     "release.download": { "status": "implemented" },
     "release.record": {

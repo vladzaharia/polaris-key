@@ -35,6 +35,10 @@ export const ErrorCode = {
   /** A stored value the signer guards refuse: the route answers `500` rather than signing a
    *  document no wire-v4 verifier would accept (plans/P3-01.md §2.2). */
   DocumentNotRepresentable: "document_not_representable",
+  /** PX-W17: a person tried to sign in through a product whose Identity service is off. Human-
+   *  facing only (the `303` to the card's `?error=` and the portal passthrough context's `403`);
+   *  device and JSON routes keep answering `not_found` (plans/PX-W17.md §2). */
+  IdentityDisabled: "identity_disabled",
 } as const;
 
 export function json(

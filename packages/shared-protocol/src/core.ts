@@ -284,7 +284,9 @@ export type PolarisErrorCode =
   | "hardware_mismatch"
   | "fingerprint_required"
   | "enroll_disabled"
-  | "registration_closed";
+  | "registration_closed"
+  /** Human-facing only (PX-W17): a sign-in through a product whose Identity service is off. */
+  | "identity_disabled";
 
 export interface PolarisErrorBody {
   error: {

@@ -506,6 +506,14 @@
       ]
     },
     {
+      "id": "identity.toggle",
+      "family": "devices",
+      "title": "Identity off for a product: every sign-in entry fails fast, licences keep working",
+      "service": "identity",
+      "proof": [{ "kind": "transcript", "wp": "PX-W17" }],
+      "allowedNa": []
+    },
+    {
       "id": "release.changelog",
       "family": "release",
       "title": "Changelog",

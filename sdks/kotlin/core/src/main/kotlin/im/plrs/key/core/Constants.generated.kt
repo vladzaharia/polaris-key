@@ -43,6 +43,7 @@ public object ErrorCode {
     public const val disabled: String = "disabled"
     public const val oidcError: String = "oidc_error"
     public const val unavailable: String = "unavailable"
+    public const val identityDisabled: String = "identity_disabled"
     public const val authMethodDisabled: String = "auth_method_disabled"
     public const val emailNotConfigured: String = "email_not_configured"
     public const val licenseOwned: String = "license_owned"
@@ -191,6 +192,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "disabled",
     "oidc_error",
     "unavailable",
+    "identity_disabled",
     "auth_method_disabled",
     "email_not_configured",
     "license_owned",
@@ -339,6 +341,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "disabled" to "wire",
     "oidc_error" to "wire",
     "unavailable" to "wire",
+    "identity_disabled" to "wire",
     "auth_method_disabled" to "wire",
     "email_not_configured" to "wire",
     "license_owned" to "wire",
@@ -488,6 +491,7 @@ public object Feature {
     public const val devicesAttest: String = "devices.attest"
     public const val identityOidc: String = "identity.oidc"
     public const val identityDevicecode: String = "identity.devicecode"
+    public const val identityToggle: String = "identity.toggle"
     public const val releaseChangelog: String = "release.changelog"
     public const val releaseDownload: String = "release.download"
     public const val releaseRecord: String = "release.record"
@@ -560,6 +564,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "devices.attest",
     "identity.oidc",
     "identity.devicecode",
+    "identity.toggle",
     "release.changelog",
     "release.download",
     "release.record",
@@ -1319,6 +1324,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "devices.attest" to CapabilityRow("planned", "core", listOf(CapabilityNa("jvm", "runtime"))),
     "identity.oidc" to CapabilityRow("planned", "identity", listOf()),
     "identity.devicecode" to CapabilityRow("implemented", "identity", listOf()),
+    "identity.toggle" to CapabilityRow("planned", "identity", listOf()),
     "release.changelog" to CapabilityRow("implemented", "release", listOf()),
     "release.download" to CapabilityRow("implemented", "release", listOf()),
     "release.record" to CapabilityRow("implemented", "release", listOf()),
@@ -1359,4 +1365,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "d7430e47fb7630468315e393921b7bc3cc5f325d0347a6d45d95501c7da02553"
+public const val CAPABILITY_DIGEST: String = "d380ca17952408947c21a34ab6fff388a42e7fe4a9ca6f03b3976711f5214578"

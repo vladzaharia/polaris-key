@@ -56,6 +56,7 @@
       "note": "Only through a host-supplied sign-in closure; no work package gives Swift its own browser sign-in."
     },
     "identity.devicecode": { "status": "implemented" },
+    "identity.toggle": { "status": "planned", "wp": "I-10b" },
     "release.changelog": { "status": "implemented" },
     "release.download": { "status": "implemented" },
     "release.record": { "status": "implemented" },

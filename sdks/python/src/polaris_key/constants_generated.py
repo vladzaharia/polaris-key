@@ -161,6 +161,7 @@ class ErrorCode:
     DISABLED: Final = "disabled"
     OIDC_ERROR: Final = "oidc_error"
     UNAVAILABLE: Final = "unavailable"
+    IDENTITY_DISABLED: Final = "identity_disabled"
     AUTH_METHOD_DISABLED: Final = "auth_method_disabled"
     EMAIL_NOT_CONFIGURED: Final = "email_not_configured"
     LICENSE_OWNED: Final = "license_owned"
@@ -309,6 +310,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "disabled",
     "oidc_error",
     "unavailable",
+    "identity_disabled",
     "auth_method_disabled",
     "email_not_configured",
     "license_owned",
@@ -459,6 +461,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "disabled": "wire",
         "oidc_error": "wire",
         "unavailable": "wire",
+        "identity_disabled": "wire",
         "auth_method_disabled": "wire",
         "email_not_configured": "wire",
         "license_owned": "wire",
@@ -611,6 +614,7 @@ class Feature:
     DEVICES_ATTEST: Final = "devices.attest"
     IDENTITY_OIDC: Final = "identity.oidc"
     IDENTITY_DEVICECODE: Final = "identity.devicecode"
+    IDENTITY_TOGGLE: Final = "identity.toggle"
     RELEASE_CHANGELOG: Final = "release.changelog"
     RELEASE_DOWNLOAD: Final = "release.download"
     RELEASE_RECORD: Final = "release.record"
@@ -683,6 +687,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "devices.attest",
     "identity.oidc",
     "identity.devicecode",
+    "identity.toggle",
     "release.changelog",
     "release.download",
     "release.record",
@@ -1583,6 +1588,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "devices.attest": CapabilityRow("na", "core", (CapabilityNa("python", "runtime"),)),
         "identity.oidc": CapabilityRow("planned", "identity", ()),
         "identity.devicecode": CapabilityRow("implemented", "identity", ()),
+        "identity.toggle": CapabilityRow("planned", "identity", ()),
         "release.changelog": CapabilityRow("implemented", "release", ()),
         "release.download": CapabilityRow("implemented", "release", ()),
         "release.record": CapabilityRow("implemented", "release", ()),
@@ -1624,4 +1630,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "7f1bbda8fe6c6afc09c067a88532900ef065f17ca29d6037dcef95da98799056"
+CAPABILITY_DIGEST: Final[str] = "3fc44931da20d7fca7e3bdff7494a3162958eee6e98d590f5ed06cf3989c57ba"

@@ -114,6 +114,7 @@
       "except": [{ "runtime": "web", "reason": "runtime" }],
       "note": "New web N/A (P1b-01). Through the desktop bridge (beginSignIn/pollSignIn). A browser signs in with the OIDC redirect (identity.oidc)."
     },
+    "identity.toggle": { "status": "planned", "wp": "I-10a" },
     "release.changelog": { "status": "implemented" },
     "release.download": { "status": "implemented" },
     "release.record": {
