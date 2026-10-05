@@ -203,12 +203,14 @@ code:
    enrolled license. It is also `false` if the attach would take the identity's license past its
    device limit, counting every authorized device on the anonymous license (including devices
    not seen for months, which come along too) plus, when the identity already has a license, that
-   license's seat-holding devices. The limit is the one the license will have after sign-in
-   rewrites it onto the identity's mapped tier and provisioned overrides, not the tier it is on
-   now. It is always
-   `false` when the identity's tier has fingerprint mode `strict`: a device-code poll presents no
-   fingerprint, so the mint would be refused, and the attach is never committed for a mint that
-   cannot succeed.
+   license's seat-holding devices. The limit is the one the license will have after sign-in. A
+   claimed anonymous license is rewritten onto the identity's mapped tier and provisioned
+   overrides, so that tier counts, not the one it is on now. An identity's existing license keeps
+   its own tier and every override sign-in does not provision (an operator's `deviceLimit`
+   included), so those count. It is always `false` when the tier the mint will run on (the
+   mapped tier on a claim, the existing license's own tier otherwise) has fingerprint mode
+   `strict`: a device-code poll presents no fingerprint, so the mint would be refused, and the
+   attach is never committed for a mint that cannot succeed.
 
 2. The device shows the identity. After the player accepts it **on the device**, the next poll
    sends `"attachLicense": true` with the same bearer (or `false` to sign in without attaching).

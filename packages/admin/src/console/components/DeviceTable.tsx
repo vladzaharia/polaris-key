@@ -92,7 +92,10 @@ export function DeviceTable({
         cell: ({ row }) => {
           const d = row.original;
           return (
-            <span className="flex min-w-0 max-w-[22rem] flex-col">
+            // 20rem, not 22rem: at a 1280 px laptop the table has ~974 px beside the sidebar,
+            // and a 352 px Device column left it 1.5 px of slack, which whole-pixel glyph
+            // advances (Chromium on Linux) overran, scrolling Actions off the edge.
+            <span className="flex min-w-0 max-w-[20rem] flex-col">
               {d.label ? (
                 <span className="truncate" title={d.label}>
                   {d.label}

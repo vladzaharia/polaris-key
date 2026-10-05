@@ -16,9 +16,12 @@ import type {
 import { handleConfigRoutes } from "./routes.js";
 import { hasApprovedEdgeMintRecipes } from "./mint.js";
 import { handleConfigAdmin } from "./admin/index.js";
+import { CONFIG_SETTINGS_SLICE } from "./settings.js";
 
 export const configService: ServiceDescriptor = {
   slug: "config",
+  /** ST-03: this service's settings registry slice (`settings.ts`). */
+  settings: CONFIG_SETTINGS_SLICE,
   handle: handleConfigRoutes,
   /** `config/{catalog,profiles,mint}` on the console API (§R1; `mint` is P0-12). */
   adminHandle: handleConfigAdmin,

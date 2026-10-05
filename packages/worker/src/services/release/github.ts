@@ -537,6 +537,46 @@ export async function getRepoIdentity(
   return { id, ownerId, fullName: body.full_name };
 }
 
+/** A commit id as GitHub returns it: SHA-1 (40 hex) or SHA-256 (64 hex), lowercase. */
+const COMMIT_SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
+
+/**
+ * The commit the repository's DEFAULT branch points at right now (ST-01a, notes/S-18 §4.3).
+ *
+ * One read, answered by GitHub from `owner`/`repo` alone: `GET /repos/{o}/{r}/commits/HEAD` with
+ * `Accept: application/vnd.github.sha`. `HEAD` is the repository's own symbolic ref, i.e. its
+ * default branch, and the `sha` media type answers with the bare commit id rather than the full
+ * commit JSON (whose file list and patches could exceed any sane read cap). This replaces the
+ * two-call sketch in notes/S-18 §4.3 (`GET /repos/{o}/{r}`, then `/commits/{branch}`) with the
+ * same property and one round trip; verified against api.github.com on 2026-10-04.
+ *
+ * Nothing caller-supplied picks the branch or the commit, so pinning every manifest document to
+ * the returned sha keeps R6-05's property (the manifest applied is the DB-configured repository's
+ * own default branch, as GitHub resolves it) while closing the window in which a push landing
+ * between two Contents reads mixes documents from two commits. Throws `NotFoundError` on any
+ * refusal or unexpected shape (rate limits as `UpstreamRateLimitedError`); callers fail the apply
+ * closed rather than fall back to an unpinned read.
+ */
+export async function resolveDefaultBranchHead(
+  token: string,
+  owner: string,
+  repo: string,
+  fetchImpl: FetchImpl = fetch,
+): Promise<{ sha: string }> {
+  const res = await fetchImpl(
+    `${GITHUB_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/commits/HEAD`,
+    { headers: apiHeaders(token, "application/vnd.github.sha") },
+  );
+  throwIfRateLimited(res);
+  if (!res.ok)
+    throw new NotFoundError(`default branch head lookup failed: ${res.status}`);
+  // 64 hex plus a trailing newline at most; anything longer is not a bare sha.
+  const sha = (await readCapped(res, 256, "default branch head")).trim();
+  if (!COMMIT_SHA.test(sha))
+    throw new NotFoundError("default branch head: unexpected shape");
+  return { sha };
+}
+
 /** Fetch a release asset's raw bytes, following (and SSRF-guarding) the storage redirect. */
 async function fetchAsset(
   token: string,
