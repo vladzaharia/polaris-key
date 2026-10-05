@@ -50,35 +50,26 @@ import {
   type ResolvedSetting,
 } from "../../core/platformSettings.js";
 import { AUDIT_RETENTION_SECONDS } from "../../scheduled.js";
+import { PLATFORM_INVENTORY } from "../../platformInventory.generated.js";
+import type { InventoryArea } from "../../platformInventory.js";
 import {
   BLOB_LOCK_AGE_SECONDS,
   MIN_GC_GRACE_SECONDS,
 } from "../../core/blobGc.js";
 
 /**
- * Secrets the page reports as present or absent. Presence only. `ADMIN_OIDC_CLIENT_SECRET` is the
- * console's own client secret (I-03); `PLATFORM_OIDC_CLIENT_SECRET` is the shared platform
- * client's.
+ * Secrets the page reports as present or absent. Presence only. ST-02: every `Env` member tagged
+ * `@inventory secret` in `env.ts`, in `Env` order, so a new secret cannot be left off this list
+ * (`pnpm gen:platform-inventory -- --check`). `ADMIN_OIDC_CLIENT_SECRET` is the console's own
+ * client secret (I-03); `PLATFORM_OIDC_CLIENT_SECRET` is the shared platform client's.
  */
-export const SECRET_NAMES = [
-  "PLATFORM_KEK",
-  "PLATFORM_KEK_KEYS",
-  "KEY_HASH_PEPPER",
-  "ADMIN_SESSION_SECRET",
-  "PORTAL_SESSION_SECRET",
-  "PLATFORM_OIDC_CLIENT_SECRET",
-  "ADMIN_OIDC_CLIENT_SECRET",
-  "GITHUB_APP_PRIVATE_KEY",
-  "GITHUB_WEBHOOK_SECRET",
-  "R2_PARENT_ACCESS_KEY_ID",
-  "R2_PARENT_SECRET_ACCESS_KEY",
-] as const;
-
-type Area = "deployment" | "identity" | "delivery" | "email" | "keyring";
+export const SECRET_NAMES: readonly string[] = PLATFORM_INVENTORY.filter(
+  (e) => e.kind === "secret",
+).map((e) => e.name);
 
 interface DeployValue {
   name: string;
-  area: Area;
+  area: InventoryArea;
   /** The value, or `null` when unset. A list for the parsed issuer allowlist. */
   value: string | string[] | null;
 }
@@ -94,89 +85,27 @@ function str(env: Env, name: string): string | null {
   return typeof v === "string" && v !== "" ? v : null;
 }
 
+/**
+ * The deploy-time values: every `Env` member tagged `@inventory var` that is not registry-backed
+ * (`@editable`; those are the editable rows, with their deploy value). ST-02: generated from
+ * `env.ts`, never a hand-kept list. A `secret` never reaches this list, so no credential value is
+ * ever reported here.
+ */
 function deployValues(env: Env): DeployValue[] {
-  const allowlist = str(env, "OIDC_ISSUER_ALLOWLIST");
-  return [
-    {
-      name: "PKEY_ENVIRONMENT",
-      area: "deployment",
-      value: str(env, "PKEY_ENVIRONMENT"),
-    },
-    {
-      name: "PLATFORM_ADMIN_GROUP",
-      area: "identity",
-      value: str(env, "PLATFORM_ADMIN_GROUP"),
-    },
-    // The console's own client (I-03), then the shared platform client the portal and
-    // `provider: platform` products use. No fallback between them is reported here: the
-    // `console_oidc_shared` warning says when the console is borrowing the platform client.
-    {
-      name: "ADMIN_OIDC_ISSUER",
-      area: "identity",
-      value: str(env, "ADMIN_OIDC_ISSUER"),
-    },
-    {
-      name: "ADMIN_OIDC_CLIENT_ID",
-      area: "identity",
-      value: str(env, "ADMIN_OIDC_CLIENT_ID"),
-    },
-    {
-      name: "PLATFORM_OIDC_ISSUER",
-      area: "identity",
-      value: str(env, "PLATFORM_OIDC_ISSUER"),
-    },
-    {
-      name: "PLATFORM_OIDC_CLIENT_ID",
-      area: "identity",
-      value: str(env, "PLATFORM_OIDC_CLIENT_ID"),
-    },
-    {
-      name: "OIDC_ISSUER_ALLOWLIST",
-      area: "identity",
+  return PLATFORM_INVENTORY.filter(
+    (e) => e.kind === "var" && e.editable === null,
+  ).map((e) => {
+    const raw = str(env, e.name);
+    return {
+      name: e.name,
+      area: e.area,
       // The parsed host list: an operator's allowlist, not credential material.
       value:
-        allowlist === null
-          ? null
-          : allowlist.split(/[\s,]+/).filter((h) => h !== ""),
-    },
-    { name: "BLOB_ORIGIN", area: "delivery", value: str(env, "BLOB_ORIGIN") },
-    {
-      name: "CONSOLE_ORIGIN",
-      area: "delivery",
-      value: str(env, "CONSOLE_ORIGIN"),
-    },
-    {
-      name: "BLOBS_BUCKET_NAME",
-      area: "delivery",
-      value: str(env, "BLOBS_BUCKET_NAME"),
-    },
-    {
-      name: "R2_ACCOUNT_ID",
-      area: "delivery",
-      value: str(env, "R2_ACCOUNT_ID"),
-    },
-    {
-      name: "GITHUB_APP_ID",
-      area: "delivery",
-      value: str(env, "GITHUB_APP_ID"),
-    },
-    {
-      name: "PORTAL_EMAIL_FROM",
-      area: "email",
-      value: str(env, "PORTAL_EMAIL_FROM"),
-    },
-    // Kid NAMES, not key material.
-    {
-      name: "PLATFORM_KEK_ACTIVE",
-      area: "keyring",
-      value: str(env, "PLATFORM_KEK_ACTIVE"),
-    },
-    {
-      name: "PLATFORM_KEK_ID",
-      area: "keyring",
-      value: str(env, "PLATFORM_KEK_ID"),
-    },
-  ];
+        e.name === "OIDC_ISSUER_ALLOWLIST" && raw !== null
+          ? raw.split(/[\s,]+/).filter((h) => h !== "")
+          : raw,
+    };
+  });
 }
 
 /** The S-13 §5.1 warnings. Exported for the tests. */
@@ -263,6 +192,7 @@ function settingView(def: PlatformSettingDef, r: ResolvedSetting) {
     ...(def.kind === "integer"
       ? { unit: def.unit, min: def.min, max: def.max }
       : {}),
+    ...(def.kind === "choice" ? { options: def.options } : {}),
     scripts: def.scripts,
     precedence: def.precedence,
     default: def.defaultValue,
@@ -370,7 +300,9 @@ async function write(
       ErrorCode.BadRequest,
       def.kind === "switch"
         ? `${def.key} must be "on" or "off"`
-        : `${def.key} must be an integer from ${def.min} to ${def.max}`,
+        : def.kind === "choice"
+          ? `${def.key} must be one of ${def.options.map((o) => `"${o.value}"`).join(", ")}`
+          : `${def.key} must be an integer from ${def.min} to ${def.max}`,
       {
         reason: "invalid_value",
         ...(def.kind === "integer" ? { min: def.min, max: def.max } : {}),

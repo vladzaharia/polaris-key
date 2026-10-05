@@ -19,6 +19,10 @@
  */
 
 import type { ServiceRegistry } from "./core/registry.js";
+import {
+  buildSettingsRegistry,
+  type SettingsRegistry,
+} from "./core/settings/registry.js";
 import type { ByteRoute } from "./core/bytesHost.js";
 import type {
   OwnerlessRegistryRoute,
@@ -48,6 +52,15 @@ export const SERVICES: ServiceRegistry = new Map([
   [updateService.slug, updateService],
   [identityService.slug, identityService],
 ]);
+
+/**
+ * The settings registry (ST-03, `core/settings/`): the platform slice, Core's product slice and
+ * every mounted service's `settings` slice, assembled once from `SERVICES` so Core never names a
+ * service. `test/settings-registry.test.ts` runs the registry rules over exactly this value.
+ */
+export const SETTINGS: SettingsRegistry = buildSettingsRegistry(
+  SERVICES.values(),
+);
 
 /**
  * The bytes-host allowlist (P2-01, `core/bytesHost.ts`): the only routes that can answer on

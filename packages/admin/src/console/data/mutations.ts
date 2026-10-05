@@ -201,6 +201,8 @@ export const MUTATIONS: MutationTable = {
     // write appends to (Settings → History, Deployment → Platform activity).
     invalidates: () => [
       exact(qk.platformSettings()),
+      // The reserved-names report carries the severity the settings row sets (LX-05).
+      exact(qk.platformReservedNames()),
       prefix(qk.platformActivity()),
     ],
   },
@@ -208,6 +210,8 @@ export const MUTATIONS: MutationTable = {
     label: "platform setting revert",
     invalidates: () => [
       exact(qk.platformSettings()),
+      // The reserved-names report carries the severity the settings row sets (LX-05).
+      exact(qk.platformReservedNames()),
       prefix(qk.platformActivity()),
     ],
   },

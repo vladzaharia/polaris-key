@@ -76,6 +76,7 @@ import {
   issuePortalSession,
 } from "../../src/services/identity/portal/session.js";
 import { artefacts } from "../singleUseMock.js";
+import { withDefaultHead } from "../githubHead.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SLUG = "djdl";
@@ -205,7 +206,7 @@ function pkeyFetch(files: Record<string, string>): {
     }
     return new Response("not found", { status: 404 }) as unknown as Response;
   };
-  return { fetchImpl, files };
+  return { fetchImpl: withDefaultHead(fetchImpl), files };
 }
 
 /** A `.pkey/product` for slug `acme`, optionally naming a repo-chosen custom IdP. */
@@ -346,7 +347,7 @@ function recordingFetchImpl(releases: unknown[] = []): {
     }
     return new Response(JSON.stringify({ workflow_runs: [] }), { status: 200 });
   };
-  return { fetchImpl, calls };
+  return { fetchImpl: withDefaultHead(fetchImpl), calls };
 }
 
 /** Swallow the 500 that `handleRelease` produces when a lookup misses (see R9-14). */
