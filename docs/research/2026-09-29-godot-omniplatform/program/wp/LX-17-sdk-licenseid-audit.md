@@ -47,8 +47,29 @@ A tests-only audit establishes, for each of the six SDKs, whether a `licenseId` 
 
 ## Acceptance criteria
 
-- [ ] Each SDK has the test, passing or marked expected-fail with a linked LX-19 fix.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] Each SDK has the test, passing or marked expected-fail with a linked LX-19 fix.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+
+## Result (2026-10-04)
+
+All six SDKs **pass**: a `licenseId` that changes on a plain refresh (same token, no activation
+call) is applied, read by every accessor, carried by the next device report and by the current
+device, persisted so a fresh client restores it offline, and followed by a normal 304 on the new
+licence. No SDK compares or keys anything on `licenseId`. **LX-19 has no LX-17 fixes to make**, and
+LX-21 may enable `reanchor: onRefresh` once LX-10 lands.
+
+| SDK         | Test                                                                        | Result                                                                                            |
+| ----------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Node        | `packages/sdk-node/test/licenseIdRefresh.test.ts`                           | pass                                                                                              |
+| React / web | `packages/sdk-react/test/licenseIdRefresh.test.ts`                          | pass (browser adapter; telemetry is the typed web N/A; the desktop adapter projects Node's state) |
+| Python      | `sdks/python/tests/test_license_id_refresh.py`                              | pass                                                                                              |
+| Swift       | `sdks/swift/Tests/PolarisKeyTests/LicenseIdRefreshTests.swift`              | pass                                                                                              |
+| Kotlin      | `sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/LicenseIdRefreshTest.kt`   | pass (JVM; not in the green gate, run with `:sdk:test`)                                           |
+| Godot       | `sdks/godot/tests/license/test_license_id_refresh.gd` (license suite group) | pass                                                                                              |
+
+Not failures, noted for LX-19's API work: no SDK signals "this device now runs on another licence"
+as its own event (it arrives as an ordinary content change through `onChange` and the state
+signals), so a host that wants to show "now runs on Pro" has to compare `licenseId` itself.
 
 ## Verify
 

@@ -61,6 +61,7 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../src/admin/session.js";
+import { withDefaultHead } from "./githubHead.js";
 
 installDigestStream();
 
@@ -1016,7 +1017,7 @@ function githubStub(
     ".pkey/product.json": JSON.stringify(PRODUCT_DOC),
     ".pkey/release.json": JSON.stringify(opts.releaseDoc ?? RELEASE_DOC),
   };
-  return async (input) => {
+  return withDefaultHead(async (input) => {
     const url = String(input);
     if (url.endsWith("/installation"))
       return new Response(JSON.stringify({ id: 42 }), { status: 200 });
@@ -1046,7 +1047,7 @@ function githubStub(
       return new Response("nf", { status: 404 });
     }
     return new Response("nf", { status: 404 });
-  };
+  });
 }
 
 describe("publisher policy ingest", () => {
