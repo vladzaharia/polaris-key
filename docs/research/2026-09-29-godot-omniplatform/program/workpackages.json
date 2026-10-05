@@ -6389,7 +6389,7 @@
       "optional": false,
       "refs": ["notes/S-19 §4.3 G14 G19", "notes/S-19 §9 LX-04"],
       "brief": "wp/LX-04-portal-doc-agreement.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "LX-05",
