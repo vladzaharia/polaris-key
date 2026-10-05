@@ -95,6 +95,14 @@ describe("the branded page shell", () => {
     expect(BRAND_PAGE_CSS).toContain(THEME_TOKENS.dark.accent.violet.solid);
   });
 
+  it("shares the console sign-in look: the lockup centred over one card, full-width actions", () => {
+    expect(BRAND_PAGE_CSS).toContain(
+      ".brand{display:flex;justify-content:center",
+    );
+    expect(BRAND_PAGE_CSS).toMatch(/\.button\{display:flex;width:100%/);
+    expect(BRAND_PAGE_CSS).toMatch(/\.eyebrow\{[^}]*text-transform:uppercase/);
+  });
+
   it("loads Rubik only from files the admin build emits at the stable path", () => {
     const fonts = [...BRAND_PAGE_CSS.matchAll(/url\("([^"]+)"\)/g)].map(
       (m) => m[1]!,
