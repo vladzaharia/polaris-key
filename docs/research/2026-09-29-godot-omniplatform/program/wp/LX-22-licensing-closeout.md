@@ -12,6 +12,12 @@
 | Human input | an operator verifies `djdl` and `polaris-key` on production against the runbook                                   |
 | Repo        | `vladzaharia/polaris-key`                                                                                         |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/PX-W3.md`](../plans/PX-W3.md):** the THREAT-MODEL vocabulary uses "download ticket".
+
 ## Goal
 
 The licensing model is documented and verified: docs, glossary (licence, unowned (floating), grant, anchor), THREAT-MODEL T1–T10 and P1–P3, the migration runbook, and production verification of `djdl` and `polaris-key`.

@@ -12,6 +12,12 @@
 | Human input | none                                                                                         |
 | Repo        | `vladzaharia/polaris-key`                                                                    |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/PX-W3.md`](../plans/PX-W3.md):** inventory the `DOWNLOAD_TICKET_KEY` pair.
+
 ## Goal
 
 A generated platform inventory lists every `Env` binding and variable, and `gen:platform-inventory --check` fails when `Env`, the inventory and the wrangler comment block disagree; the 16 names missing today are added.

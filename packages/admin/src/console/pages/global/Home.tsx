@@ -207,6 +207,7 @@ export function Home(): React.ReactElement {
         {a.product.name}
       </Link>
     ),
+    objectTitle: a.product.name,
     reason: a.reason,
     action: { label: a.action.label, href: a.action.href },
   }));
@@ -273,12 +274,12 @@ export function Home(): React.ReactElement {
           <ul
             aria-label="Products"
             aria-busy
-            className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
           >
             {[0, 1, 2].map((i) => (
               <li
                 key={i}
-                className="h-40 animate-pulse rounded-lg border border-border bg-surface-sunken motion-reduce:animate-none"
+                className="h-28 animate-pulse rounded-lg border border-border bg-surface-sunken motion-reduce:animate-none"
               />
             ))}
           </ul>
@@ -292,7 +293,7 @@ export function Home(): React.ReactElement {
         ) : (
           <ul
             aria-label="Products"
-            className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
           >
             {shown.map((p) => (
               <li key={p.slug}>
@@ -309,6 +310,10 @@ export function Home(): React.ReactElement {
 /**
  * One product on Home. The name is the one link (DSH-3); its hit area stretches over the whole
  * card (a pseudo-element), so a click anywhere opens the product without a second "Open" link.
+ *
+ * Pills mean attention (owner, 2026-10-04): a product that needs something carries one pill, at
+ * the right edge of the card header; a healthy product carries none. The service glyphs moved up
+ * into the row the healthy pill used to take, beside the source and the last change.
  */
 function ProductCard({
   product: p,
@@ -324,9 +329,15 @@ function ProductCard({
       aria-label={name}
       className="relative flex h-full flex-col gap-3 rounded-lg border border-border bg-surface-raised p-4 hover:border-border-strong has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-focus"
     >
-      <div className="flex items-start justify-between gap-2">
+      <div
+        data-card-header=""
+        className="flex items-start justify-between gap-2"
+      >
         <div className="min-w-0">
-          <h3 className="truncate text-base font-bold text-fg-strong">
+          <h3
+            className="truncate text-base font-bold text-fg-strong"
+            title={name}
+          >
             <Link
               to={r.overview(p.slug)}
               className="underline-offset-4 outline-hidden after:absolute after:inset-0 after:rounded-lg after:content-[''] hover:underline focus-visible:ring-0"
@@ -334,37 +345,41 @@ function ProductCard({
               {name}
             </Link>
           </h3>
-          <p className="truncate font-mono text-xs text-fg-muted">{p.slug}</p>
+          <p
+            className="truncate font-mono text-xs text-fg-muted"
+            title={p.slug}
+          >
+            {p.slug}
+          </p>
         </div>
-        <span className="shrink-0 text-xs text-fg-muted">
-          {label(PROVIDER_LABELS, releaseSourceOf(p))}
-        </span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        {services.map((s) => (
-          <ServiceGlyph key={s} id={s} />
-        ))}
-        <span className={services.length ? "sr-only" : "text-xs text-fg-muted"}>
-          {runsSentence(services)}
-        </span>
-      </div>
-      <div className="mt-auto flex flex-wrap items-center justify-between gap-2">
         {attention > 0 ? (
           <StatusPill tone="warning" size="sm">
             {attention === 1
               ? "1 needs attention"
               : `${attention} need attention`}
           </StatusPill>
-        ) : (
-          <StatusPill tone="success" size="sm">
-            Setup complete
-          </StatusPill>
-        )}
-        {Number.isFinite(p.modifiedAt) ? (
-          <span className="text-xs text-fg-muted">
-            Changed <Timestamp at={fromSeconds(p.modifiedAt)} />
-          </span>
         ) : null}
+      </div>
+      {/* The service glyphs take the row the healthy "Setup complete" pill used to hold. */}
+      <div className="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <span className="flex items-center gap-1.5">
+          {services.map((s) => (
+            <ServiceGlyph key={s} id={s} />
+          ))}
+          <span
+            className={services.length ? "sr-only" : "text-xs text-fg-muted"}
+          >
+            {runsSentence(services)}
+          </span>
+        </span>
+        <span className="text-xs text-fg-muted">
+          {label(PROVIDER_LABELS, releaseSourceOf(p))}
+          {Number.isFinite(p.modifiedAt) ? (
+            <>
+              {" · "}Changed <Timestamp at={fromSeconds(p.modifiedAt)} />
+            </>
+          ) : null}
+        </span>
       </div>
     </article>
   );

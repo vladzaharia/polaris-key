@@ -372,14 +372,14 @@ export function CredentialsPage({
       id: "createdAt",
       header: "Created",
       accessorKey: "createdAt",
-      meta: { priority: 3 },
+      meta: { numeric: true, priority: 3 },
       cell: ({ row }) => <Timestamp at={fromSeconds(row.original.createdAt)} />,
     },
     {
       id: "lastUsedAt",
       header: "Last used",
       accessorFn: (c) => c.lastUsedAt ?? 0,
-      meta: { priority: 2 },
+      meta: { numeric: true, priority: 2 },
       cell: ({ row }) =>
         row.original.lastUsedAt !== null ? (
           <Timestamp at={fromSeconds(row.original.lastUsedAt)} />
