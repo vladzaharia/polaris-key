@@ -2709,7 +2709,8 @@ export interface MintRegistryTokenBody {
   binding: "owner" | "license";
   licenseId?: string;
   presentation?: "header" | "url";
-  /** F-22: `["publish"]` for a native-client publish token (owner-bound, named ecosystems). */
+  /** `["publish"]` for a publish token (owner-bound, named ecosystems): F-22's native clients and
+   *  F-23's `docker push`. */
   scopes?: ("read" | "publish")[];
 }
 
@@ -2782,6 +2783,8 @@ export interface FeedPackageVersion {
     tokenId: string | null;
     /** F-22: the native client that published (`npm`, `twine`, `swift`, `maven`), or null. */
     client?: string | null;
+    /** F-23: `oci-push` when the version came through `docker push`. */
+    via?: "oci-push" | null;
   };
   size: number;
   files: FeedPackageFile[];

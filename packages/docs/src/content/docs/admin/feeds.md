@@ -120,8 +120,11 @@ editor's URL, because the editor sends no credentials. The token is shown once, 
 enabled feed's setup already holding it; Polaris Key stores only its hash.
 
 **Access** chooses **Read** or **Read and publish**. A publish token lets a native client publish
-to the feeds it names (npm, PyPI, Swift and Maven only; see
-[Publishing with native clients](/docs/services/distribution/package-feeds/#publishing-with-native-clients)):
+to the feeds it names (npm, PyPI, Swift and Maven; see
+[Publishing with native clients](/docs/services/distribution/package-feeds/#publishing-with-native-clients)),
+and `docker push` to the owner's OCI repositories when it names the OCI feed (a pushed version tag
+publishes a release; see
+[Pushing with docker push](/docs/services/distribution/package-feeds/#oci-images)):
 it is always bound to this product, never a Godot editor URL, names its feeds explicitly, and
 lasts 1 to 30 days (7 by default). It is meant for an operator's own machine; in CI, publish with
 the job's OIDC token (`pkey auth github-oidc`) so the repository holds no publish secret. The
@@ -147,7 +150,8 @@ A package's page has three tabs: **Versions**, **Setup** (the feed's setup for t
 latest version) and **History** (the package's own audit rows).
 
 Each version shows its tags, when it was published and how — a trusted-publisher run with a link to
-the run, a static CI token by id, or the console — its size, each file's digests (SHA-256, and the
+the run, a static CI token by id, a registry token by id, or the console, each marked "docker
+push" when it came through a native push — its size, each file's digests (SHA-256, and the
 SHA-512, SHA-1 and MD5 the Worker computes for npm and Maven) with a copy button each, and its
 state: **Live**, **Yanked** or **Deprecated**, with the reason or message.
 

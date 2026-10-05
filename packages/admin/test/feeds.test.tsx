@@ -175,6 +175,91 @@ describe("registry auth (F-21)", () => {
     );
   });
 
+  it("F-22/F-23: a publish token is minted with publish and named feeds (OCI for docker push), owner-bound only", async () => {
+    const page = feedRoutes()[
+      "/manage/api/products/djdl/distribution/feeds/tokens"
+    ] as { tokens: Record<string, unknown>[]; limits: Record<string, unknown> };
+    const minted = {
+      ok: true,
+      token: `pkeyr_${"p".repeat(43)}`,
+      view: {
+        ...page.tokens[0],
+        tokenId: "rtok_push",
+        label: "Pusher",
+        scopes: ["publish", "read"],
+        ecosystems: ["npm", "oci"],
+      },
+    };
+    const log = boot("#/p/djdl/distribution/feeds/tokens", {
+      extra: {
+        ...feedRoutes(),
+        "/manage/api/products/djdl/distribution/feeds/tokens": {
+          ...page,
+          limits: {
+            ...page.limits,
+            publishDefaultDays: 7,
+            publishMaxDays: 30,
+            publishEcosystems: ["npm", "pypi", "swift", "maven", "oci"],
+          },
+        },
+        ...product(true),
+        "POST /manage/api/products/djdl/distribution/feeds/tokens": minted,
+      },
+    });
+    await heading("Registry tokens");
+    await within(main()).findByRole("table", { name: "Registry tokens" });
+    await userEvent.click(
+      within(main()).getByRole("button", { name: /New token/ }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "New registry token",
+    });
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: /Label/ }),
+      "Pusher",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("radio", { name: /Read and publish/ }),
+    );
+    expect(dialog.textContent).toContain("docker push");
+    // A publish token names its feeds: none picked yet, so it cannot be created.
+    expect(dialog.textContent).toContain(
+      "Choose the feeds this token publishes to.",
+    );
+    expect(
+      (
+        within(dialog).getByRole("button", {
+          name: "Create token",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    // Never a Godot editor URL token, and never every feed.
+    expect(
+      within(dialog).queryByRole("switch", { name: /Godot editor URL/ }),
+    ).toBeNull();
+    expect(
+      within(dialog).queryByRole("checkbox", { name: /Every feed/ }),
+    ).toBeNull();
+    await userEvent.click(
+      within(dialog).getByRole("checkbox", { name: /npm/ }),
+    );
+    await userEvent.click(
+      within(dialog).getByRole("checkbox", { name: /OCI/ }),
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Create token" }),
+    );
+    await waitFor(() =>
+      expect(log.calls.find((c) => c.method === "POST")?.json).toEqual({
+        label: "Pusher",
+        binding: "owner",
+        expiresInDays: 7,
+        scopes: ["publish"],
+        ecosystems: ["npm", "oci"],
+      }),
+    );
+  });
+
   it("revoking a token is L2", async () => {
     const log = boot("#/platform/feeds/tokens", {
       extra: {

@@ -43,6 +43,7 @@ import {
   MAX_LIVE_TOKENS_PER_LICENSE,
   MAX_LIVE_TOKENS_PER_OWNER,
   MINTABLE_REGISTRY_SCOPES,
+  OCI_PUSH_CI_SCOPE,
   REGISTRY_PUBLISH_ECOSYSTEMS,
   REGISTRY_PUBLISH_TOKEN_DEFAULT_DAYS,
   REGISTRY_PUBLISH_TOKEN_MAX_DAYS,
@@ -541,14 +542,15 @@ export type ResolvedRegistryToken =
       readonly ecosystems: readonly string[] | null;
       /** Licence-bound only. `null` when the licence row is gone (refused by the ladder). */
       readonly license: LicenseRow | null;
-      /** The token's scopes (`read`; `publish` and `read`, F-22). */
+      /** The token's scopes (`read`; `publish` and `read` for an owner-bound publish token: F-22's
+       *  native publishes and F-23's `docker push`). */
       readonly scopes: readonly string[];
     }
   | {
       readonly kind: "ci";
       readonly product: string;
       readonly tokenId: string;
-      /** The CI token's scopes (`release:publish`, …): F-22 publishes only with `release:publish`. */
+      /** The CI token's scopes: F-22 publishes and F-23 pushes only with `release:publish`. */
       readonly scopes: readonly string[];
       /** `oidc` (trusted publishing) or `static` (an operator-issued token). */
       readonly ciKind: "oidc" | "static";
@@ -718,9 +720,10 @@ export async function lookupRegistrySubject(
       token_id: string;
       scopes_json: string | null;
       kind: string | null;
-      subject: string;
+      subject: string | null;
     }>(
-      `SELECT t.token_id, t.scopes_json, t.kind, t.subject FROM ci_tokens t JOIN products p ON p.slug = t.product
+      `SELECT t.token_id, t.scopes_json, t.kind, t.subject FROM ci_tokens t
+         JOIN products p ON p.slug = t.product
         WHERE t.product = ? AND t.token_id = ? AND t.revoked_at IS NULL AND t.expires_at > ?
           AND COALESCE(p.status, 'active') <> 'deleted'`,
       product,
@@ -736,7 +739,7 @@ export async function lookupRegistrySubject(
             tokenId: row.token_id,
             scopes: parseList(row.scopes_json) ?? [],
             ciKind: row.kind === "static" ? "static" : "oidc",
-            subject: row.subject,
+            subject: row.subject ?? "",
           }
         : null,
       nowMs,
@@ -795,6 +798,9 @@ export interface PullTokenClaims {
   readonly own: string | null;
   /** The repositories granted, as `<owner>/<repository>`. */
   readonly repos: readonly string[];
+  /** F-23: the repositories granted `push` as well, a subset of `repos`. Absent on a pull-only
+   *  token (every token minted before F-23 included), which then pushes nowhere. */
+  readonly push?: readonly string[];
   readonly iat: number;
   readonly exp: number;
 }
@@ -849,8 +855,11 @@ export async function signPullToken(
 ): Promise<{ token: string; expiresIn: number; issuedAt: number } | null> {
   const material = secret(env, "REGISTRY_TOKEN_KEY");
   if (!material) return null;
+  const { push, ...identity } = claims;
   const full: PullTokenClaims = {
-    ...claims,
+    ...identity,
+    // A pull-only token carries no `push` at all, exactly as before F-23.
+    ...(push && push.length ? { push } : {}),
     iat: now,
     exp: now + REGISTRY_PULL_TOKEN_TTL_SECONDS,
   };
@@ -922,7 +931,12 @@ export async function verifyPullToken(
     !Array.isArray(c.repos) ||
     !c.repos.every((r) => typeof r === "string") ||
     typeof c.iat !== "number" ||
-    typeof c.exp !== "number"
+    typeof c.exp !== "number" ||
+    (c.push !== undefined &&
+      (!Array.isArray(c.push) ||
+        !c.push.every(
+          (r) => typeof r === "string" && (c.repos as unknown[]).includes(r),
+        )))
   )
     return null;
   if (c.exp <= now) return null;
@@ -930,7 +944,63 @@ export async function verifyPullToken(
     sub: c.sub,
     own: c.own as string | null,
     repos: c.repos as string[],
+    ...(Array.isArray(c.push) && c.push.length
+      ? { push: c.push as string[] }
+      : {}),
     iat: c.iat,
     exp: c.exp,
+  };
+}
+
+// ── Publishing through a registry credential (F-23) ──────────────────────────────────────────
+
+/** Who may publish through a registry protocol, once resolved: the source a push records. */
+export interface RegistryPublisher {
+  /** The pull token's `sub` spelling: a registry token id, or `ci:<id>`. */
+  readonly sub: string;
+  readonly tokenId: string;
+  /** `registry` for an owner-bound `pkeyr_` publish token; the CI token's own kind otherwise. */
+  readonly kind: "registry" | "static" | "oidc";
+  /** The audit actor (`registry:<tokenId>` or `ci:<subject>`). */
+  readonly actor: string;
+}
+
+/**
+ * May `resolved` publish to `owner`'s `ecosystem` feed through its native protocol (F-23's
+ * `docker push`)? Only two credentials can (plans/F-20.md §10, Q4):
+ *   - an OWNER-BOUND, header-presented `pkeyr_` of `owner` holding `publish`, whose ecosystems
+ *     (when narrowed) include `ecosystem`. A licence-bound or URL token never publishes;
+ *   - a `pkeyci_` of `owner` holding `release:publish`, the scope a ticket publish needs.
+ * Anything else, another owner's credential included, is `null`. The platform's own SDK feeds
+ * are published by the deploy pipeline only (F-10 owner ruling, as F-22's `registryPublish.ts`).
+ */
+export function registryPublisher(
+  resolved: ResolvedRegistryToken | null,
+  owner: string,
+  ecosystem: string,
+): RegistryPublisher | null {
+  if (resolved === null || resolved.product !== owner) return null;
+  if (owner === SYSTEM_PRODUCT_SLUG) return null;
+  if (resolved.kind === "ci")
+    return resolved.scopes.includes(OCI_PUSH_CI_SCOPE)
+      ? {
+          sub: `ci:${resolved.tokenId}`,
+          tokenId: resolved.tokenId,
+          kind: resolved.ciKind,
+          actor: `ci:${resolved.subject}`,
+        }
+      : null;
+  if (
+    resolved.kind !== "owner" ||
+    resolved.presentation !== "header" ||
+    !resolved.scopes.includes("publish") ||
+    (resolved.ecosystems !== null && !resolved.ecosystems.includes(ecosystem))
+  )
+    return null;
+  return {
+    sub: resolved.tokenId,
+    tokenId: resolved.tokenId,
+    kind: "registry",
+    actor: `registry:${resolved.tokenId}`,
   };
 }

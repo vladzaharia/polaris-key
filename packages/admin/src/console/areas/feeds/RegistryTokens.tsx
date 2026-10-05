@@ -480,7 +480,7 @@ function MintDialog({
   const [everyFeed, setEveryFeed] = React.useState(true);
   const [picked, setPicked] = React.useState<FeedEcosystem[]>([]);
   const [godotUrl, setGodotUrl] = React.useState(false);
-  // F-22: a publish token (native clients: npm publish, twine, SwiftPM, Maven/Gradle).
+  // A publish token (native clients: npm publish, twine, SwiftPM, Maven/Gradle, docker push).
   const [access, setAccess] = React.useState<"read" | "publish">("read");
   const [days, setDays] = React.useState<number | null>(
     data.limits.defaultDays,
@@ -632,7 +632,7 @@ function MintDialog({
                     {
                       value: "publish",
                       label: "Read and publish",
-                      description: `npm publish, twine, SwiftPM and Maven or Gradle deploys. At most ${data.limits.publishMaxDays ?? maxDays} days; in CI use the job's OIDC token instead.`,
+                      description: `npm publish, twine, SwiftPM, Maven or Gradle deploys and docker push. At most ${data.limits.publishMaxDays ?? maxDays} days; in CI use the job's OIDC token instead.`,
                       icon: <Upload aria-hidden className="size-4" />,
                     },
                   ]}

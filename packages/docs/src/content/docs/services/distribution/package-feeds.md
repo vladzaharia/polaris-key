@@ -336,18 +336,19 @@ podman pull pkg.plrs.im/polaris-key/tools/pkey:1.4.0
 crane pull --platform linux/arm64 pkg.plrs.im/polaris-key/tools/pkey:beta pkey.tar
 ```
 
-**What it answers.** Pulls only, anonymous while the feed is public:
+**What it answers.** Pulls, anonymous while the feed is public, and pushes from a publish token
+(see **Pushing with docker push** below):
 
-| Request                                                    | Answer                                                                                                                                                         |
-| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`/`HEAD /v2/<owner>/<repository>/manifests/<tag>`      | the manifest or image index the tag points to, with its own media type and `Docker-Content-Digest`; cached for 60 s                                            |
-| `GET`/`HEAD /v2/<owner>/<repository>/manifests/sha256:<…>` | the same bytes by digest, immutable                                                                                                                            |
-| `GET`/`HEAD /v2/<owner>/<repository>/blobs/sha256:<…>`     | a config or layer, immutable, with `Range` (206) and `If-Range`; only digests this repository published                                                        |
-| `GET /v2/<owner>/<repository>/tags/list[?n=&last=]`        | the tags in lexical order; with `n`, a `Link: …; rel="next"` header names the next page                                                                        |
-| anything else under `/v2/`                                 | OCI's error JSON (`NAME_UNKNOWN`, `MANIFEST_UNKNOWN`, `BLOB_UNKNOWN`); push methods are 405 `UNSUPPORTED`; `/v2/token` is the token service (see Who may read) |
+| Request                                                    | Answer                                                                                                                                                    |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`/`HEAD /v2/<owner>/<repository>/manifests/<tag>`      | the manifest or image index the tag points to, with its own media type and `Docker-Content-Digest`; cached for 60 s                                       |
+| `GET`/`HEAD /v2/<owner>/<repository>/manifests/sha256:<…>` | the same bytes by digest, immutable                                                                                                                       |
+| `GET`/`HEAD /v2/<owner>/<repository>/blobs/sha256:<…>`     | a config or layer, immutable, with `Range` (206) and `If-Range`; only digests this repository published, or (privately) was pushed                        |
+| `GET /v2/<owner>/<repository>/tags/list[?n=&last=]`        | the tags in lexical order; with `n`, a `Link: …; rel="next"` header names the next page                                                                   |
+| anything else under `/v2/`                                 | OCI's error JSON (`NAME_UNKNOWN`, `MANIFEST_UNKNOWN`, `BLOB_UNKNOWN`); `DELETE` is 405 `UNSUPPORTED`; `/v2/token` is the token service (see Who may read) |
 
 Every answer carries `Docker-Distribution-API-Version: registry/2.0`. A feed that is not public
-answers 401 with OCI's `Bearer` challenge; registry credentials are not issued yet.
+answers 401 with OCI's `Bearer` challenge.
 
 **Tags.** Each version is a tag of its own name, and it never moves. Each channel is a moving tag:
 `stable` is `latest`, and every other channel (`beta`, a manual channel) a tag of its own name,
@@ -378,6 +379,38 @@ The CLI reads the layout's `index.json` (exactly one entry: a multi-arch image i
 index), walks every manifest it references, and uploads each blob once through the upload ticket.
 Each blob is at most the feed's ceiling (5 GiB by default), a release is at most 4,096 objects,
 and its descriptor at most 64 KiB, which in practice bounds an image to a few hundred blobs.
+
+**Pushing with docker push.** A repository also takes a native push from `docker`, `podman`,
+`crane`, `oras` and every other client of the distribution spec's push workflow. The repository
+must already be a declared package deliverable (a push never creates one), and the credential
+must be able to publish: a registry token minted with **Read and publish** and the OCI feed under
+Distribution → Package feeds → Tokens (owner-bound, at most 30 days; it also reads), or a CI token (`pkeyci_…`) holding
+`release:publish`, the scope a ticket publish needs:
+
+```sh
+echo "$PKEY_PUSH_TOKEN" | docker login pkg.plrs.im -u __token__ --password-stdin
+docker buildx build --platform linux/amd64,linux/arm64 -t pkg.plrs.im/polaris-key/tools/pkey:1.4.0 --push .
+```
+
+`docker login` trades the token at `/v2/token` for a five-minute token granting `pull,push` on
+the repository; every push request re-checks the token behind it, so a revoked one stops pushing
+within 30 seconds. A tag pushed is a **version**: the image becomes a release of the package
+exactly as `pkey release publish` would make it (the same release rows, refusals and audit
+entry), and it joins the product's channels by the same rules, so the newest stable version is
+`latest`. Channel tags (`latest`, `stable`, `beta`, `pr-<n>` and manual channel names) are moved
+with `pkey release promote`, never pushed, and a version that exists never takes another image.
+A manifest pushed **by digest** (an index's platform manifests) is stored and publishes nothing.
+Every object a manifest names must be one this owner holds, pushed or published before.
+
+Limits: each request carries at most 100 MB, the zone's body limit. `docker push` and `crane`
+(go-containerregistry) send each layer as one streamed `PATCH` without `Content-Length`, which
+the registry appends 16 MiB at a time, so a layer of up to 100 MB pushes as it is. A larger layer
+needs a client set to send chunks (`PATCH` with `Content-Range`, each under 100 MB) or the ticket
+path above. Chunks of any size work (they are fitted to R2's multipart parts server-side); each
+blob is at most the feed's ceiling.
+An object pushed but not yet in a version is served by digest from its repository only, never
+tagged, and never from the bytes host. Nothing is ever deleted: `DELETE` is refused, and an
+abandoned upload only drops its own staged bytes.
 
 **Setup snippet.** The console's Setup tab and `pkey feeds setup` (F-12) render this feed from
 three values: the registry host (`pkg.plrs.im`, or the environment's), the owner and the

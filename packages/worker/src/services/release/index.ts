@@ -115,6 +115,11 @@ export {
   NATIVE_PUBLISH_ROUTES as RELEASE_PUBLISH_ROUTES,
   NATIVE_PUBLISH_OPENAPI as RELEASE_PUBLISH_OPENAPI,
 } from "./packages/native/index.js";
+/** F-23: the OCI push routes on the registry host, and their OpenAPI rows. */
+export {
+  OCI_PUSH_OPENAPI as RELEASE_REGISTRY_OPENAPI,
+  OCI_PUSH_ROUTES as RELEASE_REGISTRY_ROUTES,
+} from "./packages/ociPush.js";
 export { handleRelease, type ReleaseSurfaceKind } from "./surfaces.js";
 export {
   accessModeFor,

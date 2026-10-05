@@ -24,6 +24,7 @@ on:
       - "packages/worker/src/core/registryHostname.ts"
       - "packages/worker/src/core/registryLanding.ts"
       - "packages/worker/src/core/registryTokens.ts"
+      - "packages/worker/src/services/release/packages/oci*.ts"
       - "packages/worker/scripts/registry-clients/**"
       - "packages/worker/wrangler.toml"
       - "packages/cli/src/package/**"
@@ -138,6 +139,19 @@ jobs:
           - client: oci-podman
             ecosystem: oci
             os: ubuntu-latest
+          # F-23: native push. docker push and crane push (append, copy of a multi-arch index)
+          # with an owner-bound publish token, and the conformance suite's push workflow.
+          - client: oci-push-docker
+            ecosystem: oci
+            os: ubuntu-latest
+          - client: oci-push-crane
+            ecosystem: oci
+            os: ubuntu-latest
+            go: true
+          - client: oci-push-conformance
+            ecosystem: oci
+            os: ubuntu-latest
+            go: true
           # F-09: the Godot feed. GodotEnv ("source": "zip") plus HTTP contract checks of both
           # editor API shapes; the manual editor installs are recorded on the PR.
           - client: godot
@@ -189,7 +203,7 @@ jobs:
           go-version: stable
           cache: false
       - name: Install crane
-        if: env.PICKED == 'true' && matrix.client == 'oci-crane'
+        if: env.PICKED == 'true' && (matrix.client == 'oci-crane' || matrix.client == 'oci-push-crane')
         run: |
           go install github.com/google/go-containerregistry/cmd/crane@v0.20.6
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"

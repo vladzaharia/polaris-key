@@ -34,7 +34,12 @@ import type {
   RegistryRouteContext,
 } from "../../../../core/registryHost.js";
 import { registryOrigin } from "../../../../core/registryHost.js";
-import { blobKey, blobResponse, checksumHex } from "../../../../core/blobs.js";
+import {
+  blobKey,
+  blobResponse,
+  checksumHex,
+  heldByPush,
+} from "../../../../core/blobs.js";
 import { json } from "../../../../core/errors.js";
 import { registryCacheHeaders } from "../cache.js";
 import {
@@ -343,11 +348,25 @@ const serveBlob: Compute = async (req, ctx, loc, cache) => {
   const bucket = ctx.env.BLOBS;
   if (hex === undefined || !bucket) return ociError(404, "BLOB_UNKNOWN");
   const versions = await loc.catalog.packageVersions(loc.deliverable.id);
-  if (!versions.some((v) => v.files.some((f) => f.sha256 === hex)))
-    return ociError(404, "BLOB_UNKNOWN");
+  let privately = cache === "private";
+  if (!versions.some((v) => v.files.some((f) => f.sha256 === hex))) {
+    // F-23: OCI's read-after-write. An object pushed to THIS repository (and not yet in a
+    // version) is served by digest to whoever the ladder admitted, privately: a push client
+    // checks what it uploaded. It never appears in a tag, and the bytes host never serves it.
+    if (
+      !(await heldByPush(
+        ctx.db,
+        ctx.product.slug,
+        blobKey(hex),
+        loc.deliverable.id,
+      ))
+    )
+      return ociError(404, "BLOB_UNKNOWN");
+    privately = true;
+  }
   const res = await blobResponse(req, bucket, blobKey(hex), {
     sha256: hex,
-    gated: cache === "private",
+    gated: privately,
     env: ctx.env,
     filename: hex,
   });

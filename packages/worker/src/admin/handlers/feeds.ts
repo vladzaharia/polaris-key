@@ -878,6 +878,8 @@ function sourceView(json: string) {
       typeof s.client === "string" && /^[a-z]{1,16}$/.test(s.client)
         ? s.client
         : null,
+    // F-23: the version came through `docker push` rather than an upload ticket.
+    via: s.via === "oci-push" ? ("oci-push" as const) : null,
   };
 }
 

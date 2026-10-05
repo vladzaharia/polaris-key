@@ -286,8 +286,8 @@ describe("publish tokens (F-22)", () => {
   it("is owner-bound, header-presented and narrowed to named publish ecosystems", async () => {
     const all = await m({ ecosystems: null });
     expect(!all.ok && all.fields).toContain("ecosystems");
-    const oci = await m({ ecosystems: ["oci"] });
-    expect(!oci.ok && oci.fields).toContain("ecosystems");
+    // F-23: OCI is a publish ecosystem too (`docker push`).
+    expect((await m({ ecosystems: ["oci"] })).ok).toBe(true);
     const godot = await m({ ecosystems: ["godot"] });
     expect(!godot.ok && godot.fields).toContain("ecosystems");
     const url = await m({ presentation: "url" });

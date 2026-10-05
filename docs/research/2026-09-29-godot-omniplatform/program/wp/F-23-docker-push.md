@@ -41,13 +41,33 @@ F-08 publishes image layouts through tickets. Native push is a convenience for a
 - Each request is bounded by the zone's body limit (100 MB on Free and Pro), so large layers need chunked `PATCH`.
 - Push writes the same release rows as a ticket publish.
 
+## Corrections from the code (F-23 implementation)
+
+- **The push routes are Release's, not Distribution's.** A tag push writes release rows, which
+  only Release may (rule 6), so the routes are `service: "release"` (marked `FEED_PUSH_ROUTE`) in
+  `services/release/packages/ociPush.ts`, spread into `mount.ts`'s `REGISTRY_ROUTES` as
+  `RELEASE_REGISTRY_ROUTES`; their OpenAPI rows (`RELEASE_REGISTRY_OPENAPI`) join
+  `routeCoverage`'s `REGISTRY_PATHS`. They read Distribution's feed settings through the
+  `delivery` hook, as the ticket publish does.
+- **Who pushes.** plans/F-20.md §10 left `publish` to F-22/F-23: F-23 enables it (owner-bound,
+  header-presented, implies `read`), and a `pkeyci_` with `release:publish` pushes too. The console
+  mint gains **Push images**.
+- **Uploads earn refs through a new Core function**, `landUpload` (an upload is not named by its
+  hash), and hold objects with the `oci-push` ref, which the bytes host's blob route ignores.
+- **Read-after-write.** The conformance suite's push workflow requires a pushed blob to be
+  readable from its repository, so the pull blob route serves an object pushed to THAT repository
+  by digest, privately, under the feed's ladder.
+- **Channel tags are refused on push** (`TAG_INVALID`): a version tag never moves (F-01 §6.7).
+- **The serverless-registry sources carry no per-file header**; the vendored file carries the
+  project's Apache-2.0 notice and attribution, with the modifications listed.
+
 ## Steps
 
 1. Renderer or adapter, then routes, then matrix, then docs.
 
 ## Acceptance criteria
 
-- [ ] The client matrix is green. `routeCoverage` passes. The green gate passes (`AGENTS.md`).
+- [x] The client matrix is green. `routeCoverage` passes. The green gate passes (`AGENTS.md`).
 
 ## Verify
 

@@ -1332,8 +1332,9 @@ which sends no credentials, carries a narrow URL token in its configured URL. Te
 **A new bearer asset.** A token is 256 random bits, stored only as an HMAC under
 `KEY_HASH_PEPPER` (a global unique index), shown once, never logged or echoed; the list shows the
 last four characters. Every token expires, at most 365 days out (default 90, 30 for a URL token,
-Q6), and is bound to one owner. Scope is `read`, or `publish` (F-22, below: owner-bound, named
-ecosystems, at most 30 days). At most
+Q6), and is bound to one owner. Scope is `read`, or `publish` (F-22 and F-23, below: it implies
+`read`, is owner-bound and header-presented only, names its publish ecosystems, and lives at most
+30 days). At most
 10 live tokens per licence and 500 per owner. A deleted product's tokens stop at once (the lookup
 joins `products.status`, and the deletion batch revokes them); an erased portal account's tokens
 are revoked in the erasure batch (`account_deleted`); a disabled or expired licence's tokens stop
@@ -1377,7 +1378,8 @@ re-runs the ladder, so a revoked token or a tightened feed stops it within 30 s 
 `/v2/token` grants a scope only when the ladder admits the caller for that repository; anonymous
 callers get anonymous tokens for public repositories only; refusals are 401 for anyone without a
 valid credential, whether the owner exists, is disabled or is private, so the endpoint is no
-oracle. `push`, `delete` and `registry:catalog:*` are refused. With `REGISTRY_TOKEN_KEY` unset,
+oracle. `push` is granted only to a publisher (see "Native OCI push" below); `delete`, `*` and
+`registry:catalog:*` are refused. With `REGISTRY_TOKEN_KEY` unset,
 `/v2/token` is 503 and `/v2/` stays the plain 200; once set, `/v2/` challenges a request without a
 valid pull token (Q1).
 
@@ -1417,7 +1419,7 @@ that property for CI and bounds it everywhere else:
   `pkey release publish`). Nothing long-lived is stored; the docs and the console say so.
 - **A `pkeyr_` publish token** is the owner's own: owner-bound only (never a licence), header
   only (never a Godot URL token), narrowed to explicitly named publish ecosystems (npm, PyPI,
-  Swift, Maven; never "every feed", never OCI or Godot), and short-lived: 1 to 30 days, 7 by
+  Swift, Maven, and OCI for F-23's `docker push`; never "every feed", never Godot), and short-lived: 1 to 30 days, 7 by
   default, against the read token's 365. It is minted only by a platform admin in the console
   (audited `registry_token.create`, naming "publish"), revocable within the 30-second resolution
   window like every token, and its plaintext is shown once. Residual: a publish token pasted into
@@ -1475,6 +1477,62 @@ owner and Distribution off all answer the host's one not-found before any creden
 Review triggers (§9): a publish token longer than 30 days or not owner-bound; any read inside a
 package beyond Swift manifests; a raised native body cap; a write method on the host beyond these
 routes and Swift's login.
+
+### Native OCI push (F-23)
+
+**What it is.** `docker push` (and `podman`, `crane`, `oras`) to an owner's OCI feed: the
+distribution spec's blob upload state machine over R2 multipart
+(`services/release/packages/ociUpload.ts`, adapted from cloudflare/serverless-registry, Apache-2.0)
+and the manifest `PUT` (`ociPush.ts`). The routes are RELEASE's (`FEED_PUSH_ROUTE`, `service:
+"release"`): a manifest pushed under a version tag becomes a package release through Release's
+own package ingest, the same rows, refusals and audit as a ticket publish. Tests:
+`test/registryPush.test.ts`, the workerd lane's push (`test-workerd/registryOci.test.ts`), and the
+`oci-push-*` rows of `registry-clients.yml` (docker, crane, the conformance suite's push
+workflow).
+
+**Who may push.** Only a request bearing an OCI token from `/v2/token` whose `push` claim names the
+repository, and whose subject still resolves, through the 30-second cache, to a publisher of the
+owner (`registryPublisher`): an owner-bound header `pkeyr_` holding `publish` and naming the OCI
+ecosystem (a publish token always names its ecosystems, F-22's mint rule), or a `pkeyci_` holding
+`release:publish`. Never for the system product, whose feeds the deploy pipeline alone publishes. A licence-bound or URL token never
+publishes; another owner's credential never does. `/v2/token` grants `push` only to such a
+publisher and only for a declared package deliverable, so a push never creates a repository
+(rule 5). The push routes check the token before anything else: an unauthorised caller gets the
+same 401 Bearer challenge (`scope="repository:<owner>/<repo>:pull,push"`) for a repository that
+exists and one that does not. A revoked publisher stops within 30 s although its push token lives
+300 s. Budget: `registryOciPush` (per push subject, fail closed).
+
+**Earning a blob ref: a third way.** An upload's hash is known only when it finishes, so its staged
+bytes (under `staging/<owner>/oci-upload-<uuid>/`) cannot be named by it. Core's `landUpload`
+copies them to `blobs/sha256/<hex>` through `putVerified` (R2 itself checks the SHA-256; verify
+before lock holds), and when the key already exists (another tenant's object) earns the ref only
+after confirming THIS upload's bytes hash to it (`verifyStaged`, streamed), so a tenant cannot
+claim another's object by naming its digest; no answer tells whether the object already existed.
+The ref is `oci-push` (possession, ref id the deliverable): it lets the owner's later manifest
+name the object, and it serves nothing on the bytes host (`blobAccess.ts` ignores it as a holder,
+so an untagged upload never falls back to the app's access mode). A cross-repository mount is
+granted only for an object the owner already holds. A manifest may name only objects the owner
+holds, at the size declared.
+
+**Read-after-write.** An object pushed to a repository and not yet in a version is served by
+digest from that repository only, privately (`no-store`), under the feed's own access ladder; it
+never appears in a tag. On a public feed that means a pushed-but-unpublished layer is readable by
+anyone who knows its digest, which is OCI's model (and what the conformance suite requires); the
+publisher chose to push it to a public feed.
+
+**Versions never move; nothing is deleted.** A tag pushed is a version and goes through the
+ingest's unique-forever rule; channel tags (`latest`, `stable`, `beta`, `pr-<n>`, manual channels)
+are refused, so a push can never repoint a moving tag. `DELETE` is 405. Cancelling an upload only
+aborts its multipart upload and removes its own staging objects.
+
+**Abuse bounds.** Each request is bounded by the zone's body limit (100 MB); a body without
+`Content-Length` (docker's chunked layer `PATCH`) is never held whole: R2 needs every stream's
+length, so it is read in pieces of 16 MiB, each appended to the upload as soon as it is full, and
+the isolate holds one piece at a time (a manifest, at most 4 MiB, is the only body read whole). Chunks append only in order (`Content-Range`), the upload state
+is compare-and-swapped on its R2 etag, each blob is held to the feed's per-blob ceiling, a manifest
+to 4 MiB and a tag push's walk to 256 manifests. Abandoned uploads expire with the staging prefix
+(one day) and R2's incomplete-multipart rule. Untagged objects are kept (nothing removes them yet;
+`retainUntaggedDays` is a stored setting, a follow-up for the collector).
 
 ### App-updater feeds (P3-09)
 
@@ -4988,11 +5046,15 @@ service on starts running an ingest; a byte route is added to `BYTE_ROUTES`, a t
 `BYTES_HOST_TYPES`, or anything else is hosted on a `plrs.im` sibling; a type is added to
 `REGISTRY_HOST_TYPES`, the PyPI HTML fallback is admitted anywhere but its one flagged route or
 under a looser policy, a registry route answers CORS or a method other than GET, HEAD,
-Swift's `POST …/login` and F-22's four publish writes, or `authorizeFeedRead` moves after the cache lookup (F-02); a new registry
+Swift's `POST …/login`, F-22's four publish writes and F-23's OCI push methods, or
+`authorizeFeedRead` moves after the cache lookup (F-02); a push route that is not Release's, a push
+credential other than an owner-bound `publish` token or a `release:publish` CI token, a push that
+creates a repository or moves a channel tag, or an `oci-push` ref that serves anything beyond its
+repository's digest reads (F-23); a new registry
 principal kind, a registry token accepted in a URL outside Godot, any increase of
 `REGISTRY_TOKEN_TTL_SECONDS` or of the OCI pull token's lifetime, or a credentialed registry
 answer reaching the Cache API (F-21); a publish token longer than 30 days, not owner-bound or
-reaching OCI or Godot, any read inside a package beyond Swift manifests, or a raised native
+reaching Godot, any read inside a package beyond Swift manifests, or a raised native
 publish body cap (F-22); the bucket-lock duration
 changes; the admin authorization model changes; the wire contract
 version increments; any new field is added to `AdminSession` or `PortalSession` (see the

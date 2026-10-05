@@ -29,6 +29,7 @@ import {
   registryOrigin,
   FEED_AUTH_ROUTE,
   FEED_PUBLISH_ROUTE,
+  FEED_PUSH_ROUTE,
   FEED_READ_ROUTE,
   type RegistryRoute,
 } from "../src/core/registryHost.js";
@@ -225,15 +226,18 @@ describe("registry host: configuration", () => {
     }
   });
 
-  it("every registry route is Distribution's (Release's for a native publish), names a known live ecosystem and has a unique name", () => {
+  it("every registry route is Distribution's (Release's for a native publish or an OCI push), names a known live ecosystem and has a unique name", () => {
     // F-04 to F-09 add theirs; routeCoverage's REGISTRY_PATHS follows them (rule 10).
     expect(REGISTRY_ROUTES.length).toBeGreaterThan(0);
     const names = REGISTRY_ROUTES.map((r) => r.name);
     expect(new Set(names).size).toBe(names.length);
     for (const r of REGISTRY_ROUTES) {
-      // F-22: a publish is Release's ingest; every read and credential route is Distribution's.
-      expect(r.service).toBe(
-        r[FEED_PUBLISH_ROUTE] ? "release" : "distribution",
+      // A publish (F-22) or push (F-23) is Release's ingest (rule 6); every read and credential
+      // route is Distribution's.
+      expect(r.service, r.name).toBe(
+        r[FEED_PUBLISH_ROUTE] || r[FEED_PUSH_ROUTE]
+          ? "release"
+          : "distribution",
       );
       expect(REGISTRY_ECOSYSTEMS).toContain(r.ecosystem);
       expect(RESERVED_ECOSYSTEMS.has(r.ecosystem), r.name).toBe(false);
@@ -434,6 +438,28 @@ describe("registry host: isolation", () => {
 
 describe("registry host: methods and CORS", () => {
   it("GET and HEAD only: any other method on a registry path is 405, with OCI's body under /v2/", async () => {
+    // F-23 declares POST on `…/blobs/uploads/` and PUT on `…/manifests/<reference>`; a method no
+    // route declares for the path is still the 405, before any owner loads.
+    for (const [method, path] of [
+      ["POST", "/v2/djdl/app/tags/list"],
+      ["PUT", "/v2/djdl/app/blobs/uploads/"],
+      ["PATCH", "/v2/djdl/app/blobs/uploads/"],
+      ["DELETE", "/v2/djdl/app/manifests/1.0.0"],
+      ["POST", "/v2/djdl/app/manifests/1.0.0"],
+      ["OPTIONS", "/v2/djdl/app/blobs/uploads/"],
+    ] as const) {
+      const oci = await worker.fetch(
+        new Request(`${PKG}${path}`, { method }),
+        env(PKG),
+      );
+      expect(oci.status, `${method} ${path}`).toBe(405);
+      expect(await oci.json(), method).toEqual({
+        errors: [
+          { code: "UNSUPPORTED", message: "The operation is unsupported." },
+        ],
+      });
+      expectHardened(oci, method);
+    }
     for (const method of ["POST", "PUT", "PATCH", "DELETE", "OPTIONS"]) {
       // A tarball path: F-22's `npm publish` route answers PUT on the packument path, and only
       // there (`registryPublish.test.ts`); every other write on an npm path stays 405.
@@ -445,18 +471,6 @@ describe("registry host: methods and CORS", () => {
       expect(npm.headers.get("allow"), method).toBe("GET, HEAD");
       expect(await npm.json(), method).toEqual({ error: "method_not_allowed" });
       expectHardened(npm, method);
-
-      const oci = await worker.fetch(
-        new Request(`${PKG}/v2/djdl/app/blobs/uploads/`, { method }),
-        env(PKG),
-      );
-      expect(oci.status, method).toBe(405);
-      expect(await oci.json(), method).toEqual({
-        errors: [
-          { code: "UNSUPPORTED", message: "The operation is unsupported." },
-        ],
-      });
-      expectHardened(oci, method);
     }
   });
 
@@ -598,30 +612,41 @@ describe("registry host: the access ladder cannot be skipped", () => {
     }
   });
 
-  it("the only non-read routes are F-21's credential routes (feedAuthRoute, POST) and F-22's publish routes (publishRoute)", () => {
+  it("the only non-read routes are F-21's credential routes (feedAuthRoute, POST), F-22's publish routes (publishRoute) and F-23's push routes (Release's, OCI only)", () => {
     const others = REGISTRY_ROUTES.filter((r) => r.methods !== undefined);
-    expect(others.map((r) => r.name).sort()).toEqual(
-      [
-        "swift.login",
-        "npm.publish",
-        "pypi.upload",
-        "swift.publish",
-        "maven.deploy",
-      ].sort(),
+    const auth = others.filter((r) => r[FEED_AUTH_ROUTE]);
+    const publish = others.filter((r) => r[FEED_PUBLISH_ROUTE]);
+    const push = others.filter((r) => r[FEED_PUSH_ROUTE]);
+    expect(auth.map((r) => r.name)).toEqual(["swift.login"]);
+    expect(publish.map((r) => r.name).sort()).toEqual(
+      ["npm.publish", "pypi.upload", "swift.publish", "maven.deploy"].sort(),
     );
-    for (const route of others) {
+    expect(push.map((r) => r.name)).toEqual([
+      "oci.push.uploads",
+      "oci.push.upload",
+      "oci.push.manifest",
+    ]);
+    expect(auth.length + publish.length + push.length).toBe(others.length);
+    for (const route of auth) {
       expect(route[FEED_READ_ROUTE], route.name).toBeUndefined();
-      if (route.name === "swift.login") {
-        expect(route[FEED_AUTH_ROUTE], route.name).toBe(true);
-        expect(route.methods, route.name).toEqual(["POST"]);
-        continue;
-      }
-      expect(route[FEED_PUBLISH_ROUTE], route.name).toBe(true);
+      expect(route[FEED_PUSH_ROUTE], route.name).toBeUndefined();
+      expect(route[FEED_PUBLISH_ROUTE], route.name).toBeUndefined();
+      expect(route.methods, route.name).toEqual(["POST"]);
+    }
+    for (const route of publish) {
+      expect(route[FEED_READ_ROUTE], route.name).toBeUndefined();
       expect(route[FEED_AUTH_ROUTE], route.name).toBeUndefined();
+      expect(route[FEED_PUSH_ROUTE], route.name).toBeUndefined();
       expect(route.service, route.name).toBe("release");
       expect(route.methods, route.name).toEqual([
         route.name === "pypi.upload" ? "POST" : "PUT",
       ]);
+    }
+    for (const route of push) {
+      expect(route[FEED_READ_ROUTE], route.name).toBeUndefined();
+      expect(route[FEED_AUTH_ROUTE], route.name).toBeUndefined();
+      expect(route.service, route.name).toBe("release");
+      expect(route.ecosystem, route.name).toBe("oci");
     }
   });
 

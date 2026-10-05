@@ -38,6 +38,10 @@
  * `maven-publish`, `gradle-publish`) publish with the native tool, then install what they
  * published from the feed.
  *
+ * PUSH (F-23): the `oci-push-*` clients push with PKEY_REGISTRY_PUSH_TOKEN, an owner-bound
+ * `publish` token minted into the local D1 in both modes, to the repositories `seeds/oci.ts`
+ * declares for pushes (`tools/pushed`, `tools/conformance`).
+ *
  * F-02 ships one smoke client, `curl`; F-04 to F-09 add their ecosystem's clients (npm, pnpm,
  * yarn, bun, pip, uv, poetry, SwiftPM, Gradle, Maven, docker, crane, GodotEnv) as further
  * `clients/*.sh` and matrix rows in `.github/workflows/registry-clients.yml`. Nothing here
@@ -147,6 +151,39 @@ function seedPublish(persistTo) {
   ].join("\n");
   const file = join(persistTo, "registry-clients-publish.sql");
   writeFileSync(file, sql);
+  wrangler([
+    "d1",
+    "execute",
+    "DB",
+    "--local",
+    "--env",
+    "test",
+    "--persist-to",
+    persistTo,
+    "--file",
+    file,
+  ]);
+}
+
+/** F-23: an owner-bound push token (`publish`, OCI only), minted in BOTH modes: a push always
+ *  needs a credential, whatever the feed's read access. */
+const PUSH_TOKEN = `pkeyr_${b64url(randomBytes(32))}`;
+
+/** Mint the push token into the local D1 (both modes). */
+function seedPush(persistTo) {
+  const now = Math.floor(Date.now() / 1000);
+  const hash = createHmac("sha256", KEY_HASH_PEPPER)
+    .update(PUSH_TOKEN)
+    .digest("hex");
+  const file = join(persistTo, "registry-clients-push.sql");
+  writeFileSync(
+    file,
+    `INSERT INTO registry_tokens (product, token_id, token_hash, hint, label, scopes_json,
+       ecosystems_json, binding, license_id, presentation, created_by, created_at, expires_at)
+     VALUES ('${FIXTURE_OWNER}', 'rtok_harness_push', '${hash}', '${PUSH_TOKEN.slice(-4)}',
+       'rtok_harness_push', '["publish","read"]', '["oci"]', 'owner', NULL, 'header',
+       'admin:harness', ${now}, ${now + 86_400});`,
+  );
   wrangler([
     "d1",
     "execute",
@@ -299,6 +336,7 @@ try {
   }
   seedPublish(state);
   if (auth) seedAuth(state);
+  if (clients.some((c) => c.startsWith("oci-push"))) seedPush(state);
   dev = spawn(
     WRANGLER,
     [
@@ -352,6 +390,7 @@ try {
         OWNER: FIXTURE_OWNER,
         STATE: state,
         PKEY_REGISTRY_PUBLISH_TOKEN: PUBLISH_TOKEN,
+        PKEY_REGISTRY_PUSH_TOKEN: PUSH_TOKEN,
         ...(auth
           ? {
               PKEY_REGISTRY_TOKEN: HEADER_TOKEN,

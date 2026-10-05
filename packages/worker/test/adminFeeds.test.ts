@@ -872,7 +872,7 @@ describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", ()
     expect(audit?.summary).toContain("; publish;");
     for (const body of [
       { scopes: ["publish"] },
-      { scopes: ["publish"], ecosystems: ["oci"] },
+      { scopes: ["publish"], ecosystems: ["godot"] },
       { scopes: ["publish"], ecosystems: ["npm"], expiresInDays: 31 },
       { scopes: "publish", ecosystems: ["npm"] },
     ])
@@ -890,7 +890,7 @@ describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", ()
     expect(list.limits).toMatchObject({
       publishDefaultDays: 7,
       publishMaxDays: 30,
-      publishEcosystems: ["npm", "pypi", "swift", "maven"],
+      publishEcosystems: ["npm", "pypi", "swift", "maven", "oci"],
     });
   });
 

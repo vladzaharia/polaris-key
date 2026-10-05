@@ -8,8 +8,10 @@
  *   GET   <base>/tokens[?license=<id>]     the owner's tokens (or one licence's), newest first,
  *                                          with the owner's feeds (for the setup snippets)
  *   POST  <base>/tokens                    {label, ecosystems?, expiresInDays?, binding,
- *                                          licenseId?, presentation?} — mint; the plaintext is
- *                                          in this answer only (`registry_token.create`)
+ *                                          licenseId?, presentation?, scopes?} — mint; the
+ *                                          plaintext is in this answer only
+ *                                          (`registry_token.create`). `scopes` `["read",
+ *                                          "publish"]` (F-23) mints an owner-bound push token
  *   POST  <base>/tokens/:tokenId/revoke    `registry_token.revoke`
  *   POST  <base>/tokens/revoke-all         {licenseId?} — `registry_token.revoke_all`
  *
@@ -53,7 +55,8 @@ const BODY_KEYS = [
   "binding",
   "licenseId",
   "presentation",
-  // F-22: `["read"]` (the default) or `["publish"]` (owner-bound, named ecosystems, ≤ 30 days).
+  // `["read"]` (the default) or `["publish"]` (owner-bound, named ecosystems, ≤ 30 days): F-22's
+  // native publishes and F-23's `docker push`.
   "scopes",
 ] as const;
 
@@ -204,6 +207,7 @@ async function create(
       licenseId: (body.licenseId as string | undefined) ?? null,
       presentation:
         (body.presentation as "header" | "url" | undefined) ?? "header",
+      // `["publish"]` mints a publish token (owner-bound header tokens only; F-22 and F-23).
       ...(body.scopes !== undefined ? { scopes: body.scopes as string[] } : {}),
       createdBy: `admin:${session.email || session.sub}`,
     },

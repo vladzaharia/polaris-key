@@ -7976,7 +7976,8 @@ paths:
         `WWW-Authenticate: Bearer realm="https://pkg.plrs.im/v2/token",service="pkg.plrs.im"`,
         as Docker Hub and GHCR answer; anonymous pull tokens keep public pulls working, and
         `docker login` checks its credentials at once. `/v2` answers the same. Any method other
-        than GET and HEAD under `/v2/` is 405 with OCI's error JSON (`UNSUPPORTED`).
+        than GET and HEAD under `/v2/` is 405 with OCI's error JSON (`UNSUPPORTED`), except the
+        push methods F-23 documents on `…/blobs/uploads/…` and `PUT …/manifests/{reference}`.
       responses:
         "200":
           description: The registry speaks OCI distribution v2.
@@ -8934,8 +8935,12 @@ paths:
         the registry host: `scope=repository:<owner>/<repository>:pull` (repeatable, at most four)
         names the owners. Grants pull per scope when the access ladder admits the caller: with no
         credential only public repositories (an anonymous token), with Basic
-        `__token__:<pkeyr_ or pkeyci_>` per the access mode. A scope is all or nothing. `push`,
-        `delete` and `registry:catalog:*` are refused. With no scope (`docker login`), a valid
+        `__token__:<pkeyr_ or pkeyci_>` per the access mode. A scope is all or nothing. F-23:
+        `pull,push` (or `push`) is granted only to a credential that may publish to that owner's
+        OCI feed (an owner-bound `pkeyr_` holding `publish`, or a `pkeyci_` holding
+        `release:publish`) and only for a declared package repository; anyone else asking for
+        `push` gets 401 (no credential) or 403 `DENIED`. `delete`, `*` and
+        `registry:catalog:*` are refused. With no scope (`docker login`), a valid
         credential gets a token granting nothing, and an invalid one 401. The pull token is
         opaque, lives 300 s and carries identity only: every OCI request re-runs the ladder.
         `cache-control: no-store`. Counted in the `registryOciToken` budget (per IP, fail closed).
@@ -8952,7 +8957,7 @@ paths:
             in: query,
             required: false,
             schema: { type: string },
-            description: "`repository:<owner>/<repository>:pull`, repeatable.",
+            description: "`repository:<owner>/<repository>:pull` (or `:pull,push`, F-23), repeatable.",
           }
       responses:
         "200":
@@ -9047,6 +9052,48 @@ paths:
           description: The feed is not public.
         "404":
           description: Unknown manifest, repository or owner.
+    put:
+      operationId: ociManifestPush
+      tags: [registry]
+      summary: Push an OCI manifest or image index (registry host only)
+      description: >
+        F-23. Pushing manifests
+        (https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pushing-manifests),
+        Release's route. Needs a Bearer token from `/v2/token` granting `push` on the repository
+        (else 401 with the challenge naming `pull,push`), a repository that is a declared package
+        deliverable with its feed enabled (else `NAME_UNKNOWN`), a `Content-Type` of one of the
+        four manifest types the host serves, and a body of at most 4 MiB whose `mediaType` (when
+        present) agrees. Every object it names must be one this owner holds, at the size declared
+        (`MANIFEST_BLOB_UNKNOWN`, `MANIFEST_INVALID`). By DIGEST the manifest is stored and held
+        and publishes nothing (an index's platform manifests). By TAG the tag is a version: the
+        image is published as a package release, the same rows a ticket publish writes, through
+        the same ingest and refusals (a version never moves: a taken version is 409 `DENIED`).
+        `latest`, `stable`, `beta`, `pr-<n>` and manual channel names are channel tags, moved by
+        `pkey release promote`, and refused (`TAG_INVALID`).
+      requestBody:
+        required: true
+        content:
+          application/vnd.oci.image.manifest.v1+json:
+            schema: { type: object }
+          application/vnd.oci.image.index.v1+json:
+            schema: { type: object }
+          application/vnd.docker.distribution.manifest.v2+json:
+            schema: { type: object }
+          application/vnd.docker.distribution.manifest.list.v2+json:
+            schema: { type: object }
+      responses:
+        "201":
+          description: Stored (and, by tag, published).
+          headers:
+            Location: { schema: { type: string } }
+            Docker-Content-Digest: { schema: { type: string } }
+        "400": { $ref: "#/components/responses/OciError" }
+        "401": { $ref: "#/components/responses/OciError" }
+        "403": { $ref: "#/components/responses/OciError" }
+        "404": { $ref: "#/components/responses/OciError" }
+        "409": { $ref: "#/components/responses/OciError" }
+        "413": { $ref: "#/components/responses/OciError" }
+        "429": { $ref: "#/components/responses/OciError" }
   /v2/{owner}/{repository}/blobs/{digest}:
     servers:
       - url: https://pkg.plrs.im
@@ -9102,6 +9149,179 @@ paths:
           description: The feed is not public.
         "404":
           description: Unknown blob, repository or owner.
+  # F-23: native `docker push`, the blob upload state machine over R2 multipart (Release's routes).
+  /v2/{owner}/{repository}/blobs/uploads/:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - { $ref: "#/components/parameters/OciOwner" }
+      - { $ref: "#/components/parameters/OciRepository" }
+    post:
+      operationId: ociUploadStart
+      tags: [registry]
+      summary: Start a blob upload, upload a blob whole, or mount one (registry host only)
+      description: >
+        F-23. Pushing blobs
+        (https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pushing-blobs).
+        Needs a Bearer token from `/v2/token` granting `push` on the repository (else 401 naming
+        `pull,push`). Plain: 202 with `Location` (`…/blobs/uploads/<uuid>`), `Range: 0-0`,
+        `Docker-Upload-UUID` and `OCI-Chunk-Min-Length: 5242880`. With `digest`, the body is the
+        whole blob: 201 with `Location` and `Docker-Content-Digest`, or `DIGEST_INVALID`. With
+        `mount` (and `from`), 201 when this owner already holds the object, else the plain 202.
+        A request carries at most 100 MB (the zone's body limit); each blob at most the feed's
+        per-blob ceiling (`SIZE_INVALID`, 413). Counted in `registryOciPush` (per push subject).
+      parameters:
+        - {
+            name: digest,
+            in: query,
+            required: false,
+            schema: { type: string, pattern: "^sha256:[0-9a-f]{64}$" },
+            description: "Monolithic upload: the body's digest.",
+          }
+        - {
+            name: mount,
+            in: query,
+            required: false,
+            schema: { type: string, pattern: "^sha256:[0-9a-f]{64}$" },
+            description: "Cross-repository mount: the object to hold.",
+          }
+        - {
+            name: from,
+            in: query,
+            required: false,
+            schema: { type: string },
+            description: "The repository the mounted object comes from (informational).",
+          }
+      requestBody:
+        required: false
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "201":
+          description: The blob is stored (monolithic) or mounted.
+          headers:
+            Location: { schema: { type: string } }
+            Docker-Content-Digest: { schema: { type: string } }
+        "202":
+          description: The upload is open.
+          headers:
+            Location: { schema: { type: string } }
+            Range: { schema: { type: string } }
+            Docker-Upload-UUID: { schema: { type: string } }
+            OCI-Chunk-Min-Length: { schema: { type: string } }
+        "400": { $ref: "#/components/responses/OciError" }
+        "401": { $ref: "#/components/responses/OciError" }
+        "404": { $ref: "#/components/responses/OciError" }
+        "413": { $ref: "#/components/responses/OciError" }
+        "429": { $ref: "#/components/responses/OciError" }
+  /v2/{owner}/{repository}/blobs/uploads/{uuid}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - { $ref: "#/components/parameters/OciOwner" }
+      - { $ref: "#/components/parameters/OciRepository" }
+      - name: uuid
+        in: path
+        required: true
+        description: The upload's id, from the `Location` of its start.
+        schema: { type: string, format: uuid }
+    get:
+      operationId: ociUploadStatus
+      tags: [registry]
+      summary: A blob upload's progress (registry host only)
+      description: >
+        F-23. 204 with `Location` and `Range: 0-<last byte received>`; `BLOB_UPLOAD_UNKNOWN`
+        for an unknown, expired (one day) or another repository's upload.
+      responses:
+        "204":
+          description: The upload's progress.
+          headers:
+            Location: { schema: { type: string } }
+            Range: { schema: { type: string } }
+        "401": { $ref: "#/components/responses/OciError" }
+        "404": { $ref: "#/components/responses/OciError" }
+    head:
+      operationId: ociUploadStatusHead
+      tags: [registry]
+      summary: A blob upload's progress, headers only (registry host only)
+      description: F-23. As `GET`.
+      responses:
+        "204": { description: The upload's progress. }
+        "401": { description: No push token. }
+        "404": { description: Unknown upload. }
+    patch:
+      operationId: ociUploadChunk
+      tags: [registry]
+      summary: Upload one chunk of a blob, in order (registry host only)
+      description: >
+        F-23. Chunks must arrive in order: with `Content-Range: <start>-<end>`, `start` must be
+        the bytes received so far and the range the body's length, else 416 with the current
+        `Range`. At most 100 MB per request. The chunks are fitted to R2's multipart rule (equal
+        parts of at least 5 MiB) server-side, so any chunk size works. 202 with `Location` and
+        `Range`.
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "202":
+          description: The chunk is stored.
+          headers:
+            Location: { schema: { type: string } }
+            Range: { schema: { type: string } }
+        "400": { $ref: "#/components/responses/OciError" }
+        "401": { $ref: "#/components/responses/OciError" }
+        "404": { $ref: "#/components/responses/OciError" }
+        "409": { $ref: "#/components/responses/OciError" }
+        "413": { $ref: "#/components/responses/OciError" }
+        "416": { $ref: "#/components/responses/OciError" }
+    put:
+      operationId: ociUploadFinish
+      tags: [registry]
+      summary: Finish a blob upload (registry host only)
+      description: >
+        F-23. `?digest=sha256:…` (required) closes the upload, with an optional last chunk as
+        the body. The bytes are verified against the digest before anything reaches the locked
+        blob store (`DIGEST_INVALID` otherwise, and the upload is gone), then held by the
+        repository's deliverable. 201 with `Location` (`…/blobs/<digest>`) and
+        `Docker-Content-Digest`.
+      parameters:
+        - {
+            name: digest,
+            in: query,
+            required: true,
+            schema: { type: string, pattern: "^sha256:[0-9a-f]{64}$" },
+          }
+      requestBody:
+        required: false
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "201":
+          description: The blob is stored.
+          headers:
+            Location: { schema: { type: string } }
+            Docker-Content-Digest: { schema: { type: string } }
+        "400": { $ref: "#/components/responses/OciError" }
+        "401": { $ref: "#/components/responses/OciError" }
+        "404": { $ref: "#/components/responses/OciError" }
+        "413": { $ref: "#/components/responses/OciError" }
+    delete:
+      operationId: ociUploadCancel
+      tags: [registry]
+      summary: Cancel a blob upload (registry host only)
+      description: >
+        F-23. Aborts the upload and drops its staged bytes (only the upload's own staging
+        objects; nothing stored is ever deleted). 204.
+      responses:
+        "204": { description: The upload is gone. }
+        "401": { $ref: "#/components/responses/OciError" }
+        "404": { $ref: "#/components/responses/OciError" }
   /v2/{owner}/{repository}/tags/list:
     servers:
       - url: https://pkg.plrs.im
@@ -11428,8 +11648,11 @@ components:
     OciError:
       description: >
         OCI's error JSON (distribution-spec "Error Codes"): `NAME_UNKNOWN`, `MANIFEST_UNKNOWN`,
-        `BLOB_UNKNOWN`, `UNAUTHORIZED` (401, with the Bearer challenge) or `UNSUPPORTED` (405),
-        `no-store`, with `Docker-Distribution-API-Version: registry/2.0`.
+        `BLOB_UNKNOWN`, `UNAUTHORIZED` (401, with the Bearer challenge) or `UNSUPPORTED` (405);
+        on F-23's push routes also `BLOB_UPLOAD_INVALID`, `BLOB_UPLOAD_UNKNOWN`, `DIGEST_INVALID`,
+        `MANIFEST_BLOB_UNKNOWN`, `MANIFEST_INVALID`, `SIZE_INVALID`, `TAG_INVALID`, `DENIED`,
+        `TOOMANYREQUESTS` and `UNAVAILABLE`. `no-store`, with
+        `Docker-Distribution-API-Version: registry/2.0`.
       content:
         application/json:
           schema:
