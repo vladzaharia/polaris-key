@@ -182,7 +182,7 @@ describe("Discover (PX-16)", () => {
       within(moss).getByText("Free with a Polaris Key account"),
     ).toBeTruthy();
     expect(
-      within(moss).getByRole("img", { name: "Plays on Windows, macOS" }),
+      within(moss).getByRole("img", { name: "Runs on Windows, macOS" }),
     ).toBeTruthy();
     const lumen = await tile("Lumen RAW");
     expect(within(lumen).getByText("Beta · 90 days · 2 devices")).toBeTruthy();
