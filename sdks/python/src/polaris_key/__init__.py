@@ -40,6 +40,16 @@ from .client import DeviceInfo, PolarisKeyClient, SyncState
 #: ``polaris_key.create(**opts)`` — the one-call constructor: build, ``init()`` and (unless
 #: ``expected_services`` is pinned) discover. See :meth:`PolarisKeyClient.create`.
 create = PolarisKeyClient.create
+from .commerce import (
+    ClaimAttestationRequired,
+    ClaimNotOwned,
+    ClaimOk,
+    ClaimRefused,
+    ClaimResult,
+    CommerceBinding,
+    CommerceClient,
+    CommerceProduct,
+)
 from .config.client import DEFAULT_ENV_PREFIX, ConfigClient
 from .config.mint import MintedToken
 from .identity.client import IdentityClient, SignInPoll, SignInPrompt, SignInResult
@@ -273,6 +283,14 @@ __all__ = [
     "SignInResult",
     "MintedToken",
     "ReleaseClient",
+    "CommerceClient",
+    "CommerceBinding",
+    "CommerceProduct",
+    "ClaimResult",
+    "ClaimOk",
+    "ClaimNotOwned",
+    "ClaimAttestationRequired",
+    "ClaimRefused",
     "UpdateClient",
     "CoreContext",
     "CacheManager",

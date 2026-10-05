@@ -29,6 +29,7 @@ from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
 
 import httpx
 
+from .commerce import CommerceClient
 from .config.client import DEFAULT_ENV_PREFIX, ConfigClient
 from .core.bundle import ImportBundleResult, import_bundle
 from .core.cache import CacheManager
@@ -126,7 +127,7 @@ class DeviceInfo:
 
 class PolarisKeyClient:
     """Core plus ``client.license`` / ``.config`` / ``.devices`` / ``.identity`` /
-    ``.release`` / ``.update``."""
+    ``.release`` / ``.update`` / ``.commerce``."""
 
     def __init__(
         self,
@@ -232,6 +233,15 @@ class PolarisKeyClient:
             trust=self._trust,
             discover=self.discover,
             options=update,
+        )
+
+        # Store purchases → licence flags (P6-01). The one-call claim helpers sync on success.
+        self.commerce = CommerceClient(
+            self.core,
+            self._tokens,
+            sync=lambda: self.sync(force=True),
+            is_entitled=lambda flag: self.license.is_entitled(flag),
+            outlet_kind=lambda: self.update.outlet.kind if self.update.outlet is not None else None,
         )
 
         # `devices/report` carries the active pack set's id (plans/P4-01.md §2.11).

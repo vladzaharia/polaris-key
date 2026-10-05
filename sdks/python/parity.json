@@ -199,9 +199,8 @@
     "ui.stages": { "status": "implemented" },
     "ui.kit": { "status": "na", "runtime": "headless", "reason": "runtime" },
     "commerce.receipt": {
-      "status": "planned",
-      "unowned": true,
-      "note": "P6-01 builds the Worker bridge and leaves the SDK side planned with no owner."
+      "status": "implemented",
+      "note": "polaris_key.commerce: binding() and claim(store, payload) over the P6-01 bridge, plus claim_steam(ticket_hex, dlc_app_id), claim_play() and claim_app_store(), which sync on success; the host's Steamworks binding supplies the ticket, so there is no store dependency. Refusals keep the server's code and reason (ClaimNotOwned, ClaimAttestationRequired, ClaimRefused). tests/test_commerce.py and the commerce-claim transcript."
     }
   }
 }

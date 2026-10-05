@@ -1619,9 +1619,9 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "packs.transport.flatpak": CapabilityRow("planned", "distribution", ()),
         "ui.stages": CapabilityRow("implemented", "sdk", ()),
         "ui.kit": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
-        "commerce.receipt": CapabilityRow("planned", "license", ()),
+        "commerce.receipt": CapabilityRow("implemented", "license", ()),
     }
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "7f1bbda8fe6c6afc09c067a88532900ef065f17ca29d6037dcef95da98799056"
+CAPABILITY_DIGEST: Final[str] = "53304a3f0a715e9405db1e2f3e2aab5f4a5a1880c7b5400b12b82ef007e33afb"
