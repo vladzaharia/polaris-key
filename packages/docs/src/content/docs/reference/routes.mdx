@@ -97,6 +97,18 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/media/{product}/{asset}` | portal | A product's listing art, served same-origin |
 | GET | `https://pkg.plrs.im/` | registry | The registry host's landing page (registry host only) |
 | HEAD | `https://pkg.plrs.im/` | registry | The registry host's landing page, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/cargo/{owner}/{prefix1}/{prefix2}/{name}` | registry | Cargo sparse-index file, a longer name under `<characters 1-2>/<characters 3-4>/` (registry host only) |
+| HEAD | `https://pkg.plrs.im/cargo/{owner}/{prefix1}/{prefix2}/{name}` | registry | Cargo sparse-index file, a longer name under `<characters 1-2>/<characters 3-4>/`, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/cargo/{owner}/1/{name}` | registry | Cargo sparse-index file, a one-character name under `1/` (registry host only) |
+| HEAD | `https://pkg.plrs.im/cargo/{owner}/1/{name}` | registry | Cargo sparse-index file, a one-character name under `1/`, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/cargo/{owner}/2/{name}` | registry | Cargo sparse-index file, a two-character name under `2/` (registry host only) |
+| HEAD | `https://pkg.plrs.im/cargo/{owner}/2/{name}` | registry | Cargo sparse-index file, a two-character name under `2/`, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/cargo/{owner}/3/{first}/{name}` | registry | Cargo sparse-index file, a three-character name under `3/<first character>/` (registry host only) |
+| HEAD | `https://pkg.plrs.im/cargo/{owner}/3/{first}/{name}` | registry | Cargo sparse-index file, a three-character name under `3/<first character>/`, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/cargo/{owner}/config.json` | registry | Cargo sparse-registry configuration (registry host only) |
+| HEAD | `https://pkg.plrs.im/cargo/{owner}/config.json` | registry | Cargo sparse-registry configuration, headers only (registry host only) |
+| GET | `https://pkg.plrs.im/cargo/{owner}/files/{sha256}/{file}` | registry | Cargo crate download (registry host only) |
+| HEAD | `https://pkg.plrs.im/cargo/{owner}/files/{sha256}/{file}` | registry | Cargo crate download, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/godot/{owner}/asset-library/api/asset/{id}` | registry | Godot ≤ 4.6 Asset Library: one asset (registry host only) |
 | HEAD | `https://pkg.plrs.im/godot/{owner}/asset-library/api/asset/{id}` | registry | Godot ≤ 4.6 Asset Library: one asset, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/godot/{owner}/asset-library/api/asset` | registry | Godot ≤ 4.6 Asset Library: search (registry host only) |

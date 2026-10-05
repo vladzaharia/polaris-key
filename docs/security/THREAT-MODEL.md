@@ -1008,15 +1008,15 @@ writer can push.
   page through a stale link sees a release up to five minutes old. QR codes carry the same URLs
   the links do; one too long for the encoder (an Obtainium app config) is simply not drawn.
 
-### The registry host and package feeds (F-02 to F-11)
+### The registry host and package feeds (F-02 to F-11, F-30)
 
 **What it is.** `pkg.plrs.im` (with `pkg-staging` and `pkg-dev`) is the same Worker on a third
 custom domain, beside the console (`key.plrs.im`) and the bytes host (`dl.plrs.im`). It serves
-package feeds to registry clients: npm, PyPI, SwiftPM, Maven and Gradle, OCI and Godot (plans/F-01.md
-§6). `PKG_ORIGIN` names it, and `core/registryHost.ts` confines it to `mount.ts`
+package feeds to registry clients: npm, PyPI, SwiftPM, Maven and Gradle, OCI, Godot and Cargo
+(plans/F-01.md §6). `PKG_ORIGIN` names it, and `core/registryHost.ts` confines it to `mount.ts`
 `REGISTRY_ROUTES`, a static landing page at `/` and OCI's fixed `/v2/` root. F-02 ships the host
 and the framework, F-03 the tables and ingest, F-04 to F-09 one feed each (npm, PyPI, Swift,
-Maven, OCI, Godot) and F-11 the console's Feeds pages; each part is below. Tests: `test/registryHost.test.ts`, `test/registryFeeds.test.ts`,
+Maven, OCI, Godot), F-11 the console's Feeds pages and F-30 the Cargo feed; each part is below. Tests: `test/registryHost.test.ts`, `test/registryFeeds.test.ts`,
 `test/feedAdapters.test.ts` (the adapter conformance suite), `test/registryDrain.test.ts`,
 `test-workerd/registry.test.ts`, and the curl client of `registry-clients.yml`.
 
@@ -1156,7 +1156,8 @@ symbol); review catches the rest.
   protocol-fixed names (npm tarballs, Swift archives, Maven files) immutable for clients that
   cache by name, and Swift's trust-on-first-use safe.
 - **Dependency confusion.** A feed takes only names in its operator-set namespace (npm and Swift
-  scope, Maven group prefixes, PyPI names and prefixes, the Godot publisher), enforced at ingest
+  scope, Maven group prefixes, PyPI names and prefixes, the Godot publisher; OCI and Cargo names
+  sit under the owner, and Cargo takes a crate only for a dependency naming the registry), enforced at ingest
   (`package-namespace`); an ecosystem with no configured feed takes nothing. Names collide after
   each ecosystem's normalisation (PEP 503; case-insensitive npm, Swift, Maven), in the manifest
   (`package_name_collision`) and in the key. `upstream` is pinned to `none` by a CHECK, so no feed
@@ -1296,6 +1297,37 @@ the valueless `reverse` flag are normalised into the key, so variants cannot sha
 package stricter than its feed is left out of every list. The per-package documents are read
 fresh: a stored render whose stamp (package rows plus feed settings) differs from D1 is rendered
 again before it is served, so a yank is never hidden behind a stale document.
+
+**The Cargo feed (F-30).** A read-only sparse index (`services/distribution/registry/cargo/`;
+tests: `test/registry/cargo.test.ts`, the conformance suite, the Cargo rows of
+`registry-clients.yml`): `config.json`, one JSON-lines index file per crate and the `dl` downloads.
+Adding it was a review trigger; it adds no type to `REGISTRY_HOST_TYPES` (both documents are
+`application/json`, crates `application/octet-stream` attachments), no write route and no new
+credential path.
+
+- **No publish API.** `config.json` carries no `api`, so `cargo publish`, `cargo yank` and
+  `cargo owner` have nothing to call; a crate enters only through `pkey release publish` and
+  Release's ingest, like every package. Cargo's bare `Authorization: <token>` is the ladder's
+  existing `raw` credential, judged like any other registry token.
+- **Index content is tenant input, re-shaped.** The index lines are rendered from the metadata the
+  CLI extracted from the crate's normalised `Cargo.toml`; the Worker never unpacks a crate. Each
+  dependency, feature and string is re-checked and bounded in the renderer (a malformed entry is
+  dropped) and the lines leave only as JSON. A dependency's `registry` is copied from the
+  publisher's own manifest: a crate can name another registry for its dependencies, which Cargo
+  then contacts for that crate. That is Cargo's own model (crates.io crates can do the same) and
+  is visible in the lockfile; this feed never proxies or vouches for another registry.
+- **Bytes are what was published.** `dl` is `files/<sha256>/<crate>-<version>.crate`: served only
+  when the hash, the crate name and the version all match one published version of the owner's
+  crate and the owner holds the blob's reference (`hasRef`). Cargo verifies every download
+  against the line's `cksum`; like PyPI's fragment hashes, that is integrity against the index,
+  not authenticity beyond TLS.
+- **Yank is not a recall.** A yanked version keeps its line (`yanked: true`) and its download, so
+  existing lockfiles build; a new resolution skips it (Cargo's semantics, the PEP 592 residual).
+- **Platform switch.** Migration `0072_cargo_registry_policy.sql` seeds Cargo's
+  `dist_registry_policy` row (on, 50 MiB); a missing row would read as off.
+- **Private feeds.** A non-public feed answers `config.json` 401; the admitted answer says
+  `auth-required: true`, so Cargo sends the token on every request, never as a URL. A crate
+  stricter than its public feed is refused (401) to a client the feed admits anonymously.
 
 **The Feeds console and its admin API (F-11).** `/manage/api/platform/feeds/*` and
 `/manage/api/products/<slug>/distribution/feeds/*` (`admin/handlers/feeds.ts`) sit behind the
