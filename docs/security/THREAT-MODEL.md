@@ -1647,8 +1647,8 @@ chose to keep the Admin team key (2026-10-04), so the write gate of A-17a (below
 
 **What it is.** Every storefront is one `StorefrontAdapter` (`core/storefront/adapter.ts`), the
 same base the package feeds' `FeedAdapter` extends (`core/adapters/contract.ts`, notes/S-15 §6). An
-adapter declares its operations (`api` behind the gate, `ci`, `pr`, `deep-link` or `unsupported`
-with a reason), its rate limits, its listing profile, its never-list and its typed-confirmation
+adapter declares its operations (`api` behind the gate, `ci`, `pr`, `deep-link`, `first-party`
+on Polaris Key's own tables, or `unsupported` with a reason), its rate limits, its listing profile, its never-list and its typed-confirmation
 phrase; what is shared it cannot bypass: the **store-agnostic write gate** (`gate.ts`, the engine;
 `match/{jsonapi,json,form,multipart}.ts`, one body matcher per wire style;
 `rules/<store>.ts`, one rule table per adapter, classified against a pinned vendor spec), the
@@ -1686,6 +1686,17 @@ line.
   engine; A-17a's `hookOrigin` rule, generalised).
 - **(g) Imported listing text is data**: rendered escaped in the console, never as HTML (A-18b,
   A-18c, A-18j).
+- **(h) A first-party adapter never reaches a vendor** (PS-01; notes/S-21 §6.1 and threat S9).
+  The `polaris-key` adapter (`stores/polarisKey.ts`) is the portal's own storefront: its ops are
+  `first-party` (`{mode, plane: "worker", handler}`) and run against Polaris Key's tables through
+  the ports of `firstParty.ts`. Conformance item 11 requires that only an adapter with no
+  credential, no gate and no spec pin declares a `first-party` op, and that it mixes in no `api`,
+  `ci` or `pr` op; that every one names a registered handler; that each handler, run with `fetch`
+  replaced by a thrower, sends nothing, writes no audit row for a read and exactly one for a
+  write; and that the typed op (`submit`, which lists the product) refuses without the typed
+  confirmation, as the gate does for a vendor. A test shows a fake first-party op on an adapter
+  with a credential fails the suite. The handlers' real reads and writes (PS-02, PS-03, PS-06)
+  plug in as ports and inherit these checks.
 
 **Boundaries.** `core/adapters/` imports nothing; `core/storefront/` imports no service, and its
 declaration modules import only the adapter layer, so the CLI's copy is generated
