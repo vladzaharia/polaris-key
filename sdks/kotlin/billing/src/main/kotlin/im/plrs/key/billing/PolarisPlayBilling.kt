@@ -62,7 +62,7 @@ public interface PlayBillingPort {
     /** Run the purchase flow for [productId] with [obfuscatedAccountId]; suspends until Play answers. */
     public suspend fun purchase(activity: Activity, productId: String, productType: String, obfuscatedAccountId: String): PlayFlowResult
 
-    /** The purchases Play holds for this account, of [productType]. */
+    /** The purchases Play holds for this account, of [productType]; throws when Play cannot list them. */
     public suspend fun purchases(productType: String): List<PlayPurchase>
 
     /** Acknowledge one purchase; true when Play took it. */
@@ -85,6 +85,21 @@ public sealed interface PlayPurchaseOutcome {
     public data class BillingFailed(val code: String, val responseCode: Int?, val message: String?) : PlayPurchaseOutcome
 }
 
+/** [PolarisPlayBilling.restore]'s outcome. */
+public sealed interface PlayRestoreOutcome {
+    /**
+     * Each completed purchase Play holds, with its claim. [unlisted] maps a product type Play could not
+     * list to Play's message; its purchases were not claimed this time.
+     */
+    public data class Restored(
+        val claims: List<Pair<PlayPurchase, ClaimResult>>,
+        val unlisted: Map<String, String?> = emptyMap(),
+    ) : PlayRestoreOutcome
+
+    /** Play Billing failed or is unavailable ([code] `platform-error`, or `unsupported`). */
+    public data class BillingFailed(val code: String, val responseCode: Int?, val message: String?) : PlayRestoreOutcome
+}
+
 /** One-call Play Billing purchases and restores that become licence flags. */
 public class PolarisPlayBilling(
     private val client: PolarisKeyClient,
@@ -102,7 +117,13 @@ public class PolarisPlayBilling(
             PlayFlowResult.Cancelled -> PlayPurchaseOutcome.Cancelled
             is PlayFlowResult.Failed -> PlayPurchaseOutcome.BillingFailed(ErrorCode.platformError, flow.responseCode, flow.message)
             is PlayFlowResult.Purchased -> {
-                val mine = flow.purchases.filter { productId in it.productIds }.ifEmpty { flow.purchases }
+                // Only a purchase of the requested product is claimed under it. Anything else Play
+                // reports stays unacknowledged for restore() or the renewals loop, which claim each
+                // purchase under its own product.
+                val mine = flow.purchases.filter { productId in it.productIds }
+                if (mine.isEmpty()) {
+                    return PlayPurchaseOutcome.BillingFailed(ErrorCode.platformError, null, "Play reported no purchase of $productId")
+                }
                 val purchased = mine.firstOrNull { it.state == PlayPurchase.PURCHASED }
                     ?: return if (mine.any { it.state == PlayPurchase.PENDING }) PlayPurchaseOutcome.Pending
                     else PlayPurchaseOutcome.BillingFailed(ErrorCode.platformError, null, "Play reported no completed purchase")
@@ -118,18 +139,22 @@ public class PolarisPlayBilling(
     }
 
     /**
-     * Claim every completed purchase Play holds for this account (a reinstall, a new device). Answers
-     * each purchase with its claim; syncs once when any claim succeeded.
+     * Claim every completed purchase Play holds for this account (a reinstall, a new device), each under
+     * its own product. Answers [PlayRestoreOutcome.Restored] with each purchase's claim (syncing once
+     * when any claim succeeded) and the product types Play could not list; when Play Billing is
+     * unavailable, [PlayRestoreOutcome.BillingFailed] with `unsupported`, as [purchase] does.
      */
-    public suspend fun restore(productTypes: List<String> = listOf(PRODUCT_INAPP, PRODUCT_SUBS)): List<Pair<PlayPurchase, ClaimResult>> {
-        if (!billing.connect()) return emptyList()
+    public suspend fun restore(productTypes: List<String> = listOf(PRODUCT_INAPP, PRODUCT_SUBS)): PlayRestoreOutcome {
+        if (!billing.connect()) return PlayRestoreOutcome.BillingFailed(ErrorCode.unsupported, null, "Play Billing is unavailable on this device")
         val out = ArrayList<Pair<PlayPurchase, ClaimResult>>()
+        val unlisted = LinkedHashMap<String, String?>()
         for (type in productTypes) {
             val held = try {
                 billing.purchases(type)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                unlisted[type] = e.message
                 continue
             }
             for (p in held) {
@@ -142,7 +167,10 @@ public class PolarisPlayBilling(
             }
         }
         if (out.any { it.second is ClaimResult.Ok }) sync()
-        return out
+        if (out.isEmpty() && unlisted.isNotEmpty() && unlisted.size == productTypes.size) {
+            return PlayRestoreOutcome.BillingFailed(ErrorCode.platformError, null, unlisted.values.firstOrNull { it != null } ?: "Play could not list purchases")
+        }
+        return PlayRestoreOutcome.Restored(out, unlisted)
     }
 
     /**

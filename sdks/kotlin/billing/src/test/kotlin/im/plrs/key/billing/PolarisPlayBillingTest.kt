@@ -36,12 +36,17 @@ class PolarisPlayBillingTest {
     private class FakePlay(var flow: PlayFlowResult, var held: List<PlayPurchase> = emptyList()) : PlayBillingPort {
         val accountIds = mutableListOf<String>()
         val acknowledged = mutableListOf<String>()
-        override suspend fun connect() = true
+        var available = true
+        var listFails: Set<String> = emptySet()
+        override suspend fun connect() = available
         override suspend fun purchase(activity: Activity, productId: String, productType: String, obfuscatedAccountId: String): PlayFlowResult {
             accountIds += obfuscatedAccountId
             return flow
         }
-        override suspend fun purchases(productType: String) = if (productType == PolarisPlayBilling.PRODUCT_INAPP) held else emptyList()
+        override suspend fun purchases(productType: String): List<PlayPurchase> {
+            if (productType in listFails) throw PlayBillingException(6, "service error")
+            return if (productType == PolarisPlayBilling.PRODUCT_INAPP) held else emptyList()
+        }
         override suspend fun acknowledge(purchaseToken: String): Boolean {
             acknowledged += purchaseToken
             return true
@@ -112,7 +117,7 @@ class PolarisPlayBillingTest {
         val play = FakePlay(PlayFlowResult.Cancelled, held = listOf(purchased("a", ack = true), purchased("b"), purchased("c").copy(state = PlayPurchase.PENDING)))
         val (client, transport) = client { ok }
         val helper = PolarisPlayBilling(client, play)
-        val restored = helper.restore()
+        val restored = (helper.restore() as PlayRestoreOutcome.Restored).claims
         assertEquals(listOf("a", "b"), restored.map { it.first.purchaseToken })
         assertTrue(restored.all { it.second is ClaimResult.Ok })
         // Only the unacknowledged one is acknowledged.
@@ -121,5 +126,40 @@ class PolarisPlayBillingTest {
         val updates = helper.onPurchasesUpdated(listOf(purchased("d"), purchased("e", ack = true)))
         assertEquals(listOf("d"), updates.map { it.first.purchaseToken })
         assertEquals(3, transport.requests().count { it.path.endsWith("/claim") })
+    }
+
+    @Test
+    fun aPurchaseOfAnotherProductIsNeverClaimedUnderTheRequestedOne() = runBlocking {
+        val other = PlayPurchase(listOf("coins"), "tokOther", PlayPurchase.PURCHASED, false)
+        val play = FakePlay(PlayFlowResult.Purchased(listOf(other)))
+        val (client, transport) = client { ok }
+        val out = PolarisPlayBilling(client, play).purchase(activity, "skins")
+        assertTrue(out is PlayPurchaseOutcome.BillingFailed)
+        assertEquals("platform-error", (out as PlayPurchaseOutcome.BillingFailed).code)
+        assertTrue(transport.requests().none { it.path.endsWith("/claim") })
+        assertTrue(play.acknowledged.isEmpty())
+    }
+
+    @Test
+    fun restoreWithoutPlayBillingIsATypedFailure() = runBlocking {
+        val play = FakePlay(PlayFlowResult.Cancelled, held = listOf(purchased("a"))).also { it.available = false }
+        val (client, transport) = client { ok }
+        val out = PolarisPlayBilling(client, play).restore()
+        assertEquals(PlayRestoreOutcome.BillingFailed("unsupported", null, "Play Billing is unavailable on this device"), out)
+        assertTrue(transport.requests().none { it.path.endsWith("/claim") })
+    }
+
+    @Test
+    fun restoreNamesTheProductTypesPlayCouldNotList() = runBlocking {
+        val play = FakePlay(PlayFlowResult.Cancelled, held = listOf(purchased("a"))).also { it.listFails = setOf(PolarisPlayBilling.PRODUCT_SUBS) }
+        val (client, _) = client { ok }
+        val out = PolarisPlayBilling(client, play).restore() as PlayRestoreOutcome.Restored
+        assertEquals(listOf("a"), out.claims.map { it.first.purchaseToken })
+        assertEquals(setOf(PolarisPlayBilling.PRODUCT_SUBS), out.unlisted.keys)
+        // Every type failing is a typed failure, not an empty restore.
+        play.listFails = setOf(PolarisPlayBilling.PRODUCT_INAPP, PolarisPlayBilling.PRODUCT_SUBS)
+        val failed = PolarisPlayBilling(client, play).restore()
+        assertTrue(failed is PlayRestoreOutcome.BillingFailed)
+        assertEquals("platform-error", (failed as PlayRestoreOutcome.BillingFailed).code)
     }
 }

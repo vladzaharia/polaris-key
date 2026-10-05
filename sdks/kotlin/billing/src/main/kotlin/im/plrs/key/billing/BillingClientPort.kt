@@ -1,4 +1,4 @@
-// [PlayBillingPort] over Play Billing Library 7's BillingClient. One PurchasesUpdatedListener serves
+// [PlayBillingPort] over Play Billing Library 8's BillingClient. One PurchasesUpdatedListener serves
 // both the purchase flow in progress and the renewals loop: purchases Play reports while no flow waits
 // (a pending purchase that completed, a purchase made in the Play Store app) go to [onUpdate], which
 // `PolarisPlayBilling.create` wires to `onPurchasesUpdated`.
@@ -18,6 +18,7 @@ import com.android.billingclient.api.PurchasesUpdatedListener
 import com.android.billingclient.api.QueryProductDetailsParams
 import com.android.billingclient.api.QueryPurchasesParams
 import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +27,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+
+/** Play could not answer a query: its `BillingResponseCode` and debug message. */
+public class PlayBillingException(public val responseCode: Int, message: String?) : Exception("Play Billing $responseCode: ${message.orEmpty()}")
 
 /** Play Billing Library's BillingClient as a [PlayBillingPort]. */
 public class BillingClientPort(
@@ -79,10 +83,11 @@ public class BillingClientPort(
         val query = QueryProductDetailsParams.newBuilder().setProductList(
             listOf(QueryProductDetailsParams.Product.newBuilder().setProductId(productId).setProductType(productType).build()),
         ).build()
+        // Billing 8 answers a QueryProductDetailsResult (fetched details plus the unfetched products).
         val (result, details) = suspendCancellableCoroutine { cont ->
-            billing.queryProductDetailsAsync(query) { r, list -> if (cont.isActive) cont.resume(r to list) }
+            billing.queryProductDetailsAsync(query) { r, answer -> if (cont.isActive) cont.resume(r to answer.productDetailsList) }
         }
-        val product = details.firstOrNull()
+        val product = details.firstOrNull { it.productId == productId }
         if (result.responseCode != BillingClient.BillingResponseCode.OK || product == null) {
             return@withLock PlayFlowResult.Failed(result.responseCode, result.debugMessage.ifEmpty { "Play knows no product $productId" })
         }
@@ -107,7 +112,9 @@ public class BillingClientPort(
 
     override suspend fun purchases(productType: String): List<PlayPurchase> = suspendCancellableCoroutine { cont ->
         billing.queryPurchasesAsync(QueryPurchasesParams.newBuilder().setProductType(productType).build()) { r, list ->
-            if (cont.isActive) cont.resume(if (r.responseCode == BillingClient.BillingResponseCode.OK) list.map(::map) else emptyList())
+            if (!cont.isActive) return@queryPurchasesAsync
+            if (r.responseCode == BillingClient.BillingResponseCode.OK) cont.resume(list.map(::map))
+            else cont.resumeWithException(PlayBillingException(r.responseCode, r.debugMessage))
         }
     }
 

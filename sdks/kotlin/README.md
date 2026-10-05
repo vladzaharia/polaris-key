@@ -195,7 +195,11 @@ client.identity.waitForSignIn(prompt)
   After an `Ok` claim call `sync(force = true)`. `polaris-key-billing`'s `PolarisPlayBilling`
   (`PolarisPlayBilling.create(context, client)`) is the one-call Play purchase: `purchase(...)`
   sets the binding as `obfuscatedAccountId`, claims, acknowledges only after the claim
-  answered ok and syncs; `restore()` and the `PurchasesUpdatedListener` loop claim what Play holds.
+  answered ok and syncs; `restore()` and the `PurchasesUpdatedListener` loop claim what Play holds,
+  each purchase under its own product. When Play Billing is unavailable both answer a typed
+  `BillingFailed` (`unsupported`); `restore()`'s `Restored.unlisted` names the product types Play
+  could not list. Built on Play Billing Library 8 (Play's floor for new apps and updates from
+  31 August 2026).
 - **`:identity`**: `beginSignIn`, `pollSignIn` (once), `waitForSignIn` (paced, cancellable).
 - **Delivery helpers** (notes/SDK-PARITY-PASS.md §3.5–§3.8, §3.14): `release.fetch(target, to,
 onProgress)` downloads one build of a verified release record (a `binary` decision, a version +
