@@ -666,6 +666,145 @@ describe("publishing a package release (F-03)", () => {
   });
 });
 
+/**
+ * The v0.8.22 incident: a `main` prerelease and a tag's stable release of one package publish
+ * concurrently. Both tickets answered the same next `seq`; the prerelease's submit took it, and
+ * the stable release's descriptor, pinned to that seq by the CLI, was refused
+ * `seq_not_increasing`. A package's seq is publication order only (the feeds order versions by
+ * the deliverable's scheme, and replay is refused by unique-forever versions), so the package
+ * publish leaves `seq` to the server, which takes the next one atomically at insert.
+ */
+describe("package seq: concurrent main prereleases and tag releases", () => {
+  const PRE = new TextEncoder().encode("npm tarball bytes, 1.5.0-main.9");
+  const OLD = new TextEncoder().encode("npm tarball bytes, 1.3.0");
+
+  async function ticketFor(version: string, bytes: Uint8Array) {
+    const up = await post("uploads", {
+      objects: [{ sha256: sha(bytes), size: bytes.length }],
+      releases: [{ deliverable: "npm.sdk", version }],
+    });
+    expect(up.status).toBe(200);
+    const u = (await up.json()) as {
+      ticket: string;
+      prefix: string;
+      seqs: { seq: number }[];
+    };
+    r2.seed(`${u.prefix}${sha(bytes)}`, bytes, { withSha256: true });
+    return u;
+  }
+
+  const submit = async (ticket: string, descriptor: Record<string, any>) => {
+    const res = await post("submit", { ticket, descriptor });
+    return { res, body: (await res.json()) as Record<string, any> };
+  };
+
+  const seqOf = async (releaseId: string) =>
+    (
+      await db.first<{ seq: number }>(
+        "SELECT seq FROM release_metadata WHERE product = ? AND release_id = ?",
+        SLUG,
+        releaseId,
+      )
+    )?.seq;
+
+  it("an older stable release published after a newer prerelease takes the next seq", async () => {
+    // Both tickets are issued before either submit: each answers seq 1.
+    const pre = await ticketFor("1.5.0-main.9", PRE);
+    const stable = await ticketFor("1.4.0", TGZ);
+    expect(pre.seqs[0]!.seq).toBe(1);
+    expect(stable.seqs[0]!.seq).toBe(1);
+
+    const p = await submit(
+      pre.ticket,
+      npmDescriptor("1.5.0-main.9", PRE, { channel: "beta" }),
+    );
+    expect(p.res.status, JSON.stringify(p.body)).toBe(200);
+
+    // The stable release, with no seq, is created and takes the next one.
+    const dry = await post("submit", {
+      ticket: stable.ticket,
+      descriptor: npmDescriptor(),
+      dryRun: true,
+    });
+    expect(dry.status).toBe(200);
+    expect(await dry.json()).toMatchObject({ ok: true, outcome: "created" });
+    const s = await submit(stable.ticket, npmDescriptor());
+    expect(s.res.status, JSON.stringify(s.body)).toBe(200);
+    expect(s.body).toMatchObject({ outcome: "created" });
+    expect(await seqOf("npm.sdk@1.5.0-main.9")).toBe(1);
+    expect(await seqOf("npm.sdk@1.4.0")).toBe(2);
+
+    // Each channel heads where its versions say, whatever the publication order.
+    const product = (await getProduct(db, SLUG))!;
+    const catalog = releaseCatalog({
+      db,
+      env,
+      product: product as never,
+      now: NOW,
+      hooks: NO_HOOKS,
+    } as never);
+    expect(await catalog.packageChannelHeads("npm.sdk")).toContainEqual({
+      channel: "stable",
+      releaseId: "npm.sdk@1.4.0",
+      version: "1.4.0",
+    });
+
+    // A re-run of the stable publish is unchanged, keeping its seq.
+    const again = await publish(npmDescriptor());
+    expect(again.res.status).toBe(200);
+    expect(again.body).toMatchObject({ outcome: "unchanged" });
+    expect(await seqOf("npm.sdk@1.4.0")).toBe(2);
+  });
+
+  it("still refuses an explicit seq that another publish took (the pre-fix descriptor)", async () => {
+    const pre = await ticketFor("1.5.0-main.9", PRE);
+    const stable = await ticketFor("1.4.0", TGZ);
+    expect(
+      (
+        await submit(
+          pre.ticket,
+          npmDescriptor("1.5.0-main.9", PRE, {
+            channel: "beta",
+            seq: pre.seqs[0]!.seq,
+          }),
+        )
+      ).res.status,
+    ).toBe(200);
+    const s = await submit(
+      stable.ticket,
+      npmDescriptor("1.4.0", TGZ, { seq: stable.seqs[0]!.seq }),
+    );
+    expect(s.res.status).toBe(409);
+    expect(s.body).toMatchObject({ reason: "seq_not_increasing" });
+    expect(await pkgRow("1.4.0")).toBeNull();
+  });
+
+  it("two stable releases out of order: the older one is new, so it publishes, and the newer still heads stable", async () => {
+    expect((await publish(npmDescriptor())).res.status).toBe(200);
+    const old = await publish(npmDescriptor("1.3.0", OLD), [OLD]);
+    expect(old.res.status, JSON.stringify(old.body)).toBe(200);
+    expect(await seqOf("npm.sdk@1.3.0")).toBe(2);
+    const product = (await getProduct(db, SLUG))!;
+    const catalog = releaseCatalog({
+      db,
+      env,
+      product: product as never,
+      now: NOW,
+      hooks: NO_HOOKS,
+    } as never);
+    expect(await catalog.packageChannelHeads("npm.sdk")).toContainEqual({
+      channel: "stable",
+      releaseId: "npm.sdk@1.4.0",
+      version: "1.4.0",
+    });
+    // Replay protection is the version: 1.4.0 with other bytes stays refused.
+    const other = new TextEncoder().encode("other bytes for 1.4.0");
+    const taken = await publish(npmDescriptor("1.4.0", other), [other]);
+    expect(taken.res.status).toBe(409);
+    expect(taken.body.reason).toBe("package-version-taken");
+  });
+});
+
 describe("the releaseCatalog package readers (F-03)", () => {
   it("lists package deliverables and versions, and keeps packages out of the device-facing reads", async () => {
     expect((await publish(npmDescriptor())).res.status).toBe(200);

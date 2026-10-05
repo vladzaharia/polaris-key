@@ -24697,16 +24697,13 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
         metadata: extracted.metadata
       }
     };
-    const check = () => {
-      const v = validateReleaseDescriptor(descriptor, context);
-      if (!v.ok)
-        throw new Error(
-          `The package descriptor does not validate:
+    const v = validateReleaseDescriptor(descriptor, context);
+    if (!v.ok)
+      throw new Error(
+        `The package descriptor does not validate:
 ${v.errors.map((e) => `  ${e.path} ${e.code}: ${e.message}`).join("\n")}`
-        );
-      return v.releaseId;
-    };
-    const releaseId = check();
+      );
+    const releaseId = v.releaseId;
     out.write(
       `Package ${declared.name} ${version} (${declared.ecosystem}, ${hashed.length} file${hashed.length === 1 ? "" : "s"})
 `
@@ -24765,8 +24762,7 @@ Local validation: ok
         objects: [...objects.values()].map((f) => ({
           sha256: f.sha256,
           size: f.size
-        })),
-        releases: [{ deliverable: declared.id, version }]
+        }))
       }
     });
     if (typeof ticket.ticket !== "string" || !ticket.credentials || !Array.isArray(ticket.objects))
@@ -24776,13 +24772,6 @@ Local validation: ok
     mask(opts.env, out, ticket.ticket);
     mask(opts.env, out, ticket.credentials.secretAccessKey);
     mask(opts.env, out, ticket.credentials.sessionToken);
-    const seq = ticket.seqs?.find(
-      (s) => s.deliverable === declared.id && s.version === version
-    )?.seq;
-    if (seq !== void 0 && Number.isSafeInteger(seq) && seq >= 1) {
-      descriptor.seq = seq;
-      check();
-    }
     let verdict;
     try {
       verdict = await client.postJson("release/publish/submit", {
