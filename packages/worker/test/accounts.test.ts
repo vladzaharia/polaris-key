@@ -772,6 +772,8 @@ describe("the device binding and Core's clearing hook", () => {
   it("sign-out clears the binding; it releases the device only when the sign-in bound it to that account's licence", async () => {
     const w = await world();
     await seedProduct(w.db, "djdl");
+    // A binding needs Identity on (PX-W17's bind guard).
+    await setIdentityServices(w.db, "djdl", { license: true, identity: true });
     const product = (await loadProduct(w.env, w.db, "djdl"))!;
     const { key, licenseId } = await seedLicenseWithKey(w.db, "djdl");
     const a = await signedIn(w.db, emailIdentity("ada@example.com"), NOW, {
