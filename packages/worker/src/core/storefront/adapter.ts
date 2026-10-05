@@ -44,7 +44,9 @@ import type { ListingProfile } from "./listing.js";
 import type { PrPlaneStore } from "./prPlane.js";
 import { APP_STORE_ADAPTER } from "./stores/appStore.js";
 import { FLATHUB_ADAPTER } from "./stores/flathub.js";
+import { GOOGLE_PLAY_ADAPTER } from "./stores/googlePlay.js";
 import { HOMEBREW_ADAPTER } from "./stores/homebrew.js";
+import { MICROSOFT_STORE_ADAPTER } from "./stores/microsoftStore.js";
 import { ITCH_ADAPTER } from "./stores/itch.js";
 import { SCOOP_ADAPTER } from "./stores/scoop.js";
 import { SNAP_ADAPTER } from "./stores/snap.js";
@@ -55,6 +57,8 @@ export type { ListingProfile } from "./listing.js";
 /** The storefront adapters. Worker-internal ids; each maps onto existing outlet kinds. */
 export type StorefrontId =
   | "app-store"
+  | "google-play"
+  | "microsoft-store"
   | "itch"
   | "snap"
   | "winget"
@@ -170,6 +174,8 @@ export interface StorefrontRuntime<Ctx, PinnedCtx> {
 /** THE REGISTRY: one line per storefront. */
 export const STOREFRONT_ADAPTERS: readonly StorefrontAdapter[] = [
   APP_STORE_ADAPTER,
+  GOOGLE_PLAY_ADAPTER,
+  MICROSOFT_STORE_ADAPTER,
   ITCH_ADAPTER,
   SNAP_ADAPTER,
   WINGET_ADAPTER,

@@ -341,7 +341,7 @@ describe("store-step report-back (A-18h)", () => {
       w.db.run(
         `INSERT INTO store_operations
            (op_id, store, scope, product, op, natural_key, state, request_hash, actor, created_at, plane)
-         VALUES (?, 'msstore', 'product', ?, ?, 'sub-1', ?, 'h', 'u1', ?, 'worker')`,
+         VALUES (?, 'microsoft-store', 'product', ?, ?, 'sub-1', ?, 'h', 'u1', ?, 'worker')`,
         `${op}-${at}`,
         SLUG,
         op,

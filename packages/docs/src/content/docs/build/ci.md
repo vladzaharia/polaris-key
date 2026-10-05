@@ -420,6 +420,48 @@ command replaces only the files it writes there, and refuses the working directo
 it, or a directory that holds anything else (keep the keystore and the APKs outside it). See
 [Storefront feeds](/docs/services/distribution/feeds/#the-f-droid-repository).
 
+## Listing assets
+
+`pkey listing assets` makes every store's listing art from three images a person draws: a square
+icon master (1024×1024 is best), key art with no logo on it, and the wordmark on transparency.
+Export them in sRGB: an image with another embedded colour profile is converted first, and that
+conversion is not guaranteed to give identical bytes on every machine. It needs the `sharp` image
+library beside `pkey` (`npm install sharp`):
+
+```yaml
+- run: |
+    npm install sharp
+    node pkey.mjs listing assets --out listing --icon art/icon.png --key-art art/key-art.png \
+      --key-art-portrait art/key-art-portrait.png --wordmark art/wordmark.png --focal 0.4,0.35 \
+      --screenshots art/screenshots --accept play/phone-portrait/01-menu \
+      --upload --product your-product
+```
+
+- **Icons** are derived from the master: Google Play 512, the Microsoft tile 300, Steam's 184 JPG
+  and 256 icons, and Flathub, Snap, winget and F-Droid. Android's adaptive layers are derived only
+  when the mark sits inside the central 66 of 108 dp (about 61 %); otherwise the report marks them
+  `human`, for you to draw.
+- **Store art** is composed: the key art is cropped to each slot's shape around `--focal` (x,y as
+  fractions), and the wordmark is placed only on slots that allow a title. The Steam library hero,
+  the page background and the Microsoft super hero never get text. With no key art, every slot
+  gets an icon-only fallback marked red. A title slot with no wordmark is marked red too.
+- **Screenshots** sit under `--screenshots`, one directory per size class (`phone-portrait`,
+  `tablet`, `desktop-16x9`, `desktop-16x10`, `tv`, `wear`, `xr`). Each is checked for the App
+  Store, Google Play, the Microsoft Store and Steam. One that does not fit gets a crop or pad
+  proposal: an iPhone 6.9″ shot is over Play's 2:1, and a Mac 16:10 shot is not Steam's 16:9. The
+  proposal is previewed under `--out/proposals/` and used only for the images you name with
+  `--accept <store>/<class>/<name>` (the crop) or `--pad <store>/<class>/<name>`.
+
+Everything lands under `--out`: one directory per store, `report.json` (every slot's status, size,
+alpha, format and digest), `preview.html` to look at, and a ZIP per store under `packs/` (Steam has
+no listing API, so its pack is what you upload by hand). `--upload` stores the images in the
+product's [shared listing](/docs/admin/storefront-listing/). It needs `distribution:listing`,
+which an operator adds deliberately. Only `ok` and `warn` outputs go up: a red output (an icon-only
+fallback, a title slot with no wordmark, a file over the store's size limit) stays in `--out` and is
+listed as not uploaded, as are `human` and `missing` slots and pending proposals. It never pushes
+anything to a store, and it never replaces an image an operator uploaded in the console. Rerunning with the same `--out` replaces only the files
+the last run wrote.
+
 ## Storefront steps (itch.io and Snap)
 
 itch.io and the Snap Store take builds only through their own CLIs, `butler` and `snapcraft`,

@@ -239,6 +239,7 @@ export const MSSTORE_CI: CiPlaneStore = {
         confirm: "plain",
         why: "a package submission from CI, never over a draft the Worker staged (A-18f): the CLI would replace it",
         unlessWorkerStaged: {
+          workerStore: "microsoft-store",
           opens: ["submission.create"],
           closes: ["submission.commit"],
         },

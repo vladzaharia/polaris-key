@@ -28,6 +28,7 @@ export interface CiCommandRule {
   readonly confirm: string;
   readonly why: string;
   readonly unlessWorkerStaged?: {
+    readonly workerStore?: string;
     readonly opens: readonly string[];
     readonly closes: readonly string[];
   };

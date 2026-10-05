@@ -274,7 +274,11 @@ function readPrPull(repo: string, v: unknown): PrStepPull | string {
 export async function workerDraftStaged(
   ctx: ReportContext,
   store: string,
-  guard: { opens: readonly string[]; closes: readonly string[] },
+  guard: {
+    workerStore?: string;
+    opens: readonly string[];
+    closes: readonly string[];
+  },
 ): Promise<boolean> {
   const ops = [...guard.opens, ...guard.closes];
   if (ops.length === 0) return false;
@@ -283,7 +287,7 @@ export async function workerDraftStaged(
       WHERE store = ? AND scope = 'product' AND product = ? AND plane = 'worker'
         AND op IN (${ops.map(() => "?").join(", ")})
       ORDER BY created_at DESC, rowid DESC LIMIT 50`,
-    store,
+    guard.workerStore ?? store,
     ctx.product,
     ...ops,
   );

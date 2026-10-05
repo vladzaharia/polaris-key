@@ -504,7 +504,7 @@ describe("the fit report", () => {
   });
 });
 
-describe("import from .pkey/distribution listing", () => {
+describe("import from .pkey/distribution listing (A-18c: preview, then confirm)", () => {
   const LISTING = {
     name: "Diceroll",
     subtitle: "Roll dice with friends",
@@ -516,49 +516,105 @@ describe("import from .pkey/distribution listing", () => {
     screenshots: ["https://diceroll.example/1.png"],
   };
 
-  it("copies the manifest listing an outlet shows into an empty model, source import", async () => {
+  /** Preview the import, then apply it with the preview's digest. */
+  async function importApplied(body: Record<string, unknown>) {
+    const preview = await (await admin("POST", "/import", body)).json();
+    const res = await admin("POST", "/import", {
+      ...body,
+      confirm: preview.import.digest,
+    });
+    expect(res.status).toBe(200);
+    return { preview: preview.import, applied: await res.json() };
+  }
+
+  const fieldsOf = (changes: Loose[], action?: string) =>
+    changes.filter((c) => !action || c.action === action).map((c) => c.field);
+
+  it("previews the manifest listing an outlet shows, writes nothing; applying stores it, source import", async () => {
     await seedOutlet("altstore", LISTING);
     const res = await admin("POST", "/import", { source: "manifest" });
     expect(res.status).toBe(200);
     const v = await res.json();
-    expect(v.import).toEqual({
-      outlet: "altstore",
-      imported: [
-        "name",
-        "developerName",
-        "tint",
-        "urls.website",
-        "locales.en-US.subtitle",
-        "locales.en-US.description",
-      ],
-      kept: [],
+    expect(v.import).toMatchObject({
+      applied: false,
+      createsListing: true,
+      defaultLocale: "en-US",
+      sources: [{ source: "manifest", ref: "altstore", ok: true }],
       refused: [],
-      skipped: [
-        { field: "iconUrl", reason: expect.stringMatching(/not imported/) },
-        { field: "screenshots", reason: expect.stringMatching(/not imported/) },
-      ],
+      written: [],
     });
-    expect(v.listing.source).toBe("import");
-    expect(v.listing.app).toEqual({
+    expect(v.import.digest).toMatch(/^[0-9a-f]{64}$/);
+    expect(fieldsOf(v.import.changes, "add")).toEqual([
+      "name",
+      "developerName",
+      "tint",
+      "urls.website",
+      "locales.en-US.subtitle",
+      "locales.en-US.description",
+    ]);
+    expect(v.import.changes[0]).toMatchObject({
+      field: "name",
+      action: "add",
+      current: null,
+      currentSource: null,
+      proposed: "Diceroll",
+      proposedSource: "manifest",
+    });
+    expect(v.import.skipped).toEqual([
+      {
+        source: "manifest",
+        field: "iconUrl",
+        reason: expect.stringMatching(/not imported/),
+      },
+      {
+        source: "manifest",
+        field: "screenshots",
+        reason: expect.stringMatching(/not imported/),
+      },
+    ]);
+    // A preview writes nothing.
+    expect(v.listing).toBeNull();
+    expect(await auditRows()).toEqual([]);
+
+    const applied = await (
+      await admin("POST", "/import", {
+        source: "manifest",
+        confirm: v.import.digest,
+      })
+    ).json();
+    expect(applied.import.applied).toBe(true);
+    expect(applied.import.written).toHaveLength(6);
+    expect(applied.listing.source).toBe("import");
+    expect(applied.listing.app).toEqual({
       defaultLocale: "en-US",
       name: "Diceroll",
       developerName: "Vlad",
       tint: "#ff8800",
       urls: { website: "https://diceroll.example" },
     });
-    expect(v.locales[0]).toMatchObject({
+    expect(applied.listing.provenance).toEqual({
+      name: "manifest",
+      developerName: "manifest",
+      tint: "manifest",
+      "urls.website": "manifest",
+    });
+    expect(applied.locales[0]).toMatchObject({
       locale: "en-US",
       subtitle: LISTING.subtitle,
       source: "import",
+      provenance: { subtitle: "manifest", description: "manifest" },
     });
-    expect((await auditRows()).map((r) => r.action)).toEqual([
+    const audits = await auditRows();
+    expect(audits.map((r) => r.action)).toEqual([
       "distribution.listing.import",
     ]);
-    // A second import changes nothing and leaves no audit row.
-    const again = await (
-      await admin("POST", "/import", { source: "manifest" })
-    ).json();
-    expect(again.import.imported).toEqual([]);
+    // The audit row names the fields and the source, never the text.
+    expect(audits[0]!.summary).toContain("from manifest: name, developerName");
+    expect(audits[0]!.summary).not.toContain("Diceroll");
+    // A second import has nothing to change and leaves no audit row.
+    const again = await importApplied({ source: "manifest" });
+    expect(again.preview.changes).toEqual([]);
+    expect(again.applied.import.written).toEqual([]);
     expect((await auditRows()).length).toBe(1);
   });
 
@@ -571,51 +627,144 @@ describe("import from .pkey/distribution listing", () => {
       app: { defaultLocale: "en-US", developerName: "Ada" },
       locales: { "en-US": { subtitle: "Mine" } },
     });
-    const v = await (
-      await admin("POST", "/import", { source: "manifest" })
-    ).json();
-    expect(v.import.kept).toEqual(["developerName", "locales.en-US.subtitle"]);
-    expect(v.import.refused).toEqual([
+    const { preview, applied: v } = await importApplied({
+      source: "manifest",
+    });
+    expect(
+      preview.changes
+        .filter((c: Loose) => c.action === "keep")
+        .map((c: Loose) => [c.field, c.currentSource, c.reason]),
+    ).toEqual([
+      ["developerName", "admin", "typed by an operator"],
+      ["locales.en-US.subtitle", "admin", "typed by an operator"],
+    ]);
+    expect(preview.refused).toEqual([
       {
         field: "name",
         message: "name must be at most 30 characters (it is 34)",
+        source: "manifest",
       },
     ]);
-    expect(v.import.imported).toEqual([
+    expect(v.import.written).toEqual([
       "tint",
       "urls.website",
       "locales.en-US.description",
     ]);
     expect(v.listing.app.developerName).toBe("Ada");
     expect(v.listing.app.name).toBeUndefined();
-    expect(v.listing.source).toBe("admin");
+    // The applied rows carry source = 'import'; the operator's fields keep no import source.
+    expect(v.listing.source).toBe("import");
+    expect(v.listing.provenance).toEqual({
+      tint: "manifest",
+      "urls.website": "manifest",
+    });
 
-    const over = await (
-      await admin("POST", "/import", { source: "manifest", overwrite: true })
-    ).json();
-    expect(over.import.imported).toEqual([
+    const over = await importApplied({ source: "manifest", overwrite: true });
+    expect(over.applied.import.written).toEqual([
       "developerName",
       "locales.en-US.subtitle",
     ]);
-    expect(over.listing.app.developerName).toBe("Vlad");
+    expect(over.applied.listing.app.developerName).toBe("Vlad");
+  });
+
+  it("an operator's edit takes a field over from the import; an unchanged re-send does not", async () => {
+    await seedOutlet("altstore", LISTING);
+    await importApplied({ source: "manifest" });
+    await admin("PUT", "", {
+      app: {
+        name: "Diceroll Deluxe",
+        urls: { website: "https://diceroll.example" },
+      },
+    });
+    const v = await (await admin("GET", "")).json();
+    expect(v.listing.source).toBe("admin");
+    expect(v.listing.provenance).toEqual({
+      developerName: "manifest",
+      tint: "manifest",
+      "urls.website": "manifest",
+    });
+    const again = await (
+      await admin("POST", "/import", { source: "manifest" })
+    ).json();
+    expect(
+      again.import.changes.map((c: Loose) => [c.field, c.action, c.reason]),
+    ).toEqual([["name", "keep", "typed by an operator"]]);
+  });
+
+  it("a stale confirmation is refused with the fresh diff; fields narrow an apply", async () => {
+    await seedOutlet("altstore", LISTING);
+    const first = await (
+      await admin("POST", "/import", { source: "manifest" })
+    ).json();
+    // The listing changes between the preview and the confirmation.
+    await admin("PUT", "", { app: { defaultLocale: "en-US", name: "Mine" } });
+    const stale = await admin("POST", "/import", {
+      source: "manifest",
+      confirm: first.import.digest,
+    });
+    expect(stale.status).toBe(409);
+    const body = await stale.json();
+    expect(body.reason).toBe("import_changed");
+    expect(body.import.digest).not.toBe(first.import.digest);
+    expect((await (await admin("GET", "")).json()).listing.app.tint).toBe(
+      undefined,
+    );
+
+    const partial = await admin("POST", "/import", {
+      source: "manifest",
+      confirm: body.import.digest,
+      fields: ["tint"],
+    });
+    expect(partial.status).toBe(200);
+    const p = await partial.json();
+    expect(p.import.written).toEqual(["tint"]);
+    expect(p.listing.app).toEqual({
+      defaultLocale: "en-US",
+      name: "Mine",
+      tint: "#ff8800",
+    });
+    const unknown = await admin("POST", "/import", {
+      source: "manifest",
+      confirm: (
+        await (await admin("POST", "/import", { source: "manifest" })).json()
+      ).import.digest,
+      fields: ["name"],
+    });
+    expect(unknown.status).toBe(422);
+    expect((await unknown.json()).reason).toBe("unknown_fields");
+    expect(
+      (await admin("POST", "/import", { source: "manifest", fields: ["tint"] }))
+        .status,
+    ).toBe(422);
   });
 
   it("names the outlet; refuses unknown sources and outlets without a listing", async () => {
     await seedOutlet("altstore", null);
     await seedOutlet("beta", { name: "Diceroll Beta" });
+    expect((await admin("POST", "/import", { source: "nope" })).status).toBe(
+      422,
+    );
     expect((await admin("POST", "/import", { source: "godot" })).status).toBe(
       422,
     );
+    expect(
+      (
+        await admin("POST", "/import", {
+          sources: [{ source: "manifest" }, { source: "manifest" }],
+        })
+      ).status,
+    ).toBe(422);
     const missing = await admin("POST", "/import", {
       source: "manifest",
       outlet: "altstore",
     });
     expect(missing.status).toBe(404);
     expect((await missing.json()).reason).toBe("no_manifest_listing");
-    const v = await (
-      await admin("POST", "/import", { source: "manifest", locale: "de-DE" })
-    ).json();
-    expect(v.import.outlet).toBe("beta");
+    const { preview, applied: v } = await importApplied({
+      source: "manifest",
+      locale: "de-DE",
+    });
+    expect(preview.sources[0].ref).toBe("beta");
     expect(v.listing.app).toEqual({
       defaultLocale: "de-DE",
       name: "Diceroll Beta",

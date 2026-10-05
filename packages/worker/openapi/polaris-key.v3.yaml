@@ -4639,6 +4639,99 @@ paths:
         "404": { $ref: "#/components/responses/CiRefusal" }
         "409": { $ref: "#/components/responses/CiRefusal" }
 
+  /{product}/distribution/listing/assets:
+    post:
+      operationId: ciListingAssetsRegister
+      tags: [distribution]
+      summary: Register the listing assets CI derived and uploaded (CI)
+      description: >
+        A-18d. `pkey listing assets` derives every store's icons, composes its store art from the
+        key art and wordmark, fits screenshots per store (each crop or pad accepted per image) and
+        packs each store's outputs, in CI; this route stores them into the shared listing model
+        (`dist_listing_assets`), from which the storefront adapters push listing images. Nothing
+        is pushed to a store here and nothing is served. `{ticket?, assets: [{slot, locale?,
+        sha256, size, width?, height?, alpha, derivedFrom?, textAllowed}]}`: 1 to 160 rows, each
+        validated by the model (a known slot: the fixed slots or
+        `<store>:screenshot:<class>:<n>`; the slot's `textAllowed`; a locale code; 1 to 16,384
+        pixels; a known `derivedFrom`), each object at most 128 MiB. Every object is the
+        content-addressed `blobs/sha256/<sha256>`: one an earlier register already earned (this
+        product's `listing-asset` blob ref; any other ref kind does not count), or an object of
+        the upload `ticket` (P2-02's uploads route, which accepts `distribution:listing`),
+        verified in staging and promoted here. A row the operator uploaded (`source = admin`) is
+        never replaced and is answered in `kept`. Rows are written with `source = import` and
+        their refs in one batch. Audited as `distribution.listing.assets`. Requires a `pkeyci_`
+        token with `distribution:listing` (opt-in). No CORS. Errors are LEGACY FLAT with a
+        `reason`: `bad_assets`, `invalid_asset`, `object_not_in_ticket`,
+        `staged_object_missing`, `staged_object_mismatch`, `stored_object_mismatch`,
+        `ticket_redeemed`, `bad_body` (400); `invalid_ticket`, `ticket_expired` (403);
+        `no_blob_store` (404); `promote_failed` (409, retryable).
+      security: [{ ciToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [assets]
+              properties:
+                ticket:
+                  {
+                    type: string,
+                    description: "A `pkeyup_` ticket; needed when any object is not already one the product's listing rows hold.",
+                  }
+                assets:
+                  type: array
+                  minItems: 1
+                  maxItems: 160
+                  items:
+                    type: object
+                    required: [slot, sha256, size, alpha, textAllowed]
+                    properties:
+                      slot: { type: string }
+                      locale: { type: [string, "null"] }
+                      sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+                      size: { type: integer, minimum: 1 }
+                      width:
+                        { type: [integer, "null"], minimum: 1, maximum: 16384 }
+                      height:
+                        { type: [integer, "null"], minimum: 1, maximum: 16384 }
+                      alpha: { type: boolean }
+                      derivedFrom: { type: [string, "null"] }
+                      textAllowed: { type: string, enum: [none, title, free] }
+      responses:
+        "200":
+          description: The stored rows, and the operator's rows left as they were.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, stored, kept]
+                properties:
+                  ok: { type: boolean, const: true }
+                  stored:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        slot: { type: string }
+                        locale: { type: [string, "null"] }
+                        sha256: { type: string }
+                        blob: { type: string }
+                  kept:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        slot: { type: string }
+                        locale: { type: [string, "null"] }
+        "400": { $ref: "#/components/responses/CiRefusal" }
+        "401": { $ref: "#/components/responses/CiUnauthorized" }
+        "403": { $ref: "#/components/responses/CiForbidden" }
+        "404": { $ref: "#/components/responses/CiRefusal" }
+        "409": { $ref: "#/components/responses/CiRefusal" }
+
   /{product}/release/channels/{channel}/promote:
     post:
       operationId: ciPromoteChannel
@@ -4869,7 +4962,8 @@ paths:
       summary: Obtain an upload ticket and R2 temporary credentials (trusted publishing)
       description: >
         P2-02. Requires a `pkeyci_` token with `release:publish` — or, for the F-Droid repository
-        files `pkey feeds fdroid` uploads, `distribution:feeds` (P2b-05). The body lists the objects CI
+        files `pkey feeds fdroid` uploads, `distribution:feeds` (P2b-05), or, for the listing assets
+        `pkey listing assets` derived, `distribution:listing` (A-18d). The body lists the objects CI
         intends to upload (`sha256`, `size`, optional `gated` for `gated/blobs/…`; at most 256,
         each one single-part, at most 5 GiB less 5 MiB). The answer is a one-shot ticket
         (expiring with the token, at most an hour), R2 temporary credentials scoped to
@@ -9849,8 +9943,8 @@ paths:
           }
         "404": { $ref: "#/components/responses/NotFound" }
   # ── The customer portal's library, product and media routes (PX-W1, docs/design/PORTAL.md
-  # G1, G5, G16). The rest of the portal API stays narrative (see the header); these three are
-  # pinned here and in `test/routeCoverage.test.ts` (PORTAL_KIND_PATHS). Root paths on the
+  # G1, G5, G16) and Discover (PX-W10, G24, G25). The rest of the portal API stays narrative (see
+  # the header); these are pinned here and in `test/routeCoverage.test.ts` (PORTAL_KIND_PATHS). Root paths on the
   # console host, never CORS: they share this origin with the portal session cookie.
   /api/library:
     get:
@@ -9899,6 +9993,7 @@ paths:
                           dormantCount: 1
                         licenseCount: 1
                         addedAt: 1790000000
+                    discoverCount: 1
         "401":
           description: No portal session.
           content:
@@ -9914,7 +10009,8 @@ paths:
         a section only for a service that is on), its status, and every linked licence, best
         first (status precedence, then the later expiry), each with its seats, its entitlements
         and its authorized devices; a device past the dormancy window is `dormant` and holds no
-        seat. `404` when the account holds no licence for the product, or the developer has the
+        seat. Each licence also carries its `purchase` (G8): a store purchase, the developer, a
+        sign-in or a free auto-issue, with its store grants. `404` when the account holds no licence for the product, or the developer has the
         portal off for it. Session-authenticated by the portal cookie; `cache-control: no-store`.
       parameters: [{ $ref: "#/components/parameters/Product" }]
       responses:
@@ -9945,6 +10041,8 @@ paths:
                       identity: false
                     status: active
                     addedAt: 1790000000
+                    returnTo:
+                      { origins: [https://app.tidewater.example], schemes: [] }
                     licenses:
                       - id: lic_8f2a
                         tier: pro
@@ -9957,6 +10055,17 @@ paths:
                         activeSeatCount: 1
                         deviceCount: 2
                         dormantCount: 1
+                        purchase:
+                          source: store
+                          store: steam
+                          stores: [steam]
+                          grants:
+                            - store: steam
+                              state: active
+                              grantedAt: 1790000000
+                              revokedAt: null
+                              flag: pro
+                              label: Pro effects
                         entitlements: []
                         devices:
                           - deviceId: dev-studio
@@ -9981,6 +10090,116 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
         "404": { $ref: "#/components/responses/NotFound" }
+  /api/discover:
+    get:
+      operationId: getPortalDiscover
+      tags: [portal]
+      summary: The products the signed-in account could add for free
+      description: >
+        PX-W10 (docs/design/PORTAL.md §4.16, G24). Every product whose licence policy would
+        auto-issue to this account on the product's first sign-in, evaluated by the same policy
+        function in dry-run mode: nothing is written. A product qualifies through its
+        `oidcDefault` auto-issue rule (`reason: free_with_account`) or a `groupRoleMap` group the
+        account holds at the platform IdP (`reason: group:<group>`). Only products that run
+        License, authenticate against the platform issuer with auto-linking on, and have the
+        portal and Discover (`discoverEnabled`) on are considered; purchase-only and
+        operator-issued products, and products the account already holds, never appear. An
+        account with no platform identity is offered nothing. Every offer carries its reason.
+        Session-authenticated by the portal cookie; `cache-control: no-store`.
+      responses:
+        "200":
+          description: The offers, in product-name order (possibly none).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalDiscover" }
+              examples:
+                oneOffer:
+                  summary: One free product
+                  value:
+                    offers:
+                      - product: mossgarden
+                        name: Mossgarden
+                        developerName: Fennick Studio
+                        tintColor: "#2f5d3a"
+                        website: https://mossgarden.example
+                        iconUrl: /media/mossgarden/icon?v=3f9a0c2d1e4b5a6c
+                        headerUrl: null
+                        support: null
+                        platforms: [macos, windows]
+                        offer:
+                          tier: free
+                          tierLabel: Free
+                          deviceLimit: 5
+                          expiresAt: null
+                          expiryDays: null
+                        reason: free_with_account
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/discover/{product}/claim:
+    post:
+      operationId: claimPortalDiscover
+      tags: [portal]
+      summary: Add a Discover product to the library
+      description: >
+        PX-W10 (G25). Re-evaluates the offer server-side and mints the licence through the
+        auto-issue path itself (the product sign-in's), so it carries exactly the tier, limits
+        and entitlements a first sign-in would give; the licence is linked to the account and
+        audited with `source: discover`. Idempotent per account and product: a repeat, or a
+        racing double submit, answers the same licence with `added: false` and mints nothing.
+        `409 not_eligible` when the product is not (or no longer) offered to this account,
+        including an unknown product. Needs the `X-PKey-Portal-CSRF` header. Rate-limited on the
+        account-wide bucket the activate preview and the key claim share (10 a minute).
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: "The licence, new (`added: true`) or already held (`added: false`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalDiscoverClaim" }
+              examples:
+                added:
+                  summary: Just added
+                  value:
+                    added: true
+                    product: mossgarden
+                    license:
+                      id: lic_3c9d
+                      tier: free
+                      tierLabel: Free
+                      status: active
+                      usable: true
+                      expiresAt: null
+                      deviceLimit: 5
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "409":
+          description: "`not_eligible`: the product is not offered to this account; nothing was minted."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+              examples:
+                notEligible:
+                  value:
+                    {
+                      error: not_eligible,
+                      message: this product is no longer offered to your account,
+                    }
+        "429":
+          description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
   /media/{product}/{asset}:
     get:
       operationId: getPortalMedia
@@ -11583,8 +11802,14 @@ components:
       enum: [suspended, expired, device_limit, expires_soon, active]
     PortalLibrary:
       type: object
-      required: [products]
+      required: [products, discoverCount]
       properties:
+        discoverCount:
+          type: integer
+          minimum: 0
+          description: >
+            How many products `GET /api/discover` offers this account (PX-W10): the Discover
+            count in the portal's nav.
         products:
           type: array
           items:
@@ -11600,6 +11825,101 @@ components:
                   addedAt:
                     type: [integer, "null"]
                     description: When the account's first licence for the product was linked.
+    PortalPurchase:
+      type: object
+      description: >
+        A licence's purchase source (portal gap G8). `source` is `store` while a store purchase
+        verified by the commerce bridge is active on the licence ("Bought on Steam"); otherwise it
+        is how the licence was minted: `developer` (issued by the developer), `sign_in` (minted
+        at sign-in) or `free` (auto-issued to a device). A refunded or revoked purchase stays in
+        `grants` as `revoked`. A grant names its flag and label only when the developer shows
+        that flag in the portal (`userGrant`); otherwise both are null. No purchase key is ever
+        returned.
+      required: [source, store, stores, grants]
+      properties:
+        source:
+          type: string
+          enum: [store, developer, sign_in, free]
+        store:
+          type: [string, "null"]
+          description: For `store`, the store of the earliest active purchase.
+          enum: [app-store, play, steam, null]
+        stores:
+          type: array
+          description: Every store with an active purchase on the licence, earliest first.
+          items: { type: string, enum: [app-store, play, steam] }
+        grants:
+          type: array
+          items:
+            type: object
+            required: [store, state, grantedAt, revokedAt, flag, label]
+            properties:
+              store: { type: string, enum: [app-store, play, steam] }
+              state: { type: string, enum: [active, revoked] }
+              grantedAt: { type: integer }
+              revokedAt: { type: [integer, "null"] }
+              flag: { type: [string, "null"] }
+              label: { type: [string, "null"] }
+    PortalDiscover:
+      type: object
+      required: [offers]
+      properties:
+        offers:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/PortalPresentation"
+              - type: object
+                required: [product, platforms, offer, reason]
+                properties:
+                  product: { type: string, description: The product slug. }
+                  platforms:
+                    type: array
+                    description: The platforms of the newest app release's builds.
+                    items: { type: string }
+                  offer: { $ref: "#/components/schemas/PortalDiscoverTerms" }
+                  reason:
+                    type: string
+                    pattern: "^(free_with_account|group:.+)$"
+                    description: >
+                      Why the account can add the product, always present (owner decision Q-6):
+                      `free_with_account` (the `oidcDefault` auto-issue rule) or `group:<group>`
+                      (a platform-IdP group mapped in the product's `groupRoleMap`). An open set:
+                      clients show an unknown reason generically.
+    PortalDiscoverTerms:
+      type: object
+      description: What adding the product would give, from the same policy that would mint it.
+      required: [tier, tierLabel, deviceLimit, expiresAt, expiryDays]
+      properties:
+        tier: { type: [string, "null"] }
+        tierLabel: { type: [string, "null"] }
+        deviceLimit: { type: integer }
+        expiresAt:
+          type: [integer, "null"]
+          description: "The expiry if minted now; null = never expires."
+        expiryDays:
+          type: [integer, "null"]
+          description: "The tier's policy length in days; null = lifetime."
+    PortalDiscoverClaim:
+      type: object
+      required: [added, product, license]
+      properties:
+        added:
+          type: boolean
+          description: "True when this call minted the licence; false when it was already held."
+        product: { type: string }
+        license:
+          type: object
+          required:
+            [id, tier, tierLabel, status, usable, expiresAt, deviceLimit]
+          properties:
+            id: { type: string }
+            tier: { type: [string, "null"] }
+            tierLabel: { type: [string, "null"] }
+            status: { type: string }
+            usable: { type: boolean }
+            expiresAt: { type: [integer, "null"] }
+            deviceLimit: { type: integer }
     PortalProduct:
       allOf:
         - $ref: "#/components/schemas/PortalPresentation"
@@ -11613,14 +11933,33 @@ components:
               additionalProperties: { type: boolean }
             status: { $ref: "#/components/schemas/PortalStatus" }
             addedAt: { type: [integer, "null"] }
+            returnTo:
+              type: object
+              description: >
+                Where the portal's focused flows may send the person back to (`?return=`).
+                `origins` is the product's exact declared browser origins (`web.origins`); a
+                return URL must match one exactly (scheme, host and port). `schemes` stays empty
+                until the manifest can declare app schemes (S-16 I-15); until then a scheme
+                return is refused and the flow ends on the product page.
+              required: [origins, schemes]
+              properties:
+                origins: { type: array, items: { type: string } }
+                schemes: { type: array, items: { type: string } }
             licenses:
               type: array
               items:
                 allOf:
                   - $ref: "#/components/schemas/PortalLicenseSeats"
                   - type: object
-                    required: [entitlements, devices]
+                    required: [purchase, entitlements, devices]
                     properties:
+                      purchase:
+                        oneOf:
+                          - type: "null"
+                          - $ref: "#/components/schemas/PortalPurchase"
+                        description: >
+                          Where the licence came from (G8), read through License's
+                          `licenseProvenance` hook; `null` while License is off for the product.
                       entitlements:
                         type: array
                         items:

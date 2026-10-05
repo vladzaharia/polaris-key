@@ -15,7 +15,10 @@
  *   - `delivery`            (implemented by Distribution): transports, availability and
  *                            submissions (P2b-03), outlet rollouts and halts, delivery access and
  *                            delivery URLs (P2b-04), and the signing-key inventory (P2b-03);
- *   - `outletCapabilities`  (implemented by Distribution): what one outlet permits.
+ *   - `outletCapabilities`  (implemented by Distribution): what one outlet permits;
+ *   - `licenseProvenance`   (implemented by License): where each licence came from — the store
+ *                            purchases granted onto it, or the developer, a sign-in or a free
+ *                            auto-issue that minted it (PX-W6, portal gap G8).
  *
  * ── THE RULES ───────────────────────────────────────────────────────────────────────────────
  *
@@ -45,7 +48,9 @@
  * P4-18 added the optional `packPayload` (Distribution's payload URL). F-03 added the package
  * readers to `ReleaseCatalog` (`packageDeliverables`, `packageVersions`, `packageChannelHeads`) and
  * `packageFeed` to `Delivery`. PX-W2 added the optional `customerDownloads` to `Delivery` (the
- * customer portal's per-platform files and store links, portal gaps G2 and G4).
+ * customer portal's per-platform files and store links, portal gaps G2 and G4). PX-W6 added
+ * `licenseProvenance` (License: purchase source and store grants, portal gap G8), which Identity's
+ * portal reads for the product page's License card.
  * P2b-05, P2b-06, P3-03, P4-02 (Release's publish routes read `delivery.entitlement`), P4-05,
  * P4-09, P4-14 (Core's blob collector reads both hooks), P6-03 and PX-W2 (Identity's portal)
  * consume.
@@ -1213,6 +1218,61 @@ export interface PackageFeedSettings {
   baseUrl?: string | null;
 }
 
+// ── licenseProvenance (License) ─────────────────────────────────────────────────────────────
+
+/**
+ * How a licence came to exist, in the order the portal's License card asks it (PX-W6, portal gap
+ * G8, docs/design/PORTAL.md §10.2):
+ *
+ *   - `store`     — a store purchase verified by the commerce bridge is ACTIVE on it (an active
+ *                   `license_store_grants` row): "Bought on Steam". Wins over the origin below,
+ *                   because the bridge grants onto a licence that already exists (the binding is
+ *                   handed out before the purchase), so the origin says only how the shell was
+ *                   minted.
+ *   - `developer` — an operator issued it (`licenses.origin = 'admin'`, and any origin this
+ *                   build does not know): "Bought from <developer>".
+ *   - `sign_in`   — minted when the person signed in (`origin = 'oidc'`).
+ *   - `free`      — auto-issued, keyless, to a machine (`origin = 'enroll'`).
+ *
+ * A refunded or revoked store purchase leaves its grant `revoked`; with no active grant left the
+ * source falls back to the origin, and the revoked grant is still listed.
+ */
+export type PurchaseSourceKind = "store" | "developer" | "sign_in" | "free";
+
+/** One store purchase's effect on a licence: one flag, from one store. Never the purchase key. */
+export interface StoreGrantRecord {
+  /** `app-store` | `play` | `steam` (`STORES` in `core/storeGrants.ts`). */
+  store: string;
+  /** The licence flag it grants (an `entitlements` key; the consumer decides what is shown). */
+  flag: string;
+  state: "active" | "revoked";
+  /** Epoch seconds: the latest grant (a refund reversal re-grants). */
+  grantedAt: number;
+  /** Epoch seconds; `null` while active. */
+  revokedAt: number | null;
+}
+
+/** One licence's purchase source. */
+export interface PurchaseSource {
+  licenseId: string;
+  kind: PurchaseSourceKind;
+  /** For `store`: the store of the earliest active grant. `null` for every other kind. */
+  store: string | null;
+  /** Every store with an active grant on the licence, earliest first (empty unless `store`). */
+  stores: string[];
+  /** Every grant, active and revoked, in grant order (then store, then flag). */
+  grants: StoreGrantRecord[];
+}
+
+/** What License offers the other services about where its licences came from. Read-only. */
+export interface LicenseProvenance {
+  /**
+   * The purchase source of each of these licences of THIS product, in the order asked. An id
+   * that names no licence here is left out (never another product's licence).
+   */
+  purchaseSources(licenseIds: readonly string[]): Promise<PurchaseSource[]>;
+}
+
 // ── outletCapabilities (Distribution) ───────────────────────────────────────────────────────
 
 /**
@@ -1249,7 +1309,7 @@ export interface HookContext {
 }
 
 /**
- * The three hooks a descriptor may implement. Each is a SYNCHRONOUS factory returning a reader:
+ * The four hooks a descriptor may implement. Each is a SYNCHRONOUS factory returning a reader:
  * the gate (enablement) is decided before it is called, and the reader does its own I/O lazily.
  */
 export interface DescriptorHooks {
@@ -1259,6 +1319,7 @@ export interface DescriptorHooks {
     ctx: HookContext,
     outletId: string,
   ): Promise<OutletCapabilities | null>;
+  licenseProvenance?(ctx: HookContext): LicenseProvenance;
 }
 
 export type HookName = keyof DescriptorHooks;
@@ -1268,6 +1329,7 @@ export interface ServiceHooks {
   releaseCatalog(): ReleaseCatalog | null;
   delivery(): Delivery | null;
   outletCapabilities(outletId: string): Promise<OutletCapabilities | null>;
+  licenseProvenance(): LicenseProvenance | null;
 }
 
 /** The registry, as far as hooks need it — structural, so this file never imports `registry.ts`. */
@@ -1300,9 +1362,9 @@ export function hookProvider(
  * `services` is passed explicitly rather than read off `base.product`, so the gate is the SAME
  * map the caller dispatched on (`dispatchService`'s `services` argument). Every accessor checks
  * `services[provider.slug].enabled` and returns `null` BEFORE calling into the provider, so a
- * disabled service's hook code never runs. `releaseCatalog()` and `delivery()` are memoised per
- * hooks object (one request): a reader is cheap, but a consumer that asks twice should get the
- * same one.
+ * disabled service's hook code never runs. `releaseCatalog()`, `delivery()` and
+ * `licenseProvenance()` are memoised per hooks object (one request): a reader is cheap, but a
+ * consumer that asks twice should get the same one.
  */
 export function buildHooks(
   registry: HookRegistry,
@@ -1315,9 +1377,11 @@ export function buildHooks(
     releaseCatalog: hookProvider(registry, "releaseCatalog"),
     delivery: hookProvider(registry, "delivery"),
     outletCapabilities: hookProvider(registry, "outletCapabilities"),
+    licenseProvenance: hookProvider(registry, "licenseProvenance"),
   };
   let catalog: ReleaseCatalog | null | undefined;
   let delivery: Delivery | null | undefined;
+  let provenance: LicenseProvenance | null | undefined;
 
   const hooks: ServiceHooks = {
     releaseCatalog() {
@@ -1337,6 +1401,15 @@ export function buildHooks(
       const p = providers.outletCapabilities;
       if (!p?.outletCapabilities || !enabled(p.slug)) return null;
       return p.outletCapabilities(ctx, outletId);
+    },
+    licenseProvenance() {
+      if (provenance !== undefined) return provenance;
+      const p = providers.licenseProvenance;
+      provenance =
+        p?.licenseProvenance && enabled(p.slug)
+          ? p.licenseProvenance(ctx)
+          : null;
+      return provenance;
     },
   };
   const ctx: HookContext = { ...base, hooks };

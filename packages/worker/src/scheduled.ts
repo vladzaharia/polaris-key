@@ -49,6 +49,10 @@ import {
   prunePortalAudit,
   purgeDownloadTokensForProduct,
 } from "./services/identity/portal/repo.js";
+import {
+  catchUpLegacyAccounts,
+  settleOwnershipConflicts,
+} from "./services/identity/accounts/legacy.js";
 import { pruneEvents as pruneConnectorEvents } from "./services/distribution/connectors/state.js";
 import { lazyDeltaProducts } from "./core/deltaDemand.js";
 import { refreshPlatformSettings } from "./core/platformSettings.js";
@@ -372,6 +376,24 @@ export async function runScheduledMaintenance(
 
   // F-21: registry tokens 90 days past their expiry or revocation (`core/registryTokens.ts`).
   await step(report, "registryTokens", () => purgeRegistryTokens(db, now));
+
+  // I-05: portal rows a pre-I-05 Worker wrote during the deploy window join the account model,
+  // then every second account linked to a licence another account owns loses its link, is
+  // emailed and is listed in the platform audit log (plans/I-04.md §8 Q1).
+  await step(report, "accountsCatchUp", async () => {
+    await catchUpLegacyAccounts(db);
+    return 0;
+  });
+  if (env) {
+    await step(report, "accountOwnership", () =>
+      settleOwnershipConflicts({
+        db,
+        env,
+        now,
+        origin: env.CONSOLE_ORIGIN ?? "",
+      }),
+    );
+  }
 
   // P4-17: the lazy-delta sweep, for products opted in (none while `LAZY_DELTAS` is off). Before
   // the collector, so a delta marked cold tonight loses its ref before tonight's mark pass.

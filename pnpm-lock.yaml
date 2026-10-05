@@ -284,6 +284,9 @@ importers:
       '@polaris-key/zstd-wasm':
         specifier: workspace:*
         version: link:../zstd-wasm
+      sharp:
+        specifier: ^0.35.4
+        version: 0.35.5(@types/node@22.20.0)
       yaml:
         specifier: ^2.6.1
         version: 2.9.0

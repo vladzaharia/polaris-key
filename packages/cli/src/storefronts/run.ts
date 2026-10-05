@@ -351,11 +351,14 @@ export async function runStoreSteps(
     try {
       exitCode = await spawnTool(o.toolPath ?? step.tool, step.argv, o.cwd);
     } catch (e) {
+      // The spawn error is the one that matters: a failing report-back must not replace it.
       if (client)
-        await client.postJson("distribution/report", {
-          what: `Reporting the ${step.store} step ${step.command}`,
-          body: body("failed", -1),
-        });
+        await client
+          .postJson("distribution/report", {
+            what: `Reporting the ${step.store} step ${step.command}`,
+            body: body("failed", -1),
+          })
+          .catch(() => undefined);
       throw e;
     }
     if (client)

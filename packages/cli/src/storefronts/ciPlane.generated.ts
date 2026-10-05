@@ -208,6 +208,7 @@ export const CI_PLANE: CiPlaneDeclaration = {
             confirm: "plain",
             why: "a package submission from CI, never over a draft the Worker staged (A-18f): the CLI would replace it",
             unlessWorkerStaged: {
+              workerStore: "microsoft-store",
               opens: ["submission.create"],
               closes: ["submission.commit"],
             },

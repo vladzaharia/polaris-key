@@ -41,6 +41,10 @@
  *     /distribution/fdroid/:channel/repo/:path…              GET, the F-Droid repository relay
  *     /distribution/feeds/fdroid/:channel                    GET|POST, `pkeyci_` +
  *                                                            distribution:feeds
+ *     /distribution/listing/assets                           POST, `pkeyci_` +
+ *                                                            distribution:listing: register the
+ *                                                            listing assets CI derived (A-18d,
+ *                                                            `listing/assets.ts`)
  *     /distribution/download.json                            GET, the public download page's
  *                                                            model (P2b-06, `page/`)
  *
@@ -74,6 +78,10 @@ import { handleSentryWebhook } from "./sentry.js";
 import { handleFeedRoutes } from "./feeds/index.js";
 import { handleDownloadModel } from "./page/index.js";
 import { handleCommerceRoutes, isCommerceRoute } from "./commerce/index.js";
+import {
+  MAX_LISTING_ASSETS_BODY_BYTES,
+  registerListingAssets,
+} from "./listing/assets.js";
 
 /** A rollout body is tiny (`{deliverable?, releaseId?, bp?}`); a report carries at most two small
  *  JSON objects (`platformRef`, `detail`). */
@@ -106,6 +114,26 @@ export async function handleDistributionRoutes(
     if (rest[1] === "sentry") return handleSentryWebhook(ctx);
     const webhook = connectorOf(rest[1] as string)?.webhook;
     return webhook ? webhook(ctx) : null;
+  }
+
+  // The listing assets `pkey listing assets` derived and uploaded (A-18d).
+  if (rest.length === 2 && rest[0] === "listing" && rest[1] === "assets") {
+    if (req.method !== "POST") return null;
+    const principal = await requireCiScope(
+      req,
+      env,
+      db,
+      product.slug,
+      "distribution:listing",
+      now,
+    );
+    if (principal instanceof Response) return principal;
+    const body = await readCiJson(req, MAX_LISTING_ASSETS_BODY_BYTES);
+    if (body instanceof Response) return body;
+    return registerListingAssets(
+      { env, db, product: product.slug, now, principal },
+      body,
+    );
   }
 
   if (rest[0] === "report" && rest.length === 1) {

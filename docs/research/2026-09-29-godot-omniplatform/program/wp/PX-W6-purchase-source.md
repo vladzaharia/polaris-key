@@ -5,7 +5,7 @@
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)                                                        |
 | Size        | 0.4–0.8 engineer-weeks                                                                                                         |
 | Depends on  | [PX-W1](PX-W1-library-api-media.md)                                                                                            |
-| Unblocks    | none                                                                                                                           |
+| Unblocks    | [LX-15](LX-15-portal-licensing.md)                                                                                             |
 | Role        | `pkey-implementer`                                                                                                             |
 | Plan mode   | no                                                                                                                             |
 | Gates       | the PORTAL.md §11 green gate; rule 6 (Core descriptor hooks; no cross-service imports); `typecheck:workerd` and `test:workerd` |
@@ -42,6 +42,12 @@ Today the portal can only say "Bought from <developer>" ([PORTAL.md §10.2](../.
 
 - **Rule 6:** Identity (where the portal lives) may not import Distribution, Update or License internals; reach them through descriptor hooks in `packages/worker/src/core/hooks.ts` (PORTAL.md §10.2 notes).
 
+**Corrections against the code (PX-W6, 2026-10-04):**
+
+- The hook is a fourth read-only descriptor hook, `licenseProvenance` (License is its one provider), not an extension of `delivery`: the facts are License's (`license_store_grants`, written only by `services/license/storeGrants.ts`, and `licenses.origin` from `0011_auto_issue.sql`). Distribution's `dist_purchases` is not read: the effect on the licence is what the card reports.
+- The field is per licence, not per product: `licenses[].purchase` on `GET /api/products/:p` = `{source, store, stores, grants}`, `source` one of `store` (an active store grant wins, because the bridge grants onto a licence that already exists), `developer` (`origin = 'admin'` or unknown), `sign_in` (`oidc`), `free` (`enroll`); `null` with License off. A grant shows its flag and label only for a `userGrant` flag; no purchase key or hash is ever returned.
+- "Steam: Activate key" (`activateUrl` + the held key, PORTAL.md §10.2 notes) and the "Key not activated" status need a Steam key, which no table holds; that stays out of this package.
+
 ## Steps
 
 1. Re-read the PORTAL.md sections above and the matching mockups in `docs/design/portal/`; verify this brief against the code and record any correction here.
@@ -51,10 +57,10 @@ Today the portal can only say "Bought from <developer>" ([PORTAL.md §10.2](../.
 
 ## Acceptance criteria
 
-- [ ] Identity imports no License internals (boundary test).
-- [ ] Fixtures for each purchase source render the right source (tests).
-- [ ] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
-- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
+- [x] Identity imports no License internals (boundary test).
+- [x] Fixtures for each purchase source render the right source (tests).
+- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
+- [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify
 

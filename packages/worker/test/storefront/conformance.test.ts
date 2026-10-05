@@ -28,10 +28,12 @@
  *      everyone.
  *   9. REDACTION: a projection never keeps a secret, an email, a person's name or a token, and a
  *      failed write keeps the vendor's status and token only.
- *  10. PLAY ONLY, THE EDIT LEASE: a placeholder until A-18e.
+ *  10. THE EDIT LEASE (A-18e): an adapter whose store has ONE shared, invalidating edit per account
+ *      (`capabilities.limits.openEditsPerAccount`: Play) races its lease: a poll tick during a
+ *      provisioning edit neither invalidates it nor runs, and the edit still commits.
  *
- * A NEW STOREFRONT ALSO ADDS its rows to `SPEC_FIXTURES`, `CLIENTS` and `TYPED_SAMPLES` below:
- * without them the suite fails, by design.
+ * A NEW STOREFRONT ALSO ADDS its rows to `SPEC_FIXTURES`, `CLIENTS` and `TYPED_SAMPLES` below (and
+ * to `LEASE_RACES` when it declares a shared edit): without them the suite fails, by design.
  */
 
 import { readFileSync } from "node:fs";
@@ -109,6 +111,26 @@ import {
 import type { StoreResource } from "../../src/core/storefront/audit.js";
 import { PLATFORM_CREDENTIALS } from "../../src/core/platformCredentials.js";
 import { AscClient } from "../../src/core/asc/client.js";
+import { MsStoreWriteClient } from "../../src/services/distribution/connectors/msstore/write.js";
+import {
+  ANDROID_PUBLISHER_ORIGIN,
+  GoogleApiClient,
+} from "../../src/services/distribution/connectors/play/client.js";
+import { PLAY_EDIT_SCOPE } from "../../src/core/storefront/rules/googlePlay.js";
+import {
+  PlayEditSession,
+  isPlayRefusal,
+  playCommit,
+  playWriteListing,
+} from "../../src/services/distribution/connectors/play/storefront.js";
+import { buildHooks } from "../../src/core/hooks.js";
+import { loadProductPublic } from "../../src/core/products.js";
+import { SERVICES } from "../../src/mount.js";
+import {
+  playWorld,
+  poll as playPoll,
+  SLUG as PLAY_SLUG,
+} from "../playWorld.js";
 import {
   FEED_ADAPTERS,
   feedCapabilityView,
@@ -133,6 +155,19 @@ const SPEC_FIXTURES: Partial<Record<StorefrontId, SpecFixture>> = {
   "app-store": JSON.parse(
     readFileSync(
       join(HERE, "..", "fixtures", "asc", "openapi-writes.json"),
+      "utf8",
+    ),
+  ) as SpecFixture,
+  "google-play": JSON.parse(
+    readFileSync(
+      join(HERE, "..", "fixtures", "play", "discovery-writes.json"),
+      "utf8",
+    ),
+  ) as SpecFixture,
+  // A-18f: no machine-readable spec exists; a hand-written list pinned by fetch date.
+  "microsoft-store": JSON.parse(
+    readFileSync(
+      join(HERE, "..", "fixtures", "msstore", "operations.json"),
       "utf8",
     ),
   ) as SpecFixture,
@@ -169,6 +204,53 @@ const CLIENTS: Partial<Record<StorefrontId, () => CountingClient>> = {
     });
     return c;
   },
+  "google-play": () => {
+    const c: CountingClient = {
+      tokens: 0,
+      sends: 0,
+      request: (method, path, body) =>
+        client.requestPath(method as "POST", path, "conformance", {
+          ...(body === undefined ? {} : { body }),
+        }),
+    };
+    const client = new GoogleApiClient({
+      origin: ANDROID_PUBLISHER_ORIGIN,
+      packageName: "gg.acme.djdl",
+      gated: true,
+      token: async () => {
+        c.tokens++;
+        return "t";
+      },
+      fetchImpl: async () => {
+        c.sends++;
+        return new Response("{}", { status: 200 });
+      },
+    });
+    return c;
+  },
+  "microsoft-store": () => {
+    const c: CountingClient = {
+      tokens: 0,
+      sends: 0,
+      request: (method, path, body) =>
+        client.request(method as "POST", path, body),
+    };
+    const token = async () => {
+      c.tokens++;
+      return "t";
+    };
+    const client = new MsStoreWriteClient({
+      classicToken: token,
+      msiToken: token,
+      sellerId: "123",
+      sleep: async () => {},
+      fetchImpl: async () => {
+        c.sends++;
+        return new Response("{}", { status: 200 });
+      },
+    });
+    return c;
+  },
 };
 
 /** A typed write per op, with whatever else the rule needs asserted (never the confirmation). */
@@ -178,6 +260,8 @@ interface TypedSample {
   body: unknown;
   ctx?: GateContext;
 }
+
+const PLAY_APP = "/androidpublisher/v3/applications/gg.acme.djdl";
 
 const versionRel = {
   appStoreVersion: { data: { type: "appStoreVersions", id: "V1" } },
@@ -258,6 +342,177 @@ const TYPED_SAMPLES: Partial<
         },
       },
     ],
+  },
+  "google-play": {
+    submit: [
+      {
+        method: "POST",
+        path: `${PLAY_APP}/edits/1:commit`,
+        body: { query: { changesInReviewBehavior: "ERROR_IF_IN_REVIEW" } },
+        ctx: { resourceState: PLAY_EDIT_SCOPE.production },
+      },
+      {
+        // No scope asserted: treated as production.
+        method: "POST",
+        path: `${PLAY_APP}/edits/1:commit`,
+        body: {
+          query: {
+            changesInReviewBehavior: "ERROR_IF_IN_REVIEW",
+            changesNotSentForReview: "true",
+          },
+        },
+      },
+    ],
+    release: [
+      {
+        method: "PATCH",
+        path: `${PLAY_APP}/edits/1/tracks/production`,
+        body: {
+          json: {
+            track: "production",
+            releases: [{ versionCodes: ["111"], status: "completed" }],
+          },
+        },
+      },
+      {
+        method: "PATCH",
+        path: `${PLAY_APP}/edits/1/tracks/wear:production`,
+        body: {
+          json: {
+            track: "wear:production",
+            releases: [
+              { versionCodes: ["111"], status: "inProgress", userFraction: 1 },
+            ],
+          },
+        },
+      },
+    ],
+    pricing: [
+      {
+        method: "PATCH",
+        path: `${PLAY_APP}/onetimeproducts/sword`,
+        body: {
+          query: { "regionsVersion.version": "2022/02", allowMissing: "true" },
+          json: {
+            productId: "sword",
+            purchaseOptions: [
+              {
+                purchaseOptionId: "buy",
+                regionalPricingAndAvailabilityConfigs: [
+                  {
+                    regionCode: "US",
+                    price: { currencyCode: "USD", units: "3", nanos: 0 },
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      },
+    ],
+  },
+  "microsoft-store": {
+    submit: [
+      {
+        method: "POST",
+        path: "/v1.0/my/applications/9NBLGGH4R315/submissions/1152921504621243540/commit",
+        body: {},
+      },
+      {
+        method: "POST",
+        path: "/submission/v1/product/9NBLGGH4R315/submit",
+        body: {},
+      },
+    ],
+    release: [
+      {
+        method: "POST",
+        path: "/v1.0/my/applications/9NBLGGH4R315/submissions/1152921504621243540/finalizepackagerollout",
+        body: {},
+      },
+    ],
+    pricing: [
+      {
+        method: "PUT",
+        path: "/v1.0/my/applications/9NBLGGH4R315/submissions/1152921504621243540",
+        body: { pricing: { priceId: "Tier2", trialPeriod: "NoFreeTrial" } },
+      },
+      {
+        method: "PATCH",
+        path: "/submission/v1/product/9NBLGGH4R315/metadata",
+        body: { availability: { pricing: "PAID" } },
+      },
+      {
+        method: "PUT",
+        path: "/submission/v1/product/9NBLGGH4R315/metadata",
+        body: { availability: { markets: ["US"] } },
+      },
+    ],
+  },
+};
+
+/**
+ * The lease race (item 10), per adapter that declares a shared edit. It opens a provisioning edit,
+ * lets the real connector cron tick, and asserts the tick neither ran nor invalidated the edit.
+ */
+const LEASE_RACES: Partial<Record<StorefrontId, () => Promise<void>>> = {
+  "google-play": async () => {
+    const w = await playWorld();
+    const product = (await loadProductPublic(w.db, PLAY_SLUG))!;
+    const ctx = {
+      env: w.env,
+      db: w.db,
+      product: PLAY_SLUG,
+      hooks: buildHooks(SERVICES, product.services, {
+        env: w.env,
+        db: w.db,
+        product,
+        now: NOW,
+      }),
+      session: SESSION,
+      now: NOW,
+      fetchImpl: w.fetchImpl,
+      clock: () => NOW,
+    };
+    // Control: without the lease, P5-03's next edit invalidates an open one (one per account).
+    const unguarded = w.fake.edits.size;
+    expect(unguarded).toBe(0);
+
+    const s = await PlayEditSession.begin(ctx, "provisioning");
+    if (isPlayRefusal(s)) throw new Error(s.message);
+    try {
+      const sentBefore = w.fake.requests.length;
+      const tokensBefore = w.fake.tokenRequests.length;
+      const report = await playPoll(w);
+      expect(report.failures).toEqual({});
+      // The tick did not run: no token, no request, no edit of its own.
+      expect(w.fake.requests.length).toBe(sentBefore);
+      expect(w.fake.tokenRequests.length).toBe(tokensBefore);
+      // The provisioning edit is still the open one, and still takes writes and commits.
+      expect(w.fake.openEdits()).toEqual([s.editId]);
+      const wrote = await playWriteListing(
+        s,
+        "en-US",
+        { shortDescription: "Dice, juggled harder." },
+        "4f8e2d3c-1111-4222-8333-944455556666",
+      );
+      expect(isPlayRefusal(wrote)).toBe(false);
+      const committed = await playCommit(
+        s,
+        {},
+        "5f8e2d3c-1111-4222-8333-944455556666",
+      );
+      expect(committed.outcome).toBe("written");
+      expect(w.fake.store.listings.get("en-US")?.shortDescription).toBe(
+        "Dice, juggled harder.",
+      );
+    } finally {
+      await s.close();
+    }
+    // Lease released: the next tick runs (insert, list, discard).
+    const before = w.fake.requests.length;
+    await playPoll(w);
+    expect(w.fake.requests.length).toBe(before + 3);
   },
 };
 
@@ -819,8 +1074,18 @@ for (const a of STOREFRONT_ADAPTERS) {
     });
 
     // 10 ────────────────────────────────────────────────────────────────────────────────────
-    describe("10. the edit lease (Play only)", () => {
-      it.skip("a poll tick during a provisioning edit neither invalidates it nor runs (A-18e)", () => {});
+    describe("10. the edit lease", () => {
+      it("a store with a shared edit races its lease: a poll tick during a provisioning edit neither invalidates it nor runs", async () => {
+        const shared = a.capabilities.limits.openEditsPerAccount !== undefined;
+        const race = LEASE_RACES[a.id];
+        expect(
+          race !== undefined,
+          shared
+            ? `add ${a.id} to LEASE_RACES`
+            : `${a.id} races a lease but declares no shared edit`,
+        ).toBe(shared);
+        if (race) await race();
+      });
     });
   });
 }
@@ -1024,9 +1289,14 @@ describe("the CI plane (A-18h; S-15 §6.2, §6.6 item 2)", () => {
 
   it("guards msstore publish with the Worker-staged draft, and steamcmd's script with the setlive check", () => {
     expect(MSSTORE_CI.list.commands.publish!.unlessWorkerStaged).toEqual({
+      workerStore: "microsoft-store",
       opens: ["submission.create"],
       closes: ["submission.commit"],
     });
+    // The guard reads the ledger of a real Worker-plane adapter (A-18f's), or it never fires.
+    expect(STOREFRONT_ADAPTERS.some((a) => a.id === "microsoft-store")).toBe(
+      true,
+    );
     expect(STEAM_CI.list.commands["run-app-build"]!.fileChecks).toEqual([
       { param: "script", check: "steam-vdf-setlive-named" },
     ]);

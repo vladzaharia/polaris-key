@@ -61,6 +61,11 @@ export interface CiCommandRule {
    * msstore never `publish` while a Worker-staged draft exists).
    */
   readonly unlessWorkerStaged?: {
+    /**
+     * The Worker-plane adapter whose ledger rows hold the draft, when its id differs from the CI
+     * store's (msstore's drafts are staged by A-18f's `microsoft-store` adapter). Default: this store.
+     */
+    readonly workerStore?: string;
     readonly opens: readonly string[];
     readonly closes: readonly string[];
   };

@@ -196,10 +196,10 @@
       "description": "Email sign-in was requested but the platform has no email sender configured."
     },
     {
-      "code": "owned_elsewhere",
+      "code": "license_owned",
       "kind": "wire",
-      "service": "identity",
-      "description": "409 from the customer portal's POST /api/claim/license-key (and the activate preview's verdict of the same name): the licence is already linked to another portal account, and an owned licence never moves by presenting its key (S-16). Carries no detail of the other account."
+      "service": "license",
+      "description": "403: the licence is attached to another Polaris Key account, and an owned licence never moves by presenting its key (S-16 §5.1; plans/I-04.md §4). Answered by the customer portal's POST /api/claim/license-key (and the activate preview's verdict of the same name, I-05); I-09 adds it to key entry on a new device of an Identity product (with `signInUrl`) and to the device attach. Carries no detail of the other account."
     },
     {
       "code": "email_mismatch",
@@ -208,10 +208,28 @@
       "description": "403 from the customer portal's POST /api/claim/license-key (and the activate preview's verdict of the same name): the licence carries an email this account has not verified, and the product does not set claimByKey. Carries `maskedEmail` (first character and domain only)."
     },
     {
+      "code": "link_conflict",
+      "kind": "wire",
+      "service": "identity",
+      "description": "409: the sign-in method is already attached to another Polaris Key account. One link belongs to exactly one account; nothing moves, and the caller offers to sign in to that account or to join the two with proof of both (S-16 §5.1; I-05's link engine, surfaced by the portal's sign-in methods, I-11)."
+    },
+    {
+      "code": "last_link",
+      "kind": "wire",
+      "service": "identity",
+      "description": "409: removing this sign-in method would leave the account with none, and an account is never orphaned (S-16 §5.1; I-05's link engine, surfaced by the portal's sign-in methods, I-11)."
+    },
+    {
       "code": "step_up_required",
       "kind": "wire",
       "service": "identity",
       "description": "401 from the customer portal's POST /api/licenses/<p>/<id>/keys: minting a new licence key needs a sign-in at most `maxAgeSeconds` old; sign in again and retry."
+    },
+    {
+      "code": "not_eligible",
+      "kind": "wire",
+      "service": "identity",
+      "description": "409 from the customer portal's POST /api/discover/<p>/claim: the product's auto-issue policy no longer offers it to this account (the offer was withdrawn or changed since it was listed), or it was never a Discover offer. Nothing was minted; refresh GET /api/discover."
     },
     {
       "code": "download_auth_required",

@@ -9,7 +9,9 @@
  *     URL-encoded and must be a plain identifier, so a stored id cannot redirect the operator.
  *   - `verify` is how the console learns the step is done: a read the adapter's gate allows,
  *     polled every `every` seconds until `until` seconds have passed (S-14 §5.1: 10 s for up to
- *     15 minutes, plus "Check now"), or the operator's own assertion.
+ *     15 minutes, plus "Check now"), or the operator's own assertion. The read's placeholders are
+ *     the row's params or ids the verifier obtains itself (Play's `{editId}`: every Play read is
+ *     inside an edit the verifier opens under the edit lease).
  *
  * A `deep-link` operation in an adapter's capabilities names a row by id; the conformance suite
  * fails a link id with no row and a verifier read the gate would refuse.
@@ -18,7 +20,7 @@
 /** How a deep-linked step is verified. */
 export type DeepLinkVerify =
   | {
-      /** A GET path, with the row's own `{params}`, that the adapter's gate admits. */
+      /** A GET path the adapter's gate admits (placeholders: the row's params or verifier-held ids). */
       readonly read: string;
       readonly every: number;
       readonly until: number;
@@ -81,6 +83,137 @@ export const DEEP_LINKS: readonly DeepLinkTemplate[] = [
     store: "app-store",
     template: "https://developer.apple.com/account/resources/identifiers/list",
     params: [],
+    verify: "operator-assertion",
+  },
+  // ── Google Play (A-18e; S-15 §4.1, §6.5). Play documents ONE deep-link form, the Integrity
+  // link [V]; every other shape is the Console's current URL [I] (`{developerId}` and `{appId}`
+  // are the Console's own numeric ids, which the operator's Console URL shows), so a moved page is
+  // a one-line fix here. ──
+  {
+    id: "google-play.create-app",
+    store: "google-play",
+    template:
+      "https://play.google.com/console/developers/{developerId}/create-new-app",
+    params: ["developerId"],
+    // The app exists once Reporting's `apps:search` lists the package AND a read-only edit opens
+    // on it (`connectors/play/storefront.ts` `verifyPlayApp`); the gate admits the edit's reads.
+    verify: {
+      read: "/androidpublisher/v3/applications/{packageName}/edits/{editId}/details",
+      ...POLL,
+    },
+  },
+  {
+    id: "google-play.store-settings",
+    store: "google-play",
+    template:
+      "https://play.google.com/console/developers/{developerId}/app/{appId}/store-settings",
+    params: ["developerId", "appId"],
+    verify: "operator-assertion",
+  },
+  {
+    id: "google-play.content-rating",
+    store: "google-play",
+    template:
+      "https://play.google.com/console/developers/{developerId}/app/{appId}/app-content/content-rating-overview",
+    params: ["developerId", "appId"],
+    verify: "operator-assertion",
+  },
+  {
+    id: "google-play.app-content",
+    store: "google-play",
+    template:
+      "https://play.google.com/console/developers/{developerId}/app/{appId}/app-content/overview",
+    params: ["developerId", "appId"],
+    verify: "operator-assertion",
+  },
+  {
+    id: "google-play.monetization-setup",
+    store: "google-play",
+    template:
+      "https://play.google.com/console/developers/{developerId}/app/{appId}/monetization-setup",
+    params: ["developerId", "appId"],
+    verify: "operator-assertion",
+  },
+  {
+    id: "google-play.integrity",
+    store: "google-play",
+    template:
+      "https://play.google.com/console/developers/app/protect-with-play",
+    params: [],
+    verify: "operator-assertion",
+  },
+  {
+    id: "google-play.managed-publishing",
+    store: "google-play",
+    template:
+      "https://play.google.com/console/developers/{developerId}/app/{appId}/publishing",
+    params: ["developerId", "appId"],
+    verify: "operator-assertion",
+  },
+  {
+    id: "google-play.testers",
+    store: "google-play",
+    template:
+      "https://play.google.com/console/developers/{developerId}/app/{appId}/tracks",
+    params: ["developerId", "appId"],
+    verify: "operator-assertion",
+  },
+  {
+    // Decision 6: no deleting Play images in v1. After a screenshot set is replaced, the old images
+    // are removed here by the operator.
+    id: "google-play.main-store-listing",
+    store: "google-play",
+    template:
+      "https://play.google.com/console/developers/{developerId}/app/{appId}/main-store-listing",
+    params: ["developerId", "appId"],
+    verify: "operator-assertion",
+  },
+  // ── Microsoft Store (A-18f; Partner Center documents none of these shapes, S-15 §6.5 [I]) ──
+  {
+    // Reserve the name: the app record exists only once a person has done it (S-15 §4.2).
+    id: "microsoft-store.new-app",
+    store: "microsoft-store",
+    template: "https://partner.microsoft.com/dashboard/apps-and-games/overview",
+    params: [],
+    verify: { read: "/v1.0/my/applications", ...POLL },
+  },
+  {
+    // The first submission, with the IARC age-ratings questionnaire, is Partner Center only.
+    // Done when the app has a published submission (`lastPublishedApplicationSubmission`).
+    id: "microsoft-store.first-submission",
+    store: "microsoft-store",
+    template:
+      "https://partner.microsoft.com/dashboard/products/{productId}/overview",
+    params: ["productId"],
+    verify: { read: "/v1.0/my/applications/{productId}", ...POLL },
+  },
+  {
+    id: "microsoft-store.age-ratings",
+    store: "microsoft-store",
+    template:
+      "https://partner.microsoft.com/dashboard/products/{productId}/ageratings",
+    params: ["productId"],
+    verify: "operator-assertion",
+  },
+  {
+    // MSIX Properties: privacy policy, website and support URLs (the classic fields are
+    // obsolete and ignored, S-15 §4.2).
+    id: "microsoft-store.properties",
+    store: "microsoft-store",
+    template:
+      "https://partner.microsoft.com/dashboard/products/{productId}/properties",
+    params: ["productId"],
+    verify: "operator-assertion",
+  },
+  {
+    // The post-UI-edit case: a submission the API created and a person then edited in Partner
+    // Center can no longer be changed or committed by the API, only deleted, and deleting is
+    // denied. This link is all the flow offers afterwards.
+    id: "microsoft-store.submission",
+    store: "microsoft-store",
+    template:
+      "https://partner.microsoft.com/dashboard/products/{productId}/submissions/{submissionId}",
+    params: ["productId", "submissionId"],
     verify: "operator-assertion",
   },
   // ── itch.io (A-18h; S-15 §4.4: the page has no API) ──

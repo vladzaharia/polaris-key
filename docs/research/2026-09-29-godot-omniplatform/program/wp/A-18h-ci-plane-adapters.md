@@ -81,6 +81,11 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test -- storefront ingest
 
 ## Corrections from the code (A-18h implementation)
 
+- **Integration (wave ISP): the msstore guard reads A-18f's ledger.** A-18f's adapter id is
+  `microsoft-store`, so a guard that read `store = 'msstore'` rows never fired. The
+  `unlessWorkerStaged` spec gains `workerStore` (`microsoft-store` for msstore `publish`),
+  regenerated into the CLI; the conformance test pins it to a registered adapter id. A failing
+  report-back after a spawn error no longer hides the spawn error.
 - **"P2-06's ingest"** is `POST /<p>/distribution/report` (P2b-03's report route on P2-06's CI
   token plumbing). The report-back is a new report type there, `store-step`, not a new route.
 - **The snap outlet identity had no channels**, so "channels in the outlet's identity" had nothing

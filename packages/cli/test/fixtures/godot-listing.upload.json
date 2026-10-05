@@ -1,0 +1,79 @@
+{
+  "project": "godot-listing",
+  "versions": [
+    {
+      "platform": "project",
+      "value": "1.2.0"
+    },
+    {
+      "platform": "android",
+      "value": "1.2.0"
+    },
+    {
+      "platform": "ios",
+      "value": "1.2.0"
+    },
+    {
+      "platform": "macos",
+      "value": "1.2.0"
+    },
+    {
+      "platform": "windows",
+      "value": "1.2.0.0"
+    }
+  ],
+  "bundleIds": [
+    {
+      "platform": "ios",
+      "value": "gg.acme.djdl"
+    },
+    {
+      "platform": "macos",
+      "value": "gg.acme.djdl"
+    },
+    {
+      "platform": "android",
+      "value": "gg.acme.djdl.android"
+    }
+  ],
+  "categoryHints": [
+    {
+      "platform": "macos",
+      "value": "Music"
+    },
+    {
+      "platform": "android",
+      "value": "music"
+    }
+  ],
+  "icons": [
+    {
+      "slot": "icon-master",
+      "path": "res://icons/app_store_1024.png",
+      "setting": "icons/app_store_1024x1024",
+      "sha256": "836c9a82600feffb404ff5961153889d15ee919b503279b42d49909480b84ec3",
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "slot": "icon-adaptive-fg",
+      "path": "res://icons/adaptive_fg.png",
+      "setting": "launcher_icons/adaptive_foreground_432x432",
+      "sha256": "4d902c785b54b9485e6dbdf9d4ebbf13705220fa1a8e6778ad796a8c253af722",
+      "width": 432,
+      "height": 432
+    },
+    {
+      "slot": "icon-adaptive-mono",
+      "path": "res://icons/missing_mono.png",
+      "setting": "launcher_icons/adaptive_monochrome_432x432"
+    }
+  ],
+  "name": "djdl",
+  "nameLocalized": {
+    "de": "djdl Profi",
+    "pt_BR": "djdl Pro"
+  },
+  "copyright": "2026 Acme Audio Ltd",
+  "company": "Acme Audio"
+}

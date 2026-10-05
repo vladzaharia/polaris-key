@@ -233,7 +233,74 @@ export const LISTING_ASSET_SLOTS: Readonly<Record<string, TextAllowed>> = {
   "winget:icon": "free",
   "fdroid:icon": "free",
   "fdroid:feature-graphic": "title",
+  // A-18d: each store's downloadable asset pack (a ZIP of that store's outputs and its fit
+  // report; Steam has no listing API, so A-18g offers its pack for a manual upload).
+  ...Object.fromEntries(
+    [
+      "play",
+      "ms-store",
+      "steam",
+      "itch",
+      "snap",
+      "flathub",
+      "winget",
+      "fdroid",
+    ].map((store) => [`pack:${store}`, "free" as const]),
+  ),
 };
+
+/**
+ * The stores a screenshot is fitted for (A-18d; S-15 §5.6): `pkey listing assets` checks every
+ * `screenshot:<class>` master against each store's rule and stores the accepted output as
+ * `<store>:screenshot:<class>:<n>`, numbered from 1 in the order the store shows them.
+ */
+export const SCREENSHOT_STORES = [
+  "app-store",
+  "play",
+  "ms-store",
+  "steam",
+] as const;
+/** The most screenshots one store slot holds per class (`.pkey/distribution` `listing.screenshots` is ≤ 16). */
+export const MAX_STORE_SCREENSHOTS = 16;
+
+const STORE_SCREENSHOT_RE = new RegExp(
+  `^(${SCREENSHOT_STORES.join("|")}):screenshot:(${SCREENSHOT_CLASSES.join("|")}):([1-9][0-9]?)$`,
+);
+
+/**
+ * The text rule of `slot`, or `undefined` when it is not a listing slot: the fixed slots of
+ * `LISTING_ASSET_SLOTS`, plus the numbered per-store screenshots (`free`).
+ */
+export function listingAssetRule(slot: string): TextAllowed | undefined {
+  if (Object.prototype.hasOwnProperty.call(LISTING_ASSET_SLOTS, slot))
+    return LISTING_ASSET_SLOTS[slot];
+  const m = STORE_SCREENSHOT_RE.exec(slot);
+  return m && Number(m[3]) <= MAX_STORE_SCREENSHOTS ? "free" : undefined;
+}
+
+/** The masters a template output can be derived from (`derivedFrom` of a composed slot). */
+const TEMPLATE_SOURCES: ReadonlySet<string> = new Set([
+  "icon-master",
+  "key-art",
+  "key-art-portrait",
+  "wordmark",
+]);
+
+/**
+ * Play's `aiGeneratedState` for a stored asset (S-15 §7.4; A-18e reads it when it uploads an
+ * image): an output `pkey listing assets` derived or composed by template from a master
+ * (`derivedFrom` is one of the masters) is `NotAiGenerated`. Anything else says nothing, so the
+ * adapter leaves the field unset: a master a person made (`derivedFrom` null), and a fitted
+ * screenshot (`derivedFrom` `screenshot:<class>`), whose pixels a person made and the tool only
+ * cropped or padded, so it cannot vouch for them.
+ */
+export function aiGeneratedStateOf(asset: {
+  derivedFrom?: string | null;
+  derived_from?: string | null;
+}): "NotAiGenerated" | null {
+  const from = asset.derivedFrom ?? asset.derived_from ?? null;
+  return from !== null && TEMPLATE_SOURCES.has(from) ? "NotAiGenerated" : null;
+}
 
 /** One `dist_listing_assets` row as a writer (A-18d) hands it in. */
 export interface ListingAssetInput {
@@ -601,7 +668,7 @@ export function precedenceProblems(v: unknown): ModelProblem[] {
 /** The problems with one asset row (A-18d's writer). */
 export function assetProblems(a: ListingAssetInput): ModelProblem[] {
   const out: ModelProblem[] = [];
-  const rule = LISTING_ASSET_SLOTS[a.slot];
+  const rule = listingAssetRule(a.slot);
   if (rule === undefined)
     out.push({ field: "slot", message: `${a.slot} is not a listing slot` });
   else if (a.textAllowed !== rule)
@@ -623,10 +690,7 @@ export function assetProblems(a: ListingAssetInput): ModelProblem[] {
     if (n !== null && (!Number.isInteger(n) || n < 1 || n > 16384))
       out.push({ field: k, message: `${k} must be 1 to 16384 pixels` });
   }
-  if (
-    a.derivedFrom !== null &&
-    LISTING_ASSET_SLOTS[a.derivedFrom] === undefined
-  )
+  if (a.derivedFrom !== null && listingAssetRule(a.derivedFrom) === undefined)
     out.push({
       field: "derivedFrom",
       message: `${a.derivedFrom} is not a listing slot`,

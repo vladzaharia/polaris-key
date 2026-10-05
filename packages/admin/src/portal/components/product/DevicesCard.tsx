@@ -10,6 +10,7 @@ import { useRemoveDevice } from "../../data.js";
 import { portalErrorCopy } from "../../errors.js";
 import { devicesText, normalisePlatform, osName } from "../../model/library.js";
 import { ErrorPanel } from "../States.js";
+import { SeatMeter } from "../SeatMeter.js";
 import { SectionCard } from "./Card.js";
 
 /**
@@ -63,6 +64,13 @@ export function DevicesCard({
             in use
             {idle > 0 ? ` · +${idle} not using a seat` : ""}
           </p>
+          {seatLimit ? (
+            <SeatMeter
+              inUse={active.length}
+              limit={seatLimit}
+              className="mb-4"
+            />
+          ) : null}
           {active.length === 0 ? (
             <p className="py-3 text-sm text-fg-muted">
               No device is using this license. Open {productName} on a device to
