@@ -445,22 +445,22 @@ any SDK. In the meantime, "sign in with browser" is device code opened in the sy
 
 ### 5.5 Release and update
 
-| Id                       | Capability                                                            | Proven by            | Node | React | Python | Swift | Kotlin | Godot | Allowed N/A     |
-| ------------------------ | --------------------------------------------------------------------- | -------------------- | ---- | ----- | ------ | ----- | ------ | ----- | --------------- |
-| `release.changelog`      | changelog                                                             | transcripts          | ✓    | ◐ ¹   | ✓      | ✓     | ✓      | ✓     | —               |
-| `release.download`       | download and install URLs                                             | transcripts          | ◐ ²  | ◐ ²   | ◐ ²    | ✓     | ✓      | ✓     | —               |
-| `release.fetch` ⊕        | verified download: bearer, resume, size and sha256 vs record          | transcripts (new)    | ✗    | ✗     | ✗      | ✗     | ◐ ³    | ✓     | —               |
-| `release.distribution` ⊕ | `download.json` model, `client.distribution`                          | transcript (new)     | ✗    | ✗     | ✗      | ✗     | ✗      | ✗     | —               |
-| `release.record`         | verify `pkey-release+jws` against pinned release keys                 | `releaseRecordCases` | ✓    | ✓     | ✓      | ✓     | ✓      | ✓     | —               |
-| `update.check`           | today's version check                                                 | transcripts          | ✓    | ✓     | ✓      | ✓     | ✓      | ✓     | —               |
-| `update.feed`            | verify `pkey-feed+jws`: freshness, `seq`                              | `feedCases`          | ✓    | ◐ ¹   | ✓      | ✓     | ✓      | ✓     | —               |
-| `update.feeds` ⊕         | updater feed URLs: appcast, WinSparkle, Velopack, AppInstaller, zsync | discovery transcript | ◐ ⁴  | ✗     | ◐ ⁴    | ◐ ⁴   | ✗      | ✓     | —               |
-| `update.decide`          | the update decision                                                   | `update-matrix.json` | ✓    | ◐ ⁵   | ✓      | ✓     | ✓      | ✓     | —               |
-| `update.content`         | content decision, pack floors, revocations                            | content corpus       | ✓    | ✓     | ✓      | ✓     | ✓      | ✓     | —               |
-| `update.driver`          | hand off to the native updater, or a store link                       | device tests         | ✗    | ✗     | ✗      | ◐ ⁶   | ✓ ⁷    | ◐ ⁸   | iOS: `outlet` ⁷ |
-| `update.bootguard`       | confirm a boot, roll back after N failures                            | `stage-matrix.json`  | ✗    | ✗     | ✗      | ✗     | ✓ ⁹    | ✓     | —               |
-| `outlet.detect`          | outlet detection                                                      | `outlet-matrix.json` | ◐ ¹⁰ | ✓     | ✓      | ✓     | ✓      | ◐ ¹⁰  | —               |
-| `crash.tags` ⊕           | Sentry release, environment and outlet tags for auto-halt             | unit                 | ✗    | ✗     | ✗      | ✗     | ✗      | ✗     | —               |
+| Id                       | Capability                                                            | Proven by            | Node | React | Python | Swift | Kotlin | Godot | Allowed N/A                   |
+| ------------------------ | --------------------------------------------------------------------- | -------------------- | ---- | ----- | ------ | ----- | ------ | ----- | ----------------------------- |
+| `release.changelog`      | changelog                                                             | transcripts          | ✓    | ◐ ¹   | ✓      | ✓     | ✓      | ✓     | —                             |
+| `release.download`       | download and install URLs                                             | transcripts          | ◐ ²  | ◐ ²   | ◐ ²    | ✓     | ✓      | ✓     | —                             |
+| `release.fetch` ⊕        | verified download: bearer, resume, size and sha256 vs record          | transcripts (new)    | ✗    | ✗     | ✗      | ✗     | ◐ ³    | ✓     | —                             |
+| `release.distribution` ⊕ | `download.json` model, `client.distribution`                          | transcript (new)     | ✗    | ✗     | ✗      | ✗     | ✗      | ✗     | —                             |
+| `release.record`         | verify `pkey-release+jws` against pinned release keys                 | `releaseRecordCases` | ✓    | ✓     | ✓      | ✓     | ✓      | ✓     | —                             |
+| `update.check`           | today's version check                                                 | transcripts          | ✓    | ✓     | ✓      | ✓     | ✓      | ✓     | —                             |
+| `update.feed`            | verify `pkey-feed+jws`: freshness, `seq`                              | `feedCases`          | ✓    | ◐ ¹   | ✓      | ✓     | ✓      | ✓     | —                             |
+| `update.feeds` ⊕         | updater feed URLs: appcast, WinSparkle, Velopack, AppInstaller, zsync | discovery transcript | ◐ ⁴  | ✗     | ◐ ⁴    | ◐ ⁴   | ✗      | ✓     | —                             |
+| `update.decide`          | the update decision                                                   | `update-matrix.json` | ✓    | ◐ ⁵   | ✓      | ✓     | ✓      | ✓     | —                             |
+| `update.content`         | content decision, pack floors, revocations                            | content corpus       | ✓    | ✓     | ✓      | ✓     | ✓      | ✓     | —                             |
+| `update.driver`          | hand off to the native updater, or a store link                       | device tests         | ✗    | ✗     | ✗      | ◐ ⁶   | ✓ ⁷    | ◐ ⁸   | iOS: `outlet`; jvm: `runtime` |
+| `update.bootguard`       | confirm a boot, roll back after N failures                            | `stage-matrix.json`  | ✗    | ✗     | ✗      | ✗     | ✓ ⁹    | ✓     | —                             |
+| `outlet.detect`          | outlet detection                                                      | `outlet-matrix.json` | ◐ ¹⁰ | ✓     | ✓      | ✓     | ✓      | ◐ ¹⁰  | —                             |
+| `crash.tags` ⊕           | Sentry release, environment and outlet tags for auto-halt             | unit                 | ✗    | ✗     | ✗      | ✗     | ✗      | ✗     | —                             |
 
 1. On the web, entitled or licensed changelogs and feeds are refused because there is no bearer
    (pass §3.17).

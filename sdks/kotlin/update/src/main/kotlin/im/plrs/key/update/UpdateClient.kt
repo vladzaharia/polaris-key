@@ -32,6 +32,7 @@ import im.plrs.key.core.DetectionStamp
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.Feature
 import im.plrs.key.core.FetchOutcome
+import im.plrs.key.core.FileStore
 import im.plrs.key.core.HostOutlet
 import im.plrs.key.core.InstalledBuild
 import im.plrs.key.core.JsonText
@@ -47,8 +48,6 @@ import im.plrs.key.core.ReleaseRecordPin
 import im.plrs.key.core.ReleaseRecordStep
 import im.plrs.key.core.ResolvedOutlet
 import im.plrs.key.core.RuntimeFamily
-import im.plrs.key.core.FileStore
-import java.io.File
 import im.plrs.key.core.Semver
 import im.plrs.key.core.ServiceSlug
 import im.plrs.key.core.StagedUpdate
@@ -81,6 +80,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonElement
+import java.io.File
 
 /** Reads this process's outlet signals (`outlet-matrix.json#/signals`); Android's readers are P6-12's. */
 public fun interface OutletSignalReader {

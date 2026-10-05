@@ -76,6 +76,10 @@ publishing {
 }
 
 tasks.withType<Test>().configureEach {
+    // KeyringStoreTest runs or skips its real-OS-keyring contract on PKEY_KEYRING_TESTS; declaring it
+    // an input keeps a run with the variable from reusing an up-to-date or build-cache result recorded
+    // without it (and the reverse).
+    inputs.property("pkeyKeyringTests", providers.environmentVariable("PKEY_KEYRING_TESTS").orElse(""))
     systemProperty("pkey.repoRoot", rootProject.projectDir.resolve("../..").canonicalPath)
     systemProperty("pkey.sourceRoot", projectDir.resolve("src/main/kotlin").canonicalPath)
     testLogging {

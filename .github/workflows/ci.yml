@@ -433,7 +433,9 @@ jobs:
   # dbus-run-session, unlocked headless; a Linux session whose Secret Service is unreachable or
   # refuses skips that one test and prints the recorded `core.store` jvm `dependency` N/A. macOS and
   # Linux run the :core, :update and :sdk suites whole; Windows runs the desktop suites (the keyring
-  # store, the install driver and its fetch, the slots, the desktop entry point, capabilities).
+  # store, the install driver and its fetch, the slots, the desktop entry point, capabilities). Every run
+  # passes --no-build-cache so a :core:test result restored from setup-java's Gradle cache can never
+  # stand in for the real-keyring contract (core also declares PKEY_KEYRING_TESTS a Test input).
   kotlin-desktop:
     name: Kotlin SDK JVM desktop (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -462,16 +464,16 @@ jobs:
         working-directory: sdks/kotlin
         run: >-
           dbus-run-session -- bash -c 'printf pkey | gnome-keyring-daemon --unlock --components=secrets >/dev/null;
-          ./gradlew --no-daemon -Ppkey.jvmOnly=true :core:test :update:test :sdk:test'
+          ./gradlew --no-daemon --no-build-cache -Ppkey.jvmOnly=true :core:test :update:test :sdk:test'
       - name: JVM desktop suites (macOS, login Keychain)
         if: runner.os == 'macOS'
         working-directory: sdks/kotlin
-        run: ./gradlew --no-daemon -Ppkey.jvmOnly=true :core:test :update:test :sdk:test
+        run: ./gradlew --no-daemon --no-build-cache -Ppkey.jvmOnly=true :core:test :update:test :sdk:test
       - name: JVM desktop suites (Windows, Credential Manager)
         if: runner.os == 'Windows'
         working-directory: sdks/kotlin
         run: >-
-          ./gradlew --no-daemon -Ppkey.jvmOnly=true
+          ./gradlew --no-daemon --no-build-cache -Ppkey.jvmOnly=true
           :core:test --tests 'im.plrs.key.core.KeyringStoreTest' --tests 'im.plrs.key.core.CapabilitiesTest'
           :update:test --tests 'im.plrs.key.update.DesktopInstallDriverTest' --tests 'im.plrs.key.update.DirUpdateSlotsTest'
           --tests 'im.plrs.key.update.BootGuardTest'
