@@ -74,7 +74,9 @@ import im.plrs.key.license.LicenseEndpoints
 import im.plrs.key.packs.FeedMenu
 import im.plrs.key.packs.PacksClient
 import im.plrs.key.packs.PacksOptions
+import im.plrs.key.release.DistributionClient
 import im.plrs.key.release.ReleaseClient
+import im.plrs.key.core.PortalFlow
 import im.plrs.key.update.UpdateClient
 import im.plrs.key.update.UpdateClientOptions
 import im.plrs.key.core.RuntimeFamily
@@ -181,7 +183,55 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     }
 
     public val config: ConfigClient = ConfigClient(core, options.config, reacquire) { attestForRetry() }
-    public val release: ReleaseClient = ReleaseClient(core)
+    /**
+     * The changelog, the URLs, record verification and `fetch()` (a verified, resumable build
+     * download; its records verify against `UpdateClientOptions.pinnedReleaseKeys`).
+     */
+    public val release: ReleaseClient = ReleaseClient(core, records = { sha -> update.releaseRecord(sha).record }) { attestForRetry() }
+
+    /** The public download page's model (`downloadModel()`, `thisPlatform()`). */
+    public val distribution: DistributionClient = DistributionClient(core)
+
+    private val buildNumber: String? = options.update?.buildNumber
+
+    /**
+     * The customer portal's URL for [flow] (notes/SDK-PARITY-PASS.md §3.5): `freeDevice` names this
+     * device unless [deviceId] is given; a `returnTo` outside [allowedReturn] (or not absolute) is
+     * dropped.
+     */
+    public suspend fun portalUrl(
+        flow: PortalFlow,
+        returnTo: String? = null,
+        key: String? = null,
+        platform: String? = null,
+        deviceId: String? = null,
+        allowedReturn: List<String>? = null,
+    ): String = im.plrs.key.core.portalUrl(
+        core.endpoints.baseUrl, product, flow,
+        deviceId = deviceId ?: if (flow == PortalFlow.freeDevice) core.deviceId() else null,
+        returnTo = returnTo, key = key, platform = platform ?: RuntimeFamily.platformHeader, allowedReturn = allowedReturn,
+    )
+
+    /**
+     * The crash-reporter tags the Worker's Sentry hook maps to rollouts (notes/SDK-PARITY-PASS.md
+     * §3.14, `W/services/distribution/sentry.ts`): `release` = `app@<version>[+<build>]`,
+     * `environment` = the channel, `pkey.outlet` = this install's outlet when known. No crash SDK
+     * dependency: pass them to `Sentry.init` (or any reporter) yourself.
+     */
+    public suspend fun crashTags(): Map<String, String> {
+        val out = linkedMapOf(
+            "release" to "app@${core.version}${buildNumber?.let { "+$it" } ?: ""}",
+            "environment" to core.channel,
+        )
+        try {
+            update.reportedOutlet()?.let { out["pkey.outlet"] = it }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // An outlet that cannot be resolved is simply not tagged.
+        }
+        return out
+    }
 
     /**
      * The pack facet (`ensure`, `state`, `registerHandler`, progress events). Pack records verify

@@ -127,6 +127,15 @@ public data class UpdateClientOptions(
     val installDriver: InstallDriver = JvmInstallDriver,
 )
 
+/** The app-updater feeds [UpdateClient.feedUrl] expands (discovery's `update.endpoints` keys). */
+public object FeedKind {
+    public const val appcast: String = "appcast"
+    public const val winsparkle: String = "winsparkle"
+    public const val velopack: String = "velopack"
+    public const val appInstaller: String = "appInstaller"
+    public const val zsync: String = "zsync"
+}
+
 /** `channelFeed()`'s answer: the verified feed `decide()` would decide from. */
 public data class FeedCheck(
     /** The canonical channel: the feed's own `channel` claim. */
@@ -305,6 +314,32 @@ public class UpdateClient private constructor(
         val template = doc.services[ServiceSlug.distribution]?.endpoints?.get("builds") ?: doc.services[ServiceSlug.release]?.endpoints?.get("builds") ?: return null
         return expandTemplate(template, core.endpoints.baseUrl, mapOf("selector" to version, "buildId" to buildId))
     }
+
+    /**
+     * An app-updater feed URL (notes/SDK-PARITY-PASS.md §3.7), expanded from discovery's
+     * `update.endpoints` template for [kind]: `appcast` (Sparkle; `channelAppcast` when [channel] is
+     * given), `winsparkle`, `velopack` (needs [velopackChannel], e.g. `win-x64`), `appInstaller`,
+     * `zsync` (needs [buildId]). [channel] defaults to this client's. Loads discovery first when this
+     * session has not. Throws [UnsupportedException] (`product`) when the Worker advertises no such
+     * template, or when a needed value is missing.
+     */
+    public suspend fun feedUrl(kind: String, channel: String? = null, velopackChannel: String? = null, buildId: String? = null): String {
+        core.requireService(ServiceSlug.update, Feature.updateFeed)
+        if (core.discoveryDocument() == null && !core.localOnly) core.discover()
+        val key = if (kind == FeedKind.appcast && channel != null) "channelAppcast" else kind
+        fun none(why: String): Nothing = throw im.plrs.key.core.UnsupportedException(
+            im.plrs.key.core.Unsupported(Feature.updateFeed, im.plrs.key.core.UnsupportedReason.product, why),
+        )
+        val template = core.discoveryDocument()?.services?.get(ServiceSlug.update)?.endpoints?.get(key)
+            ?: none("this Worker advertises no $key feed for the product")
+        val values = linkedMapOf("channel" to (channel ?: core.channel))
+        if ("{velopackChannel}" in template) values["velopackChannel"] = velopackChannel ?: none("the velopack feed needs the channel the app was packed with")
+        if ("{buildId}" in template) values["buildId"] = buildId ?: none("the zsync feed needs the AppImage build id")
+        return expandTemplate(template, core.endpoints.baseUrl, values) ?: none("the $key template does not expand")
+    }
+
+    /** Sparkle's appcast URL (`feedUrl(appcast)`). */
+    public suspend fun appcastUrl(channel: String? = null): String = feedUrl(FeedKind.appcast, channel)
 
     /**
      * Hand a decision to the platform's installer ([UpdateClientOptions.installDriver]). On a JVM

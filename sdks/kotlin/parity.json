@@ -140,7 +140,8 @@
       "status": "implemented"
     },
     "release.download": {
-      "status": "implemented"
+      "status": "implemented",
+      "note": "installUrl()/downloadUrl() build the transcript-pinned URLs; release.fetch(target, to, onProgress) downloads one build of a VERIFIED release record from discovery's builds template (Distribution's, else Release's) with the bearer and X-PKey headers, in bounded Range windows resumed with If-Range, and keeps nothing unless size and SHA-256 match (DeliveryHelpersTest); distribution.downloadModel()/thisPlatform() type the public download page."
     },
     "release.record": {
       "status": "implemented"
@@ -151,7 +152,7 @@
     },
     "update.feed": {
       "status": "implemented",
-      "note": ":core's verifyFeed, feedClaims, reloadFeeds and commitFeed (every feedCases vector, FeedCasesTest); UpdateClient.channelFeed() and decide() run them through runUpdateCheck, and Core keeps the feeds slice and its seq floors (the update-feed-rollback transcript)."
+      "note": ":core's verifyFeed, feedClaims, reloadFeeds and commitFeed (every feedCases vector, FeedCasesTest); UpdateClient.channelFeed() and decide() run them through runUpdateCheck, and Core keeps the feeds slice and its seq floors (the update-feed-rollback transcript). update.feedUrl(kind) and appcastUrl() expand discovery's appcast, winsparkle, velopack, appInstaller and zsync templates; a template the Worker does not advertise is the typed product N/A (DeliveryHelpersTest)."
     },
     "update.decide": {
       "status": "implemented",

@@ -175,6 +175,18 @@ client.identity.waitForSignIn(prompt)
   sets the binding as `obfuscatedAccountId`, claims, acknowledges only after the claim
   answered ok and syncs; `restore()` and the `PurchasesUpdatedListener` loop claim what Play holds.
 - **`:identity`**: `beginSignIn`, `pollSignIn` (once), `waitForSignIn` (paced, cancellable).
+- **Delivery helpers** (notes/SDK-PARITY-PASS.md §3.5–§3.8, §3.14): `release.fetch(target, to,
+onProgress)` downloads one build of a verified release record (a `binary` decision, a version +
+  build + record hash, or a record you verified) from discovery's builds template, with the bearer
+  and the `X-PKey-*` headers gated delivery reads, in bounded `Range` windows resumed with
+  `If-Range`; nothing is left at `to` unless size and SHA-256 match (`payload-mismatch`
+  otherwise). `update.feedUrl(kind)` / `appcastUrl()` expand discovery's `appcast`, `winsparkle`,
+  `velopack`, `appInstaller` and `zsync` templates (the typed `product` N/A when one is not
+  advertised). `distribution.downloadModel()` / `thisPlatform()` type the public download page.
+  `portalUrl(flow)` builds the customer portal's `account`, `library`, `activate`, `devices`,
+  `freeDevice` and `download` links (a `returnTo` outside `allowedReturn` is dropped).
+  `crashTags()` answers `release` (`app@<version>[+<build>]`), `environment` and `pkey.outlet`
+  for your crash reporter.
 - **`:release`**: `changelog`, `installUrl`, `downloadUrl` (built, never fetched), `verifyRecord`
   (a `pkey-release+jws` against the keys the app pins; `:core`'s `verifyReleaseRecord`, which the
   update engine shares).

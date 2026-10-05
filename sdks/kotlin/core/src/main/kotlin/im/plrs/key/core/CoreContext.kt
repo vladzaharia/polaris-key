@@ -337,8 +337,10 @@ public class CoreContext(options: CoreOptions) {
         headers: Map<String, String> = emptyMap(),
         body: ByteArray? = null,
         maxBodyBytes: Int? = null,
+        /** This request's deadline in seconds; null is the client's `requestTimeoutSeconds`. */
+        timeoutSeconds: Double? = null,
     ): PolarisResponse = transport.send(
-        PolarisRequest(url, method, headers(headers), body, requestTimeoutSeconds, maxBodyBytes),
+        PolarisRequest(url, method, headers(headers), body, timeoutSeconds ?: requestTimeoutSeconds, maxBodyBytes),
     )
 
     /** GET one signed document with conditional-request support; verification is NOT here. */
