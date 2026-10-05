@@ -17,10 +17,17 @@ import {
   checkCoverage,
   checkStageCoverage,
   compileSchema,
+  COPY_PLACEHOLDERS,
+  COPY_TARGETS,
   loadSources,
   pascalToUpper,
   readWorkerSource,
   renderAll,
+  renderCopyGdscript,
+  renderCopyKotlin,
+  renderCopyPython,
+  renderCopySwift,
+  renderCopyTs,
   renderGdscript,
   renderKotlin,
   ktq,
@@ -32,10 +39,12 @@ import {
   scanWorkerSource,
   TARGETS,
   upperName,
+  validateCopy,
   validateEnums,
   validateErrors,
   VALUES_ONLY_ENUMS,
   words,
+  type CopyDoc,
   type Sources,
 } from "./gen-sdk-constants.js";
 import { capabilityDigest } from "./capabilities.js";
@@ -517,10 +526,19 @@ describe("renderers", () => {
         description: "d",
       },
     ];
-    const model = buildModel(withSources({ errors }));
+    // A new code needs its copy too (validateCopy refuses the gap at load).
+    const copy = {
+      ...SOURCES.copy!,
+      codes: {
+        ...SOURCES.copy!.codes,
+        "chunks.hash-mismatch": { title: "T", message: "M" },
+      },
+    };
+    const model = buildModel(withSources({ errors, copy }));
     expect(renderTs(model)).toContain(
       'chunksHashMismatch: "chunks.hash-mismatch"',
     );
+    expect(renderCopyTs(model)).toContain('"chunks.hash-mismatch": {');
     expect(renderPython(model)).toContain(
       'CHUNKS_HASH_MISMATCH: Final = "chunks.hash-mismatch"',
     );
@@ -657,14 +675,16 @@ describe("gen:constants --check", () => {
     const root = mkdtempSync(join(tmpdir(), "gen-constants-"));
     mkdirSync(join(root, "sdks/godot/addons/polaris_key"), { recursive: true });
     const rendered = await renderAll(MODEL, root);
-    expect([...rendered.keys()]).toEqual(TARGETS.map((t) => t.path));
+    expect([...rendered.keys()]).toEqual(
+      [...TARGETS, ...COPY_TARGETS].map((t) => t.path),
+    );
     for (const [path, content] of rendered) {
       mkdirSync(dirname(join(root, path)), { recursive: true });
       writeFileSync(join(root, path), content);
     }
     expect(await run({ check: true, root, model: MODEL })).toEqual([]);
 
-    for (const target of TARGETS) {
+    for (const target of [...TARGETS, ...COPY_TARGETS]) {
       const abs = join(root, target.path);
       const original = readFileSync(abs, "utf8");
       writeFileSync(
@@ -688,6 +708,142 @@ describe("gen:constants --check", () => {
     expect([...rendered.keys()]).not.toContain(
       "sdks/godot/addons/polaris_key/core/constants_generated.gd",
     );
-    expect(rendered.size).toBe(TARGETS.length - 1);
+    expect([...rendered.keys()]).not.toContain(
+      "sdks/godot/addons/polaris_key/core/copy_generated.gd",
+    );
+    expect(rendered.size).toBe(TARGETS.length + COPY_TARGETS.length - 2);
+  });
+});
+
+describe("the core copy (core.copy, plans/SP-00.md §4)", () => {
+  const COPY = SOURCES.copy!;
+  const clone = (): CopyDoc => JSON.parse(JSON.stringify(COPY)) as CopyDoc;
+  const check = (doc: CopyDoc): string[] =>
+    validateCopy(doc, {
+      codes: SOURCES.errors.map((e) => e.code),
+      enums: SOURCES.enums,
+    });
+
+  it("copy.en.json satisfies its schema and covers every code, licenseStatus and activationResult", () => {
+    expect(
+      compileSchema(join(PARITY, "copy.schema.json"))(
+        JSON.parse(readFileSync(join(PARITY, "copy.en.json"), "utf8")),
+      ),
+    ).toEqual([]);
+    expect(check(COPY)).toEqual([]);
+    expect(Object.keys(COPY.codes).sort()).toEqual(
+      SOURCES.errors.map((e) => e.code).sort(),
+    );
+  });
+
+  it("refuses a missing or an extra code", () => {
+    const missing = clone();
+    delete missing.codes.device_limit;
+    expect(check(missing)).toEqual([
+      'codes: no entry for "device_limit" (errors.json)',
+    ]);
+    const extra = clone();
+    extra.codes.made_up = { title: "T", message: "M" };
+    expect(check(extra)).toEqual(['codes: "made_up" is not in errors.json']);
+  });
+
+  it("refuses gate keys that are not licenseStatus, and activation keys that are not activationResult", () => {
+    const gate = clone();
+    delete gate.gate.grace;
+    gate.gate.lapsed = { title: "T", message: "M" };
+    expect(check(gate)).toEqual([
+      'gate: no entry for "grace" (enums.json licenseStatus)',
+      'gate: "lapsed" is not in enums.json licenseStatus',
+    ]);
+    const activation = clone();
+    delete activation.activation["rate-limited"];
+    expect(check(activation)).toEqual([
+      'activation: no entry for "rate-limited" (enums.json activationResult)',
+    ]);
+  });
+
+  it("allows only the closed placeholder set, and no stray brace", () => {
+    expect([...COPY_PLACEHOLDERS]).toEqual([
+      "code",
+      "detail",
+      "limit",
+      "deviceCount",
+      "retryAfterSeconds",
+      "product",
+    ]);
+    const ok = clone();
+    ok.activation["device-limit"]!.message =
+      "{product}: {deviceCount} of {limit} devices; wait {retryAfterSeconds}s ({code}, {detail}).";
+    expect(check(ok)).toEqual([]);
+    const bad = clone();
+    bad.codes.device_limit!.message = "Used {seats} of {limit}.";
+    bad.gate.ok!.title = "Active }";
+    expect(check(bad)).toEqual([
+      "codes.device_limit.message: unknown placeholder {seats} (allowed: {code}, {detail}, {limit}, {deviceCount}, {retryAfterSeconds}, {product})",
+      "gate.ok.title: a brace that is not part of a {placeholder}",
+    ]);
+  });
+
+  it("one separate copy module per SDK, at the paths the plan names", () => {
+    expect(COPY_TARGETS.map((t) => [t.sdk, t.path])).toEqual([
+      ["node", "packages/sdk-node/src/copy.generated.ts"],
+      ["react", "packages/sdk-react/src/copy.generated.ts"],
+      ["python", "sdks/python/src/polaris_key/copy_generated.py"],
+      ["swift", "sdks/swift/Sources/PolarisKeyCore/Copy.generated.swift"],
+      ["godot", "sdks/godot/addons/polaris_key/core/copy_generated.gd"],
+      [
+        "kotlin",
+        "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Copy.generated.kt",
+      ],
+    ]);
+  });
+
+  it("every module carries every entry, in its language's names", () => {
+    const sample = COPY.codes.device_limit!;
+    const renders = {
+      ts: renderCopyTs(MODEL),
+      python: renderCopyPython(MODEL),
+      swift: renderCopySwift(MODEL),
+      gdscript: renderCopyGdscript(MODEL),
+      kotlin: renderCopyKotlin(MODEL),
+    };
+    for (const [lang, text] of Object.entries(renders)) {
+      expect(text, lang).toContain("GENERATED FILE");
+      for (const name of [
+        "COPY_VERSION",
+        "COPY_LOCALE",
+        "COPY_PLACEHOLDERS",
+        "COPY_FALLBACK",
+        "COPY_CODES",
+        "COPY_GATE",
+        "COPY_ACTIVATION",
+      ])
+        expect(text, `${lang} ${name}`).toContain(name);
+      for (const code of SOURCES.errors.map((e) => e.code))
+        expect(text, `${lang} ${code}`).toContain(JSON.stringify(code));
+      expect(text, lang).toContain(JSON.stringify(sample.message));
+    }
+    expect(renders.ts).toContain(
+      `"device_limit": { title: ${JSON.stringify(sample.title)}, message: ${JSON.stringify(sample.message)} },`,
+    );
+    expect(renders.python).toContain(
+      `"device_limit": CopyEntry(${JSON.stringify(sample.title)}, ${JSON.stringify(sample.message)}),`,
+    );
+    expect(renders.swift).toContain(
+      `"device_limit": CopyEntry(title: ${JSON.stringify(sample.title)}, message: ${JSON.stringify(sample.message)}),`,
+    );
+    expect(renders.gdscript).toContain("class_name PKeyCoreCopy");
+    expect(renders.kotlin).toContain("package im.plrs.key.core");
+    expect(renders.kotlin).toContain(
+      `"device_limit" to CopyEntry(${JSON.stringify(sample.title)}, ${JSON.stringify(sample.message)}),`,
+    );
+  });
+
+  it("a model without copy renders no copy module", async () => {
+    const { copy: _copy, ...rest } = MODEL;
+    const root = mkdtempSync(join(tmpdir(), "gen-constants-nocopy-"));
+    const rendered = await renderAll(rest, root);
+    expect([...rendered.keys()].some((p) => /copy/i.test(p))).toBe(false);
+    expect(() => renderCopyTs(rest)).toThrow(/no core copy/);
   });
 });
