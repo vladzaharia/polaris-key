@@ -1132,23 +1132,27 @@ export async function handlePortalApi(
   ) {
     return handleMeDelete(req, env, db, session, now);
   }
-  // PX-W14: the approver's half. Rate-limited per account before any code is looked up, so the
-  // budget is the bound on guessing someone else's code.
+  // PX-W14: the approver's half. Rate-limited per ACCOUNT alone (not account and client IP, as
+  // `requireActionRateLimit` keys it) before any code is looked up, so the budget is the bound on
+  // guessing someone else's code however many addresses the guesser rotates through.
   if (
     segments[0] === "device-login" &&
     (segments[1] === "lookup" || segments[1] === "approve") &&
     segments.length === 2
   ) {
     if (req.method !== "POST") return err(405, "method_not_allowed");
-    const limited = await requireActionRateLimit(
-      req,
+    const allowed = await rateLimitOk(
       env,
-      session,
-      "portalDeviceApprove",
+      "_portal",
+      {
+        bucket: "portalDeviceApprove",
+        id: session.accountId,
+        limit: DEVICE_LOGIN_APPROVE_LIMIT,
+        windowSec: 60,
+      },
       now,
-      DEVICE_LOGIN_APPROVE_LIMIT,
     );
-    if (limited) return limited;
+    if (!allowed) return err(429, "rate_limited", "too many attempts");
     const body = await readBody(req);
     return segments[1] === "lookup"
       ? handleDeviceLoginLookup(req, env, session, body, now)

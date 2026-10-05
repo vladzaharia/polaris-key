@@ -4521,19 +4521,32 @@ the account holder into approving it ("read me the code", "scan this to claim yo
   is one function (`isNewLocation`) so I-15's sign-in history can replace a country comparison.
   **Residual:** a phisher in the victim's own country (or behind a VPN exiting there) meets no
   step-up; the warning, the shown device and the notice are the defence.
+- **An approval is not a sign-in.** The approved device's session carries the approver's sign-in
+  time as its own (`iat`, which every portal step-up reads), never the time of the approval, and
+  never later than now; a request record without it fails closed to a time past the step-up
+  window. So a same-country approval that needed no step-up yields a session that is no fresher
+  than the approver's: it cannot approve another device from a new place, add or remove a
+  sign-in method (the account-links step-up), or get a new key (G7) without signing in itself.
+  Without this rule the residual above would be a two-hop bypass: a same-country approval, then
+  the new "fresh" session approves any device anywhere or links the attacker's own sign-in
+  method.
 - **Bound to the browser that started it.** `start` sets an `HttpOnly`, `SameSite=Strict`,
   `__Host-` binding cookie whose peppered hash the request holds; a poll without it is answered
   exactly like an expired request, so a poll handle seen in a log or over a shoulder signs nobody
   in. The handle itself is 32 random bytes and, like the code, is stored only as a peppered hash
   (R12-04).
 - **Guessing codes.** A code is 20^8 (about 34.5 bits) and lives 5 minutes. Lookup and approve
-  need a session and share 10 calls a minute per account and client (fail closed), so an account
-  guesses at most 50 codes in a code's lifetime. A correct guess would sign the stranger's device
+  need a session and share 10 calls a minute per account, whatever client or address they come
+  from (fail closed), so an account guesses at most 50 codes in a code's lifetime. A correct guess would sign the stranger's device
   in to the guesser's own account, not the other way round. Starts are bounded per client network
   (10 per 10 minutes) and polls likewise (60 a minute).
 - **Audited and emailed.** `portal.device_login.approve` / `.deny` and `portal.login.device` in
-  `portal_audit`; an approval sends "A new device signed in" to every verified address on the
+  `portal_audit`, and an approval refused for want of a step-up leaves
+  `portal.device_login.step_up_required`, the trace of someone being talked into approving a
+  device elsewhere; an approval sends "A new device signed in" to every verified address on the
   account, with "Wasn't you? Secure your account".
+
+### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The
   JWS is verified once on fetch, then discarded; the decoded doc is reloaded with a bare

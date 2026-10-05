@@ -287,7 +287,10 @@ the time left, the approver's own country, `newLocation` and `stepUpRequired`. `
 explicit `decision`; anything else is a `422`, so nothing approves a request by default.
 Approving a request from another country than the approver's, or from an unknown place, needs a
 sign-in no older than 5 minutes, otherwise `401 { "error": "step_up_required", "maxAgeSeconds":
-300 }` and the code stays live. A decision spends the code atomically (two racing approvals: one
+300 }` and the code stays live (the refusal is audited, `portal.device_login.step_up_required`).
+An approval is not a sign-in: the new device's session carries the approver's sign-in time, so it
+is never fresh enough for a step-up (approving another device elsewhere, changing sign-in
+methods, getting a new key) until its holder signs in on it. A decision spends the code atomically (two racing approvals: one
 lands, the other is `410`), is audited (`portal.device_login.approve` or `.deny`, and
 `portal.login.device` when the new device signs in), and an approval sends the "A new device
 signed in" notice to every verified address.

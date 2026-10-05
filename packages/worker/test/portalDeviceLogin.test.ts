@@ -24,6 +24,7 @@ import {
   DEVICE_LOGIN_COOKIE,
   DEVICE_LOGIN_TTL_SECONDS,
   browserName,
+  deviceSessionAuthenticatedAt,
   isNewLocation,
   requestLocation,
   requestingDevice,
@@ -91,6 +92,7 @@ interface CallOpts {
   country?: string;
   ua?: string;
   csrf?: boolean;
+  ip?: string;
 }
 
 function call(
@@ -102,7 +104,7 @@ function call(
 ): Promise<Response> {
   const headers: Record<string, string> = {
     "user-agent": opts.ua ?? CHROME_MAC,
-    "cf-connecting-ip": "203.0.113.7",
+    "cf-connecting-ip": opts.ip ?? "203.0.113.7",
   };
   if (opts.country) headers["cf-ipcountry"] = opts.country;
   const cookies: string[] = [];
@@ -425,6 +427,93 @@ describe("approving a new device", () => {
     });
   });
 
+  it("audits an approval refused for want of a step-up", async () => {
+    const { env, db } = await setup();
+    const now = NOW + 3600;
+    const stale = await signIn(env, db, "ana@example.com", NOW);
+    const s = await start(env, db, { country: "BR", now });
+    expect(
+      (await decide(env, db, stale, s.code, "approve", { now })).status,
+    ).toBe(401);
+    const audit = await db.all<{ action: string; summary: string }>(
+      "SELECT action, summary FROM portal_audit WHERE account_id = ? AND action LIKE 'portal.device_login.%'",
+      stale.accountId,
+    );
+    expect(audit).toEqual([
+      {
+        action: "portal.device_login.step_up_required",
+        summary:
+          "Asked to sign in again before approving Chrome on macOS near Brazil",
+      },
+    ]);
+  });
+
+  it("never mints a fresh session: an approved device carries the approver's sign-in time", async () => {
+    const { env, db } = await setup();
+    const now = NOW + 3600;
+    // Signed in an hour ago, so not fresh; a same-country request needs no step-up.
+    const stale = await signIn(env, db, "ana@example.com", NOW);
+    const s = await start(env, db, { country: "PT", now });
+    expect(
+      (await decide(env, db, stale, s.code, "approve", { now })).status,
+    ).toBe(200);
+    const polled = await poll(env, db, s, { now });
+    const cookies = polled.headers.get("set-cookie") ?? "";
+    const token = cookies.match(new RegExp(`${PORTAL_COOKIE}=([^;]+)`))?.[1];
+    const session = await verifyPortalSession(env, token ?? null, now);
+    expect(session?.accountId).toBe(stale.accountId);
+    expect(session?.iat).toBe(NOW);
+    const approved: Session = {
+      cookie: `${PORTAL_COOKIE}=${token}`,
+      csrf: session!.csrf,
+      accountId: session!.accountId,
+    };
+
+    // The second hop: the approved device tries to approve a device in another country.
+    const far = await start(env, db, {
+      country: "BR",
+      now,
+      ip: "198.51.100.9",
+    });
+    const seen = (await (
+      await lookup(env, db, approved, far.code, { now })
+    ).json()) as { request: Record<string, unknown> };
+    expect(seen.request).toMatchObject({
+      newLocation: true,
+      stepUpRequired: true,
+    });
+    const refused = await decide(env, db, approved, far.code, "approve", {
+      now,
+    });
+    expect(refused.status).toBe(401);
+    expect(await refused.json()).toMatchObject({ error: "step_up_required" });
+  });
+
+  it("dates an approved device's session from the approver's sign-in, never later than now", async () => {
+    const { env, db } = await setup();
+    const now = NOW + 3600;
+    const fresh = await signIn(env, db, "ana@example.com", now - 60);
+    const s = await start(env, db, { country: "BR", now });
+    expect(
+      (await decide(env, db, fresh, s.code, "approve", { now })).status,
+    ).toBe(200);
+    const later = now + 30;
+    const polled = await poll(env, db, s, { now: later });
+    const token = (polled.headers.get("set-cookie") ?? "").match(
+      new RegExp(`${PORTAL_COOKIE}=([^;]+)`),
+    )?.[1];
+    const session = await verifyPortalSession(env, token ?? null, later);
+    expect(session?.iat).toBe(now - 60);
+
+    expect(
+      deviceSessionAuthenticatedAt({ approverAuthenticatedAt: now + 99 }, now),
+    ).toBe(now);
+    // A record without the field fails closed: past the step-up window.
+    expect(deviceSessionAuthenticatedAt({}, now)).toBe(
+      now - STEP_UP_MAX_AGE_SECONDS - 1,
+    );
+  });
+
   it("treats an unknown place as a new one", async () => {
     const { env, db } = await setup();
     const now = NOW + 3600;
@@ -472,6 +561,18 @@ describe("approving a new device", () => {
     let last = 0;
     for (let i = 0; i < 11; i++) {
       last = (await lookup(env, db, me, "BCDF-GHJK")).status;
+    }
+    expect(last).toBe(429);
+  });
+
+  it("bounds code guessing per account across client addresses", async () => {
+    const { env, db } = await setup();
+    const me = await signIn(env, db, "ana@example.com");
+    let last = 0;
+    for (let i = 0; i < 11; i++) {
+      last = (
+        await lookup(env, db, me, "BCDF-GHJK", { ip: `2001:db8::${i + 1}` })
+      ).status;
     }
     expect(last).toBe(429);
   });

@@ -100,18 +100,31 @@ async function sessionKey(env: Env): Promise<CryptoKey> {
   );
 }
 
+/**
+ * Mints a portal session. `iat` is when the holder last proved who they are, which every
+ * step-up reads (`portalSessionAuthenticatedAt`). A direct sign-in proves it now, the default.
+ * A session minted WITHOUT a sign-in of its own (PX-W14: a device signed in by another device's
+ * approval) passes `authenticatedAt`, the approver's sign-in time, so the new session is never
+ * fresher than the proof behind it; it is clamped to `now` so it can never be in the future.
+ */
 export async function issuePortalSession(
   env: Env,
   identity: PortalSessionIdentity,
   now: number,
+  opts: { authenticatedAt?: number } = {},
 ): Promise<{ token: string; session: PortalSession }> {
+  const iat =
+    typeof opts.authenticatedAt === "number" &&
+    Number.isFinite(opts.authenticatedAt)
+      ? Math.min(Math.floor(opts.authenticatedAt), now)
+      : now;
   const session: PortalSession = {
     accountId: identity.accountId,
     name: identity.name ?? identity.email ?? identity.accountId,
     email: identity.email ?? "",
     csrf: randomToken(16),
     exp: now + SESSION_TTL_SECONDS,
-    iat: now,
+    iat,
   };
   const body = base64UrlEncodeString(JSON.stringify(session));
   const key = await sessionKey(env);

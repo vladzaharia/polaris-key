@@ -34,7 +34,10 @@
  *   - Step-up for a new location (`approvalNeedsStepUp`): when the requesting device's country is
  *     not the approver's (or either is unknown), approval needs a sign-in no older than
  *     `STEP_UP_MAX_AGE_SECONDS` (the account links' step-up), else `401 step_up_required` and the
- *     code stays live.
+ *     code stays live (the refusal is audited, `portal.device_login.step_up_required`).
+ *   - An approval is not a sign-in: the approved device's session carries the APPROVER's sign-in
+ *     time as its own (`deviceSessionAuthenticatedAt`), never `now`, so it is never fresh enough
+ *     to pass a step-up its approver could not have passed.
  *   - Bound to the browser that started it: `start` sets an `HttpOnly` binding cookie whose hash
  *     the record holds, and a poll without it is answered exactly like an expired request, so a
  *     poll handle that leaks (a log line, a shoulder) signs nobody in.
@@ -90,7 +93,7 @@ export const DEVICE_LOGIN_START_LIMIT = 10;
 export const DEVICE_LOGIN_START_WINDOW_SECONDS = 10 * 60;
 /** Polls per client network per minute: a 3-second poll uses 20. */
 export const DEVICE_LOGIN_POLL_LIMIT = 60;
-/** Lookups and decisions per account and client per minute: the guess bound on codes. */
+/** Lookups and decisions per account per minute (any client): the guess bound on codes. */
 export const DEVICE_LOGIN_APPROVE_LIMIT = 10;
 
 /** The binding cookie `start` sets and the poll requires. `__Host-` for the reason the session
@@ -119,6 +122,10 @@ export interface DeviceLoginRecord {
   /** Set by a decision. */
   accountId?: string;
   decidedAt?: number;
+  /** Set by an approval: when the APPROVER last signed in (`portalSessionAuthenticatedAt`). The
+   *  new device's session carries it as its own sign-in time, so an approval never mints a
+   *  session fresher than the proof behind it (see `deviceSessionAuthenticatedAt`). */
+  approverAuthenticatedAt?: number;
 }
 
 /** A coarse place from Cloudflare's edge geolocation; every field may be unknown. */
@@ -286,6 +293,24 @@ export function isNewLocation(
     !approver.country ||
     requested.country !== approver.country
   );
+}
+
+/**
+ * The sign-in time the approved device's session carries: the approver's, never `now`. A device
+ * signed in by approval has proved nothing itself, so its session must not count as a fresh
+ * sign-in; if it did, a same-country approval (no step-up) would yield a session that passes
+ * every step-up for five minutes: approving a second device from anywhere, adding a sign-in
+ * method to the account. A record without the field (written before this rule) is dated past
+ * the step-up window, failing closed.
+ */
+export function deviceSessionAuthenticatedAt(
+  record: Pick<DeviceLoginRecord, "approverAuthenticatedAt">,
+  now: number,
+): number {
+  const at = record.approverAuthenticatedAt;
+  return typeof at === "number" && Number.isFinite(at)
+    ? Math.min(at, now)
+    : now - STEP_UP_MAX_AGE_SECONDS - 1;
 }
 
 function approvalNeedsStepUp(
@@ -473,6 +498,7 @@ export async function handleDeviceLoginPoll(
       email: account.primary_email,
     },
     now,
+    { authenticatedAt: deviceSessionAuthenticatedAt(taken, now) },
   );
   await portalAudit(db, {
     accountId: account.id,
@@ -564,15 +590,28 @@ export async function handleDeviceLoginApprove(
   // Checked BEFORE the code is spent, so a step-up answer leaves it live for the retry.
   if (decision === "approve") {
     const newLocation = isNewLocation(record.location, requestLocation(req));
-    if (approvalNeedsStepUp(session, newLocation, now))
+    if (approvalNeedsStepUp(session, newLocation, now)) {
+      // Not a decision (the code stays live), but worth a row: during a phishing attempt this is
+      // the trace of someone being talked into approving a device elsewhere.
+      await portalAudit(db, {
+        accountId: session.accountId,
+        action: "portal.device_login.step_up_required",
+        targetKind: "device_login",
+        targetId: ref.id.slice(0, 16),
+        summary: `Asked to sign in again before approving ${record.device.label}${record.location.label ? ` near ${record.location.label}` : ""}`,
+        now,
+      });
       return json(
         {
           error: "step_up_required",
           message: "sign in again to approve a device in another place",
           maxAgeSeconds: STEP_UP_MAX_AGE_SECONDS,
         },
+        // 401 with `error: "step_up_required"`, as the portal's other step-up (G7, "Get a new
+        // key", selfService.ts) answers: one shape for the portal client to recognise.
         401,
       );
+    }
   }
 
   // Single use: of any number of racing decisions on this code, one takes it.
@@ -581,7 +620,14 @@ export async function handleDeviceLoginApprove(
     decision === "approve" ? "approved" : "denied";
   const moved = await updateArtefact(env, ref, {
     expect: { status: "pending" },
-    set: { status, accountId: session.accountId, decidedAt: now },
+    set: {
+      status,
+      accountId: session.accountId,
+      decidedAt: now,
+      ...(decision === "approve"
+        ? { approverAuthenticatedAt: portalSessionAuthenticatedAt(session) }
+        : {}),
+    },
   });
   if (!moved.ok) return expired();
 
