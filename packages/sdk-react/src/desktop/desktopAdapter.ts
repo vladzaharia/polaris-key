@@ -28,6 +28,7 @@ import type { CapabilityContext } from "@polaris-key/client-core";
 import { createStore, type Store } from "../core/store.js";
 import {
   PolarisError,
+  UnsupportedError,
   capabilityContext,
   capsIn,
   initialState,
@@ -49,7 +50,19 @@ import {
   type UpdateCheck,
   type UpdateDecideOptions,
 } from "../core/index.js";
+import type {
+  CommerceBinding,
+  CommerceClaimResult,
+  CommercePayload,
+  CommerceStore,
+  DeviceSignIn,
+  DeviceSignInResult,
+  MintedToken,
+} from "../core/types.js";
+import type { StoreStatus } from "@polaris-key/client-core";
 import { isCatalog } from "../browser/catalog.js";
+import { activationError } from "../core/activationError.js";
+import type { ActivationOutcome } from "../core/activation.js";
 import {
   copyServices,
   defaultServices,
@@ -60,8 +73,11 @@ import {
   type ServiceSlug,
   type ServicesMap,
 } from "../core/services.js";
+import { classifyActivation } from "../core/activation.js";
 import {
   resolveBridge,
+  type BridgeActivation,
+  type BridgeOidcBegin,
   type BridgeState,
   type PolarisBridge,
 } from "./bridge.js";
@@ -308,15 +324,7 @@ export class DesktopAdapter implements PolarisAdapter {
     this.setBusy("license", true);
     try {
       const r = await this.bridge.submitKey(key);
-      if (r.kind !== "ok") {
-        const msg =
-          r.kind === "device-limit"
-            ? "This license has reached its device limit."
-            : r.kind === "unauthorized"
-              ? "That key was not accepted."
-              : r.message;
-        throw new PolarisError("sign-in-failed", msg);
-      }
+      if (r.kind !== "ok") throw activationError(bridgeActivationOutcome(r));
       this.apply(await this.bridge.getSyncState(), {
         busy: noBusy(),
         error: noErrors(),
@@ -624,10 +632,219 @@ export class DesktopAdapter implements PolarisAdapter {
     return readEntitled(this.store.get(), name);
   }
 
+  // ── Bridge v4 (SP-R07): more sub-client verbs over `invoke`, each refused with the typed
+  //    `UnsupportedError` when the host predates them. ──
+
+  /** Enrolment happens in the host's own boot (`license.enroll` is a desktop-bridge N/A). */
+  async enroll(): Promise<void> {
+    refuse(this.capabilityCtx, Feature.licenseEnroll, {
+      detail:
+        "The host process enrols (its Node SDK's license.enroll()); the renderer does not.",
+    });
+  }
+
+  async beginSignIn(opts: { deviceName?: string } = {}): Promise<DeviceSignIn> {
+    if (!this.capabilities.identity.enabled)
+      throw this.fail(
+        "identity",
+        new PolarisError(
+          "service-disabled",
+          "OIDC login is not enabled for this product.",
+        ),
+      );
+    this.setBusy("identity", true);
+    let begin: BridgeOidcBegin;
+    try {
+      begin = await this.bridge.beginSignIn(
+        opts.deviceName ? { deviceName: opts.deviceName } : undefined,
+      );
+    } catch (e) {
+      throw this.fail(
+        "identity",
+        new PolarisError("sign-in-unavailable", (e as Error).message),
+      );
+    }
+    const interval = begin.interval ?? 2;
+    return {
+      userCode: begin.userCode ?? "",
+      verificationUri: begin.verificationUri ?? begin.verificationUrl ?? "",
+      verificationUriComplete:
+        begin.verificationUrl ?? begin.verificationUri ?? "",
+      expiresAt: begin.expiresAt ?? this.clock() + 600,
+      interval,
+      wait: async (w = {}) => {
+        for (;;) {
+          w.signal?.throwIfAborted();
+          const r = await this.bridge.pollSignIn(begin.flowId);
+          if (r.kind === "pending") {
+            await delay(Math.max(1, interval) * 1000);
+            continue;
+          }
+          if (r.kind === "ok") {
+            this.apply(await this.bridge.getSyncState(), {
+              busy: noBusy(),
+              error: noErrors(),
+            });
+            return r.identity
+              ? { status: "ready", identity: r.identity }
+              : { status: "ready" };
+          }
+          const out: DeviceSignInResult =
+            r.kind === "error"
+              ? { status: "error", message: r.message }
+              : { status: r.kind };
+          this.fail(
+            "identity",
+            new PolarisError(
+              r.kind === "expired"
+                ? "sign-in-expired"
+                : r.kind === "denied"
+                  ? "sign-in-denied"
+                  : "sign-in-failed",
+              r.kind === "error" ? r.message : r.kind,
+            ),
+          );
+          return out;
+        }
+      },
+    };
+  }
+
+  /** `invoke("config", "mint", {recipeId})`: the host's `client.config.mintToken()`. */
+  async mintToken(recipeId: string): Promise<MintedToken> {
+    const r = await this.invoke<MintedToken>(
+      "config",
+      "mint",
+      { recipeId },
+      this.v4Unsupported(Feature.configMint, "edge-mint"),
+    ).catch((e: unknown) => {
+      throw this.fail("config", asPolarisError(e));
+    });
+    return r;
+  }
+
+  /** `invoke("commerce", "binding")`: the host's `client.commerce.binding()`. */
+  async commerceBinding(): Promise<CommerceBinding> {
+    return this.invoke<CommerceBinding>(
+      "commerce",
+      "binding",
+      undefined,
+      this.v4Unsupported(Feature.commerceReceipt, "commerce"),
+    );
+  }
+
+  /** `invoke("commerce", "claim", {store, payload})`, then the host's fresh state. */
+  async commerceClaim(
+    store: CommerceStore,
+    payload: CommercePayload,
+  ): Promise<CommerceClaimResult> {
+    const r = await this.invoke<CommerceClaimResult>(
+      "commerce",
+      "claim",
+      { store, payload },
+      this.v4Unsupported(Feature.commerceReceipt, "commerce"),
+    );
+    if (r?.kind === "ok")
+      this.apply(await this.bridge.getSyncState(), {
+        busy: noBusy(),
+        error: noErrors(),
+      });
+    return r;
+  }
+
+  /** `invoke("core", "discovery")`, or null on a host that does not answer it. */
+  async discovery(): Promise<Record<string, unknown> | null> {
+    if (!this.bridge.invoke) return null;
+    try {
+      const d = await this.bridge.invoke("core", "discovery");
+      return d && typeof d === "object" ? (d as Record<string, unknown>) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** `invoke("devices", "id")`: the host's device id (what an offline bundle is minted for). */
+  async offlineDeviceId(): Promise<string | null> {
+    if (!this.bridge.invoke) return null;
+    try {
+      const id = await this.bridge.invoke("devices", "id");
+      return typeof id === "string" && id !== "" ? id : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** `invoke("core", "storeStatus")`: where the host keeps the token. */
+  async storeStatus(): Promise<StoreStatus | null> {
+    if (!this.bridge.invoke) return null;
+    try {
+      const st = (await this.bridge.invoke(
+        "core",
+        "storeStatus",
+      )) as StoreStatus | null;
+      return st && typeof st === "object" && typeof st.backend === "string"
+        ? st
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private v4Unsupported(feature: string, what: string): PolarisError {
+    return new UnsupportedError(
+      {
+        supported: false,
+        feature,
+        reason: "version",
+        detail: `This desktop bridge (protocol v${this.bridge.version ?? 1}) does not expose ${what}; bridge protocol v4 adds it.`,
+      },
+      "unsupported",
+    );
+  }
+
   dispose(): void {
     this.offBridge?.();
     this.offBridge = null;
   }
+}
+
+/** Map a host's activation answer onto the §3.1 table. A v3 host's `error` keeps its message
+ *  and becomes `refused` with the code it carried (or `http-error`), never `deviceLimit`. */
+export function bridgeActivationOutcome(
+  r: Exclude<BridgeActivation, { kind: "ok" }>,
+): ActivationOutcome {
+  switch (r.kind) {
+    case "device-limit":
+      return {
+        kind: "deviceLimit",
+        code: "device_limit",
+        ...(r.limit !== undefined ? { limit: r.limit } : {}),
+        ...(r.deviceCount !== undefined ? { deviceCount: r.deviceCount } : {}),
+      };
+    case "unauthorized":
+      return { kind: "unauthorized", code: "unauthorized" };
+    case "fingerprint-required":
+      return { kind: "fingerprintRequired", code: "fingerprint_required" };
+    case "enroll-disabled":
+      return { kind: "enrollDisabled", code: "enroll_disabled" };
+    case "hardware-mismatch":
+      return { kind: "hardwareMismatch", code: "hardware_mismatch" };
+    case "refused":
+      return classifyRefused(r.code, r.status, r.message);
+    case "error":
+      return r.code
+        ? classifyRefused(r.code, undefined, r.message)
+        : { kind: "error", code: "network", message: r.message };
+  }
+}
+
+function classifyRefused(
+  code: string,
+  status?: number,
+  message?: string,
+): ActivationOutcome {
+  const o = classifyActivation(status ?? 403, { error: { code, message } });
+  return o;
 }
 
 function asPolarisError(e: unknown): PolarisError {

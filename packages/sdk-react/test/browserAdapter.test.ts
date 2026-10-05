@@ -246,7 +246,9 @@ describe("BrowserAdapter — submitKey", () => {
     await ready(adapter);
     await expect(adapter.submitKey("bad")).rejects.toMatchObject({
       code: "sign-in-failed",
-      message: "That key was not accepted.",
+      wireCode: "unauthorized",
+      activation: { kind: "unauthorized", code: "unauthorized", status: 401 },
+      message: "That key was not accepted. Check it for typos and try again.",
     });
     expect(adapter.snapshot().error.license?.code).toBe("sign-in-failed");
     // The identity slice is untouched — a bad key is not a broken sign-in service.
@@ -259,15 +261,46 @@ describe("BrowserAdapter — submitKey", () => {
       productSlug: "acme",
       fetchImpl: fetchWith((url) =>
         url.includes("/identity/session/license")
-          ? json({ error: { code: "device_limit" } }, 403)
+          ? json(
+              { error: { code: "device_limit", limit: 3, deviceCount: 3 } },
+              403,
+            )
           : json({ authenticated: false, doc: null }),
       ),
       now: () => NOW_SEC,
     });
     await ready(adapter);
     await expect(adapter.submitKey("k")).rejects.toMatchObject({
-      message: "This license has reached its device limit.",
+      wireCode: "device_limit",
+      activation: { kind: "deviceLimit", limit: 3, deviceCount: 3 },
+      message: expect.stringMatching(/device limit/),
     });
+    adapter.dispose();
+  });
+});
+
+// @pkey-feature license.activate
+describe("BrowserAdapter — an unknown 403 is never the device limit (SDK-PARITY-PASS §3.1)", () => {
+  it.each([
+    ["enroll_claimed", "enrollClaimed"],
+    ["license_disabled", "licenseDisabled"],
+    ["attestation_required", "attestationRequired"],
+    ["license_owned", "refused"],
+    ["key_entry_limit", "refused"],
+  ])("403 %s → %s, keeping the server's code", async (code, kind) => {
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      fetchImpl: fetchWith((url) =>
+        url.includes("/identity/session/license")
+          ? json({ error: { code } }, 403)
+          : json({ authenticated: false, doc: null }),
+      ),
+      now: () => NOW_SEC,
+    });
+    await ready(adapter);
+    const err = await adapter.submitKey("k").catch((e: unknown) => e);
+    expect(err).toMatchObject({ wireCode: code, activation: { kind, code } });
+    expect((err as Error).message).not.toMatch(/device limit/);
     adapter.dispose();
   });
 });

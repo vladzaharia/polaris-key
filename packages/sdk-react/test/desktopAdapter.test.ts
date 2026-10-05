@@ -216,6 +216,33 @@ describe("DesktopAdapter — submitKey", () => {
     adapter.dispose();
   });
 
+  it.each([
+    [{ kind: "refused", code: "license_owned" }, "refused", "license_owned"],
+    [
+      { kind: "refused", code: "enroll_claimed" },
+      "enrollClaimed",
+      "enroll_claimed",
+    ],
+    [
+      { kind: "fingerprint-required" },
+      "fingerprintRequired",
+      "fingerprint_required",
+    ],
+    [{ kind: "error", message: "boom" }, "error", "network"],
+  ])(
+    "a v4 host's %j is classified by code, never as the device limit",
+    async (result, kind, code) => {
+      const bridge = makeFakeBridge(emptyBridgeState());
+      bridge.submitKey = vi.fn(async () => result as BridgeActivation);
+      const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
+      await ready(adapter);
+      const err = await adapter.submitKey("k").catch((e: unknown) => e);
+      expect(err).toMatchObject({ activation: { kind, code } });
+      expect((err as Error).message).not.toMatch(/device limit/i);
+      adapter.dispose();
+    },
+  );
+
   it("refuses key entry outright when the license service is off", async () => {
     const adapter = desktopAdapter({
       bridge: makeFakeBridge(

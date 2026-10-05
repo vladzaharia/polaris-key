@@ -211,9 +211,7 @@ describe("DeviceManager — device-management-unsupported", () => {
     ).toBeTruthy();
     // It is an explanation (status), never a role=alert failure.
     expect(container.querySelector('[role="alert"]')).toBeNull();
-    expect(container.textContent).toMatch(
-      /not supported from a browser session/i,
-    );
+    expect(container.textContent).toMatch(/cookie session/i);
     adapter.dispose();
   });
 
