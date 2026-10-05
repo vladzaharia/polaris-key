@@ -65,6 +65,14 @@ Decision 22 defers subscriptions until a product needs them; the model is ready 
 mise exec node@22 -- pnpm --filter @polaris-key/worker test
 ```
 
+## S-21 note (2026-10-05)
+
+Web checkout (Stripe first) is designed in a separate plan, S-22, behind the Polaris Key
+storefront. [S-21 §6.10](../../notes/S-21-polaris-storefront.md#610-seams-for-the-commerce-module-s-22) fixes the seams it plugs
+into: priced obtain paths (`action: "buy" | "upgrade"`), the single issuance function
+`issueFromPath`, grant source `polaris-key` and this package's lifecycle states. Map
+checkout events onto those; add no parallel issuance path.
+
 ## Hand-off
 
 - None.

@@ -5,15 +5,17 @@
 > consider ourselves a full-fledged distribution and release channel. So, `direct` really becomes
 > `Polaris Key`. This second part (full commerce) should be its own plan." The first part (the
 > storefront and the seams commerce plugs into) is the sibling spike **S-21**
-> (`spike/S-21-polaris-storefront`); this note is the second part. It has no program brief; §11
+> ([`S-21-polaris-storefront.md`](S-21-polaris-storefront.md), merged); this note is the second part. It has no program brief; §11
 > registers a `CM-` work-package namespace whose packages are **optional and deferred**: none is
 > dispatched until the owner says go. Research and design only: no product code changed, nothing
 > was deployed, no Stripe account or credential was used and no live call was made. File references
 > are to the tree at `fd6c42e3` (`W/` = `packages/worker/src/`, `N/` =
 > `docs/research/2026-09-29-godot-omniplatform/notes/`, `P/` =
-> `docs/research/2026-09-29-godot-omniplatform/program/`). S-21 had no commit when this note was
-> written; §3 states the seams this note assumes it defines, and the lead reconciles them when S-21
-> lands (§12). Stripe facts marked [V] were read on Stripe's primary pages on 2026-10-05 (§13);
+> `docs/research/2026-09-29-godot-omniplatform/program/`). Revised the same day after S-21 merged
+> to `main` ([`S-21-polaris-storefront.md`](S-21-polaris-storefront.md), PS-01 to PS-11): §3 now
+> uses S-21's actual seams (its §6.10), priced offers are obtain paths, fulfilment goes through
+> `issueFromPath`, upgrades follow S-19's new-licence rule, and the CM packages depend on the PS
+> packages they plug into. Stripe facts marked [V] were read on Stripe's primary pages on 2026-10-05 (§13);
 > facts marked [U] were not re-read for this note and must be checked in CM-01.
 
 # S-22: Polaris Key commerce (Stripe first)
@@ -30,7 +32,7 @@ Stripe price's billing plan only where quoted from Stripe; Polaris copy says **t
 > reasoning is §10. Three groups:
 >
 > 1. **Decided by the lead (binding for the CM- packages unless the owner overrides at go-time):**
->    D1–D4, D6–D30 in §10.1.
+>    D1–D32 in §10.1.
 > 2. **For the owner at go-time** (genuinely the owner's: legal, money, brand). They do not block
 >    the plan; CM-01's plan restates them and the first dispatch waits on the owner's answers:
 >    G1 merchant of record and the platform terms, G2 the Polaris Key platform fee, G3 the
@@ -79,14 +81,19 @@ that aggregates orders and subscriptions across every developer a person buys fr
 Customer Portal is per Stripe account, so it cannot do that), and hands off to a Stripe Customer
 Portal session on the right connected account only for payment methods and invoice PDFs.
 
-**Polaris Key owns the catalogue; Stripe mirrors it.** Offers (what is sold) and prices (per
-currency) are Polaris rows, operator-only like store mappings ("a repo push must never decide"
-money, `W/services/distribution/commerce/settings.ts:1-7`) [V], synced idempotently to Stripe
-Products and Prices on the connected account. The storefront listing reads them through a Core
-descriptor hook, `commerceCatalog`, that answers `null` while commerce is off (§3).
+**Polaris Key owns the catalogue; Stripe mirrors it; a priced offer is an obtain path.** Offers
+(what is sold) and prices (per currency) are Polaris rows, operator-only like store mappings ("a
+repo push must never decide" money, `W/services/distribution/commerce/settings.ts:1-7`) [V],
+synced idempotently to Stripe Products and Prices on the connected account. S-21's obtain-path
+engine (PS-03) receives each offer a viewer may buy as an `ObtainPath` of kind `offer` with
+`action: "buy"` or `"upgrade"` and a `price`, so who may buy and who may see stay one function
+(S-21 §6.10 seams 1, 2) (§3).
 
-**A payment is just another grant source.** Fulfilment writes through S-19's Core writers
-(`core/grants.ts`, LX-08) with source **`polaris-key`**: a base-tier offer mints a licence
+**A payment is just another grant source.** Fulfilment calls S-21's single issuance function,
+`issueFromPath(path, account)` (PS-04), with the `offer` path and the provider's verified result, so
+free and paid adds create the same shapes (S-21 §6.10 seam 3). It writes through S-19's Core
+writers (`core/grants.ts`, LX-08) with source **`polaris-key`**, `external_ref_hash` and `order_ref`
+(seam 4): a base-tier offer mints a licence
 (`licenses.source = 'polaris-key'`, `external_ref_hash`), an add-on creates an account-held grant,
 a seat pack creates a licence-held grant. The device sees the result through
 `resolveDeviceEntitlements` (LX-09) on its next document; nothing on the device wire learns about
@@ -95,10 +102,10 @@ money. Refunds and lost disputes revoke exactly that grant under LX-12's states.
 **Subscriptions map onto terms S-19 already has.** A base subscription is a licence whose
 `expires_at` follows the paid period (plus a renewal buffer); an add-on subscription is a grant
 with `expires_at`. Failed renewals use LX-12's `past_due` and `dunningGraceDays`; cancellation is at
-period end; resubscribing reuses the same licence so devices keep their anchor. Tier upgrades on a
-one-time licence change the tier **in place** with a revertible order link (an amendment to S-19
-§7.6's "new licence plus `superseded_by`" for checkout-driven upgrades; proposed in §12);
-subscription upgrades swap the price with Stripe proration.
+period end; resubscribing reuses the same licence so devices keep their anchor. Commerce adds no
+lifecycle state (seam 5). Tier upgrades follow S-19 §7.6: an `upgrade` path appears only toward a
+higher `tiers.rank` (seam 7), and paying mints a new licence on the higher tier with
+`superseded_by` on the old one; subscription upgrades swap the price with Stripe proration.
 
 **Mobile store rules are enforced by the server, not left to SDK politeness.** The SDK
 `purchase(offer)` hands desktop and web builds to Polaris Key checkout in the system browser, and
@@ -127,11 +134,11 @@ flowchart LR
   end
   SDK -- "POST …/commerce/checkout<br/>(device token)" --> T["single-use checkout ticket"]
   T --> PB["key.plrs.im/buy/… (portal)<br/>sign-in required"]
-  L["Storefront listing (S-21)<br/>commerceCatalog hook"] --> PB
+  L["Storefront (S-21): obtain-path engine<br/>offer paths via delivery().commercePaths"] --> PB
   PB -- "Checkout Session<br/>(direct charge, Stripe Tax)" --> SC["Stripe Checkout<br/>(developer's connected account)"]
   SC -- "redirect back: fulfil-now" --> F
   SC -- "webhook (Connect destination)<br/>HMAC-verified, deduped" --> Q["queue → fetch latest object"]
-  Q --> F["fulfil: order ledger → core/grants.ts<br/>source = polaris-key"]
+  Q --> F["fulfil: order ledger → issueFromPath (PS-04)<br/>→ core/grants.ts, source = polaris-key"]
   SB --> G2["core/grants.ts<br/>source = app-store | play | steam"]
   F --> R["resolveDeviceEntitlements (LX-09)"]
   G2 --> R
@@ -139,21 +146,56 @@ flowchart LR
   R --> P["Portal Library and Billing"]
 ```
 
-## 3. Seams assumed from S-21 (to reconcile when S-21 lands)
+## 3. The S-21 seams commerce plugs into
 
-S-21 (`spike/S-21-polaris-storefront`) had no commit on 2026-10-05. This note assumes S-21 defines
-the following seams, and every CM brief names them by these words. If S-21 chooses different names
-or shapes, the lead updates the CM briefs in a follow-up (one sentence per brief; no decision in
-this note depends on the exact name).
+S-21 merged on 2026-10-05 and fixes nine seams in its §6.10. Each maps to the S-22 design and the
+CM package that builds on it:
 
-| Seam                                                            | What this note assumes S-21 provides                                                                                                                                                                                                                                                                                       | What commerce plugs in                                                                                                                                     |
-| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| S1 the `direct` outlet becomes "Polaris Key"                    | The outlet kind `direct` keeps its **identifier** (it is a wire enum: `conformance/parity/enums.json:47`, `packages/shared-protocol/src/distribution.ts:10`, `IMPLICIT_OUTLET_ID` in `shared-manifest`) [V] and gains the display name "Polaris Key" everywhere a person reads it. Renaming the identifier is not assumed. | Nothing on the wire. Commerce's new grant source is `polaris-key` (D9), chosen so that the person-facing name and the identifier agree for new vocabulary. |
-| S2 a public listing page per product                            | A storefront page rendered from the listing model (A-18b) on the portal origin, readable signed-out.                                                                                                                                                                                                                       | A price block and the buy CTA (CM-16).                                                                                                                     |
-| S3 a server-resolved CTA ("purchase action")                    | One server-side resolver that returns the listing's primary action: `get-free`, `add-to-library`, `owned`, `available-on <store>`, `download`, plus a reserved **`buy`** and **`upgrade`** state commerce fills in.                                                                                                        | `buy`, `upgrade`, `subscribe`, `manage`, `gift`, with prices from `commerceCatalog`.                                                                       |
-| S4 a Core descriptor hook for offers                            | A null-when-off hook in `W/core/hooks.ts` that the listing calls (the `releaseCatalog` / `delivery` pattern) [V: `W/core/hooks.ts`].                                                                                                                                                                                       | `commerceCatalog(product, viewer) → { offers[], currency, owned[] } \| null`, implemented in the Distribution service (CM-04).                             |
-| S5 return-URL allowlist for focused flows                       | PX-10's focused-flow return allowlist on the portal origin [V: PX-10 done].                                                                                                                                                                                                                                                | Checkout `success_url` / `cancel_url` are portal paths only (`/buy/<order>/done`, `/buy/<order>/cancelled`).                                               |
-| S6 the storefront is the sales surface for "Polaris Key" outlet | Storefront visibility follows Distribution availability (P2b-03) for the `direct` outlet.                                                                                                                                                                                                                                  | An offer is sellable only where the listing is visible and the `direct` outlet is available for the viewer's platform.                                     |
+1. **`ObtainPath.action` widens** from `"add" | "link"` to add `"buy"` and `"upgrade"`. The portal
+   renders the server's action, so a priced path needs no new tile (CM-04 on PS-03; CM-16 on
+   PS-05).
+2. **A priced offer is an obtain path** with `action: "buy"` and a `price` (`{amount, currency,
+period?}`), contributed through the same engine. `ObtainPathKind` gains `offer`; `ObtainPath`
+   gains `price` and `offerId`. The engine lives in the identity service (S-21 Q5), so commerce
+   (Distribution) contributes through a new single-provider method on Distribution's `delivery()`
+   hook, `commercePaths(account, product)`, exactly as `openAccess()` and `storeOwnership()` do.
+   Free paths are evaluated first, so a person who can add a product for free never sees Buy
+   first. Visibility stays S-21's listing modes: `offer` paths count under `listed`, and under
+   `auto` only if the operator puts `offer` in `storefront.polarisKey.offerPaths`. **This replaces
+   the `commerceCatalog` hook of the first draft** (CM-04).
+3. **One issuance function, `issueFromPath(path, account)`** (PS-04). A completed checkout calls it
+   with the `offer` path and the provider's verified result (the re-read Checkout Session).
+   `issueFromPath` sits in the identity service and the webhook consumer in Distribution, so rule 6
+   needs a Core-mediated call: a single-provider Core hook method (`issuance().issueFromPath`,
+   provided by identity). This is a **proposed PS-04 amendment** (§12); CM-01 fixes the name
+   (CM-05 on PS-04).
+4. **Grant source `polaris-key`**, with `external_ref_hash` (the provider's order id, hashed) and
+   `order_ref`. Adopted as is (D9). S-21 D9 **replaces** `direct` with `polaris-key` in the
+   grant-source vocabulary; there is no `direct` grant source. A sale a developer records through
+   the admin API is a `comp` grant ("From <developer>", S-21 §6.8 `PurchaseSourceKind: developer`)
+   (CM-05; LX-08 amendment).
+5. **Lifecycle from S-19, LX-12 and LX-23, with no new states.** Upgrades are a new licence with
+   `superseded_by`; subscriptions run on `expires_at`, `past_due` and `dunningGraceDays`. Adopted.
+   The first draft's in-place, revertible tier change (and its `dist_license_tier_changes` table)
+   is **withdrawn** (CM-07, CM-08).
+6. **A payment provider is one more connection** (Platform → Store connections, a
+   `PLATFORM_CREDENTIALS` slot), and the `polaris-key` adapter's `pricing` and `iap` ops flip from
+   `unsupported` to `first-party` when a provider is connected. Adopted: the platform's Stripe
+   account is the connection, each developer's connected account is a merchant (§5), and a product
+   with an active merchant reports `pricing` / `iap` as `first-party`, so PS-06's hub and readiness
+   checklist need no new shape. The interface itself is §6 (CM-03 on PS-01).
+7. **Upgrade paths need `tiers.rank`** (LX-08), and "Upgrade" renders only when the engine returns
+   an `upgrade` path. `commercePaths` returns `upgrade` only for a held product, from a lower-rank
+   tier, toward a higher-rank tier with an upgrade offer (CM-07).
+8. **Footnote and counts.** Decided (D31): the Discover count stays "offers you can add now"
+   (buy-only products are listed, not counted), and the footnote becomes "Products you can add for
+   free, and products you can buy" (CM-16).
+9. **Analytics.** PS-06's analytics card (`storefront_daily`) gains revenue and refund columns per
+   currency from the order ledger (CM-12 on PS-06).
+
+**`direct` (S-21 §6.8, D9).** The outlet keeps its wire id `direct` and is labelled "Polaris Key"
+everywhere (PS-10). Commerce changes nothing about the outlet; its only new vocabulary is the grant
+source `polaris-key`. Sellable builds are the `direct`-outlet builds (§7.12).
 
 ## 4. Current state
 
@@ -247,7 +289,12 @@ the owner's Stripe account as a merchant. There is no special path (rule 5).
 
 ## 6. The provider abstraction
 
-Commerce code lives in the Distribution service next to the store bridge, as
+For the console the provider is one more connection (S-21 seam 6): the platform's Stripe account
+in Platform → Store connections (deploy secrets, §7.13, surfaced through a `PLATFORM_CREDENTIALS`
+slot that shows presence only), and while a product has an active merchant the `polaris-key`
+storefront adapter's `pricing` and `iap` ops report `first-party` (they read Polaris tables only,
+so S-21's no-HTTP conformance rule for first-party ops still holds). Commerce code lives in the
+Distribution service next to the store bridge, as
 `W/services/distribution/commerce/checkout/` with one provider module per payment provider. It
 writes licences and grants only through Core writers (`core/grants.ts`, LX-08), so rule 6's
 boundaries test keeps holding [V: AGENTS.md rule 6]. Merchant and customer rows that span products
@@ -412,7 +459,7 @@ CREATE UNIQUE INDEX idx_orders_session ON dist_orders(product, provider_session_
 CREATE TABLE dist_order_lines (
   product TEXT NOT NULL, order_id TEXT NOT NULL, line INTEGER NOT NULL,
   offer_id TEXT NOT NULL, quantity INTEGER NOT NULL DEFAULT 1,
-  grant_id TEXT NULL, license_id TEXT NULL, tier_change_id TEXT NULL,   -- what fulfilment produced
+  grant_id TEXT NULL, license_id TEXT NULL, superseded_license_id TEXT NULL,  -- what fulfilment produced
   PRIMARY KEY (product, order_id, line));
 CREATE TABLE dist_subscriptions (
   product TEXT NOT NULL, id TEXT NOT NULL, merchant_id TEXT NOT NULL, account_id TEXT NULL,
@@ -422,11 +469,6 @@ CREATE TABLE dist_subscriptions (
   license_id TEXT NULL, grant_id TEXT NULL,                    -- exactly one: what it keeps alive
   created_at INTEGER NOT NULL, modified_at INTEGER NOT NULL,
   PRIMARY KEY (product, id), UNIQUE (product, provider_subscription_ref));
-CREATE TABLE dist_license_tier_changes (                        -- revertible in-place upgrades (D13)
-  product TEXT NOT NULL, id TEXT NOT NULL, license_id TEXT NOT NULL,
-  from_tier_id TEXT NOT NULL, to_tier_id TEXT NOT NULL, order_id TEXT NOT NULL,
-  state TEXT NOT NULL,         -- applied | reverted
-  created_at INTEGER NOT NULL, reverted_at INTEGER NULL, PRIMARY KEY (product, id));
 CREATE TABLE dist_coupons (
   product TEXT NOT NULL, id TEXT NOT NULL, code TEXT NULL,       -- NULL: link-only coupon
   percent_off INTEGER NULL, amount_off INTEGER NULL, currency TEXT NULL,
@@ -436,10 +478,10 @@ CREATE TABLE dist_coupons (
   state TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (product, id));
 ```
 
-**S-19 additions** (in LX-08's migration if LX-08 has not shipped, else a CM migration): the grant
-`source` trigger vocabulary gains **`polaris-key`**; `licenses.source` accepts it. Grants and
-licences minted by checkout carry `external_ref_hash = H(provider, payment or subscription ref)`,
-`order_ref = ord_…`, `created_by = 'commerce'`.
+**S-19 additions:** none of commerce's own. The grant `source` vocabulary already carries
+**`polaris-key`** in place of `direct` (S-21 D9, recorded on LX-08); `licenses.source` accepts it.
+Grants and licences minted by checkout carry `external_ref_hash = H(provider, payment or
+subscription ref)`, `order_ref = ord_…`, `created_by = 'commerce'`.
 
 Checkout tickets (device → browser hand-off) use the existing single-use store (I-02), not a
 table.
@@ -457,40 +499,48 @@ table.
 - **Prices** are per currency, immutable once used (Stripe Prices are immutable [U]); a price change
   writes a new row and a new provider price, and the old one stays for history and open
   subscriptions (D11: existing subscribers keep their price unless the developer migrates them).
-- The listing (S-21, seam S4) calls `commerceCatalog(product, viewer)`: the on-sale offers visible
-  for the viewer's platform (S6), the display price in the viewer's currency (Accept-Language and
-  the edge country as a hint, the person's choice wins), what the viewer **already owns** (from the
-  resolver, with source: "Owned on Steam"), and whether an upgrade path exists from the viewer's
-  best licence. Signed-out viewers see prices and a "Sign in to buy" CTA.
-- A store-only product (sold on Steam only) shows "Available on Steam"; a product with both shows
-  both, and the Polaris Key price is never shown inside a store build (§7.12).
+- The storefront (S-21's engine, PS-03) calls `delivery().commercePaths(account, product)` and
+  receives one `offer` path per on-sale offer the viewer may buy: `action: "buy"` (or `"upgrade"`
+  for a held product, §7.5), `price` in the viewer's currency (Accept-Language and the edge country
+  as a hint, the person's choice wins), `offerId`, and terms ("14-day trial", "a month"). What the
+  viewer already owns comes from the free paths (`store_owned`: "You own it on Steam") and the
+  Library, which the engine already excludes. Signed-out viewers see prices and "Sign in to buy".
+  `commercePaths` is a dry run like the rest of the engine (S-21 guarantee 1) and answers `[]` with
+  commerce off, the product unlisted or no active merchant.
+- A store-only product (sold on Steam only) keeps S-21's link-only action ("Get it on Steam"); a
+  product with both shows both, and the Polaris Key price is never shown inside a store build
+  (§7.12).
 
 ### 7.3 Checkout and fulfilment (one-time purchases)
 
-1. **Start.** From the listing or the portal product page the signed-in person presses Buy;
+1. **Start.** From a Discover tile or the storefront page (`#/discover/:product`) the signed-in
+   person presses Buy on an `offer` path;
    `POST /api/commerce/checkout {product, offerId, currency, giftTo?, couponCode?, licenseId?}`
    (portal API, session-authenticated, CSRF-protected as the other portal writes). From an app, the
    device route of §7.12 returns a ticket URL that lands on the same page.
-2. **Checks.** Commerce on, merchant `active` and `charges_enabled`, offer `on_sale`, the viewer
+2. **Checks.** The engine re-evaluates the `offer` path (as PS-04's claim re-evaluates a free
+   path; a path no longer offered answers `409 not_eligible`). Commerce on, merchant `active` and `charges_enabled`, offer `on_sale`, the viewer
    eligible (an upgrade needs a source licence they own; an add-on of `requires` a base licence or
    grant, setting `commerce.addons.requireBase` default true; a one-per-person base offer refuses a
    second purchase unless `commerce.allowMultipleBase`), country not blocked.
 3. **Order.** Insert `dist_orders(state=open)` and create a Checkout Session on the merchant with
    our line items, `customer` (lazy create), `client_reference_id = ord_…`, metadata
    `{pk_product, pk_order}`, `automatic_tax`, `allow_promotion_codes` per setting, consent text for
-   the EU digital-content waiver when enabled (G4), `success_url` / `cancel_url` on the portal (S5),
+   the EU digital-content waiver when enabled (G4), `success_url` / `cancel_url` on the portal (PX-10's return allowlist),
    and a 30-minute expiry. Answer the Checkout URL; the browser redirects.
 4. **Fulfil, twice, idempotently.** On return, the success page calls
    `POST /api/commerce/orders/<id>/fulfil`, which re-reads the session; independently the webhook
    `checkout.session.completed` (or `async_payment_succeeded`) does the same. Both run one function,
    `fulfilOrder(orderId)`, guarded by the order's state machine and the unique session index, so
    the first wins and the second is a no-op [I; Stripe's recommended fulfilment pattern U].
-5. **Grant.** For each line: base → mint a licence through LX's writer (`origin = 'commerce'`,
-   `source = 'polaris-key'`, tier from the offer, `account_id` = buyer, seats and term from the
-   tier), and run the LX-10 anchor rule only when a device later binds; add-on → an account-held
-   grant; seats → a licence-held grant on `licenseId` (required for seat offers); upgrade → §7.5.
-   Each write bumps holder versions in the same D1 batch (LX-01 §2.5), which emits
-   `entitlements.changed` (LX-13) and the developer webhook.
+5. **Issue.** For each line, `fulfilOrder` calls `issueFromPath(offerPath, account, evidence)`
+   (S-21 seam 3, reached through the Core hook of §3). Its `offer` branch: base → mint a licence
+   through LX's writer (`source = 'polaris-key'`, `external_ref_hash`, `order_ref`, tier from the
+   offer, `account_id` = buyer, seats and term from the tier; no device binding, S-21 D7); add-on →
+   an account-held grant; seats → a licence-held grant on `licenseId` (required for seat offers);
+   upgrade → §7.5. S-21's one-per-product rule (I-26) applies to base offers unless
+   `commerce.allowMultipleBase`. Each write bumps holder versions in the same D1 batch (LX-01
+   §2.5), which emits `entitlements.changed` (LX-13) and the developer webhook.
 6. **Tell the person.** The success page shows "It's in your Library" with the product's Get it
    flow (PX-09); the fulfilment email (§7.11) follows. Apps see the change at their next document
    refresh; the SDK's purchase hand-off polls for it (§7.12).
@@ -502,14 +552,14 @@ S-19).
 
 ### 7.4 Refunds, disputes and revocation
 
-| Event                                                            | Effect (through LX-12)                                                                                                                                                                                                                                                 |
-| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Full refund (console action or the developer's Stripe Dashboard) | Order `refunded`; each line's grant → `refunded` with `grace_until = now + licensing.refundGraceHours` (default 0); a minted licence → `status = disabled`, `ended_reason = 'refunded'`; an in-place upgrade → reverted (§7.5). `order_ref` revokes a bundle together. |
-| Partial refund                                                   | Order `partially_refunded`; **no revocation** by default (`commerce.refunds.partialRevokes: never`, or `always`). A partial refund is a goodwill credit, not a return [I].                                                                                             |
-| Dispute opened                                                   | Order `disputed`; access unchanged by default (`commerce.disputes.onOpen: keep`, or `suspend` → grant `suppressed`). Console shows a banner with Stripe's evidence deadline and a link to the developer's Stripe Dashboard.                                            |
-| Dispute lost                                                     | Order `charged_back`; grant `refunded` **with no grace**, licence `ended_reason = 'chargeback'` (S-19 §7.6). Gift codes from that order are voided if unredeemed, and the recipient's grant is revoked if redeemed (D21).                                              |
-| Dispute won                                                      | Order back to `fulfilled`; a suppressed grant becomes `active`.                                                                                                                                                                                                        |
-| Subscription refund                                              | Refund of a renewal invoice does not end the subscription by itself; ending is a cancellation (§7.6). A refund with "cancel now" does both.                                                                                                                            |
+| Event                                                            | Effect (through LX-12)                                                                                                                                                                                                                                                                                                     |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Full refund (console action or the developer's Stripe Dashboard) | Order `refunded`; each line's grant → `refunded` with `grace_until = now + licensing.refundGraceHours` (default 0); a minted licence → `status = disabled`, `ended_reason = 'refunded'`; an upgrade → the new licence ends and the old licence's `superseded_by` is cleared (§7.5). `order_ref` revokes a bundle together. |
+| Partial refund                                                   | Order `partially_refunded`; **no revocation** by default (`commerce.refunds.partialRevokes: never`, or `always`). A partial refund is a goodwill credit, not a return [I].                                                                                                                                                 |
+| Dispute opened                                                   | Order `disputed`; access unchanged by default (`commerce.disputes.onOpen: keep`, or `suspend` → grant `suppressed`). Console shows a banner with Stripe's evidence deadline and a link to the developer's Stripe Dashboard.                                                                                                |
+| Dispute lost                                                     | Order `charged_back`; grant `refunded` **with no grace**, licence `ended_reason = 'chargeback'` (S-19 §7.6). Gift codes from that order are voided if unredeemed, and the recipient's grant is revoked if redeemed (D21).                                                                                                  |
+| Dispute won                                                      | Order back to `fulfilled`; a suppressed grant becomes `active`.                                                                                                                                                                                                                                                            |
+| Subscription refund                                              | Refund of a renewal invoice does not end the subscription by itself; ending is a cancellation (§7.6). A refund with "cancel now" does both.                                                                                                                                                                                |
 
 A flag stays held when another active grant or licence gives it (S-19's StoreKit-like rule), so a
 person who also owns the item on Steam keeps it. **Refunds are the developer's policy** (D18): the
@@ -519,22 +569,25 @@ Stripe Dashboard; Polaris Key never moves money between accounts.
 
 ### 7.5 Tier upgrades and proration
 
-- **One-time licence, upgrade offer (`kind = upgrade`, `fromTierId → toTierId`).** Price is either
+- **One-time licence, upgrade offer (`kind = upgrade`, `fromTierId → toTierId`).** The engine
+  returns an `upgrade` path only for a product the viewer holds, from a licence on `fromTierId`,
+  toward a `toTierId` of strictly higher `tiers.rank` (LX-08; S-21 seam 7). Price is either
   explicit on the offer or, with `commerce.upgrades.oneTimePricing: difference` (default),
-  `max(0, price(to) − price(from))` in the same currency, minus nothing for time used (perpetual
-  licences have no time to prorate). Fulfilment changes `licenses.tier_id` **in place** and records
-  a `dist_license_tier_changes` row tied to the order. The licence id (the devices' anchor) does not
-  change, so no device re-activates; seats, term and config follow the new tier at the next
-  document. A refund or lost dispute of the upgrade order reverts the row (tier back to `from`),
-  unless a later change superseded it, in which case the console asks the developer.
-  This amends S-19 §7.6's "store- or checkout-driven upgrade: a new licence plus `superseded_by`"
-  for **checkout** upgrades only (store upgrades keep S-19's rule, because a store's base purchase
-  is its own record); proposed as an S-19 amendment in §12.
+  `max(0, price(to) − price(from))` in the same currency; perpetual licences have no time to
+  prorate. Fulfilment follows S-19 §7.6 and adds no state (S-21 seam 5): `issueFromPath` mints a
+  **new licence** on `toTierId` (`source = 'polaris-key'`, `order_ref`) and sets the old licence's
+  `superseded_by` in the same batch. The old licence stays usable while devices run on it
+  (LX-01 §2.5 allows `superseded_by` on an active licence) and is hidden from the Library. In
+  `combined` mode a signed-in device sees the new tier's entitlements at its next document, because
+  the account's licences contribute (S-19 §7.3); seats and term move when the device next activates
+  and picks the new licence, which LX-10 preselects by rank, or silently under `reanchor: onRefresh`
+  (LX-21). A refund or lost dispute of the upgrade order ends the new licence and clears
+  `superseded_by`.
 - **Upgrade eligibility.** The source licence must be usable, owned by the buyer, on `fromTierId`,
-  and its `source` in `commerce.upgrades.eligibleSources` (default `polaris-key`, `direct`,
-  `comp`, `oidc`, `enroll`): a store-sourced base licence (App Store, Play, Steam) is **not**
-  upgradable on Polaris Key by default, because a store refund of the base would strand a paid
-  upgrade (D14).
+  and its `source` in `commerce.upgrades.eligibleSources` (default: `polaris-key`, `comp`, `oidc`
+  and NULL, i.e. operator- and sign-in-issued): a store-sourced base licence (App Store, Play,
+  Steam) is **not** upgradable on Polaris Key by default, because a store refund of the base would
+  strand a paid upgrade (D14).
 - **Subscriptions.** Changing to a higher price swaps the subscription item price at once with
   Stripe proration (`commerce.upgrades.proration: create_prorations` default, or `always_invoice`
   to charge immediately, or `none`); a downgrade is scheduled at period end. The portal shows a
@@ -602,7 +655,9 @@ PORTAL.md amendments (CM-11):
   "Resume"), and per merchant a **"Payment methods and invoices"** button that opens a Stripe
   Customer Portal session on that merchant (Stripe's portal handles cards and invoice history;
   ours handles access). An empty state when the person never bought anything.
-- **Product page**: the buy, upgrade, subscribe and gift CTAs (S3), the license card's source badge
+- **Storefront** (S-21's Discover tiles and `#/discover/:product`): priced `offer` paths render
+  their price and terms; the count and footnote follow D31 (CM-16).
+- **Product page** (`#/p/:product`, held products): the upgrade path, subscribe and gift actions, the license card's source badge
   "Bought on Polaris Key" (PX-W6's purchase source gains the `polaris-key` source), "Manage
   subscription" for subscription licences, the developer's support and refund-policy links.
 - **Focused flows** (PX-10): `/buy/<order>/done` (fulfilment, Get it), `/buy/<order>/cancelled`,
@@ -614,7 +669,8 @@ PORTAL.md amendments (CM-11):
 
 **Console (ADMIN.md amendments, CM-12):** Product → **Commerce**:
 
-- **Merchant**: connect Stripe (onboarding link), status (charges and payouts enabled, requirements
+- **Merchant**: Stripe is one more connection in Platform → Store connections (S-21 seam 6); the
+  product connects its developer's account (onboarding link), status (charges and payouts enabled, requirements
   due), test or live mode, disconnect (L3 confirm, critical, reason).
 - **Offers**: list and editor (kind, billing, grants, prices per currency, trial, tax code, state),
   "Sync to Stripe" status per offer; warnings: an offer sold on Polaris Key whose product ships an
@@ -624,7 +680,8 @@ PORTAL.md amendments (CM-11):
   reason, L2 confirm), **Re-fulfil** (idempotent), **Open in Stripe**.
 - **Subscriptions**: status, period, cancel (period end or now, prorated refund choice), resume.
 - **Coupons**: editor and redemptions.
-- **Revenue**: gross, refunds, disputes, net of refunds per day and currency **from our ledger**
+- **Revenue**: gross, refunds, disputes, net of refunds per day and currency **from our ledger**,
+  also as revenue columns on PS-06's storefront analytics card (S-21 seam 9)
   (not Stripe balance; fees and payouts link to the developer's Stripe Dashboard). No FX
   conversion in v1 (per currency).
 - **Settings**: the `commerce.*` registry rows (§7.13) with S-18's SourceBadge.
@@ -693,7 +750,7 @@ All are product-scope `commerce.*` entries in the Distribution service's registr
 | `commerce.allowMultipleBase`                     | bool (`false`)                                                          | L1                                                           |
 | `commerce.upgrades.oneTimePricing`               | `difference` \| `explicit` (`difference`)                               | L1                                                           |
 | `commerce.upgrades.proration`                    | `create_prorations` \| `always_invoice` \| `none` (`create_prorations`) | L1                                                           |
-| `commerce.upgrades.eligibleSources`              | list of grant sources (`polaris-key direct comp oidc enroll`)           | L2 to add a store source                                     |
+| `commerce.upgrades.eligibleSources`              | list of grant sources (`polaris-key comp oidc` and NULL)                | L2 to add a store source                                     |
 | `commerce.trials.requirePaymentMethod`           | bool (`true`)                                                           | L1                                                           |
 | `commerce.subscriptions.renewalBufferHours`      | integer 0–168 (`24`)                                                    | `policy`, `policyBound: max` at 168                          |
 | `commerce.refunds.partialRevokes`                | `never` \| `always` (`never`)                                           | L1                                                           |
@@ -741,7 +798,7 @@ needs a client id], and a Queue binding `COMMERCE_EVENTS`; all through `gen:plat
 | CM-T6  | Merchant takeover (someone points a product at their Stripe account)            | `commerce.merchant` is `critical`, L3, product-owner capability only (ST-21), audited, emails every product owner; connecting needs the merchant's own Stripe onboarding.                                                                                             |
 | CM-T7  | Refund or friendly-fraud abuse                                                  | Revocation on full refund and lost dispute (LX-12); `disputes.onOpen: suspend` available; one trial per person per offer from our ledger.                                                                                                                             |
 | CM-T8  | Platform key compromise                                                         | Restricted key with only the Connect, Checkout, Billing, Refunds and read scopes the provider uses [U: exact scope names]; deploy secret; rotation runbook; webhook secret roll with a 24 h overlap [V].                                                              |
-| CM-T9  | Open redirect through checkout return URLs                                      | Success and cancel URLs are fixed portal paths (S5), never caller-supplied.                                                                                                                                                                                           |
+| CM-T9  | Open redirect through checkout return URLs                                      | Success and cancel URLs are fixed portal paths (PX-10's allowlist), never caller-supplied.                                                                                                                                                                            |
 | CM-T10 | Gift and coupon enumeration                                                     | Codes are 128-bit random (LX-25), rate-limited redeem; coupon codes are case-insensitive but long and per product; errors do not distinguish "unknown" from "used up" to anonymous callers.                                                                           |
 | CM-T11 | Store-policy breach (Polaris checkout offered in a store build)                 | Server-side outlet guard (`403 store_billing_required`), offers omitted from store builds' binding responses, SDK refuses too; a transcript proves it.                                                                                                                |
 
@@ -803,38 +860,40 @@ W4's appended case.
 
 ### 10.1 Owner decisions (delegated to Claude, 2026-10-05)
 
-| #   | Decision                                                                                                                                                                                          |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | **Merchant of record: the developer**, through Stripe Connect direct charges on their own connected account (Accounts v2). Polaris Key holds no funds. _(Owner confirms at go-time: G1.)_         |
-| D2  | **Provider abstraction** in `W/services/distribution/commerce/checkout/provider.ts`; Stripe is the only provider built; Paddle and own-account mode are later modules.                            |
-| D3  | **Hosted Stripe Checkout** (redirect) in v1; no Embedded Checkout, no Payment Element, no Stripe script on a Polaris origin.                                                                      |
-| D4  | **Our Billing section plus Stripe's Customer Portal** for payment methods and invoice PDFs, per merchant.                                                                                         |
-| D5  | Commerce lives in the **Distribution service** (no new service in `tools/services.json`); merchants, customers and events are Core tables.                                                        |
-| D6  | **One merchant per connected account; products map to a merchant**; one Stripe Customer per (merchant, account).                                                                                  |
-| D7  | **Offers and prices are operator-only** Polaris rows, mirrored to Stripe; never manifest fields.                                                                                                  |
-| D8  | **Sign-in required to buy**; no guest checkout in v1.                                                                                                                                             |
-| D9  | **Grant source `polaris-key`** for checkout purchases (the owner's "`direct` becomes Polaris Key"); `direct` stays the source for sales a developer records through the admin API from elsewhere. |
-| D10 | **Explicit per-currency prices**; Adaptive Pricing off by default; tax-inclusive pricing by default.                                                                                              |
-| D11 | **Price changes do not move existing subscribers**; the developer migrates them explicitly.                                                                                                       |
-| D12 | **Stripe Tax automatic by default**, developer-liable; tax codes defaulted from the product kind.                                                                                                 |
-| D13 | **One-time tier upgrades change the tier in place** with a revertible `dist_license_tier_changes` row; price = difference of list prices by default (amends S-19 §7.6 for checkout; §12).         |
-| D14 | **Store-sourced base licences are not upgradable on Polaris Key** by default (`eligibleSources`).                                                                                                 |
-| D15 | **Subscription expiry = period end + 24 h buffer**; dunning on LX-12's `past_due` with `licensing.dunningGraceDays`.                                                                              |
-| D16 | **Cancel at period end** by default; **resubscription reuses the same licence or grant**.                                                                                                         |
-| D17 | **Trials require a payment method** by default; one trial per person per offer.                                                                                                                   |
-| D18 | **Refunds are the developer's policy**; no customer self-serve refund in v1; full refund revokes, partial does not.                                                                               |
-| D19 | **Open disputes keep access** by default; a lost dispute revokes with no grace.                                                                                                                   |
-| D20 | **Coupons are Polaris rows mirrored to Stripe**, separate from LX-25 redeem codes.                                                                                                                |
-| D21 | **Gifts are LX-25 gift codes**; refund voids an unredeemed code and revokes a redeemed one by default.                                                                                            |
-| D22 | **Receipts and invoices are the merchant's (Stripe)**; Polaris Key sends access emails only; Stripe sends dunning mail by default.                                                                |
-| D23 | **Webhooks: one Connect destination, verify-record-ack, Queue processing, fetch-latest, daily reconciliation.**                                                                                   |
-| D24 | **Platform Stripe credentials are deploy secrets**; nothing secret in the settings registry.                                                                                                      |
-| D25 | **Store builds never sell through Polaris Key**; the server refuses with `store_billing_required`; offers are omitted for them.                                                                   |
-| D26 | **No store link-out programmes by default**; a separate deferred package (CM-18) behind G6.                                                                                                       |
-| D27 | **Retention**: orders kept for the life of what they produced plus seven years; deletion nulls the account link and cancels subscriptions; Stripe customers are left to the merchant.             |
-| D28 | **Wire: additive only; `PROTOCOL_VERSION` 4, `corpusVersion` 2** (W1–W4), confirmed in CM-01's review.                                                                                            |
-| D29 | **Revenue view from our ledger, per currency**; fees and payouts stay in Stripe.                                                                                                                  |
-| D30 | **Every CM package is optional and deferred** until the owner's go; the graph gets a `deferred` field so `--ready` cannot list them.                                                              |
+| #   | Decision                                                                                                                                                                                                                                                                                                    |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | **Merchant of record: the developer**, through Stripe Connect direct charges on their own connected account (Accounts v2). Polaris Key holds no funds. _(Owner confirms at go-time: G1.)_                                                                                                                   |
+| D2  | **Provider abstraction** in `W/services/distribution/commerce/checkout/provider.ts`; Stripe is the only provider built; Paddle and own-account mode are later modules.                                                                                                                                      |
+| D3  | **Hosted Stripe Checkout** (redirect) in v1; no Embedded Checkout, no Payment Element, no Stripe script on a Polaris origin.                                                                                                                                                                                |
+| D4  | **Our Billing section plus Stripe's Customer Portal** for payment methods and invoice PDFs, per merchant.                                                                                                                                                                                                   |
+| D5  | Commerce lives in the **Distribution service** (no new service in `tools/services.json`); merchants, customers and events are Core tables.                                                                                                                                                                  |
+| D6  | **One merchant per connected account; products map to a merchant**; one Stripe Customer per (merchant, account).                                                                                                                                                                                            |
+| D7  | **Offers and prices are operator-only** Polaris rows, mirrored to Stripe; never manifest fields.                                                                                                                                                                                                            |
+| D8  | **Sign-in required to buy**; no guest checkout in v1.                                                                                                                                                                                                                                                       |
+| D9  | **Grant source `polaris-key`** for checkout purchases, replacing `direct` in the vocabulary (S-21 D9, the owner's "`direct` becomes Polaris Key"). There is no `direct` grant source; a sale a developer records through the admin API is a `comp` grant. The outlet id `direct` is unchanged (S-21 PS-10). |
+| D10 | **Explicit per-currency prices**; Adaptive Pricing off by default; tax-inclusive pricing by default.                                                                                                                                                                                                        |
+| D11 | **Price changes do not move existing subscribers**; the developer migrates them explicitly.                                                                                                                                                                                                                 |
+| D12 | **Stripe Tax automatic by default**, developer-liable; tax codes defaulted from the product kind.                                                                                                                                                                                                           |
+| D13 | **One-time tier upgrades follow S-19 §7.6**: an `upgrade` path toward a higher `tiers.rank`, a new licence with `superseded_by` on the old one, no new state; price = difference of list prices by default. The first draft's in-place change is withdrawn to match S-21 seam 5.                            |
+| D14 | **Store-sourced base licences are not upgradable on Polaris Key** by default (`eligibleSources`).                                                                                                                                                                                                           |
+| D15 | **Subscription expiry = period end + 24 h buffer**; dunning on LX-12's `past_due` with `licensing.dunningGraceDays`.                                                                                                                                                                                        |
+| D16 | **Cancel at period end** by default; **resubscription reuses the same licence or grant**.                                                                                                                                                                                                                   |
+| D17 | **Trials require a payment method** by default; one trial per person per offer.                                                                                                                                                                                                                             |
+| D18 | **Refunds are the developer's policy**; no customer self-serve refund in v1; full refund revokes, partial does not.                                                                                                                                                                                         |
+| D19 | **Open disputes keep access** by default; a lost dispute revokes with no grace.                                                                                                                                                                                                                             |
+| D20 | **Coupons are Polaris rows mirrored to Stripe**, separate from LX-25 redeem codes.                                                                                                                                                                                                                          |
+| D21 | **Gifts are LX-25 gift codes**; refund voids an unredeemed code and revokes a redeemed one by default.                                                                                                                                                                                                      |
+| D22 | **Receipts and invoices are the merchant's (Stripe)**; Polaris Key sends access emails only; Stripe sends dunning mail by default.                                                                                                                                                                          |
+| D23 | **Webhooks: one Connect destination, verify-record-ack, Queue processing, fetch-latest, daily reconciliation.**                                                                                                                                                                                             |
+| D24 | **Platform Stripe credentials are deploy secrets**; nothing secret in the settings registry.                                                                                                                                                                                                                |
+| D25 | **Store builds never sell through Polaris Key**; the server refuses with `store_billing_required`; offers are omitted for them.                                                                                                                                                                             |
+| D26 | **No store link-out programmes by default**; a separate deferred package (CM-18) behind G6.                                                                                                                                                                                                                 |
+| D27 | **Retention**: orders kept for the life of what they produced plus seven years; deletion nulls the account link and cancels subscriptions; Stripe customers are left to the merchant.                                                                                                                       |
+| D28 | **Wire: additive only; `PROTOCOL_VERSION` 4, `corpusVersion` 2** (W1–W4), confirmed in CM-01's review.                                                                                                                                                                                                      |
+| D29 | **Revenue view from our ledger, per currency**; fees and payouts stay in Stripe.                                                                                                                                                                                                                            |
+| D30 | **Every CM package is optional and deferred** until the owner's go; the graph gets a `deferred` field so `--ready` cannot list them.                                                                                                                                                                        |
+| D31 | **Priced offers are obtain paths** (`kind: offer`, `action: buy` or `upgrade`, `price`) contributed through `delivery().commercePaths`, evaluated after every free path; the Discover count excludes buy-only products and the footnote names both.                                                         |
+| D32 | **Fulfilment goes through `issueFromPath`**, reached from Distribution through a single-provider Core hook method provided by identity (rule 6).                                                                                                                                                            |
 
 ### 10.2 For the owner at go-time
 
@@ -854,35 +913,37 @@ W4's appended case.
 All are `optional: true`, `deferred: "owner go (S-22, 2026-10-05)"`, phase `CM`, repo
 `polaris-key`. Sizes are focused engineer-weeks.
 
-| Id    | Title                                                                                    | Depends on                        | Role         | Plan mode             | Weeks   |
-| ----- | ---------------------------------------------------------------------------------------- | --------------------------------- | ------------ | --------------------- | ------- |
-| CM-01 | Plan Polaris Key commerce: decision record, DDL, routes, wire W1–W4, threat model        | LX-01, ST-03                      | wire-planner | yes (planning only)   | 0.6–0.9 |
-| CM-02 | Provider abstraction, Stripe client, platform secrets, webhook intake and reconciliation | CM-01, LX-08                      | implementer  | no                    | 1–1.4   |
-| CM-03 | Merchants: Connect onboarding, status mirror, product → merchant, kill switch            | CM-02, ST-04, ST-05, ST-21        | implementer  | no                    | 0.7–1   |
-| CM-04 | Offers, prices and coupons catalogue; Stripe sync; `commerceCatalog` hook                | CM-03                             | implementer  | no                    | 1–1.4   |
-| CM-05 | Checkout and fulfilment for one-time purchases                                           | CM-04, LX-09, LX-10, LX-12, LX-13 | implementer  | no                    | 1.2–1.6 |
-| CM-06 | Refunds, disputes and revocation                                                         | CM-05                             | implementer  | no                    | 0.6–0.9 |
-| CM-07 | One-time tier upgrades (in place, revertible) and add-on rules                           | CM-06                             | implementer  | no                    | 0.5–0.8 |
-| CM-08 | Subscriptions: trials, renewals, dunning, cancel, resume, resubscribe, proration         | CM-06, LX-23                      | implementer  | no                    | 1.4–1.9 |
-| CM-09 | Coupons and promotion codes at checkout                                                  | CM-05                             | implementer  | no                    | 0.4–0.6 |
-| CM-10 | Gifting through LX-25 gift codes                                                         | CM-06, LX-25                      | implementer  | no                    | 0.4–0.6 |
-| CM-11 | Customer portal: Billing section, buy / upgrade / manage flows, Stripe portal hand-off   | CM-07, CM-08, LX-15               | implementer  | no                    | 1.2–1.6 |
-| CM-12 | Console commerce: merchant, offers, orders, subscriptions, coupons, revenue, settings    | CM-07, CM-08, CM-09, LX-14        | implementer  | no                    | 1.2–1.6 |
-| CM-13 | Commerce emails                                                                          | CM-06, CM-08, CM-10, I-18         | implementer  | no                    | 0.3–0.5 |
-| CM-14 | Device checkout route, `offers[]`, `store_billing_required`, `polaris-key` enum (wire)   | CM-01, CM-05, LX-20               | implementer  | yes (`planRef` CM-01) | 0.6–0.9 |
-| CM-15 | SDKs and UI kits: `offers()`, `purchase()` hand-off, `manageBilling()`                   | CM-14, LX-19                      | sdk-porter   | no                    | 1.4–2   |
-| CM-16 | Storefront integration: price block, buy CTA states, owned-elsewhere, 3.1.3(b) warning   | CM-04, CM-11                      | implementer  | no                    | 0.5–0.8 |
-| CM-17 | Commerce close-out: threat model, privacy, PCI record, docs, runbook, sandbox live check | CM-11, CM-12, CM-13, CM-15, CM-16 | implementer  | no                    | 0.8–1.2 |
-| CM-18 | Regional store link-out programmes (only if the owner says yes to G6)                    | CM-01, CM-15, CM-17               | implementer  | yes (`planRef` CM-01) | 1–1.5   |
-| CM-19 | Own-account mode: Stripe Managed Payments provider (only if the owner says yes to G5)    | CM-05, CM-17                      | implementer  | no                    | 0.8–1.2 |
+| Id    | Title                                                                                       | Depends on                               | Role         | Plan mode             | Weeks   |
+| ----- | ------------------------------------------------------------------------------------------- | ---------------------------------------- | ------------ | --------------------- | ------- |
+| CM-01 | Plan Polaris Key commerce: decision record, DDL, routes, wire W1–W4, threat model           | LX-01, ST-03                             | wire-planner | yes (planning only)   | 0.6–0.9 |
+| CM-02 | Provider abstraction, Stripe client, platform secrets, webhook intake and reconciliation    | CM-01, LX-08                             | implementer  | no                    | 1–1.4   |
+| CM-03 | Merchants: provider as a Store connection, Connect onboarding, adapter `pricing`/`iap` flip | CM-02, PS-01, ST-04, ST-05, ST-21        | implementer  | no                    | 0.7–1   |
+| CM-04 | Offers, prices and coupons catalogue; Stripe sync; `offer` obtain paths                     | CM-03, PS-03                             | implementer  | no                    | 1–1.4   |
+| CM-05 | Checkout and fulfilment for one-time purchases, through `issueFromPath`                     | CM-04, PS-04, LX-09, LX-10, LX-12, LX-13 | implementer  | no                    | 1.2–1.6 |
+| CM-06 | Refunds, disputes and revocation                                                            | CM-05                                    | implementer  | no                    | 0.6–0.9 |
+| CM-07 | One-time tier upgrades (new licence, `superseded_by`, by `tiers.rank`) and add-on rules     | CM-06                                    | implementer  | no                    | 0.5–0.8 |
+| CM-08 | Subscriptions: trials, renewals, dunning, cancel, resume, resubscribe, proration            | CM-06, LX-23                             | implementer  | no                    | 1.4–1.9 |
+| CM-09 | Coupons and promotion codes at checkout                                                     | CM-05                                    | implementer  | no                    | 0.4–0.6 |
+| CM-10 | Gifting through LX-25 gift codes                                                            | CM-06, LX-25                             | implementer  | no                    | 0.4–0.6 |
+| CM-11 | Customer portal: Billing section, buy / upgrade / manage flows, Stripe portal hand-off      | CM-07, CM-08, LX-15                      | implementer  | no                    | 1.2–1.6 |
+| CM-12 | Console commerce: merchant, offers, orders, subscriptions, coupons, revenue, settings       | CM-07, CM-08, CM-09, LX-14, PS-06        | implementer  | no                    | 1.2–1.6 |
+| CM-13 | Commerce emails                                                                             | CM-06, CM-08, CM-10, I-18                | implementer  | no                    | 0.3–0.5 |
+| CM-14 | Device checkout route, `offers[]`, `store_billing_required`, `polaris-key` enum (wire)      | CM-01, CM-05, LX-20                      | implementer  | yes (`planRef` CM-01) | 0.6–0.9 |
+| CM-15 | SDKs and UI kits: `offers()`, `purchase()` hand-off, `manageBilling()`                      | CM-14, LX-19                             | sdk-porter   | no                    | 1.4–2   |
+| CM-16 | Storefront integration: priced paths on Discover and the storefront page, counts, footnote  | CM-04, CM-11, PS-05                      | implementer  | no                    | 0.5–0.8 |
+| CM-17 | Commerce close-out: threat model, privacy, PCI record, docs, runbook, sandbox live check    | CM-11, CM-12, CM-13, CM-15, CM-16        | implementer  | no                    | 0.8–1.2 |
+| CM-18 | Regional store link-out programmes (only if the owner says yes to G6)                       | CM-01, CM-15, CM-17                      | implementer  | yes (`planRef` CM-01) | 1–1.5   |
+| CM-19 | Own-account mode: Stripe Managed Payments provider (only if the owner says yes to G5)       | CM-05, CM-17                             | implementer  | no                    | 0.8–1.2 |
 
 Required-path total if the owner says go to CM-01–CM-17: about **13.8–19.7** engineer-weeks;
 with CM-18 and CM-19, about **15.6–22.4**. Critical chain inside the phase:
 `CM-01 → CM-02 → CM-03 → CM-04 → CM-05 → CM-06 → CM-08 → CM-11 → CM-17`, behind LX-08 to LX-13
 and ST-04, ST-05.
 
-**When S-21 lands**, the lead adds S-21's listing / CTA package as a dependency of CM-04 (the
-`commerceCatalog` hook consumer) and CM-16, and renames any seam that S-21 named differently (§3).
+**S-21 dependencies.** CM-03 needs PS-01 (the adapter whose ops flip), CM-04 needs PS-03 (the
+engine it contributes paths to), CM-05 needs PS-04 (`issueFromPath`), CM-12 needs PS-06 (the
+Polaris Key panel and analytics card), CM-16 needs PS-05 (the tiles and storefront page). The PS
+packages are required and not deferred; the CM packages stay deferred.
 
 ### 11.2 Human inputs (all CM packages)
 
@@ -910,23 +971,22 @@ Made in this branch:
   the graph title is shortened to match.
 - **LX-25** (redeem codes): gift codes are also minted by CM-10 from paid gift orders; the code
   model must carry an `order_ref` so a refund can void or revoke (D21). Amendment section added.
-- **LX-08** (licensing expand): the grant `source` trigger vocabulary should include
-  `polaris-key` from the start, so CM-02 needs no trigger replacement. Amendment section added
-  (a one-word vocabulary change; LX-01's trigger is replaceable by design).
+- **LX-08** (licensing expand): the S-22 amendment agrees with S-21's: `polaris-key` **replaces**
+  `direct` in the grant-source vocabulary; an admin-recorded outside sale is `comp`; commerce
+  writes `external_ref_hash` and `order_ref`.
 
 Proposed for the owner or the lead (decisions in other notes; not rewritten here):
 
-- **S-19 §7.6 "Upgrades"**: add "A Polaris Key checkout upgrade of a one-time licence changes
-  `tier_id` in place with a revertible tier-change record tied to the order (S-22 D13); store
-  upgrades keep the new-licence-plus-`superseded_by` rule."
-- **S-19 §7.1 / LX-01 §6.1 vocabulary**: add source `polaris-key` (S-22 D9) with the meaning
-  "bought through Polaris Key checkout"; `direct` is narrowed to "a sale the developer recorded
-  through the admin API".
-- **PORTAL.md**: an Account → Billing section and the product-page commerce CTAs (CM-11 writes the
-  amendment).
+- **PS-04** (S-21): expose `issueFromPath` to other services through a single-provider Core hook
+  method (`issuance().issueFromPath(path, account, evidence)`, provided by identity), so the
+  Distribution webhook consumer can call it without a cross-service import (rule 6, D32). One
+  sentence in PS-04's design notes; no change to its scope or estimate.
+- **PS-03** (S-21): the engine accepts contributed paths of kind `offer` from
+  `delivery().commercePaths` once CM-04 exists, evaluated after every free path (D31); nothing to
+  build before then.
+- **PORTAL.md**: an Account → Billing section and the commerce actions (CM-11 writes the
+  amendment); the Discover footnote and count (CM-16).
 - **ADMIN.md**: Product → Commerce (CM-12 writes the amendment).
-- **S-21**: if S-21 renames the `direct` outlet identifier rather than its label, W2's binding
-  response and §7.12's outlet table follow S-21's identifier.
 
 ## 13. Sources
 

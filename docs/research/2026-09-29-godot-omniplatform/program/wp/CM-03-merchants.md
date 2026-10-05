@@ -1,10 +1,10 @@
-# CM-03 Merchants: Stripe Connect onboarding, account status mirror, product → merchant setting, commerce kill switch
+# CM-03 Merchants: the payment provider as a Store connection (Stripe Connect onboarding, status mirror), product → merchant, the `polaris-key` adapter's `pricing`/`iap` ops flipped to `first-party`, kill switch
 
 | Field       | Value                                                                                                                                                                                                                                                           |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | CM: Polaris Key commerce (S-22): deferred until the owner's go                                                                                                                                                                                                  |
 | Size        | 0.7–1 engineer-weeks                                                                                                                                                                                                                                            |
-| Depends on  | [CM-02](CM-02-provider-webhooks.md), [ST-04](ST-04-settings-resolver.md), [ST-05](ST-05-settings-admin-api.md), [ST-21](ST-21-capability-gate.md)                                                                                                               |
+| Depends on  | [CM-02](CM-02-provider-webhooks.md), [PS-01](PS-01-polaris-key-adapter.md), [ST-04](ST-04-settings-resolver.md), [ST-05](ST-05-settings-admin-api.md), [ST-21](ST-21-capability-gate.md)                                                                        |
 | Unblocks    | [CM-04](CM-04-offers-catalogue.md)                                                                                                                                                                                                                              |
 | Role        | `pkey-implementer`                                                                                                                                                                                                                                              |
 | Plan mode   | no (executes its sections of the approved [`plans/CM-01.md`](../plans/CM-01.md))                                                                                                                                                                                |
@@ -19,7 +19,7 @@
 
 ## Goal
 
-A product owner can connect a Stripe account as a merchant (onboarding link, return, status), the merchant's `charges_enabled` / requirements are mirrored from `account.updated`, a product maps to one merchant through the critical `commerce.merchant` setting, and the platform kill switch hides every commerce route.
+Stripe appears in the console as one more connection (Platform → Store connections, a `PLATFORM_CREDENTIALS` slot for the platform account) and a product owner can connect their own Stripe account as a merchant (onboarding link, return, status); `charges_enabled` and requirements are mirrored from `account.updated`; a product maps to one merchant through the critical `commerce.merchant` setting; while a product has an active merchant the `polaris-key` storefront adapter's `pricing` and `iap` ops report `first-party` instead of `unsupported` (S-21 §6.10 seam 6), so the hub and readiness checklist need no new shape; the platform kill switch hides every commerce route.
 
 ## Why
 
@@ -40,7 +40,8 @@ Developer-as-seller through Connect direct charges is D1 ([S-22 §5](../../notes
 **In:**
 
 - `commerce_merchants` (Core).
-- Onboarding and status routes (admin API), `account.updated` handler.
+- The provider connection in Platform → Store connections; onboarding and status routes (admin API); `account.updated` handler.
+- The `polaris-key` adapter's `pricing` / `iap` Support entries become `first-party` when the product has an active merchant (PS-01's declaration; the conformance branch's no-HTTP rule still holds for those ops, which read Polaris tables only).
 - Registry rows `commerce.enabled`, `commerce.merchant`, `commerce.mode`, `commerce.platform.enabled`, `commerce.platform.applicationFeeBps`, `commerce.platform.merchantCountries`.
 - Minimal console Merchant page (the full Commerce area is CM-12).
 - Owner notification email on merchant change.

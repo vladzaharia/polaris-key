@@ -12,12 +12,24 @@
 | Human input | none                                                               |
 | Repo        | `vladzaharia/polaris-key`                                          |
 
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- **Copy** to `signin.choice.*`: title "Choose a license for this device", lede `signin.choice.lede`, primary **Use this license and continue**, "No free devices", "Create a new free license", `signin.choice.raced`, `signin.choice.noneReplaceable` for the empty state. Exact per-line changes: SIGN-IN.md §10.4.
+- **Row anatomy** (SIGN-IN.md O-11): title, the tier as a neutral pill with "{n} of {limit} devices" or "Account-wide · unlimited devices", then "{origin} · {term}" with **Lifetime** (not "No expiry"). The identity's own `sub` licence shows as Account-wide only once I-09's seat rule lands.
+- **Inline Replace is kept as built** (SIGN-IN.md D-59, I-04 decision 13 amended): the confirm uses `signin.replace.consequence` and **Replace and continue** as the primary (not a danger button), and **Back**.
+- The Free a device link keeps `license=` and `for=<device label>` (I-04 §F.5). The page takes `renderAuthCard()`'s look once UX-43 lands.
+
 ## Goal
 
 The legacy in-app sign-in (`/<p>/identity/auth/*` against the platform IdP: device code, its QR
 and the browser flow, shown in the console as "Signed-in app") never mints a second licence for a
 person whose Polaris Key account already holds a usable licence for that product. That person
-gets a **Choose a licence for this device** page and the device is bound to the licence they pick.
+gets a **Choose a license for this device** page and the device is bound to the licence they pick.
 Nothing changes on the device wire.
 
 ## Why
@@ -69,9 +81,9 @@ already merged the account tables, links and `licenses.account_id` this package 
     the latest expiry, then the oldest). It is shown even when there is only one.
   - **Full rows:** shown disabled, reading "No free devices" with a **Free a device** link to
     `/#/p/<slug>/free-device?for=<licenseId>`.
-  - **Create a new free licence:** offered only when `identityTier` grants a tier and every row
+  - **Create a new free license:** offered only when `identityTier` grants a tier and every row
     is full (delegated decision 1).
-  - Primary **Use this licence**, and **Cancel**.
+  - Primary **Use this license**, and **Cancel**.
 - **`POST /<p>/identity/auth/choose`.**
   - **Request checks:** a same-origin `POST` (`sameOriginPost`) carrying a single-use choice token
     stored on the flow record. The page never contains `state`.
@@ -138,7 +150,7 @@ already merged the account tables, links and `licenses.account_id` this package 
       row** on every flow kind: device code, `state` poll and `returnTo` (tests).
 - [ ] Picking a licence binds the device to it, and `ready` carries a token for it (test). A licence
       that is not the account's, or is no longer usable, is refused (test).
-- [ ] Full licences are listed disabled with the free-device link. **Create a new free licence**
+- [ ] Full licences are listed disabled with the free-device link. **Create a new free license**
       appears only when the policy grants a tier and every licence is full (tests).
 - [ ] Without the binder cookie the chooser is refused and nothing is minted (test).
 - [ ] With no link, no usable licence, or a `provider: custom` product, the behaviour is

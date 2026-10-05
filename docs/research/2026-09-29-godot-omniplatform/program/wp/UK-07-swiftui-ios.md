@@ -12,6 +12,16 @@
 | Human input | none                                                                                                                                                                                                                                                                       |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                  |
 
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- Kit screens per SIGN-IN.md §5.1: the logo-only SignIn row with native auth behind the logos (D-21); the device-code hand-off URL `key.plrs.im/device` (`/tv` on TV and console; a product `deviceCodeUrl` wins, D-16); the code as two groups of four joined by a hyphen (D-17); the footnote `signin.footer` (D-15); tier and terms only after the server (D-20); LicenseChoice and ReplaceDevice screens with the row anatomy of §3.6 (tier pill, "{n} of {limit} devices" or "Account-wide · unlimited devices", **Lifetime**); DeviceLimit titled **Replace a device**.
+- `PolarisLoginView.swift`'s single "Sign in" button and always-visible key field become Welcome / SignIn / Activate (SIGN-IN.md §10.5).
+
 ## Goal
 
 An iOS app gates itself with `.polarisKeyGate(client)`, every §4.1 component exists as a public SwiftUI view in the Liquid Glass idiom on 26 and a polished material fallback on 18, and the package floor is iOS 18.

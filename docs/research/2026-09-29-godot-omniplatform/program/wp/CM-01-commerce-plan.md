@@ -59,7 +59,7 @@ S-22 is a design note; the CM packages execute a plan, as the LX packages execut
 ## Design notes
 
 - Planning only: the wire planner writes the plan and stops at `awaiting-approval`.
-- If S-21 has landed, the plan replaces S-22 §3's assumed seam names with S-21's.
+- S-21 has landed: the plan uses its seams exactly (S-21 §6.10, S-22 §3), including the Core hook method through which Distribution reaches `issueFromPath`.
 - Store mappings and offers stay operator-only (LX-01 §3.1 precedent).
 
 ## Steps

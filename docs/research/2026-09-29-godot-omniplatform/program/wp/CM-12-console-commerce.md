@@ -1,16 +1,16 @@
 # CM-12 Console commerce: Product → Commerce (merchant, offers, orders with refund and re-fulfil, subscriptions, coupons, revenue, settings); platform merchants and webhook health
 
-| Field       | Value                                                                                                                            |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | CM: Polaris Key commerce (S-22): deferred until the owner's go                                                                   |
-| Size        | 1.2–1.6 engineer-weeks                                                                                                           |
-| Depends on  | [CM-07](CM-07-tier-upgrades.md), [CM-08](CM-08-subscriptions.md), [CM-09](CM-09-coupons.md), [LX-14](LX-14-console-licensing.md) |
-| Unblocks    | [CM-17](CM-17-commerce-closeout.md)                                                                                              |
-| Role        | `pkey-implementer`                                                                                                               |
-| Plan mode   | no (executes its sections of the approved [`plans/CM-01.md`](../plans/CM-01.md))                                                 |
-| Gates       | `ui-snapshots`, `console-csp-parity`, `docs-links`, `rule-10`                                                                    |
-| Human input | the owner's go signal (removes `deferred`)                                                                                       |
-| Repo        | `vladzaharia/polaris-key`                                                                                                        |
+| Field       | Value                                                                                                                                                                              |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | CM: Polaris Key commerce (S-22): deferred until the owner's go                                                                                                                     |
+| Size        | 1.2–1.6 engineer-weeks                                                                                                                                                             |
+| Depends on  | [CM-07](CM-07-tier-upgrades.md), [CM-08](CM-08-subscriptions.md), [CM-09](CM-09-coupons.md), [LX-14](LX-14-console-licensing.md), [PS-06](PS-06-console-polaris-key-storefront.md) |
+| Unblocks    | [CM-17](CM-17-commerce-closeout.md)                                                                                                                                                |
+| Role        | `pkey-implementer`                                                                                                                                                                 |
+| Plan mode   | no (executes its sections of the approved [`plans/CM-01.md`](../plans/CM-01.md))                                                                                                   |
+| Gates       | `ui-snapshots`, `console-csp-parity`, `docs-links`, `rule-10`                                                                                                                      |
+| Human input | the owner's go signal (removes `deferred`)                                                                                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                          |
 
 > **Deferred. Do not dispatch.** This package is optional and carries `deferred` in
 > `workpackages.json`: the owner asked for the commerce plan on 2026-10-05 but not for its
@@ -40,6 +40,7 @@ Developers manage commerce from the console: connect a merchant, edit offers and
 
 - ADMIN.md amendment.
 - Commerce area pages; 3.1.3(b) parity warning for offers without an iOS IAP mapping.
+- PS-06's Polaris Key panel gains the `offer` path kind in "Ways to add", prices in the persona preview, and revenue columns on its analytics card (S-21 §6.10 seam 9).
 - Platform merchants and webhook-health view.
 
 **Out** (and where it belongs instead):

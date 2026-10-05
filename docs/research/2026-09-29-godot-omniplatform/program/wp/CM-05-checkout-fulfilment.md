@@ -1,10 +1,10 @@
-# CM-05 Checkout and fulfilment for one-time purchases: portal checkout route, hosted Stripe Checkout (direct charge, Stripe Tax), fulfil-on-return and on-webhook, grants with source `polaris-key`
+# CM-05 Checkout and fulfilment for one-time purchases: checkout from a `buy` path, hosted Stripe Checkout (direct charge, Stripe Tax), fulfil-on-return and on-webhook through `issueFromPath`, grants with source `polaris-key`
 
 | Field       | Value                                                                                                                                                                                                                                                                        |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | CM: Polaris Key commerce (S-22): deferred until the owner's go                                                                                                                                                                                                               |
 | Size        | 1.2–1.6 engineer-weeks                                                                                                                                                                                                                                                       |
-| Depends on  | [CM-04](CM-04-offers-catalogue.md), [LX-09](LX-09-entitlement-resolver.md), [LX-10](LX-10-anchor-choice.md), [LX-12](LX-12-licence-lifecycle.md), [LX-13](LX-13-entitlements-backend.md)                                                                                     |
+| Depends on  | [CM-04](CM-04-offers-catalogue.md), [PS-04](PS-04-storefront-portal-api.md), [LX-09](LX-09-entitlement-resolver.md), [LX-10](LX-10-anchor-choice.md), [LX-12](LX-12-licence-lifecycle.md), [LX-13](LX-13-entitlements-backend.md)                                            |
 | Unblocks    | [CM-06](CM-06-refunds-disputes.md), [CM-09](CM-09-coupons.md), [CM-14](CM-14-device-checkout-wire.md), [CM-19](CM-19-own-account-mode.md)                                                                                                                                    |
 | Role        | `pkey-implementer`                                                                                                                                                                                                                                                           |
 | Plan mode   | no (executes its sections of the approved [`plans/CM-01.md`](../plans/CM-01.md))                                                                                                                                                                                             |
@@ -19,7 +19,7 @@
 
 ## Goal
 
-A signed-in person buys a one-time offer through hosted Stripe Checkout on the developer's account; the order is fulfilled exactly once whether the return page or the webhook arrives first; a base offer mints a licence, an add-on an account-held grant, a seat pack a licence-held grant, all with source `polaris-key`, and the holder version bump emits `entitlements.changed`.
+A signed-in person buys a one-time offer through hosted Stripe Checkout on the developer's account; the order is fulfilled exactly once whether the return page or the webhook arrives first, by calling S-21's single issuance function `issueFromPath(path, account)` with the `offer` path and the provider's verified result; a base offer mints a licence, an add-on an account-held grant, a seat pack a licence-held grant, all with source `polaris-key`, `external_ref_hash` and `order_ref`, and the holder version bump emits `entitlements.changed`.
 
 ## Why
 
@@ -40,8 +40,9 @@ This is the core of "charge directly from within" ([S-22 §7.3](../../notes/S-22
 **In:**
 
 - `dist_orders`, `dist_order_lines`, `commerce_customers`.
-- `POST /api/commerce/checkout`, `POST /api/commerce/orders/<id>/fulfil`, the `/buy/…` focused-flow pages (minimal; CM-11 completes the UI).
-- `fulfilOrder()` state machine; writes only through `core/grants.ts` and the licence writer.
+- `POST /api/commerce/checkout` (re-evaluates the `buy` path through the engine first, like PS-04's claim), `POST /api/commerce/orders/<id>/fulfil`, the `/buy/…` focused-flow pages (minimal; CM-11 completes the UI).
+- `fulfilOrder()` state machine that calls `issueFromPath` for each line. Because the engine and `issueFromPath` live in the identity service (S-21 Q5) and commerce lives in Distribution, `issueFromPath` is reached through a single-provider Core hook method (`issuance().issueFromPath`, provided by identity); CM-01 fixes the name and PS-04 is amended to expose it.
+- The `offer` branch of `issueFromPath`: writes only through `core/grants.ts` and the licence writer, with `source = 'polaris-key'`, `external_ref_hash`, `order_ref`.
 - Stripe Tax, tax codes, invoice creation per setting, waiver consent per setting.
 
 **Out** (and where it belongs instead):

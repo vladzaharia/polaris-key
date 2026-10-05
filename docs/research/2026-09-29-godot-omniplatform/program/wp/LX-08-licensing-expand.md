@@ -18,11 +18,20 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 - **[`plans/LX-01.md`](../plans/LX-01.md):** the exact DDL of §6.1; the Core table `entitlement_events` with a pull cursor (Q4); the triggers; no `dist_commerce_settings` table (Q5); the A3 record; the `addon` column, with nothing writing `addon` until LX-25 (Q8).
 
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- Add `tiers.device_access` (`seats` | `account`, default `seats`), backfilled to `account` for tiers that hold only keyless account-bound licences; a licence on an `account` tier never receives a key (`plans/I-04.md` §F.6, SIGN-IN.md D-53). The console tier editor says "Devices: up to N" or "Account-wide · unlimited devices".
+
 ## Amendments from S-22 (2026-10-05)
 
 The commerce plan [S-22](../../notes/S-22-polaris-key-commerce.md) (its packages are optional and deferred) changes this brief as follows. These amendments win over the text below where they differ.
 
-- **Grant source vocabulary.** Include `polaris-key` in the `trg_grants_source_{ins,upd}` vocabulary and in the `licenses.source` values from the start (meaning: bought through Polaris Key checkout; [S-22](../../notes/S-22-polaris-key-commerce.md#101-owner-decisions-delegated-to-claude-2026-10-05) decision D9), so the deferred commerce packages need no trigger replacement. `direct` keeps its place and means a sale the developer recorded through the admin API. Nothing writes `polaris-key` until CM-05.
+- **Grant source vocabulary.** As the S-21 amendment below says: `polaris-key` replaces `direct` in the `trg_grants_source_{ins,upd}` vocabulary and in the `licenses.source` values (meaning: bought through Polaris Key checkout; [S-22](../../notes/S-22-polaris-key-commerce.md#101-owner-decisions-delegated-to-claude-2026-10-05) decision D9). There is no `direct` grant source: a sale a developer records through the admin API is a `comp` grant (portal "From <developer>"). Commerce also writes `external_ref_hash` (the provider's payment or subscription id, hashed) and `order_ref` on every grant and licence it creates. Nothing writes `polaris-key` until CM-05.
 
 ## Goal
 
@@ -76,6 +85,15 @@ The licensing model's storage exists and is kept in sync: new tables and columns
 mise exec node@22 -- pnpm --filter @polaris-key/worker test
 mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
 ```
+
+## S-21 amendment (2026-10-05): grant source `polaris-key`
+
+The owner decided on 2026-10-05 that "`direct` really becomes `Polaris Key`"
+([S-21](../../notes/S-21-polaris-storefront.md) D9, §6.8). In the grant-source vocabulary of [`plans/LX-01.md`](../plans/LX-01.md)
+(`trg_grants_source_{ins,upd}`), write `polaris-key` where the plan says `direct`: the
+source of a sale made through Polaris Key itself. No code writes `direct` yet, so this costs
+nothing. The portal badge reads "Polaris Key". The outlet id `direct` is unrelated and does not
+change.
 
 ## Hand-off
 
