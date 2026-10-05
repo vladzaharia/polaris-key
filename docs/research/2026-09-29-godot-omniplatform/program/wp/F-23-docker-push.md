@@ -67,7 +67,7 @@ F-08 publishes image layouts through tickets. Native push is a convenience for a
 
 ## Acceptance criteria
 
-- [ ] The client matrix is green. `routeCoverage` passes. The green gate passes (`AGENTS.md`).
+- [x] The client matrix is green. `routeCoverage` passes. The green gate passes (`AGENTS.md`).
 
 ## Verify
 
