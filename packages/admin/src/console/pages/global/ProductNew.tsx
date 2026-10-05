@@ -2,7 +2,6 @@ import * as React from "react";
 import { RESERVED_PRODUCT_SLUGS } from "@polaris-key/manifest";
 import { ArrowRight, Check, ChevronRight, Github, Plus } from "lucide-react";
 import {
-  ApiError,
   type CreateManualProductResult,
   type LinkRepoResult,
 } from "../../../api.js";
@@ -10,8 +9,8 @@ import { cn } from "../../../lib/cn.js";
 import { DOCS_LINKS } from "../../../lib/docsLinks.js";
 import {
   errorCopy,
-  type ErrorContext,
   type ErrorCopy,
+  type ErrorFix,
 } from "../../../lib/errorCopy.js";
 import { signingBundleOf, slugError } from "../../../lib/products.js";
 import { Button } from "../../../ui/Button.js";
@@ -151,66 +150,31 @@ export function slugVerdict(
   return { kind: "available" };
 }
 
+/** The field a refusal is about: the one `errorCopy` says to focus, when this form has it. */
+function refusedField(copy: ErrorCopy): "slug" | "repoUrl" | null {
+  return copy.focus === "slug" || copy.focus === "repoUrl" ? copy.focus : null;
+}
+
 /**
- * What a refused create renders. `errorCopy` words every refusal; the optional fields are the ones
- * UX-01's setup routing adds: the field to focus, a free slug to take, the manifest problems with
- * their file and path, and the fix to offer. Where they are absent, the page falls back to the
- * field the server named and the lines it sent.
+ * "tonebox is taken. Try tonebox-app." for a slug the server refused: `errorCopy`'s title and
+ * description together. The free slug it offers is checked against the registry here, so a
+ * suggestion that is itself taken is swapped for one that is not.
  */
-type CreateErrorCopy = ErrorCopy & {
-  focus?: string;
-  suggestion?: string;
-  problems?: { file: string; path: string; message: string }[];
-  fix?:
-    | { kind: "install-github-app"; label: string; repo?: string }
-    | { kind: "check-again"; label: string };
-};
-
-/** The context UX-01's routing reads: the slug or the repository the operator named. */
-type CreateErrorContext = ErrorContext & { slug?: string; repo?: string };
-
-function createErrorCopy(
-  error: unknown,
-  context: CreateErrorContext,
-): CreateErrorCopy {
-  const copy = errorCopy(error, context) as CreateErrorCopy;
-  // An HTTP status is never shown (EXPERIENCE.md §0.3); "Copy details" keeps it.
-  return { ...copy, title: copy.title.replace(/\s*\(\d{3}[^)]*\)/, "") };
-}
-
-/** The field a refusal is about: the routed `focus`, else the server's one named field. */
-function refusedField(error: unknown, copy: CreateErrorCopy): string | null {
-  if (copy.focus === "slug" || copy.focus === "repoUrl") return copy.focus;
-  if (error instanceof ApiError && error.fields?.length === 1) {
-    const f = error.fields[0];
-    if (f === "slug" || f === "repoUrl") return f;
-  }
-  return null;
-}
-
-/** "tonebox is taken. Try tonebox-app." for a slug the server refused. */
 function slugRefusal(
-  error: unknown,
-  copy: CreateErrorCopy,
+  copy: ErrorCopy,
   slug: string,
   taken: ReadonlySet<string>,
 ): { message: string; suggestion?: string } {
-  // UX-01's routing words it already, with the free slug to try.
-  if (copy.focus === "slug")
-    return {
-      message: copy.description,
-      ...(copy.suggestion ? { suggestion: copy.suggestion } : {}),
-    };
-  const status = error instanceof ApiError ? error.status : 0;
-  const message = error instanceof ApiError ? (error.message ?? "") : "";
-  if (status === 409) {
-    const suggestion = suggestSlug(slug, new Set([...taken, slug]));
-    return { message: `${slug} is taken. Try ${suggestion}.`, suggestion };
-  }
-  if (/reserved/i.test(message))
-    return { message: `${slug} is reserved. Choose another slug.` };
+  const suggestion = copy.suggestion
+    ? suggestSlug(slug, new Set([...taken, slug]))
+    : undefined;
+  const description =
+    copy.suggestion && suggestion
+      ? copy.description.replace(copy.suggestion, suggestion)
+      : copy.description;
   return {
-    message: slugError(slug) ?? "Use lowercase letters, digits, and hyphens.",
+    message: `${copy.title.replace(/[.!]$/, "")}. ${description}`,
+    ...(suggestion ? { suggestion } : {}),
   };
 }
 
@@ -327,15 +291,15 @@ export function ProductNew(): React.ReactElement {
   // A refusal belongs to the source it was made for; switching source sets it aside.
   const refusal = submitError && submitError.via === via ? submitError : null;
   const copy = refusal
-    ? createErrorCopy(refusal.error, {
+    ? errorCopy(refusal.error, {
         thing: "Product",
         ...(via === "manual" ? { slug: refusal.slug } : repo ? { repo } : {}),
       })
     : null;
-  const serverField = copy ? refusedField(refusal!.error, copy) : null;
+  const serverField = copy ? refusedField(copy) : null;
   const slugServer =
     copy && serverField === "slug"
-      ? slugRefusal(refusal!.error, copy, refusal!.slug, taken ?? new Set())
+      ? slugRefusal(copy, refusal!.slug, taken ?? new Set())
       : null;
 
   const errorFor = (name: string): string | undefined => {
@@ -405,7 +369,7 @@ export function ProductNew(): React.ReactElement {
     } catch (err) {
       setSubmitError({ error: err, via, slug });
       setSubmitting(false);
-      const f = refusedField(err, createErrorCopy(err, {}));
+      const f = refusedField(errorCopy(err));
       if (f) focusField(f);
     }
   };
@@ -566,6 +530,10 @@ export function ProductNew(): React.ReactElement {
           </FormField>
         )}
 
+        {copy?.fix && serverField ? (
+          <RefusalFix fix={copy.fix} onCheckAgain={() => void submit()} />
+        ) : null}
+
         {via === "manual" ? (
           <div>
             <button
@@ -637,7 +605,9 @@ export function ProductNew(): React.ReactElement {
           </div>
         ) : null}
 
-        {copy && !serverField ? <RefusalCallout copy={copy} /> : null}
+        {copy && !serverField ? (
+          <RefusalCallout copy={copy} onCheckAgain={() => void submit()} />
+        ) : null}
 
         <div className="flex flex-col-reverse gap-2 border-t border-border pt-4 sm:flex-row sm:justify-end">
           <Button variant="ghost" asChild>
@@ -659,8 +629,10 @@ export function ProductNew(): React.ReactElement {
  */
 function RefusalCallout({
   copy,
+  onCheckAgain,
 }: {
-  copy: CreateErrorCopy;
+  copy: ErrorCopy;
+  onCheckAgain: () => void;
 }): React.ReactElement {
   const lines = copy.problems?.length
     ? copy.problems.map((p) => ({
@@ -690,19 +662,47 @@ function RefusalCallout({
           ))}
         </ul>
       ) : null}
-      {copy.fix?.kind === "install-github-app" ? (
-        <p className="mt-3">
-          <a
-            href={DOCS_LINKS.createProduct}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 font-bold underline underline-offset-4"
-          >
-            {copy.fix.label}
-            <ArrowRight aria-hidden className="size-3.5" />
-          </a>
-        </p>
+      {copy.fix ? (
+        <div className="mt-3">
+          <RefusalFix fix={copy.fix} onCheckAgain={onCheckAgain} />
+        </div>
       ) : null}
     </Callout>
+  );
+}
+
+/**
+ * The fix a refusal offers beside its words (EXPERIENCE.md §0.3 "Inline fixes on errors"): the
+ * GitHub App install guide, or "Check again" once a fixed manifest is pushed, which links the
+ * repository again. Shown under the field a refusal sits on, or inside the callout.
+ */
+function RefusalFix({
+  fix,
+  onCheckAgain,
+}: {
+  fix: ErrorFix;
+  onCheckAgain: () => void;
+}): React.ReactElement {
+  if (fix.kind === "check-again")
+    return (
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        onClick={onCheckAgain}
+      >
+        {fix.label}
+      </Button>
+    );
+  return (
+    <a
+      href={DOCS_LINKS.createProduct}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex items-center gap-1 text-sm font-bold underline underline-offset-4"
+    >
+      {fix.label}
+      <ArrowRight aria-hidden className="size-3.5" />
+    </a>
   );
 }

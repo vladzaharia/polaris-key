@@ -363,14 +363,17 @@ describe("New product", () => {
     expect(log.calls.some((c) => c.method === "POST")).toBe(false);
   });
 
-  it("lists every problem of a refused manifest, stays on the screen and shows no HTTP status", async () => {
-    boot("#/products/new?via=github", {
+  it("lists every problem of a refused manifest with its file and path, and Check again links again", async () => {
+    const log = boot("#/products/new?via=github", {
       extra: {
         "POST /manage/api/products/link-repo": new Response(
           JSON.stringify({
             error: "bad_request",
             message: "manifest invalid",
-            fields: ["name missing", "bad schema"],
+            errors: [
+              "product/name: is required",
+              "product/licensing/tiers/0: must be an object",
+            ],
           }),
           { status: 422, headers: { "content-type": "application/json" } },
         ),
@@ -378,10 +381,53 @@ describe("New product", () => {
     });
     await page();
     await userEvent.type(field(/^Repository/), "acme/bad{Enter}");
-    expect(await within(main()).findByText("name missing")).toBeTruthy();
-    expect(within(main()).getByText("bad schema")).toBeTruthy();
+    expect(
+      await within(main()).findByText("2 problems in .pkey/product"),
+    ).toBeTruthy();
+    expect(within(main()).getByText(/is required/)).toBeTruthy();
+    expect(within(main()).getByText(/must be an object/)).toBeTruthy();
+    expect(
+      within(main()).getByText(".pkey/product /licensing/tiers/0"),
+    ).toBeTruthy();
     expect(window.location.hash).toBe("#/products/new?via=github");
     expect(main().textContent).not.toMatch(/422|api 4/);
+    const posts = () =>
+      log.calls.filter(
+        (c) => c.method === "POST" && c.path.endsWith("/link-repo"),
+      ).length;
+    expect(posts()).toBe(1);
+    await userEvent.click(
+      within(main()).getByRole("button", { name: "Check again" }),
+    );
+    await waitFor(() => expect(posts()).toBe(2));
+  });
+
+  it("puts a repository the GitHub App can't read on the field, with the install fix beside it", async () => {
+    boot("#/products/new?via=github", {
+      extra: {
+        "POST /manage/api/products/link-repo": new Response(
+          JSON.stringify({
+            error: "bad_request",
+            message: "github app is not installed on acme/private",
+          }),
+          { status: 422, headers: { "content-type": "application/json" } },
+        ),
+      },
+    });
+    await page();
+    await userEvent.type(field(/^Repository/), "acme/private{Enter}");
+    expect(
+      await within(main()).findByText(
+        "The Polaris Key GitHub App isn't installed on acme/private, or the repo is private.",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(main()).getByRole("link", { name: /Install the GitHub App/ }),
+    ).toBeTruthy();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(field(/^Repository/)),
+    );
+    expect(main().textContent).not.toMatch(/422/);
   });
 
   it("keeps the draft across a refresh", async () => {
