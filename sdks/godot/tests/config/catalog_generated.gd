@@ -58,6 +58,10 @@ const ENTRIES := [
 			"advanced": true,
 			"order": 2,
 		},
+		"user": {
+			"conflict": "max",
+			"sync": "user",
+		},
 	},
 	{
 		"accessor": "ui.theme",
@@ -80,6 +84,10 @@ const ENTRIES := [
 				"light": "Hell",
 			},
 			"widget": "select",
+		},
+		"user": {
+			"listed": false,
+			"sync": "device",
 		},
 	},
 	{
@@ -158,6 +166,20 @@ const DEFAULTS := {
 	},
 	"game.killSwitch": false,
 	"ui.theme": "dark",
+}
+
+## Every user setting (a config key with a `user` block) and its policy, defaults applied.
+const USER_SETTINGS := {
+	"audio.musicVolume": {
+		"conflict": "max",
+		"listed": true,
+		"sync": "user",
+	},
+	"ui.theme": {
+		"conflict": "lastWrite",
+		"listed": false,
+		"sync": "device",
+	},
 }
 
 

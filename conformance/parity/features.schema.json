@@ -183,6 +183,7 @@
             "release",
             "update",
             "distribution",
+            "sync",
             "sdk"
           ]
         },
