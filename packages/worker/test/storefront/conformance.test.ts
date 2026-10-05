@@ -8,7 +8,9 @@
  *      denied write is refused at run time, whatever the body.
  *   2. THE NEVER-LIST IS UNREACHABLE: no rule allows a `DELETE`; no rule is on the adapter's
  *      never-list (deletes, users and permissions, signing keys, payments); the gate refuses every
- *      never-list entry for every method it names; no CI command spells a forbidden token.
+ *      never-list entry for every method it names; no CI command spells a forbidden token. The CI
+ *      plane (A-18h): every store's never-list command lines match no command of its allow-list,
+ *      every command admits its sample (identity included), and no value smuggles an option.
  *   3. DECLARATIONS AGREE WITH THE GATE: every write op declared `api` names at least one rule
  *      and only rules the gate has; every rule is named by an op; every `deep-link` op names a row
  *      of the deep-link table for this store whose verifier read the gate admits; every `ci` op's
@@ -61,8 +63,21 @@ import { DEEP_LINKS, deepLink } from "../../src/core/storefront/deeplinks.js";
 import {
   checkCiCommand,
   ciLiterals,
+  matchCiCommand,
   type CiAllowList,
+  type CiParam,
 } from "../../src/core/storefront/ci.js";
+import {
+  CI_PLANE,
+  CI_STORE_IDS,
+  ciPlaneStore,
+  EPIC_CI,
+  ITCH_CI,
+  MSSTORE_CI,
+  SNAP_CI,
+  STEAM_CI,
+  type CiStoreId,
+} from "../../src/core/storefront/ciPlane.js";
 import { fitListing } from "../../src/core/storefront/listing.js";
 import {
   budgetAllows,
@@ -1061,7 +1076,221 @@ for (const a of STOREFRONT_ADAPTERS) {
   });
 }
 
-// ── The CI allow-list check (no CI adapter yet: A-18h) ───────────────────────────────────────
+// ── The CI plane (A-18h): every store's command allow-list ───────────────────────────────────
+
+/**
+ * One admitted command line per CI-plane command, with the outlet identity it binds to. A new
+ * CI-plane store or command adds its row; without one the suite fails, by design.
+ */
+const CI_SAMPLES: Record<
+  CiStoreId,
+  Record<string, { argv: string[]; identity?: Record<string, unknown> }>
+> = {
+  itch: {
+    push: {
+      argv: [
+        "push",
+        "build/windows",
+        "vlad/dice:windows-beta",
+        "--userversion",
+        "1.2.0",
+      ],
+      identity: { target: "vlad/dice", gameId: "1001" },
+    },
+  },
+  snap: {
+    upload: {
+      argv: ["upload", "dist/dice_1.2.0_amd64.snap", "--release=beta,edge"],
+      identity: { name: "dice", channels: { beta: "beta", nightly: "edge" } },
+    },
+    "upload-metadata": {
+      argv: ["upload-metadata", "dist/dice_1.2.0_amd64.snap"],
+    },
+  },
+  steam: {
+    "run-app-build": {
+      argv: [
+        "+login",
+        "builder",
+        "+run_app_build",
+        "build/app_480.vdf",
+        "+quit",
+      ],
+    },
+  },
+  msstore: {
+    publish: {
+      argv: ["publish", "build/Dice.msixupload", "--appId", "9NBLGGH4R315"],
+      identity: { productId: "9NBLGGH4R315" },
+    },
+  },
+  epic: {
+    "upload-binary": {
+      argv: [
+        "-mode=UploadBinary",
+        "-OrganizationId=o-1",
+        "-ProductId=p-1",
+        "-ArtifactId=a-1",
+        "-ClientId=c-1",
+        "-ClientSecretEnvVar=BPT_SECRET",
+        "-BuildRoot=build/windows",
+        "-CloudDir=build/cloud",
+        "-BuildVersion=1.2.0-win",
+        "-AppLaunch=Dice.exe",
+        "-AppArgs=",
+      ],
+    },
+  },
+};
+
+describe("the CI plane (A-18h; S-15 §6.2, §6.6 item 2)", () => {
+  it("has one row per CI store id, and every registered adapter's ci is its row's list", () => {
+    expect(CI_PLANE.map((p) => p.store).sort()).toEqual(
+      [...CI_STORE_IDS].sort(),
+    );
+    for (const a of STOREFRONT_ADAPTERS) {
+      const row = ciPlaneStore(a.id);
+      if (a.ci) {
+        expect(row, `${a.id} has a ci list but no CI_PLANE row`).not.toBeNull();
+        expect(a.ci).toBe(row!.list);
+        expect([...a.never.ciTokens].sort()).toEqual(
+          [...row!.neverTokens].sort(),
+        );
+      } else expect(row, `${a.id} has a CI_PLANE row but no ci`).toBeNull();
+    }
+  });
+
+  for (const plane of CI_PLANE) {
+    describe(`${plane.store} (${plane.list.tool})`, () => {
+      const samples = CI_SAMPLES[plane.store];
+
+      it("admits its sample of every command, identity included", () => {
+        expect(Object.keys(samples).sort()).toEqual(
+          Object.keys(plane.list.commands).sort(),
+        );
+        for (const [id, sample] of Object.entries(samples)) {
+          expect(
+            checkCiCommand(plane.list, id, sample.argv, sample.identity),
+            `${id}: ${sample.argv.join(" ")}`,
+          ).toBeNull();
+          expect(matchCiCommand(plane.list, sample.argv)).toBe(id);
+        }
+      });
+
+      it("refuses every never-list command line", () => {
+        expect(plane.never.length).toBeGreaterThan(0);
+        for (const argv of plane.never) {
+          expect(matchCiCommand(plane.list, argv), argv.join(" ")).toBeNull();
+          for (const id of Object.keys(plane.list.commands))
+            expect(
+              checkCiCommand(plane.list, id, argv, samples[id]?.identity ?? {}),
+              `${id}: ${argv.join(" ")}`,
+            ).not.toBeNull();
+        }
+      });
+
+      it("spells no never-token in any literal, and no value can smuggle an option or a path escape", () => {
+        const literals = ciLiterals(plane.list).map((t) => t.toLowerCase());
+        expect(plane.neverTokens.length).toBeGreaterThan(0);
+        for (const token of plane.neverTokens)
+          expect(
+            literals.filter((l) => l.includes(token)),
+            token,
+          ).toEqual([]);
+        for (const [id, sample] of Object.entries(samples)) {
+          const rule = plane.list.commands[id]!;
+          rule.argv.forEach((want, i) => {
+            if (typeof want === "string") return;
+            const prefix = want.prefix ?? "";
+            // A prefixed value (`-AppArgs=-x`) stays inside its own token, so only an unprefixed
+            // one could pass for an option.
+            const options = prefix ? [] : ["--delete", "-x"];
+            for (const bad of [
+              ...options,
+              "../../etc/passwd",
+              "a;rm -rf /",
+              "$(id)",
+            ]) {
+              const argv = [...sample.argv];
+              argv[i] = `${prefix}${bad}`;
+              expect(
+                checkCiCommand(plane.list, id, argv, sample.identity),
+                `${id}[${i}] = ${argv[i]}`,
+              ).not.toBeNull();
+            }
+          });
+        }
+      });
+
+      it("binds every identity parameter to an outlet kind of the store", () => {
+        for (const [id, rule] of Object.entries(plane.list.commands)) {
+          const bound = rule.argv.filter(
+            (a): a is CiParam => typeof a !== "string" && !!a.identity,
+          );
+          if (bound.length === 0) continue;
+          expect(plane.outletKinds.length, id).toBeGreaterThan(0);
+          const sample = samples[id]!;
+          expect(checkCiCommand(plane.list, id, sample.argv)).toBe(
+            "identity_required",
+          );
+          expect(checkCiCommand(plane.list, id, sample.argv, {})).toBe(
+            "identity_mismatch",
+          );
+        }
+      });
+    });
+  }
+
+  it("binds itch's target and snap's channels to the outlet identity", () => {
+    const itch = CI_SAMPLES.itch.push!;
+    expect(
+      checkCiCommand(ITCH_CI.list, "push", itch.argv, { target: "other/game" }),
+    ).toBe("identity_mismatch");
+    expect(
+      checkCiCommand(
+        ITCH_CI.list,
+        "push",
+        ["push", "build", "vlad/dice:switch", "--userversion", "1"],
+        itch.identity,
+      ),
+    ).toBe("value_not_allowed");
+    const snap = CI_SAMPLES.snap.upload!;
+    expect(
+      checkCiCommand(
+        SNAP_CI.list,
+        "upload",
+        ["upload", "dice.snap", "--release=stable"],
+        snap.identity,
+      ),
+    ).toBe("identity_mismatch");
+    expect(
+      checkCiCommand(
+        SNAP_CI.list,
+        "upload",
+        ["upload", "dice.snap", "--release=latest/stable"],
+        { channels: { stable: "latest/stable" } },
+      ),
+    ).toBeNull();
+  });
+
+  it("guards msstore publish with the Worker-staged draft, and steamcmd's script with the setlive check", () => {
+    expect(MSSTORE_CI.list.commands.publish!.unlessWorkerStaged).toEqual({
+      workerStore: "microsoft-store",
+      opens: ["submission.create"],
+      closes: ["submission.commit"],
+    });
+    // The guard reads the ledger of a real Worker-plane adapter (A-18f's), or it never fires.
+    expect(STOREFRONT_ADAPTERS.some((a) => a.id === "microsoft-store")).toBe(
+      true,
+    );
+    expect(STEAM_CI.list.commands["run-app-build"]!.fileChecks).toEqual([
+      { param: "script", check: "steam-vdf-setlive-named" },
+    ]);
+    expect(EPIC_CI.outletKinds).toEqual([]);
+  });
+});
+
+// ── The CI command allow-list check ──────────────────────────────────────────────────────────
 
 describe("the CI command allow-list check", () => {
   const list: CiAllowList = {

@@ -87,6 +87,7 @@ import {
   type DistTransportRow,
 } from "./outlets.js";
 import { referencedKeys, storedObjects } from "../../core/blobs.js";
+import { reportStoreStep, type StoreStepRecord } from "./storeSteps.js";
 import {
   appReleasesAffectedBy,
   applyReadinessHold,
@@ -135,8 +136,13 @@ export type KeyPurpose = (typeof KEY_PURPOSES)[number];
 /** Lower-case hex SHA-256, exactly. */
 export const FINGERPRINT_PATTERN = /^[0-9a-f]{64}$/;
 
-/** The report types `POST /<p>/distribution/report` accepts. */
-export const REPORT_TYPES = ["availability", "submission", "key"] as const;
+/** The report types `POST /<p>/distribution/report` accepts (`store-step`: A-18h, `storeSteps.ts`). */
+export const REPORT_TYPES = [
+  "availability",
+  "submission",
+  "key",
+  "store-step",
+] as const;
 export type ReportType = (typeof REPORT_TYPES)[number];
 
 /**
@@ -891,6 +897,7 @@ export interface ReportContext extends AvailabilityReadContext {
 }
 
 export type ReportResult =
+  | { ok: true; type: "store-step"; step: StoreStepRecord }
   | { ok: true; type: "availability"; availability: AvailabilityRecord }
   | { ok: true; type: "submission"; submission: SubmissionRecord }
   | {
@@ -1066,6 +1073,7 @@ export async function applyReport(
   if (!isOneOf(REPORT_TYPES, type))
     return invalid("type", `type must be one of ${REPORT_TYPES.join(", ")}`);
   if (type === "key") return reportKey(ctx, body, principal);
+  if (type === "store-step") return reportStoreStep(ctx, body, principal);
 
   for (const field of type === "submission" ? ["buildId", "platformRef"] : []) {
     if (body[field] !== undefined)

@@ -216,6 +216,36 @@ export const DEEP_LINKS: readonly DeepLinkTemplate[] = [
     params: ["productId", "submissionId"],
     verify: "operator-assertion",
   },
+  // ── itch.io (A-18h; S-15 §4.4: the page has no API) ──
+  {
+    id: "itch.new-game",
+    store: "itch",
+    template: "https://itch.io/game/new",
+    params: [],
+    verify: "operator-assertion",
+  },
+  {
+    id: "itch.edit-game",
+    store: "itch",
+    template: "https://itch.io/game/edit/{gameId}",
+    params: ["gameId"],
+    verify: "operator-assertion",
+  },
+  // ── Snap Store (A-18h; title, screenshots and banner are dashboard-only [V][S]) ──
+  {
+    id: "snap.register",
+    store: "snap",
+    template: "https://snapcraft.io/register-snap",
+    params: [],
+    verify: "operator-assertion",
+  },
+  {
+    id: "snap.listing",
+    store: "snap",
+    template: "https://snapcraft.io/{name}/listing",
+    params: ["name"],
+    verify: "operator-assertion",
+  },
 ];
 
 /** A row by id, or null. */
