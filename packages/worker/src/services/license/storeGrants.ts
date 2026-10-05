@@ -24,6 +24,8 @@ import type {
   StoreGrantContext,
   StoreGrantOutcome,
 } from "../../core/storeGrants.js";
+import type { LicenseMergeChange } from "../../core/licenseMerge.js";
+import type { DbStatement } from "../../core/platform.js";
 import { appendAudit, getLicense } from "../../core/data.js";
 import { randomId } from "../../core/platform.js";
 
@@ -87,4 +89,23 @@ export async function applyStoreGrant(
       summary: change.summary.slice(0, 500),
     });
   return { ok: true, changed: changed > 0 };
+}
+
+/**
+ * LX-03: License's share of a licence merge (`core/licenseMerge.ts`) — every store grant of the
+ * retired licence, active or revoked, moves to the survivor, so the flags it paid for ride the
+ * survivor's document and a later refund, revocation or REFUND_REVERSED (which match the grant on
+ * its licence) still finds it. The grant's key is (product, store, purchase key hash, flag), not
+ * the licence, so the re-key cannot collide. The audit row is the merge's own (`license.merge`).
+ */
+export function storeGrantMergeStatements(
+  change: LicenseMergeChange,
+): DbStatement[] {
+  return [
+    {
+      sql: `UPDATE license_store_grants SET license_id = ?
+             WHERE product = ? AND license_id = ?`,
+      params: [change.toLicenseId, change.product, change.fromLicenseId],
+    },
+  ];
 }

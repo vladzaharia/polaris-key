@@ -46,6 +46,10 @@ import {
   setDeployHookJwksFetcherForTests,
 } from "../src/platformDeploy.js";
 import { ensureSystemProduct } from "../src/admin/systemProduct.js";
+import {
+  getManifestSnapshot,
+  manifestFilesSha256,
+} from "../src/core/manifestSnapshot.js";
 
 const ROOT = join(
   fileURLToPath(new URL(".", import.meta.url)),
@@ -142,6 +146,18 @@ async function packageIds(): Promise<string[]> {
 describe("the deploy hook (F-10 automation)", () => {
   it("is a platform route, matched before product slugs", () => {
     expect(matchRoute(DEPLOY_HOOK_PATH).kind).toBe("deployHook");
+  });
+
+  it("records the applied root .pkey/ as the system product's manifest snapshot (ST-01a)", async () => {
+    env.PKEY_GIT_SHA = "d".repeat(40);
+    expect((await hook(await token())).status).toBe(200);
+    const row = await getManifestSnapshot(db, SYSTEM_PRODUCT_SLUG);
+    expect(row).toMatchObject({
+      origin: "deploy-hook",
+      applied_sha: "d".repeat(40),
+      applied_at: NOW,
+      files_sha256: await manifestFilesSha256(FILES),
+    });
   });
 
   it("bootstraps, links and applies the root .pkey/ in one call", async () => {
