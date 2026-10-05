@@ -213,11 +213,13 @@ One identity, rendered in each platform's current idiom. These stay identical ev
 | **Windows**                                     | Fluent 2                            | The `windows` platform variant for Electron, Tauri, Compose Desktop and Qt Quick. **Chrome:** a Mica title bar with caption buttons on the right (`DwmSetWindowAttribute` `DWMWA_SYSTEMBACKDROP_TYPE` natively). **Controls:** 32 px at radius 4; overlays at radius 8. **Focused steps:** a `ContentDialog` on a smoke layer, with the footer buttons at equal width, primary first. **Focus:** the Fluent two-tone ring                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | **Linux (GNOME)**                               | libadwaita                          | The `linux` platform variant: a header bar with only the close button, window radius 12, 34 px controls at radius 8, a pill suggested-action for the primary, and focused steps in an `AdwDialog` (radius 12, a soft libadwaita shadow with a 7 % edge in light, never a drawn dark outline)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | **Godot**                                       | Modern game UI                      | **Scheme:** `colorScheme` defaults to `"dark"`; light is opt-in. **Glass:** panels over a 35–45 % scrim, with an opaque `surface-raised` at 0.94 under `gl_compatibility`, on web exports and when `ui_reduce_transparency` is set; blur at half resolution in one cached pass. **Controls:** 60 px, with a 3 px focus ring at a 2 px offset plus an accent glow; scale 1.03 only on tiles and rows, from the centre. **Identity and type:** a `product.wordmark` texture beside the icon, and `typography.display` for the game's heading face. **Input:** `PKeyInputGlyphs` (monochrome filled glyphs that follow the last input device and honour the confirm-button swap). **Also:** a type floor (§1.5 rule 5), title-safe areas, a host-set toast anchor, UI sound hooks and optional haptics                                                                                                         |
-| **Terminal** (Node, Python)                     | 2026 CLI (gh, uv, clack)            | **Colour:** ANSI-16 for status roles by default, so output follows the user's terminal theme; truecolor only for the product chip, and only with `COLORTERM=truecolor`; light background detected via OSC 11, then `COLORFGBG`. **Layout:** 80 columns, degrading to 60, with keys truncated in the middle; a continuous rail on every line. **Feedback:** a braille spinner in `mute`; a half-block QR, hidden below 70 columns or 20 rows. **Interaction:** OSC 8 links, OSC 52 copy, masked key entry, `--json` on every verb. **Fallbacks:** `NO_COLOR` and ascii symbols                                                                                                                                                                                                                                                                                                                               |
+| **Terminal** (Node, Python)                     | 2026 CLI (gh, uv, clack)            | **Colour:** ANSI-16 for status roles by default, so output follows the user's terminal theme; truecolor only for the product chip, and only with `COLORTERM=truecolor`; light background detected via OSC 11, then `COLORFGBG`. **Layout:** 80 columns, degrading to 60, with keys truncated in the middle; a continuous rail on every line. **Feedback:** a braille spinner in `mute`; a half-block QR, hidden below 70 columns or 20 rows, and never for sign-in (SIGN-IN.md D-67, D-68: browser and loopback, or a device code without a QR when headless). **Interaction:** OSC 8 links, OSC 52 copy, masked key entry, `--json` on every verb. **Fallbacks:** `NO_COLOR` and ascii symbols                                                                                                                                                                                                             |
 | **Qt** (Python)                                 | Platform variants above             | **Qt:** Qt Quick (QML with `MultiEffect` blur and `Behavior` springs) is the drop-in, rendering the macOS, Windows or Linux variant. QWidget is layer (b) only, with its limits stated: QSS has no blur, transitions or transforms. There is no Tk kit (owner, 2026-10-05)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 
-**Desktop dialog model.** Focused steps (Activate, SignInHandoff, DeviceLimit) are sheets on macOS
-and in-window dialogs on Windows (`ContentDialog`) and Linux (`AdwDialog`). The update prompt and
+**Desktop dialog model.** Focused steps (Activate, SignInHandoff, LicenseChoice, DeviceLimit) are
+sheets on macOS and in-window dialogs on Windows (`ContentDialog`) and Linux (`AdwDialog`); the
+sign-in waiting step, the code view and the in-app license choice are drawn in SIGN-IN.md frames
+18, 24 and 28–31. The update prompt and
 Settings are real windows on desktop. This replaces UK-10's "dialogs as real windows".
 
 ### 1.5 Nothing dated: the hard rules
@@ -660,6 +662,24 @@ Mockups: [web](ui-kits/shots/web-gate-dark.png), [web 390](ui-kits/shots/web-gat
 > a kit renders natively and which hand off to the browser, and its §5.2 holds the `signin.*` copy
 > keys. It supersedes this section, Welcome and Activate, and DeviceLimit where they differ, and
 > adds the **LicenseChoice** component (with **Replace a device**) used after a native sign-in.
+>
+> **Desktop kits** (macOS 15+ SwiftUI and AppKit, Compose Desktop, Qt Quick, Electron and Tauri,
+> Godot desktop, the terminals) follow SIGN-IN.md §3.17 and §4.15 (D-60–D-77, frames 23–34):
+>
+> - the Welcome window's chooser leads with **Continue in browser**, keeps the logo-only provider
+>   row as shortcuts, and has no passkey or "Sign in on your phone or computer" row (D-69);
+> - sign-in runs in the **default browser** with a loopback redirect (a registered scheme when the
+>   app cannot listen), and the window shows the waiting step in its desktop dialog: "Finish in
+>   your browser", **Open browser again**, **Cancel** and **Use a code instead** (D-61, D-62,
+>   D-66);
+> - **no QR on any desktop surface** (D-67): the code view shows the URL, the code with **Copy**
+>   and **Open browser**. That supersedes the QR line below for desktop sheets and the QR in the
+>   macOS `desktop-sign-in` mockup;
+> - the tab ends on the hosted desktop ReturnStep ("You can close this tab and return to <App>",
+>   no timer), and the app comes to the front with the toast "Signed in as <name> · <Tier>
+>   license" (D-63–D-65);
+> - sign-out is the platform dialog from Settings → Account (D-71), and an ended sign-in is a
+>   non-blocking banner while grace holds (D-72).
 
 Mockups: [web](ui-kits/shots/web-sign-in-light.png), [iOS](ui-kits/shots/ios-sign-in-dark.png),
 [Android](ui-kits/shots/android-sign-in-dark.png),
@@ -690,8 +710,9 @@ Mockups: [web](ui-kits/shots/web-sign-in-light.png), [iOS](ui-kits/shots/ios-sig
   - the determinate countdown ring with "code expires in 4:12";
   - **Open browser again** (primary) and **Cancel** (secondary).
 
-  The QR sits beside the code when the card is ≥ 560 px (desktop sheets, web), and behind "Scan with
-  your phone instead" when narrower. The screen moves on by itself.
+  The QR sits beside the code when the card is ≥ 560 px (web), and behind "Scan with your phone
+  instead" when narrower. **Desktop sheets, dialogs and terminals show no QR** (SIGN-IN.md D-67).
+  The screen moves on by itself.
 
 - **TV and consoles** (tvOS, Android TV, Godot on console or Steam Deck in game mode) open on the
   device-code path:

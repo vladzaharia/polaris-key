@@ -1,6 +1,10 @@
 /*
- * SIGN-IN.md key frames. Every frame renders at desktop (1440 wide) and phone (390 wide); the
- * theme comes from ?theme=dark|light. render.cjs screenshots every [data-shot] element.
+ * SIGN-IN.md key frames. Frames 01-22 render at desktop (1440 wide, the desktop browser viewport)
+ * and phone (390 wide); a frame may override its desktop header or body so the desktop render shows
+ * a desktop sign-in (a computer's label, the desktop ReturnStep, the macOS kit sheet). Frames 23-34
+ * are desktop-only scenes: app windows (macOS, Windows, GNOME), the desktop browser and terminals
+ * (SIGN-IN.md §3.17, §4.15). The theme comes from ?theme=dark|light. render.cjs screenshots every
+ * [data-shot] element.
  * Copy here is the copy in SIGN-IN.md §5.2 (copy keys); keep the two in step.
  */
 (function () {
@@ -241,6 +245,13 @@
   // 04 EmailGateStep: Steam (no email), inside a native app passthrough
   F({
     id: "04-email-gate-steam",
+    deskHead: appHeader({
+      icon: "saltwind",
+      app: "Saltwind",
+      dev: "Tern Works",
+      where: "on Mara's MacBook Pro",
+      whereIcon: "laptop",
+    }),
     head: appHeader({
       icon: "saltwind",
       app: "Saltwind",
@@ -348,6 +359,13 @@
   // 08 Zero licenses, the product auto-issues: the new license is shown and minted only on the primary
   F({
     id: "08-choice-new",
+    deskHead: appHeader({
+      icon: "saltwind",
+      app: "Saltwind",
+      dev: "Tern Works",
+      where: "on Mara's MacBook Pro",
+      whereIcon: "laptop",
+    }),
     head: appHeader({
       icon: "saltwind",
       app: "Saltwind",
@@ -409,8 +427,23 @@
   });
 
   // 11 ReturnStep: a licence was just added or issued
+  // Desktop render: the desktop ReturnStep (SIGN-IN.md §3.10, D-64): no timer; "You can close this
+  // tab and return to <App>"; Return to <App> only because Saltwind registered a scheme.
   F({
     id: "11-return",
+    deskHead: appHeader({
+      icon: "saltwind",
+      app: "Saltwind",
+      dev: "Tern Works",
+      where: "on Mara's MacBook Pro",
+      whereIcon: "laptop",
+    }),
+    deskBody: `<div class="success-mark">${I.check}</div>
+      <h1 class="center">Saltwind is yours</h1>
+      <div class="prodrow"><div class="icon">${art.saltwind}</div><div style="flex:1"><div class="ln" style="color:var(--pk-text-strong);font-weight:500">Saltwind</div><div class="small">Free · in your library</div></div></div>
+      <p class="lede center" style="margin:0">You can close this tab and return to Saltwind.</p>
+      ${btn("primary", "Return to Saltwind")}
+      <p class="small center"><span class="link">Open your library</span></p>`,
     head: appHeader({
       icon: "saltwind",
       app: "Saltwind",
@@ -508,6 +541,7 @@
   F({
     id: "18-kit-choice",
     kit: true,
+    desk: () => kitChoiceMac,
     body: `<div class="phead hero"><div class="icon">${art.saltwind}</div>Saltwind</div>
       <div class="who">Signed in as Mara Fennick · <span class="link">Not you?</span></div>
       <h1>Choose a license for this device</h1>
@@ -522,6 +556,13 @@
   // 19 Every license full on an auto-issue product: Create a new free license is explicit, never preselected
   F({
     id: "19-choice-create",
+    deskHead: appHeader({
+      icon: "saltwind",
+      app: "Saltwind",
+      dev: "Tern Works",
+      where: "on Mara's MacBook Pro",
+      whereIcon: "laptop",
+    }),
     head: appHeader({
       icon: "saltwind",
       app: "Saltwind",
@@ -588,6 +629,14 @@
   // seat license hides its device counter; the Account-wide row reads "unlimited devices".
   F({
     id: "22-choice-account-wide",
+    deskHead: appHeader({
+      icon: "storytime",
+      app: "Storytime",
+      dev: "Bramble Books",
+      where: "on Mara's MacBook Pro",
+      whereIcon: "laptop",
+    }),
+    deskBody: (b) => b.replace("on Mara's iPad.", "on Mara's MacBook Pro."),
     head: appHeader({
       icon: "storytime",
       app: "Storytime",
@@ -607,21 +656,473 @@
     foot: footer("Storytime", "Bramble Books"),
   });
 
+  // ---------- desktop scenes (SIGN-IN.md §3.17, §4.15) ----------
+  // Windows follow UI-KITS.md §2.1: macOS sheets float inset below the title bar (radius 24, about
+  // 440 wide, no dimming) with title-case buttons, primary last; Windows uses a ContentDialog on a
+  // smoke layer, equal-width footer buttons, primary first; GNOME uses an AdwDialog with a pill
+  // suggested action. In-app copy is the §5.2 copy; the kit accent is the product's (teal here).
+  const upRight = S('<path d="M8 16L16 8M9 8h7v7"/>');
+  const copyI = S(
+    '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
+  );
+  const waves = (w, h, color) => {
+    let d = "";
+    for (let row = 0; row < 6; row++) {
+      const y = h * 0.42 + row * (h * 0.1);
+      let p = `M-20 ${y}`;
+      for (let x = -20; x < w + 40; x += 60) p += ` q 15 -18 30 0 t 30 0`;
+      d += `<path d="${p}" fill="none" stroke="${color}" stroke-width="${10 - row}" stroke-linecap="round" opacity="${(0.95 - row * 0.12).toFixed(2)}"/>`;
+    }
+    return d;
+  };
+  const bigArt = {
+    tidewater: (w = 400, h = 640) =>
+      `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice" width="100%" height="100%"><defs><linearGradient id="tw-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2c5a52"/><stop offset="0.5" stop-color="#0d3f44"/><stop offset="1" stop-color="#082c31"/></linearGradient></defs><rect width="${w}" height="${h}" fill="url(#tw-bg)"/>${waves(w, h, "#4fd8c4")}</svg>`,
+    saltwind: (w = 400, h = 640) =>
+      `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice" width="100%" height="100%"><defs><linearGradient id="sw-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fd6f0"/><stop offset="0.62" stop-color="#2f78a6"/><stop offset="1" stop-color="#123a55"/></linearGradient></defs><rect width="${w}" height="${h}" fill="url(#sw-bg)"/><path d="M${w * 0.52} ${h * 0.18}v${h * 0.46}H${w * 0.2}z" fill="#fff"/><path d="M${w * 0.56} ${h * 0.28}v${h * 0.36}h${w * 0.24}z" fill="#e8f4fb"/><path d="M${w * 0.12} ${h * 0.67}h${w * 0.76}l-${w * 0.1} ${h * 0.07}H${w * 0.22}z" fill="#0d2c42"/></svg>`,
+    nightfall: (w = 1200, h = 700) =>
+      `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice" width="100%" height="100%"><defs><linearGradient id="nf-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d0a24"/><stop offset="1" stop-color="#2a1f5c"/></linearGradient></defs><rect width="${w}" height="${h}" fill="url(#nf-bg)"/><circle cx="${w * 0.72}" cy="${h * 0.26}" r="70" fill="#e9e1ff"/><circle cx="${w * 0.75}" cy="${h * 0.22}" r="64" fill="#13102f"/><path d="M0 ${h * 0.78}l${w * 0.18}-${h * 0.16} ${w * 0.14} ${h * 0.09} ${w * 0.2}-${h * 0.2} ${w * 0.26} ${h * 0.18} ${w * 0.22}-${h * 0.08}V${h}H0z" fill="#3a2d7a"/><path d="M0 ${h * 0.9}l${w * 0.25}-${h * 0.1} ${w * 0.3} ${h * 0.06} ${w * 0.45}-${h * 0.08}V${h}H0z" fill="#1d1640"/></svg>`,
+  };
+  const macWin = ({ x, y, w, h, title = "", body, sheet, cls = "" }) =>
+    `<div class="win mac ${cls}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"><div class="tb"><i class="r"></i><i class="y"></i><i class="g"></i><span class="tt">${title}</span></div><div class="wc">${body}</div>${sheet ? `<div class="msheet">${sheet}</div>` : ""}</div>`;
+  const caps = `<span class="caps"><svg viewBox="0 0 10 10"><path d="M1 5h8" stroke="currentColor"/></svg><svg viewBox="0 0 10 10"><rect x="1.5" y="1.5" width="7" height="7" fill="none" stroke="currentColor"/></svg><svg viewBox="0 0 10 10"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7" stroke="currentColor"/></svg></span>`;
+  const winWin = ({ x, y, w, h, title, icon, body, dialog, cls = "" }) =>
+    `<div class="win w11 ${cls}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"><div class="tb"><span class="ti">${art[icon]}</span><span class="tt">${title}</span>${caps}</div><div class="wc">${body}</div>${dialog ? `<div class="smoke"></div><div class="cdlg">${dialog}</div>` : ""}</div>`;
+  const gnomeWin = ({ x, y, w, h, title, body, dialog }) =>
+    `<div class="win gnome" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"><div class="tb"><span class="tt">${title}</span><span class="close">${S('<path d="M7 7l10 10M17 7L7 17"/>')}</span></div><div class="wc">${body}</div>${dialog ? `<div class="dim"></div><div class="adlg">${dialog}</div>` : ""}</div>`;
+  const browserWin = ({ x, y, w, h, url, tab, content, cls = "" }) =>
+    `<div class="win browser ${cls}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"><div class="tabs"><i class="r"></i><i class="y"></i><i class="g"></i><div class="tab">${I.mark}<span>${tab}</span><span class="x">×</span></div></div><div class="bar"><span class="nav">${S('<path d="M15 6l-6 6 6 6"/>')}${S('<path d="M9 6l6 6-6 6"/>')}${S('<path d="M19 12a7 7 0 1 1-2.1-5M19 4v4h-4"/>')}</span><div class="url">${I.lock}<span><b>key.plrs.im</b>${url}</span></div></div><div class="bc app">${stars(w, h)}${content}</div></div>`;
+  const termWin = ({ x, y, w, h, title, lines }) =>
+    `<div class="win term" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"><div class="tb"><i class="r"></i><i class="y"></i><i class="g"></i><span class="tt">${title}</span></div><pre class="tc">${lines}</pre></div>`;
+  const scene = (os, inner) => `<div class="wall ${os}"></div>${inner}`;
+
+  // in-app (kit) building blocks, desktop scale
+  const dkHead = (icon, name, extra = "") =>
+    `<div class="dk-head"><div class="icon">${art[icon]}</div><b>${name}</b>${extra}</div>`;
+  const db = (kind, label, icon) =>
+    `<span class="db ${kind}">${label}${icon ? icon : ""}</span>`;
+  const dkProviders = (list) =>
+    `<div class="dk-prov" role="group" aria-label="Or continue with">${list.map((p) => `<span aria-label="Continue with ${p}">${I[p.toLowerCase()]}</span>`).join("")}</div>`;
+  // The waiting sheet (SignInHandoff, browser mode): Cancel, Open browser again, Use a code instead.
+  const waiting = (os, icon, app) => {
+    const T = os === "mac";
+    const body = `${dkHead(icon, app)}
+      <h2>Finish in your browser</h2>
+      <p>We opened Polaris Key in your browser. Sign in there and ${app} continues by itself.</p>
+      <div class="wait"><span class="spinner"></span>Waiting for your browser…</div>`;
+    const useCode = `<span class="link">${T ? "Use a Code Instead" : "Use a code instead"}</span>`;
+    if (os === "w11")
+      return `<div class="cb">${body}${useCode}</div><div class="cf">${db("primary", "Open browser again")}${db("secondary", "Cancel")}</div>`;
+    return `${body}<div class="dk-foot">${useCode}<span class="sp"></span>${db("secondary", "Cancel")}${db("primary", T ? "Open Browser Again" : "Open browser again")}</div>`;
+  };
+  // A signed-out Welcome window with the desktop chooser (D-69).
+  const welcomeMac = (artName, icon, app) =>
+    `<div class="split"><div class="art">${bigArt[artName]()}</div><div class="pane">
+      <div class="hero-icon">${art[icon]}</div>
+      <h2 class="big">Sign in to ${app}</h2>
+      <p>Use the email you bought ${app} with.</p>
+      ${db("primary xl", "Continue in Browser", upRight)}
+      <div class="or">or</div>
+      ${dkProviders(["Apple", "Google", "Steam"])}
+      <div class="dk-links"><span>${I.key} Have a License Key?</span></div>
+      <p class="fine">${I.lock} Polaris Key signs you in for ${app}. Harbor Audio never sees your codes or passkeys.</p>
+    </div></div>`;
+  const welcomeFlat = (artName, icon, app) =>
+    `<div class="split"><div class="art">${bigArt[artName]()}</div><div class="pane">
+      <div class="hero-icon">${art[icon]}</div>
+      <h2 class="big">Sign in to ${app}</h2>
+      <p>Use the email you bought ${app} with.</p>
+      ${db("primary xl", "Continue in browser", upRight)}
+      <div class="or">or</div>
+      ${dkProviders(["Google", "Steam"])}
+      <div class="dk-links"><span>${I.key} Have a license key?</span></div>
+    </div></div>`;
+  // A signed-in Tidewater main window (sidebar + canvas), for completion, sign-out and expiry.
+  const tideMain = (extraTop = "") =>
+    `<div class="appmain">${extraTop}<div class="cols"><div class="side"><div class="sh">Presets</div>${["Harbor at dusk", "Low tide", "Fog bell", "Gull room", "Night swell"].map((n, i) => `<div class="si ${i === 1 ? "on" : ""}">${n}</div>`).join("")}</div><div class="canvas"><div class="ct">Low tide</div><svg viewBox="0 0 600 160" preserveAspectRatio="none" class="wave">${Array.from(
+      { length: 120 },
+      (_, i) => {
+        const hh =
+          10 + Math.abs(Math.sin(i * 0.37) * 60 + Math.sin(i * 0.11) * 30);
+        return `<rect x="${i * 5}" y="${80 - hh / 2}" width="3" height="${hh}" rx="1.5"/>`;
+      },
+    ).join(
+      "",
+    )}</svg><div class="knobs">${["Depth", "Drift", "Spray", "Room"].map((k) => `<div class="knob"><i></i><span>${k}</span></div>`).join("")}</div></div></div></div>`;
+
+  // 18 desktop render: the macOS kit's native LicenseChoice sheet after native Sign in with Apple
+  // (I-13 `choose`, D-70). Replace a Device… opens manageUrl in the browser until I-13 carries the
+  // device list; the row then re-reads on app focus.
+  const kitChoiceMac = scene(
+    "mac",
+    macWin({
+      x: 200,
+      y: 70,
+      w: 1040,
+      h: 760,
+      body: `<div class="split dimmed"><div class="art">${bigArt.saltwind()}</div><div class="pane"></div></div>`,
+      sheet: `${dkHead("saltwind", "Saltwind")}
+        <div class="who">Signed in with Apple as Mara Fennick · <span class="link">Not You?</span></div>
+        <h2>Choose a license for this device</h2>
+        <p>Saltwind will use it on Mara's MacBook Pro.</p>
+        <div role="radiogroup" aria-label="Licenses for Saltwind" class="dk-rows">
+        ${lic({ name: "Saltwind", tier: "Pro", meta: "Bought on the App Store · Yearly, until 2 Feb 2027", used: 1, limit: 3, sel: true })}
+        ${lic({ name: "Saltwind", tier: "Free", meta: "Created when you signed in · Lifetime", used: 2, limit: 2, full: true, tag: "No free devices", tagKind: "warn", act: `${db("secondary", "Replace a Device…", upRight)}<span class="hint">Opens Polaris Key in your browser</span>` })}
+        </div>
+        <div class="dk-foot"><span class="link">${I.key} Use a License Key Instead</span></div>
+        <div class="dk-foot"><span class="sp"></span>${db("secondary", "Cancel")}${db("primary", "Use This License and Continue")}</div>`,
+    }),
+  );
+
+  // 23 macOS (SwiftUI / AppKit): the signed-out Welcome window with the desktop chooser
+  F({
+    id: "23-desk-mac-signin",
+    only: "desktop",
+    desk: scene(
+      "mac",
+      macWin({
+        x: 200,
+        y: 90,
+        w: 1040,
+        h: 720,
+        body: welcomeMac("tidewater", "tidewater", "Tidewater Studio"),
+      }),
+    ),
+  });
+
+  // 24 macOS: the waiting sheet while the browser is open (no dimming, the macOS 26 sheet shape)
+  F({
+    id: "24-desk-mac-waiting",
+    only: "desktop",
+    desk: scene(
+      "mac",
+      macWin({
+        x: 200,
+        y: 90,
+        w: 1040,
+        h: 720,
+        body: welcomeMac("tidewater", "tidewater", "Tidewater Studio"),
+        sheet: waiting("mac", "tidewater", "Tidewater Studio"),
+      }),
+    ),
+  });
+
+  // 25 The default browser in front of the app: the same AuthCard, "on Mara's MacBook Pro"
+  F({
+    id: "25-desk-browser-methods",
+    only: "desktop",
+    desk: scene(
+      "mac",
+      macWin({
+        x: 40,
+        y: 180,
+        w: 720,
+        h: 560,
+        cls: "behind",
+        body: welcomeMac("tidewater", "tidewater", "Tidewater Studio"),
+        sheet: waiting("mac", "tidewater", "Tidewater Studio"),
+      }) +
+        browserWin({
+          x: 330,
+          y: 24,
+          w: 1080,
+          h: 852,
+          tab: "Sign in · Polaris Key",
+          url: "/signin?request=rq_8F2K…QW",
+          content: `${lockup()}<div class="card">${appHeader({ icon: "tidewater", app: "Tidewater Studio", dev: "Harbor Audio", where: "on Mara's MacBook Pro", whereIcon: "laptop" })}<div class="body"><h1>Sign in</h1>
+            <p class="lede">Use the email you bought Tidewater Studio with.</p>
+            ${field("Email", "mara@fennick.studio", { focus: true })}
+            ${btn("primary", "Continue", "arrow")}
+            <div class="or">or</div>
+            ${providers(["Apple", "Google", "Steam"])}
+            ${btn("ghost", `<span class="acc">${I.passkey.replace("<svg", '<svg width="18" height="18"')}</span> Sign in with a passkey`)}</div>${footer("Tidewater Studio", "Harbor Audio")}</div>`,
+        }),
+    ),
+  });
+
+  // 26 The desktop ReturnStep in the browser tab (D-63, D-64): the loopback answered with a 303 to
+  // the hosted page; no timer; the app has already come to the front behind it.
+  F({
+    id: "26-desk-browser-return",
+    only: "desktop",
+    desk: scene(
+      "mac",
+      browserWin({
+        x: 180,
+        y: 28,
+        w: 1080,
+        h: 844,
+        tab: "Signed in · Polaris Key",
+        url: "/signin/return?request=rq_8F2K…QW",
+        content: `${lockup()}<div class="card">${appHeader({ icon: "tidewater", app: "Tidewater Studio", dev: "Harbor Audio", where: "on Mara's MacBook Pro", whereIcon: "laptop" })}<div class="body">
+          <div class="success-mark">${I.check}</div>
+          <h1 class="center">You're signed in to Tidewater Studio</h1>
+          <p class="lede center" style="margin:0">You can close this tab and return to Tidewater Studio.</p>
+          <div class="person"><div class="avatar">MF</div><div><div class="n">Mara Fennick</div><div class="e">Tidewater Studio Pro · Lifetime · device 3 of 3</div></div></div>
+          ${btn("primary", "Return to Tidewater Studio")}
+          <p class="small center"><span class="link">Open your library</span></p></div>${footer("Tidewater Studio", "Harbor Audio")}</div>`,
+      }),
+    ),
+  });
+
+  // 27 macOS: the app comes to the front signed in, with the confirmation toast (D-65)
+  F({
+    id: "27-desk-mac-done",
+    only: "desktop",
+    desk: scene(
+      "mac",
+      browserWin({
+        x: 620,
+        y: 40,
+        w: 780,
+        h: 640,
+        cls: "behind",
+        tab: "Signed in · Polaris Key",
+        url: "/signin/return?request=rq_8F2K…QW",
+        content: `${lockup()}<div class="card" style="transform:scale(.8);transform-origin:top center"><div class="body"><div class="success-mark">${I.check}</div><h1 class="center">You're signed in to Tidewater Studio</h1><p class="lede center" style="margin:0">You can close this tab and return to Tidewater Studio.</p></div></div>`,
+      }) +
+        macWin({
+          x: 90,
+          y: 150,
+          w: 900,
+          h: 640,
+          title: "Tidewater Studio",
+          body: tideMain(
+            `<div class="toast">${I.check}<span>Signed in as Mara Fennick · Pro license</span></div>`,
+          ),
+        }),
+    ),
+  });
+
+  // 28 Windows 11 (Compose Desktop, Electron / Tauri with the web kit's windows variant, Qt Quick):
+  // the waiting step as a ContentDialog on a smoke layer
+  F({
+    id: "28-desk-win-waiting",
+    only: "desktop",
+    desk: scene(
+      "w11",
+      winWin({
+        x: 200,
+        y: 80,
+        w: 1040,
+        h: 720,
+        title: "Tidewater Studio",
+        icon: "tidewater",
+        body: welcomeFlat("tidewater", "tidewater", "Tidewater Studio"),
+        dialog: waiting("w11", "tidewater", "Tidewater Studio"),
+      }),
+    ),
+  });
+
+  // 29 GNOME (Qt Quick or Compose Desktop, linux variant): Use a code instead, no QR (D-67)
+  F({
+    id: "29-desk-linux-code",
+    only: "desktop",
+    desk: scene(
+      "gnome",
+      gnomeWin({
+        x: 200,
+        y: 80,
+        w: 1040,
+        h: 720,
+        title: "Tidewater Studio",
+        body: welcomeFlat("tidewater", "tidewater", "Tidewater Studio"),
+        dialog: `${dkHead("tidewater", "Tidewater Studio")}
+          <h2>Sign in with a code</h2>
+          <p>On any phone or computer, go to <b>key.plrs.im/device</b> and enter this code.</p>
+          <div class="dcode"><code>WDJB-MJHT</code><span class="db secondary sm">${copyI}Copy</span></div>
+          <div class="wait"><span class="ring"></span>Waiting · code expires in 4:12</div>
+          <p class="fine">Check the code there matches this one.</p>
+          <div class="dk-foot"><span class="link">Use browser sign-in</span><span class="sp"></span>${db("secondary", "Cancel")}${db("primary pill", "Open browser")}</div>`,
+      }),
+    ),
+  });
+
+  // 30 Windows: in-app Replace a device inline (once I-13 carries the device list; the same layout
+  // is the kit DeviceLimit on the key path). The confirm's buttons take the dialog footer.
+  F({
+    id: "30-desk-win-replace",
+    only: "desktop",
+    desk: scene(
+      "w11",
+      winWin({
+        x: 200,
+        y: 40,
+        w: 1040,
+        h: 820,
+        title: "Tidewater Studio",
+        icon: "tidewater",
+        body: welcomeFlat("tidewater", "tidewater", "Tidewater Studio"),
+        dialog: `<div class="cb">${dkHead("tidewater", "Tidewater Studio")}
+          <div class="who">Signed in with Steam as marafox · <span class="link">Not you?</span></div>
+          <h2>Choose a license for this device</h2>
+          ${lic({
+            name: "Tidewater Studio",
+            tier: "Edu",
+            meta: "Added with a key · Until 12 Jun 2027",
+            used: 2,
+            limit: 2,
+            full: true,
+            tag: "No free devices",
+            tagKind: "warn",
+            extra: `<div class="replace"><h2>Replace a device</h2>
+              <div class="devs" role="radiogroup" aria-label="Devices on Tidewater Studio Edu">
+                <div class="dev sel"><div class="radio"></div>${I.laptop.replace("<svg", '<svg class="g"')}<div><div class="dn">Work laptop</div><div class="dm">Windows · last used 23 days ago</div></div><span class="tag">Least recent</span></div>
+                <div class="dev"><div class="radio"></div>${I.desktop.replace("<svg", '<svg class="g"')}<div><div class="dn">Studio iMac</div><div class="dm">macOS · last used 4 minutes ago</div></div><span class="tag active">Active now</span></div>
+              </div>
+              <div class="confirm"><h3>Replace Work laptop?</h3>
+                <p>Work laptop signs out of Tidewater Studio and Mara's PC takes its seat. Work laptop can sign in again later if a seat is free. We'll email you about it.</p></div>
+            </div>`,
+          })}</div><div class="cf">${db("primary", "Replace and continue")}${db("secondary", "Back")}</div>`,
+      }),
+    ),
+  });
+
+  // 31 Godot desktop export (Windows here): the in-game waiting panel; loopback via TCPServer and
+  // OS.shell_open (I-15). Steam builds use the Steam ticket first and never open a browser (I-14).
+  F({
+    id: "31-desk-godot-waiting",
+    only: "desktop",
+    desk: scene(
+      "w11",
+      winWin({
+        x: 120,
+        y: 60,
+        w: 1200,
+        h: 780,
+        title: "Nightfall",
+        icon: "nightfall",
+        cls: "game",
+        body: `<div class="gamebg">${bigArt.nightfall()}<div class="gtitle">NIGHTFALL</div></div><div class="gpanel">${waiting("godot", "nightfall", "Nightfall")}</div>`,
+      }),
+    ),
+  });
+
+  // 32 Terminal (Node and Python CLIs): browser + loopback locally; device code over SSH, no QR (D-68)
+  const c = (cls, t) => `<span class="${cls}">${t}</span>`;
+  F({
+    id: "32-desk-terminal",
+    only: "desktop",
+    desk: scene(
+      "mac",
+      termWin({
+        x: 40,
+        y: 110,
+        w: 670,
+        h: 640,
+        title: "tidewater — zsh — 80×24",
+        lines: [
+          `${c("mute", "~")} ${c("strong", "$ tidewater login")}`,
+          ``,
+          `${c("acc", "◆")}  ${c("tchip", " Tidewater Studio ")} ${c("strong", "Sign in")}`,
+          `${c("mute", "│")}`,
+          `${c("acc", "◇")}  Opening Polaris Key in your browser…`,
+          `${c("mute", "│")}  If it didn't open, go to ${c("lnk", "key.plrs.im/signin?request=rq_8F…QW")}`,
+          `${c("mute", "│")}`,
+          `${c("mute", "◒")}  Waiting for your browser`,
+          `${c("mute", "│")}  ${c("strong", "Enter")} ${c("mute", "open again ·")} ${c("strong", "c")} ${c("mute", "use a code ·")} ${c("strong", "Esc")} ${c("mute", "cancel")}`,
+          `${c("mute", "│")}`,
+          `${c("ok", "✓")}  Signed in as ${c("strong", "Mara Fennick")} ${c("mute", "(mara@fennick.studio)")}`,
+          `${c("mute", "│")}  Tidewater Studio Pro · Lifetime · this Mac is device 3 of 3`,
+          `${c("mute", "└")}  You can close the browser tab.`,
+          ``,
+          `${c("mute", "~")} ${c("strong", "$ ")}<span class="cur"> </span>`,
+        ].join("\n"),
+      }) +
+        termWin({
+          x: 730,
+          y: 150,
+          w: 670,
+          h: 600,
+          title: "mara@build-01 — ssh — 80×24",
+          lines: [
+            `${c("mute", "build-01")} ${c("strong", "$ tidewater login")}`,
+            ``,
+            `${c("acc", "◆")}  ${c("tchip", " Tidewater Studio ")} ${c("strong", "Sign in")}`,
+            `${c("mute", "│")}`,
+            `${c("acc", "◇")}  No browser on this machine. Use a code instead:`,
+            `${c("mute", "│")}  On any phone or computer, go to ${c("lnk", "key.plrs.im/device")}`,
+            `${c("mute", "│")}  and enter this code.`,
+            `${c("mute", "│")}`,
+            `${c("mute", "│")}      ${c("rev", " WDJB-MJHT ")}`,
+            `${c("mute", "│")}`,
+            `${c("mute", "│")}  Check the code there matches this one.`,
+            `${c("mute", "│")}  ${c("mute", "Code expires in 4:12")}`,
+            `${c("mute", "│")}`,
+            `${c("mute", "◒")}  Waiting for you to sign in`,
+            `${c("mute", "│")}  ${c("strong", "c")} ${c("mute", "copy the code ·")} ${c("strong", "Esc")} ${c("mute", "cancel")}`,
+          ].join("\n"),
+        }),
+    ),
+  });
+
+  // 33 macOS: sign-out confirm sheet over the signed-in window (§4.9, D-71)
+  F({
+    id: "33-desk-mac-signout",
+    only: "desktop",
+    desk: scene(
+      "mac",
+      macWin({
+        x: 200,
+        y: 90,
+        w: 1040,
+        h: 720,
+        title: "Tidewater Studio",
+        body: tideMain(),
+        sheet: `${dkHead("tidewater", "Tidewater Studio")}
+          <h2>Sign out of Tidewater Studio on this device?</h2>
+          <p>Tidewater Studio stops using your Pro license here and frees its seat.</p>
+          <div class="notice warn">${I.warn}<span>3 changes haven't synced yet.</span></div>
+          <div class="dk-foot">${db("secondary", "Wait for Sync")}<span class="sp"></span>${db("secondary", "Cancel")}${db("danger", "Sign Out")}</div>`,
+      }),
+    ),
+  });
+
+  // 34 Windows: session ended while the license's grace holds: a non-blocking InfoBar (D-72)
+  F({
+    id: "34-desk-win-session",
+    only: "desktop",
+    desk: scene(
+      "w11",
+      winWin({
+        x: 200,
+        y: 90,
+        w: 1040,
+        h: 720,
+        title: "Tidewater Studio",
+        icon: "tidewater",
+        body: tideMain(
+          `<div class="infobar">${I.info}<span><b>Your sign-in ended.</b> Sign in again to keep using Tidewater Studio.</span><span class="sp"></span>${db("primary", "Sign in")}${db("secondary", "Use a license key")}</div>`,
+        ),
+      }),
+    ),
+  });
+
   // ---------- render ----------
   const board = document.getElementById("board");
   for (const f of frames) {
     if (only && !f.id.startsWith(only)) continue;
-    for (const size of ["desktop", "phone"]) {
+    for (const size of f.only ? [f.only] : ["desktop", "phone"]) {
       const el = document.createElement("section");
-      el.className = `screen ${size} ${f.kit ? "kit" : ""} ${f.head ? "app" : ""}`;
+      const desk = size === "desktop" && f.desk;
+      const head = (size === "desktop" && f.deskHead) || f.head;
+      const deskBody =
+        size === "desktop" && f.deskBody
+          ? typeof f.deskBody === "function"
+            ? f.deskBody(f.body)
+            : f.deskBody
+          : null;
+      const body = deskBody || f.body;
+      el.className = desk
+        ? "screen desktop desk"
+        : `screen ${size} ${f.kit ? "kit" : ""} ${head ? "app" : ""}`;
       el.setAttribute("data-shot", `${f.id}-${size}`);
-      if (f.kit) {
-        el.innerHTML =
-          size === "phone"
-            ? `<div class="statusbar"><span>9:41</span><span>●●● ▮</span></div><div class="sheet"><div class="grab"></div>${f.body}</div>`
-            : `${stars(1440, 900)}<div class="card" style="margin-top:40px"><div class="body">${f.body}</div></div>`;
+      if (desk) {
+        el.innerHTML = typeof f.desk === "function" ? f.desk() : f.desk;
+      } else if (f.kit) {
+        el.innerHTML = `<div class="statusbar"><span>9:41</span><span>●●● ▮</span></div><div class="sheet"><div class="grab"></div>${body}</div>`;
       } else {
-        el.innerHTML = `${size === "desktop" ? stars(1440, 1100) : ""}${lockup(f.surface)}<div class="card">${f.head || ""}<div class="body">${f.body}</div>${f.foot || ""}</div>${below}`;
+        el.innerHTML = `${size === "desktop" ? stars(1440, 1100) : ""}${lockup(f.surface)}<div class="card">${head || ""}<div class="body">${body}</div>${f.foot || ""}</div>${below}`;
       }
       board.appendChild(el);
     }
