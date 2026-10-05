@@ -52,6 +52,9 @@ decided with the recommended option.
   adds "N signed-in devices will be signed out; installs and licences keep working." (Q2). The
   Identity consequence line no longer says the customer portal stops (it is platform-wide). ST-05
   and ST-08 reuse the same dry run.
+- **Admin mutation table.** Main's `test/mutations.test.ts` requires every non-GET API method in
+  `MUTATIONS`; `servicesDryRun` (a PATCH that writes nothing) is registered there with an empty
+  invalidation and a `why`, and the Services page calls it through `mutate()`.
 - **Deferred:** the `entitlementModel: combined` confirmation line (plan §6) waits for LX's
   `licensing.entitlementModel`; no product can be on `combined` yet.
 
@@ -97,11 +100,11 @@ Owner decision: one account, Identity per product ([PORTAL.md §3.1](../../../..
 
 ## Acceptance criteria
 
-- [ ] Test: two products see two different ids for one account.
-- [ ] Every app-sign-in entry refuses a product with Identity off (tests).
-- [ ] Corpus and transcripts are regenerated if the token shape changes.
-- [ ] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
-- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
+- [x] Test: two products see two different ids for one account.
+- [x] Every app-sign-in entry refuses a product with Identity off (tests).
+- [x] Corpus and transcripts are regenerated if the token shape changes.
+- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
+- [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify
 
