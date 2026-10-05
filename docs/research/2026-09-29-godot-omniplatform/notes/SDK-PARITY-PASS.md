@@ -857,7 +857,8 @@ effort: under 2 days, under 1 week, and 1–3 weeks. The tasks are ordered withi
 15. **SP-S15. Keychain options:** `accessGroup` and app-group cache directory options. Unify the
     accessibility class once owner question Q8 is answered. **S.**
 16. **SP-S16. Mac Catalyst CI job.** For tvOS, visionOS and watchOS, add `identifierForVendor`
-    branches in `DeviceID.swift` and `Fingerprint.swift` now. The platform header waits on W8.
+    branches in `DeviceID.swift` and `Fingerprint.swift` now. The platform header ships with
+    SP-08; add the runtimes, CI jobs and `Package.swift` platforms.
     **S.**
 17. **SP-S17. Docs:** a DocC catalog, a sample macOS and iOS app, an iOS quickstart covering
     StoreKit, App Attest and update hand-off, and an install snippet that tells iOS-only apps to
