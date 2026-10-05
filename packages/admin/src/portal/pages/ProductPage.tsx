@@ -9,10 +9,20 @@ import { ProductHeader } from "../components/product/ProductHeader.js";
 import { SectionNav } from "../components/product/SectionNav.js";
 import { WhatsNew } from "../components/product/WhatsNew.js";
 import { ErrorPanel } from "../components/States.js";
-import { capabilitiesOrNone, useCapabilities, useLicense } from "../data.js";
+import {
+  capabilitiesOrNone,
+  useCapabilities,
+  useLicense,
+  usePackageAccess,
+} from "../data.js";
+import { PackageAccessCard } from "../components/product/PackageAccessCard.js";
 import { consumeHeadingFocus } from "../focus.js";
 import { useLibrary } from "../library.js";
-import { quickAction, type LibraryProduct } from "../model/library.js";
+import {
+  quickAction,
+  tierLabel,
+  type LibraryProduct,
+} from "../model/library.js";
 import { presentSections, SECTION_LABEL } from "../model/product.js";
 import {
   href,
@@ -92,7 +102,10 @@ function ProductBody({
   const selected =
     product.licenses.find((l) => l.id === requested) ?? product.best;
   const detail = useLicense(product.slug, selected.id);
-  const sections = presentSections(product, releasesOn);
+  const pkg = usePackageAccess(product.slug, selected.id);
+  const sections = presentSections(product, releasesOn, {
+    packageAccess: pkg.data?.available === true,
+  });
   const [current, setCurrent] = React.useState<ProductSection | null>(
     section && sections.includes(section) ? section : (sections[0] ?? null),
   );
@@ -191,6 +204,21 @@ function ProductBody({
                 <WhatsNew product={product} />
               </div>
             ) : null}
+            {has("package") ? (
+              <div className="order-5">
+                <PackageAccessCard
+                  product={product.slug}
+                  productName={product.name}
+                  developer={product.presentation.developer}
+                  tier={tierLabel(selected.tier)}
+                  licenseId={selected.id}
+                  access={pkg.data}
+                  loading={pkg.isPending}
+                  error={pkg.error}
+                  onRetry={() => void pkg.refetch()}
+                />
+              </div>
+            ) : null}
           </div>
           <div className="contents desk:flex desk:flex-col desk:gap-6">
             <div className="order-2">
@@ -224,7 +252,7 @@ function ProductBody({
               </div>
             ) : null}
             {has("help") ? (
-              <div className="order-5">
+              <div className="order-6">
                 <HelpCard product={product} />
               </div>
             ) : null}

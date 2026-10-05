@@ -308,6 +308,11 @@ export async function productView(
     ),
     status: shaped[0]!.status,
     addedAt: await addedAt(db, accountId, slug),
+    // PX-10: where the portal's focused flows may send the person back to (`?return=`, §3.3):
+    // the product's exact declared browser origins (`web.origins`, P0-05). App schemes join
+    // when the manifest can declare them (S-16 I-15); until then a scheme return is refused and
+    // the flow ends on the product page.
+    returnTo: { origins: [...product.webOrigins], schemes: [] },
     licenses,
   };
 }

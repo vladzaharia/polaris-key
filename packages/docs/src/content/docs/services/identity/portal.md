@@ -153,7 +153,11 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   `free`), the stores, and each store grant with its state and dates. A grant names its flag only
   when the developer shows that flag in the portal; no purchase key is ever returned. The facts
   are License's, read through its `licenseProvenance` descriptor hook, so `purchase` is `null`
-  while License is off. `404` for a product the account holds nothing for.
+  while License is off. The product also carries `returnTo` (`{ origins, schemes }`): where the
+  focused flows (`#/p/<product>/free-device` and `#/p/<product>/download`) may send the person
+  back to with `?return=` — the product's exact `web.origins`; app schemes are always empty until
+  the manifest can declare them, so a scheme return ends on the product page. `404` for a product
+  the account holds nothing for.
 - **`GET /media/<product>/<asset>`** — public, no session: the product's `icon` or `header` art
   from its listing, fetched by the Worker and served from this origin, because the portal's CSP is
   `img-src 'self' data:`. Only `https` sources on GitHub-hosted names (`github.com`,
