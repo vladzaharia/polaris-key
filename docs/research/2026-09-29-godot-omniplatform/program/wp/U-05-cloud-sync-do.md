@@ -12,6 +12,13 @@
 | Human input | a staging deploy for the one-DO load test at the push limit                                                                                                                                                                                                                                                                                                                                                                                             |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                                                                                                               |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/U-01.md`](../plans/U-01.md):** the `protocol/sync` subpath and its `gen:constants` subpath; a sharded limiter (one `RateLimitDO` cannot hold the product push limit); `cloudSync.writesPaused`; no `sync_product_settings` table and no ceiling admin routes; the effective-limit formula. U-05 does not wait for LX-09 (Q9). `byEntitlement` maps limits to developer-declared numeric flags that combine by `max` (Q3).
+- **[`plans/LX-01.md`](../plans/LX-01.md):** §7: `byTier` is the tier of the highest-`rank` contributing licence; `byEntitlement` reads `sync.storageBytes` and `sync.slots` from the effective set; `requiresFlag` calls `resolveDeviceEntitlements`, licence-less devices are allowed, and `writes.requireLicense` checks the anchor's usability.
+
 ## Goal
 
 Devices push and pull user settings through `/<p>/sync/` against one Durable Object per `(product, subject)`, with push rules 1–8 enforced on the server, `403 account_required` for devices with no signed-in account, the settings account-merge hook, coalesced D1 directory writes, unlicensed limits and product ceilings, and browser bearer access through the CORS list.

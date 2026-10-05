@@ -1,16 +1,23 @@
-# PX-W13 Passthrough request metadata (G28): client records with presentation and reserved-name check, the request handle, `deviceLabel` from the SDKs, consent data
+# PX-W13 Passthrough request metadata (G28): client records with presentation and the reserved-name check (warn first, then enforced), the request handle, `deviceName` label from the SDKs, consent data
 
 | Field       | Value                                                                                                                                                                                               |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)                                                                                                                             |
 | Size        | 0.4–0.8 engineer-weeks                                                                                                                                                                              |
-| Depends on  | [I-04](I-04-account-contract-plan.md)                                                                                                                                                               |
-| Unblocks    | [PX-14](PX-14-passthrough-header.md)                                                                                                                                                                |
+| Depends on  | [I-04](I-04-account-contract-plan.md), [LX-05](LX-05-reserved-names-warn.md)                                                                                                                        |
+| Unblocks    | [PX-14](PX-14-passthrough-header.md), [SP-11](SP-11-presentation-accent.md)                                                                                                                         |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                               |
-| Plan mode   | yes: executes the approved [`plans/I-04.md`](../plans/I-04.md) (no separate plan)                                                                                                                   |
+| Plan mode   | yes: executes the approved [`plans/PX-W13.md`](../plans/PX-W13.md) (approved 2026-10-05), which fills the G28 gap in [`plans/I-04.md`](../plans/I-04.md)                                            |
 | Gates       | the PORTAL.md §11 green gate; plan mode; corpus and transcripts (`gen:corpus -- --check`, `gen:transcripts -- --check`); THREAT-MODEL; every SDK's replayer; `typecheck:workerd` and `test:workerd` |
 | Human input | none                                                                                                                                                                                                |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                           |
+
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/PX-W13.md`](../plans/PX-W13.md):** this plan replaces "no separate plan" and was approved on 2026-10-05 with every recommendation accepted, except Q4, which the owner amended. `deviceName` stays the wire name (Q1); the label is also sent on `license/activate` and `register` (Q2); PX-W13 ships the §5 SDK and UI-kit label work itself (Q3); consent re-asks only on a change of claims or services (Q5); `account_product_grants` keeps its name and new surfaces say "app consent" (Q6).
+- **Owner (2026-10-05):** reserved display names **warn first, then enforce**: `reserved_display_name` ships behind the platform switch `identity.reservedDisplayNames` (default `warn`), reusing LX-05's validator warning path (new dependency LX-05). PX-W13 flips it to `error` after the S-19 decision-15 window (two minor releases or 60 days, whichever is later). It is not a hard error from day one.
 
 ## Goal
 

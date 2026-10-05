@@ -1557,6 +1557,11 @@ A device signed in to a different account than the licence owner gets its signed
 layer. Seats (I-24) behave as licence overrides do today: every device of the licence gets the
 owner's layer.
 
+> **Amended 2026-10-05 (`program/plans/I-24.md` Q6, approved by the owner).** A device on a
+> named-user seat gets the **seat user's own** account layer, not the licence owner's. This matches
+> S-19 decision 4 and I-04's "signed-in account wins" rule. Licence overrides still apply to every
+> device of the licence.
+
 **Floating licences.** No account layer, ever (owner). The console's licence page says "No account:
 managed config for this customer needs an account" and offers the sign-up link the portal uses.
 The SDK UI kits' existing "add to your Library" prompt (S-16 I-10) is the device-side prompt; this
