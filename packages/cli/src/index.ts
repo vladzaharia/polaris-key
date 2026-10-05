@@ -58,6 +58,7 @@ import { TRANSPORT_USAGE, type TransportCommon } from "./transport.js";
 import { baPackage, baUpload } from "./transportAppleBa.js";
 import { padModules, type PadDelivery } from "./transportPlayPad.js";
 import { steamVdf } from "./transportSteam.js";
+import { cmdStorefront } from "./storefronts/command.js";
 import { buildFdroidFeed, FEEDS_USAGE } from "./feeds.js";
 import { feedsSetup, FEEDS_SETUP_USAGE } from "./feedSetup.js";
 import {
@@ -382,6 +383,8 @@ export interface CliIo {
 
 interface ParsedArgs {
   command: string;
+  /** Everything after a bare `--` (`pkey storefront exec … -- <argv>`), verbatim. */
+  rest: string[];
   flags: Record<string, string | boolean>;
   /** Every string value of a repeatable flag (`--pin a@1 --pin b@2`), in order. */
   multi: Record<string, string[]>;
@@ -432,6 +435,15 @@ export async function runPkey(argv: string[], io: CliIo = {}): Promise<number> {
         return await cmdFeeds(parsed, cwd, stdout, stderr, ci);
       case "transport":
         return await cmdTransport(parsed, cwd, stdout, stderr, ci);
+      case "storefront":
+        return await cmdStorefront(
+          {
+            positional: parsed.positional,
+            flags: parsed.flags,
+            rest: parsed.rest,
+          },
+          { cwd, stdout, stderr, ...ci },
+        );
       default:
         stderr.write(`Unknown command "${parsed.command}".\n\n${helpText()}`);
         return 2;
@@ -452,8 +464,13 @@ function parseArgs(argv: string[]): ParsedArgs {
     flags[key] = value;
     (multi[key] ??= []).push(value);
   };
+  let after: string[] = [];
   for (let i = 0; i < rest.length; i += 1) {
     const arg = rest[i]!;
+    if (arg === "--") {
+      after = rest.slice(i + 1);
+      break;
+    }
     if (!arg.startsWith("--")) {
       positional.push(arg);
       continue;
@@ -475,7 +492,7 @@ function parseArgs(argv: string[]): ParsedArgs {
       bare.add(rawKey);
     }
   }
-  return { command, flags, multi, bare, positional };
+  return { command, flags, multi, bare, positional, rest: after };
 }
 
 async function cmdInit(
@@ -1411,6 +1428,13 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
               [--delivery fast-follow|on-demand] [--default-texture fmt] [--variant key] [--no-report]
   pkey transport steam-depot vdf --deliverable packId --release v --from dir --depot id
               (--branch b | --channel c) [--setlive] [--app id] [--out dir] [--no-report]
+  pkey storefront itch push --platform windows|linux|mac|android --dir dir --version v
+              [--channel c] [--outlet id] [--dry-run] [--no-report]
+  pkey storefront snap metadata --yaml snapcraft.yaml [--dry-run]
+  pkey storefront snap upload --snap file.snap --channel c[,c...] [--outlet id] [--dry-run] [--no-report]
+  pkey storefront snap upload-metadata --snap file.snap [--dry-run] [--no-report]
+  pkey storefront exec store command --op operation [--outlet id] [--tool-path path] -- argv...
+  pkey storefront allow-list [--store s] [--json]
 
 pkey release publish matches the files under --dir against .pkey/release's
 deliverables.app.artifacts map (<file>.sig and <file>.sha256 ride along as sidecars), hashes
@@ -1496,6 +1520,19 @@ and records the asset pack's resource id in .pkey/asset-packs.json (commit it; a
 into any other resource is refused); play-pad modules writes com.android.asset-pack modules
 (a #tcf_ directory per texture variant) into a Godot Android Gradle build and patches it;
 steam-depot vdf writes a content-only SteamPipe build (SetLive on named branches only).
+
+pkey storefront runs a store's vendor CLI from CI, and only as a command its CI allow-list
+admits (pkey storefront allow-list prints them): itch push is butler push <dir>
+<user/game>:<platform[-channel]> --userversion <v>, the target from the itch outlet's identity
+(BUTLER_API_KEY in the environment); snap upload is snapcraft upload <snap> --release=<snap
+channels>, only the channels the snap outlet's channels map declares, and snap upload-metadata
+sends the summary, description and icon the snap carries, which snap metadata writes into
+snapcraft.yaml from the listing model before the build (SNAPCRAFT_STORE_CREDENTIALS, a scoped
+export-login). exec runs any other allow-listed command (steamcmd +run_app_build, whose script
+may set live only a named branch; msstore publish, refused while the console has a staged
+draft; BuildPatchTool -mode=UploadBinary). Each step is reported back to Polaris Key before and
+after it runs (distribution:report), so the store's ledger shows it beside console steps; a step
+already done in the same run is skipped. --dry-run checks and prints the command lines.
 
 pkey manifest schemas writes the .pkey/ JSON Schemas into a directory, for editors in a
 repository with no node_modules.
