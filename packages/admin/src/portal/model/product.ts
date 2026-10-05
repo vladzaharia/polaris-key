@@ -3,14 +3,20 @@ import type {
   PortalDownloadFile,
   PortalDownloads,
   PortalLicenseDetail,
+  PortalLicenseSummary,
+  PortalProduct,
   PortalRelease,
   PortalStoreLink,
 } from "../api.js";
 import type { PlatformKey } from "../components/Glyphs.js";
 import type { ProductSection } from "../router.js";
 import {
+  ACCOUNT_WIDE,
+  devicesText,
   formatSize,
+  isAccountWide,
   normalisePlatform,
+  tierLabel,
   type DeviceInHand,
   type LibraryProduct,
 } from "./library.js";
@@ -62,13 +68,13 @@ export function presentSections(
   extra: { packageAccess?: boolean } = {},
 ): ProductSection[] {
   const set = new Set<ProductSection>();
-  const accountBound = p.status.kind === "signedInApp";
   if (releasesOn && p.releases.length > 0) {
     set.add("get");
     set.add("new");
   }
   set.add("license");
-  if (!accountBound) set.add("devices");
+  // Every licence, key or account-wide, has devices to remove remotely (owner, 2026-10-05).
+  set.add("devices");
   if (extra.packageAccess) set.add("package");
   const pres = p.presentation;
   if (pres.supportUrl || pres.supportEmail || pres.website) set.add("help");
@@ -319,6 +325,72 @@ export function getItFromDownloads(
 }
 
 /** "1.x", "1.0 and later", "Up to 2.0", "All versions" from the license's version bounds. */
+/** The tier as the License card's pill names it: a licence with no tier is "Standard". */
+export function tierName(l: Pick<PortalLicenseSummary, "tier">): string {
+  return tierLabel(l.tier) ?? "Standard";
+}
+
+/** The licence picker's option: tier first, then how it's held ("Pro · Key", "Standard ·
+ * Account-wide"), and the status only when it wants attention ("Pro · Key · Expired"). */
+export function licenseOptionLabel(
+  l: PortalLicenseSummary,
+  status: { label: string; attention: boolean },
+): string {
+  return [
+    tierName(l),
+    isAccountWide(l) ? ACCOUNT_WIDE : "Key",
+    status.attention ? status.label : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/**
+ * The seat limit activation enforces on licence `id`: the product view's per-licence
+ * `deviceLimit` (PX-W1), else the library's seats when `id` is the best licence; `null` when
+ * neither has answered (the limit is never guessed).
+ */
+export function seatLimitFor(
+  p: LibraryProduct,
+  view: PortalProduct | undefined,
+  id: string,
+): number | null {
+  const own = view?.licenses.find((l) => l.id === id);
+  if (own) return own.deviceLimit > 0 ? own.deviceLimit : null;
+  return id === p.best.id ? (p.seats?.limit ?? null) : null;
+}
+
+/**
+ * Whether licence `l`'s device counter is shown. A key licence's counter goes away when the
+ * account also holds an account-wide licence for the product, which covers the devices it signs
+ * in on (owner, 2026-10-05); the device list stays either way.
+ */
+export function showsDeviceCount(
+  p: Pick<LibraryProduct, "licenses">,
+  l: PortalLicenseSummary,
+): boolean {
+  return isAccountWide(l) || !p.licenses.some(isAccountWide);
+}
+
+/**
+ * The words beside the tier pill on the License card: "0 of 5 devices" for a key licence,
+ * "Account-wide · 1 of 5 devices" for an account-bound one ("Account-wide" alone while the limit
+ * is unknown), and null when the counter is hidden.
+ */
+export function licenseCountLine(
+  l: PortalLicenseSummary,
+  inUse: number,
+  limit: number | null,
+  showCount: boolean,
+): string | null {
+  const count = showCount ? devicesText(inUse, limit) : null;
+  if (isAccountWide(l))
+    return [ACCOUNT_WIDE, limit != null ? count : null]
+      .filter(Boolean)
+      .join(" · ");
+  return count;
+}
+
 export function coversVersions(
   l:
     | PortalLicenseDetail

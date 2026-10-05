@@ -10,6 +10,10 @@
 > §6.10. Settings follow the S-18 hub and licensing follows S-19 (both owner-approved); EXPERIENCE.md
 > §0.8 reconciles its work packages with the `ST`, `LX` and `PX` packages.
 
+> **Sign-in is specified in [SIGN-IN.md](SIGN-IN.md) (2026-10-05).** It supersedes this document's
+> sign-in parts where they differ: §2.7's Sign in row, T8's Session expired row (the console now
+> renders "Your session ended" in place on the shared card, not a dialog) and §6.10.1.
+
 **Status:** draft for lead approval · **Scope:** `packages/admin` (operator console at `/manage`,
 customer portal at `/`) · **Builds on:** `@polaris-key/brand` and
 [BRAND.md](BRAND.md) (in progress on
@@ -655,13 +659,13 @@ result), create license (in a dialog, as steps).
 
 **For.** Not found, service off, unknown product, session expired, boot.
 
-| State               | Content                                                                                                                                                                                                                                                     |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Service off**     | `EmptyState kind="service-off"` in the service's accent and glyph: "The License service isn't enabled for DJDL." **Enable License** (goes to Services with the row focused and pre-toggled, unsaved) + docs                                                 |
-| **Not found**       | Names the missing thing ("No license `lic_123` in DJDL"), links to its collection and to the palette                                                                                                                                                        |
-| **Unknown product** | Lists the closest slugs (edit distance ≤ 2) + "All products"                                                                                                                                                                                                |
-| **Session expired** | A non-dismissible dialog over the current page: "Your session ended. Sign in again to continue; your unsaved changes stay in this tab." **Sign in** opens `/manage/login?returnTo=<current hash>` in the same tab after stashing drafts in `sessionStorage` |
-| **Boot**            | The brand mark (display cut, 48 px, gold bit), "Loading console…" in a live region; on failure an `ErrorState` with Retry and Sign in                                                                                                                       |
+| State               | Content                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Service off**     | `EmptyState kind="service-off"` in the service's accent and glyph: "The License service isn't enabled for DJDL." **Enable License** (goes to Services with the row focused and pre-toggled, unsaved) + docs                                                                                                                                                                                                  |
+| **Not found**       | Names the missing thing ("No license `lic_123` in DJDL"), links to its collection and to the palette                                                                                                                                                                                                                                                                                                         |
+| **Unknown product** | Lists the closest slugs (edit distance ≤ 2) + "All products"                                                                                                                                                                                                                                                                                                                                                 |
+| **Session expired** | **Superseded by SIGN-IN.md §3.12:** "Your session ended" renders in place on the shared card with the email chip and Continue. As first written: a non-dismissible dialog over the current page: "Your session ended. Sign in again to continue; your unsaved changes stay in this tab." **Sign in** opens `/manage/login?returnTo=<current hash>` in the same tab after stashing drafts in `sessionStorage` |
+| **Boot**            | The brand mark (display cut, 48 px, gold bit), "Loading console…" in a live region; on failure an `ErrorState` with Retry and Sign in                                                                                                                                                                                                                                                                        |
 
 ### 3.9 View → template map
 
@@ -1887,6 +1891,9 @@ activateAfter, retiredAt).
 ### 6.10 Customer portal
 
 #### 6.10.1 Sign in
+
+> **Superseded** by [SIGN-IN.md](SIGN-IN.md) §3.3–§3.4 (identifier-first card, email code and link,
+> provider row, passkeys). Kept for history.
 
 ```
 ┌──────────────── centered, max-w 26rem ────────────────┐

@@ -12,6 +12,15 @@
 | Human input | none                                                                                                                                                                                     |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                |
 
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- DeviceApproval outcomes and step-up copy per SIGN-IN.md §3.11 (`signin.approve.*`); the Add-another-way nudge is deferred out of passthrough to the next portal visit (D-40).
+
 ## Goal
 
 After sign-in the person may be nudged to add another method, can link an existing account with proof of both, and can sign in on a new device by approving it from a signed-in one (both sides).
