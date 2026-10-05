@@ -1,20 +1,20 @@
 # HA-02 Media host `media*.plrs.im`: fourth custom domain, `MEDIA_ORIGIN`, `core/mediaHost.ts` confinement, content-addressed immutable routes and stable aliases
 
-| Field       | Value                                                                                                                                           |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | HA: Hosted assets: Polaris Key hosts every file it serves (S-20) (phase 1: substrate)                                                           |
-| Size        | 0.6–1 engineer-weeks                                                                                                                            |
-| Depends on  | [HA-01](HA-01-hosted-asset-core.md)                                                                                                             |
-| Unblocks    | [HA-06](HA-06-upload-paths.md), [HA-07](HA-07-serve-hosted-copies.md), [HA-12](HA-12-presentation-discovery.md)                                 |
-| Role        | `pkey-implementer`                                                                                                                              |
-| Plan mode   | no                                                                                                                                              |
-| Gates       | wrangler config; rule 10 (OpenAPI + routeCoverage); THREAT-MODEL; workerd lane                                                                  |
-| Human input | a deploy that attaches the custom domains media.plrs.im, media-staging.plrs.im and media-dev.plrs.im (the Worker routes create the DNS records) |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                       |
+| Field       | Value                                                                                                                                     |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | HA: Hosted assets: Polaris Key hosts every file it serves (S-20) (phase 1: substrate)                                                     |
+| Size        | 0.6–1 engineer-weeks                                                                                                                      |
+| Depends on  | [HA-01](HA-01-hosted-asset-core.md)                                                                                                       |
+| Unblocks    | [HA-06](HA-06-upload-paths.md), [HA-07](HA-07-serve-hosted-copies.md), [HA-12](HA-12-presentation-discovery.md)                           |
+| Role        | `pkey-implementer`                                                                                                                        |
+| Plan mode   | no                                                                                                                                        |
+| Gates       | wrangler config; rule 10 (OpenAPI + routeCoverage); THREAT-MODEL; workerd lane                                                            |
+| Human input | a deploy that attaches the custom domains img.plrs.im, img-staging.plrs.im and img-dev.plrs.im (the Worker routes create the DNS records) |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                 |
 
 ## Goal
 
-`https://media.plrs.im/<p>/a/<sha256>[/<w>.webp]` serves public hosted images with immutable caching. `/<p>/icon`, `/<p>/header` and `/<p>/screenshots/<n>` 302 to the current copy. The host is confined to these routes, sets no cookies, and refuses anything gated or not hosted.
+`https://img.plrs.im/<p>/a/<sha256>[/<w>.webp]` serves public hosted images with immutable caching. `/<p>/icon`, `/<p>/header` and `/<p>/screenshots/<n>` 302 to the current copy. The host is confined to these routes, sets no cookies, and refuses anything gated or not hosted.
 
 ## Why
 
