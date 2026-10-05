@@ -28,7 +28,7 @@ call site is named.
 
 ## What is collected
 
-### Hardware fingerprint — native SDKs only (Node/Electron, Python, Swift, Godot)
+### Hardware fingerprint — native SDKs only (Node/Electron, Python, Swift, Godot, Kotlin)
 
 Seven components, each hashed independently on-device. Any component that cannot be read is
 omitted rather than substituted.
@@ -56,6 +56,11 @@ volume.
 session and off the main thread. On iOS and Android it sends only the anchor (Godot's
 `OS.get_unique_id()`: `identifierForVendor` on iOS, `ANDROID_ID` on Android), the machine model,
 RAM and, on iOS, the CPU. A Godot web export collects no fingerprint.
+
+**Kotlin** on a JVM desktop reads a subset of the desktop sources: the Linux machine-id, macOS's
+`IOPlatformUUID`, the Windows board serial and model (`Get-CimInstance`) and the RAM bucket. On
+Android it reads no hardware serial: it sends the anchor (`ANDROID_ID`, which is app-scoped, or
+else a random value kept in the Android Keystore), `Build.MODEL` and the RAM bucket.
 
 **The browser SDK collects no hardware fingerprint at all.** Canvas/WebGL-style browser
 fingerprinting is unreliable, actively degraded by browsers, and privacy-hostile; the browser

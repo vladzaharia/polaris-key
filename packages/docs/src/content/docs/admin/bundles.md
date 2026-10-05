@@ -8,7 +8,7 @@ sidebar:
 An offline activation bundle is a single signed `pkey-bundle+jws` file that lets a machine which
 **never touches the network at all** get the same license and config documents it would
 otherwise have fetched. This is the deepest of the three offline modes Polaris Key supports (see
-[What is Polaris Key?](/docs/start/) → _Five SDKs, one corpus, and it works offline_): a normal
+[What is Polaris Key?](/docs/start/) → _Six SDKs, one corpus, and it works offline_): a normal
 client is offline-_tolerant_ — it activates online once, then runs from a verified cache with
 grace — but a bundle exists for the machine that can't do even that first activation.
 

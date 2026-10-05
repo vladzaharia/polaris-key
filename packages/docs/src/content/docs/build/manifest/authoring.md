@@ -7,7 +7,7 @@ description: "The .pkey/ files and the ConfigEntry shape — schema, product, an
 
 A Polaris Key product is **data, not code**. Its catalog, metadata, and release coordinates
 live in a `.pkey/` directory in the product's own repo. The Worker, the admin SPA, and all
-five SDKs read that data;
+six SDKs read that data;
 adding or changing a product never requires a Worker redeploy.
 
 This doc is the source of truth for the `.pkey/` files and the `ConfigEntry` shape, using

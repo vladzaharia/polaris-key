@@ -1,11 +1,14 @@
 # Polaris Key — Kotlin
 
-The Kotlin SDK for native Android apps and JVM desktop apps (P6-05), and the shared Android
-backend that the Godot SDK, and later Unity and MAUI, bind. It is built in slices: P6-06 landed the
-verified core and the conformance runner, P6-07 the licence, config, devices, identity and release
-services and the umbrella client, P6-08 the update client and the pack engine, P6-09 the platform
-module's stable API and P6-12 the Android glue; the Compose UI kit (P6-11) follows. `parity.json` says which features are implemented today; the
-docs' parity page renders it.
+The Kotlin SDK for native Android apps and JVM desktop apps, with a Jetpack Compose UI kit, and the
+shared Android backend that the Godot SDK, and later Unity and MAUI, bind. It reached full parity in
+P6-05: P6-06 landed the verified core and the conformance runner, P6-07 the licence, config,
+devices, identity and release services and the umbrella client, P6-08 the update client and the
+pack engine, P6-09 the platform module's stable API, P6-10 the Godot binding on `:platform`, P6-11
+the Compose UI kit and P6-12 the Android glue. `parity.json` says which features are implemented;
+the docs' parity page renders it. The only rows it leaves planned are the ones Swift also leaves
+planned with no owner (`devices.attest`, `identity.oidc`, `packs.transport.steam`,
+`commerce.receipt`), each with a note.
 
 | Module         | Kind                  | What                                                                                                                                                                      |
 | -------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -355,13 +358,14 @@ python3 tools/check_16k_alignment.py   # zstd-jni's Android natives are 16 KB pa
 # Android modules
 ./gradlew :platform:testPlayDebugUnitTest :platform:testDirectDebugUnitTest \
           :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest \
-          :android:testPlayDebugUnitTest :android:testDirectDebugUnitTest
-./gradlew :platform:assembleRelease :godot:assembleRelease :android:assembleRelease :boundary:assembleRelease
+          :android:testPlayDebugUnitTest :android:testDirectDebugUnitTest :ui:testDebugUnitTest
+./gradlew :platform:assembleRelease :godot:assembleRelease :android:assembleRelease :boundary:assembleRelease \
+          :ui:assembleRelease
 tools/check_flavours.sh        # the boundary on the release AARs and APKs
 ./gradlew :platform:checkStandalone :godot:checkPlatformOnly checkModuleBoundaries \
           :platform:publishAllPublicationsToLocalRepository :godot:publishAllPublicationsToLocalRepository \
-          :android:publishAllPublicationsToLocalRepository
-tools/check_publication.sh     # both flavours of each in build/repo with POM, sources and .module
+          :android:publishAllPublicationsToLocalRepository :ui:publishAllPublicationsToLocalRepository
+tools/check_publication.sh     # platform, godot, android in build/repo with POM, sources and .module (not :ui)
 ```
 
 `:conformance` reads `conformance/corpus/v2/` and `conformance/transcripts/` from the repository

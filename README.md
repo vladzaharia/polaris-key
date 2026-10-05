@@ -31,8 +31,9 @@ sdks/
   python/            polaris-key (PyPI)        — full client + CLI adapters
   swift/             PolarisKey (SwiftPM)      — native CryptoKit + SwiftUI login
   godot/             Godot addon               — pure-GDScript client, PKeyBoot + UI kit, packs
-  kotlin/            Gradle build              — :core (JVM: verify, cache, sync) + corpus runner;
-                                               :platform, the Android backend Godot binds
+  kotlin/            Gradle build              — JVM :core + service modules + :sdk umbrella + corpus
+                                               runner; Android :platform (the backend Godot binds),
+                                               :android glue and the Compose :ui kit
 conformance/         corpus/v2 (one signer's golden vectors) + the Node and browser runners
 tools/               sign-corpus.ts · gen-mirrors.ts · gen-services.ts + services.json (the service table)
 products/            per-product data (catalog.json + product.json) + gen-seed
@@ -97,7 +98,7 @@ pnpm gen:corpus -- --check   # conformance drift gate (CI)
 ( cd sdks/python && .venv/bin/python -m pytest )   # Python SDK
 ( cd sdks/swift && swift test )                    # Swift SDK
 sdks/godot/tools/run_tests.sh                      # Godot SDK (GODOT_BIN, optional GODOT_TEMPLATE)
-( cd sdks/kotlin && ./gradlew -Ppkey.jvmOnly=true :core:test :conformance:test )  # Kotlin SDK (JDK 17)
+( cd sdks/kotlin && ./gradlew -Ppkey.jvmOnly=true test checkModuleBoundaries )  # Kotlin SDK JVM modules (JDK 17)
 ```
 
 Run the JS suites on **Node 22** (`mise exec node@22 -- pnpm test`), the version CI pins. The

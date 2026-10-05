@@ -55,11 +55,25 @@ android {
     lint {
         abortOnError = true
         warningsAsErrors = false
+        // The kit ships English only, and a partial translation is supported by design: an app's
+        // values-<locale> overrides the names it translates and the rest keep the English (the
+        // debug-only values-fr fixture proves it). So MissingTranslation is never a defect here,
+        // and without this lintDebug, which `./gradlew build` runs, fails on that fixture (P6-05).
+        disable += "MissingTranslation"
     }
 
     publishing {
         singleVariant("release") { withSourcesJar() }
     }
+}
+
+// The Compose tests host their content in ComponentActivity, which only the debug manifest declares
+// (ui-test-manifest is debugImplementation), and the Roborazzi references are recorded on debug.
+// The release unit-test variant would only fail to launch that activity, so it is not created and
+// `./gradlew build` runs the suite once, on debug (P6-05).
+androidComponents {
+    // enableUnitTest is AGP 8.6's API (the template's version); its AGP 9 replacement is not in 8.6.
+    beforeVariants(selector().withBuildType("release")) { it.enableUnitTest = false }
 }
 
 kotlin {
