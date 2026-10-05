@@ -2194,6 +2194,10 @@ coherent plan) [I]:**
   U-03's step 4 is final: `PUT /licenses/<id>/overrides` keeps `entitlements` and refuses `config`
   and `secrets` after the run. Moving entitlements to the account would have put an account into
   the licence document's inputs and reopened S-16 decision 9.
+  _Amended 2026-10-04 (S-19 decision 2, accepted): the outcome stands, but the last sentence
+  no longer holds as a reason. Under S-19 model OC the account signed in on a device does feed the
+  licence document's inputs; S-16 D9 is read as a rule about the document's content (no user
+  claim), which stays true. See `notes/S-19-licensing-model.md` §10.3 decision 2._
 - **21. Migration notice and report window.** Show the inventory 30 days before the run, counted
   from the day I-07 and I-11 are live in production; keep the report (secret values by name only)
   for 90 days. _Decided (owner, 2026-10-04): as stated._

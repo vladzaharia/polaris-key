@@ -1,16 +1,16 @@
 # U-11a Console Data tab, settings half: settings, account overrides, "what the app sees", quota meters, audit and step-up on I-12's Users page
 
-| Field       | Value                                                                                                                                 |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | U: Cloud Sync (S-17) (U1 MVP)                                                                                                         |
-| Size        | 0.6–0.85 engineer-weeks                                                                                                               |
-| Depends on  | [U-03](U-03-account-overrides.md), [U-05](U-05-cloud-sync-do.md), [I-12](I-12-console-users.md)                                       |
-| Unblocks    | [U-11b](U-11b-console-data-saves.md), [U-11c](U-11c-console-data-records.md)                                                          |
-| Role        | `pkey-implementer`                                                                                                                    |
-| Plan mode   | no: follows the approved [`plans/U-01.md`](../plans/U-01.md) where it names this package                                              |
-| Gates       | console CSP parity; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; accessibility and console tests; cross-product visibility test |
-| Human input | none                                                                                                                                  |
-| Repo        | `vladzaharia/polaris-key`                                                                                                             |
+| Field       | Value                                                                                                                                   |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | U: Cloud Sync (S-17) (U1 MVP)                                                                                                           |
+| Size        | 0.6–0.85 engineer-weeks                                                                                                                 |
+| Depends on  | [U-03](U-03-account-overrides.md), [U-05](U-05-cloud-sync-do.md), [I-12](I-12-console-users.md), [ST-08](ST-08-product-settings-hub.md) |
+| Unblocks    | [U-11b](U-11b-console-data-saves.md), [U-11c](U-11c-console-data-records.md)                                                            |
+| Role        | `pkey-implementer`                                                                                                                      |
+| Plan mode   | no: follows the approved [`plans/U-01.md`](../plans/U-01.md) where it names this package                                                |
+| Gates       | console CSP parity; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; accessibility and console tests; cross-product visibility test   |
+| Human input | none                                                                                                                                    |
+| Repo        | `vladzaharia/polaris-key`                                                                                                               |
 
 ## Goal
 
@@ -36,6 +36,7 @@ Operators need to support customers' synced settings without seeing other produc
 
 ## Design notes
 
+- **In the settings hub (S-18, owner, 2026-10-04).** The Cloud Sync console section lands as an area of the product settings hub built by [ST-08](ST-08-product-settings-hub.md), using `SettingsRow` v2.
 - Pairwise subject only; every read and write audited (T10).
 - The Data tab appears on I-12's Users page for every product with Cloud Sync on, which implies Identity on (owner, 2026-10-04, final answers).
 - Contact email follows S-16 D19 (accepted): the buyer email, and the account's primary email only with the person's consent.
