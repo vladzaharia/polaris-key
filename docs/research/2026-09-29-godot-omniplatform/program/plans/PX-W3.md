@@ -1,6 +1,32 @@
 # PX-W3 plan: licensed R2 downloads from the portal (gap G3) through a download ticket
 
-> **Awaiting approval.** Merging this plan's PR is the approval (program README §3). It
+## Owner decisions (2026-10-05)
+
+**Approved; every recommendation in "Open questions for the owner" accepted as written.** The
+owner approved nine plans together (U-01, PX-W3, LX-01, I-24, I-09, PX-W8, PX-W9, PX-W13 and
+PX-W17). These cross-plan overrides win over any text below that says otherwise:
+
+- **Refusal link name.** `manageUrl` on **both** `device_limit` and `key_entry_limit`. PX-W8 Q1
+  wins over PX-W9 Q3's `portalUrl`. `license_owned` keeps `signInUrl`. Portal paths are root
+  paths, per PX-W8's corrections: `/activate?product=<slug>` and `/signin?product=<slug>`, never
+  `/portal/activate` or `/portal/signin`. PX-W9, I-09, `plans/I-04.md` and their briefs are
+  corrected to match.
+- **Reserved display names** (PX-W13 Q4). Warn first, following LX-05 and S-19 (§7.4, decision
+  15), then enforce in PX-W13. The rule is not a hard error from day one.
+- **I-24** is split into **I-24a** and **I-24b** in `workpackages.json`, with the dependencies I-08
+  and I-09 added. **I-09** gains the **ST-04** dependency (I-09 Q3).
+- **Brief changes.** Every "Brief changes" list in the nine plans is applied to the named briefs,
+  each under a section "Amendments from approved plans (2026-10-05)".
+- **Superseded drafts.** The branches `wp/U-01-cloud-sync-plan` and
+  `wp/PX-W3-licensed-downloads-plan` are superseded by `plans/U-01.md` and `plans/PX-W3.md` and
+  must not be merged.
+
+**Effect on this plan.** None of the overrides changes the text below. Q4 is answered (a), so
+the PX-09 app-only copy change does not apply. The superseded draft is `72676b8e` on
+`wp/PX-W3-licensed-downloads-plan`. Provisioning the `DOWNLOAD_TICKET_KEY` pair per environment is
+the remaining human input (Q3).
+
+> **Approved by the owner (2026-10-05)**; see "Owner decisions (2026-10-05)" above. As first written: It
 > supersedes the draft on branch `wp/PX-W3-licensed-downloads-plan` (`72676b8e`), which must not
 > be merged. That draft's mechanism is kept here, with S-19's rename to "download ticket", the
 > resolver hand-off, a rotation-safe key id and the S-16/S-18 constraints added. §0 quotes the

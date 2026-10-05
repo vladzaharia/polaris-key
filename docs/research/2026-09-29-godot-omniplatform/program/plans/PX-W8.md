@@ -1,6 +1,32 @@
 # PX-W8 plan: `manageUrl` on the seat and key-entry refusals
 
-> **Awaiting approval.** Merging this plan's PR is the approval (program README §3). It executes
+## Owner decisions (2026-10-05)
+
+**Approved; every recommendation in "Open questions for the owner" accepted as written.** The
+owner approved nine plans together (U-01, PX-W3, LX-01, I-24, I-09, PX-W8, PX-W9, PX-W13 and
+PX-W17). These cross-plan overrides win over any text below that says otherwise:
+
+- **Refusal link name.** `manageUrl` on **both** `device_limit` and `key_entry_limit`. PX-W8 Q1
+  wins over PX-W9 Q3's `portalUrl`. `license_owned` keeps `signInUrl`. Portal paths are root
+  paths, per PX-W8's corrections: `/activate?product=<slug>` and `/signin?product=<slug>`, never
+  `/portal/activate` or `/portal/signin`. PX-W9, I-09, `plans/I-04.md` and their briefs are
+  corrected to match.
+- **Reserved display names** (PX-W13 Q4). Warn first, following LX-05 and S-19 (§7.4, decision
+  15), then enforce in PX-W13. The rule is not a hard error from day one.
+- **I-24** is split into **I-24a** and **I-24b** in `workpackages.json`, with the dependencies I-08
+  and I-09 added. **I-09** gains the **ST-04** dependency (I-09 Q3).
+- **Brief changes.** Every "Brief changes" list in the nine plans is applied to the named briefs,
+  each under a section "Amendments from approved plans (2026-10-05)".
+- **Superseded drafts.** The branches `wp/U-01-cloud-sync-plan` and
+  `wp/PX-W3-licensed-downloads-plan` are superseded by `plans/U-01.md` and `plans/PX-W3.md` and
+  must not be merged.
+
+**Effect on this plan.** Q1 is accepted, so `manageUrl` is the one name on both refusals. On the
+key in the activate link, Q2 here governs. The Worker emits no key, the SDK may add `#key=<key>`,
+and PX-17 opens with an empty field only when no fragment is present (this reconciles PX-W9 Q2).
+Q5 amends the LX-18 and I-08 briefs. PX-10 is done, so its `next=` handling is carried by PX-17.
+
+> **Approved by the owner (2026-10-05)**; see "Owner decisions (2026-10-05)" above. As first written: It executes
 > and narrows the approved [`plans/I-04.md`](I-04.md) for one member. It reopens none of I-04's
 > answers, apart from the rename in Q1, which needs the owner's yes. The owner decisions of S-16
 > (via I-04 §0), S-17, S-18 and S-19 are taken as given (§0). The open questions are at the end,

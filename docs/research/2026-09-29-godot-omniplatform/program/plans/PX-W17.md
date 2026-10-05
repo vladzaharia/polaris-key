@@ -1,6 +1,31 @@
 # PX-W17 plan: Identity as a per-product service (G34)
 
-> **Awaiting approval.** Merging this plan's PR is the approval (program README §3). It executes
+## Owner decisions (2026-10-05)
+
+**Approved; every recommendation in "Open questions for the owner" accepted as written.** The
+owner approved nine plans together (U-01, PX-W3, LX-01, I-24, I-09, PX-W8, PX-W9, PX-W13 and
+PX-W17). These cross-plan overrides win over any text below that says otherwise:
+
+- **Refusal link name.** `manageUrl` on **both** `device_limit` and `key_entry_limit`. PX-W8 Q1
+  wins over PX-W9 Q3's `portalUrl`. `license_owned` keeps `signInUrl`. Portal paths are root
+  paths, per PX-W8's corrections: `/activate?product=<slug>` and `/signin?product=<slug>`, never
+  `/portal/activate` or `/portal/signin`. PX-W9, I-09, `plans/I-04.md` and their briefs are
+  corrected to match.
+- **Reserved display names** (PX-W13 Q4). Warn first, following LX-05 and S-19 (§7.4, decision
+  15), then enforce in PX-W13. The rule is not a hard error from day one.
+- **I-24** is split into **I-24a** and **I-24b** in `workpackages.json`, with the dependencies I-08
+  and I-09 added. **I-09** gains the **ST-04** dependency (I-09 Q3).
+- **Brief changes.** Every "Brief changes" list in the nine plans is applied to the named briefs,
+  each under a section "Amendments from approved plans (2026-10-05)".
+- **Superseded drafts.** The branches `wp/U-01-cloud-sync-plan` and
+  `wp/PX-W3-licensed-downloads-plan` are superseded by `plans/U-01.md` and `plans/PX-W3.md` and
+  must not be merged.
+
+**Effect on this plan.** The `identity_disabled` redirect targets the root path
+`/signin?product=<slug>&error=identity_disabled` (corrected in place). Q3 to Q5 correct PORTAL.md
+§3.1 and G34. The correction is recorded in PORTAL.md's amendment block.
+
+> **Approved by the owner (2026-10-05)**; see "Owner decisions (2026-10-05)" above. As first written: It executes
 > the approved [`plans/I-04.md`](I-04.md) (§2.1 toggle matrix, §6.2 Core accessors) and fills
 > only the gaps PORTAL.md G34 names that I-04, I-05, I-08 and I-09 leave open. The owner decisions
 > of S-16, S-17, S-18 and S-19 are taken as given (§0). The questions the research left open are
@@ -40,7 +65,7 @@
   is out of date (correction).
 - **Human-facing refusal `identity_disabled`.** A browser navigation to an app-sign-in entry of an
   Identity-off product gets a `303` to the friendly card
-  (`/portal/signin?product=<slug>&error=identity_disabled`). The portal's passthrough context
+  (`/signin?product=<slug>&error=identity_disabled`). The portal's passthrough context
   answers `403 identity_disabled`. Device and JSON callers keep `404 not_found` and
   `registration_closed`, unchanged.
 - **Invariant for S-19's holder rule.** No device of an Identity-off product carries
@@ -65,7 +90,7 @@ rules:
    distinguishes "Identity off".
 3. A **navigation** (`GET`/`HEAD` with `Sec-Fetch-Mode: navigate`, or an `Accept` header that
    lists `text/html`) to one of the paths in `IDENTITY_NAVIGATION_ENTRIES` answers
-   `303 Location: <origin>/portal/signin?product=<slug>&error=identity_disabled` with
+   `303 Location: <origin>/signin?product=<slug>&error=identity_disabled` with
    `Cache-Control: no-store`.
 4. The portal's passthrough context answers the nested body
    `403 {"error":{"code":"identity_disabled"}}`.
@@ -158,7 +183,7 @@ No typed N/A applies: every runtime can observe a disabled service.
   - `identityEnabled(db, product)` reads `parseServices(products.services_json)`. It is the one
     place outside the registry that reads the toggle. LX-13 and LX-15 use it to create grants
     licence-held on Identity-off products (S-19 §7.3.1). I-08 and I-11 use it for the
-    passthrough context and `/portal/signin`.
+    passthrough context and `/signin`.
   - `identityNavigationRedirect(req, product)` handles the 303 and is wired into `dispatch.ts`
     before `dispatchService` for slug `identity`.
 - **Transition hook (`core/servicesTransitions.ts`).**
@@ -256,7 +281,7 @@ the shared file" (`protocol/identity`, §12).
 
 - **PX-W17:** narrowed to this plan.
 - **I-08:** passthrough context answers `identity_disabled`, and uses `identityEnabled`.
-- **I-11:** `/portal/signin` reads `error=identity_disabled`.
+- **I-11:** `/signin` reads `error=identity_disabled`.
 - **PX-14:** renders the card from the query parameter and the API code.
 - **I-10a and I-10b:** the transcript, the `identity.toggle` row, and the UI-kit "Identity off"
   snapshot.

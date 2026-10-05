@@ -1,6 +1,33 @@
 # PX-W13 plan: passthrough request metadata (G28)
 
-> **Awaiting approval.** Merging this plan's PR is the approval (program README §3). The brief
+## Owner decisions (2026-10-05)
+
+**Approved; every recommendation in "Open questions for the owner" accepted as written.** The
+owner approved nine plans together (U-01, PX-W3, LX-01, I-24, I-09, PX-W8, PX-W9, PX-W13 and
+PX-W17). These cross-plan overrides win over any text below that says otherwise:
+
+- **Refusal link name.** `manageUrl` on **both** `device_limit` and `key_entry_limit`. PX-W8 Q1
+  wins over PX-W9 Q3's `portalUrl`. `license_owned` keeps `signInUrl`. Portal paths are root
+  paths, per PX-W8's corrections: `/activate?product=<slug>` and `/signin?product=<slug>`, never
+  `/portal/activate` or `/portal/signin`. PX-W9, I-09, `plans/I-04.md` and their briefs are
+  corrected to match.
+- **Reserved display names** (PX-W13 Q4). Warn first, following LX-05 and S-19 (§7.4, decision
+  15), then enforce in PX-W13. The rule is not a hard error from day one.
+- **I-24** is split into **I-24a** and **I-24b** in `workpackages.json`, with the dependencies I-08
+  and I-09 added. **I-09** gains the **ST-04** dependency (I-09 Q3).
+- **Brief changes.** Every "Brief changes" list in the nine plans is applied to the named briefs,
+  each under a section "Amendments from approved plans (2026-10-05)".
+- **Superseded drafts.** The branches `wp/U-01-cloud-sync-plan` and
+  `wp/PX-W3-licensed-downloads-plan` are superseded by `plans/U-01.md` and `plans/PX-W3.md` and
+  must not be merged.
+
+**Effect on this plan.** Q4 is amended in place: `reserved_display_name` ships in warn mode behind
+the platform switch `identity.reservedDisplayNames` (default `warn`). PX-W13 flips it to `error`
+after the S-19 decision-15 window. PX-W13 gains the dependency LX-05 for the validator warning
+path. §7's device-page switch targets the root path `/signin?request=rq_…` (corrected in place).
+Q3 is accepted, so PX-W13 ships the §5 SDK and UI-kit label work itself.
+
+> **Approved by the owner (2026-10-05)**; see "Owner decisions (2026-10-05)" above. As first written: The brief
 > says PX-W13 "executes the approved `plans/I-04.md` (no separate plan)", but I-04 names G28 only
 > in the dependency table: it fixes no client record, request handle, `deviceLabel` rule or consent
 > shape. This plan fills that gap within I-04's frame (wire v4, additive, feature-detected), and
@@ -53,7 +80,8 @@
   ask again.
 - **Reserved display names.** Two new rule-9 rules, `reserved_display_name` and
   `invalid_display_text`, run in the manifest validator and on console claims, with a
-  defence-in-depth re-check at render time.
+  defence-in-depth re-check at render time. `reserved_display_name` warns first and is enforced later (§8 Q4, amended
+  2026-10-05).
 - **Order:** this plan → corpus file → contract text → Worker → transcripts → SDKs in this order:
   Node, React (typed N/A), Python, Swift, Godot, Kotlin. The UI kits follow with their SDKs.
 
@@ -183,10 +211,10 @@ amendment says.
 `core/storefront/listingModel.ts` claim path and ST-04's `writeSetting()` validator hook call the
 same function (S-18 model C).
 
-| Code                    | Applies to                                                                                   | Rule                                                                                                                                                                                                                                                                                                                                                                                                              | Schema  |
-| ----------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `invalid_display_text`  | `.pkey/product` `product.name`; `.pkey/distribution` `listing.name`, `listing.developerName` | No code point of §2.1 step 2; no leading or trailing space                                                                                                                                                                                                                                                                                                                                                        | rejects |
-| `reserved_display_name` | same fields                                                                                  | After NFKC, case folding, the confusable map (`0→o`, `1→l`, `rn→m`, `vv→w`, Cyrillic and Greek look-alikes) and removing non-alphanumerics, the name contains a reserved term on word boundaries. Terms: `polaris`, `polaris key`, `plrs`, `apple`, `app store`, `google`, `google play`, `steam`, `valve`, `epic games`, `microsoft`, `xbox`, `playstation`, `nintendo`, `itch io`. The system product is exempt | accepts |
+| Code                    | Applies to                                                                                   | Rule                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Schema  |
+| ----------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `invalid_display_text`  | `.pkey/product` `product.name`; `.pkey/distribution` `listing.name`, `listing.developerName` | No code point of §2.1 step 2; no leading or trailing space                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | rejects |
+| `reserved_display_name` | same fields                                                                                  | After NFKC, case folding, the confusable map (`0→o`, `1→l`, `rn→m`, `vv→w`, Cyrillic and Greek look-alikes) and removing non-alphanumerics, the name contains a reserved term on word boundaries. Terms: `polaris`, `polaris key`, `plrs`, `apple`, `app store`, `google`, `google play`, `steam`, `valve`, `epic games`, `microsoft`, `xbox`, `playstation`, `nintendo`, `itch io`. The system product is exempt. Warns while the platform switch `identity.reservedDisplayNames` is `warn` (the default) and rejects when it is `error` (§8 Q4, amended 2026-10-05) | accepts |
 
 Each rule gets a row in `test/schema-parity.test.ts` (rule 9) and a pattern in
 `schemas/v1/product.schema.json` and `distribution.schema.json` (the first rule only). PX-W13
@@ -280,11 +308,12 @@ Each SDK passes the corpus rows, replays §4's transcripts, and passes `parity:c
 2. Deploy the Worker: normalisation, echo, handles and consent API. The legacy device page shows the
    normalised label, and nothing else changes for users.
 3. The SDKs release in §5's order. Labels appear on the existing page at once.
-4. PX-14 switches the device-code page to `303 /portal/signin?request=rq_…` and renders
+4. PX-14 switches the device-code page to `303 /signin?request=rq_…` and renders
    `ClientRecord`. I-08 writes `scope_hash` on Continue.
 
-The two manifest rules apply at the next resync. A product whose current name fails the rule
-fails resync with the rule's message. The render-time re-check covers values written before the
+The two manifest rules apply at the next resync. A product whose current name fails
+`invalid_display_text` fails resync with the rule's message. `reserved_display_name` only warns
+until the lead flips `identity.reservedDisplayNames` to `error` (§8 Q4, as amended 2026-10-05). The render-time re-check covers values written before the
 rule existed. No feature flag is needed: everything is additive or unused until PX-14.
 
 ## 8. Risks and open questions
@@ -313,12 +342,22 @@ rule existed. No feature flag is needed: everything is additive or unused until 
    SDK sends the label") holds without waiting. I-10a and I-10b inherit it.
 4. **Q4 Reserved-name policy.** Word-boundary match on the list in §3 blocks a third party's
    "Steam Deck Companion".
-   - **Recommend** a hard error, with an operator-only, audited product setting
-     `identity.displayNameApproved` (S-18 `policyBound`, ST-03) that clears one product.
+   - The recommendation was a hard error from day one, with an operator-only, audited product
+     setting `identity.displayNameApproved` (S-18 `policyBound`, ST-03) that clears one product.
    - The platform can add terms through a platform-slice list `identity.reservedDisplayTerms`;
      the code list is the floor.
-   - No warn window: the implementer confirms that no registered product other than the exempt
-     `polaris-key` matches.
+   - **Amended by the owner (2026-10-05): warn first, then enforce, not a hard error from day
+     one.** This follows the LX-05 and LX-05b pattern for reserved entitlement names (S-19 §7.4,
+     decision 15). PX-W13 ships `reserved_display_name` behind a platform registry switch
+     `identity.reservedDisplayNames` (`warn` | `error`, default `warn`, L1 both ways). In `warn`,
+     the manifest validator reports a warning and resync, link and the console claim succeed. The
+     console's product page shows the warning and the operator's `identity.displayNameApproved`
+     action, and the render-time re-check still applies the neutral frame. PX-W13 reuses LX-05's
+     validator warning path, so it depends on LX-05. Enforcement is part of PX-W13: the same code
+     answers a hard error when the switch reads `error`. The lead flips it once the S-19 decision
+     15 window has passed (two minor releases or 60 days after PX-W13 ships, whichever is later)
+     and the warning list is empty or approved. `invalid_display_text` stays a hard error from
+     day one, because it rejects control and bidi code points, not names.
 5. **Q5 What re-asks consent.** **Recommend** a change in the claims or services set (Cloud Sync
    turned on, a new profile claim), not a new anchor licence or new grants. Licences already
    follow the signed-in account under S-19 decision 4, and the item says so.
@@ -336,7 +375,8 @@ rule existed. No feature flag is needed: everything is additive or unused until 
 - **I-10a, I-10b:** inherit the label helper.
 - **I-13, I-15:** §2.5, including the pushed-request step.
 - **LX-16:** table rename (Q6).
-- **ST-03:** two settings (Q4).
+- **ST-03:** three settings (Q4 as amended: `identity.displayNameApproved`,
+  `identity.reservedDisplayTerms` and the `identity.reservedDisplayNames` switch).
 - **PX-W5:** rename wins over the seeded label.
 
 ## 9. Acceptance

@@ -12,6 +12,12 @@
 | Human input | none                                                                                                                                                                                  |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                             |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/PX-W13.md`](../plans/PX-W13.md):** §2.5: the request carries `deviceName` under §2.1 and the entry creates a `native` handle.
+
 ## Goal
 
 `POST /<p>/identity/token` exchanges a platform identity token (native Sign in with Apple and Google ID tokens first) for the activation response, through tenant-scoped links; a link not seen before answers `interstitial_required` with a login-card URL; all six SDKs gain `exchange`.

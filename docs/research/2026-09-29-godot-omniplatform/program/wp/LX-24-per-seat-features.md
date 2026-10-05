@@ -4,13 +4,19 @@
 | ----------- | ------------------------------------------------------------------------------------ |
 | Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase D: optional)       |
 | Size        | 0.6–0.85 engineer-weeks                                                              |
-| Depends on  | [LX-09](LX-09-entitlement-resolver.md), [I-24](I-24-named-user-seats.md)             |
+| Depends on  | [LX-09](LX-09-entitlement-resolver.md), [I-24a](I-24a-named-user-seats-server.md)    |
 | Unblocks    | none                                                                                 |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                |
 | Plan mode   | yes: the plan [`plans/LX-24.md`](../plans/LX-24.md) needs human approval before code |
 | Gates       | plan mode                                                                            |
 | Human input | plan approval (`plans/LX-24.md`)                                                     |
 | Repo        | `vladzaharia/polaris-key`                                                            |
+
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/I-24.md`](../plans/I-24.md):** per-seat features key on `license_seat_holders`; the dependency moves from I-24 to I-24a.
 
 ## Goal
 

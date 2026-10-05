@@ -1,6 +1,33 @@
 # PX-W9 plan: key-entry counting (G21)
 
-> **Awaiting approval.** Merging this plan's PR is the approval (program README §3). PX-W9's brief
+## Owner decisions (2026-10-05)
+
+**Approved; every recommendation in "Open questions for the owner" accepted as written.** The
+owner approved nine plans together (U-01, PX-W3, LX-01, I-24, I-09, PX-W8, PX-W9, PX-W13 and
+PX-W17). These cross-plan overrides win over any text below that says otherwise:
+
+- **Refusal link name.** `manageUrl` on **both** `device_limit` and `key_entry_limit`. PX-W8 Q1
+  wins over PX-W9 Q3's `portalUrl`. `license_owned` keeps `signInUrl`. Portal paths are root
+  paths, per PX-W8's corrections: `/activate?product=<slug>` and `/signin?product=<slug>`, never
+  `/portal/activate` or `/portal/signin`. PX-W9, I-09, `plans/I-04.md` and their briefs are
+  corrected to match.
+- **Reserved display names** (PX-W13 Q4). Warn first, following LX-05 and S-19 (§7.4, decision
+  15), then enforce in PX-W13. The rule is not a hard error from day one.
+- **I-24** is split into **I-24a** and **I-24b** in `workpackages.json`, with the dependencies I-08
+  and I-09 added. **I-09** gains the **ST-04** dependency (I-09 Q3).
+- **Brief changes.** Every "Brief changes" list in the nine plans is applied to the named briefs,
+  each under a section "Amendments from approved plans (2026-10-05)".
+- **Superseded drafts.** The branches `wp/U-01-cloud-sync-plan` and
+  `wp/PX-W3-licensed-downloads-plan` are superseded by `plans/U-01.md` and `plans/PX-W3.md` and
+  must not be merged.
+
+**Effect on this plan.** Q3 is overridden: `key_entry_limit` carries `manageUrl` (corrected in
+place). The PX-W8 builder emits it. PX-W9 gains the dependencies ST-01b and ST-03. It executes this
+plan rather than I-04's (`planRef` removed). The precondition branch `wp/S-18-S-19-decisions` has
+merged (`248fef64`). On Q2, the SDK may add the key as a `#key=` fragment (PX-W8 Q2), and PX-17's
+field is empty only without one.
+
+> **Approved by the owner (2026-10-05)**; see "Owner decisions (2026-10-05)" above. As first written: PX-W9's brief
 > says it "executes the approved `plans/I-04.md`". This plan does not reopen I-04. It reconciles
 > PORTAL.md G21 with I-04 §2.2 and with the S-18 and S-19 owner decisions, and it fixes the split
 > with I-09, which the brief left to "whichever lands first". The questions are in §8.
@@ -56,7 +83,7 @@
   and `portal` (`POST /api/claim/license-key`).
 - **Device wire (I-04's names, unchanged).**
   - On success, a key activation answers `"keyEntries": {"used": n, "limit": n}`.
-  - Past the limit it answers `403 {"error":"key_entry_limit","portalUrl":…,"keyEntries":{…}}`,
+  - Past the limit it answers `403 {"error":"key_entry_limit","manageUrl":…,"keyEntries":{…}}`,
     only while `identity.keyEntryRefusals` is on.
   - A product with Identity off sees no change.
 - **Portal responses (narrative-only).**
@@ -89,7 +116,7 @@
 - **`shared-jws`, `client-core`:** no change. No signed shape moves, `PolarisError.code` already
   accepts unknown strings, and an unknown response member passes through.
 - **Body shape.** The refusal uses the **flat** body that `license/activate` already emits, as
-  `device_limit` does (`core/errors.ts`). `portalUrl` is built from the Worker's own origin and
+  `device_limit` does (`core/errors.ts`). `manageUrl` is built from the Worker's own origin and
   never carries the key. Its target is the PORTAL §3.3 route `/activate?product=<slug>` (§8 Q2).
 - **Deployed clients:**
   - Old SDKs ignore `keyEntries`. They meet the refusal only after an operator turns the switch
@@ -121,7 +148,7 @@ Godot mirrors. These two files move from I-09 to PX-W9 (I-04 §4):
 
 | File                         | Steps                                                                                                                            |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `keyentry-limit.json`        | Limit 2, refusals on. A → `{1,2}`; A again → `{1,2}` (enrolled); B → `{2,2}`; C → `key_entry_limit` + `portalUrl`; A again → 200 |
+| `keyentry-limit.json`        | Limit 2, refusals on. A → `{1,2}`; A again → `{1,2}` (enrolled); B → `{2,2}`; C → `key_entry_limit` + `manageUrl`; A again → 200 |
 | `keyentry-identity-off.json` | Identity off. No `keyEntries`. Activations past the "limit" succeed                                                              |
 
 - The existing refresh, token and offline-grace transcripts stay byte-identical. That is the
@@ -140,7 +167,7 @@ treats the refusal as an auth failure: no wipe, no retry. The client code is `ke
 
 1. **Node** (`packages/sdk-node` over `client-core`), **I-10a**:
    - `activate` returns `keyEntries`;
-   - the outcome is `key-entry-limit {portalUrl, keyEntries}`.
+   - the outcome is `key-entry-limit {manageUrl, keyEntries}`.
 2. **React** (`packages/sdk-react`; `client-core` unchanged), **I-10a**: the hook result, plus
    the activation component's "N activations left" meter and its refusal screen with QR.
 3. **Python** (`sdks/python`), **I-10a**: `key_entries`.
@@ -179,12 +206,9 @@ treats the refusal as an auth failure: no wipe, no retry. The client code is `ke
 - **Call sites:**
   - `services/license/activation.ts` (`activateWithKey`): steps 2, 4 and 5;
   - `services/identity/browserSession.ts` (session/license): the same steps;
-  - `services/identity/portal/selfService.ts`:
-    - the preview replaces `entries: null` with `keyEntries`;
-    - the claim records a `portal` entry after `attachLicense` returns `ok`, but not on
-      `already_yours` or on any refusal;
-    - the new `handleKeyPreview` is signed out, read-only and never counts. It costs an IP rate
-      bucket with the same limit as `portalClaimKey` and returns `{product, keyEntries, upgrade:
+  - `services/identity/portal/selfService.ts`: - the preview replaces `entries: null` with `keyEntries`; - the claim records a `portal` entry after `attachLicense` returns `ok`, but not on
+    `already_yours` or on any refusal; - the new `handleKeyPreview` is signed out, read-only and never counts. It costs an IP rate
+    bucket with the same limit as `portalClaimKey` and returns `{product, keyEntries, upgrade:
 "skippable"|"forced"}`, never terms or ownership;
   - `admin/lib/shape.ts`: the licence record gains `keyEntries` (the console count I-09 named);
   - `packages/admin/src/portal/api.ts`: `PortalKeyPreview.keyEntries` (type only; the UI belongs
@@ -225,14 +249,16 @@ treats the refusal as an auth failure: no wipe, no retry. The client code is `ke
      the `identity:` manifest block.
 2. **Q2 Deep link carries the key?** PORTAL §3.4 says `/activate?key=<key>&product=`, but I-04
    (approved) says no URL carries the key. **Recommend I-04:**
-   - `portalUrl` = `<origin>/activate?product=<slug>`. This corrects I-04's `/portal/activate`:
+   - `manageUrl` (was `portalUrl`; see Q3) = `<origin>/activate?product=<slug>`. This corrects I-04's `/portal/activate`:
      portal routes are root paths (`dispatch.ts` → `handlePortal`). I-09's `signInUrl` becomes
      `/signin?product=` in the same way;
-   - PX-17's modal opens with the §4.18 notice and an empty field.
+   - PX-17's modal opens with the §4.18 notice and an empty field, unless the SDK added the key as
+     a `#key=` fragment (PX-W8 Q2, accepted 2026-10-05), which never reaches a server.
 3. **Q3 Member name.** PX-W8 and G15b call it `manageUrl`; I-04 uses `portalUrl` on
-   `key_entry_limit`. **Recommend:**
-   - keep `portalUrl` on `key_entry_limit` (approved, and it goes somewhere different);
-   - PX-W8 adds `manageUrl` to `device_limit` only.
+   `key_entry_limit`. The recommendation here was to keep `portalUrl` on `key_entry_limit` and
+   put `manageUrl` on `device_limit` only. **Overridden by the owner (2026-10-05):** PX-W8 Q1
+   wins, so both refusals carry `manageUrl` and `license_owned` keeps `signInUrl`. The text of this
+   plan uses `manageUrl` throughout.
 4. **Q4 Signed-out key use (§4.5–4.6).** **Recommend** a read-only preview that never counts. The
    entry counts once, when the claim is submitted after sign-in (D20: a portal _submission_). So:
    - "Skip" counts nothing;
