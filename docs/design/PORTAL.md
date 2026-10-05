@@ -570,7 +570,7 @@ claim error "owned by another account" (§4.19).
 
 - A full-width **hero**: key art (left, 1.45 fr) and a side panel with icon, name, developer,
   status and tier, the **primary download** as a two-line button, an **Also yours on** row, a short
-  summary (license, devices, includes, plays on) and a link to the product page.
+  summary (license, devices, includes, runs on) and a link to the product page.
 - A closing line: "That's everything linked to <email>. There are 4 more you can add in Discover."
 - **Phone:** the art becomes a 16:9 strip; the primary action becomes the phone action.
 
