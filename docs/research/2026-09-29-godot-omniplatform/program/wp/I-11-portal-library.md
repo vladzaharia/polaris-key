@@ -12,6 +12,15 @@
 | Human input | none                                                                                                              |
 | Repo        | `vladzaharia/polaris-key`                                                                                         |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/I-24.md`](../plans/I-24.md):** the seat panels (holders, invites at the root path `/join/<token>`).
+- **[`plans/I-09.md`](../plans/I-09.md):** the portal Activate License surface counts through PX-W9's `core/keyEntries.ts` with surface `portal`.
+- **[`plans/PX-W8.md`](../plans/PX-W8.md) and owner:** portal paths are root paths (`/activate`, `/signin`), not `/portal/…`.
+- **[`plans/PX-W17.md`](../plans/PX-W17.md):** `/signin` reads `error=identity_disabled`.
+
 ## Goal
 
 The customer portal becomes the account's home, a proto-Steam Library: Library (default), Discover with "Add to library", the Activate License modal, product pages with a reserved Cloud Sync section, and account settings (sign-in methods, Profile, devices and sessions, connected apps, privacy), with per-product and full export and deletion. It owns the one Core revocation hook.

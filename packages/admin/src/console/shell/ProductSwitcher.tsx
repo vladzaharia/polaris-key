@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Command } from "cmdk";
 import { Popover } from "radix-ui";
-import { Boxes, Check, ChevronsUpDown, Plus } from "lucide-react";
+import { Boxes, Check, ChevronsUpDown, Plus, Server } from "lucide-react";
 import { cn } from "../../lib/cn.js";
 import { sameViewIn, type ProductPageId, type ServiceState } from "../nav.js";
 import { navigate } from "../router.js";
@@ -77,6 +77,7 @@ export function ProductSwitcher({
         className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm data-[selected=true]:bg-accent-subtle data-[selected=true]:text-fg-strong"
       >
         <span
+          title={`${p.name} (${p.slug})`}
           className={cn(
             "min-w-0 flex-1 truncate",
             p.slug === current.slug && "font-bold text-fg-strong",
@@ -113,19 +114,25 @@ export function ProductSwitcher({
           type="button"
           aria-label={`Product: ${current.name} (${current.slug}). Change product`}
           className={cn(
-            "flex min-w-0 items-center gap-2 rounded-md border border-border px-2.5 py-1.5 text-sm",
+            "flex min-w-0 items-center gap-2 overflow-hidden rounded-md border border-border px-2.5 py-1.5 text-sm",
             "hover:bg-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
           )}
         >
-          <span className="truncate font-bold text-fg-strong">
+          {/* The name keeps at least a few characters (it never truncates to nothing), and the
+              slug and service dots join it only from lg, where the bar has room for them: at
+              768–1023 px they squeezed the name to 0 px and the dots spilled out of the button. */}
+          <span
+            className="min-w-[4ch] truncate font-bold text-fg-strong"
+            title={current.name}
+          >
             {current.name}
           </span>
-          <span className="hidden font-mono text-xs text-fg-muted md:inline">
+          <span className="hidden shrink-0 font-mono text-xs text-fg-muted lg:inline">
             {current.slug}
           </span>
           <ServiceDots
             product={current}
-            className="ml-2 hidden md:inline-flex"
+            className="ml-2 hidden shrink-0 lg:inline-flex"
           />
           <ChevronsUpDown
             aria-hidden
@@ -169,21 +176,32 @@ export function ProductSwitcher({
               ) : null}
             </Command.List>
           </Command>
-          <div className="mt-1 flex gap-1 border-t border-border pt-1">
+          {/* The way out of a product: every product, the instance-wide Platform pages (hidden
+              from the sidebar inside a product; owner, 2026-10-04) and a new product. One column,
+              like the product list above it: a two-column grid left New product alone on a row. */}
+          <div className="mt-1 flex flex-col gap-0.5 border-t border-border pt-1">
             <a
               href={r.products()}
               onClick={() => onOpenChange(false)}
-              className="flex flex-1 items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+              className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
             >
-              <Boxes aria-hidden className="size-4" />
+              <Boxes aria-hidden className="size-4 shrink-0" />
               All products
+            </a>
+            <a
+              href={r.platform()}
+              onClick={() => onOpenChange(false)}
+              className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+            >
+              <Server aria-hidden className="size-4 shrink-0" />
+              Platform
             </a>
             <a
               href={r.productNew()}
               onClick={() => onOpenChange(false)}
-              className="flex flex-1 items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+              className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
             >
-              <Plus aria-hidden className="size-4" />
+              <Plus aria-hidden className="size-4 shrink-0" />
               New product
             </a>
           </div>

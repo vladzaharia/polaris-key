@@ -12,6 +12,12 @@
 | Human input | none                                                                                                                                                                                                   |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                              |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/PX-W9.md`](../plans/PX-W9.md):** Q4: a signed-out, read-only `POST /api/key/preview` feeds the meter and never counts; "Skip" counts nothing; the copy "This was entry 3" becomes "This will be entry 3".
+
 ## Goal
 
 The login card is identifier-first with the usual-method hint from the `pk_last_method` cookie, code entry, passkey button and conditional UI, the logo-only Apple/Google/Steam row per product, the license-key path, and `AccountUpgrade` (skippable while entries remain, forced at zero with the entries meter).

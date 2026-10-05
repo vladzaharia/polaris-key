@@ -153,18 +153,18 @@ const SMOKE: Record<
 
 const DEPLOY_COLUMNS: DataColumn<PlatformDeploy>[] = [
   {
-    id: "at",
-    header: "Deployed",
-    accessorKey: "at",
-    meta: { priority: 1, primary: true },
-    cell: ({ row }) => <Timestamp at={fromSeconds(row.original.at)} />,
-  },
-  {
     id: "tag",
     header: "Release",
     accessorFn: (d) => d.tag ?? "",
-    meta: { priority: 1, mono: true },
+    meta: { priority: 1, primary: true, mono: true },
     cell: ({ row }) => row.original.tag ?? "Untagged",
+  },
+  {
+    id: "at",
+    header: "Deployed",
+    accessorKey: "at",
+    meta: { numeric: true, priority: 1 },
+    cell: ({ row }) => <Timestamp at={fromSeconds(row.original.at)} />,
   },
   {
     id: "commit",
@@ -523,14 +523,10 @@ export function Deployment(): React.ReactElement {
           />
         ) : null}
       </Panel>
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="min-w-0 lg:col-span-1">
-          <MigrationsPanel deployment={d} loading={loading} />
-        </div>
-        <div className="min-w-0 lg:col-span-2">
-          <ActivityPanel />
-        </div>
-      </div>
+      {/* Full width, one after the other: a short migrations card beside the long activity
+          timeline left a column of empty card running down the page. */}
+      <MigrationsPanel deployment={d} loading={loading} />
+      <ActivityPanel />
     </DashboardTemplate>
   );
 }

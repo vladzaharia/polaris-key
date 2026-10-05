@@ -12,6 +12,12 @@
 | Human input | plan approval (`plans/LX-25.md`)                                                     |
 | Repo        | `vladzaharia/polaris-key`                                                            |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/LX-01.md`](../plans/LX-01.md):** Q8: this plan defines what entering an `addon` key does; nothing writes `addon` before it.
+
 ## Goal
 
 Optional: redeem and gift codes create a grant on the redeemer's holder.

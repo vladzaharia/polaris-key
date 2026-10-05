@@ -38,6 +38,7 @@ export function IconButton({
       variant={variant}
       size={size}
       aria-label={label}
+      data-icon=""
       disabledReason={disabledReason}
       className={cn(sizeClass, "min-w-0 px-0 pointer-coarse:size-9", className)}
       {...props}
