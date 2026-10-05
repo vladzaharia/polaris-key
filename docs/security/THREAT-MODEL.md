@@ -1708,7 +1708,10 @@ a tool only through `pkey storefront`:
 workflow that calls a vendor tool directly bypasses it, and the butler key is unscoped. The
 backstop is A15's placement: one GitHub environment per store with required reviewers for
 production channels. A Steam build script is checked for `setlive` by the CLI only (the Worker
-never sees the file).
+never sees the file). The check reads KeyValues keys and values quoted or unquoted, skips
+comments, reads backslashes both ways a parser may, and refuses a script that uses `#include` or
+`#base`, since an included file is never checked. Steam itself also refuses `setlive` on
+`default`.
 
 ### App Store Connect writes: the write gate, the ledger and the budget (A-17a)
 

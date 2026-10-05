@@ -486,6 +486,9 @@ jobs:
   `channels` map declares for `channel` (see
   [Distribution manifest](/docs/build/manifest/distribution/)). A step for an undeclared game or
   channel is refused before the tool starts, and again by Polaris Key.
+- **`storefront-outlet` picks the outlet** when `.pkey/distribution` declares more than one of the
+  store's kind (two itch.io games, say): set it to the outlet's id. With one outlet of that kind,
+  leave it unset.
 - **itch.io channel names tag platforms.** The channel starts with the platform word (`windows`,
   `linux`, `mac`, `android`); a release channel other than `stable` suffixes it (`windows-beta`),
   so each keeps its own file on the page. Uploads have no review: a pushed channel is live.

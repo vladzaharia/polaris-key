@@ -23,9 +23,11 @@ import {
 import { itchChannel, itchPushStep } from "../src/storefronts/itch.js";
 import {
   checkStep,
+  checkToolPath,
   commandLine,
   runStoreSteps,
   stepRunId,
+  toolEnv,
   vdfSetliveProblem,
   type SpawnTool,
   type StoreStep,
@@ -283,6 +285,61 @@ describe("the itch.io and Snap command plans", () => {
     expect(vdfSetliveProblem('"appbuild" { "setlive" "Default" }')).toMatch(
       /default/,
     );
+    // KeyValues accepts unquoted keys and values, in any mix.
+    expect(vdfSetliveProblem('"appbuild"{ setlive public }')).toMatch(/public/);
+    expect(vdfSetliveProblem('"appbuild"{ "setlive" public }')).toMatch(
+      /public/,
+    );
+    expect(vdfSetliveProblem('"appbuild"{ setlive "default" }')).toMatch(
+      /default/,
+    );
+    expect(vdfSetliveProblem("appbuild{setlive\tdefault}")).toMatch(/default/);
+    expect(vdfSetliveProblem('"appbuild"{ setlive beta }')).toBeNull();
+    // A comment between key and value does not hide the value.
+    expect(
+      vdfSetliveProblem('"appbuild"{ "setlive" // go live\n "public" }'),
+    ).toMatch(/public/);
+    // Backslashes are read both ways a parser may treat them.
+    expect(
+      vdfSetliveProblem('"appbuild"{ "desc" "a\\" "setlive" "public" }'),
+    ).toMatch(/public/);
+    // A comment inside an unquoted token is caught by the raw fallback.
+    expect(
+      vdfSetliveProblem('"appbuild"{ "desc" b//"\n"setlive" "public" }'),
+    ).toMatch(/public/);
+    // A key with no value, and a file pulled in from elsewhere, are refused.
+    expect(vdfSetliveProblem('"appbuild"{ "setlive" }')).toMatch(
+      /without a branch/,
+    );
+    expect(vdfSetliveProblem('#include "live.vdf"\n"appbuild"{ }')).toMatch(
+      /#include/,
+    );
+    expect(vdfSetliveProblem('#base live.vdf\n"appbuild"{ }')).toMatch(/#base/);
+  });
+
+  it("lets --tool-path name only the declared tool", () => {
+    expect(() =>
+      checkToolPath("/opt/steam/steamcmd.sh", "steamcmd"),
+    ).not.toThrow();
+    expect(() =>
+      checkToolPath("C:\\Tools\\BuildPatchTool.exe", "BuildPatchTool"),
+    ).not.toThrow();
+    expect(() => checkToolPath("/bin/sh", "butler")).toThrow(/butler itself/);
+    expect(() => checkToolPath("/tmp/butler-evil", "butler")).toThrow(
+      /butler itself/,
+    );
+  });
+
+  it("keeps the CI token and OIDC request variables from the vendor tool", () => {
+    expect(
+      toolEnv({
+        PATH: "/usr/bin",
+        BUTLER_API_KEY: "k",
+        PKEY_TOKEN: "t",
+        ACTIONS_ID_TOKEN_REQUEST_URL: "u",
+        ACTIONS_ID_TOKEN_REQUEST_TOKEN: "r",
+      }),
+    ).toEqual({ PATH: "/usr/bin", BUTLER_API_KEY: "k" });
   });
 
   it("prints copyable command lines and a run id per job attempt", () => {

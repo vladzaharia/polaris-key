@@ -360,6 +360,26 @@ describe("store-step report-back (A-18h)", () => {
     expect((await report(w, publish("gh-100003-1"))).status).toBe(200);
     await worker("submission.create", "ambiguous", NOW - 10);
     expect((await report(w, publish("gh-100004-1"))).status).toBe(409);
+    // An outcome reported with no pending report first opens a row, so the guard applies.
+    const straight = await report(w, {
+      ...publish("gh-100005-1"),
+      state: "done",
+      exitCode: 0,
+    });
+    expect(straight.status).toBe(409);
+    expect(await straight.json()).toMatchObject({
+      reason: "worker_draft_staged",
+    });
+    // A step that passed the guard at pending still reports its outcome.
+    expect(
+      (
+        await report(w, {
+          ...publish("gh-100003-1"),
+          state: "done",
+          exitCode: 0,
+        })
+      ).status,
+    ).toBe(200);
   });
 
   it("records an Epic BuildPatchTool step with no outlet (no outlet kind, decision 8)", async () => {

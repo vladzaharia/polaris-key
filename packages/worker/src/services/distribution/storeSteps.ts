@@ -37,6 +37,7 @@ import {
   finishStoreOperation,
   getStoreOperation,
   isIdempotencyKey,
+  storeOpId,
   type StoreLedgerId,
   type StoreOpKey,
   type StoreOpState,
@@ -291,16 +292,6 @@ export async function reportStoreStep(
     runUrl = body.runUrl;
   }
 
-  // The guard reads the ledger before the step opens its row.
-  if (state === "pending" && rule.unlessWorkerStaged) {
-    if (await workerDraftStaged(ctx, plane.store, rule.unlessWorkerStaged))
-      return refuse(
-        409,
-        "worker_draft_staged",
-        `${plane.label} has a draft the console staged for ${ctx.product}; commit or discard it in the console before ${list.tool} ${command} runs`,
-      );
-  }
-
   const key: StoreOpKey<StoreLedgerId> = {
     store: plane.store,
     scope: "product",
@@ -309,6 +300,24 @@ export async function reportStoreStep(
     naturalKey: ciStepNaturalKey(command, args),
     idempotencyKey: runId,
   };
+  // The guard reads the ledger before the step opens its row: on the pending report, and on a
+  // done or failed report that opens a row of its own (no pending report came first), so a
+  // client cannot skip it by reporting the outcome straight away.
+  if (rule.unlessWorkerStaged) {
+    const opens =
+      state === "pending" ||
+      (await getStoreOperation(ctx.db, await storeOpId(key))) === null;
+    if (
+      opens &&
+      (await workerDraftStaged(ctx, plane.store, rule.unlessWorkerStaged))
+    )
+      return refuse(
+        409,
+        "worker_draft_staged",
+        `${plane.label} has a draft the console staged for ${ctx.product}; commit or discard it in the console before ${list.tool} ${command} runs`,
+      );
+  }
+
   const request = { store: plane.store, op, command, argv: args, outlet };
   const actor = ciActor(principal);
   const begun = await beginStoreOperation(

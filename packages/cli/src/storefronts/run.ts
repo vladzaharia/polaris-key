@@ -127,15 +127,77 @@ export function checkStep(step: StoreStep): void {
 }
 
 /**
+ * Splits a Valve KeyValues (VDF) text into its tokens the way Steam reads it: quoted strings (with
+ * or without backslash escapes, since parsers differ), unquoted runs, and the braces; `//` comments
+ * are dropped.
+ */
+function vdfTokens(vdf: string, escapes: boolean): string[] {
+  const tokens: string[] = [];
+  let i = 0;
+  while (i < vdf.length) {
+    const c = vdf[i]!;
+    if (/\s/.test(c)) {
+      i++;
+    } else if (c === "/" && vdf[i + 1] === "/") {
+      while (i < vdf.length && vdf[i] !== "\n") i++;
+    } else if (c === "{" || c === "}") {
+      tokens.push(c);
+      i++;
+    } else if (c === '"') {
+      let value = "";
+      i++;
+      while (i < vdf.length && vdf[i] !== '"') {
+        if (escapes && vdf[i] === "\\" && i + 1 < vdf.length) i++;
+        value += vdf[i];
+        i++;
+      }
+      i++;
+      tokens.push(value);
+    } else {
+      let value = "";
+      while (i < vdf.length && !/[\s{}"]/.test(vdf[i]!)) value += vdf[i++];
+      tokens.push(value);
+    }
+  }
+  return tokens;
+}
+
+/**
  * The `steam-vdf-setlive-named` check: every `setlive` in a SteamPipe app build script names a
  * branch, and never `default` or `public` (owner decision 5: a person promotes the default branch
- * in Steamworks). An empty value sets nothing live.
+ * in Steamworks). An empty value sets nothing live. Keys and values may be quoted or not, as
+ * KeyValues allows; a script that pulls in another file (`#include`, `#base`) is refused, because
+ * the included file is never checked.
  */
 export function vdfSetliveProblem(vdf: string): string | null {
-  for (const m of vdf.matchAll(/"setlive"\s+"([^"]*)"/gi)) {
-    const branch = m[1]!.trim().toLowerCase();
+  // Read the script both ways a KeyValues parser may treat backslashes, and refuse if either
+  // reading sets a protected branch live.
+  for (const escapes of [true, false]) {
+    const problem = setliveTokensProblem(vdfTokens(vdf, escapes));
+    if (problem) return problem;
+  }
+  // Belt and braces for parser differences the tokenizer does not model (a comment inside an
+  // unquoted token, say): `setlive` followed by a protected branch name with only quotes,
+  // whitespace or backslashes between them is refused outright.
+  const raw = /setlive[\s"\\]*(default|public)(?=["\s{}\\]|$)/i.exec(vdf);
+  if (raw)
+    return `sets the build live on the ${raw[1]!.toLowerCase()} branch, which only a person does in Steamworks`;
+  return null;
+}
+
+function setliveTokensProblem(tokens: string[]): string | null {
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i]!.trim().toLowerCase();
+    if (token === "#include" || token === "#base")
+      return `pulls in another file with ${token}, which this check cannot follow; inline it`;
+    if (token !== "setlive") continue;
+    const value = tokens[i + 1];
+    if (value === undefined || value === "{" || value === "}")
+      return "has a setlive key without a branch name";
+    const branch = value.trim().toLowerCase();
     if (branch === "default" || branch === "public")
       return `sets the build live on the ${branch} branch, which only a person does in Steamworks`;
+    i++;
   }
   return null;
 }
@@ -159,10 +221,23 @@ async function runFileChecks(step: StoreStep, cwd: string): Promise<void> {
   }
 }
 
+/**
+ * The vendor tool's environment: the job's, minus the Polaris Key CI token and the GitHub OIDC
+ * request variables, which no vendor tool needs.
+ */
+export function toolEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const out: NodeJS.ProcessEnv = {};
+  for (const [k, v] of Object.entries(env))
+    if (!k.startsWith("PKEY_") && !k.startsWith("ACTIONS_ID_TOKEN_"))
+      out[k] = v;
+  return out;
+}
+
 const defaultSpawn: SpawnTool = (tool, argv, cwd) =>
   new Promise((resolve, reject) => {
     const child = spawn(tool, [...argv], {
       cwd,
+      env: toolEnv(process.env),
       stdio: "inherit",
       shell: false,
     });
@@ -178,12 +253,28 @@ interface ReportedStep {
   step: { opId: string; state: string; replayed: boolean };
 }
 
+/**
+ * `--tool-path` names where the declared tool lives, never another binary: its file name, less a
+ * `.exe`, `.sh`, `.cmd` or `.bat` extension, must be the tool's (`steamcmd.sh` for steamcmd).
+ */
+export function checkToolPath(toolPath: string, tool: string): void {
+  const base = path
+    .basename(toolPath.replace(/\\/g, "/"))
+    .replace(/\.(exe|sh|cmd|bat)$/i, "");
+  if (base.toLowerCase() !== tool.toLowerCase())
+    throw new Error(
+      `--tool-path must point at ${tool} itself, not ${path.basename(toolPath)}.`,
+    );
+}
+
 /** Run the steps in order; throws on the first refusal or failure. */
 export async function runStoreSteps(
   steps: readonly StoreStep[],
   o: RunStepsOptions,
 ): Promise<StepOutcome[]> {
   for (const step of steps) checkStep(step);
+  if (o.toolPath !== undefined)
+    for (const step of steps) checkToolPath(o.toolPath, step.tool);
   for (const step of steps) await runFileChecks(step, o.cwd);
   const report = o.report !== false;
   if (!report)

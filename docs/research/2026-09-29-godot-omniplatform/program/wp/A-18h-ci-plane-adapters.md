@@ -88,6 +88,9 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test -- storefront ingest
   channel), validated like Steam's `branches` (no new error code; schema updated).
 - **steamcmd's `setlive` is in the app build VDF, not argv.** The allow-list declares a file
   check the CLI runs on the script (`steam-vdf-setlive-named`); the Worker never sees the file.
+  The check tokenizes the script (quoted or unquoted keys and values, comments skipped) and
+  refuses `#include` and `#base`, so ordinary KeyValues syntax cannot slip past it (review
+  round 1).
 - **upload-metadata reads the snap itself**, so "upload-metadata from A-18b's projection" needs
   the projection in CI before the build: a CI read route, `GET /<p>/distribution/listing/<store>`
   (rule 10: OpenAPI and `routeCoverage`), and `pkey storefront snap metadata`, which writes the
