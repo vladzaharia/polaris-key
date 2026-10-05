@@ -150,9 +150,38 @@ export function slugVerdict(
   return { kind: "available" };
 }
 
-/** The field a refusal is about: the one `errorCopy` says to focus, when this form has it. */
-function refusedField(copy: ErrorCopy): "slug" | "repoUrl" | null {
-  return copy.focus === "slug" || copy.focus === "repoUrl" ? copy.focus : null;
+/**
+ * The field a refusal is about: the one `errorCopy` says to focus, when the source on screen
+ * has it. Nothing has a Slug field and no Repository; a linked product has the Repository and
+ * takes its slug from `.pkey/product`, so a slug refusal there goes to the callout.
+ */
+function refusedField(copy: ErrorCopy, via: Via): "slug" | "repoUrl" | null {
+  if (via === "manual") return copy.focus === "slug" ? "slug" : null;
+  return copy.focus === "repoUrl" ? "repoUrl" : null;
+}
+
+/**
+ * A slug refusal on the GitHub path, worded as the manifest change it needs: the slug lives in
+ * `product.slug` in `.pkey/product`, so there is no free slug to take on this screen. The
+ * reason `errorCopy` gives (reserved, malformed) is kept; its "Try …" is not.
+ */
+function manifestSlugRefusal(copy: ErrorCopy): ErrorCopy {
+  const reason = copy.description
+    .replace(/\s*(?:Try \S+|Choose another slug)\.$/, "")
+    .trim();
+  // link-repo registers new products only: a repository already registered resyncs from its
+  // product's page, so "taken" may mean this very product.
+  const resync = /\btaken$/.test(copy.title)
+    ? " If it is this repository's product, resync it from that product instead."
+    : "";
+  return {
+    ...copy,
+    description: `${reason ? `${reason} ` : ""}The slug comes from product.slug in .pkey/product: change it there, push, then check again.${resync}`,
+    fieldErrors: undefined,
+    suggestion: undefined,
+    focus: undefined,
+    fix: { kind: "check-again", label: "Check again" },
+  };
 }
 
 /**
@@ -271,12 +300,15 @@ export function ProductNew(): React.ReactElement {
       fieldErrors.slug = `${draft.slug.trim()} is reserved. Choose another slug.`;
     if (verdict.kind === "taken")
       fieldErrors.slug = `${draft.slug.trim()} is taken. Try ${verdict.suggestion}.`;
-    for (const key of ["maxOfflineDays", "deviceLimit"] as const) {
-      const v = draft[key];
-      if (v !== null && (!Number.isInteger(v) || v < 1))
-        fieldErrors[key] =
-          "Use a whole number of 1 or more, or leave it blank.";
-    }
+    const days = draft.maxOfflineDays;
+    // The worker's cap (WriteChecks.offlineDays): checked here so it lands on the field.
+    if (days !== null && (!Number.isInteger(days) || days < 1 || days > 365))
+      fieldErrors.maxOfflineDays =
+        "Use a whole number from 1 to 365, or leave it blank.";
+    const devices = draft.deviceLimit;
+    if (devices !== null && (!Number.isInteger(devices) || devices < 1))
+      fieldErrors.deviceLimit =
+        "Use a whole number of 1 or more, or leave it blank.";
   } else if (draft.repo.trim() === "") {
     fieldErrors.repoUrl = "Enter the repository.";
   } else if (!repo) {
@@ -294,13 +326,17 @@ export function ProductNew(): React.ReactElement {
 
   // A refusal belongs to the source it was made for; switching source sets it aside.
   const refusal = submitError && submitError.via === via ? submitError : null;
-  const copy = refusal
+  const worded = refusal
     ? errorCopy(refusal.error, {
         thing: "Product",
         ...(via === "manual" ? { slug: refusal.slug } : repo ? { repo } : {}),
       })
     : null;
-  const serverField = copy ? refusedField(copy) : null;
+  const copy =
+    worded && via === "github" && worded.focus === "slug"
+      ? manifestSlugRefusal(worded)
+      : worded;
+  const serverField = copy ? refusedField(copy, via) : null;
   const slugServer =
     copy && serverField === "slug"
       ? slugRefusal(copy, refusal!.slug, taken ?? new Set())
@@ -373,7 +409,7 @@ export function ProductNew(): React.ReactElement {
     } catch (err) {
       setSubmitError({ error: err, via, slug });
       setSubmitting(false);
-      const f = refusedField(errorCopy(err));
+      const f = refusedField(errorCopy(err), via);
       if (f) focusField(f);
     }
   };
@@ -578,6 +614,7 @@ export function ProductNew(): React.ReactElement {
                     nullable
                     integer
                     min={1}
+                    max={365}
                     unit="days"
                     placeholder="14"
                   />

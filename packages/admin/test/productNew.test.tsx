@@ -286,6 +286,25 @@ describe("New product", () => {
     });
   });
 
+  it("keeps offline grace within the worker's 365 days, on the field", async () => {
+    const log = boot("#/products/new");
+    await page();
+    await userEvent.type(field(/^Name/), "New P");
+    await userEvent.click(
+      within(main()).getByRole("button", { name: /Advanced/ }),
+    );
+    await userEvent.type(field(/^Offline grace/), "400");
+    await userEvent.click(
+      within(main()).getByRole("button", { name: "Create New P" }),
+    );
+    expect(
+      await within(main()).findByText(
+        "Use a whole number from 1 to 365, or leave it blank.",
+      ),
+    ).toBeTruthy();
+    expect(log.calls.some((c) => c.method === "POST")).toBe(false);
+  });
+
   it("puts a slug the server refuses on the slug field, with a free one to take", async () => {
     boot("#/products/new", {
       extra: {
@@ -428,6 +447,38 @@ describe("New product", () => {
       expect(document.activeElement).toBe(field(/^Repository/)),
     );
     expect(main().textContent).not.toMatch(/422/);
+  });
+
+  it("says a linked manifest's slug is taken, as a change to .pkey/product, with Check again", async () => {
+    const log = boot("#/products/new?via=github", {
+      extra: {
+        "POST /manage/api/products/link-repo": new Response(
+          JSON.stringify({
+            error: "bad_request",
+            message: "product already exists: tonebox",
+          }),
+          { status: 422, headers: { "content-type": "application/json" } },
+        ),
+      },
+    });
+    await page();
+    await userEvent.type(field(/^Repository/), "acme/tonebox{Enter}");
+    expect(await within(main()).findByText("tonebox is taken")).toBeTruthy();
+    expect(
+      within(main()).getByText(
+        "The slug comes from product.slug in .pkey/product: change it there, push, then check again. If it is this repository's product, resync it from that product instead.",
+      ),
+    ).toBeTruthy();
+    expect(within(main()).queryByRole("button", { name: /^Use / })).toBeNull();
+    expect(main().textContent).not.toMatch(/tonebox-app|422/);
+    const posts = () =>
+      log.calls.filter(
+        (c) => c.method === "POST" && c.path.endsWith("/link-repo"),
+      ).length;
+    await userEvent.click(
+      within(main()).getByRole("button", { name: "Check again" }),
+    );
+    await waitFor(() => expect(posts()).toBe(2));
   });
 
   it("keeps the draft across a refresh", async () => {
