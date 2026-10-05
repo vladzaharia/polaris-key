@@ -1,0 +1,82 @@
+# UK-08 SwiftUI kit for macOS 26: Settings scene pane, `CommandGroup`s, inset sheets, a SwiftUI Sparkle `SPUUserDriver`, the inactive-window button fix, macOS 15 fallback
+
+| Field       | Value                                                                        |
+| ----------- | ---------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must) |
+| Size        | 2–3 engineer-weeks                                                           |
+| Depends on  | [UK-07](UK-07-swiftui-ios.md)                                                |
+| Unblocks    | [UK-24](UK-24-appkit-kit.md), [UK-41](UK-41-must-tier-closeout.md)           |
+| Role        | `pkey-sdk-porter`                                                            |
+| Plan mode   | no                                                                           |
+| Gates       | Mac snapshot baselines on macOS 26 and 15; the SwiftUI lint equivalents      |
+| Human input | none                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                    |
+
+## Goal
+
+A Mac app gets the Mac-scale kit: sheets below the title bar, a Settings pane, menu commands and a Sparkle update window drawn by the kit, at 13 pt body and 28 pt controls.
+
+## Why
+
+The iOS layout at Mac scale reads as a phone app; macOS needs its own sizes, windows and verbs (§1.4). The spec is [`docs/design/UI-KITS.md`](../../../../design/UI-KITS.md); its "Owner decisions (2026-10-05)" header wins over the sections below it.
+
+## Read first
+
+- `AGENTS.md` (always) and `CLAUDE.md`.
+- [UI-KITS.md](../../../../design/UI-KITS.md) §1.4 macOS row and the desktop dialog model, §4.3 UpdatePrompt, §1.5 rule 11 (title case)
+- `sdks/swift/Sources/PolarisKeyUpdate/`
+- Mockups: [desktop-gate-dark](../../../../design/ui-kits/shots/desktop-gate-dark.png), [desktop-gate-light](../../../../design/ui-kits/shots/desktop-gate-light.png), [desktop-activate-dark](../../../../design/ui-kits/shots/desktop-activate-dark.png), [desktop-activate-light](../../../../design/ui-kits/shots/desktop-activate-light.png), [desktop-sign-in-dark](../../../../design/ui-kits/shots/desktop-sign-in-dark.png), [desktop-sign-in-light](../../../../design/ui-kits/shots/desktop-sign-in-light.png), [desktop-device-limit-dark](../../../../design/ui-kits/shots/desktop-device-limit-dark.png), [desktop-device-limit-light](../../../../design/ui-kits/shots/desktop-device-limit-light.png), [desktop-update-dark](../../../../design/ui-kits/shots/desktop-update-dark.png), [desktop-update-light](../../../../design/ui-kits/shots/desktop-update-light.png), [desktop-settings-dark](../../../../design/ui-kits/shots/desktop-settings-dark.png), [desktop-settings-light](../../../../design/ui-kits/shots/desktop-settings-light.png)
+
+## Scope
+
+**In:**
+
+- Settings scene pane, `CommandGroup`s (Check for Updates…, Manage License…, About).
+- Inset sheets (radius about 24, about 440 pt) instead of window takeovers; the split Welcome window with product art.
+- A SwiftUI `SPUUserDriver` for Sparkle (single-column update window).
+- The inactive-window prominent-button fix; macOS 15 material fallback baselines.
+
+**Out** (and where it belongs instead):
+
+- AppKit presenters (→ UK-24).
+
+## Design notes
+
+- Title-case buttons and menu items on macOS only; the catalog carries them as documented platform variants.
+- Presentation comes only through the core's `ProductIdentity` seam from the SDK (HA-13, HA-14). This package does not depend on them: it tests the default with a fake source, and the real accessor plugs in without a kit change (UK-41 verifies it).
+- Launch locales are English plus `de`, `fr`, `es`, `pt-BR`, `it`, `ja`, `ko`, `zh-Hans`; there is no RTL locale, so no RTL baselines, but layouts stay RTL-safe.
+
+## Steps
+
+1. Headless layer first: the models or controllers, running the UK-02b fixtures.
+2. Styled parts, then the drop-in flow, against the mockups.
+3. Baselines in both themes, the lint, the sample and the docs pages.
+4. Design review against the mockups; record it in the PR.
+
+## Acceptance criteria
+
+- [ ] Every §4.1 component in scope ships in all three layers of §1.3: (a) the drop-in flow, (b) styled parts with the kit's restyle hooks (§3.2), and (c) the headless model.
+- [ ] With an empty theme the kit renders the Polaris Key look (§1.1) in the product's accent; `preset: "native"` restyles it to the host (§3.4); every §3.1 theme field is honoured.
+- [ ] Product identity resolves integrator → SDK presentation source → bundle → derived accent → ink (§1.2). A test with a fake presentation source (accent, `accentDark`, verified icon) renders the product accent and icon with **zero integrator code**; the kit has no discovery fetch or icon cache of its own (owner decision: one path, via HA-13/HA-14).
+- [ ] Every visible string is a catalog key from UK-02a in the launch locales; the cross-kit string lint (UK-15) passes.
+- [ ] Screenshot baselines exist for every fixture component × state (UK-02b) in **both dark and light**, at the sizes and variants of §7.1 for this kit, committed lossless under `sdks/swift/Tests/PolarisKeyUISnapshotTests/__Snapshots__/`; a changed baseline fails CI until re-recorded with the reason in the commit.
+- [ ] The §7.3 modernity lint passes on this kit, including the RTL-safe layout rule (no physical left/right; no RTL baselines are required).
+- [ ] The §4.4 accessibility checks pass on the same renders.
+- [ ] The sample `examples/ui/swiftui/ (macOS target)` runs against the fixture adapters with no live Worker and with `--live` (§6.1).
+- [ ] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
+- [ ] A design review against the mockups (`desktop.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
+- [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
+- [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+
+## Verify
+
+```sh
+( cd sdks/swift && swift build && swift test )
+```
+
+## Hand-off
+
+UK-24 wraps these views for AppKit hosts.
+
+The role agent sets `--set UK-08 in-review` when it hands off. After review, the lead adds the last
+commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set UK-08 done`.
