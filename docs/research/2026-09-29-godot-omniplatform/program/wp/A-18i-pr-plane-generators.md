@@ -104,6 +104,16 @@ archive>` (and `--command` for its alias); `.exe` is a portable installer, `.msi
   replacing a hand-maintained manifest; Flathub's `pull-request` also performs
   `writeListingAssets` and `contentRating` (the MetaInfo's screenshots and OARS rating). The OARS
   mapping from the listing's content descriptors lives in one function (`oarsAttributes`).
+- **Scoop's `autoupdate` for content-addressed builds.** The feed (`renderScoopManifest`) writes
+  `autoupdate` only when a build URL contains the version; Polaris-hosted URLs are
+  `…/blobs/sha256/<hash>` and never do. The generator (`withHashAutoupdate` in `scoop.ts`) adds
+  it for such manifests: `checkver` becomes a regex over the feed JSON capturing the version and
+  each architecture's hash (`hashx` for `64bit`, `hasharm` for `arm64`, letter-only names because
+  Scoop title-cases them into `$matchHashx`/`$matchHasharm` and substitutes case-sensitively), and
+  `autoupdate.architecture.<arch>.url` is `…/blobs/sha256/$matchHash…`, with the hash read from
+  the feed's JSON path. The Worker's feed is unchanged (P2b-05 owns it).
+- **Flathub's runtime** defaults to Freedesktop `25.08` (24.08 is end of life, which Flathub's
+  linter refuses on a new submission); `--runtime-version` overrides it.
 - **The token** is `PKEY_PR_TOKEN`, a CI environment secret read from the job's environment.
 - **The Action's `storefront` input does not gain PR steps here**: the steps run as
   `pkey storefront <store> pr|status` from a workflow (documented in the CI page); adding Action

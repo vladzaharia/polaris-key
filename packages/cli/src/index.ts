@@ -1575,7 +1575,7 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
   pkey storefront winget|homebrew|scoop|flathub pr [--channel c] [--outlet id] [--dry-run [--out dir]]
               [--portable path] [--command name] [--license l] [--app name] [--project-license spdx] [--no-report]
   pkey storefront winget|homebrew|scoop|flathub status [--channel c] [--version v] [--outlet id] [--no-report]
-  pkey storefront flathub init [--out dir] [--channel c] [--outlet id] [--command path]
+  pkey storefront flathub init [--out dir] [--channel c] [--outlet id] [--command path] [--runtime-version v]
 
 pkey release publish matches the files under --dir against .pkey/release's
 deliverables.app.artifacts map (<file>.sig and <file>.sha256 ride along as sidecars), hashes

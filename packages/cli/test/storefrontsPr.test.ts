@@ -24,6 +24,7 @@ import { CI_PLANE } from "../src/storefronts/ciPlane.generated.js";
 import { ciLiterals, matchCiCommand } from "../src/storefronts/allowList.js";
 import {
   developerId,
+  FLATHUB_RUNTIME_VERSION,
   generateFlathubSkeleton,
   generateMetainfo,
   metainfoMarkup,
@@ -41,7 +42,7 @@ import {
   prVerdict,
 } from "../src/storefronts/prPlane.js";
 import { planPr, runPrStatus, runPrStep } from "../src/storefronts/prRun.js";
-import { generateScoop } from "../src/storefronts/scoop.js";
+import { generateScoop, withHashAutoupdate } from "../src/storefronts/scoop.js";
 import {
   generateWinget,
   wingetInstallerType,
@@ -120,9 +121,11 @@ describe("PR-plane generators: golden files (A-18i)", () => {
     await golden("homebrew", [generateCask(HOMEBREW_INPUTS)]);
   });
 
-  it("scoop: the feed's manifest for the own bucket", async () => {
+  it("scoop: the feed's manifest for the own bucket, with autoupdate", async () => {
     const file = generateScoop(SCOOP_INPUTS);
-    expect(JSON.parse(file.content)).toEqual(SCOOP_INPUTS.scoop);
+    expect(JSON.parse(file.content)).toEqual(
+      withHashAutoupdate(SCOOP_INPUTS.scoop as object),
+    );
     await golden("scoop", [file]);
   });
 
@@ -297,6 +300,108 @@ describe("PR-plane generator rules (A-18i)", () => {
     ).toThrow(/serves 1\.1\.0/);
     expect(generateScoop(SCOOP_INPUTS, { app: "dice" }).path).toBe(
       "bucket/dice.json",
+    );
+  });
+
+  it("scoop autoupdate follows a content-addressed feed through checkver's captures", () => {
+    const feed = SCOOP_INPUTS.scoop as {
+      architecture: Record<string, { url: string; hash: string }>;
+      checkver: { url: string };
+    };
+    const m = withHashAutoupdate(feed) as {
+      checkver: { url: string; regex: string; jsonpath?: string };
+      autoupdate: {
+        architecture: Record<string, { url: string; hash: unknown }>;
+      };
+    };
+    expect(m.checkver.url).toBe(feed.checkver.url);
+    expect(m.checkver.jsonpath).toBeUndefined();
+    expect(m.autoupdate.architecture).toEqual({
+      "64bit": {
+        url: feed.architecture["64bit"]!.url.replace(
+          /[0-9a-f]{64}$/,
+          "$matchHashx",
+        ),
+        hash: { url: feed.checkver.url, jsonpath: "$.architecture.64bit.hash" },
+      },
+      arm64: {
+        url: feed.architecture.arm64!.url.replace(
+          /[0-9a-f]{64}$/,
+          "$matchHasharm",
+        ),
+        hash: { url: feed.checkver.url, jsonpath: "$.architecture.arm64.hash" },
+      },
+    });
+    // The next release's feed, as the Worker serialises it (two-space JSON) and compactly: the
+    // regex (the .NET and JavaScript named-group syntax agree) captures its version and hashes,
+    // and Scoop's `$match<Name>` substitution yields that release's URLs.
+    const next = {
+      ...feed,
+      version: "1.3.0",
+      architecture: {
+        "64bit": {
+          url: feed.architecture["64bit"]!.url.replace(
+            /[0-9a-f]{64}$/,
+            "d".repeat(64),
+          ),
+          hash: "d".repeat(64),
+        },
+        arm64: {
+          url: feed.architecture.arm64!.url.replace(
+            /[0-9a-f]{64}$/,
+            "e".repeat(64),
+          ),
+          hash: "e".repeat(64),
+        },
+      },
+    };
+    for (const page of [JSON.stringify(next, null, 2), JSON.stringify(next)]) {
+      const g = new RegExp(m.checkver.regex).exec(page)?.groups;
+      expect(g).toEqual({
+        version: "1.3.0",
+        hashx: "d".repeat(64),
+        hasharm: "e".repeat(64),
+      });
+      const sub = (u: string) =>
+        u
+          .replace("$matchHashx", g!.hashx!)
+          .replace("$matchHasharm", g!.hasharm!);
+      expect(sub(m.autoupdate.architecture["64bit"]!.url)).toBe(
+        next.architecture["64bit"].url,
+      );
+      expect(sub(m.autoupdate.architecture.arm64!.url)).toBe(
+        next.architecture.arm64.url,
+      );
+    }
+    // A feed that already has autoupdate (version-templated URLs), or a URL that is not
+    // `…/blobs/sha256/<its hash>`, is left as the feed wrote it.
+    const templated = { ...feed, autoupdate: { url: "x" } };
+    expect(withHashAutoupdate(templated)).toBe(templated);
+    const external = {
+      ...feed,
+      architecture: {
+        ...feed.architecture,
+        arm64: {
+          url: "https://cdn.example.test/d-1.2.0.zip",
+          hash: "a".repeat(64),
+        },
+      },
+    };
+    expect(withHashAutoupdate(external)).toBe(external);
+  });
+
+  it("flathub's skeleton pins a supported runtime branch, overridable", () => {
+    const yml = (o?: { runtimeVersion?: string }) =>
+      parseYaml(
+        generateFlathubSkeleton(FLATHUB_INPUTS, o).files[0]!.content,
+      ) as {
+        "runtime-version": string;
+      };
+    expect(yml()["runtime-version"]).toBe(FLATHUB_RUNTIME_VERSION);
+    expect(FLATHUB_RUNTIME_VERSION).toBe("25.08");
+    expect(yml({ runtimeVersion: "26.08" })["runtime-version"]).toBe("26.08");
+    expect(() => yml({ runtimeVersion: "latest" })).toThrow(
+      /--runtime-version/,
     );
   });
 
@@ -812,7 +917,7 @@ describe("pkey storefront <store> pr (A-18i)", () => {
       JSON.parse(
         await readFile(path.join(out, "bucket/diceroll.json"), "utf8"),
       ),
-    ).toEqual(SCOOP_INPUTS.scoop);
+    ).toEqual(withHashAutoupdate(SCOOP_INPUTS.scoop as object));
     expect(
       dry.seen.every((s) => !s.url.startsWith("https://api.github.com/")),
     ).toBe(true);

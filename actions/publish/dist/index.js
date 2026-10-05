@@ -30388,6 +30388,8 @@ function isHttps(u) {
 }
 
 // src/storefronts/flathub.ts
+var FLATHUB_RUNTIME_VERSION = "25.08";
+var RUNTIME_VERSION_PATTERN = /^\d{2}\.\d{2}$/;
 var FLATPAK_ARCH = {
   x86_64: "x86_64",
   arm64: "aarch64",
@@ -30643,6 +30645,11 @@ function generateFlathubSkeleton(i, o = {}) {
   const appId = flathubAppId(i);
   const slug = i.product.slug.toLowerCase();
   const command = o.command ?? slug;
+  const runtimeVersion = o.runtimeVersion ?? FLATHUB_RUNTIME_VERSION;
+  if (!RUNTIME_VERSION_PATTERN.test(runtimeVersion))
+    throw new Error(
+      `--runtime-version must be a Freedesktop SDK branch such as ${FLATHUB_RUNTIME_VERSION} (got ${runtimeVersion}).`
+    );
   if (!/^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/.test(command) || command.includes(".."))
     throw new Error(
       `--command must be a relative path inside the build (got ${command}).`
@@ -30688,7 +30695,7 @@ function generateFlathubSkeleton(i, o = {}) {
   const manifest = new import_yaml3.Document({
     id: appId,
     runtime: "org.freedesktop.Platform",
-    "runtime-version": "24.08",
+    "runtime-version": runtimeVersion,
     sdk: "org.freedesktop.Sdk",
     command: slug,
     "finish-args": [
@@ -31334,8 +31341,48 @@ function generateScoop(i, o = {}) {
     );
   return {
     path: `bucket/${scoopApp(i, o)}.json`,
-    content: `${JSON.stringify(manifest, null, 4)}
+    content: `${JSON.stringify(withHashAutoupdate(manifest), null, 4)}
 `
+  };
+}
+var HASH_URL = /\/blobs\/sha256\/([0-9a-f]{64})$/;
+var HASH_GROUP = {
+  "64bit": "hashx",
+  "32bit": "hashi",
+  arm64: "hasharm"
+};
+function hashGroup(arch) {
+  return HASH_GROUP[arch] ?? null;
+}
+function withHashAutoupdate(manifest) {
+  const m = manifest;
+  if (m.autoupdate !== void 0 || !m.architecture) return manifest;
+  const feedUrl = m.checkver?.url;
+  if (typeof feedUrl !== "string") return manifest;
+  const arches = Object.keys(m.architecture);
+  if (arches.length === 0) return manifest;
+  const autoArch = {};
+  const parts = ['"version"\\s*:\\s*"(?<version>[^"]+)"'];
+  for (const arch of arches) {
+    const { url, hash } = m.architecture[arch];
+    if (typeof url !== "string" || typeof hash !== "string") return manifest;
+    const match = HASH_URL.exec(url);
+    if (!match || match[1] !== hash) return manifest;
+    const group = hashGroup(arch);
+    if (!group) return manifest;
+    const variable = `$match${group[0].toUpperCase()}${group.slice(1)}`;
+    parts.push(
+      `"${arch}"\\s*:\\s*\\{[^}]*?"hash"\\s*:\\s*"(?<${group}>[0-9a-f]{64})"`
+    );
+    autoArch[arch] = {
+      url: `${url.slice(0, -hash.length)}${variable}`,
+      hash: { url: feedUrl, jsonpath: `$.architecture.${arch}.hash` }
+    };
+  }
+  return {
+    ...manifest,
+    checkver: { url: feedUrl, regex: parts.join("[\\s\\S]*?") },
+    autoupdate: { architecture: autoArch }
   };
 }
 
@@ -32171,7 +32218,7 @@ async function writeSnapMetadata(o) {
 }
 
 // src/storefronts/command.ts
-var STOREFRONT_USAGE = "Usage: pkey storefront itch push --platform windows|linux|mac|android --dir <dir> --version <v> [--channel c] [--outlet id]\n       pkey storefront snap metadata --yaml <snapcraft.yaml>\n       pkey storefront snap upload --snap <file.snap> --channel c[,c...] [--outlet id]\n       pkey storefront snap upload-metadata --snap <file.snap>\n       pkey storefront exec <store> <command> --op <operation> [--outlet id] [--tool-path p] -- <argv...>\n       pkey storefront allow-list [--store s] [--json]\n       pkey storefront winget|homebrew|scoop|flathub pr [--channel c] [--outlet id] [--out dir]\n              [--portable path] [--command name] [--license l] [--app name] [--project-license spdx]\n       pkey storefront winget|homebrew|scoop|flathub status [--channel c] [--version v] [--outlet id]\n       pkey storefront flathub init [--out dir] [--channel c] [--outlet id] [--command path]\n  (each step also takes --product slug, --base-url url, --dry-run, --no-report)";
+var STOREFRONT_USAGE = "Usage: pkey storefront itch push --platform windows|linux|mac|android --dir <dir> --version <v> [--channel c] [--outlet id]\n       pkey storefront snap metadata --yaml <snapcraft.yaml>\n       pkey storefront snap upload --snap <file.snap> --channel c[,c...] [--outlet id]\n       pkey storefront snap upload-metadata --snap <file.snap>\n       pkey storefront exec <store> <command> --op <operation> [--outlet id] [--tool-path p] -- <argv...>\n       pkey storefront allow-list [--store s] [--json]\n       pkey storefront winget|homebrew|scoop|flathub pr [--channel c] [--outlet id] [--out dir]\n              [--portable path] [--command name] [--license l] [--app name] [--project-license spdx]\n       pkey storefront winget|homebrew|scoop|flathub status [--channel c] [--version v] [--outlet id]\n       pkey storefront flathub init [--out dir] [--channel c] [--outlet id] [--command path] [--runtime-version v]\n  (each step also takes --product slug, --base-url url, --dry-run, --no-report)";
 function str4(a, name) {
   const v = a.flags[name];
   return typeof v === "string" && v.trim() ? v : void 0;
@@ -32335,7 +32382,8 @@ async function cmdStorefront(a, io) {
       ...str4(a, "command") ? { command: str4(a, "command") } : {},
       ...str4(a, "license") ? { license: str4(a, "license") } : {},
       ...str4(a, "app") ? { app: str4(a, "app") } : {},
-      ...str4(a, "project-license") ? { projectLicense: str4(a, "project-license") } : {}
+      ...str4(a, "project-license") ? { projectLicense: str4(a, "project-license") } : {},
+      ...str4(a, "runtime-version") ? { runtimeVersion: str4(a, "runtime-version") } : {}
     };
     const slug = productFlag ?? (await loadStepProduct(io.cwd)).slug;
     const common = {
@@ -36248,7 +36296,7 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
   pkey storefront winget|homebrew|scoop|flathub pr [--channel c] [--outlet id] [--dry-run [--out dir]]
               [--portable path] [--command name] [--license l] [--app name] [--project-license spdx] [--no-report]
   pkey storefront winget|homebrew|scoop|flathub status [--channel c] [--version v] [--outlet id] [--no-report]
-  pkey storefront flathub init [--out dir] [--channel c] [--outlet id] [--command path]
+  pkey storefront flathub init [--out dir] [--channel c] [--outlet id] [--command path] [--runtime-version v]
 
 pkey release publish matches the files under --dir against .pkey/release's
 deliverables.app.artifacts map (<file>.sig and <file>.sha256 ride along as sidecars), hashes

@@ -622,11 +622,16 @@ jobs:
 - **The listing model fills the text.** winget's locale files and Flathub's MetaInfo come from the
   Listing editor; a missing required field or one over the store's limit stops the step with the
   field named.
+- **The Scoop manifest's `autoupdate`**: Polaris-hosted builds have content-addressed URLs with
+  no version in them, so `checkver` captures each architecture's SHA-256 from the feed and
+  `autoupdate` builds the URL from it; the bucket's Excavator can follow the feed between pull
+  requests.
 - **The Homebrew cask's `livecheck`** reads the public download page's model, so it follows the
   stable channel. `--app` names the `.app` bundle in the disk image (default `<name>.app`).
 - **Flathub's first submission is yours.** `pkey storefront flathub init --out flathub` writes the
   manifest skeleton (its `extra-data` sources carry `x-checker-data` for Flathub's external-data
-  checker), the MetaInfo and a desktop entry; add the icon, then open the pull request to
+  checker) on the current Freedesktop runtime (`25.08`; `--runtime-version` picks another branch,
+  since Flathub refuses an end-of-life one), the MetaInfo and a desktop entry; add the icon, then open the pull request to
   `flathub/flathub` against `new-pr` and see it through review. After that, the checker or
   `pkey storefront flathub pr` opens the update pull requests.
 - **`--dry-run`** prints the plan; with `--out <dir>` it also writes the generated files there.

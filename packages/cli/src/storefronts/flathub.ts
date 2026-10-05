@@ -32,7 +32,18 @@ export interface FlathubOptions {
   projectLicense?: string;
   /** The executable the skeleton's launcher runs, relative to the extracted build. Default: the slug. */
   command?: string;
+  /**
+   * The skeleton's `org.freedesktop.Platform` branch. Default {@link FLATHUB_RUNTIME_VERSION};
+   * Flathub's linter refuses a new submission on an end-of-life branch, so bump it here or with
+   * `--runtime-version` rather than editing the generated manifest.
+   */
+  runtimeVersion?: string;
 }
+
+/** The current Freedesktop SDK branch (25.08, August 2025; 24.08 reached end of life in 2026). */
+export const FLATHUB_RUNTIME_VERSION = "25.08";
+
+const RUNTIME_VERSION_PATTERN = /^\d{2}\.\d{2}$/;
 
 /** Flatpak's architecture for a release build's. */
 const FLATPAK_ARCH: Readonly<Record<string, string>> = {
@@ -347,6 +358,11 @@ export function generateFlathubSkeleton(
   const appId = flathubAppId(i);
   const slug = i.product.slug.toLowerCase();
   const command = o.command ?? slug;
+  const runtimeVersion = o.runtimeVersion ?? FLATHUB_RUNTIME_VERSION;
+  if (!RUNTIME_VERSION_PATTERN.test(runtimeVersion))
+    throw new Error(
+      `--runtime-version must be a Freedesktop SDK branch such as ${FLATHUB_RUNTIME_VERSION} (got ${runtimeVersion}).`,
+    );
   if (
     !/^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/.test(command) ||
     command.includes("..")
@@ -395,7 +411,7 @@ export function generateFlathubSkeleton(
   const manifest = new Document({
     id: appId,
     runtime: "org.freedesktop.Platform",
-    "runtime-version": "24.08",
+    "runtime-version": runtimeVersion,
     sdk: "org.freedesktop.Sdk",
     command: slug,
     "finish-args": [

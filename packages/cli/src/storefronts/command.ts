@@ -49,7 +49,7 @@ export const STOREFRONT_USAGE =
   "       pkey storefront winget|homebrew|scoop|flathub pr [--channel c] [--outlet id] [--out dir]\n" +
   "              [--portable path] [--command name] [--license l] [--app name] [--project-license spdx]\n" +
   "       pkey storefront winget|homebrew|scoop|flathub status [--channel c] [--version v] [--outlet id]\n" +
-  "       pkey storefront flathub init [--out dir] [--channel c] [--outlet id] [--command path]\n" +
+  "       pkey storefront flathub init [--out dir] [--channel c] [--outlet id] [--command path] [--runtime-version v]\n" +
   "  (each step also takes --product slug, --base-url url, --dry-run, --no-report)";
 
 export interface StorefrontArgs {
@@ -252,6 +252,9 @@ export async function cmdStorefront(
       ...(str(a, "app") ? { app: str(a, "app")! } : {}),
       ...(str(a, "project-license")
         ? { projectLicense: str(a, "project-license")! }
+        : {}),
+      ...(str(a, "runtime-version")
+        ? { runtimeVersion: str(a, "runtime-version")! }
         : {}),
     };
     const slug = productFlag ?? (await loadStepProduct(io.cwd)).slug;

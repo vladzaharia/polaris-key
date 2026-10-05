@@ -15,6 +15,24 @@
     "bin": "Diceroll/diceroll.exe",
     "checkver": {
         "url": "https://key.example.test/diceroll/distribution/scoop/stable.json",
-        "jsonpath": "$.version"
+        "regex": "\"version\"\\s*:\\s*\"(?<version>[^\"]+)\"[\\s\\S]*?\"64bit\"\\s*:\\s*\\{[^}]*?\"hash\"\\s*:\\s*\"(?<hashx>[0-9a-f]{64})\"[\\s\\S]*?\"arm64\"\\s*:\\s*\\{[^}]*?\"hash\"\\s*:\\s*\"(?<hasharm>[0-9a-f]{64})\""
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://key.example.test/diceroll/distribution/blobs/sha256/$matchHashx",
+                "hash": {
+                    "url": "https://key.example.test/diceroll/distribution/scoop/stable.json",
+                    "jsonpath": "$.architecture.64bit.hash"
+                }
+            },
+            "arm64": {
+                "url": "https://key.example.test/diceroll/distribution/blobs/sha256/$matchHasharm",
+                "hash": {
+                    "url": "https://key.example.test/diceroll/distribution/scoop/stable.json",
+                    "jsonpath": "$.architecture.arm64.hash"
+                }
+            }
+        }
     }
 }
