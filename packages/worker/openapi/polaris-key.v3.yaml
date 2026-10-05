@@ -9662,6 +9662,8 @@ paths:
                       identity: false
                     status: active
                     addedAt: 1790000000
+                    returnTo:
+                      { origins: [https://app.tidewater.example], schemes: [] }
                     licenses:
                       - id: lic_8f2a
                         tier: pro
@@ -11506,6 +11508,18 @@ components:
               additionalProperties: { type: boolean }
             status: { $ref: "#/components/schemas/PortalStatus" }
             addedAt: { type: [integer, "null"] }
+            returnTo:
+              type: object
+              description: >
+                Where the portal's focused flows may send the person back to (`?return=`).
+                `origins` is the product's exact declared browser origins (`web.origins`); a
+                return URL must match one exactly (scheme, host and port). `schemes` stays empty
+                until the manifest can declare app schemes (S-16 I-15); until then a scheme
+                return is refused and the flow ends on the product page.
+              required: [origins, schemes]
+              properties:
+                origins: { type: array, items: { type: string } }
+                schemes: { type: array, items: { type: string } }
             licenses:
               type: array
               items:

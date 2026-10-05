@@ -36,6 +36,10 @@ export const ACCOUNT_SECTIONS = [
 ] as const;
 export type AccountSection = (typeof ACCOUNT_SECTIONS)[number];
 
+/** The focused flows (§4.25, PX-10): one task in minimal chrome, for apps and email links. */
+export const FOCUSED_FLOWS = ["free-device", "download"] as const;
+export type FocusedFlowKind = (typeof FOCUSED_FLOWS)[number];
+
 export type PortalRoute =
   | { kind: "library"; params: URLSearchParams }
   | { kind: "discover"; params: URLSearchParams }
@@ -43,6 +47,12 @@ export type PortalRoute =
       kind: "product";
       product: string;
       section: ProductSection | null;
+      params: URLSearchParams;
+    }
+  | {
+      kind: "focused";
+      flow: FocusedFlowKind;
+      product: string;
       params: URLSearchParams;
     }
   | { kind: "account"; section: AccountSection | null };
@@ -65,6 +75,11 @@ export const href = {
     params?: Record<string, string>,
   ): string =>
     withQuery(`#/p/${enc(slug)}${section ? `/${section}` : ""}`, params),
+  focused: (
+    slug: string,
+    flow: FocusedFlowKind,
+    params?: Record<string, string>,
+  ): string => withQuery(`#/p/${enc(slug)}/${flow}`, params),
   account: (section?: AccountSection): string =>
     `#/account${section ? `/${section}` : ""}`,
   activate: (key?: string): string => withQuery("#/", { activate: key ?? "" }),
@@ -102,18 +117,20 @@ export function resolveHash(hash: string): Resolved {
       return { route: { kind: "discover", params } };
     case "p": {
       if (!a) return { ...library(), redirect: "#/" };
-      // Focused flows (PX-10) are not built yet: their links open the matching section of the
-      // product page, which carries the same actions.
-      const focused: Record<string, ProductSection> = {
-        "free-device": "devices",
-        download: "get",
-      };
+      // Focused flows (PX-10): `?for=&return=` and `?platform=` stay with the route.
+      if (b && (FOCUSED_FLOWS as readonly string[]).includes(b))
+        return {
+          route: {
+            kind: "focused",
+            flow: b as FocusedFlowKind,
+            product: a,
+            params,
+          },
+        };
       const section =
         b && (PRODUCT_SECTIONS as readonly string[]).includes(b)
           ? (b as ProductSection)
-          : b && focused[b]
-            ? focused[b]
-            : null;
+          : null;
       const route: PortalRoute = {
         kind: "product",
         product: a,
@@ -121,8 +138,6 @@ export function resolveHash(hash: string): Resolved {
         params,
       };
       if (b && !section) return { route, redirect: href.product(a) };
-      if (b && focused[b])
-        return { route, redirect: href.product(a, focused[b]) };
       return { route };
     }
     case "account": {

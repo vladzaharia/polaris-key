@@ -22,6 +22,7 @@ import {
   CAPS_ALL,
   detail,
   fetchedRequests,
+  libraryFor,
   license,
   mockFetch,
   renderPortal,
@@ -140,6 +141,7 @@ describe("Activate license modal (PX-06)", () => {
     let claimed = false;
     return signedIn([], {
       "/api/licenses": () => ({ licenses: claimed ? [mossgarden] : [] }),
+      "/api/library": () => libraryFor(claimed ? [mossgarden] : []),
       "POST /api/claim/license-key": () => {
         claimed = true;
         return claim;
