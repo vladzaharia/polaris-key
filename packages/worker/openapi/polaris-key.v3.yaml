@@ -1551,8 +1551,15 @@ paths:
       tags: [config]
       summary: The signed config document (pkey-config+jws)
       description: >
-        Device-token auth ONLY — no license required (D-08: a config-only product serves
-        signed settings to any registered device). Carries catalog schemaVersion + config +
+        Device-token auth. A product with License OFF needs no license at all (D-08: a
+        config-only product serves signed settings to any registered device); a product that
+        runs License refuses a device bound to a license that is no longer usable (disabled,
+        expired or gone) with 401 and code `license_unusable` (R1) — before the ETag
+        comparison, so such a device never gets a 304. A keyless device (registered under an
+        `open` or `requires-identity` policy, no license behind it) is still served. A 401, not
+        a 403, because a 403 on a
+        document is the build gate's status: on a 401 a client makes its one re-acquire, which
+        an unusable license also fails, and ends `revoked`. Carries catalog schemaVersion + config +
         secrets maps. No build gate. Strong per-doc ETag/304, independent of the license
         document's.
 
@@ -1588,7 +1595,22 @@ paths:
           description: Not modified (If-None-Match). Empty body; the ONLY header is `etag`.
           headers:
             ETag: { $ref: "#/components/headers/ETag" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
+        "401":
+          description: >
+            NESTED. `unauthorized`: the device token is missing or invalid. `license_unusable`:
+            the product runs License and the device is bound to a license that is no longer
+            usable (disabled, expired, or no longer exists); never answered to a keyless device
+            or by a product with License off. Either way one /license/token re-acquire then
+            retry is the SDK convention.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                unauthorized: { value: { error: { code: unauthorized } } }
+                licenseUnusable:
+                  summary: test/serviceRoutes.test.ts — the exact-equality assertion
+                  value:
+                    error: { code: license_unusable }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "500":
           description: The active catalog could not validate the payload — NESTED, fails closed.
@@ -2288,7 +2310,8 @@ paths:
         by SHA-256 on `downloadBlob` alone, under the pack's own delivery access and gate, never
         under the app's version window. Access is the app's delivery access; under `entitled`
         the release's STORED version is checked against the caller's window as a fixed, pinned
-        version (never re-read as a selector).
+        version (never re-read as a selector). On the bytes host a valid portal download ticket
+        (`?ticket=`, PX-W3) stands in for the bearer for exactly this file.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: releaseId
@@ -2304,6 +2327,7 @@ paths:
           in: query
           required: false
           schema: { type: string, enum: ["1"] }
+        - { $ref: "#/components/parameters/DownloadTicket" }
         - { $ref: "#/components/parameters/Range" }
         - { $ref: "#/components/parameters/IfNoneMatch" }
       responses:
@@ -7553,6 +7577,7 @@ paths:
             schema: { type: string },
           }
         - { name: name, in: path, required: true, schema: { type: string } }
+        - { $ref: "#/components/parameters/DownloadTicket" }
       responses:
         "200":
           description: Byte-identical to the canonical route's answer (same handler, same headers).
@@ -10960,6 +10985,22 @@ components:
       required: false
       description: One outlet id, when the product declares several outlets of the feed's kind. Default — the outlet whose id is the kind, else the first by id.
       schema: { type: string }
+    DownloadTicket:
+      name: ticket
+      in: query
+      required: false
+      description: >
+        PX-W3: a download ticket (`v1.<kid>.<exp>.<mac>`) that the customer portal's
+        `/download/<token>` redemption appends to the file's canonical bytes-host URL after
+        every portal check (an owned licence, the deliverable's access, the single-use token).
+        On the BYTES HOST only, a valid ticket stands in for the device bearer for exactly the
+        file it was minted for (product, release, name and SHA-256); it lives at most 120 s and
+        may be reused inside that window, so `Range`, resume and `HEAD` work. The console host
+        ignores it. An invalid, expired or mismatched ticket is treated as ABSENT: the answer is
+        the same as for a caller with no credential (`401 download_auth_required` flat for
+        `authenticated` and `licensed`, `401 unauthorized` wire for `entitled`), never a
+        ticket-specific error. Devices never send it.
+      schema: { type: string, maxLength: 128 }
     IfNoneMatch:
       name: If-None-Match
       in: header

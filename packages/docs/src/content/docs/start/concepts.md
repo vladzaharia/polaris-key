@@ -334,6 +334,14 @@ for product.
   critical flag. Owned by the manifest until an operator or CI changes it, then by `admin` until
   it is reverted — the `services_source` precedent. Not the same as a release **channel floor**,
   the sync's anti-rollback high-water mark.
+- **download ticket** — a capability for ONE release file that the customer portal hands a
+  browser: `v1.<kid>.<exp>.<mac>`, appended as `?ticket=` to the file's canonical bytes-host URL
+  when a portal download token is redeemed, after every portal check. It is bound to the
+  product, release, file name and SHA-256, lives at most 120 seconds, may be reused inside that
+  window (so `Range` and resume work), carries no account, and is honoured on the bytes host only.
+  It is not a grant (the word S-19 keeps for the reasons someone holds an entitlement), and it is
+  not a CI upload ticket (the short-lived R2 credentials of trusted publishing, which upload under
+  `staging/<product>/<ticketId>/`).
 
 ### Packs
 

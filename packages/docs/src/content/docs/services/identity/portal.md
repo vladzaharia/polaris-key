@@ -213,12 +213,12 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   `releasesEnabled` toggle, whether the product runs the Release service at all
   (`services_json`), and — for a `licensed`-access artifact — whether the account holds a usable
   license for that product. Minting a token is refused up front if the artifact's stored source
-  URL is not a redirectable `https` GitHub-storage host, so nothing is ever minted that could
-  only fail later. The listing itself omits `signature` and `checksum` artifacts (`.sig` and
+  URL is not a redirectable `https` GitHub-storage host and the file cannot be served from the
+  bytes host either (below), so nothing is ever minted that could only fail later. The listing itself omits `signature` and `checksum` artifacts (`.sig` and
   `.sha256` sidecars): they are verification material, not downloads. As shipped, a download
   therefore needs a signed-in account **and** a license for the product linked to it (a usable
-  one for `licensed` access); there is no anonymous path, and the redirect target is always a
-  GitHub-storage host.
+  one for `licensed` access); there is no anonymous path, and the redirect target is a
+  GitHub-storage host or this deployment's bytes host.
 - **`GET /api/products/<product>/downloads[?channel=<channel>]`** — one product's downloads and
   store links, shaped for the product page's "Get it" section. Answered only for an account with
   a license for the product linked to it, behind the same three gates as `GET /api/releases`
@@ -231,7 +231,8 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   every arch is, Apple silicon first on a Mac and the detected arch first when the browser said.
   Each file carries `canDownload` and, when false, a `reason`: `license_inactive` (no usable
   license), `not_entitled` (the license's channels or update window do not reach the release) or
-  `not_hosted` (covered, but not yet served to a browser). When the newest release is not
+  `not_hosted` (covered, but nothing here can hand the bytes to a browser: no GitHub storage
+  URL and no bytes-host copy, or a licensed file on a deployment without download tickets). When the newest release is not
   covered, the recommendation falls back to the newest one that is (`latest: false`). The
   product facts come from Distribution's `customerDownloads` hook, read through Core; whether the
   account may download is the same decision the token mint makes, so every file marked
@@ -241,7 +242,17 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   here, at redemption, not assumed to still hold from mint time — portal enabled, releases
   enabled, account active, license still linked, licensed access still held — and the token is
   spent with a single conditional `UPDATE … WHERE used_at IS NULL`, so two concurrent redemptions
-  of the same token cannot both win; exactly one sees the row change. See
+  of the same token cannot both win; exactly one sees the row change. The redirect goes to the
+  artifact's GitHub storage URL, or, for a `public` file, to its bytes-host URL. A non-public file
+  held only on R2 goes to its canonical bytes-host URL with a **download ticket** appended
+  (`https://dl.plrs.im/<product>/distribution/files/<releaseId>/<name>?ticket=…`): minted only
+  here, after every check, bound to that one file by name and SHA-256, valid for 120 seconds and
+  reusable inside them, so `Range`, resume and `HEAD` work. The bytes host accepts it in place of
+  a device token and still serves the file as a private, sandboxed attachment; an invalid or
+  expired ticket gets the same answer as no credential. Device trust policy does not apply to a
+  portal download (a browser cannot attest), so a product that enforces attested delivery is
+  served here exactly as its GitHub-hosted files are. Tickets need the Worker secret
+  `DOWNLOAD_TICKET_KEY`; without it such files read `not_hosted` and nothing is minted. See
   the R6 audit findings' `R6-12` for the redirect allowlist, and
   the R9 audit findings' `R9-05b` (the redemption used to be read-then-write, not
   compare-and-swap) for the atomic single-use fix.

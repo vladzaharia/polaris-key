@@ -72,6 +72,8 @@ export const SECRET_NAMES = [
   "GITHUB_WEBHOOK_SECRET",
   "R2_PARENT_ACCESS_KEY_ID",
   "R2_PARENT_SECRET_ACCESS_KEY",
+  "DOWNLOAD_TICKET_KEY",
+  "DOWNLOAD_TICKET_KEY_PREVIOUS",
 ] as const;
 
 type Area = "deployment" | "identity" | "delivery" | "email" | "keyring";
