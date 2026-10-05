@@ -5,14 +5,14 @@ sidebar:
   order: 7
 ---
 
-The registry host (`pkg.plrs.im`) serves six package feeds today: npm, PyPI, Swift, Maven, OCI and
-Godot. Each one is a **feed adapter**: one directory under
+The registry host (`pkg.plrs.im`) serves seven package feeds today: npm, PyPI, Swift, Maven, OCI,
+Godot and Go. Each one is a **feed adapter**: one directory under
 `packages/worker/src/services/distribution/registry/<ecosystem>/` whose `index.ts` exports one
 `FeedAdapter` (`registry/adapter.ts`), built with `defineFeedAdapter`. The protocol's complexity stays inside that directory. The
 contract around it stays the same for every feed, and a test suite checks it.
 
 The operator side of the feeds is on [Package feeds](/docs/services/distribution/package-feeds/)
-and [Feeds in the console](/docs/admin/feeds/). This page is for the person adding the seventh
+and [Feeds in the console](/docs/admin/feeds/). This page is for the person adding the eighth
 feed.
 
 ## What an adapter owns, and what it does not
@@ -87,8 +87,8 @@ one fails CI.
    `PackageEcosystemRules`. Register it in `PACKAGE_ECOSYSTEM_RULES`; the mapped type makes it a
    compile error until you do. The enum is part of the published JSON Schemas, so the schema and
    the mutation table change with it. Run `pnpm --filter @polaris-key/manifest test`.
-2. **The host.** Add the ecosystem to `REGISTRY_ECOSYSTEMS` in `core/registryHost.ts` (Cargo, Go
-   and NuGet are already there, reserved: take yours out of `RESERVED_ECOSYSTEMS`). If the
+2. **The host.** Add the ecosystem to `REGISTRY_ECOSYSTEMS` in `core/registryHost.ts` (Cargo and
+   NuGet are already there, reserved: take yours out of `RESERVED_ECOSYSTEMS`, as Go's F-31 did). If the
    protocol needs a content type that is not on `REGISTRY_HOST_TYPES`, stop: that list is a
    THREAT-MODEL review trigger.
 3. **The directory.** Create `registry/<ecosystem>/` with `render.ts` (pure documents),
