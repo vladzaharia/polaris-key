@@ -3146,11 +3146,21 @@ paths:
         `android-upload`, `android-sideload`, `fdroid-repo`, `sparkle-ed25519`, `release`,
         `msix-publisher`): it never changes the operator-owned key inventory; one that matches
         no entry is stored as an observation and flagged (`match: false`). A refused report
-        writes nothing. Requires a `pkeyci_` token with `distribution:report` (in the default
-        CI grant). No CORS. Errors are LEGACY FLAT with a machine-readable `reason`
-        (`unknown_outlet`, `unknown_release`, `unknown_build` 404; `invalid_state`,
-        `unknown_purpose`, `invalid_fingerprint`, `invalid_body` 422; `too_many_observations`
-        409, past 64 unreviewed key observations; `bad_body` 400).
+        writes nothing. `type: store-step` (A-18h) is the report-back of a CI-plane store step:
+        `store` (`itch`, `snap`, `steam`, `msstore`, `epic`), the storefront `op`, the allow-listed
+        `command` and its `argv` (the tool excluded), `outlet` when the command is bound to the
+        outlet's identity, `runId` (the job attempt, the step's idempotency key), `state`
+        (`pending` before the tool runs, then `done` or `failed`) and `exitCode`. The Worker
+        re-checks the command against the store's allow-list and the outlet identity, then writes
+        the step's `store_operations` row with `plane = ci`; a `pending` report of a step already
+        done in the same run answers `replayed: true` (CI skips the tool). Requires a `pkeyci_`
+        token with `distribution:report` (in the default CI grant). No CORS. Errors are LEGACY
+        FLAT with a machine-readable `reason` (`unknown_outlet`, `unknown_release`,
+        `unknown_build` 404; `invalid_state`, `unknown_purpose`, `invalid_fingerprint`,
+        `invalid_body`, `command_not_allowed` 422; `too_many_observations` 409, past 64
+        unreviewed key observations; `worker_draft_staged` 409, a store step the ledger's
+        Worker-plane draft blocks; `step_conflict` 409, a different request under the same step;
+        `bad_body` 400).
       security: [{ ciToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -3162,7 +3172,11 @@ paths:
               type: object
               required: [type]
               properties:
-                type: { type: string, enum: [availability, submission, key] }
+                type:
+                  {
+                    type: string,
+                    enum: [availability, submission, key, store-step],
+                  }
                 releaseId: { type: string, description: "Not with `version`." }
                 version: { type: string, description: "Not with `releaseId`." }
                 deliverable:
@@ -3207,7 +3221,62 @@ paths:
                       msix-publisher,
                     ]
                 sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+                store:
+                  {
+                    type: string,
+                    enum: [itch, snap, steam, msstore, epic],
+                    description: "store-step only.",
+                  }
+                op:
+                  {
+                    type: string,
+                    description: "store-step only: the storefront operation (uploadBuild, release, writeListingText).",
+                  }
+                command:
+                  {
+                    type: string,
+                    description: "store-step only: the allow-list's command id (push, upload, upload-metadata, run-app-build, publish, upload-binary).",
+                  }
+                argv:
+                  {
+                    type: array,
+                    maxItems: 32,
+                    items: { type: string, minLength: 1, maxLength: 1024 },
+                    description: "store-step only: the tool's arguments, the tool excluded.",
+                  }
+                runId:
+                  {
+                    type: string,
+                    pattern: "^[A-Za-z0-9-]{8,128}$",
+                    description: "store-step only: the job attempt.",
+                  }
+                exitCode: { type: integer, description: "store-step only." }
+                runUrl:
+                  {
+                    type: string,
+                    description: "store-step only: the https URL of the CI run.",
+                  }
             examples:
+              storeStep:
+                value:
+                  {
+                    type: store-step,
+                    store: itch,
+                    op: uploadBuild,
+                    command: push,
+                    argv:
+                      [
+                        push,
+                        build/windows,
+                        "vlad/dice:windows",
+                        --userversion,
+                        1.2.0,
+                      ],
+                    outlet: itch,
+                    runId: gh-123456-1,
+                    state: done,
+                    exitCode: 0,
+                  }
               availability:
                 value:
                   {
@@ -3244,7 +3313,25 @@ paths:
                 required: [ok, type]
                 properties:
                   ok: { type: boolean, const: true }
-                  type: { type: string, enum: [availability, submission, key] }
+                  type:
+                    {
+                      type: string,
+                      enum: [availability, submission, key, store-step],
+                    }
+                  step:
+                    type: object
+                    properties:
+                      opId: { type: string }
+                      store: { type: string }
+                      op: { type: string }
+                      command: { type: string }
+                      state:
+                        {
+                          type: string,
+                          enum: [pending, done, failed, ambiguous],
+                        }
+                      plane: { type: string, const: ci }
+                      replayed: { type: boolean }
                   availability:
                     type: object
                     properties:
@@ -3314,6 +3401,56 @@ paths:
         "404": { $ref: "#/components/responses/CiRefusal" }
         "409": { $ref: "#/components/responses/CiRefusal" }
         "422": { $ref: "#/components/responses/CiRefusal" }
+
+  /{product}/distribution/listing/{store}:
+    get:
+      operationId: ciListingProjection
+      tags: [distribution]
+      summary: A CI-plane store's projection of the listing model (CI)
+      description: >
+        A-18h. The store's projection of the shared listing model (A-18b), for a CI-plane listing
+        step: `pkey storefront snap metadata` writes the Snap projection's summary and
+        description into `snapcraft.yaml` before the snap is built, and `snapcraft
+        upload-metadata` sends them. Only a store whose adapter declares `writeListingText` on the
+        CI plane is served (`snap`); any other store is the not-found. `payload` is null while a
+        red issue blocks it (a missing summary, a value over the store's limit); `issues` says
+        which, never with the text. A product with no listing answers `exists: false`. Requires
+        a `pkeyci_` token with `distribution:report` (in the default CI grant). No CORS.
+      security: [{ ciToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: store
+          in: path
+          required: true
+          schema: { type: string, enum: [snap] }
+      responses:
+        "200":
+          description: The projection.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, listing]
+                properties:
+                  ok: { type: boolean, const: true }
+                  listing:
+                    type: object
+                    required:
+                      [store, exists, defaultLocale, status, payload, issues]
+                    properties:
+                      store: { type: string }
+                      exists: { type: boolean }
+                      defaultLocale: { type: string }
+                      status: { type: string, enum: [green, amber, red] }
+                      payload:
+                        type: [object, "null"]
+                        properties:
+                          app: { type: object }
+                          locales: { type: object }
+                      issues: { type: array, items: { type: object } }
+        "401": { $ref: "#/components/responses/CiUnauthorized" }
+        "403": { $ref: "#/components/responses/CiForbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /{product}/distribution/hooks/asc:
     post:
