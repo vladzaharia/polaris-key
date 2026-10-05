@@ -5,7 +5,7 @@
 | Phase       | HA: Hosted assets: Polaris Key hosts every file it serves (S-20) (phase 5: presentation in SDKs) |
 | Size        | 1–1.5 engineer-weeks                                                                             |
 | Depends on  | [HA-11](HA-11-presentation-discovery-plan.md), [HA-12](HA-12-presentation-discovery.md)          |
-| Unblocks    | none                                                                                             |
+| Unblocks    | [UK-41](UK-41-must-tier-closeout.md)                                                             |
 | Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                             |
 | Plan mode   | yes: executes the approved [`plans/HA-11.md`](../plans/HA-11.md)                                 |
 | Gates       | plan mode; all SDKs; corpus and transcript runners; UI snapshots                                 |
@@ -40,6 +40,7 @@ It completes "zero integrator work" for every non-Godot SDK ([S-20 §6.9](../../
 ## Design notes
 
 - A failed or mismatched icon falls back to the letter tile silently.
+- **UI kits (owner decision, 2026-10-05).** This package is the only path by which presentation reaches a kit. Expose it as each SDK's presentation accessor and implement the kit core's `PresentationSource` seam: `@polaris-key/ui-core` (UK-03), the Swift presentation core (UK-07), Kotlin `commonMain` (UK-09) and `polaris_key.ui.core` (UK-12). Where a UK kit has not landed yet, wire today's kit theme as planned; the UK kit then reads the same accessor. No kit fetches discovery or caches the icon itself. UK-41 verifies the default end to end ([UI-KITS.md](../../../../design/UI-KITS.md) §1.2, §10).
 
 ## Steps
 

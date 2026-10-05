@@ -5,7 +5,7 @@
 | Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (wave 1)                                                                         |
 | Size        | 1–1.6 engineer-weeks                                                                                                            |
 | Depends on  | [P1b-01](P1b-01-parity-registry.md)                                                                                             |
-| Unblocks    | [SP-10](SP-10-signed-browser-session.md)                                                                                        |
+| Unblocks    | [SP-10](SP-10-signed-browser-session.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-02b](UK-02b-ui-fixtures-parity.md)          |
 | Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                            |
 | Plan mode   | yes: `pkey-wire-planner` writes `plans/SP-00.md` first; no code before a human approves it                                      |
 | Gates       | plan mode; `pnpm parity:check -- --check`; `pnpm gen:corpus -- --check`; generated parity docs page; `gen:constants -- --check` |
