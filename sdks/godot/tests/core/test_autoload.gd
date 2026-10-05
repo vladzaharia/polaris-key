@@ -142,9 +142,12 @@ func _headers_and_refresh(t: PKeyTestContext) -> void:
 	t.check("autoload: platform and arch are the canonical values", h.get("x-pkey-platform") == PKeyHeaders.platform() and h.get("x-pkey-arch") == PKeyHeaders.arch(), str(h))
 	t.check("autoload: a 404 with a flat body is a failure with the wire code", not r.ok and r.code == &"not_found" and r.detail["status"] == 404, str(r))
 
+	# The waits below are hang guards, not speed budgets: the 0.25 s timer and a resume sync come
+	# well inside them even on a loaded machine. The resume wait stays under the 60 s interval set
+	# for it, so only the resume (never the timer) can answer it.
 	server.requests.clear()
 	var t0 := Time.get_ticks_msec()
-	while server.requests.is_empty() and Time.get_ticks_msec() - t0 < 3000:
+	while server.requests.is_empty() and Time.get_ticks_msec() - t0 < 30000:
 		await PKeyTestFixtures.frames(1)
 	t.check("autoload: the refresh timer syncs", not server.requests.is_empty())
 
@@ -156,7 +159,7 @@ func _headers_and_refresh(t: PKeyTestContext) -> void:
 	server.requests.clear()
 	sdk.notification(Node.NOTIFICATION_APPLICATION_RESUMED)
 	t0 = Time.get_ticks_msec()
-	while server.requests.is_empty() and Time.get_ticks_msec() - t0 < 3000:
+	while server.requests.is_empty() and Time.get_ticks_msec() - t0 < 30000:
 		await PKeyTestFixtures.frames(1)
 	t.check("autoload: resuming the application syncs", not server.requests.is_empty())
 	while sdk._syncing:
