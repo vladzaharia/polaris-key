@@ -31,6 +31,12 @@ import {
   type ServiceHooks,
 } from "./hooks.js";
 import type { QueuedRender } from "./registryQueue.js";
+import {
+  licenseMergeFor,
+  type LicenseMerge,
+  type LicenseMergeContributor,
+} from "./licenseMerge.js";
+import type { ServiceSettingsSlice } from "./settings/types.js";
 import type {
   StoreGrantChange,
   StoreGrantContext,
@@ -92,13 +98,21 @@ export interface ServiceContext {
    * code treats exactly as License off (fail closed).
    */
   storeGrants?: StoreGrantWriter;
+  /**
+   * LX-03: Core's licence-merge collector, bound to the registry (`core/licenseMerge.ts`) — every
+   * service's statements re-keying its rows from a retired licence to the survivor, for the one
+   * flow that retires a licence into another (Identity's migrate). Built by `dispatchService`;
+   * absent on a context built by hand, where that flow refuses to merge rather than strand what
+   * the retired licence held.
+   */
+  licenseMerge?: LicenseMerge;
 }
 
 /** A `ServiceContext` as a caller hands it to Core — everything but the Core-built `hooks`,
- *  `ingest` and `storeGrants`. */
+ *  `ingest`, `storeGrants` and `licenseMerge`. */
 export type ServiceRequest = Omit<
   ServiceContext,
-  "hooks" | "ingest" | "storeGrants"
+  "hooks" | "ingest" | "storeGrants" | "licenseMerge"
 >;
 
 /**
@@ -167,6 +181,12 @@ export interface ServiceDescriptor extends DescriptorHooks {
   slug: ServiceSlug;
   /** Handle a product-scoped request. `null` = no route matched inside this service. */
   handle(ctx: ServiceContext): Promise<Response | null>;
+  /**
+   * This service's settings (ST-03, `core/settings/`): the product-scope registry entries under
+   * the namespaces it owns. Data only, read by `buildSettingsRegistry` at the composition root,
+   * so Core learns a service's settings without importing it (rule 6).
+   */
+  settings?: ServiceSettingsSlice;
   /**
    * This service's fragment of `/.well-known/polaris.json` (design spec §4.3). Only called when
    * enabled — Core emits `{enabled:false}` and nothing else for the rest.
@@ -242,6 +262,13 @@ export interface ServiceDescriptor extends DescriptorHooks {
     ctx: StoreGrantContext,
     change: StoreGrantChange,
   ): Promise<StoreGrantOutcome>;
+  /**
+   * LX-03 (`core/licenseMerge.ts`): the statements re-keying this service's rows from a licence
+   * being retired into another (`change.fromLicenseId` → `change.toLicenseId`). Run by Core for
+   * every registered service WHATEVER its enablement, like `manifestIngestAlways`, and only into
+   * the merge's own batch: statements only, idempotent, touching this service's own tables.
+   */
+  licenseMerge?: LicenseMergeContributor;
   /**
    * Periodic work for one product, run on the connector cron (`scheduled.ts`,
    * `CONNECTOR_POLL_CRON`) for every product that has this service ENABLED — the same gate as
@@ -332,6 +359,7 @@ export async function dispatchService(
       product: ctx.product,
       now: ctx.now,
     }),
+    licenseMerge: licenseMergeFor(registry),
   });
   return res ?? serviceNotFound();
 }

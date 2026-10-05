@@ -38,6 +38,7 @@ export type {
 
 export {
   appendAudit,
+  auditStatement,
   claimDeviceSeat,
   claimEnrolledLicense,
   clearFingerprint,

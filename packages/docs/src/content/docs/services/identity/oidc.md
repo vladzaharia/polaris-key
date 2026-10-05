@@ -185,6 +185,16 @@ Otherwise: an existing identity license is updated in place (refused with `error
 "license-unusable"` if it is disabled, expired, or revoked), or a brand-new license is inserted
 with `origin: "oidc"`.
 
+The in-place update is deliberately narrow. Sign-in sets `name`, `email` and `groups_json` from
+the provider and nothing else on the row: it does **not** change `tier_id` or `expires_at`, so a
+time-limited tier (a trial) ends when it ends however often the person signs in, and a tier an
+operator or a purchase set stays put. The group mapping and its expiry policy decide the tier
+only when a license is first minted or claimed. In the overrides, sign-in owns exactly the keys
+the product's provisioning hooks declare (every `entitlement_key` and `secret_key`). Each one is
+set from the current claims, or removed when its claim is no longer truthy, so losing the claim
+still revokes what it granted. Every other override key, including an operator's, is left
+alone.
+
 ## Provisioning hooks: claim → entitlement / secret
 
 `provisioning_config` rows are generic: any verified claim key on the ID token, not only group
