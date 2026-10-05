@@ -129,7 +129,7 @@ describe("Account v1 (PX-07)", () => {
     mockFetch(signedIn());
     renderPortal();
     await userEvent.click(
-      await screen.findByRole("button", { name: `Account: ${ACCOUNT.email}` }),
+      await screen.findByRole("button", { name: `Account: ${ACCOUNT.name}` }),
     );
     const items = await screen.findAllByRole("menuitem");
     expect(items.map((i) => i.textContent)).toEqual([
