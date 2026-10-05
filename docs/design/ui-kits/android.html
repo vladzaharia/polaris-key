@@ -696,12 +696,15 @@
                 left: 24px;
                 right: 24px;
                 display: grid;
+                grid-template-columns: minmax(0, 1fr);
                 gap: 20px;
               "
             >
               <div class="phead">
                 <span class="picon" data-art="tidewater" data-size="32"></span
-                >Tidewater Studio<small>· Pro</small>
+                ><span style="white-space: nowrap"
+                  >Tidewater Studio <small>· Pro</small></span
+                >
               </div>
               <div style="display: grid; gap: 8px">
                 <h1 class="headline">Add your license</h1>
@@ -714,9 +717,10 @@
                   <div style="flex: 1; min-width: 0">
                     <label>License key</label>
                     <span class="mono"
-                      >pkey_tidewater_7Q2MXK9RV4TC8HJN3WPLDA<span
-                        class="caret"
-                      ></span
+                      ><span class="k-key"
+                        ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
+                        ><span>3WPLDA</span></span
+                      ><span class="caret"></span
                     ></span>
                   </div>
                   <span class="ib" style="color: var(--pk-text-muted)"
@@ -919,7 +923,9 @@
             <div style="position: absolute; top: 88px; left: 16px; right: 16px">
               <div class="phead" style="margin: 0 8px 18px">
                 <span class="picon" data-art="tidewater" data-size="32"></span
-                >Tidewater Studio<small>· Pro</small>
+                ><span style="white-space: nowrap"
+                  >Tidewater Studio <small>· Pro</small></span
+                >
               </div>
               <h1 class="headline" style="margin: 0 8px">
                 Your license is on 3 of 3 devices
@@ -940,9 +946,8 @@
                 <div class="citem sel">
                   <span class="ms">laptop_windows</span>
                   <div class="t">
-                    Work laptop<small
-                      >Windows 11 · last used 41 days ago · least recent</small
-                    >
+                    Work laptop <em class="k-tag">Least recent</em
+                    ><small>Windows 11 · last used 41 days ago</small>
                   </div>
                   <span class="radio on"></span>
                 </div>

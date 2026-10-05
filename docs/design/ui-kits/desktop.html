@@ -6,8 +6,8 @@
     <link rel="stylesheet" href="shared.css" />
     <script src="shared.js"></script>
     <style>
-      /* macOS 26 at Mac scale: 13 pt body, 28 pt regular-large controls, sheets attached under
-         the title bar, windows sized to their content. Windows and Linux have their own boards. */
+      /* macOS 26 at Mac scale: 13 pt body, 28 pt regular-large controls, sheets float inset
+         below the title-bar row, windows sized to their content. Windows and Linux have their own boards. */
       :root {
         --m-win: #1e1f23;
         --m-sec: #2a2b30;
@@ -307,14 +307,15 @@
         box-shadow: 0 0 0 0.5px var(--m-sep);
       }
 
-      /* Sheet attached under the title bar; the parent is not dimmed. */
+      /* macOS 26 sheet: a floating glass panel inset below the title-bar row, rounded on every
+         side (no drop-down glued to the window edge). The parent is not dimmed. */
       .sheet {
         position: absolute;
         top: 52px;
         left: 50%;
         translate: -50% 0;
         width: 440px;
-        border-radius: 0 0 18px 18px;
+        border-radius: 24px;
         padding: 22px 22px 18px;
         background: color-mix(in oklab, var(--m-win) 82%, transparent);
         backdrop-filter: blur(40px) saturate(1.6);
@@ -423,7 +424,8 @@
       <!-- 2. Activate sheet -->
       <figure>
         <figcaption>
-          macos · activate (sheet under the title bar, parent not dimmed)
+          macos · activate (sheet inset below the title-bar row, parent not
+          dimmed)
         </figcaption>
         <div class="shot" data-shot="activate">
           <div class="win gatewin" style="grid-template-columns: 360px 1fr">
@@ -432,17 +434,8 @@
               <div style="position: absolute; top: 20px; left: 20px">
                 <div class="lights"><i></i><i></i><i></i></div>
               </div>
-              <div
-                class="k-appicon"
-                data-art="tidewater"
-                data-size="64"
-                style="border-radius: 15px"
-              ></div>
-              <h1 class="mtitle" style="font-size: 26px; line-height: 32px">
-                Welcome to Tidewater Studio
-              </h1>
             </div>
-            <div class="sheet" style="top: 0; border-radius: 0 0 18px 18px">
+            <div class="sheet">
               <div class="mhead">
                 <span
                   class="k-appicon"
@@ -450,7 +443,9 @@
                   data-size="32"
                   style="border-radius: 8px"
                 ></span
-                >Tidewater Studio<small>· Pro</small>
+                ><span style="white-space: nowrap"
+                  >Tidewater Studio <small>· Pro</small></span
+                >
               </div>
               <div style="display: grid; gap: 4px">
                 <h2 class="mtitle" style="font-size: 17px; line-height: 22px">
@@ -463,7 +458,11 @@
               <div>
                 <label class="mlabel">License key</label>
                 <div class="mfield focus">
-                  <span class="mono">pkey_tidewater_7Q2MXK9RV4TC8HJN3WPLDA</span
+                  <span class="mono"
+                    ><span class="k-key"
+                      ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
+                      ><span>3WPLDA</span></span
+                    ></span
                   ><span
                     class="mb"
                     style="
@@ -517,7 +516,7 @@
                 <div class="lights"><i></i><i></i><i></i></div>
               </div>
             </div>
-            <div class="sheet" style="top: 0; width: 520px">
+            <div class="sheet" style="width: 520px">
               <div class="mhead">
                 <span
                   class="k-appicon"
@@ -662,7 +661,9 @@
                   data-size="32"
                   style="border-radius: 8px"
                 ></span
-                >Tidewater Studio<small>· Pro</small>
+                ><span style="white-space: nowrap"
+                  >Tidewater Studio <small>· Pro</small></span
+                >
               </div>
               <div style="display: grid; gap: 6px">
                 <h2 class="mtitle" style="font-size: 17px; line-height: 22px">
@@ -678,9 +679,8 @@
                   <span class="mradio on"></span
                   ><span data-icon="laptop" data-size="16"></span>
                   <div class="t">
-                    Work laptop<small
-                      >Windows 11 · last used 41 days ago · least recent</small
-                    >
+                    Work laptop <em class="k-tag">Least recent</em
+                    ><small>Windows 11 · last used 41 days ago</small>
                   </div>
                 </div>
                 <div class="frow">

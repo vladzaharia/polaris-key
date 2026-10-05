@@ -144,10 +144,10 @@
         }
         .flow .k-list {
           background: var(--pk-surface-raised);
-          box-shadow: inset 0 0 0 1px var(--kit-hairline);
         }
         .actions.row {
           display: grid;
+          justify-content: stretch;
         }
         .actions.row .k-btn {
           width: 100%;
@@ -935,7 +935,10 @@
                 <label class="k-label">License key</label>
                 <div class="k-field focus">
                   <span class="mono"
-                    >pkey_tidewater_7Q2MXK9RV4TC8HJN3WPLDA</span
+                    ><span class="k-key"
+                      ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
+                      ><span>3WPLDA</span></span
+                    ></span
                   >
                   <span
                     class="k-iconbtn"
@@ -1393,7 +1396,10 @@
                 <div>
                   <div class="k-field invalid">
                     <span class="mono"
-                      >pkey_tidewater_7Q2MXK9RV4TC8HJN3WPLDB</span
+                      ><span class="k-key"
+                        ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
+                        ><span>3WPLDB</span></span
+                      ></span
                     ><span
                       class="k-iconbtn"
                       data-icon="paste"
@@ -1423,11 +1429,9 @@
                   <div class="k-item sel">
                     <span data-icon="laptop" data-size="20"></span>
                     <div class="t">
-                      <span>Work laptop</span
-                      ><small
-                        >Windows 11 · last used 41 days ago · least
-                        recent</small
-                      >
+                      <span
+                        >Work laptop <em class="k-tag">Least recent</em></span
+                      ><small>Windows 11 · last used 41 days ago</small>
                     </div>
                     <span class="chk" data-icon="check" data-size="20"></span>
                   </div>
@@ -1614,11 +1618,11 @@
                   </div>
                   <button class="k-btn primary sm">Save</button>
                 </div>
-                <div class="k-item" style="background: var(--pk-danger-subtle)">
+                <div class="k-item confirm">
                   <span data-icon="laptop" data-size="20"></span>
                   <div class="t">
                     <span>Remove Work laptop?</span
-                    ><small>Tidewater Studio signs out there.</small>
+                    ><small>It signs out right away.</small>
                   </div>
                   <button class="k-btn ghost sm">Cancel</button
                   ><button class="k-btn danger sm">Remove</button>
@@ -1765,20 +1769,28 @@ pk-activate::part(primary) { border-radius: 999px; }</pre>
                     color: var(--pk-text-strong);
                   "
                 >
-                  <span
-                    style="
-                      width: 22px;
-                      height: 22px;
-                      border-radius: 6px;
-                      background: #0b3a48;
-                    "
-                  ></span
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <rect width="24" height="24" rx="7" fill="#e8673c" />
+                    <path
+                      d="M6 13.5v-3M9 16V8M12 18V6M15 15.5v-7M18 13v-2"
+                      stroke="#fff"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                    /></svg
                   >Harbor Audio account
                 </div>
                 <h2 class="k-h1" style="font-size: 22px">Add your license</h2>
                 <div class="k-field">
                   <span class="mono" style="color: var(--pk-text-strong)"
-                    >pkey_tidewater_7Q2MXK9RV4TC8HJN3WPLDA</span
+                    ><span class="k-key"
+                      ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
+                      ><span>3WPLDA</span></span
+                    ></span
                   >
                 </div>
                 <button
@@ -1807,7 +1819,12 @@ pk-activate::part(primary) { border-radius: 999px; }</pre>
                 <b style="font-size: 18px; font-weight: 600"
                   >Activate Tidewater Studio</b
                 >
-                <div class="hi">pkey_tidewater_7Q2MXK9RV4TC8HJN3WPLDA</div>
+                <div class="hi">
+                  <span class="k-key"
+                    ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
+                    ><span>3WPLDA</span></span
+                  >
+                </div>
                 <span style="font-size: 13px; opacity: 0.75"
                   >Tidewater Studio Pro · Lifetime · 3 devices</span
                 >
@@ -1926,8 +1943,8 @@ pk-activate::part(primary) { border-radius: 999px; }</pre>
           <div class="k-item sel" role="radio" aria-checked="true">
             <span data-icon="laptop" data-size="20"></span>
             <div class="t">
-              <span>Work laptop</span
-              ><small>Windows 11 · last used 41 days ago · least recent</small>
+              <span>Work laptop <em class="k-tag">Least recent</em></span
+              ><small>Windows 11 · last used 41 days ago</small>
             </div>
             <span class="chk" data-icon="check" data-size="20"></span>
           </div>
@@ -1977,7 +1994,7 @@ pk-activate::part(primary) { border-radius: 999px; }</pre>
               ></span>
               <div class="t">
                 <span style="font-weight: 500">Tidewater Studio Pro</span
-                ><small>Lifetime · mara@fennick.studio</small>
+                ><small>Lifetime</small><small>mara@fennick.studio</small>
               </div>
               <button class="k-btn secondary sm">
                 Manage<span data-icon="external" data-size="14"></span>
@@ -1986,10 +2003,10 @@ pk-activate::part(primary) { border-radius: 999px; }</pre>
             <div class="k-row">
               <div class="t"><span>Devices</span></div>
               <div class="v tnum">
-                <span class="wide">This Mac, Mara’s iPad ·</span> 2 of 3<span
-                  data-icon="chevronRight"
-                  data-size="16"
-                ></span>
+                <span
+                  ><span class="wide">This Mac, Mara’s iPad · </span>2 of
+                  3</span
+                ><span data-icon="chevronRight" data-size="16"></span>
               </div>
             </div>
             <div class="k-row">
@@ -2068,7 +2085,12 @@ pk-activate::part(primary) { border-radius: 999px; }</pre>
         <div>
           <label class="k-label">License key</label>
           <div class="k-field focus">
-            <span class="mono">pkey_tidewater_7Q2MXK9RV4TC8HJN3WPLDA</span>
+            <span class="mono"
+              ><span class="k-key"
+                ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
+                ><span>3WPLDA</span></span
+              ></span
+            >
           </div>
           <div class="k-verdict" style="font-size: 13px">
             <span data-icon="checkCircle" data-size="15"></span

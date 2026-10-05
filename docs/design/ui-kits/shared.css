@@ -476,6 +476,8 @@ body {
 /* One inset grouped list: hairline dividers inset past the glyph, no boxes inside boxes. */
 .k-list {
   background: var(--kit-fill);
+  border-radius: var(--kit-radius-group);
+  overflow: hidden;
 }
 .k-list.raised {
   background: var(--pk-surface-raised);
@@ -525,6 +527,16 @@ body {
   color: var(--pk-text-muted);
   font-size: 13px;
   line-height: 18px;
+}
+/* An inline confirm is an inset rounded tile inside the list, never a square band to the edge. */
+.k-item.confirm {
+  margin: 2px 6px 6px;
+  padding-left: 12px;
+  border-radius: calc(var(--kit-radius-group) - 6px);
+  background: var(--pk-danger-subtle);
+}
+.k-item.confirm::before {
+  opacity: 0;
 }
 .k-item .chk {
   color: var(--kit-accent-fg);
@@ -731,4 +743,53 @@ body {
   font-size: 14px;
   line-height: 20px;
   color: var(--pk-text-default);
+}
+
+/* License keys stay on one line. When the field is too narrow the middle gives way, never the
+   end: "pkey_tidewater_7Q2M…3WPLDA". The last six characters are always visible, because that
+   is what people compare against the purchase email. */
+.k-key {
+  display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+.k-key > :first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.k-key > :last-child {
+  flex: none;
+}
+/* Nowrap text has a full-width min-content size; let every ancestor shrink past it so the
+   ellipsis, not the layout, gives way. */
+:where(:has(.k-key)) {
+  min-width: 0;
+}
+:has(> .k-key) {
+  overflow: hidden;
+  white-space: nowrap;
+}
+.mono:has(> .k-key) {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+}
+
+/* "Least recent" on the preselected device: a quiet neutral tag after the name, so the meta line
+   keeps one template ("<platform> · last used <when>") and never wraps to an orphan. */
+.k-tag {
+  display: inline-block;
+  margin-inline-start: 6px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font: 500 12px/18px var(--pk-font-sans);
+  font-style: normal;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  vertical-align: 1px;
+  color: var(--pk-text-muted);
+  background: color-mix(in oklab, var(--pk-text-strong) 9%, transparent);
 }

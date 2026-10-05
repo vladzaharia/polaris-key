@@ -227,6 +227,13 @@
       }
       .tx .main {
         padding: 16.8px 25.2px;
+        white-space: pre;
+      }
+      /* Textual buttons: one shape, two weights. The primary is the accent block, the
+         secondary a tonal block of the same height and padding. Never brackets next to blocks. */
+      .tbtn2 {
+        background: color-mix(in srgb, var(--strong) 16%, var(--t-bg));
+        color: var(--strong);
       }
     </style>
   </head>
@@ -439,7 +446,7 @@
         R(["", "Go to "], ["s u", "key.plrs.im/activate"]),
         R(["", "and enter this code:"]),
         R(),
-        R(["rev", " W D J B - M J H T "]),
+        R(["rev", " WDJB-MJHT "]),
         R(),
         R(["", "Check the code there matches"]),
         R(["", "this one."]),
@@ -720,7 +727,7 @@
           ["m", "· set by Fennick Studio"],
         ),
         "",
-        L(["rev", " Manage license "], ["", "  "], ["", "[ Sign out ]"]),
+        L(["chip", " Manage license "], ["", "  "], ["tbtn2", " Sign out "]),
       ]
         .map((l) => (typeof l === "string" ? l : l.html))
         .join("<br>");

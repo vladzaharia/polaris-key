@@ -170,12 +170,12 @@ One identity, rendered in each platform's current idiom. These stay identical ev
 | Platform                                        | Design language                     | What the kit does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ----------------------------------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Web** (React, elements, Vue, Svelte, Angular) | Modern web, 2026                    | **Flow card:** every gate step in one card (`surface-raised`, inner hairline, `elevation-3`, radius 22, `inline-size: min(440px, 100%)`, padding 32). Below a 560 px container it goes full-bleed with 20 px padding and the actions docked to the bottom (`max(20px, env(safe-area-inset-bottom))`). **Sizing:** controls 44 px on `(pointer: fine)`, 48 on `(pointer: coarse)`, 36 compact; radius 12 (10 at 36). **Type:** fluid in container units (`cqi`) on the kit root, never `vw`. **Layers:** native `<dialog>` in the top layer with a blurred scrim and `@starting-style` entry; View Transitions between steps. **States and modes:** `:hover`, `:active`, `:disabled` and `:focus-visible`; `forced-colors`. **Settings:** the sidebar becomes a push list below 720 px                                                        |
-| **iOS / iPadOS 26**                             | Liquid Glass                        | **Layout:** full-bleed screens with the product hero and a bottom action area, on system grouped grounds (black / `#f2f2f7`, cells `#16181d` / white; no tinted product chrome). **Buttons:** `.glassProminent` capsule primaries with a white label and no coloured shadow; secondaries are `.buttonStyle(.glass)`, never a filled capsule with a border. **Sheets:** concentric corners (inner = display corner − inset); a grabber and swipe-to-dismiss at the medium detent with no extra X. **Platform controls:** `SignInWithAppleButton` (system), `PasteButton` in key fields, `ProgressView`. **Update:** non-mandatory availability is a glass banner; only a mandatory update is a sheet. iOS 17–25 uses the same layout on `.regularMaterial`                                                                                    |
-| **macOS 26**                                    | Liquid Glass at Mac scale           | **Scale:** 13 pt body, 22 pt titles (26 pt on Welcome). Controls are `.controlSize(.large)` (about 28 pt); `.extraLarge` 36 pt capsules only for the Welcome hero. Grouped `Form` sections at radius 10. **Sheets** attach under the title bar, about 440 pt wide, without dimming the parent. **Copy:** title-case buttons ("Install and Relaunch", "Sign Out…"). **Windows:** a split Welcome window with full-bleed product `art` (inner radius = window radius − inset ≈ 12); a single-column update utility window with minimise and zoom disabled; a Settings scene that hugs its content (about 650 pt) and names the pane in its title. **Also:** `CommandGroup` items (Check for Updates…, Manage License…)                                                                                                                         |
+| **iOS / iPadOS 26**                             | Liquid Glass                        | **Layout:** full-bleed screens with the product hero and a bottom action area, on system grouped grounds (black / `#f2f2f7`, cells `#16181d` / white; no tinted product chrome). **Buttons:** `.glassProminent` capsule primaries with a white label and no coloured shadow; secondaries are `.buttonStyle(.glass)`, never a filled capsule with a border. **Sheets:** concentric corners (inner = display corner − inset); a grabber and swipe-to-dismiss at the medium detent with no extra X. **Platform controls:** `SignInWithAppleButton` (system), `PasteButton` in key fields, `ProgressView`. **Update:** non-mandatory availability is a glass banner floating above the bottom safe area (never over the nav bar or large title); only a mandatory update is a sheet. iOS 17–25 uses the same layout on `.regularMaterial`        |
+| **macOS 26**                                    | Liquid Glass at Mac scale           | **Scale:** 13 pt body, 22 pt titles (26 pt on Welcome). Controls are `.controlSize(.large)` (about 28 pt); `.extraLarge` 36 pt capsules only for the Welcome hero. Grouped `Form` sections at radius 10. **Sheets** float inset below the title-bar row, rounded on every side (radius about 24, the macOS 26 sheet shape, never a drop-down glued to the window edge), about 440 pt wide, without dimming the parent. **Copy:** title-case buttons ("Install and Relaunch", "Sign Out…"). **Windows:** a split Welcome window with full-bleed product `art` (inner radius = window radius − inset ≈ 12); a single-column update utility window with minimise and zoom disabled; a Settings scene that hugs its content (about 650 pt) and names the pane in its title. **Also:** `CommandGroup` items (Check for Updates…, Manage License…) |
 | **visionOS / tvOS / watchOS**                   | Glass windows, focus engine, glance | visionOS: glass windows and ornaments for banners; tvOS: device-code sign-in first, focus-scaled controls; watchOS: status glance only                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | **Android**                                     | Material 3 Expressive               | **Product icon:** drawn through the adaptive-icon mask (or a 28 % squircle) with an 8 % hairline, never re-cut into a Cookie shape. Shape morphs are kept for the monogram, the pressed state and the `LoadingIndicator`, which appears only inline at 24–48 dp and never as a hero. **Controls:** M3 filled fields (radius 16, label inside, a 2 dp focus indicator, never the outlined or notched field); 56 dp full-round buttons at equal widths; connected lists (outer 24, inner 6, 2 dp gaps); modal bottom sheets at radius 28 with a 32 % (light) or 60 % (dark) scrim; wavy progress (amplitude 3, wavelength 32) with a stop indicator. **System:** Material Symbols Rounded (wght 400, FILL 1 when selected); Credential Manager first for sign-in; `MotionScheme` springs; adaptive layouts; dynamic colour only under `native` |
 | **Windows**                                     | Fluent 2                            | The `windows` platform variant for Electron, Tauri, Compose Desktop and Qt Quick. **Chrome:** a Mica title bar with caption buttons on the right (`DwmSetWindowAttribute` `DWMWA_SYSTEMBACKDROP_TYPE` natively). **Controls:** 32 px at radius 4; overlays at radius 8. **Focused steps:** a `ContentDialog` on a smoke layer, with the footer buttons at equal width, primary first. **Focus:** the Fluent two-tone ring                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| **Linux (GNOME)**                               | libadwaita                          | The `linux` platform variant: a header bar with only the close button, window radius 12, 34 px controls at radius 8, a pill suggested-action for the primary, and focused steps in an `AdwDialog`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **Linux (GNOME)**                               | libadwaita                          | The `linux` platform variant: a header bar with only the close button, window radius 12, 34 px controls at radius 8, a pill suggested-action for the primary, and focused steps in an `AdwDialog` (radius 12, a soft libadwaita shadow with a 7 % edge in light, never a drawn dark outline)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | **Godot**                                       | Modern game UI                      | **Scheme:** `colorScheme` defaults to `"dark"`; light is opt-in. **Glass:** panels over a 35–45 % scrim, with an opaque `surface-raised` at 0.94 under `gl_compatibility`, on web exports and when `ui_reduce_transparency` is set; blur at half resolution in one cached pass. **Controls:** 60 px, with a 3 px focus ring at a 2 px offset plus an accent glow; scale 1.03 only on tiles and rows, from the centre. **Identity and type:** a `product.wordmark` texture beside the icon, and `typography.display` for the game's heading face. **Input:** `PKeyInputGlyphs` (monochrome filled glyphs that follow the last input device and honour the confirm-button swap). **Also:** a type floor (§1.5 rule 5), title-safe areas, a host-set toast anchor, UI sound hooks and optional haptics                                          |
 | **Terminal** (Node, Python)                     | 2026 CLI (gh, uv, clack)            | **Colour:** ANSI-16 for status roles by default, so output follows the user's terminal theme; truecolor only for the product chip, and only with `COLORTERM=truecolor`; light background detected via OSC 11, then `COLORFGBG`. **Layout:** 80 columns, degrading to 60, with keys truncated in the middle; a continuous rail on every line. **Feedback:** a braille spinner in `mute`; a half-block QR, hidden below 70 columns or 20 rows. **Interaction:** OSC 8 links, OSC 52 copy, masked key entry, `--json` on every verb. **Fallbacks:** `NO_COLOR` and ascii symbols                                                                                                                                                                                                                                                                |
 | **Qt, Tk** (Python)                             | Platform variants above             | **Qt:** Qt Quick (QML with `MultiEffect` blur and `Behavior` springs) is the drop-in, rendering the macOS, Windows or Linux variant. QWidget is layer (b) only, with its limits stated: QSS has no blur, transitions or transforms. **Tk:** an image-element ttk theme (9-slice PNGs at 1x and 2x generated from the tokens). It has no blur and no motion                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
@@ -222,6 +222,13 @@ that breaks one does not ship.
      devices), never 48 px everywhere.
    - **Type floor for Godot and TV at 720p:** meta and subtitles ≥ 16 px (24 at 1080p), hints 17,
      body 18–19.
+   - **Godot panels and hints never collide:** the input-hint bar sits in the title-safe margin
+     below the panel, never over it, and the panel sizes to its rows so the last row keeps its full
+     bottom padding.
+   - **Godot key art stays behind the glass, not through it:** bright, hard-edged art (a sun, a
+     vehicle) never sits partly under a panel edge. The host's art places its focal point clear of
+     the panel or fully behind a centred one, and a modal hides foreground sprites. A clipped
+     bright shape under glass reads as a smudge.
 6. **No 2018 Material or Bootstrap tells, and no 2020 Dribbble ones:**
    - no all-caps buttons and no 4 px-radius cards;
    - no drop shadows under flat cards on dark, and no coloured glow under buttons;
@@ -231,6 +238,9 @@ that breaks one does not ship.
    - no disc bullets in release notes;
    - no 1 px outlined keycaps;
    - no engine-default bitmap controls (Godot), and no `CheckBox` where a switch is meant.
+   - **One switch everywhere:** a light knob (white, with a 1 px soft shadow) on the accent track
+     when on and on a neutral track when off, in both themes and on every kit; never a dark knob on
+     a coloured track.
    - **No all-bold UI:** weights are 400 (body, row titles), 500 (labels, buttons, the product
      header) and 600 (headings). 700 appears only in the game wordmark fallback.
 7. **States are visible, and only when they apply.** Every control shows hover, pressed (scale 0.98
@@ -594,8 +604,10 @@ Mockups: [web](ui-kits/shots/web-gate-dark.png), [web 390](ui-kits/shots/web-gat
   - a paste control inside the field (`PasteButton` on iOS, `content_paste` on Android); consoles
     open the platform virtual keyboard instead;
   - submit on Return (`.submitLabel(.go)` with an ASCII keyboard on iOS).
-- **Keys are never end-truncated:** they wrap to two lines in mono (13–15 px), or truncate in the
-  middle at narrow widths.
+- **Keys stay on one line and are never end-truncated or wrapped.** A key that does not fit gives
+  way in the middle, keeping the prefix and the last six characters ("pkey_tidewater_7Q2M…3WPLDA"),
+  because those are what people compare against the purchase email; the field scrolls to the caret
+  while editing. A key wrapping mid-token inside a field reads as broken.
 - **Live verdict.** The key parses as you type: `pkey_<product>_<22>` puts a verdict under the field
   ("✓ Tidewater Studio Pro · Lifetime · 3 devices", with only the icon in success colour), and the
   product header gains the tier. A cut-short key gets "This key is cut short. After tidewater\_ come
@@ -626,7 +638,10 @@ Mockups: [web](ui-kits/shots/web-sign-in-light.png), [iOS](ui-kits/shots/ios-sig
 
 - **The hand-off screen:**
   - the user code centred in mono (40 px, weight 500, tracking 0.12em) on a borderless fill, so it
-    reads as output and not as an input, with a ghost Copy icon at the inline end;
+    reads as output and not as an input, with a ghost Copy icon at the inline end. **One format
+    everywhere:** two groups of four joined by a hyphen, `WDJB-MJHT`, exactly as the activate page
+    asks for it. TV and handheld sizes only get larger type and tracking; the terminal shows the
+    same string in reverse video. No spaced-out letters, no space in place of the hyphen;
   - "Or go to key.plrs.im/activate", with copy;
   - "Check the code there matches this one";
   - the determinate countdown ring with "code expires in 4:12";
@@ -661,7 +676,9 @@ PORTAL §4.25 in every kit, top to bottom:
 4. The neutral seat meter with its "3 of 3 in use" caption (`role="img"`, labelled), under the lede.
 5. **One inset grouped list.** Radius 16, hairlines inset past the glyph, 64 px rows. Each row has a
    bare 20 px form-factor glyph in `text-muted` and one meta template: "<platform> · last used
-   <when>", with "· least recent" on the preselected row. Glyphs by `deviceType`: laptop, desktop
+   <when>". The preselected row carries a quiet neutral **Least recent** tag after its name
+   (`k-tag`: 12 px 500, full radius, `text-strong` at 9 %), so the meta never wraps to an orphan
+   word; the terminal appends "· least recent" to the meta instead. Glyphs by `deviceType`: laptop, desktop
    (Mac mini, towers), tablet, phone, handheld; `laptop_windows`, `laptop_mac`, `desktop_mac`,
    `tablet_android` and `phone_android` in Material Symbols.
 6. Selection: `accent-subtle` plus one indicator (§1.5 rule 2).
@@ -697,8 +714,9 @@ Mockups: [web](ui-kits/shots/web-update-dark.png), [iOS banner](ui-kits/shots/io
   - web, Windows and Linux: a dialog with a blurred scrim (not an opaque window takeover, RE);
   - macOS: a single-column utility window driven by a custom Sparkle `SPUUserDriver`;
   - Android: a modal bottom sheet with wavy progress (Play in-app flexible update);
-  - iOS: a glass banner when the update is available, and a sheet with no dismiss only when it is
-    mandatory.
+  - iOS: a glass banner when the update is available, floating above the bottom safe area (or the
+    tab bar, as its accessory) so it never covers the navigation bar or the large title; a sheet
+    with no dismiss only when it is mandatory.
 - **Mandatory updates** have no dismiss and say why ("Your library moved to a new format, and 2.4.1
   can't open it.").
 - **Games** never interrupt play. During gameplay the kit shows only an UpdateProgress toast at the
@@ -980,7 +998,20 @@ view trees.
 - no text below 12 px, and no fractional px sizes;
 - no `text-transform: uppercase` on buttons;
 - no `vw` units in kit CSS (container units only);
-- no orphaned last line in headings and ledes (a snapshot check over the baselines).
+- no orphaned last line in headings, ledes and list-row meta (a snapshot check over the baselines);
+- the tier is one text run with the product name ("Tidewater Studio · Pro"): the separator never
+  sits in its own flex item, so a layout `gap` can never open before the dot;
+- license keys never wrap inside a field (`white-space: nowrap` with the middle ellipsis of §4.3).
+
+**Shape and material:**
+
+- no square-cornered row, list or band inside a rounded container: a list takes the group radius
+  and clips its rows; an inline confirm or highlight sits inset with its own radius
+  (group − inset);
+- no glass on glass: a control on a blurred sheet is a flat fill, never a second `backdrop-filter`;
+- a modal scrim dims the whole window evenly (the title bar included where the platform does),
+  never a light wash over part of it;
+- no empty placeholder box where an image or logo belongs in a published mockup or example.
 
 **Behaviour and code:**
 
@@ -1088,8 +1119,8 @@ wavy progress and equal-width buttons.
 
 #### macOS 26 (SwiftUI; Electron and Tauri on macOS)
 
-The macOS board is drawn at Mac scale: the split Welcome window with product art, sheets attached
-under the title bar, the single-column update window, and the Settings scene.
+The macOS board is drawn at Mac scale: the split Welcome window with product art, inset rounded
+sheets below the title-bar row, the single-column update window, and the Settings scene.
 
 | Dark                                                         | Light                                                         |
 | ------------------------------------------------------------ | ------------------------------------------------------------- |
@@ -1138,7 +1169,9 @@ the game's menu.
 The terminal board is drawn in a real cell grid at line-height 1.2, 80 columns. It covers
 device-code sign-in with a half-block QR, masked key entry, the device-limit picker, status and
 update progress, a blocked status with its fix as a command, grouped help, the four colour and
-symbol fallbacks, a 60-column render and a Textual app.
+symbol fallbacks, a 60-column render and a Textual app. Textual buttons share one shape (a one-row block with one cell of padding): the
+primary in the accent, the secondary as a tonal block, never bracketed `[ text ]` buttons beside
+blocks.
 
 | Dark                                                          | Light                                                          |
 | ------------------------------------------------------------- | -------------------------------------------------------------- |

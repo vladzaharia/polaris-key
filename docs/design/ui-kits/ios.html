@@ -141,6 +141,12 @@
       [data-theme="light"] .glass.on-plain {
         background: rgb(120 120 128 / 0.12);
       }
+      /* Glass on a glass sheet: the sheet already samples the backdrop once. Controls on it are
+         a flat fill, so the hero behind cannot bleed through twice as a tinted band. */
+      .sheet .glass {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+      }
       .glass.prominent {
         background: var(--kit-accent);
         color: #fff;
@@ -326,7 +332,10 @@
         padding-bottom: 34px;
       }
       [data-theme="light"] .sheet.float {
-        background: rgb(255 255 255 / 0.8);
+        /* Light sheets read as frosted white: near-opaque and unsaturated, so the product hero
+           behind never leaks through as a coloured band behind one row. */
+        background: rgb(249 249 251 / 0.97);
+        backdrop-filter: blur(40px) saturate(1);
         box-shadow:
           inset 0 1px 0.5px #fff,
           0 20px 50px rgb(6 9 18 / 0.18);
@@ -520,9 +529,11 @@
         color: var(--pk-text-muted);
         font-size: 15px;
       }
+      /* Floats above the home indicator (or the tab bar, as its accessory): never over the nav
+         bar or the large title, so the host's navigation stays usable. */
       .banner {
         position: absolute;
-        top: 58px;
+        bottom: 30px;
         left: 10px;
         right: 10px;
         z-index: 30;
@@ -753,9 +764,10 @@
               <div class="flabel">License key</div>
               <div class="field">
                 <span class="mono"
-                  >pkey_tidewater_7Q2MXK9RV4TC8HJN3WPLDA<span
-                    class="caret"
-                  ></span
+                  ><span class="k-key"
+                    ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
+                    ><span>3WPLDA</span></span
+                  ><span class="caret"></span
                 ></span>
                 <span class="paste"
                   ><span data-icon="paste" data-size="15"></span>Paste</span
@@ -865,9 +877,11 @@
                   data-size="32"
                   style="border-radius: 8px"
                 ></span
-                >Tidewater Studio<span
-                  style="color: var(--pk-text-muted); font-weight: 400"
-                  >· Pro</span
+                ><span style="white-space: nowrap"
+                  >Tidewater Studio
+                  <span style="color: var(--pk-text-muted); font-weight: 400"
+                    >· Pro</span
+                  ></span
                 >
               </div>
               <h1 class="title-l" style="margin: 0 4px">
@@ -895,21 +909,22 @@
                 <div class="cell ind">
                   <span class="sym" data-icon="laptop" data-size="19"></span>
                   <div class="t">
-                    Work laptop<small
-                      >Last used 41 days ago · least recent</small
-                    >
+                    Work laptop <em class="k-tag">Least recent</em
+                    ><small>Windows 11 · last used 41 days ago</small>
                   </div>
                   <span class="chk" data-icon="check" data-size="22"></span>
                 </div>
                 <div class="cell ind">
                   <span class="sym" data-icon="tablet" data-size="19"></span>
                   <div class="t">
-                    Mara’s iPad<small>Last used yesterday</small>
+                    Mara’s iPad<small>iPadOS 26 · last used yesterday</small>
                   </div>
                 </div>
                 <div class="cell ind">
                   <span class="sym" data-icon="laptop" data-size="19"></span>
-                  <div class="t">MacBook Pro<small>Last used today</small></div>
+                  <div class="t">
+                    MacBook Pro<small>macOS 26 · last used today</small>
+                  </div>
                 </div>
               </div>
               <p class="sec-f">Tidewater Studio signs out on Work laptop.</p>

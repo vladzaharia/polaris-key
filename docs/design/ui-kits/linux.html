@@ -135,8 +135,10 @@
         border-radius: 14px;
         background: var(--g-view);
         box-shadow:
-          0 0 0 1px rgb(0 0 0 / 0.3),
-          0 14px 40px rgb(0 0 0 / 0.4);
+          0 0 0 1px rgb(0 0 0 / 0.5),
+          inset 0 1px rgb(255 255 255 / 0.07),
+          0 2px 14px 3px rgb(0 0 0 / 0.3),
+          0 16px 40px rgb(0 0 0 / 0.35);
         padding: 22px 24px 24px;
         display: grid;
         gap: 16px;
@@ -147,6 +149,14 @@
         inset: 0;
         background: rgb(0 0 0 / 0.35);
         z-index: 5;
+      }
+      /* Libadwaita light: a soft drop shadow and a barely-there 7 % edge, no drawn outline. */
+      [data-theme="light"] .dlg {
+        box-shadow:
+          0 0 0 1px rgb(0 0 6 / 0.07),
+          0 1px 5px 1px rgb(0 0 6 / 0.09),
+          0 2px 14px 3px rgb(0 0 6 / 0.05),
+          0 16px 40px rgb(0 0 6 / 0.08);
       }
       [data-theme="light"] .dim {
         background: rgb(0 0 6 / 0.12);
@@ -230,9 +240,11 @@
                   data-size="32"
                   style="border-radius: 8px"
                 ></span
-                >Tidewater Studio<span
-                  style="color: var(--g-mute); font-weight: 400"
-                  >· Pro</span
+                ><span style="white-space: nowrap"
+                  >Tidewater Studio
+                  <span style="color: var(--g-mute); font-weight: 400"
+                    >· Pro</span
+                  ></span
                 >
               </div>
               <div style="display: grid; gap: 4px">
@@ -250,7 +262,11 @@
                   License key
                 </div>
                 <div class="gentry focus">
-                  <span class="mono">pkey_tidewater_7Q2MXK9RV4TC8HJN3WPLDA</span
+                  <span class="mono"
+                    ><span class="k-key"
+                      ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
+                      ><span>3WPLDA</span></span
+                    ></span
                   ><span
                     class="gb"
                     style="height: 26px; padding: 0 10px; font-size: 13px"

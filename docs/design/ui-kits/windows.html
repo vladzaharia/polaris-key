@@ -160,14 +160,17 @@
       .wmute {
         color: var(--w-mute);
       }
+      /* Fluent smoke (SmokeFillColorDefault): black in both themes, over the whole window
+         including the title bar, so everything behind the dialog dims evenly. */
       .smoke {
         position: absolute;
         inset: 0;
-        background: rgb(0 0 0 / 0.3);
+        border-radius: inherit;
+        background: rgb(0 0 0 / 0.42);
         z-index: 5;
       }
       [data-theme="light"] .smoke {
-        background: rgb(255 255 255 / 0.3);
+        background: rgb(0 0 0 / 0.3);
       }
       .dialog {
         position: absolute;
@@ -422,8 +425,11 @@
                     data-size="32"
                     style="border-radius: 7px"
                   ></span
-                  >Tidewater Studio<span class="wmute" style="font-weight: 400"
-                    >· Pro</span
+                  ><span style="white-space: nowrap"
+                    >Tidewater Studio
+                    <span class="wmute" style="font-weight: 400"
+                      >· Pro</span
+                    ></span
                   >
                 </div>
                 <div style="display: grid; gap: 4px">
@@ -436,7 +442,10 @@
                   <div style="margin-bottom: 8px">License key</div>
                   <div class="wfield focus">
                     <span class="mono"
-                      >pkey_tidewater_7Q2MXK9RV4TC8HJN3WPLDA</span
+                      ><span class="k-key"
+                        ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
+                        ><span>3WPLDA</span></span
+                      ></span
                     ><span
                       class="wb"
                       style="
@@ -718,11 +727,18 @@
         .join("")}</svg>`;
       document.querySelectorAll(".art").forEach((a) => (a.innerHTML = artSvg));
       const t = document.getElementById("wtracks");
-      for (let n = 0; n < 6; n++)
-        t.insertAdjacentHTML(
-          "beforeend",
-          `<div style="height:56px;border-radius:4px;background:var(--w-card);box-shadow:inset 0 0 0 1px var(--w-stroke)"></div>`,
-        );
+      // Real host content (tracks with waveforms), so the smoke visibly dims what is behind it.
+      ["Vocals", "Guitar", "Drums", "Keys", "Bass", "Room mics"].forEach(
+        (name, n) => {
+          let w = "";
+          for (let i = 0; i < 104; i++)
+            w += `<i style="display:inline-block;width:3px;margin-right:3px;border-radius:2px;background:var(--kit-accent);height:${(6 + Math.abs(Math.sin(i * 0.55 + n * 1.7)) * 26).toFixed(0)}px"></i>`;
+          t.insertAdjacentHTML(
+            "beforeend",
+            `<div style="height:56px;border-radius:6px;background:var(--w-card);box-shadow:inset 0 0 0 1px var(--w-stroke);display:flex;align-items:center;gap:16px;padding:0 16px;overflow:hidden"><span style="width:96px;flex:none;font-weight:500">${name}</span><span style="display:flex;align-items:center;height:40px;white-space:nowrap">${w}</span></div>`,
+          );
+        },
+      );
     </script>
   </body>
 </html>

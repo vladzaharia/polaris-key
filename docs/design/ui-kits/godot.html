@@ -42,129 +42,65 @@
       .deck {
         height: 800px;
       }
-      /* Key art: the game's content, drawn here with CSS shapes. */
+      /* Key art: the game's content (a synthwave dusk with a chase-cam kart), drawn here as one SVG.
+         The sun sits low and central so behind any centred glass card it blurs to an even glow,
+         never a clipped smudge; the kart leaves the frame whenever a modal is up. */
       .art {
         position: absolute;
         inset: 0;
         z-index: -3;
-        background: linear-gradient(
-          #0d0b1f 0%,
-          #2a1340 45%,
-          #5a1f3a 62%,
-          #12101c 62.2%,
-          #0b0a12 100%
-        );
+        overflow: hidden;
+        --sky-0: #0b0a1d;
+        --sky-1: #251240;
+        --sky-2: #6b2247;
+        --sun-0: #ffd166;
+        --sun-1: #ff5a2c;
+        --hill-far: #2b1840;
+        --hill-near: #1b1229;
+        --ground: #100e18;
+        --road: #1a1724;
+        --grid: #ff6a3d;
+        --edge: #ff9a6a;
+        --lane: #ffd08a;
+        --kart: #ff5a2c;
+        --kart-hi: #ff8a5c;
+        --kart-dark: #14111c;
+        --helmet: #f3efe7;
+        --tyre: #2a2433;
+        --tyre-hi: #4a4058;
       }
       [data-theme="light"] .art {
-        background: linear-gradient(
-          #9ed2ff 0%,
-          #ffd7b0 58%,
-          #ffb27a 62%,
-          #6b6f7c 62.2%,
-          #4c505c 100%
-        );
+        --sky-0: #8fc6f5;
+        --sky-1: #c9d9f2;
+        --sky-2: #ffc59a;
+        --sun-0: #fff1b8;
+        --sun-1: #ff9a5a;
+        --hill-far: #b48ea6;
+        --hill-near: #8a6f8f;
+        --ground: #4b4f5e;
+        --road: #343745;
+        --grid: #ffffff;
+        --edge: #ffe1c4;
+        --lane: #ffe3a8;
+        --kart: #f2541f;
+        --kart-hi: #ff8250;
+        --kart-dark: #1d1b26;
+        --helmet: #ffffff;
+        --tyre: #24222c;
+        --tyre-hi: #4a4756;
       }
-      .art .sun {
+      .art svg {
         position: absolute;
-        left: 62%;
-        top: 22%;
-        width: 260px;
-        height: 260px;
-        border-radius: 50%;
-        background: linear-gradient(#ffb347, #ff5a2c);
-        opacity: 0.85;
+        inset: 0;
+        width: 100%;
+        height: 100%;
       }
-      .art .city {
-        position: absolute;
-        left: 0;
-        right: 0;
-        top: 44%;
-        height: 18%;
-        background: #1a1428;
-        clip-path: polygon(
-          0 60%,
-          4% 60%,
-          4% 20%,
-          9% 20%,
-          9% 45%,
-          14% 45%,
-          14% 5%,
-          18% 5%,
-          18% 50%,
-          25% 50%,
-          25% 30%,
-          31% 30%,
-          31% 55%,
-          40% 55%,
-          40% 15%,
-          44% 15%,
-          44% 60%,
-          55% 60%,
-          55% 35%,
-          60% 35%,
-          60% 0,
-          63% 0,
-          63% 50%,
-          72% 50%,
-          72% 25%,
-          78% 25%,
-          78% 55%,
-          86% 55%,
-          86% 10%,
-          90% 10%,
-          90% 50%,
-          100% 50%,
-          100% 100%,
-          0 100%
-        );
+      .shot:has(.scrim:not(.side)) .art .kart {
+        display: none;
       }
-      [data-theme="light"] .art .city {
-        background: #8a7a8f;
-      }
-      .art .road {
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        height: 38%;
-        background: #191722;
-        clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%);
-      }
-      [data-theme="light"] .art .road {
-        background: #2f3240;
-      }
-      .art .lane {
-        position: absolute;
-        left: 50%;
-        bottom: 0;
-        width: 8px;
-        height: 38%;
-        margin-left: -4px;
-        background: repeating-linear-gradient(
-          #ffd08a 0 22px,
-          transparent 22px 50px
-        );
-        clip-path: polygon(40% 0, 60% 0, 100% 100%, 0 100%);
-        opacity: 0.7;
-      }
-      .art .kart {
-        position: absolute;
-        left: 58%;
-        bottom: 9%;
-        width: 260px;
-        height: 110px;
-        background: #ff5a2c;
-        clip-path: polygon(
-          10% 40%,
-          35% 40%,
-          45% 10%,
-          75% 10%,
-          90% 40%,
-          100% 55%,
-          100% 85%,
-          0 85%,
-          0 55%
-        );
+      /* With the card docked left, the sun moves right so no part of it sits behind the glass. */
+      .shot:has(.scrim.side) .art .sun {
+        transform: translateX(250px);
       }
       /* Modals dim the game first, so highlights never bleed through the glass. */
       .scrim {
@@ -423,7 +359,7 @@
       .ghead {
         font: 600 16px/22px var(--pk-font-sans);
         color: var(--pk-text-subtle);
-        margin: 24px 4px 10px;
+        margin: 20px 4px 8px;
       }
       .srow {
         display: flex;
@@ -470,21 +406,210 @@
         width: 26px;
         height: 26px;
         border-radius: 50%;
-        background: var(--kit-accent-on);
+        background: #fff;
+        box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
       }
       .wordmark {
         display: block;
+      }
+      .k-tag {
+        font-size: 14px;
+        line-height: 22px;
+        padding: 0 10px;
+        margin-inline-start: 10px;
+        vertical-align: 2px;
       }
     </style>
   </head>
   <body>
     <template id="art"
       ><div class="art">
-        <div class="sun"></div>
-        <div class="city"></div>
-        <div class="road"></div>
-        <div class="lane"></div>
-        <div class="kart"></div></div
+        <svg
+          viewBox="0 0 1280 720"
+          preserveAspectRatio="xMidYMax slice"
+          aria-hidden="true"
+        >
+          <defs>
+            <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" style="stop-color: var(--sky-0)" />
+              <stop offset="0.6" style="stop-color: var(--sky-1)" />
+              <stop offset="1" style="stop-color: var(--sky-2)" />
+            </linearGradient>
+            <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" style="stop-color: var(--sun-0)" />
+              <stop offset="1" style="stop-color: var(--sun-1)" />
+            </linearGradient>
+            <radialGradient id="haze" cx="0.5" cy="1" r="0.6">
+              <stop
+                offset="0"
+                style="stop-color: var(--sun-1); stop-opacity: 0.45"
+              />
+              <stop
+                offset="1"
+                style="stop-color: var(--sun-1); stop-opacity: 0"
+              />
+            </radialGradient>
+            <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#fff" stop-opacity="0" />
+              <stop offset="1" stop-color="#fff" stop-opacity="0.9" />
+            </linearGradient>
+            <mask id="sunmask">
+              <rect width="1280" height="720" fill="#fff" />
+              <rect x="500" y="268" width="280" height="2" fill="#000" />
+              <rect x="500" y="279" width="280" height="4" fill="#000" />
+              <rect x="500" y="292" width="280" height="5" fill="#000" />
+              <rect x="500" y="306" width="280" height="7" fill="#000" />
+              <rect x="500" y="322" width="280" height="8" fill="#000" />
+              <rect x="500" y="339" width="280" height="10" fill="#000" />
+            </mask>
+            <mask id="gridmask">
+              <rect y="446" width="1280" height="274" fill="url(#fade)" />
+            </mask>
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="6" />
+            </filter>
+          </defs>
+          <rect width="1280" height="446" fill="url(#sky)" />
+          <ellipse cx="640" cy="446" rx="640" ry="220" fill="url(#haze)" />
+          <g class="sun">
+            <circle
+              cx="640"
+              cy="330"
+              r="132"
+              fill="url(#sun)"
+              mask="url(#sunmask)"
+            />
+          </g>
+          <path
+            d="M0 446V372C90 352 160 330 250 340S420 380 520 366 700 318 820 334 1020 380 1120 360 1240 336 1280 344V446Z"
+            style="fill: var(--hill-far)"
+          />
+          <path
+            d="M0 446V404C120 392 220 380 330 392S520 420 640 414 860 384 980 394 1180 418 1280 408V446Z"
+            style="fill: var(--hill-near)"
+          />
+          <rect y="446" width="1280" height="274" style="fill: var(--ground)" />
+          <path
+            d="M0 446.4H1280 M0 450.6H1280 M0 459.3H1280 M0 472.3H1280 M0 489.8H1280 M0 511.8H1280 M0 538.2H1280 M0 569.0H1280 M0 604.3H1280 M0 644.0H1280 M0 688.1H1280 M640 446L-800 720 M640 446L-680 720 M640 446L-560 720 M640 446L-440 720 M640 446L-320 720 M640 446L-200 720 M640 446L-80 720 M640 446L40 720 M640 446L160 720 M640 446L280 720 M640 446L400 720 M640 446L520 720 M640 446L640 720 M640 446L760 720 M640 446L880 720 M640 446L1000 720 M640 446L1120 720 M640 446L1240 720 M640 446L1360 720 M640 446L1480 720 M640 446L1600 720 M640 446L1720 720 M640 446L1840 720 M640 446L1960 720 M640 446L2080 720"
+            style="stroke: var(--grid)"
+            stroke-width="1"
+            opacity="0.22"
+            mask="url(#gridmask)"
+            fill="none"
+          />
+          <path d="M626 446H654L1230 720H50Z" style="fill: var(--road)" />
+          <path
+            d="M626 446L50 720M654 446L1230 720"
+            style="stroke: var(--edge)"
+            stroke-width="3"
+            opacity="0.55"
+            fill="none"
+          />
+          <path
+            d="M638.6 452.0H641.4L641.5 458.0H638.5Z M638.3 464.6H641.7L641.9 473.3H638.1Z M637.9 482.9H642.1L642.5 495.5H637.5Z M637.2 509.4H642.8L643.3 527.7H636.7Z M636.2 547.8H643.8L644.5 574.3H635.5Z M634.8 603.5H645.2L646.2 641.9H633.8Z M632.7 684.2H647.3L648.2 720.0H631.8Z"
+            style="fill: var(--lane)"
+            opacity="0.75"
+          />
+          <rect
+            y="445"
+            width="1280"
+            height="1.5"
+            style="fill: var(--edge)"
+            opacity="0.5"
+          />
+          <g class="kart" transform="translate(960 704) scale(0.8)">
+            <ellipse cx="0" cy="2" rx="118" ry="12" fill="#000" opacity="0.4" />
+            <rect
+              x="-112"
+              y="-60"
+              width="44"
+              height="60"
+              rx="12"
+              style="fill: var(--tyre)"
+            />
+            <rect
+              x="68"
+              y="-60"
+              width="44"
+              height="60"
+              rx="12"
+              style="fill: var(--tyre)"
+            />
+            <path
+              d="M-104 -50V-12M76 -50V-12"
+              style="stroke: var(--tyre-hi)"
+              stroke-width="3"
+              stroke-linecap="round"
+            />
+            <circle cx="0" cy="-104" r="22" style="fill: var(--helmet)" />
+            <path
+              d="M-5 -125.4Q0 -126.2 5 -125.4V-92H-5Z"
+              style="fill: var(--kart)"
+            />
+            <path
+              d="M-76 -22L-66 -58C-64 -66 -58 -70 -50 -70H50C58 -70 64 -66 66 -58L76 -22C78 -14 74 -10 66 -10H-66C-74 -10 -78 -14 -76 -22Z"
+              style="fill: var(--kart)"
+            />
+            <path
+              d="M-60 -64H60"
+              style="stroke: var(--kart-hi)"
+              stroke-width="3"
+              stroke-linecap="round"
+            />
+            <rect
+              x="-44"
+              y="-86"
+              width="6"
+              height="18"
+              rx="2"
+              style="fill: var(--kart-dark)"
+            />
+            <rect
+              x="38"
+              y="-86"
+              width="6"
+              height="18"
+              rx="2"
+              style="fill: var(--kart-dark)"
+            />
+            <rect
+              x="-92"
+              y="-94"
+              width="184"
+              height="12"
+              rx="6"
+              style="fill: var(--kart)"
+            />
+            <g filter="url(#glow)" opacity="0.9">
+              <rect
+                x="-56"
+                y="-38"
+                width="30"
+                height="8"
+                rx="4"
+                fill="#ff2d55"
+              />
+              <rect
+                x="26"
+                y="-38"
+                width="30"
+                height="8"
+                rx="4"
+                fill="#ff2d55"
+              />
+            </g>
+            <rect x="-56" y="-38" width="30" height="8" rx="4" fill="#ff4d6d" />
+            <rect x="26" y="-38" width="30" height="8" rx="4" fill="#ff4d6d" />
+            <rect
+              x="-48"
+              y="-20"
+              width="96"
+              height="6"
+              rx="3"
+              style="fill: var(--kart-dark)"
+            />
+          </g>
+        </svg></div
     ></template>
     <template id="wm">
       <!-- product.wordmark: the game's own wordmark texture, drawn here as an image asset -->
@@ -540,7 +665,7 @@
         </figcaption>
         <div class="shot" data-shot="gate">
           <div
-            class="scrim"
+            class="scrim side"
             style="
               background: linear-gradient(
                 90deg,
@@ -609,14 +734,11 @@
                 License key
               </div>
               <div class="gfield">
-                <span
-                  class="mono"
-                  style="
-                    font-size: 17px;
-                    line-height: 24px;
-                    overflow-wrap: anywhere;
-                  "
-                  >pkey_driftkart_K7QP2MXDR4TC8HJN3WPLDA</span
+                <span class="mono" style="font-size: 17px; line-height: 24px"
+                  ><span class="k-key"
+                    ><span>pkey_driftkart_K7QP2MXDR4TC8HJN</span
+                    ><span>3WPLDA</span></span
+                  ></span
                 >
               </div>
               <div
@@ -634,9 +756,11 @@
                   data-icon="checkCircle"
                   data-size="18"
                 ></span
-                >Drift Kart Deluxe<span
-                  style="color: var(--pk-text-muted); font-weight: 400"
-                  >&#8201;·&#8201;Lifetime&#8201;·&#8201;2 devices</span
+                ><span style="white-space: nowrap"
+                  >Drift Kart Deluxe
+                  <span style="color: var(--pk-text-muted); font-weight: 400"
+                    >· Lifetime · 2 devices</span
+                  ></span
                 >
               </div>
             </div>
@@ -710,11 +834,9 @@
                   font-weight: 600;
                   letter-spacing: 0.06em;
                   color: var(--pk-text-strong);
-                  display: flex;
-                  gap: 0.5em;
                 "
               >
-                <span>WDJB</span><span>MJHT</span>
+                WDJB-MJHT
               </div>
               <div
                 style="
@@ -780,9 +902,8 @@
               <div class="grow focus">
                 <span data-icon="monitor" data-size="24"></span>
                 <div class="t">
-                  Living room PC<small
-                    >Windows 11 · last used 3 weeks ago · least recent</small
-                  >
+                  Living room PC <em class="k-tag">Least recent</em
+                  ><small>Windows 11 · last used 3 weeks ago</small>
                 </div>
                 <span class="rd on"></span>
               </div>
@@ -921,27 +1042,27 @@
             style="
               left: 64px;
               right: 64px;
-              top: 48px;
-              bottom: 48px;
-              padding: 28px 40px;
+              top: 28px;
+              bottom: 96px;
+              padding: 20px 40px 32px;
               gap: 0;
               align-content: start;
             "
           >
             <div
               class="tabsg"
-              style="justify-content: center; margin-bottom: 18px"
+              style="justify-content: center; margin-bottom: 14px"
             >
               <i class="pad sh">L1</i><span class="t">Controls</span
               ><span class="t">Audio</span><span class="t">Video</span
               ><span class="t on">Account</span><i class="pad sh">R1</i>
             </div>
             <div style="width: 760px; margin: 0 auto">
-              <div class="srow" style="min-height: 84px">
+              <div class="srow" style="min-height: 76px">
                 <span
                   class="k-appicon"
                   data-art="driftkart"
-                  data-size="52"
+                  data-size="48"
                   style="border-radius: 13px"
                 ></span>
                 <div class="lbl">
@@ -995,7 +1116,7 @@
         <figcaption>godot · gate at 1280 × 800 (Steam Deck, 16:10)</figcaption>
         <div class="shot deck" data-shot="gate-deck">
           <div
-            class="scrim"
+            class="scrim side"
             style="
               background: linear-gradient(
                 90deg,
