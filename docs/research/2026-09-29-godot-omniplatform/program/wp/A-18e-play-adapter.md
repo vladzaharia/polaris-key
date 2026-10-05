@@ -97,7 +97,15 @@ The code is the fact where this brief and it disagreed:
   `0068_store_edit_leases`, `TABLE_OWNERS.distribution`, global by design in R11-05).
 - **`edits.delete` stays outside the gate.** P5-03 discards its throwaway edit with it and its
   tests require that; no gate rule may allow a `DELETE`. It is `GoogleApiClient.discardEdit`, a
-  fixed method that can address only `edits/<editId>` and discards an uncommitted draft.
+  fixed method that can address only `edits/<editId>` and discards an uncommitted draft. The
+  adapter's own `PlayEditSession.close()` uses it too, for an edit it opened and did not commit.
+  This is an exception to the never-list's "all 12 DELETEs" and **awaits the lead's or owner's
+  explicit acknowledgement** (review round 1).
+- **The lease keeps its own clock.** Every acquire, renew and read takes the wall clock inside
+  `lease.ts`; callers pass no `now`. The cron's `now` is computed once per run and reused for every
+  product and connector, so a late Play tick would have written an already-expired lease and lost it
+  to provisioning mid-edit (review round 1). The poll also renews its lease before each vitals
+  auto-halt and skips the halt (retried next tick) when the lease was lost.
 - **P5-03's controls are gated, not ledgered or typed.** They have no `Idempotency-Key` and the
   vitals auto-halt has no session, so `performStoreWrite` cannot run them unchanged; they pass the
   gate with `PLAY_EDIT_SCOPE.rolloutControl` and keep `confirmRollback`. A typed production

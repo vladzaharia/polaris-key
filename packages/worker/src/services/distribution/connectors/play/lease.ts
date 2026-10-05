@@ -25,6 +25,14 @@
  * renew or release it. The TTLs are minutes; Google's own edit expiry (`expiryTimeSeconds`) has no
  * documented duration, so A-18k measures it live (S-15 §12) before the TTLs are tuned.
  *
+ * TIME comes from ONE clock, the wall clock read here at the moment of each statement, never a
+ * caller's `now`. A caller's `now` is stale by construction: the cron computes one `now` per
+ * scheduled run and reuses it for every product and every connector, so a later product's Play
+ * tick can start minutes after it. A lease written as `cronNow + 120` would already be expired by
+ * the wall clock, and a provisioning session (which acquires against the wall clock) would take it
+ * over while the poll's edit is still open. Reading the wall clock inside every acquire, renew and
+ * read makes all holders compare against the same time. Tests drive it with fake timers.
+ *
  * The lease is per PACKAGE (the brief's unit, and the unit edits are scoped to). The `holder`,
  * `purpose` and `actor` columns name a caller kind and an admin `sub`, never a credential.
  */
@@ -85,12 +93,14 @@ export interface AcquireOptions {
   purpose: PlayLeasePurpose;
   /** `admin:<sub>`, `connector:play`, `connector:play-vitals`. */
   actor: string;
-  now: number;
   /** Override the purpose's TTL (seconds, at least 30). */
   ttl?: number;
 }
 
 const ACTOR = /^[a-z][a-z0-9-]*:\S{1,200}$/;
+
+/** The single lease clock: wall-clock epoch seconds, read at the moment of use (see the file comment). */
+const leaseNow = (): number => Math.floor(Date.now() / 1000);
 
 /**
  * Take the lease on `packageName`, or answer who holds it. One statement: the insert wins over no
@@ -103,7 +113,8 @@ export async function acquirePlayEditLease(
   if (!ACTOR.test(o.actor)) throw new Error("invalid lease actor");
   const ttl = Math.max(30, Math.floor(o.ttl ?? PLAY_LEASE_TTL[o.purpose]));
   const holder = crypto.randomUUID();
-  const expiresAt = o.now + ttl;
+  const now = leaseNow();
+  const expiresAt = now + ttl;
   const won = await db.runChanges(
     `INSERT INTO store_edit_leases (store, app, holder, purpose, actor, acquired_at, expires_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -116,7 +127,7 @@ export async function acquirePlayEditLease(
     holder,
     o.purpose,
     o.actor,
-    o.now,
+    now,
     expiresAt,
   );
   if (won === 1)
@@ -126,13 +137,13 @@ export async function acquirePlayEditLease(
       purpose: o.purpose,
       expiresAt,
     };
-  const row = await readPlayEditLease(db, o.packageName, o.now);
+  const row = await readPlayEditLease(db, o.packageName);
   // The holder released it between our statement and this read: say it was held (a caller
   // retries on its next tick or press; nothing is opened on a guess).
   return {
     held: true,
     purpose: row?.purpose ?? o.purpose,
-    expiresAt: row?.expiresAt ?? o.now,
+    expiresAt: row?.expiresAt ?? now,
   };
 }
 
@@ -140,14 +151,13 @@ export async function acquirePlayEditLease(
 export async function readPlayEditLease(
   db: Db,
   packageName: string,
-  now: number,
 ): Promise<{ purpose: PlayLeasePurpose; expiresAt: number } | null> {
   const row = await db.first<{ purpose: PlayLeasePurpose; expires_at: number }>(
     `SELECT purpose, expires_at FROM store_edit_leases
       WHERE store = ? AND app = ? AND expires_at > ?`,
     PLAY_LEASE_STORE,
     packageName,
-    now,
+    leaseNow(),
   );
   return row ? { purpose: row.purpose, expiresAt: row.expires_at } : null;
 }
@@ -159,9 +169,9 @@ export async function readPlayEditLease(
 export async function renewPlayEditLease(
   db: Db,
   lease: PlayEditLease,
-  now: number,
   ttl = PLAY_LEASE_TTL[lease.purpose],
 ): Promise<boolean> {
+  const now = leaseNow();
   const expiresAt = now + Math.max(30, Math.floor(ttl));
   const changed = await db.runChanges(
     `UPDATE store_edit_leases SET expires_at = ?

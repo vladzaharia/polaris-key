@@ -371,7 +371,6 @@ async function withRun(
     packageName: setup.packageName,
     purpose: "control",
     actor: `admin:${c.session.sub}`,
-    now: c.now,
   });
   if (isLeaseHeld(lease))
     return refuse(

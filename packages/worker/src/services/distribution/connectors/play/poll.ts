@@ -69,6 +69,7 @@ import {
   acquirePlayEditLease,
   isLeaseHeld,
   releasePlayEditLease,
+  renewPlayEditLease,
 } from "./lease.js";
 import { errorLine, finishRun, playRun, type PlayRun } from "./run.js";
 import {
@@ -411,7 +412,6 @@ export async function pollPlay(ctx: ConnectorContext): Promise<PollOutcome> {
     packageName: setup.packageName,
     purpose: "poll",
     actor: `connector:${PLAY_CONNECTOR}`,
-    now: ctx.now,
   });
   if (isLeaseHeld(lease))
     return {
@@ -437,7 +437,9 @@ export async function pollPlay(ctx: ConnectorContext): Promise<PollOutcome> {
     const synced = await syncPlay(run);
     applied = synced.applied;
     const settings = await readPlaySettings(ctx.db, product);
-    const vitals = await runVitals(run, synced.tracks, settings.vitals);
+    const vitals = await runVitals(run, synced.tracks, settings.vitals, () =>
+      renewPlayEditLease(ctx.db, lease),
+    );
     return {
       connector: PLAY_CONNECTOR,
       calls: run.calls(),

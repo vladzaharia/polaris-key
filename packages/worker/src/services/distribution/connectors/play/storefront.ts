@@ -217,8 +217,12 @@ export type PlaySessionPurpose = "provisioning" | "import";
  * `close` (always, in a `finally`): an uncommitted edit is discarded and the lease released.
  */
 export class PlayEditSession {
-  /** What the edit's steps touched, for the commit's gate scope. */
-  readonly touched = { production: false, statusChange: false };
+  /**
+   * What the edit's steps touched, for the commit's gate scope. No adapter step changes a release
+   * status (halt, resume, ramp and complete are P5-03's controls, which open and commit their own
+   * edit), so production is the only scope the adapter's commit has to type.
+   */
+  readonly touched = { production: false };
   committed = false;
   private error: unknown = null;
 
@@ -253,7 +257,6 @@ export class PlayEditSession {
       packageName: setup.packageName,
       purpose,
       actor: `admin:${ctx.session.sub}`,
-      now: clockOf(ctx)(),
     });
     if (isLeaseHeld(lease))
       return refuse(
@@ -285,9 +288,7 @@ export class PlayEditSession {
 
   /** Renew the lease before a step (a long upload renews it again). Throws when it was lost. */
   async keepAlive(): Promise<void> {
-    if (
-      !(await renewPlayEditLease(this.ctx.db, this.lease, clockOf(this.ctx)()))
-    )
+    if (!(await renewPlayEditLease(this.ctx.db, this.lease)))
       throw new PlayEditLeaseLost();
   }
 
@@ -332,7 +333,11 @@ export async function withPlayEditSession<T>(
 
 // ── Typed confirmation ───────────────────────────────────────────────────────────────────────
 
-/** Play's name for the app: the default-language listing's title, as Play reports it now. */
+/**
+ * Play's name for the app: the default-language listing's title, read through the OPEN edit. When
+ * this edit already changed that title, the phrase is the new title, which is intended: the
+ * operator confirms the name the commit will publish, the one the editor shows them.
+ */
 export async function playAppName(s: PlayEditSession): Promise<string | null> {
   const details = await s.api.request(
     "GET",
@@ -1022,7 +1027,7 @@ export async function playSetReleaseNotes(
 /**
  * Validate and commit the session's edit (`edits.validate`, then `edits.commit` with
  * `changesInReviewBehavior=ERROR_IF_IN_REVIEW`, and `changesNotSentForReview=true` to stage only).
- * An edit that touched production or changed a release status is TYPED: the caller passes `typed`
+ * An edit that touched production is TYPED: the caller passes `typed`
  * only after `playTypedConfirmation`; the gate refuses it otherwise.
  */
 export async function playCommit(
@@ -1030,10 +1035,9 @@ export async function playCommit(
   input: { typed?: boolean; stageOnly?: boolean },
   idempotencyKey: string,
 ): Promise<StoreWriteResult> {
-  const scope =
-    s.touched.production || s.touched.statusChange
-      ? PLAY_EDIT_SCOPE.production
-      : PLAY_EDIT_SCOPE.testing;
+  const scope = s.touched.production
+    ? PLAY_EDIT_SCOPE.production
+    : PLAY_EDIT_SCOPE.testing;
   const resource = (committed: boolean): StoreResource => ({
     type: "edits",
     id: s.editId,

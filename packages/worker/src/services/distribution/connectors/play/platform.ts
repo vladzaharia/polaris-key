@@ -185,7 +185,6 @@ async function readTracks(
       packageName,
       purpose: "lister",
       actor: `admin:${o.actor.sub}`,
-      now: o.now,
     },
     async () => {
       const edit = await publisher.insertEdit();

@@ -1688,8 +1688,13 @@ edit, commit or Console change invalidates every other open one.
   controls (409 `edit_lease_held`), A-16's `?tracks=1` lister (the app shows busy) and the adapter's
   session (`provisioning`, or `import` for a read-only edit), all before any token is minted. The
   holder renews before each step and after a long upload; a lost lease stops the session
-  (`PlayEditLeaseLost`). TTLs are minutes, so a crashed holder blocks nobody for long. Tests:
-  `test/playLease.test.ts`, conformance item 10.
+  (`PlayEditLeaseLost`); the poll renews before each vitals auto-halt and skips the halt when the
+  lease was lost. Every acquire, renew and read takes its time from one wall clock inside
+  `lease.ts`, never a caller's `now`: the cron's `now` is computed once per run and reused for
+  every product, so a late Play tick would otherwise write an already-expired lease and lose it to
+  provisioning mid-edit. TTLs are minutes, so a crashed holder blocks nobody for long. Tests:
+  `test/playLease.test.ts` (including a tick that starts five minutes after its cron fired),
+  conformance item 10.
 - **The write gate**, deny-by-default and consulted by every gated `GoogleApiClient` before its
   token thunk: P5-03's poll and controls, A-16's lister and the adapter all build gated clients
   (`PlayPublisher` refuses an ungated one). Twelve allow rules; the other 88 writes of the pinned
@@ -1700,14 +1705,17 @@ edit, commit or Console change invalidates every other open one.
   key; uploads by content type (PNG, JPEG) and the 15 MiB cap; the commit only with
   `changesInReviewBehavior=ERROR_IF_IN_REVIEW`.
 - **Typed confirmation** (Play's default-language title, compared by `playTypedConfirmation`):
-  the commit of an edit that touched production or a release status, a production release
+  the commit of an edit that touched production (no adapter step changes a release status; halt,
+  resume, ramp and complete are P5-03's controls), a production release
   `completed` or at a `userFraction` of 1.0, and a one-time product price after the initial one.
   A commit carries no body, so the handler tells the gate what its edit holds
   (`resourceState`: `PLAY_EDIT_SCOPE`), and a missing scope is treated as production.
 - **The ledger, budget and audit** of A-18a: every adapter write is one `performStoreWrite` step
   with a natural-key pre-read (listing by language, image by hash with the ledger's own upload row
   as fallback, track by name, product by id); each request spends the local 3,000-per-minute
-  counter; tester groups are stored as a count, never an address.
+  counter, but the counter is checked only when a session begins: a spend that fails is not
+  retried and does not stop the session, so one session may run past the limit by its own steps
+  (Google's own quota still applies); tester groups are stored as a count, never an address.
 - **No image deletes in v1** (decision 6): a replacement is uploaded and the operator removes the
   old image in the Console (`google-play.main-store-listing`).
 

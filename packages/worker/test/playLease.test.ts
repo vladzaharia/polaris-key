@@ -15,8 +15,23 @@ import {
   withPlayEditLease,
   type PlayEditLease,
 } from "../src/services/distribution/connectors/play/lease.js";
+import {
+  isPlayRefusal,
+  PlayEditSession,
+  type PlayStoreContext,
+} from "../src/services/distribution/connectors/play/storefront.js";
+import { buildHooks } from "../src/core/hooks.js";
+import { loadProductPublic } from "../src/core/products.js";
+import { SERVICES } from "../src/mount.js";
 import { makeTestDb } from "./helpers.js";
-import { admin, playWorld, poll, NOW, PLAY_PACKAGE } from "./playWorld.js";
+import {
+  admin,
+  playWorld,
+  poll,
+  NOW,
+  PLAY_PACKAGE,
+  SLUG,
+} from "./playWorld.js";
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"], now: NOW * 1000 });
@@ -26,6 +41,8 @@ afterEach(() => {
 });
 
 const PKG = "gg.acme.djdl";
+/** The lease reads the wall clock itself (no caller `now`): tests move it. */
+const at = (t: number) => vi.setSystemTime(t * 1000);
 
 describe("the lease itself", () => {
   it("one holder at a time; a second caller is told who holds it and until when", async () => {
@@ -34,14 +51,13 @@ describe("the lease itself", () => {
       packageName: PKG,
       purpose: "provisioning",
       actor: "admin:u1",
-      now: NOW,
     });
     expect(isLeaseHeld(a)).toBe(false);
+    at(NOW + 1);
     const b = await acquirePlayEditLease(db, {
       packageName: PKG,
       purpose: "poll",
       actor: "connector:play",
-      now: NOW + 1,
     });
     expect(b).toEqual({
       held: true,
@@ -53,7 +69,6 @@ describe("the lease itself", () => {
       packageName: "gg.acme.other",
       purpose: "poll",
       actor: "connector:play",
-      now: NOW + 1,
     });
     expect(isLeaseHeld(other)).toBe(false);
   });
@@ -66,7 +81,6 @@ describe("the lease itself", () => {
           packageName: PKG,
           purpose: i % 2 ? "poll" : "control",
           actor: "connector:play",
-          now: NOW,
         }),
       ),
     );
@@ -79,18 +93,18 @@ describe("the lease itself", () => {
       packageName: PKG,
       purpose: "poll",
       actor: "connector:play",
-      now: NOW,
     })) as PlayEditLease;
+    at(NOW + 120);
     const next = await acquirePlayEditLease(db, {
       packageName: PKG,
       purpose: "provisioning",
       actor: "admin:u1",
-      now: NOW + 120,
     });
     expect(isLeaseHeld(next)).toBe(false);
-    expect(await renewPlayEditLease(db, old, NOW + 121)).toBe(false);
+    at(NOW + 121);
+    expect(await renewPlayEditLease(db, old)).toBe(false);
     await releasePlayEditLease(db, old);
-    expect(await readPlayEditLease(db, PKG, NOW + 121)).toEqual({
+    expect(await readPlayEditLease(db, PKG)).toEqual({
       purpose: "provisioning",
       expiresAt: NOW + 720,
     });
@@ -102,22 +116,23 @@ describe("the lease itself", () => {
       packageName: PKG,
       purpose: "provisioning",
       actor: "admin:u1",
-      now: NOW,
     })) as PlayEditLease;
-    expect(await renewPlayEditLease(db, l, NOW + 500)).toBe(true);
+    at(NOW + 500);
+    expect(await renewPlayEditLease(db, l)).toBe(true);
     expect(l.expiresAt).toBe(NOW + 1100);
     await releasePlayEditLease(db, l);
-    expect(await readPlayEditLease(db, PKG, NOW + 501)).toBeNull();
+    at(NOW + 501);
+    expect(await readPlayEditLease(db, PKG)).toBeNull();
     await expect(
       withPlayEditLease(
         db,
-        { packageName: PKG, purpose: "import", actor: "admin:u1", now: NOW },
+        { packageName: PKG, purpose: "import", actor: "admin:u1" },
         async () => {
           throw new Error("boom");
         },
       ),
     ).rejects.toThrow("boom");
-    expect(await readPlayEditLease(db, PKG, NOW)).toBeNull();
+    expect(await readPlayEditLease(db, PKG)).toBeNull();
   });
 
   it("refuses an actor that is not a caller kind and id", async () => {
@@ -126,7 +141,6 @@ describe("the lease itself", () => {
         packageName: PKG,
         purpose: "poll",
         actor: "nobody",
-        now: NOW,
       }),
     ).rejects.toThrow(/actor/);
   });
@@ -138,7 +152,6 @@ describe("every Play caller takes it", () => {
       packageName: PLAY_PACKAGE,
       purpose: "provisioning",
       actor: "admin:u1",
-      now: NOW,
     })) as PlayEditLease;
   }
 
@@ -154,7 +167,7 @@ describe("every Play caller takes it", () => {
   it("the poll releases its own lease, so the next caller is not blocked", async () => {
     const w = await playWorld();
     await poll(w);
-    expect(await readPlayEditLease(w.db, PLAY_PACKAGE, NOW)).toBeNull();
+    expect(await readPlayEditLease(w.db, PLAY_PACKAGE)).toBeNull();
   });
 
   it("a console control answers 409 edit_lease_held before any token or edit", async () => {
@@ -172,5 +185,115 @@ describe("every Play caller takes it", () => {
     );
     expect(w.fake.requests).toEqual([]);
     expect(w.fake.tokenRequests).toEqual([]);
+  });
+  it("a poll tick that starts long after its cron fired still holds the lease against the wall clock", async () => {
+    // The cron computes one `now` and reuses it for every product and connector, so a later
+    // product's Play tick can start minutes after it. Before the fix the poll's lease expired at
+    // cronNow + 120, already past by the wall clock, and provisioning took it over mid-tick.
+    const w = await playWorld();
+    const product = (await loadProductPublic(w.db, SLUG))!;
+    const ctx: PlayStoreContext = {
+      env: w.env,
+      db: w.db,
+      product: SLUG,
+      hooks: buildHooks(SERVICES, product.services, {
+        env: w.env,
+        db: w.db,
+        product,
+        now: NOW,
+      }),
+      session: {
+        sub: "u1",
+        name: "Ada",
+        email: "ada@example.test",
+        groups: ["platform-admins"],
+        csrf: "c",
+        exp: NOW + 3600,
+      },
+      now: NOW,
+      fetchImpl: w.fetchImpl,
+      clock: () => NOW,
+    };
+    const cronNow = NOW - 300;
+    const inner = w.fetchImpl;
+    let midTick: Awaited<ReturnType<typeof PlayEditSession.begin>> | null =
+      null;
+    let pollEditOpen = false;
+    let tried = false;
+    w.fetchImpl = async (input, init) => {
+      const res = await inner(input, init);
+      // Right after the poll's edit opens: provisioning tries to begin.
+      if (
+        !tried &&
+        init?.method === "POST" &&
+        new URL(input).pathname.endsWith("/edits")
+      ) {
+        tried = true;
+        pollEditOpen = w.fake.openEdits().length === 1;
+        midTick = await PlayEditSession.begin(ctx, "provisioning");
+      }
+      return res;
+    };
+    const report = await poll(w, cronNow);
+    expect(report.failures).toEqual({});
+    expect(pollEditOpen).toBe(true);
+    expect(midTick).toMatchObject({
+      ok: false,
+      status: 409,
+      reason: "edit_lease_held",
+    });
+    // The poll released its lease; provisioning now begins.
+    w.fetchImpl = inner;
+    const after = await PlayEditSession.begin(ctx, "provisioning");
+    if (isPlayRefusal(after)) throw new Error(after.message);
+    await after.close();
+  });
+  it("the vitals auto-halt renews the poll's lease first and halts nothing once it was lost", async () => {
+    const w = await playWorld();
+    const res = await admin(
+      w,
+      "POST",
+      "/distribution/connectors/play/settings",
+      {
+        vitals: { enabled: true },
+      },
+    );
+    expect(res.status).toBe(200);
+    const inner = w.fetchImpl;
+    let stolen = false;
+    w.fetchImpl = async (input, init) => {
+      const r = await inner(input, init);
+      // After the last Reporting read, before the halt: the poll's lease expires and another
+      // caller takes it (a tick slowed by back-off past its TTL).
+      if (
+        !stolen &&
+        new URL(input).pathname.endsWith("anrRateMetricSet:query")
+      ) {
+        stolen = true;
+        await w.db.run(
+          "UPDATE store_edit_leases SET expires_at = ? WHERE app = ?",
+          NOW,
+          PLAY_PACKAGE,
+        );
+        expect(
+          isLeaseHeld(
+            await acquirePlayEditLease(w.db, {
+              packageName: PLAY_PACKAGE,
+              purpose: "provisioning",
+              actor: "admin:u1",
+            }),
+          ),
+        ).toBe(false);
+      }
+      return r;
+    };
+    const report = await poll(w);
+    expect(stolen).toBe(true);
+    expect(JSON.stringify(report)).toContain("edit lease was lost");
+    // No halt was opened or committed over the new holder's edit, and its lease is intact.
+    expect(w.fake.requests.filter((r) => r.method === "PATCH")).toEqual([]);
+    expect(await readPlayEditLease(w.db, PLAY_PACKAGE)).toMatchObject({
+      purpose: "provisioning",
+    });
   });
 });

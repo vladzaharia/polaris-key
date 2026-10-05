@@ -79,6 +79,13 @@ little as works:
 - Grant **Release to production, exclude devices, and use Play App Signing** and **Release apps
   to testing tracks**, plus **View app information (read-only)** if you turn on the vitals
   auto-halt (the Reporting API needs it). Nothing financial, nothing about users or orders.
+- **Only if Polaris provisions your store presence** (listings, images, one-time products,
+  closed tracks and Google Group testers, from the storefront editor), also grant **Manage
+  store presence** (listings, images, one-time products) and **Manage testing tracks and edit
+  tester lists** (closed tracks and testers). Without them every provisioning write is refused
+  with a 403; the connector's reads and rollout controls do not need them.
+- **Never grant Admin, and never grant Manage policy declarations.** Data safety, content
+  rating and the other policy declarations stay in Play Console; Polaris does not write them.
 - Keep CI's upload key separate from this account if you want uploads and rollout control apart.
 - To rotate, create a new key in Google Cloud, store it under the same credential id (cached
   tokens drop with the old value), then delete the old key in Google Cloud.

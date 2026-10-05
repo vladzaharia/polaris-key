@@ -356,7 +356,7 @@ describe("provisioning in one edit", () => {
       w.fake.requests.filter((r) => r.method === "POST" && r.path === "edits"),
     ).toHaveLength(1);
     expect(w.fake.requests.some((r) => r.method === "DELETE")).toBe(false);
-    expect(await readPlayEditLease(w.db, PLAY_PACKAGE, NOW)).toBeNull();
+    expect(await readPlayEditLease(w.db, PLAY_PACKAGE)).toBeNull();
   });
 
   it("tester groups are stored as a count, never an address", async () => {
@@ -719,7 +719,6 @@ describe("the lease, the budget and the reads", () => {
       packageName: PLAY_PACKAGE,
       purpose: "control",
       actor: "admin:u2",
-      now: NOW,
     });
     expect(await PlayEditSession.begin(await ctxFor(w))).toMatchObject({
       ok: false,
@@ -729,17 +728,14 @@ describe("the lease, the budget and the reads", () => {
     expect(w.fake.tokenRequests).toEqual([]);
 
     const w2 = await playWorld();
-    let now = NOW;
-    const ctx = { ...(await ctxFor(w2)), clock: () => now };
-    const s = await PlayEditSession.begin(ctx);
+    const s = await PlayEditSession.begin(await ctxFor(w2));
     if (isPlayRefusal(s)) throw new Error(s.message);
     try {
-      now = NOW + 601; // the lease expired
+      vi.setSystemTime((NOW + 601) * 1000); // the lease expired (by the wall clock)
       await acquirePlayEditLease(w2.db, {
         packageName: PLAY_PACKAGE,
         purpose: "poll",
         actor: "connector:play",
-        now,
       });
       await expect(
         playWriteListing(s, "en-US", { title: "x" }, key()),
@@ -782,7 +778,7 @@ describe("the lease, the budget and the reads", () => {
     });
     expect(w.fake.openEdits()).toEqual([]);
     expect(w.fake.requests.at(-1)!.method).toBe("DELETE");
-    expect(await readPlayEditLease(w.db, PLAY_PACKAGE, NOW)).toBeNull();
+    expect(await readPlayEditLease(w.db, PLAY_PACKAGE)).toBeNull();
   });
 
   it("status maps releaseLifecycleState per mapped track, without an edit", async () => {
