@@ -4,6 +4,12 @@ import {
 } from "@polaris-key/catalog";
 import { type SecretDelivery } from "@polaris-key/protocol/config";
 import {
+  DEFAULT_RESERVED_DISPLAY_NAMES_MODE,
+  checkDisplayName,
+  reservedDisplayNameMessage,
+  type ReservedDisplayNamesMode,
+} from "./displayName.js";
+import {
   DEFAULT_RESERVED_NAMES_MODE,
   reservedNameDeclarations,
   type ReservedNamesMode,
@@ -1255,6 +1261,11 @@ function registrationPolicy(productRoot: Record<string, unknown>): unknown {
  */
 export interface ValidationOptions {
   reservedNames?: ReservedNamesMode;
+  /**
+   * PX-W13 (plans/PX-W13.md §3, §8 Q4): the severity of a reserved display name. The Worker passes
+   * its platform setting `identity.reservedDisplayNames`; anything else gets the default, `warn`.
+   */
+  reservedDisplayNames?: ReservedDisplayNamesMode;
 }
 
 export function validateManifestDocuments(
@@ -2410,6 +2421,81 @@ function validateDocuments(
       manifest.distribution,
       distributionContext(relDoc),
     );
+  }
+
+  // PX-W13 (plans/PX-W13.md §3): the names the sign-in card shows an app by. Text with a control,
+  // zero-width or bidi code point is always refused; a reserved name is reported with the
+  // platform's severity (`identity.reservedDisplayNames`, `warn` until the lead flips it). Two
+  // literal emit sites for the reserved rule, so the generated validation-codes page lists both
+  // severities. The system product may call itself Polaris Key.
+  {
+    const mode =
+      opts.reservedDisplayNames ?? DEFAULT_RESERVED_DISPLAY_NAMES_MODE;
+    const listing = isRecord(manifest.distribution)
+      ? asRecord(manifest.distribution.listing)
+      : {};
+    // [file, path, field, value, textOnly]: a per-outlet listing is merged over the document's
+    // for store pages only, so it is held to the text rule but not judged as the app's name.
+    const named: [
+      ValidationMessage["file"],
+      string,
+      string,
+      unknown,
+      boolean,
+    ][] = [
+      ["product", "/product/name", "product.name", productNode.name, false],
+      ["distribution", "/listing/name", "listing.name", listing.name, false],
+      [
+        "distribution",
+        "/listing/developerName",
+        "listing.developerName",
+        listing.developerName,
+        false,
+      ],
+    ];
+    const outlets = isRecord(manifest.distribution)
+      ? asRecord(manifest.distribution.outlets)
+      : {};
+    for (const [id, entry] of Object.entries(outlets)) {
+      const l = isRecord(entry) ? asRecord(entry.listing) : {};
+      for (const f of ["name", "developerName"] as const)
+        named.push([
+          "distribution",
+          `/outlets/${id}/listing/${f}`,
+          `outlets.${id}.listing.${f}`,
+          l[f],
+          true,
+        ]);
+    }
+    for (const [file, path, field, value, textOnly] of named) {
+      if (typeof value !== "string" || value === "") continue;
+      const verdict = checkDisplayName(value, { slug: productSlug });
+      if (textOnly && verdict === "reserved") continue;
+      if (verdict === "invalid")
+        add(
+          errors,
+          file,
+          path,
+          "invalid_display_text",
+          `${field} must not hold control, zero-width or bidirectional-formatting characters, or start or end with a space.`,
+        );
+      else if (verdict === "reserved" && mode === "error")
+        add(
+          errors,
+          file,
+          path,
+          "reserved_display_name",
+          reservedDisplayNameMessage(field, value, "error"),
+        );
+      else if (verdict === "reserved")
+        add(
+          warnings,
+          file,
+          path,
+          "reserved_display_name",
+          reservedDisplayNameMessage(field, value, "warn"),
+        );
+    }
   }
 
   // Declared secret names are looked up in the product's sealed-secret store.
@@ -5410,3 +5496,5 @@ export * from "./labels.js";
 export * from "./transportIds.js";
 // S-19 §7.4 (LX-05): reserved entitlement names and what a compatible declaration is.
 export * from "./reservedNames.js";
+// PX-W13 (plans/PX-W13.md §3): display names on the sign-in card and the reserved-name check.
+export * from "./displayName.js";

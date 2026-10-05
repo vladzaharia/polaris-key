@@ -348,6 +348,8 @@ export {
 } from "./config.js";
 
 export { canonicalArch, canonicalPlatform } from "./headers.js";
+// WIRE-CONTRACT-V4 §12.7.1 (PX-W13): the device label every SDK sends as `deviceName`.
+export { normalizeDeviceLabel } from "./deviceLabel.js";
 
 export {
   channelForVersion,

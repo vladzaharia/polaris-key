@@ -151,9 +151,13 @@ describe("the sources", () => {
       updateMatrixVersion: 1,
       outletMatrixVersion: 1,
       planMatrixVersion: 2,
+      deviceLabelVersion: 1,
       contentCorpusVersion: 2,
     });
     expect(SOURCES.protocol.PROTOCOL_VERSION).toBe(4);
+    // PX-W13: the identity subpath's constants ride along with core's.
+    expect(SOURCES.protocol.DEVICE_LABEL_MAX_CODEPOINTS).toBe(64);
+    expect(SOURCES.protocol.REQUEST_HANDLE_TTL_SECONDS).toBe(600);
     expect(SOURCES.protocol.MAX_WIRE_INTEGER).toBe(Number.MAX_SAFE_INTEGER);
     expect(SOURCES.protocol.MAX_JSON_DEPTH).toBe(64);
     expect(SOURCES.protocol.MAX_RECORD_JWS_BYTES).toBe(88844);

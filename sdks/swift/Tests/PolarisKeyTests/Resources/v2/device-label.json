@@ -1,0 +1,156 @@
+{
+  "deviceLabelVersion": 1,
+  "description": "Device labels (WIRE-CONTRACT-V4 section 12.7.1, plans/PX-W13.md section 2.1). Every SDK normalises the label it sends as `deviceName` (device-code sign-in, licence activation, registration), and the Worker normalises it again on receipt: (1) map U+0009-000D, U+0085, U+00A0, U+2028, U+2029 and U+3000 to U+0020; (2) delete U+0000-001F, U+007F-009F, U+061C, U+200B-200F, U+202A-202E, U+2060-2064, U+2066-2069 and U+FEFF; (3) collapse runs of U+0020 to one and trim both ends; (4) keep at most 64 code points (`DEVICE_LABEL_MAX_CODEPOINTS`; code points, never UTF-16 units) and trim a trailing space the cut exposes; (5) an empty result is no label: `expect: null`, the member is omitted and the Worker stores NULL. No Unicode normalisation; nothing is ever rejected. Each runner asserts its `normalizeDeviceLabel` maps every `raw` to `expect`. Non-ASCII code points are written escaped. Append-only: a new row keeps `deviceLabelVersion`; a changed row or rule bumps it.",
+  "cases": [
+    {
+      "id": "ascii-plain",
+      "description": "An ordinary ASCII label is unchanged.",
+      "raw": "Living room TV",
+      "expect": "Living room TV"
+    },
+    {
+      "id": "trim-and-collapse",
+      "description": "Runs of spaces collapse to one; both ends are trimmed.",
+      "raw": "  Living   room  TV  ",
+      "expect": "Living room TV"
+    },
+    {
+      "id": "tab-newline-crlf",
+      "description": "Step 1: tab, line feed, vertical tab, form feed and carriage return become spaces, then collapse.",
+      "raw": "Living\troom\n\u000b\fTV\r\n",
+      "expect": "Living room TV"
+    },
+    {
+      "id": "c0-controls",
+      "description": "Step 2: the C0 controls outside step 1 (here NUL, BEL and ESC) are deleted, not spaced.",
+      "raw": "Living\u0000room\u0007T\u001bV",
+      "expect": "LivingroomTV"
+    },
+    {
+      "id": "del-and-c1",
+      "description": "Step 2: DEL and the C1 controls are deleted; NEL (U+0085) is whitespace and becomes a space first.",
+      "raw": "Den\u007f\u0080\u0085PC\u009f",
+      "expect": "Den PC"
+    },
+    {
+      "id": "nbsp-ideographic-space",
+      "description": "Step 1: NBSP and the ideographic space become spaces.",
+      "raw": "Living\u00a0room\u3000TV",
+      "expect": "Living room TV"
+    },
+    {
+      "id": "line-paragraph-separators",
+      "description": "Step 1: U+2028 and U+2029 become spaces.",
+      "raw": "Living\u2028room\u2029TV",
+      "expect": "Living room TV"
+    },
+    {
+      "id": "arabic-letter-mark",
+      "description": "Step 2: the Arabic letter mark (U+061C) is deleted.",
+      "raw": "TV\u061c",
+      "expect": "TV"
+    },
+    {
+      "id": "zero-width-and-marks",
+      "description": "Step 2: zero-width space, non-joiner and joiner, and the LRM and RLM marks (U+200B-200F) are deleted.",
+      "raw": "Li\u200bving\u200c \u200dTV\u200e\u200f",
+      "expect": "Living TV"
+    },
+    {
+      "id": "rlo-spoof",
+      "description": "Step 2: a right-to-left override that would render the tail reversed (`exe.png`) is deleted, so the label reads in logical order.",
+      "raw": "Living room TV\u202egnp.exe",
+      "expect": "Living room TVgnp.exe"
+    },
+    {
+      "id": "bidi-embeddings",
+      "description": "Step 2: the bidi embeddings, pop and overrides (U+202A-202E) are deleted.",
+      "raw": "\u202aA\u202bB\u202cC\u202dD\u202e",
+      "expect": "ABCD"
+    },
+    {
+      "id": "invisible-operators",
+      "description": "Step 2: the word joiner and the invisible operators (U+2060-2064) are deleted.",
+      "raw": "A\u2060B\u2061C\u2062D\u2063E\u2064",
+      "expect": "ABCDE"
+    },
+    {
+      "id": "bidi-isolates",
+      "description": "Step 2: the bidi isolates (U+2066-2069) are deleted.",
+      "raw": "\u2066A\u2067B\u2068C\u2069",
+      "expect": "ABC"
+    },
+    {
+      "id": "byte-order-mark",
+      "description": "Step 2: a byte order mark (U+FEFF) is deleted.",
+      "raw": "\ufeffDeck",
+      "expect": "Deck"
+    },
+    {
+      "id": "non-latin-kept",
+      "description": "Letters, punctuation and symbols outside the two lists are kept as they are.",
+      "raw": "G\u00e4stezimmer-PC \u00b7 \u5ba2\u5385",
+      "expect": "G\u00e4stezimmer-PC \u00b7 \u5ba2\u5385"
+    },
+    {
+      "id": "no-unicode-normalisation",
+      "description": "There is no NFC step: a decomposed e and combining acute accent stay two code points.",
+      "raw": "Cafe\u0301",
+      "expect": "Cafe\u0301"
+    },
+    {
+      "id": "length-64-kept",
+      "description": "Exactly 64 code points: kept whole.",
+      "raw": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "expect": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    {
+      "id": "length-65-cut",
+      "description": "65 code points: cut to the first 64.",
+      "raw": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+      "expect": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    {
+      "id": "astral-at-boundary-kept",
+      "description": "An astral emoji as the 64th code point is kept whole: the limit counts code points (64 here), not UTF-16 units (65).",
+      "raw": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\ud83c\udfaeB",
+      "expect": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\ud83c\udfae"
+    },
+    {
+      "id": "astral-past-boundary-cut",
+      "description": "An astral emoji as the 65th code point is cut whole, never split into a lone surrogate.",
+      "raw": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\ud83c\udfae",
+      "expect": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    {
+      "id": "cut-exposes-space",
+      "description": "Step 4 trims a trailing space the cut exposes: the 64th code point is a space.",
+      "raw": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA B",
+      "expect": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    {
+      "id": "length-after-cleaning",
+      "description": "The limit applies after steps 1-3: deleted code points and collapsed spaces do not count.",
+      "raw": "\u200bA A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A ",
+      "expect": "A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A"
+    },
+    {
+      "id": "all-whitespace-absent",
+      "description": "Only whitespace: nothing is left, so the label is absent.",
+      "raw": " \t\n\u3000 ",
+      "expect": null
+    },
+    {
+      "id": "only-stripped-absent",
+      "description": "Only deleted code points: the label is absent.",
+      "raw": "\u200b\u202e\u0000",
+      "expect": null
+    },
+    {
+      "id": "empty-absent",
+      "description": "The empty string is no label.",
+      "raw": "",
+      "expect": null
+    }
+  ]
+}

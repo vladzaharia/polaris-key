@@ -568,6 +568,35 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (p(d).product.name = "x".repeat(300)),
   },
   {
+    // PX-W13 (plans/PX-W13.md §3): a right-to-left override in the name the sign-in card shows.
+    code: "invalid_display_text",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).product.name = "Acme \u202eloot.exe"),
+  },
+  {
+    // PX-W13: a developer name with a leading space (and the same rule on listing.name).
+    code: "invalid_display_text",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (dist(d).listing.developerName = " Acme Inc."),
+  },
+  {
+    // PX-W13 (§8 Q4, amended): a reserved term. A warning while the platform setting
+    // identity.reservedDisplayNames is `warn` (the default); the schema cannot judge names.
+    code: "reserved_display_name",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) => (p(d).product.name = "Steam Companion"),
+  },
+  {
+    // PX-W13: a multi-word term written as one word, through a confusable digit.
+    code: "reserved_display_name",
+    file: "distribution",
+    schema: "accepts",
+    mutate: (d) => (dist(d).listing.name = "P0larisKey Tools"),
+  },
+  {
     code: "invalid_admin_group",
     file: "product",
     schema: "rejects",

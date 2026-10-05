@@ -1181,6 +1181,9 @@ export const OUTLET_MATRIX_VERSION = 1;
 /** `planMatrixVersion` of conformance/corpus/v2/plan-matrix.json. */
 export const PLAN_MATRIX_VERSION = 2;
 
+/** `deviceLabelVersion` of conformance/corpus/v2/device-label.json. */
+export const DEVICE_LABEL_VERSION = 1;
+
 /** `contentCorpusVersion` of conformance/corpus/v2/content/cases.json. */
 export const CONTENT_CORPUS_VERSION = 2;
 
@@ -1264,6 +1267,15 @@ export const MAX_CHUNK_INDEX_BYTES = 16777216;
 
 /** Packs on the wire: `MAX_CHUNK_BYTES` (plans/P4-10.md §2.3, `@polaris-key/protocol/core`). */
 export const MAX_CHUNK_BYTES = 4194304;
+
+/** Identity passthrough: `DEVICE_LABEL_MAX_CODEPOINTS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`). */
+export const DEVICE_LABEL_MAX_CODEPOINTS = 64;
+
+/** Identity passthrough: `REQUEST_HANDLE_PATTERN` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`). */
+export const REQUEST_HANDLE_PATTERN = "^rq_[A-Za-z0-9_-]{22}$";
+
+/** Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`). */
+export const REQUEST_HANDLE_TTL_SECONDS = 600;
 
 /** Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`). */
 export const CHANNEL_ALIASES = {

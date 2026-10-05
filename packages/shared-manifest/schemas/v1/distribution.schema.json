@@ -933,6 +933,11 @@
         }
       }
     },
+    "displayText": {
+      "description": "A name the sign-in card shows: no control, zero-width or bidirectional-formatting character and no leading or trailing whitespace (invalid_display_text, PX-W13).",
+      "type": "string",
+      "pattern": "^(?!\\s)(?![\\s\\S]*\\s$)[^\\u0000-\\u001f\\u007f-\\u009f\\u061c\\u200b-\\u200f\\u202a-\\u202e\\u2060-\\u2064\\u2066-\\u2069\\ufeff]*$"
+    },
     "listing": {
       "description": "Store-page metadata. A per-outlet listing is merged over the document's.",
       "type": "object",
@@ -940,7 +945,8 @@
         "name": {
           "type": "string",
           "maxLength": 200,
-          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+          "pattern": "^[^\\u0000-\\u001f\\u007f]+$",
+          "allOf": [{ "$ref": "#/$defs/displayText" }]
         },
         "subtitle": {
           "type": "string",
@@ -988,7 +994,8 @@
         "developerName": {
           "type": "string",
           "maxLength": 200,
-          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+          "pattern": "^[^\\u0000-\\u001f\\u007f]+$",
+          "allOf": [{ "$ref": "#/$defs/displayText" }]
         },
         "supportUrl": {
           "description": "Where a customer gets help with the product: the customer portal's Help card and its renewal action.",

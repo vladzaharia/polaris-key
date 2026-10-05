@@ -1094,6 +1094,9 @@ public let OUTLET_MATRIX_VERSION = 1
 /// `planMatrixVersion` of conformance/corpus/v2/plan-matrix.json.
 public let PLAN_MATRIX_VERSION = 2
 
+/// `deviceLabelVersion` of conformance/corpus/v2/device-label.json.
+public let DEVICE_LABEL_VERSION = 1
+
 /// `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
 public let CONTENT_CORPUS_VERSION = 2
 
@@ -1177,6 +1180,15 @@ public let MAX_CHUNK_INDEX_BYTES = 16777216
 
 /// Packs on the wire: `MAX_CHUNK_BYTES` (plans/P4-10.md §2.3, `@polaris-key/protocol/core`).
 public let MAX_CHUNK_BYTES = 4194304
+
+/// Identity passthrough: `DEVICE_LABEL_MAX_CODEPOINTS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
+public let DEVICE_LABEL_MAX_CODEPOINTS = 64
+
+/// Identity passthrough: `REQUEST_HANDLE_PATTERN` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
+public let REQUEST_HANDLE_PATTERN = "^rq_[A-Za-z0-9_-]{22}$"
+
+/// Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
+public let REQUEST_HANDLE_TTL_SECONDS = 600
 
 /// Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`).
 public let CHANNEL_ALIASES: [String: String] = [

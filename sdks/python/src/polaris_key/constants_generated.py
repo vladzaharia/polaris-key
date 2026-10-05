@@ -81,6 +81,7 @@ __all__ = [
     "UPDATE_MATRIX_VERSION",
     "OUTLET_MATRIX_VERSION",
     "PLAN_MATRIX_VERSION",
+    "DEVICE_LABEL_VERSION",
     "CONTENT_CORPUS_VERSION",
     "MAX_WIRE_INTEGER",
     "MAX_JSON_DEPTH",
@@ -109,6 +110,9 @@ __all__ = [
     "CHUNKS_FORMAT",
     "MAX_CHUNK_INDEX_BYTES",
     "MAX_CHUNK_BYTES",
+    "DEVICE_LABEL_MAX_CODEPOINTS",
+    "REQUEST_HANDLE_PATTERN",
+    "REQUEST_HANDLE_TTL_SECONDS",
     "CHANNEL_ALIASES",
     "CHANNEL_BETA",
     "CHANNEL_DEV",
@@ -1342,6 +1346,10 @@ OUTLET_MATRIX_VERSION: Final[int] = 1
 PLAN_MATRIX_VERSION: Final[int] = 2
 
 
+#: `deviceLabelVersion` of conformance/corpus/v2/device-label.json.
+DEVICE_LABEL_VERSION: Final[int] = 1
+
+
 #: `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
 CONTENT_CORPUS_VERSION: Final[int] = 2
 
@@ -1452,6 +1460,18 @@ MAX_CHUNK_INDEX_BYTES: Final[int] = 16777216
 
 #: Packs on the wire: `MAX_CHUNK_BYTES` (plans/P4-10.md §2.3, `@polaris-key/protocol/core`).
 MAX_CHUNK_BYTES: Final[int] = 4194304
+
+
+#: Identity passthrough: `DEVICE_LABEL_MAX_CODEPOINTS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
+DEVICE_LABEL_MAX_CODEPOINTS: Final[int] = 64
+
+
+#: Identity passthrough: `REQUEST_HANDLE_PATTERN` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
+REQUEST_HANDLE_PATTERN: Final[str] = "^rq_[A-Za-z0-9_-]{22}$"
+
+
+#: Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
+REQUEST_HANDLE_TTL_SECONDS: Final[int] = 600
 
 
 #: Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`).
