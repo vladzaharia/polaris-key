@@ -21,7 +21,14 @@
 import { ErrorCode } from "../../core/errors.js";
 import type { ServiceContext } from "../../core/registry.js";
 import type { AdminSession } from "../../core/adminApi.js";
-import { adminJson, audit, err, readBody } from "../../core/adminApi.js";
+import {
+  adminJson,
+  adminNotFound,
+  audit,
+  err,
+  readBody,
+} from "../../core/adminApi.js";
+import { patchSignInSettings, signInSettingsView } from "./signInSettings.js";
 import {
   getPortalProductSettings,
   portalProductSettingsView,
@@ -32,8 +39,46 @@ export async function handleIdentityAdmin(
   ctx: ServiceContext & { session: AdminSession },
 ): Promise<Response | null> {
   const { rest } = ctx;
-  if (rest.length !== 1 || rest[0] !== "portal") return null;
-  return handlePortalSettings(ctx);
+  if (rest.length !== 1) return null;
+  if (rest[0] === "portal") return handlePortalSettings(ctx);
+  if (rest[0] === "sign-in-settings") return handleSignInSettings(ctx);
+  return null;
+}
+
+/**
+ * `GET|PATCH …/identity/sign-in-settings` (I-12): the settings of sign-in THROUGH this product,
+ * which exist only while its Identity toggle is on (S-16 §5.2). With Identity off the route is
+ * absent (404), like every other product-scoped identity surface; the platform-level Users page
+ * stays reachable either way.
+ */
+async function handleSignInSettings(
+  ctx: ServiceContext & { session: AdminSession },
+): Promise<Response> {
+  const { req, db, product, session, now } = ctx;
+  if (product.services.identity?.enabled !== true) return adminNotFound();
+  const ref = { slug: product.slug, name: product.name };
+  if (req.method === "GET") {
+    return adminJson({ settings: await signInSettingsView(db, ref) });
+  }
+  if (req.method !== "PATCH")
+    return err(405, ErrorCode.BadRequest, "method not allowed");
+  const body = await readBody(req);
+  const result = await patchSignInSettings(db, ref, body, now);
+  if (!result.ok) {
+    return err(422, ErrorCode.BadRequest, "invalid sign-in settings", {
+      fields: result.fields,
+    });
+  }
+  await audit(
+    db,
+    product.slug,
+    session,
+    now,
+    "identity.signin.settings.update",
+    { kind: "product", id: product.slug },
+    `Updated sign-in settings for ${product.slug}`,
+  );
+  return adminJson({ ok: true, settings: result.view });
 }
 
 async function handlePortalSettings(

@@ -357,3 +357,68 @@ export function licenseLinkSupersededNotice(input: {
     origin: input.origin,
   });
 }
+
+// ── The developer's relink tool (I-12) ──────────────────────────────────────────────────────
+
+/** How long the developer can undo a relink, as the notices say it. */
+const RELINK_UNDO_WORDS = "72 hours";
+
+/**
+ * S-16 §5.4 item 9: the developer is moving a licence OUT of this account. Sent to every verified
+ * email on the account before the move takes effect. Says which product, never which account
+ * receives it.
+ */
+export function licenseRelinkedAwayNotice(input: {
+  productName: string | null | undefined;
+  origin: string;
+}): NoticeMessage {
+  const name = displayValue(input.productName, "A");
+  return buildNotice({
+    subject: `The developer moved your ${name} license to another account`,
+    paragraphs: [
+      `The developer of ${name} moved one of its licenses from your Polaris Key account to another account, at the request of its support.`,
+      `If you did not expect this, contact the developer's support now: they can undo it for ${RELINK_UNDO_WORDS}.`,
+    ],
+    secureUrl: appLink(input.origin, "account/methods"),
+    origin: input.origin,
+  });
+}
+
+/** The receiving side of a relink: a licence is being added to this account by the developer. */
+export function licenseRelinkedInNotice(input: {
+  productName: string | null | undefined;
+  productSlug: string;
+  origin: string;
+}): NoticeMessage {
+  const name = displayValue(input.productName, "A product");
+  return buildNotice({
+    subject: `${name} is being added to your library`,
+    paragraphs: [
+      `The developer of ${name} moved one of its licenses to your Polaris Key account, at the request of its support.`,
+      `If you did not ask for this, contact the developer's support: they can undo it for ${RELINK_UNDO_WORDS}.`,
+    ],
+    action: {
+      label: `Open ${name}`,
+      url: appLink(input.origin, productRoute(input.productSlug)),
+    },
+    secureUrl: appLink(input.origin, "account/methods"),
+    origin: input.origin,
+  });
+}
+
+/** A relink was undone: the licence goes back to the account it came from. */
+export function licenseRelinkUndoneNotice(input: {
+  productName: string | null | undefined;
+  origin: string;
+}): NoticeMessage {
+  const name = displayValue(input.productName, "A");
+  return buildNotice({
+    subject: `The developer undid a move of a ${name} license`,
+    paragraphs: [
+      `The developer of ${name} undid an earlier move of one of its licenses. The license goes back to the account it came from.`,
+      "If you did not expect this, contact the developer's support.",
+    ],
+    secureUrl: appLink(input.origin, "account/methods"),
+    origin: input.origin,
+  });
+}

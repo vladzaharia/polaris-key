@@ -186,7 +186,13 @@ async function notifyLicenseEmail(
  */
 export async function detachLicense(
   ctx: AccountContext,
-  args: { accountId: string; product: string; licenseId: string },
+  args: {
+    accountId: string;
+    product: string;
+    licenseId: string;
+    /** The developer detached it from the console (I-12), not the person from the portal. */
+    byDeveloper?: boolean;
+  },
 ): Promise<{ ok: boolean }> {
   const { db, env, now } = ctx;
   if (
@@ -206,14 +212,22 @@ export async function detachLicense(
     now,
   );
   if (!moved) return { ok: false };
-  await onLicenseOwnershipEnded(db, env, { ...args, reason: "detached", now });
+  await onLicenseOwnershipEnded(db, env, {
+    product: args.product,
+    licenseId: args.licenseId,
+    accountId: args.accountId,
+    reason: "detached",
+    now,
+  });
   await portalAudit(db, {
     accountId: args.accountId,
     action: "account.license.detach",
     product: args.product,
     targetKind: "license",
     targetId: args.licenseId,
-    summary: "Removed a license from the library",
+    summary: args.byDeveloper
+      ? "The developer removed a license from the library"
+      : "Removed a license from the library",
     now,
   });
   return { ok: true };
