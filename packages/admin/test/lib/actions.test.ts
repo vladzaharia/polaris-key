@@ -28,6 +28,11 @@ const SPEC: Record<0 | 1 | 2 | 3, ActionId[]> = {
     "rollout.setPercentage",
     "storeApp.assign",
     "storeApp.release",
+    "connector.versionCreate",
+    "connector.testflightGroups",
+    "connector.cancelSubmission",
+    "connector.iapCreate",
+    "connector.iapPrice",
   ],
   2: [
     "key.revoke",
@@ -44,6 +49,7 @@ const SPEC: Record<0 | 1 | 2 | 3, ActionId[]> = {
     "signing.retire",
     "readiness.override",
     "catalog.publishRemovingKeys",
+    "connector.exportCompliance",
   ],
   3: [
     "product.delete",
@@ -54,6 +60,8 @@ const SPEC: Record<0 | 1 | 2 | 3, ActionId[]> = {
     "connector.releaseVersion",
     "connector.phasedComplete",
     "connector.iapAvailability",
+    "connector.submitReview",
+    "connector.iapPriceChange",
   ],
 };
 

@@ -7,7 +7,8 @@
  *   they move (`StoreRolloutControls`).
  * - **Configuration actions** (App Store **Release this version**, **TestFlight public link**,
  *   **Webhook setup**; Play **Update priority** and **Settings**) live on the connector cards of
- *   Outlet credentials (`ConnectorCard`).
+ *   Outlet credentials (`ConnectorCard`). The App Store card also links to **Distribute**, the
+ *   App Store page's flow (A-17g).
  *
  * Every control is the connector's own audited route; a store's refusal comes back as a reason
  * `errorCopy` words (`store_refused`, `not_held`, `credential_pin_missing`, …). Controls appear
@@ -36,6 +37,8 @@ import { StatusPill } from "../../../ui/StatusPill.js";
 import { Switch } from "../../../ui/Switch.js";
 import { toast } from "../../../ui/toast.js";
 import { mutate } from "../../data/mutations.js";
+import { Link } from "../../router.js";
+import { r } from "../../routes.js";
 
 const describe = (e: unknown) =>
   errorCopy(e, { area: "distribution", thing: "Store connector" });
@@ -623,6 +626,12 @@ export function ConnectorCard({
       ) : null}
       {actions.length ? (
         <div className="flex flex-wrap gap-2">
+          {connector.kind === "asc" && has("distribute/submit") && !blocked ? (
+            // A-17g: the Distribute flow and App Store products have their own pages.
+            <Button size="sm" variant="outline" asChild>
+              <Link to={r.appStore(slug)}>Distribute</Link>
+            </Button>
+          ) : null}
           {actions.map((a) => (
             <Button
               key={a.label}

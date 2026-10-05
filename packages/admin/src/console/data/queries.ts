@@ -191,6 +191,12 @@ export const qk = {
   outlets: (slug: string) => product(slug, "distribution", "outlets"),
   distributionKeys: (slug: string) => product(slug, "distribution", "keys"),
   connectors: (slug: string) => product(slug, "distribution", "connectors"),
+  /**
+   * One connector read (A-17g: the App Store Distribute flow and App Store products). Under
+   * `connectors`, so every connector control makes it stale.
+   */
+  connectorRead: (slug: string, kind: string, path: string, query = "") =>
+    product(slug, "distribution", "connectors", kind, path, query),
   /** The operator-owned `packageFeeds` switch (F-11; Core → Services). */
   packageFeedsSwitch: (slug: string) =>
     product(slug, "distribution", "package-feeds"),

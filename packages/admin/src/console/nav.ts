@@ -58,10 +58,12 @@ import {
   Plus,
   Rocket,
   Rss,
+  Send,
   Server,
   ServerCog,
   Settings,
   ShieldCheck,
+  ShoppingBag,
   SlidersHorizontal,
   Stamp,
   Store,
@@ -124,6 +126,8 @@ export type ProductPageId =
   | "matrix"
   | "rollouts"
   | "outlets"
+  | "app-store"
+  | "commerce"
   | "access"
   | "package-feeds"
   | "health"
@@ -492,6 +496,26 @@ export const SECTIONS: NavSection[] = [
         path: "distribution/outlets",
         icon: Store,
         docs: "/docs/services/distribution/feeds/",
+        inNav: true,
+        ready: true,
+      },
+      {
+        // A-17g: the App Store Distribute flow (T6) for the product's pinned app.
+        page: "app-store",
+        label: "App Store",
+        path: "distribution/app-store",
+        icon: Send,
+        docs: "/docs/admin/app-store/",
+        inNav: true,
+        ready: true,
+      },
+      {
+        // A-17g: the commerce mappings beside the store's own products (App Store products, T2).
+        page: "commerce",
+        label: "Commerce",
+        path: "distribution/commerce",
+        icon: ShoppingBag,
+        docs: "/docs/services/distribution/commerce/",
         inNav: true,
         ready: true,
       },

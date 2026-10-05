@@ -457,6 +457,9 @@ export const r = {
     productPage(slug, "matrix", { query }),
   rollouts: (slug: string) => productPage(slug, "rollouts"),
   outlets: (slug: string) => productPage(slug, "outlets"),
+  appStore: (slug: string, query?: QueryInit) =>
+    productPage(slug, "app-store", { query }),
+  commerce: (slug: string) => productPage(slug, "commerce"),
   access: (slug: string) => productPage(slug, "access"),
   health: (slug: string, query?: QueryInit) =>
     productPage(slug, "health", { query }),

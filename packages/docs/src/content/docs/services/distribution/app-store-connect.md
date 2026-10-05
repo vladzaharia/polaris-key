@@ -283,7 +283,8 @@ control.
 
 The Distribute flow takes a build of the pinned app through TestFlight and App Review from the
 console API, under the same `/manage/api/products/<slug>/distribution/connectors/asc/` prefix.
-Uploading the build stays in CI; everything after the upload is here.
+Uploading the build stays in CI; everything after the upload is here. In the console it is the
+**Distribution → App Store** page ([App Store: Distribute](/docs/admin/app-store/)).
 
 | `GET`                                 | Answers                                                                                                                                                                                                                                                                                                     |
 | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -337,7 +338,9 @@ and none of the app's in-app purchases has passed review yet, it adds a `firstIn
 ## In-app purchases
 
 The App Store rows of the [commerce bridge](/docs/services/distribution/commerce/)'s product map
-can be created in App Store Connect from the console API, under the same prefix, as
+can be created in App Store Connect from the console (**Distribution → Commerce**,
+[App Store products](/docs/admin/app-store/#app-store-products-in-commerce)) or its API, under the
+same prefix, as
 **non-consumable** in-app purchases of the pinned app. Only a mapped product id can be created,
 priced or made available (`unmapped_product`): what exists at Apple follows your map.
 
