@@ -18,6 +18,15 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 - **[`plans/PX-W8.md`](../plans/PX-W8.md):** approved on 2026-10-05 with every recommendation accepted: `manageUrl` on both refusals (Q1); the Worker emits no key, and the SDK may add `#key=` as a fragment (Q2); a floating licence links to `/activate?product=…&next=free-device` (Q3); the app's return URL travels as a client-side `return=` (Q4); sign-in seat refusals are left to LX-18 (Q5). Corrections: there is no signed-corpus impact; the portal is served at the root, so the paths are `/activate` and `/signin`; PX-10's `FreeDevicePage` already reads `for`, `return` and `license`; no `device_limit` transcript exists today. PX-W8 now executes its own plan, not I-04's.
 
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- `for=` carries the PX-W13 device label when known; the kit button is **Replace a device** (opens `manageUrl`) and the portal quick action **Free a device** (SIGN-IN.md D-49; `plans/PX-W8.md` alignment note).
+
 ## Goal
 
 Apps receive a `manageUrl` on `device_limit` and on the key-entries refusal that opens `#/p/:product/free-device?for=…&return=…` or `/activate?key=…&product=…`, specified in I-04's contract and carried through `errors.json`, the corpus and transcripts, client-core, Node, React, Python, Swift, Godot, Kotlin and the SDK UI kits.

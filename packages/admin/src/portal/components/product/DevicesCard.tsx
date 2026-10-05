@@ -8,7 +8,12 @@ import { formatRelative } from "../../../lib/format.js";
 import type { PortalDevice, PortalLicenseDetail } from "../../api.js";
 import { useRemoveDevice } from "../../data.js";
 import { portalErrorCopy } from "../../errors.js";
-import { devicesText, normalisePlatform, osName } from "../../model/library.js";
+import {
+  devicesText,
+  isAccountWide,
+  normalisePlatform,
+  osName,
+} from "../../model/library.js";
 import { ErrorPanel } from "../States.js";
 import { SeatMeter } from "../SeatMeter.js";
 import { SectionCard } from "./Card.js";
@@ -17,18 +22,23 @@ import { SectionCard } from "./Card.js";
  * Devices (§4.20, §4.22): the devices using a seat, each with **Remove**, which expands the row
  * in place into the consequences and the confirm (focus moves to its heading). Devices that no
  * longer use a seat are counted ("+1 not using a seat"). With the seat limit (G5, PX-W1) the
- * count reads "2 of 3 devices in use"; without it the limit is never guessed.
+ * count reads "2 of 3 devices in use"; without it the limit is never guessed. Key and
+ * account-wide licences both list their devices with Remove (remote deauthorize); a key
+ * licence drops its counter when an account-wide one covers the product (owner, 2026-10-05).
  */
 export function DevicesCard({
   productName,
   seatLimit,
   emailConfigured = false,
+  showCount = true,
   detail,
   loading,
   error,
   onRetry,
 }: {
   productName: string;
+  /** False hides the counter and seat meter (the list stays). */
+  showCount?: boolean;
   /** The licence's seat limit as activation enforces it, when the Worker sent it. */
   seatLimit?: number | null;
   /** The Worker can send mail (`capabilities.auth.magic`): only then promise a notice. */
@@ -40,6 +50,7 @@ export function DevicesCard({
 }): React.ReactElement {
   const active = detail?.devices.filter((d) => d.status === "authorized") ?? [];
   const idle = (detail?.devices.length ?? 0) - active.length;
+  const accountWide = detail ? isAccountWide(detail) : false;
   return (
     <SectionCard id="devices" title="Devices">
       {loading ? (
@@ -52,19 +63,21 @@ export function DevicesCard({
         />
       ) : (
         <>
-          <p className="mb-2 text-fg-muted">
-            <span className="text-xl font-bold text-fg-strong">
-              {active.length}
-            </span>{" "}
-            {seatLimit
-              ? `of ${seatLimit} ${seatLimit === 1 ? "device" : "devices"}`
-              : active.length === 1
-                ? "device"
-                : "devices"}{" "}
-            in use
-            {idle > 0 ? ` · +${idle} not using a seat` : ""}
-          </p>
-          {seatLimit ? (
+          {showCount ? (
+            <p className="mb-2 text-fg-muted">
+              <span className="text-xl font-bold text-fg-strong">
+                {active.length}
+              </span>{" "}
+              {seatLimit
+                ? `of ${seatLimit} ${seatLimit === 1 ? "device" : "devices"}`
+                : active.length === 1
+                  ? "device"
+                  : "devices"}{" "}
+              in use
+              {idle > 0 ? ` · +${idle} not using a seat` : ""}
+            </p>
+          ) : null}
+          {seatLimit && showCount ? (
             <SeatMeter
               inUse={active.length}
               limit={seatLimit}
@@ -73,8 +86,9 @@ export function DevicesCard({
           ) : null}
           {active.length === 0 ? (
             <p className="py-3 text-sm text-fg-muted">
-              No device is using this license. Open {productName} on a device to
-              activate it.
+              {accountWide
+                ? `No device is signed in with this license. Sign in to ${productName} on a device to use it.`
+                : `No device is using this license. Open ${productName} on a device to activate it.`}
             </p>
           ) : (
             <ul className="divide-y divide-border border-t border-border">
@@ -85,7 +99,8 @@ export function DevicesCard({
                   detail={detail}
                   productName={productName}
                   inUse={active.length}
-                  seatLimit={seatLimit}
+                  seatLimit={showCount ? seatLimit : null}
+                  showCount={showCount}
                   emailConfigured={emailConfigured}
                 />
               ))}
@@ -93,7 +108,9 @@ export function DevicesCard({
           )}
           <p className="mt-3 flex gap-2 text-sm text-fg-muted">
             <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-            Removing a device frees its seat at once.
+            {accountWide
+              ? "Removing a device signs it out of this license at once."
+              : "Removing a device frees its seat at once."}
           </p>
         </>
       )}
@@ -126,6 +143,7 @@ export function DeviceRow({
   productName,
   inUse,
   seatLimit,
+  showCount = true,
   emailConfigured = false,
 }: {
   device: PortalDevice;
@@ -133,6 +151,8 @@ export function DeviceRow({
   productName: string;
   inUse: number;
   seatLimit?: number | null;
+  /** False drops the new count from the consequences (the card shows no counter). */
+  showCount?: boolean;
   emailConfigured?: boolean;
 }): React.ReactElement {
   const [confirming, setConfirming] = React.useState(false);
@@ -192,12 +212,14 @@ export function DeviceRow({
           </h3>
           <ul className="list-disc space-y-1 pl-5 text-sm text-fg">
             <li>
-              Its seat is free straight away:{" "}
-              {devicesText(inUse - 1, seatLimit)} in use.
+              {showCount
+                ? `Its seat is free straight away: ${devicesText(inUse - 1, seatLimit)} in use.`
+                : "Its seat is free straight away."}
             </li>
             <li>
-              {productName} on that device asks to be activated the next time it
-              starts.
+              {isAccountWide(detail)
+                ? `${productName} on that device asks you to sign in again the next time it starts.`
+                : `${productName} on that device asks to be activated the next time it starts.`}
             </li>
             {emailConfigured ? <li>We'll email you to confirm.</li> : null}
           </ul>

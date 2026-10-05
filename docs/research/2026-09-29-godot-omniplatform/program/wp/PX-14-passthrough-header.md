@@ -21,7 +21,7 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 ## Owner decision (2026-10-05): licence choice at sign-in
 
-The owner decided on 2026-10-05 that every sign-in that binds a device asks the person which licence to use (**Choose a licence for this device**, with an inline **Replace a device** on full licences), never silently mints a second auto-issued licence, and treats the rank-first rule as the preselected default only. The verbatim decision, the card API and the delegated decisions are in [`plans/I-04.md`](../plans/I-04.md), "Owner decision (2026-10-05): licence choice at sign-in"; that section wins over this brief where they differ. **The device wire does not change** (`PROTOCOL_VERSION` 4, no corpus change).
+The owner decided on 2026-10-05 that every sign-in that binds a device asks the person which licence to use (**Choose a license for this device**, with an inline **Replace a device** on full licences), never silently mints a second auto-issued licence, and treats the rank-first rule as the preselected default only. The verbatim decision, the card API and the delegated decisions are in [`plans/I-04.md`](../plans/I-04.md), "Owner decision (2026-10-05): licence choice at sign-in"; that section wins over this brief where they differ. **The device wire does not change** (`PROTOCOL_VERSION` 4, no corpus change).
 
 For this package:
 
@@ -30,13 +30,24 @@ For this package:
   - Each row shows the tier, origin, "2 of 5 devices" and the expiry, with one row preselected.
   - Full rows are disabled and read "No free devices", with **Replace a device** (inline,
     `ReplaceView`, one confirm naming the device) and the **Free a device** link.
-  - The view's other cases also render here: the **Keep the licence this device uses** row, the
-    **Create a new free licence** row, the `autoIssue` copy, and the "You don't have <Product> yet"
+  - The view's other cases also render here: the **Keep the license this device uses** row, the
+    **Create a new free license** row, the `autoIssue` copy, and the "You don't have <Product> yet"
     state.
-- **Primary button.** It reads **Use this licence and continue** when no consent screen follows.
+- **Primary button.** It reads **Use this license and continue** when no consent screen follows.
   When one follows, `AppConsent` shows the chosen licence with **Change**.
 - **Fallback return.** Extend PX-10's return allowlist to accept the same-origin return
   `/signin?request=rq_…`.
+
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- Build LicenseChoiceStep (SIGN-IN.md frames 05, 08, 09, 19–22 and every state of §3.6, including Account-wide rows and the mixed rule), ReplaceDevice (frame 06, §3.7), ConsentStep with **Change** (frame 07), the product-hero header and muted brand row (D-48), the identity_disabled card (frame 16) and the product-context header (D-11).
+- PX-10 accepts `license=` and the same-origin return `/signin?request=rq_…` (I-04 decision 14); `for=` stays the device label.
+- Accessibility per SIGN-IN.md §3.14: full and blocked rows are not radios, Replace stays in Tab order, focus moves to each step's h1.
 
 ## Goal
 
