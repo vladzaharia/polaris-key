@@ -1435,6 +1435,10 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
   pkey storefront snap upload-metadata --snap file.snap [--dry-run] [--no-report]
   pkey storefront exec store command --op operation [--outlet id] [--tool-path path] -- argv...
   pkey storefront allow-list [--store s] [--json]
+  pkey storefront winget|homebrew|scoop|flathub pr [--channel c] [--outlet id] [--dry-run [--out dir]]
+              [--portable path] [--command name] [--license l] [--app name] [--project-license spdx] [--no-report]
+  pkey storefront winget|homebrew|scoop|flathub status [--channel c] [--version v] [--outlet id] [--no-report]
+  pkey storefront flathub init [--out dir] [--channel c] [--outlet id] [--command path]
 
 pkey release publish matches the files under --dir against .pkey/release's
 deliverables.app.artifacts map (<file>.sig and <file>.sha256 ride along as sidecars), hashes
@@ -1533,6 +1537,13 @@ may set live only a named branch; msstore publish, refused while the console has
 draft; BuildPatchTool -mode=UploadBinary). Each step is reported back to Polaris Key before and
 after it runs (distribution:report), so the store's ledger shows it beside console steps; a step
 already done in the same run is skipped. --dry-run checks and prints the command lines.
+pkey storefront <store> pr writes winget's manifests (schema 1.12.0), the cask in your own
+Homebrew tap (direct.homebrewTap), the Scoop feed's manifest in your own bucket
+(direct.scoopBucket) or Flathub's updated manifest and MetaInfo for the channel's newest release,
+and opens one pull request per version with the GitHub token in PKEY_PR_TOKEN (a CI secret,
+never argv); a PR already open or merged for the version is recorded and nothing is written.
+status reads the pull request's state and review labels. flathub init writes the first
+submission's files, which a person opens against flathub/flathub's new-pr branch.
 
 pkey manifest schemas writes the .pkey/ JSON Schemas into a directory, for editors in a
 repository with no node_modules.

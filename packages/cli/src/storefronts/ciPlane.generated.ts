@@ -711,7 +711,13 @@ export const CI_PLANE: CiPlaneDeclaration = {
         },
       },
       commandOps: {
-        "pull-request": ["uploadBuild", "release", "writeListingText"],
+        "pull-request": [
+          "uploadBuild",
+          "release",
+          "writeListingText",
+          "writeListingAssets",
+          "contentRating",
+        ],
         status: ["status"],
       },
       paths: [

@@ -337,7 +337,15 @@ export const FLATHUB_PR: PrPlaneStore = {
     ["--version", param("version", VERSION)],
     "an update PR to the app's own repository (updates never need submission review); the first submission to flathub/flathub is opened and shepherded by a person",
   ),
-  commandOps: COMMAND_OPS,
+  // The MetaInfo carries the screenshots and the OARS rating too.
+  commandOps: {
+    "pull-request": [
+      ...COMMAND_OPS["pull-request"],
+      "writeListingAssets",
+      "contentRating",
+    ],
+    status: COMMAND_OPS.status,
+  },
   paths: [
     { template: "{repo}.yml", why: "the manifest (YAML)" },
     { template: "{repo}.yaml", why: "the manifest (YAML)" },
