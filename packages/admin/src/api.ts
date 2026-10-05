@@ -1068,6 +1068,16 @@ export interface ServicesResponse {
   source: string;
 }
 
+/**
+ * `PATCH …/services?dryRun=1` (PX-W17): what the same PATCH would change, with no write. The
+ * console confirms turning Identity off with `signedInDevicesToClear`: every such device is
+ * signed out (its install and licence keep working).
+ */
+export interface ServicesDryRun {
+  changes: Array<{ field: string; from: unknown; to: unknown }>;
+  signedInDevicesToClear: number;
+}
+
 /** A partial enablement patch: an omitted slug keeps its current value server-side. */
 export interface UpdateServicesBody {
   services?: Partial<Record<ServiceSlug, { enabled: boolean }>>;
@@ -3221,6 +3231,12 @@ const rawApi = {
   services: (slug: string) => call<ServicesResponse>(`${p(slug)}/services`),
   updateServices: (slug: string, body: UpdateServicesBody) =>
     call<ServicesResponse>(`${p(slug)}/services`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  /** The same PATCH as a dry run: what it would change, and how many devices it signs out. */
+  servicesDryRun: (slug: string, body: UpdateServicesBody) =>
+    call<ServicesDryRun>(`${p(slug)}/services?dryRun=1`, {
       method: "PATCH",
       body: JSON.stringify(body),
     }),

@@ -107,8 +107,25 @@ const DISABLE_CONSEQUENCES: Record<ServiceSlug, string> = {
   distribution:
     "Distribution stops serving downloads and store rollouts are no longer managed here.",
   update: "The update feed answers not-configured: clients see no updates.",
-  identity: "Product sign-in and the customer portal stop working.",
+  identity:
+    "Sign-in through this product stops. Licences stay attached to their owners' accounts.",
 };
+
+/** What the turn-off confirmation shows: the services, and (Identity only) the signed-in count. */
+interface TurnOff {
+  slugs: ServiceSlug[];
+  /** Devices signed in through the product that turning Identity off signs out; `null` when
+   *  Identity is not among `slugs` or the count could not be read. */
+  signedIn: number | null;
+}
+
+/** PX-W17: the consequence line for the devices turning Identity off signs out. */
+export function signedInConsequence(signedIn: number | null): string[] {
+  if (!signedIn) return [];
+  return [
+    `${signedIn} signed-in device${signedIn === 1 ? "" : "s"} will be signed out; installs and licences keep working.`,
+  ];
+}
 
 function readDraft(data: ServicesResponse): Draft {
   const out = Object.fromEntries(
@@ -198,7 +215,7 @@ function ServicesForm({
 }): React.ReactElement {
   const [codes, setCodes] = React.useState<string[]>([]);
   const [confirmRevert, setConfirmRevert] = React.useState(false);
-  const gate = useConfirmGate<ServiceSlug[]>();
+  const gate = useConfirmGate<TurnOff>();
   const values = React.useMemo(() => readDraft(data), [data]);
 
   const form = useAdminForm<Draft>({
@@ -206,19 +223,30 @@ function ServicesForm({
     onSubmit: async (draft) => {
       setCodes([]);
       const turningOff = SERVICE_SLUGS.filter((s) => values[s] && !draft[s]);
-      if (turningOff.length && !(await gate.ask(turningOff))) {
-        throw new SaveCancelled();
+      const body = {
+        services: Object.fromEntries(
+          SERVICE_SLUGS.map((s) => [s, { enabled: draft[s] }]),
+        ) as Record<ServiceSlug, { enabled: boolean }>,
+        registration:
+          draft.registration === DERIVED
+            ? null
+            : (draft.registration as RegistrationPolicy),
+      };
+      if (turningOff.length) {
+        // PX-W17: turning Identity off signs every signed-in device out; the dry run counts them
+        // so the confirmation can say how many. A failed count leaves the generic line.
+        const signedIn = turningOff.includes("identity")
+          ? await api
+              .servicesDryRun(slug, body)
+              .then((r) => r.signedInDevicesToClear)
+              .catch(() => null)
+          : null;
+        if (!(await gate.ask({ slugs: turningOff, signedIn }))) {
+          throw new SaveCancelled();
+        }
       }
       try {
-        await mutate("updateServices", slug, {
-          services: Object.fromEntries(
-            SERVICE_SLUGS.map((s) => [s, { enabled: draft[s] }]),
-          ) as Record<ServiceSlug, { enabled: boolean }>,
-          registration:
-            draft.registration === DERIVED
-              ? null
-              : (draft.registration as RegistrationPolicy),
-        });
+        await mutate("updateServices", slug, body);
       } catch (err) {
         if (err instanceof ApiError && err.errors?.length) setCodes(err.errors);
         throw err;
@@ -254,6 +282,7 @@ function ServicesForm({
       : null;
 
   const isAdmin = data.source === "admin";
+  const turnOffSlugs = gate.payload?.slugs ?? [];
 
   return (
     <SettingsTemplate
@@ -430,12 +459,13 @@ function ServicesForm({
           if (!open) gate.cancel();
         }}
         intent={intentOf("service.disable")}
-        title={`Turn off ${(gate.payload ?? []).map(serviceLabel).join(", ")}?`}
+        title={`Turn off ${turnOffSlugs.map(serviceLabel).join(", ")}?`}
         consequences={[
-          ...(gate.payload ?? []).map((s) => DISABLE_CONSEQUENCES[s]),
+          ...turnOffSlugs.map((s) => DISABLE_CONSEQUENCES[s]),
+          ...signedInConsequence(gate.payload?.signedIn ?? null),
           "The section leaves the navigation; its settings are kept and return when it is turned on again.",
         ]}
-        confirmLabel={`Turn off ${(gate.payload ?? []).length === 1 ? serviceLabel(gate.payload![0]!) : "services"}`}
+        confirmLabel={`Turn off ${turnOffSlugs.length === 1 ? serviceLabel(turnOffSlugs[0]!) : "services"}`}
         onConfirm={gate.confirm}
       />
       <ConfirmDialog

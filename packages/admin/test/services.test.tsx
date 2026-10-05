@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ServicesResponse, UpdateServicesBody } from "../src/api.js";
+import type {
+  ServicesDryRun,
+  ServicesResponse,
+  UpdateServicesBody,
+} from "../src/api.js";
 import { expectNoAxeViolations, renderAt, resetCore } from "./coreTestUtils.js";
 
 const services = vi.fn<(slug: string) => Promise<ServicesResponse>>();
@@ -10,6 +14,8 @@ const updateServices =
     (slug: string, body: UpdateServicesBody) => Promise<ServicesResponse>
   >();
 const revertServices = vi.fn<(slug: string) => Promise<ServicesResponse>>();
+const servicesDryRun =
+  vi.fn<(slug: string, body: UpdateServicesBody) => Promise<ServicesDryRun>>();
 
 // `ApiError` and `SERVICE_ERROR_MESSAGES` stay REAL: the page branches on `instanceof ApiError`.
 vi.mock("../src/api.js", async () => {
@@ -22,6 +28,8 @@ vi.mock("../src/api.js", async () => {
       updateServices: (slug: string, body: UpdateServicesBody) =>
         updateServices(slug, body),
       revertServices: (slug: string) => revertServices(slug),
+      servicesDryRun: (slug: string, body: UpdateServicesBody) =>
+        servicesDryRun(slug, body),
     },
   };
 });
@@ -56,6 +64,9 @@ beforeEach(() => {
   services.mockReset().mockResolvedValue(state());
   updateServices.mockReset();
   revertServices.mockReset();
+  servicesDryRun
+    .mockReset()
+    .mockResolvedValue({ changes: [], signedInDevicesToClear: 0 });
 });
 afterEach(cleanup);
 
@@ -209,9 +220,7 @@ describe("Core → Services", () => {
     const dialog = await screen.findByRole("alertdialog");
     expect(within(dialog).getByText("Turn off Identity?")).toBeTruthy();
     expect(
-      within(dialog).getByText(
-        /Product sign-in and the customer portal stop working/,
-      ),
+      within(dialog).getByText(/Sign-in through this product stops/),
     ).toBeTruthy();
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
@@ -226,6 +235,55 @@ describe("Core → Services", () => {
     expect(updateServices.mock.calls[0]![1].services!.identity).toEqual({
       enabled: false,
     });
+  });
+
+  it("turning Identity off names how many signed-in devices it signs out (PX-W17)", async () => {
+    const user = userEvent.setup();
+    updateServices.mockResolvedValue(state());
+    servicesDryRun.mockResolvedValue({
+      changes: [{ field: "services.identity.enabled", from: true, to: false }],
+      signedInDevicesToClear: 3,
+    });
+    mount();
+    await screen.findByRole("switch", { name: /Identity/ });
+    await user.click(sw("Identity"));
+    await user.click(screen.getByRole("button", { name: "Save services" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText(
+        "3 signed-in devices will be signed out; installs and licences keep working.",
+      ),
+    ).toBeTruthy();
+    // The dry run is the same body the save sends, and writes nothing itself.
+    expect(servicesDryRun.mock.calls[0]![0]).toBe("djdl");
+    expect(servicesDryRun.mock.calls[0]![1].services!.identity).toEqual({
+      enabled: false,
+    });
+    expect(updateServices).not.toHaveBeenCalled();
+    await user.click(
+      within(dialog).getByRole("button", { name: "Turn off Identity" }),
+    );
+    await waitFor(() => expect(updateServices).toHaveBeenCalledTimes(1));
+  });
+
+  it("a failed count still confirms, without the count line; other services never ask for one", async () => {
+    const user = userEvent.setup();
+    updateServices.mockResolvedValue(state());
+    servicesDryRun.mockRejectedValue(new ApiError(500));
+    mount();
+    await screen.findByRole("switch", { name: /Identity/ });
+    await user.click(sw("Identity"));
+    await user.click(screen.getByRole("button", { name: "Save services" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).queryByText(/signed-in device/)).toBeNull();
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    servicesDryRun.mockClear();
+    await user.click(sw("Identity"));
+    await user.click(sw("Update"));
+    await user.click(screen.getByRole("button", { name: "Save services" }));
+    await screen.findByRole("alertdialog");
+    expect(servicesDryRun).not.toHaveBeenCalled();
   });
 
   it("renders a server coherence rejection beside the controls it indicts, and clears it when the set changes", async () => {
