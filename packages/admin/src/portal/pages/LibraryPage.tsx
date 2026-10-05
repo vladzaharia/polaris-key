@@ -3,6 +3,7 @@ import { Compass } from "lucide-react";
 import { Skeleton } from "../../ui/Skeleton.js";
 import type { PortalAccount } from "../api.js";
 import { AttentionShelf } from "../components/AttentionShelf.js";
+import { DiscoverTeaser } from "../components/DiscoverTeaser.js";
 import { LibraryEmpty } from "../components/LibraryEmpty.js";
 import { LibraryHero } from "../components/LibraryHero.js";
 import { LibraryTile } from "../components/LibraryTile.js";
@@ -64,7 +65,13 @@ export function LibraryPage({
       ) : lib.error ? (
         <ErrorPanel error={lib.error} onRetry={lib.retry} />
       ) : count === 0 ? (
-        <LibraryEmpty email={account.email} discoverCount={lib.discoverCount} />
+        <>
+          <LibraryEmpty
+            email={account.email}
+            discoverCount={lib.discoverCount}
+          />
+          <DiscoverTeaser discoverCount={lib.discoverCount} />
+        </>
       ) : (
         <LibraryBody
           products={lib.products!}

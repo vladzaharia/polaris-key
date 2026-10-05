@@ -5695,7 +5695,7 @@
       "optional": false,
       "refs": ["design/PORTAL §4.16", "design/PORTAL §11.3 PX-16"],
       "brief": "wp/PX-16-discover-page.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "PX-17",

@@ -14,6 +14,7 @@ import {
   PortalApiError,
   setPortalCsrf,
   type PortalCapabilities,
+  type PortalDiscoverOffer,
   type PortalDownloads,
   type PortalLibrary,
   type PortalLicenseDetail,
@@ -47,6 +48,7 @@ const qk = {
     ["portal", "license", product, id] as const,
   portalReleases: () => ["portal", "releases"] as const,
   portalLibrary: () => ["portal", "library"] as const,
+  portalDiscover: () => ["portal", "discover"] as const,
   portalDownloads: (product: string) =>
     ["portal", "downloads", product] as const,
   portalProduct: (product: string) => ["portal", "product", product] as const,
@@ -61,6 +63,7 @@ export const portalKeys = {
   license: qk.portalLicense,
   releases: qk.portalReleases(),
   library: qk.portalLibrary(),
+  discover: qk.portalDiscover(),
   downloads: qk.portalDownloads,
   product: qk.portalProduct,
 };
@@ -190,6 +193,44 @@ export function useLibraryView(enabled = true): UseQueryResult<PortalLibrary> {
     queryKey: qk.portalLibrary(),
     queryFn: () => portalApi.library(),
     enabled,
+  });
+}
+
+/**
+ * Discover's offers (PX-W10, `GET /api/discover`): every product whose licence policy would
+ * auto-issue to this account, evaluated without issuing, each with its terms and reason.
+ */
+export function useDiscover(
+  enabled = true,
+): UseQueryResult<PortalDiscoverOffer[]> {
+  return useQuery({
+    queryKey: qk.portalDiscover(),
+    queryFn: async () => {
+      try {
+        return (await portalApi.discover()).offers;
+      } catch (err) {
+        // A Worker without Discover (404) has nothing to offer: the honest empty state.
+        if (err instanceof PortalApiError && err.status === 404) return [];
+        throw err;
+      }
+    },
+    enabled,
+  });
+}
+
+/**
+ * "Add to library" (G25). The Worker re-evaluates and mints once per account and product; the
+ * library (its count and Discover's) and the licence summaries refresh after.
+ */
+export function useClaimDiscover() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (product: string) => portalApi.claimDiscover(product),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: portalKeys.library });
+      void qc.invalidateQueries({ queryKey: portalKeys.licenses });
+      void qc.invalidateQueries({ queryKey: portalKeys.discover });
+    },
   });
 }
 
@@ -329,6 +370,8 @@ export function useClaimKey() {
       void qc.invalidateQueries({ queryKey: portalKeys.licenses });
       void qc.invalidateQueries({ queryKey: portalKeys.releases });
       void qc.invalidateQueries({ queryKey: portalKeys.library });
+      // A key for a product Discover offered takes it off the shelf.
+      void qc.invalidateQueries({ queryKey: portalKeys.discover });
     },
   });
 }

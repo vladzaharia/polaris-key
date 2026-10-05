@@ -41,6 +41,30 @@ Discover is the second nav item ([PORTAL.md §4.16](../../../../design/PORTAL.md
 
 - Reasons are always shown (owner decision Q-6).
 
+## Corrections (verified against the code, PX-16)
+
+- **Base.** PX-08 (a dependency) is in review on `wp/PX-frontend-wave2`, not on `main` or on
+  the given base (`wp/PX-W10-discover-api`), so this branch merges both. The Library, its nav
+  count and `useLibrary` are PX-08's; PX-16 only adds to them.
+- **Reasons the Worker sends today:** `free_with_account` ("Free with a Polaris Key account") and
+  `group:<group>` ("For members of <group>"). Any other code gets the honest generic line
+  "Offered to your account by its developer", so a later policy (email domain, beta) shows a
+  reason before the page learns its words. All wording lives in `portal/model/discover.ts`; it
+  words the terms the Worker sends and never derives licence terms itself (S-19).
+- **Just-added after a reload:** `GET /api/discover` stops listing a product once it is held, so
+  `#/discover?added=<p>` rebuilds that tile from the library item (art, tier, terms) with the
+  line "Added from Discover, at no cost". `?added=` for a product the library doesn't hold is
+  ignored.
+- **Mints once:** a per-product in-flight guard outside React state (two clicks in one tick),
+  the busy button, and the Worker's idempotent claim. A 409 `not_eligible` says
+  "<Developer> stopped this offer." on the tile and removes its Add; other failures keep Add for
+  a retry.
+- **Empty state:** `h1` stays "Discover" (one `h1` per screen, §9); "Nothing to add right now" is
+  the `h2`, as mockup 25 shows. A Worker without `/api/discover` (404) shows this empty state.
+  Its star is the shared kit's `StationaryStar`, which main's console UX rounds 2–3 restyled as a
+  muted ring. That differs from mockup 25's bare accent star, but the page stays on the shared kit
+  rather than forking it.
+
 ## Steps
 
 1. Re-read the PORTAL.md sections above and the matching mockups in `docs/design/portal/`; verify this brief against the code and record any correction here.
@@ -50,11 +74,11 @@ Discover is the second nav item ([PORTAL.md §4.16](../../../../design/PORTAL.md
 
 ## Acceptance criteria
 
-- [ ] Add mints once (double-click test).
-- [ ] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e` reports zero CSP violations.
-- [ ] `vitest-axe` passes on every new or changed page component; one `h1` per screen (§9).
-- [ ] No horizontal page scroll at 360 px on every screen this package touches (§8).
-- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
+- [x] Add mints once (double-click test).
+- [x] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e` reports zero CSP violations.
+- [x] `vitest-axe` passes on every new or changed page component; one `h1` per screen (§9).
+- [x] No horizontal page scroll at 360 px on every screen this package touches (§8).
+- [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify
 
