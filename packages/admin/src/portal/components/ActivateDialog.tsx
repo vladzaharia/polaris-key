@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArrowRight, Check, Info } from "lucide-react";
+import { AlertTriangle, ArrowRight, Check, Info } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { Dialog, DialogBody, DialogFooter } from "../../ui/Dialog.js";
 import {
@@ -10,7 +10,19 @@ import {
 import { useClaimKey, useLicenses, usePreviewKey } from "../data.js";
 import { portalErrorCopy } from "../errors.js";
 import { requestHeadingFocus } from "../focus.js";
-import { checkKey, keyProblem, slugOf } from "../model/key.js";
+import {
+  blocksResend,
+  checkKey,
+  claimVerdict,
+  entriesVerdict,
+  formatVerdict,
+  previewVerdict,
+  productLabel,
+  readEntries,
+  slugOf,
+  type KeyVerdict,
+  type KeyVerdictExtras,
+} from "../model/key.js";
 import { formatDay, normalisePlatform, tierLabel } from "../model/library.js";
 import { href, navigate } from "../router.js";
 import { PLATFORM_ORDER, PlatformGlyphs, type PlatformKey } from "./Glyphs.js";
@@ -27,11 +39,16 @@ import { ProductIcon } from "./ProductIcon.js";
  * comes back inline in §4.19's words. The preview and the claim share one evaluator on the
  * Worker, so the confirm step never promises an add the claim refuses. A Worker without the
  * preview (404) adds the key directly, as before. Nothing about the key is sent before
- * Continue: the product is named from the key's own prefix.
+ * Continue: the product is named from the key's own prefix, by its presentation name (the
+ * account's own name for it, else the slug as words), never the slug itself.
+ *
+ * Every verdict (format, refusal, the entries notice) is one `KeyVerdict` from `model/key.ts`,
+ * shown inline under the field with its actions (EXPERIENCE.md §0.6 P1 step 4, UX-05).
  */
-type ConfirmPreview = PortalKeyPreview & {
-  product: NonNullable<PortalKeyPreview["product"]>;
-};
+type ConfirmPreview = PortalKeyPreview &
+  KeyVerdictExtras & {
+    product: NonNullable<PortalKeyPreview["product"]>;
+  };
 
 type Step =
   | { kind: "enter" }
@@ -61,7 +78,11 @@ export function ActivateDialog({
   const [key, setKey] = React.useState(prefill ?? "");
   const [touched, setTouched] = React.useState(Boolean(prefill));
   const [step, setStep] = React.useState<Step>({ kind: "enter" });
-  const [serverError, setServerError] = React.useState<string | null>(null);
+  const [serverVerdict, setServerVerdict] = React.useState<KeyVerdict | null>(
+    null,
+  );
+  /** Names the Worker has told us (the preview), by slug: they win over everything else. */
+  const [names, setNames] = React.useState<Record<string, string>>({});
   const claim = useClaimKey();
   const preview = usePreviewKey();
   const licenses = useLicenses(open);
@@ -70,15 +91,24 @@ export function ActivateDialog({
   const check = checkKey(key);
   const slug = check.kind === "valid" ? check.slug : slugOf(key);
   const nameFor = (s: string): string =>
-    licenses.data?.find((l) => l.product === s)?.productName ?? s;
+    productLabel(
+      s,
+      names[s] ?? licenses.data?.find((l) => l.product === s)?.productName,
+    );
   const owned = (s: string) =>
     licenses.data?.some((l) => l.product === s) ?? false;
-  const problem = touched || check.kind === "notKey" ? keyProblem(check) : null;
+  const problem =
+    touched || check.kind === "notKey" ? formatVerdict(check) : null;
+  const verdict = serverVerdict ?? problem;
+
+  const focusField = (): void => {
+    document.getElementById(fieldId)?.focus();
+  };
 
   const reset = (): void => {
     setKey("");
     setTouched(false);
-    setServerError(null);
+    setServerVerdict(null);
     claim.reset();
     preview.reset();
     setStep({ kind: "enter" });
@@ -105,7 +135,7 @@ export function ActivateDialog({
       },
       onError: (err) => {
         setStep({ kind: "enter" });
-        setServerError(claimError(err, product?.name ?? nameFor(slugToAdd)));
+        setServerVerdict(claimError(err, product?.name ?? nameFor(slugToAdd)));
       },
     });
   };
@@ -114,12 +144,20 @@ export function ActivateDialog({
     e.preventDefault();
     if (check.kind !== "valid") {
       setTouched(true);
+      focusField();
       return;
     }
-    setServerError(null);
+    setServerVerdict(null);
     const slugNow = check.slug;
     preview.mutate(key, {
       onSuccess: (p) => {
+        const named = p.product;
+        if (named?.name)
+          setNames((n) => ({
+            ...n,
+            [named.slug]: named.name,
+            [slugNow]: named.name,
+          }));
         if (p.verdict === "addable" && p.product) {
           setStep({
             kind: "confirm",
@@ -135,13 +173,13 @@ export function ActivateDialog({
             product: p.product ?? undefined,
           });
         } else {
-          setServerError(previewError(p, nameFor(slugNow)));
+          setServerVerdict(previewVerdict(p, nameFor(slugNow)));
         }
       },
       onError: (err) => {
         // A Worker without the preview: add directly, as before G22.
         if (err instanceof PortalApiError && err.status === 404) add(slugNow);
-        else setServerError(claimError(err, nameFor(slugNow)));
+        else setServerVerdict(claimError(err, nameFor(slugNow)));
       },
     });
   };
@@ -175,7 +213,7 @@ export function ActivateDialog({
       description={
         done || confirm
           ? undefined
-          : "Paste a key from a store, a developer or an email. The product joins your library and stays there, even if you lose the key."
+          : "The product stays in your library even if you lose the key."
       }
       size="md"
     >
@@ -247,12 +285,31 @@ export function ActivateDialog({
               id={fieldId}
               value={key}
               autoFocus={!prefill}
-              valid={check.kind === "valid" && !serverError}
-              error={serverError ?? problem}
+              valid={check.kind === "valid" && !serverVerdict}
+              verdict={
+                verdict
+                  ? {
+                      tone: verdict.tone,
+                      message: verdict.message,
+                      actions:
+                        verdict.code === "license_owned" ? (
+                          <OwnedActions
+                            signInUrl={verdict.signInUrl}
+                            onDifferentKey={() => {
+                              setKey("");
+                              setTouched(false);
+                              setServerVerdict(null);
+                              focusField();
+                            }}
+                          />
+                        ) : undefined,
+                    }
+                  : null
+              }
               onBlur={() => setTouched(true)}
               onChange={(v, how) => {
                 setKey(v);
-                setServerError(null);
+                setServerVerdict(null);
                 if (how === "paste") setTouched(true);
               }}
               hint={
@@ -277,7 +334,7 @@ export function ActivateDialog({
               help={
                 prefill
                   ? "Filled in from your link. Check it matches the key you have."
-                  : "Paste the whole key. It starts with pkey_ and capital letters matter."
+                  : "Starts with pkey_. Case-sensitive."
               }
             />
           </DialogBody>
@@ -293,7 +350,7 @@ export function ActivateDialog({
               type="submit"
               className="font-bold"
               loading={preview.isPending || claim.isPending}
-              disabled={check.kind !== "valid"}
+              disabled={check.kind === "empty" || blocksResend(serverVerdict)}
             >
               Continue
             </Button>
@@ -305,9 +362,45 @@ export function ActivateDialog({
 }
 
 /**
- * The confirm step (§4.17 step 2): the art with the icon overlapping, "Key recognised", the
+ * `license_owned`'s way forward (EXPERIENCE.md §0.6 P1 frame 5): **Use a different key** always;
+ * **Sign in to that account** once the Worker names where (I-09's `signInUrl`).
+ */
+function OwnedActions({
+  signInUrl,
+  onDifferentKey,
+}: {
+  signInUrl?: string;
+  onDifferentKey: () => void;
+}): React.ReactElement {
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="font-bold"
+        onClick={onDifferentKey}
+      >
+        Use a different key
+      </Button>
+      {signInUrl ? (
+        <Button
+          variant="outline"
+          size="sm"
+          className="font-bold"
+          onClick={() => window.location.assign(signInUrl)}
+        >
+          Sign in to that account
+        </Button>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * The confirm step (§4.17 step 2): the art with the icon overlapping, "Key recognized", the
  * tier tag, the terms ("Lifetime · up to 5 devices") and platforms, the key echoed with
- * **Change key**, and **Back** / **Add <product>**.
+ * **Change key**, the entries notice when the key has used its entries (a warning; Add stays
+ * enabled, Q-5), and **Back** / **Add <product>**.
  */
 function ConfirmStep({
   preview,
@@ -337,6 +430,7 @@ function ConfirmStep({
         .filter(Boolean)
         .join(" · ")
     : null;
+  const entries = entriesVerdict(readEntries(preview), p.name);
   const platforms = PLATFORM_ORDER.filter((k: PlatformKey) =>
     (preview.platforms ?? []).some((x) => normalisePlatform(x) === k),
   );
@@ -364,7 +458,7 @@ function ConfirmStep({
         <p className="flex items-center gap-2 text-sm text-fg-muted">
           <Check aria-hidden className="size-4 shrink-0 text-success" />
           <span>
-            Key recognised ·{" "}
+            Key recognized ·{" "}
             <span className="font-bold text-fg-strong">{p.name}</span>
             {p.developerName ? ` · ${p.developerName}` : ""}
           </span>
@@ -397,6 +491,18 @@ function ConfirmStep({
             Change key
           </button>
         </div>
+        {entries ? (
+          <p
+            role="status"
+            className="flex gap-2 rounded-lg border border-warning-border bg-warning-subtle p-3 text-sm text-fg"
+          >
+            <AlertTriangle
+              aria-hidden
+              className="mt-0.5 size-4 shrink-0 text-warning"
+            />
+            <span>{entries.message}</span>
+          </p>
+        ) : null}
       </DialogBody>
       <DialogFooter>
         <Button variant="outline" className="font-bold" onClick={onBack}>
@@ -410,41 +516,16 @@ function ConfirmStep({
   );
 }
 
-/** The preview's refusals in the person's words (§4.19), never a toast. */
-export function previewError(
-  p: PortalKeyPreview,
-  fallbackName: string,
-): string {
-  const name = p.product?.name ?? fallbackName;
-  switch (p.verdict) {
-    case "license_owned":
-      return `This ${name} license is already in another Polaris Key account. A license never moves by its key.`;
-    case "email_mismatch":
-      return `${name} was bought with ${p.maskedEmail ?? "another email"}. It joins only the account with that email verified.`;
-    case "portal_off":
-      return `${p.product?.developerName ?? name} manages this license elsewhere.`;
-    default:
-      return UNKNOWN_KEY;
-  }
-}
-
-const UNKNOWN_KEY =
-  "We couldn't find that key. Capital letters matter, and l, 1, O and 0 are easy to mix up, so paste the key instead of typing it.";
-
-/** The claim's refusals in the person's words (§4.19), never a toast. */
-export function claimError(err: unknown, name: string): string {
+/** A failed preview or claim as a verdict (§4.19), never a toast. */
+function claimError(err: unknown, name: string): KeyVerdict {
   if (err instanceof PortalApiError) {
-    if (err.code === "license_owned")
-      return `This ${name} license is already in another Polaris Key account. A license never moves by its key.`;
-    if (err.code === "email_mismatch")
-      return `${name} joins only the account with the license's email verified.`;
-    if (err.status === 401) return UNKNOWN_KEY;
-    if (err.status === 404) return `${name} manages this license elsewhere.`;
-    if (err.status === 422)
-      return "That isn't a Polaris Key license key. Ours start with pkey_.";
-    if (err.status === 429)
-      return "Too many tries. Wait a minute, then try again.";
+    const v = claimVerdict(err, name);
+    if (v) return v;
   }
   const copy = portalErrorCopy(err);
-  return `${copy.title}. ${copy.description}`;
+  return {
+    code: "failed",
+    tone: "danger",
+    message: `${copy.title}. ${copy.description}`,
+  };
 }
