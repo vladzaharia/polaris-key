@@ -1,7 +1,7 @@
 import * as React from "react";
 import { BookOpen, Menu, Search } from "lucide-react";
 import type { Me, PlatformIdentity } from "../../api.js";
-import { Button } from "../../components/ui/index.js";
+import { Button } from "../../ui/Button.js";
 import { cn } from "../../lib/cn.js";
 import type { ProductPageId, ServiceAccent } from "../nav.js";
 import { BrandBlock } from "./BrandBlock.js";

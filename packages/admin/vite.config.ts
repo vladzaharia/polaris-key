@@ -255,7 +255,7 @@ export default defineConfig({
             return undefined;
           return "vendor";
         },
-        // The app code both entries import (the components/ui kit, lib/, the stylesheet's JS
+        // The app code both entries import (the ui/ kit, lib/, the stylesheet's JS
         // stub) is one Rollup-made chunk; name it for what it is.
         chunkFileNames: (chunk) =>
           chunk.name.startsWith("vendor")
