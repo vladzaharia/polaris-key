@@ -23,9 +23,14 @@
  *     GET  …/distribution/listing/fit[?release=<id>]       the fit report: per store, per field and
  *                                                          locale, green, amber or red, and the
  *                                                          payload when nothing blocks
- *     POST …/distribution/listing/import                   { source: "manifest", outlet?, locale?,
- *                                                          overwrite? } — copy `.pkey/distribution`
- *                                                          `listing` into the model (`import.ts`)
+ *     POST …/distribution/listing/import                   { sources: [{source, outlet?, godot?}]
+ *                                                          (or one `source`), locale?, overwrite?,
+ *                                                          confirm?, fields? } — without `confirm`
+ *                                                          the field-by-field diff of an import
+ *                                                          from the stores, the Godot project,
+ *                                                          `.pkey/distribution` or `.pkey/product`;
+ *                                                          with the diff's `digest` as `confirm`,
+ *                                                          apply it (A-18c, `import.ts`)
  *
  * Narrative-only like the rest of the console API (`routeCoverage`'s `adminApi` kind); session,
  * CSRF, rate limit and the platform-admin gate run in `admin/api.ts` first. Every write is
@@ -61,7 +66,12 @@ import {
 import { fitReport } from "../../../core/storefront/projection.js";
 import type { DbStatement } from "../../../core/platform.js";
 import { FEED_LISTING_STORES } from "./feed.js";
-import { importManifestListing } from "./import.js";
+import {
+  importSummary,
+  isImportSource,
+  runImport,
+  type SourceSpec,
+} from "./import.js";
 import { notesForProjection, releaseNotesView } from "./notes.js";
 import {
   countOverrides,
@@ -71,6 +81,8 @@ import {
   localeOf,
   overrideOf,
   precedenceOf,
+  provenanceAfterEdit,
+  provenanceOf,
   readListing,
   stmtDeleteLocale,
   stmtUpsertListing,
@@ -110,6 +122,10 @@ async function view(ctx: AdminCtx, stored: StoredListing | null) {
       ? {
           app: stored.model.app,
           source: stored.row.source,
+          provenance: provenanceOf(
+            stored.row,
+            stored.model.app as unknown as Record<string, unknown>,
+          ),
           createdAt: stored.row.created_at,
           modifiedAt: stored.row.modified_at,
           modifiedBy: stored.row.modified_by,
@@ -119,6 +135,7 @@ async function view(ctx: AdminCtx, stored: StoredListing | null) {
       locale: r.locale,
       ...localeOf(r),
       source: r.source,
+      provenance: provenanceOf(r, localeOf(r) as Record<string, unknown>),
       modifiedAt: r.modified_at,
       modifiedBy: r.modified_by,
     })),
@@ -256,6 +273,11 @@ async function putListing(ctx: AdminCtx): Promise<Response> {
     (app.defaultLocale as string | undefined) ??
     existing?.row.default_locale ??
     FALLBACK_LOCALE;
+  // An operator's edit owns what it changed: those fields lose their import source (A-18c).
+  const appBefore = (existing?.model.app ?? {}) as unknown as Record<
+    string,
+    unknown
+  >;
   const stmts: DbStatement[] = [
     stmtUpsertListing(
       slug,
@@ -265,6 +287,11 @@ async function putListing(ctx: AdminCtx): Promise<Response> {
       session.sub,
       now,
       defaultLocale,
+      provenanceAfterEdit(
+        provenanceOf(existing?.row ?? null, appBefore),
+        appBefore,
+        app,
+      ),
     ),
   ];
   const changedLocales: string[] = [];
@@ -277,6 +304,8 @@ async function putListing(ctx: AdminCtx): Promise<Response> {
       }
       continue;
     }
+    const row = existing?.locales.find((l) => l.locale === locale) ?? null;
+    const before = (row ? localeOf(row) : {}) as Record<string, unknown>;
     stmts.push(
       stmtUpsertLocale(
         slug,
@@ -285,6 +314,11 @@ async function putListing(ctx: AdminCtx): Promise<Response> {
         "admin",
         session.sub,
         now,
+        provenanceAfterEdit(
+          provenanceOf(row, before),
+          before,
+          patch as Record<string, unknown>,
+        ),
       ),
     );
     changedLocales.push(locale);
@@ -502,36 +536,174 @@ async function getFit(ctx: AdminCtx): Promise<Response> {
   });
 }
 
+const DIGEST = /^[0-9a-f]{64}$/;
+const MAX_FIELDS = 1000;
+
+/** The import request, validated: `{sources | source, outlet?, godot?, locale?, overwrite?,
+ *  confirm?, fields?}`. */
+function importRequest(body: Record<string, unknown>):
+  | {
+      ok: true;
+      sources: SourceSpec[];
+      locale: string | null;
+      overwrite: boolean;
+      confirm: string | null;
+      fields: string[] | null;
+    }
+  | { ok: false; problems: ModelProblem[] } {
+  const problems: ModelProblem[] = [];
+  const known = new Set([
+    "sources",
+    "source",
+    "outlet",
+    "godot",
+    "locale",
+    "overwrite",
+    "confirm",
+    "fields",
+  ]);
+  for (const k of Object.keys(body))
+    if (!known.has(k))
+      problems.push({ field: k, message: `${k} is not part of an import` });
+  let raw: unknown[];
+  if (body.sources !== undefined) {
+    if (
+      body.source !== undefined ||
+      body.outlet !== undefined ||
+      body.godot !== undefined
+    )
+      problems.push({
+        field: "sources",
+        message:
+          "name the sources either as sources or as one source, not both",
+      });
+    raw = Array.isArray(body.sources) ? body.sources : [];
+    if (!Array.isArray(body.sources) || raw.length === 0)
+      problems.push({
+        field: "sources",
+        message: "sources must be a non-empty list",
+      });
+  } else
+    raw = [
+      {
+        source: body.source,
+        ...(body.outlet !== undefined ? { outlet: body.outlet } : {}),
+        ...(body.godot !== undefined ? { godot: body.godot } : {}),
+      },
+    ];
+  const sources: SourceSpec[] = [];
+  const seen = new Set<string>();
+  raw.forEach((r, i) => {
+    const at = body.sources !== undefined ? `sources[${i}]` : "source";
+    if (!isRecord(r) || !isImportSource(r.source)) {
+      problems.push({
+        field: at,
+        message: `${at} must be one of app-store, play, ms-store, godot, manifest, product`,
+      });
+      return;
+    }
+    if (seen.has(r.source)) {
+      problems.push({ field: at, message: `${r.source} is named twice` });
+      return;
+    }
+    seen.add(r.source);
+    const stray = Object.keys(r).filter(
+      (k) =>
+        k !== "source" &&
+        !(k === "outlet" && r.source === "manifest") &&
+        !(k === "godot" && r.source === "godot"),
+    );
+    if (stray.length) {
+      problems.push({
+        field: at,
+        message: `${stray.join(", ")} does not go with source ${r.source}`,
+      });
+      return;
+    }
+    if (
+      r.outlet !== undefined &&
+      r.outlet !== null &&
+      typeof r.outlet !== "string"
+    ) {
+      problems.push({ field: `${at}.outlet`, message: "outlet must be text" });
+      return;
+    }
+    if (r.source === "godot" && !isRecord(r.godot)) {
+      problems.push({
+        field: `${at}.godot`,
+        message: "a godot import carries what pkey listing import --godot read",
+      });
+      return;
+    }
+    sources.push({
+      source: r.source,
+      ...(r.outlet !== undefined ? { outlet: r.outlet as string | null } : {}),
+      ...(r.godot !== undefined ? { godot: r.godot } : {}),
+    });
+  });
+  if (
+    body.locale !== undefined &&
+    body.locale !== null &&
+    typeof body.locale !== "string"
+  )
+    problems.push({ field: "locale", message: "locale must be text" });
+  if (body.overwrite !== undefined && typeof body.overwrite !== "boolean")
+    problems.push({
+      field: "overwrite",
+      message: "overwrite must be a boolean",
+    });
+  if (
+    body.confirm !== undefined &&
+    body.confirm !== null &&
+    (typeof body.confirm !== "string" || !DIGEST.test(body.confirm))
+  )
+    problems.push({
+      field: "confirm",
+      message: "confirm must be the preview's digest",
+    });
+  if (
+    body.fields !== undefined &&
+    body.fields !== null &&
+    (!Array.isArray(body.fields) ||
+      body.fields.length > MAX_FIELDS ||
+      !body.fields.every((f) => typeof f === "string" && f.length <= 200))
+  )
+    problems.push({
+      field: "fields",
+      message: "fields must be a list of field names",
+    });
+  if (
+    body.fields != null &&
+    (body.confirm === undefined || body.confirm === null)
+  )
+    problems.push({ field: "fields", message: "fields go with confirm" });
+  if (problems.length) return { ok: false, problems };
+  return {
+    ok: true,
+    sources,
+    locale: (body.locale as string | null | undefined) ?? null,
+    overwrite: body.overwrite === true,
+    confirm: (body.confirm as string | null | undefined) ?? null,
+    fields: (body.fields as string[] | null | undefined) ?? null,
+  };
+}
+
 async function postImport(ctx: AdminCtx): Promise<Response> {
   const { db, product, session, now } = ctx;
   const slug = product.slug;
-  const body = await readBody(ctx.req);
-  if (body.source !== "manifest")
-    return invalid([
-      {
-        field: "source",
-        message:
-          'source must be "manifest" (store and Godot imports arrive with A-18c)',
-      },
-    ]);
-  for (const k of ["outlet", "locale"] as const)
-    if (
-      body[k] !== undefined &&
-      body[k] !== null &&
-      typeof body[k] !== "string"
-    )
-      return invalid([{ field: k, message: `${k} must be text` }]);
-  if (body.overwrite !== undefined && typeof body.overwrite !== "boolean")
-    return invalid([
-      { field: "overwrite", message: "overwrite must be a boolean" },
-    ]);
-  const r = await importManifestListing(db, slug, {
-    outlet: (body.outlet as string | undefined) ?? null,
-    locale: (body.locale as string | undefined) ?? null,
-    overwrite: body.overwrite === true,
-    actor: session.sub,
-    now,
-  });
+  const req = importRequest(await readBody(ctx.req));
+  if (!req.ok) return invalid(req.problems);
+  const r = await runImport(
+    {
+      env: ctx.env,
+      db,
+      product: slug,
+      hooks: ctx.hooks,
+      now,
+      actor: session.sub,
+    },
+    req,
+  );
   if (!r.ok)
     return err(
       r.status,
@@ -539,9 +711,13 @@ async function postImport(ctx: AdminCtx): Promise<Response> {
       r.message,
       {
         reason: r.reason,
+        ...(r.problems
+          ? { fields: r.problems.map((p) => p.field), problems: r.problems }
+          : {}),
+        ...(r.preview ? { import: r.preview } : {}),
       },
     );
-  if (r.result.imported.length)
+  if (r.result.written.length)
     await audit(
       db,
       slug,
@@ -549,7 +725,7 @@ async function postImport(ctx: AdminCtx): Promise<Response> {
       now,
       "distribution.listing.import",
       { kind: "listing", id: slug },
-      `Imported the .pkey/distribution listing (outlet ${r.result.outlet}): ${r.result.imported.join(", ")}`,
+      importSummary(r.result),
     );
   return adminJson({
     import: r.result,

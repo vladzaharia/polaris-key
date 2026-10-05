@@ -33,6 +33,7 @@ export const NO_HOOKS: ServiceHooks = {
   releaseCatalog: () => null,
   delivery: () => null,
   outletCapabilities: async () => null,
+  licenseProvenance: () => null,
 };
 
 /** A manifest ingest that writes nothing for any service — for a test that builds a service

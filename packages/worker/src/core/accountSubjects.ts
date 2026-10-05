@@ -196,16 +196,27 @@ export async function moveLicenseAccount(
   to: string | null,
   now: number,
 ): Promise<boolean> {
-  const changes = await db.runChanges(
-    `UPDATE licenses SET account_id = ?, modified_at = ?
-      WHERE product = ? AND id = ? AND account_id IS ?`,
-    to,
-    now,
-    product,
-    licenseId,
-    from,
-  );
+  const stmt = stmtMoveLicenseAccount(product, licenseId, from, to, now);
+  const changes = await db.runChanges(stmt.sql, ...stmt.params);
   return changes > 0;
+}
+
+/**
+ * The compare-and-set owner move as one statement, for a caller that must put it in the same
+ * batch as its own writes (Identity ends the licence's portal links atomically with the move).
+ */
+export function stmtMoveLicenseAccount(
+  product: string,
+  licenseId: string,
+  from: string | null,
+  to: string | null,
+  now: number,
+): DbStatement {
+  return {
+    sql: `UPDATE licenses SET account_id = ?, modified_at = ?
+      WHERE product = ? AND id = ? AND account_id IS ?`,
+    params: [to, now, product, licenseId, from],
+  };
 }
 
 /** Merge: every licence of `from` moves to `to`, in the merge batch. */

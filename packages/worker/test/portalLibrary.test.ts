@@ -436,6 +436,7 @@ describe("GET /api/products/<p>", () => {
         update: false,
         identity: false,
       },
+      returnTo: { origins: [], schemes: [] },
     });
     expect(body.licenses.map((l) => [l.id, l.status])).toEqual([
       ["lic_b", "active"],
@@ -470,6 +471,25 @@ describe("GET /api/products/<p>", () => {
         dormant: true,
       },
     ]);
+  });
+
+  it("returnTo lists the product's declared web origins, for the focused flows (PX-10)", async () => {
+    const db = makeTestDb();
+    const env = portalEnv();
+    const s = await session(env, db);
+    await productWithListing(db, "tidewater", null);
+    await db.run(
+      `UPDATE products SET web_origins_json = ? WHERE slug = ?`,
+      JSON.stringify(["https://app.tidewater.example"]),
+      "tidewater",
+    );
+    const l = await seedLicenseWithKey(db, "tidewater", { id: "lic_r" });
+    await linkLicense(db, s.accountId, "tidewater", l.licenseId, "admin", NOW);
+    const res = await api(env, db, "/api/products/tidewater", s);
+    expect(((await res.json()) as { returnTo: unknown }).returnTo).toEqual({
+      origins: ["https://app.tidewater.example"],
+      schemes: [],
+    });
   });
 
   it("404s a product the account holds nothing for, and an unknown product", async () => {

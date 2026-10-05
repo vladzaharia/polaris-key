@@ -4,7 +4,12 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
 import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/securityHeaders.js";
-import { portalRoutes, type PortalScenario } from "./portalFixtures.js";
+import { mediaResponseHeaders } from "../../worker/src/services/identity/portal/media.js";
+import {
+  portalMedia,
+  portalRoutes,
+  type PortalScenario,
+} from "./portalFixtures.js";
 
 /**
  * The customer site (PORTAL.md) in real Chromium under the Worker's exact CSP: every main flow
@@ -81,6 +86,20 @@ async function open(
         return route.fulfill({ status: 404, json: { error: "not_found" } });
       const res = typeof handler === "function" ? handler(req) : handler;
       return route.fulfill({ status: res.status ?? 200, json: res.body });
+    }
+    // PX-08: developer art as the media proxy answers it (same origin, its own headers).
+    if (url.pathname.startsWith("/media/")) {
+      requests.push(`${req.method()} ${url.pathname}`);
+      const png = portalMedia(url.pathname);
+      if (!png) return route.fulfill({ status: 404, body: "" });
+      const headers = Object.fromEntries(
+        mediaResponseHeaders({
+          "content-type": "image/png",
+          "content-length": String(png.byteLength),
+          "content-disposition": "inline",
+        }),
+      );
+      return route.fulfill({ status: 200, headers, body: png });
     }
     // The Worker serves the SPA shell for `/activate` (router.ts); vite preview does not.
     const res =
@@ -188,6 +207,27 @@ const SCREENS: {
     ready: (p) => h1(p, "Account"),
   },
   {
+    name: "product-package",
+    scenario: "three",
+    path: "/#/p/tidewater/package",
+    ready: async (p) => {
+      await h1(p, "Tidewater Studio");
+      await p.getByRole("heading", { name: /Package access/ }).waitFor();
+    },
+  },
+  {
+    name: "device-limit",
+    scenario: "twelve",
+    path: "/#/p/orbit-survey/free-device?for=Mara%E2%80%99s%20Steam%20Deck&return=orbitsurvey%3A%2F%2Fretry",
+    ready: (p) => h1(p, "Your license is on 2 of 2 devices"),
+  },
+  {
+    name: "download-flow",
+    scenario: "three",
+    path: "/#/p/nightfall/download?platform=linux",
+    ready: (p) => h1(p, "Download Nightfall for Linux"),
+  },
+  {
     name: "discover-empty",
     scenario: "three",
     path: "/#/discover",
@@ -224,6 +264,101 @@ describe("the customer site under the Worker's CSP", () => {
       }
     });
   }
+});
+
+describe("Library on GET /api/library (PX-08)", () => {
+  it("shows proxied art with zero violations, every image decoded", async () => {
+    const o = await open("three", "/");
+    await h1(o.page, "Your library");
+    await expect
+      .poll(() =>
+        o.page.evaluate(
+          () =>
+            [...document.images].filter((i) => i.complete && i.naturalWidth > 0)
+              .length,
+        ),
+      )
+      .toBeGreaterThanOrEqual(4);
+    const srcs = await o.page.evaluate(() =>
+      [...document.images].map((i) => new URL(i.src).pathname),
+    );
+    expect(srcs.every((s) => s.startsWith("/media/"))).toBe(true);
+    expect(o.requests).toContain("GET /media/nightfall/header");
+    await o.page
+      .getByRole("navigation", { name: "Main" })
+      .getByRole("link", { name: /Discover/ })
+      .waitFor();
+    expect(await o.violations()).toEqual([]);
+    await o.page.context().close();
+  });
+});
+
+describe("focused flows (PX-10)", () => {
+  it("frees a device and returns only to the declared app link", async () => {
+    const o = await open(
+      "twelve",
+      "/#/p/orbit-survey/free-device?for=Steam%20Deck&return=orbitsurvey%3A%2F%2Fretry",
+      { width: 390, height: 844 },
+    );
+    await h1(o.page, "Your license is on 2 of 2 devices");
+    expect(
+      await o.page
+        .getByRole("radio", { name: /Work laptop/ })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    await o.page
+      .getByRole("button", { name: "Remove Work laptop and continue" })
+      .click();
+    await h1(o.page, "Work laptop was removed");
+    await shoot(o.page, "device-limit-done-mobile-dark");
+    expect(
+      await o.page
+        .getByRole("link", { name: "Return to Orbit Survey" })
+        .getAttribute("href"),
+    ).toBe("orbitsurvey://retry");
+    expect(o.requests).toContain(
+      "DELETE /api/licenses/orbit-survey/lic_orbit-survey/devices/work",
+    );
+    expect(await o.violations()).toEqual([]);
+    await o.page.context().close();
+  });
+
+  it("drops an undeclared return URL", async () => {
+    const o = await open(
+      "twelve",
+      "/#/p/orbit-survey/free-device?return=https%3A%2F%2Fevil.example%2F",
+    );
+    await h1(o.page, "Your license is on 2 of 2 devices");
+    expect(
+      await o.page
+        .getByRole("link", { name: "Back to Orbit Survey" })
+        .getAttribute("href"),
+    ).toBe("#/p/orbit-survey");
+    expect(await o.page.content()).not.toContain("evil.example");
+    await o.page.context().close();
+  });
+});
+
+describe("package access (PX-11)", () => {
+  it("creates a token and shows it once in a dialog that Escape doesn't close", async () => {
+    const o = await open("three", "/#/p/tidewater/package");
+    await h1(o.page, "Tidewater Studio");
+    await o.page.getByRole("button", { name: "Create token" }).click();
+    const form = o.page.getByRole("dialog", { name: "Create a token" });
+    await form.getByLabel("Name").fill("Laptop 2");
+    await form.getByRole("button", { name: "Create token" }).click();
+    const shown = o.page.getByRole("dialog", { name: "Copy your token now" });
+    await shown.waitFor();
+    await shoot(o.page, "product-token-desktop-dark");
+    await o.page.keyboard.press("Escape");
+    await shown.getByText(/Close without copying\?/).waitFor();
+    expect(await shown.isVisible()).toBe(true);
+    expect(o.requests).toContain(
+      "POST /api/licenses/tidewater/lic_tidewater/registry-tokens",
+    );
+    expect(await o.violations()).toEqual([]);
+    await o.page.context().close();
+  });
 });
 
 describe("main flows", () => {

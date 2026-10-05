@@ -196,6 +196,7 @@ predicate below set:
 | `releaseCatalog`     | Release      | deliverables, releases, builds, artifact records, channel policy, yanks         |
 | `delivery`           | Distribution | the default transport (`pkey-cdn`) and availability; later rollouts and URLs    |
 | `outletCapabilities` | Distribution | what one outlet permits (`null` for every outlet until outlets can be declared) |
+| `licenseProvenance`  | License      | where each licence came from: its store grants, or the origin that minted it    |
 
 Core builds the hooks for each request from the registry and the product's `services_json`, and
 every accessor **fails closed**: while the providing service is off it returns `null` and the

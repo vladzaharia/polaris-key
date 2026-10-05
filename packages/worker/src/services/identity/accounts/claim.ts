@@ -20,7 +20,6 @@
 import {
   attachLicenseAccount,
   licenseAccountId,
-  moveLicenseAccount,
   subjectFor,
 } from "../../../core/accountSubjects.js";
 import { getLicense, type LicenseRow } from "../../../core/data.js";
@@ -33,7 +32,7 @@ import { getProduct } from "../../../core/data.js";
 import { sendNotice } from "../portal/email.js";
 import { licenseAttachedNotice } from "../portal/notices.js";
 import { getPortalProductSettings, portalAudit } from "../portal/repo.js";
-import { endLicenseLinks } from "./legacy.js";
+import { endLicenseLinks, moveLicenseOwnerEndingLinks } from "./legacy.js";
 import type { AccountContext } from "./links.js";
 import { normalizeEmail, verifiedAccountEmails } from "./repo.js";
 
@@ -203,13 +202,12 @@ export async function detachLicense(
   // Every portal link to the licence ends BEFORE the pointer clears, so the scheduled catch-up
   // can never re-point the floating licence at a not-yet-settled §8 Q1 loser.
   await endLicenseLinks(ctx, args.product, args.licenseId, [args.accountId]);
-  const moved = await moveLicenseAccount(
-    db,
+  const moved = await moveLicenseOwnerEndingLinks(
+    ctx,
     args.product,
     args.licenseId,
     args.accountId,
     null,
-    now,
   );
   if (!moved) return { ok: false };
   await onLicenseOwnershipEnded(db, env, {
@@ -265,13 +263,12 @@ export async function reassignLicense(
     args.toAccountId,
   ]);
   if (
-    !(await moveLicenseAccount(
-      db,
+    !(await moveLicenseOwnerEndingLinks(
+      ctx,
       args.product,
       args.licenseId,
       previous,
       args.toAccountId,
-      now,
     ))
   ) {
     return { ok: false, reason: "conflict" };

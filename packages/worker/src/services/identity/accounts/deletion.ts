@@ -15,7 +15,6 @@
 
 import {
   accountLicenses,
-  moveLicenseAccount,
   stmtDetachAccountLicenses,
 } from "../../../core/accountSubjects.js";
 import { randomId, type DbStatement } from "../../../core/platform.js";
@@ -27,7 +26,7 @@ import {
 } from "../../../core/subjectHooks.js";
 import { portalAudit } from "../portal/repo.js";
 import { stmtSubjectEvent } from "./events.js";
-import { endLicenseLinks } from "./legacy.js";
+import { endLicenseLinks, moveLicenseOwnerEndingLinks } from "./legacy.js";
 import type { AccountContext } from "./links.js";
 import { getAccountRow } from "./repo.js";
 
@@ -73,13 +72,12 @@ export async function removeProductData(
       // No portal link survives the detach (see endLicenseLinks): §8 Q1 losers settle here.
       await endLicenseLinks(ctx, args.product, licenseId, [args.accountId]);
       if (
-        await moveLicenseAccount(
-          db,
+        await moveLicenseOwnerEndingLinks(
+          ctx,
           args.product,
           licenseId,
           args.accountId,
           null,
-          now,
         )
       ) {
         detached.push(licenseId);

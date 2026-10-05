@@ -84,6 +84,11 @@ import {
 import { platformOidcConfig } from "../../../core/platform.js";
 import { portalSecurityHeaders } from "./headers.js";
 import { handleProductDownloads } from "./downloads.js";
+import {
+  discoverCount,
+  handleDiscover,
+  handleDiscoverClaim,
+} from "./discover.js";
 
 export function portalJson(
   body: unknown,
@@ -1193,7 +1198,23 @@ export async function handlePortalApi(
   // PX-W1: the library and the product page (`library.ts`). Reads only.
   if (head === "library" && rest.length === 0) {
     if (req.method !== "GET") return err(405, "method_not_allowed");
-    return portalJson(await libraryView(db, session.accountId, now, hooksFor));
+    return portalJson({
+      ...(await libraryView(db, session.accountId, now, hooksFor)),
+      // PX-W10: the Discover count in the nav (§4.16); the offers themselves are `GET /api/discover`.
+      discoverCount: await discoverCount(env, db, session.accountId, now),
+    });
+  }
+  // PX-W10 (G24, G25): Discover's offers and "Add to library" (`discover.ts`).
+  if (head === "discover" && rest.length === 0) {
+    return handleDiscover(req, env, db, session, now, hooksFor);
+  }
+  if (
+    head === "discover" &&
+    rest.length === 2 &&
+    rest[0] &&
+    rest[1] === "claim"
+  ) {
+    return handleDiscoverClaim(req, env, db, session, rest[0], now);
   }
   if (head === "products" && rest.length === 1 && rest[0]) {
     if (req.method !== "GET") return err(405, "method_not_allowed");

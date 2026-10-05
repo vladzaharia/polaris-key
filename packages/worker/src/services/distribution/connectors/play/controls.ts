@@ -27,6 +27,13 @@
  *
  * `applyPlayControl` is the single halt path: the vitals auto-halt (`vitals.ts`, actor
  * `connector:play-vitals`) and the telemetry auto-halt P6-03 adds call it too.
+ *
+ * A-18e: a console control first takes the package's EDIT LEASE (`lease.ts`, purpose `control`)
+ * and answers 409 `edit_lease_held` while anyone else holds it (a provisioning run's edit), before
+ * any token is minted: the control's own edit would invalidate theirs. The vitals auto-halt runs
+ * inside the poll tick, under the poll's lease. Both commit with the gate context
+ * `PLAY_ROLLOUT_CONTROL` (`core/storefront/rules/googlePlay.ts`): P5-03's rollout controls keep
+ * their own confirmations (`confirmRollback`) and are not typed by the storefront gate.
  */
 
 import type { Db, Env } from "../../../../core/platform.js";
@@ -35,7 +42,7 @@ import { audit, type AdminSession } from "../../../../core/adminApi.js";
 import { getRollout, rolloutRecord } from "../../rollouts.js";
 import type { ConnectorControl } from "../index.js";
 import { auditConnector } from "../state.js";
-import { PlayError, type FetchImpl } from "./client.js";
+import { PLAY_ROLLOUT_CONTROL, PlayError, type FetchImpl } from "./client.js";
 import {
   isPriority,
   parseTrack,
@@ -51,6 +58,11 @@ import {
   writePlaySettings,
 } from "./policy.js";
 import { releaseOf, resolveVersionCodes, syncPlay } from "./poll.js";
+import {
+  acquirePlayEditLease,
+  isLeaseHeld,
+  releasePlayEditLease,
+} from "./lease.js";
 import { finishRun, playRun, type PlayRun } from "./run.js";
 import { isPinReason, PLAY_TRACK, resolvePlaySetup } from "./setup.js";
 
@@ -231,11 +243,13 @@ export async function applyPlayControl(
     if (!planned.ok)
       return refuse(planned.status, planned.reason, planned.message);
     plan = planned;
-    await run.publisher.patchTrack(editId, req.track, {
-      track: req.track,
-      releases: plan.releases,
-    });
-    await run.publisher.commitEdit(editId);
+    await run.publisher.patchTrack(
+      editId,
+      req.track,
+      { track: req.track, releases: plan.releases },
+      PLAY_ROLLOUT_CONTROL,
+    );
+    await run.publisher.commitEdit(editId, PLAY_ROLLOUT_CONTROL);
     committed = true;
   } finally {
     if (!committed) await run.publisher.deleteEdit(editId);
@@ -352,6 +366,20 @@ async function withRun(
       "Google Play is not configured: declare a play or play-testing outlet with a packageName and tracks, and store a google-service-account credential pinned to that package",
     );
   }
+  // The edit lease (A-18e), before any token: a control's edit would invalidate a held one.
+  const lease = await acquirePlayEditLease(c.db, {
+    packageName: setup.packageName,
+    purpose: "control",
+    actor: `admin:${c.session.sub}`,
+  });
+  if (isLeaseHeld(lease))
+    return refuse(
+      409,
+      "edit_lease_held",
+      `Google Play is busy: a ${lease.purpose} edit holds this app's edit lease until ${new Date(
+        lease.expiresAt * 1000,
+      ).toISOString()}; try again then`,
+    );
   const run = playRun({
     env: c.env,
     db: c.db,
@@ -380,6 +408,7 @@ async function withRun(
       );
     throw e;
   } finally {
+    await releasePlayEditLease(c.db, lease);
     await finishRun(run, error);
   }
 }

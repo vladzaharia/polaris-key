@@ -686,6 +686,11 @@ describe("R11-05 product scoping", () => {
       "account_sessions",
       "account_product_grants",
       "account_passkeys",
+      // 0070 (A-18e) — the Play edit lease: one row per (store, app) while a caller holds an edit
+      // on that app. An app id belongs to the store account, not a product (the platform service
+      // account serves every product pinned to it; A-16's lister is team-wide), and the row holds
+      // no tenant data: a caller kind, an actor id and two timestamps.
+      "store_edit_leases",
     ]);
     const offenders: string[] = [];
     for (const t of tables.map((r) => r.name)) {

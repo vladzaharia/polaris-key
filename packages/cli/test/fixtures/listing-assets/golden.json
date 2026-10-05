@@ -1,0 +1,224 @@
+{
+  "play:icon": {
+    "status": "ok",
+    "width": 512,
+    "height": 512,
+    "pixelSha256": "32d0eadaa17b8728421c89c3a8c7e43b73ca38374d30d7b183dd4bcef15b550c"
+  },
+  "ms-store:tile": {
+    "status": "ok",
+    "width": 300,
+    "height": 300,
+    "pixelSha256": "a9e234eb56ac8c37708fc18e5645d2ad06c30c8d19cd9417c6c50086561d298b"
+  },
+  "steam:community-icon": {
+    "status": "ok",
+    "width": 184,
+    "height": 184,
+    "pixelSha256": "265ef16768de5a18a9d1d25e45632d79b3b62d3f6f845ffd2b588eb9755d532b"
+  },
+  "steam:shortcut-icon": {
+    "status": "ok",
+    "width": 256,
+    "height": 256,
+    "pixelSha256": "6acdf7f090119b3d01f5b7ea43bb43416fc192ff152540253530af3e365984c8"
+  },
+  "flathub:icon": {
+    "status": "ok",
+    "width": 512,
+    "height": 512,
+    "pixelSha256": "32d0eadaa17b8728421c89c3a8c7e43b73ca38374d30d7b183dd4bcef15b550c"
+  },
+  "snap:icon": {
+    "status": "ok",
+    "width": 512,
+    "height": 512,
+    "pixelSha256": "32d0eadaa17b8728421c89c3a8c7e43b73ca38374d30d7b183dd4bcef15b550c"
+  },
+  "winget:icon": {
+    "status": "ok",
+    "width": 256,
+    "height": 256,
+    "pixelSha256": "6acdf7f090119b3d01f5b7ea43bb43416fc192ff152540253530af3e365984c8"
+  },
+  "fdroid:icon": {
+    "status": "ok",
+    "width": 512,
+    "height": 512,
+    "pixelSha256": "32d0eadaa17b8728421c89c3a8c7e43b73ca38374d30d7b183dd4bcef15b550c"
+  },
+  "icon-adaptive-fg": {
+    "status": "ok",
+    "width": 432,
+    "height": 432,
+    "pixelSha256": "9b8cf9f120baa5ea7a4e55276dfac9f6649864298bb32ab42037d87a2b73b688"
+  },
+  "icon-adaptive-bg": {
+    "status": "ok",
+    "width": 432,
+    "height": 432,
+    "pixelSha256": "a3ebab040694c3a76feae09696c16a72b563d437c4703b87ce469aae57544d11"
+  },
+  "icon-adaptive-mono": {
+    "status": "ok",
+    "width": 432,
+    "height": 432,
+    "pixelSha256": "cc6c53d058d8205ff6e30606d027cc734f2d19af6713646a0715c58a38493db4"
+  },
+  "play:feature-graphic": {
+    "status": "ok",
+    "width": 1024,
+    "height": 500,
+    "pixelSha256": "d90150067a4338f11fe347aaf743980dfc9076ca8a66ddcec9956bcdbdde41e1"
+  },
+  "fdroid:feature-graphic": {
+    "status": "ok",
+    "width": 1024,
+    "height": 500,
+    "pixelSha256": "d90150067a4338f11fe347aaf743980dfc9076ca8a66ddcec9956bcdbdde41e1"
+  },
+  "steam:header-capsule": {
+    "status": "ok",
+    "width": 920,
+    "height": 430,
+    "pixelSha256": "77110b405d618a6b09acbba3881f6bdab8ccb480fa231c92fc9e5397a5d2af6a"
+  },
+  "steam:main-capsule": {
+    "status": "ok",
+    "width": 1232,
+    "height": 706,
+    "pixelSha256": "c0dce9d5382af8d9b3da9cdf367828e69e8d605fde6d52e2226e1736b3fb1544"
+  },
+  "steam:vertical-capsule": {
+    "status": "ok",
+    "width": 748,
+    "height": 896,
+    "pixelSha256": "29d8342e616c64d5c8854391732c1d9f27a5464e6279bcaeb86034d3d2743915"
+  },
+  "steam:small-capsule": {
+    "status": "ok",
+    "width": 462,
+    "height": 174,
+    "pixelSha256": "dfdf1c7ffaf371650bc0b73b90a18fffa658d818363fdf0c8f5cf816ed9c969a"
+  },
+  "steam:library-capsule": {
+    "status": "ok",
+    "width": 600,
+    "height": 900,
+    "pixelSha256": "481fc297001d7fe39610751fd048c4d4b87866bb9e3fa3b4d63573809aaae642"
+  },
+  "steam:library-header": {
+    "status": "ok",
+    "width": 920,
+    "height": 430,
+    "pixelSha256": "77110b405d618a6b09acbba3881f6bdab8ccb480fa231c92fc9e5397a5d2af6a"
+  },
+  "steam:library-hero": {
+    "status": "ok",
+    "width": 3840,
+    "height": 1240,
+    "pixelSha256": "d4e965924cd501d0dd0b67aa532aec9c2f20554216c4f6a26a5a9fb3ee24618f"
+  },
+  "steam:library-logo": {
+    "status": "ok",
+    "width": 1280,
+    "height": 201,
+    "pixelSha256": "78a556233ffdcc5a2a7c6d26932e7f9948cf72d8d75c5b1765107b5833e6c2d6"
+  },
+  "steam:page-background": {
+    "status": "ok",
+    "width": 1438,
+    "height": 810,
+    "pixelSha256": "5d2129f3b63b4b239e39aec8c2a46ade61b50e21723dd038824fbac7cdbc1141"
+  },
+  "ms-store:super-hero": {
+    "status": "ok",
+    "width": 3840,
+    "height": 2160,
+    "pixelSha256": "e2109a93694528bceede9e4516408fc5a4dc93898661145b6bc4db709b109eca"
+  },
+  "ms-store:poster": {
+    "status": "ok",
+    "width": 1440,
+    "height": 2160,
+    "pixelSha256": "1686a1cf0e3a7b5bf0a48dfe5ac2232bfeb2c41f1df0f5474ec431e93daae729"
+  },
+  "ms-store:box-art": {
+    "status": "ok",
+    "width": 2160,
+    "height": 2160,
+    "pixelSha256": "62aca5277d9ba16648ad6664d68af9213691fc1ca6ef96a2adf497ee466ed3c3"
+  },
+  "itch:cover": {
+    "status": "ok",
+    "width": 630,
+    "height": 500,
+    "pixelSha256": "0e38f7f7f568caf56038b96212de039b806246fa3da57520a5193314edab30ed"
+  },
+  "snap:banner": {
+    "status": "ok",
+    "width": 1920,
+    "height": 640,
+    "pixelSha256": "4e2efd2ed840423c6b21ee9111cf2901f072ed977dd4918fadb8a7a7ef0f0a0c"
+  },
+  "app-store/phone-portrait/01-menu": {
+    "status": "fits",
+    "width": 1320,
+    "height": 2868,
+    "pixelSha256": "a598e90e652b62ab97d5c034ba78f163b0726fef07bc67415a1e5b9d96440d56"
+  },
+  "app-store/tablet/01-board": {
+    "status": "fits",
+    "width": 2064,
+    "height": 2752,
+    "pixelSha256": "c037acde3054b8c2d22344ecdc292bcbf8d37fa7586763a7481ec2e5cd47907b"
+  },
+  "app-store/desktop-16x10/01-mac": {
+    "status": "fits",
+    "width": 2880,
+    "height": 1800,
+    "pixelSha256": "38f43df0ffce2c0dee192db5014cbdf460ac6653a13076a4a03247595fcee05b"
+  },
+  "play/phone-portrait/01-menu": {
+    "status": "accepted",
+    "width": 1320,
+    "height": 2640,
+    "pixelSha256": "71fe6984f40b610353d6bf33f81d0cb481381dacfab20a6fab87bf4602b0eae2"
+  },
+  "play/tablet/01-board": {
+    "status": "fits",
+    "width": 2064,
+    "height": 2752,
+    "pixelSha256": "c037acde3054b8c2d22344ecdc292bcbf8d37fa7586763a7481ec2e5cd47907b"
+  },
+  "ms-store/desktop-16x9/01-game": {
+    "status": "fits",
+    "width": 1920,
+    "height": 1080,
+    "pixelSha256": "0bc723a8e2880f42d84e27d351e7904bef2fc8792962cf9149ad791bd0039a78"
+  },
+  "ms-store/desktop-16x10/01-mac": {
+    "status": "fits",
+    "width": 2880,
+    "height": 1800,
+    "pixelSha256": "38f43df0ffce2c0dee192db5014cbdf460ac6653a13076a4a03247595fcee05b"
+  },
+  "ms-store/tablet/01-board": {
+    "status": "fits",
+    "width": 2064,
+    "height": 2752,
+    "pixelSha256": "c037acde3054b8c2d22344ecdc292bcbf8d37fa7586763a7481ec2e5cd47907b"
+  },
+  "steam/desktop-16x9/01-game": {
+    "status": "fits",
+    "width": 1920,
+    "height": 1080,
+    "pixelSha256": "0bc723a8e2880f42d84e27d351e7904bef2fc8792962cf9149ad791bd0039a78"
+  },
+  "steam/desktop-16x10/01-mac": {
+    "status": "accepted",
+    "width": 3200,
+    "height": 1800,
+    "pixelSha256": "25cf0bbb9f3f49aa0efc5fde1746ffa67f45142c89f0ae39e8e45226661fb5d9"
+  }
+}

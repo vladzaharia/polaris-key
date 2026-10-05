@@ -46,11 +46,22 @@ describe("portal routes (PORTAL.md §3.3)", () => {
     expect(unknown.redirect).toBe("#/p/nightfall");
   });
 
-  it("opens the matching section for the focused-flow links until PX-10", () => {
-    expect(resolveHash("#/p/orbit/free-device?for=x").redirect).toBe(
-      "#/p/orbit/devices",
+  it("routes the focused flows with their parameters (PX-10)", () => {
+    const free = resolveHash(
+      "#/p/orbit/free-device?for=Steam%20Deck&return=https%3A%2F%2Fapp.example%2F",
     );
-    expect(resolveHash("#/p/orbit/download").redirect).toBe("#/p/orbit/get");
+    expect(free.redirect).toBeUndefined();
+    expect(free.route).toMatchObject({
+      kind: "focused",
+      flow: "free-device",
+      product: "orbit",
+    });
+    const params = (free.route as { params: URLSearchParams }).params;
+    expect(params.get("for")).toBe("Steam Deck");
+    expect(params.get("return")).toBe("https://app.example/");
+    expect(
+      resolveHash("#/p/orbit/download?platform=linux").route,
+    ).toMatchObject({ kind: "focused", flow: "download", product: "orbit" });
   });
 
   it("parses account sections", () => {

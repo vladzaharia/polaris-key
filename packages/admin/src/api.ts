@@ -731,6 +731,8 @@ export interface PortalProductSettings {
   keyReissueEnabled?: boolean;
   /** PX-W5 / S-16: an email-carrying license may be added by key without that email. Off by default. */
   claimByKey?: boolean;
+  /** PX-W10 (G24): the product may be offered on the portal's Discover. On by default. */
+  discoverEnabled?: boolean;
   branding?: unknown;
   modifiedAt?: number;
 }
@@ -970,6 +972,7 @@ export type UpdatePortalSettingsBody = Partial<
     | "releasesEnabled"
     | "keyReissueEnabled"
     | "claimByKey"
+    | "discoverEnabled"
     | "autoLinkEnabled"
     | "branding"
   >
@@ -1123,6 +1126,7 @@ export const CI_SCOPES = [
   "distribution:report",
   "distribution:rollout",
   "distribution:feeds",
+  "distribution:listing",
 ] as const;
 
 /** The blob collector's dry run for one product (`GET …/blob-gc`, P4-14). */

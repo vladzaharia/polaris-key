@@ -41,6 +41,22 @@ First shippable cut is Phase A + PX-W1 + PX-08 ([PORTAL.md §11.4](../../../../d
 
 - **Reuse first** (§5.1): build on the console kit in `packages/admin/src/ui/` and `@polaris-key/brand/react`; new components live in `packages/admin/src/portal/components/` unless the console can use them too. Everything stays CSP-safe: no inline styles or scripts, images same-origin only (`img-src 'self' data:`).
 
+## Corrections (verified against the code, PX-08)
+
+- **`GET /api/library` as merged (PX-W1) carries status, seats, presentation and support links
+  only:** no reason text, no quick-action inputs and no Discover count (PORTAL.md §10.2's "one
+  library call" was not built in full). PX-08 therefore words the Worker's status codes on the
+  client (§6.4: codes are never copy), takes store links and the server-detected build from each
+  product's `GET /api/products/<p>/downloads` (PX-W2, cached and shared with the product page), and
+  reads an optional `discoverCount` on the library answer: Discover joins the nav (desktop count,
+  phone-bar dot, the hero's closing line, "See N in Discover" on the empty Library) only when
+  PX-W10 adds that field. No Worker change.
+- **Client grouping is gone:** the product list, its order, each product's best licence and
+  seats come from `GET /api/library`; `GET /api/licenses` only supplies the licence summaries the
+  product page's switcher shows.
+- **Phone quick action "Email me the download"** (G23, PX-W7) is wired from the library tile; the
+  product page's Get it version stays PX-09's.
+
 ## Steps
 
 1. Re-read the PORTAL.md sections above and the matching mockups in `docs/design/portal/`; verify this brief against the code and record any correction here.

@@ -51,6 +51,8 @@ export interface PortalProductSettingsRow {
   key_reissue_enabled: number;
   /** PX-W5 / S-16: an email-carrying license may be claimed by key without that email. Default 0. */
   claim_by_key: number;
+  /** PX-W10 (G24): the product may be offered on Discover. Default 1 (migrations/0071). */
+  discover_enabled: number;
   branding_json: string | null;
   created_at: number;
   modified_at: number;
@@ -65,6 +67,7 @@ export interface PortalProductSettingsView {
   autoLinkEnabled: boolean | null;
   keyReissueEnabled: boolean;
   claimByKey: boolean;
+  discoverEnabled: boolean;
   branding: unknown;
   modifiedAt: number;
 }
@@ -233,22 +236,44 @@ export async function getOrCreateAccountByIdentity(
     /** Pass only an email the IdP marked verified. */
     email?: string | null;
     displayName?: string | null;
+    /** The IdP's `groups` claim (PX-W10): what Discover evaluates a product's `groupRoleMap`
+     *  against. Omitted = not asserted, stored as NULL ("not known"). */
+    groups?: readonly string[];
   },
   now: number,
 ): Promise<PortalAccountRow> {
-  return signedInAccount(
-    await signIn(
-      db,
-      {
-        issuerKey: input.provider,
-        subject: input.subject,
-        kind: "oidc",
-        email: input.email ?? null,
-        emailVerified: Boolean(input.email),
-        displayName: input.displayName ?? null,
-      },
-      now,
-    ),
+  const result = await signIn(
+    db,
+    {
+      issuerKey: input.provider,
+      subject: input.subject,
+      kind: "oidc",
+      email: input.email ?? null,
+      emailVerified: Boolean(input.email),
+      displayName: input.displayName ?? null,
+    },
+    now,
+  );
+  const account = signedInAccount(result);
+  if (result.status === "signed_in")
+    await recordLinkGroups(db, result.linkId, input.groups);
+  return account;
+}
+
+/**
+ * Store the `groups` claim the platform IdP asserted at this sign-in on the account link it
+ * signed in through (PX-W10, migrations/0071). Absent claim = NULL ("not known", fail closed):
+ * an account so marked sees no group offers until it next signs in, never a wrong one.
+ */
+export async function recordLinkGroups(
+  db: Db,
+  linkId: string,
+  groups: readonly string[] | undefined,
+): Promise<void> {
+  await db.run(
+    "UPDATE account_links SET groups_json = ? WHERE id = ?",
+    groups ? JSON.stringify(groups) : null,
+    linkId,
   );
 }
 
@@ -485,6 +510,8 @@ export async function getPortalProductSettings(
       // Both PX-W5 switches default OFF, exactly as the migration's column defaults do.
       key_reissue_enabled: 0,
       claim_by_key: 0,
+      // Discover defaults ON, as the migration's column default does (migrations/0071).
+      discover_enabled: 1,
       branding_json: null,
       created_at: 0,
       modified_at: 0,
@@ -506,6 +533,7 @@ export function portalProductSettingsView(
       row.auto_link_enabled == null ? null : row.auto_link_enabled === 1,
     keyReissueEnabled: row.key_reissue_enabled === 1,
     claimByKey: row.claim_by_key === 1,
+    discoverEnabled: row.discover_enabled === 1,
     branding: parseJsonUnknown(row.branding_json),
     modifiedAt: row.modified_at,
   };
@@ -524,6 +552,7 @@ export async function upsertPortalProductSettings(
     autoLinkEnabled: boolean | null;
     keyReissueEnabled: boolean;
     claimByKey: boolean;
+    discoverEnabled: boolean;
     branding: unknown;
   }>,
   now: number,
@@ -580,6 +609,12 @@ export async function upsertPortalProductSettings(
         : patch.claimByKey
           ? 1
           : 0,
+    discover_enabled:
+      patch.discoverEnabled === undefined
+        ? current.discover_enabled
+        : patch.discoverEnabled
+          ? 1
+          : 0,
     branding_json:
       patch.branding === undefined
         ? current.branding_json
@@ -591,8 +626,9 @@ export async function upsertPortalProductSettings(
     `INSERT INTO portal_product_settings
        (product, portal_enabled, oidc_enabled, magic_enabled,
         license_key_claim_enabled, releases_enabled, auto_link_enabled,
-        key_reissue_enabled, claim_by_key, branding_json, created_at, modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        key_reissue_enabled, claim_by_key, discover_enabled, branding_json, created_at,
+        modified_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(product) DO UPDATE SET
        portal_enabled = excluded.portal_enabled,
        oidc_enabled = excluded.oidc_enabled,
@@ -602,6 +638,7 @@ export async function upsertPortalProductSettings(
        auto_link_enabled = excluded.auto_link_enabled,
        key_reissue_enabled = excluded.key_reissue_enabled,
        claim_by_key = excluded.claim_by_key,
+       discover_enabled = excluded.discover_enabled,
        branding_json = excluded.branding_json,
        modified_at = excluded.modified_at`,
     product,
@@ -613,6 +650,7 @@ export async function upsertPortalProductSettings(
     next.auto_link_enabled,
     next.key_reissue_enabled,
     next.claim_by_key,
+    next.discover_enabled,
     next.branding_json,
     current.created_at || now,
     now,
@@ -1074,4 +1112,129 @@ export async function accountHasVerifiedEmail(
   return (await verifiedAccountEmails(db, accountId)).includes(
     normalizeEmail(email),
   );
+}
+
+/** The account's identity at the platform IdP, as its last portal sign-in recorded it (PX-W10). */
+export interface PortalPlatformIdentity {
+  subject: string;
+  email: string | null;
+  displayName: string | null;
+  /** `null` = not known (a row from before migrations/0071, or an IdP that sent no claim). */
+  groups: string[] | null;
+}
+
+/**
+ * The account's platform-IdP identity: the subject a `provider: platform` product's own sign-in
+ * would carry for the same person (Pocket ID issues public subjects, notes/S-16 §3.1), so the
+ * subject first-load auto-issue keys a licence by. When an account holds more than one subject at
+ * that issuer (two IdP users merged by a verified email), the most recently used one wins.
+ */
+export async function getPlatformIdentity(
+  db: Db,
+  accountId: string,
+  issuerKey: string,
+): Promise<PortalPlatformIdentity | null> {
+  const row = await db.first<{
+    subject: string;
+    email: string | null;
+    display_name: string | null;
+    groups_json: string | null;
+  }>(
+    `SELECT subject, CASE WHEN email_verified = 1 THEN email END AS email, display_name,
+            groups_json
+       FROM account_links
+      WHERE account_id = ? AND issuer_key = ? AND tenant_scope = '' AND kind = 'oidc'
+      ORDER BY last_used_at DESC, subject ASC
+      LIMIT 1`,
+    accountId,
+    issuerKey,
+  );
+  if (!row) return null;
+  const parsed = parseJsonUnknown(row.groups_json);
+  return {
+    subject: row.subject,
+    email: row.email,
+    displayName: row.display_name,
+    // A stored value that is not a string array grants nothing (fail closed), like a malformed map.
+    groups: Array.isArray(parsed)
+      ? parsed.filter((g): g is string => typeof g === "string")
+      : null,
+  };
+}
+
+/**
+ * The products Discover may consider for any account (PX-W10, G24), before the policy runs: live,
+ * portal on, Discover on, and authenticating against the PLATFORM issuer with auto-linking on.
+ * The last two are exactly `syncAccountLicenseLinks`'s subject predicates, for the same reasons
+ * (R5-01/R5-02): a licence keyed by the account's platform subject is only meaningful, and is only
+ * linked back into this account, on a product whose own sign-in uses that issuer.
+ */
+export async function listDiscoverCandidates(
+  db: Db,
+  /** Answer for this one product only (the claim's re-evaluation). */
+  only?: string,
+): Promise<string[]> {
+  const rows = await db.all<{ slug: string }>(
+    `SELECT p.slug AS slug
+       FROM products p
+       LEFT JOIN portal_product_settings s ON s.product = p.slug
+       LEFT JOIN oidc_config o ON o.product = p.slug
+      WHERE COALESCE(p.status, 'active') = 'active'
+        AND COALESCE(s.portal_enabled, 1) = 1
+        AND COALESCE(s.discover_enabled, 1) = 1
+        AND COALESCE(o.provider, 'platform') = 'platform'
+        AND ${AUTO_LINK_ENABLED_SQL}
+        AND (? IS NULL OR p.slug = ?)
+      ORDER BY p.name ASC, p.slug ASC`,
+    only ?? null,
+    only ?? null,
+  );
+  return rows.map((r) => r.slug);
+}
+
+/** Does the account already hold any licence for this product (linked by any route)? */
+export async function accountHoldsProduct(
+  db: Db,
+  accountId: string,
+  product: string,
+): Promise<boolean> {
+  const row = await db.first<{ one: number }>(
+    `SELECT 1 AS one FROM licenses
+      WHERE account_id = ? AND product = ? LIMIT 1`,
+    accountId,
+    product,
+  );
+  return row !== null;
+}
+
+/**
+ * Record that Discover added `licenseId` to the account (PX-W10, G25: audit `source: discover`),
+ * reporting whether THIS call recorded it. The row id is derived from the licence, so of two
+ * racing claims for one account and product exactly one inserts it and sees `true`; the other
+ * answers the same licence as already added. A double submit therefore audits once, whatever the
+ * per-request link sweep did in between.
+ */
+export async function recordDiscoverClaim(
+  db: Db,
+  input: {
+    accountId: string;
+    product: string;
+    licenseId: string;
+    summary: string;
+    now: number;
+  },
+): Promise<boolean> {
+  const changes = await db.runChanges(
+    `INSERT INTO portal_audit
+       (id, account_id, at, action, product, target_kind, target_id, summary)
+     VALUES (?, ?, ?, 'portal.discover.claim', ?, 'license', ?, ?)
+     ON CONFLICT(id) DO NOTHING`,
+    `paud_discover_${input.product}_${input.licenseId}`,
+    input.accountId,
+    input.now,
+    input.product,
+    input.licenseId,
+    input.summary,
+  );
+  return changes > 0;
 }
