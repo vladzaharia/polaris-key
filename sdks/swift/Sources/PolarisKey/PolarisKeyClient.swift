@@ -385,6 +385,18 @@ public actor PolarisKeyClient {
         await config.config(key, default: fallback)
     }
 
+    /// Whether a catalog `flag` is on for this install. Flags are entitlements and ride the
+    /// licence document only, so this is `license.isEntitled(flag)`: false whenever the gate is
+    /// not usable (S-19 G11).
+    public func isEnabled(flag: String) async -> Bool {
+        await license.isEntitled(flag)
+    }
+
+    /// The verified licence, summarised (`license.licenseInfo()`).
+    public func licenseInfo() async -> LicenseInfo? {
+        await license.licenseInfo()
+    }
+
     @discardableResult
     public func activate(key: String) async -> ActivationResult {
         await license.activate(key: key)

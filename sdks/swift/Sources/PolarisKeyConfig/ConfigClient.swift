@@ -186,6 +186,36 @@ public actor ConfigClient {
         ConfigResolution.resolveValue(await context(), key) ?? fallback
     }
 
+    // ── Typed getters (SP-S02) ───────────────────────────────────────────────────────────
+    /// The effective value as a `Bool`, or `fallback` when absent or of another type.
+    public func bool(_ key: String, default fallback: Bool) async -> Bool {
+        await config(key, default: .null).boolValue ?? fallback
+    }
+
+    /// The effective value as an `Int` (an integral JSON number), or `fallback`.
+    public func int(_ key: String, default fallback: Int) async -> Int {
+        await config(key, default: .null).intValue ?? fallback
+    }
+
+    /// The effective value as a `Double` (any JSON number), or `fallback`.
+    public func double(_ key: String, default fallback: Double) async -> Double {
+        await config(key, default: .null).doubleValue ?? fallback
+    }
+
+    /// The effective value as a `String`, or `fallback`.
+    public func string(_ key: String, default fallback: String) async -> String {
+        await config(key, default: .null).stringValue ?? fallback
+    }
+
+    /// The effective value decoded as `T` (an object or array into a `Decodable` struct), or nil
+    /// when absent or when it does not decode.
+    public func decode<T: Decodable>(_ key: String, as type: T.Type = T.self) async -> T? {
+        let value = await config(key, default: .null)
+        if case .null = value { return nil }
+        guard let data = try? JSONEncoder().encode(value) else { return nil }
+        return try? JSONDecoder().decode(T.self, from: data)
+    }
+
     /// Where `config(key)` would source its value from (provenance, for settings UIs).
     public func configSource(_ key: String) async -> ConfigSource {
         ConfigResolution.resolveSource(await context(), key)
