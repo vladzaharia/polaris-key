@@ -61,6 +61,9 @@ Discover is the second nav item ([PORTAL.md §4.16](../../../../design/PORTAL.md
   a retry.
 - **Empty state:** `h1` stays "Discover" (one `h1` per screen, §9); "Nothing to add right now" is
   the `h2`, as mockup 25 shows. A Worker without `/api/discover` (404) shows this empty state.
+  Its star is the shared kit's `StationaryStar`, which main's console UX rounds 2–3 restyled as a
+  muted ring. That differs from mockup 25's bare accent star, but the page stays on the shared kit
+  rather than forking it.
 
 ## Steps
 
