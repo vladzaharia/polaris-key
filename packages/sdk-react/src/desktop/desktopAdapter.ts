@@ -846,8 +846,11 @@ export class DesktopAdapter implements PolarisAdapter {
   }
 }
 
-/** Map a host's activation answer onto the §3.1 table. A v3 host's `error` keeps its message
- *  and becomes `refused` with the code it carried (or `http-error`), never `deviceLimit`. */
+/** Map a host's activation answer onto the §3.1 table. A host's `error` keeps its message: with
+ *  a code it is classified by that code (`refused` for an unknown one), never `deviceLimit`;
+ *  without one it is `error` with code `server`. A v3 host's code-less `error` covers a 429, a
+ *  5xx and a transport failure alike (`@polaris-key/node`'s ActivationResult), so "offline"
+ *  (`network`) is not provable and is never claimed. */
 export function bridgeActivationOutcome(
   r: Exclude<BridgeActivation, { kind: "ok" }>,
 ): ActivationOutcome {
@@ -872,7 +875,7 @@ export function bridgeActivationOutcome(
     case "error":
       return r.code
         ? classifyRefused(r.code, undefined, r.message)
-        : { kind: "error", code: "network", message: r.message };
+        : { kind: "error", code: "server", message: r.message };
   }
 }
 

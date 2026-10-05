@@ -228,7 +228,8 @@ describe("DesktopAdapter — submitKey", () => {
       "fingerprintRequired",
       "fingerprint_required",
     ],
-    [{ kind: "error", message: "boom" }, "error", "network"],
+    // Code-less: a 429, a 5xx or a transport failure on the host, so never "offline".
+    [{ kind: "error", message: "boom" }, "error", "server"],
   ])(
     "a v4 host's %j is classified by code, never as the device limit",
     async (result, kind, code) => {
@@ -238,6 +239,8 @@ describe("DesktopAdapter — submitKey", () => {
       await ready(adapter);
       const err = await adapter.submitKey("k").catch((e: unknown) => e);
       expect(err).toMatchObject({ activation: { kind, code } });
+      if ("message" in result)
+        expect(err).toMatchObject({ activation: { message: result.message } });
       expect((err as Error).message).not.toMatch(/device limit/i);
       adapter.dispose();
     },
