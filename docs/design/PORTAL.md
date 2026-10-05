@@ -776,8 +776,12 @@ bucket (THREAT-MODEL: enumeration).
 
 <img src="portal/31-product-sync-mobile-dark.png" alt="Product page, phone" width="260">
 
-**Header:** back link to Library, the 320 px key-art banner (16:9, full-bleed on phones), the
-112 px icon overlapping its lower edge, the name as `h1`, "by <developer>", status pill and tier,
+**Header:** back link to Library, the key-art banner (the listing's 16:9 header: all of it,
+full-bleed, on phones; a centred 3:1 band capped at 416 px from 761 px; `object-fit: cover`, centred,
+as the library card's 16:9 crop is), the 112 px icon (80 on phones) in front of its lower edge,
+half over it, drawn edge to edge with no tile of ours (the developer's own shape is the frame; a
+full-bleed square icon gets only the store's corner mask; only the letter fallback is a tile); without a cover the icon stands beside the name, with no banner;
+the name as `h1`, "by <developer>", status pill and tier,
 and the **primary action** with an overflow menu (Copy link, Contact developer, Remove from
 library).
 
@@ -1100,7 +1104,7 @@ New components live in `packages/admin/src/portal/components/` unless the consol
 | `LinkAccounts`                                                                                                                                              | Two proven account cards, consequences, join.                                                                                                                                                                                                                                                      |
 | `DeviceApproval`                                                                                                                                            | New-device side (QR, code, poll) and approving side (dialog with device details, deny/approve).                                                                                                                                                                                                    |
 | `ProductArt`                                                                                                                                                | `variant: "banner" \| "tile" \| "thumb" \| "icon"`; proxied art (G1) with the flat tint-and-icon / tint-and-letter fallback. No gradients.                                                                                                                                                         |
-| `LibraryTile`, `LibraryHero`, `LibraryList`, `AttentionShelf`, `LibraryToolbar`, `QuickAction`                                                              | As in the converged design: art with the status pill on a solid plate, icon overlapping, name, developer, meta, platform glyphs, note, outlined quick action and overflow; the one-product hero; the list on `ui/data-table`; the shelf; the URL-synced toolbar; quick-action resolution (§5.4).   |
+| `LibraryTile`, `LibraryHero`, `LibraryList`, `AttentionShelf`, `LibraryToolbar`, `QuickAction`                                                              | As in the converged design: 16:9 art, the status on a padded plate, icon overlapping, name, meta, platform glyphs, note, outlined quick action and overflow; the one-product hero; the list on `ui/data-table`; the shelf; the URL-synced toolbar; quick-action resolution (§5.4).                 |
 | `DiscoverTile`                                                                                                                                              | Art, icon, name, developer, offer terms, platforms, "why you can add it", **Add to library** → added state (green edge, **In your library**, **Open**).                                                                                                                                            |
 | `ActivateDialog`                                                                                                                                            | Steps enter → confirm (art header, product, tier, terms, key echo) → done; inline errors (§4.19); `prefill` and `fromProduct` props for the deep link. Mounted once in `PortalShell`, opened from anywhere.                                                                                        |
 | `JumpPalette`                                                                                                                                               | ⌘K (§4.27).                                                                                                                                                                                                                                                                                        |
