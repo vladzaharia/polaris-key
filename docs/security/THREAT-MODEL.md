@@ -1905,6 +1905,37 @@ Steam's logs; no error Polaris Key raises carries a URL. The response shapes of 
 deep-link shapes are undocumented. A 403 caused by one product stops Steam calls for every product
 on the same group key until the window ends (by design: the alternative is the IP penalty).
 
+### The console storefront flow and the slot board (A-18j)
+
+**What it is.** Distribution → Storefronts (Add to storefronts), Distribution → Listing and Store
+connections' Set up (`services/distribution/storefronts/`, `packages/admin/src/console/areas/
+storefronts/`). Admin routes under `…/distribution/storefronts`, platform admins only, behind the
+session, CSRF and rate-limit gates of `admin/api.ts`.
+
+**Controls**, each pinned by `test/storefrontFlow.test.ts` and `test/storefrontSlots.test.ts`:
+
+- **No new write path to a store.** A step either names an existing reviewed route (A-17b, A-17c,
+  A-16), checked to be under `/manage/api/` when the plan is built and again in the console client,
+  or runs a flow runtime that calls A-18e's and A-18f's functions, each a `performStoreWrite`
+  behind the store's gate. The flow adds no gate rule and no `DELETE`.
+- **Typed confirmation** for submit, release and price on every store: the route compares the typed
+  name with the store-reported name (`typedConfirmationRefusal`) before the runtime runs; a store
+  that did not report a name refuses. Microsoft compares again in A-18f's commit.
+- **`Idempotency-Key`** on every runtime step and push (428 without); a deep-linked step's state is
+  one ledger row (`plane = 'deep-link'`), flipped to done only by the store's own read or an
+  operator assertion where the declaration says `operator-assertion`; each flip is audited.
+- **Nothing pushed unseen.** A push sends only accepted listing assets: acceptance is the digest the
+  operator saw (`accepted_sha256`, migration 0072), so new bytes from CI need a new acceptance; an
+  accept for bytes that changed since the preview answers 409.
+- **The preview serves images only.** `slots/image` types the bytes by their magic number (PNG,
+  JPEG, WebP), refuses anything else with 415, and answers with `nosniff`, `inline` and a
+  `default-src 'none'; sandbox` CSP, so a stored object cannot become a page on the console origin.
+- **Imported and listing text is data**, rendered escaped (control (g) above).
+
+**Residual risk.** A platform admin's session can run every step it can see; the typed name and the
+plan's consequences are the only friction, as for A-17g. Google Play's release and rollout stay on
+P5-03's untyped controls (A-18e's proposed follow-up).
+
 ### The CI plane: storefront command allow-lists and report-back (A-18h)
 
 **What it is.** itch.io and the Snap Store take builds only through vendor CLIs whose credentials

@@ -65,6 +65,10 @@
  *                                                              store notes, the fit report and
  *                                                              the manifest import
  *                                                              (`listing/admin.ts`)
+ *     GET|POST …/distribution/storefronts[/…]                  the storefront flow (A-18j): every
+ *                                                              store's plan, a deep-linked step's
+ *                                                              check, a runtime's step and listing
+ *                                                              push (`storefronts/admin.ts`)
  *     GET|POST|PUT …/distribution/storefronts/steam[/…]        the Steam storefront adapter
  *                                                              (A-18g): the plan, app list,
  *                                                              builds and branches, a named-branch
@@ -163,6 +167,7 @@ import {
 import { listAssetPacks } from "./assetPacks.js";
 import { handleListingAdmin } from "./listing/admin.js";
 import { handleSteamStorefrontAdmin } from "./storefronts/steam/admin.js";
+import { handleStorefrontsAdmin } from "./storefronts/admin.js";
 
 /** The console's view of one outlet. */
 export function outletView(
@@ -222,7 +227,13 @@ export async function handleDistributionAdmin(
   if (rest[0] === "commerce") return handleCommerceAdmin(ctx);
   if (rest[0] === "package-feeds") return handlePackageFeedsAdmin(ctx);
   if (rest[0] === "listing") return handleListingAdmin(ctx);
-  if (rest[0] === "storefronts") return handleSteamStorefrontAdmin(ctx);
+  if (rest[0] === "storefronts") {
+    // A-18g's Steam routes (apps, builds, pack, checklist, branches) and A-18j's flow (the plan,
+    // steps, push-listing, slots) do not overlap; Steam's answer null for every path of the flow.
+    return (
+      (await handleSteamStorefrontAdmin(ctx)) ?? handleStorefrontsAdmin(ctx)
+    );
+  }
   if (rest[0] !== "outlets") return null;
 
   if (rest.length === 1) {

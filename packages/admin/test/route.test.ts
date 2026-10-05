@@ -520,6 +520,8 @@ describe("the nav model (nav.ts)", () => {
       "matrix",
       "rollouts",
       "outlets",
+      "storefronts",
+      "listing",
       "app-store",
       "commerce",
       "access",

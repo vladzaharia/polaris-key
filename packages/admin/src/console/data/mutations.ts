@@ -114,7 +114,15 @@ export type WriteMethod =
   | "savePackageFeeds"
   | "mintRegistryToken"
   | "revokeRegistryToken"
-  | "revokeAllRegistryTokens";
+  | "revokeAllRegistryTokens"
+  | "acceptListingAsset"
+  | "storefrontRequest"
+  | "storefrontCheck"
+  | "pushListing"
+  | "putListing"
+  | "putListingOverride"
+  | "listingImport"
+  | "putListingReleaseNotes";
 
 export interface MutationSpec<A extends unknown[]> {
   /** What the write does, for the table's readers (and the test's failure messages). */
@@ -629,6 +637,48 @@ export const MUTATIONS: MutationTable = {
     label: "registry token revoke all",
     invalidates: (scope) => feeds(scope),
   },
+  acceptListingAsset: {
+    label: "listing asset accept",
+    // The slot board, and the plans whose image steps count accepted assets.
+    invalidates: (slug) => [prefix(qk.storefronts(slug))],
+  },
+  storefrontRequest: {
+    label: "storefront flow step",
+    // A step reaches a store through a reviewed route: A-17b's bundle ids and A-16's assignment
+    // (the store connections and the product's credentials), A-17c's setup controls (the
+    // connectors), or the flow's own runtimes (the plans). Every one of those may move.
+    invalidates: (slug) => [
+      prefix(qk.storefronts(slug)),
+      prefix(qk.connectors(slug)),
+      prefix(qk.credentials(slug)),
+      prefix(qk.platformStores()),
+    ],
+  },
+  storefrontCheck: {
+    label: "storefront deep-linked step check or assert",
+    invalidates: (slug) => [prefix(qk.storefronts(slug))],
+  },
+  pushListing: {
+    label: "storefront listing push",
+    invalidates: (slug) => [prefix(qk.storefronts(slug))],
+  },
+  putListing: {
+    label: "listing model save",
+    invalidates: (slug) => listingWrite(slug),
+  },
+  putListingOverride: {
+    label: "listing per-store override",
+    invalidates: (slug) => listingWrite(slug),
+  },
+  listingImport: {
+    label: "listing import (diff, or apply with the digest)",
+    // A diff writes nothing, but one method serves both: an apply moves the model.
+    invalidates: (slug) => listingWrite(slug),
+  },
+  putListingReleaseNotes: {
+    label: "listing release notes save",
+    invalidates: (slug) => listingWrite(slug),
+  },
   savePackageFeeds: {
     label: "package feeds switch",
     // The product row carries the switch the sidebar gates Package feeds on.
@@ -640,6 +690,12 @@ export const MUTATIONS: MutationTable = {
     ],
   },
 };
+
+/** A-18j: a listing write moves the model, its fit report and every store's plan. */
+const listingWrite = (slug: string): Target[] => [
+  prefix(qk.listing(slug)),
+  prefix(qk.storefronts(slug)),
+];
 
 /** The targets a write invalidates, or `null` when `method` is not a write (a read). */
 export function invalidationFor(
