@@ -264,7 +264,7 @@ const PRESENTATION: Record<
 };
 
 /** Stand-in key art per product (PX-08: real images through the media proxy), as palettes. */
-const ART: Record<string, { bands: Rgb[]; disc: Rgb }> = {
+const ART: Record<string, { bands: Rgb[]; disc: Rgb; icon?: false }> = {
   nightfall: {
     bands: [
       [34, 22, 58],
@@ -298,9 +298,11 @@ const ART: Record<string, { bands: Rgb[]; disc: Rgb }> = {
     ],
     disc: [222, 166, 110],
   },
+  // Cover art and no icon: the product header's letter tile in front of the cover.
   glyphsmith: {
     bands: [[242, 234, 216]],
     disc: [196, 72, 52],
+    icon: false,
   },
 };
 
@@ -308,7 +310,7 @@ const ART: Record<string, { bands: Rgb[]; disc: Rgb }> = {
 export function portalMedia(pathname: string): Buffer | null {
   const m = pathname.match(/^\/media\/([a-z0-9-]+)\/(icon|header)$/);
   const art = m ? ART[m[1]!] : undefined;
-  if (!m || !art) return null;
+  if (!m || !art || (m[2] === "icon" && art.icon === false)) return null;
   return m[2] === "icon"
     ? artPng(256, 256, art.bands, art.disc)
     : artPng(640, 360, art.bands, art.disc);
@@ -333,7 +335,10 @@ function libraryItem(l: Lic) {
     developerName: pres?.developerName ?? null,
     tintColor: null,
     website: null,
-    iconUrl: ART[l.product] ? `/media/${l.product}/icon?v=1` : null,
+    iconUrl:
+      ART[l.product] && ART[l.product]!.icon !== false
+        ? `/media/${l.product}/icon?v=1`
+        : null,
     headerUrl: ART[l.product] ? `/media/${l.product}/header?v=1` : null,
     support: pres?.support ? { url: pres.support, email: null } : null,
     status,

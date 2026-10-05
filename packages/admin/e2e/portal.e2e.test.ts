@@ -8,6 +8,7 @@ import { mediaResponseHeaders } from "../../worker/src/services/identity/portal/
 import {
   portalMedia,
   portalRoutes,
+  type Handler,
   type PortalScenario,
 } from "./portalFixtures.js";
 
@@ -63,7 +64,13 @@ interface Opened {
 async function open(
   scenario: PortalScenario,
   path: string,
-  opts: { theme?: "dark" | "light"; width?: number; height?: number } = {},
+  opts: {
+    theme?: "dark" | "light";
+    width?: number;
+    height?: number;
+    /** Replies that replace the scenario's own for these routes. */
+    routes?: Record<string, Handler>;
+  } = {},
 ): Promise<Opened> {
   const theme = opts.theme ?? "dark";
   const ctx = await browser.newContext({
@@ -79,7 +86,7 @@ async function open(
       ),
     );
   }, theme);
-  const routes = portalRoutes(scenario);
+  const routes = { ...portalRoutes(scenario), ...opts.routes };
   const requests: string[] = [];
   await ctx.route("**/*", async (route) => {
     const req = route.request();
@@ -205,6 +212,20 @@ const SCREENS: {
     ready: (p) => h1(p, "Nightfall"),
   },
   {
+    // No art at all: the letter tile alone beside the name, no banner.
+    name: "product-no-cover",
+    scenario: "twelve",
+    path: "/#/p/hollow-pines",
+    ready: (p) => h1(p, "Hollow Pines"),
+  },
+  {
+    // Cover art and no icon: the letter tile in front of the cover.
+    name: "product-no-icon",
+    scenario: "twelve",
+    path: "/#/p/glyphsmith",
+    ready: (p) => h1(p, "Glyphsmith"),
+  },
+  {
     name: "product-not-found",
     scenario: "three",
     path: "/#/p/unknown-thing",
@@ -274,6 +295,107 @@ describe("the customer site under the Worker's CSP", () => {
       }
     });
   }
+});
+
+/** What paints at the middle of the icon's top quarter, the part that overlaps the cover. */
+async function iconOnTop(
+  page: Page,
+): Promise<{ overlaps: boolean; onTop: boolean }> {
+  return page.evaluate(() => {
+    const header = document.querySelector("[data-cover]")!;
+    const icon = header.querySelector<HTMLElement>("[data-art]")!;
+    const banner = header.previousElementSibling as HTMLElement | null;
+    const r = icon.getBoundingClientRect();
+    const x = r.left + r.width / 2;
+    const y = r.top + r.height / 4;
+    const b = banner?.getBoundingClientRect();
+    return {
+      overlaps: !!b && r.top < b.bottom && r.bottom > b.bottom,
+      onTop: document.elementFromPoint(x, y) === icon,
+    };
+  });
+}
+
+describe("product header: the icon in front of the cover (§4.20)", () => {
+  for (const [slug, scenario, name] of [
+    ["nightfall", "three", "Nightfall"],
+    ["glyphsmith", "twelve", "Glyphsmith"],
+  ] as const) {
+    it(`${name}: the icon overlaps the cover's lower edge and paints over it, both themes, 1440 and 390`, async () => {
+      for (const theme of ["dark", "light"] as const) {
+        for (const width of [1440, 390]) {
+          const o = await open(scenario, `/#/p/${slug}`, {
+            theme,
+            width,
+            height: width === 390 ? 844 : 900,
+          });
+          await h1(o.page, name);
+          expect(await o.page.getAttribute("[data-cover]", "data-cover")).toBe(
+            "image",
+          );
+          expect(await iconOnTop(o.page), `${theme} ${width}`).toEqual({
+            overlaps: true,
+            onTop: true,
+          });
+          await o.close();
+        }
+      }
+    });
+  }
+
+  it("without a cover the icon stands alone beside the name, with no letter banner", async () => {
+    for (const width of [1440, 390]) {
+      const o = await open("twelve", "/#/p/hollow-pines", { width });
+      await h1(o.page, "Hollow Pines");
+      expect(await o.page.getAttribute("[data-cover]", "data-cover")).toBe(
+        "none",
+      );
+      const box = await o.page.evaluate(() => {
+        const header = document.querySelector("[data-cover]")!;
+        const icon = header
+          .querySelector("[data-art]")!
+          .getBoundingClientRect();
+        const h = header.querySelector("h1")!.getBoundingClientRect();
+        return {
+          banners: document.querySelectorAll(
+            "main [data-art='fallback'].aspect-video",
+          ).length,
+          beside: h.left >= icon.right,
+          letter: header.querySelector("[data-art]")!.textContent,
+        };
+      });
+      expect(box).toEqual({ banners: 0, beside: true, letter: "H" });
+      await o.close();
+    }
+  });
+});
+
+describe("Discover count (G24): never counts what the library holds", () => {
+  it("count 0 hides the nav pill and the phone bar's dot, and the library's Discover line", async () => {
+    const library = (
+      portalRoutes("three")["/api/library"] as () => {
+        body: { products: unknown[] };
+      }
+    )().body;
+    for (const width of [1440, 390]) {
+      const o = await open("three", "/", {
+        width,
+        routes: {
+          "/api/library": { body: { ...library, discoverCount: 0 } },
+        },
+      });
+      await h1(o.page, "Your library");
+      const nav = o.page.getByRole("navigation", {
+        name: width === 390 ? "Phone" : "Main",
+      });
+      const discover = nav.getByRole("link", { name: /Discover/ });
+      await discover.waitFor();
+      expect((await discover.innerText()).trim()).toBe("Discover");
+      expect(await discover.locator("span.rounded-full").count()).toBe(0);
+      expect(await o.page.getByText(/in Discover/).count()).toBe(0);
+      await o.close();
+    }
+  });
 });
 
 describe("Library on GET /api/library (PX-08)", () => {
