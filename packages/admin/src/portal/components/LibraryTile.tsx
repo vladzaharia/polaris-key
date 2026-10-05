@@ -39,6 +39,10 @@ export function LibraryTile({
         tint={pres.tint}
         src={pres.headerUrl}
         variant="tile"
+        // No cover: a bare tint field. The icon (or its letter tile) already sits in front of the
+        // art's lower edge, so a big letter here would show the product's letter twice; the
+        // product page drops it the same way.
+        letter={false}
         // The listing's header is 16:9 (PORTAL.md Q-2): the card shows all of it, centred, the
         // same art the product page's hero shows a centred band of.
         className="aspect-video"

@@ -154,6 +154,17 @@ describe("Library on today's data (PX-02)", () => {
     const emberTile = screen.getByRole("article", { name: "Ember Tactics" });
     expect(within(emberTile).getByText("Expired")).toBeTruthy();
     expect(within(emberTile).getByText(/^Ended /)).toBeTruthy();
+    // No cover art: the banner is a bare tint field, so the letter shows once (the icon's tile).
+    const banner = emberTile.querySelector(
+      "[data-art='fallback'].aspect-video",
+    );
+    expect(banner).not.toBeNull();
+    expect(banner!.querySelector(":scope > span[aria-hidden]")).toBeNull();
+    expect(
+      [...emberTile.querySelectorAll("[data-art]")].filter(
+        (el) => el.textContent === "E",
+      ),
+    ).toHaveLength(1);
     // No solid violet on a tile: every quick action is the quiet variant.
     expect(
       within(emberTile).getByRole("link", {
