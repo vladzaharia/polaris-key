@@ -24,6 +24,8 @@ import {
 import { portalErrorCopy } from "./errors.js";
 import { AccountPage } from "./pages/AccountPage.js";
 import { DiscoverPage } from "./pages/DiscoverPage.js";
+import { DownloadFlowPage } from "./pages/DownloadFlowPage.js";
+import { FreeDevicePage } from "./pages/FreeDevicePage.js";
 import { LibraryPage } from "./pages/LibraryPage.js";
 import { ProductPage } from "./pages/ProductPage.js";
 import { SignInPage } from "./pages/SignInPage.js";
@@ -120,6 +122,34 @@ function SignedIn({ account }: { account: PortalAccount }): React.ReactElement {
   const route = useRoute();
   // Another tab waiting on "Check your email" signs itself in now (§4.4).
   React.useEffect(() => announceSignedIn(), []);
+  // Focused flows (§4.25, PX-10) run in their own minimal chrome, outside the shell.
+  if (route.kind === "focused") {
+    return route.flow === "free-device" ? (
+      <FreeDevicePage
+        key={route.product}
+        account={account}
+        product={route.product}
+        params={route.params}
+      />
+    ) : (
+      <DownloadFlowPage
+        key={route.product}
+        account={account}
+        product={route.product}
+        params={route.params}
+      />
+    );
+  }
+  return <SignedInShell account={account} route={route} />;
+}
+
+function SignedInShell({
+  account,
+  route,
+}: {
+  account: PortalAccount;
+  route: Exclude<PortalRoute, { kind: "focused" }>;
+}): React.ReactElement {
   const activate = useActivate();
 
   // `#/?activate=<key>` (and `/activate?key=…`, rewritten to it) opens the modal over the
@@ -184,7 +214,7 @@ function Page({
   route,
   account,
 }: {
-  route: PortalRoute;
+  route: Exclude<PortalRoute, { kind: "focused" }>;
   account: PortalAccount;
 }): React.ReactElement {
   switch (route.kind) {

@@ -199,6 +199,11 @@ export interface PortalProduct extends PortalPresentation {
   services: Record<string, boolean>;
   status: PortalStatus;
   addedAt: number | null;
+  /**
+   * Where the focused flows may return to (PX-10): the product's declared origins and app
+   * schemes. Absent on an older Worker, which means no return is followed.
+   */
+  returnTo?: { origins: string[]; schemes: string[] };
   /** Best first. */
   licenses: Array<
     PortalLicenseSeats & {

@@ -128,7 +128,11 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
 - **`GET /api/products/<product>`** — one of those products: the presentation, `services` (each
   service's own toggle), the status, and every linked license best first with its seats,
   entitlements and authorized devices, each marked `dormant` once it is past the 90-day dormancy
-  window (a dormant device holds no seat). `404` for a product the account holds nothing for.
+  window (a dormant device holds no seat), and `returnTo` (`{ origins, schemes }`): where the
+  focused flows (`#/p/<product>/free-device` and `#/p/<product>/download`) may send the person
+  back to with `?return=` — the product's exact `web.origins`; app schemes are always empty until
+  the manifest can declare them, so a scheme return ends on the product page. `404` for a product
+  the account holds nothing for.
 - **`GET /media/<product>/<asset>`** — public, no session: the product's `icon` or `header` art
   from its listing, fetched by the Worker and served from this origin, because the portal's CSP is
   `img-src 'self' data:`. Only `https` sources on GitHub-hosted names (`github.com`,

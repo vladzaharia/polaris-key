@@ -251,7 +251,11 @@ const PRESENTATION: Record<
   },
   mossgarden: { developerName: "Little Fern", deviceLimit: 5 },
   // At its limit: the 12-product shelf shows "Free up a device" (§4.15, mockup 35).
-  "orbit-survey": { developerName: "Parallax Labs", deviceLimit: 2 },
+  "orbit-survey": {
+    developerName: "Parallax Nine",
+    deviceLimit: 2,
+    support: "https://parallax.example/help",
+  },
   glyphsmith: {
     developerName: "Northpaw Type",
     deviceLimit: 2,
@@ -668,6 +672,25 @@ function licensesFor(s: PortalScenario) {
   }
 }
 
+function productDevice(
+  deviceId: string,
+  label: string,
+  platform: string,
+  appVersion: string,
+  lastSeen: number,
+) {
+  return {
+    deviceId,
+    label,
+    platform,
+    arch: "x86_64",
+    appVersion,
+    firstSeen: NOW - 300 * DAY,
+    lastSeen,
+    dormant: false,
+  };
+}
+
 function device(
   id: string,
   label: string,
@@ -803,6 +826,65 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
       body: { url: "/download/tok" },
     };
   }
+  // PX-10: the product view for the focused flows (seats, devices, declared return targets).
+  for (const l of [NIGHTFALL, TIDEWATER, EMBER, MOSSGARDEN, ...MORE]) {
+    routes[`/api/products/${l.product}`] = () => {
+      if (!licenses.some((x) => x.product === l.product))
+        return { status: 404, body: { error: "not_found" } };
+      const item = libraryItem(l);
+      const devices =
+        l.product === "orbit-survey"
+          ? [
+              productDevice(
+                "gaming",
+                "Gaming PC",
+                "windows",
+                "2.0.3",
+                NOW - DAY,
+              ),
+              productDevice(
+                "work",
+                "Work laptop",
+                "windows",
+                "1.9.0",
+                NOW - 41 * DAY,
+              ),
+            ].filter((d) => !removed.has(d.deviceId))
+          : [];
+      const seats =
+        l.product === "orbit-survey"
+          ? devices.length
+          : item.license.activeSeatCount;
+      return {
+        body: {
+          ...item,
+          services: { license: true, release: true },
+          status:
+            seats >= item.license.deviceLimit && item.license.deviceLimit > 0
+              ? "device_limit"
+              : item.status,
+          returnTo: {
+            origins: [`https://${l.product}.example`],
+            schemes: [l.product.replace(/-/g, "")],
+          },
+          licenses: [
+            {
+              ...item.license,
+              activeSeatCount: seats,
+              deviceCount: seats,
+              entitlements: [],
+              devices,
+            },
+          ],
+        },
+      };
+    };
+  }
+  routes["DELETE /api/licenses/orbit-survey/lic_orbit-survey/devices/work"] =
+    () => {
+      removed.add("work");
+      return { body: { ok: true, deviceId: "work" } };
+    };
   routes["DELETE /api/licenses/nightfall/lic_nightfall/devices/d2"] = () => {
     removed.add("d2");
     return { body: { ok: true, deviceId: "d2" } };

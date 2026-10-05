@@ -4,6 +4,7 @@ import type {
   PortalDownloads,
   PortalLibraryItem,
   PortalLicenseSummary,
+  PortalPresentation,
   PortalRelease,
   PortalStatus,
   PortalStoreLink,
@@ -139,7 +140,7 @@ function mediaUrl(v: string | null | undefined): string | null {
 }
 
 /** The server-side library's presentation (PX-W1), validated like the branding fallback. */
-export function presentationFrom(item: PortalLibraryItem): Presentation {
+export function presentationFrom(item: PortalPresentation): Presentation {
   const base = readPresentation({
     developerName: item.developerName,
     tintColor: item.tintColor,

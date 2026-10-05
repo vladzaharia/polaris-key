@@ -19,6 +19,7 @@ import {
   type PortalLicenseDetail,
   type PortalLicenseSummary,
   type PortalMe,
+  type PortalProduct,
   type PortalRelease,
 } from "./api.js";
 import { browser } from "./browser.js";
@@ -46,6 +47,7 @@ const qk = {
   portalLibrary: () => ["portal", "library"] as const,
   portalDownloads: (product: string) =>
     ["portal", "downloads", product] as const,
+  portalProduct: (product: string) => ["portal", "product", product] as const,
 };
 
 export const portalKeys = {
@@ -56,6 +58,7 @@ export const portalKeys = {
   releases: qk.portalReleases(),
   library: qk.portalLibrary(),
   downloads: qk.portalDownloads,
+  product: qk.portalProduct,
 };
 
 export function createPortalQueryClient(): QueryClient {
@@ -193,6 +196,14 @@ export function useProductDownloads(
   return useQuery({ ...downloadsQuery(product), enabled });
 }
 
+/** One product in full (PX-W1, `GET /api/products/<p>`): seats, devices, `returnTo`. */
+export function useProduct(product: string): UseQueryResult<PortalProduct> {
+  return useQuery({
+    queryKey: qk.portalProduct(product),
+    queryFn: () => portalApi.product(product),
+  });
+}
+
 /** The downloads query for one product, shared by the Library and the product page. */
 function downloadsQuery(product: string) {
   return {
@@ -272,6 +283,7 @@ export function useRemoveDevice(product: string, licenseId: string) {
       });
       void qc.invalidateQueries({ queryKey: portalKeys.licenses });
       void qc.invalidateQueries({ queryKey: portalKeys.library });
+      void qc.invalidateQueries({ queryKey: portalKeys.product(product) });
     },
   });
 }

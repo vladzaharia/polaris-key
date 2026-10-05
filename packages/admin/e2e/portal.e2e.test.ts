@@ -207,6 +207,18 @@ const SCREENS: {
     ready: (p) => h1(p, "Account"),
   },
   {
+    name: "device-limit",
+    scenario: "twelve",
+    path: "/#/p/orbit-survey/free-device?for=Mara%E2%80%99s%20Steam%20Deck&return=orbitsurvey%3A%2F%2Fretry",
+    ready: (p) => h1(p, "Your license is on 2 of 2 devices"),
+  },
+  {
+    name: "download-flow",
+    scenario: "three",
+    path: "/#/p/nightfall/download?platform=linux",
+    ready: (p) => h1(p, "Download Nightfall for Linux"),
+  },
+  {
     name: "discover-empty",
     scenario: "three",
     path: "/#/discover",
@@ -268,6 +280,52 @@ describe("Library on GET /api/library (PX-08)", () => {
       .getByRole("link", { name: /Discover/ })
       .waitFor();
     expect(await o.violations()).toEqual([]);
+    await o.page.context().close();
+  });
+});
+
+describe("focused flows (PX-10)", () => {
+  it("frees a device and returns only to the declared app link", async () => {
+    const o = await open(
+      "twelve",
+      "/#/p/orbit-survey/free-device?for=Steam%20Deck&return=orbitsurvey%3A%2F%2Fretry",
+      { width: 390, height: 844 },
+    );
+    await h1(o.page, "Your license is on 2 of 2 devices");
+    expect(
+      await o.page
+        .getByRole("radio", { name: /Work laptop/ })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    await o.page
+      .getByRole("button", { name: "Remove Work laptop and continue" })
+      .click();
+    await h1(o.page, "Work laptop was removed");
+    await shoot(o.page, "device-limit-done-mobile-dark");
+    expect(
+      await o.page
+        .getByRole("link", { name: "Return to Orbit Survey" })
+        .getAttribute("href"),
+    ).toBe("orbitsurvey://retry");
+    expect(o.requests).toContain(
+      "DELETE /api/licenses/orbit-survey/lic_orbit-survey/devices/work",
+    );
+    expect(await o.violations()).toEqual([]);
+    await o.page.context().close();
+  });
+
+  it("drops an undeclared return URL", async () => {
+    const o = await open(
+      "twelve",
+      "/#/p/orbit-survey/free-device?return=https%3A%2F%2Fevil.example%2F",
+    );
+    await h1(o.page, "Your license is on 2 of 2 devices");
+    expect(
+      await o.page
+        .getByRole("link", { name: "Back to Orbit Survey" })
+        .getAttribute("href"),
+    ).toBe("#/p/orbit-survey");
+    expect(await o.page.content()).not.toContain("evil.example");
     await o.page.context().close();
   });
 });
