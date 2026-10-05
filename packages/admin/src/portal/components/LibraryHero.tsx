@@ -105,7 +105,7 @@ export function LibraryHero({
           ) : null}
           {product.platforms.length ? (
             <>
-              <dt className="text-fg-muted">Plays on</dt>
+              <dt className="text-fg-muted">Runs on</dt>
               <dd>
                 <PlatformGlyphs platforms={product.platforms} />
               </dd>

@@ -12,6 +12,12 @@
 | Human input | none                                                                                                                                                                                               |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                          |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/I-24.md`](../plans/I-24.md):** the named-user seats docs page.
+
 ## Goal
 
 Developers and end users have accurate docs for layer 1: the account and the Library, recovery ("remaining links, then the developer's licence tool"), key-entry limits for developers, tenant-scoped native links, Steam and Game Center guides, and the inputs for the Polaris privacy notice.

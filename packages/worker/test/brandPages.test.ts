@@ -63,8 +63,18 @@ async function expectBrandedPage(res: Response): Promise<string> {
   expect(styles).toHaveLength(1);
   expect(csp).toContain(`'sha256-${sha256(styles[0]![1]!)}'`);
   expect(html).not.toMatch(/\sstyle=|<script|\son\w+=/i);
-  // The Pinned K lockup, without the gold bit.
-  expect(html).toContain('aria-label="Polaris Key"');
+  // The console Logo's brand block: the Pinned K at 48 px (display cut) beside the wordmark text,
+  // without the gold bit, and no lockup drawn at twice the console's size.
+  expect(html).toMatch(
+    /<div class="brand" role="img" aria-label="Polaris Key[^"]*">/,
+  );
+  expect(html).toContain(
+    '<svg class="mark" xmlns="http://www.w3.org/2000/svg" width="48" height="48"',
+  );
+  expect(html).toContain(
+    '<span class="wordmark" aria-hidden="true">Polaris&nbsp;Key',
+  );
+  expect(html).not.toContain('class="lockup"');
   expect(html.replace(styles[0]![0], "")).not.toContain("{");
   expect(html.toLowerCase()).not.toContain(BRAND.gold.dark.toLowerCase());
   expect(html.toLowerCase()).not.toContain(BRAND.gold.light.toLowerCase());
@@ -94,6 +104,42 @@ describe("the branded page shell", () => {
       `@media (prefers-color-scheme: light){:root{color-scheme:light;--page:${THEME_TOKENS.light.surface.page}`,
     );
     expect(BRAND_PAGE_CSS).toContain(THEME_TOKENS.dark.accent.violet.solid);
+  });
+
+  it("shares the console sign-in look: the Logo's brand block over one card, its md button", () => {
+    expect(BRAND_PAGE_CSS).toContain(
+      ".brand{display:flex;justify-content:center;align-items:center;gap:.75rem",
+    );
+    // The surface label is the Logo subtitle: small, regular weight, uppercase, muted.
+    expect(BRAND_PAGE_CSS).toMatch(
+      /\.surface\{color:var\(--muted\);font-size:\.75rem;[^}]*font-weight:400;[^}]*text-transform:uppercase/,
+    );
+    expect(BRAND_PAGE_CSS).toMatch(
+      /\.wordmark\{[^}]*font-size:1rem;[^}]*font-weight:700/,
+    );
+    // The console's md Button: 36 px tall, 14 px, regular weight, full width.
+    const button = /\.button\{([^}]*)\}/.exec(BRAND_PAGE_CSS)![1]!;
+    expect(button).toContain("display:flex;width:100%");
+    expect(button).toContain("min-height:2.25rem");
+    expect(button).toContain("font-size:.875rem");
+    expect(button).toContain("font-weight:400");
+  });
+
+  it("labels the surface beside the wordmark", () => {
+    const html = renderBrandPage({
+      title: "t",
+      heading: "h",
+      surface: "console",
+    });
+    expect(html).toContain(
+      '<div class="brand" role="img" aria-label="Polaris Key console">',
+    );
+    expect(html).toContain(
+      'Polaris&nbsp;Key<span class="surface">console</span></span>',
+    );
+    expect(renderBrandPage({ title: "t", heading: "h" })).not.toContain(
+      'class="surface"',
+    );
   });
 
   it("loads Rubik only from files the admin build emits at the stable path", () => {
@@ -132,8 +178,10 @@ describe("the branded page shell", () => {
       title: "<t>",
       heading: '"><script>alert(1)</script>',
       eyebrow: "<e>",
+      surface: "<s>",
     });
     expect(html).not.toContain("<script>");
+    expect(html).toContain('<span class="surface">&lt;s&gt;</span>');
     expect(html).toContain("&lt;t&gt; · Polaris Key");
     expect(html).toContain("&lt;e&gt;");
   });
@@ -155,6 +203,8 @@ describe("every server-rendered page on the console host uses the shell", () => 
     expect(res.status).toBe(400);
     const html = await expectBrandedPage(res);
     expect(html).toContain("Missing authorization code.");
+    expect(html).toContain('<span class="surface">console</span>');
+    expect(html).not.toContain('class="eyebrow"');
     expect(html).toContain('href="/manage/login"');
   });
 
@@ -169,6 +219,7 @@ describe("every server-rendered page on the console host uses the shell", () => 
     const html = await expectBrandedPage(res);
     // I-07: a link with no token reads as an expired one (the landing page names no reason).
     expect(html).toContain("This sign-in link has expired.");
+    expect(html).toContain('<span class="surface">account</span>');
   });
 
   it("the device code entry page", async () => {
@@ -186,6 +237,7 @@ describe("every server-rendered page on the console host uses the shell", () => 
     expect(page.status).toBe(200);
     const html = await expectBrandedPage(page);
     expect(html).toContain('<input id="user_code" name="user_code"');
+    expect(html).toContain('<span class="surface">device</span>');
   });
 
   it("the device confirmation page keeps its IdP form target", async () => {

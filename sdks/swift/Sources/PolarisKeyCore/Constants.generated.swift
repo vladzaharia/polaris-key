@@ -38,6 +38,7 @@ public enum ErrorCode {
     public static let enrollFailed = "enroll_failed"
     public static let managedByAdmin = "managed_by_admin"
     public static let catalogUnavailable = "catalog_unavailable"
+    public static let licenseUnusable = "license_unusable"
     public static let disabled = "disabled"
     public static let oidcError = "oidc_error"
     public static let unavailable = "unavailable"
@@ -191,6 +192,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "enroll_failed",
     "managed_by_admin",
     "catalog_unavailable",
+    "license_unusable",
     "disabled",
     "oidc_error",
     "unavailable",
@@ -344,6 +346,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "enroll_failed": "wire",
     "managed_by_admin": "wire",
     "catalog_unavailable": "wire",
+    "license_unusable": "wire",
     "disabled": "wire",
     "oidc_error": "wire",
     "unavailable": "wire",

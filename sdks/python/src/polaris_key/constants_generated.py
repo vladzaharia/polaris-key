@@ -158,6 +158,7 @@ class ErrorCode:
     ENROLL_FAILED: Final = "enroll_failed"
     MANAGED_BY_ADMIN: Final = "managed_by_admin"
     CATALOG_UNAVAILABLE: Final = "catalog_unavailable"
+    LICENSE_UNUSABLE: Final = "license_unusable"
     DISABLED: Final = "disabled"
     OIDC_ERROR: Final = "oidc_error"
     UNAVAILABLE: Final = "unavailable"
@@ -311,6 +312,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "enroll_failed",
     "managed_by_admin",
     "catalog_unavailable",
+    "license_unusable",
     "disabled",
     "oidc_error",
     "unavailable",
@@ -466,6 +468,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "enroll_failed": "wire",
         "managed_by_admin": "wire",
         "catalog_unavailable": "wire",
+        "license_unusable": "wire",
         "disabled": "wire",
         "oidc_error": "wire",
         "unavailable": "wire",

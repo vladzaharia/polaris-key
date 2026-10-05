@@ -12,6 +12,13 @@
 | Human input | none                                                                                                                                                                                     |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/PX-W13.md`](../plans/PX-W13.md):** read `SignInRequestView` and `AppConsentView`; render the neutral frame when `nameVerified` is `false`; switch the device-code page to `303 /signin?request=rq_…` (a root path).
+- **[`plans/PX-W17.md`](../plans/PX-W17.md):** render the Identity-off card from the `error=identity_disabled` query parameter and the API code.
+
 ## Goal
 
 App sign-ins show "<App> wants you to sign in" in the card header (app and device variants) through every step, the `AppConsent` confirm step on first sign-in and whenever what the app gets changes, and a return screen, across the broker, native redirect, web redirect and device code; products with Identity off get the `identity_disabled` error card.

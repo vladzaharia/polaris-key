@@ -12,6 +12,12 @@
 | Human input | none                                                                                                                                                               |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                          |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/LX-01.md`](../plans/LX-01.md):** the issuer's `pkey:entitlements` claim is `resolveSubjectEntitlements(p, sub)`, filtered to `userGrant` keys. No corpus change.
+
 ## Goal
 
 An approved plan, `plans/I-20.md`, for layer 2 (per-app identity): app-specific profiles, apps signing users in beyond licence attach, product-IdP kinds and their scoping (D18), and the per-product OIDC issuer ("Sign in with <Product>"), including the build choice between in-house on `jose` and Ory Hydra, clients and consent.

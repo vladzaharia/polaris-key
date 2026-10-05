@@ -119,6 +119,14 @@ mise exec node@22 -- pnpm --filter @polaris-key/admin build && mise exec node@22
 mise exec node@22 -- pnpm --filter @polaris-key/docs check:links
 ```
 
+## S-20 note (2026-10-05)
+
+The slot board renders each asset from S-20's media host, built in
+[HA-02](HA-02-media-host.md). Each slot's upload uses
+[HA-06](HA-06-upload-paths.md)'s `POST /admin/products/:p/assets/:slot`, which writes
+`dist_listing_assets` rows with `source = 'admin'`. Do not add a second upload path
+([notes/S-20 §6.3](../../notes/S-20-hosted-assets.md#63-ingest-one-path-three-ways-in)).
+
 ## Hand-off
 
 Later adapters add tiles by registering; nothing here changes. A-18m's Apple listing push appears
