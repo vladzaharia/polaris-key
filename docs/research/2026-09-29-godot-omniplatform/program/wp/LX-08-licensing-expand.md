@@ -1,22 +1,28 @@
 # LX-08 Licensing expand, backfill and dual-write: grants and holder tables, `tiers.rank` and `policyOfflineGraceDays`, licence `kind`, `ended_reason`, `superseded_by` and `source`, provisioned keys into `oidc` grants atomically
 
-| Field       | Value                                                                                                                                                                                  |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only)                                                                                           |
-| Size        | 0.7–1 engineer-weeks                                                                                                                                                                   |
-| Depends on  | [LX-01](LX-01-licensing-plan.md), [LX-02](LX-02-oidc-signin-fix.md), [LX-06](LX-06-licensing-settings.md)                                                                              |
-| Unblocks    | [LX-09](LX-09-entitlement-resolver.md), [LX-11](LX-11-commerce-rework.md), [LX-12](LX-12-licence-lifecycle.md), [LX-13](LX-13-entitlements-backend.md), [LX-25](LX-25-redeem-codes.md) |
-| Role        | `pkey-implementer`                                                                                                                                                                     |
-| Plan mode   | no                                                                                                                                                                                     |
-| Gates       | D1 migration (replayable, scratch-SQLite rehearsal); `TABLE_OWNERS`; generated docs pages (`docs gen:check`; regenerate, never hand-edit)                                              |
-| Human input | none                                                                                                                                                                                   |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                              |
+| Field       | Value                                                                                                                                                                                                                       |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only)                                                                                                                                |
+| Size        | 0.7–1 engineer-weeks                                                                                                                                                                                                        |
+| Depends on  | [LX-01](LX-01-licensing-plan.md), [LX-02](LX-02-oidc-signin-fix.md), [LX-06](LX-06-licensing-settings.md)                                                                                                                   |
+| Unblocks    | [LX-09](LX-09-entitlement-resolver.md), [LX-11](LX-11-commerce-rework.md), [LX-12](LX-12-licence-lifecycle.md), [LX-13](LX-13-entitlements-backend.md), [LX-25](LX-25-redeem-codes.md), [CM-02](CM-02-provider-webhooks.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                                          |
+| Plan mode   | no                                                                                                                                                                                                                          |
+| Gates       | D1 migration (replayable, scratch-SQLite rehearsal); `TABLE_OWNERS`; generated docs pages (`docs gen:check`; regenerate, never hand-edit)                                                                                   |
+| Human input | none                                                                                                                                                                                                                        |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                   |
 
 ## Amendments from approved plans (2026-10-05)
 
 The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
 
 - **[`plans/LX-01.md`](../plans/LX-01.md):** the exact DDL of §6.1; the Core table `entitlement_events` with a pull cursor (Q4); the triggers; no `dist_commerce_settings` table (Q5); the A3 record; the `addon` column, with nothing writing `addon` until LX-25 (Q8).
+
+## Amendments from S-22 (2026-10-05)
+
+The commerce plan [S-22](../../notes/S-22-polaris-key-commerce.md) (its packages are optional and deferred) changes this brief as follows. These amendments win over the text below where they differ.
+
+- **Grant source vocabulary.** Include `polaris-key` in the `trg_grants_source_{ins,upd}` vocabulary and in the `licenses.source` values from the start (meaning: bought through Polaris Key checkout; [S-22](../../notes/S-22-polaris-key-commerce.md#101-owner-decisions-delegated-to-claude-2026-10-05) decision D9), so the deferred commerce packages need no trigger replacement. `direct` keeps its place and means a sale the developer recorded through the admin API. Nothing writes `polaris-key` until CM-05.
 
 ## Goal
 

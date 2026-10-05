@@ -80,6 +80,10 @@
       "title": "UI kits: one design system for every SDK (docs/design/UI-KITS.md)"
     },
     {
+      "id": "CM",
+      "title": "Polaris Key commerce (S-22): deferred until the owner's go"
+    },
+    {
       "id": "X",
       "title": "Optional SDKs"
     },
@@ -6932,7 +6936,7 @@
     },
     {
       "id": "LX-23",
-      "title": "Subscriptions: Apple auto-renewables, Play subscriptions, dunning (`past_due`, `dunningGraceDays`), Stripe and Paddle webhooks as grant and licence sources",
+      "title": "Subscriptions: Apple auto-renewables, Play subscriptions and the shared dunning machinery (`past_due`, `dunningGraceDays`); web-checkout subscriptions moved to CM-08 (S-22)",
       "phase": "LX",
       "stage": "phase D: optional",
       "lane": "worker",
@@ -6942,7 +6946,7 @@
       "planMode": true,
       "gates": ["plan-mode", "threat-model", "migration"],
       "humanInputs": [
-        "App Store Connect and Play Console sandbox subscriptions, and Stripe or Paddle test accounts, for live checks (fixtures otherwise)"
+        "App Store Connect and Play Console sandbox subscriptions, for live checks (fixtures otherwise)"
       ],
       "repo": "polaris-key",
       "optional": true,
@@ -8399,6 +8403,457 @@
       "refs": ["docs/design/UI-KITS.md §7.4, §10", "plans/HA-11.md"],
       "brief": "wp/UK-41-must-tier-closeout.md",
       "status": "todo"
+    },
+    {
+      "id": "CM-01",
+      "title": "Plan Polaris Key commerce: decision record, exact DDL, routes, wire changes W1–W4, settings, threat model",
+      "phase": "CM",
+      "lane": "corpus",
+      "role": "pkey-wire-planner",
+      "estimateWeeks": [0.6, 0.9],
+      "deps": ["LX-01", "ST-03"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "protocol-version",
+        "threat-model",
+        "human-approval"
+      ],
+      "humanInputs": [
+        "the owner's go signal (removes `deferred`)",
+        "the owner's answers to S-22 G1–G6 (§10.2), restated in the plan",
+        "plan approval (`plans/CM-01.md`)"
+      ],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "notes/S-22 §2",
+        "notes/S-22 §9",
+        "notes/S-22 §10",
+        "notes/S-22 §11"
+      ],
+      "brief": "wp/CM-01-commerce-plan.md",
+      "status": "todo",
+      "deferred": "owner go (S-22, 2026-10-05): not dispatched until the owner says go"
+    },
+    {
+      "id": "CM-02",
+      "title": "Provider abstraction and Stripe client; platform secrets; webhook intake (verify, dedupe, queue, fetch-latest) and daily reconciliation",
+      "phase": "CM",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1, 1.4],
+      "deps": ["CM-01", "LX-08"],
+      "planMode": false,
+      "gates": [
+        "migration",
+        "table-owners",
+        "wrangler",
+        "drift-gate",
+        "rule-10",
+        "threat-model",
+        "workerd"
+      ],
+      "humanInputs": [
+        "the owner's go signal (removes `deferred`)",
+        "a Stripe platform account with Connect enabled, in a sandbox, and a test connected account, for live checks (fixtures and recorded responses otherwise)"
+      ],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": ["notes/S-22 §6", "notes/S-22 §7.1", "notes/S-22 §8.1"],
+      "brief": "wp/CM-02-provider-webhooks.md",
+      "status": "todo",
+      "deferred": "owner go (S-22, 2026-10-05): not dispatched until the owner says go"
+    },
+    {
+      "id": "CM-03",
+      "title": "Merchants: Stripe Connect onboarding, account status mirror, product → merchant setting, commerce kill switch",
+      "phase": "CM",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.7, 1],
+      "deps": ["CM-02", "ST-04", "ST-05", "ST-21"],
+      "planMode": false,
+      "gates": [
+        "migration",
+        "table-owners",
+        "rule-10",
+        "threat-model",
+        "console-csp-parity",
+        "docs-links"
+      ],
+      "humanInputs": [
+        "the owner's go signal (removes `deferred`)",
+        "a Stripe platform account with Connect enabled, in a sandbox, and a test connected account, for live checks (fixtures and recorded responses otherwise)",
+        "G1 and G3 answers (merchant of record, merchant countries)"
+      ],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": ["notes/S-22 §5", "notes/S-22 §7.13", "notes/S-22 §8.1 CM-T6"],
+      "brief": "wp/CM-03-merchants.md",
+      "status": "todo",
+      "deferred": "owner go (S-22, 2026-10-05): not dispatched until the owner says go"
+    },
+    {
+      "id": "CM-04",
+      "title": "Offers, prices and coupons catalogue; idempotent Stripe Product/Price/Coupon sync; the `commerceCatalog` Core hook for the storefront",
+      "phase": "CM",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1, 1.4],
+      "deps": ["CM-03"],
+      "planMode": false,
+      "gates": [
+        "migration",
+        "table-owners",
+        "rule-10",
+        "rule-6",
+        "threat-model",
+        "docs-generated"
+      ],
+      "humanInputs": [
+        "the owner's go signal (removes `deferred`)",
+        "a Stripe platform account with Connect enabled, in a sandbox, and a test connected account, for live checks (fixtures and recorded responses otherwise)"
+      ],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": ["notes/S-22 §3", "notes/S-22 §7.2", "notes/S-22 §7.7"],
+      "brief": "wp/CM-04-offers-catalogue.md",
+      "status": "todo",
+      "deferred": "owner go (S-22, 2026-10-05): not dispatched until the owner says go"
+    },
+    {
+      "id": "CM-05",
+      "title": "Checkout and fulfilment for one-time purchases: portal checkout route, hosted Stripe Checkout (direct charge, Stripe Tax), fulfil-on-return and on-webhook, grants with source `polaris-key`",
+      "phase": "CM",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.2, 1.6],
+      "deps": ["CM-04", "LX-09", "LX-10", "LX-12", "LX-13"],
+      "planMode": false,
+      "gates": [
+        "migration",
+        "table-owners",
+        "rule-10",
+        "rule-6",
+        "threat-model",
+        "docs:privacy",
+        "portal-e2e",
+        "workerd"
+      ],
+      "humanInputs": [
+        "the owner's go signal (removes `deferred`)",
+        "a Stripe platform account with Connect enabled, in a sandbox, and a test connected account, for live checks (fixtures and recorded responses otherwise)",
+        "the G1 legal review and G4 waiver wording before the first live payment"
+      ],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": ["notes/S-22 §7.3", "notes/S-22 §8"],
+      "brief": "wp/CM-05-checkout-fulfilment.md",
+      "status": "todo",
+      "deferred": "owner go (S-22, 2026-10-05): not dispatched until the owner says go"
+    },
+    {
+      "id": "CM-06",
+      "title": "Refunds, disputes and revocation: console refund action, `charge.refunded` / dispute handlers, LX-12 states, partial-refund and open-dispute policies, bundle `order_ref` revocation",
+      "phase": "CM",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 0.9],
+      "deps": ["CM-05"],
+      "planMode": false,
+      "gates": ["rule-10", "threat-model", "workerd"],
+      "humanInputs": [
+        "the owner's go signal (removes `deferred`)",
+        "a Stripe platform account with Connect enabled, in a sandbox, and a test connected account, for live checks (fixtures and recorded responses otherwise)"
+      ],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": ["notes/S-22 §7.4"],
+      "brief": "wp/CM-06-refunds-disputes.md",
+      "status": "todo",
+      "deferred": "owner go (S-22, 2026-10-05): not dispatched until the owner says go"
+    },
+    {
+      "id": "CM-07",
+      "title": "One-time tier upgrades: in-place, revertible tier change tied to the order, difference pricing, eligible sources; add-on base-licence rule",
+      "phase": "CM",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": ["CM-06"],
+      "planMode": false,
+      "gates": ["migration", "table-owners", "threat-model"],
+      "humanInputs": ["the owner's go signal (removes `deferred`)"],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": ["notes/S-22 §7.5", "notes/S-22 §12"],
+      "brief": "wp/CM-07-tier-upgrades.md",
+      "status": "todo",
+      "deferred": "owner go (S-22, 2026-10-05): not dispatched until the owner says go"
+    },
+    {
+      "id": "CM-08",
+      "title": "Subscriptions through Polaris Key checkout: base and add-on, trials, renewals with buffer, dunning on `past_due`, cancel at period end, resume, resubscribe on the same licence, proration on tier change",
+      "phase": "CM",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.4, 1.9],
+      "deps": ["CM-06", "LX-23"],
+      "planMode": false,
+      "gates": [
+        "migration",
+        "table-owners",
+        "rule-10",
+        "threat-model",
+        "workerd"
+      ],
+      "humanInputs": [
+        "the owner's go signal (removes `deferred`)",
+        "a Stripe platform account with Connect enabled, in a sandbox, and a test connected account, for live checks (fixtures and recorded responses otherwise)"
+      ],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": ["notes/S-22 §7.5", "notes/S-22 §7.6"],
+      "brief": "wp/CM-08-subscriptions.md",
+      "status": "todo",
+      "deferred": "owner go (S-22, 2026-10-05): not dispatched until the owner says go"
+    },
+    {
+      "id": "CM-09",
+      "title": "Coupons and promotion codes at checkout: redemption, limits, subscription durations, 100 %-off path",
+      "phase": "CM",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["CM-05"],
+      "planMode": false,
+      "gates": ["rule-10", "threat-model"],
+      "humanInputs": [
+        "the owner's go signal (removes `deferred`)",
+        "a Stripe platform account with Connect enabled, in a sandbox, and a test connected account, for live checks (fixtures and recorded responses otherwise)"
+      ],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": ["notes/S-22 §7.7"],
+      "brief": "wp/CM-09-coupons.md",
+      "status": "todo",
+      "deferred": "owner go (S-22, 2026-10-05): not dispatched until the owner says go"
+    },
+    {
+      "id": "CM-10",
+      "title": "Gifting: buy as a gift mints an LX-25 gift code; refund voids or revokes",
+      "phase": "CM",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["CM-06", "LX-25"],
+      "planMode": false,
+      "gates": ["rule-10", "threat-model"],
+      "humanInputs": ["the owner's go signal (removes `deferred`)"],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": ["notes/S-22 §7.8"],
+      "brief": "wp/CM-10-gifting.md",
+      "status": "todo",
+      "deferred": "owner go (S-22, 2026-10-05): not dispatched until the owner says go"
+    },
+    {
+      "id": "CM-11",
+      "title": "Customer portal commerce: Account → Billing (orders, subscriptions, invoices across developers), product-page buy / upgrade / gift / manage, Stripe Customer Portal hand-off per merchant",
+      "phase": "CM",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.2, 1.6],
+      "deps": ["CM-07", "CM-08", "LX-15"],
+      "planMode": false,
+      "gates": [
+        "portal-e2e",
+        "ui-snapshots",
+        "rule-10",
+        "docs-links",
+        "console-csp-parity"
+      ],
+      "humanInputs": ["the owner's go signal (removes `deferred`)"],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": ["notes/S-22 §7.10", "docs/design/PORTAL.md"],
+      "brief": "wp/CM-11-portal-billing.md",
+      "status": "todo",
+      "deferred": "owner go (S-22, 2026-10-05): not dispatched until the owner says go"
+    },
+    {
+      "id": "CM-12",
+      "title": "Console commerce: Product → Commerce (merchant, offers, orders with refund and re-fulfil, subscriptions, coupons, revenue, settings); platform merchants and webhook health",
+      "phase": "CM",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.2, 1.6],
+      "deps": ["CM-07", "CM-08", "CM-09", "LX-14"],
+      "planMode": false,
+      "gates": ["ui-snapshots", "console-csp-parity", "docs-links", "rule-10"],
+      "humanInputs": ["the owner's go signal (removes `deferred`)"],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": ["notes/S-22 §7.11", "docs/design/ADMIN.md"],
+      "brief": "wp/CM-12-console-commerce.md",
+      "status": "todo",
+      "deferred": "owner go (S-22, 2026-10-05): not dispatched until the owner says go"
+    },
+    {
+      "id": "CM-13",
+      "title": "Commerce emails: in your Library, gift received, access ending, access ended; optional dunning mail",
+      "phase": "CM",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": ["CM-06", "CM-08", "CM-10", "I-18"],
+      "planMode": false,
+      "gates": ["email-snapshots", "docs:privacy"],
+      "humanInputs": ["the owner's go signal (removes `deferred`)"],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": ["notes/S-22 §7.9", "notes/S-22 §7.11"],
+      "brief": "wp/CM-13-commerce-emails.md",
+      "status": "todo",
+      "deferred": "owner go (S-22, 2026-10-05): not dispatched until the owner says go"
+    },
+    {
+      "id": "CM-14",
+      "title": "Device checkout hand-off (wire): `POST /<p>/distribution/commerce/checkout`, `offers[]` on the binding response, `store_billing_required`, grant source `polaris-key` in the enums",
+      "phase": "CM",
+      "lane": "corpus",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 0.9],
+      "deps": ["CM-01", "CM-05", "LX-20"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "rule-10",
+        "corpus",
+        "drift-gate",
+        "threat-model",
+        "workerd"
+      ],
+      "humanInputs": [
+        "the owner's go signal (removes `deferred`)",
+        "plan approval (`plans/CM-01.md`)"
+      ],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": ["notes/S-22 §7.12", "notes/S-22 §9 W1–W4"],
+      "brief": "wp/CM-14-device-checkout-wire.md",
+      "status": "todo",
+      "deferred": "owner go (S-22, 2026-10-05): not dispatched until the owner says go",
+      "planRef": "CM-01"
+    },
+    {
+      "id": "CM-15",
+      "title": "SDKs and UI kits: `offers()`, `purchase()` hand-off to Polaris Key checkout on desktop and web, store billing on store builds, `manageBilling()`",
+      "phase": "CM",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.4, 2],
+      "deps": ["CM-14", "LX-19"],
+      "planMode": false,
+      "gates": ["all-sdks", "drift-gate", "corpus-runner"],
+      "humanInputs": ["the owner's go signal (removes `deferred`)"],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": ["notes/S-22 §7.12", "notes/S-22 §9"],
+      "brief": "wp/CM-15-sdk-purchase-handoff.md",
+      "status": "todo",
+      "deferred": "owner go (S-22, 2026-10-05): not dispatched until the owner says go"
+    },
+    {
+      "id": "CM-16",
+      "title": "Storefront integration: price block, buy / upgrade / subscribe / gift CTA states on the S-21 listing, owned-elsewhere, 3.1.3(b) guard",
+      "phase": "CM",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": ["CM-04", "CM-11"],
+      "planMode": false,
+      "gates": ["portal-e2e", "ui-snapshots"],
+      "humanInputs": ["the owner's go signal (removes `deferred`)"],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": ["notes/S-22 §3", "notes/S-22 §7.2", "notes/S-22 §7.14"],
+      "brief": "wp/CM-16-storefront-integration.md",
+      "status": "todo",
+      "deferred": "owner go (S-22, 2026-10-05): not dispatched until the owner says go"
+    },
+    {
+      "id": "CM-17",
+      "title": "Commerce close-out: THREAT-MODEL CM-T1–T11, PRIVACY.md, PCI SAQ A record, docs pages, glossary, runbook (key rotation, signing-secret roll, outage), sandbox end-to-end check",
+      "phase": "CM",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.8, 1.2],
+      "deps": ["CM-11", "CM-12", "CM-13", "CM-15", "CM-16"],
+      "planMode": false,
+      "gates": ["threat-model", "docs:privacy", "docs-links", "docs-generated"],
+      "humanInputs": [
+        "the owner's go signal (removes `deferred`)",
+        "a Stripe platform account with Connect enabled, in a sandbox, and a test connected account, for live checks (fixtures and recorded responses otherwise)",
+        "the G1 legal review outcome"
+      ],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": ["notes/S-22 §8", "notes/S-22 §10"],
+      "brief": "wp/CM-17-commerce-closeout.md",
+      "status": "todo",
+      "deferred": "owner go (S-22, 2026-10-05): not dispatched until the owner says go"
+    },
+    {
+      "id": "CM-18",
+      "title": "Regional store link-out programmes (US App Store external purchase links, Play external offers and alternative billing), only if the owner says yes to G6",
+      "phase": "CM",
+      "lane": "sdk",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1, 1.5],
+      "deps": ["CM-01", "CM-15", "CM-17"],
+      "planMode": true,
+      "gates": ["plan-mode", "all-sdks", "threat-model", "human-approval"],
+      "humanInputs": [
+        "the owner's go signal (removes `deferred`)",
+        "the owner's yes to S-22 G6",
+        "a fresh S-07-style policy re-check and a legal review",
+        "plan approval (`plans/CM-01.md` addendum)"
+      ],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "notes/S-22 §7.12",
+        "notes/S-22 §10.2 G6",
+        "notes/S-07 rows 6 and 8"
+      ],
+      "brief": "wp/CM-18-store-link-out-programmes.md",
+      "status": "todo",
+      "deferred": "owner go (S-22, 2026-10-05): not dispatched until the owner says go",
+      "planRef": "CM-01"
+    },
+    {
+      "id": "CM-19",
+      "title": "Own-account mode: a Stripe Managed Payments provider (Stripe as merchant of record) for developers who choose it, only if the owner says yes to G5",
+      "phase": "CM",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.8, 1.2],
+      "deps": ["CM-05", "CM-17"],
+      "planMode": false,
+      "gates": ["threat-model", "docs:privacy", "migration"],
+      "humanInputs": [
+        "the owner's go signal (removes `deferred`)",
+        "the owner's yes to S-22 G5",
+        "a Stripe platform account with Connect enabled, in a sandbox, and a test connected account, for live checks (fixtures and recorded responses otherwise)"
+      ],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": ["notes/S-22 §5", "notes/S-22 §10.2 G5"],
+      "brief": "wp/CM-19-own-account-mode.md",
+      "status": "todo",
+      "deferred": "owner go (S-22, 2026-10-05): not dispatched until the owner says go"
     }
   ]
 }

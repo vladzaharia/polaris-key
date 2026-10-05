@@ -3,7 +3,8 @@
 //
 //   node check.mjs                      validate the graph and check INDEX.md is fresh (exit 1 on any problem)
 //   node check.mjs --write-index        regenerate INDEX.md
-//   node check.mjs --ready [--optional] list work packages whose dependencies are all done
+//   node check.mjs --ready [--optional] [--deferred]  list work packages whose dependencies are all done
+//                                      (deferred packages, waiting for the owner's go, only with --deferred)
 //   node check.mjs --summary            counts and estimate totals per phase and status
 //   node check.mjs --critical           the longest dependency chain by upper estimate
 //   node check.mjs --show <id>          one work package, its dependencies and its dependants
@@ -26,10 +27,12 @@ const INDEX = join(HERE, "INDEX.md");
 // Hosted assets (phase HA, notes/S-20) also use a two-letter prefix.
 // UI kits (phase UK, docs/design/UI-KITS.md §10) also use a two-letter prefix; UK-02a/b execute
 // plans/UK-02.md.
+// Polaris Key commerce (phase CM, notes/S-22) also uses a two-letter prefix; every CM package is
+// optional and carries `deferred` until the owner's go.
 // The customer portal (phase PX, docs/design/PORTAL.md §11) keeps the spec's own ids: PX-01…PX-22
 // for the front end and PX-W1…PX-W17 for the Worker additions.
 const ID_RE =
-  /^(?:(?:P0|P1|P1b|P2|P2b|P3|P4|P5|P6|X|S|D|F|A|I|U|ST|LX|SP|HA|UK)-\d{2}[a-z]?|PX-(?:\d{2}|W\d{1,2}))$/;
+  /^(?:(?:P0|P1|P1b|P2|P2b|P3|P4|P5|P6|X|S|D|F|A|I|U|ST|LX|SP|HA|UK|CM)-\d{2}[a-z]?|PX-(?:\d{2}|W\d{1,2}))$/;
 const DONE = new Set(["done", "dropped"]);
 
 const raw = readFileSync(GRAPH, "utf8");
@@ -84,6 +87,15 @@ function validate() {
       else if (byId.get(d).optional && !w.optional)
         errors.push(`${at} a required work package depends on optional ${d}`);
     }
+    if ("deferred" in w && !(typeof w.deferred === "string" && w.deferred))
+      errors.push(
+        `${at} deferred must be a non-empty string naming what it waits for`,
+      );
+    for (const d of w.deps ?? [])
+      if (byId.get(d)?.deferred && !w.deferred)
+        errors.push(
+          `${at} a non-deferred work package depends on deferred ${d}`,
+        );
     if (w.planMode && !w.gates.includes("plan-mode"))
       errors.push(
         `${at} planMode work packages must list the "plan-mode" gate`,
@@ -198,7 +210,7 @@ const fmtEst = ([a, b]) => (a === b ? `${a}` : `${a}–${b}`);
 
 // The header rows every brief carries that are derived from the graph (kept in sync by --sync-briefs).
 const ID_IN_TEXT =
-  /\b(?:(?:P0|P1b|P1|P2b|P2|P3|P4|P5|P6|X|S|D|F|A|I|U|ST|LX|SP|HA|UK)-\d{2}[a-z]?|PX-(?:\d{2}|W\d{1,2}))\b/g;
+  /\b(?:(?:P0|P1b|P1|P2b|P2|P3|P4|P5|P6|X|S|D|F|A|I|U|ST|LX|SP|HA|UK|CM)-\d{2}[a-z]?|PX-(?:\d{2}|W\d{1,2}))\b/g;
 function dependantsOf() {
   const m = new Map(wps.map((w) => [w.id, []]));
   for (const w of wps) for (const d of w.deps) m.get(d)?.push(w.id);
@@ -235,7 +247,8 @@ function renderIndex() {
     "Generated from [`workpackages.json`](workpackages.json). Read [`README.md`](README.md) first.",
     "Estimates are focused engineer-weeks. ⚑ marks plan-mode work packages, whose plan needs human",
     "approval before implementation. ✋ marks work packages that need human-held inputs (accounts,",
-    "keys, devices). _Optional_ work packages are off the required path.",
+    "keys, devices). _Optional_ work packages are off the required path. _Deferred_ work packages",
+    "wait for the owner's go and are never listed by `--ready` (see `deferred` in workpackages.json).",
     "",
   ];
   for (const p of doc.phases) {
@@ -256,7 +269,7 @@ function renderIndex() {
       "| --- | --- | --- | --- | --- | --- |",
     );
     for (const w of list) {
-      const flags = `${w.planMode ? " ⚑" : ""}${w.humanInputs.length ? " ✋" : ""}${w.optional ? " _optional_" : ""}`;
+      const flags = `${w.planMode ? " ⚑" : ""}${w.humanInputs.length ? " ✋" : ""}${w.optional ? " _optional_" : ""}${w.deferred ? " _deferred_" : ""}`;
       const title = w.title.replace(/\|/g, "\\|");
       lines.push(
         `| [${w.id}](${w.brief})${flags} | ${title} | ${w.deps.join(", ") || "—"} | ${w.role.replace("pkey-", "")} | ${fmtEst(w.estimateWeeks)} | ${w.status} |`,
@@ -378,6 +391,7 @@ if (flag("--write-index")) {
   const { f } = tail();
   const ready = wps
     .filter((w) => w.status === "todo" && (flag("--optional") || !w.optional))
+    .filter((w) => flag("--deferred") || !w.deferred)
     .filter((w) => w.deps.every((d) => DONE.has(byId.get(d).status)))
     .sort((a, b) => f(b.id) - f(a.id));
   if (!ready.length) console.log("Nothing is ready.");

@@ -1,16 +1,16 @@
 # LX-10 Anchor choice at activation (`anchorPolicy: rank-first`): sign-in, attach, Discover and base claim; licence-less devices; enroll supersede and grant re-homing on attach
 
-| Field       | Value                                                                                                                                             |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only)                                                      |
-| Size        | 0.5–0.7 engineer-weeks                                                                                                                            |
-| Depends on  | [LX-09](LX-09-entitlement-resolver.md), [I-09](I-09-key-entry-attach.md)                                                                          |
-| Unblocks    | [LX-11](LX-11-commerce-rework.md), [LX-14](LX-14-console-licensing.md), [LX-15](LX-15-portal-licensing.md), [LX-21](LX-21-reanchor-on-refresh.md) |
-| Role        | `pkey-implementer`                                                                                                                                |
-| Plan mode   | no                                                                                                                                                |
-| Gates       | THREAT-MODEL                                                                                                                                      |
-| Human input | none                                                                                                                                              |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                         |
+| Field       | Value                                                                                                                                                                                    |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only)                                                                                             |
+| Size        | 0.5–0.7 engineer-weeks                                                                                                                                                                   |
+| Depends on  | [LX-09](LX-09-entitlement-resolver.md), [I-09](I-09-key-entry-attach.md)                                                                                                                 |
+| Unblocks    | [LX-11](LX-11-commerce-rework.md), [LX-14](LX-14-console-licensing.md), [LX-15](LX-15-portal-licensing.md), [LX-21](LX-21-reanchor-on-refresh.md), [CM-05](CM-05-checkout-fulfilment.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                       |
+| Plan mode   | no                                                                                                                                                                                       |
+| Gates       | THREAT-MODEL                                                                                                                                                                             |
+| Human input | none                                                                                                                                                                                     |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                |
 
 ## Amendments from approved plans (2026-10-05)
 

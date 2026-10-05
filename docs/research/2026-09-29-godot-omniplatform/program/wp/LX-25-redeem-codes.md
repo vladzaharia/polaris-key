@@ -5,7 +5,7 @@
 | Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase D: optional)       |
 | Size        | 0.5–0.7 engineer-weeks                                                               |
 | Depends on  | [LX-08](LX-08-licensing-expand.md), [LX-11](LX-11-commerce-rework.md)                |
-| Unblocks    | none                                                                                 |
+| Unblocks    | [CM-10](CM-10-gifting.md)                                                            |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                |
 | Plan mode   | yes: the plan [`plans/LX-25.md`](../plans/LX-25.md) needs human approval before code |
 | Gates       | plan mode; rule 10 (OpenAPI + `routeCoverage`); all six SDKs (`parity:check`)        |
@@ -17,6 +17,13 @@
 The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
 
 - **[`plans/LX-01.md`](../plans/LX-01.md):** Q8: this plan defines what entering an `addon` key does; nothing writes `addon` before it.
+
+## Amendments from S-22 (2026-10-05)
+
+The commerce plan [S-22](../../notes/S-22-polaris-key-commerce.md) (its packages are optional and deferred) changes this brief as follows. These amendments win over the text below where they differ.
+
+- **Paid gift codes.** [CM-10](CM-10-gifting.md) mints gift codes from paid Polaris Key gift orders ([S-22 §7.8](../../notes/S-22-polaris-key-commerce.md#78-gifting), decision D21). The code model carries an `order_ref` (nullable) so a refund can void an unredeemed code and a lost dispute or refund can revoke the grant a redeemed code created.
+- A code minted for a **base** offer creates a licence on redemption, not only a grant; the plan defines both.
 
 ## Goal
 
