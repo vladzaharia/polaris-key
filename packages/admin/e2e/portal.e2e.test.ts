@@ -1,270 +1,34 @@
-import { existsSync, mkdirSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { chromium, type Browser, type Page } from "playwright";
-import { preview, type PreviewServer } from "vite";
-import { appSecurityHeaders } from "../../worker/src/securityHeaders.js";
-import { mediaResponseHeaders } from "../../worker/src/services/identity/portal/media.js";
 import {
-  portalMedia,
-  portalRoutes,
-  type PortalScenario,
-} from "./portalFixtures.js";
+  h1,
+  shoot,
+  startPortal,
+  type OpenOptions,
+  type PortalHarness,
+} from "./portalHarness.js";
+import type { PortalScenario } from "./portalFixtures.js";
 
 /**
- * The customer site (PORTAL.md) in real Chromium under the Worker's exact CSP: every main flow
- * loads with zero violations and no horizontal scroll at 360 px, in both themes.
+ * The customer site's main flows (PORTAL.md) in real Chromium under the Worker's exact CSP, driven
+ * end to end: activate, deep links, inline errors, device removal, ⌘K, search, focused flows,
+ * package access, sign-in and theme. Every screen and state is also checked on its own (both
+ * themes, both widths, axe, one h1, 360 px, visual baseline) by portalQuality.e2e.test.ts.
  *
- * Set `PK_SHOTS_DIR` to also save screenshots (dark and light, 1440 and 390 px) there.
+ * Set `PK_SHOTS_DIR` to also save screenshots there.
  */
 
-const here = fileURLToPath(new URL("..", import.meta.url));
-const CSP = appSecurityHeaders().get("content-security-policy")!;
-const SHOTS = process.env.PK_SHOTS_DIR;
-
-let server: PreviewServer;
-let browser: Browser;
-let base: string;
+let portal: PortalHarness;
 
 beforeAll(async () => {
-  if (!existsSync(`${here}dist/index.html`)) {
-    throw new Error(
-      "Build the console first: pnpm --filter @polaris-key/admin build",
-    );
-  }
-  if (SHOTS) mkdirSync(SHOTS, { recursive: true });
-  server = await preview({
-    root: here,
-    configFile: `${here}vite.config.ts`,
-    preview: { port: 0, strictPort: false, host: "127.0.0.1" },
-    logLevel: "silent",
-  });
-  base = server.resolvedUrls!.local[0]!.replace(/\/$/, "");
-  browser = await chromium.launch();
+  portal = await startPortal();
 });
 
 afterAll(async () => {
-  await browser?.close();
-  await new Promise<void>((r) => server?.httpServer.close(() => r()));
+  await portal?.stop();
 });
 
-interface Opened {
-  page: Page;
-  violations: () => Promise<string[]>;
-  requests: string[];
-}
-
-async function open(
-  scenario: PortalScenario,
-  path: string,
-  opts: { theme?: "dark" | "light"; width?: number; height?: number } = {},
-): Promise<Opened> {
-  const theme = opts.theme ?? "dark";
-  const ctx = await browser.newContext({
-    viewport: { width: opts.width ?? 1440, height: opts.height ?? 900 },
-    colorScheme: theme,
-  });
-  await ctx.addInitScript((t) => {
-    window.localStorage.setItem("pk-admin-theme", t);
-    (window as unknown as { __v: string[] }).__v = [];
-    document.addEventListener("securitypolicyviolation", (e) =>
-      (window as unknown as { __v: string[] }).__v.push(
-        `${e.violatedDirective} ${e.blockedURI} ${e.sample}`,
-      ),
-    );
-  }, theme);
-  const routes = portalRoutes(scenario);
-  const requests: string[] = [];
-  await ctx.route("**/*", async (route) => {
-    const req = route.request();
-    const url = new URL(req.url());
-    if (url.pathname.startsWith("/api/") || url.pathname === "/logout") {
-      requests.push(`${req.method()} ${url.pathname}${url.search}`);
-      const handler =
-        routes[`${req.method()} ${url.pathname}`] ?? routes[url.pathname];
-      if (!handler)
-        return route.fulfill({ status: 404, json: { error: "not_found" } });
-      const res = typeof handler === "function" ? handler(req) : handler;
-      return route.fulfill({ status: res.status ?? 200, json: res.body });
-    }
-    // PX-08: developer art as the media proxy answers it (same origin, its own headers).
-    if (url.pathname.startsWith("/media/")) {
-      requests.push(`${req.method()} ${url.pathname}`);
-      const png = portalMedia(url.pathname);
-      if (!png) return route.fulfill({ status: 404, body: "" });
-      const headers = Object.fromEntries(
-        mediaResponseHeaders({
-          "content-type": "image/png",
-          "content-length": String(png.byteLength),
-          "content-disposition": "inline",
-        }),
-      );
-      return route.fulfill({ status: 200, headers, body: png });
-    }
-    // The Worker serves the SPA shell for `/activate` (router.ts); vite preview does not.
-    const res =
-      url.pathname === "/activate"
-        ? await route.fetch({ url: `${base}/index.html` })
-        : await route.fetch();
-    const headers = { ...res.headers() };
-    if (
-      url.pathname.endsWith(".html") ||
-      url.pathname === "/" ||
-      url.pathname === "/activate"
-    )
-      headers["content-security-policy"] = CSP;
-    return route.fulfill({ response: res, headers });
-  });
-  const page = await ctx.newPage();
-  await page.goto(`${base}${path}`);
-  return {
-    page,
-    requests,
-    violations: () =>
-      page.evaluate(() =>
-        (window as unknown as { __v: string[] }).__v.splice(0),
-      ),
-  };
-}
-
-async function noHorizontalScroll(page: Page): Promise<void> {
-  const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth - window.innerWidth,
-  );
-  expect(overflow, "horizontal page scroll").toBeLessThanOrEqual(0);
-}
-
-async function shoot(page: Page, name: string): Promise<void> {
-  if (!SHOTS) return;
-  await page.waitForTimeout(150);
-  await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true });
-}
-
-const h1 = (page: Page, name: string | RegExp) =>
-  page.getByRole("heading", { level: 1, name }).first().waitFor();
-
-/** Each screen at both widths in both themes: zero violations, no 360 px scroll. */
-const SCREENS: {
-  name: string;
-  scenario: PortalScenario;
-  path: string;
-  ready: (page: Page) => Promise<void>;
-  act?: (page: Page) => Promise<void>;
-}[] = [
-  {
-    name: "signin",
-    scenario: "signedOut",
-    path: "/",
-    ready: (p) => h1(p, "Sign in to Polaris Key"),
-  },
-  {
-    name: "library-empty",
-    scenario: "empty",
-    path: "/",
-    ready: (p) => h1(p, "Your library"),
-  },
-  {
-    name: "library-1",
-    scenario: "one",
-    path: "/",
-    ready: (p) => h1(p, "Your library"),
-  },
-  {
-    name: "library-3",
-    scenario: "three",
-    path: "/",
-    ready: (p) => h1(p, "Your library"),
-  },
-  {
-    name: "library-12",
-    scenario: "twelve",
-    // No forced view: the desktop default grid, the phone default list (§8, mockup 21).
-    path: "/",
-    ready: (p) => h1(p, "Your library"),
-  },
-  {
-    name: "library-12-list",
-    scenario: "twelve",
-    path: "/#/?view=list",
-    ready: (p) => h1(p, "Your library"),
-  },
-  {
-    name: "product",
-    scenario: "three",
-    path: "/#/p/nightfall",
-    ready: (p) => h1(p, "Nightfall"),
-  },
-  {
-    name: "product-not-found",
-    scenario: "three",
-    path: "/#/p/unknown-thing",
-    ready: (p) => h1(p, "That product isn't in your library"),
-  },
-  {
-    name: "account",
-    scenario: "three",
-    path: "/#/account",
-    ready: (p) => h1(p, "Account"),
-  },
-  {
-    name: "product-package",
-    scenario: "three",
-    path: "/#/p/tidewater/package",
-    ready: async (p) => {
-      await h1(p, "Tidewater Studio");
-      await p.getByRole("heading", { name: /Package access/ }).waitFor();
-    },
-  },
-  {
-    name: "device-limit",
-    scenario: "twelve",
-    path: "/#/p/orbit-survey/free-device?for=Mara%E2%80%99s%20Steam%20Deck&return=orbitsurvey%3A%2F%2Fretry",
-    ready: (p) => h1(p, "Your license is on 2 of 2 devices"),
-  },
-  {
-    name: "download-flow",
-    scenario: "three",
-    path: "/#/p/nightfall/download?platform=linux",
-    ready: (p) => h1(p, "Download Nightfall for Linux"),
-  },
-  {
-    name: "discover-empty",
-    scenario: "three",
-    path: "/#/discover",
-    ready: (p) => h1(p, "Nothing to add right now"),
-  },
-];
-
-describe("the customer site under the Worker's CSP", () => {
-  for (const screen of SCREENS) {
-    it(`${screen.name}: both themes, 1440 and 390 px, no violations or 360 px scroll`, async () => {
-      for (const theme of ["dark", "light"] as const) {
-        for (const width of [1440, 390]) {
-          const o = await open(screen.scenario, screen.path, {
-            theme,
-            width,
-            height: width === 390 ? 844 : 900,
-          });
-          await screen.ready(o.page);
-          await shoot(
-            o.page,
-            `${screen.name}-${width === 390 ? "mobile" : "desktop"}-${theme}`,
-          );
-          if (width === 390) {
-            await o.page.setViewportSize({ width: 360, height: 780 });
-            await o.page.waitForTimeout(100);
-            await noHorizontalScroll(o.page);
-          }
-          expect(
-            await o.violations(),
-            `${screen.name} ${theme} ${width}`,
-          ).toEqual([]);
-          await o.page.context().close();
-        }
-      }
-    });
-  }
-});
+const open = (scenario: PortalScenario, path: string, opts?: OpenOptions) =>
+  portal.open(scenario, path, opts);
 
 describe("Library on GET /api/library (PX-08)", () => {
   it("shows proxied art with zero violations, every image decoded", async () => {
