@@ -111,7 +111,10 @@ const baseUrl = (value: string): Payload => ({
   config: { [BASE_URL]: { state: "default", value, updatedAt: 0 } },
 });
 
-function productJson(profiles: ProfileDecl[]): string {
+function productJson(
+  profiles: ProfileDecl[],
+  modules?: Record<string, { enabled: boolean }>,
+): string {
   return JSON.stringify({
     slug: SLUG,
     name: "Acme",
@@ -127,6 +130,7 @@ function productJson(profiles: ProfileDecl[]): string {
     })),
     tiers: [{ id: "standard", label: "Standard", profileId: "standard" }],
     provisioning: [],
+    ...(modules ? { modules } : {}),
   });
 }
 
@@ -530,5 +534,42 @@ describe("the carry reads the profiles immediately before the batch (R2)", () =>
     expect(await openManagedValue(ctx.env, SLUG, API_KEY, after.value)).toBe(
       "sk-rotated-mid-push",
     );
+  });
+});
+
+describe("a catalog the resync cannot build (R2)", () => {
+  it("is a structured refusal, not a throw, and leaves the stored secrets alone", async () => {
+    const ctx = await linked([{ id: "standard" }]);
+    await setOnProfile(ctx, "standard", API_KEY, "sk-plan-key-0001");
+    const before = await ctx.db.first<{ payload_json: string }>(
+      "SELECT payload_json FROM profiles WHERE product = ? AND id = 'standard'",
+      SLUG,
+    );
+
+    // Config turned off, and a catalog whose entry is not an object: the manifest validator
+    // lets it through, and the catalog constructor cannot read it. On a webhook a throw here
+    // would abort the per-product loop and record no sync-state row at all.
+    const res = await resyncRepo(
+      ctx.env,
+      ctx.db,
+      SLUG,
+      NOW + 60,
+      pkey(
+        productJson([{ id: "standard" }], {
+          license: { enabled: true },
+          config: { enabled: false },
+        }),
+        { schema: JSON.stringify({ schemaVersion: 1, entries: [null] }) },
+      ),
+      manifestIngestFor(SERVICES),
+    );
+
+    expect(res.ok).toBe(false);
+    expect(!res.ok && res.error).toMatch(/^invalid catalog in manifest: /);
+    const after = await ctx.db.first<{ payload_json: string }>(
+      "SELECT payload_json FROM profiles WHERE product = ? AND id = 'standard'",
+      SLUG,
+    );
+    expect(after!.payload_json).toBe(before!.payload_json);
   });
 });

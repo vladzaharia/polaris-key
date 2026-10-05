@@ -373,23 +373,28 @@ async function applyRepoManifest(
   updated.push("services");
 
   // ── schema: publish a new active version only when the catalog changed ──────
-  // The incoming catalog, built once: screened here when it changed, and asked by the profile
-  // carry-forward below (R2) which keys are still managed secrets.
-  const incomingCatalog = new Catalog(manifest.catalog as never);
   const nextCatalogJson = JSON.stringify(manifest.catalog);
   const activeSchema = await getActiveSchema(db, slug);
-  if (activeSchema?.catalog_json !== nextCatalogJson) {
+  const catalogChanged = activeSchema?.catalog_json !== nextCatalogJson;
+  // The incoming catalog, built once: screened here when it changed, and asked by the profile
+  // carry-forward below (R2) which keys are still managed secrets. Built INSIDE the try: the
+  // manifest validator does not prove every entry is an object (a Config-off product's
+  // `entries: [null]` gets through), and the constructor reads them. A throw here would escape
+  // `resyncRepo` and, on a webhook, abort the whole per-product loop with no sync-state row.
+  let incomingCatalog: Catalog;
+  try {
+    incomingCatalog = new Catalog(manifest.catalog as never);
     // Same screening the admin API applies before writing `product_schema`. A resync is
     // triggered by a repo webhook, so without this the sync path installs catalogs the admin
     // API would refuse — and the refusal is the only thing bounding `pattern` complexity.
-    try {
-      incomingCatalog.compileAll();
-    } catch (e) {
-      return {
-        ok: false,
-        error: `invalid catalog in manifest: ${e instanceof Error ? e.message : "unknown error"}`,
-      };
-    }
+    if (catalogChanged) incomingCatalog.compileAll();
+  } catch (e) {
+    return {
+      ok: false,
+      error: `invalid catalog in manifest: ${e instanceof Error ? e.message : "unknown error"}`,
+    };
+  }
+  if (catalogChanged) {
     const version = await nextSchemaVersion(db, slug);
     await deactivateSchemas(db, slug);
     await insertSchema(db, {
