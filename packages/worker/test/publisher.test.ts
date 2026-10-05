@@ -715,8 +715,10 @@ describe("upload tickets", () => {
  * R2's documented authorisation of a temporary credential (developers.cloudflare.com, "R2
  * temporary credentials"): the request's action must be in `actions` (when present), and the key
  * must start with a `prefixPaths` entry or equal an `objectPaths` entry. A copy reads its SOURCE,
- * so a `CopyObject`/`UploadPartCopy` needs that action AND the source key in scope. This models
- * the documented rules; the real-R2 confirmation is a hand-off (no R2 account here).
+ * so a `CopyObject`/`UploadPartCopy` needs that action AND the source key in scope. One rule is
+ * measured, not documented: real R2 refuses a token naming BOTH `scope` and `actions` (400
+ * `InvalidArgument` / `X-Amz-Security-Token` on every request; probed against the prod bucket,
+ * 2026-10-04), so the model refuses it too.
  */
 function r2Allows(
   claims: Record<string, unknown>,
@@ -726,6 +728,7 @@ function r2Allows(
   copySource?: string,
 ): boolean {
   if (claims.bucket !== bucket) return false;
+  if (claims.scope !== undefined && claims.actions !== undefined) return false;
   const actions = claims.actions as string[] | undefined;
   if (actions && !actions.includes(action)) return false;
   const paths = claims.paths as {
@@ -779,13 +782,16 @@ describe("R2 temporary credentials", () => {
     );
     expect(payload).toMatchObject({
       bucket: PARENT.bucket,
-      scope: "object-read-write",
       sub: PARENT.accountId,
       iss: PARENT.accessKeyId,
       aud: `${PARENT.accountId}.r2.cloudflarestorage.com`,
       iat: NOW,
       exp: NOW + 900,
     });
+    // `actions` without `scope`: R2 refuses a session token that names both (400
+    // InvalidArgument X-Amz-Security-Token, the v0.8.17 publish failure).
+    expect(payload.actions).toEqual([...UPLOAD_CREDENTIAL_ACTIONS]);
+    expect(payload).not.toHaveProperty("scope");
     // The secret never appears in what CI receives.
     expect(JSON.stringify(c)).not.toContain(PARENT.secretAccessKey);
   });
