@@ -6,11 +6,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   cookieFrom,
   fixture,
+  gateView,
   makeProviderHarness,
   STEAM_KEY,
   type ProviderHarness,
 } from "./identityProviderHarness.js";
 import { PORTAL_COOKIE } from "../src/services/identity/portal/session.js";
+import { EMAIL_GATE_LANDING } from "../src/services/identity/card/gate.js";
 import { resetProviderCaches } from "../src/services/identity/providers/discovery.js";
 
 afterEach(() => {
@@ -84,7 +86,10 @@ describe("Sign in with Steam", () => {
     const h = await makeProviderHarness();
     const res = await steamCallback(h);
     expect(res.status).toBe(302);
-    expect(cookieFrom(res, PORTAL_COOKIE)).toBeTruthy();
+    // Steam shares no email, so a first sign-in waits at I-07's email gate for a typed address
+    // (and its code): no account and no session until then.
+    expect(res.headers.get("location")).toBe(EMAIL_GATE_LANDING);
+    expect(cookieFrom(res, PORTAL_COOKIE)).toBeNull();
 
     // Steam itself confirmed the assertion: every openid.* field sent back, mode switched.
     const check = h.calls.find(
@@ -101,24 +106,14 @@ describe("Sign in with Steam", () => {
     expect(new URL(summary.url).searchParams.get("key")).toBe(STEAM_KEY);
     expect(new URL(summary.url).searchParams.get("steamids")).toBe(STEAM_ID);
 
-    const link = await h.db.first<{
-      issuer_key: string;
-      subject: string;
-      email: string | null;
-      email_verified: number;
-      display_name: string | null;
-    }>("SELECT * FROM account_links WHERE kind = 'steam'");
-    expect(link).toMatchObject({
-      issuer_key: "steam",
-      subject: STEAM_ID,
-      email: null,
-      email_verified: 0,
-      display_name: "Robin",
+    const view = await gateView(h, res);
+    expect(view.provider).toBe("steam");
+    expect(view.email).toMatchObject({
+      provider: null,
+      providerVerified: false,
     });
-    const account = await h.db.first<{ primary_email: string | null }>(
-      "SELECT primary_email FROM accounts",
-    );
-    expect(account?.primary_email).toBeNull();
+    expect(view.profile.name).toBe("Robin");
+    expect(await h.db.first("SELECT id FROM accounts")).toBeNull();
   });
 
   it("still signs in when the Web API does not answer", async () => {
@@ -127,11 +122,9 @@ describe("Sign in with Steam", () => {
       "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/",
       () => new Response("Forbidden", { status: 403 }),
     );
-    expect((await steamCallback(h)).status).toBe(302);
-    const link = await h.db.first<{ display_name: string | null }>(
-      "SELECT display_name FROM account_links WHERE kind = 'steam'",
-    );
-    expect(link?.display_name).toBeNull();
+    const res = await steamCallback(h);
+    expect(res.status).toBe(302);
+    expect((await gateView(h, res)).profile.name).toBeNull();
   });
 
   it("refuses an assertion Steam does not confirm", async () => {

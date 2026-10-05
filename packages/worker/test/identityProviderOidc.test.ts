@@ -7,11 +7,14 @@ import {
   cookieFrom,
   fixture,
   GOOGLE_CLIENT_ID,
+  gateView,
   googleClaims,
   makeProviderHarness,
   nonceOf,
+  passGate,
   type ProviderHarness,
 } from "./identityProviderHarness.js";
+import { EMAIL_GATE_LANDING } from "../src/services/identity/card/gate.js";
 import { PORTAL_COOKIE } from "../src/services/identity/portal/session.js";
 import { SIGNIN_BIND_COOKIE } from "../src/services/identity/providers/flow.js";
 import {
@@ -138,7 +141,14 @@ describe("Sign in with Google", () => {
     const h = await makeProviderHarness();
     const res = await googleCallback(h, (n) => googleClaims(n));
     expect(res.status).toBe(302);
-    expect(cookieFrom(res, PORTAL_COOKIE)).toBeTruthy();
+    // A first sign-in goes to I-07's email gate; Google's verified address passes it without a
+    // code, and only then do the account and its session exist.
+    expect(res.headers.get("location")).toBe(EMAIL_GATE_LANDING);
+    expect(cookieFrom(res, PORTAL_COOKIE)).toBeNull();
+    expect(await h.db.first("SELECT id FROM accounts")).toBeNull();
+    const passed = await passGate(h, res);
+    expect(passed.status).toBe(200);
+    expect(cookieFrom(passed, PORTAL_COOKIE)).toBeTruthy();
     // The token POST carried the PKCE verifier and the client secret, to the discovered endpoint.
     const tokenCall = h.calls.find(
       (c) => c.url === "https://oauth2.googleapis.com/token",
@@ -181,14 +191,12 @@ describe("Sign in with Google", () => {
       googleClaims(n, { email_verified: false }),
     );
     expect(res.status).toBe(302);
-    const link = await h.db.first<{ email_verified: number }>(
-      "SELECT email_verified FROM account_links WHERE kind = 'google'",
-    );
-    expect(link?.email_verified).toBe(0);
-    const account = await h.db.first<{ primary_email: string | null }>(
-      "SELECT primary_email FROM accounts",
-    );
-    expect(account?.primary_email).toBeNull();
+    // The gate offers the address but, unverified, it needs a code of ours: nothing is written.
+    expect((await gateView(h, res)).email).toMatchObject({
+      provider: "ada@example.com",
+      providerVerified: false,
+    });
+    expect(await h.db.first("SELECT id FROM accounts")).toBeNull();
   });
 
   it("never joins by email match: a verified email another account uses writes nothing", async () => {
@@ -218,7 +226,10 @@ describe("Sign in with Google", () => {
       1,
     );
     const res = await googleCallback(h, (n) => googleClaims(n));
-    expect(res.status).toBe(409);
+    // Confirming the address at the gate stops with the join offer; nothing joins silently.
+    const confirmed = await passGate(h, res);
+    expect(confirmed.status).toBe(409);
+    expect(await confirmed.json()).toMatchObject({ error: "email_in_use" });
     const google = await h.db.first(
       "SELECT id FROM account_links WHERE kind = 'google'",
     );
@@ -394,7 +405,13 @@ describe("Sign in with Google", () => {
         `/login/google/callback?code=c&state=${state}&iss=${encodeURIComponent("https://accounts.google.com")}`,
         { cookie },
       );
-      expect(res.headers.get("location")).toBe("https://key.plrs.im/#/library");
+      // The gate carries the return URL and hands it back once it passes.
+      expect(res.headers.get("location")).toBe(EMAIL_GATE_LANDING);
+      const passed = await passGate(h, res);
+      expect(await passed.json()).toMatchObject({
+        status: "signed_in",
+        next: "https://key.plrs.im/#/library",
+      });
     });
   });
 });

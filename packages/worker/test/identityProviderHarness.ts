@@ -27,6 +27,7 @@ import {
 import { resetProviderCaches } from "../src/services/identity/providers/discovery.js";
 import { handlePortal } from "../src/services/identity/portal/index.js";
 import { SIGNIN_BIND_COOKIE } from "../src/services/identity/providers/flow.js";
+import { EMAIL_GATE_COOKIE } from "../src/core/accountCookies.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const ORIGIN = "https://key.plrs.im";
@@ -297,4 +298,44 @@ export function appleClaims(
 /** The nonce the flow recorded, read back from the provider URL. */
 export function nonceOf(location: URL): string {
   return location.searchParams.get("nonce")!;
+}
+
+/**
+ * I-07's email gate, as the card drives it: a first provider sign-in opens the gate (no account,
+ * no session) and redirects to the card. `gateView` reads the step the card renders; `passGate`
+ * answers it (by default: confirm the provider's own email, which needs no code when the
+ * provider verified it).
+ */
+export async function gateView(
+  h: ProviderHarness,
+  callback: Response,
+): Promise<{
+  provider: string;
+  email: {
+    provider: string | null;
+    providerVerified: boolean;
+    relay: boolean;
+  };
+  profile: { name: string | null; picture: string | null };
+}> {
+  const gate = cookieFrom(callback, EMAIL_GATE_COOKIE);
+  if (!gate) throw new Error("the callback opened no email gate");
+  const res = await h.request("/api/signin/confirm-email", { cookie: gate });
+  if (res.status !== 200) throw new Error(`gate view answered ${res.status}`);
+  return res.json();
+}
+
+export async function passGate(
+  h: ProviderHarness,
+  callback: Response,
+  body: Record<string, unknown> = { choice: "provider" },
+): Promise<Response> {
+  const gate = cookieFrom(callback, EMAIL_GATE_COOKIE);
+  if (!gate) throw new Error("the callback opened no email gate");
+  return h.request("/api/signin/confirm-email", {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: ORIGIN },
+    body: JSON.stringify(body),
+    cookie: gate,
+  });
 }

@@ -23,10 +23,10 @@
  * in a victim's browser (login CSRF, which would hand the victim's later licence activations to
  * the attacker's account). The cookie carries no session and opens nothing by itself.
  *
- * **The hand-off.** A verified identity goes to `signIn(verifiedIdentity)` with the provider's
- * email and whether the provider verified it. I-07 replaces the direct session with the
- * interstitial (email confirmation, join offer, first-consent name); until then this answers
- * exactly as the portal's OIDC callback does.
+ * **The hand-off.** A verified identity goes to I-07's `beginProviderSignIn` with the provider's
+ * email, whether the provider verified it, and the provider's name and picture. It signs a known
+ * account with a confirmed email in at once (an account session from `startAccountSession`) and
+ * otherwise opens the email gate (email confirmation, join offer, first-consent name).
  */
 
 import { hashKey, type Db, type Env } from "../../../core/platform.js";
@@ -38,18 +38,10 @@ import {
   putArtefact,
   type ArtefactRef,
 } from "../../../core/singleUse.js";
-import { signIn, type SignInResult } from "../accounts/signIn.js";
-import { htmlError, safeReturnTo, signInRefusal } from "../portal/auth.js";
+import { beginProviderSignIn } from "../card/gate.js";
+import { htmlError, safeReturnTo } from "../portal/auth.js";
 import { portalSecurityHeaders } from "../portal/headers.js";
-import {
-  portalAudit,
-  portalAuthCapabilities,
-  syncAccountLicenseLinks,
-} from "../portal/repo.js";
-import {
-  buildPortalSessionCookie,
-  issuePortalSession,
-} from "../portal/session.js";
+import { portalAuthCapabilities } from "../portal/repo.js";
 import {
   appleAuthorizeUrl,
   completeAppleSignIn,
@@ -390,42 +382,38 @@ export async function handleProviderCallback(
     return htmlError(401, "Sign-in could not be verified.");
   }
 
-  const signedIn = await signIn(db, result.identity, opts.now);
-  const refused = signInRefusal(signedIn);
-  if (refused) return refused;
-  const done = signedIn as Extract<SignInResult, { status: "signed_in" }>;
   if (kind === "apple") {
     // Signing in again with Apple is a fresh consent: a revoked-consent flag no longer holds.
     await clearAppleLinkFlag(
       db,
-      { linkId: done.linkId },
+      { subject: result.identity.subject },
       "consent_revoked",
       opts.now,
     );
   }
-  await syncAccountLicenseLinks(db, done.account.id, opts.now);
-  await portalAudit(db, {
-    accountId: done.account.id,
-    action: `portal.login.${kind}`,
-    targetKind: "link",
-    targetId: done.linkId,
-    summary: `Signed in with ${label}`,
-    now: opts.now,
-  });
-  const { token } = await issuePortalSession(
+  // I-07's seam: a known account with a confirmed email signs in at once (one account session,
+  // `startAccountSession`); a first sign-in opens the email gate. Either way no session is minted
+  // here.
+  const handedOff = await beginProviderSignIn(
+    req,
     env,
+    db,
     {
-      accountId: done.account.id,
-      name: done.account.display_name,
-      email: done.account.primary_email,
+      identity: result.identity,
+      profile: {
+        name: result.profile.firstConsentName ?? result.profile.displayName,
+        pictureUrl: result.profile.avatarUrl,
+      },
+      returnTo: flow.returnTo ?? null,
     },
     opts.now,
   );
+  const headers = new Headers(handedOff.headers);
+  headers.append("set-cookie", clearBindCookie());
   // 303 after Apple's POST, so the browser follows with a GET.
-  return redirect(flow.returnTo ?? "/", kind === "apple" ? 303 : 302, [
-    buildPortalSessionCookie(token),
-    clearBindCookie(),
-  ]);
+  const status =
+    kind === "apple" && handedOff.status === 302 ? 303 : handedOff.status;
+  return new Response(handedOff.body, { status, headers });
 }
 
 async function completeProvider(

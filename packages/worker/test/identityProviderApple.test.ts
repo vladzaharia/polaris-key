@@ -10,13 +10,16 @@ import {
   APPLE_TEAM_ID,
   appleClaims,
   cookieFrom,
+  gateView,
   makeProviderHarness,
   nonceOf,
   nowSec,
+  passGate,
   setCookies,
   type ProviderHarness,
 } from "./identityProviderHarness.js";
 import { PORTAL_COOKIE } from "../src/services/identity/portal/session.js";
+import { EMAIL_GATE_LANDING } from "../src/services/identity/card/gate.js";
 import { resetProviderCaches } from "../src/services/identity/providers/discovery.js";
 import { appleFirstConsentName } from "../src/services/identity/providers/apple.js";
 
@@ -33,7 +36,13 @@ const FIRST_CONSENT_USER = JSON.stringify({
 async function appleCallback(
   h: ProviderHarness,
   claims: (nonce: string) => Record<string, unknown>,
-  opts: { user?: string; cookie?: string | null; iss?: string } = {},
+  opts: {
+    user?: string;
+    cookie?: string | null;
+    iss?: string;
+    /** Leave I-07's email gate open instead of confirming Apple's verified email. */
+    keepGate?: boolean;
+  } = {},
 ): Promise<Response> {
   const { location, state, cookie } = await h.start("apple");
   h.idToken.apple = await h.signApple(claims(nonceOf(location)));
@@ -42,7 +51,7 @@ async function appleCallback(
   if (opts.iss) form.set("iss", opts.iss);
   // A cross-site top-level form POST from appleid.apple.com: Lax cookies are NOT sent, so the
   // request carries at most the SameSite=None binding cookie.
-  return h.request("/login/apple/callback", {
+  const res = await h.request("/login/apple/callback", {
     method: "POST",
     headers: {
       "content-type": "application/x-www-form-urlencoded",
@@ -52,6 +61,11 @@ async function appleCallback(
     body: form.toString(),
     cookie: opts.cookie === undefined ? cookie : opts.cookie,
   });
+  // A first sign-in opens I-07's email gate; the card confirms Apple's (verified) email.
+  if (!opts.keepGate && res.headers.get("location") === EMAIL_GATE_LANDING) {
+    expect((await passGate(h, res)).status).toBe(200);
+  }
+  return res;
 }
 
 describe("Sign in with Apple", () => {
@@ -87,12 +101,24 @@ describe("Sign in with Apple", () => {
       cookie,
     });
     expect(res.status).toBe(303);
-    expect(res.headers.get("location")).toBe("/");
-    expect(cookieFrom(res, PORTAL_COOKIE)).toBeTruthy();
+    // A first sign-in goes to I-07's email gate: no account and no session yet.
+    expect(res.headers.get("location")).toBe(EMAIL_GATE_LANDING);
+    expect(cookieFrom(res, PORTAL_COOKIE)).toBeNull();
+    expect(await h.db.first("SELECT id FROM accounts")).toBeNull();
     // The binding cookie is spent.
     expect(
       setCookies(res).some((c) => /__Host-pkey_signin=;.*Max-Age=0/.test(c)),
     ).toBe(true);
+    const view = await gateView(h, res);
+    expect(view.email).toMatchObject({
+      provider: "q7x9k2@privaterelay.appleid.com",
+      providerVerified: true,
+      relay: true,
+    });
+    // Apple's verified address passes the gate without a code, and the session opens there.
+    const passed = await passGate(h, res);
+    expect(passed.status).toBe(200);
+    expect(cookieFrom(passed, PORTAL_COOKIE)).toBeTruthy();
 
     const link = await h.db.first<{
       issuer_key: string;
@@ -201,18 +227,22 @@ describe("Sign in with Apple", () => {
 
   it('passes email_verified "false" on as unverified', async () => {
     const h = await makeProviderHarness();
-    const res = await appleCallback(h, (n) =>
-      appleClaims(n, {
-        email: "grace@example.com",
-        email_verified: "false",
-        is_private_email: "false",
-      }),
+    const res = await appleCallback(
+      h,
+      (n) =>
+        appleClaims(n, {
+          email: "grace@example.com",
+          email_verified: "false",
+          is_private_email: "false",
+        }),
+      { keepGate: true },
     );
     expect(res.status).toBe(303);
-    const link = await h.db.first<{ email_verified: number }>(
-      "SELECT email_verified FROM account_links WHERE kind = 'apple'",
-    );
-    expect(link?.email_verified).toBe(0);
+    // The gate offers the address but, unverified, it will need a code of ours.
+    expect((await gateView(h, res)).email).toMatchObject({
+      provider: "grace@example.com",
+      providerVerified: false,
+    });
   });
 
   it("reads the first-consent name defensively", () => {
