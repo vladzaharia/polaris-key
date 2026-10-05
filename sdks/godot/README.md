@@ -516,7 +516,18 @@ PolarisKey.identity.sign_in_pending.connect(func(p: PKeySignInPrompt):
 PolarisKey.identity.sign_in_finished.connect(func(r: PKeySignInResult):
 	if r.ok: $Who.text = "Signed in as %s" % r.identity.get("email", r.identity.get("name", "")))
 await PolarisKey.identity.begin_sign_in()        # polls in the background; cancel() stops it
+await PolarisKey.identity.sign_in_with_browser() # the same, and opens the page in the browser
+var who = PolarisKey.identity.current()          # {name, email, activatedAt} or null
+await PolarisKey.identity.sign_out()             # cancel, forget, license.deactivate()
 ```
+
+- **Account calls.** `current()` reads the signed-in person off the verified licence's profile.
+  `sign_out()` cancels any sign-in, forgets the identity and releases the seat through
+  `license.deactivate()` (best-effort server call, then the mandatory local wipe), so
+  `state_changed` fires as for a deactivation. `sign_in_with_browser()` is the interim "Sign in
+  with browser": device code with the verification page opened in the system browser. A native
+  redirect sign-in waits on the server's redirect token route (I-15); the deprecated
+  `/identity/auth/poll` route is not used.
 
 - Device-code sign-in (RFC 8628) is the only native way a game finishes an identity sign-in.
   `begin_sign_in` refuses with `service-unavailable` before any request when Identity is off or,
