@@ -157,7 +157,7 @@ export function PlatformGlyphs({
   className?: string;
 }): React.ReactElement | null {
   if (platforms.length === 0) return null;
-  const label = `Plays on ${platforms.map((p) => PLATFORM_NAME[p]).join(", ")}`;
+  const label = `Runs on ${platforms.map((p) => PLATFORM_NAME[p]).join(", ")}`;
   return (
     <span
       role="img"

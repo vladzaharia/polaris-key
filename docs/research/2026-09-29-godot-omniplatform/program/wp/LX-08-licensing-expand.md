@@ -12,6 +12,12 @@
 | Human input | none                                                                                                                                                                                   |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                              |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/LX-01.md`](../plans/LX-01.md):** the exact DDL of §6.1; the Core table `entitlement_events` with a pull cursor (Q4); the triggers; no `dist_commerce_settings` table (Q5); the A3 record; the `addon` column, with nothing writing `addon` until LX-25 (Q8).
+
 ## Goal
 
 The licensing model's storage exists and is kept in sync: new tables and columns are added, existing store grants are backfilled into `grants`, commerce, admin and refund paths dual-write, and provisioned entitlement keys become `oidc` grants in the same deploy as the new sign-in writer.

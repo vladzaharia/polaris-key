@@ -35,6 +35,7 @@ import {
   useSimulation,
 } from "./data.js";
 import { APP } from "./shared.js";
+import { STRETCH_CELL } from "../../templates/Dashboard.js";
 
 /**
  * Release → Compatibility → Simulator (ADMIN.md §6.3.5, T6 single step; CMP-8 to CMP-10): what a
@@ -730,9 +731,11 @@ export function SimulatorPage({ slug }: { slug: string }): React.ReactElement {
             Simulate
           </Button>
         </form>
-        <div className="min-w-0">
+        {/* The result column stretches to the form's height: the two never leave a ragged
+            bottom edge. */}
+        <div className={STRETCH_CELL}>
           {!params ? (
-            <div className="rounded-lg border border-dashed border-border p-6 text-sm text-fg-muted">
+            <div className="flex items-center justify-center rounded-lg border border-dashed border-border p-6 text-center text-sm text-fg-muted">
               Choose an app release and a platform, then Simulate to see what
               that device is offered.
             </div>
