@@ -933,10 +933,25 @@ export interface SigningKeyDto {
   revokedAt: number | null;
 }
 
+/**
+ * After a rotation (UX-29): the authorized devices seen in the last `windowDays`, and how many of
+ * them reached the server since the active key went live. Derived from `last_seen`; there is no
+ * per-device trust fetch record, so the console says "refreshed", never "fetched the new trust".
+ */
+export interface SigningKeyRefreshDto {
+  kid: string;
+  activatedAt: number;
+  activeDevices: number;
+  refreshedDevices: number;
+  windowDays: number;
+}
+
 export interface SigningKeysResponse {
   keys: SigningKeyDto[];
   /** The server's clock, epoch seconds: the staged countdown is measured against it. */
   now: number;
+  /** `null` unless the active key replaced another within the window; absent on older Workers. */
+  refresh?: SigningKeyRefreshDto | null;
 }
 
 /** One secret of the inventory (`GET …/secrets`, A-5). Never a value. */

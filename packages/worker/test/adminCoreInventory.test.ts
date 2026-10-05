@@ -3,7 +3,8 @@
  *
  *   A-2  `GET …/activity` filters (action prefix, actor, target, date range)
  *   A-3  `PATCH …` accepts `adminGroup: null` to clear it, and refuses a blank name
- *   A-4  `GET …/keys` lists signing keys with their lifecycle state, public material only
+ *   A-4  `GET …/keys` lists signing keys with their lifecycle state, public material only;
+ *        UX-29 adds `refresh`, the active devices back since the last rotation
  *   A-5  `GET …/secrets` lists secrets' metadata and what requires each, never a value
  *
  * Admin routes are narrative-only (`routeCoverage.test.ts` NARRATIVE_ONLY): no OpenAPI entry.
@@ -291,6 +292,90 @@ describe("A-4: GET …/keys", () => {
   it("refuses a write without an action", async () => {
     const w = await world();
     expect((await w.call("POST", "/keys")).status).toBe(405);
+  });
+});
+
+describe("UX-29: GET …/keys reports how many active devices refreshed after a rotation", () => {
+  async function seedDevice(
+    db: Db,
+    id: string,
+    lastSeen: number,
+    status = "authorized",
+  ): Promise<void> {
+    await db.run(
+      `INSERT INTO devices (product, device_id, license_id, status, first_seen, last_seen)
+       VALUES (?, ?, 'lic_1', ?, ?, ?)`,
+      SLUG,
+      id,
+      status,
+      lastSeen - 10,
+      lastSeen,
+    );
+  }
+
+  it("is null before any rotation (the product's first key replaced nothing)", async () => {
+    const w = await world();
+    await seedDevice(w.db, "d1", NOW);
+    const body = (await (await w.call("GET", "/keys")).json()) as {
+      refresh: unknown;
+    };
+    expect(body.refresh).toBeNull();
+  });
+
+  it("counts authorized devices seen in 30 days, and those seen since activation", async () => {
+    const w = await world();
+    const { kid } = (await (await w.call("POST", "/keys/prepare")).json()) as {
+      kid: string;
+    };
+    await w.call("POST", "/keys/activate", { kid, breakGlass: true });
+    await seedDevice(w.db, "back-1", NOW + 60);
+    await seedDevice(w.db, "back-2", NOW);
+    await seedDevice(w.db, "not-yet", NOW - 3_600);
+    await seedDevice(w.db, "dormant", NOW - 40 * 86_400);
+    await seedDevice(w.db, "removed", NOW + 60, "deauthorized");
+    const body = (await (await w.call("GET", "/keys")).json()) as {
+      refresh: Record<string, unknown>;
+    };
+    expect(body.refresh).toEqual({
+      kid,
+      activatedAt: NOW,
+      activeDevices: 3,
+      refreshedDevices: 2,
+      windowDays: 30,
+    });
+  });
+
+  it("reports zero devices rather than a ratio of nothing", async () => {
+    const w = await world();
+    const { kid } = (await (await w.call("POST", "/keys/prepare")).json()) as {
+      kid: string;
+    };
+    await w.call("POST", "/keys/activate", { kid, breakGlass: true });
+    const body = (await (await w.call("GET", "/keys")).json()) as {
+      refresh: { activeDevices: number; refreshedDevices: number };
+    };
+    expect(body.refresh).toMatchObject({
+      activeDevices: 0,
+      refreshedDevices: 0,
+    });
+  });
+
+  it("goes quiet once the rotation is older than the 30-day window", async () => {
+    const w = await world();
+    const { kid } = (await (await w.call("POST", "/keys/prepare")).json()) as {
+      kid: string;
+    };
+    await w.call("POST", "/keys/activate", { kid, breakGlass: true });
+    await w.db.run(
+      "UPDATE product_keys SET rotated_at = ? WHERE product = ? AND kid = ?",
+      NOW - 31 * 86_400,
+      SLUG,
+      kid,
+    );
+    const body = (await (await w.call("GET", "/keys")).json()) as {
+      refresh: unknown;
+    };
+    expect(body.refresh).toBeNull();
   });
 });
 
