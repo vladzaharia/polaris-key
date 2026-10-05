@@ -45,6 +45,16 @@ export async function handleIdentityAdmin(
   return null;
 }
 
+/** What the console says when a sign-in setting is refused. */
+const SIGN_IN_REFUSAL_COPY: Record<string, string> = {
+  type: "That value has the wrong type.",
+  empty: "Enter a name, or clear it to use the product's name.",
+  too_long: "Use 40 characters or fewer.",
+  forbidden_character:
+    "Remove control characters, quotes and angle brackets.",
+  reserved: "That name is reserved. Choose your app's own name.",
+};
+
 /**
  * `GET|PATCH …/identity/sign-in-settings` (I-12): the settings of sign-in THROUGH this product,
  * which exist only while its Identity toggle is on (S-16 §5.2). With Identity off the route is
@@ -65,8 +75,12 @@ async function handleSignInSettings(
   const body = await readBody(req);
   const result = await patchSignInSettings(db, ref, body, now);
   if (!result.ok) {
-    return err(422, ErrorCode.BadRequest, "invalid sign-in settings", {
-      fields: result.fields,
+    const first = result.fields[0]!;
+    return err(422, ErrorCode.BadRequest, SIGN_IN_REFUSAL_COPY[first.reason], {
+      fields: result.fields.map((f) => f.field),
+      reasons: Object.fromEntries(
+        result.fields.map((f) => [f.field, f.reason]),
+      ),
     });
   }
   await audit(

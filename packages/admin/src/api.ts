@@ -72,6 +72,10 @@ export interface Me {
   environment?: ConsoleEnvironment | null;
   /** When the admin session ends, epoch seconds (A-1; the session is a hard 8 h). */
   sessionExpiresAt?: number;
+  /** When the operator last signed in interactively (I-12 step-up); `null` on an older session. */
+  authAt?: number | null;
+  /** How recent that sign-in must be for a step-up action (the relink tool). */
+  stepUpMaxAgeSeconds?: number;
 }
 
 // ── platform (A-11 deploy identity, A-12 platform audit) ─────────────────────────
@@ -827,6 +831,121 @@ export interface ProductDetail {
   adminGroup: string | null;
   createdAt: number;
   modifiedAt: number;
+}
+
+// ── users (Core; I-12) ───────────────────────────────────────────────────────
+
+/** A row of a product's Users page: one pairwise subject of this product, never the account. */
+export interface ProductUserSummary {
+  subject: string;
+  createdAt: number;
+  contactEmail: string | null;
+  contactSource: "license" | "consented" | null;
+  licenses: number;
+  devices: number;
+  /** Identity on only. */
+  signedInDevices?: number;
+  /** Identity on only. */
+  lastSignInAt?: number | null;
+  mergedFrom: number;
+}
+
+export interface ProductUserQuery {
+  q?: string;
+  limit?: number;
+  cursor?: string | null;
+}
+
+export interface ProductUsersPage {
+  identityOn: boolean;
+  users: ProductUserSummary[];
+  nextCursor: string | null;
+}
+
+export interface ProductUserLicense {
+  id: string;
+  name: string | null;
+  email: string | null;
+  tierId: string | null;
+  status: string;
+  activatedAt: number;
+  expiresAt: number | null;
+}
+
+export interface ProductUserDevice {
+  deviceId: string;
+  label: string | null;
+  status: string;
+  platform: string | null;
+  appVersion: string | null;
+  licenseId: string | null;
+  lastSeen: number;
+  signedIn?: boolean;
+}
+
+export interface ProductUserRelink {
+  id: string;
+  licenseId: string;
+  direction: "in" | "out";
+  otherSubject: string | null;
+  reason: string;
+  actorName: string | null;
+  createdAt: number;
+  undoUntil: number;
+  undoneAt: number | null;
+  undoable: boolean;
+}
+
+export interface ProductUserDetail {
+  subject: string;
+  createdAt: number;
+  identityOn: boolean;
+  contact: { email: string | null; source: "license" | "consented" | null };
+  name: string | null;
+  mergedFrom: Array<{ subject: string; mergedAt: number }>;
+  licenses: ProductUserLicense[];
+  devices: ProductUserDevice[];
+  data: { bytes: number; stores: Array<{ name: string; bytes: number }> };
+  signIns?: Array<{ at: number; method: string | null }>;
+  events: Array<{
+    id: string;
+    type: string;
+    at: number;
+    alias?: string;
+    licenseIds?: string[];
+  }>;
+  relinks: ProductUserRelink[];
+  audit: Array<{
+    id: string;
+    at: number;
+    action: string;
+    actorName: string | null;
+    targetKind: string | null;
+    targetId: string | null;
+    summary: string | null;
+  }>;
+}
+
+/** A row, or (for a subject absorbed by a merge) the survivor's subject. */
+export type ProductUserResponse =
+  | { user: ProductUserDetail; mergedInto?: undefined }
+  | { mergedInto: string; user?: undefined };
+
+export interface RelinkResult {
+  ok: true;
+  relinkId: string;
+  subject: string;
+  undoUntil: number;
+  noticesSent: number;
+  alert: boolean;
+}
+
+/** Identity → Sign-in's editable settings (I-12). */
+export interface SignInSettings {
+  claimByKey: boolean;
+  passthroughName: string | null;
+  effectiveName: string;
+  appReview48Warning: boolean;
 }
 
 export interface CreateManualProductBody {
@@ -3614,6 +3733,64 @@ const rawApi = {
     call<{ ok: true; deviceId: string }>(
       `${p(slug)}/devices/${enc(deviceId)}/fingerprint/reset`,
       { method: "POST" },
+    ),
+
+  // ── users, product-wide (Core; I-12) ───────────────────────────────────────
+  productUsers: (slug: string, query: ProductUserQuery = {}) => {
+    const search = new URLSearchParams();
+    if (query.q) search.set("q", query.q);
+    if (query.limit) search.set("limit", String(query.limit));
+    if (query.cursor) search.set("cursor", query.cursor);
+    const qs = search.toString();
+    return call<ProductUsersPage>(`${p(slug)}/users${qs ? `?${qs}` : ""}`);
+  },
+  productUser: (slug: string, subject: string) =>
+    call<ProductUserResponse>(`${p(slug)}/users/${enc(subject)}`),
+  /** The subject's product data as one JSON document (audited server-side). */
+  productUserExport: (slug: string, subject: string) =>
+    call<Record<string, unknown>>(`${p(slug)}/users/${enc(subject)}/export`),
+  deleteProductUserData: (slug: string, subject: string) =>
+    call<{ ok: true; stores: string[] }>(
+      `${p(slug)}/users/${enc(subject)}/data/delete`,
+      { method: "POST" },
+    ),
+  detachProductUserLicense: (
+    slug: string,
+    subject: string,
+    licenseId: string,
+  ) =>
+    call<{ ok: true }>(
+      `${p(slug)}/users/${enc(subject)}/licenses/${enc(licenseId)}/detach`,
+      { method: "POST" },
+    ),
+  /** Needs a step-up (403 `step_up_required` otherwise). */
+  relinkProductUserLicense: (
+    slug: string,
+    subject: string,
+    licenseId: string,
+    body: { target: string; reason: string },
+  ) =>
+    call<RelinkResult>(
+      `${p(slug)}/users/${enc(subject)}/licenses/${enc(licenseId)}/relink`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  /** Needs a step-up, within 72 hours of the relink. */
+  undoRelink: (slug: string, relinkId: string, body: { reason: string }) =>
+    call<{ ok: true; licenseId: string; subject: string | null }>(
+      `${p(slug)}/users/relinks/${enc(relinkId)}/undo`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  signInSettings: (slug: string) =>
+    call<{ settings: SignInSettings }>(
+      `${p(slug)}/identity/sign-in-settings`,
+    ),
+  updateSignInSettings: (
+    slug: string,
+    patch: { claimByKey?: boolean; passthroughName?: string | null },
+  ) =>
+    call<{ ok: true; settings: SignInSettings }>(
+      `${p(slug)}/identity/sign-in-settings`,
+      { method: "PATCH", body: JSON.stringify(patch) },
     ),
 
   // ── offline bundles ─────────────────────────────────────────────────────────
