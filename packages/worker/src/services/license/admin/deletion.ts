@@ -69,7 +69,7 @@ export function bulkDeleteConfirmation(n: number): string {
 
 const UNAVAILABLE: LicenseDeleteBlocker = {
   code: "unavailable",
-  message: "Licence deletion is not available on this route.",
+  message: "License deletion is not available on this route.",
 };
 
 /** Every licence's verdict, the owners' blockers read in one pass per owner. */

@@ -1,6 +1,7 @@
 /**
  * License → Licenses (ADMIN.md §6.5.1) through the whole console: the computed state (LIC-1),
- * facet tiles, filters in the URL, bulk enable/disable, the stepped Create license dialog
+ * facet tiles, filters in the URL, bulk enable/disable/delete, the cleanup helper, the stepped
+ * Create license dialog
  * (LIC-2 to LIC-6, LIC-10) and the channel picker it shares with the license and tier forms.
  */
 
@@ -14,7 +15,14 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { resetConsole } from "./consoleHarness.js";
-import { API, axe, bootLicense, failing, writes } from "./licenseFixture.js";
+import {
+  API,
+  axe,
+  bootLicense,
+  failing,
+  LICENSES,
+  writes,
+} from "./licenseFixture.js";
 import { endOfLocalDay } from "../src/lib/format.js";
 
 beforeEach(resetConsole);
@@ -158,6 +166,181 @@ describe("Licenses list", () => {
           (c) => c.method === "GET" && c.path === `${API}/license/licenses`,
         ).length,
       ).toBeGreaterThan(1),
+    );
+  });
+
+  const BLOCKED = {
+    allowed: false,
+    reasons: [
+      {
+        code: "issued_active",
+        message:
+          "It is active and was issued by the developer. Disable it first.",
+      },
+    ],
+  };
+  const OK = { allowed: true, reasons: [] };
+  const withVerdicts = () => ({
+    [`${API}/license/licenses`]: {
+      licenses: LICENSES.map((l) => ({
+        ...l,
+        deletion: l.status === "disabled" || l.id === "lic_2" ? OK : BLOCKED,
+      })),
+    },
+  });
+
+  it("bulk-deletes the deletable selection after typing the count, listing what it skips", async () => {
+    const log = bootLicense("#/p/djdl/license/licenses", {
+      routes: {
+        ...withVerdicts(),
+        [`POST ${API}/license/deletions`]: {
+          ok: true,
+          deleted: [{ id: "lic_4", devices: 1 }],
+          refused: [],
+          notFound: [],
+        },
+      },
+    });
+    const t = await table();
+    await within(t).findByText("Ada Lovelace");
+    await userEvent.click(within(row(t, "Ada Lovelace")).getByRole("checkbox"));
+    await userEvent.click(
+      within(row(t, "Chargeback Ltd")).getByRole("checkbox"),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Delete…" }));
+    const dialog = await screen.findByRole("alertdialog", {
+      name: /Delete 1 license\?/,
+    });
+    expect(
+      within(dialog).getByText(/1 selected license is skipped/),
+    ).toBeTruthy();
+    expect(within(dialog).getByText(/Disable it first/)).toBeTruthy();
+    await userEvent.type(
+      within(dialog).getByRole("textbox"),
+      "delete 1 license",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete 1 license" }),
+    );
+    await waitFor(() =>
+      expect(writes(log)).toEqual([
+        {
+          path: `${API}/license/deletions`,
+          method: "POST",
+          body: { ids: ["lic_4"], confirm: "delete 1 license" },
+        },
+      ]),
+    );
+  });
+
+  it("keeps bulk Delete unavailable, with the reason, when nothing selected can be deleted", async () => {
+    bootLicense("#/p/djdl/license/licenses", { routes: withVerdicts() });
+    const t = await table();
+    await within(t).findByText("Ada Lovelace");
+    await userEvent.click(within(row(t, "Ada Lovelace")).getByRole("checkbox"));
+    const del = screen.getByRole("button", { name: "Delete…" });
+    expect(del.getAttribute("aria-disabled")).toBe("true");
+    expect(screen.getAllByText(/Disable it first/).length).toBeGreaterThan(0);
+    await userEvent.click(del);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("cleans up duplicates: lists the candidates and deletes the allowed ones with one confirm", async () => {
+    const log = bootLicense("#/p/djdl/license/licenses", {
+      routes: {
+        [`${API}/license/deletions/candidates`]: {
+          recentDays: 30,
+          candidates: [
+            {
+              id: "lic_dup",
+              name: "Storytime sign-in",
+              email: "",
+              status: "disabled",
+              tier: "standard",
+              accountSubject: "ps_aaaaaaaaaaaaaaaaaaaaaa",
+              deviceCount: 1,
+              lastSeen: null,
+              reason: "duplicate",
+              keeps: "lic_paid",
+              deletion: OK,
+            },
+            {
+              id: "lic_old",
+              name: "",
+              email: "old@x.io",
+              status: "disabled",
+              tier: null,
+              accountSubject: null,
+              deviceCount: 0,
+              lastSeen: null,
+              reason: "dormant",
+              keeps: null,
+              deletion: OK,
+            },
+            {
+              id: "lic_steam",
+              name: "Bought on Steam",
+              email: "",
+              status: "active",
+              tier: null,
+              accountSubject: null,
+              deviceCount: 1,
+              lastSeen: null,
+              reason: "duplicate",
+              keeps: "lic_x",
+              deletion: {
+                allowed: false,
+                reasons: [
+                  {
+                    code: "store_purchases",
+                    message: "1 store purchase is recorded against it.",
+                  },
+                ],
+              },
+            },
+          ],
+        },
+        [`POST ${API}/license/deletions`]: {
+          ok: true,
+          deleted: [
+            { id: "lic_dup", devices: 1 },
+            { id: "lic_old", devices: 0 },
+          ],
+          refused: [],
+          notFound: [],
+        },
+      },
+    });
+    await table();
+    const trigger = screen.queryByRole("button", {
+      name: "Clean up duplicates…",
+    });
+    if (trigger) await userEvent.click(trigger);
+    else {
+      await userEvent.click(
+        screen.getAllByRole("button", { name: "More actions" })[0]!,
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: "Clean up duplicates…" }),
+      );
+    }
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Clean up duplicate licenses",
+    });
+    expect(await within(dialog).findByText(/also holds lic_paid/)).toBeTruthy();
+    expect(within(dialog).getByText(/1 license can't be deleted/)).toBeTruthy();
+    expect(within(dialog).getByText(/store purchase is recorded/)).toBeTruthy();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete 2 licenses" }),
+    );
+    await waitFor(() =>
+      expect(writes(log)).toEqual([
+        {
+          path: `${API}/license/deletions`,
+          method: "POST",
+          body: { ids: ["lic_dup", "lic_old"], confirm: "delete 2 licenses" },
+        },
+      ]),
     );
   });
 

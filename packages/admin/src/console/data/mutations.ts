@@ -82,6 +82,8 @@ export type WriteMethod =
   | "createLicense"
   | "patchLicense"
   | "setLicenseEnabled"
+  | "deleteLicense"
+  | "deleteLicenses"
   | "putLicenseOverrides"
   | "mintKey"
   | "revokeKey"
@@ -437,6 +439,15 @@ export const MUTATIONS: MutationTable = {
   setLicenseEnabled: {
     label: "license enable or disable",
     invalidates: (slug) => license(slug),
+  },
+  // A deletion removes the licence's devices and registry tokens too.
+  deleteLicense: {
+    label: "license delete",
+    invalidates: (slug) => [...license(slug), prefix(qk.devices(slug))],
+  },
+  deleteLicenses: {
+    label: "license bulk delete",
+    invalidates: (slug) => [...license(slug), prefix(qk.devices(slug))],
   },
   putLicenseOverrides: {
     label: "license overrides",
