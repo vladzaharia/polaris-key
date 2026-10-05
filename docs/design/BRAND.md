@@ -174,7 +174,7 @@ data-theme="light" on <html>             → light  (whatever the OS says)
 - Tailwind: `theme.css` defines `dark:` and `light:` variants with the same precedence (attribute,
   then system, then dark). Because the tokens already swap, most components need neither variant.
 - **Full light parity**: every token has a light value, and the contrast suite tests both themes.
-- **Sections**: `data-service="core|license|config|release|distribution|update|identity"` on, or
+- **Sections**: `data-service="core|license|config|release|distribution|update|identity|sync"` on, or
   inside, the themed element re-points `--pk-accent*` and `--pk-section-bit`. No attribute means
   core.
 
@@ -318,6 +318,7 @@ and strong text all clear 4.5:1 on it).
 | **Distribution** | Star Cut | green      | `#39d075` (8.9)                | `#05773b` (4.9)   | `#05773b` (4.9) | orange        |
 | **Update**       | Star Cut | tangerine  | `#fe8001` (7.1)                | `#b95800` (4.1)   | `#aa5000` (4.7) | green         |
 | **Identity**     | Pinned K | orchid     | `#d77df2` (6.9)                | `#9e34ae` (5.1)   | `#9e34ae` (5.1) | rose          |
+| **Cloud Sync**   | Pinned K | teal       | `#14f8e1` (13.3)               | `#086260` (6.2)   | `#086260` (6.2) | (new, U-04)   |
 
 `on` is `#060912` on every dark solid (5.1–14.3:1) and on the light chartreuse and cyan solids
 (5.2–5.3:1); `#ffffff` on the other light solids (4.7–5.9:1). The full set (subtle values, bit colours) is in
@@ -327,7 +328,8 @@ OKLCH design values (dark solid / light solid): violet = the kit's; chartreuse `
 `0.60 0.15 123`; yellow `0.85 0.175 90` / `0.54 0.11 86` (fg `0.525`); cyan
 `0.82 0.145 214` / `0.60 0.105 214` (fg `0.515`); green `0.76 0.18 152` / `0.50 0.13 152`;
 tangerine `0.73 0.185 53` / `0.57 0.15 51` (fg `0.535`); orchid `0.73 0.185 318` /
-`0.53 0.20 322`. Warning: `0.68 0.135 80` (border `0.52`) / `0.47 0.105 67` (border `0.56`).
+`0.53 0.20 322`; teal `0.88 0.155 183` / `0.45 0.075 192` (U-04: `tune-accents`' optimum over
+the palette's remaining gaps, 19.0 / 19.3 ΔE00 from the nearest accent, the Release cyan). Warning: `0.68 0.135 80` (border `0.52`) / `0.47 0.105 67` (border `0.56`).
 
 Config, Update (light), Release and the warning status were chosen by
 `packages/brand/scripts/tune-accents.ts`, a reproducible grid search: among values that pass every

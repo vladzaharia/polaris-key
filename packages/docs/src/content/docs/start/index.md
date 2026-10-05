@@ -1,6 +1,6 @@
 ---
 title: "What is Polaris Key?"
-description: "The platform in one page: products as data, six opt-in services over an always-on Core, and signed documents a client verifies against pinned keys."
+description: "The platform in one page: products as data, seven opt-in services over an always-on Core, and signed documents a client verifies against pinned keys."
 sidebar:
   order: 1
 ---
@@ -35,7 +35,7 @@ Everything the manifest declares is a _baseline_. Runtime admin state — secret
 per-license and per-device overrides, operator-claimed policy blocks — lives in Polaris Key and
 survives every resync. See [Authoring the manifest](/docs/build/manifest/).
 
-## 2. One worker: an always-on Core plus six opt-in services
+## 2. One worker: an always-on Core plus seven opt-in services
 
 The worker is a **modular monolith**: an always-on `core/` substrate and one directory per
 service. Core is what every product gets and no product can switch off — the product registry,
@@ -44,7 +44,7 @@ facts), trust and signing, discovery, rate limiting, the error taxonomy and audi
 a service: it never appears in an enablement set, and a product that enables nothing still
 registers devices and serves its JWKS.
 
-Over that substrate sit exactly six opt-in services. Each is addressed by a singular **slug**
+Over that substrate sit exactly seven opt-in services. Each is addressed by a singular **slug**
 that is the same word everywhere — the worker directory, the route namespace
 (`/<product>/<slug>/…`), the SDK sub-client (where there is one), and the console section.
 
@@ -57,6 +57,7 @@ that is the same word everywhere — the worker directory, the route namespace
 | [Distribution](/docs/services/distribution/) | how releases reach devices and outlets — transports, availability, rollouts               |
 | [Update](/docs/services/update/)             | the Sparkle appcast, `/version`, eligibility — the **feed** rendered over Release         |
 | [Identity](/docs/services/identity/)         | product OIDC, browser sessions, the customer portal                                       |
+| [Cloud Sync](/docs/services/sync/)           | a signed-in person's user settings, collections and saves, synced across devices          |
 
 A service a product has not enabled does not return an error — **from the outside it does not
 exist.** Disabled, unregistered and no-such-route all return one identical `404`, because telling

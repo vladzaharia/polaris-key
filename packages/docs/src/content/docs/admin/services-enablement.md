@@ -5,7 +5,7 @@ sidebar:
   order: 4
 ---
 
-Which of the six opt-in services a product runs is the single most consequential switch in the
+Which of the seven opt-in services a product runs is the single most consequential switch in the
 console: everything else in [the tour](/docs/admin/console-tour/) — which nav sections exist,
 which routes the worker mounts, what a product's discovery document advertises, what the portal
 offers — is a **projection** of this one setting. It lives on **Core → Services**
@@ -30,7 +30,8 @@ The response, and the shape a `PATCH` body partially updates:
     "release": { "enabled": false },
     "distribution": { "enabled": false },
     "update": { "enabled": false },
-    "identity": { "enabled": false }
+    "identity": { "enabled": false },
+    "sync": { "enabled": false }
   },
   "registration": null,
   "effectiveRegistration": "requires-license",
@@ -103,6 +104,8 @@ produce the same incoherent state:
 | `update_requires_distribution`   | Update is a feed over what Distribution delivers; Update can't be on with Distribution off. (It replaced `update_requires_release`, which it and the rule above together imply.)     | The Update toggle                         |
 | `registration_requires_identity` | Registration is declared `requires-identity`, but Identity is off — there is no login to stand behind it, so no device could ever register.                                          | Identity toggle + the registration select |
 | `config_without_activation`      | Config is on, License is off, and registration is declared `requires-license` — that closes the only mint path such a product has, so its devices could never obtain a token at all. | Config toggle + the registration select   |
+| `sync_requires_config`           | Cloud Sync syncs Config's user settings; Cloud Sync can't be on with Config off, nor Config go off under it.                                                                         | The Cloud Sync and Config toggles         |
+| `sync_requires_identity`         | Cloud Sync needs people to sign in through the product; Cloud Sync can't be on with Identity off, nor Identity go off under it.                                                      | The Cloud Sync and Identity toggles       |
 
 Leaving `registration` **derived** rather than explicitly declared sidesteps the last two of
 these by construction: a derived value is read off the very enablement set being validated,

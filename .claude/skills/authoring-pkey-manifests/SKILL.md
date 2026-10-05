@@ -47,11 +47,16 @@ pkey init --product <slug> --name "<Name>" --modules license,config
 
 ### 3. Know what each of the four files owns
 
-- [ ] **`schema`** (required) — the config catalog: `{ schemaVersion, entries[] }`. Maps to the
-      `product_schema` row. For an entry's fields, use the `adding-a-catalog-entry` skill.
+- [ ] **`schema`** (required) — the config catalog: `{ schemaVersion, entries[] }`, plus an
+      optional top-level `cloudSync` block (Cloud Sync's data shape: `collections`, `open`,
+      `saves`, `migrations`). Maps to the `product_schema` row. For an entry's fields, including
+      the `user` block that makes a config key a user setting, use the `adding-a-catalog-entry`
+      skill.
 - [ ] **`product`** (required) — product metadata, the `modules` block (enabled services),
       `devices.registration`, `web.origins`, OIDC, profiles, tiers, provisioning hooks,
-      `fingerprint`, `autoIssue`, `secrets.required`. Maps to `products` (incl. `services_json`,
+      `fingerprint`, `autoIssue`, `secrets.required`, and `cloudSync` (Cloud Sync's `limits`,
+      `unlicensed` and `writes`, within the platform ceilings; `byTier` keys must name declared
+      tiers, `byEntitlement` values numeric `combine: max` flags). Maps to `products` (incl. `services_json`,
       `web_origins_json`) plus
       `oidc_config`, `profiles`, `tiers`, `provisioning_config`.
 - [ ] **`release`** (required only when releases are enabled) — release-provider coordinates,
@@ -170,7 +175,8 @@ pkey init --product <slug> --name "<Name>" --modules license,config
 ### 4. Pick module names (both vocabularies parse)
 
 - [ ] Canonical service slugs: `license`, `config`, `release`, `distribution`, `update`,
-      `identity`. Every entry
+      `identity`, `sync` (Cloud Sync, which needs `config` and `identity` on:
+      `sync_requires_config`, `sync_requires_identity`). Every entry
       is `{ "enabled": <boolean> }`; anything other than literal `true` counts as off.
 - [ ] The pre-suite vocabulary is still accepted and translated at ingest — only slugs are
       stored, and one block may mix both spellings (table below).
