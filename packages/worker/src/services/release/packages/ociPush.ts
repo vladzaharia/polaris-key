@@ -324,12 +324,38 @@ function pushRoute(
     async handle(req, ctx) {
       const push = await preparePush(req, ctx);
       if (push instanceof Response) {
-        await req.body?.cancel().catch(() => undefined);
+        await discardBody(req.body);
         return push;
       }
       return handle(req, push);
     },
   };
+}
+
+/**
+ * Read and drop what is left of a body an answer does not need (bounded by the request limit),
+ * so an early refusal never leaves an unread upload on the connection; a client that keeps the
+ * connection alive (HTTP/1.1) would otherwise see the next request fail.
+ */
+async function discardBody(
+  body: ReadableStream<Uint8Array> | Uint8Array | null | undefined,
+): Promise<void> {
+  if (!body || body instanceof Uint8Array) return;
+  let read = 0;
+  try {
+    const reader = body.getReader();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) return;
+      read += value.byteLength;
+      if (read > MAX_CHUNK_BYTES) {
+        await reader.cancel().catch(() => undefined);
+        return;
+      }
+    }
+  } catch {
+    // Already read or locked: nothing left to drop.
+  }
 }
 
 // ── Request bodies ───────────────────────────────────────────────────────────────────────────
@@ -518,7 +544,10 @@ async function finish(
       ceiling: push.feed.maxPackageBytes,
       ...(start !== undefined ? { start } : {}),
     });
-    if (typeof next === "string") return refusalAnswer(push, up, next);
+    if (typeof next === "string") {
+      await discardBody(chunk.body);
+      return refusalAnswer(push, up, next);
+    }
     current = next;
   }
   const done = await completeUpload(push.bucket, current);
@@ -572,7 +601,7 @@ const startOrMonolithic = async (
   // A monolithic upload: the whole blob in this POST.
   if (digest !== null)
     return finish(req, push, up, OCI_DIGEST_RE.exec(digest)![1]!);
-  await req.body?.cancel().catch(() => undefined);
+  await discardBody(req.body);
   return empty(202, {
     ...uploadHeaders(push, up),
     "oci-chunk-min-length": String(MIN_PART_BYTES),
@@ -599,7 +628,7 @@ async function loadUpload(
 const uploadOp = async (req: Request, push: Push): Promise<Response> => {
   const up = await loadUpload(push, push.ctx.params.last!);
   if (up instanceof Response) {
-    await req.body?.cancel().catch(() => undefined);
+    await discardBody(req.body);
     return up;
   }
   switch (req.method) {
@@ -624,7 +653,10 @@ const uploadOp = async (req: Request, push: Push): Promise<Response> => {
         ceiling: push.feed.maxPackageBytes,
         ...(start !== undefined ? { start } : {}),
       });
-      if (typeof next === "string") return refusalAnswer(push, up, next);
+      if (typeof next === "string") {
+        await discardBody(chunk.body);
+        return refusalAnswer(push, up, next);
+      }
       return empty(202, uploadHeaders(push, next));
     }
     default: {
@@ -633,7 +665,7 @@ const uploadOp = async (req: Request, push: Push): Promise<Response> => {
         new URL(req.url).searchParams.get("digest") ?? "",
       )?.[1];
       if (hex === undefined) {
-        await req.body?.cancel().catch(() => undefined);
+        await discardBody(req.body);
         return ociError(
           400,
           "DIGEST_INVALID",
@@ -900,7 +932,7 @@ const putManifest = async (req: Request, push: Push): Promise<Response> => {
   const reference = push.ctx.params.last!;
   const refHex = OCI_DIGEST_RE.exec(reference)?.[1];
   if (refHex === undefined && !OCI_TAG_RE.test(reference)) {
-    await req.body?.cancel().catch(() => undefined);
+    await discardBody(req.body);
     return ociError(
       400,
       "TAG_INVALID",
@@ -913,7 +945,7 @@ const putManifest = async (req: Request, push: Push): Promise<Response> => {
     .trim()
     .toLowerCase();
   if (!INDEX_TYPES.has(mediaType) && !MANIFEST_TYPES.has(mediaType)) {
-    await req.body?.cancel().catch(() => undefined);
+    await discardBody(req.body);
     return ociError(
       400,
       "MANIFEST_INVALID",
@@ -928,7 +960,7 @@ const putManifest = async (req: Request, push: Push): Promise<Response> => {
       parseManualChannels(cfg?.manual_channels_json),
     );
     if (sel && isMovingSelector(sel)) {
-      await req.body?.cancel().catch(() => undefined);
+      await discardBody(req.body);
       return ociError(
         400,
         "TAG_INVALID",

@@ -178,8 +178,15 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `https://pkg.plrs.im/swift/{owner}/login` | registry | SwiftPM registry login (registry host only) |
 | GET | `https://pkg.plrs.im/v2/{owner}/{repository}/blobs/{digest}` | registry | OCI blob by digest, with Range (registry host only) |
 | HEAD | `https://pkg.plrs.im/v2/{owner}/{repository}/blobs/{digest}` | registry | OCI blob existence and size (registry host only) |
+| GET | `https://pkg.plrs.im/v2/{owner}/{repository}/blobs/uploads/{uuid}` | registry | A blob upload's progress (registry host only) |
+| HEAD | `https://pkg.plrs.im/v2/{owner}/{repository}/blobs/uploads/{uuid}` | registry | A blob upload's progress, headers only (registry host only) |
+| PUT | `https://pkg.plrs.im/v2/{owner}/{repository}/blobs/uploads/{uuid}` | registry | Finish a blob upload (registry host only) |
+| PATCH | `https://pkg.plrs.im/v2/{owner}/{repository}/blobs/uploads/{uuid}` | registry | Upload one chunk of a blob, in order (registry host only) |
+| DELETE | `https://pkg.plrs.im/v2/{owner}/{repository}/blobs/uploads/{uuid}` | registry | Cancel a blob upload (registry host only) |
+| POST | `https://pkg.plrs.im/v2/{owner}/{repository}/blobs/uploads/` | registry | Start a blob upload, upload a blob whole, or mount one (registry host only) |
 | GET | `https://pkg.plrs.im/v2/{owner}/{repository}/manifests/{reference}` | registry | OCI manifest or image index by tag or digest (registry host only) |
 | HEAD | `https://pkg.plrs.im/v2/{owner}/{repository}/manifests/{reference}` | registry | OCI manifest existence check (registry host only) |
+| PUT | `https://pkg.plrs.im/v2/{owner}/{repository}/manifests/{reference}` | registry | Push an OCI manifest or image index (registry host only) |
 | GET | `https://pkg.plrs.im/v2/{owner}/{repository}/tags/list` | registry | OCI tag list, paginated (registry host only) |
 | HEAD | `https://pkg.plrs.im/v2/{owner}/{repository}/tags/list` | registry | OCI tag list, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/v2/` | registry | OCI distribution base endpoint (registry host only) |

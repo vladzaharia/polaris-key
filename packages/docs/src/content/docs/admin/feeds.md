@@ -116,8 +116,12 @@ when it expires and when it was last used, and its status.
 **New token** asks for a label, the feeds (every feed, or some), the expiry (1 to 365 days, 90 by
 default), the binding (this product, or one licence) and **Godot editor URL**. A Godot editor URL
 token is read-only, reaches only the Godot feed, lasts 30 days by default and travels in the
-editor's URL, because the editor sends no credentials. The token is shown once, with every
-enabled feed's setup already holding it; Polaris Key stores only its hash.
+editor's URL, because the editor sends no credentials. **Push images** (owner-bound tokens only,
+and the token must reach the OCI feed) also lets the token `docker push` to the owner's OCI
+repositories; a pushed version tag publishes a release (see
+[Pushing with docker push](/docs/services/distribution/package-feeds/#oci-images)). Such a token
+lists as "read and push". The token is shown once, with every enabled feed's setup already holding
+it; Polaris Key stores only its hash.
 
 Revoking a token is a danger confirmation and takes effect within 30 seconds. **Revoke all** (under
 More actions) revokes every active token of the owner, including those licensees minted.
@@ -138,7 +142,8 @@ A package's page has three tabs: **Versions**, **Setup** (the feed's setup for t
 latest version) and **History** (the package's own audit rows).
 
 Each version shows its tags, when it was published and how — a trusted-publisher run with a link to
-the run, a static CI token by id, or the console — its size, each file's digests (SHA-256, and the
+the run, a static CI token by id, a registry token by id, or the console, each marked "docker
+push" when it came through a native push — its size, each file's digests (SHA-256, and the
 SHA-512, SHA-1 and MD5 the Worker computes for npm and Maven) with a copy button each, and its
 state: **Live**, **Yanked** or **Deprecated**, with the reason or message.
 

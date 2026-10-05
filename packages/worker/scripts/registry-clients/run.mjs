@@ -30,6 +30,10 @@
  * CURL_HOME). Both modes set REGISTRY_TOKEN_KEY, as production does, so `GET /v2/` answers the
  * Bearer challenge and OCI clients always run the token dance.
  *
+ * PUSH (F-23): the `oci-push-*` clients push with PKEY_REGISTRY_PUSH_TOKEN, an owner-bound
+ * `publish` token minted into the local D1 in both modes, to the repositories `seeds/oci.ts`
+ * declares for pushes (`tools/pushed`, `tools/conformance`).
+ *
  * F-02 ships one smoke client, `curl`; F-04 to F-09 add their ecosystem's clients (npm, pnpm,
  * yarn, bun, pip, uv, poetry, SwiftPM, Gradle, Maven, docker, crane, GodotEnv) as further
  * `clients/*.sh` and matrix rows in `.github/workflows/registry-clients.yml`. Nothing here
@@ -96,6 +100,38 @@ const KEY_HASH_PEPPER = randomBytes(16).toString("hex");
 const b64url = (b) => b.toString("base64url");
 const HEADER_TOKEN = `pkeyr_${b64url(randomBytes(32))}`;
 const URL_TOKEN = `pkeyr_${b64url(randomBytes(32))}`;
+/** F-23: an owner-bound push token (`publish`, OCI only), minted in BOTH modes: a push always
+ *  needs a credential, whatever the feed's read access. */
+const PUSH_TOKEN = `pkeyr_${b64url(randomBytes(32))}`;
+
+/** Mint the push token into the local D1 (both modes). */
+function seedPush(persistTo) {
+  const now = Math.floor(Date.now() / 1000);
+  const hash = createHmac("sha256", KEY_HASH_PEPPER)
+    .update(PUSH_TOKEN)
+    .digest("hex");
+  const file = join(persistTo, "registry-clients-push.sql");
+  writeFileSync(
+    file,
+    `INSERT INTO registry_tokens (product, token_id, token_hash, hint, label, scopes_json,
+       ecosystems_json, binding, license_id, presentation, created_by, created_at, expires_at)
+     VALUES ('${FIXTURE_OWNER}', 'rtok_harness_push', '${hash}', '${PUSH_TOKEN.slice(-4)}',
+       'rtok_harness_push', '["publish","read"]', '["oci"]', 'owner', NULL, 'header',
+       'admin:harness', ${now}, ${now + 86_400});`,
+  );
+  wrangler([
+    "d1",
+    "execute",
+    "DB",
+    "--local",
+    "--env",
+    "test",
+    "--persist-to",
+    persistTo,
+    "--file",
+    file,
+  ]);
+}
 
 /** Switch the owner's feeds to `authenticated` and mint the two tokens into the local D1. */
 function seedAuth(persistTo) {
@@ -233,6 +269,7 @@ try {
       throw new Error(`seed ${seedFile} failed (exit ${r.status})`);
   }
   if (auth) seedAuth(state);
+  if (clients.some((c) => c.startsWith("oci-push"))) seedPush(state);
   dev = spawn(
     WRANGLER,
     [
@@ -285,6 +322,7 @@ try {
         REGISTRY: origin,
         OWNER: FIXTURE_OWNER,
         STATE: state,
+        PKEY_REGISTRY_PUSH_TOKEN: PUSH_TOKEN,
         ...(auth
           ? {
               PKEY_REGISTRY_TOKEN: HEADER_TOKEN,

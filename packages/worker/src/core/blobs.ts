@@ -844,6 +844,27 @@ export async function hasRef(
   return row !== null;
 }
 
+/**
+ * F-23: does `deliverableId` of `product` hold `storageKey` through an OCI push (`OCI_PUSH_REF`)?
+ * The OCI pull route serves such an object by digest from that repository only (OCI's
+ * read-after-write), under the feed's own access ladder; no other surface reads this.
+ */
+export async function heldByPush(
+  db: Db,
+  product: string,
+  storageKey: string,
+  deliverableId: string,
+): Promise<boolean> {
+  const row = await db.first<{ one: number }>(
+    "SELECT 1 AS one FROM blob_refs WHERE product = ? AND storage_key = ? AND ref_kind = ? AND ref_id = ?",
+    product,
+    storageKey,
+    OCI_PUSH_REF,
+    deliverableId,
+  );
+  return row !== null;
+}
+
 /** One holder of a key: what kind of ref and, for the kinds that name one, whose. */
 export interface RefHolder {
   storageKey: string;

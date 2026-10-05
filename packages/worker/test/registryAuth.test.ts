@@ -218,8 +218,10 @@ describe("registry tokens: the store (§6.1)", () => {
     expect((await m({ label: "x".repeat(65) })).ok).toBe(false);
     expect((await m({ ecosystems: ["cargo"] })).ok).toBe(false);
     expect((await m({ ecosystems: [] })).ok).toBe(false);
-    // `publish` is reserved for F-22 and F-23.
-    expect((await m({ scopes: ["publish"] })).ok).toBe(false);
+    // F-23: `publish` is mintable for an owner-bound header token, and implies `read`.
+    const pub = await m({ scopes: ["publish"] });
+    expect(pub.ok && pub.view.scopes).toEqual(["publish", "read"]);
+    expect((await m({ scopes: ["write"] })).ok).toBe(false);
     const url = await m({ presentation: "url", ecosystems: ["npm"] });
     expect(url.ok && url.view.ecosystems).toEqual(["godot"]);
     expect(url.ok && url.view.expiresAt).toBe(now + 30 * 86_400);

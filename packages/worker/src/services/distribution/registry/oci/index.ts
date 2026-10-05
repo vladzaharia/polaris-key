@@ -2,7 +2,8 @@
  * The OCI feed (F-08, plans/F-01.md §6.8) as a `FeedAdapter` (`../adapter.ts`): its renderer
  * (`render.ts`, the tag list and the tag pointers) and its pull routes under `/v2/` (`routes.ts`).
  * Publishing is the CLI's: `pkey release publish` reads an OCI image layout and uploads every blob
- * through upload tickets (`packages/cli/src/package/oci.ts`).
+ * through upload tickets (`packages/cli/src/package/oci.ts`); or a native `docker push` (F-23),
+ * whose routes are Release's (`services/release/packages/ociPush.ts`), since a push publishes.
  */
 
 import { FEED_SETUP, PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";

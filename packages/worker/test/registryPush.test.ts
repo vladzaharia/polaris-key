@@ -44,6 +44,7 @@ import {
   parseOciManifest,
 } from "../src/services/release/packages/ociPush.js";
 import { RELEASE_REGISTRY_OPENAPI } from "../src/services/release/index.js";
+import { stmtUpsertDeliverable } from "../src/services/release/model.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/env.js";
 import { makeTestDb } from "./helpers.js";
@@ -312,6 +313,35 @@ async function pushMultiArch(auth: string, tag: string) {
   }
   const res = await putManifest(auth, tag, img.index.bytes, OCI_INDEX);
   return { img, res };
+}
+
+/** Declare another (empty) OCI package deliverable of the owner, as resync would. */
+async function declareRepository(id: string, repo: string): Promise<void> {
+  const s = stmtUpsertDeliverable(
+    {
+      product: OWNER,
+      deliverableId: id,
+      kind: "package",
+      defJson: JSON.stringify({
+        kind: "package",
+        id,
+        ecosystem: "oci",
+        name: repo,
+        artifacts: { layout: { match: "image/**" } },
+      }),
+      ecosystem: "oci",
+      packageName: repo,
+    },
+    NOW,
+  );
+  await db.run(s.sql, ...s.params);
+  await db.run(
+    `INSERT OR IGNORE INTO dist_access (product, deliverable_id, mode, source, modified_at)
+     VALUES (?, ?, 'public', 'manifest', ?)`,
+    OWNER,
+    id,
+    NOW,
+  );
 }
 
 beforeEach(async () => {
@@ -653,7 +683,7 @@ describe("blob uploads over R2 multipart", () => {
     expect(bucket.keys().filter((k) => k.startsWith("staging/"))).toEqual([]);
   });
 
-  it("a whole blob in one PATCH (docker's way) lands verified at its locked key and is held, not served", async () => {
+  it("a whole blob in one PATCH (docker's way) lands verified at its locked key, held by its repository alone", async () => {
     const auth = await bearerFor(basic(pushToken));
     const bytes = enc("a docker layer\n");
     const res = await pushBlob(auth, bytes);
@@ -672,8 +702,17 @@ describe("blob uploads over R2 multipart", () => {
     expect(ref?.ref_id).toBe(OCI_ID);
     // Staging is cleaned up; the pull route does not serve an untagged pushed blob.
     expect(bucket.keys().filter((k) => k.startsWith("staging/"))).toEqual([]);
+    // OCI's read-after-write: the repository serves it by digest, privately, before any tag...
     const pull = await call("HEAD", `/v2/${NAME}/blobs/${digestOf(bytes)}`);
-    expect(pull.status).toBe(404);
+    expect(pull.status).toBe(200);
+    expect(pull.headers.get("cache-control")).toContain("private");
+    // ...but only that repository: another repository of the owner does not.
+    await declareRepository("oci.other", "tools/other");
+    const elsewhere = await call(
+      "HEAD",
+      `/v2/${OWNER}/tools/other/blobs/${digestOf(bytes)}`,
+    );
+    expect(elsewhere.status).toBe(404);
   });
 
   it("an untagged pushed blob is not downloadable from the bytes host either (the ref serves nothing)", async () => {
@@ -956,17 +995,7 @@ describe("blob uploads over R2 multipart", () => {
     });
     const id = start.headers.get("location")!.split("/").pop()!;
     // Declare a second repository and push to it with the first upload's id.
-    await db.run(
-      `INSERT INTO release_deliverables (product, deliverable_id, kind, def_json, ecosystem, package_name, created_at, modified_at)
-       SELECT product, 'oci.other', kind, replace(def_json, '${OCI_REPO}', 'tools/other'), ecosystem, 'tools/other', created_at, modified_at
-         FROM release_deliverables WHERE product = ? AND deliverable_id = ?`,
-      OWNER,
-      OCI_ID,
-    );
-    await db.run(
-      'UPDATE release_deliverables SET def_json = replace(def_json, \'"id":"oci.app"\', \'"id":"oci.other"\') WHERE product = ? AND deliverable_id = \'oci.other\'',
-      OWNER,
-    );
+    await declareRepository("oci.other", "tools/other");
     const other = await bearerFor(basic(pushToken), `${OWNER}/tools/other`);
     const res = await call(
       "GET",
