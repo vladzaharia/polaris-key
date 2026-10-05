@@ -113,6 +113,32 @@ export const DEEP_LINKS: readonly DeepLinkTemplate[] = [
     params: ["name"],
     verify: "operator-assertion",
   },
+  // ── PR-plane outlets (A-18i; S-15 §4.4: each bootstrap is a person's) ──
+  {
+    // Create the `homebrew-<name>` repository the tap is; then set direct.homebrewTap.
+    id: "homebrew.new-tap",
+    store: "homebrew",
+    template: "https://github.com/new",
+    params: [],
+    verify: "operator-assertion",
+  },
+  {
+    // Scoop's bucket template, with its Excavator workflow (checkver and autoupdate).
+    id: "scoop.new-bucket",
+    store: "scoop",
+    template: "https://github.com/ScoopInstaller/BucketTemplate/generate",
+    params: [],
+    verify: "operator-assertion",
+  },
+  {
+    // The first submission: a PR to flathub/flathub against new-pr, opened and shepherded by a
+    // person from `pkey storefront flathub init`'s files.
+    id: "flathub.submission",
+    store: "flathub",
+    template: "https://docs.flathub.org/docs/for-app-authors/submission",
+    params: [],
+    verify: "operator-assertion",
+  },
 ];
 
 /** A row by id, or null. */

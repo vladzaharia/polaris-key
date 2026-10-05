@@ -18,6 +18,9 @@
  *     /distribution/listing/:store                           GET, `pkeyci_` + distribution:report:
  *                                                            a CI-plane store's listing projection
  *                                                            (A-18h, `listing/ci.ts`)
+ *     /distribution/pr/:store?channel=c&outlet=id            GET, `pkeyci_` + distribution:report:
+ *                                                            a PR-plane generator's inputs (A-18i,
+ *                                                            `prInputs.ts`)
  *     /distribution/hooks/:connector                         POST, a store webhook, signed by
  *                                                            the store (P5-02, `connectors/`;
  *                                                            `asc` today)
@@ -52,7 +55,7 @@
  */
 
 import type { ServiceContext } from "../../core/registry.js";
-import { errorResponse, ErrorCode, json } from "../../core/errors.js";
+import { errorResponse, ErrorCode, json, notFound } from "../../core/errors.js";
 import { readCiJson, requireCiScope } from "../../core/ciScope.js";
 import { byteTargetOf, serveDistributionBytes } from "./bytes.js";
 import {
@@ -64,6 +67,8 @@ import {
 import { applyReport } from "./availability.js";
 import { ciListingProjection, ciListingStore } from "./listing/ci.js";
 import type { ListingStore } from "../../core/storefront/listingProfiles.js";
+import { prInputs, prInputStore } from "./prInputs.js";
+import type { PrStoreId } from "../../core/storefront/prPlane.js";
 import { connectorOf } from "./connectors/index.js";
 import { handleSentryWebhook } from "./sentry.js";
 import { handleFeedRoutes } from "./feeds/index.js";
@@ -114,6 +119,14 @@ export async function handleDistributionRoutes(
     const store = ciListingStore(decodeSegment(rest[1] as string) ?? "");
     if (!store) return null;
     return handleCiListing(ctx, store);
+  }
+
+  // A-18i: a PR-plane generator's inputs (`prInputs.ts`).
+  if (rest[0] === "pr" && rest.length === 2) {
+    if (req.method !== "GET") return null;
+    const store = prInputStore(decodeSegment(rest[1] as string) ?? "");
+    if (!store) return null;
+    return handlePrInputs(ctx, store);
   }
 
   // The download page's model (P2b-06). The page itself never answers here (see above).
@@ -236,4 +249,48 @@ async function handleCiListing(
     ok: true,
     listing: await ciListingProjection(db, product.slug, store),
   });
+}
+
+/**
+ * `GET /<p>/distribution/pr/<store>?channel=<c>[&outlet=<id>]` — `distribution:report`. What a
+ * PR-plane generator needs for the channel's newest release on the outlet (A-18i, `prInputs.ts`).
+ * The not-found while the app's delivery access is not public, or for no such channel or outlet.
+ */
+async function handlePrInputs(
+  ctx: ServiceContext,
+  store: PrStoreId,
+): Promise<Response> {
+  const { req, env, db, product, now, hooks } = ctx;
+  const principal = await requireCiScope(
+    req,
+    env,
+    db,
+    product.slug,
+    "distribution:report",
+    now,
+  );
+  if (principal instanceof Response) return principal;
+  const url = new URL(req.url);
+  const channel = url.searchParams.get("channel") ?? "stable";
+  const outlet = url.searchParams.get("outlet");
+  if (
+    channel.length === 0 ||
+    channel.length > 64 ||
+    (outlet !== null && (outlet.length === 0 || outlet.length > 64))
+  )
+    return notFound();
+  const inputs = await prInputs(
+    {
+      db,
+      product: { slug: product.slug, name: product.name },
+      hooks,
+      origin: url.origin,
+      env,
+    },
+    store,
+    channel,
+    outlet,
+  );
+  if (!inputs) return notFound();
+  return json({ ok: true, inputs });
 }

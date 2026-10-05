@@ -13,7 +13,9 @@
  *   - the budget meter, driven by the adapter's `RateSpec` (`budget.ts`);
  *   - the audit projection, keyed by (store, resource type) (`audit.ts`);
  *   - typed confirmation, with the adapter's phrase (`confirm.ts`);
- *   - the deep-link table (`deeplinks.ts`) and, for the CI plane, the command allow-list (`ci.ts`).
+ *   - the deep-link table (`deeplinks.ts`) and, for the CI plane, the command allow-list (`ci.ts`);
+ *     for the PR plane (A-18i), the same check over `prPlane.ts`'s pull-request commands plus the
+ *     paths a PR may write.
  *
  * ADDING A STOREFRONT is one declaration (`stores/<store>.ts`), one rule table, and ONE LINE in
  * `STOREFRONT_ADAPTERS` below; the conformance suite (`test/storefront/conformance.test.ts`) then
@@ -39,14 +41,26 @@ import type { CiAllowList } from "./ci.js";
 import type { ConfirmationPhrase } from "./confirm.js";
 import type { CompiledGate, GateRule } from "./gate.js";
 import type { ListingProfile } from "./listing.js";
+import type { PrPlaneStore } from "./prPlane.js";
 import { APP_STORE_ADAPTER } from "./stores/appStore.js";
+import { FLATHUB_ADAPTER } from "./stores/flathub.js";
+import { HOMEBREW_ADAPTER } from "./stores/homebrew.js";
 import { ITCH_ADAPTER } from "./stores/itch.js";
+import { SCOOP_ADAPTER } from "./stores/scoop.js";
 import { SNAP_ADAPTER } from "./stores/snap.js";
+import { WINGET_ADAPTER } from "./stores/winget.js";
 
 export type { ListingProfile } from "./listing.js";
 
 /** The storefront adapters. Worker-internal ids; each maps onto existing outlet kinds. */
-export type StorefrontId = "app-store" | "itch" | "snap";
+export type StorefrontId =
+  | "app-store"
+  | "itch"
+  | "snap"
+  | "winget"
+  | "homebrew"
+  | "scoop"
+  | "flathub";
 
 /** The operations a storefront declares support for (S-15 §6.1). */
 export const STOREFRONT_OPS = [
@@ -124,6 +138,11 @@ export interface StorefrontAdapter extends Adapter<StorefrontId, StorefrontOp> {
   readonly never: NeverList;
   /** The CI-plane command allow-list (`ciPlane.ts`); null when it has no CI plane. */
   readonly ci: CiAllowList | null;
+  /**
+   * The PR-plane declaration (`prPlane.ts`, A-18i): the repository, the pull-request and status
+   * commands, and the paths a PR may write; null when it has no PR plane.
+   */
+  readonly pr: PrPlaneStore | null;
   readonly listing: ListingProfile;
   readonly confirmation: ConfirmationPhrase;
   /**
@@ -153,6 +172,10 @@ export const STOREFRONT_ADAPTERS: readonly StorefrontAdapter[] = [
   APP_STORE_ADAPTER,
   ITCH_ADAPTER,
   SNAP_ADAPTER,
+  WINGET_ADAPTER,
+  HOMEBREW_ADAPTER,
+  SCOOP_ADAPTER,
+  FLATHUB_ADAPTER,
 ];
 
 /** An adapter by id, or null. */

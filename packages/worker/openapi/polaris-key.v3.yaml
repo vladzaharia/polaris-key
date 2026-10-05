@@ -3153,8 +3153,14 @@ paths:
         (`pending` before the tool runs, then `done` or `failed`) and `exitCode`. The Worker
         re-checks the command against the store's allow-list and the outlet identity, then writes
         the step's `store_operations` row with `plane = ci`; a `pending` report of a step already
-        done in the same run answers `replayed: true` (CI skips the tool). Requires a `pkeyci_`
-        token with `distribution:report` (in the default CI grant). No CORS. Errors are LEGACY
+        done in the same run answers `replayed: true` (CI skips the tool). A PR-plane step (A-18i:
+        `store` `winget`, `homebrew`, `scoop` or `flathub`, `command` `pull-request` or `status`,
+        argv `<command> --repo <repo> …` for the pseudo-tool `github`) writes its row with
+        `plane = pr` and natural key `pr:<package>:<version>`; it adds `files` (each `{path,
+        sha256}`, every path one the store's PR plane allows), `pr` (`{number, url, state, merged,
+        labels}`, the URL on the argv's repository; required when done) and `existing` (the PR was
+        already open or merged), and the answer carries the verifier's `verdict`. Requires a
+        `pkeyci_` token with `distribution:report` (in the default CI grant). No CORS. Errors are LEGACY
         FLAT with a machine-readable `reason` (`unknown_outlet`, `unknown_release`,
         `unknown_build` 404; `invalid_state`, `unknown_purpose`, `invalid_fingerprint`,
         `invalid_body`, `command_not_allowed` 422; `too_many_observations` 409, past 64
@@ -3224,7 +3230,18 @@ paths:
                 store:
                   {
                     type: string,
-                    enum: [itch, snap, steam, msstore, epic],
+                    enum:
+                      [
+                        itch,
+                        snap,
+                        steam,
+                        msstore,
+                        epic,
+                        winget,
+                        homebrew,
+                        scoop,
+                        flathub,
+                      ],
                     description: "store-step only.",
                   }
                 op:
@@ -3255,6 +3272,32 @@ paths:
                   {
                     type: string,
                     description: "store-step only: the https URL of the CI run.",
+                  }
+                files:
+                  type: array
+                  maxItems: 64
+                  description: "PR-plane store-step only: the files the pull request wrote."
+                  items:
+                    type: object
+                    required: [path, sha256]
+                    properties:
+                      path: { type: string, maxLength: 512 }
+                      sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+                pr:
+                  type: object
+                  description: "PR-plane store-step only: the pull request opened, found or read."
+                  required: [number, url, state, merged, labels]
+                  properties:
+                    number: { type: integer, minimum: 1 }
+                    url: { type: string }
+                    state: { type: string, enum: [open, closed] }
+                    merged: { type: boolean }
+                    labels:
+                      { type: array, maxItems: 50, items: { type: string } }
+                existing:
+                  {
+                    type: boolean,
+                    description: "PR-plane store-step only: the PR for the package version was already open or merged.",
                   }
             examples:
               storeStep:
@@ -3330,8 +3373,20 @@ paths:
                           type: string,
                           enum: [pending, done, failed, ambiguous],
                         }
-                      plane: { type: string, const: ci }
+                      plane: { type: string, enum: [ci, pr] }
                       replayed: { type: boolean }
+                      verdict:
+                        {
+                          type: string,
+                          enum:
+                            [
+                              merged,
+                              closed,
+                              needs-author-feedback,
+                              validation-issue,
+                              in-review,
+                            ],
+                        }
                   availability:
                     type: object
                     properties:
@@ -3448,6 +3503,98 @@ paths:
                           app: { type: object }
                           locales: { type: object }
                       issues: { type: array, items: { type: object } }
+        "401": { $ref: "#/components/responses/CiUnauthorized" }
+        "403": { $ref: "#/components/responses/CiForbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /{product}/distribution/pr/{store}:
+    get:
+      operationId: ciPrInputs
+      tags: [distribution]
+      summary: A PR-plane generator's inputs (CI)
+      description: >
+        A-18i. Everything `pkey storefront <store> pr` needs to write one outlet's manifest for
+        the channel's newest release: the outlet and its identity; the release the channel serves
+        there (the storefront feeds' selection: version, date, and the builds of the store's
+        platform with their immutable HTTPS delivery URLs, SHA-256 and sizes); the listing
+        model's projection for the store's column (winget, Flathub) with the release's
+        per-locale store notes; the app-level listing fields (name, short description, website,
+        developer, copyright, `tint` and `tintDark`, content descriptors, icon and screenshot
+        URLs); the public URLs a manifest points back at (`download.json`, the Scoop feed, the
+        Flathub checker feed); for Scoop, the feed's own manifest; and whether the outlet's
+        binaries update themselves. The not-found while the app's delivery access is not public
+        (a PR-plane manifest sends strangers to the bytes), and for an unknown store, channel or
+        outlet. Requires a `pkeyci_` token with `distribution:report` (in the default CI grant).
+        No CORS.
+      security: [{ ciToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: store
+          in: path
+          required: true
+          schema: { type: string, enum: [winget, homebrew, scoop, flathub] }
+        - name: channel
+          in: query
+          required: false
+          schema: { type: string, default: stable, maxLength: 64 }
+        - name: outlet
+          in: query
+          required: false
+          description: The outlet, when the product declares several of the store's kind.
+          schema: { type: string, maxLength: 64 }
+      responses:
+        "200":
+          description: The inputs.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, inputs]
+                properties:
+                  ok: { type: boolean, const: true }
+                  inputs:
+                    type: object
+                    required:
+                      [
+                        store,
+                        channel,
+                        product,
+                        outlet,
+                        release,
+                        notes,
+                        listing,
+                        app,
+                        links,
+                        selfUpdates,
+                      ]
+                    properties:
+                      store: { type: string }
+                      channel: { type: string }
+                      product: { type: object }
+                      outlet:
+                        type: object
+                        properties:
+                          id: { type: string }
+                          kind: { type: string }
+                          identity: { type: object }
+                      release:
+                        type: [object, "null"]
+                        properties:
+                          releaseId: { type: string }
+                          version: { type: string }
+                          publishedAt: { type: [integer, "null"] }
+                          builds: { type: array, items: { type: object } }
+                      notes: { type: [object, "null"] }
+                      listing: { type: [object, "null"] }
+                      app: { type: object }
+                      links:
+                        type: object
+                        properties:
+                          downloadJson: { type: string }
+                          scoopFeed: { type: string }
+                          flathubFeed: { type: string }
+                      scoop: { type: [object, "null"] }
+                      selfUpdates: { type: boolean }
         "401": { $ref: "#/components/responses/CiUnauthorized" }
         "403": { $ref: "#/components/responses/CiForbidden" }
         "404": { $ref: "#/components/responses/NotFound" }

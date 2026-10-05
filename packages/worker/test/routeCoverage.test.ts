@@ -136,6 +136,8 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/distribution/report", ["post"]],
   // A-18h: a CI-plane store's projection of the listing model.
   ["/{product}/distribution/listing/{store}", ["get"]],
+  // A-18i: a PR-plane generator's inputs.
+  ["/{product}/distribution/pr/{store}", ["get"]],
   // P5-02: the App Store Connect webhook (Apple → Worker, HMAC-signed).
   ["/{product}/distribution/hooks/asc", ["post"]],
   // P6-03: the Sentry alert webhook (Sentry → Worker, HMAC-signed); opens halt candidates.
@@ -419,6 +421,8 @@ const CORS_EXCLUDED = new Set([
   "/{product}/distribution/report",
   // A-18h: the CI listing read, authenticated by a `pkeyci_` bearer.
   "/{product}/distribution/listing/{store}",
+  // A-18i: the PR-plane inputs read, authenticated by a `pkeyci_` bearer.
+  "/{product}/distribution/pr/{store}",
   // P5-02: a store webhook, called server-to-server by App Store Connect.
   "/{product}/distribution/hooks/asc",
   // P6-02: device attestation — only a native iOS or Android build can attest, never a page.
