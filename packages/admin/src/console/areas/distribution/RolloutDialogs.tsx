@@ -13,7 +13,7 @@
  */
 
 import * as React from "react";
-import { Pause } from "lucide-react";
+import { Lock, Pause } from "lucide-react";
 import type {
   DistributionMatrix,
   MatrixRolloutDto,
@@ -744,10 +744,14 @@ function HaltEverywhereConfirm({
                 className="flex min-h-11 items-center justify-between gap-3 bg-surface-sunken px-3 py-2 text-fg-muted"
               >
                 <span className="flex min-w-0 items-center gap-2">
-                  <Pause aria-hidden className="size-4 shrink-0" />
-                  <span className="truncate">{where(row)}</span>
+                  {r.state === "halted" ? (
+                    <Pause aria-hidden className="size-4 shrink-0" />
+                  ) : (
+                    <Lock aria-hidden className="size-4 shrink-0" />
+                  )}
+                  <span className="min-w-0 break-words">{where(row)}</span>
                 </span>
-                <span className="shrink-0 text-right">{blocker}</span>
+                <span className="max-w-[50%] text-right">{blocker}</span>
               </li>
             );
           return (
