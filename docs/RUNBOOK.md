@@ -122,6 +122,7 @@ GITHUB_APP_ID
 GITHUB_APP_PRIVATE_KEY
 GITHUB_WEBHOOK_SECRET
 REGISTRY_TOKEN_KEY           # F-21: the OCI pull-token HMAC key (32 random bytes, base64)
+DOWNLOAD_TICKET_KEY          # PX-W3: the portal's download-ticket HMAC key (32 random bytes, base64)
 ```
 
 Rotate or set a Worker secret:
@@ -464,6 +465,32 @@ rm /tmp/new-key
 
 Without `REGISTRY_TOKEN_KEY`, `/v2/token` answers 503 and `/v2/` stays a plain 200, so OCI clients
 can pull public images but no non-public OCI feed can be reached.
+
+### Download tickets (PX-W3)
+
+The customer portal's licensed R2 downloads go through a 120 s **download ticket** signed with
+`DOWNLOAD_TICKET_KEY` (docs/DEPLOYMENT.md, "Licensed portal downloads"). Without the key, those
+files read `not_hosted` in the portal and nothing else changes.
+
+**Rotating `DOWNLOAD_TICKET_KEY`.** A ticket names its key by a fingerprint (`kid`), so tickets
+minted just before the rotation keep verifying under `DOWNLOAD_TICKET_KEY_PREVIOUS` until they
+expire, two minutes at most:
+
+```sh
+cd packages/worker
+openssl rand -base64 32 > /tmp/new-key
+npx wrangler secret bulk --env prod <<EOF
+{"DOWNLOAD_TICKET_KEY_PREVIOUS": "<the current key>", "DOWNLOAD_TICKET_KEY": "$(cat /tmp/new-key)"}
+EOF
+# wait at least 120 seconds, then:
+npx wrangler secret delete DOWNLOAD_TICKET_KEY_PREVIOUS --env prod
+rm /tmp/new-key
+```
+
+**A leaked key, or switching the feature off.** Delete `DOWNLOAD_TICKET_KEY` (and
+`DOWNLOAD_TICKET_KEY_PREVIOUS` if set): every live ticket stops verifying at once and licensed
+R2-only files go back to `not_hosted`. Put a fresh key to turn it back on. A leaked single ticket
+needs nothing: it opens one file for at most 120 s.
 
 ### Recovering the update feeds after a signer compromise
 

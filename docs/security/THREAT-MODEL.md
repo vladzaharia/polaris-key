@@ -4492,6 +4492,61 @@ sit behind the portal session; the claim also needs the CSRF header.
   `audit`, both with `source: discover`.
 - **Developers can withhold an offer without changing the policy** (`discover_enabled = 0`).
 
+### Licensed portal downloads (PX-W3)
+
+A licensed file held only on R2 now downloads from the customer portal (docs/design/PORTAL.md
+§10.2 G3, plans/PX-W3.md). `GET /download/<token>` re-runs every check it already ran (portal and
+releases on, account active, an owned licence, the deliverable's access through
+`accountMayDownload`, the single-use token), then 302s to the file's canonical bytes-host URL with
+a **download ticket** appended: `v1.<kid>.<exp>.<mac>`, an HMAC-SHA256 under `DOWNLOAD_TICKET_KEY`
+over the label `pkey-download-ticket/1`, the bytes host, product, release id, file name, SHA-256
+and expiry (`core/downloadTicket.ts`). The `files` byte route accepts it in place of a device
+bearer, on the bytes host only. No table, no migration, no new route. With the key unset nothing
+is minted and a presented ticket verifies against nothing, so deleting it is the kill switch.
+
+- **Token leakage.** The portal token is unchanged: 300 s, single use (a conditional `UPDATE`,
+  R9-05b), bound to the account that minted it and re-checked at redemption.
+- **Ticket leakage.** A ticket opens one file, by content, for at most 120 s. It carries no
+  account id and no subject (I-04 §6.2), so a leaked one names nobody, and it is never logged (the
+  Worker has no console logging, R12). The 302 carries `referrer-policy: no-referrer` and
+  `cache-control: no-store`; the byte answer is `private, no-store, no-transform`, so no shared
+  cache keeps it under the ticketed URL.
+- **Replay window.** A ticket may be reused until `exp`, so `Range`, resume and `HEAD` work. After
+  `exp` it is refused like a missing credential. A transfer already in progress when `exp` passes
+  may finish; a new request may not. A verifier also refuses any `exp` more than 120 s ahead of
+  its own clock, so even a ticket signed with a leaked key cannot be long-lived.
+- **Hotlinking.** Bounded by `exp`, by `no-referrer`, and by the `releaseArtifact` per-IP rate
+  limit, which runs before the ticket is checked. The ticket is not bound to the client IP (Q6):
+  dual-stack browsers, CGNAT and iCloud Private Relay change it mid-download, and the window is
+  short.
+- **Revocation between mint and download.** Re-checked at token redemption: a licence disabled,
+  expired or detached before redemption gets the redemption's `404`
+  (`test/portalLicensedDownloads.test.ts`). **Residual (accepted, Q5):** a licence revoked within
+  the 120 s after redemption can still fetch that one file with the ticket already issued. A
+  re-check on the bytes route would need an account reference in the ticket and a new Core hook;
+  revisit once LX-09's holder cache makes it cheap.
+- **Key compromise.** Whoever holds `DOWNLOAD_TICKET_KEY` can mint a ticket for any file of any
+  product on this deployment, each valid for 120 s. The key is a dedicated Worker secret, not
+  derived from `PLATFORM_KEK` (Q3), so the bytes host stays KEK-free (P2-05). Rotation moves the
+  current key to `DOWNLOAD_TICKET_KEY_PREVIOUS`; the `kid` fingerprints the key itself, so tickets
+  minted just before a rotation keep verifying until they expire, and the previous key can be
+  deleted two minutes later (docs/RUNBOOK.md).
+- **Origin isolation.** Tickets work on the bytes host only; the console host ignores `?ticket=`,
+  so customer bytes never come from the origin that holds the portal SPA and its `__Host-`
+  cookies (§3, P2-01). The byte answer keeps the sandbox CSP, `nosniff`, no cookies and a forced
+  `attachment`. `hasRef` tenancy and the `gated/` refusal still apply: a ticket never serves a
+  `gated/` key, and the `build`, `blob`, `dl` and `payload` targets ignore it.
+- **An invalid ticket is an absent one.** A bad, expired or mismatched ticket gets exactly the
+  no-credential answer (`401 download_auth_required` flat, or `401 unauthorized` wire for
+  `entitled`), with no ticket-specific code, so a probe learns nothing about the key or the
+  binding. The MAC is checked with `crypto.subtle.verify`.
+- **Attested-trust products (Q4 (a)).** A browser cannot attest, and device trust does not apply
+  to portal downloads (the licence-only rule `entitledAccess.ts` already states, and the rule
+  GitHub-hosted licensed files have followed since R6-12). A product whose trust policy enforces
+  `gatedDelivery: attested` therefore serves its licensed R2 files to an owning, signed-in
+  customer through the portal. The policy keeps gating devices; an operator who reads it as
+  covering browsers needs a follow-up that withholds both the GitHub and the ticketed branch.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The

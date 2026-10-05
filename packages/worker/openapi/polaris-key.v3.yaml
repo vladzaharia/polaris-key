@@ -2288,7 +2288,8 @@ paths:
         by SHA-256 on `downloadBlob` alone, under the pack's own delivery access and gate, never
         under the app's version window. Access is the app's delivery access; under `entitled`
         the release's STORED version is checked against the caller's window as a fixed, pinned
-        version (never re-read as a selector).
+        version (never re-read as a selector). On the bytes host a valid portal download ticket
+        (`?ticket=`, PX-W3) stands in for the bearer for exactly this file.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: releaseId
@@ -2304,6 +2305,7 @@ paths:
           in: query
           required: false
           schema: { type: string, enum: ["1"] }
+        - { $ref: "#/components/parameters/DownloadTicket" }
         - { $ref: "#/components/parameters/Range" }
         - { $ref: "#/components/parameters/IfNoneMatch" }
       responses:
@@ -7553,6 +7555,7 @@ paths:
             schema: { type: string },
           }
         - { name: name, in: path, required: true, schema: { type: string } }
+        - { $ref: "#/components/parameters/DownloadTicket" }
       responses:
         "200":
           description: Byte-identical to the canonical route's answer (same handler, same headers).
@@ -10960,6 +10963,22 @@ components:
       required: false
       description: One outlet id, when the product declares several outlets of the feed's kind. Default — the outlet whose id is the kind, else the first by id.
       schema: { type: string }
+    DownloadTicket:
+      name: ticket
+      in: query
+      required: false
+      description: >
+        PX-W3: a download ticket (`v1.<kid>.<exp>.<mac>`) that the customer portal's
+        `/download/<token>` redemption appends to the file's canonical bytes-host URL after
+        every portal check (an owned licence, the deliverable's access, the single-use token).
+        On the BYTES HOST only, a valid ticket stands in for the device bearer for exactly the
+        file it was minted for (product, release, name and SHA-256); it lives at most 120 s and
+        may be reused inside that window, so `Range`, resume and `HEAD` work. The console host
+        ignores it. An invalid, expired or mismatched ticket is treated as ABSENT: the answer is
+        the same as for a caller with no credential (`401 download_auth_required` flat for
+        `authenticated` and `licensed`, `401 unauthorized` wire for `entitled`), never a
+        ticket-specific error. Devices never send it.
+      schema: { type: string, maxLength: 128 }
     IfNoneMatch:
       name: If-None-Match
       in: header

@@ -18,6 +18,30 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 - **[`plans/PX-W3.md`](../plans/PX-W3.md):** approved on 2026-10-05 with every recommendation accepted: a ticketed bytes-host URL (Q1), 120 s multi-use and bound to one file (Q2), a dedicated `DOWNLOAD_TICKET_KEY` pair (Q3, provisioned per environment by the owner), the portal's licence-only rule for `attested` products (Q4 (a), with a THREAT-MODEL row), the revocation residual accepted (Q5), no IP binding (Q6), private GitHub files left out (Q7). No migration; an OpenAPI parameter instead of a new route; a glossary entry for "download ticket". The plan supersedes the draft on branch `wp/PX-W3-licensed-downloads-plan` (`72676b8e`), which must not be merged.
 
+## Corrections and decisions from implementation (2026-10-05)
+
+Recorded by the implementer; the code is the fact where this brief or the plan read otherwise.
+
+- **Key material.** The header's "signing key pair" means the secret `DOWNLOAD_TICKET_KEY` plus
+  its rotation slot `DOWNLOAD_TICKET_KEY_PREVIOUS`, not an asymmetric pair. Both are already
+  provisioned as base64 strings by the owner; the Worker uses the string as HMAC material, as it
+  does `REGISTRY_TOKEN_KEY`, and the `kid` is the first 6 bytes of SHA-256 over that string.
+- **Verify signature.** `verifyDownloadTicket(env, ticket, {host, product, releaseId, name,
+sha256}, now)` as planned; the host is compared normalized (case, trailing dot).
+- **Licence vocabulary.** `licenses.status` is `active | disabled`; "revoked" and "suspended" in
+  the plan's acceptance list are both `disabled`. The revocation test covers disabled, expired and
+  detached licences.
+- **Inventory.** ST-02 has not landed (no `@inventory` annotations exist), so the two secrets are
+  added to `SECRET_NAMES` and given notes on the console's Platform → Secrets list
+  (`packages/admin/src/console/pages/platformSettings.tsx`), the existing pattern.
+- **Redemption order.** The ticket is minted before the single-use token is spent, so a failure
+  (for example the key deleted between mint and click) leaves the user's token usable.
+- **`downloadTarget`** returns `{kind: "redirect", url} | {kind: "ticket", base} | null`; the
+  ticket branch requires the delivery URL on the bytes host itself (not merely an allowed redirect
+  host) and the file's SHA-256.
+- **Q4 (a)** needs no code: neither `accountMayDownload` nor the ticketed byte route consults the
+  device trust policy. A test pins it.
+
 ## Goal
 
 Licensed builds hosted on R2 download from the portal through either a signed short-lived bytes URL or streaming through `/download/<token>`, as chosen by an approved plan, so the Get it panel never says "Not available here yet" for a build Polaris Key hosts.
@@ -61,11 +85,11 @@ Today the portal can only hand out tokens for artifacts reachable elsewhere ([PO
 
 ## Acceptance criteria
 
-- [ ] `plans/PX-W3.md` is approved and merged before implementation.
-- [ ] THREAT-MODEL rows for the chosen design, with tests for expiry and revoked licences.
-- [ ] OpenAPI and `routeCoverage` cover any new route.
-- [ ] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
-- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
+- [x] `plans/PX-W3.md` is approved and merged before implementation.
+- [x] THREAT-MODEL rows for the chosen design, with tests for expiry and revoked licences.
+- [x] OpenAPI and `routeCoverage` cover any new route.
+- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
+- [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify
 
