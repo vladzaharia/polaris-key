@@ -14,6 +14,24 @@ The SDK parity pass (`notes/SDK-PARITY-PASS.md` §5.6).
 - **Behaviour change: `license.is_entitled(name)` answers `false` whenever the gate is not
   usable** (S-19 G11). A revoked, expired or blocked licence no longer unlocks a grant its last
   verified document still lists. `get_entitlements()` still reads the raw values.
+- **Typed activation refusals.** A 403 other than `fingerprint_required` and the device limit is
+  `refused` with the server's code, and the copy covers `registration_closed`,
+  `attestation_required`, `managed_by_admin`, `not_entitled`, pack, commerce and mint refusals.
+- **Attest and retry.** Edge-mint, gated downloads and pack objects, and the commerce claim
+  attest once on a 403 `attestation_required` and retry once (`PKeyOptions.auto_attest`).
+- **Settings persist by default** in `user://pkey_settings.cfg` (`PKeyOptions.settings_path`).
+- **`identity.current()`, `identity.sign_out()`**, a persisted `set_channel()` that update
+  checks, decide and the dev menu read, `crash_tags()`, `PolarisKey.portal` links and
+  `PolarisKey.distribution`.
+- **Commerce one-calls:** `purchase(flag)`, `restore()`, `claim_play()` and `claim_steam()`,
+  returning a typed `PKeyPurchaseResult`.
+- **Setup dock tools:** Generate config (`pkey sdk --lang godot --write`, release keys included),
+  Generate catalog mirror (`pkey mirror --lang gdscript`), and `pkey_packs/*` added to every
+  export preset. The dock shows the web CORS step (`web.origins`).
+- **Minimal sample project** in `examples/minimal` (boot, gate, config, settings, commerce),
+  compiled against the SDK by the test runner.
+- **Fixed:** the direct-APK download awaited its fetch through a conditional expression, which
+  Godot refuses at run time.
 
 ## 0.1.0
 

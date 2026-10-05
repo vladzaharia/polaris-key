@@ -115,7 +115,9 @@ richer result class; nothing throws. The autoload's signals are `state_changed(s
 
 One `PolarisKey` autoload, one sub-object per service, in the same shape as every other SDK
 (see [SDKs](/docs/build/sdks/)). A sub-object whose service the product does not run answers
-`service-unavailable` without a request.
+`service-unavailable` without a request. The SDK's `examples/minimal` folder is the smallest
+whole game (boot, gate, config, settings and a store purchase in one script); its README says how
+to run it.
 
 ### License
 
