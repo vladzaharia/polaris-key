@@ -4,8 +4,8 @@
  *
  * The split (S-18, Q5): the data shape a client needs (user settings, collections, saves,
  * migrations) lives in the catalog; limits and access policy are these product settings, seeded
- * by `.pkey/product`'s `cloudSync` block and claimable from the console. The manifest validator
- * already refuses a declared limit above the platform ceiling (rule 10,
+ * by `.pkey/product`'s `cloudSync` block and claimable from the console screen. The manifest
+ * validator already refuses a declared limit above the platform ceiling (rule 10,
  * `cloud_sync_limit_over_ceiling`) and an unknown tier or flag (rules 8, 8b); the ceilings and
  * defaults below are the same constants it uses, imported from `@polaris-key/catalog` (one source
  * of truth).
