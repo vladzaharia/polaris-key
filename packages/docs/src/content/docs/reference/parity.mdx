@@ -19,12 +19,12 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 55 | 6 | 0 | 7 |
-| React | `web`, `desktop-bridge` | 47 | 15 | 0 | 6 |
-| Python | `python` | 55 | 6 | 0 | 7 |
-| Swift | `macos`, `ios` | 56 | 5 | 0 | 7 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 63 | 1 | 0 | 4 |
-| Kotlin | `android`, `jvm` | 59 | 5 | 0 | 4 |
+| Node | `node` | 56 | 7 | 0 | 7 |
+| React | `web`, `desktop-bridge` | 49 | 15 | 0 | 6 |
+| Python | `python` | 56 | 7 | 0 | 7 |
+| Swift | `macos`, `ios` | 58 | 5 | 0 | 7 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 65 | 1 | 0 | 4 |
+| Kotlin | `android`, `jvm` | 61 | 5 | 0 | 4 |
 
 ## Core
 
@@ -49,6 +49,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `license.activate` | Activate with a key (+ fingerprint) | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `license.enroll` | Keyless enrolment | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓; N/A (web: runtime) | ✓ | web, desktop-bridge: runtime |
 | `license.deactivate` | Remote best-effort, local wipe mandatory | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `license.manage` | Refusal link: manageUrl on device-limit, withManageReturn, withManageKey | transcripts + unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `license.entitlements` | Entitlements, profile, licence id | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `license.channels` | entitledChannels() | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `license.reregister` | Re-register on 401 for licence-less devices | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓ | ✓ | web, desktop-bridge: runtime |
@@ -127,6 +128,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `ui.stages` | The boot stage machine: states, events, outcomes | `stage-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `ui.kit` | Gate, activation, sign-in with QR, settings, devices, update banner, pack progress | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | planned (unowned) | ✓ | ✓ | headless: runtime |
+| `ui.kit.manage` | Device-limit screen: Free up a device (button, or a QR on TV and console) and Try again | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | ✓ | ✓ | ✓ | headless: runtime |
 | `commerce.receipt` | Store purchase to licence entitlement | transcripts | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | ✓ | planned (unowned) | — |
 
 ## Unowned gaps
