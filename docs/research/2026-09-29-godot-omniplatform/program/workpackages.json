@@ -7115,7 +7115,7 @@
       "planMode": false,
       "gates": ["wrangler", "rule-10", "threat-model", "workerd"],
       "humanInputs": [
-        "a deploy that attaches the custom domains media.plrs.im, media-staging.plrs.im and media-dev.plrs.im (the Worker routes create the DNS records)"
+        "a deploy that attaches the custom domains img.plrs.im, img-staging.plrs.im and img-dev.plrs.im (the Worker routes create the DNS records)"
       ],
       "repo": "polaris-key",
       "optional": false,

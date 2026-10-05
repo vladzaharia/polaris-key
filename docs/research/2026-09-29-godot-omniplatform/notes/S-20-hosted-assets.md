@@ -31,7 +31,7 @@
 >    release files and release-note images. Polaris Key keeps its own copy of every file it
 >    serves. A developer's GitHub release or external URL stays a _source_ and a fallback
 >    location, never a requirement.
-> 2. **A separate media host.** It is `media.plrs.im`, with `media-staging` and `media-dev`. It is
+> 2. **A separate media host.** It is `img.plrs.im`, with `media-staging` and `media-dev`. It is
 >    the same Worker on a fourth custom domain, `MEDIA_ORIGIN`. It serves public, inline,
 >    cookie-less, immutable images only. `dl.plrs.im` keeps the downloads (§6.5).
 > 3. **Pull from any public https host.** There is no host allowlist. The guard in §6.3 applies
@@ -114,7 +114,7 @@ Most of the machinery already exists. The design reuses it.
   - One `hosted_assets` table and one ingest path: guard, fetch or receive, cap, sniff, hash, put,
     ref.
   - Three ways in: a pull at register or resync, a console upload, and a CI push.
-  - One new host, `media.plrs.im`, for public images at content-addressed, immutable URLs.
+  - One new host, `img.plrs.im`, for public images at content-addressed, immutable URLs.
   - Release files keep being served from `dl.plrs.im`, now always from R2.
   - Licensed files go through PX-W3's ticket.
 - **Plan mode is needed once.** Adding `core.presentation` to discovery, so that UI kits pick up
@@ -460,13 +460,13 @@ today.
 - **Removed slot.** The ref is dropped and the GC collects later. Content-addressed URLs already
   in caches and unsigned feeds therefore keep working through the age lock (≥ 180 days).
 
-### 6.5 Hosts: why a separate `media.plrs.im`
+### 6.5 Hosts: why a separate `img.plrs.im`
 
 | Option                                       | Pros                                                                                                                                                                                                                                                                                                                            | Cons                                                                                                                                                                                                                                                                 |
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `key.plrs.im/media/...` (today's proxy path) | Same origin, so no CSP change                                                                                                                                                                                                                                                                                                   | Tenant bytes on the origin that holds the console, the portal SPA and the `__Host-` cookies (THREAT-MODEL §3, P2-01's whole reason for a bytes host). Every image request carries cookies. Not usable from email or third parties without exposing the console host. |
 | `dl.plrs.im/<p>/media/...`                   | Exists. Cookie-less (host-only cookies). Already hardened.                                                                                                                                                                                                                                                                      | Its policy is _downloads_: forced `attachment`, licensed tickets and per-deliverable access modes. Adding inline public images either weakens that policy or forks it per route. Putting dl in `img-src` would also allow every byte route as an image source.       |
-| **`media.plrs.im` (chosen)**                 | One policy for one kind of byte: public, immutable, inline image types only, `Access-Control-Allow-Origin: *`, `Cross-Origin-Resource-Policy: cross-origin`, no cookies, a sandbox CSP. CSP `img-src` names exactly this host. CDN cache rules can be aggressive. A separate rate limit. Never gated, so it needs no auth code. | A fourth custom domain in three environments. The Worker creates the DNS records on deploy, so there are no new buckets and no new Worker.                                                                                                                           |
+| **`img.plrs.im` (chosen)**                   | One policy for one kind of byte: public, immutable, inline image types only, `Access-Control-Allow-Origin: *`, `Cross-Origin-Resource-Policy: cross-origin`, no cookies, a sandbox CSP. CSP `img-src` names exactly this host. CDN cache rules can be aggressive. A separate rate limit. Never gated, so it needs no auth code. | A fourth custom domain in three environments. The Worker creates the DNS records on deploy, so there are no new buckets and no new Worker.                                                                                                                           |
 
 **Media host routes** (HA-02, `core/mediaHost.ts`, confined like `bytesHost.ts`):
 
@@ -584,8 +584,8 @@ does the following when turned off:
     "icon": {
       "sha256": "1e7d…",
       "sizes": [64, 128, 256, 512],
-      "url": "https://media.plrs.im/djdl/a/1e7d…/{w}.webp",
-      "original": "https://media.plrs.im/djdl/a/1e7d…"
+      "url": "https://img.plrs.im/djdl/a/1e7d…/{w}.webp",
+      "original": "https://img.plrs.im/djdl/a/1e7d…"
     }
   }
 }
@@ -727,7 +727,7 @@ Each question shows the recommendation (adopted) in bold and the alternative con
 
 1. **Q1. Scope.** **All hosted assets, release files included (D1).** The alternative,
    presentation only, was rejected: the owner's message names GitHub explicitly.
-2. **Q2. Host for presentation media.** **A separate `media.plrs.im` (D2).** The alternatives,
+2. **Q2. Host for presentation media.** **A separate `img.plrs.im` (D2).** The alternatives,
    `dl.plrs.im` or a same-origin key path, are compared in §6.5.
 3. **Q3. Pull policy.** **Any public https host behind the guard (D3).** The alternative is an
    operator-maintained allowlist. It was rejected because "just pull the files" means

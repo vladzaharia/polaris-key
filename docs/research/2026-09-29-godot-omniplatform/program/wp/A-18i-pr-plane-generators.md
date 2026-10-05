@@ -64,7 +64,7 @@ Once the adapter contract and the CI allow-list exist, each is a generator plus 
 - Never close a Flathub app or delete a repository.
 
 - **Screenshot URLs (S-20, 2026-10-05).** Flathub MetaInfo `<screenshots>` needs public https
-  URLs. They come from S-20's media host (`https://media.plrs.im/<p>/a/<sha256>`, built in
+  URLs. They come from S-20's media host (`https://img.plrs.im/<p>/a/<sha256>`, built in
   [HA-02](HA-02-media-host.md)). The images get there in either of two ways:
   [HA-07](HA-07-serve-hosted-copies.md)'s `source = 'manifest'` listing rows, or uploads through
   [HA-06](HA-06-upload-paths.md). If those packages have not landed yet, omit `<screenshots>`.
