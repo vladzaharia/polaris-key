@@ -54,6 +54,26 @@ public struct ProductDirs: Sendable, Equatable {
                 config: ProductDirs.defaultConfigBase(), applicationSupport: support,
                 caches: caches)
         }
+
+        /// The roots inside an app group's shared container (SP-S15): `Library/Application
+        /// Support` for config, data and state, `Library/Caches` for the cache. Nil when this
+        /// process is not entitled to the group.
+        public static func appGroup(_ identifier: String) -> Roots? {
+            guard
+                let container = FileManager.default.containerURL(
+                    forSecurityApplicationGroupIdentifier: identifier)
+            else { return nil }
+            return inContainer(container)
+        }
+
+        /// The roots inside `container` (an app group's, or any shared directory).
+        public static func inContainer(_ container: URL) -> Roots {
+            let library = container.appendingPathComponent("Library", isDirectory: true)
+            let support = library.appendingPathComponent("Application Support", isDirectory: true)
+            return Roots(
+                config: support, applicationSupport: support,
+                caches: library.appendingPathComponent("Caches", isDirectory: true))
+        }
     }
 
     private static let vendor = "polaris-key"

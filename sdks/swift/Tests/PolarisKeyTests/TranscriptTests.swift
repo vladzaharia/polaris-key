@@ -3,7 +3,7 @@
 // @pkey-feature config.schema release.changelog release.download
 // @pkey-feature identity.devicecode config.mint
 // @pkey-feature update.feed release.record update.decide
-// @pkey-feature packs.apply.chunk
+// @pkey-feature packs.apply.chunk commerce.receipt
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read
 // from the generator-owned mirror in Resources/transcripts/): drive `PolarisKeyClient` through every
@@ -130,6 +130,7 @@ enum SwiftReplay {
                 out["result"] = .string("slow-down")
                 out["interval"] = .int(interval)
             case .ready: out["result"] = .string("ready")
+            case .confirm: out["result"] = .string("confirm")
             case .expired: out["result"] = .string("expired")
             case .error: out["result"] = .string("error")
             }
@@ -137,6 +138,7 @@ enum SwiftReplay {
             guard let prompt = session.prompt else { throw ReplayError("waitForSignIn before beginSignIn") }
             switch try await client.identity.waitForSignIn(prompt) {
             case .ready: out["result"] = .string("ready")
+            case .confirm: out["result"] = .string("confirm")
             case .expired: out["result"] = .string("expired")
             case .error: out["result"] = .string("error")
             }
@@ -149,6 +151,38 @@ enum SwiftReplay {
                 out["expiresAt"] = .int(minted.expiresAt)
             } catch let error as PolarisError {
                 out["result"] = .string(error.code)
+            }
+        case "commerceBinding":
+            do {
+                let b = try await client.commerce.binding()
+                out["result"] = .string("ok")
+                out["bindingId"] = .string(b.bindingId)
+                out["products"] = .array(
+                    b.products.map { p in
+                        var o: [String: JSONValue] = [
+                            "store": .string(p.store), "productId": .string(p.productId),
+                            "flag": .string(p.flag),
+                        ]
+                        if let d = p.deliverable { o["deliverable"] = .string(d) }
+                        return .object(o)
+                    })
+            } catch let e as PolarisError {
+                out["result"] = .string(e.code)
+                if let reason = e.detail { out["reason"] = .string(reason) }
+            }
+        case "commerceClaim":
+            let r = await client.commerce.claim(
+                store: step.args["store"]?.stringValue ?? "",
+                payload: step.args["payload"]?.objectValue ?? [:])
+            switch r {
+            case .ok(let claim):
+                out["result"] = .string("ok")
+                out["flag"] = .string(claim.flag)
+                out["state"] = .string(claim.state)
+                out["granted"] = .bool(claim.granted)
+            default:
+                out["result"] = .string(r.code)
+                if let reason = r.reason { out["reason"] = .string(reason) }
             }
         case "discover":
             switch await client.discover() {
@@ -253,17 +287,7 @@ enum SwiftReplay {
         ])
     }
 
-    static func activationKind(_ r: ActivationResult) -> String {
-        switch r {
-        case .ok: return "ok"
-        case .deviceLimit: return "device-limit"
-        case .unauthorized: return "unauthorized"
-        case .fingerprintRequired: return "fingerprint-required"
-        case .hardwareMismatch: return "hardware-mismatch"
-        case .enrollDisabled: return "enroll-disabled"
-        case .error: return "error"
-        }
-    }
+    static func activationKind(_ r: ActivationResult) -> String { r.kind }
 
     /// Replay `t` step by step; throws on the first step whose traffic or outcome disagrees.
     static func replay(_ t: Transcript) async throws {

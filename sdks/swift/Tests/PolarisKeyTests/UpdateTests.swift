@@ -425,8 +425,15 @@ final class UpdateDecideTests: XCTestCase {
         let store = InMemoryStore(productSlug: "djdl", deviceId: "dev-1")
         let core = try await makeCore(store: store, clock: ReplayClock(t0))
         let client = try UpdateClient(core: core, options: options())
+        let offered = LockedValue<[CoreEvent]>([])
+        core.setEventSink { e in offered.with { $0.append(e) } }
 
         let first = try await client.decide()
+        // The facade's `updateAvailable` (notes/SDK-PARITY-PASS.md §3.11): version, action,
+        // mandatory, channel, as Python's `client.events` carries them; once per release.
+        XCTAssertEqual(
+            offered.current,
+            [.updateAvailable(version: "1.3.0", action: "binary", mandatory: false, channel: "stable")])
         XCTAssertEqual(first.channel, "stable")
         XCTAssertEqual(first.feed, .network)
         XCTAssertEqual(first.record, .network)
@@ -458,6 +465,7 @@ final class UpdateDecideTests: XCTestCase {
         let v4 = await server.requests(forPath: "/djdl/release/records/\(recordHash(record))").count
         XCTAssertEqual(v4, 1)
         XCTAssertEqual(second.decision, first.decision)
+        XCTAssertEqual(offered.current.count, 1, "offered once per release")
     }
 
     /// Acceptance: a reload refuses a feed with a lower seq, using a floor DERIVED from a
