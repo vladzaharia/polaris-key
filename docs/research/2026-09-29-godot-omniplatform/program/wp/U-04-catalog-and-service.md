@@ -18,6 +18,46 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 - **[`plans/U-01.md`](../plans/U-01.md):** glossary noun **Cloud Sync principal** (Q7); the A3 record; enum additions (the parity `service` enums gain `sync`); tolerance tests; the discovery re-record; data shape in the catalog and limits and access policy as claimable settings in `.pkey/product` (Q5), with the registry slice; rule 8b.
 
+## Corrections and decisions (implementation, 2026-10-05)
+
+Recorded by the implementer; the code is the fact. Decisions the brief and plan left open were
+taken with the recommended option, as the lead delegated.
+
+- **Settings registry slice deferred.** ST-03 (the settings registry types and generator) and
+  ST-01b (`product_settings`) are not merged, so there is no registry to register
+  `cloudSync.*` entries into and no `gen:settings`. U-04 validates `.pkey/product`'s
+  `cloudSync` block (rules 8, 8b, 10) and exports the ceilings and defaults
+  (`CLOUD_SYNC_CEILINGS`, `CLOUD_SYNC_DEFAULTS`) from `@polaris-key/catalog` for the registry to
+  import; the registry entries of plans/U-01.md §3 land with U-05 (which already depends on
+  ST-03). The product block is validated, not yet persisted.
+- **One implementation of the user-block rules.** Rules shape and 1–5 live once, in
+  `@polaris-key/catalog` (`userSettingIssues`, `mergeMembersOverLimit`), called by the manifest
+  validator, the Worker's console catalog publish (`PUT …/config/catalog`) and the console's
+  catalog editor, so a draft the console accepts publishes. `@polaris-key/manifest` exports
+  `validateCatalogCloudSync` for the publish route.
+- **Console publish keeps `cloudSync`.** The publish route used to store `entries` only, which
+  would have dropped the catalog's `cloudSync` block on the first console publish. It now carries
+  the active version's block forward when the body has none, stores one the body names, and
+  checks either against the new entries (a removed flag or rename target refuses with 422).
+- **Discovery fragment.** U-04 ships `services.sync` as `{"enabled":false}` off and, on,
+  `{"enabled":true,"settings":false,"collections":false,"saves":false,"endpoints":{"pull":null,"push":null,"saves":null}}`:
+  every capability false and no endpoint until U-05, U-09 and U-10 serve one; `limits` arrive
+  with U-05. The discovery golden, the OpenAPI `SyncFragment` and three transcripts were
+  re-recorded (the transcripts' expected capability maps gain `sync: false`).
+- **Accent.** Cloud Sync's console accent is the **teal** family (dark `#14f8e1`, light
+  `#086260`), `tune-accents`' optimum over the palette's remaining gaps; light chroma is 0.075
+  so it clears the 17.5 ΔE00 floor against the Release cyan and the ΔEOK floor against the
+  Distribution green.
+- **Console page.** Cloud Sync → **Data** (`sync/data`), read-only over the active catalog: user
+  settings, collections, saves, migrations, the platform ceilings and the sign-in-only callout.
+  Editing collections, saves, limits and migrations from the console (S-17 §5.10) is not in this
+  package: they are authored in `.pkey/`.
+- **Tolerance tests.** Node, React, Python, Swift and Kotlin each gain a test that a catalog with
+  `user` and `cloudSync` members still parses; Godot's fixture catalog carries both members, so
+  its fetch test covers it.
+- **Kotlin** tests could not run in this environment (no Java runtime); the Kotlin mirror sample
+  and tests were changed and need a JDK run.
+
 ## Goal
 
 Products declare user settings and Cloud Sync data in `.pkey/schema` and turn on a new **Cloud Sync** service: the catalog `user` block and the `cloudSync` block validate under rules 1–11, mirrors expose typed setting keys, docs regenerate, and `tools/services.json` gains the `sync` descriptor with `requires: [config, identity]`, its toggle, discovery fragment and console section.
@@ -60,10 +100,10 @@ Owner decision 2: Cloud Sync is its own service with its own toggle ([S-17 owner
 
 ## Acceptance criteria
 
-- [ ] Every rule 1–11 has a validator rule, a mutation-table entry and schema coverage.
-- [ ] `gen:services -- --check`, `gen:mirrors` drift and generated docs are clean.
-- [ ] The `sync` toggle cannot be enabled without Config and Identity, and Identity cannot be turned off while Cloud Sync is on (tests).
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] Every rule 1–11 has a validator rule, a mutation-table entry and schema coverage.
+- [x] `gen:services -- --check`, `gen:mirrors` drift and generated docs are clean.
+- [x] The `sync` toggle cannot be enabled without Config and Identity, and Identity cannot be turned off while Cloud Sync is on (tests).
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 
