@@ -1,0 +1,531 @@
+/*
+ * UI-kit mockups: shared base. Colours, type, radii, elevation and motion come only from the
+ * generated @polaris-key/brand tokens; the --kit-* aliases below are the kit theme API
+ * (UI-KITS.md §3) expressed as CSS custom properties, so a mockup restyles exactly the way a
+ * shipped kit does.
+ */
+@import url("../../../packages/brand/fonts/fonts.css");
+@import url("../../../packages/brand/css/tokens.css");
+
+:root {
+  /* Kit theme API (§3): accent, radius, density. Defaults are the Polaris Key look. */
+  --kit-accent: var(--pk-accent);
+  --kit-accent-fg: var(--pk-accent-fg);
+  --kit-accent-on: var(--pk-accent-on);
+  --kit-accent-subtle: var(--pk-accent-subtle);
+  --kit-radius-control: 0.75rem; /* 12 px: 48 px controls */
+  --kit-radius-card: 1.375rem; /* 22 px: the AuthCard radius (EXPERIENCE §8) */
+  --kit-radius-tile: var(--pk-radius-xl);
+  --kit-control-h: 3rem;
+  --kit-gap: 1rem;
+  --kit-highlight: rgb(255 255 255 / 0.06);
+  --kit-hairline: color-mix(in oklab, var(--pk-border-subtle) 80%, transparent);
+  --kit-scrim: rgb(2 4 8 / 0.56);
+}
+[data-theme="light"] {
+  --kit-highlight: rgb(255 255 255 / 0.9);
+  --kit-scrim: rgb(6 9 18 / 0.28);
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+}
+body {
+  font-family: var(--pk-font-sans);
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-default);
+  font-size: 15px;
+  line-height: 1.5;
+}
+.ic {
+  flex: none;
+  display: block;
+}
+.mono {
+  font-family: var(--pk-font-mono);
+}
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Board layout (not part of any kit) ---- */
+.board {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 48px;
+  padding: 48px;
+  align-items: flex-start;
+}
+.board > figure {
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+.board figcaption {
+  font: 700 13px/1 var(--pk-font-sans);
+  color: var(--pk-text-muted);
+  letter-spacing: 0.02em;
+}
+
+/* ---- The kit's web primitives (web, Electron/Tauri renderers, the desktop board) ---- */
+.k-h1 {
+  font: 700 clamp(1.5rem, 1.1rem + 1.2vw, 1.75rem) / 1.15 var(--pk-font-sans);
+  letter-spacing: var(--pk-tracking-tight);
+  color: var(--pk-text-strong);
+  margin: 0;
+  text-wrap: balance;
+}
+.k-h2 {
+  font: 700 1.0625rem/1.3 var(--pk-font-sans);
+  color: var(--pk-text-strong);
+  margin: 0;
+}
+.k-lede {
+  color: var(--pk-text-muted);
+  margin: 0;
+  text-wrap: pretty;
+}
+.k-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--pk-text-muted);
+}
+.k-card {
+  background: var(--pk-surface-raised);
+  border: 1px solid var(--kit-hairline);
+  border-radius: var(--kit-radius-card);
+  box-shadow:
+    inset 0 1px 0 var(--kit-highlight),
+    var(--pk-elevation-3);
+}
+.k-btn {
+  appearance: none;
+  border: 0;
+  font: 700 15px/1 var(--pk-font-sans);
+  height: var(--kit-control-h);
+  padding: 0 20px;
+  border-radius: var(--kit-radius-control);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition:
+    background-color var(--pk-duration-fast) var(--pk-ease-standard),
+    transform var(--pk-duration-fast) var(--pk-ease-standard),
+    box-shadow var(--pk-duration-fast) var(--pk-ease-standard);
+  white-space: nowrap;
+}
+.k-btn:active {
+  transform: scale(0.98);
+}
+.k-btn.primary {
+  background: var(--kit-accent);
+  color: var(--kit-accent-on);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.22),
+    0 1px 2px rgb(0 0 0 / 0.2);
+}
+.k-btn.primary:hover {
+  background: color-mix(in oklab, var(--kit-accent) 88%, var(--pk-text-strong));
+}
+.k-btn.secondary {
+  background: color-mix(in oklab, var(--pk-text-strong) 7%, transparent);
+  color: var(--pk-text-strong);
+}
+.k-btn.secondary:hover {
+  background: color-mix(in oklab, var(--pk-text-strong) 11%, transparent);
+}
+.k-btn.quiet {
+  background: transparent;
+  color: var(--pk-text-default);
+  padding: 0 12px;
+}
+.k-btn.quiet:hover {
+  background: color-mix(in oklab, var(--pk-text-strong) 6%, transparent);
+}
+.k-btn.danger {
+  background: var(--pk-danger);
+  color: var(--pk-danger-on);
+}
+.k-btn.block {
+  width: 100%;
+}
+.k-btn.sm {
+  height: 2.25rem;
+  font-size: 14px;
+  padding: 0 14px;
+  border-radius: 0.625rem;
+}
+.k-btn[aria-disabled="true"] {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+.k-btn.focus {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+.k-iconbtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: var(--pk-text-muted);
+  background: color-mix(in oklab, var(--pk-text-strong) 6%, transparent);
+}
+
+.k-label {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--pk-text-strong);
+  display: block;
+  margin-bottom: 8px;
+}
+.k-field {
+  height: var(--kit-control-h);
+  border-radius: var(--kit-radius-control);
+  background: var(--pk-surface-sunken);
+  border: 1px solid var(--pk-border-subtle);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  color: var(--pk-text-strong);
+}
+.k-field.focus {
+  border-color: var(--pk-focus);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--pk-focus) 28%, transparent);
+}
+.k-field .mono {
+  font-size: 14.5px;
+  letter-spacing: 0.01em;
+}
+.k-help {
+  font-size: 13px;
+  color: var(--pk-text-muted);
+  margin-top: 8px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.k-help.ok {
+  color: var(--pk-success);
+}
+.k-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--pk-text-subtle);
+  font-size: 13px;
+}
+.k-divider::before,
+.k-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--pk-border-subtle);
+}
+
+/* Product identity: the product is the hero (UI-KITS §1.2). */
+.k-appicon {
+  border-radius: 22.5%;
+  overflow: hidden;
+  flex: none;
+  width: max-content;
+  height: max-content;
+  line-height: 0;
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.08) inset,
+    0 8px 24px -6px rgb(0 0 0 / 0.45);
+}
+.k-appicon svg {
+  display: block;
+}
+[data-theme="light"] .k-appicon {
+  box-shadow: 0 8px 20px -8px rgb(6 9 18 / 0.35);
+}
+
+/* Service cue: a small tinted glyph in the service accent (never a large fill). */
+.k-cue {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.k-cue.license {
+  background: var(--pk-service-license-subtle);
+  color: var(--pk-service-license-fg);
+}
+.k-cue.update {
+  background: var(--pk-service-update-subtle);
+  color: var(--pk-service-update-fg);
+}
+.k-cue.identity {
+  background: var(--pk-service-identity-subtle);
+  color: var(--pk-service-identity-fg);
+}
+.k-cue.config {
+  background: var(--pk-service-config-subtle);
+  color: var(--pk-service-config-fg);
+}
+
+/* Status: icon + word, only for issues (EXPERIENCE §7). */
+.k-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.k-pill.warning {
+  background: var(--pk-warning-subtle);
+  color: var(--pk-warning);
+}
+.k-pill.danger {
+  background: var(--pk-danger-subtle);
+  color: var(--pk-danger);
+}
+.k-pill.info {
+  background: var(--pk-info-subtle);
+  color: var(--pk-info);
+}
+.k-pill.neutral {
+  background: color-mix(in oklab, var(--pk-text-strong) 7%, transparent);
+  color: var(--pk-text-muted);
+}
+
+/* Seat meter: segments, one per seat. */
+.k-meter {
+  display: flex;
+  gap: 4px;
+}
+.k-meter i {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--pk-text-strong) 10%, transparent);
+}
+.k-meter i.on {
+  background: var(--pk-danger);
+}
+
+/* Selectable device rows. */
+.k-choice {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: color-mix(in oklab, var(--pk-text-strong) 4%, transparent);
+  border: 1.5px solid transparent;
+}
+.k-choice.on {
+  background: var(--kit-accent-subtle);
+  border-color: var(--kit-accent);
+}
+.k-choice .dev {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--pk-surface-raised);
+  color: var(--pk-text-default);
+  box-shadow: 0 0 0 1px var(--pk-border-subtle) inset;
+}
+.k-choice b {
+  color: var(--pk-text-strong);
+  font-size: 15px;
+}
+.k-choice small {
+  display: block;
+  color: var(--pk-text-muted);
+  font-size: 13px;
+}
+.k-radio {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--pk-border-strong);
+  flex: none;
+  margin-left: auto;
+}
+.k-choice.on .k-radio {
+  border: 6px solid var(--kit-accent);
+  background: var(--kit-accent-on);
+}
+
+/* Progress: a neutral track, the fill in the accent; never the star. */
+.k-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--pk-text-strong) 10%, transparent);
+  overflow: hidden;
+}
+.k-progress > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--kit-accent);
+}
+.k-ring {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2.5px solid
+    color-mix(in oklab, var(--pk-text-strong) 14%, transparent);
+  border-top-color: var(--pk-text-muted);
+}
+
+/* Settings rows (EXPERIENCE §6): label left, control right, equal height. */
+.k-group {
+  background: var(--pk-surface-raised);
+  border-radius: var(--kit-radius-tile);
+  border: 1px solid var(--kit-hairline);
+  overflow: hidden;
+}
+.k-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 60px;
+  padding: 12px 18px;
+}
+.k-row + .k-row {
+  border-top: 1px solid var(--kit-hairline);
+}
+.k-row .t {
+  flex: 1;
+  min-width: 0;
+}
+.k-row .t b {
+  display: block;
+  color: var(--pk-text-strong);
+  font-size: 14.5px;
+}
+.k-row .t small {
+  display: block;
+  color: var(--pk-text-muted);
+  font-size: 13px;
+}
+.k-row .v {
+  color: var(--pk-text-muted);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.k-switch {
+  width: 44px;
+  height: 26px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--pk-text-strong) 18%, transparent);
+  position: relative;
+  flex: none;
+}
+.k-switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+}
+.k-switch.on {
+  background: var(--kit-accent);
+}
+.k-switch.on::after {
+  left: 21px;
+}
+.k-switch.locked {
+  opacity: 0.55;
+}
+.k-seg {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--pk-text-strong) 7%, transparent);
+  font-size: 13.5px;
+}
+.k-seg span {
+  padding: 5px 12px;
+  border-radius: 8px;
+  color: var(--pk-text-muted);
+}
+.k-seg span.on {
+  background: var(--pk-surface-overlay);
+  color: var(--pk-text-strong);
+  font-weight: 700;
+  box-shadow: var(--pk-elevation-1);
+}
+[data-theme="light"] .k-seg span.on {
+  background: #fff;
+}
+
+.k-powered {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--pk-text-subtle);
+}
+
+.k-callout {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--pk-text-strong) 4%, transparent);
+  color: var(--pk-text-default);
+  font-size: 13.5px;
+}
+.k-callout .ic {
+  color: var(--pk-text-muted);
+  margin-top: 1px;
+}
+.k-kbd {
+  font: 700 11px/1 var(--pk-font-sans);
+  padding: 3px 6px;
+  border-radius: 5px;
+  border: 1px solid var(--pk-border-subtle);
+  color: var(--pk-text-muted);
+}
+.k-notes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+}
+.k-notes li {
+  display: flex;
+  gap: 10px;
+}
+.k-notes li::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pk-text-subtle);
+  margin-top: 8px;
+  flex: none;
+}

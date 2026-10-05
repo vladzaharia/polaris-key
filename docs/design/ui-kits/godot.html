@@ -1,0 +1,815 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>UI kits · Godot (Control nodes)</title>
+    <link rel="stylesheet" href="shared.css" />
+    <script src="shared.js"></script>
+    <style>
+      /* 1280 × 720 game viewport. Drift Kart sets a product accent (theme.accent). */
+      .shot {
+        width: 1280px;
+        height: 720px;
+        position: relative;
+        overflow: hidden;
+        border-radius: 12px;
+        isolation: isolate;
+        font-size: 18px;
+        --kit-accent: #ff6a3d;
+        --kit-accent-fg: #ff8a63;
+        --kit-accent-on: #1a0b06;
+        --kit-accent-subtle: rgb(255 106 61 / 0.16);
+        --pk-focus: #ff8a63;
+      }
+      [data-theme="light"] .shot {
+        --kit-accent: #c2410c;
+        --kit-accent-fg: #b23a09;
+        --kit-accent-on: #ffffff;
+        --kit-accent-subtle: rgb(194 65 12 / 0.12);
+        --pk-focus: #c2410c;
+      }
+      /* Key art: the game's content, drawn here with CSS shapes. */
+      .art {
+        position: absolute;
+        inset: 0;
+        z-index: -2;
+        background: linear-gradient(
+          #0d0b1f 0%,
+          #2a1340 45%,
+          #5a1f3a 62%,
+          #12101c 62.2%,
+          #0b0a12 100%
+        );
+      }
+      [data-theme="light"] .art {
+        background: linear-gradient(
+          #9ed2ff 0%,
+          #ffd7b0 58%,
+          #ffb27a 62%,
+          #6b6f7c 62.2%,
+          #4c505c 100%
+        );
+      }
+      .art .sun {
+        position: absolute;
+        left: 62%;
+        top: 22%;
+        width: 260px;
+        height: 260px;
+        border-radius: 50%;
+        background: linear-gradient(#ffb347, #ff5a2c);
+        opacity: 0.85;
+      }
+      .art .city {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 44%;
+        height: 18%;
+        background: #1a1428;
+        clip-path: polygon(
+          0 60%,
+          4% 60%,
+          4% 20%,
+          9% 20%,
+          9% 45%,
+          14% 45%,
+          14% 5%,
+          18% 5%,
+          18% 50%,
+          25% 50%,
+          25% 30%,
+          31% 30%,
+          31% 55%,
+          40% 55%,
+          40% 15%,
+          44% 15%,
+          44% 60%,
+          55% 60%,
+          55% 35%,
+          60% 35%,
+          60% 0,
+          63% 0,
+          63% 50%,
+          72% 50%,
+          72% 25%,
+          78% 25%,
+          78% 55%,
+          86% 55%,
+          86% 10%,
+          90% 10%,
+          90% 50%,
+          100% 50%,
+          100% 100%,
+          0 100%
+        );
+      }
+      [data-theme="light"] .art .city {
+        background: #8a7a8f;
+      }
+      .art .road {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 38%;
+        background: #191722;
+        clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%);
+      }
+      [data-theme="light"] .art .road {
+        background: #2f3240;
+      }
+      .art .lane {
+        position: absolute;
+        left: 50%;
+        bottom: 0;
+        width: 8px;
+        height: 38%;
+        margin-left: -4px;
+        background: repeating-linear-gradient(
+          #ffd08a 0 22px,
+          transparent 22px 50px
+        );
+        clip-path: polygon(40% 0, 60% 0, 100% 100%, 0 100%);
+        opacity: 0.7;
+      }
+      .art .kart {
+        position: absolute;
+        left: 58%;
+        bottom: 9%;
+        width: 260px;
+        height: 110px;
+        background: #ff5a2c;
+        clip-path: polygon(
+          10% 40%,
+          35% 40%,
+          45% 10%,
+          75% 10%,
+          90% 40%,
+          100% 55%,
+          100% 85%,
+          0 85%,
+          0 55%
+        );
+      }
+      .glass {
+        background: rgb(12 10 22 / 0.58);
+        backdrop-filter: blur(28px) saturate(1.5);
+        border-radius: 28px;
+        box-shadow:
+          inset 0 1px 0 rgb(255 255 255 / 0.14),
+          inset 0 0 0 1px rgb(255 255 255 / 0.08),
+          0 30px 60px -10px rgb(0 0 0 / 0.5);
+        color: var(--pk-text-default);
+      }
+      [data-theme="light"] .glass {
+        background: rgb(255 255 255 / 0.72);
+        box-shadow:
+          inset 0 1px 0 #fff,
+          inset 0 0 0 1px rgb(6 9 18 / 0.06),
+          0 30px 60px -10px rgb(6 9 18 / 0.3);
+      }
+      .panel {
+        position: absolute;
+        padding: 44px;
+        display: grid;
+        gap: 26px;
+      }
+      .center {
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -52%);
+      }
+      .gt {
+        font: 700 40px/1.1 var(--pk-font-sans);
+        letter-spacing: -0.02em;
+        color: var(--pk-text-strong);
+        margin: 0;
+      }
+      .gs {
+        color: var(--pk-text-muted);
+        margin: 0;
+        font-size: 19px;
+      }
+      .gb {
+        height: 60px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 24px;
+        font: 700 19px/1 var(--pk-font-sans);
+        color: var(--pk-text-strong);
+        background: rgb(255 255 255 / 0.08);
+      }
+      [data-theme="light"] .gb {
+        background: rgb(6 9 18 / 0.06);
+      }
+      .gb.primary {
+        background: var(--kit-accent);
+        color: var(--kit-accent-on);
+      }
+      .gb.focus {
+        outline: 3px solid var(--pk-focus);
+        outline-offset: 4px;
+        transform: scale(1.02);
+      }
+      .gb .ic:last-child {
+        margin-left: auto;
+      }
+      .hints {
+        position: absolute;
+        right: 28px;
+        bottom: 24px;
+        display: flex;
+        gap: 20px;
+        font-size: 16px;
+        color: #fff;
+        padding: 8px 16px 8px 10px;
+        border-radius: 999px;
+        background: rgb(12 10 22 / 0.55);
+        backdrop-filter: blur(14px);
+      }
+      [data-theme="light"] .hints {
+        color: #1c1f2a;
+        background: rgb(255 255 255 / 0.75);
+      }
+      .hints span {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .pad {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font: 700 14px/1 var(--pk-font-sans);
+        color: #fff;
+        background: #262a36;
+        box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.25);
+      }
+      .pad.a {
+        background: #1f7a3d;
+      }
+      .pad.b {
+        background: #a3262b;
+      }
+      .pad.y {
+        background: #a07a00;
+      }
+      .pad.sh {
+        border-radius: 8px;
+        width: 40px;
+      }
+      .logo {
+        display: flex;
+        gap: 18px;
+        align-items: center;
+      }
+      .logo b {
+        font: 700 46px/0.95 var(--pk-font-sans);
+        letter-spacing: -0.02em;
+        color: var(--pk-text-strong);
+        text-transform: uppercase;
+      }
+      .gfield {
+        height: 68px;
+        border-radius: 16px;
+        background: rgb(0 0 0 / 0.35);
+        box-shadow: inset 0 0 0 2px var(--pk-focus);
+        display: flex;
+        align-items: center;
+        padding: 0 22px;
+        gap: 12px;
+        color: var(--pk-text-strong);
+      }
+      [data-theme="light"] .gfield {
+        background: rgb(255 255 255 / 0.8);
+      }
+      .grow {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        padding: 16px 20px;
+        border-radius: 18px;
+        background: rgb(255 255 255 / 0.06);
+        color: var(--pk-text-strong);
+      }
+      [data-theme="light"] .grow {
+        background: rgb(6 9 18 / 0.05);
+      }
+      .grow.focus {
+        outline: 3px solid var(--pk-focus);
+        outline-offset: 3px;
+        background: var(--kit-accent-subtle);
+      }
+      .grow small {
+        display: block;
+        color: var(--pk-text-muted);
+        font-size: 15px;
+      }
+      .grow .rd {
+        margin-left: auto;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 2.5px solid var(--pk-text-muted);
+      }
+      .grow.focus .rd {
+        border: 7px solid var(--kit-accent);
+        background: var(--kit-accent-on);
+      }
+      .seats {
+        display: flex;
+        gap: 6px;
+      }
+      .seats i {
+        flex: 1;
+        height: 8px;
+        border-radius: 4px;
+        background: var(--pk-danger);
+      }
+      .bar {
+        height: 10px;
+        border-radius: 5px;
+        background: rgb(255 255 255 / 0.12);
+        overflow: hidden;
+      }
+      [data-theme="light"] .bar {
+        background: rgb(6 9 18 / 0.1);
+      }
+      .bar i {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--kit-accent);
+      }
+      .dimmer {
+        position: absolute;
+        inset: 0;
+        background: rgb(0 0 0 / 0.45);
+        z-index: -1;
+      }
+      [data-theme="light"] .dimmer {
+        background: rgb(255 255 255 / 0.3);
+      }
+      .hud {
+        position: absolute;
+        top: 24px;
+        left: 32px;
+        font: 700 28px/1 var(--pk-font-sans);
+        color: #fff;
+        text-shadow: 0 2px 6px rgb(0 0 0 / 0.5);
+        z-index: -1;
+      }
+      .toast {
+        position: absolute;
+        top: 24px;
+        right: 28px;
+        width: 340px;
+        padding: 16px 18px;
+        border-radius: 20px;
+        display: grid;
+        gap: 10px;
+      }
+      .tabsg {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .tabsg .t {
+        padding: 10px 20px;
+        border-radius: 999px;
+        font-weight: 700;
+        color: var(--pk-text-muted);
+      }
+      .tabsg .t.on {
+        background: var(--pk-text-strong);
+        color: var(--pk-surface-page);
+      }
+      .srow {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        min-height: 70px;
+        padding: 0 22px;
+        border-radius: 16px;
+        color: var(--pk-text-strong);
+      }
+      .srow + .srow {
+        margin-top: 4px;
+      }
+      .srow.focus {
+        background: var(--kit-accent-subtle);
+        outline: 3px solid var(--pk-focus);
+        outline-offset: 2px;
+      }
+      .srow .lbl {
+        flex: 1;
+      }
+      .srow .lbl small {
+        display: block;
+        color: var(--pk-text-muted);
+        font-size: 15px;
+      }
+      .srow .val {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--pk-text-muted);
+      }
+      .pick {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        color: var(--pk-text-strong);
+        font-weight: 700;
+      }
+      .pick .ic {
+        color: var(--kit-accent-fg);
+      }
+      .gsw {
+        width: 58px;
+        height: 34px;
+        border-radius: 999px;
+        background: var(--kit-accent);
+        position: relative;
+      }
+      .gsw::after {
+        content: "";
+        position: absolute;
+        right: 4px;
+        top: 4px;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: #fff;
+      }
+      .gsw.locked {
+        opacity: 0.45;
+      }
+    </style>
+  </head>
+  <body>
+    <template id="art"
+      ><div class="art">
+        <div class="sun"></div>
+        <div class="city"></div>
+        <div class="road"></div>
+        <div class="lane"></div>
+        <div class="kart"></div></div
+    ></template>
+    <main class="board">
+      <figure>
+        <figcaption>godot · gate (boot)</figcaption>
+        <div class="shot" data-shot="gate">
+          <div
+            class="glass panel"
+            style="
+              left: 64px;
+              top: 64px;
+              bottom: 64px;
+              width: 540px;
+              align-content: center;
+            "
+          >
+            <div class="logo">
+              <span class="k-appicon" data-art="driftkart" data-size="88"></span
+              ><b>Drift<br />Kart</b>
+            </div>
+            <p class="gs">Sign in or add your license to play.</p>
+            <div style="display: grid; gap: 14px">
+              <div class="gb primary focus">
+                Sign in<span data-icon="chevronRight" data-size="22"></span>
+              </div>
+              <div class="gb">
+                <span data-icon="key" data-size="22"></span>Use a license key
+              </div>
+              <div class="gb">
+                <span data-icon="download" data-size="22"></span>Activate
+                offline
+              </div>
+            </div>
+            <span style="font-size: 14px; color: var(--pk-text-subtle)"
+              >Lanternworks · v1.7.2</span
+            >
+          </div>
+          <div class="hints">
+            <span><i class="pad a">A</i>Select</span
+            ><span><i class="pad b">B</i>Quit</span>
+          </div>
+        </div>
+      </figure>
+
+      <figure>
+        <figcaption>godot · activate</figcaption>
+        <div class="shot" data-shot="activate">
+          <div class="dimmer"></div>
+          <div class="glass panel center" style="width: 680px">
+            <div
+              style="
+                display: flex;
+                gap: 14px;
+                align-items: center;
+                color: var(--pk-text-muted);
+              "
+            >
+              <span
+                class="k-appicon"
+                data-art="driftkart"
+                data-size="40"
+                style="border-radius: 10px"
+              ></span
+              >Drift Kart
+            </div>
+            <h1 class="gt">Add your license</h1>
+            <div>
+              <div class="gfield">
+                <span class="mono" style="font-size: 20px"
+                  >pkey_driftkart_K7QP2MXDR4…</span
+                >
+              </div>
+              <div
+                style="
+                  display: flex;
+                  gap: 10px;
+                  align-items: center;
+                  margin-top: 12px;
+                  color: var(--pk-success);
+                  font-size: 17px;
+                "
+              >
+                <span data-icon="badge" data-size="20"></span
+                ><b>Drift Kart Deluxe</b><span>· includes Night Circuit</span>
+              </div>
+            </div>
+            <div
+              style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px"
+            >
+              <div class="gb" style="justify-content: center">Back</div>
+              <div class="gb primary focus" style="justify-content: center">
+                Activate
+              </div>
+            </div>
+          </div>
+          <div class="hints">
+            <span><i class="pad y">Y</i>Paste</span
+            ><span><i class="pad a">A</i>Select</span
+            ><span><i class="pad b">B</i>Back</span>
+          </div>
+        </div>
+      </figure>
+
+      <figure>
+        <figcaption>godot · sign-in (device code, TV and console)</figcaption>
+        <div class="shot" data-shot="sign-in">
+          <div class="dimmer"></div>
+          <div
+            class="glass panel center"
+            style="
+              width: 860px;
+              grid-template-columns: auto 1fr;
+              gap: 44px;
+              align-items: center;
+            "
+          >
+            <div
+              style="
+                padding: 14px;
+                background: #fff;
+                border-radius: 22px;
+                line-height: 0;
+              "
+              data-qr="5"
+              data-size="220"
+            ></div>
+            <div style="display: grid; gap: 20px">
+              <h1 class="gt" style="font-size: 36px">Sign in on your phone</h1>
+              <p class="gs">
+                Scan the code, or go to
+                <b style="color: var(--pk-text-strong)">key.plrs.im/tv</b> and
+                enter:
+              </p>
+              <span
+                class="mono"
+                style="
+                  font-size: 52px;
+                  font-weight: 700;
+                  letter-spacing: 0.12em;
+                  color: var(--pk-text-strong);
+                "
+                >WDJB-MJHT</span
+              >
+              <div
+                style="
+                  display: flex;
+                  gap: 12px;
+                  align-items: center;
+                  color: var(--pk-text-muted);
+                  font-size: 17px;
+                "
+                class="tnum"
+              >
+                <span class="k-ring" style="width: 22px; height: 22px"></span
+                >Waiting for you · 4:52
+              </div>
+            </div>
+          </div>
+          <div class="hints">
+            <span><i class="pad b">B</i>Cancel</span>
+          </div>
+        </div>
+      </figure>
+
+      <figure>
+        <figcaption>godot · device limit</figcaption>
+        <div class="shot" data-shot="device-limit">
+          <div class="dimmer"></div>
+          <div class="glass panel center" style="width: 720px; gap: 20px">
+            <h1 class="gt" style="font-size: 36px">
+              Your license is on 2 of 2 devices
+            </h1>
+            <div class="seats"><i></i><i></i></div>
+            <p class="gs" style="font-size: 18px">
+              To play on
+              <b style="color: var(--pk-text-strong)">Living room TV</b>, remove
+              one. You can add it back later.
+            </p>
+            <div style="display: grid; gap: 10px">
+              <div class="grow focus">
+                <span data-icon="gamepad" data-size="26"></span>
+                <div>Steam Deck<small>Last played 41 days ago</small></div>
+                <span class="rd"></span>
+              </div>
+              <div class="grow">
+                <span data-icon="monitor" data-size="26"></span>
+                <div>Gaming PC<small>Played yesterday</small></div>
+                <span class="rd"></span>
+              </div>
+            </div>
+            <div class="gb primary" style="justify-content: center">
+              Remove Steam Deck and play
+            </div>
+          </div>
+          <div class="hints">
+            <span><i class="pad a">A</i>Select</span
+            ><span><i class="pad b">B</i>Back</span>
+          </div>
+        </div>
+      </figure>
+
+      <figure>
+        <figcaption>godot · update prompt + download toast</figcaption>
+        <div class="shot" data-shot="update">
+          <div class="hud">LAP 2/3 · 01:12.4</div>
+          <div class="dimmer"></div>
+          <div class="glass toast">
+            <div
+              style="
+                display: flex;
+                gap: 12px;
+                align-items: center;
+                font-size: 15px;
+                color: var(--pk-text-strong);
+              "
+            >
+              <span data-icon="download" data-size="18"></span
+              ><b>Night Circuit</b
+              ><span
+                style="margin-left: auto; color: var(--pk-text-muted)"
+                class="tnum"
+                >42%</span
+              >
+            </div>
+            <div class="bar" style="height: 6px">
+              <i style="width: 42%"></i>
+            </div>
+          </div>
+          <div class="glass panel center" style="width: 640px; gap: 22px">
+            <div style="display: flex; gap: 18px; align-items: center">
+              <span
+                class="k-appicon"
+                data-art="driftkart"
+                data-size="72"
+                style="border-radius: 18px"
+              ></span>
+              <div>
+                <h1 class="gt" style="font-size: 32px">
+                  Drift Kart 1.8 is ready
+                </h1>
+                <span class="gs" style="font-size: 16px">You have 1.7.2</span>
+              </div>
+            </div>
+            <ul class="k-notes" style="font-size: 18px; gap: 10px">
+              <li>Harbor Run: a new night track</li>
+              <li>Ghost replays for every time trial</li>
+              <li>Smoother drifting on 120 Hz screens</li>
+            </ul>
+            <div
+              style="display: grid; grid-template-columns: 1fr 1.4fr; gap: 14px"
+            >
+              <div class="gb" style="justify-content: center">
+                After this race
+              </div>
+              <div class="gb primary focus" style="justify-content: center">
+                Restart now
+              </div>
+            </div>
+          </div>
+          <div class="hints">
+            <span><i class="pad a">A</i>Select</span
+            ><span><i class="pad b">B</i>Later</span>
+          </div>
+        </div>
+      </figure>
+
+      <figure>
+        <figcaption>
+          godot · settings (Account tab in the game’s menu)
+        </figcaption>
+        <div class="shot" data-shot="settings">
+          <div class="dimmer" style="background: rgb(0 0 0 / 0.55)"></div>
+          <div
+            class="glass panel"
+            style="
+              left: 120px;
+              right: 120px;
+              top: 48px;
+              bottom: 48px;
+              align-content: start;
+              gap: 22px;
+              padding: 32px 40px;
+            "
+          >
+            <div class="tabsg">
+              <i class="pad sh">L1</i><span class="t">Game</span
+              ><span class="t">Controls</span><span class="t">Audio</span
+              ><span class="t on">Account</span><i class="pad sh">R1</i>
+            </div>
+            <div>
+              <div class="srow" style="min-height: 86px">
+                <span
+                  class="k-appicon"
+                  data-art="driftkart"
+                  data-size="52"
+                  style="border-radius: 13px"
+                ></span>
+                <div class="lbl">
+                  Drift Kart Deluxe<small>Lifetime · mara@fennick.studio</small>
+                </div>
+              </div>
+              <div class="srow focus">
+                <div class="lbl">Devices<small>2 of 2 in use</small></div>
+                <div class="val">
+                  Steam Deck, Gaming PC<span
+                    data-icon="chevronRight"
+                    data-size="22"
+                  ></span>
+                </div>
+              </div>
+              <div class="srow">
+                <div class="lbl">Cloud saves</div>
+                <div class="val">
+                  <span data-icon="cloudCheck" data-size="22"></span>Synced 2
+                  min ago
+                </div>
+              </div>
+              <div class="srow">
+                <div class="lbl">Download new tracks automatically</div>
+                <span class="gsw"></span>
+              </div>
+              <div class="srow">
+                <div class="lbl">Update channel</div>
+                <div class="pick">
+                  <span data-icon="chevronLeft" data-size="22"></span
+                  >Stable<span data-icon="chevronRight" data-size="22"></span>
+                </div>
+              </div>
+              <div class="srow">
+                <div class="lbl">
+                  Online play<small>Set by Lanternworks</small>
+                </div>
+                <div class="val">
+                  <span data-icon="lock" data-size="18"></span
+                  ><span class="gsw locked"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="hints">
+            <span><i class="pad a">A</i>Open</span
+            ><span><i class="pad b">B</i>Back</span>
+          </div>
+        </div>
+      </figure>
+    </main>
+    <script>
+      const artTpl = document.getElementById("art");
+      document
+        .querySelectorAll(".shot")
+        .forEach((s) => s.prepend(artTpl.content.cloneNode(true)));
+    </script>
+  </body>
+</html>

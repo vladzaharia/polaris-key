@@ -1,0 +1,870 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>UI kits · Web (React and elements)</title>
+    <link rel="stylesheet" href="shared.css" />
+    <script src="shared.js"></script>
+    <style>
+      .shot {
+        width: 960px;
+        height: 640px;
+        position: relative;
+        overflow: hidden;
+        border-radius: 14px;
+        background: var(--pk-surface-page);
+        border: 1px solid var(--pk-border-subtle);
+        isolation: isolate;
+      }
+      .ambient {
+        position: absolute;
+        inset: -40% -10% auto;
+        height: 520px;
+        display: grid;
+        place-items: center;
+        filter: blur(90px) saturate(1.3);
+        opacity: 0.32;
+        z-index: -1;
+        pointer-events: none;
+      }
+      [data-theme="light"] .ambient {
+        opacity: 0.22;
+      }
+      .ambient svg {
+        width: 560px;
+        height: 360px;
+      }
+      .center {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 32px;
+      }
+      .stack {
+        display: grid;
+        gap: 24px;
+        width: min(400px, 100%);
+      }
+      .hero {
+        display: grid;
+        justify-items: center;
+      }
+      .hero .k-appicon {
+        justify-self: center;
+      }
+      .hero {
+        text-align: center;
+        gap: 14px;
+      }
+      .hero .k-h1 {
+        font-size: 30px;
+      }
+      .foot {
+        position: absolute;
+        bottom: 20px;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: center;
+        gap: 16px;
+        font-size: 13px;
+        color: var(--pk-text-subtle);
+      }
+      .card-pad {
+        padding: 32px;
+        display: grid;
+        gap: 22px;
+      }
+      .row-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+      }
+      .row-actions .grow {
+        flex: 1;
+      }
+      .codebox {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 18px;
+        border-radius: 16px;
+        background: var(--pk-surface-sunken);
+        border: 1px solid var(--pk-border-subtle);
+      }
+      .codebox .mono {
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        color: var(--pk-text-strong);
+      }
+      .waiting {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--pk-text-muted);
+        font-size: 14px;
+      }
+      .disclose {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        background: color-mix(in oklab, var(--pk-text-strong) 4%, transparent);
+        font-size: 14px;
+        color: var(--pk-text-default);
+      }
+      .disclose > span:last-child {
+        margin-left: auto;
+        color: var(--pk-text-subtle);
+      }
+      .gate-links .k-btn {
+        font-weight: 400;
+        color: var(--pk-text-muted);
+      }
+      .settings-main h3 {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .settings-main h3 .k-cue {
+        width: 22px;
+        height: 22px;
+        border-radius: 7px;
+      }
+
+      /* A faux host app: Tidewater Studio's own UI, which the kit sits on top of. */
+      .host {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        grid-template-columns: 232px 1fr;
+        grid-template-rows: 52px 1fr;
+        background: var(--pk-surface-page);
+      }
+      .host .bar {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 16px;
+        border-bottom: 1px solid var(--pk-border-subtle);
+        color: var(--pk-text-strong);
+        font-weight: 700;
+      }
+      .host .side {
+        border-right: 1px solid var(--pk-border-subtle);
+        padding: 14px 10px;
+        display: grid;
+        align-content: start;
+        gap: 2px;
+        font-size: 14px;
+      }
+      .host .side span {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 8px 10px;
+        border-radius: 8px;
+        color: var(--pk-text-muted);
+      }
+      .host .side span.on {
+        background: color-mix(in oklab, var(--pk-text-strong) 7%, transparent);
+        color: var(--pk-text-strong);
+      }
+      .host .side h6 {
+        margin: 14px 10px 6px;
+        font-size: 12px;
+        color: var(--pk-text-subtle);
+      }
+      .tracks {
+        padding: 18px;
+        display: grid;
+        gap: 10px;
+        align-content: start;
+      }
+      .track {
+        height: 58px;
+        border-radius: 10px;
+        background: color-mix(in oklab, var(--pk-text-strong) 4%, transparent);
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        padding: 0 14px;
+        overflow: hidden;
+      }
+      .track i {
+        width: 3px;
+        border-radius: 2px;
+        background: #33c3b0;
+        opacity: 0.8;
+      }
+      .track.b i {
+        background: #e7b65c;
+      }
+      .track.c i {
+        background: #8fa6ff;
+      }
+      .scrim {
+        position: absolute;
+        inset: 0;
+        background: var(--kit-scrim);
+        backdrop-filter: blur(6px) saturate(0.9);
+      }
+      .dialog {
+        width: 460px;
+      }
+      .settings-main {
+        padding: 22px 36px;
+        display: grid;
+        gap: 14px;
+        align-content: start;
+        overflow: hidden;
+      }
+      .settings-main h3 {
+        margin: 0 0 6px 4px;
+        font-size: 13px;
+        color: var(--pk-text-muted);
+        font-weight: 700;
+      }
+      .settings-main .k-row {
+        min-height: 50px;
+        padding: 8px 18px;
+      }
+      .toast {
+        position: absolute;
+        right: 20px;
+        bottom: 20px;
+        width: 340px;
+        padding: 14px 16px;
+        display: grid;
+        gap: 10px;
+        border-radius: 16px;
+        background: var(--pk-surface-overlay);
+        border: 1px solid var(--kit-hairline);
+        box-shadow:
+          inset 0 1px 0 var(--kit-highlight),
+          var(--pk-elevation-3);
+      }
+
+      .themes {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        padding: 22px;
+        height: 100%;
+        align-content: start;
+      }
+      .themes > div {
+        display: grid;
+        gap: 10px;
+        align-content: start;
+      }
+      .themes figcaption {
+        font-size: 12.5px;
+        color: var(--pk-text-muted);
+        line-height: 1.35;
+      }
+      .themes code {
+        font-family: var(--pk-font-mono);
+        font-size: 11.5px;
+        color: var(--pk-text-strong);
+      }
+      .mini {
+        padding: 20px;
+        display: grid;
+        gap: 14px;
+      }
+      .mini .k-h1 {
+        font-size: 19px;
+      }
+      .mini .k-field .mono {
+        font-size: 12px;
+      }
+      /* Preset: product accent */
+      .p-accent {
+        --kit-accent: #2fc7b3;
+        --kit-accent-fg: #2fc7b3;
+        --kit-accent-on: #04151a;
+        --kit-accent-subtle: #0d2a2e;
+        --pk-focus: #2fc7b3;
+      }
+      [data-theme="light"] .p-accent {
+        --kit-accent: #0b7d70;
+        --kit-accent-fg: #0b7d70;
+        --kit-accent-on: #ffffff;
+        --kit-accent-subtle: #dcf1ee;
+        --pk-focus: #0b7d70;
+      }
+      /* Preset: native (follows the host: system font, system colours, no Polaris type) */
+      .p-native {
+        font-family:
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+        --pk-font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+        --kit-accent: #0a84ff;
+        --kit-accent-on: #fff;
+        --kit-radius-card: 12px;
+        --kit-radius-control: 8px;
+        --pk-surface-raised: #1c1c1e;
+        --pk-surface-sunken: #2c2c2e;
+        --pk-border-subtle: #3a3a3c;
+        --pk-text-strong: #fff;
+        --pk-text-muted: #aeaeb2;
+        --pk-focus: #0a84ff;
+      }
+      [data-theme="light"] .p-native {
+        --pk-surface-raised: #fff;
+        --pk-surface-sunken: #f2f2f7;
+        --pk-border-subtle: #d1d1d6;
+        --pk-text-strong: #000;
+        --pk-text-muted: #6c6c70;
+        --kit-accent: #007aff;
+      }
+      .p-native .k-card {
+        box-shadow: 0 4px 16px rgb(0 0 0 / 0.18);
+      }
+      /* Preset: compact density, sharper radius */
+      .p-compact {
+        --kit-control-h: 2.25rem;
+        --kit-radius-card: 10px;
+        --kit-radius-control: 6px;
+      }
+      .p-compact .mini {
+        gap: 10px;
+        padding: 16px;
+      }
+      .p-compact .k-btn {
+        font-size: 13.5px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="board">
+      <!-- 1. Gate: first launch -->
+      <figure>
+        <figcaption>web · gate</figcaption>
+        <div class="shot" data-shot="gate">
+          <div class="ambient" data-art="tidewater" data-size="400"></div>
+          <div class="center">
+            <div class="stack">
+              <div class="hero">
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="80"
+                ></div>
+                <div class="k-eyebrow">Harbor Audio</div>
+                <h1 class="k-h1">Welcome to Tidewater Studio</h1>
+                <p class="k-lede">Sign in or add your license to start.</p>
+              </div>
+              <div style="display: grid; gap: 10px">
+                <button class="k-btn primary block">Sign in</button>
+                <button class="k-btn secondary block">
+                  <span data-icon="key" data-size="18"></span>Use a license key
+                </button>
+              </div>
+              <div class="k-divider">or</div>
+              <div
+                class="gate-links"
+                style="display: flex; justify-content: center; gap: 4px"
+              >
+                <button class="k-btn quiet sm">Start a 14-day trial</button>
+                <button class="k-btn quiet sm">Activate offline</button>
+              </div>
+            </div>
+          </div>
+          <div class="foot">
+            <span>Help</span><span>Privacy</span
+            ><span>Tidewater Studio 2.4.1</span>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 2. Activate with a key -->
+      <figure>
+        <figcaption>web · activate</figcaption>
+        <div class="shot" data-shot="activate">
+          <div class="ambient" data-art="tidewater" data-size="400"></div>
+          <div class="center">
+            <div class="k-card dialog card-pad">
+              <div style="display: flex; align-items: center; gap: 12px">
+                <span
+                  class="k-iconbtn"
+                  data-icon="arrowLeft"
+                  data-size="18"
+                ></span>
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="32"
+                  style="border-radius: 8px"
+                ></div>
+                <span style="color: var(--pk-text-muted); font-size: 14px"
+                  >Tidewater Studio</span
+                >
+              </div>
+              <h1 class="k-h1">Add your license</h1>
+              <div>
+                <label class="k-label">License key</label>
+                <div class="k-field focus">
+                  <span class="mono"
+                    >pkey_tidewater_7Q2MXK9RV4TC8HJN3WPLDA</span
+                  >
+                  <span
+                    style="margin-left: auto; color: var(--pk-text-muted)"
+                    data-icon="paste"
+                    data-size="18"
+                  ></span>
+                </div>
+                <div class="k-help ok">
+                  <span data-icon="badge" data-size="16"></span
+                  ><b>Tidewater Studio Pro</b
+                  ><span>· Lifetime · 3 devices</span>
+                </div>
+              </div>
+              <button class="k-btn primary block">Activate</button>
+              <p class="k-lede" style="font-size: 13.5px">
+                Your key is in the purchase email from Harbor Audio.
+              </p>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 3. Sign in: waiting for the browser -->
+      <figure>
+        <figcaption>web · sign-in (browser hand-off)</figcaption>
+        <div class="shot" data-shot="sign-in">
+          <div class="ambient" data-art="tidewater" data-size="400"></div>
+          <div class="center">
+            <div class="k-card dialog card-pad">
+              <div style="display: flex; align-items: center; gap: 12px">
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="32"
+                  style="border-radius: 8px"
+                ></div>
+                <span style="color: var(--pk-text-muted); font-size: 14px"
+                  >Tidewater Studio</span
+                >
+              </div>
+              <div style="display: grid; gap: 8px">
+                <h1 class="k-h1">Finish in your browser</h1>
+                <p class="k-lede">Check the code there matches this one.</p>
+              </div>
+              <div class="codebox">
+                <span class="mono">WDJB-MJHT</span>
+                <span class="k-iconbtn" data-icon="copy" data-size="18"></span>
+              </div>
+              <div class="waiting">
+                <span class="k-ring"></span>Waiting for you to sign in · 4:52
+              </div>
+              <div class="row-actions">
+                <button class="k-btn quiet">Cancel</button>
+                <span class="grow"></span>
+                <button class="k-btn secondary">
+                  <span data-icon="external" data-size="18"></span>Open browser
+                  again
+                </button>
+              </div>
+              <div class="disclose">
+                <span data-icon="qr" data-size="18"></span>Sign in on your phone
+                instead<span data-icon="chevronDown" data-size="18"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 4. Device limit -->
+      <figure>
+        <figcaption>web · device limit</figcaption>
+        <div class="shot" data-shot="device-limit">
+          <div class="center">
+            <div class="k-card card-pad" style="width: 520px; gap: 18px">
+              <div style="display: flex; align-items: center; gap: 12px">
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="32"
+                  style="border-radius: 8px"
+                ></div>
+                <span style="color: var(--pk-text-muted); font-size: 14px"
+                  >Tidewater Studio Pro</span
+                >
+              </div>
+              <div style="display: grid; gap: 12px">
+                <h1 class="k-h1">Your license is on 3 of 3 devices</h1>
+                <div
+                  class="k-meter"
+                  role="img"
+                  aria-label="3 of 3 devices in use"
+                >
+                  <i class="on"></i><i class="on"></i><i class="on"></i>
+                </div>
+                <p class="k-lede">
+                  To use it on
+                  <b style="color: var(--pk-text-strong)">Studio Mac mini</b>,
+                  remove one. You can add it back later.
+                </p>
+              </div>
+              <div style="display: grid; gap: 8px">
+                <div class="k-choice on">
+                  <span class="dev" data-icon="laptop" data-size="20"></span>
+                  <div>
+                    <b>Work laptop</b
+                    ><small>Windows 11 · last used 41 days ago</small>
+                  </div>
+                  <span class="k-pill neutral" style="margin-left: auto"
+                    >Least recent</span
+                  >
+                  <span class="k-radio" style="margin-left: 0"></span>
+                </div>
+                <div class="k-choice">
+                  <span class="dev" data-icon="tablet" data-size="20"></span>
+                  <div>
+                    <b>Mara’s iPad</b><small>iPadOS 26 · used yesterday</small>
+                  </div>
+                  <span class="k-radio"></span>
+                </div>
+                <div class="k-choice">
+                  <span class="dev" data-icon="laptop" data-size="20"></span>
+                  <div>
+                    <b>MacBook Pro</b><small>macOS 26 · used today</small>
+                  </div>
+                  <span class="k-radio"></span>
+                </div>
+              </div>
+              <div class="row-actions">
+                <button class="k-btn quiet">Cancel</button>
+                <button class="k-btn primary">
+                  Remove Work laptop and continue
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 5. Update prompt over the host app -->
+      <figure>
+        <figcaption>web · update prompt (downloading)</figcaption>
+        <div class="shot" data-shot="update">
+          <div class="host">
+            <div class="bar">
+              <span
+                class="k-appicon"
+                data-art="tidewater"
+                data-size="24"
+                style="border-radius: 6px"
+              ></span
+              >Tidewater Studio
+            </div>
+            <div class="side">
+              <span class="on"
+                ><span data-icon="play" data-size="16"></span>Session</span
+              >
+              <span><span data-icon="sliders" data-size="16"></span>Mixer</span>
+              <span><span data-icon="cloud" data-size="16"></span>Library</span>
+              <h6>Tracks</h6>
+              <span>Vocals</span><span>Guitar</span><span>Drums</span>
+            </div>
+            <div class="tracks" id="tracks"></div>
+          </div>
+          <div class="scrim"></div>
+          <div class="center">
+            <div
+              class="k-card dialog card-pad"
+              role="dialog"
+              aria-modal="true"
+              style="gap: 20px; width: 520px"
+            >
+              <div style="display: flex; gap: 16px; align-items: center">
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="56"
+                ></div>
+                <div style="display: grid; gap: 2px">
+                  <h2 class="k-h1" style="font-size: 22px">
+                    Tidewater Studio 2.5
+                  </h2>
+                  <span class="k-lede" style="font-size: 14px"
+                    >You have 2.4.1</span
+                  >
+                </div>
+                <span
+                  class="k-iconbtn"
+                  style="margin-left: auto; align-self: start"
+                  data-icon="x"
+                  data-size="18"
+                ></span>
+              </div>
+              <ul class="k-notes">
+                <li>Stem export in one click, with loudness matching</li>
+                <li>Track freeze now works with every plug-in</li>
+                <li>Fixes a crash when unplugging an audio interface</li>
+              </ul>
+              <div style="display: grid; gap: 8px">
+                <div class="k-progress"><i style="width: 62%"></i></div>
+                <div
+                  style="
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 13px;
+                    color: var(--pk-text-muted);
+                  "
+                  class="tnum"
+                >
+                  <span>Downloading · 38 of 61 MB</span><span>About 20 s</span>
+                </div>
+              </div>
+              <div class="row-actions">
+                <button class="k-btn quiet">Release notes</button>
+                <span class="grow"></span>
+                <button class="k-btn secondary">Hide</button>
+                <button class="k-btn primary">Restart when ready</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 6. Settings: account and license page inside the host's settings -->
+      <figure>
+        <figcaption>web · settings (account and license)</figcaption>
+        <div class="shot" data-shot="settings">
+          <div class="host">
+            <div class="bar">
+              <span
+                class="k-appicon"
+                data-art="tidewater"
+                data-size="24"
+                style="border-radius: 6px"
+              ></span
+              >Settings
+            </div>
+            <div class="side">
+              <span
+                ><span data-icon="sliders" data-size="16"></span>General</span
+              >
+              <span><span data-icon="play" data-size="16"></span>Audio</span>
+              <span
+                ><span data-icon="bell" data-size="16"></span
+                >Notifications</span
+              >
+              <span class="on"
+                ><span data-icon="user" data-size="16"></span>Account and
+                license</span
+              >
+            </div>
+            <div class="settings-main">
+              <h2 class="k-h1" style="font-size: 24px; margin-left: 4px">
+                Account and license
+              </h2>
+              <section>
+                <h3>
+                  <span
+                    class="k-cue license"
+                    data-icon="key"
+                    data-size="13"
+                  ></span
+                  >License
+                </h3>
+                <div class="k-group">
+                  <div class="k-row" style="min-height: 64px">
+                    <span
+                      class="k-appicon"
+                      data-art="tidewater"
+                      data-size="40"
+                      style="border-radius: 10px"
+                    ></span>
+                    <div class="t">
+                      <b>Tidewater Studio Pro</b
+                      ><small>Lifetime · mara@fennick.studio</small>
+                    </div>
+                    <div class="v">
+                      <button class="k-btn secondary sm">Manage</button>
+                    </div>
+                  </div>
+                  <div class="k-row">
+                    <div class="t">
+                      <b>Devices</b><small>2 of 3 in use</small>
+                    </div>
+                    <div class="v">
+                      This Mac, Mara’s iPad
+                      <span data-icon="chevronRight" data-size="16"></span>
+                    </div>
+                  </div>
+                  <div class="k-row">
+                    <div class="t"><b>Cloud Sync</b></div>
+                    <div class="v">
+                      <span data-icon="cloudCheck" data-size="18"></span>Synced
+                      2 min ago
+                    </div>
+                  </div>
+                </div>
+              </section>
+              <section>
+                <h3>
+                  <span
+                    class="k-cue update"
+                    data-icon="update"
+                    data-size="13"
+                  ></span
+                  >Updates
+                </h3>
+                <div class="k-group">
+                  <div class="k-row">
+                    <div class="t"><b>Install updates automatically</b></div>
+                    <div class="v"><span class="k-switch on"></span></div>
+                  </div>
+                  <div class="k-row">
+                    <div class="t"><b>Channel</b></div>
+                    <div class="v">
+                      <span class="k-seg"
+                        ><span class="on">Stable</span><span>Beta</span></span
+                      >
+                    </div>
+                  </div>
+                  <div class="k-row">
+                    <div class="t">
+                      <b>Version 2.4.1</b><small>Checked 2 min ago</small>
+                    </div>
+                    <div class="v">
+                      <button class="k-btn secondary sm">Check now</button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+              <section>
+                <h3>
+                  <span
+                    class="k-cue config"
+                    data-icon="sliders"
+                    data-size="13"
+                  ></span
+                  >From Harbor Audio
+                </h3>
+                <div class="k-group">
+                  <div class="k-row">
+                    <div class="t">
+                      <b>Share crash reports</b
+                      ><small>Set by your organization</small>
+                    </div>
+                    <div class="v">
+                      <span data-icon="lock" data-size="15"></span
+                      ><span class="k-switch on locked"></span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                "
+              >
+                <button class="k-btn quiet sm" style="padding-left: 4px">
+                  <span data-icon="logout" data-size="16"></span>Sign out
+                </button>
+                <span class="k-powered"
+                  ><span data-k data-size="14"></span>Powered by Polaris
+                  Key</span
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 7. Theming: one component, four themes -->
+      <figure>
+        <figcaption>web · theming (same component, four themes)</figcaption>
+        <div class="shot" data-shot="theming" style="height: 460px">
+          <div class="themes">
+            <div id="t1">
+              <figcaption>
+                <b>Default</b><br /><code>&lt;PolarisKeyProvider&gt;</code>
+              </figcaption>
+            </div>
+            <div id="t2" class="p-accent">
+              <figcaption>
+                <b>Product accent</b><br /><code
+                  >theme={{ accent: "#2fc7b3" }}</code
+                >
+              </figcaption>
+            </div>
+            <div id="t3" class="p-compact">
+              <figcaption>
+                <b>Compact, sharper</b><br /><code
+                  >density="compact" radius="sm"</code
+                >
+              </figcaption>
+            </div>
+            <div id="t4" class="p-native">
+              <figcaption>
+                <b>Native preset</b><br /><code>theme={nativeTheme}</code>
+              </figcaption>
+            </div>
+          </div>
+        </div>
+      </figure>
+    </main>
+    <template id="mini">
+      <div class="k-card mini">
+        <div style="display: flex; align-items: center; gap: 10px">
+          <div
+            class="k-appicon"
+            data-art="tidewater"
+            data-size="28"
+            style="border-radius: 7px"
+          ></div>
+          <span style="color: var(--pk-text-muted); font-size: 13px"
+            >Tidewater Studio</span
+          >
+        </div>
+        <h1 class="k-h1">Add your license</h1>
+        <div>
+          <label class="k-label" style="font-size: 13px">License key</label>
+          <div class="k-field focus">
+            <span class="mono">pkey_tidewater_7Q2M…</span>
+          </div>
+          <div class="k-help ok" style="font-size: 12px">
+            <span data-icon="badge" data-size="14"></span><b>Pro</b
+            ><span>· Lifetime</span>
+          </div>
+        </div>
+        <button class="k-btn primary block">Activate</button>
+        <button class="k-btn secondary block">Sign in instead</button>
+      </div>
+    </template>
+    <script>
+      const tracks = document.getElementById("tracks");
+      ["", "b", "c", "", "b"].forEach((cls, t) => {
+        let bars = "";
+        for (let i = 0; i < 150; i++) {
+          const h =
+            6 +
+            Math.abs(Math.sin(i * 0.37 + t) * Math.cos(i * 0.11 + t * 2)) * 40;
+          bars += `<i style="height:${h.toFixed(0)}px"></i>`;
+        }
+        tracks.insertAdjacentHTML(
+          "beforeend",
+          `<div class="track ${cls}">${bars}</div>`,
+        );
+      });
+      const tpl = document.getElementById("mini");
+      ["t1", "t2", "t3", "t4"].forEach((id) =>
+        document.getElementById(id).appendChild(tpl.content.cloneNode(true)),
+      );
+    </script>
+  </body>
+</html>

@@ -1,0 +1,885 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>UI kits · Android (Compose, Material 3 Expressive)</title>
+    <link rel="stylesheet" href="shared.css" />
+    <script src="shared.js"></script>
+    <style>
+      /* 412 × 915 dp. Material 3 Expressive structure, Polaris Key colour, type and accent. */
+      .shot {
+        width: 436px;
+        height: 939px;
+        padding: 12px;
+        border-radius: 52px;
+        background: #202124;
+        box-shadow:
+          0 0 0 1px #3c3d41 inset,
+          0 30px 60px -20px rgb(0 0 0 / 0.5);
+      }
+      [data-theme="light"] .shot {
+        background: #d5d8df;
+        box-shadow:
+          0 0 0 1px #c0c4cc inset,
+          0 30px 60px -20px rgb(6 9 18 / 0.25);
+      }
+      .screen {
+        position: relative;
+        width: 412px;
+        height: 915px;
+        border-radius: 40px;
+        overflow: hidden;
+        background: var(--pk-surface-page);
+        isolation: isolate;
+        font-size: 16px;
+        /* M3 surface-container roles mapped onto Polaris surfaces */
+        --c-low: var(--pk-surface-raised);
+        --c: color-mix(
+          in oklab,
+          var(--pk-surface-raised) 80%,
+          var(--pk-text-strong) 4%
+        );
+        --c-high: color-mix(
+          in oklab,
+          var(--pk-surface-overlay) 88%,
+          var(--pk-text-strong) 7%
+        );
+      }
+      [data-theme="light"] .screen {
+        --c-low: #ffffff;
+        --c: #eef0f8;
+        --c-high: #e6e9f3;
+      }
+      .status {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 28px 0;
+        font:
+          500 15px/1 system-ui,
+          sans-serif;
+        color: var(--pk-text-strong);
+        z-index: 20;
+      }
+      .cam {
+        position: absolute;
+        top: 14px;
+        left: 50%;
+        width: 22px;
+        height: 22px;
+        margin-left: -11px;
+        border-radius: 50%;
+        background: #000;
+        z-index: 21;
+      }
+      .navh {
+        position: absolute;
+        bottom: 10px;
+        left: 50%;
+        width: 108px;
+        height: 4px;
+        margin-left: -54px;
+        border-radius: 2px;
+        background: var(--pk-text-strong);
+        opacity: 0.8;
+        z-index: 30;
+      }
+      .ambient {
+        position: absolute;
+        top: -160px;
+        left: -160px;
+        width: 720px;
+        height: 620px;
+        filter: blur(80px) saturate(1.4);
+        opacity: 0.4;
+        z-index: -1;
+      }
+      [data-theme="light"] .ambient {
+        opacity: 0.25;
+      }
+      .ambient svg {
+        width: 100%;
+        height: 100%;
+      }
+      .display {
+        font: 700 40px/1.08 var(--pk-font-sans);
+        letter-spacing: -0.02em;
+        color: var(--pk-text-strong);
+        margin: 0;
+      }
+      .headline {
+        font: 700 30px/1.15 var(--pk-font-sans);
+        letter-spacing: -0.01em;
+        color: var(--pk-text-strong);
+        margin: 0;
+      }
+      .body {
+        color: var(--pk-text-muted);
+        margin: 0;
+        font-size: 16px;
+        line-height: 1.5;
+      }
+      .btn {
+        height: 56px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        font: 700 16px/1 var(--pk-font-sans);
+        padding: 0 24px;
+      }
+      .btn.filled {
+        background: var(--kit-accent);
+        color: var(--kit-accent-on);
+      }
+      .btn.tonal {
+        background: var(--kit-accent-subtle);
+        color: var(--pk-text-strong);
+      }
+      .btn.text {
+        color: var(--kit-accent-fg);
+        height: 44px;
+        padding: 0 12px;
+      }
+      .btn.sq {
+        border-radius: 18px;
+      } /* pressed / selected shape morph */
+      .appbar {
+        position: absolute;
+        top: 44px;
+        left: 0;
+        right: 0;
+        height: 64px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 0 6px;
+        color: var(--pk-text-strong);
+        z-index: 4;
+      }
+      .ib {
+        width: 48px;
+        height: 48px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+      }
+      .ib.tonal {
+        background: var(--c-high);
+      }
+      .tf {
+        position: relative;
+        height: 60px;
+        border: 2px solid var(--kit-accent);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        padding: 0 14px 0 16px;
+        gap: 10px;
+        color: var(--pk-text-strong);
+      }
+      .tf label {
+        position: absolute;
+        top: -10px;
+        left: 12px;
+        padding: 0 4px;
+        font-size: 12.5px;
+        font-weight: 700;
+        color: var(--kit-accent-fg);
+        background: var(--pk-surface-page);
+      }
+      .supp {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 8px 16px 0;
+        font-size: 14px;
+        color: var(--pk-success);
+      }
+      .seg {
+        display: grid;
+        gap: 3px;
+      }
+      .seg > .it {
+        background: var(--c);
+        border-radius: 6px;
+        min-height: 72px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 12px 18px;
+        color: var(--pk-text-strong);
+      }
+      .seg > .it:first-child {
+        border-radius: 26px 26px 6px 6px;
+      }
+      .seg > .it:last-child {
+        border-radius: 6px 6px 26px 26px;
+      }
+      .seg > .it:only-child {
+        border-radius: 26px;
+      }
+      .seg > .it.sel {
+        background: var(--kit-accent-subtle);
+        border-radius: 26px;
+      }
+      .it .t {
+        flex: 1;
+        min-width: 0;
+      }
+      .it .t small {
+        display: block;
+        color: var(--pk-text-muted);
+        font-size: 14px;
+      }
+      .it .lead {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: var(--c-high);
+        color: var(--pk-text-default);
+        flex: none;
+      }
+      .it.sel .lead {
+        background: var(--kit-accent);
+        color: var(--kit-accent-on);
+        border-radius: 14px;
+      }
+      .rad {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 2px solid var(--pk-text-muted);
+        flex: none;
+      }
+      .it.sel .rad {
+        border: 2px solid var(--kit-accent);
+        box-shadow: inset 0 0 0 4px var(--kit-accent-subtle);
+        background: var(--kit-accent);
+      }
+      .sw {
+        width: 52px;
+        height: 32px;
+        border-radius: 999px;
+        background: var(--kit-accent);
+        position: relative;
+        flex: none;
+      }
+      .sw::after {
+        content: "";
+        position: absolute;
+        right: 4px;
+        top: 4px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--kit-accent-on);
+      }
+      .sw .ic {
+        position: absolute;
+        right: 8px;
+        top: 8px;
+        z-index: 1;
+        color: var(--kit-accent);
+      }
+      .sw.locked {
+        opacity: 0.45;
+      }
+      .seatm {
+        display: flex;
+        gap: 4px;
+      }
+      .seatm i {
+        flex: 1;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--pk-danger);
+      }
+      .sheet {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 10;
+        border-radius: 32px 32px 0 0;
+        background: var(--c-low);
+        padding: 12px 24px 40px;
+      }
+      [data-theme="light"] .sheet {
+        background: #f3f4fa;
+      }
+      .handle {
+        width: 32px;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--pk-text-subtle);
+        margin: 4px auto 22px;
+      }
+      .scrimA {
+        position: absolute;
+        inset: 0;
+        background: rgb(0 0 0 / 0.4);
+        z-index: 5;
+      }
+      .group-h {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--kit-accent-fg);
+        margin: 22px 18px 10px;
+      }
+      .code {
+        background: var(--c);
+        border-radius: 28px;
+        padding: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .code .mono {
+        font-size: 30px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        color: var(--pk-text-strong);
+      }
+      .hostcard {
+        height: 96px;
+        border-radius: 24px;
+        background: var(--c);
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 0 18px;
+        color: var(--pk-text-strong);
+      }
+      .hostcard i {
+        width: 60px;
+        height: 60px;
+        border-radius: 16px;
+        background: #0b3a48;
+        flex: none;
+      }
+      .hostcard small {
+        display: block;
+        color: var(--pk-text-muted);
+        font-size: 14px;
+      }
+      .fab {
+        position: absolute;
+        right: 18px;
+        bottom: 40px;
+        width: 72px;
+        height: 72px;
+        border-radius: 22px;
+        background: var(--kit-accent-subtle);
+        color: var(--pk-text-strong);
+        display: grid;
+        place-items: center;
+      }
+    </style>
+  </head>
+  <body>
+    <template id="chrome">
+      <div class="status"><span>9:41</span><span>▾ ▴ ▮</span></div>
+      <div class="cam"></div>
+      <div class="navh"></div>
+    </template>
+    <main class="board">
+      <figure>
+        <figcaption>android · gate</figcaption>
+        <div class="shot" data-shot="gate">
+          <div class="screen">
+            <div class="ambient" data-art="tidewater" data-size="64"></div>
+            <div
+              style="
+                position: absolute;
+                top: 168px;
+                left: 28px;
+                right: 28px;
+                display: grid;
+                gap: 26px;
+              "
+            >
+              <div class="cookie" data-cookie="tidewater" data-size="136"></div>
+              <div style="display: grid; gap: 12px">
+                <h1 class="display">Tidewater Studio</h1>
+                <p class="body" style="font-size: 18px">
+                  Sign in or add your license to start recording.
+                </p>
+              </div>
+            </div>
+            <div
+              style="
+                position: absolute;
+                left: 24px;
+                right: 24px;
+                bottom: 46px;
+                display: grid;
+                gap: 10px;
+              "
+            >
+              <div class="btn filled">Sign in</div>
+              <div class="btn tonal">
+                <span data-icon="key" data-size="20"></span>Use a license key
+              </div>
+              <div
+                style="
+                  display: flex;
+                  justify-content: center;
+                  gap: 8px;
+                  margin-top: 6px;
+                "
+              >
+                <span class="btn text">Restore purchase</span
+                ><span class="btn text">Activate offline</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <figure>
+        <figcaption>android · activate</figcaption>
+        <div class="shot" data-shot="activate">
+          <div class="screen">
+            <div class="appbar">
+              <span class="ib" data-icon="arrowLeft" data-size="24"></span>
+            </div>
+            <div
+              style="
+                position: absolute;
+                top: 128px;
+                left: 24px;
+                right: 24px;
+                display: grid;
+                gap: 28px;
+              "
+            >
+              <div
+                style="
+                  display: flex;
+                  gap: 12px;
+                  align-items: center;
+                  color: var(--pk-text-muted);
+                "
+              >
+                <span
+                  class="cookie"
+                  data-cookie="tidewater"
+                  data-size="36"
+                ></span
+                >Tidewater Studio
+              </div>
+              <h1 class="headline">Add your license</h1>
+              <div>
+                <div class="tf">
+                  <label>License key</label>
+                  <span class="mono" style="font-size: 15px"
+                    >pkey_tidewater_7Q2MXK9RV4…</span
+                  >
+                  <span
+                    style="margin-left: auto; color: var(--pk-text-muted)"
+                    data-icon="paste"
+                    data-size="22"
+                  ></span>
+                </div>
+                <div class="supp">
+                  <span data-icon="badge" data-size="18"></span
+                  ><b>Tidewater Studio Pro</b><span>· Lifetime</span>
+                </div>
+              </div>
+              <p class="body" style="font-size: 15px">
+                Your key is in the purchase email from Harbor Audio.
+              </p>
+            </div>
+            <div
+              style="position: absolute; left: 24px; right: 24px; bottom: 46px"
+            >
+              <div class="btn filled">Activate</div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <figure>
+        <figcaption>android · sign-in (browser hand-off)</figcaption>
+        <div class="shot" data-shot="sign-in">
+          <div class="screen">
+            <div class="appbar">
+              <span class="ib" data-icon="x" data-size="24"></span>
+            </div>
+            <div
+              style="
+                position: absolute;
+                top: 140px;
+                left: 24px;
+                right: 24px;
+                display: grid;
+                gap: 26px;
+              "
+            >
+              <div class="loader" aria-label="Waiting"></div>
+              <div style="display: grid; gap: 10px">
+                <h1 class="headline">Finish in your browser</h1>
+                <p class="body">
+                  Check the code there matches this one. This screen moves on by
+                  itself.
+                </p>
+              </div>
+              <div class="code">
+                <span class="mono">WDJB-MJHT</span
+                ><span class="ib tonal" data-icon="copy" data-size="20"></span>
+              </div>
+              <div
+                style="color: var(--pk-text-muted); font-size: 14px"
+                class="tnum"
+              >
+                Code works for 4:52
+              </div>
+            </div>
+            <div
+              style="
+                position: absolute;
+                left: 24px;
+                right: 24px;
+                bottom: 46px;
+                display: grid;
+                gap: 10px;
+              "
+            >
+              <div class="btn tonal">
+                <span data-icon="external" data-size="20"></span>Open browser
+                again
+              </div>
+              <div class="btn text" style="justify-self: center">
+                Sign in on another device
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <figure>
+        <figcaption>android · device limit</figcaption>
+        <div class="shot" data-shot="device-limit">
+          <div class="screen">
+            <div class="appbar">
+              <span class="ib" data-icon="x" data-size="24"></span>
+            </div>
+            <div
+              style="position: absolute; top: 120px; left: 16px; right: 16px"
+            >
+              <div style="margin: 0 8px; display: grid; gap: 14px">
+                <div
+                  style="
+                    display: flex;
+                    gap: 12px;
+                    align-items: center;
+                    color: var(--pk-text-muted);
+                  "
+                >
+                  <span
+                    class="cookie"
+                    data-cookie="tidewater"
+                    data-size="32"
+                  ></span
+                  >Tidewater Studio Pro
+                </div>
+                <h1 class="headline">Your license is on 3 of 3 devices</h1>
+                <div class="seatm"><i></i><i></i><i></i></div>
+                <p class="body">
+                  To use it on this phone, remove one. You can add it back
+                  later.
+                </p>
+              </div>
+              <div class="seg" style="margin-top: 22px">
+                <div class="it sel">
+                  <span class="lead" data-icon="laptop" data-size="22"></span>
+                  <div class="t">
+                    Work laptop<small>Windows 11 · 41 days ago</small>
+                  </div>
+                  <span class="rad"></span>
+                </div>
+                <div class="it">
+                  <span class="lead" data-icon="tablet" data-size="22"></span>
+                  <div class="t">
+                    Mara’s tablet<small>Android 16 · yesterday</small>
+                  </div>
+                  <span class="rad"></span>
+                </div>
+                <div class="it">
+                  <span class="lead" data-icon="laptop" data-size="22"></span>
+                  <div class="t">
+                    MacBook Pro<small>macOS 26 · today</small>
+                  </div>
+                  <span class="rad"></span>
+                </div>
+              </div>
+            </div>
+            <div
+              style="
+                position: absolute;
+                left: 24px;
+                right: 24px;
+                bottom: 46px;
+                display: grid;
+                gap: 6px;
+              "
+            >
+              <div class="btn filled">Remove Work laptop</div>
+              <div class="btn text" style="justify-self: center">Cancel</div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <figure>
+        <figcaption>android · update prompt (downloading)</figcaption>
+        <div class="shot" data-shot="update">
+          <div class="screen">
+            <div class="appbar" style="justify-content: space-between">
+              <span class="ib" data-icon="sliders" data-size="22"></span
+              ><span class="ib" data-icon="search" data-size="22"></span>
+            </div>
+            <h1
+              class="display"
+              style="
+                position: absolute;
+                top: 120px;
+                left: 24px;
+                font-size: 34px;
+              "
+            >
+              Sessions
+            </h1>
+            <div
+              style="
+                position: absolute;
+                top: 186px;
+                left: 16px;
+                right: 16px;
+                display: grid;
+                gap: 10px;
+              "
+              id="hostlist"
+            ></div>
+            <div class="scrimA"></div>
+            <div class="sheet">
+              <div class="handle"></div>
+              <div style="display: flex; gap: 16px; align-items: center">
+                <span
+                  class="cookie"
+                  data-cookie="tidewater"
+                  data-size="64"
+                ></span>
+                <div>
+                  <h2 class="headline" style="font-size: 26px">
+                    Tidewater 2.5
+                  </h2>
+                  <span style="color: var(--pk-text-muted); font-size: 15px"
+                    >You have 2.4.1</span
+                  >
+                </div>
+              </div>
+              <ul class="k-notes" style="margin: 22px 0; font-size: 16px">
+                <li>Stem export in one tap, with loudness matching</li>
+                <li>Track freeze works with every plug-in</li>
+                <li>Fixes a crash when unplugging an interface</li>
+              </ul>
+              <div class="wavy" data-p="0.62"></div>
+              <div
+                style="
+                  display: flex;
+                  justify-content: space-between;
+                  font-size: 14px;
+                  color: var(--pk-text-muted);
+                  margin: 8px 0 22px;
+                "
+                class="tnum"
+              >
+                <span>38 of 61 MB</span><span>About 20 s</span>
+              </div>
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: 1fr 1.6fr;
+                  gap: 6px;
+                "
+              >
+                <div
+                  class="btn tonal sq"
+                  style="border-radius: 999px 10px 10px 999px"
+                >
+                  Hide
+                </div>
+                <div
+                  class="btn filled"
+                  style="border-radius: 10px 999px 999px 10px"
+                >
+                  Restart when ready
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <figure>
+        <figcaption>android · settings (account and license)</figcaption>
+        <div class="shot" data-shot="settings">
+          <div class="screen">
+            <div class="appbar">
+              <span class="ib" data-icon="arrowLeft" data-size="24"></span>
+            </div>
+            <div
+              style="position: absolute; top: 112px; left: 16px; right: 16px"
+            >
+              <h1 class="display" style="font-size: 36px; margin: 0 8px 20px">
+                Account
+              </h1>
+              <div class="seg">
+                <div class="it" style="min-height: 92px">
+                  <span
+                    class="cookie"
+                    data-cookie="tidewater"
+                    data-size="56"
+                  ></span>
+                  <div class="t">
+                    <b>Tidewater Studio Pro</b
+                    ><small>Lifetime · mara@fennick.studio</small>
+                  </div>
+                </div>
+                <div class="it">
+                  <span class="lead" data-icon="phone" data-size="20"></span>
+                  <div class="t">Devices<small>2 of 3 in use</small></div>
+                  <span data-icon="chevronRight" data-size="20"></span>
+                </div>
+                <div class="it">
+                  <span
+                    class="lead"
+                    data-icon="cloudCheck"
+                    data-size="20"
+                  ></span>
+                  <div class="t">Cloud Sync<small>Synced 2 min ago</small></div>
+                  <span data-icon="chevronRight" data-size="20"></span>
+                </div>
+              </div>
+              <div class="group-h">Updates</div>
+              <div class="seg">
+                <div class="it">
+                  <span class="lead" data-icon="download" data-size="20"></span>
+                  <div class="t">Download content on Wi-Fi only</div>
+                  <span class="sw"
+                    ><span data-icon="check" data-size="16"></span
+                  ></span>
+                </div>
+              </div>
+              <div class="group-h">From Harbor Audio</div>
+              <div class="seg">
+                <div class="it">
+                  <span class="lead" data-icon="lock" data-size="20"></span>
+                  <div class="t">
+                    Share crash reports<small>Set by your organization</small>
+                  </div>
+                  <span class="sw locked"
+                    ><span data-icon="check" data-size="16"></span
+                  ></span>
+                </div>
+              </div>
+              <div
+                style="
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  margin: 18px 4px 0;
+                "
+              >
+                <span class="btn text" style="padding-left: 4px"
+                  ><span data-icon="logout" data-size="20"></span>Sign out</span
+                >
+                <span class="k-powered"
+                  ><span data-k data-size="13"></span>Powered by Polaris
+                  Key</span
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+    </main>
+    <script>
+      // M3 Expressive "Cookie 9" shape clipping the product icon.
+      function cookiePath(s, n = 9, amp = 0.055) {
+        const r = s / 2;
+        let d = "";
+        for (let i = 0; i <= 360; i += 2) {
+          const t = (i * Math.PI) / 180;
+          const rr = r * (1 - amp + amp * Math.cos(n * t));
+          d +=
+            (i ? "L" : "M") +
+            (r + rr * Math.cos(t)).toFixed(2) +
+            " " +
+            (r + rr * Math.sin(t)).toFixed(2);
+        }
+        return d + "Z";
+      }
+      let cid = 0;
+      document.querySelectorAll("[data-cookie]").forEach((el) => {
+        const s = +el.dataset.size;
+        const id = "ck" + cid++;
+        el.style.display = "inline-block";
+        el.style.flex = "none";
+        el.innerHTML = `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}"><clipPath id="${id}"><path d="${cookiePath(s)}"/></clipPath><g clip-path="url(#${id})"><foreignObject width="${s}" height="${s}">${art(el.dataset.cookie, s)}</foreignObject></g></svg>`;
+      });
+      // M3 Expressive contained LoadingIndicator (one frame of the morph).
+      document.querySelectorAll(".loader").forEach((el) => {
+        const s = 64;
+        let d = "";
+        for (let i = 0; i <= 360; i += 3) {
+          const t = (i * Math.PI) / 180;
+          const rr = 16 * (0.86 + 0.14 * Math.cos(7 * t));
+          d +=
+            (i ? "L" : "M") +
+            (32 + rr * Math.cos(t)).toFixed(2) +
+            " " +
+            (32 + rr * Math.sin(t)).toFixed(2);
+        }
+        el.innerHTML = `<svg width="${s}" height="${s}"><circle cx="32" cy="32" r="32" fill="var(--kit-accent-subtle)"/><path d="${d}Z" fill="var(--kit-accent)"/></svg>`;
+      });
+      // M3 Expressive wavy linear progress.
+      document.querySelectorAll(".wavy").forEach((el) => {
+        const w = 364,
+          p = +el.dataset.p,
+          end = w * p;
+        let d = "M2 8";
+        for (let x = 2; x <= end; x += 2)
+          d += ` L${x} ${(8 + 3 * Math.sin(x / 6)).toFixed(2)}`;
+        el.innerHTML = `<svg width="${w}" height="16"><path d="${d}" fill="none" stroke="var(--kit-accent)" stroke-width="4" stroke-linecap="round"/><line x1="${end + 8}" y1="8" x2="${w - 2}" y2="8" stroke="var(--kit-accent-subtle)" stroke-width="4" stroke-linecap="round"/><circle cx="${w - 2}" cy="8" r="2" fill="var(--kit-accent)"/></svg>`;
+      });
+      const hl = document.getElementById("hostlist");
+      [
+        "Harbor demo",
+        "Night swim",
+        "Field notes",
+        "Lighthouse",
+        "Low tide",
+      ].forEach((t) =>
+        hl.insertAdjacentHTML(
+          "beforeend",
+          `<div class="hostcard"><i></i><div><b>${t}</b><small>Edited today</small></div></div>`,
+        ),
+      );
+      const chrome = document.getElementById("chrome");
+      document
+        .querySelectorAll(".screen")
+        .forEach((s) => s.appendChild(chrome.content.cloneNode(true)));
+    </script>
+  </body>
+</html>
