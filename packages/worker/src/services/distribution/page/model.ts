@@ -260,6 +260,7 @@ export function memoHooks(h: ServiceHooks): ServiceHooks {
     releaseCatalog: () => c,
     delivery: () => d,
     outletCapabilities: (id) => h.outletCapabilities(id),
+    licenseProvenance: () => h.licenseProvenance(),
   };
 }
 

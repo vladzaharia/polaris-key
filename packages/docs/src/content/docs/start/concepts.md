@@ -165,6 +165,8 @@ service needs another's state, it asks **Core**, which asks the service that pro
 - **`delivery`** (provided by Distribution) — transports, availability and, later, rollout and
   delivery URLs per outlet.
 - **`outletCapabilities`** (provided by Distribution) — what one outlet permits.
+- **`licenseProvenance`** (provided by License) — where each licence came from: the store
+  purchases granted onto it, or the developer, sign-in or free auto-issue that minted it.
 
 A hook answers `null` while the service that provides it is off for the product — its code never
 runs — and the consumer degrades explicitly. A hook never writes: a write across services would
