@@ -168,6 +168,54 @@ export const DEEP_LINKS: readonly DeepLinkTemplate[] = [
     params: ["developerId", "appId"],
     verify: "operator-assertion",
   },
+  // ── Microsoft Store (A-18f; Partner Center documents none of these shapes, S-15 §6.5 [I]) ──
+  {
+    // Reserve the name: the app record exists only once a person has done it (S-15 §4.2).
+    id: "microsoft-store.new-app",
+    store: "microsoft-store",
+    template: "https://partner.microsoft.com/dashboard/apps-and-games/overview",
+    params: [],
+    verify: { read: "/v1.0/my/applications", ...POLL },
+  },
+  {
+    // The first submission, with the IARC age-ratings questionnaire, is Partner Center only.
+    // Done when the app has a published submission (`lastPublishedApplicationSubmission`).
+    id: "microsoft-store.first-submission",
+    store: "microsoft-store",
+    template:
+      "https://partner.microsoft.com/dashboard/products/{productId}/overview",
+    params: ["productId"],
+    verify: { read: "/v1.0/my/applications/{productId}", ...POLL },
+  },
+  {
+    id: "microsoft-store.age-ratings",
+    store: "microsoft-store",
+    template:
+      "https://partner.microsoft.com/dashboard/products/{productId}/ageratings",
+    params: ["productId"],
+    verify: "operator-assertion",
+  },
+  {
+    // MSIX Properties: privacy policy, website and support URLs (the classic fields are
+    // obsolete and ignored, S-15 §4.2).
+    id: "microsoft-store.properties",
+    store: "microsoft-store",
+    template:
+      "https://partner.microsoft.com/dashboard/products/{productId}/properties",
+    params: ["productId"],
+    verify: "operator-assertion",
+  },
+  {
+    // The post-UI-edit case: a submission the API created and a person then edited in Partner
+    // Center can no longer be changed or committed by the API, only deleted, and deleting is
+    // denied. This link is all the flow offers afterwards.
+    id: "microsoft-store.submission",
+    store: "microsoft-store",
+    template:
+      "https://partner.microsoft.com/dashboard/products/{productId}/submissions/{submissionId}",
+    params: ["productId", "submissionId"],
+    verify: "operator-assertion",
+  },
 ];
 
 /** A row by id, or null. */
