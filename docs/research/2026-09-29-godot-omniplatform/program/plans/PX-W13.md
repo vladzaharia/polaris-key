@@ -42,6 +42,23 @@ Q3 is accepted, so PX-W13 ships the §5 SDK and UI-kit label work itself.
 | Corpus       | **One new unsigned file**, `conformance/corpus/v2/device-label.json` (`deviceLabelVersion: 1`), with its Swift and Godot mirrors. `cases.json` and the other matrices are unchanged                                                                                                                                                                                 |
 | Line refs    | `main` at `248fef64`. Re-locate by quoted text after a rebase                                                                                                                                                                                                                                                                                                       |
 
+## Owner decision (2026-10-05): licence choice at sign-in
+
+The owner decided on 2026-10-05 that sign-in asks the person which licence to bind, with an inline
+**Replace a device**. The full text and the card API are in [`plans/I-04.md`](I-04.md), "Owner
+decision (2026-10-05): licence choice at sign-in", §C. **Effect on this plan:**
+
+- **§2.3, the licence item.** `items[kind=license].anchor` is the licence the person chose,
+  passed as `GET …/consent?choice=<licenseId|keep|create>`. It is no longer Core's dry-run anchor.
+  Without `choice`, `anchor` is `null` and the card shows the chooser first. `more` and its
+  `legacy`/`combined` rule are unchanged.
+- **§2.2, the route family.** The family gains `GET /api/signin/requests/:handle/licenses` and
+  `…/licenses/:licenseId/devices`. They use the same binder cookie, account session and
+  `no-store` rules. I-08 implements them, because they need I-09's ranking and the portal's
+  device-removal operation. Q5 holds: a new choice of licence does not re-ask consent.
+- **No change** to the device label, the handle, `deviceName`, the corpus file or the manifest
+  rules.
+
 ## 0. Owner decisions encoded (binding)
 
 - **PORTAL.md (approved 2026-10-04).** App branding is data only, inside a fixed frame. Names are

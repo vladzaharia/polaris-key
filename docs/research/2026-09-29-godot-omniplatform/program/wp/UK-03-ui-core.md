@@ -12,6 +12,14 @@
 | Human input | none                                                                                                                                                                                                                      |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                 |
 
+## Owner decision (2026-10-05): licence choice at sign-in
+
+The owner decided on 2026-10-05 that every sign-in that binds a device asks the person which licence to use (**Choose a licence for this device**, with an inline **Replace a device** on full licences), never silently mints a second auto-issued licence, and treats the rank-first rule as the preselected default only. The verbatim decision, the card API and the delegated decisions are in [`plans/I-04.md`](../plans/I-04.md), "Owner decision (2026-10-05): licence choice at sign-in"; that section wins over this brief where they differ. **The device wire does not change** (`PROTOCOL_VERSION` 4, no corpus change).
+
+For this package: **the DeviceLimit view model** names its action `replaceDevice`, and its
+default target in layer 1 is `manageUrl`. There is no in-app device list until I-13's `choose`
+adds a native **LicenseChoice** view model.
+
 ## Goal
 
 Every JS kit renders from one state machine per component: `@polaris-key/ui-core` passes every UI fixture, resolves the theme and product identity, and has no DOM or framework dependency.
