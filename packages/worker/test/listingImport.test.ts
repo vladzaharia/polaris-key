@@ -645,6 +645,56 @@ describe("the Godot project upload", () => {
     ]);
   });
 
+  it("takes exactly what the CLI uploads for its fixture project (the CLI suite pins the same file)", async () => {
+    const upload = JSON.parse(
+      readFileSync(
+        join(
+          HERE,
+          "..",
+          "..",
+          "cli",
+          "test",
+          "fixtures",
+          "godot-listing.upload.json",
+        ),
+        "utf8",
+      ),
+    );
+    const w = await world({ play: false, ms: false });
+    const { preview, applied } = await importApplied(w, {
+      source: "godot",
+      godot: upload,
+    });
+    expect(preview.sources).toEqual([
+      { source: "godot", ref: "godot-listing", ok: true },
+    ]);
+    expect(preview.changes.map((c: Loose) => [c.field, c.proposed])).toEqual([
+      ["name", "djdl"],
+      ["developerName", "Acme Audio"],
+      ["category", "music"],
+      ["copyright", "2026 Acme Audio Ltd"],
+      ["locales.de.name", "djdl Profi"],
+      ["locales.pt-BR.name", "djdl Pro"],
+    ]);
+    expect(preview.assets.map((a: Loose) => a.slot)).toEqual([
+      "icon-master",
+      "icon-adaptive-fg",
+      "icon-adaptive-mono",
+    ]);
+    expect(applied.listing.provenance).toEqual({
+      name: "godot",
+      developerName: "godot",
+      category: "godot",
+      copyright: "godot",
+    });
+    expect(
+      applied.locales.map((l: Loose) => [l.locale, l.name, l.source]),
+    ).toEqual([
+      ["de", "djdl Profi", "import"],
+      ["pt-BR", "djdl Pro", "import"],
+    ]);
+  });
+
   it("refuses a malformed upload, naming the field (it is operator-supplied data)", async () => {
     const w = await world({ play: false, ms: false, asc: false });
     const bad = await call(w, {

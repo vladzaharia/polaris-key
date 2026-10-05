@@ -1,0 +1,26 @@
+; Engine configuration file.
+; A fixture for pkey listing import --godot (A-18c): no Godot editor reads it.
+
+config_version=5
+
+[application]
+
+config/name="djdl"
+config/name_localized={
+"de": "djdl Profi",
+"pt_BR": "djdl Pro"
+}
+config/description="A tooltip in the Project Manager: never a store description."
+config/version="1.2.0"
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.4", "Forward Plus")
+config/icon="res://icon.png"
+
+[display]
+
+window/size/viewport_width=1280
+window/stretch/aspect="expand"
+
+[rendering]
+
+environment/defaults/default_clear_color=Color(0.1, 0.1, 0.12, 1)
