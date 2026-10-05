@@ -69,11 +69,11 @@ The code is the fact; these refine the notes above.
 
 ## Acceptance criteria
 
-- [ ] The `safeFetch` guard table matches `pull.mjs --self-test` case for case (test).
-- [ ] An ingest of a PNG writes the row, the ref and an object whose `httpMetadata.contentType` is `image/png`. An SVG, an HTML file or an over-cap stream is refused with its reason code (tests).
-- [ ] A redirect to a denied host is refused at the hop (test).
-- [ ] THREAT-MODEL gains the outbound-fetcher row from S-20 §6.12.
-- [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+- [x] The `safeFetch` guard table matches `pull.mjs --self-test` case for case (test).
+- [x] An ingest of a PNG writes the row, the ref and an object whose `httpMetadata.contentType` is `image/png`. An SVG, an HTML file or an over-cap stream is refused with its reason code (tests).
+- [x] A redirect to a denied host is refused at the hop (test).
+- [x] THREAT-MODEL gains the outbound-fetcher row from S-20 §6.12.
+- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify
 
