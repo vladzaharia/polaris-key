@@ -51,8 +51,10 @@ docker run --rm --init --ipc=host --platform linux/amd64 \
     pnpm install --frozen-lockfile --filter=@polaris-key/admin... --filter=@polaris-key/worker... >/dev/null
     pnpm exec turbo run build --filter=@polaris-key/admin... --output-logs=errors-only
     cd packages/admin
+    # Update re-records every state it visits over the committed set, so a state that fails
+    # before its screenshot (a timeout under emulation) keeps its committed baseline rather
+    # than losing it. A baseline for a state that no longer exists is removed by hand.
     if [ "$MODE" = update ]; then
-      rm -f /work/packages/admin/e2e/__baselines__/portal/linux/*.png
       export PK_UPDATE_BASELINES=1
     fi
     status=0
