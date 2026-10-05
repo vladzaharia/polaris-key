@@ -1346,7 +1346,7 @@ export interface CapabilityRow {
 /** This SDK's capability table, generated from its parity manifest (tools/capabilities.ts): per feature, the manifest's status, the owning service and every declared (runtime, reason) N/A. `supports()` reads it (P1b-10, PARITY §2.2). */
 export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "core.verify": { status: "implemented", service: "core", na: [] },
-  "core.cache": { status: "planned", service: "core", na: [] },
+  "core.cache": { status: "implemented", service: "core", na: [] },
   "core.bundle": { status: "implemented", service: "core", na: [] },
   "core.discover": { status: "implemented", service: "core", na: [] },
   "core.sync": { status: "implemented", service: "core", na: [] },
@@ -1355,33 +1355,24 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "core.errors": { status: "implemented", service: "core", na: [] },
   "core.caps": { status: "implemented", service: "core", na: [] },
   "core.store": {
-    status: "na",
+    status: "implemented",
     service: "core",
-    na: [
-      { runtime: "web", reason: "runtime" },
-      { runtime: "desktop-bridge", reason: "runtime" },
-    ],
+    na: [{ runtime: "desktop-bridge", reason: "runtime" }],
   },
   "license.gate": { status: "implemented", service: "license", na: [] },
   "license.activate": { status: "implemented", service: "license", na: [] },
   "license.enroll": {
-    status: "na",
+    status: "implemented",
     service: "license",
-    na: [
-      { runtime: "web", reason: "runtime" },
-      { runtime: "desktop-bridge", reason: "runtime" },
-    ],
+    na: [{ runtime: "desktop-bridge", reason: "runtime" }],
   },
   "license.deactivate": { status: "implemented", service: "license", na: [] },
   "license.entitlements": { status: "implemented", service: "license", na: [] },
   "license.channels": { status: "implemented", service: "license", na: [] },
   "license.reregister": {
-    status: "na",
+    status: "implemented",
     service: "license",
-    na: [
-      { runtime: "web", reason: "runtime" },
-      { runtime: "desktop-bridge", reason: "runtime" },
-    ],
+    na: [{ runtime: "desktop-bridge", reason: "runtime" }],
   },
   "config.resolve": { status: "implemented", service: "config", na: [] },
   "config.list": { status: "implemented", service: "config", na: [] },
@@ -1394,7 +1385,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     ],
   },
   "config.schema": { status: "implemented", service: "config", na: [] },
-  "config.mint": { status: "planned", service: "config", na: [] },
+  "config.mint": { status: "implemented", service: "config", na: [] },
   "config.mirror": { status: "implemented", service: "config", na: [] },
   "devices.fingerprint": {
     status: "na",
@@ -1413,23 +1404,12 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     ],
   },
   "devices.register": {
-    status: "na",
-    service: "core",
-    na: [
-      { runtime: "web", reason: "runtime" },
-      { runtime: "desktop-bridge", reason: "runtime" },
-    ],
-  },
-  "devices.manage": {
     status: "implemented",
     service: "core",
-    na: [{ runtime: "web", reason: "runtime" }],
+    na: [{ runtime: "desktop-bridge", reason: "runtime" }],
   },
-  "devices.report": {
-    status: "implemented",
-    service: "core",
-    na: [{ runtime: "web", reason: "runtime" }],
-  },
+  "devices.manage": { status: "implemented", service: "core", na: [] },
+  "devices.report": { status: "implemented", service: "core", na: [] },
   "devices.attest": {
     status: "na",
     service: "core",
@@ -1439,11 +1419,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     ],
   },
   "identity.oidc": { status: "implemented", service: "identity", na: [] },
-  "identity.devicecode": {
-    status: "implemented",
-    service: "identity",
-    na: [{ runtime: "web", reason: "runtime" }],
-  },
+  "identity.devicecode": { status: "implemented", service: "identity", na: [] },
   "release.changelog": { status: "implemented", service: "release", na: [] },
   "release.download": { status: "implemented", service: "release", na: [] },
   "release.record": { status: "implemented", service: "release", na: [] },
@@ -1538,4 +1514,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "488e6e553a9be4739daff354dac2079fbb46ca7d651d867490f1f19d28287f16";
+  "e422904c605bdb53aee45e2abad2e83417cee9f760a31420a9823d93c06fb2bd";

@@ -50,6 +50,7 @@ describe("report()", () => {
     let requests = 0;
     const inner = makeFakeFetch(null);
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: (async (input: RequestInfo | URL, init?: RequestInit) => {
         if (String(input).includes("/devices/report")) requests += 1;

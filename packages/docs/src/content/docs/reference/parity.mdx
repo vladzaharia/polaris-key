@@ -20,7 +20,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
 | Node | `node` | 58 | 6 | 0 | 4 |
-| React | `web`, `desktop-bridge` | 47 | 15 | 0 | 6 |
+| React | `web`, `desktop-bridge` | 53 | 11 | 0 | 4 |
 | Python | `python` | 58 | 6 | 0 | 4 |
 | Swift | `macos`, `ios` | 60 | 5 | 0 | 3 |
 | Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 63 | 1 | 0 | 4 |
@@ -31,7 +31,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Kotlin | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `core.verify` | JWS verify, trust manifest (pinning, rotation), clock floor | `cases.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `core.cache` | Verified cache; construct and load offline | transcripts + unit | ✓ | planned (unowned) | ✓ | ✓ | ✓ | ✓ | — |
+| `core.cache` | Verified cache; construct and load offline | transcripts + unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.bundle` | Offline bundle import | `cases.json` `bundleCases` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.discover` | Discovery and capabilities, fail-closed | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.sync` | Sync, ETag/304, backoff, refresh loop, change events | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
@@ -39,7 +39,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `core.headers` | Canonical platform, arch and SDK header values | `headers.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.errors` | Shared error codes | `pnpm gen:constants -- --check` (P1b-02) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.caps` | supports() and capability telemetry | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `core.store` | Secure token store, surfaced failure, no silent downgrade | unit | ✓; N/A (node: dependency) | N/A (web, desktop-bridge: runtime) | ✓; N/A (python: dependency) | ✓ | planned (unowned) | ✓; N/A (jvm: dependency) | web, desktop-bridge: runtime; node, python, jvm: dependency |
+| `core.store` | Secure token store, surfaced failure, no silent downgrade | unit | ✓; N/A (node: dependency) | ✓; N/A (desktop-bridge: runtime) | ✓; N/A (python: dependency) | ✓ | planned (unowned) | ✓; N/A (jvm: dependency) | web, desktop-bridge: runtime; node, python, jvm: dependency |
 
 ## License
 
@@ -47,11 +47,11 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `license.gate` | Gate evaluation, every status | `gate-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `license.activate` | Activate with a key (+ fingerprint) | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `license.enroll` | Keyless enrolment | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓; N/A (web: runtime) | ✓ | web, desktop-bridge: runtime |
+| `license.enroll` | Keyless enrolment | transcripts | ✓ | ✓; N/A (desktop-bridge: runtime) | ✓ | ✓ | ✓; N/A (web: runtime) | ✓ | web, desktop-bridge: runtime |
 | `license.deactivate` | Remote best-effort, local wipe mandatory | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `license.entitlements` | Entitlements, profile, licence id | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `license.channels` | entitledChannels() | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `license.reregister` | Re-register on 401 for licence-less devices | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓ | ✓ | web, desktop-bridge: runtime |
+| `license.reregister` | Re-register on 401 for licence-less devices | transcripts | ✓ | ✓; N/A (desktop-bridge: runtime) | ✓ | ✓ | ✓ | ✓ | web, desktop-bridge: runtime |
 
 ## Config
 
@@ -61,7 +61,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `config.list` | User-visible config, enforced rows flagged | unit + `config-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `config.secret` | getSecret | transcripts (not recorded) | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓ | ✓ | web, desktop-bridge: runtime |
 | `config.schema` | Catalog fetch (/config/schema) | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `config.mint` | Edge-mint of third-party tokens | transcripts | ✓ | planned (unowned) | ✓ | ✓ | ✓ | ✓ | — |
+| `config.mint` | Edge-mint of third-party tokens | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `config.mirror` | Typed catalog mirrors | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 
 ## Devices and identity
@@ -70,12 +70,12 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `devices.fingerprint` | Components, hashing, device id | `fingerprint.json` + `fingerprint.json` `ramBuckets` | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓; N/A (web: runtime) | ✓ | web, desktop-bridge: runtime |
 | `devices.facts` | Device facts and probes | unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓ | ✓ | web, desktop-bridge: runtime |
-| `devices.register` | Keyless registration | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓ | ✓ | web, desktop-bridge: runtime |
-| `devices.manage` | List, rename, deauthorise | transcripts (not recorded) | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | ✓ | web: runtime |
-| `devices.report` | Telemetry (allowlisted keys) | transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | ✓ | web: runtime |
+| `devices.register` | Keyless registration | transcripts | ✓ | ✓; N/A (desktop-bridge: runtime) | ✓ | ✓ | ✓ | ✓ | web, desktop-bridge: runtime |
+| `devices.manage` | List, rename, deauthorise | transcripts (not recorded) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | web: runtime |
+| `devices.report` | Telemetry (allowlisted keys) | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | web: runtime |
 | `devices.attest` | Device attestation (App Attest, Play Integrity) raising the trust level | unit | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | ✓; N/A (macos: runtime); N/A (ios: outlet) | ✓; N/A (linux: runtime); N/A (macos: runtime); N/A (windows: runtime); N/A (web: runtime); N/A (ios: outlet); N/A (android: outlet) | ✓; N/A (jvm: runtime); N/A (android: outlet) | node, python, web, desktop-bridge, macos, windows, linux, jvm, dotnet, tauri: runtime; any: outlet |
 | `identity.oidc` | Browser sign-in | transcripts (not recorded) | planned (unowned) | ✓ | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | — |
-| `identity.devicecode` | Device-code sign-in (RFC 8628) with QR | transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | ✓ | web: runtime |
+| `identity.devicecode` | Device-code sign-in (RFC 8628) with QR | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | web: runtime |
 
 ## Release and update
 
@@ -139,12 +139,10 @@ Planned entries no work package owns yet. Each needs an owner before the gap can
 | Node | `packs.transport.steam` | P5-08 covers Godot only; Node desktop hosts have no Steam-depot transport owner. |
 | Node | `packs.transport.msix` | No work package owns the MSIX optional-package transport (P5-08 Out). |
 | Node | `packs.transport.flatpak` | No work package owns the Flatpak extension transport (P5-08 Out). |
-| React | `core.cache` | The browser adapter keeps no verified licence/config cache (only the signed update slices, P3-05); on desktop the host's Node SDK holds it. No work package gives the browser one. |
 | React | `core.local` | No local-only client in React; P1b-07 leaves it unowned. |
-| React | `config.mint` | P1b-08 ports edge-mint to Node, Python and Swift only. |
 | React | `update.driver` | No updater hand-off in React, and no work package adds one. |
 | React | `update.bootguard` | P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02. |
-| React | `commerce.receipt` | P6-01 builds the Worker bridge and leaves the SDK side planned with no owner. |
+| React | `commerce.receipt` | Web commerce is SP-R10 (not yet a program work package). The bearer engine already speaks GET /\\<p\>/distribution/commerce/binding and POST .../claim, but the Worker's CORS allow-list (packages/worker/src/core/cors.ts CORS_SERVICE_PATHS) does not cover distribution/commerce, so a cross-origin bearer page cannot reach them; no claim until SP-R10 closes that gap. Desktop: the renderer half of bridge v4's invoke("commerce", ...) is gated on host version 4, and the Node host side is pending SP-N10. |
 | Python | `identity.oidc` | Browser redirect sign-in waits on the native redirect-token route (I-15, SDK parity pass wire item W4). Until then identity.sign_in_with_browser() opens the device-code verificationUriComplete in the system browser and polls (identity.devicecode); the deprecated /identity/auth/poll is never used. |
 | Python | `packs.transport.steam` | P5-08 covers Godot only; Python desktop hosts have no Steam-depot transport owner. |
 | Python | `packs.transport.msix` | No work package owns the MSIX optional-package transport (P5-08 Out). |

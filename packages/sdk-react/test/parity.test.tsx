@@ -89,6 +89,7 @@ describe("mode parity", () => {
     const desktopOut = await renderWith(desktop);
 
     const browser = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: makeFakeFetch(doc),
       now: () => NOW_SEC,
@@ -113,6 +114,7 @@ describe("mode parity", () => {
 
   it("browser submitKey activates through the cookie-session exchange", async () => {
     const browser = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: makeFakeFetch(makeDoc()),
       now: () => NOW_SEC,
@@ -125,6 +127,7 @@ describe("mode parity", () => {
   // @pkey-feature core.caps
   it("browser never exposes secrets", async () => {
     const browser = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: makeFakeFetch(makeDoc()),
       now: () => NOW_SEC,
