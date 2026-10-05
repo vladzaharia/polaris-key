@@ -17,8 +17,10 @@ import { loadProduct } from "../src/core/products.js";
 import {
   activateFromIdentity,
   authorizeAndMint,
+  mergeProvisionedOverrides,
   type OidcIdentity,
 } from "../src/services/identity/oidc.js";
+import type { Db } from "../src/db/types.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleConfigDocument } from "../src/services/config/document.js";
 
@@ -133,7 +135,8 @@ describe("OIDC activation", () => {
     );
     expect(row?.name).toBe("Ada Changed");
     expect(row?.email).toBe("ada.changed@example.com");
-    expect(row?.expires_at).toBe(NOW + 60 + 365 * 86400);
+    // LX-02: a sign-in on an existing licence does not renew its term.
+    expect(row?.expires_at).toBe(NOW + 365 * 86400);
     const overrides = JSON.parse(row!.overrides_json) as {
       secrets: Record<string, { value: string }>;
     };
@@ -250,3 +253,275 @@ describe("OIDC activation", () => {
 });
 
 void TEST_PUB;
+
+// ── LX-02: sign-in on an existing licence (S-19 §4.3 G7, §7.5 Phase A, decision 12) ─────────
+describe("OIDC sign-in on an existing licence (LX-02)", () => {
+  type Row = {
+    tier_id: string | null;
+    expires_at: number | null;
+    overrides_json: string;
+    name: string | null;
+    groups_json: string | null;
+  };
+  const readRow = (db: Db, id: string) =>
+    db.first<Row>(
+      "SELECT * FROM licenses WHERE product = ? AND id = ?",
+      "djdl",
+      id,
+    );
+  type Stored = {
+    config: Record<string, { value: unknown }>;
+    secrets: Record<string, { value: unknown }>;
+    entitlements: Record<string, { value: unknown }>;
+  } & Record<string, unknown>;
+
+  async function setup() {
+    const db = makeTestDb();
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    await seedOidc(db);
+    const product = (await loadProduct(env, db, "djdl"))!;
+    return { db, product };
+  }
+
+  async function writeOverrides(db: Db, id: string, overrides: unknown) {
+    await db.run(
+      "UPDATE licenses SET overrides_json = ? WHERE product = ? AND id = ?",
+      JSON.stringify(overrides),
+      "djdl",
+      id,
+    );
+  }
+
+  it("a trial licence's expires_at does not move on sign-in, so the trial ends", async () => {
+    const { db, product } = await setup();
+    await db.run(
+      "UPDATE tiers SET policy_expiry_days = 14 WHERE product = 'djdl' AND id = 'pro'",
+    );
+    const r1 = await activateFromIdentity(db, product, identity(), NOW);
+    if (!("licenseId" in r1)) throw new Error("expected license");
+    const trialEnd = NOW + 14 * 86400;
+    expect((await readRow(db, r1.licenseId))?.expires_at).toBe(trialEnd);
+
+    // Signing in again on day 10 used to push the end out to day 24 (endless trials).
+    const r2 = await activateFromIdentity(
+      db,
+      product,
+      identity(),
+      NOW + 10 * 86400,
+    );
+    expect(r2).toEqual(r1);
+    expect((await readRow(db, r1.licenseId))?.expires_at).toBe(trialEnd);
+
+    // After the end the licence is unusable and sign-in does not revive it.
+    const late = await activateFromIdentity(
+      db,
+      product,
+      identity(),
+      trialEnd + 1,
+    );
+    expect(late).toEqual({ error: "license-unusable" });
+    expect((await readRow(db, r1.licenseId))?.expires_at).toBe(trialEnd);
+  });
+
+  it("does not change tier_id on an existing licence, even when the groups map elsewhere", async () => {
+    const { db, product } = await setup();
+    await db.run(
+      "INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit, modified_by, modified_at) VALUES (?,?,?,?,?,?,?,?)",
+      "djdl",
+      "basic",
+      "Basic",
+      null,
+      null,
+      1,
+      null,
+      NOW,
+    );
+    const r1 = await activateFromIdentity(db, product, identity(), NOW);
+    if (!("licenseId" in r1)) throw new Error("expected license");
+    // An operator moves the licence to `basic` with no expiry.
+    await db.run(
+      "UPDATE licenses SET tier_id = 'basic', expires_at = NULL WHERE product = 'djdl' AND id = ?",
+      r1.licenseId,
+    );
+    await activateFromIdentity(
+      db,
+      product,
+      identity({ name: "Ada Renamed", groups: ["members", "admin"] }),
+      NOW + 60,
+    );
+    const row = await readRow(db, r1.licenseId);
+    expect(row?.tier_id).toBe("basic");
+    expect(row?.expires_at).toBeNull();
+    // The identity-owned fields still follow the provider.
+    expect(row?.name).toBe("Ada Renamed");
+    expect(JSON.parse(row!.groups_json!)).toEqual(["members", "admin"]);
+  });
+
+  it("an operator override of an undeclared key survives sign-in; declared keys are rewritten", async () => {
+    const { db, product } = await setup();
+    const r1 = await activateFromIdentity(db, product, identity(), NOW);
+    if (!("licenseId" in r1)) throw new Error("expected license");
+    const before = JSON.parse(
+      (await readRow(db, r1.licenseId))!.overrides_json,
+    ) as Stored;
+    await writeOverrides(db, r1.licenseId, {
+      config: {
+        "ui.theme": { state: "enforced", value: "dark", updatedAt: 1 },
+      },
+      secrets: {
+        ...before.secrets,
+        "api.token": {
+          state: "hidden",
+          value: { sealed: "v1.opaque-envelope" },
+          updatedAt: 1,
+        },
+      },
+      entitlements: {
+        ...before.entitlements,
+        betaAccess: { state: "enforced", value: true, updatedAt: 1 },
+        deviceLimit: { state: "enforced", value: 9, updatedAt: 1 },
+      },
+    });
+
+    await activateFromIdentity(
+      db,
+      product,
+      identity({ claims: { sub: "user-123", vpnSub: "rotated" } }),
+      NOW + 60,
+    );
+    const after = JSON.parse(
+      (await readRow(db, r1.licenseId))!.overrides_json,
+    ) as Stored;
+    // Undeclared keys of every kind survive as stored.
+    expect(after.config["ui.theme"]?.value).toBe("dark");
+    expect(after.secrets["api.token"]?.value).toEqual({
+      sealed: "v1.opaque-envelope",
+    });
+    expect(after.entitlements.betaAccess?.value).toBe(true);
+    expect(after.entitlements.deviceLimit?.value).toBe(9);
+    // Declared keys follow the current claim.
+    expect(after.entitlements.polarisVpn).toEqual({
+      state: "enforced",
+      value: true,
+      updatedAt: NOW + 60,
+    });
+    expect(after.secrets["proxy.subscriptionUrl"]?.value).toBe(
+      "https://vpn.example.com/rotated",
+    );
+  });
+
+  it("removes a declared key when its claim disappears, keeping undeclared keys", async () => {
+    const { db, product } = await setup();
+    const r1 = await activateFromIdentity(db, product, identity(), NOW);
+    if (!("licenseId" in r1)) throw new Error("expected license");
+    const before = JSON.parse(
+      (await readRow(db, r1.licenseId))!.overrides_json,
+    ) as Stored;
+    expect(before.entitlements.polarisVpn?.value).toBe(true);
+    expect(before.secrets["proxy.subscriptionUrl"]).toBeDefined();
+    await writeOverrides(db, r1.licenseId, {
+      ...before,
+      entitlements: {
+        ...before.entitlements,
+        betaAccess: { state: "enforced", value: true, updatedAt: 1 },
+      },
+    });
+
+    // The provider no longer sends `vpnSub`: revocation on claim loss.
+    await activateFromIdentity(
+      db,
+      product,
+      identity({ claims: { sub: "user-123" } }),
+      NOW + 60,
+    );
+    const after = JSON.parse(
+      (await readRow(db, r1.licenseId))!.overrides_json,
+    ) as Stored;
+    expect(after.entitlements.polarisVpn).toBeUndefined();
+    expect(after.secrets["proxy.subscriptionUrl"]).toBeUndefined();
+    expect(after.entitlements.betaAccess?.value).toBe(true);
+  });
+
+  it("re-merges instead of overwriting an operator edit that lands between the read and the write", async () => {
+    const { db, product } = await setup();
+    const r1 = await activateFromIdentity(db, product, identity(), NOW);
+    if (!("licenseId" in r1)) throw new Error("expected license");
+    let injected = false;
+    const racing: Db = {
+      ...db,
+      all: db.all.bind(db),
+      first: db.first.bind(db),
+      run: db.run.bind(db),
+      batch: db.batch.bind(db),
+      async runChanges(sql, ...params) {
+        if (!injected && sql.includes("overrides_json IS ?")) {
+          injected = true;
+          await writeOverrides(db, r1.licenseId, {
+            config: {},
+            secrets: {},
+            entitlements: {
+              operatorEdit: { state: "enforced", value: 1, updatedAt: 2 },
+            },
+          });
+        }
+        return db.runChanges(sql, ...params);
+      },
+    };
+    await activateFromIdentity(racing, product, identity(), NOW + 60);
+    expect(injected).toBe(true);
+    const after = JSON.parse(
+      (await readRow(db, r1.licenseId))!.overrides_json,
+    ) as Stored;
+    expect(after.entitlements.operatorEdit?.value).toBe(1);
+    expect(after.entitlements.polarisVpn?.value).toBe(true);
+  });
+
+  it("mergeProvisionedOverrides keeps unknown members and treats an unparseable column as empty", () => {
+    const provisioned = {
+      config: {},
+      secrets: {},
+      entitlements: {
+        vpn: { state: "enforced" as const, value: true, updatedAt: 5 },
+      },
+    };
+    const declared = {
+      entitlements: new Set(["vpn", "gone"]),
+      secrets: new Set(["s"]),
+    };
+    const merged = JSON.parse(
+      mergeProvisionedOverrides(
+        JSON.stringify({
+          extra: { keep: 1 },
+          config: { c: { state: "enforced", value: 1, updatedAt: 1 } },
+          secrets: { s: { state: "hidden", value: "old", updatedAt: 1 } },
+          entitlements: {
+            gone: { state: "enforced", value: true, updatedAt: 1 },
+          },
+        }),
+        provisioned,
+        declared,
+      ),
+    ) as Stored;
+    expect(merged.extra).toEqual({ keep: 1 });
+    expect(merged.config.c?.value).toBe(1);
+    expect(merged.secrets).toEqual({});
+    expect(merged.entitlements).toEqual({
+      vpn: { state: "enforced", value: true, updatedAt: 5 },
+    });
+    expect(
+      JSON.parse(mergeProvisionedOverrides("{not json", provisioned, declared)),
+    ).toEqual({
+      config: {},
+      secrets: {},
+      entitlements: provisioned.entitlements,
+    });
+    expect(
+      JSON.parse(mergeProvisionedOverrides(null, provisioned, declared)),
+    ).toEqual({
+      config: {},
+      secrets: {},
+      entitlements: provisioned.entitlements,
+    });
+  });
+});
