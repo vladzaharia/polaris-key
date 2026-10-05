@@ -12,6 +12,12 @@
 | Human input | none                                                                                     |
 | Repo        | `vladzaharia/polaris-key`                                                                |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/U-01.md`](../plans/U-01.md):** `syncAccess`, and the no-owner-fallback test (§2.1, §6.1).
+
 ## Goal
 
 Core resolves a device to its Cloud Sync principal and an account to a product's subject without importing Identity: `resolveSyncPrincipal(device)` and `subjectFor(account, product)` exist over I-05's device binding, the one clearing hook covers Cloud Sync's cases, and the merge- and deletion-hook registry fails a test for any subject-keyed store without hooks.

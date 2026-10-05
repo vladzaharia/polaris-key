@@ -4,6 +4,7 @@ import type {
   CreateManualProductResult,
   LinkRepoResult,
 } from "../../../api.js";
+import { cn } from "../../../lib/cn.js";
 import { errorCopy } from "../../../lib/errorCopy.js";
 import {
   parseSchemaField,
@@ -27,7 +28,7 @@ import { PageHeader } from "../../components/PageHeader.js";
 import { mutate } from "../../data/mutations.js";
 import { codecs, Link, navigate, useSearchParam } from "../../router.js";
 import { r } from "../../routes.js";
-import { Panel } from "../../templates/Dashboard.js";
+import { Panel, STRETCH_CELL } from "../../templates/Dashboard.js";
 
 export type Via = "github" | "manual";
 type StepId =
@@ -341,8 +342,11 @@ export function ProductNew(): React.ReactElement {
         />
       ) : null}
 
+      {/* The step card and the aside share a row and both stretch to its height; the actions get
+          a row of their own under the step card, so the two cards share top and bottom edges. On
+          a phone the order is step, actions, aside. */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="min-w-0 space-y-6 lg:col-span-2">
+        <div className={cn(STRETCH_CELL, "lg:col-span-2 lg:row-start-1")}>
           <section
             aria-labelledby="wizard-step-title"
             className="rounded-lg border border-border bg-surface-raised p-4 sm:p-6"
@@ -375,7 +379,8 @@ export function ProductNew(): React.ReactElement {
               <ResultStep created={created} />
             ) : null}
           </section>
-
+        </div>
+        <div className="min-w-0 lg:col-span-2 lg:row-start-2">
           {step === "result" && created ? (
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <Button variant="outline" onClick={startOver}>
@@ -864,7 +869,7 @@ function Aside({
           ? "Creating the product mints its Ed25519 signing key and an active catalog in one step. A product never exists without a usable signing key."
           : "Most products are linked from a repository: the manifest is reviewed in pull requests and resync keeps the console in step with it.";
   return (
-    <aside className="min-w-0">
+    <aside className={cn(STRETCH_CELL, "lg:col-start-3 lg:row-start-1")}>
       <Panel title="What happens next" headingLevel={2}>
         <p className="text-sm text-fg">{text}</p>
         <p className="mt-3 text-sm">
