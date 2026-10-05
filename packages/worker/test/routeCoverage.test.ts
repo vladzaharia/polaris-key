@@ -82,6 +82,9 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
   portalApi: [
     ["/api/library", ["get"]],
     ["/api/products/{product}", ["get"]],
+    // PX-W10 (G24, G25): Discover's offers and "Add to library".
+    ["/api/discover", ["get"]],
+    ["/api/discover/{product}/claim", ["post"]],
   ],
 };
 

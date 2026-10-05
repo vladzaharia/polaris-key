@@ -124,7 +124,27 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   without one), the status of its best license (`suspended`, `expired`, `device_limit`,
   `expires_soon` within 14 days, `active`, first match wins), that license's seats
   (`deviceLimit` as activation enforces it, `activeSeatCount`, `dormantCount`), how many licenses
-  it holds and when it was added. Art is only ever a same-origin `/media/…` URL.
+  it holds and when it was added. Art is only ever a same-origin `/media/…` URL. `discoverCount`
+  is how many offers `GET /api/discover` has, for the Discover count in the nav.
+- **`GET /api/discover`** — the products the account could add for free right now: every product
+  whose license policy would auto-issue to it on the product's first sign-in, evaluated by that
+  same policy function without issuing anything. A product qualifies through its `oidcDefault`
+  auto-issue rule (`reason: "free_with_account"`) or a `groupRoleMap` group the account holds at
+  the platform IdP (`reason: "group:<group>"`, from the `groups` claim of the account's last portal
+  sign-in). Each offer carries the presentation, the newest release's `platforms`, what the
+  account would get (`offer`: `tier`, `tierLabel`, `deviceLimit`, `expiresAt`, `expiryDays`) and
+  its `reason`, which is always present. Only products that run License, sign in through the
+  platform issuer with auto-linking on, and have the portal and Discover on are considered;
+  purchase-only and operator-issued products, and products the account already holds, never
+  appear. An account that has only ever signed in by email link has no platform identity and is
+  offered nothing.
+- **`POST /api/discover/<product>/claim`** — "Add to library". Re-evaluates the offer and mints
+  the license through the sign-in's own auto-issue path, so it has exactly the tier, limits and
+  entitlements a first sign-in would give; links it to the account and audits it
+  (`portal.discover.claim`, and `license.create` in the product's activity, both with
+  `source: discover`). Idempotent per account and product: a repeat or a double submit answers the
+  same license with `added: false`. `409 not_eligible` when the product is not, or no longer,
+  offered (an unknown product included). Shares the activate preview's rate bucket.
 - **`GET /api/products/<product>`** — one of those products: the presentation, `services` (each
   service's own toggle), the status, and every linked license best first with its seats,
   entitlements and authorized devices, each marked `dormant` once it is past the 90-day dormancy
@@ -259,6 +279,10 @@ Two more default **off** (PX-W5, migration `0064`):
   the S-16 safety default: such a license joins only an account that verified that email. A
   license already in an account never moves by its key either way.
 
+`discoverEnabled` defaults **on** (PX-W10, migration `0068`): the product may be offered on
+Discover to accounts its auto-issue policy covers. Turning it off hides the offer without
+changing the policy, which keeps issuing on the product's own sign-in.
+
 `autoLinkEnabled` is **tri-state**, not boolean — `true`/`false` is an explicit operator
 override; `null` ("auto") derives from the product's _own_ OIDC provider: on for a
 `platform`-issuer product, **off** for a `custom`-issuer one. A tenant-controlled IdP's `email`
@@ -283,7 +307,8 @@ mid-deploy, or rolled back to) keeps signing new users in; those rows are re-key
 **In the console**, these settings are **Identity → Portal**. The sign-in methods and modules
 are read-only while the portal switch is off, and **Release downloads** is read-only while the
 product's Release service is off. The page saves the five switches and the linking choice in one
-`PATCH`; it never sends `branding`, which it shows as a read-out.
+`PATCH`; it never sends `branding`, which it shows as a read-out. **Offer on Discover** (the Discover section) saves
+with them.
 
 ## Supported browsers
 

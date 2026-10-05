@@ -139,7 +139,7 @@ this page or fails the freshness gate.
 | `provisioning_config` | 0001_init.sql | `product`, `claim`, `entitlement_key`, `entitlement_value_json`, `secret_key`, `secret_url_template`, `allowed_hosts_json` |
 | `portal_accounts` | 0008_portal.sql | `id`, `status`, `display_name`, `primary_email`, `created_at`, `modified_at` |
 | `portal_account_emails` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `email`, `account_id`, `verified_at`, `created_at` |
-| `portal_account_identities` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `provider`, `subject`, `account_id`, `email`, `display_name`, `created_at`, `last_seen_at` |
+| `portal_account_identities` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `provider`, `subject`, `account_id`, `email`, `display_name`, `created_at`, `last_seen_at`, `groups_json (0068)` |
 | `portal_license_links` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `account_id`, `product`, `license_id`, `source`, `created_at`, `last_seen_at` |
-| `portal_product_settings` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `product`, `portal_enabled`, `oidc_enabled`, `magic_enabled`, `license_key_claim_enabled`, `releases_enabled`, `branding_json`, `created_at`, `modified_at`, `auto_link_enabled`, `key_reissue_enabled (0064)`, `claim_by_key (0064)` |
+| `portal_product_settings` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `product`, `portal_enabled`, `oidc_enabled`, `magic_enabled`, `license_key_claim_enabled`, `releases_enabled`, `branding_json`, `created_at`, `modified_at`, `auto_link_enabled`, `key_reissue_enabled (0064)`, `claim_by_key (0064)`, `discover_enabled (0068)` |
 | `portal_audit` | 0008_portal.sql | `id`, `account_id`, `at`, `action`, `product`, `target_kind`, `target_id`, `summary` |
