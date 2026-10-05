@@ -40,6 +40,22 @@ The portal's `entitlementView` falls back to catalog defaults that documents nev
 
 - Regenerate generated docs pages; never hand-edit.
 
+## Corrections found against the code (LX-04 implementation, 2026-10-04)
+
+- The portal module is `packages/worker/src/services/identity/portal/entitlements.ts` (the note's
+  `portal/entitlements.ts` predates the Identity carve).
+- G14 also covers the licence views' `channels`, `minVersion` and `maxVersion` fields
+  (`portal/api.ts`), which read the licence row alone; the portal's licence card renders them.
+  They now come from the same document resolution as the grant list.
+- djdl declares `channels` as a `userGrant` flag, so the old view listed channels twice (once
+  through the flag loop, once from the licence row). It is now listed once, under the catalog's
+  `grantLabel`.
+- `concepts.md` no longer says "licence = account" on `main` (I-04/I-05 rewrote the glossary);
+  only `0001_init.sql:63` still did. PORTAL.md also repeated the Cloud Sync claim in its §3 notes
+  ("Identity off still means an account"); that line is corrected with lines 181 and 199.
+- ADMIN.md's sentence was right about the `app` row (its `entitlement` is never consulted) but
+  read as "the gate is not enforced"; it now says a pack's gate is enforced.
+
 ## Steps
 
 1. Portal fix with tests.

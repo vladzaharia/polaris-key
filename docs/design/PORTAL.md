@@ -205,7 +205,7 @@ Account (one per person, platform-level, ALWAYS present; "portal account" in S-1
     ├─ services (per product, each with its own toggle)
     │   ├─ Identity (S-16)         ← "<App> wants you to sign in": app sign-in through Polaris Key
     │   │   └─ product user        ← how that app knows the person: a PAIRWISE id per product
-    │   ├─ Cloud Sync (S-17)       ← depends on the account and the license, NOT on Identity
+    │   ├─ Cloud Sync (S-17)       ← REQUIRES Identity: its principal is the device's sign-in
     │   └─ …
     ├─ releases → builds per platform, extras, release notes
     └─ store listings (App Store, Play, Steam, Microsoft Store, Flathub …)
@@ -217,14 +217,14 @@ Discover = products whose license policy would auto-issue to this account (evalu
 platform layer: one per person, across every product, always present, whether or not any product
 turns Identity on. **Identity** is a per-product _service_:
 
-| The product has Identity …                   | **on**                                                 | **off**                                                                                                         |
-| -------------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| Licenses attach to accounts                  | Yes                                                    | Yes: Activate license, Discover, purchases with a verified email, the portal                                    |
-| Library tile and product page                | Yes                                                    | Yes                                                                                                             |
-| App sign-in (§4.7–4.9)                       | Yes: `/authorize`, native redirect, device code        | **Never.** No "<App> wants you to sign in"; the broker refuses the request (§3.3)                               |
-| Connected products, "<Product> knows you as" | Listed, with the method it uses                        | Not listed; no identity card on the product page                                                                |
-| Cloud Sync                                   | When the product has the Cloud Sync service on         | Same: Cloud Sync depends on the account (reached through the license on the device), not on the Identity toggle |
-| Key-entry limits (§4.6)                      | Available: at zero the app signs the person in instead | Not offered: the app has no way to sign in instead (derived from this decision; for owner confirmation)         |
+| The product has Identity …                   | **on**                                                 | **off**                                                                                                                                                                                 |
+| -------------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Licenses attach to accounts                  | Yes                                                    | Yes: Activate license, Discover, purchases with a verified email, the portal                                                                                                            |
+| Library tile and product page                | Yes                                                    | Yes                                                                                                                                                                                     |
+| App sign-in (§4.7–4.9)                       | Yes: `/authorize`, native redirect, device code        | **Never.** No "<App> wants you to sign in"; the broker refuses the request (§3.3)                                                                                                       |
+| Connected products, "<Product> knows you as" | Listed, with the method it uses                        | Not listed; no identity card on the product page                                                                                                                                        |
+| Cloud Sync                                   | When the product has the Cloud Sync service on         | **Never.** Cloud Sync requires Identity: its principal is the device's sign-in (`devices.subject`), and the console refuses Cloud Sync without Identity (S-17 owner's final answers, 1) |
+| Key-entry limits (§4.6)                      | Available: at zero the app signs the person in instead | Not offered: the app has no way to sign in instead (derived from this decision; for owner confirmation)                                                                                 |
 
 **Pairwise ids toward developers.** A developer never sees the account id. Each product with
 Identity gets its own stable **pairwise subject** for the person (`sub` = keyed hash of account and
@@ -509,6 +509,22 @@ to sign in", and "<Developer> · <where>":
   only when you continue to their app."), an opt-in checkbox "Add a passkey after this, so next time
   is one tap", **Create account and continue**, and the terms line naming both Polaris Key's terms
   and the developer's.
+- **Choose a licence for this device** (owner decision, 2026-10-05; EXPERIENCE.md §8
+  `LicenseChoiceStep`; contract in `plans/I-04.md`). It comes after authentication and before
+  Confirm, whenever the account holds a usable licence for the app, even a single one.
+  - **Rows.** Each row shows the tier, origin, "2 of 5 devices" and the expiry. The rank-first
+    rule only preselects a row; **Keep the licence this device uses** is preselected when the
+    device already runs on one.
+  - **Full licences** are disabled with "No free devices". They offer **Replace a device**, which
+    expands that licence's devices in place: least recent preselected, **Active now** marked, and
+    one confirm, "Replace Work laptop? It will need to sign in again.". They also offer **Free a
+    device** (§4.25, returning here).
+  - **No licence.** "A free <Tier> licence will be created for you" when the app auto-issues,
+    otherwise the purchase link and **Have a license key?**.
+  - **No silent second licence.** A second free licence is never minted silently. **Create a new
+    free licence** appears only when every licence is full and the app auto-issues.
+  - **Primary button.** It reads **Use this licence and continue**. When Confirm follows, its
+    licence line shows the chosen licence with **Change**.
 - **Confirm** (every first sign-in to an app, and whenever what it gets changes): the person row
   (avatar, name, email, **Not you?**), "Continue to Tidewater Studio as Mara?", and **what it
   gets** as a list: its license ("Your Tidewater Pro license · Lifetime · this Mac becomes device 3
@@ -532,7 +548,9 @@ to sign in", and "<Developer> · <where>":
   when you're done." then the §4.1 methods (Drift Kart ships only on Steam, so its provider row has
   one button: the one-button case), and "Didn't start this on
   a TV? Cancel it. Someone may be trying to use your account."
-- Signed in already: straight to the confirm step (§4.8) with the device name.
+- Signed in already: straight to **Choose a licence for this device** (§4.8), then the confirm step
+  with the device name. A full licence's **Replace a device** works here too, so the TV never needs a
+  trip to the portal.
 - Done: "Drift Kart is signed in on Living room TV · Look at your TV: it continues by itself", the
   person row with the method used, and **Sign the TV out** for the wrong account.
 
@@ -855,7 +873,7 @@ the new session appears in "Where you're signed in".
 
 ![Device limit flow](portal/35-device-limit-desktop-dark.png)
 
-Unchanged: minimal chrome with **Back to Orbit Survey without changes**; "Your license is on 2 of 2
+This flow is also the fallback behind the sign-in card's **Free a device** link (§4.8, 2026-10-05). Otherwise it is unchanged: minimal chrome with **Back to Orbit Survey without changes**; "Your license is on 2 of 2
 devices" with a full red meter; devices as radio cards with the least recently used preselected;
 consequences; **Remove Work laptop and continue**; then "Go back to Orbit Survey and press Try
 again".
@@ -1329,9 +1347,9 @@ new with the owner decisions of 2026-10-04**, and **G31–G34 with the second ro
 
 Notes:
 
-- **Identity off still means an account.** Library, Activate license, Discover, the product page
-  and Cloud Sync all work for products without Identity (§3.1); only app sign-in, Connected products
-  rows and the product identity card depend on it.
+- **Identity off still means an account.** Library, Activate license, Discover and the product page
+  all work for products without Identity (§3.1); app sign-in, Connected products rows, the product
+  identity card and Cloud Sync (which requires Identity, S-17 owner's final answers, 1) depend on it.
 - **Rule 6.** Identity (where the portal lives) may not import Distribution, Update or License
   internals. G2, G4, G8, G24 and G25 go through descriptor hooks in `src/core/hooks.ts`.
 - **G2 and G4 as built (PX-W2).** `GET /api/products/:p/downloads[?channel=]` reads Distribution's
