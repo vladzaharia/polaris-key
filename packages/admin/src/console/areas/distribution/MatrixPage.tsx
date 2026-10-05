@@ -576,7 +576,7 @@ export function MatrixPage({ slug }: { slug: string }): React.ReactElement {
           kind="first-run"
           headingLevel={2}
           title="No outlets declared"
-          description="Outlets are the places a release reaches: the direct download, the stores, the storefront feeds. Declare them in .pkey/distribution and resync."
+          description="Outlets are the places a release reaches: Polaris Key downloads, the stores, the storefront feeds. Declare them in .pkey/distribution and resync."
           docs="/docs/services/distribution/"
         />
       ) : rows.length === 0 ? (

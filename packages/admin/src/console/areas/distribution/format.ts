@@ -5,12 +5,15 @@
 
 import type { Rollout, RolloutVerb } from "../../../api.js";
 import { formatBasisPoints } from "../../../lib/format.js";
-import { label, OUTLET_KIND_LABELS } from "../../../lib/labels.js";
+import { label, outletLabel } from "../../../lib/labels.js";
 import { humanize, statusOf } from "../../../lib/status.js";
 
-/** An outlet kind's name ("App Store"), the raw kind humanised when unknown. */
-export function outletKindLabel(kind: string): string {
-  return label(OUTLET_KIND_LABELS, kind);
+/**
+ * An outlet kind's name ("App Store", "Polaris Key" for `direct`), the raw kind humanised when
+ * unknown; with a subkind, "Polaris Key · via Homebrew".
+ */
+export function outletKindLabel(kind: string, subkind?: string | null): string {
+  return outletLabel(kind, subkind);
 }
 
 /** "Rolling out · 25 %", "Paused at 25 %", "Halted at 25 %", "Complete". */
