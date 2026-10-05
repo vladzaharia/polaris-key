@@ -62,9 +62,9 @@ HTTP transcripts pin the wire, not what the client does between requests; six of
 
 ## Acceptance criteria
 
-- [ ] `gen:corpus -- --check` (which writes `sync-scenarios.json`, plan Q1) is clean and wired into the gate.
-- [ ] Every rule listed in [S-17 §5.13](../../notes/S-17-user-data-sync.md#513-wire-impact) has at least one scenario; the Node runner passes.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] `gen:corpus -- --check` (which writes `sync-scenarios.json`, plan Q1) is clean and wired into the gate.
+- [x] Every rule listed in [S-17 §5.13](../../notes/S-17-user-data-sync.md#513-wire-impact) has at least one scenario; the Node runner passes.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 
