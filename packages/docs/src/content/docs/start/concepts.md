@@ -413,6 +413,11 @@ vocabulary first; the records arrive with the distribution manifest and the pack
 - **outlet** — a venue a build reaches players through, and that owns (or delegates) its updates:
   `direct`, `app-store`, `testflight`, `play`, `steam`, `itch`, `ms-store`, `flathub`, `web`, …
   Not "surface" (a Release/Update route kind) and not "distribution" (the service).
+- **the Polaris Key outlet (id `direct`)** — the developer's own downloads, served by Polaris Key:
+  `dl.plrs.im`, the download page, and the Scoop and Homebrew feeds. Everything a person reads
+  calls it "Polaris Key" (a package-managed install reads "Polaris Key · via Homebrew"); every
+  identifier keeps `direct`: the outlet id and kind, signed feeds, the corpus, the SDK constants,
+  the Android build flavour and the Godot adapter.
 - **transport** — how a deliverable's bytes arrive on an outlet: `pkey-cdn` (Polaris Key's own
   CDN, the default), `embedded`, `apple-ba`, `play-pad`, `steam-depot`, `msix-optional`,
   `flatpak-ext`, `web`. One deliverable, many transports.

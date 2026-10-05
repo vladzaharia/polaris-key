@@ -45,7 +45,7 @@ arrive after signing, so they never live on the release. A report carries them i
 ### Derived availability for self-hosted outlets
 
 An outlet Polaris Key hosts itself shows `live` **without a report**. That is an outlet whose kind
-is `direct`, `web`, `altstore`, `obtainium`, `fdroid-repo` or `app-installer`, and whose
+is `direct` (the Polaris Key outlet), `web`, `altstore`, `obtainium`, `fdroid-repo` or `app-installer`, and whose
 transport for the release's deliverable is `pkey-cdn`, `embedded` or `web`. It shows `live` for
 every build of the release that:
 

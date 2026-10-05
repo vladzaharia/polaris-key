@@ -136,7 +136,7 @@ import in disguise.
 
 A product declares where it is distributed in `.pkey/distribution` — see
 [Distribution: outlets, transports and listing](/docs/build/manifest/distribution/). No file
-means one implicit outlet, `direct`, served by `pkey-cdn`. On link and resync, Distribution's
+means one implicit outlet, the Polaris Key outlet (`direct`), served by `pkey-cdn`. On link and resync, Distribution's
 own ingest hook (run by Core, in the same batch as the rest of the ingest, only while
 Distribution is on) writes:
 
