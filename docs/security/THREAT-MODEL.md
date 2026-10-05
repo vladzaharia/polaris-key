@@ -1848,6 +1848,63 @@ later is refused (deny-by-default) but goes unclassified until the docs-drift re
 Microsoft fetches a redirecting `packageUrl`, whether a Developer role suffices and the real
 `Retry-After` values are [U] for A-18k. The Partner Center deep-link shapes are undocumented.
 
+### Storefront adapter: Steam (A-18g)
+
+**What it is.** The Steam storefront adapter (`core/storefront/stores/steam.ts`, rule table
+`core/storefront/rules/steam.ts` with the deny groups in `rules/steamDenied.ts`), calling through
+its own gated client (`core/steam/client.ts`) with the product's `steam-publisher-key` or the A-16
+group key `steam.publisher-key`, opened through `openSteamPublisherKey` (`commerce/steam.ts`, the
+same pin checks as A-16's lister) under the audited use `steam:storefront`. Distribution's console
+routes (`services/distribution/storefronts/steam/`) serve the plan, the reads, a named-branch
+release, the generated asset pack (A-18d's `pack:steam`), the store-page copy card and the per-app
+checklist. Steam has no listing API, so everything about the store page is a deep link; depots go
+up from CI only (`STEAM_CI`, A-18h, attached as the adapter's `ci`).
+
+**Asset at risk.** A11c's publisher key: reads, `SetAppBuildLive` and ownership checks for every
+app of the group it is scoped to, and through the Web API also leaderboards, inventories,
+micro-transactions, game-server login tokens and player data.
+
+**Controls.**
+
+- **Three reads and one write, before the key.** The client consults the gate before the key thunk
+  and before the budget: a refused request opens no key and sends nothing. Reads pass only on
+  `GetPartnerAppListForWebAPIKey/v2`, `GetAppBuilds/v1` and `GetAppBetas/v1` (the engine's new
+  optional `reads` predicate), so a write method spelt as a `GET` cannot stand in for a write the
+  table refuses. Player, ownership, financial and login-token paths are `forbidden` for every
+  method (`personal_data`). Paths must be `/<Interface>/<Method>/v<N>/`; the host is fixed
+  (`partner.steam-api.com`).
+- **The one write is a named branch.** `SetAppBuildLive/v2` with `appid`, `buildid`, `betakey` and
+  an optional `description`, nothing else (no `steamid`). **`betakey=public` (or `default`, any
+  case) is refused whatever the confirmation** (owner decision 5): the public-branch release is a
+  deep link to App Admin until A-18k shows the group-scoped key may do it; the follow-up flips the
+  check to typed confirmation (phrase: Steam's app name), never plain. The console route refuses
+  `public` before any key or call, with the link.
+- **No machine-readable spec**, so a hand-written list of every `POST` of the 33 Web API interfaces
+  (plus the two state-changing `GET`s), pinned by date and SHA-256 (`STEAM_SPEC_PIN`; fixture
+  `test/fixtures/steam/webapi-writes.json`): each entry is allowed or denied exactly once, and
+  editing it without re-pinning fails CI. Deny groups: deletes, players, payments, credentials
+  (game-server accounts), game data, workshop and cloud content, unneeded `POST` queries.
+- **The first 403 stops everything.** Steam rate-limits the connecting IP on 403s and that IP is
+  the Worker's shared egress, so the budget meter (100,000 calls a day per key) stops every call on
+  that key's slot until the window ends at the first 403, and is consulted before every send.
+- **Natural key, ledger, audit.** A branch move is one `performStoreWrite` step: `GetAppBetas`
+  showing the build on that branch answers `existing` with nothing sent; the confirmation is a
+  re-read, never Steam's answer; one ledger row and one audit entry
+  (`distribution.steam.branch.set_live`). The builds read drops the creator's account id.
+- **Checklist ticks are operator assertions**, stored per product and app id in Distribution's
+  connector settings, shown as unverified, audited on every change. The copy card is listing data,
+  rendered escaped (control (g)). The asset pack is served through the gated blob path only when
+  the product holds a reference to it.
+- **Never.** Partner users and permissions, app credits, pricing and branch or depot deletion have
+  no Web API for partners, and no operation reaches them; every delete the Web API does have is
+  denied.
+
+**Residual risk.** The key rides in the query string of a read (Steam's design), so it reaches
+Steam's logs; no error Polaris Key raises carries a URL. The response shapes of `GetAppBuilds` and
+`GetAppBetas` are undocumented and parsed defensively; A-18k confirms them. The Steamworks
+deep-link shapes are undocumented. A 403 caused by one product stops Steam calls for every product
+on the same group key until the window ends (by design: the alternative is the IP penalty).
+
 ### The CI plane: storefront command allow-lists and report-back (A-18h)
 
 **What it is.** itch.io and the Snap Store take builds only through vendor CLIs whose credentials

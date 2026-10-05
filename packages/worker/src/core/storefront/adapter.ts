@@ -44,6 +44,7 @@ import { GOOGLE_PLAY_ADAPTER } from "./stores/googlePlay.js";
 import { MICROSOFT_STORE_ADAPTER } from "./stores/microsoftStore.js";
 import { ITCH_ADAPTER } from "./stores/itch.js";
 import { SNAP_ADAPTER } from "./stores/snap.js";
+import { STEAM_ADAPTER } from "./stores/steam.js";
 
 export type { ListingProfile } from "./listing.js";
 
@@ -53,7 +54,8 @@ export type StorefrontId =
   | "google-play"
   | "microsoft-store"
   | "itch"
-  | "snap";
+  | "snap"
+  | "steam";
 
 /** The operations a storefront declares support for (S-15 §6.1). */
 export const STOREFRONT_OPS = [
@@ -162,6 +164,7 @@ export const STOREFRONT_ADAPTERS: readonly StorefrontAdapter[] = [
   MICROSOFT_STORE_ADAPTER,
   ITCH_ADAPTER,
   SNAP_ADAPTER,
+  STEAM_ADAPTER,
 ];
 
 /** An adapter by id, or null. */

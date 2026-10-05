@@ -114,30 +114,51 @@ export interface SteamContext {
 }
 
 async function publisherKey(ctx: SteamContext, use: string): Promise<string> {
-  if (parsePlatformCredentialHandle(ctx.credentialId)) {
+  return openSteamPublisherKey(
+    ctx.env,
+    ctx.db,
+    ctx.product,
+    ctx.settings.appId,
+    ctx.credentialId,
+    use,
+    ctx.now,
+  );
+}
+
+/**
+ * Open the publisher key a Steam call for (`product`, `appId`) uses: the product's own
+ * `steam-publisher-key` (`credentialId`), or the platform group key when `credentialId` is its
+ * handle, whose open refuses unless the product's platform pin is `appId`. Every open is audited
+ * with `use`. A-18g's storefront adapter opens through here too, inside its gated client's key
+ * thunk (so a request the gate refuses never opens the key). Throws `StoreUnavailable(401)` when
+ * the key cannot be opened.
+ */
+export async function openSteamPublisherKey(
+  env: Env,
+  db: Db,
+  product: string,
+  appId: string,
+  credentialId: string,
+  use: string,
+  now: number,
+): Promise<string> {
+  if (parsePlatformCredentialHandle(credentialId)) {
     // The open itself refuses unless this product's platform pin is the game's app id.
     const team = await openPlatformCredential(
-      ctx.env,
-      ctx.db,
+      env,
+      db,
       STEAM_PLATFORM_CREDENTIAL,
       use,
-      { product: ctx.product, pin: ctx.settings.appId },
-      ctx.now,
+      { product, pin: appId },
+      now,
     );
     if (!team) throw new StoreUnavailable("steam credential", 401);
     return team.value.key;
   }
-  const cred = await openOutletCredential(
-    ctx.env,
-    ctx.db,
-    ctx.product,
-    ctx.credentialId,
-    use,
-    {
-      kind: "steam-publisher-key",
-      now: ctx.now,
-    },
-  );
+  const cred = await openOutletCredential(env, db, product, credentialId, use, {
+    kind: "steam-publisher-key",
+    now,
+  });
   if (!cred) throw new StoreUnavailable("steam credential", 401);
   return cred.value.key;
 }

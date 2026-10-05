@@ -38,7 +38,11 @@ describe("the CLI's generated CI plane (A-18h)", () => {
       "msstore",
       "epic",
     ]);
-    expect(d.adapters.map((a) => a.id)).toEqual(["itch", "snap"]);
+    expect(d.adapters.map((a) => a.id)).toEqual(["itch", "snap", "steam"]);
+    // A-18g: Steam's only CI op is the depot upload; the rest is the Worker plane or a link.
+    expect(d.adapters.find((a) => a.id === "steam")!.ciOps).toEqual({
+      uploadBuild: ["run-app-build"],
+    });
     expect(d.adapters.find((a) => a.id === "snap")!.ciOps).toEqual({
       writeListingText: ["upload-metadata"],
       uploadBuild: ["upload"],
