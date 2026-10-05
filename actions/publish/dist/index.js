@@ -30863,7 +30863,12 @@ function composeSlot(spec, masters, opts) {
       status: "red",
       raster: canvas2,
       derivedFrom: "icon-master",
-      notes: ["no key art: an icon-only fallback; this store needs key art"]
+      notes: [
+        "no key art: an icon-only fallback; this store needs key art",
+        ...spec.textAllowed === "none" ? [
+          "this slot allows no text, and the icon master may carry some: check the fallback"
+        ] : []
+      ]
     };
   }
   if (spec.portrait && !portraitArt)
@@ -31529,8 +31534,9 @@ ${LISTING_ASSETS_USAGE}`);
       derivedFrom: null,
       textAllowed: MASTER_RULES[m.slot]
     });
+  const notUploaded = reportSlots.filter((s) => s.file && s.status === "red");
   for (const s of reportSlots)
-    if (s.file && s.status !== "human" && s.status !== "missing")
+    if (s.file && (s.status === "ok" || s.status === "warn"))
       rows.push({
         slot: s.slot,
         file: path20.join(dir, ...s.file.split("/")),
@@ -31578,11 +31584,19 @@ ${LISTING_ASSETS_USAGE}`);
     derivedFrom: r.derivedFrom,
     textAllowed: r.textAllowed
   }));
+  const writeNotUploaded = () => {
+    if (notUploaded.length)
+      out.write(
+        `${notUploaded.length} red output${notUploaded.length === 1 ? " was" : "s were"} not uploaded: ${notUploaded.map((s) => s.slot).join(", ")}. Fix them (see the report) and run again.
+`
+      );
+  };
   if (opts.dryRun) {
     out.write(
       `Dry run: would upload and register ${rows.length} listing assets; nothing sent.
 `
     );
+    writeNotUploaded();
     return result;
   }
   const token = await resolveCiToken({
@@ -31643,6 +31657,7 @@ ${LISTING_ASSETS_USAGE}`);
   out.write(
     `Registered ${result.registered.stored.length} listing assets for ${opts.product}` + (answer.kept?.length ? `; kept ${answer.kept.length} the operator uploaded (${answer.kept.map((k) => k.slot).join(", ")})` : "") + ". Nothing was pushed to a store: accept each output in the console first.\n"
   );
+  writeNotUploaded();
   if (pending.length)
     out.write(
       `${pending.length} pending screenshot proposal${pending.length === 1 ? " was" : "s were"} not uploaded.
