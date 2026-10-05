@@ -1,5 +1,15 @@
 # Polaris Key admin UI: audit and redesign specification
 
+> **Superseded in part (2026-10-05).** [EXPERIENCE.md](EXPERIENCE.md) is now the single
+> experience spec for the console and the portal: journeys, information architecture, the shared
+> component inventory, page anatomy, copy rules and the shared sign-in. Where the two disagree,
+> EXPERIENCE.md wins. The sections it replaces are listed in
+> [EXPERIENCE.md §14](EXPERIENCE.md#14-superseded-sections-in-adminmd-and-portalmd): §2.2, §2.3
+> (page list), T1, T4, T6 (product creation), T8, §4, §5.2 (patterns), §5.8, §6.1, §6.2, §6.4
+> (Matrix as its own page), §6.5.2 (tab order), §6.7 (scope), §6.8 (search), §6.9 (Services) and
+> §6.10. Settings follow the S-18 hub and licensing follows S-19 (both owner-approved); EXPERIENCE.md
+> §0.8 reconciles its work packages with the `ST`, `LX` and `PX` packages.
+
 **Status:** draft for lead approval · **Scope:** `packages/admin` (operator console at `/manage`,
 customer portal at `/`) · **Builds on:** `@polaris-key/brand` and
 [BRAND.md](BRAND.md) (in progress on
