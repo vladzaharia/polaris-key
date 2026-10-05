@@ -210,7 +210,7 @@ from .discovery import (
     discover_product,
     services_from_list,
 )
-from .license.client import LicenseClient
+from .license.client import LicenseClient, LicenseInfo
 from .license.endpoints import (
     ActivationDeviceLimit,
     ActivationEnrollDisabled,
@@ -259,6 +259,7 @@ __all__ = [
     "DeviceInfo",
     # sub-clients
     "LicenseClient",
+    "LicenseInfo",
     "ConfigClient",
     "DevicesClient",
     "IdentityClient",
