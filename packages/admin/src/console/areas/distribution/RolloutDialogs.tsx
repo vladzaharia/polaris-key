@@ -6,9 +6,14 @@
  *
  * Only the verbs the server allows are offered (`controls`); a mirrored rollout offers none and
  * names the store that owns it (MTX-1, §5.10).
+ *
+ * **Halt everywhere…** (UX-08, EXPERIENCE.md O2) halts every rollout of one release in one L2
+ * confirm. A rollout that cannot be halted here (already halted, complete, or a store's mirror) is
+ * listed as a disabled row with the reason, never a checked box (EXPERIENCE.md §7.1).
  */
 
 import * as React from "react";
+import { Pause } from "lucide-react";
 import type {
   DistributionMatrix,
   MatrixRolloutDto,
@@ -19,6 +24,7 @@ import { confirmFor, type ActionId } from "../../../lib/actions.js";
 import { errorCopy } from "../../../lib/errorCopy.js";
 import { formatBasisPoints } from "../../../lib/format.js";
 import { Button } from "../../../ui/Button.js";
+import { Checkbox } from "../../../ui/Checkbox.js";
 import { Combobox } from "../../../ui/Combobox.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import { Dialog, DialogBody, DialogFooter } from "../../../ui/Dialog.js";
@@ -37,6 +43,7 @@ import {
 import {
   outletKindLabel,
   rolloutSummary,
+  SOURCE_NAMES,
   VERB_DONE,
   VERB_LABEL,
 } from "./format.js";
@@ -564,5 +571,209 @@ function StartRolloutForm({
         </DialogFooter>
       </form>
     </Dialog>
+  );
+}
+
+// ── Halt everywhere (UX-08) ──────────────────────────────────────────────────────────────────
+
+/** One rollout of the release, with the outlet's display name ("Google Play"). */
+export interface HaltRow {
+  rollout: Rollout | MatrixRolloutDto;
+  outletName: string;
+}
+
+const rowKey = (r: Pick<Rollout, "outletId" | "channel">): string =>
+  `${r.outletId}/${r.channel}`;
+
+/** True when this console may halt the rollout (the server's own transition table). */
+export function canHalt(r: Rollout | MatrixRolloutDto): boolean {
+  return allowedVerbs(r).includes("halt");
+}
+
+/** Why a row is not offered: "Already halted", "Complete", "Halt it in Google Play". */
+export function haltBlocker(r: Rollout | MatrixRolloutDto): string | null {
+  if (canHalt(r)) return null;
+  if (r.state === "halted") return "Already halted";
+  if (r.state === "complete") return "Complete";
+  if (r.mirrored) return `Halt it in ${SOURCE_NAMES[r.source] ?? r.source}`;
+  return "Can't be halted";
+}
+
+/** The share a row shows on the right: "20 %", "5 % · paused". */
+function rowShare(r: Rollout | MatrixRolloutDto): string {
+  const pct = formatBasisPoints(r.rolloutBp);
+  return r.state === "paused" ? `${pct} · paused` : pct;
+}
+
+/** Some of the halts were refused: the dialog stays open and names them. */
+export class PartialHaltError extends Error {
+  constructor(
+    readonly halted: string[],
+    readonly refused: { where: string; error: unknown }[],
+  ) {
+    super(`${refused.length} of ${halted.length + refused.length} not halted`);
+  }
+}
+
+/**
+ * **Halt everywhere…**: every haltable rollout of one release, preselected, in one danger
+ * confirm. Each halt is the same `rolloutAction` the per-rollout dialog sends, one after the other;
+ * a refusal leaves the dialog open with the outlets that were not halted, while the rest stay
+ * halted (and become "Already halted" rows when the matrix refetches).
+ */
+export function HaltEverywhereDialog({
+  slug,
+  open,
+  version,
+  previous,
+  rows,
+  onClose,
+}: {
+  slug: string;
+  open: boolean;
+  version: string;
+  /** The release devices fall back to, when there is one ("2.3.2"). */
+  previous?: string | null;
+  rows: HaltRow[];
+  onClose: () => void;
+}): React.ReactElement | null {
+  if (!open) return null;
+  return (
+    <HaltEverywhereConfirm
+      slug={slug}
+      version={version}
+      previous={previous ?? null}
+      rows={rows}
+      onClose={onClose}
+    />
+  );
+}
+
+function HaltEverywhereConfirm({
+  slug,
+  version,
+  previous,
+  rows,
+  onClose,
+}: {
+  slug: string;
+  version: string;
+  previous: string | null;
+  rows: HaltRow[];
+  onClose: () => void;
+}): React.ReactElement {
+  // Opened with every haltable rollout chosen; rows the server refuses never enter the set.
+  const [chosen, setChosen] = React.useState<Set<string>>(
+    () =>
+      new Set(
+        rows.filter((r) => canHalt(r.rollout)).map((r) => rowKey(r.rollout)),
+      ),
+  );
+  const targets = rows.filter(
+    (r) => canHalt(r.rollout) && chosen.has(rowKey(r.rollout)),
+  );
+  const where = (r: HaltRow): string =>
+    `${r.outletName} · ${r.rollout.channel}`;
+  const n = targets.length;
+  return (
+    <ConfirmDialog
+      open
+      onOpenChange={(o) => !o && onClose()}
+      intent="danger"
+      title={`Halt ${version} everywhere?`}
+      description={
+        previous
+          ? `Devices that haven't updated stay on ${previous}. Devices already on ${version} keep it.`
+          : `Devices already on ${version} keep it.`
+      }
+      consequences={[
+        "Takes effect on each device's next feed check.",
+        previous
+          ? `Resume per outlet from Rollouts, or roll back to ${previous}.`
+          : "Resume per outlet from Rollouts.",
+      ]}
+      confirmLabel={n === 1 ? "Halt 1 rollout" : `Halt ${n} rollouts`}
+      confirmDisabled={n === 0}
+      describeError={(e) => {
+        if (e instanceof PartialHaltError) {
+          const first = e.refused[0]!;
+          return {
+            title:
+              e.refused.length === 1
+                ? `${first.where} was not halted`
+                : `${e.refused.length} rollouts were not halted`,
+            description: `${e.refused.map((x) => x.where).join(", ")}: ${describe(first.error).title}`,
+          };
+        }
+        return describe(e);
+      }}
+      onConfirm={async () => {
+        const halted: string[] = [];
+        const refused: { where: string; error: unknown }[] = [];
+        for (const row of targets) {
+          const r = row.rollout;
+          try {
+            await mutate("rolloutAction", slug, r.outletId, r.channel, "halt", {
+              deliverable: r.deliverableId,
+              releaseId: r.releaseId,
+            });
+            halted.push(where(row));
+          } catch (error) {
+            refused.push({ where: where(row), error });
+          }
+        }
+        if (halted.length)
+          toast.success(`Halted ${version} on ${halted.join(", ")}`);
+        if (refused.length) throw new PartialHaltError(halted, refused);
+        onClose();
+      }}
+    >
+      <ul
+        aria-label="Rollouts"
+        className="divide-y divide-border overflow-hidden rounded-lg border border-border"
+      >
+        {rows.map((row) => {
+          const r = row.rollout;
+          const key = rowKey(r);
+          const blocker = haltBlocker(r);
+          if (blocker)
+            return (
+              <li
+                key={key}
+                aria-disabled="true"
+                className="flex min-h-11 items-center justify-between gap-3 bg-surface-sunken px-3 py-2 text-fg-muted"
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <Pause aria-hidden className="size-4 shrink-0" />
+                  <span className="truncate">{where(row)}</span>
+                </span>
+                <span className="shrink-0 text-right">{blocker}</span>
+              </li>
+            );
+          return (
+            <li
+              key={key}
+              className="flex min-h-11 items-center justify-between gap-3 px-3 py-2"
+            >
+              <Checkbox
+                checked={chosen.has(key)}
+                onCheckedChange={(on) =>
+                  setChosen((prev) => {
+                    const next = new Set(prev);
+                    if (on) next.add(key);
+                    else next.delete(key);
+                    return next;
+                  })
+                }
+                label={where(row)}
+              />
+              <span className="shrink-0 text-right tabular-nums text-fg-muted">
+                {rowShare(r)}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </ConfirmDialog>
   );
 }

@@ -1,12 +1,19 @@
 import * as React from "react";
-import { Ban, ExternalLink, Pin } from "lucide-react";
+import { Ban, ExternalLink, OctagonPause, Pin, Undo2 } from "lucide-react";
 import type {
+  ActivityItem,
   ChannelPolicyDto,
   DistributionMatrix,
   ReleaseArtifactDto,
+  ReleaseChannelFloorDto,
   ReleaseDto,
 } from "../../../api.js";
-import { formatBytes, fromSeconds } from "../../../lib/format.js";
+import {
+  formatBasisPoints,
+  formatBytes,
+  formatRelative,
+  fromSeconds,
+} from "../../../lib/format.js";
 import {
   ACCESS_LABELS,
   label,
@@ -14,19 +21,30 @@ import {
 } from "../../../lib/labels.js";
 import { statusOf } from "../../../lib/status.js";
 import { Button } from "../../../ui/Button.js";
+import { Callout } from "../../../ui/Callout.js";
 import { Checkbox } from "../../../ui/Checkbox.js";
+import { Dialog, DialogBody, DialogFooter } from "../../../ui/Dialog.js";
 import { EmptyState } from "../../../ui/EmptyState.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
 import { Hash } from "../../../ui/Hash.js";
+import { RadioCards } from "../../../ui/RadioCards.js";
+import { Select } from "../../../ui/Select.js";
 import { PageSkeleton, Skeleton } from "../../../ui/Skeleton.js";
 import { SignedBadge } from "../../../ui/SignedBadge.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { Breadcrumbs } from "../../components/Breadcrumbs.js";
 import { EntityLink } from "../../components/EntityLink.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader, type PageAction } from "../../components/PageHeader.js";
 import { PageTabs } from "../../components/PageTabs.js";
+import {
+  canHalt,
+  HaltEverywhereDialog,
+  type HaltRow,
+} from "../../areas/distribution/RolloutDialogs.js";
+import { actorLabel } from "../../areas/distribution/format.js";
 import { useProduct } from "../../data/hooks.js";
+import { useActivityFeed } from "../core/Activity.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";
 import {
@@ -46,12 +64,19 @@ import {
 } from "./shared.js";
 
 /**
- * A release record (ADMIN.md §6.3.2, T3): builds as cards with their files (RBD-1, RBD-2), the
- * packs it pins as links to the pack record, where each channel serves it, and its matrix row.
- * Tabs are route segments: `release/releases/:id/[builds|packs|channels|distribution]`.
+ * A release record (ADMIN.md §6.3.2, T3; EXPERIENCE.md O2): it opens on **Status** (where it is
+ * live, the halt reason from the audit trail, **Halt everywhere…** and a guided **Roll back…**),
+ * then builds as cards with their files (RBD-1, RBD-2), the packs it pins as links to the pack
+ * record, where each channel serves it, and its matrix row.
+ * Tabs are route segments: `release/releases/:id/[status|builds|packs|channels|distribution]`.
  */
 
-export type ReleaseTab = "builds" | "packs" | "channels" | "distribution";
+export type ReleaseTab =
+  | "status"
+  | "builds"
+  | "packs"
+  | "channels"
+  | "distribution";
 
 /** True for a file that only vouches for another (a signature or checksum). */
 export function isSidecar(a: Pick<ReleaseArtifactDto, "role">): boolean {
@@ -444,6 +469,439 @@ function DistributionTab({
   );
 }
 
+// ── Status (UX-08, EXPERIENCE.md O2) ─────────────────────────────────────────────────────────
+
+/** Newest first, by seq, then publish time (the pickers' order). */
+function newestFirst(a: ReleaseDto, b: ReleaseDto): number {
+  return (
+    (b.seq ?? 0) - (a.seq ?? 0) || (b.publishedAt ?? 0) - (a.publishedAt ?? 0)
+  );
+}
+
+/** The release devices fall back to: the newest earlier release that is not yanked. */
+export function previousRelease(
+  release: ReleaseDto,
+  releases: ReleaseDto[],
+): ReleaseDto | null {
+  const sorted = [...releases].sort(newestFirst);
+  const at = sorted.findIndex((x) => x.releaseId === release.releaseId);
+  if (at < 0) return null;
+  return sorted.slice(at + 1).find((x) => !x.yank) ?? null;
+}
+
+/**
+ * This release's rollouts in Distribution's matrix, with each outlet's name, in outlet order.
+ * `null` when the release sits outside the matrix window (its rollouts are unknown, not absent).
+ */
+export function rolloutRowsOf(
+  matrix: DistributionMatrix | undefined,
+  releaseId: string,
+): HaltRow[] | null {
+  if (!matrix) return null;
+  if (!matrix.releases.some((x) => x.releaseId === releaseId)) return null;
+  const rows: HaltRow[] = [];
+  for (const o of matrix.outlets) {
+    const cell = matrix.cells.find(
+      (c) => c.releaseId === releaseId && c.outletId === o.outletId,
+    );
+    for (const rollout of cell?.rollouts ?? [])
+      rows.push({ rollout, outletName: label(OUTLET_KIND_LABELS, o.kind) });
+  }
+  return rows;
+}
+
+/** The rollout's audit target id (worker `rollouts.ts`): `<deliverable>:<outlet>:<channel>`. */
+function rolloutTarget(r: HaltRow["rollout"]): string {
+  return `${r.deliverableId}:${r.outletId}:${r.channel}`;
+}
+
+/** The newest `distribution.rollout.halt` row for this rollout of this release. */
+export function haltEventFor(
+  items: ActivityItem[],
+  r: HaltRow["rollout"],
+): ActivityItem | undefined {
+  const target = rolloutTarget(r);
+  return items.find(
+    (i) =>
+      i.action === "distribution.rollout.halt" &&
+      i.target?.id === target &&
+      i.summary.includes(` of ${r.releaseId} on `),
+  );
+}
+
+/**
+ * The reason a halt's audit row carries: the auto-halt appends it after
+ * "… on <outlet>/<channel>: " (worker `rollouts.ts`), ending with its source tag, which is dropped.
+ * A manual halt carries none today.
+ */
+export function haltReason(
+  item: ActivityItem,
+  r: HaltRow["rollout"],
+): string | null {
+  const marker = ` on ${r.outletId}/${r.channel}: `;
+  const at = item.summary.indexOf(marker);
+  if (at < 0) return null;
+  const reason = item.summary
+    .slice(at + marker.length)
+    .replace(/\s*\(source: [^)]*\)\s*$/, "")
+    .trim();
+  return reason ? reason.charAt(0).toUpperCase() + reason.slice(1) : null;
+}
+
+function isAutoHalt(r: HaltRow["rollout"]): boolean {
+  return r.source === "auto-halt" || r.updatedBy.startsWith("system:");
+}
+
+/** "Direct", "Direct and Google Play", "Direct, Google Play and Steam". */
+function joinNames(names: string[]): string {
+  const unique = [...new Set(names)];
+  if (unique.length < 2) return unique[0] ?? "";
+  return `${unique.slice(0, -1).join(", ")} and ${unique[unique.length - 1]}`;
+}
+
+/**
+ * The status line for a halted release: where, by whom, when, and the reason from the halt's audit
+ * row, with the evidence one click away (Health for an auto-halt, the rollout's activity otherwise).
+ */
+function HaltLine({
+  slug,
+  halted,
+}: {
+  slug: string;
+  halted: HaltRow[];
+}): React.ReactElement {
+  const feed = useActivityFeed(slug, {
+    action: "distribution.rollout.halt",
+    targetKind: "rollout",
+  });
+  const latest = [...halted].sort(
+    (a, b) => b.rollout.updatedAt - a.rollout.updatedAt,
+  )[0]!;
+  const ro = latest.rollout;
+  const event = haltEventFor(feed.data?.pages[0]?.items ?? [], ro);
+  const auto = isAutoHalt(ro);
+  const by = auto
+    ? "auto-halt"
+    : event
+      ? event.actor.name || event.actor.email || actorLabel(ro.updatedBy)
+      : actorLabel(ro.updatedBy);
+  const reason = event ? haltReason(event, ro) : null;
+  return (
+    <Callout
+      tone="danger"
+      title={`Halted on ${joinNames(halted.map((h) => h.outletName))} by ${by}, ${formatRelative(fromSeconds(ro.updatedAt))}`}
+      action={
+        <Button asChild variant="outline" size="sm">
+          {auto ? (
+            <Link to={r.health(slug)}>Open Health</Link>
+          ) : (
+            <Link
+              to={r.activity(slug, {
+                kind: "rollout",
+                target: rolloutTarget(ro),
+              })}
+            >
+              View in activity
+            </Link>
+          )}
+        </Button>
+      }
+    >
+      {reason}
+    </Callout>
+  );
+}
+
+/** One fact in "Where it's live": a muted label over a bold value. */
+function LiveTile({
+  label: name,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <div className="min-w-0 border-b border-border px-5 py-3">
+      <dt className="truncate text-xs text-fg-muted">{name}</dt>
+      <dd className="truncate text-sm font-bold tabular-nums text-fg-strong">
+        {children}
+      </dd>
+    </div>
+  );
+}
+
+/**
+ * Where a channel serves the release, from the server's per-platform answer: "Every platform",
+ * "Every platform but iOS" (iOS gets another release), or the platforms; `null` when it doesn't.
+ */
+export function servedWhere(
+  c: ChannelPolicyDto,
+  release: Pick<ReleaseDto, "releaseId">,
+): string | null {
+  const entries = Object.entries(c.byPlatform);
+  const on = entries.filter(([, id]) => id === release.releaseId);
+  if (!on.length)
+    return c.resolved === release.releaseId && !entries.length
+      ? "Every platform"
+      : null;
+  const elsewhere = entries
+    .filter(([, id]) => id !== null && id !== release.releaseId)
+    .map(([p]) => platformName(p));
+  if (!elsewhere.length) return "Every platform";
+  if (elsewhere.length <= 2)
+    return `Every platform but ${elsewhere.join(" and ")}`;
+  return on.map(([p]) => platformName(p)).join(", ");
+}
+
+/** A rollout's share as the tile reads it: "25 %", "10 % · halted", "100 %". */
+function shareOf(r: HaltRow["rollout"]): string {
+  if (r.state === "complete") return formatBasisPoints(10_000);
+  const pct = formatBasisPoints(r.rolloutBp);
+  if (r.state === "halted") return `${pct} · halted`;
+  if (r.state === "paused") return `${pct} · paused`;
+  return pct;
+}
+
+function StatusTab({
+  slug,
+  release,
+  channels,
+  previous,
+  distributionOn,
+  rows,
+  matrixLoading,
+  matrixError,
+  onRetry,
+}: {
+  slug: string;
+  release: ReleaseDto;
+  channels: ChannelPolicyDto[];
+  previous: ReleaseDto | null;
+  distributionOn: boolean;
+  rows: HaltRow[] | null;
+  matrixLoading: boolean;
+  matrixError: unknown;
+  onRetry: () => void;
+}): React.ReactElement {
+  const halted = (rows ?? []).filter((x) => x.rollout.state === "halted");
+  const serving = channels
+    .map((c) => ({ channel: c.channel, where: servedWhere(c, release) }))
+    .filter((c): c is { channel: string; where: string } => c.where !== null);
+  const live = (rows?.length ?? 0) > 0 || serving.length > 0;
+  return (
+    <div className="space-y-4">
+      {halted.length ? <HaltLine slug={slug} halted={halted} /> : null}
+      <section
+        aria-labelledby="release-live"
+        className="overflow-hidden rounded-xl border border-border bg-surface-raised"
+      >
+        <h2
+          id="release-live"
+          className="border-b border-border px-5 py-3.5 text-base font-bold text-fg-strong"
+        >
+          Where it’s live
+        </h2>
+        {distributionOn && matrixError ? (
+          <div className="p-4">
+            <ErrorState error={matrixError} onRetry={onRetry} />
+          </div>
+        ) : null}
+        {distributionOn && matrixLoading ? (
+          <div className="p-4">
+            <Skeleton className="h-12 w-full" />
+          </div>
+        ) : live ? (
+          <dl className="-mb-px grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            {(rows ?? []).map(({ rollout, outletName }) => (
+              <LiveTile
+                key={`${rollout.outletId}/${rollout.channel}`}
+                label={`${outletName} · ${rollout.channel}`}
+              >
+                <span
+                  className={
+                    rollout.state === "halted" ? "text-danger" : undefined
+                  }
+                >
+                  {shareOf(rollout)}
+                </span>
+              </LiveTile>
+            ))}
+            {serving.map((c) => (
+              <LiveTile key={c.channel} label={`${c.channel} channel`}>
+                {c.where}
+              </LiveTile>
+            ))}
+            {previous ? (
+              <LiveTile label="Previous release">
+                <Link
+                  to={r.release(slug, previous.releaseId)}
+                  className="font-mono text-accent-fg underline-offset-4 hover:underline"
+                >
+                  {previous.version}
+                </Link>
+              </LiveTile>
+            ) : null}
+          </dl>
+        ) : (
+          <p className="px-5 py-3.5 text-sm text-fg-muted">
+            {release.yank
+              ? `${release.version} is yanked: only a pin serves it.`
+              : `No channel or outlet offers ${release.version}.`}
+          </p>
+        )}
+      </section>
+    </div>
+  );
+}
+
+// ── Roll back (UX-08) ────────────────────────────────────────────────────────────────────────
+
+type RollbackKind = "pin" | "floor" | "yank";
+
+/**
+ * **Roll back…**: a guided choice between pinning a channel to the previous release, lowering the
+ * channel's rollback floor, and yanking this release, each saying what it does to devices already
+ * on it (EXPERIENCE.md O2). It only chooses: the chosen action opens its own confirm (`PolicyDialog`),
+ * which states the effect and sends the write.
+ */
+export function RollBackDialog({
+  open,
+  release,
+  previous,
+  channels,
+  serving,
+  floors,
+  onChoose,
+  onClose,
+}: {
+  open: boolean;
+  release: ReleaseDto;
+  previous: ReleaseDto | null;
+  /** Every channel name of the app. */
+  channels: string[];
+  /** The channels serving this release, first choice for the channel. */
+  serving: string[];
+  floors: ReleaseChannelFloorDto[];
+  onChoose: (action: PolicyAction) => void;
+  onClose: () => void;
+}): React.ReactElement | null {
+  const first = serving[0] ?? channels[0] ?? null;
+  const [channel, setChannel] = React.useState<string | null>(first);
+  const [kind, setKind] = React.useState<RollbackKind>(
+    previous && first ? "pin" : "yank",
+  );
+  React.useEffect(() => {
+    if (!open) return;
+    setChannel(first);
+    setKind(previous && first ? "pin" : "yank");
+    // Each opening starts from the record's current answer; keyed on `open` alone so a refetch
+    // while the dialog is open keeps the operator's choice.
+  }, [open]);
+  if (!open) return null;
+  const v = release.version;
+  const prev = previous?.version ?? null;
+  const c = channel ?? "the channel";
+  const floor = floors.find((f) => f.channel === channel) ?? null;
+  const options = [
+    {
+      value: "pin" as const,
+      label: prev ? `Pin ${c} to ${prev}` : `Pin ${c}`,
+      description: prev
+        ? `${c} stops offering ${v}; devices that haven't updated get ${prev}. Devices already on ${v} keep it.`
+        : `There is no earlier release to pin ${c} to.`,
+      disabled: !prev || !channel,
+    },
+    {
+      value: "floor" as const,
+      label: `Lower ${c}'s rollback floor`,
+      description: floor
+        ? `${c} never moves below ${floor.version}. Lowering it lets ${c} serve ${prev ?? "an older release"} again once ${v} is gone. Devices already on ${v} keep it.`
+        : `${c} has no rollback floor to lower.`,
+      disabled: !floor,
+    },
+    {
+      value: "yank" as const,
+      label: `Yank ${v}`,
+      description: `Every channel stops offering ${v} and falls back to the newest release it may serve. Devices already on ${v} keep it.`,
+    },
+  ];
+  const chosen = options.find((o) => o.value === kind);
+  const usable = chosen && !chosen.disabled ? kind : null;
+  const next: Record<RollbackKind, string> = {
+    pin: "Pin…",
+    floor: "Lower floor…",
+    yank: "Yank…",
+  };
+  const choose = (): void => {
+    if (!usable) return;
+    if (usable === "pin" && previous && channel)
+      onChoose({
+        kind: "pin",
+        deliverable: APP,
+        channel,
+        releaseId: previous.releaseId,
+      });
+    else if (usable === "floor" && floor && channel)
+      onChoose({ kind: "lowerFloor", channel, floor });
+    else if (usable === "yank")
+      onChoose({ kind: "yank", release: optionOfRelease(release) });
+  };
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()} title={`Roll back ${v}`}>
+      <form
+        noValidate
+        aria-label={`Roll back ${v}`}
+        onSubmit={(e) => {
+          e.preventDefault();
+          choose();
+        }}
+      >
+        <DialogBody className="space-y-4">
+          {channels.length > 1 ? (
+            <div className="flex items-center justify-between gap-3">
+              <span id="rollback-channel" className="text-sm font-bold">
+                Channel
+              </span>
+              <Select
+                aria-labelledby="rollback-channel"
+                value={channel}
+                onChange={setChannel}
+                className="w-48"
+                options={channels.map((x) => ({
+                  value: x,
+                  label: x,
+                  description: serving.includes(x) ? `Serves ${v}` : undefined,
+                }))}
+              />
+            </div>
+          ) : null}
+          <RadioCards<RollbackKind>
+            aria-label="How to roll back"
+            columns={1}
+            value={kind}
+            onChange={setKind}
+            options={options}
+          />
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            variant={kind === "yank" ? "danger" : "primary"}
+            disabledReason={
+              usable ? undefined : "Choose a way to roll back that applies."
+            }
+          >
+            {next[kind]}
+          </Button>
+        </DialogFooter>
+      </form>
+    </Dialog>
+  );
+}
+
 export function ReleaseRecord({
   slug,
   id,
@@ -459,14 +917,17 @@ export function ReleaseRecord({
   const distributionOn =
     product.data?.services?.distribution?.enabled !== false;
   const current: ReleaseTab =
-    tab === "packs" || tab === "channels" || tab === "distribution"
+    tab === "builds" ||
+    tab === "packs" ||
+    tab === "channels" ||
+    tab === "distribution"
       ? tab
-      : "builds";
-  const matrix = useMatrixOverlay(
-    slug,
-    distributionOn && current === "distribution",
-  );
+      : "status";
+  // Every tab reads it: the header's Halt everywhere… needs this release's rollouts.
+  const matrix = useMatrixOverlay(slug, distributionOn);
   const [action, setAction] = React.useState<PolicyAction | null>(null);
+  const [halting, setHalting] = React.useState(false);
+  const [rollingBack, setRollingBack] = React.useState(false);
 
   const releases = (store.data?.releases ?? []).filter(
     (x) => x.deliverable === APP,
@@ -516,7 +977,68 @@ export function ReleaseRecord({
 
   const serving = servingChannels(release.releaseId, appChannels);
   const pins = release.pins?.length ?? 0;
+  const previous = previousRelease(release, releases);
+  const rows = distributionOn
+    ? rolloutRowsOf(matrix.data, release.releaseId)
+    : null;
+  const haltable = (rows ?? []).filter((x) => canHalt(x.rollout));
+  const v = release.version;
+  const haltBlocked = matrix.isPending
+    ? "Loading this release's rollouts."
+    : matrix.error
+      ? "This release's rollouts didn't load. Try again from Status."
+      : !rows
+        ? `${v} is older than the releases Distribution tracks.`
+        : !rows.length
+          ? `${v} has no rollout to halt.`
+          : !haltable.length
+            ? `No rollout of ${v} can be halted here.`
+            : undefined;
+  const yanked = release.yank
+    ? `${v} is yanked. Unyank it, or pin it.`
+    : undefined;
+  const promote: PageAction = {
+    label: "Promote…",
+    disabledReason: release.yank
+      ? "A yanked release can't be promoted. Unyank it, or pin it."
+      : undefined,
+    onSelect: () =>
+      setAction({
+        kind: "promote",
+        deliverable: APP,
+        releaseId: release.releaseId,
+      }),
+  };
+  const rollBack: PageAction = {
+    label: "Roll back…",
+    icon: <Undo2 aria-hidden />,
+    disabledReason: yanked,
+    onSelect: () => setRollingBack(true),
+  };
+  const pinOn: PageAction = {
+    label: "Pin on…",
+    onSelect: () =>
+      setAction({
+        kind: "pin",
+        deliverable: APP,
+        releaseId: release.releaseId,
+      }),
+  };
+  const unyank: PageAction[] = release.yank
+    ? [
+        {
+          label: "Unyank…",
+          onSelect: () =>
+            setAction({ kind: "unyank", release: optionOfRelease(release) }),
+        },
+      ]
+    : [];
   const tabs = [
+    {
+      value: "status",
+      label: "Status",
+      to: r.release(slug, id, "status"),
+    },
     {
       value: "builds",
       label: "Builds & files",
@@ -551,17 +1073,13 @@ export function ReleaseRecord({
         title={<span className="font-mono">{release.version}</span>}
         titleAside={
           <span className="inline-flex flex-wrap items-center gap-2">
-            {release.yank ? (
-              <StatusPill tone="neutral" icon={Ban}>
-                Yanked
-              </StatusPill>
-            ) : serving.length ? (
-              <StatusPill tone="success">
-                Live on {serving.join(", ")}
-              </StatusPill>
-            ) : null}
             {release.signer ? (
               <SignedBadge kid={release.signer.kid} by="the release key" />
+            ) : null}
+            {release.yank ? (
+              <StatusPill tone="warning" icon={Ban}>
+                Yanked
+              </StatusPill>
             ) : null}
           </span>
         }
@@ -605,46 +1123,30 @@ export function ReleaseRecord({
           </>
         }
         primaryAction={
-          <Button
-            disabledReason={
-              release.yank
-                ? "A yanked release can't be promoted. Unyank it, or pin it."
-                : undefined
-            }
-            onClick={() =>
-              setAction({
-                kind: "promote",
-                deliverable: APP,
-                releaseId: release.releaseId,
-              })
-            }
-          >
-            Promote…
-          </Button>
+          distributionOn ? (
+            <Button
+              variant="outline"
+              className="border-danger-border text-danger"
+              iconStart={<OctagonPause aria-hidden />}
+              disabledReason={haltBlocked}
+              onClick={() => setHalting(true)}
+            >
+              Halt everywhere…
+            </Button>
+          ) : (
+            <Button
+              disabledReason={promote.disabledReason}
+              onClick={promote.onSelect}
+            >
+              Promote…
+            </Button>
+          )
         }
-        secondaryActions={[
-          {
-            label: "Pin on…",
-            onSelect: () =>
-              setAction({
-                kind: "pin",
-                deliverable: APP,
-                releaseId: release.releaseId,
-              }),
-          },
-          ...(release.yank
-            ? [
-                {
-                  label: "Unyank…",
-                  onSelect: () =>
-                    setAction({
-                      kind: "unyank",
-                      release: optionOfRelease(release),
-                    }),
-                },
-              ]
-            : []),
-        ]}
+        secondaryActions={
+          distributionOn
+            ? [rollBack, promote, pinOn, ...unyank]
+            : [rollBack, pinOn, ...unyank]
+        }
         dangerActions={
           release.yank
             ? []
@@ -662,6 +1164,19 @@ export function ReleaseRecord({
         tabs={<PageTabs label="Release" items={tabs} value={current} />}
         sticky
       />
+      {current === "status" ? (
+        <StatusTab
+          slug={slug}
+          release={release}
+          channels={appChannels}
+          previous={previous}
+          distributionOn={distributionOn}
+          rows={rows}
+          matrixLoading={distributionOn && matrix.isPending}
+          matrixError={distributionOn ? matrix.error : null}
+          onRetry={() => void matrix.refetch()}
+        />
+      ) : null}
       {current === "builds" ? (
         <BuildsTab slug={slug} release={release} />
       ) : null}
@@ -686,6 +1201,27 @@ export function ReleaseRecord({
           onRetry={() => void matrix.refetch()}
         />
       ) : null}
+      <HaltEverywhereDialog
+        slug={slug}
+        open={halting}
+        version={v}
+        previous={previous?.version ?? null}
+        rows={rows ?? []}
+        onClose={() => setHalting(false)}
+      />
+      <RollBackDialog
+        open={rollingBack}
+        release={release}
+        previous={previous}
+        channels={appChannels.map((c) => c.channel)}
+        serving={serving}
+        floors={store.data?.floors ?? []}
+        onChoose={(next) => {
+          setRollingBack(false);
+          setAction(next);
+        }}
+        onClose={() => setRollingBack(false)}
+      />
       <PolicyDialog
         slug={slug}
         action={action}
