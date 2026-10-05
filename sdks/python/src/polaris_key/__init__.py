@@ -62,7 +62,8 @@ from .identity.client import (
     SignInPrompt,
     SignInResult,
 )
-from . import qr
+from . import copy, qr
+from .portal import PORTAL_FLOWS, PortalClient
 # Generated constants (`pnpm gen:constants`, tools/gen-sdk-constants.ts), imported wholesale through
 # the generated ``__all__`` so a constant the generator gains reaches the package root unedited.
 from . import constants_generated as _constants_generated
@@ -302,6 +303,9 @@ __all__ = [
     "SignInResult",
     "SignedInIdentity",
     "qr",
+    "copy",
+    "PortalClient",
+    "PORTAL_FLOWS",
     "MintedToken",
     "ReleaseClient",
     "FetchedFile",

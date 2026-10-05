@@ -32,6 +32,7 @@ from typing import Callable, Dict, IO, Iterable, List, Mapping, Optional
 
 from .._version import __version__ as PACKAGE_VERSION
 from ..client import PolarisKeyClient
+from ..copy import message as copy_message
 from ..core.errors import PolarisError
 from ..core.store import StoreStatus
 from ..devices.client import (
@@ -300,10 +301,15 @@ def _describe_activation_failure(
         return CommandResult(
             1, [f"{verb} failed: this product does not offer keyless enrollment."]
         )
-    message = getattr(r, "message", "") or "unknown error."
     code = getattr(r, "code", None)
-    suffix = f" ({code})" if isinstance(code, str) and code not in message else ""
-    return CommandResult(1, [f"{verb} failed: {message}{suffix}"])
+    if isinstance(code, str):
+        # Every other kind carries a registry code: say it with the shared copy (§3.2).
+        lines = [f"{verb} failed: {copy_message(code)}"]
+        if getattr(r, "kind", None) in ("refused", "error"):
+            lines[0] += f" ({code})"
+        return CommandResult(1, lines)
+    message = getattr(r, "message", "") or "unknown error."
+    return CommandResult(1, [f"{verb} failed: {message}"])
 
 
 # ── license ─────────────────────────────────────────────────────────────────────────
