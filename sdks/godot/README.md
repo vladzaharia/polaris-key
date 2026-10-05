@@ -177,6 +177,31 @@ Downloadable content as `godot.pck` and `files.tree` releases, fetched, verified
 mounted at a boot. A build needs a content stamp at `res://pkey_packs/pkey-content.json` (written
 by CI) to have packs at all. See [Packs](#packs-polariskeyupdatepacks-p4-08).
 
+### Commerce
+
+```gdscript
+var r := await PolarisKey.commerce.purchase("extras.diceSkins")  # a PKeyPurchaseResult
+match r.kind:
+	PKeyPurchaseResult.KIND_OK: unlock(r.flags)             # claimed and synced
+	PKeyPurchaseResult.KIND_PENDING: show_pending()         # Ask to Buy: it arrives later
+	PKeyPurchaseResult.KIND_CANCELLED, PKeyPurchaseResult.KIND_NOT_OWNED: pass
+	_: show_error(PKeyUiCopy.shared().for_result(r))
+await PolarisKey.commerce.restore()                         # re-claim what the store says you own
+await PolarisKey.commerce.claim_play(sku, purchase_token)   # from your own Play billing plugin
+if PolarisKey.commerce.is_unlocked("extras.diceSkins"): ...
+```
+
+Store purchases become licence flags (P6-01): the store sells, the Worker verifies the purchase
+and puts the mapped flag on the licence. `purchase(flag)` is the whole flow: the binding, the
+store's purchase with the binding token, the claim, the transaction finished only after the
+claim succeeded, then a sync. It drives the App Store on iOS (`PKeyApple`) and Steam through
+GodotSteam (the overlay's store page; the DLC is claimed with a Web API ticket bound to the
+binding once Steam says it is owned). On Play it answers unsupported with reason `dependency`
+until the addon drives Play Billing; buy with your billing plugin (`obfuscatedAccountId =
+commerce.binding_id`) and call `claim_play()`. A build that no store sells answers `outlet`.
+`restore()` re-claims App Store current entitlements and owned Steam DLC. The lower-level
+`get_binding()`, `claim(store, payload)` and `claim_app_store(tx)` stay available.
+
 ### Distribution, portal links and crash tags
 
 ```gdscript
@@ -195,7 +220,7 @@ SentrySDK.set_tag("pkey.outlet", PolarisKey.crash_tags().get("pkey.outlet", ""))
   declared return URLs; a relative or `javascript:` value is dropped here. `PKeyActivationPanel`
   shows **Manage devices** (the portal's free-a-device page) on `device-limit`.
 - `crash_tags()` is `{release: "app@<version>[+<build>]", environment: <update channel>,
-  "pkey.outlet": <outlet>}`, the convention update health maps a crash report to a rollout with.
+"pkey.outlet": <outlet>}`, the convention update health maps a crash report to a rollout with.
   No crash SDK is bundled; give the values to yours (Sentry: `release`, `environment` and a
   `pkey.outlet` tag).
 

@@ -117,6 +117,7 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	license.on_acquired = _on_license_acquired
 	license.on_changed = _on_license_wiped
 	commerce.attach(core, license)
+	commerce.on_claimed = func() -> void: await sync(true)
 	distribution.attach(core)
 	portal.attach(core)
 	identity.attach(core, self)
