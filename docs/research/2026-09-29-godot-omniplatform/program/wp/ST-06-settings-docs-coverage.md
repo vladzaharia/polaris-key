@@ -52,7 +52,7 @@
 
 - [x] `gen:settings --check` passes and fails on a stale page.
 - [x] The coverage test fails on an entry that is both pending and registered.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Corrections and decisions (ST-06 implementation, 2026-10-05)
 
