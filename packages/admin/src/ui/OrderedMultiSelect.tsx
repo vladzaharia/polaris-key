@@ -114,11 +114,17 @@ export function OrderedMultiSelect({
               </span>
               <span className="min-w-0 flex-1">
                 <span className="sr-only">{`Position ${i + 1}: `}</span>
-                <span className="block truncate text-sm text-fg">
+                <span
+                  className="block truncate text-sm text-fg"
+                  title={textOf(byValue.get(v)?.label ?? v)}
+                >
                   {byValue.get(v)?.label ?? v}
                 </span>
                 {byValue.get(v)?.secondary ? (
-                  <span className="block truncate text-xs text-fg-muted">
+                  <span
+                    className="block truncate text-xs text-fg-muted"
+                    title={textOf(byValue.get(v)?.secondary)}
+                  >
                     {byValue.get(v)?.secondary}
                   </span>
                 ) : null}
@@ -175,4 +181,11 @@ export function OrderedMultiSelect({
       )}
     </div>
   );
+}
+
+/** A label's plain text for a `title` (a node label has none to offer). */
+function textOf(node: React.ReactNode): string | undefined {
+  return typeof node === "string" || typeof node === "number"
+    ? String(node)
+    : undefined;
 }

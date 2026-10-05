@@ -483,6 +483,7 @@ function ActivityTable({
         header: "When",
         accessorKey: "at",
         meta: {
+          numeric: true,
           priority: 1,
           csv: (i) => formatIso(fromSeconds(i.at)),
         },
