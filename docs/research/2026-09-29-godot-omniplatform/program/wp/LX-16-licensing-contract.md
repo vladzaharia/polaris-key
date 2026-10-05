@@ -12,6 +12,12 @@
 | Human input | a production release with LX-09's read switch live everywhere for one release before this deploys |
 | Repo        | `vladzaharia/polaris-key`                                                                         |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/PX-W13.md`](../plans/PX-W13.md):** Q6: rename `account_product_grants` in the contract-phase migration.
+
 ## Goal
 
 The old licensing objects are retired: dual-writing stops, a final reconciliation shows zero drift, and old columns are dropped where D1 allows without a rebuild (else left dead); `license_store_grants` is dropped last.

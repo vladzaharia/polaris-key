@@ -12,6 +12,12 @@
 | Human input | plan approval (`plans/LX-11.md`)                                                                                                                                                                                     |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                            |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/LX-01.md`](../plans/LX-01.md):** Q5: `restorePolicy` and `transferCooldownDays` live per store in the existing commerce connector settings (`dist_connector_settings`, `commerce/settings.ts`), not a separate table; store mappings stay operator-only.
+
 ## Goal
 
 Store purchases follow the holder, not the first licence: holder bindings, per-store restore policy, Steam store identity, many-to-many and base/seats store-product mappings, `dist_commerce_settings`; the Godot commerce client follows.
