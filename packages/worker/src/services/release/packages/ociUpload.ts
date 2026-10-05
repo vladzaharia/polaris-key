@@ -29,7 +29,7 @@
  *
  *   staging/<product>/oci-upload-<uuid>/state      the upload's JSON state (etag-guarded)
  *   staging/<product>/oci-upload-<uuid>/data       the R2 multipart object, once a part exists
- *   staging/<product>/oci-upload-<uuid>/tail-<n>   bytes received but not yet a part
+ *   staging/<product>/oci-upload-<uuid>/tail-…     bytes received but not yet a part
  *
  * R2's multipart rule: every part but the last is the SAME size, at least 5 MiB and at most
  * 5 GiB; the last may be smaller; at most 10,000 parts. A registry client chooses its own chunk
@@ -336,7 +336,9 @@ export async function appendChunk(
     const rest = total - full * (partSize ?? 0);
     const newSize = st.size + chunk.length;
     if (rest > 0) {
-      const key = tailKey(st, st.parts.length, newSize);
+      // A random suffix: two requests racing from the same state never write the same tail, so
+      // the one whose state write loses cannot overwrite the winner's bytes.
+      const key = `${tailKey(st, st.parts.length, newSize)}-${crypto.randomUUID().slice(0, 8)}`;
       await bucket.put(key, src.take(rest));
       st.tail = { key, size: rest };
     } else st.tail = null;

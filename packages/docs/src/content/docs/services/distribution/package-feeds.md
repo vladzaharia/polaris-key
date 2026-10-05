@@ -401,10 +401,12 @@ with `pkey release promote`, never pushed, and a version that exists never takes
 A manifest pushed **by digest** (an index's platform manifests) is stored and publishes nothing.
 Every object a manifest names must be one this owner holds, pushed or published before.
 
-Limits: each request carries at most 100 MB, the zone's body limit, and `docker push` sends a
-layer in one request, so a layer above that needs a client that sends chunks (`PATCH` with
-`Content-Range`, as `crane` and `oras` can) or the ticket path above. Chunks of any size work
-(they are fitted to R2's multipart parts server-side); each blob is at most the feed's ceiling.
+Limits: each request carries at most 100 MB, the zone's body limit. `docker push` and `crane`
+(go-containerregistry) send each layer as one streamed `PATCH` without `Content-Length`, which
+the registry appends 16 MiB at a time, so a layer of up to 100 MB pushes as it is. A larger layer
+needs a client set to send chunks (`PATCH` with `Content-Range`, each under 100 MB) or the ticket
+path above. Chunks of any size work (they are fitted to R2's multipart parts server-side); each
+blob is at most the feed's ceiling.
 An object pushed but not yet in a version is served by digest from its repository only, never
 tagged, and never from the bytes host. Nothing is ever deleted: `DELETE` is refused, and an
 abandoned upload only drops its own staged bytes.

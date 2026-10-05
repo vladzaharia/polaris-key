@@ -1442,8 +1442,9 @@ are refused, so a push can never repoint a moving tag. `DELETE` is 405. Cancelli
 aborts its multipart upload and removes its own staging objects.
 
 **Abuse bounds.** Each request is bounded by the zone's body limit (100 MB); a body without
-`Content-Length` is read into memory up to that bound (R2 needs every stream's length), an isolate
-memory cost bounded by the edge. Chunks append only in order (`Content-Range`), the upload state
+`Content-Length` (docker's chunked layer `PATCH`) is never held whole: R2 needs every stream's
+length, so it is read in pieces of 16 MiB, each appended to the upload as soon as it is full, and
+the isolate holds one piece at a time (a manifest, at most 4 MiB, is the only body read whole). Chunks append only in order (`Content-Range`), the upload state
 is compare-and-swapped on its R2 etag, each blob is held to the feed's per-blob ceiling, a manifest
 to 4 MiB and a tag push's walk to 256 manifests. Abandoned uploads expire with the staging prefix
 (one day) and R2's incomplete-multipart rule. Untagged objects are kept (nothing removes them yet;

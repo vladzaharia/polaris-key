@@ -363,7 +363,9 @@ async function discardBody(
 /**
  * The request body as a chunk of known length: streamed when `Content-Length` says how long it is,
  * else read into memory up to `max` (a client sending `Transfer-Encoding: chunked`; R2 needs every
- * stream's length up front). `null` with no body; a `Response` when it is over `max`.
+ * stream's length up front). Only for small bodies (a manifest, at most `MAX_MANIFEST_BYTES`): it
+ * holds the body and a copy of it at once. A blob's bytes go through `appendRequest`, which never
+ * holds more than `SPOOL_BYTES`. A `Response` when it is over `max`.
  */
 async function requestChunk(
   req: Request,
@@ -411,15 +413,143 @@ async function requestChunk(
   return { body, length };
 }
 
-/** `Content-Range: <start>-<end>` as the start offset, `undefined` when absent, `null` when bad. */
-function rangeStart(req: Request, length: number): number | undefined | null {
+/** `Content-Range: <start>-<end>`, `undefined` when absent, `null` when it is not a range. */
+function contentRange(
+  req: Request,
+): { start: number; length: number } | undefined | null {
   const raw = req.headers.get("content-range");
   if (raw === null) return undefined;
   const m = /^(?:bytes[ =])?(\d{1,15})-(\d{1,15})$/.exec(raw.trim());
   if (!m) return null;
   const start = Number(m[1]);
   const end = Number(m[2]);
-  return end - start + 1 === length ? start : null;
+  return end >= start ? { start, length: end - start + 1 } : null;
+}
+
+/**
+ * How much of a body without `Content-Length` (and without `Content-Range`) is held before it is
+ * appended to the upload. `docker push` and go-containerregistry send each layer as one `PATCH`
+ * with chunked transfer encoding, so R2, which needs every stream's length, can only be fed such a
+ * body in pieces of known length: the isolate holds one piece at a time (Core's blob-store rule,
+ * `core/blobs.ts`: never buffer an object; the isolate has 128 MB). At least `MIN_PART_BYTES`, so
+ * the first piece of a fresh upload fixes a real part size.
+ */
+export const SPOOL_BYTES = 16 * 1024 * 1024;
+
+/** Byte arrays as one stream (a spooled piece, handed to `appendChunk` without a copy). */
+function streamOf(pieces: Uint8Array[]): ReadableStream<Uint8Array> {
+  let i = 0;
+  return new ReadableStream<Uint8Array>({
+    pull(c) {
+      if (i < pieces.length) c.enqueue(pieces[i++]!);
+      else c.close();
+    },
+  });
+}
+
+/**
+ * Append the request's body to the upload (a `PATCH`, or the final body of a `PUT` or monolithic
+ * `POST`), and answer the upload it leaves, or the refusal:
+ *
+ * - `Content-Length`: one chunk, streamed (a `Content-Range`, when sent, must match it);
+ * - no `Content-Length` but a `Content-Range`: one chunk of the range's length, streamed (a body
+ *   of any other length is refused by `appendChunk`);
+ * - neither: read in pieces of `SPOOL_BYTES`, each appended as a chunk of known length as soon as
+ *   it is full, so the isolate never holds more than one piece. A refusal part-way leaves the
+ *   pieces already appended in the upload (its `Range` says how far it got, as the spec allows).
+ *
+ * Every request carries at most `MAX_CHUNK_BYTES` (the zone's body limit).
+ */
+async function appendRequest(
+  req: Request,
+  push: Push,
+  up: LoadedUpload,
+  badRange: (up: LoadedUpload) => Response,
+): Promise<LoadedUpload | Response> {
+  const tooLarge = () =>
+    ociError(
+      413,
+      "SIZE_INVALID",
+      `a request carries at most ${MAX_CHUNK_BYTES} bytes`,
+    );
+  const range = contentRange(req);
+  if (range === null) {
+    await discardBody(req.body);
+    return badRange(up);
+  }
+  const declared = req.headers.get("content-length");
+  let chunk: Chunk | null = null;
+  if (declared !== null) {
+    const sized = await requestChunk(req, MAX_CHUNK_BYTES);
+    if (sized instanceof Response) return sized;
+    // An empty body appends nothing (a final `PUT` that only names the digest).
+    if (sized.length === 0) return up;
+    chunk = sized;
+  } else if (range !== undefined) {
+    if (range.length > MAX_CHUNK_BYTES) {
+      await discardBody(req.body);
+      return tooLarge();
+    }
+    chunk = {
+      body:
+        (req.body as ReadableStream<Uint8Array> | null) ?? new Uint8Array(0),
+      length: range.length,
+    };
+  }
+  if (chunk !== null) {
+    if (range !== undefined && range.length !== chunk.length) {
+      await discardBody(chunk.body);
+      return badRange(up);
+    }
+    const next = await appendChunk(push.bucket, up, chunk, {
+      ceiling: push.feed.maxPackageBytes,
+      ...(range !== undefined ? { start: range.start } : {}),
+    });
+    if (typeof next === "string") {
+      await discardBody(chunk.body);
+      return refusalAnswer(push, up, next);
+    }
+    return next;
+  }
+  // No length at all: spool it, one bounded piece at a time.
+  if (!req.body) return up;
+  const reader = (req.body as ReadableStream<Uint8Array>).getReader();
+  let current = up;
+  let pieces: Uint8Array[] = [];
+  let held = 0;
+  let read = 0;
+  const flush = async (): Promise<Response | null> => {
+    const piece: Chunk = { body: streamOf(pieces), length: held };
+    pieces = [];
+    held = 0;
+    const next = await appendChunk(push.bucket, current, piece, {
+      ceiling: push.feed.maxPackageBytes,
+    });
+    if (typeof next === "string") return refusalAnswer(push, current, next);
+    current = next;
+    return null;
+  };
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      read += value.byteLength;
+      if (read > MAX_CHUNK_BYTES) return tooLarge();
+      pieces.push(value);
+      held += value.byteLength;
+      if (held >= SPOOL_BYTES) {
+        const refused = await flush();
+        if (refused) return refused;
+      }
+    }
+    if (held > 0) {
+      const refused = await flush();
+      if (refused) return refused;
+    }
+    return current;
+  } finally {
+    await reader.cancel().catch(() => undefined);
+  }
 }
 
 // ── Blob uploads ─────────────────────────────────────────────────────────────────────────────
@@ -529,27 +659,14 @@ async function finish(
   up: LoadedUpload,
   hex: string,
 ): Promise<Response> {
-  const chunk = await requestChunk(req, MAX_CHUNK_BYTES);
-  if (chunk instanceof Response) return chunk;
-  let current = up;
-  if (chunk.length > 0) {
-    const start = rangeStart(req, chunk.length);
-    if (start === null)
-      return ociError(
-        400,
-        "BLOB_UPLOAD_INVALID",
-        "Content-Range does not match the body",
-      );
-    const next = await appendChunk(push.bucket, up, chunk, {
-      ceiling: push.feed.maxPackageBytes,
-      ...(start !== undefined ? { start } : {}),
-    });
-    if (typeof next === "string") {
-      await discardBody(chunk.body);
-      return refusalAnswer(push, up, next);
-    }
-    current = next;
-  }
+  const current = await appendRequest(req, push, up, () =>
+    ociError(
+      400,
+      "BLOB_UPLOAD_INVALID",
+      "Content-Range does not match the body",
+    ),
+  );
+  if (current instanceof Response) return current;
   const done = await completeUpload(push.bucket, current);
   if (done === "changed") {
     await discardUpload(push.bucket, current.state);
@@ -639,24 +756,15 @@ const uploadOp = async (req: Request, push: Push): Promise<Response> => {
       await discardUpload(push.bucket, up.state);
       return empty(204, {});
     case "PATCH": {
-      const chunk = await requestChunk(req, MAX_CHUNK_BYTES);
-      if (chunk instanceof Response) return chunk;
-      const start = rangeStart(req, chunk.length);
-      if (start === null)
-        return ociError(
+      const next = await appendRequest(req, push, up, (at) =>
+        ociError(
           416,
           "BLOB_UPLOAD_INVALID",
           "Content-Range does not match the body",
-          uploadHeaders(push, up),
-        );
-      const next = await appendChunk(push.bucket, up, chunk, {
-        ceiling: push.feed.maxPackageBytes,
-        ...(start !== undefined ? { start } : {}),
-      });
-      if (typeof next === "string") {
-        await discardBody(chunk.body);
-        return refusalAnswer(push, up, next);
-      }
+          uploadHeaders(push, at),
+        ),
+      );
+      if (next instanceof Response) return next;
       return empty(202, uploadHeaders(push, next));
     }
     default: {

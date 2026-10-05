@@ -41,6 +41,7 @@ import { OCI_PUSH_REF, blobKey } from "../src/core/blobs.js";
 import { issueStaticCiToken } from "../src/core/publisher.js";
 import {
   OCI_PUSH_ROUTES,
+  SPOOL_BYTES,
   parseOciManifest,
 } from "../src/services/release/packages/ociPush.js";
 import { RELEASE_REGISTRY_OPENAPI } from "../src/services/release/index.js";
@@ -768,6 +769,163 @@ describe("blob uploads over R2 multipart", () => {
     );
     expect(put.status).toBe(201);
   });
+
+  it("a body without Content-Length but with Content-Range is streamed as the range's length (and refused when it is not)", async () => {
+    const auth = await bearerFor(basic(pushToken));
+    const bytes = enc("0123456789");
+    const start = await call("POST", `/v2/${NAME}/blobs/uploads/`, {
+      headers: { authorization: auth },
+    });
+    const loc = start.headers.get("location")!;
+    const short = await call("PATCH", loc, {
+      body: bytes.subarray(0, 3),
+      headers: {
+        authorization: auth,
+        "content-length": "omit",
+        "content-range": "0-3",
+      },
+    });
+    expect(short.status).toBe(400);
+    expect(await ociCode(short)).toBe("SIZE_INVALID");
+    const first = await call("PATCH", loc, {
+      body: bytes.subarray(0, 4),
+      headers: {
+        authorization: auth,
+        "content-length": "omit",
+        "content-range": "0-3",
+      },
+    });
+    expect(first.status, await first.clone().text()).toBe(202);
+    expect(first.headers.get("range")).toBe("0-3");
+    const put = await call("PUT", `${loc}?digest=${digestOf(bytes)}`, {
+      body: bytes.subarray(4),
+      headers: {
+        authorization: auth,
+        "content-length": "omit",
+        "content-range": "4-9",
+      },
+    });
+    expect(put.status, await put.clone().text()).toBe(201);
+  });
+
+  /** `bytes` as a streamed body without `Content-Length`, in 1 MiB reads (docker's layer PATCH). */
+  function chunkedRequest(
+    method: string,
+    path: string,
+    bytes: Uint8Array,
+    auth: string,
+  ): Request {
+    let at = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(c) {
+        if (at >= bytes.byteLength) return c.close();
+        c.enqueue(bytes.slice(at, at + MiB));
+        at += MiB;
+      },
+    });
+    return new Request(`${PKG}${path}`, {
+      method,
+      headers: { authorization: auth },
+      body,
+      duplex: "half",
+    } as RequestInit);
+  }
+
+  /** Record every multipart part's size the bucket is sent. */
+  function recordPartSizes(): number[] {
+    const sizes: number[] = [];
+    const resume = bucket.resumeMultipartUpload.bind(bucket);
+    vi.spyOn(bucket, "resumeMultipartUpload").mockImplementation(
+      (key, uploadId) => {
+        const mp = resume(key, uploadId);
+        const uploadPart = mp.uploadPart.bind(mp);
+        return {
+          ...mp,
+          uploadPart: async (n: number, value: unknown) => {
+            const part = await uploadPart(n, value as never);
+            sizes.push(
+              (
+                bucket as unknown as {
+                  uploads: Map<
+                    string,
+                    { parts: Map<number, { bytes: Uint8Array }> }
+                  >;
+                }
+              ).uploads
+                .get(uploadId)!
+                .parts.get(n)!.bytes.byteLength,
+            );
+            return part;
+          },
+        };
+      },
+    );
+    return sizes;
+  }
+
+  for (const how of ["PATCH", "PUT", "POST"] as const) {
+    it(`a body without Content-Length larger than one spooled piece is appended piece by piece, never held whole (${how})`, async () => {
+      const auth = await bearerFor(basic(pushToken));
+      const total = 2 * SPOOL_BYTES + 3 * MiB + 7;
+      const bytes = new Uint8Array(randomBytes(total));
+      const sizes = recordPartSizes();
+      const dispatch = (req: Request) =>
+        dispatchRegistryHost(
+          req,
+          env,
+          db,
+          REGISTRY_ROUTES,
+          SERVICES,
+          undefined,
+          REGISTRY_OWNERLESS_ROUTES,
+        );
+      let res: Response;
+      if (how === "POST") {
+        res = await dispatch(
+          chunkedRequest(
+            "POST",
+            `/v2/${NAME}/blobs/uploads/?digest=${digestOf(bytes)}`,
+            bytes,
+            auth,
+          ),
+        );
+      } else {
+        const start = await call("POST", `/v2/${NAME}/blobs/uploads/`, {
+          headers: { authorization: auth },
+        });
+        const loc = start.headers.get("location")!;
+        if (how === "PATCH") {
+          const patch = await dispatch(
+            chunkedRequest("PATCH", loc, bytes, auth),
+          );
+          expect(patch.status, await patch.clone().text()).toBe(202);
+          expect(patch.headers.get("range")).toBe(`0-${total - 1}`);
+          res = await call("PUT", `${loc}?digest=${digestOf(bytes)}`, {
+            headers: { authorization: auth },
+          });
+        } else {
+          res = await dispatch(
+            chunkedRequest(
+              "PUT",
+              `${loc}?digest=${digestOf(bytes)}`,
+              bytes,
+              auth,
+            ),
+          );
+        }
+      }
+      expect(res.status, await res.clone().text()).toBe(201);
+      // Each piece became its own part of SPOOL_BYTES (no part, so no read, ever held the whole
+      // body); the remainder is the last part.
+      expect(sizes).toEqual([SPOOL_BYTES, SPOOL_BYTES, 3 * MiB + 7]);
+      const stored = await bucket.get(blobKey(sha(bytes)));
+      expect(
+        sha(new Uint8Array(await (stored as R2ObjectBody).arrayBuffer())),
+      ).toBe(sha(bytes));
+      expect(bucket.openUploads()).toBe(0);
+      expect(bucket.keys().filter((k) => k.startsWith("staging/"))).toEqual([]);
+    });
+  }
 
   for (const [label, chunks] of [
     [
