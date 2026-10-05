@@ -55,12 +55,36 @@ Developers only ever see data for their own products (owner). With no recovery d
 
 ## Acceptance criteria
 
-- [ ] Product A's console cannot see a subject, licence or datum of product B for the same account (test).
-- [ ] No admin response contains the account id or the account's link list (test).
-- [ ] A product with Identity off still has a Users page listing its licence owners' subjects, with no sign-in columns or sign-in settings (test).
-- [ ] Relink refuses a target that is not an existing subject of this product, requires step-up and a reason, notifies both accounts and can be undone within 72 hours (tests).
-- [ ] Console CSP parity holds; OpenAPI and `routeCoverage` updated.
+- [x] Product A's console cannot see a subject, licence or datum of product B for the same account (test).
+- [x] No admin response contains the account id or the account's link list (test).
+- [x] A product with Identity off still has a Users page listing its licence owners' subjects, with no sign-in columns or sign-in settings (test).
+- [x] Relink refuses a target that is not an existing subject of this product, requires step-up and a reason, notifies both accounts and can be undone within 72 hours (tests).
+- [x] Console CSP parity holds; OpenAPI and `routeCoverage` updated.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+
+## Corrections from the code (implementation, 2026-10-04)
+
+- **The Users routes are Core, not `identity/*`.** They live at `/manage/api/products/<slug>/users…`
+  (`admin/handlers/users.ts`), beside Devices, because every product has users. Only the sign-in
+  settings route is Identity's (`…/identity/sign-in-settings`).
+- **Rule 10.** Admin routes are narrative-only by design (`routeCoverage.test.ts` `NARRATIVE_ONLY`
+  holds `adminApi`; no admin route has an OpenAPI entry), so the routes are documented on the docs
+  site (`admin/users.md`) rather than in `polaris-key.v3.yaml`.
+- **`claimByKey` already has an editor** on Identity → Portal (`portal_product_settings.claim_by_key`).
+  Sign-in settings shows it as a read-out with a link there, so one value never has two editors;
+  the sign-in-settings PATCH still accepts it.
+- **Key-entry limit, Terms version, native platform config, the per-kind checklist and the "test
+  sign-in" dry run have no storage yet**: `identity_product_settings` arrives with I-09, and the
+  native verifiers with I-13 and I-14. Sign-in settings ships the passthrough header name (under the
+  reserved-name validator), the `claimByKey` read-out and the App Review 4.8 warning; the rest
+  joins the same section when its storage exists (follow-ups on I-09, I-13, I-14).
+- **The Data tab and the override editor are seams, not placeholders.** The console rules forbid
+  "coming soon", so `pages/core/userSlots.ts` holds `dataTab`, `overrideEditor` and `cloudSyncOn`:
+  the route tab `data` is reserved, and the tab and the editor render only once U-11a and U-03
+  fill their slots (Cloud Sync is not a service yet, so `cloudSyncOn` answers false).
+- **Deleting a user's product data is L3** (typed `delete`), like deleting a portal account; detach
+  and relink are L2 and undo is L1 (`lib/actions.ts`, ADMIN.md §5.2).
+- **Migration** `license_relinks` is `0072` (main's highest was `0071` at the final gate).
 
 ## Verify
 
