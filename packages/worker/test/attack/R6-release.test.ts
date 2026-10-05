@@ -46,7 +46,11 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../../src/admin/session.js";
-import { enableDownloads, handlePortalDownload } from "../portalHarness.js";
+import {
+  enableDownloads,
+  handlePortalDownload,
+  seedRepositoryVisibility,
+} from "../portalHarness.js";
 import {
   createPortalDownloadToken,
   getOrCreateAccountByEmail,
@@ -1769,6 +1773,8 @@ describe("R6-11 portal download redirect host allowlist", () => {
       null,
       NOW,
     );
+    // A public repository, so the allowlisted GitHub URL is servable and the race is what is tested.
+    await seedRepositoryVisibility(env, db, SLUG, "public");
     const token = await createPortalDownloadToken(env, db, {
       accountId: account.id,
       product: SLUG,

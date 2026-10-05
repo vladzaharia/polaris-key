@@ -46,7 +46,11 @@ import {
   createPortalDownloadToken,
   markPortalDownloadUsed,
 } from "../src/services/identity/portal/repo.js";
-import { enableDownloads, handlePortalDownload } from "./portalHarness.js";
+import {
+  enableDownloads,
+  handlePortalDownload,
+  seedRepositoryVisibility,
+} from "./portalHarness.js";
 import {
   getOrCreateAccountByEmail,
   linkLicense,
@@ -843,6 +847,9 @@ describe("R6-12 /download/<token>", () => {
     await enableDownloads(db, SLUG);
     const accountId = await seedPortalAccount(db);
     await seedDownloadable(db, env, sourceUrl);
+    // A public repository: a stored GitHub URL is handed to a browser only then, so what each
+    // case below exercises is the host allowlist and the single-use claim.
+    await seedRepositoryVisibility(env, db, SLUG, "public");
     const token = await createPortalDownloadToken(env, db, {
       accountId,
       product: SLUG,
