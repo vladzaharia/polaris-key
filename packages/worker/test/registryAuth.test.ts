@@ -218,8 +218,12 @@ describe("registry tokens: the store (§6.1)", () => {
     expect((await m({ label: "x".repeat(65) })).ok).toBe(false);
     expect((await m({ ecosystems: ["cargo"] })).ok).toBe(false);
     expect((await m({ ecosystems: [] })).ok).toBe(false);
-    // `publish` is reserved for F-22 and F-23.
+    // F-22: `publish` must name its publish ecosystems (registryPublish.test.ts has the rest).
     expect((await m({ scopes: ["publish"] })).ok).toBe(false);
+    expect((await m({ scopes: ["publish"], ecosystems: ["npm"] })).ok).toBe(
+      true,
+    );
+    expect((await m({ scopes: ["delete"] })).ok).toBe(false);
     const url = await m({ presentation: "url", ecosystems: ["npm"] });
     expect(url.ok && url.view.ecosystems).toEqual(["godot"]);
     expect(url.ok && url.view.expiresAt).toBe(now + 30 * 86_400);

@@ -21,6 +21,7 @@ import {
   Gamepad2,
   KeyRound,
   Plus,
+  Upload,
 } from "lucide-react";
 import {
   api,
@@ -142,6 +143,7 @@ function columns(withBinding: boolean): DataColumn<RegistryTokenDto>[] {
               <span className="truncate">{t.label}</span>
               <span className="font-mono text-xs text-fg-muted">
                 {t.tokenId} · …{t.hint}
+                {t.scopes.includes("publish") ? " · read and publish" : ""}
               </span>
             </span>
           </span>
@@ -478,6 +480,8 @@ function MintDialog({
   const [everyFeed, setEveryFeed] = React.useState(true);
   const [picked, setPicked] = React.useState<FeedEcosystem[]>([]);
   const [godotUrl, setGodotUrl] = React.useState(false);
+  // F-22: a publish token (native clients: npm publish, twine, SwiftPM, Maven/Gradle).
+  const [access, setAccess] = React.useState<"read" | "publish">("read");
   const [days, setDays] = React.useState<number | null>(
     data.limits.defaultDays,
   );
@@ -495,16 +499,52 @@ function MintDialog({
     setEveryFeed(true);
     setPicked([]);
     setGodotUrl(false);
+    setAccess("read");
     setDays(data.limits.defaultDays);
     setBinding(licenseId ? "license" : "owner");
     setLicense(licenseId ?? null);
     setFailure(null);
   }, [open, data.limits.defaultDays, licenseId]);
+  const publish = access === "publish";
+  const publishEcosystems: readonly FeedEcosystem[] = React.useMemo(
+    () => data.limits.publishEcosystems ?? [],
+    [data.limits.publishEcosystems],
+  );
+  // Never on the platform scope: the SDK feeds are published by the deploy pipeline only (F-10).
+  const canPublish =
+    scope.kind === "product" &&
+    licenseId === undefined &&
+    publishEcosystems.length > 0;
   React.useEffect(() => {
-    setDays(godotUrl ? data.limits.urlDefaultDays : data.limits.defaultDays);
-  }, [godotUrl, data.limits.urlDefaultDays, data.limits.defaultDays]);
+    setDays(
+      publish
+        ? (data.limits.publishDefaultDays ?? data.limits.defaultDays)
+        : godotUrl
+          ? data.limits.urlDefaultDays
+          : data.limits.defaultDays,
+    );
+  }, [
+    publish,
+    godotUrl,
+    data.limits.urlDefaultDays,
+    data.limits.defaultDays,
+    data.limits.publishDefaultDays,
+  ]);
+  React.useEffect(() => {
+    if (!publish) return;
+    setBinding("owner");
+    setGodotUrl(false);
+    setEveryFeed(false);
+    setPicked((p) => {
+      const kept = p.filter((e) => publishEcosystems.includes(e));
+      return kept.length === p.length ? p : kept;
+    });
+  }, [publish, publishEcosystems]);
 
-  const { minDays, maxDays } = data.limits;
+  const minDays = data.limits.minDays;
+  const maxDays = publish
+    ? (data.limits.publishMaxDays ?? data.limits.maxDays)
+    : data.limits.maxDays;
   const daysError =
     days === null || !Number.isInteger(days) || days < minDays || days > maxDays
       ? `Use a whole number of days from ${minDays} to ${maxDays}.`
@@ -514,8 +554,10 @@ function MintDialog({
       ? "Give the token a label of up to 64 characters."
       : undefined;
   const feedsError =
-    !godotUrl && !everyFeed && picked.length === 0
-      ? "Choose at least one feed."
+    !godotUrl && (publish || !everyFeed) && picked.length === 0
+      ? publish
+        ? "Choose the feeds this token publishes to."
+        : "Choose at least one feed."
       : undefined;
   const licenseError =
     binding === "license" && !license ? "Choose a licence." : undefined;
@@ -532,9 +574,11 @@ function MintDialog({
         binding,
         ...(binding === "license" ? { licenseId: license! } : {}),
         expiresInDays: days!,
-        ...(godotUrl
-          ? { presentation: "url" as const }
-          : { ecosystems: everyFeed ? null : picked }),
+        ...(publish
+          ? { scopes: ["publish" as const], ecosystems: picked }
+          : godotUrl
+            ? { presentation: "url" as const }
+            : { ecosystems: everyFeed ? null : picked }),
       });
       onMinted(res);
     } catch (err) {
@@ -552,7 +596,7 @@ function MintDialog({
       }}
       dismissible={!saving}
       title="New registry token"
-      description="Read access to this owner's feeds. Shown once; Polaris Key stores only its hash."
+      description="Access to this owner's feeds. Shown once; Polaris Key stores only its hash."
     >
       <form onSubmit={submit} noValidate>
         <DialogBody className="space-y-4">
@@ -566,7 +610,37 @@ function MintDialog({
           >
             {(f) => <Input {...f} maxLength={64} />}
           </FormField>
-          {licenseId === undefined && scope.kind === "product" ? (
+          {canPublish ? (
+            <FormField
+              name="access"
+              label="Access"
+              group
+              value={access}
+              onChange={(v: string) => setAccess(v as "read" | "publish")}
+            >
+              {(f) => (
+                <RadioCards<string>
+                  {...f}
+                  columns={2}
+                  options={[
+                    {
+                      value: "read",
+                      label: "Read",
+                      description: "Install from feeds that are not public.",
+                      icon: <KeyRound aria-hidden className="size-4" />,
+                    },
+                    {
+                      value: "publish",
+                      label: "Read and publish",
+                      description: `npm publish, twine, SwiftPM and Maven or Gradle deploys. At most ${data.limits.publishMaxDays ?? maxDays} days; in CI use the job's OIDC token instead.`,
+                      icon: <Upload aria-hidden className="size-4" />,
+                    },
+                  ]}
+                />
+              )}
+            </FormField>
+          ) : null}
+          {licenseId === undefined && scope.kind === "product" && !publish ? (
             <FormField
               name="binding"
               label="Bound to"
@@ -607,26 +681,30 @@ function MintDialog({
               onChange={setLicense}
             />
           ) : null}
-          <Switch
-            label="Godot editor URL"
-            description="The editor sends no credentials, so this token goes in its URL: Godot feeds only, read only."
-            checked={godotUrl}
-            onCheckedChange={setGodotUrl}
-          />
+          {!publish ? (
+            <Switch
+              label="Godot editor URL"
+              description="The editor sends no credentials, so this token goes in its URL: Godot feeds only, read only."
+              checked={godotUrl}
+              onCheckedChange={setGodotUrl}
+            />
+          ) : null}
           {!godotUrl ? (
             <fieldset className="space-y-2">
               <legend className="text-sm font-bold text-fg-strong">
                 Feeds
               </legend>
-              <Checkbox
-                label="Every feed"
-                description="Today's and any this owner enables later."
-                checked={everyFeed}
-                onCheckedChange={setEveryFeed}
-              />
-              {!everyFeed ? (
+              {!publish ? (
+                <Checkbox
+                  label="Every feed"
+                  description="Today's and any this owner enables later."
+                  checked={everyFeed}
+                  onCheckedChange={setEveryFeed}
+                />
+              ) : null}
+              {publish || !everyFeed ? (
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {ECOSYSTEMS.map((e) => {
+                  {(publish ? publishEcosystems : ECOSYSTEMS).map((e) => {
                     const Icon = ECOSYSTEM_ICONS[e];
                     return (
                       <Checkbox

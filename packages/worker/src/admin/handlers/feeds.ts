@@ -858,7 +858,10 @@ interface VersionRow {
 function sourceView(json: string) {
   const s = parseObject(json);
   const kind =
-    s.kind === "oidc" || s.kind === "static" || s.kind === "console"
+    s.kind === "oidc" ||
+    s.kind === "static" ||
+    s.kind === "console" ||
+    s.kind === "registry"
       ? s.kind
       : "unknown";
   const runUrl =
@@ -870,6 +873,11 @@ function sourceView(json: string) {
     publisher: typeof s.publisher === "string" ? s.publisher : null,
     runUrl,
     tokenId: typeof s.tokenId === "string" ? s.tokenId : null,
+    // F-22: the native client that published (`npm`, `twine`, `swift`, `maven`), or null.
+    client:
+      typeof s.client === "string" && /^[a-z]{1,16}$/.test(s.client)
+        ? s.client
+        : null,
   };
 }
 

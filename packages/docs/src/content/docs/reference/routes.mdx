@@ -147,20 +147,26 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | HEAD | `https://pkg.plrs.im/godot/{owner}/t/{token}/store/api/v1/tags/` | registry | As `/godot/\{owner\}/store/api/v1/tags/` through a Godot URL token, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/{version}/{file}` | registry | A file of a Maven publication, or its checksum sidecar (registry host only) |
 | HEAD | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/{version}/{file}` | registry | A file of a Maven publication, headers only (registry host only) |
+| PUT | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/{version}/{file}` | registry | Deploy a file of a Maven version (registry host only) |
 | GET | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml.{checksum}` | registry | A checksum sidecar of maven-metadata.xml (registry host only) |
 | HEAD | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml.{checksum}` | registry | A checksum sidecar of maven-metadata.xml, headers only (registry host only) |
+| PUT | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml.{checksum}` | registry | A checksum of an uploaded maven-metadata.xml (registry host only) |
 | GET | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml` | registry | Maven artifact metadata, maven-metadata.xml (registry host only) |
 | HEAD | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml` | registry | Maven artifact metadata, headers only (registry host only) |
+| PUT | `https://pkg.plrs.im/maven/{owner}/{groupPath}/{artifactId}/maven-metadata.xml` | registry | Finish a Maven deploy (registry host only) |
 | GET | `https://pkg.plrs.im/npm/{owner}/{escapedName}/-/{tarball}` | registry | npm tarball, escaped name (registry host only) |
 | HEAD | `https://pkg.plrs.im/npm/{owner}/{escapedName}/-/{tarball}` | registry | npm tarball, escaped name, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/npm/{owner}/{escapedName}` | registry | npm packument (registry host only) |
 | HEAD | `https://pkg.plrs.im/npm/{owner}/{escapedName}` | registry | npm packument, headers only (registry host only) |
+| PUT | `https://pkg.plrs.im/npm/{owner}/{escapedName}` | registry | npm publish (registry host only) |
 | GET | `https://pkg.plrs.im/npm/{owner}/{scope}/{name}/-/{tarball}` | registry | npm tarball (registry host only) |
 | HEAD | `https://pkg.plrs.im/npm/{owner}/{scope}/{name}/-/{tarball}` | registry | npm tarball, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/npm/{owner}/{scope}/{name}` | registry | npm packument, unescaped name (registry host only) |
 | HEAD | `https://pkg.plrs.im/npm/{owner}/{scope}/{name}` | registry | npm packument, unescaped name, headers only (registry host only) |
+| PUT | `https://pkg.plrs.im/npm/{owner}/{scope}/{name}` | registry | npm publish (registry host only) |
 | GET | `https://pkg.plrs.im/pypi/{owner}/files/{sha256}/{filename}` | registry | PyPI file or PEP 658 metadata (registry host only) |
 | HEAD | `https://pkg.plrs.im/pypi/{owner}/files/{sha256}/{filename}` | registry | PyPI file or PEP 658 metadata, headers only (registry host only) |
+| POST | `https://pkg.plrs.im/pypi/{owner}/legacy/` | registry | twine upload, the legacy upload API (registry host only) |
 | GET | `https://pkg.plrs.im/pypi/{owner}/simple/{project}/` | registry | PyPI project page (registry host only) |
 | HEAD | `https://pkg.plrs.im/pypi/{owner}/simple/{project}/` | registry | PyPI project page, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/pypi/{owner}/simple/` | registry | PyPI project list (registry host only) |
@@ -171,6 +177,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | HEAD | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}/{version}/Package.swift` | registry | A Swift package release's manifest, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}/{version}` | registry | A Swift package release's metadata (registry host only) |
 | HEAD | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}/{version}` | registry | A Swift package release's metadata, headers only (registry host only) |
+| PUT | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}/{version}` | registry | swift package-registry publish (registry host only) |
 | GET | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}` | registry | List a Swift package's releases (registry host only) |
 | HEAD | `https://pkg.plrs.im/swift/{owner}/{scope}/{name}` | registry | List a Swift package's releases, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/swift/{owner}/identifiers` | registry | Swift package identifiers for a repository URL (registry host only) |

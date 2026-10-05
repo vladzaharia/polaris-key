@@ -119,6 +119,15 @@ token is read-only, reaches only the Godot feed, lasts 30 days by default and tr
 editor's URL, because the editor sends no credentials. The token is shown once, with every
 enabled feed's setup already holding it; Polaris Key stores only its hash.
 
+**Access** chooses **Read** or **Read and publish**. A publish token lets a native client publish
+to the feeds it names (npm, PyPI, Swift and Maven only; see
+[Publishing with native clients](/docs/services/distribution/package-feeds/#publishing-with-native-clients)):
+it is always bound to this product, never a Godot editor URL, names its feeds explicitly, and
+lasts 1 to 30 days (7 by default). It is meant for an operator's own machine; in CI, publish with
+the job's OIDC token (`pkey auth github-oidc`) so the repository holds no publish secret. The
+token list shows "read and publish" beside such a token's id, and a version it published names
+the token and the client on the package record.
+
 Revoking a token is a danger confirmation and takes effect within 30 seconds. **Revoke all** (under
 More actions) revokes every active token of the owner, including those licensees minted.
 

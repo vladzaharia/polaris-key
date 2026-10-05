@@ -38,8 +38,9 @@ only the types it may serve:
 
 - **No cookies.** None is read or set. The console's session cookies are host-only, so a browser
   never sends them here.
-- **No CORS, GET and HEAD only.** Registry clients are not browsers. `OPTIONS` and every other
-  method answer `405`.
+- **No CORS, GET and HEAD for reads.** Registry clients are not browsers. `OPTIONS` answers
+  `405`, and so does every other method except the few writes listed under
+  [Publishing with native clients](#publishing-with-native-clients) and SwiftPM's login.
 - **Inert answers.** Every answer carries `X-Content-Type-Options: nosniff`, a `sandbox`
   `Content-Security-Policy` with no sources, `Referrer-Policy: no-referrer` and
   `Cross-Origin-Resource-Policy: same-origin`. A success must have a type on the host's
@@ -429,6 +430,89 @@ Add the URL with no trailing slash: the editor appends its own paths. Each packa
   `4.4`; editors older than it, or of another major version, see nothing).
 - **Search** is filtered in memory over the owner's packages. Tags are not supported: a
   `#tag` search term matches nothing.
+
+## Publishing with native clients
+
+`pkey release publish` is the way CI publishes a package (it uploads straight to the blob store,
+with no size limit but the feed's). A product can also publish with the client its developers
+already use. Each request is turned into the same release descriptor the CLI sends and ingested
+the same way, so a version published natively is the same package release: the namespace rule,
+the feed's size ceiling, "a version is never republished" and Swift's signing rule all apply.
+
+| Client                                             | Request                                            | When the version appears                                   |
+| -------------------------------------------------- | -------------------------------------------------- | ---------------------------------------------------------- |
+| `npm publish` (also pnpm, `yarn npm publish`, Bun) | `PUT /npm/<owner>/<@scope%2fname>`                 | at once; the dist-tag is the channel (`latest` = `stable`) |
+| `twine upload`                                     | `POST /pypi/<owner>/legacy/`, one request per file | ten seconds after the last file                            |
+| `swift package-registry publish`                   | `PUT /swift/<owner>/<scope>/<name>/<version>`      | at once                                                    |
+| `mvn deploy`, Gradle `maven-publish`               | `PUT` each file, then `maven-metadata.xml`         | when `maven-metadata.xml` is uploaded                      |
+
+Before you publish:
+
+- **Declare the package** in `.pkey/release` as a package deliverable and sync the manifest. A
+  name no deliverable declares is refused (`package-undeclared`).
+- **Get a publish credential.** Either a registry token with **Read and publish** access, minted
+  under **Tokens** on the feeds page (owner-bound, naming the feeds it publishes to, at most 30
+  days), or, in CI, the 30-minute CI token `pkey auth github-oidc` exchanges for the job's OIDC
+  token (it holds `release:publish` and is written to `PKEY_CI_TOKEN`). Prefer the CI token in
+  CI: the repository then stores no publish secret at all, which is the point of trusted
+  publishing. A read-only or licence-bound token is refused with `403`.
+- **Keep a request under 32 MiB.** The bytes pass through the Worker; a larger package publishes
+  with `pkey release publish`.
+
+The client setup, with `PKEY_PUBLISH_TOKEN` holding either credential:
+
+```ini
+# .npmrc (npm, pnpm): then `npm publish` (or `npm publish --tag beta`)
+@acme:registry=https://pkg.plrs.im/npm/acme/
+//pkg.plrs.im/npm/acme/:_authToken=${PKEY_PUBLISH_TOKEN}
+```
+
+```sh
+# twine
+twine upload --repository-url https://pkg.plrs.im/pypi/acme/legacy/ \
+  -u __token__ -p "$PKEY_PUBLISH_TOKEN" dist/*
+
+# SwiftPM (5.9+): sign with your Swift signing identity when the feed requires it (the default)
+swift package-registry set --scope acme https://pkg.plrs.im/swift/acme
+swift package-registry login https://pkg.plrs.im/swift/acme --token "$PKEY_PUBLISH_TOKEN" --no-confirm
+swift package-registry publish acme.AcmeKit 1.0.0 --signing-identity "…"
+```
+
+```kotlin
+// Gradle maven-publish
+publishing {
+  repositories {
+    maven {
+      name = "acme"
+      url = uri("https://pkg.plrs.im/maven/acme/")
+      credentials { username = "__token__"; password = System.getenv("PKEY_PUBLISH_TOKEN") }
+    }
+  }
+}
+```
+
+For Maven, put the same `__token__` and token in `settings.xml` under a `<server>` whose id
+matches the `distributionManagement` repository.
+
+What each adapter checks:
+
+- **npm** — the name in the path, the document and the version agree; the tarball matches npm's
+  own `dist.integrity` and `dist.shasum`. Only a publish is accepted: deprecate and yank from the
+  console.
+- **twine** — each file is a wheel or an sdist of the project and version, and matches twine's
+  `sha256_digest`. The files of one version are gathered and published together once the
+  uploads stop for ten seconds (or by the next 15-minute cron run). No PEP 658 metadata file is
+  served for a twine upload; pip and uv then read the wheel itself.
+- **SwiftPM** — the manifests the feed serves are read out of the source archive (a top-level
+  `Package.swift` and `Package@swift-*.swift`, at most 1 MiB each). An unsigned release is
+  refused where the feed requires signing. An existing version is `409`.
+- **Maven and Gradle** — each checksum sidecar must match the file it names (it is not stored:
+  the feed derives every sidecar), `.asc` signatures are accepted and dropped, `-SNAPSHOT`
+  versions are refused, and a POM must name its path's coordinates. The version publishes when
+  `maven-metadata.xml` arrives, or after ten idle minutes.
+
+A publish that fails after the client was answered (a twine or Maven version, in a race) is
+recorded in the product's audit log as `release.publish.failed` with its reason.
 
 ## Local testing
 

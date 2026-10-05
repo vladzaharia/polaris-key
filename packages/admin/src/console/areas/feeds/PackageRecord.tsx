@@ -201,6 +201,14 @@ const STATE_PILL: Record<
   deprecated: { tone: "warning", label: "Deprecated" },
 };
 
+/** F-22: how each native client is named on a version's source line. */
+const CLIENT_LABEL: Record<string, string> = {
+  npm: "npm publish",
+  twine: "twine upload",
+  swift: "swift package-registry publish",
+  maven: "Maven/Gradle deploy",
+};
+
 function sourceLine(v: FeedPackageVersion): React.ReactNode {
   const s = v.source;
   if (s.kind === "oidc")
@@ -227,6 +235,15 @@ function sourceLine(v: FeedPackageVersion): React.ReactNode {
       <>
         CI token
         {s.tokenId ? <span className="font-mono"> {s.tokenId}</span> : null}
+        {s.client ? ` · ${CLIENT_LABEL[s.client] ?? s.client}` : null}
+      </>
+    );
+  if (s.kind === "registry")
+    return (
+      <>
+        Registry token
+        {s.tokenId ? <span className="font-mono"> {s.tokenId}</span> : null}
+        {s.client ? ` · ${CLIENT_LABEL[s.client] ?? s.client}` : null}
       </>
     );
   if (s.kind === "console") return "The console";

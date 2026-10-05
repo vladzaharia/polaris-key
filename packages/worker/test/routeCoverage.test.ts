@@ -25,6 +25,7 @@ import { matchRoute } from "../src/router.js";
 import { CORS_SERVICE_PATHS, isCorsCoveredRoute } from "../src/core/cors.js";
 import { REGISTRY_OWNERLESS_ROUTES, REGISTRY_ROUTES } from "../src/mount.js";
 import { FEED_ADAPTERS } from "../src/services/distribution/registry/index.js";
+import { RELEASE_PUBLISH_OPENAPI } from "../src/services/release/index.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const spec = parseYaml(
@@ -220,17 +221,32 @@ const ALIAS_PATHS: Array<[string, string[]]> = [
  * against its own routes.
  */
 const REGISTRY_SERVER = "https://pkg.plrs.im";
-const REGISTRY_PATHS: Array<[string, string[], string]> = [
+/**
+ * F-22: the native publish routes (Release's, `RELEASE_PUBLISH_OPENAPI`) write to paths their
+ * feed also reads (npm's packument, Swift's release, Maven's layout), so the rows are merged by
+ * path: one row per path, with every method and every route answering it.
+ */
+function mergeRegistryRows(
+  rows: readonly (readonly [string, readonly string[], string])[],
+): Array<[string, string[], string[]]> {
+  const byPath = new Map<
+    string,
+    { methods: Set<string>; owners: Set<string> }
+  >();
+  for (const [path, methods, owner] of rows) {
+    const e = byPath.get(path) ?? { methods: new Set(), owners: new Set() };
+    for (const m of methods) e.methods.add(m);
+    e.owners.add(owner);
+    byPath.set(path, e);
+  }
+  return [...byPath].map(([path, e]) => [path, [...e.methods], [...e.owners]]);
+}
+const REGISTRY_PATHS: Array<[string, string[], string[]]> = mergeRegistryRows([
   ["/", ["get", "head"], "host"],
   ["/v2/", ["get", "head"], "host"],
-  ...FEED_ADAPTERS.flatMap((a) =>
-    a.openapi.map(([path, methods, owner]): [string, string[], string] => [
-      path,
-      [...methods],
-      owner,
-    ]),
-  ),
-];
+  ...FEED_ADAPTERS.flatMap((a) => a.openapi),
+  ...RELEASE_PUBLISH_OPENAPI,
+]);
 
 function specMethods(path: string): string[] {
   const entry = spec.paths[path];
@@ -370,7 +386,9 @@ describe("registry host (F-02, rule 10)", () => {
       ...REGISTRY_OWNERLESS_ROUTES.map((r) => r.name),
     ];
     const documented = new Set(
-      REGISTRY_PATHS.map(([, , owner]) => owner).filter((o) => o !== "host"),
+      REGISTRY_PATHS.flatMap(([, , owners]) => owners).filter(
+        (o) => o !== "host",
+      ),
     );
     for (const name of routeNames)
       expect(

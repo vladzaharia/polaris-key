@@ -387,6 +387,7 @@ const TABLE_OWNERS = {
     "release_delegated_records",
     "release_lazy_deltas",
     "release_packages",
+    "release_native_uploads",
   ],
   distribution: [
     "dist_outlets",

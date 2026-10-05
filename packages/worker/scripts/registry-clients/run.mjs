@@ -30,6 +30,14 @@
  * CURL_HOME). Both modes set REGISTRY_TOKEN_KEY, as production does, so `GET /v2/` answers the
  * Bearer challenge and OCI clients always run the token dance.
  *
+ * NATIVE PUBLISH (F-22): every run also declares four package deliverables to publish
+ * (`seedPublish`: `@<owner>/published` on npm, `polaris-smoke-published` on PyPI,
+ * `smoke.PublishedKit` on Swift, `im.plrs.fixture:published` and `:published-gradle` on Maven) and
+ * mints an owner-bound publish token into the local D1, handed to every client as
+ * PKEY_REGISTRY_PUBLISH_TOKEN. The publish clients (`npm-publish`, `twine`, `swift-publish`,
+ * `maven-publish`, `gradle-publish`) publish with the native tool, then install what they
+ * published from the feed.
+ *
  * F-02 ships one smoke client, `curl`; F-04 to F-09 add their ecosystem's clients (npm, pnpm,
  * yarn, bun, pip, uv, poetry, SwiftPM, Gradle, Maven, docker, crane, GodotEnv) as further
  * `clients/*.sh` and matrix rows in `.github/workflows/registry-clients.yml`. Nothing here
@@ -96,6 +104,62 @@ const KEY_HASH_PEPPER = randomBytes(16).toString("hex");
 const b64url = (b) => b.toString("base64url");
 const HEADER_TOKEN = `pkeyr_${b64url(randomBytes(32))}`;
 const URL_TOKEN = `pkeyr_${b64url(randomBytes(32))}`;
+const PUBLISH_TOKEN = `pkeyr_${b64url(randomBytes(32))}`;
+
+/** F-22: the deliverables the publish clients publish, and an owner-bound publish token. */
+function seedPublish(persistTo) {
+  const now = Math.floor(Date.now() / 1000);
+  const q = (v) => `'${String(v).replace(/'/g, "''")}'`;
+  const hash = createHmac("sha256", KEY_HASH_PEPPER)
+    .update(PUBLISH_TOKEN)
+    .digest("hex");
+  const declared = [
+    ["npm.published", "npm", `@${FIXTURE_OWNER}/published`],
+    ["pypi.published", "pypi", "polaris-smoke-published"],
+    ["swift.published", "swift", "smoke.PublishedKit"],
+    ["maven.published", "maven", "im.plrs.fixture:published"],
+    ["maven.published-gradle", "maven", "im.plrs.fixture:published-gradle"],
+  ];
+  const feeds = [
+    ["npm", { scope: `@${FIXTURE_OWNER}` }, {}],
+    ["pypi", { prefixes: ["polaris-smoke"] }, {}],
+    ["swift", { scope: "smoke" }, { requireSigned: true }],
+    ["maven", { groupPrefixes: ["im.plrs.fixture"] }, {}],
+  ];
+  const sql = [
+    `INSERT OR IGNORE INTO dist_registry_owners (product, enabled, updated_at) VALUES (${q(FIXTURE_OWNER)}, 1, ${now});`,
+    ...feeds.map(
+      ([eco, ns, ext]) =>
+        `INSERT OR IGNORE INTO dist_registry_feeds (product, ecosystem, enabled, access_mode, namespace_json, max_package_bytes, ext_json, updated_at)
+         VALUES (${q(FIXTURE_OWNER)}, ${q(eco)}, 1, 'public', ${q(JSON.stringify(ns))}, 52428800, ${q(JSON.stringify(ext))}, ${now});`,
+    ),
+    ...declared.flatMap(([id, eco, name]) => [
+      `INSERT OR REPLACE INTO release_deliverables (product, deliverable_id, kind, pack_type, def_json, def_source, created_at, modified_at, ecosystem, package_name)
+       VALUES (${q(FIXTURE_OWNER)}, ${q(id)}, 'package', NULL, ${q(JSON.stringify({ kind: "package", id, ecosystem: eco, name, artifacts: { files: { match: "*" } } }))}, 'manifest', ${now}, ${now}, ${q(eco)}, ${q(name)});`,
+      `INSERT OR REPLACE INTO dist_access (product, deliverable_id, mode, entitlement, source, modified_at)
+       VALUES (${q(FIXTURE_OWNER)}, ${q(id)}, 'public', NULL, 'manifest', ${now});`,
+    ]),
+    `INSERT INTO registry_tokens (product, token_id, token_hash, hint, label, scopes_json,
+       ecosystems_json, binding, license_id, presentation, created_by, created_at, expires_at)
+     VALUES (${q(FIXTURE_OWNER)}, 'rtok_harness_publish', '${hash}', '${PUBLISH_TOKEN.slice(-4)}',
+       'harness publish', '["publish","read"]', '["maven","npm","pypi","swift"]', 'owner', NULL,
+       'header', 'admin:harness', ${now}, ${now + 86_400});`,
+  ].join("\n");
+  const file = join(persistTo, "registry-clients-publish.sql");
+  writeFileSync(file, sql);
+  wrangler([
+    "d1",
+    "execute",
+    "DB",
+    "--local",
+    "--env",
+    "test",
+    "--persist-to",
+    persistTo,
+    "--file",
+    file,
+  ]);
+}
 
 /** Switch the owner's feeds to `authenticated` and mint the two tokens into the local D1. */
 function seedAuth(persistTo) {
@@ -143,8 +207,9 @@ const PROBES = {
 function ecosystemOf(client) {
   const family = client.split("-")[0];
   if (["npm", "pnpm", "yarn", "bun"].includes(family)) return "npm";
-  if (["pip", "uv", "poetry"].includes(family)) return "pypi";
-  if (["gradle8", "gradle9", "maven"].includes(family)) return "maven";
+  if (["pip", "uv", "poetry", "twine"].includes(family)) return "pypi";
+  if (["gradle8", "gradle9", "gradle", "maven"].includes(family))
+    return "maven";
   return family in PROBES ? family : null;
 }
 
@@ -232,6 +297,7 @@ try {
     if (r.status !== 0)
       throw new Error(`seed ${seedFile} failed (exit ${r.status})`);
   }
+  seedPublish(state);
   if (auth) seedAuth(state);
   dev = spawn(
     WRANGLER,
@@ -285,6 +351,7 @@ try {
         REGISTRY: origin,
         OWNER: FIXTURE_OWNER,
         STATE: state,
+        PKEY_REGISTRY_PUBLISH_TOKEN: PUBLISH_TOKEN,
         ...(auth
           ? {
               PKEY_REGISTRY_TOKEN: HEADER_TOKEN,
