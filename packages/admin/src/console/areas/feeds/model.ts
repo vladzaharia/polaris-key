@@ -1,6 +1,6 @@
 /**
- * The Feeds area's model (F-11, plans/F-01.md §6.9): scopes, links, labels and the setup
- * snippets, shared by both scopes' pages.
+ * The Feeds area's model (F-11, F-12, plans/F-01.md §6.9): scopes, links, labels, the setup
+ * snippets and the ecosystem panels' extension fields, shared by both scopes' pages.
  *
  * One component set serves two places: Platform → Package feeds (the system product's feeds, our
  * SDKs, plus the platform policy) and a product's Distribution → Package feeds. `FeedScope` picks
@@ -17,6 +17,13 @@ import {
   Hexagon,
   type LucideIcon,
 } from "lucide-react";
+import {
+  FEED_SETUP,
+  feedSetupProblem,
+  renderFeedSetup,
+  type FeedSetupCredential,
+  type FeedSnippet,
+} from "@polaris-key/manifest";
 import type {
   FeedEcosystem,
   FeedOffReason,
@@ -55,15 +62,11 @@ export const ECOSYSTEM_LABELS: Record<FeedEcosystem, string> = {
   godot: "Godot",
 };
 
-/** The clients each feed answers, as the docs list them. */
-export const ECOSYSTEM_CLIENTS: Record<FeedEcosystem, string> = {
-  npm: "npm, pnpm, Yarn Berry, Bun",
-  pypi: "pip, uv, Poetry",
-  oci: "docker, podman, crane",
-  swift: "SwiftPM",
-  maven: "Gradle, Maven",
-  godot: "The Godot editor's asset library, GodotEnv",
-};
+/** The clients each feed answers: its setup declaration's (`@polaris-key/manifest` FEED_SETUP). */
+export const ECOSYSTEM_CLIENTS: Record<FeedEcosystem, string> =
+  Object.fromEntries(
+    ECOSYSTEMS.map((e) => [e, FEED_SETUP[e].clients.join(", ")]),
+  ) as Record<FeedEcosystem, string>;
 
 export const ECOSYSTEM_ICONS: Record<FeedEcosystem, LucideIcon> = {
   npm: Hexagon,
@@ -149,31 +152,13 @@ export function packageHref(
     : r.packageFeedPackage(scope.slug, eco, name, tab);
 }
 
-export interface Snippet {
-  title: string;
-  description?: string;
-  filename?: string;
-  language: "sh" | "toml" | "text" | "json";
-  code: string;
-}
+export type { FeedSnippet };
 
-/** The registry host's hostname, for clients that take a host rather than a URL (docker). */
-function hostOf(baseUrl: string): string {
-  try {
-    return new URL(baseUrl).host;
-  } catch {
-    return baseUrl;
-  }
-}
-
-/** What the snippets authenticate with (plans/F-20.md §3, the shape F-12's `renderFeedSetup`
- *  takes): nothing; an environment variable (docs, CI); the real token, only in the shown-once
- *  dialog; or a Godot URL token, which travels in the editor's URL. */
-export type FeedCredential =
-  | { kind: "none" }
-  | { kind: "env"; name: string }
-  | { kind: "token"; value: string }
-  | { kind: "godot-url"; value: string };
+/** What the snippets authenticate with (plans/F-20.md §3): nothing; an environment variable
+ *  (docs, CI); the real token, only in the shown-once dialog; or a Godot URL token, which travels
+ *  in the editor's URL. `@polaris-key/manifest`'s `FeedSetupCredential`, the shape
+ *  `renderFeedSetup` and `pkey feeds setup --token-env` share. */
+export type FeedCredential = FeedSetupCredential;
 
 /** The environment variable the docs and the Setup tab name the token by. */
 export const TOKEN_ENV = "PKEY_REGISTRY_TOKEN";
@@ -181,315 +166,41 @@ export const TOKEN_ENV = "PKEY_REGISTRY_TOKEN";
 /** The username every client that needs one sends beside a registry token. */
 export const REGISTRY_USERNAME = "__token__";
 
-interface SnippetContext {
-  baseUrl: string;
-  owner: string;
-  namespace: FeedSettings["namespace"];
-  pkg?: { name: string; version?: string | null };
-}
-
 /**
  * The copy-paste setup for one feed, for its owner, optionally for one package, with or without a
- * registry credential (F-21, plans/F-20.md §6.3). Basic per ecosystem; F-12 moves it into
- * `renderFeedSetup` in `@polaris-key/manifest`, which the CLI's `pkey feeds setup` shares, keeping
- * this `credential` argument.
+ * registry credential (F-21, plans/F-20.md §6.3): `@polaris-key/manifest` `renderFeedSetup`, the
+ * function `pkey feeds setup` prints, so the console and the CLI are byte-identical for the same
+ * input. The inputs each ecosystem's snippets read are its declaration
+ * (`FEED_SETUP[eco].inputs`), never a switch here. Answers `null` when the stored settings (or
+ * the token) cannot be rendered (a namespace ingest would refuse).
  */
-export function setupSnippets(
+export function feedSetupSnippets(
   eco: FeedEcosystem,
-  ctx: SnippetContext,
+  ctx: {
+    /** The registry host's origin (`registryOrigin`, or a package's base URL's origin). */
+    origin: string;
+    owner: string;
+    namespace: FeedSettings["namespace"];
+    pkg?: { name: string; version?: string | null };
+  },
   credential: FeedCredential = { kind: "none" },
-): Snippet[] {
-  if (credential.kind === "none") return anonymousSnippets(eco, ctx);
-  return authenticatedSnippets(eco, ctx, credential);
-}
-
-function anonymousSnippets(eco: FeedEcosystem, ctx: SnippetContext): Snippet[] {
-  const { baseUrl, owner, namespace, pkg } = ctx;
-  const ns = namespace as Record<string, unknown>;
-  const version = pkg?.version ?? null;
-  switch (eco) {
-    case "npm": {
-      const scope =
-        (typeof ns.scope === "string" && ns.scope) ||
-        (pkg?.name.startsWith("@") ? pkg.name.split("/")[0]! : "@scope");
-      return [
-        {
-          title: "Point the scope at this feed",
-          filename: ".npmrc",
-          language: "text",
-          code: `${scope}:registry=${baseUrl}`,
-        },
-        {
-          title: "Install",
-          language: "sh",
-          code: `npm install ${pkg ? `${pkg.name}${version ? `@${version}` : ""}` : `${scope}/<package>`}`,
-        },
-      ];
-    }
-    case "pypi": {
-      const name = pkg?.name ?? "<package>";
-      return [
-        {
-          title: "uv: an explicit index",
-          description:
-            "explicit = true keeps every other dependency on its usual index.",
-          filename: "pyproject.toml",
-          language: "toml",
-          code: `[[tool.uv.index]]\nname = "${owner}"\nurl = "${baseUrl}"\nexplicit = true\n\n[tool.uv.sources]\n${JSON.stringify(name)} = { index = "${owner}" }`,
-        },
-        {
-          title: "pip",
-          language: "sh",
-          code: `pip install --index-url ${baseUrl} ${name}${version ? `==${version}` : ""}`,
-        },
-      ];
-    }
-    case "oci": {
-      const repo = pkg?.name ?? "<repository>";
-      const tag = version ?? "latest";
-      return [
-        {
-          title: "Pull",
-          language: "sh",
-          code: `docker pull ${hostOf(baseUrl)}/${owner}/${repo}:${tag}`,
-        },
-      ];
-    }
-    case "swift": {
-      const scope =
-        (typeof ns.scope === "string" && ns.scope) ||
-        (pkg ? pkg.name.split(".")[0]! : "<scope>");
-      const id = pkg?.name ?? `${scope}.<Package>`;
-      return [
-        {
-          title: "Register the scope",
-          language: "sh",
-          code: `swift package-registry set --scope ${scope} ${baseUrl}`,
-        },
-        {
-          title: "Depend on the package",
-          filename: "Package.swift",
-          language: "text",
-          code: `.package(id: "${id}", from: "${version ?? "1.0.0"}")`,
-        },
-      ];
-    }
-    case "maven": {
-      const groups = Array.isArray(ns.groupPrefixes)
-        ? (ns.groupPrefixes as string[])
-        : [];
-      const group =
-        groups[0] ?? (pkg ? pkg.name.split(":")[0]! : "<group.prefix>");
-      const filters = (groups.length ? groups : [group])
-        .map(
-          (g) =>
-            `      includeGroupByRegex("${g.replace(/\./g, "\\\\.")}(\\\\..*)?")`,
-        )
-        .join("\n");
-      const coord = pkg
-        ? `${pkg.name}:${version ?? "<version>"}`
-        : `${group}:<artifact>:<version>`;
-      return [
-        {
-          title: "Gradle: this feed, for its groups only",
-          filename: "settings.gradle.kts",
-          language: "text",
-          code: `dependencyResolutionManagement {\n  repositories {\n    exclusiveContent {\n      forRepository { maven { url = uri("${baseUrl}") } }\n      filter {\n${filters}\n      }\n    }\n    mavenCentral()\n  }\n}`,
-        },
-        {
-          title: "Depend on the artifact",
-          filename: "build.gradle.kts",
-          language: "text",
-          code: `implementation("${coord}")`,
-        },
-      ];
-    }
-    case "godot":
-      return [
-        {
-          title:
-            "Godot 4.6 and earlier: Editor Settings → Asset Library → Available URLs",
-          language: "text",
-          code: `${baseUrl}asset-library/api`,
-        },
-        {
-          title: "Godot 4.7 and later: the asset store URL",
-          language: "text",
-          code: `${baseUrl}store/api/v1`,
-        },
-      ];
-  }
-}
-
-/** How a token is written in each format: the env reference, or the value itself. */
-function secretIn(
-  credential: Exclude<FeedCredential, { kind: "none" }>,
-  format: "sh" | "npmrc" | "yaml" | "toml" | "xml" | "properties",
-): string {
-  if (credential.kind !== "env") return credential.value;
-  const n = credential.name;
-  switch (format) {
-    case "sh":
-      return `"$${n}"`;
-    case "npmrc":
-    case "yaml":
-      return `\${${n}}`;
-    case "xml":
-      return `\${env.${n}}`;
-    case "toml":
-    case "properties":
-      return `<${n}>`;
-  }
-}
-
-/** An identifier from the owner slug (Gradle property names, uv's index env names). */
-function ident(owner: string): string {
-  return owner.replace(/[^A-Za-z0-9]+(.)?/g, (_, c: string | undefined) =>
-    c ? c.toUpperCase() : "",
-  );
-}
-
-function authenticatedSnippets(
-  eco: FeedEcosystem,
-  ctx: SnippetContext,
-  credential: Exclude<FeedCredential, { kind: "none" }>,
-): Snippet[] {
-  const { baseUrl, owner } = ctx;
-  const plain = anonymousSnippets(eco, ctx);
-  const host = hostOf(baseUrl);
-  const T = (f: Parameters<typeof secretIn>[1]) => secretIn(credential, f);
-  const envNote =
-    credential.kind === "env"
-      ? `Set ${credential.name} to a registry token first.`
-      : undefined;
-  switch (eco) {
-    case "npm": {
-      const ns = ctx.namespace as Record<string, unknown>;
-      const scope = (typeof ns.scope === "string" && ns.scope) || "@scope";
-      const path = baseUrl.replace(/^https?:/, "");
-      return [
-        {
-          title: "npm and pnpm: the scope and its token",
-          ...(envNote ? { description: envNote } : {}),
-          filename: ".npmrc",
-          language: "text",
-          code: `${scope}:registry=${baseUrl}\n${path}:_authToken=${T("npmrc")}`,
-        },
-        {
-          title: "Yarn Berry",
-          filename: ".yarnrc.yml",
-          language: "text",
-          code: `npmScopes:\n  ${scope.replace(/^@/, "")}:\n    npmRegistryServer: "${baseUrl}"\n    npmAuthToken: "${T("yaml")}"\n    npmAlwaysAuth: true`,
-        },
-        ...plain.slice(1),
-      ];
-    }
-    case "pypi": {
-      const name = ctx.pkg?.name ?? "<package>";
-      const env = `UV_INDEX_${ident(owner).toUpperCase()}`;
-      const withCreds = baseUrl.replace(
-        /^https:\/\//,
-        `https://${REGISTRY_USERNAME}:${credential.kind === "env" ? `\${${credential.name}}` : credential.value}@`,
-      );
-      return [
-        {
-          title: "uv: an explicit index that always authenticates",
-          ...(envNote ? { description: envNote } : {}),
-          filename: "pyproject.toml",
-          language: "toml",
-          code: `[[tool.uv.index]]\nname = "${owner}"\nurl = "${baseUrl}"\nexplicit = true\nauthenticate = "always"`,
-        },
-        {
-          title: "uv: the credentials",
-          language: "sh",
-          code: `export ${env}_USERNAME=${REGISTRY_USERNAME}\nexport ${env}_PASSWORD=${T("sh")}`,
-        },
-        {
-          title: "pip",
-          language: "sh",
-          code: `pip install --index-url "${withCreds}" ${name}`,
-        },
-      ];
-    }
-    case "oci":
-      return [
-        {
-          title: "Log in once per machine",
-          description:
-            "docker, podman, crane and oras hold one credential per registry host.",
-          language: "sh",
-          code: `echo ${credential.kind === "env" ? T("sh") : `'${credential.value}'`} | docker login ${host} -u ${REGISTRY_USERNAME} --password-stdin`,
-        },
-        ...plain,
-      ];
-    case "swift": {
-      const ci = credential.kind === "env" ? " --no-confirm" : "";
-      return [
-        plain[0]!,
-        {
-          title: "Log in",
-          description:
-            "SwiftPM keeps one credential per registry host (the keychain, or ~/.netrc on Linux).",
-          language: "sh",
-          code: `swift package-registry login ${baseUrl.replace(/\/$/, "")} --token ${T("sh")}${ci}`,
-        },
-        ...plain.slice(1),
-      ];
-    }
-    case "maven": {
-      const id = ident(owner);
-      return [
-        {
-          title: "Gradle: password credentials for this feed",
-          filename: "settings.gradle.kts",
-          language: "text",
-          code: `maven {\n  name = "${id}"\n  url = uri("${baseUrl}")\n  credentials(PasswordCredentials::class)\n}`,
-        },
-        {
-          title: "Gradle: the credentials",
-          ...(envNote ? { description: envNote } : {}),
-          filename: "~/.gradle/gradle.properties",
-          language: "text",
-          code: `${id}Username=${REGISTRY_USERNAME}\n${id}Password=${T("properties")}`,
-        },
-        {
-          title: "Maven",
-          filename: "~/.m2/settings.xml",
-          language: "text",
-          code: `<server>\n  <id>${id}</id>\n  <username>${REGISTRY_USERNAME}</username>\n  <password>${T("xml")}</password>\n</server>`,
-        },
-      ];
-    }
-    case "godot": {
-      if (credential.kind !== "godot-url")
-        return [
-          {
-            title: "The Godot editor needs a Godot editor URL token",
-            language: "text",
-            code: "Create a token with “Godot editor URL” on: the editor sends no credentials, so the token goes in its URL.",
+): FeedSnippet[] | null {
+  const context = {
+    origin: new URL(ctx.origin).origin,
+    owner: ctx.owner,
+    namespace: ctx.namespace,
+    ...(ctx.pkg
+      ? {
+          package: {
+            name: ctx.pkg.name,
+            ...(ctx.pkg.version ? { version: ctx.pkg.version } : {}),
           },
-        ];
-      const base = `${baseUrl}t/${credential.value}/`;
-      return [
-        {
-          title:
-            "Godot 4.6 and earlier: Editor Settings → Asset Library → Available URLs",
-          language: "text",
-          code: `${base}asset-library/api`,
-        },
-        {
-          title: "Godot 4.7 and later: the asset store URL",
-          language: "text",
-          code: `${base}store/api/v1`,
-        },
-        {
-          title: "GodotEnv",
-          language: "text",
-          code: `${base}index.json`,
-        },
-      ];
-    }
-  }
+        }
+      : {}),
+    ...(credential.kind === "none" ? {} : { credential }),
+  };
+  if (feedSetupProblem(eco, context) !== null) return null;
+  return renderFeedSetup(eco, context);
 }
 
 /** A byte count as an operator types it: whole MiB when it divides evenly. */
@@ -500,3 +211,109 @@ export function bytesToMiB(bytes: number): number {
 export function mibToBytes(mib: number): number {
   return Math.round(mib * 1024 * 1024);
 }
+
+/**
+ * How the ecosystem panel (F-12) edits one extension setting, keyed by the setting's name, never
+ * by ecosystem: the panel renders the keys the feed's adapter declares (`FeedDetailDto.extensions`)
+ * and saves them into `ext_json`. A key the adapter declares but this table lacks is not shown.
+ */
+export type FeedExtensionInput =
+  | { kind: "switch"; default: boolean }
+  | { kind: "number"; min: number; max: number; unit: string }
+  | {
+      kind: "select";
+      options: readonly { value: string; label: string }[];
+      default: string;
+      /** The stored value is a number (`categoryId`). */
+      numeric?: boolean;
+    }
+  | { kind: "text"; placeholder: string; maxLength: number; pattern?: RegExp }
+  | { kind: "repositoryMap"; placeholder: string };
+
+export interface FeedExtensionField {
+  label: string;
+  help: string;
+  input: FeedExtensionInput;
+}
+
+export const FEED_EXTENSION_FIELDS: Record<string, FeedExtensionField> = {
+  htmlFallback: {
+    label: "HTML pages",
+    help: "Answer clients that cannot take PEP 691 JSON with the inert PEP 503 HTML page. Off, they get 406.",
+    input: { kind: "switch", default: true },
+  },
+  requireSigned: {
+    label: "Require signed releases",
+    help: "Ingest refuses a release without a SwiftPM signature. Always on for the platform's own packages.",
+    input: { kind: "switch", default: true },
+  },
+  repositoryUrls: {
+    label: "Repository URLs",
+    help: "Which source repositories are which package, for SwiftPM's identifier lookup. One per line: the identity, then the URL.",
+    input: {
+      kind: "repositoryMap",
+      placeholder: "acme.Kit https://github.com/acme/kit",
+    },
+  },
+  retainUntaggedDays: {
+    label: "Untagged manifests",
+    help: "Recorded with the feed: nothing removes an untagged image manifest, so every one is kept whatever this holds. A published version is never removed.",
+    input: { kind: "number", min: 0, max: 3650, unit: "days" },
+  },
+  categoryId: {
+    label: "Category",
+    help: "The asset library category every addon of this feed is listed under.",
+    input: {
+      kind: "select",
+      numeric: true,
+      default: "5",
+      options: [
+        { value: "1", label: "2D Tools" },
+        { value: "2", label: "3D Tools" },
+        { value: "3", label: "Shaders" },
+        { value: "4", label: "Materials" },
+        { value: "5", label: "Tools" },
+        { value: "6", label: "Scripts" },
+        { value: "7", label: "Misc" },
+      ],
+    },
+  },
+  supportLevel: {
+    label: "Support level",
+    help: "The support level the editor shows for every addon of this feed.",
+    input: {
+      kind: "select",
+      default: "community",
+      options: [
+        { value: "official", label: "Official" },
+        { value: "community", label: "Community" },
+        { value: "testing", label: "Testing" },
+      ],
+    },
+  },
+  license: {
+    label: "License",
+    help: "Shown as each addon's license. Empty shows Unspecified.",
+    input: { kind: "text", placeholder: "MIT", maxLength: 64 },
+  },
+  minGodotVersion: {
+    label: "Oldest editor",
+    help: "Editors older than this, or of another major version, see no addons. Empty lists them to every editor.",
+    input: {
+      kind: "text",
+      placeholder: "4.4",
+      maxLength: 8,
+      pattern: /^\d{1,2}\.\d{1,2}(?:\.\d{1,2})?$/,
+    },
+  },
+};
+
+/** The ecosystem panel's section title, per protocol. */
+export const FEED_PANEL_TITLES: Record<FeedEcosystem, string> = {
+  npm: "npm",
+  pypi: "Simple API",
+  swift: "Signing and identifiers",
+  maven: "Maven",
+  oci: "Retention",
+  godot: "Asset listing",
+};

@@ -4,7 +4,7 @@
  * npm-specific stays in this directory; `registry/index.ts` lists the adapter in `FEED_ADAPTERS`.
  */
 
-import { PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
+import { FEED_SETUP, PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
 import { rendererOf, defineFeedAdapter, type FeedAdapter } from "../adapter.js";
 import type { RegistryRenderer } from "../materialise.js";
 import { renderNpm } from "./render.js";
@@ -34,10 +34,7 @@ export const NPM_ADAPTER: FeedAdapter<"npm"> = defineFeedAdapter({
     search: false,
     authChallenge: "basic",
   },
-  setup: {
-    clients: ["npm", "pnpm", "Yarn Berry", "Bun"],
-    inputs: ["baseUrl", "namespace.scope", "package.name", "package.version"],
-  },
+  setup: FEED_SETUP.npm,
   openapi: [
     // Both spellings of a scoped name; the escaped one carries %2f in {escapedName}.
     ["/npm/{owner}/{escapedName}", ["get", "head"], "npm.packument"],

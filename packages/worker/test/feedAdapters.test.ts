@@ -36,8 +36,10 @@ import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
 import {
+  FEED_SETUP,
   PACKAGE_ECOSYSTEMS,
   PACKAGE_ECOSYSTEM_RULES,
+  feedSetupBaseUrl,
   type PackageEcosystem,
 } from "@polaris-key/manifest";
 import {
@@ -746,6 +748,13 @@ describe.each(FEED_ADAPTERS.map((a) => [a.ecosystem, a] as const))(
     });
 
     it("declares its setup inputs and clients", () => {
+      // The one declaration in @polaris-key/manifest that renderFeedSetup (console and CLI) reads.
+      expect(a.setup).toBe(FEED_SETUP[eco as PackageEcosystem]);
+      expect(a.setup.feedPath(OWNER)).toBe(a.feedPath(OWNER));
+      expect(
+        feedSetupBaseUrl(eco as PackageEcosystem, PKG, OWNER),
+        "the snippets' base URL is the admin API's",
+      ).toBe(feedBaseUrl(PKG, eco as PackageEcosystem, OWNER));
       expect(a.setup.clients.length).toBeGreaterThan(0);
       expect(
         a.setup.inputs.includes("baseUrl") ||

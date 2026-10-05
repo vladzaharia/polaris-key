@@ -5,7 +5,7 @@
  * through upload tickets (`packages/cli/src/package/oci.ts`).
  */
 
-import { PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
+import { FEED_SETUP, PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
 import {
   extInteger,
   rendererOf,
@@ -41,10 +41,7 @@ export const OCI_ADAPTER: FeedAdapter<"oci"> = defineFeedAdapter({
     search: false,
     authChallenge: "oci-bearer",
   },
-  setup: {
-    clients: ["docker", "podman", "crane"],
-    inputs: ["registryHost", "owner", "package.name", "package.version"],
-  },
+  setup: FEED_SETUP.oci,
   openapi: [
     // F-21: the token service, an owner-less route (its owners are in `scope`).
     ["/v2/token", ["get", "head"], "oci.token"],

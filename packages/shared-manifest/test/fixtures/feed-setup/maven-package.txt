@@ -1,0 +1,29 @@
+# Gradle: this feed, for its groups only (settings.gradle.kts)
+dependencyResolutionManagement {
+    repositories {
+        exclusiveContent {
+            forRepository {
+                maven { url = uri("https://pkg.plrs.im/maven/polaris-key/") }
+            }
+            filter {
+                includeGroupAndSubgroups("im.plrs.key")
+                includeGroupAndSubgroups("im.plrs.tools")
+            }
+        }
+        mavenCentral()
+    }
+}
+
+# Depend on the artifact (build.gradle.kts)
+implementation("im.plrs.key:polaris-key-sdk:0.9.0")
+
+# Maven: the repository, with a fatal checksum policy (pom.xml)
+# Warning: Maven asks every repository for every artifact. Keep the feed's group prefixes ones you hold on Maven Central, so no one else can publish under them there.
+<repositories>
+  <repository>
+    <id>polaris-key</id>
+    <url>https://pkg.plrs.im/maven/polaris-key/</url>
+    <releases><checksumPolicy>fail</checksumPolicy></releases>
+    <snapshots><enabled>false</enabled></snapshots>
+  </repository>
+</repositories>

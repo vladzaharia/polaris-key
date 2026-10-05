@@ -77,6 +77,7 @@ import {
   ECOSYSTEM_LABELS,
   FEED_ACCESS_MODES,
   FEED_CAPABILITIES,
+  FEED_EXTENSIONS,
   PACKAGE_ECOSYSTEMS,
   SETTABLE_ACCESS_MODES,
   applyExtPatch,
@@ -409,6 +410,7 @@ async function feedDetail(
     settings: settingsView(ctx.feeds.get(eco), policy),
     policy: policyView(policy),
     capabilities: FEED_CAPABILITIES[eco],
+    extensions: FEED_EXTENSIONS[eco],
     accessModes: FEED_ACCESS_MODES.map((mode) => ({
       mode,
       available: SETTABLE_ACCESS_MODES.includes(mode),

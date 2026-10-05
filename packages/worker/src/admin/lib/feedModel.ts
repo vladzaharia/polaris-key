@@ -43,6 +43,19 @@ export const FEED_CAPABILITIES: Readonly<
   Record<PackageEcosystem, FeedCapabilities>
 > = perEcosystem((e) => feedCapabilityView(requireFeedAdapter(e)));
 
+/**
+ * Every ecosystem's extension settings (`ext_json` keys its adapter accepts), which the console's
+ * ecosystem panel renders (F-12). `yankHidesFromIndex` is the Yank policy section's, not the
+ * panel's, so it is listed in `capabilities.yankPolicy` instead.
+ */
+export const FEED_EXTENSIONS: Readonly<
+  Record<PackageEcosystem, readonly string[]>
+> = perEcosystem((e) =>
+  Object.keys(requireFeedAdapter(e).settings.ext).filter(
+    (k) => k !== "yankHidesFromIndex",
+  ),
+);
+
 /** The version verbs the Feeds console offers. */
 export const VERSION_VERBS = [
   "yank",

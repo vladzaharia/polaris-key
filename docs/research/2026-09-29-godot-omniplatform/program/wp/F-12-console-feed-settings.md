@@ -71,9 +71,9 @@ use the client's strict router ([S-12 §8.3](../../notes/S-12-package-feeds.md#8
 
 ## Acceptance criteria
 
-- [ ] The CLI and console snippets are byte-identical for the same input (one shared test).
-- [ ] Each panel saves its own `ext_json` or `namespace_json` with `expectedVersion`.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] The CLI and console snippets are byte-identical for the same input (one shared test).
+- [x] Each panel saves its own `ext_json` or `namespace_json` with `expectedVersion`.
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 
@@ -82,6 +82,56 @@ mise exec node@22 -- pnpm --filter @polaris-key/manifest test -- feedSetup
 mise exec node@22 -- pnpm --filter @polaris-key/cli bundle:action -- --check
 mise exec node@22 -- pnpm --filter @polaris-key/admin build && mise exec node@22 -- pnpm --filter @polaris-key/worker test adminCspParity
 ```
+
+## Corrections (recorded while implementing, against the code)
+
+Where the code disagreed with this brief or plans/F-01.md §6.9, the code was the fact. No wire
+shape, corpus, migration, route or `PROTOCOL_VERSION` changes.
+
+1. **The setup declaration moved into `@polaris-key/manifest`.** The brief points at each
+   adapter's `setup.inputs` and `setup.clients`, but `renderFeedSetup` must live in the manifest
+   package (§6.9), which cannot import the Worker. `FEED_SETUP[<ecosystem>]`
+   (`packages/shared-manifest/src/feedSetup.ts`) now holds the clients, the inputs, the feed path
+   and the templates; each adapter's `setup` points at it (`setup: FEED_SETUP.npm`), and
+   `test/feedAdapters.test.ts` checks the identity, the feed path and the base URL against the
+   adapter. A template reads its inputs only through the declared list (an undeclared read
+   throws), so the declaration still drives the render. Maven gained `owner` as an input (its
+   Gradle repository name and Maven server id), and PyPI `namespace.names` (a feed with exactly
+   one project name shows it instead of `<package>`).
+2. **The namespace "panels" were already F-11's Namespace section.** npm scope, PyPI names and
+   prefixes, Maven group prefixes and the Godot publisher are `namespace_json`, edited by F-11's
+   common Namespace section. F-12 did not duplicate them in `FEED_PANELS`; it rewrote that section
+   to render one row per namespace field the ingest rules declare (no ecosystem switch; the
+   per-protocol copy stays a display table). `FEED_PANELS` holds one `EcosystemPanel` for every
+   ecosystem, which renders the extension settings (`ext_json`) the adapter declares; npm and
+   Maven declare none beyond Maven's `yankHidesFromIndex` (the Yank policy section's), so they
+   show no panel. The admin API's feed detail gained `extensions` (the adapter's `settings.ext`
+   keys) for it, and the edit controls are keyed by setting in `FEED_EXTENSION_FIELDS`.
+3. **Two settings the brief names were not settable.** Swift's `repositoryUrls` (read by
+   `GET /identifiers`) and Godot's `license` and `minGodotVersion` (read by the renderer, listed
+   in the docs) were missing from their adapters' `settings.ext`, so the admin API refused them.
+   They are added, each with its value check.
+4. **Credentials are in (plans/F-20.md §3 and §5).** F-20 put the `credential` argument and
+   `pkey feeds setup --token-env` into F-12 when F-12 lands first. `renderFeedSetup` takes
+   `{kind: none | env | token | godot-url}` with the per-client lines of F-20 §6.3; the CLI
+   exposes only `env`. F-21 still owns the token UI that uses `token` and `godot-url`.
+5. **The Feeds sub-navigation (owner decision, 2026-10-04).** The row of feed links stays, as a
+   proper sub-navigation bar: Overview, a separator, then each ecosystem with its icon, on a
+   rule, the current page filled, bold and underlined. Not a dropdown in the title.
+6. **OCI retention is a setting only.** `retainUntaggedDays` is stored and edited, but nothing
+   removes untagged manifests yet (no job reads it). Proposed follow-up for the OCI feed's owner
+   (F-08 lineage): a retention sweep. The console help and `admin/feeds.md` say so (review
+   round 1): the console states the behaviour ("nothing removes an untagged image manifest"),
+   without roadmap copy; the docs say it is stored only.
+7. **SwiftPM's setup is the whole `registries.json` (review round 1).** A file holding only
+   `security` fails to load (`keyNotFound: version`), so pasting it over the file
+   `swift package-registry set` wrote broke resolution. The snippet is now the complete file
+   (`version`, `registries` with the scope, `security`) in place of `set`, then
+   `swift package-registry login` when a credential is given, which adds its `authentication`
+   entry to that file. Its description names `trustedRootCertificatesPath` for a signer SwiftPM
+   does not already trust. `build/install-from-feeds.md` had the same fragment and now shows the
+   merged file. `pkey feeds setup --ecosystem godot --token-env` is refused (Godot authenticates
+   by URL token) instead of printing setup with no credential.
 
 ## Hand-off
 

@@ -133,8 +133,11 @@ function PackageFeedsOff({
 }
 
 /**
- * The links between the overview and every feed page (one page per feed). A `nav` of real links
- * with `aria-current`, each with its ecosystem's icon.
+ * The area's sub-navigation bar: the links between the overview and every feed page (one page
+ * per feed), above each page's title. A `nav` of real links with `aria-current`, each with its
+ * ecosystem's icon; Overview stands apart behind a separator, the bar sits on a rule, and the
+ * current page is marked three ways (accent fill, bold label, an accent bar on the rule), never by
+ * colour alone. Owner decision (F-12): a bar of links, not a dropdown in the title.
  */
 export function FeedNav({
   scope,
@@ -143,49 +146,66 @@ export function FeedNav({
   scope: FeedScope;
   current: "overview" | "tokens" | (typeof ECOSYSTEMS)[number];
 }): React.ReactElement {
-  const items = [
-    {
-      key: "overview",
-      label: "Overview",
-      icon: LayoutGrid,
-      to: overviewHref(scope),
-    },
-    ...ECOSYSTEMS.map((e) => ({
-      key: e,
-      label: ECOSYSTEM_LABELS[e],
-      icon: ECOSYSTEM_ICONS[e],
-      to: feedHref(scope, e),
-    })),
-    // F-21: the registry tokens clients of non-public feeds present.
-    { key: "tokens", label: "Tokens", icon: KeyRound, to: tokensHref(scope) },
-  ];
+  const link = (it: {
+    key: string;
+    label: string;
+    icon: typeof LayoutGrid;
+    to: string;
+  }) => {
+    const Icon = it.icon;
+    const active = it.key === current;
+    return (
+      <li key={it.key}>
+        <Link
+          to={it.to}
+          aria-current={active ? "page" : undefined}
+          data-active={active ? "" : undefined}
+          className={cn(
+            "relative inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-t-md px-2.5 text-sm",
+            "after:absolute after:inset-x-1.5 after:bottom-0 after:h-0.5 after:rounded-full",
+            "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus",
+            active
+              ? "bg-accent-subtle font-bold text-fg-strong after:bg-accent"
+              : "text-fg-muted after:bg-transparent hover:bg-hover hover:text-fg-strong",
+          )}
+        >
+          <Icon
+            aria-hidden
+            className={cn("size-4 shrink-0", active && "text-accent")}
+          />
+          {it.label}
+        </Link>
+      </li>
+    );
+  };
   return (
-    <nav aria-label="Package feeds" className="pk-scroll overflow-x-auto">
-      <ul className="flex gap-1.5">
-        {items.map((it) => {
-          const Icon = it.icon;
-          const active = it.key === current;
-          return (
-            <li key={it.key}>
-              <Link
-                to={it.to}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md border px-2.5 text-sm",
-                  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
-                  active
-                    ? "border-accent bg-accent-subtle font-bold text-fg-strong"
-                    : "border-border text-fg-muted hover:bg-hover hover:text-fg-strong",
-                )}
-              >
-                <Icon
-                  aria-hidden
-                  className={cn("size-4", active && "text-accent")}
-                />
-                {it.label}
-              </Link>
-            </li>
-          );
+    <nav
+      aria-label="Package feeds"
+      className="pk-scroll overflow-x-auto border-b border-border"
+    >
+      <ul className="flex items-center gap-1">
+        {link({
+          key: "overview",
+          label: "Overview",
+          icon: LayoutGrid,
+          to: overviewHref(scope),
+        })}
+        <li aria-hidden className="mx-1.5 h-5 w-px shrink-0 bg-border-strong" />
+        {ECOSYSTEMS.map((e) =>
+          link({
+            key: e,
+            label: ECOSYSTEM_LABELS[e],
+            icon: ECOSYSTEM_ICONS[e],
+            to: feedHref(scope, e),
+          }),
+        )}
+        {/* F-21: the registry tokens clients of non-public feeds present. */}
+        <li aria-hidden className="mx-1.5 h-5 w-px shrink-0 bg-border-strong" />
+        {link({
+          key: "tokens",
+          label: "Tokens",
+          icon: KeyRound,
+          to: tokensHref(scope),
         })}
       </ul>
     </nav>

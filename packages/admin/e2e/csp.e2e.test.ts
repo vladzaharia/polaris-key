@@ -434,6 +434,9 @@ describe("overlays under the Worker's CSP", () => {
       ["#/platform/feeds/npm", "npm"],
       ["#/platform/feeds/npm/setup", "npm"],
       ["#/platform/feeds/oci/settings", "Docker / OCI"],
+      ["#/platform/feeds/pypi/setup", "PyPI"],
+      ["#/platform/feeds/swift/settings", "Swift"],
+      ["#/platform/feeds/godot/settings", "Godot"],
       ["#/platform/feeds/npm/activity", "npm"],
       [
         "#/platform/feeds/npm/packages/polaris-key/%40polaris-key%2Fnode",

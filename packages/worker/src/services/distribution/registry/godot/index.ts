@@ -4,7 +4,7 @@
  * `documents.ts` for the two editor API shapes and `routes.ts` for the URL layout.
  */
 
-import { PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
+import { FEED_SETUP, PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
 import {
   extInteger,
   rendererOf,
@@ -44,6 +44,12 @@ export const GODOT_ADAPTER: FeedAdapter<"godot"> = defineFeedAdapter({
       categoryId: extInteger(0, 1_000_000),
       supportLevel: (v) =>
         typeof v === "string" && /^[a-z][a-z-]{0,31}$/.test(v),
+      // Shown as the asset's license (≤ 4.6 `cost`, 4.7 `license_type`).
+      license: (v) =>
+        typeof v === "string" && v.trim() !== "" && v.length <= 64,
+      // Editors older than this, or of another major version, see nothing.
+      minGodotVersion: (v) =>
+        typeof v === "string" && /^\d{1,2}\.\d{1,2}(?:\.\d{1,2})?$/.test(v),
     },
   },
   capabilities: {
@@ -58,10 +64,7 @@ export const GODOT_ADAPTER: FeedAdapter<"godot"> = defineFeedAdapter({
     search: true,
     authChallenge: "basic",
   },
-  setup: {
-    clients: ["The Godot editor's asset library", "GodotEnv"],
-    inputs: ["baseUrl"],
-  },
+  setup: FEED_SETUP.godot,
   // F-21: every path also answers under `/godot/{owner}/t/{token}/…` (a URL token, §6.3).
   openapi: withTokenisedPaths([
     [

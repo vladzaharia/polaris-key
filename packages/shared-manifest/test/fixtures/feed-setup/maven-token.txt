@@ -1,0 +1,45 @@
+# Gradle: this feed, for its groups only (settings.gradle.kts)
+dependencyResolutionManagement {
+    repositories {
+        exclusiveContent {
+            forRepository {
+                maven {
+                    name = "acme"
+                    url = uri("https://pkg.plrs.im/maven/acme/")
+                    credentials(PasswordCredentials::class)
+                }
+            }
+            filter {
+                includeGroupAndSubgroups("gg.acme")
+            }
+        }
+        mavenCentral()
+    }
+}
+
+# Gradle: the repository credentials (~/.gradle/gradle.properties)
+acmeUsername=__token__
+acmePassword=pkeyr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
+# Depend on the artifact (build.gradle.kts)
+implementation("gg.acme:<artifact>:<version>")
+
+# Maven: the repository, with a fatal checksum policy (pom.xml)
+# Warning: Maven asks every repository for every artifact. Keep the feed's group prefixes ones you hold on Maven Central, so no one else can publish under them there.
+<repositories>
+  <repository>
+    <id>acme</id>
+    <url>https://pkg.plrs.im/maven/acme/</url>
+    <releases><checksumPolicy>fail</checksumPolicy></releases>
+    <snapshots><enabled>false</enabled></snapshots>
+  </repository>
+</repositories>
+
+# Maven: the server credentials (~/.m2/settings.xml)
+<servers>
+  <server>
+    <id>acme</id>
+    <username>__token__</username>
+    <password>pkeyr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA</password>
+  </server>
+</servers>

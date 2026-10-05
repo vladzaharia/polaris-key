@@ -3762,7 +3762,7 @@ var require_directives = __commonJS({
         return tag[0] === "!" ? tag : `!<${tag}>`;
       }
       toString(doc) {
-        const lines2 = this.yaml.explicit ? [`%YAML ${this.yaml.version || "1.2"}`] : [];
+        const lines3 = this.yaml.explicit ? [`%YAML ${this.yaml.version || "1.2"}`] : [];
         const tagEntries = Object.entries(this.tags);
         let tagNames;
         if (doc && tagEntries.length > 0 && identity.isNode(doc.contents)) {
@@ -3778,9 +3778,9 @@ var require_directives = __commonJS({
           if (handle === "!!" && prefix === "tag:yaml.org,2002:")
             continue;
           if (!doc || tagNames.some((tn) => tn.startsWith(prefix)))
-            lines2.push(`%TAG ${handle} ${prefix}`);
+            lines3.push(`%TAG ${handle} ${prefix}`);
         }
-        return lines2.join("\n");
+        return lines3.join("\n");
       }
     };
     Directives.defaultYaml = { explicit: false, version: "1.2" };
@@ -4357,13 +4357,13 @@ var require_stringifyComment = __commonJS({
   "../../node_modules/.pnpm/yaml@2.9.0/node_modules/yaml/dist/stringify/stringifyComment.js"(exports) {
     "use strict";
     init_define_PKEY_EMBEDDED_SCHEMAS();
-    var stringifyComment = (str) => str.replace(/^(?!$)(?: $)?/gm, "#");
+    var stringifyComment = (str2) => str2.replace(/^(?!$)(?: $)?/gm, "#");
     function indentComment(comment, indent) {
       if (/^\n+$/.test(comment))
         return comment.substring(1);
       return indent ? comment.replace(/^(?! *$)/gm, indent) : comment;
     }
-    var lineComment = (str, indent, comment) => str.endsWith("\n") ? indentComment(comment, indent) : comment.includes("\n") ? "\n" + indentComment(comment, indent) : (str.endsWith(" ") ? "" : " ") + comment;
+    var lineComment = (str2, indent, comment) => str2.endsWith("\n") ? indentComment(comment, indent) : comment.includes("\n") ? "\n" + indentComment(comment, indent) : (str2.endsWith(" ") ? "" : " ") + comment;
     exports.indentComment = indentComment;
     exports.lineComment = lineComment;
     exports.stringifyComment = stringifyComment;
@@ -4519,16 +4519,16 @@ var require_stringifyString = __commonJS({
       lineWidth: ctx.options.lineWidth,
       minContentWidth: ctx.options.minContentWidth
     });
-    var containsDocumentMarker = (str) => /^(%|---|\.\.\.)/m.test(str);
-    function lineLengthOverLimit(str, lineWidth, indentLength) {
+    var containsDocumentMarker = (str2) => /^(%|---|\.\.\.)/m.test(str2);
+    function lineLengthOverLimit(str2, lineWidth, indentLength) {
       if (!lineWidth || lineWidth < 0)
         return false;
       const limit = lineWidth - indentLength;
-      const strLen = str.length;
+      const strLen = str2.length;
       if (strLen <= limit)
         return false;
       for (let i = 0, start = 0; i < strLen; ++i) {
-        if (str[i] === "\n") {
+        if (str2[i] === "\n") {
           if (i - start > limit)
             return true;
           start = i + 1;
@@ -4545,11 +4545,11 @@ var require_stringifyString = __commonJS({
       const { implicitKey } = ctx;
       const minMultiLineLength = ctx.options.doubleQuotedMinMultiLineLength;
       const indent = ctx.indent || (containsDocumentMarker(value) ? "  " : "");
-      let str = "";
+      let str2 = "";
       let start = 0;
       for (let i = 0, ch = json[i]; ch; ch = json[++i]) {
         if (ch === " " && json[i + 1] === "\\" && json[i + 2] === "n") {
-          str += json.slice(start, i) + "\\ ";
+          str2 += json.slice(start, i) + "\\ ";
           i += 1;
           start = i;
           ch = "\\";
@@ -4558,38 +4558,38 @@ var require_stringifyString = __commonJS({
           switch (json[i + 1]) {
             case "u":
               {
-                str += json.slice(start, i);
+                str2 += json.slice(start, i);
                 const code = json.substr(i + 2, 4);
                 switch (code) {
                   case "0000":
-                    str += "\\0";
+                    str2 += "\\0";
                     break;
                   case "0007":
-                    str += "\\a";
+                    str2 += "\\a";
                     break;
                   case "000b":
-                    str += "\\v";
+                    str2 += "\\v";
                     break;
                   case "001b":
-                    str += "\\e";
+                    str2 += "\\e";
                     break;
                   case "0085":
-                    str += "\\N";
+                    str2 += "\\N";
                     break;
                   case "00a0":
-                    str += "\\_";
+                    str2 += "\\_";
                     break;
                   case "2028":
-                    str += "\\L";
+                    str2 += "\\L";
                     break;
                   case "2029":
-                    str += "\\P";
+                    str2 += "\\P";
                     break;
                   default:
                     if (code.substr(0, 2) === "00")
-                      str += "\\x" + code.substr(2);
+                      str2 += "\\x" + code.substr(2);
                     else
-                      str += json.substr(i, 6);
+                      str2 += json.substr(i, 6);
                 }
                 i += 5;
                 start = i + 1;
@@ -4599,14 +4599,14 @@ var require_stringifyString = __commonJS({
               if (implicitKey || json[i + 2] === '"' || json.length < minMultiLineLength) {
                 i += 1;
               } else {
-                str += json.slice(start, i) + "\n\n";
+                str2 += json.slice(start, i) + "\n\n";
                 while (json[i + 2] === "\\" && json[i + 3] === "n" && json[i + 4] !== '"') {
-                  str += "\n";
+                  str2 += "\n";
                   i += 2;
                 }
-                str += indent;
+                str2 += indent;
                 if (json[i + 2] === " ")
-                  str += "\\";
+                  str2 += "\\";
                 i += 1;
                 start = i + 1;
               }
@@ -4615,8 +4615,8 @@ var require_stringifyString = __commonJS({
               i += 1;
           }
       }
-      str = start ? str + json.slice(start) : json;
-      return implicitKey ? str : foldFlowLines.foldFlowLines(str, indent, foldFlowLines.FOLD_QUOTED, getFoldOptions(ctx, false));
+      str2 = start ? str2 + json.slice(start) : json;
+      return implicitKey ? str2 : foldFlowLines.foldFlowLines(str2, indent, foldFlowLines.FOLD_QUOTED, getFoldOptions(ctx, false));
     }
     function singleQuotedString(value, ctx) {
       if (ctx.options.singleQuote === false || ctx.implicitKey && value.includes("\n") || /[ \t]\n|\n[ \t]/.test(value))
@@ -4744,15 +4744,15 @@ ${indent}${start}${value}${end}`;
           return quotedString(value, ctx);
         }
       }
-      const str = value.replace(/\n+/g, `$&
+      const str2 = value.replace(/\n+/g, `$&
 ${indent}`);
       if (actualString) {
-        const test = (tag) => tag.default && tag.tag !== "tag:yaml.org,2002:str" && tag.test?.test(str);
+        const test = (tag) => tag.default && tag.tag !== "tag:yaml.org,2002:str" && tag.test?.test(str2);
         const { compat, tags } = ctx.doc.schema;
         if (tags.some(test) || compat?.some(test))
           return quotedString(value, ctx);
       }
-      return implicitKey ? str : foldFlowLines.foldFlowLines(str, indent, foldFlowLines.FOLD_FLOW, getFoldOptions(ctx, false));
+      return implicitKey ? str2 : foldFlowLines.foldFlowLines(str2, indent, foldFlowLines.FOLD_FLOW, getFoldOptions(ctx, false));
     }
     function stringifyString(item, ctx, onComment, onChompKeep) {
       const { implicitKey, inFlow } = ctx;
@@ -4905,11 +4905,11 @@ var require_stringify = __commonJS({
       const props = stringifyProps(node, tagObj, ctx);
       if (props.length > 0)
         ctx.indentAtStart = (ctx.indentAtStart ?? 0) + props.length + 1;
-      const str = typeof tagObj.stringify === "function" ? tagObj.stringify(node, ctx, onComment, onChompKeep) : identity.isScalar(node) ? stringifyString.stringifyString(node, ctx, onComment, onChompKeep) : node.toString(ctx, onComment, onChompKeep);
+      const str2 = typeof tagObj.stringify === "function" ? tagObj.stringify(node, ctx, onComment, onChompKeep) : identity.isScalar(node) ? stringifyString.stringifyString(node, ctx, onComment, onChompKeep) : node.toString(ctx, onComment, onChompKeep);
       if (!props)
-        return str;
-      return identity.isScalar(node) || str[0] === "{" || str[0] === "[" ? `${props} ${str}` : `${props}
-${ctx.indent}${str}`;
+        return str2;
+      return identity.isScalar(node) || str2[0] === "{" || str2[0] === "[" ? `${props} ${str2}` : `${props}
+${ctx.indent}${str2}`;
     }
     exports.createStringifyContext = createStringifyContext;
     exports.stringify = stringify;
@@ -4945,8 +4945,8 @@ var require_stringifyPair = __commonJS({
       });
       let keyCommentDone = false;
       let chompKeep = false;
-      let str = stringify.stringify(key, ctx, () => keyCommentDone = true, () => chompKeep = true);
-      if (!explicitKey && !ctx.inFlow && str.length > 1024) {
+      let str2 = stringify.stringify(key, ctx, () => keyCommentDone = true, () => chompKeep = true);
+      if (!explicitKey && !ctx.inFlow && str2.length > 1024) {
         if (simpleKeys)
           throw new Error("With simple keys, single line scalar must not span more than 1024 characters");
         explicitKey = true;
@@ -4955,27 +4955,27 @@ var require_stringifyPair = __commonJS({
         if (allNullValues || value == null) {
           if (keyCommentDone && onComment)
             onComment();
-          return str === "" ? "?" : explicitKey ? `? ${str}` : str;
+          return str2 === "" ? "?" : explicitKey ? `? ${str2}` : str2;
         }
       } else if (allNullValues && !simpleKeys || value == null && explicitKey) {
-        str = `? ${str}`;
+        str2 = `? ${str2}`;
         if (keyComment && !keyCommentDone) {
-          str += stringifyComment.lineComment(str, ctx.indent, commentString(keyComment));
+          str2 += stringifyComment.lineComment(str2, ctx.indent, commentString(keyComment));
         } else if (chompKeep && onChompKeep)
           onChompKeep();
-        return str;
+        return str2;
       }
       if (keyCommentDone)
         keyComment = null;
       if (explicitKey) {
         if (keyComment)
-          str += stringifyComment.lineComment(str, ctx.indent, commentString(keyComment));
-        str = `? ${str}
+          str2 += stringifyComment.lineComment(str2, ctx.indent, commentString(keyComment));
+        str2 = `? ${str2}
 ${indent}:`;
       } else {
-        str = `${str}:`;
+        str2 = `${str2}:`;
         if (keyComment)
-          str += stringifyComment.lineComment(str, ctx.indent, commentString(keyComment));
+          str2 += stringifyComment.lineComment(str2, ctx.indent, commentString(keyComment));
       }
       let vsb, vcb, valueComment;
       if (identity.isNode(value)) {
@@ -4991,7 +4991,7 @@ ${indent}:`;
       }
       ctx.implicitKey = false;
       if (!explicitKey && !keyComment && identity.isScalar(value))
-        ctx.indentAtStart = str.length + 1;
+        ctx.indentAtStart = str2.length + 1;
       chompKeep = false;
       if (!indentSeq && indentStep.length >= 2 && !ctx.inFlow && !explicitKey && identity.isSeq(value) && !value.flow && !value.tag && !value.anchor) {
         ctx.indent = ctx.indent.substring(2);
@@ -5035,16 +5035,16 @@ ${ctx.indent}`;
       } else if (valueStr === "" || valueStr[0] === "\n") {
         ws = "";
       }
-      str += ws + valueStr;
+      str2 += ws + valueStr;
       if (ctx.inFlow) {
         if (valueCommentDone && onComment)
           onComment();
       } else if (valueComment && !valueCommentDone) {
-        str += stringifyComment.lineComment(str, ctx.indent, commentString(valueComment));
+        str2 += stringifyComment.lineComment(str2, ctx.indent, commentString(valueComment));
       } else if (chompKeep && onChompKeep) {
         onChompKeep();
       }
-      return str;
+      return str2;
     }
     exports.stringifyPair = stringifyPair;
   }
@@ -5257,50 +5257,50 @@ var require_stringifyCollection = __commonJS({
       const { indent, options: { commentString } } = ctx;
       const itemCtx = Object.assign({}, ctx, { indent: itemIndent, type: null });
       let chompKeep = false;
-      const lines2 = [];
+      const lines3 = [];
       for (let i = 0; i < items.length; ++i) {
         const item = items[i];
         let comment2 = null;
         if (identity.isNode(item)) {
           if (!chompKeep && item.spaceBefore)
-            lines2.push("");
-          addCommentBefore(ctx, lines2, item.commentBefore, chompKeep);
+            lines3.push("");
+          addCommentBefore(ctx, lines3, item.commentBefore, chompKeep);
           if (item.comment)
             comment2 = item.comment;
         } else if (identity.isPair(item)) {
           const ik = identity.isNode(item.key) ? item.key : null;
           if (ik) {
             if (!chompKeep && ik.spaceBefore)
-              lines2.push("");
-            addCommentBefore(ctx, lines2, ik.commentBefore, chompKeep);
+              lines3.push("");
+            addCommentBefore(ctx, lines3, ik.commentBefore, chompKeep);
           }
         }
         chompKeep = false;
-        let str2 = stringify.stringify(item, itemCtx, () => comment2 = null, () => chompKeep = true);
+        let str3 = stringify.stringify(item, itemCtx, () => comment2 = null, () => chompKeep = true);
         if (comment2)
-          str2 += stringifyComment.lineComment(str2, itemIndent, commentString(comment2));
+          str3 += stringifyComment.lineComment(str3, itemIndent, commentString(comment2));
         if (chompKeep && comment2)
           chompKeep = false;
-        lines2.push(blockItemPrefix + str2);
+        lines3.push(blockItemPrefix + str3);
       }
-      let str;
-      if (lines2.length === 0) {
-        str = flowChars.start + flowChars.end;
+      let str2;
+      if (lines3.length === 0) {
+        str2 = flowChars.start + flowChars.end;
       } else {
-        str = lines2[0];
-        for (let i = 1; i < lines2.length; ++i) {
-          const line = lines2[i];
-          str += line ? `
+        str2 = lines3[0];
+        for (let i = 1; i < lines3.length; ++i) {
+          const line = lines3[i];
+          str2 += line ? `
 ${indent}${line}` : "\n";
         }
       }
       if (comment) {
-        str += "\n" + stringifyComment.indentComment(commentString(comment), indent);
+        str2 += "\n" + stringifyComment.indentComment(commentString(comment), indent);
         if (onComment)
           onComment();
       } else if (chompKeep && onChompKeep)
         onChompKeep();
-      return str;
+      return str2;
     }
     function stringifyFlowCollection({ items }, ctx, { flowChars, itemIndent }) {
       const { indent, indentStep, flowCollectionPadding: fcPadding, options: { commentString } } = ctx;
@@ -5312,22 +5312,22 @@ ${indent}${line}` : "\n";
       });
       let reqNewline = false;
       let linesAtValue = 0;
-      const lines2 = [];
+      const lines3 = [];
       for (let i = 0; i < items.length; ++i) {
         const item = items[i];
         let comment = null;
         if (identity.isNode(item)) {
           if (item.spaceBefore)
-            lines2.push("");
-          addCommentBefore(ctx, lines2, item.commentBefore, false);
+            lines3.push("");
+          addCommentBefore(ctx, lines3, item.commentBefore, false);
           if (item.comment)
             comment = item.comment;
         } else if (identity.isPair(item)) {
           const ik = identity.isNode(item.key) ? item.key : null;
           if (ik) {
             if (ik.spaceBefore)
-              lines2.push("");
-            addCommentBefore(ctx, lines2, ik.commentBefore, false);
+              lines3.push("");
+            addCommentBefore(ctx, lines3, ik.commentBefore, false);
             if (ik.comment)
               reqNewline = true;
           }
@@ -5343,49 +5343,49 @@ ${indent}${line}` : "\n";
         }
         if (comment)
           reqNewline = true;
-        let str = stringify.stringify(item, itemCtx, () => comment = null);
-        reqNewline || (reqNewline = lines2.length > linesAtValue || str.includes("\n"));
+        let str2 = stringify.stringify(item, itemCtx, () => comment = null);
+        reqNewline || (reqNewline = lines3.length > linesAtValue || str2.includes("\n"));
         if (i < items.length - 1) {
-          str += ",";
+          str2 += ",";
         } else if (ctx.options.trailingComma) {
           if (ctx.options.lineWidth > 0) {
-            reqNewline || (reqNewline = lines2.reduce((sum, line) => sum + line.length + 2, 2) + (str.length + 2) > ctx.options.lineWidth);
+            reqNewline || (reqNewline = lines3.reduce((sum, line) => sum + line.length + 2, 2) + (str2.length + 2) > ctx.options.lineWidth);
           }
           if (reqNewline) {
-            str += ",";
+            str2 += ",";
           }
         }
         if (comment)
-          str += stringifyComment.lineComment(str, itemIndent, commentString(comment));
-        lines2.push(str);
-        linesAtValue = lines2.length;
+          str2 += stringifyComment.lineComment(str2, itemIndent, commentString(comment));
+        lines3.push(str2);
+        linesAtValue = lines3.length;
       }
       const { start, end } = flowChars;
-      if (lines2.length === 0) {
+      if (lines3.length === 0) {
         return start + end;
       } else {
         if (!reqNewline) {
-          const len = lines2.reduce((sum, line) => sum + line.length + 2, 2);
+          const len = lines3.reduce((sum, line) => sum + line.length + 2, 2);
           reqNewline = ctx.options.lineWidth > 0 && len > ctx.options.lineWidth;
         }
         if (reqNewline) {
-          let str = start;
-          for (const line of lines2)
-            str += line ? `
+          let str2 = start;
+          for (const line of lines3)
+            str2 += line ? `
 ${indentStep}${indent}${line}` : "\n";
-          return `${str}
+          return `${str2}
 ${indent}${end}`;
         } else {
-          return `${start}${fcPadding}${lines2.join(" ")}${fcPadding}${end}`;
+          return `${start}${fcPadding}${lines3.join(" ")}${fcPadding}${end}`;
         }
       }
     }
-    function addCommentBefore({ indent, options: { commentString } }, lines2, comment, chompKeep) {
+    function addCommentBefore({ indent, options: { commentString } }, lines3, comment, chompKeep) {
       if (comment && chompKeep)
         comment = comment.replace(/^\n+/, "");
       if (comment) {
         const ic = stringifyComment.indentComment(commentString(comment), indent);
-        lines2.push(ic.trimStart());
+        lines3.push(ic.trimStart());
       }
     }
     exports.stringifyCollection = stringifyCollection;
@@ -5710,7 +5710,7 @@ var require_string = __commonJS({
       identify: (value) => typeof value === "string",
       default: true,
       tag: "tag:yaml.org,2002:str",
-      resolve: (str) => str,
+      resolve: (str2) => str2,
       stringify(item, ctx, onComment, onChompKeep) {
         ctx = Object.assign({ actualString: true }, ctx);
         return stringifyString.stringifyString(item, ctx, onComment, onChompKeep);
@@ -5750,7 +5750,7 @@ var require_bool = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:bool",
       test: /^(?:[Tt]rue|TRUE|[Ff]alse|FALSE)$/,
-      resolve: (str) => new Scalar.Scalar(str[0] === "t" || str[0] === "T"),
+      resolve: (str2) => new Scalar.Scalar(str2[0] === "t" || str2[0] === "T"),
       stringify({ source, value }, ctx) {
         if (source && boolTag.test.test(source)) {
           const sv = source[0] === "t" || source[0] === "T";
@@ -5804,7 +5804,7 @@ var require_float = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:float",
       test: /^(?:[-+]?\.(?:inf|Inf|INF)|\.nan|\.NaN|\.NAN)$/,
-      resolve: (str) => str.slice(-3).toLowerCase() === "nan" ? NaN : str[0] === "-" ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY,
+      resolve: (str2) => str2.slice(-3).toLowerCase() === "nan" ? NaN : str2[0] === "-" ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY,
       stringify: stringifyNumber.stringifyNumber
     };
     var floatExp = {
@@ -5813,7 +5813,7 @@ var require_float = __commonJS({
       tag: "tag:yaml.org,2002:float",
       format: "EXP",
       test: /^[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)[eE][-+]?[0-9]+$/,
-      resolve: (str) => parseFloat(str),
+      resolve: (str2) => parseFloat(str2),
       stringify(node) {
         const num = Number(node.value);
         return isFinite(num) ? num.toExponential() : stringifyNumber.stringifyNumber(node);
@@ -5824,11 +5824,11 @@ var require_float = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:float",
       test: /^[-+]?(?:\.[0-9]+|[0-9]+\.[0-9]*)$/,
-      resolve(str) {
-        const node = new Scalar.Scalar(parseFloat(str));
-        const dot = str.indexOf(".");
-        if (dot !== -1 && str[str.length - 1] === "0")
-          node.minFractionDigits = str.length - dot - 1;
+      resolve(str2) {
+        const node = new Scalar.Scalar(parseFloat(str2));
+        const dot = str2.indexOf(".");
+        if (dot !== -1 && str2[str2.length - 1] === "0")
+          node.minFractionDigits = str2.length - dot - 1;
         return node;
       },
       stringify: stringifyNumber.stringifyNumber
@@ -5846,7 +5846,7 @@ var require_int = __commonJS({
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var stringifyNumber = require_stringifyNumber();
     var intIdentify = (value) => typeof value === "bigint" || Number.isInteger(value);
-    var intResolve = (str, offset, radix, { intAsBigInt }) => intAsBigInt ? BigInt(str) : parseInt(str.substring(offset), radix);
+    var intResolve = (str2, offset, radix, { intAsBigInt }) => intAsBigInt ? BigInt(str2) : parseInt(str2.substring(offset), radix);
     function intStringify(node, radix, prefix) {
       const { value } = node;
       if (intIdentify(value) && value >= 0)
@@ -5859,7 +5859,7 @@ var require_int = __commonJS({
       tag: "tag:yaml.org,2002:int",
       format: "OCT",
       test: /^0o[0-7]+$/,
-      resolve: (str, _onError, opt) => intResolve(str, 2, 8, opt),
+      resolve: (str2, _onError, opt) => intResolve(str2, 2, 8, opt),
       stringify: (node) => intStringify(node, 8, "0o")
     };
     var int = {
@@ -5867,7 +5867,7 @@ var require_int = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:int",
       test: /^[-+]?[0-9]+$/,
-      resolve: (str, _onError, opt) => intResolve(str, 0, 10, opt),
+      resolve: (str2, _onError, opt) => intResolve(str2, 0, 10, opt),
       stringify: stringifyNumber.stringifyNumber
     };
     var intHex = {
@@ -5876,7 +5876,7 @@ var require_int = __commonJS({
       tag: "tag:yaml.org,2002:int",
       format: "HEX",
       test: /^0x[0-9a-fA-F]+$/,
-      resolve: (str, _onError, opt) => intResolve(str, 2, 16, opt),
+      resolve: (str2, _onError, opt) => intResolve(str2, 2, 16, opt),
       stringify: (node) => intStringify(node, 16, "0x")
     };
     exports.int = int;
@@ -5931,7 +5931,7 @@ var require_schema2 = __commonJS({
         identify: (value) => typeof value === "string",
         default: true,
         tag: "tag:yaml.org,2002:str",
-        resolve: (str) => str,
+        resolve: (str2) => str2,
         stringify: stringifyJSON
       },
       {
@@ -5948,7 +5948,7 @@ var require_schema2 = __commonJS({
         default: true,
         tag: "tag:yaml.org,2002:bool",
         test: /^true$|^false$/,
-        resolve: (str) => str === "true",
+        resolve: (str2) => str2 === "true",
         stringify: stringifyJSON
       },
       {
@@ -5956,7 +5956,7 @@ var require_schema2 = __commonJS({
         default: true,
         tag: "tag:yaml.org,2002:int",
         test: /^-?(?:0|[1-9][0-9]*)$/,
-        resolve: (str, _onError, { intAsBigInt }) => intAsBigInt ? BigInt(str) : parseInt(str, 10),
+        resolve: (str2, _onError, { intAsBigInt }) => intAsBigInt ? BigInt(str2) : parseInt(str2, 10),
         stringify: ({ value }) => intIdentify(value) ? value.toString() : JSON.stringify(value)
       },
       {
@@ -5964,7 +5964,7 @@ var require_schema2 = __commonJS({
         default: true,
         tag: "tag:yaml.org,2002:float",
         test: /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]*)?(?:[eE][-+]?[0-9]+)?$/,
-        resolve: (str) => parseFloat(str),
+        resolve: (str2) => parseFloat(str2),
         stringify: stringifyJSON
       }
     ];
@@ -5972,9 +5972,9 @@ var require_schema2 = __commonJS({
       default: true,
       tag: "",
       test: /^/,
-      resolve(str, onError) {
-        onError(`Unresolved plain scalar ${JSON.stringify(str)}`);
-        return str;
+      resolve(str2, onError) {
+        onError(`Unresolved plain scalar ${JSON.stringify(str2)}`);
+        return str2;
       }
     };
     var schema = [map.map, seq.seq].concat(jsonScalars, jsonError);
@@ -6007,10 +6007,10 @@ var require_binary = __commonJS({
         if (typeof node_buffer.Buffer === "function") {
           return node_buffer.Buffer.from(src, "base64");
         } else if (typeof atob === "function") {
-          const str = atob(src.replace(/[\n\r]/g, ""));
-          const buffer = new Uint8Array(str.length);
-          for (let i = 0; i < str.length; ++i)
-            buffer[i] = str.charCodeAt(i);
+          const str2 = atob(src.replace(/[\n\r]/g, ""));
+          const buffer = new Uint8Array(str2.length);
+          for (let i = 0; i < str2.length; ++i)
+            buffer[i] = str2.charCodeAt(i);
           return buffer;
         } else {
           onError("This environment does not support reading binary tags; either Buffer or atob is required");
@@ -6021,28 +6021,28 @@ var require_binary = __commonJS({
         if (!value)
           return "";
         const buf = value;
-        let str;
+        let str2;
         if (typeof node_buffer.Buffer === "function") {
-          str = buf instanceof node_buffer.Buffer ? buf.toString("base64") : node_buffer.Buffer.from(buf.buffer).toString("base64");
+          str2 = buf instanceof node_buffer.Buffer ? buf.toString("base64") : node_buffer.Buffer.from(buf.buffer).toString("base64");
         } else if (typeof btoa === "function") {
           let s = "";
           for (let i = 0; i < buf.length; ++i)
             s += String.fromCharCode(buf[i]);
-          str = btoa(s);
+          str2 = btoa(s);
         } else {
           throw new Error("This environment does not support writing binary tags; either Buffer or btoa is required");
         }
         type ?? (type = Scalar.Scalar.BLOCK_LITERAL);
         if (type !== Scalar.Scalar.QUOTE_DOUBLE) {
           const lineWidth = Math.max(ctx.options.lineWidth - ctx.indent.length, ctx.options.minContentWidth);
-          const n = Math.ceil(str.length / lineWidth);
-          const lines2 = new Array(n);
+          const n = Math.ceil(str2.length / lineWidth);
+          const lines3 = new Array(n);
           for (let i = 0, o = 0; i < n; ++i, o += lineWidth) {
-            lines2[i] = str.substr(o, lineWidth);
+            lines3[i] = str2.substr(o, lineWidth);
           }
-          str = lines2.join(type === Scalar.Scalar.BLOCK_LITERAL ? "\n" : " ");
+          str2 = lines3.join(type === Scalar.Scalar.BLOCK_LITERAL ? "\n" : " ");
         }
-        return stringifyString.stringifyString({ comment, type, value: str }, ctx, onComment, onChompKeep);
+        return stringifyString.stringifyString({ comment, type, value: str2 }, ctx, onComment, onChompKeep);
       }
     };
     exports.binary = binary;
@@ -6252,7 +6252,7 @@ var require_float2 = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:float",
       test: /^(?:[-+]?\.(?:inf|Inf|INF)|\.nan|\.NaN|\.NAN)$/,
-      resolve: (str) => str.slice(-3).toLowerCase() === "nan" ? NaN : str[0] === "-" ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY,
+      resolve: (str2) => str2.slice(-3).toLowerCase() === "nan" ? NaN : str2[0] === "-" ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY,
       stringify: stringifyNumber.stringifyNumber
     };
     var floatExp = {
@@ -6261,7 +6261,7 @@ var require_float2 = __commonJS({
       tag: "tag:yaml.org,2002:float",
       format: "EXP",
       test: /^[-+]?(?:[0-9][0-9_]*)?(?:\.[0-9_]*)?[eE][-+]?[0-9]+$/,
-      resolve: (str) => parseFloat(str.replace(/_/g, "")),
+      resolve: (str2) => parseFloat(str2.replace(/_/g, "")),
       stringify(node) {
         const num = Number(node.value);
         return isFinite(num) ? num.toExponential() : stringifyNumber.stringifyNumber(node);
@@ -6272,11 +6272,11 @@ var require_float2 = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:float",
       test: /^[-+]?(?:[0-9][0-9_]*)?\.[0-9_]*$/,
-      resolve(str) {
-        const node = new Scalar.Scalar(parseFloat(str.replace(/_/g, "")));
-        const dot = str.indexOf(".");
+      resolve(str2) {
+        const node = new Scalar.Scalar(parseFloat(str2.replace(/_/g, "")));
+        const dot = str2.indexOf(".");
         if (dot !== -1) {
-          const f = str.substring(dot + 1).replace(/_/g, "");
+          const f = str2.substring(dot + 1).replace(/_/g, "");
           if (f[f.length - 1] === "0")
             node.minFractionDigits = f.length;
         }
@@ -6297,34 +6297,34 @@ var require_int2 = __commonJS({
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var stringifyNumber = require_stringifyNumber();
     var intIdentify = (value) => typeof value === "bigint" || Number.isInteger(value);
-    function intResolve(str, offset, radix, { intAsBigInt }) {
-      const sign2 = str[0];
+    function intResolve(str2, offset, radix, { intAsBigInt }) {
+      const sign2 = str2[0];
       if (sign2 === "-" || sign2 === "+")
         offset += 1;
-      str = str.substring(offset).replace(/_/g, "");
+      str2 = str2.substring(offset).replace(/_/g, "");
       if (intAsBigInt) {
         switch (radix) {
           case 2:
-            str = `0b${str}`;
+            str2 = `0b${str2}`;
             break;
           case 8:
-            str = `0o${str}`;
+            str2 = `0o${str2}`;
             break;
           case 16:
-            str = `0x${str}`;
+            str2 = `0x${str2}`;
             break;
         }
-        const n2 = BigInt(str);
+        const n2 = BigInt(str2);
         return sign2 === "-" ? BigInt(-1) * n2 : n2;
       }
-      const n = parseInt(str, radix);
+      const n = parseInt(str2, radix);
       return sign2 === "-" ? -1 * n : n;
     }
     function intStringify(node, radix, prefix) {
       const { value } = node;
       if (intIdentify(value)) {
-        const str = value.toString(radix);
-        return value < 0 ? "-" + prefix + str.substr(1) : prefix + str;
+        const str2 = value.toString(radix);
+        return value < 0 ? "-" + prefix + str2.substr(1) : prefix + str2;
       }
       return stringifyNumber.stringifyNumber(node);
     }
@@ -6334,7 +6334,7 @@ var require_int2 = __commonJS({
       tag: "tag:yaml.org,2002:int",
       format: "BIN",
       test: /^[-+]?0b[0-1_]+$/,
-      resolve: (str, _onError, opt) => intResolve(str, 2, 2, opt),
+      resolve: (str2, _onError, opt) => intResolve(str2, 2, 2, opt),
       stringify: (node) => intStringify(node, 2, "0b")
     };
     var intOct = {
@@ -6343,7 +6343,7 @@ var require_int2 = __commonJS({
       tag: "tag:yaml.org,2002:int",
       format: "OCT",
       test: /^[-+]?0[0-7_]+$/,
-      resolve: (str, _onError, opt) => intResolve(str, 1, 8, opt),
+      resolve: (str2, _onError, opt) => intResolve(str2, 1, 8, opt),
       stringify: (node) => intStringify(node, 8, "0")
     };
     var int = {
@@ -6351,7 +6351,7 @@ var require_int2 = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:int",
       test: /^[-+]?[0-9][0-9_]*$/,
-      resolve: (str, _onError, opt) => intResolve(str, 0, 10, opt),
+      resolve: (str2, _onError, opt) => intResolve(str2, 0, 10, opt),
       stringify: stringifyNumber.stringifyNumber
     };
     var intHex = {
@@ -6360,7 +6360,7 @@ var require_int2 = __commonJS({
       tag: "tag:yaml.org,2002:int",
       format: "HEX",
       test: /^[-+]?0x[0-9a-fA-F_]+$/,
-      resolve: (str, _onError, opt) => intResolve(str, 2, 16, opt),
+      resolve: (str2, _onError, opt) => intResolve(str2, 2, 16, opt),
       stringify: (node) => intStringify(node, 16, "0x")
     };
     exports.int = int;
@@ -6466,9 +6466,9 @@ var require_timestamp = __commonJS({
     "use strict";
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var stringifyNumber = require_stringifyNumber();
-    function parseSexagesimal(str, asBigInt) {
-      const sign2 = str[0];
-      const parts = sign2 === "-" || sign2 === "+" ? str.substring(1) : str;
+    function parseSexagesimal(str2, asBigInt) {
+      const sign2 = str2[0];
+      const parts = sign2 === "-" || sign2 === "+" ? str2.substring(1) : str2;
       const num = (n) => asBigInt ? BigInt(n) : Number(n);
       const res = parts.replace(/_/g, "").split(":").reduce((res2, p) => res2 * num(60) + num(p), num(0));
       return sign2 === "-" ? num(-1) * res : res;
@@ -6505,7 +6505,7 @@ var require_timestamp = __commonJS({
       tag: "tag:yaml.org,2002:int",
       format: "TIME",
       test: /^[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+$/,
-      resolve: (str, _onError, { intAsBigInt }) => parseSexagesimal(str, intAsBigInt),
+      resolve: (str2, _onError, { intAsBigInt }) => parseSexagesimal(str2, intAsBigInt),
       stringify: stringifySexagesimal
     };
     var floatTime = {
@@ -6514,7 +6514,7 @@ var require_timestamp = __commonJS({
       tag: "tag:yaml.org,2002:float",
       format: "TIME",
       test: /^[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+\.[0-9_]*$/,
-      resolve: (str) => parseSexagesimal(str, false),
+      resolve: (str2) => parseSexagesimal(str2, false),
       stringify: stringifySexagesimal
     };
     var timestamp = {
@@ -6525,8 +6525,8 @@ var require_timestamp = __commonJS({
       // may be omitted altogether, resulting in a date format. In such a case, the time part is
       // assumed to be 00:00:00Z (start of day, UTC).
       test: RegExp("^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})(?:(?:t|T|[ \\t]+)([0-9]{1,2}):([0-9]{1,2}):([0-9]{1,2}(\\.[0-9]+)?)(?:[ \\t]*(Z|[-+][012]?[0-9](?::[0-9]{2})?))?)?$"),
-      resolve(str) {
-        const match = str.match(timestamp.test);
+      resolve(str2) {
+        const match = str2.match(timestamp.test);
         if (!match)
           throw new Error("!!timestamp expects a date, starting with yyyy-mm-dd");
         const [, year, month, day, hour, minute, second] = match.map(Number);
@@ -6731,35 +6731,35 @@ var require_stringifyDocument = __commonJS({
     var stringify = require_stringify();
     var stringifyComment = require_stringifyComment();
     function stringifyDocument(doc, options) {
-      const lines2 = [];
+      const lines3 = [];
       let hasDirectives = options.directives === true;
       if (options.directives !== false && doc.directives) {
         const dir = doc.directives.toString(doc);
         if (dir) {
-          lines2.push(dir);
+          lines3.push(dir);
           hasDirectives = true;
         } else if (doc.directives.docStart)
           hasDirectives = true;
       }
       if (hasDirectives)
-        lines2.push("---");
+        lines3.push("---");
       const ctx = stringify.createStringifyContext(doc, options);
       const { commentString } = ctx.options;
       if (doc.commentBefore) {
-        if (lines2.length !== 1)
-          lines2.unshift("");
+        if (lines3.length !== 1)
+          lines3.unshift("");
         const cs = commentString(doc.commentBefore);
-        lines2.unshift(stringifyComment.indentComment(cs, ""));
+        lines3.unshift(stringifyComment.indentComment(cs, ""));
       }
       let chompKeep = false;
       let contentComment = null;
       if (doc.contents) {
         if (identity.isNode(doc.contents)) {
           if (doc.contents.spaceBefore && hasDirectives)
-            lines2.push("");
+            lines3.push("");
           if (doc.contents.commentBefore) {
             const cs = commentString(doc.contents.commentBefore);
-            lines2.push(stringifyComment.indentComment(cs, ""));
+            lines3.push(stringifyComment.indentComment(cs, ""));
           }
           ctx.forceBlockIndent = !!doc.comment;
           contentComment = doc.contents.comment;
@@ -6768,36 +6768,36 @@ var require_stringifyDocument = __commonJS({
         let body = stringify.stringify(doc.contents, ctx, () => contentComment = null, onChompKeep);
         if (contentComment)
           body += stringifyComment.lineComment(body, "", commentString(contentComment));
-        if ((body[0] === "|" || body[0] === ">") && lines2[lines2.length - 1] === "---") {
-          lines2[lines2.length - 1] = `--- ${body}`;
+        if ((body[0] === "|" || body[0] === ">") && lines3[lines3.length - 1] === "---") {
+          lines3[lines3.length - 1] = `--- ${body}`;
         } else
-          lines2.push(body);
+          lines3.push(body);
       } else {
-        lines2.push(stringify.stringify(doc.contents, ctx));
+        lines3.push(stringify.stringify(doc.contents, ctx));
       }
       if (doc.directives?.docEnd) {
         if (doc.comment) {
           const cs = commentString(doc.comment);
           if (cs.includes("\n")) {
-            lines2.push("...");
-            lines2.push(stringifyComment.indentComment(cs, ""));
+            lines3.push("...");
+            lines3.push(stringifyComment.indentComment(cs, ""));
           } else {
-            lines2.push(`... ${cs}`);
+            lines3.push(`... ${cs}`);
           }
         } else {
-          lines2.push("...");
+          lines3.push("...");
         }
       } else {
         let dc = doc.comment;
         if (dc && chompKeep)
           dc = dc.replace(/^\n+/, "");
         if (dc) {
-          if ((!chompKeep || contentComment) && lines2[lines2.length - 1] !== "")
-            lines2.push("");
-          lines2.push(stringifyComment.indentComment(commentString(dc), ""));
+          if ((!chompKeep || contentComment) && lines3[lines3.length - 1] !== "")
+            lines3.push("");
+          lines3.push(stringifyComment.indentComment(commentString(dc), ""));
         }
       }
-      return lines2.join("\n") + "\n";
+      return lines3.join("\n") + "\n";
     }
     exports.stringifyDocument = stringifyDocument;
   }
@@ -7871,17 +7871,17 @@ var require_resolve_block_scalar = __commonJS({
       if (!header)
         return { value: "", type: null, comment: "", range: [start, start, start] };
       const type = header.mode === ">" ? Scalar.Scalar.BLOCK_FOLDED : Scalar.Scalar.BLOCK_LITERAL;
-      const lines2 = scalar.source ? splitLines(scalar.source) : [];
-      let chompStart = lines2.length;
-      for (let i = lines2.length - 1; i >= 0; --i) {
-        const content = lines2[i][1];
+      const lines3 = scalar.source ? splitLines(scalar.source) : [];
+      let chompStart = lines3.length;
+      for (let i = lines3.length - 1; i >= 0; --i) {
+        const content = lines3[i][1];
         if (content === "" || content === "\r")
           chompStart = i;
         else
           break;
       }
       if (chompStart === 0) {
-        const value2 = header.chomp === "+" && lines2.length > 0 ? "\n".repeat(Math.max(1, lines2.length - 1)) : "";
+        const value2 = header.chomp === "+" && lines3.length > 0 ? "\n".repeat(Math.max(1, lines3.length - 1)) : "";
         let end2 = start + header.length;
         if (scalar.source)
           end2 += scalar.source.length;
@@ -7891,7 +7891,7 @@ var require_resolve_block_scalar = __commonJS({
       let offset = scalar.offset + header.length;
       let contentStart = 0;
       for (let i = 0; i < chompStart; ++i) {
-        const [indent, content] = lines2[i];
+        const [indent, content] = lines3[i];
         if (content === "" || content === "\r") {
           if (header.indent === 0 && indent.length > trimIndent)
             trimIndent = indent.length;
@@ -7911,17 +7911,17 @@ var require_resolve_block_scalar = __commonJS({
         }
         offset += indent.length + content.length + 1;
       }
-      for (let i = lines2.length - 1; i >= chompStart; --i) {
-        if (lines2[i][0].length > trimIndent)
+      for (let i = lines3.length - 1; i >= chompStart; --i) {
+        if (lines3[i][0].length > trimIndent)
           chompStart = i + 1;
       }
       let value = "";
       let sep = "";
       let prevMoreIndented = false;
       for (let i = 0; i < contentStart; ++i)
-        value += lines2[i][0].slice(trimIndent) + "\n";
+        value += lines3[i][0].slice(trimIndent) + "\n";
       for (let i = contentStart; i < chompStart; ++i) {
-        let [indent, content] = lines2[i];
+        let [indent, content] = lines3[i];
         offset += indent.length + content.length + 1;
         const crlf = content[content.length - 1] === "\r";
         if (crlf)
@@ -7958,8 +7958,8 @@ var require_resolve_block_scalar = __commonJS({
         case "-":
           break;
         case "+":
-          for (let i = chompStart; i < lines2.length; ++i)
-            value += "\n" + lines2[i][0].slice(trimIndent);
+          for (let i = chompStart; i < lines3.length; ++i)
+            value += "\n" + lines3[i][0].slice(trimIndent);
           if (value[value.length - 1] !== "\n")
             value += "\n";
           break;
@@ -8034,10 +8034,10 @@ var require_resolve_block_scalar = __commonJS({
       const first = split[0];
       const m = first.match(/^( *)/);
       const line0 = m?.[1] ? [m[1], first.slice(m[1].length)] : ["", first];
-      const lines2 = [line0];
+      const lines3 = [line0];
       for (let i = 1; i < split.length; i += 2)
-        lines2.push([split[i], split[i + 1]]);
-      return lines2;
+        lines3.push([split[i], split[i + 1]]);
+      return lines3;
     }
     exports.resolveBlockScalar = resolveBlockScalar;
   }
@@ -9781,15 +9781,15 @@ var require_parser = __commonJS({
     var node_process = __require("process");
     var cst = require_cst();
     var lexer = require_lexer();
-    function includesToken(list, type) {
-      for (let i = 0; i < list.length; ++i)
-        if (list[i].type === type)
+    function includesToken(list2, type) {
+      for (let i = 0; i < list2.length; ++i)
+        if (list2[i].type === type)
           return true;
       return false;
     }
-    function findNonEmptyIndex(list) {
-      for (let i = 0; i < list.length; ++i) {
-        switch (list[i].type) {
+    function findNonEmptyIndex(list2) {
+      for (let i = 0; i < list2.length; ++i) {
+        switch (list2[i].type) {
           case "space":
           case "comment":
           case "newline":
@@ -11317,7 +11317,7 @@ var CompiledPattern = class {
     this.mark = new Int32Array(insts.length).fill(-1);
   }
   /** Epsilon-closure of `pc`, appended to `list`. Returns true if `match` is reachable. */
-  addThread(list, pc, pos, len) {
+  addThread(list2, pc, pos, len) {
     const stack = [pc];
     while (stack.length) {
       const at = stack.pop();
@@ -11343,7 +11343,7 @@ var CompiledPattern = class {
         case "match":
           return true;
         default:
-          list.push(at);
+          list2.push(at);
       }
     }
     return false;
@@ -12767,8 +12767,8 @@ function sortedRecord(v) {
   for (const key of Object.keys(v).sort(compare)) out[key] = v[key];
   return out;
 }
-function add(list, file, path21, code, message) {
-  list.push({ file, path: path21, code, message });
+function add(list2, file, path21, code, message) {
+  list2.push({ file, path: path21, code, message });
 }
 var DESCRIPTOR_VERSION = 1;
 var MAX_DESCRIPTOR_BYTES = 64 * 1024;
@@ -12935,8 +12935,8 @@ var CONTROL_RE = /[\u0000-\u001f\u007f]/;
 function isRecord2(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
-function oneOf(list, v) {
-  return typeof v === "string" && list.includes(v);
+function oneOf(list2, v) {
+  return typeof v === "string" && list2.includes(v);
 }
 function codePoints(s) {
   return [...s].length;
@@ -13846,6 +13846,522 @@ function validatePackageDescriptor(d, manifest, errors) {
     releaseId: `${desc.deliverable}@${desc.version}`
   };
 }
+var DEFAULT_REGISTRY_ORIGIN = "https://pkg.plrs.im";
+var ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,127}$/;
+var TOKEN_VALUE = /^[A-Za-z0-9_.~-]{8,512}$/;
+var OWNER = /^[a-z0-9-]{1,64}$/;
+var VERSION = /^[0-9A-Za-z][0-9A-Za-z.+_-]{0,127}$/;
+function isFeedTokenEnvName(v) {
+  return ENV_NAME.test(v);
+}
+function str(v) {
+  return typeof v === "string" && v !== "" ? v : void 0;
+}
+function list(v) {
+  return Array.isArray(v) ? v.filter((x) => typeof x === "string" && x !== "") : [];
+}
+function hostOf(origin) {
+  return new URL(origin).host;
+}
+function noSlash(url) {
+  return url.endsWith("/") ? url.slice(0, -1) : url;
+}
+function xml(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function repoName(owner) {
+  return owner.replace(/[^A-Za-z0-9]/g, "_");
+}
+function uvEnvName(index) {
+  return index.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+}
+function shSecret(c) {
+  if (c.kind === "env") return `"$${c.name}"`;
+  if (c.kind === "token") return c.value;
+  return null;
+}
+function fileSecret(c, env) {
+  if (c.kind === "env") return env(c.name);
+  if (c.kind === "token") return c.value;
+  return null;
+}
+function lines(...parts) {
+  return parts.filter((p) => typeof p === "string").join("\n");
+}
+var NPM_SETUP = {
+  clients: ["npm", "pnpm", "Yarn Berry", "Bun"],
+  inputs: ["baseUrl", "namespace.scope", "package.name", "package.version"],
+  feedPath: (owner) => `/npm/${owner}/`,
+  render(v) {
+    const baseUrl = v.get("baseUrl");
+    const name = str(v.get("package.name"));
+    const version = str(v.get("package.version"));
+    const scope = str(v.get("namespace.scope")) ?? /^(@[^/]+)\//.exec(name ?? "")?.[1];
+    const s = scope ?? "@scope";
+    const bare = s.slice(1);
+    const authPath = baseUrl.replace(/^https?:/, "");
+    const npmrcToken = fileSecret(v.credential, (n) => `\${${n}}`);
+    const yarnToken = fileSecret(v.credential, (n) => `\${${n}}`);
+    const bunToken = fileSecret(v.credential, (n) => `$${n}`);
+    return [
+      {
+        id: "npmrc",
+        clients: "npm, pnpm",
+        title: "npm and pnpm: route the scope to this feed",
+        description: `Only ${s} packages are looked up here; every other package stays on its usual registry.`,
+        filename: ".npmrc",
+        language: "text",
+        code: lines(
+          `${s}:registry=${baseUrl}`,
+          npmrcToken !== null && `${authPath}:_authToken=${npmrcToken}`
+        )
+      },
+      {
+        id: "yarn",
+        clients: "Yarn Berry",
+        title: "Yarn Berry",
+        filename: ".yarnrc.yml",
+        language: "yaml",
+        code: lines(
+          "npmScopes:",
+          `  ${bare}:`,
+          `    npmRegistryServer: ${JSON.stringify(baseUrl)}`,
+          yarnToken !== null && `    npmAuthToken: ${JSON.stringify(yarnToken)}
+    npmAlwaysAuth: true`
+        )
+      },
+      {
+        id: "bun",
+        clients: "Bun",
+        title: "Bun",
+        filename: "bunfig.toml",
+        language: "toml",
+        code: lines(
+          "[install.scopes]",
+          bunToken === null ? `${JSON.stringify(s)} = ${JSON.stringify(baseUrl)}` : `${JSON.stringify(s)} = { url = ${JSON.stringify(baseUrl)}, token = ${JSON.stringify(bunToken)} }`
+        )
+      },
+      {
+        id: "install",
+        clients: "npm",
+        title: "Install",
+        language: "sh",
+        code: `npm install ${name ? `${name}${version ? `@${version}` : ""}` : `${s}/<package>`}`
+      }
+    ];
+  }
+};
+var PYPI_SETUP = {
+  clients: ["pip", "uv", "Poetry"],
+  inputs: [
+    "baseUrl",
+    "owner",
+    "namespace.names",
+    "package.name",
+    "package.version"
+  ],
+  feedPath: (owner) => `/pypi/${owner}/simple/`,
+  render(v) {
+    const baseUrl = v.get("baseUrl");
+    const index = v.get("owner");
+    const names = list(v.get("namespace.names"));
+    const name = str(v.get("package.name")) ?? (names.length === 1 ? names[0] : void 0) ?? "<package>";
+    const version = str(v.get("package.version"));
+    const secret = shSecret(v.credential);
+    const uvVar = uvEnvName(index);
+    const authed = secret !== null;
+    const pipUrl = v.credential.kind === "env" ? baseUrl.replace(
+      /^(https?:\/\/)/,
+      `$1__token__:\${${v.credential.name}}@`
+    ) : v.credential.kind === "token" ? baseUrl.replace(
+      /^(https?:\/\/)/,
+      `$1__token__:${v.credential.value}@`
+    ) : baseUrl;
+    const snippets = [
+      {
+        id: "uv",
+        clients: "uv",
+        title: "uv: an explicit index for this project only",
+        description: "explicit = true keeps every other dependency on its usual index.",
+        filename: "pyproject.toml",
+        language: "toml",
+        code: lines(
+          "[[tool.uv.index]]",
+          `name = ${JSON.stringify(index)}`,
+          `url = ${JSON.stringify(baseUrl)}`,
+          "explicit = true",
+          authed && `authenticate = "always"`,
+          "",
+          "[tool.uv.sources]",
+          `${JSON.stringify(name)} = { index = ${JSON.stringify(index)} }`
+        )
+      }
+    ];
+    if (authed)
+      snippets.push({
+        id: "uv-credentials",
+        clients: "uv",
+        title: "uv: the index credentials",
+        language: "sh",
+        code: lines(
+          `export UV_INDEX_${uvVar}_USERNAME=__token__`,
+          `export UV_INDEX_${uvVar}_PASSWORD=${secret}`
+        )
+      });
+    snippets.push(
+      {
+        id: "poetry",
+        clients: "Poetry",
+        title: "Poetry 2: an explicit source",
+        language: "sh",
+        code: lines(
+          `poetry source add --priority=explicit ${index} ${baseUrl}`,
+          authed && `poetry config http-basic.${index} __token__ ${secret}`,
+          `poetry add --source ${index} ${name}${version ? `==${version}` : ""}`
+        )
+      },
+      {
+        id: "pip",
+        clients: "pip",
+        title: "pip: the package alone, without its dependencies",
+        description: "pip cannot route one project to one index: install the dependencies from your usual index first, then this package from the feed.",
+        warning: "Never add this feed with --extra-index-url. pip has no per-project routing: with two indexes it takes the highest version from either, so a public package with the same name could win.",
+        language: "sh",
+        code: `pip install --no-deps --index-url ${pipUrl} ${name}${version ? `==${version}` : ""}`
+      }
+    );
+    return snippets;
+  }
+};
+var SWIFT_SETUP = {
+  clients: ["SwiftPM"],
+  inputs: ["baseUrl", "namespace.scope", "package.name", "package.version"],
+  feedPath: (owner) => `/swift/${owner}/`,
+  render(v) {
+    const url = noSlash(v.get("baseUrl"));
+    const name = str(v.get("package.name"));
+    const version = str(v.get("package.version"));
+    const scope = str(v.get("namespace.scope")) ?? (name?.includes(".") ? name.split(".")[0] : void 0) ?? "<scope>";
+    const id = name ?? `${scope}.<Package>`;
+    const secret = shSecret(v.credential);
+    return [
+      {
+        id: "registries-json",
+        clients: "SwiftPM",
+        title: "Route the scope to this feed and refuse an unsigned release",
+        description: "The whole file, in place of swift package-registry set: SwiftPM needs version and registries beside security. For every project on the machine, ~/.swiftpm/configuration/registries.json. Unless the signer chains to a root SwiftPM already trusts, add trustedRootCertificatesPath under signing.",
+        filename: ".swiftpm/configuration/registries.json",
+        language: "json",
+        code: JSON.stringify(
+          {
+            version: 1,
+            registries: { [scope]: { url } },
+            security: {
+              default: {
+                signing: {
+                  onUnsigned: "error",
+                  onUntrustedCertificate: "error"
+                }
+              }
+            }
+          },
+          null,
+          2
+        )
+      },
+      ...secret !== null ? [
+        {
+          id: "registry-login",
+          clients: "SwiftPM",
+          title: "Sign in to the feed",
+          description: "After the file above: login adds its authentication entry to it.",
+          language: "sh",
+          code: `swift package-registry login ${url} --token ${secret} --no-confirm`
+        }
+      ] : [],
+      {
+        id: "package-swift",
+        clients: "SwiftPM",
+        title: "Depend on the package",
+        filename: "Package.swift",
+        language: "text",
+        code: `.package(id: ${JSON.stringify(id)}, from: ${JSON.stringify(version ?? "1.0.0")})`
+      }
+    ];
+  }
+};
+var MAVEN_SETUP = {
+  clients: ["Gradle", "Maven"],
+  inputs: [
+    "baseUrl",
+    "owner",
+    "namespace.groupPrefixes",
+    "package.name",
+    "package.version"
+  ],
+  feedPath: (owner) => `/maven/${owner}/`,
+  render(v) {
+    const baseUrl = v.get("baseUrl");
+    const owner = v.get("owner");
+    const repo = repoName(owner);
+    const name = str(v.get("package.name"));
+    const version = str(v.get("package.version"));
+    const groups = list(v.get("namespace.groupPrefixes"));
+    const fallback = name?.split(":")[0] ?? groups[0] ?? "<group.prefix>";
+    const filters = (groups.length ? groups : [fallback]).map(
+      (g) => `                includeGroupAndSubgroups(${JSON.stringify(g)})`
+    ).join("\n");
+    const coord = name ? `${name}:${version ?? "<version>"}` : `${fallback}:<artifact>:<version>`;
+    const authed = v.credential.kind === "env" || v.credential.kind === "token";
+    const snippets = [
+      {
+        id: "gradle",
+        clients: "Gradle",
+        title: "Gradle: this feed, for its groups only",
+        filename: "settings.gradle.kts",
+        language: "text",
+        code: lines(
+          "dependencyResolutionManagement {",
+          "    repositories {",
+          "        exclusiveContent {",
+          "            forRepository {",
+          authed ? lines(
+            "                maven {",
+            `                    name = ${JSON.stringify(repo)}`,
+            `                    url = uri(${JSON.stringify(baseUrl)})`,
+            "                    credentials(PasswordCredentials::class)",
+            "                }"
+          ) : `                maven { url = uri(${JSON.stringify(baseUrl)}) }`,
+          "            }",
+          "            filter {",
+          filters,
+          "            }",
+          "        }",
+          "        mavenCentral()",
+          "    }",
+          "}"
+        )
+      }
+    ];
+    if (v.credential.kind === "env")
+      snippets.push({
+        id: "gradle-credentials",
+        clients: "Gradle",
+        title: "Gradle: the repository credentials",
+        language: "sh",
+        code: lines(
+          `export ORG_GRADLE_PROJECT_${repo}Username=__token__`,
+          `export ORG_GRADLE_PROJECT_${repo}Password="$${v.credential.name}"`
+        )
+      });
+    else if (v.credential.kind === "token")
+      snippets.push({
+        id: "gradle-credentials",
+        clients: "Gradle",
+        title: "Gradle: the repository credentials",
+        filename: "~/.gradle/gradle.properties",
+        language: "text",
+        code: lines(
+          `${repo}Username=__token__`,
+          `${repo}Password=${v.credential.value}`
+        )
+      });
+    snippets.push(
+      {
+        id: "gradle-dependency",
+        clients: "Gradle",
+        title: "Depend on the artifact",
+        filename: "build.gradle.kts",
+        language: "text",
+        code: `implementation(${JSON.stringify(coord)})`
+      },
+      {
+        id: "maven",
+        clients: "Maven",
+        title: "Maven: the repository, with a fatal checksum policy",
+        warning: "Maven asks every repository for every artifact. Keep the feed's group prefixes ones you hold on Maven Central, so no one else can publish under them there.",
+        filename: "pom.xml",
+        language: "text",
+        code: lines(
+          "<repositories>",
+          "  <repository>",
+          `    <id>${xml(owner)}</id>`,
+          `    <url>${xml(baseUrl)}</url>`,
+          "    <releases><checksumPolicy>fail</checksumPolicy></releases>",
+          "    <snapshots><enabled>false</enabled></snapshots>",
+          "  </repository>",
+          "</repositories>"
+        )
+      }
+    );
+    const mavenSecret = fileSecret(v.credential, (n) => `\${env.${n}}`);
+    if (mavenSecret !== null)
+      snippets.push({
+        id: "maven-credentials",
+        clients: "Maven",
+        title: "Maven: the server credentials",
+        filename: "~/.m2/settings.xml",
+        language: "text",
+        code: lines(
+          "<servers>",
+          "  <server>",
+          `    <id>${xml(owner)}</id>`,
+          "    <username>__token__</username>",
+          `    <password>${xml(mavenSecret)}</password>`,
+          "  </server>",
+          "</servers>"
+        )
+      });
+    return snippets;
+  }
+};
+var OCI_SETUP = {
+  clients: ["docker", "podman", "crane"],
+  inputs: ["registryHost", "owner", "package.name", "package.version"],
+  feedPath: (owner) => `/v2/${owner}/`,
+  render(v) {
+    const host = v.get("registryHost");
+    const owner = v.get("owner");
+    const repo = str(v.get("package.name")) ?? "<repository>";
+    const tag = str(v.get("package.version")) ?? "latest";
+    const login = v.credential.kind === "env" ? `echo "$${v.credential.name}" | docker login ${host} -u __token__ --password-stdin` : v.credential.kind === "token" ? `echo ${v.credential.value} | docker login ${host} -u __token__ --password-stdin` : null;
+    return [
+      {
+        id: "pull",
+        clients: "docker, podman, crane",
+        title: "Pull by the fully qualified reference",
+        description: "podman pull and crane pull take the same reference; it never resolves on another registry.",
+        language: "sh",
+        code: lines(login, `docker pull ${host}/${owner}/${repo}:${tag}`)
+      }
+    ];
+  }
+};
+var GODOT_SETUP = {
+  clients: ["The Godot editor's asset library", "GodotEnv"],
+  inputs: ["baseUrl"],
+  feedPath: (owner) => `/godot/${owner}/`,
+  render(v) {
+    const base = v.get("baseUrl");
+    const root = v.credential.kind === "godot-url" ? `${base}t/${v.credential.value}/` : base;
+    return [
+      {
+        id: "editor-4.6",
+        clients: "Godot 4.4 to 4.6",
+        title: "Godot 4.6 and earlier: Asset Library → Available URLs",
+        description: "Editor Settings, asset_library/available_urls.",
+        language: "text",
+        code: `${root}asset-library/api`
+      },
+      {
+        id: "editor-4.7",
+        clients: "Godot 4.7 and later",
+        title: "Godot 4.7 and later: asset_store/available_urls",
+        description: "Editor Settings, asset_store/available_urls.",
+        language: "text",
+        code: `${root}store/api/v1`
+      },
+      {
+        id: "godotenv",
+        clients: "GodotEnv",
+        title: "GodotEnv: copy a version's addons.json entry from the index",
+        language: "text",
+        code: `${root}index.json`
+      }
+    ];
+  }
+};
+var FEED_SETUP = {
+  npm: NPM_SETUP,
+  pypi: PYPI_SETUP,
+  swift: SWIFT_SETUP,
+  maven: MAVEN_SETUP,
+  oci: OCI_SETUP,
+  godot: GODOT_SETUP
+};
+function feedSetupBaseUrl(ecosystem, origin, owner) {
+  return `${noSlash(origin)}${FEED_SETUP[ecosystem].feedPath(encodeURIComponent(owner))}`;
+}
+function feedSetupProblem(ecosystem, ctx) {
+  if (!isPackageEcosystem(ecosystem)) return `unknown ecosystem "${ecosystem}"`;
+  let url;
+  try {
+    url = new URL(ctx.origin);
+  } catch {
+    return `the registry origin "${ctx.origin}" is not a URL`;
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:")
+    return "the registry origin must be an http(s) URL";
+  if (url.pathname !== "/" || url.search || url.hash || url.username)
+    return "the registry origin is an origin only (no path, query or credentials)";
+  if (!OWNER.test(ctx.owner)) return `the owner "${ctx.owner}" is not a slug`;
+  const rules = PACKAGE_ECOSYSTEM_RULES[ecosystem];
+  for (const [key, value] of Object.entries(ctx.namespace ?? {})) {
+    const field = rules.namespace.fields[key];
+    if (!Object.hasOwn(rules.namespace.fields, key) || !field)
+      return `${ecosystem} has no namespace key "${key}"`;
+    if (value === void 0 || value === null || value === "") continue;
+    if (field.kind === "list" && !Array.isArray(value))
+      return `namespace.${key} is a list`;
+    if (field.kind === "string" && typeof value !== "string")
+      return `namespace.${key} is a string`;
+    const values = field.kind === "list" ? list(value) : [value];
+    for (const item of values)
+      if (!field.pattern.test(item))
+        return `namespace.${key} "${item}" is malformed`;
+  }
+  if (ctx.package) {
+    if (!rules.name.pattern.test(ctx.package.name))
+      return `"${ctx.package.name}" is not a ${ecosystem} package name`;
+    const version = ctx.package.version;
+    if (version !== void 0 && version !== null && !VERSION.test(version))
+      return `"${version}" is not a version`;
+  }
+  const c = ctx.credential;
+  if (c?.kind === "env" && !ENV_NAME.test(c.name))
+    return `"${c.name}" is not an environment variable name`;
+  if ((c?.kind === "token" || c?.kind === "godot-url") && !TOKEN_VALUE.test(c.value))
+    return "the token has characters a snippet cannot carry";
+  return null;
+}
+function renderFeedSetup(ecosystem, ctx) {
+  const problem = feedSetupProblem(ecosystem, ctx);
+  if (problem !== null) throw new Error(`renderFeedSetup: ${problem}`);
+  const decl = FEED_SETUP[ecosystem];
+  const declared = new Set(decl.inputs);
+  const origin = noSlash(ctx.origin);
+  const resolve = (input) => {
+    if (input === "baseUrl")
+      return feedSetupBaseUrl(ecosystem, origin, ctx.owner);
+    if (input === "registryHost") return hostOf(origin);
+    if (input === "owner") return ctx.owner;
+    if (input === "package.name") return ctx.package?.name;
+    if (input === "package.version") return ctx.package?.version ?? void 0;
+    return ctx.namespace?.[input.slice("namespace.".length)];
+  };
+  const credential = ctx.credential ?? { kind: "none" };
+  return decl.render({
+    get(input) {
+      if (!declared.has(input))
+        throw new Error(
+          `renderFeedSetup: ${ecosystem} reads "${input}", which its setup does not declare`
+        );
+      return resolve(input);
+    },
+    // A Godot feed authenticates only through its URL; the others never through one.
+    credential: ecosystem === "godot" === (credential.kind === "godot-url") ? credential : { kind: "none" }
+  });
+}
+function formatFeedSetup(snippets) {
+  return snippets.map(
+    (s) => lines(
+      `# ${s.title}${s.filename ? ` (${s.filename})` : ""}`,
+      s.warning && `# Warning: ${s.warning}`,
+      s.description && `# ${s.description}`,
+      s.code
+    )
+  ).join("\n\n").concat("\n");
+}
 var PLATFORM_NAMES = {
   macos: "macOS",
   ios: "iOS / iPadOS",
@@ -14158,12 +14674,12 @@ var CONTENT_ID_PATTERN = /^[!-~]{1,128}$/;
 var MAX_PROVIDES = 4096;
 var DEFAULT_PROVIDES_FILE = ".pkey/provides.json";
 var PROVIDES_FILE_PATTERN = /^(?!.*(?:^|\/)\.{1,2}(?:\/|$))[A-Za-z0-9._@+-]+(?:\/[A-Za-z0-9._@+-]+){0,31}$/;
-function providesListProblem(list) {
-  if (!Array.isArray(list)) return "is not an array of content ids";
-  if (list.length > MAX_PROVIDES)
-    return `holds ${list.length} ids; at most ${MAX_PROVIDES}`;
+function providesListProblem(list2) {
+  if (!Array.isArray(list2)) return "is not an array of content ids";
+  if (list2.length > MAX_PROVIDES)
+    return `holds ${list2.length} ids; at most ${MAX_PROVIDES}`;
   const seen = /* @__PURE__ */ new Set();
-  for (const [i, id] of list.entries()) {
+  for (const [i, id] of list2.entries()) {
     if (typeof id !== "string" || !CONTENT_ID_PATTERN.test(id))
       return `entry ${i} (${JSON.stringify(id)?.slice(0, 80)}) is not a content id: printable ASCII without spaces, 1 to 128 characters`;
     if (seen.has(id)) return `lists ${id} twice`;
@@ -17433,8 +17949,8 @@ function isOneOf(value, allowed) {
 function notNull(v) {
   return v !== null;
 }
-function add2(list, file, path21, code, message) {
-  list.push({ file, path: path21, code, message });
+function add2(list2, file, path21, code, message) {
+  list2.push({ file, path: path21, code, message });
 }
 
 // src/bundle.ts
@@ -18062,24 +18578,24 @@ function renderRefusal(what, target, status, body) {
   const reason = typeof body.reason === "string" ? body.reason : void 0;
   const code = typeof body.error === "string" ? body.error : void 0;
   const label = [String(status), reason ?? code].filter(Boolean).join(" ");
-  const lines2 = [`${what} failed (${label}) at ${target}`];
-  if (typeof body.message === "string") lines2.push(`  ${body.message}`);
+  const lines3 = [`${what} failed (${label}) at ${target}`];
+  if (typeof body.message === "string") lines3.push(`  ${body.message}`);
   if (typeof body.claim === "string")
-    lines2.push(`  failing claim: ${body.claim}`);
-  if (typeof body.key === "string") lines2.push(`  object: ${body.key}`);
+    lines3.push(`  failing claim: ${body.claim}`);
+  if (typeof body.key === "string") lines3.push(`  object: ${body.key}`);
   if (Array.isArray(body.fields) && body.fields.length)
-    lines2.push(`  fields: ${body.fields.join(", ")}`);
+    lines3.push(`  fields: ${body.fields.join(", ")}`);
   if (Array.isArray(body.errors)) {
     for (const e of body.errors.slice(0, 50)) {
       const rec = e;
-      lines2.push(
+      lines3.push(
         `  ${String(rec.path ?? "")} ${String(rec.code ?? "")}: ${String(rec.message ?? "")}`
       );
     }
   }
   const hint = refusalHint(status, reason);
-  if (hint) lines2.push(hint);
-  return lines2.join("\n");
+  if (hint) lines3.push(hint);
+  return lines3.join("\n");
 }
 function refusalHint(status, reason) {
   switch (reason) {
@@ -18908,7 +19424,7 @@ async function iosBuildMetadata(ipa) {
   return withZip(ipa, async (zip) => {
     const root = appRoot(zip);
     const info = await readPlistEntry(zip, `${root}Info.plist`);
-    const str = (k) => {
+    const str2 = (k) => {
       const v = info[k];
       if (typeof v !== "string" || !v)
         throw new MetadataError(`${root}Info.plist has no ${k}`);
@@ -18935,9 +19451,9 @@ async function iosBuildMetadata(ipa) {
         privacy[k] = v;
     const minOS = info.MinimumOSVersion;
     return {
-      bundleIdentifier: str("CFBundleIdentifier"),
-      version: str("CFBundleShortVersionString"),
-      buildVersion: str("CFBundleVersion"),
+      bundleIdentifier: str2("CFBundleIdentifier"),
+      version: str2("CFBundleShortVersionString"),
+      buildVersion: str2("CFBundleVersion"),
       ...typeof minOS === "string" && minOS ? { minOSVersion: minOS } : {},
       appPermissions: {
         entitlements: [...entitlements].filter((e) => !EXCLUDED_ENTITLEMENTS.has(e)).sort(),
@@ -19251,13 +19767,13 @@ async function collectProvides(o) {
     }
   }
   if (file !== null) {
-    const list = await readJson2(file, "The provides file");
-    const problem = providesListProblem(list);
+    const list2 = await readJson2(file, "The provides file");
+    const problem = providesListProblem(list2);
     if (problem)
       throw new Error(
         `The provides file ${path3.relative(o.cwd, file) || file} ${problem}.`
       );
-    out.provides = [...list].sort(byCodeUnit);
+    out.provides = [...list2].sort(byCodeUnit);
   }
   if (o.removes && o.removes.length > 0) {
     const problem = providesListProblem(o.removes);
@@ -19461,7 +19977,7 @@ function scanStrictJson(text) {
     i += 4;
     return parseInt(h, 16);
   };
-  const str = () => {
+  const str2 = () => {
     if (text.charCodeAt(i) !== 34) refuse2();
     i++;
     let out = "";
@@ -19548,7 +20064,7 @@ function scanStrictJson(text) {
       }
       for (; ; ) {
         ws();
-        const name = str();
+        const name = str2();
         if (name.indexOf("\0") !== -1) refuse2();
         if (names.has(name)) refuse2();
         names.add(name);
@@ -19599,7 +20115,7 @@ function scanStrictJson(text) {
       }
     }
     if (c === '"') {
-      str();
+      str2();
       return;
     }
     if (c === "-" || c !== void 0 && c >= "0" && c <= "9") {
@@ -20695,9 +21211,9 @@ async function sha256Hex(bytes) {
   return hex3(new Uint8Array(digest));
 }
 async function treeDigest(files) {
-  const lines2 = [...files].sort((a, b) => compareBytes(a.path, b.path)).map((f) => `${f.sha256} ${String(f.size)} ${f.path}
+  const lines3 = [...files].sort((a, b) => compareBytes(a.path, b.path)).map((f) => `${f.sha256} ${String(f.size)} ${f.path}
 `).join("");
-  return sha256Hex(new TextEncoder().encode(lines2));
+  return sha256Hex(new TextEncoder().encode(lines3));
 }
 var invalid = {
   ok: false,
@@ -21947,18 +22463,18 @@ async function buildPayload(z, p) {
   const distinct = /* @__PURE__ */ new Map();
   for (const f of p.files)
     if (!distinct.has(f.sha256)) distinct.set(f.sha256, f);
-  const list = [...distinct.values()];
+  const list2 = [...distinct.values()];
   const gapBytes = p.layout === "container" ? gapsOf(p.bytes, p.files) : null;
   const fullBytes = fullBytesOf(p);
   const stored = storeMany(z, [
     fullBytes,
     ...gapBytes ? [gapBytes] : [],
-    ...list.map((f) => f.data)
+    ...list2.map((f) => f.data)
   ]);
   const full = stored[0];
   const gaps = gapBytes ? stored[1] : void 0;
   const blobs = /* @__PURE__ */ new Map();
-  list.forEach((f, i) => blobs.set(f.sha256, stored[(gapBytes ? 2 : 1) + i]));
+  list2.forEach((f, i) => blobs.set(f.sha256, stored[(gapBytes ? 2 : 1) + i]));
   const index = {
     format: FILES_FORMAT,
     layout: p.layout,
@@ -22486,8 +23002,8 @@ function contentRuleProblems(content, contentApi, packs, embeds = {}) {
         `${p.id} is baseline: embedded, so every app release pins it.`
       );
   }
-  for (const [build, list] of Object.entries(embeds))
-    for (const p of list)
+  for (const [build, list2] of Object.entries(embeds))
+    for (const p of list2)
       if (!pinned.has(p))
         problems.push(
           `build ${build} embeds ${p}, which the release does not pin.`
@@ -23463,8 +23979,8 @@ async function extractGodot(input) {
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { readFile as readFile6 } from "node:fs/promises";
 var SIDECAR = /\.(md5|sha1|sha256|sha512|asc)$/;
-function pomField(xml, field) {
-  const flat = xml.replace(/<!--[\s\S]*?-->/g, "").replace(
+function pomField(xml2, field) {
+  const flat = xml2.replace(/<!--[\s\S]*?-->/g, "").replace(
     /<(parent|dependencies|dependencyManagement|build|plugins|profiles|reporting|distributionManagement|modules|licenses|developers|scm)\b[\s\S]*?<\/\1>/g,
     ""
   );
@@ -24745,14 +25261,14 @@ function delegationVersion(jws) {
   return payload.version;
 }
 function parseDelegationTypes(types) {
-  const list = (typeof types === "string" ? types.split(/[\s,]+/) : [...types]).filter(Boolean);
-  if (list.length < 1 || list.length > MAX_DELEGATION_TYPES)
+  const list2 = (typeof types === "string" ? types.split(/[\s,]+/) : [...types]).filter(Boolean);
+  if (list2.length < 1 || list2.length > MAX_DELEGATION_TYPES)
     throw new Error(
-      `--types lists 1–${MAX_DELEGATION_TYPES} pack types (got ${list.length}).`
+      `--types lists 1–${MAX_DELEGATION_TYPES} pack types (got ${list2.length}).`
     );
-  if (new Set(list).size !== list.length)
+  if (new Set(list2).size !== list2.length)
     throw new Error("--types lists a type twice.");
-  for (const t of list) {
+  for (const t of list2) {
     if (!PACK_TYPE_PATTERN.test(t))
       throw new Error(`--types: ${JSON.stringify(t)} is not a pack type.`);
     if (!DELEGABLE_PACK_TYPES.includes(t))
@@ -24760,7 +25276,7 @@ function parseDelegationTypes(types) {
         `--types: ${t} can never be delegated; a content key signs only ${DELEGABLE_PACK_TYPES.join(", ")} (godot.pck, godot.zip, audio.bank, ml.model and custom types can load code).`
       );
   }
-  return list;
+  return list2;
 }
 async function keepSignedDelegation(cwd, jws, sha2564) {
   const file = path11.join(cwd, `pkey-delegation-${sha2564}.jws`);
@@ -25186,11 +25702,11 @@ function attachableEntryProblem(s) {
   const path21 = rest.endsWith("/") ? rest.slice(0, -1) : rest;
   return pckPathOk(path21) ? null : "not a normal res:// path";
 }
-function parseAttachable(list = []) {
+function parseAttachable(list2 = []) {
   const paths = /* @__PURE__ */ new Set();
   const dirs = [];
   const uids = /* @__PURE__ */ new Set();
-  for (const s of list) {
+  for (const s of list2) {
     const why = attachableEntryProblem(s);
     if (why !== null)
       throw new Error(
@@ -25241,10 +25757,10 @@ function textRefs(text) {
   const t = text.replace(/\r/g, "\n");
   if (t.includes("resource_path") || t.replace(/\\/g, "").includes("resource_path"))
     return { why: RESOURCE_PATH_WHY };
-  const lines2 = t.split("\n");
+  const lines3 = t.split("\n");
   const refs = [];
-  for (let i = 0; i < lines2.length; i++) {
-    const l = lines2[i];
+  for (let i = 0; i < lines3.length; i++) {
+    const l = lines3[i];
     if (!l.includes("ext_resource")) continue;
     const bad = {
       why: `has an ext_resource tag on line ${i + 1} the engine could read differently${AMBIGUOUS}`
@@ -25318,7 +25834,7 @@ function binaryRefs(b, start) {
     need(n);
     pos += n;
   };
-  const str = () => {
+  const str2 = () => {
     const n = u32();
     need(n);
     const s = b.subarray(pos, pos + n);
@@ -25346,26 +25862,26 @@ function binaryRefs(b, start) {
       return {
         why: `is a binary resource in format ${format}, above ${BINARY_FORMAT_MAX}${AMBIGUOUS}`
       };
-    str();
+    str2();
     skip(8);
     const flags = u32();
     skip(8);
-    if (flags & FLAG_SCRIPT_CLASS) str();
+    if (flags & FLAG_SCRIPT_CLASS) str2();
     skip(4 * RESERVED_FIELDS);
     part = "reference tables";
     const nstr = u32();
     const rpNames = /* @__PURE__ */ new Set();
     const badNames = /* @__PURE__ */ new Set();
     for (let i = 0; i < nstr; i++) {
-      const entry = str();
+      const entry = str2();
       if (isResourcePath(entry)) rpNames.add(i);
       if (!nameUtf8(entry)) badNames.add(i);
     }
     const refs = [];
     const next = u32();
     for (let i = 0; i < next; i++) {
-      const type = text(str());
-      const path21 = text(str());
+      const type = text(str2());
+      const path21 = text(str2());
       let uid = null;
       if (flags & FLAG_UIDS) {
         need(8);
@@ -25378,7 +25894,7 @@ function binaryRefs(b, start) {
     const offsets = [];
     let tableEnd = 0;
     for (let i = 0; i < nint; i++) {
-      const path21 = text(str());
+      const path21 = text(str2());
       need(8);
       const lo = dv.getUint32(pos, true);
       const hi = dv.getUint32(pos + 4, true);
@@ -25412,7 +25928,7 @@ function binaryRefs(b, start) {
       if (off < 0 || off <= prev || off > b.byteLength) throw fail4();
       limit = i + 1 < offsets.length ? Math.max(off, Math.min(offsets[i + 1], b.byteLength)) : b.byteLength;
       pos = off;
-      str();
+      str2();
       const pc = u32();
       for (let j = 0; j < pc; j++) {
         name(true);
@@ -25445,7 +25961,7 @@ function binaryRefs(b, start) {
             case 5:
             // STRING
             case 44:
-              str();
+              str2();
               break;
             case 10:
               skip(2 * real);
@@ -25531,7 +26047,7 @@ function binaryRefs(b, start) {
               break;
             case 34: {
               const n = u32();
-              for (let k = 0; k < n; k++) str();
+              for (let k = 0; k < n; k++) str2();
               break;
             }
             case 37:
@@ -25642,12 +26158,12 @@ function remapTargets(text) {
 var PATH_ANY_RE = /(^|[^A-Za-z0-9_/.-])"?path(\.[A-Za-z0-9_-]+)*"?[ \t\f\x0B]*=/;
 var PATH_LINE_RE = /^[ \t\f\x0B]*path(?:\.[A-Za-z0-9_-]+)?[ \t\f\x0B]*=[ \t\f\x0B]*"([^"\\]*)"[ \t\f\x0B]*$/;
 var DEST_LINE_RE = /^[ \t\f\x0B]*dest_files[ \t\f\x0B]*=[ \t\f\x0B]*\[([^\]]*)\]/;
-function lines(text) {
+function lines2(text) {
   return text.replace(/\r/g, "\n").split("\n");
 }
 function remapValues(text) {
   const out = /* @__PURE__ */ new Set();
-  const ls = lines(text);
+  const ls = lines2(text);
   for (const l of ls) {
     const m = PATH_LINE_RE.exec(l);
     if (m) out.add(m[1]);
@@ -25668,7 +26184,7 @@ function remapProblem(data) {
   if (Buffer.from(data.buffer, data.byteOffset, data.byteLength).indexOf(BOM2) !== -1)
     return "a .remap or .import with a byte-order mark";
   const text = new TextDecoder("utf-8", { ignoreBOM: true }).decode(data);
-  for (const l of lines(text))
+  for (const l of lines2(text))
     if (PATH_ANY_RE.test(l) && !PATH_LINE_RE.test(l))
       return `a path line the engine could read differently (${l})`;
   return null;
@@ -26908,20 +27424,20 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
       const ask = /* @__PURE__ */ new Map();
       for (const c of chains.values())
         for (const [sha, size] of c.index.bundles) ask.set(sha, size);
-      const list2 = [...ask].map(([sha2564, size]) => ({ sha256: sha2564, size }));
+      const list3 = [...ask].map(([sha2564, size]) => ({ sha256: sha2564, size }));
       if (client)
-        for (let i = 0; i < list2.length; i += STAGE_ROUND_OBJECTS) {
+        for (let i = 0; i < list3.length; i += STAGE_ROUND_OBJECTS) {
           const ticket = await requestTicket(
             client,
-            list2.slice(i, i + STAGE_ROUND_OBJECTS),
+            list3.slice(i, i + STAGE_ROUND_OBJECTS),
             gated,
             opts
           );
           for (const o of ticket.objects)
             if (o.present) presentBundles.add(o.sha256);
         }
-      else if (list2.length > 0) {
-        for (const o of list2) presentBundles.add(o.sha256);
+      else if (list3.length > 0) {
+        for (const o of list3) presentBundles.add(o.sha256);
         warn(
           "the cached chunk bundles are assumed stored: without a CI credential the dry run cannot ask Polaris Key which it holds."
         );
@@ -27022,8 +27538,8 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
       let chunksRef;
       const omittedWhy = chunksOmitted.get(v.key);
       if (omittedWhy) report.chunksOmitted = omittedWhy;
-      const list2 = chunked.get(v.key);
-      if (list2) {
+      const list3 = chunked.get(v.key);
+      if (list3) {
         const base = chains.get(v.key) ?? null;
         const reuse = base ? priorLocations(base.index, (sha) => presentBundles.has(sha)) : /* @__PURE__ */ new Map();
         if (base) {
@@ -27041,7 +27557,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
             bytes: v.payload.bytes,
             ...b.payload
           },
-          list2,
+          list3,
           base,
           reuse,
           { maxIndexBytes: opts.maxChunkIndexBytes }
@@ -27131,21 +27647,21 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
       variants: reports,
       markers: []
     };
-    const list = [...objects.values()];
+    const list2 = [...objects.values()];
     if (opts.dryRun) {
       if (client) {
         let present2 = 0;
-        for (let i = 0; i < list.length; i += STAGE_ROUND_OBJECTS) {
+        for (let i = 0; i < list2.length; i += STAGE_ROUND_OBJECTS) {
           const ticket = await requestTicket(
             client,
-            list.slice(i, i + STAGE_ROUND_OBJECTS),
+            list2.slice(i, i + STAGE_ROUND_OBJECTS),
             gated,
             opts
           );
           present2 += ticket.objects.filter((o) => o.present).length;
         }
         out.write(
-          `Objects: ${list.length - present2} new, ${present2} already stored (deduplicated)
+          `Objects: ${list2.length - present2} new, ${present2} already stored (deduplicated)
 `
         );
       }
@@ -27189,8 +27705,8 @@ ${JSON.stringify(seq === void 0 ? shown : record, null, 2)}
       }
     const objDir = path12.join(work, "objects");
     await mkdir2(objDir, { recursive: true });
-    for (let i = 0; i < list.length; i += STAGE_ROUND_OBJECTS) {
-      const round = list.slice(i, i + STAGE_ROUND_OBJECTS);
+    for (let i = 0; i < list2.length; i += STAGE_ROUND_OBJECTS) {
+      const round = list2.slice(i, i + STAGE_ROUND_OBJECTS);
       let attempt = 0;
       for (; ; ) {
         try {
@@ -28572,9 +29088,9 @@ android {
 function patchSettingsGradle(text, name) {
   const line = `include ':${name}'`;
   if (text.split(/\r?\n/).some((l) => l.trim() === line)) return text;
-  const lines2 = text.split("\n");
+  const lines3 = text.split("\n");
   let at = -1;
-  lines2.forEach((l, i) => {
+  lines3.forEach((l, i) => {
     if (/^\s*include\s+['"]:/.test(l)) at = i;
   });
   if (at < 0) {
@@ -28582,8 +29098,8 @@ function patchSettingsGradle(text, name) {
     return `${text}${sep}${line}
 `;
   }
-  lines2.splice(at + 1, 0, line);
-  return lines2.join("\n");
+  lines3.splice(at + 1, 0, line);
+  return lines3.join("\n");
 }
 function patchAppGradle(text, name, textureSplit) {
   const re = /^(\s*assetPacks\s*=\s*\[)([^\]]*)(\])/m;
@@ -29397,6 +29913,62 @@ ${FEEDS_USAGE}`);
   return result;
 }
 
+// src/feedSetup.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var FEEDS_SETUP_USAGE = "Usage: pkey feeds setup --ecosystem <" + PACKAGE_ECOSYSTEMS.join("|") + "> --owner <slug>\n              [--namespace key=value ...] [--package name [--version v]]\n              [--origin url] [--token-env NAME] [--json]";
+function feedsSetup(opts) {
+  const { ecosystem, owner } = opts;
+  if (!ecosystem || !owner) throw new Error(FEEDS_SETUP_USAGE);
+  if (!isPackageEcosystem(ecosystem))
+    throw new Error(
+      `--ecosystem must be one of ${PACKAGE_ECOSYSTEMS.join(", ")}.
+${FEEDS_SETUP_USAGE}`
+    );
+  if (opts.version && !opts.package)
+    throw new Error(`--version goes with --package.
+${FEEDS_SETUP_USAGE}`);
+  if (opts.tokenEnv !== void 0 && !isFeedTokenEnvName(opts.tokenEnv))
+    throw new Error(
+      `--token-env takes an environment variable's name (like PKEY_REGISTRY_TOKEN), never the token itself.`
+    );
+  if (opts.tokenEnv !== void 0 && ecosystem === "godot")
+    throw new Error(
+      `--token-env does not apply to godot: the editor and GodotEnv authenticate by a token in the feed's URL, which only the console shows.`
+    );
+  const fields = PACKAGE_ECOSYSTEM_RULES[ecosystem].namespace.fields;
+  const namespace = {};
+  for (const pair of opts.namespace ?? []) {
+    const eq = pair.indexOf("=");
+    const key = eq > 0 ? pair.slice(0, eq) : "";
+    const field = Object.hasOwn(fields, key) ? fields[key] : void 0;
+    if (!field) {
+      const keys = Object.keys(fields);
+      throw new Error(
+        keys.length ? `--namespace takes ${keys.map((k) => `${k}=…`).join(" or ")} for ${ecosystem}.` : `${ecosystem} feeds have no namespace to set.`
+      );
+    }
+    const value = pair.slice(eq + 1).trim();
+    namespace[key] = field.kind === "list" ? value.split(",").map((s) => s.trim()).filter(Boolean) : value;
+  }
+  const ctx = {
+    origin: (opts.origin ?? DEFAULT_REGISTRY_ORIGIN).replace(/\/+$/, ""),
+    owner,
+    ...Object.keys(namespace).length ? { namespace } : {},
+    ...opts.package ? {
+      package: {
+        name: opts.package,
+        ...opts.version ? { version: opts.version } : {}
+      }
+    } : {},
+    ...opts.tokenEnv ? { credential: { kind: "env", name: opts.tokenEnv } } : {}
+  };
+  const problem = feedSetupProblem(ecosystem, ctx);
+  if (problem !== null) throw new Error(`pkey feeds setup: ${problem}.`);
+  const snippets = renderFeedSetup(ecosystem, ctx);
+  return opts.json ? `${JSON.stringify({ ecosystem, owner, snippets }, null, 2)}
+` : formatFeedSetup(snippets);
+}
+
 // src/index.ts
 async function runPkey(argv2, io = {}) {
   const parsed = parseArgs(argv2);
@@ -30036,11 +30608,27 @@ ${CHANNEL_USAGE}`
   }
 }
 async function cmdFeeds(parsed, cwd, stdout, stderr, ci) {
+  if (parsed.positional[0] === "setup") {
+    stdout.write(
+      feedsSetup({
+        ecosystem: flagString(parsed, "ecosystem"),
+        owner: flagString(parsed, "owner"),
+        namespace: parsed.multi["namespace"] ?? [],
+        package: flagString(parsed, "package"),
+        version: flagString(parsed, "version"),
+        origin: flagString(parsed, "origin"),
+        tokenEnv: flagString(parsed, "token-env"),
+        json: flagBool(parsed, "json")
+      })
+    );
+    return 0;
+  }
   const product = flagString(parsed, "product");
   const channel = flagString(parsed, "channel");
   const out = flagString(parsed, "out");
   if (parsed.positional[0] !== "fdroid" || !product || !channel || !out)
-    throw new Error(FEEDS_USAGE);
+    throw new Error(`${FEEDS_USAGE}
+${FEEDS_SETUP_USAGE}`);
   await buildFdroidFeed({
     cwd,
     product,
@@ -30100,7 +30688,7 @@ ${TRANSPORT_USAGE}`
       );
     return f;
   };
-  const list = (name) => flagString(parsed, name)?.split(",").map((s) => s.trim()).filter(Boolean);
+  const list2 = (name) => flagString(parsed, name)?.split(",").map((s) => s.trim()).filter(Boolean);
   switch (`${transport ?? ""} ${step ?? ""}`) {
     case "apple-ba package":
       await baPackage({
@@ -30109,7 +30697,7 @@ ${TRANSPORT_USAGE}`
         out: flagString(parsed, "out"),
         contentApi: flagString(parsed, "content-api"),
         variant: flagString(parsed, "variant"),
-        platforms: list("platforms"),
+        platforms: list2("platforms"),
         archive: !flagBool(parsed, "no-archive")
       });
       return 0;
@@ -30235,6 +30823,9 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
               [--release id] [--deliverable id]
   pkey feeds fdroid --product slug --channel c --out dir [--keystore path --alias a]
               [--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]
+  pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot --owner slug
+              [--namespace key=value ...] [--package name [--version v]] [--origin url]
+              [--token-env NAME] [--json]
   pkey transport apple-ba package --deliverable packId --release v --from dir [--content-api n]
               [--variant key] [--out dir] [--platforms iOS[,macOS]] [--no-archive] [--no-report]
   pkey transport apple-ba upload --deliverable packId --release v [--dir dir] [--from dir] [--content-api n]
@@ -30308,6 +30899,13 @@ pkey feeds fdroid builds the channel's F-Droid repository (index-v2.json, entry.
 from Polaris Key's releases, signs entry.jar with apksigner and the CI-held repo key (the
 password in $PKEY_FDROID_KS_PASS), uploads it and registers it; the token needs
 distribution:feeds. Without --keystore it writes the unsigned files and stops.
+
+pkey feeds setup prints the copy-paste setup for one package feed on the registry host (default
+https://pkg.plrs.im), the same snippets the console's Setup tab shows: strict routing only (the
+npm scope, uv explicit = true, Gradle exclusiveContent, SwiftPM --scope, a fully qualified image
+reference, the Godot editor URLs). --namespace sets the feed's namespace (scope=@acme,
+groupPrefixes=gg.acme,gg.acme.tools); --token-env NAME adds the credential lines, reading the
+registry token from that environment variable. Offline: nothing is sent anywhere.
 
 pkey transport packages a published pack release (the --out cache of pkey release publish
 --deliverable <packId>, re-hashed against its record and linted again, so a pack with scripts

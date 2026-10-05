@@ -40,8 +40,10 @@ feeds**, which creates the system product and one feed per ecosystem with the pl
 namespaces (`POST /manage/api/platform/feeds/bootstrap`). Running it again changes nothing an
 operator has set since.
 
-The row of links above each page (Overview, one link per ecosystem, then Tokens) moves between the
-overview, the feed pages and the registry tokens: each is a page of its own.
+The bar of links above each page title (Overview, a separator, one link per ecosystem, each with
+its icon, then a separator and Tokens) moves between the overview, the feed pages and the registry
+tokens: each is a page of its own. The current page is filled, bold and underlined on the bar's
+rule.
 
 ## A feed
 
@@ -52,10 +54,14 @@ More actions, which queues a fresh render of the feed's index documents.
   OCI moving tags: the `stable` channel is `latest`, every other channel a tag of its own name),
   its live and total versions and its last publish. In platform scope the list opens on the
   platform's packages; **All owners** lists every product's, with an Owner column.
-- **Setup**: what a client needs, copy-paste ready, for the feed's own URL and namespace: an
-  `.npmrc` line, a uv index and pip command, `docker pull`, `swift package-registry set`, a Gradle
-  `exclusiveContent` block, or the Godot editor's asset library URLs. When the feed is not public,
-  the setup is the authenticated one, naming the token as `PKEY_REGISTRY_TOKEN`.
+- **Setup**: what a client needs, copy-paste ready, for the feed's own URL and namespace: the
+  `.npmrc`, `.yarnrc.yml` and `bunfig.toml` scope lines; a uv explicit index, a Poetry explicit
+  source and a pip command (with the warning never to use `--extra-index-url`); SwiftPM's whole
+  `registries.json` (the scope's registry and the signing policy); a Gradle `exclusiveContent`
+  block and a Maven `<repository>`; `docker pull` by the fully qualified reference; or the Godot
+  editor's URLs per editor version and the GodotEnv index. Every snippet routes only the feed's
+  own names to it. The same snippets come from `pkey feeds setup` (below), byte for byte. When the feed is not
+  public, the setup is the authenticated one, naming the token as `PKEY_REGISTRY_TOKEN`.
 - **Settings**: see below.
 - **Activity**: the feed's audit trail: settings changes, rebuilds and its versions' yanks and
   deprecations (and, in platform scope, the policy changes).
@@ -66,15 +72,19 @@ Every section saves on its own, through its own Save bar, with the version of th
 read. If someone saved in between, the save is refused (409) and the page shows the current
 settings; nothing is overwritten. A feed with no settings yet gets them on its first save.
 
-| Section         | What it sets                                                                                                                                                                                                     |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| General         | Whether the feed answers. Switching it off asks first: every client then gets not-found within 30 seconds.                                                                                                       |
-| Access          | Who may install: Public, Token, Licensed or Entitled (see [Access](#access)). Leaving Public asks first. Entitled lists the feed's packages that have no delivery gate.                                          |
-| Namespace       | The names the feed may hold: an npm or Swift scope, PyPI names and prefixes, Maven group prefixes, a Godot publisher. OCI repositories always sit under the owner. A feed cannot be enabled without a namespace. |
-| Limits          | The largest package ingest accepts, at most the platform's ceiling for the ecosystem.                                                                                                                            |
-| Yank policy     | What a yank does to clients in this protocol. Maven only: **Hide yanked versions**, which leaves a yanked version out of `maven-metadata.xml`.                                                                   |
-| Upstream        | None, the only option: a feed never proxies or mirrors another registry, so a name it does not hold answers not-found.                                                                                           |
-| Platform policy | Platform scope only: whether the ecosystem is served at all, and its size ceiling, for every product. Switching an ecosystem off is a danger confirmation.                                                       |
+| Section                 | What it sets                                                                                                                                                                                                                                                                       |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| General                 | Whether the feed answers. Switching it off asks first: every client then gets not-found within 30 seconds.                                                                                                                                                                         |
+| Access                  | Who may install: Public, Token, Licensed or Entitled (see [Access](#access)). Leaving Public asks first. Entitled lists the feed's packages that have no delivery gate.                                                                                                            |
+| Namespace               | The names the feed may hold, one row per namespace field the ecosystem's ingest rules declare: an npm or Swift scope, PyPI names and prefixes, Maven group prefixes, a Godot publisher. OCI repositories always sit under the owner. A feed cannot be enabled without a namespace. |
+| Limits                  | The largest package ingest accepts, at most the platform's ceiling for the ecosystem.                                                                                                                                                                                              |
+| Yank policy             | What a yank does to clients in this protocol. Maven only: **Hide yanked versions**, which leaves a yanked version out of `maven-metadata.xml`.                                                                                                                                     |
+| Upstream                | None, the only option: a feed never proxies or mirrors another registry, so a name it does not hold answers not-found.                                                                                                                                                             |
+| Simple API              | PyPI only: **HTML pages**, whether a client that cannot take PEP 691 JSON gets the inert PEP 503 HTML page (on) or 406 (off).                                                                                                                                                      |
+| Signing and identifiers | Swift only: **Require signed releases** (ingest refuses an unsigned release; always on for the platform's own packages) and **Repository URLs**, one `identity url` per line, which `GET /identifiers?url=` answers from.                                                          |
+| Retention               | OCI only: **Untagged manifests**, the days an image manifest no tag points at may be kept. It is stored only: nothing removes untagged manifests yet, so every one is kept whatever it holds. A published version is never removed.                                                |
+| Asset listing           | Godot only: the asset library category, support level, license and oldest editor every addon of the feed is listed with.                                                                                                                                                           |
+| Platform policy         | Platform scope only: whether the ecosystem is served at all, and its size ceiling, for every product. Switching an ecosystem off is a danger confirmation.                                                                                                                         |
 
 ### Access
 
@@ -146,6 +156,27 @@ The row actions follow the protocol, and only what the protocol has a state for 
 A yank needs a reason and is a danger confirmation; unyank, deprecate (with a message) and lifting a
 deprecation are caution confirmations. There is no delete: a version number is unique forever, so a
 yanked version can never be published again.
+
+## Setup from the CLI
+
+`pkey feeds setup` prints a feed's setup without the console, offline, from the same function the
+Setup tabs use (`renderFeedSetup` in `@polaris-key/manifest`), so the two agree byte for byte:
+
+```sh
+pkey feeds setup --ecosystem npm --owner acme --namespace scope=@acme
+pkey feeds setup --ecosystem maven --owner acme --namespace groupPrefixes=gg.acme,gg.acme.tools \
+  --package gg.acme:sdk --version 1.2.0
+pkey feeds setup --ecosystem pypi --owner acme --package acme-sdk --token-env PKEY_REGISTRY_TOKEN
+```
+
+`--namespace` takes the ecosystem's namespace fields (`scope`, `names`, `prefixes`,
+`groupPrefixes`, `publisher`; a list takes commas). `--origin` points at another registry host
+(default `https://pkg.plrs.im`). `--token-env NAME` adds each client's credential lines, reading
+the registry token from that environment variable; the token itself is never an argument.
+Mint the token on the Tokens page ([Registry tokens](#registry-tokens)). Godot takes no
+`--token-env`: the editor and GodotEnv authenticate by a token in the feed's URL, which a
+**Godot editor URL** token's shown-once dialog gives.
+`--json` prints the snippets as JSON.
 
 ## The admin API
 

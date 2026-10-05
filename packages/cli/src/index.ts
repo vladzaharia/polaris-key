@@ -59,6 +59,7 @@ import { baPackage, baUpload } from "./transportAppleBa.js";
 import { padModules, type PadDelivery } from "./transportPlayPad.js";
 import { steamVdf } from "./transportSteam.js";
 import { buildFdroidFeed, FEEDS_USAGE } from "./feeds.js";
+import { feedsSetup, FEEDS_SETUP_USAGE } from "./feedSetup.js";
 import {
   generatedKeyText,
   generateReleaseKey,
@@ -268,6 +269,11 @@ export {
 } from "./distribution.js";
 export { MAX_SINGLE_PUT_BYTES, objectUrl, putFile, signV4 } from "./s3.js";
 export { manifestSchemas, writeManifestSchemas } from "./schemas.js";
+export {
+  feedsSetup,
+  FEEDS_SETUP_USAGE,
+  type FeedsSetupOptions,
+} from "./feedSetup.js";
 export {
   buildFdroidFeed,
   buildFdroidIndex,
@@ -1144,7 +1150,7 @@ async function cmdRelease(
   }
 }
 
-/** `pkey feeds fdroid` (P2b-05, `feeds.ts`). */
+/** `pkey feeds fdroid` (P2b-05, `feeds.ts`) and `pkey feeds setup` (F-12, `feedSetup.ts`). */
 async function cmdFeeds(
   parsed: ParsedArgs,
   cwd: string,
@@ -1152,11 +1158,26 @@ async function cmdFeeds(
   stderr: Pick<NodeJS.WriteStream, "write">,
   ci: CiIo,
 ): Promise<number> {
+  if (parsed.positional[0] === "setup") {
+    stdout.write(
+      feedsSetup({
+        ecosystem: flagString(parsed, "ecosystem"),
+        owner: flagString(parsed, "owner"),
+        namespace: parsed.multi["namespace"] ?? [],
+        package: flagString(parsed, "package"),
+        version: flagString(parsed, "version"),
+        origin: flagString(parsed, "origin"),
+        tokenEnv: flagString(parsed, "token-env"),
+        json: flagBool(parsed, "json"),
+      }),
+    );
+    return 0;
+  }
   const product = flagString(parsed, "product");
   const channel = flagString(parsed, "channel");
   const out = flagString(parsed, "out");
   if (parsed.positional[0] !== "fdroid" || !product || !channel || !out)
-    throw new Error(FEEDS_USAGE);
+    throw new Error(`${FEEDS_USAGE}\n${FEEDS_SETUP_USAGE}`);
   await buildFdroidFeed({
     cwd,
     product,
@@ -1379,6 +1400,9 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
               [--release id] [--deliverable id]
   pkey feeds fdroid --product slug --channel c --out dir [--keystore path --alias a]
               [--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]
+  pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot --owner slug
+              [--namespace key=value ...] [--package name [--version v]] [--origin url]
+              [--token-env NAME] [--json]
   pkey transport apple-ba package --deliverable packId --release v --from dir [--content-api n]
               [--variant key] [--out dir] [--platforms iOS[,macOS]] [--no-archive] [--no-report]
   pkey transport apple-ba upload --deliverable packId --release v [--dir dir] [--from dir] [--content-api n]
@@ -1452,6 +1476,13 @@ pkey feeds fdroid builds the channel's F-Droid repository (index-v2.json, entry.
 from Polaris Key's releases, signs entry.jar with apksigner and the CI-held repo key (the
 password in $PKEY_FDROID_KS_PASS), uploads it and registers it; the token needs
 distribution:feeds. Without --keystore it writes the unsigned files and stops.
+
+pkey feeds setup prints the copy-paste setup for one package feed on the registry host (default
+https://pkg.plrs.im), the same snippets the console's Setup tab shows: strict routing only (the
+npm scope, uv explicit = true, Gradle exclusiveContent, SwiftPM --scope, a fully qualified image
+reference, the Godot editor URLs). --namespace sets the feed's namespace (scope=@acme,
+groupPrefixes=gg.acme,gg.acme.tools); --token-env NAME adds the credential lines, reading the
+registry token from that environment variable. Offline: nothing is sent anywhere.
 
 pkey transport packages a published pack release (the --out cache of pkey release publish
 --deliverable <packId>, re-hashed against its record and linted again, so a pack with scripts

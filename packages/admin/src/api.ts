@@ -2425,6 +2425,11 @@ export interface FeedDetailDto extends FeedsHead {
   settings: FeedSettings;
   policy: FeedPolicy | null;
   capabilities: FeedCapabilities;
+  /**
+   * The extension settings (`settings.ext` keys) the feed's adapter accepts, which the ecosystem
+   * panel renders (F-12); `yankHidesFromIndex` is the Yank policy section's and never listed.
+   */
+  extensions: string[];
   accessModes: { mode: string; available: boolean }[];
   /** F-21: the ecosystem's packages with no delivery gate, which `entitled` refuses every
    *  licence token for. */

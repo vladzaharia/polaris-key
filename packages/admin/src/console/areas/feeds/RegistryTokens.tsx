@@ -8,7 +8,7 @@
  * - **the licence page's Registry tokens panel**: one licence's tokens (`LicenseRegistryTokens`).
  *
  * A token is shown once, in a dialog that also renders every client's setup with the real value
- * (`setupSnippets` with a `token` credential). Revoking is L2; Revoke all needs confirmation.
+ * (`feedSetupSnippets` with a `token` credential). Revoking is L2; Revoke all needs confirmation.
  * A licensee can mint their own read tokens in the portal; those are listed here too.
  */
 
@@ -63,7 +63,7 @@ import {
   ECOSYSTEMS,
   ECOSYSTEM_ICONS,
   ECOSYSTEM_LABELS,
-  setupSnippets,
+  feedSetupSnippets,
   type FeedScope,
 } from "./model.js";
 
@@ -383,13 +383,16 @@ function MintedSnippets({
     <div className="space-y-4">
       {feeds.map((f) => {
         const Icon = ECOSYSTEM_ICONS[f.ecosystem];
-        const snippets = setupSnippets(
-          f.ecosystem,
-          { baseUrl: f.baseUrl!, owner: data.owner, namespace: {} },
-          minted.view.presentation === "url"
-            ? { kind: "godot-url", value: minted.token }
-            : { kind: "token", value: minted.token },
-        );
+        // The shared renderer (`renderFeedSetup`, the same bytes `pkey feeds setup` prints),
+        // with the real token; null only for a token a snippet cannot carry.
+        const snippets =
+          feedSetupSnippets(
+            f.ecosystem,
+            { origin: f.baseUrl!, owner: data.owner, namespace: {} },
+            minted.view.presentation === "url"
+              ? { kind: "godot-url", value: minted.token }
+              : { kind: "token", value: minted.token },
+          ) ?? [];
         return (
           <section key={f.ecosystem} className="space-y-2">
             <h3 className="inline-flex items-center gap-2 text-sm font-bold text-fg-strong">
@@ -397,8 +400,11 @@ function MintedSnippets({
               {f.label}
             </h3>
             {snippets.map((s) => (
-              <div key={s.title} className="space-y-1">
+              <div key={s.id} className="space-y-1">
                 <p className="text-xs text-fg-muted">{s.title}</p>
+                {s.warning ? (
+                  <Callout tone="warning">{s.warning}</Callout>
+                ) : null}
                 <CodeBlock
                   code={s.code}
                   language={s.language}

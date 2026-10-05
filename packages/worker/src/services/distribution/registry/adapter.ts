@@ -34,6 +34,7 @@
  */
 
 import type {
+  FeedSetupDeclaration,
   PackageEcosystem,
   PackageEcosystemRules,
 } from "@polaris-key/manifest";
@@ -110,17 +111,11 @@ export interface FeedCapabilityView extends FeedProtocol {
 export type FeedExtCheck = (value: unknown) => boolean;
 
 /**
- * An input the setup snippet for this feed needs (F-12 renders them, from these declarations):
- * the feed's base URL, the bare registry host (docker), the owner slug, a namespace key the
- * ingest rules declare (`namespace.scope`), or the package and version being shown.
+ * An input the setup snippets for a feed read (`@polaris-key/manifest` `FeedSetupInput`, F-12): the
+ * feed's base URL, the bare registry host (docker), the owner slug, a namespace key the ingest
+ * rules declare (`namespace.scope`), or the package and version being shown.
  */
-export type FeedSetupInput =
-  | "baseUrl"
-  | "registryHost"
-  | "owner"
-  | "package.name"
-  | "package.version"
-  | `namespace.${string}`;
+export type { FeedSetupInput } from "@polaris-key/manifest";
 
 /** One OpenAPI path the feed answers: `[path, methods, owner]`, where `owner` is a route name of
  *  this adapter, or `host` for a fixed answer the dispatcher gives on the feed's behalf. */
@@ -167,11 +162,12 @@ export interface FeedAdapter<
   /** The extension settings an operator may set, and each one's check. */
   readonly settings: { readonly ext: Readonly<Record<string, FeedExtCheck>> };
   readonly capabilities: FeedCapabilities;
-  readonly setup: {
-    /** The clients the docs and the console name. */
-    readonly clients: readonly string[];
-    readonly inputs: readonly FeedSetupInput[];
-  };
+  /**
+   * The ecosystem's ONE setup declaration in `@polaris-key/manifest` (`FEED_SETUP[ecosystem]`):
+   * the clients the docs and the console name, the inputs its snippets read, and the snippets
+   * themselves (`renderFeedSetup`, shared by the console and `pkey feeds setup`).
+   */
+  readonly setup: FeedSetupDeclaration;
   /** The feed's OpenAPI paths; `routeCoverage` reads them as its registry table (rule 10). */
   readonly openapi: readonly FeedOpenApiRow[];
   /**

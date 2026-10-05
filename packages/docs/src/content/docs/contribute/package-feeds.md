@@ -19,18 +19,18 @@ feed.
 
 An adapter declares:
 
-| Member         | What it is                                                                                                                                                                                                                                                                                                               |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ecosystem`    | The ecosystem id, one of `@polaris-key/manifest` `PACKAGE_ECOSYSTEMS`.                                                                                                                                                                                                                                                   |
-| `hostPrefix`   | Where every path of the feed starts: `/<ecosystem>/`, or `/v2/` for OCI. `feedPath(owner)` is the feed's base under it.                                                                                                                                                                                                  |
-| `routes`       | Every route, each built by `feedRoute` (`registry/serve.ts`).                                                                                                                                                                                                                                                            |
-| `renderer`     | A pure `render(pkg, ctx)` producing the index documents, and `stamp`: whether the render stamp covers the package's rows alone (`package`) or the feed settings too (`package+feed`).                                                                                                                                    |
-| `ingest`       | The ecosystem's one declaration in `@polaris-key/manifest` (`PACKAGE_ECOSYSTEM_RULES`): name grammar, normalisation, file types, metadata keys and namespace rules.                                                                                                                                                      |
-| `settings.ext` | The per-ecosystem extension settings an operator may set, each with its value check.                                                                                                                                                                                                                                     |
-| `capabilities` | Whether the protocol can yank and deprecate (with the reason when it cannot), and its protocol facts: `yankPolicy`, `channels`, `signing`, `immutableVersions`, `delete`, `search`, `authChallenge`. `defineFeedAdapter` turns them into the shared base's `ops`. The admin API exposes them and the console reads them. |
-| `setup`        | The clients the docs name, and the inputs the setup snippet needs (`baseUrl`, `registryHost`, `owner`, `namespace.<key>`, `package.name`, `package.version`).                                                                                                                                                            |
-| `openapi`      | The feed's OpenAPI paths, as `[path, methods, owner]` rows. `routeCoverage` reads them as its registry table.                                                                                                                                                                                                            |
-| `harness`      | The `registry-clients` client scripts that exercise the feed with real tools.                                                                                                                                                                                                                                            |
+| Member         | What it is                                                                                                                                                                                                                                                                                                                                                              |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ecosystem`    | The ecosystem id, one of `@polaris-key/manifest` `PACKAGE_ECOSYSTEMS`.                                                                                                                                                                                                                                                                                                  |
+| `hostPrefix`   | Where every path of the feed starts: `/<ecosystem>/`, or `/v2/` for OCI. `feedPath(owner)` is the feed's base under it.                                                                                                                                                                                                                                                 |
+| `routes`       | Every route, each built by `feedRoute` (`registry/serve.ts`).                                                                                                                                                                                                                                                                                                           |
+| `renderer`     | A pure `render(pkg, ctx)` producing the index documents, and `stamp`: whether the render stamp covers the package's rows alone (`package`) or the feed settings too (`package+feed`).                                                                                                                                                                                   |
+| `ingest`       | The ecosystem's one declaration in `@polaris-key/manifest` (`PACKAGE_ECOSYSTEM_RULES`): name grammar, normalisation, file types, metadata keys and namespace rules.                                                                                                                                                                                                     |
+| `settings.ext` | The per-ecosystem extension settings an operator may set, each with its value check.                                                                                                                                                                                                                                                                                    |
+| `capabilities` | Whether the protocol can yank and deprecate (with the reason when it cannot), and its protocol facts: `yankPolicy`, `channels`, `signing`, `immutableVersions`, `delete`, `search`, `authChallenge`. `defineFeedAdapter` turns them into the shared base's `ops`. The admin API exposes them and the console reads them.                                                |
+| `setup`        | The ecosystem's one setup declaration, `FEED_SETUP[<ecosystem>]` in `@polaris-key/manifest`: the clients the docs name, the inputs the snippets read (`baseUrl`, `registryHost`, `owner`, `namespace.<key>`, `package.name`, `package.version`) and the snippets themselves, which `renderFeedSetup` renders for the console's Setup tabs and `pkey feeds setup` alike. |
+| `openapi`      | The feed's OpenAPI paths, as `[path, methods, owner]` rows. `routeCoverage` reads them as its registry table.                                                                                                                                                                                                                                                           |
+| `harness`      | The `registry-clients` client scripts that exercise the feed with real tools.                                                                                                                                                                                                                                                                                           |
 
 An adapter never re-implements the shared pieces:
 
@@ -111,9 +111,15 @@ one fails CI.
 7. **The render stamp.** Declare `stamp: "package"` only when the documents never read the feed
    settings. The suite renders the sample under two different settings and fails if a
    `package`-stamped renderer's output changes.
-8. **Settings and setup.** List the extension settings in `settings.ext`, and the setup
-   snippet's inputs in `setup.inputs`. A `namespace.<key>` input must be a namespace field of the
-   ingest rules.
+8. **Settings and setup.** List the extension settings in `settings.ext`. Write the ecosystem's
+   setup in `packages/shared-manifest/src/feedSetup.ts` (`FEED_SETUP`, a compile error until it
+   exists): its clients, its `inputs` (a template that reads an undeclared input throws, and a
+   `namespace.<key>` input must be a namespace field of the ingest rules), its feed path, which
+   must equal the adapter's `feedPath`, and its snippets, strict routers only. Point the adapter's
+   `setup` at it, and add a case and golden to
+   `packages/shared-manifest/test/fixtures/feed-setup/`; the CLI's and the console's tests read
+   the same goldens. The console's ecosystem panel renders `settings.ext` keys it finds in
+   `FEED_EXTENSION_FIELDS` (`packages/admin` `model.ts`), so a new key needs an entry there.
 9. **The harness.** Add `packages/worker/scripts/registry-clients/clients/<client>.sh` for each
    real client (plus a fixture or seed), and a matrix row with `ecosystem: <ecosystem>` in
    `.github/workflows/registry-clients.yml`. List the clients in `harness.clients`. A client
@@ -125,7 +131,7 @@ one fails CI.
 11. **Golden documents.** Write the feed's own tests under `packages/worker/test/registry/`,
     with golden files for every document.
 12. **The console and the docs.** The console's display tables (`packages/admin` `model.ts`:
-    labels, icons, clients, yank wording) are keyed by `FeedEcosystem`, so TypeScript asks for
+    labels, icons, namespace copy, panel titles, yank wording) are keyed by `FeedEcosystem`, so TypeScript asks for
     the new entries. Add the feed to
     [Package feeds](/docs/services/distribution/package-feeds/), and add the ecosystem to the
     registry section of `docs/security/THREAT-MODEL.md`: adding an adapter is a review trigger.

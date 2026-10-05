@@ -5350,6 +5350,7 @@ function add(
 // The release descriptor (P2-04): its contract, validator and helpers.
 export * from "./descriptor.js";
 export * from "./packages.js";
+export * from "./feedSetup.js";
 // `.pkey/distribution` (P2b-02): outlets, identities, transports and listing.
 export * from "./distribution.js";
 export * from "./releaseKeys.js";
