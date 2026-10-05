@@ -50,8 +50,7 @@ const SIGN_IN_REFUSAL_COPY: Record<string, string> = {
   type: "That value has the wrong type.",
   empty: "Enter a name, or clear it to use the product's name.",
   too_long: "Use 40 characters or fewer.",
-  forbidden_character:
-    "Remove control characters, quotes and angle brackets.",
+  forbidden_character: "Remove control characters, quotes and angle brackets.",
   reserved: "That name is reserved. Choose your app's own name.",
 };
 

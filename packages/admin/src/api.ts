@@ -3785,9 +3785,7 @@ const rawApi = {
       { method: "POST", body: JSON.stringify(body) },
     ),
   signInSettings: (slug: string) =>
-    call<{ settings: SignInSettings }>(
-      `${p(slug)}/identity/sign-in-settings`,
-    ),
+    call<{ settings: SignInSettings }>(`${p(slug)}/identity/sign-in-settings`),
   updateSignInSettings: (
     slug: string,
     patch: { claimByKey?: boolean; passthroughName?: string | null },
