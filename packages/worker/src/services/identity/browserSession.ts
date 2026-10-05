@@ -130,6 +130,8 @@ export async function createBrowserSession(
     appVersion: meta?.appVersion ?? null,
     sdkName: meta?.sdkName ?? null,
     sdkVersion: meta?.sdkVersion ?? null,
+    // I-05: a browser key entry (plans/I-04.md §2.2) never sets the account binding.
+    boundBy: "key",
   });
   if ("error" in auth) {
     if (auth.error === "device_limit") {

@@ -2,7 +2,8 @@ import * as React from "react";
 import {
   capabilitiesOrNone,
   useCapabilities,
-  useLibraryItems,
+  useDownloadsFor,
+  useLibraryView,
   useLicenses,
   useReleases,
 } from "./data.js";
@@ -14,12 +15,15 @@ import {
 } from "./model/library.js";
 
 /**
- * The library as products (PX-02): `GET /api/licenses` grouped client-side, with
- * `GET /api/releases` for platforms and quick actions when the Release module is on, and
- * `GET /api/library` (PX-W1) for presentation, art, seats and support links.
+ * The library as products (PX-08): `GET /api/library` lists them, with their status, seats,
+ * presentation and the Discover count; `GET /api/licenses` adds each product's licence summaries,
+ * each product's downloads view (PX-W2) the store-aware quick action, and `GET /api/releases`
+ * (when the Release module is on) the fallback and the product page's notes.
  */
 export function useLibrary(): {
   products: LibraryProduct[] | undefined;
+  /** Offers in Discover (G24), or `null` while the Worker can't list them. */
+  discoverCount: number | null;
   isPending: boolean;
   error: unknown;
   retry: () => void;
@@ -27,35 +31,46 @@ export function useLibrary(): {
 } {
   const caps = useCapabilities();
   const releasesOn = capabilitiesOrNone(caps).modules.releases;
+  const library = useLibraryView();
   const licenses = useLicenses();
   const releases = useReleases(releasesOn);
-  const items = useLibraryItems();
+  const slugs = React.useMemo(
+    () => library.data?.products.map((p) => p.product) ?? [],
+    [library.data],
+  );
+  const downloads = useDownloadsFor(slugs, releasesOn);
   const [device] = React.useState(() => detectDevice());
   const products = React.useMemo(
     () =>
-      licenses.data
+      library.data
         ? buildLibrary(
-            licenses.data,
+            library.data.products,
+            licenses.data ?? [],
             releases.data ?? [],
             Math.floor(Date.now() / 1000),
-            items.data,
+            downloads.bySlug,
           )
         : undefined,
-    [licenses.data, releases.data, items.data],
+    [library.data, licenses.data, releases.data, downloads.bySlug],
   );
-  // Releases are extra detail: the library shows without them, but waits for a first answer
-  // so quick actions don't change under the pointer.
+  // Licence summaries, releases and downloads views are extra detail: the library waits for a
+  // first answer (so quick actions don't change under the pointer) but never fails for them.
   const releasesPending = releasesOn && releases.isPending;
-  // Same for the server-side library; a failed read keeps the fallbacks, never an error page.
-  const itemsPending = items.isPending && items.fetchStatus !== "idle";
+  const licensesPending = licenses.isPending && licenses.fetchStatus !== "idle";
+  const count = library.data?.discoverCount;
   return {
     products,
+    discoverCount: typeof count === "number" && count >= 0 ? count : null,
     isPending:
-      licenses.isPending || caps.isPending || releasesPending || itemsPending,
-    error: licenses.error,
+      library.isPending ||
+      caps.isPending ||
+      releasesPending ||
+      licensesPending ||
+      downloads.pending,
+    error: library.error,
     retry: () => {
+      void library.refetch();
       void licenses.refetch();
-      void items.refetch();
       if (releasesOn) void releases.refetch();
     },
     device,

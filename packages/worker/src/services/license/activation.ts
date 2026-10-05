@@ -137,7 +137,12 @@ async function activateWithKey(
     license,
     deviceId,
     now,
-    { ...deviceMetadata(req), fingerprint: await readFingerprint(req) },
+    {
+      ...deviceMetadata(req),
+      fingerprint: await readFingerprint(req),
+      // I-05: key entry binds the device by key and NEVER sets the account binding.
+      boundBy: "key",
+    },
   );
   if ("error" in authorized) return authorizationError(authorized);
   await touchKey(db, product.slug, keyHash, now);

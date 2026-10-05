@@ -46,7 +46,11 @@ import {
   type Db,
   type Env,
 } from "../../core/platform.js";
-import { openProductSecret, type Product } from "../../core/products.js";
+import {
+  openProductSecret,
+  type Product,
+  type ProductPublic,
+} from "../../core/products.js";
 import { renderBrandPage } from "../../core/brandHtml.js";
 import { errorResponse, json, methodNotAllowed } from "../../core/errors.js";
 import {
@@ -612,16 +616,30 @@ export async function applyProvisioning(
   }
 }
 
+/** Why the auto-issue policy entitles an identity: a group in the product's `groupRoleMap` (the
+ *  first mapped group the identity holds, preferring one that names a tier), or the product's
+ *  `oidcDefault` auto-issue rule. Discover shows it as the offer's reason (PX-W10, G24). */
+export type AutoIssueGrantVia =
+  | { kind: "group"; group: string }
+  | { kind: "default" };
+
+/** What the auto-issue policy grants an identity: the tier, its expiry, and why. */
+export interface AutoIssueGrant {
+  tierId: string | null;
+  expiresAt: number | null;
+  via: AutoIssueGrantVia;
+}
+
 /** The tier an identity is entitled to under the product's group map, or its `oidcDefault`
- *  policy: `{ tierId, expiresAt }`, or `{ error: "not-entitled" }`. Read-only. */
+ *  policy: `{ tierId, expiresAt, via }`, or `{ error: "not-entitled" }`. Read-only. This is THE
+ *  auto-issue policy function: sign-in mints with it (`activateFromIdentity`) and Discover lists
+ *  with it (`previewIdentityIssue`), so the two cannot disagree about who gets what. */
 async function identityTier(
   db: Db,
-  product: Product,
-  identity: OidcIdentity,
+  product: Pick<ProductPublic, "slug" | "autoIssue">,
+  identity: Pick<OidcIdentity, "groups">,
   now: number,
-): Promise<
-  { tierId: string | null; expiresAt: number | null } | { error: string }
-> {
+): Promise<AutoIssueGrant | { error: string }> {
   const oidc = await getOidcConfig(db, product.slug);
   // A malformed map grants nothing (fail closed) instead of throwing out of sign-in (R8-06).
   const map =
@@ -629,22 +647,29 @@ async function identityTier(
       oidc?.group_role_map_json,
     ) ?? {};
 
-  let entitled = false;
+  let entitledBy: string | null = null;
+  let tierGroup: string | null = null;
   let tierId: string | null = null;
   for (const g of identity.groups) {
     const m = map[g];
     if (m) {
-      entitled = true;
-      if (m.tier && !tierId) tierId = m.tier;
+      if (entitledBy === null) entitledBy = g;
+      if (m.tier && !tierId) {
+        tierId = m.tier;
+        tierGroup = g;
+      }
     }
   }
-  if (!entitled) {
+  let via: AutoIssueGrantVia;
+  if (entitledBy !== null) {
+    via = { kind: "group", group: tierGroup ?? entitledBy };
+  } else {
     // No mapped group. If the product opts into an OIDC default tier, any authenticated user
     // lands on the free tier instead of a hard 403; with the policy unset this is byte-for-byte
     // the previous behaviour.
     if (allowsOidcDefault(product.autoIssue) && product.autoIssue.tierId) {
-      entitled = true;
       tierId = product.autoIssue.tierId;
+      via = { kind: "default" };
     } else {
       return { error: "not-entitled" };
     }
@@ -654,7 +679,7 @@ async function identityTier(
   if (tierId) {
     expiresAt = tierExpiresAt(await getTier(db, product.slug, tierId), now);
   }
-  return { tierId, expiresAt };
+  return { tierId, expiresAt, via };
 }
 
 /** Would `activateFromIdentity` refuse this identity? The same two refusals, read-only: no
@@ -677,7 +702,7 @@ async function identityRefusal(
  *  applied to an empty payload. Read-only. */
 async function provisionedOverrides(
   db: Db,
-  product: Product,
+  product: Pick<ProductPublic, "slug">,
   identity: OidcIdentity,
   now: number,
 ): Promise<ManagedPayload> {
@@ -718,11 +743,42 @@ async function postActivationDeviceLimit(
   );
 }
 
+/**
+ * The first-load auto-issue, DRY RUN (PX-W10, docs/design/PORTAL.md G24): what
+ * `activateFromIdentity` would mint for `identity` on this product, computed by the same two
+ * read-only steps it starts with (the policy, `identityTier`, and the provisioning hooks,
+ * `provisionedOverrides`) and writing nothing. `{ error: "not-entitled" }` when the policy grants
+ * nothing; `existing` is the licence the identity already holds here, which the caller treats as
+ * "already held" rather than as an offer.
+ */
+export async function previewIdentityIssue(
+  db: Db,
+  product: ProductPublic,
+  identity: OidcIdentity,
+  now: number,
+): Promise<
+  | (AutoIssueGrant & {
+      overrides: ManagedPayload;
+      existing: LicenseRow | null;
+    })
+  | { error: string }
+> {
+  const grant = await identityTier(db, product, identity, now);
+  if ("error" in grant) return grant;
+  return {
+    ...grant,
+    overrides: await provisionedOverrides(db, product, identity, now),
+    existing: await getLicenseBySub(db, product.slug, identity.sub),
+  };
+}
+
 /** Find or mint a license for an identity. Returns the licenseId, or an error if the
  *  identity's groups don't grant entitlement. Idempotent on the OIDC subject. */
 export async function activateFromIdentity(
   db: Db,
-  product: Product,
+  // Never signs, so the public projection is enough: the portal's Discover claim (PX-W10) holds
+  // one, and minting through this exact function is what makes it the auto-issue path.
+  product: ProductPublic,
   identity: OidcIdentity,
   now: number,
   /** The license the caller's device is already using, when it presented one. An anonymous
@@ -883,7 +939,11 @@ export async function authorizeAndMint(
 ): Promise<string> {
   const row = await getLicense(db, product.slug, licenseId);
   if (!row) throw new Error("license not found");
-  const result = await authorizeDevice(env, db, product, row, deviceId, now);
+  // I-05: bound by a sign-in. The product-OIDC licence is `sub`-keyed and attached to no account
+  // (plans/I-04.md §8 Q6), so no pairwise subject is set here; passthrough sign-in (I-08) does.
+  const result = await authorizeDevice(env, db, product, row, deviceId, now, {
+    boundBy: "signin",
+  });
   if ("error" in result) throw new Error(result.error);
   return result.token;
 }

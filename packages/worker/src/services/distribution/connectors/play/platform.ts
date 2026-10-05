@@ -10,7 +10,9 @@
  *   - **Track status (opt-in, `?tracks=1`).** For at most `MAX_TRACK_LOOKUPS` apps (in name order) one short edit is
  *     opened, its tracks listed and the edit deleted (`edits.insert` → `edits.tracks.list` →
  *     `edits.delete`, never committed) — the same discipline as the connector's poll: nothing is
- *     held open. Apps past the cap are listed without tracks (`truncated`).
+ *     held open. Apps past the cap are listed without tracks (`truncated`). A-18e: each lookup
+ *     first takes that package's EDIT LEASE (`lease.ts`, purpose `lister`); while another caller
+ *     holds it (a provisioning run), that app is listed with a "busy" `tracksError` and no edit.
  *   - **Tokens.** From `platformGoogleAccessToken` for a TEAM-WIDE purpose, on behalf of the
  *     admin who asked (the platform audit's actor). A product's connector never uses this path.
  */
@@ -35,6 +37,7 @@ import {
   type FetchImpl,
 } from "./client.js";
 import { errorLine } from "./run.js";
+import { PlayEditLeaseHeld, withPlayEditLease } from "./lease.js";
 import { PLAY_PLATFORM_CREDENTIAL } from "./setup.js";
 import {
   cachedPlatformApps,
@@ -172,15 +175,29 @@ async function readTracks(
       origin: ANDROID_PUBLISHER_ORIGIN,
       packageName,
       token: teamToken(o, ANDROID_PUBLISHER_SCOPE),
+      gated: true,
       ...(o.fetchImpl ? { fetchImpl: o.fetchImpl } : {}),
     }),
   );
-  const edit = await publisher.insertEdit();
-  try {
-    return tracksView(await publisher.listTracks(edit));
-  } finally {
-    await publisher.deleteEdit(edit).catch(() => undefined);
-  }
+  const leased = await withPlayEditLease(
+    o.db,
+    {
+      packageName,
+      purpose: "lister",
+      actor: `admin:${o.actor.sub}`,
+    },
+    async () => {
+      const edit = await publisher.insertEdit();
+      try {
+        return tracksView(await publisher.listTracks(edit));
+      } finally {
+        await publisher.deleteEdit(edit).catch(() => undefined);
+      }
+    },
+  );
+  if (!leased.ok)
+    throw new PlayEditLeaseHeld(leased.held.purpose, leased.held.expiresAt);
+  return leased.value;
 }
 
 async function fetchPlayApps(
@@ -205,7 +222,10 @@ async function fetchPlayApps(
         tracks = await readTracks(o, a.packageName);
       } catch (e) {
         // One app the account cannot edit must not hide the rest: its status line is shown.
-        tracksError = errorLine(e);
+        tracksError =
+          e instanceof PlayEditLeaseHeld
+            ? `busy: a ${e.purpose} edit holds this app's edit lease`
+            : errorLine(e);
       }
     } else truncated = true;
     apps.push({

@@ -3,14 +3,45 @@ import {
   attentionItems,
   bestLicense,
   buildLibrary,
+  coverageNote,
   detectDevice,
   licenseStatus,
   platformsOnlyNote,
   quickAction,
   readPresentation,
 } from "../src/portal/model/library.js";
-import { artifact, DAY, license, NOW_S, release } from "./portalHarness.js";
-import type { PortalLibraryItem } from "../src/portal/api.js";
+import {
+  artifact,
+  DAY,
+  dlFile,
+  downloadsView,
+  libraryFor,
+  libraryItem,
+  storeLink,
+  license,
+  NOW_S,
+  release,
+} from "./portalHarness.js";
+import type {
+  PortalLibraryItem,
+  PortalLicenseSummary,
+  PortalRelease,
+} from "../src/portal/api.js";
+
+/** The library as the page builds it: the Worker's items (derived from the licences unless given). */
+function build(
+  licenses: PortalLicenseSummary[],
+  releases: PortalRelease[],
+  now: number,
+  items?: PortalLibraryItem[],
+) {
+  return buildLibrary(
+    items ?? libraryFor(licenses).products,
+    licenses,
+    releases,
+    now,
+  );
+}
 
 const ph = (s?: string) => `#/p/x${s ? `/${s}` : ""}`;
 const MAC = { os: "macos" as const, phone: false };
@@ -112,7 +143,7 @@ describe("status model (§5.3), first match wins", () => {
 
 describe("grouping", () => {
   it("is one product per slug, newest first, with platforms from covered releases", () => {
-    const lib = buildLibrary(
+    const lib = build(
       [
         license({
           product: "nightfall",
@@ -177,8 +208,8 @@ describe("grouping", () => {
 });
 
 describe("quick action (§5.4)", () => {
-  const product = (releases: Parameters<typeof buildLibrary>[1], over = {}) =>
-    buildLibrary([license({ product: "x", ...over })], releases, NOW_S)[0]!;
+  const product = (releases: PortalRelease[], over = {}) =>
+    build([license({ product: "x", ...over })], releases, NOW_S)[0]!;
 
   it("downloads the Universal build for this Mac, named honestly", () => {
     const p = product([
@@ -321,7 +352,7 @@ describe("the device in hand", () => {
 
 describe("Needs attention", () => {
   it("lists only items with something to press", () => {
-    const lib = buildLibrary(
+    const lib = build(
       [
         license({
           product: "glyphsmith",
@@ -381,7 +412,7 @@ describe("the server-side library (PX-W1: G1, G5, G16)", () => {
   const lic = () => license({ product: "x", id: "lic_x_1", deviceCount: 2 });
 
   it("takes presentation, same-origin art and the seat limit", () => {
-    const [p] = buildLibrary([lic()], [], NOW_S, [item()]);
+    const [p] = build([lic()], [], NOW_S, [item()]);
     expect(p!.name).toBe("Nightfall");
     expect(p!.presentation).toMatchObject({
       developer: "Kiln Games",
@@ -395,7 +426,7 @@ describe("the server-side library (PX-W1: G1, G5, G16)", () => {
   });
 
   it("never loads art from another origin", () => {
-    const [p] = buildLibrary([lic()], [], NOW_S, [
+    const [p] = build([lic()], [], NOW_S, [
       item({ iconUrl: "https://evil.example/i.png", headerUrl: null }),
     ]);
     expect(p!.presentation.iconUrl).toBeNull();
@@ -406,7 +437,7 @@ describe("the server-side library (PX-W1: G1, G5, G16)", () => {
     const full = item({
       license: { ...item().license, activeSeatCount: 3, deviceCount: 3 },
     });
-    const [p] = buildLibrary([lic()], [], NOW_S, [full]);
+    const [p] = build([lic()], [], NOW_S, [full]);
     expect(p!.status).toMatchObject({
       kind: "deviceLimit",
       label: "Device limit reached",
@@ -424,11 +455,186 @@ describe("the server-side library (PX-W1: G1, G5, G16)", () => {
     });
   });
 
-  it("ignores seats the server counted for a different licence", () => {
-    const [p] = buildLibrary([lic()], [], NOW_S, [
-      item({ license: { ...item().license, id: "lic_other" } }),
+  it("describes the licence the Worker ranked best, with its seats", () => {
+    const newer = license({
+      product: "x",
+      id: "lic_x_2",
+      activatedAt: NOW_S - DAY,
+      status: "disabled",
+    });
+    const [p] = build([lic(), newer], [], NOW_S, [item()]);
+    expect(p!.best.id).toBe("lic_x_1");
+    expect(p!.licenses.map((l) => l.id)).toEqual(["lic_x_1", "lic_x_2"]);
+    expect(p!.seats).toEqual({ limit: 3, inUse: 2 });
+  });
+});
+
+describe("PX-08: the Worker's status, in words", () => {
+  it("words the Worker's device limit, red, with the seat count", () => {
+    const l = license({ product: "orbit", deviceCount: 2 });
+    const [p] = build([l], [], NOW_S, [libraryItem(l, { deviceLimit: 2 })]);
+    expect(p!.status).toMatchObject({
+      kind: "deviceLimit",
+      tone: "danger",
+      note: "2 of 2 devices",
+    });
+  });
+
+  it("an expired licence that still downloads an older build says where updates ended", () => {
+    const l = license({ product: "ember", expiresAt: NOW_S - 20 * DAY });
+    const d = downloadsView(
+      "ember",
+      [dlFile({ artifactId: "e18", platform: "macos", version: "1.8" })],
+      { latest: false },
+    );
+    const [p] = buildLibrary(
+      [libraryItem(l)],
+      [l],
+      [],
+      NOW_S,
+      new Map([["ember", d]]),
+    );
+    expect(p!.status).toMatchObject({
+      kind: "expired",
+      note: "Updates ended at 1.8",
+    });
+    expect(quickAction(p!, MAC, ph)).toMatchObject({
+      kind: "download",
+      label: "Download 1.8",
+    });
+    expect(coverageNote(p!)).toBe("Version 2.0 isn't covered.");
+  });
+
+  it("names the developer who suspended a licence", () => {
+    const l = license({ product: "x", status: "disabled", usable: false });
+    const [p] = build([l], [], NOW_S, [
+      libraryItem(l, { developerName: "Kiln Games" }),
     ]);
-    expect(p!.seats).toBeNull();
-    expect(p!.status.note).toBe("2 devices");
+    expect(p!.status.note).toBe("Suspended by Kiln Games.");
+  });
+
+  it("lists only the Worker's products, in its order, even before licences load", () => {
+    const a = license({ product: "a", activatedAt: NOW_S - 9 * DAY });
+    const b = license({ product: "b", activatedAt: NOW_S - DAY });
+    const lib = buildLibrary([libraryItem(a), libraryItem(b)], [], [], NOW_S);
+    expect(lib.map((p) => p.slug)).toEqual(["a", "b"]);
+    expect(lib[0]!.best.id).toBe(a.id);
+  });
+});
+
+describe("PX-08: store-aware quick actions (§5.4)", () => {
+  const ANDROID = { os: "android" as const, phone: true };
+  const WIN = { os: "windows" as const, phone: false };
+  const withView = (d: ReturnType<typeof downloadsView>) => {
+    const l = license({ product: "x" });
+    return buildLibrary(
+      [libraryItem(l)],
+      [l],
+      [],
+      NOW_S,
+      new Map([["x", d]]),
+    )[0]!;
+  };
+  const appStore = storeLink({
+    kind: "app-store",
+    label: "App Store",
+    platforms: ["ios"],
+  });
+  const steam = storeLink({
+    kind: "steam",
+    label: "Steam",
+    platforms: ["windows", "macos", "linux"],
+  });
+
+  it("downloads the build the Worker picked for this Mac, named honestly", () => {
+    const p = withView(
+      downloadsView("x", [dlFile({ artifactId: "m", platform: "macos" })]),
+    );
+    expect(quickAction(p, MAC, ph)).toMatchObject({
+      kind: "download",
+      label: "Download for macOS",
+      detail: "Version 1.4.2 · Universal · 2.1 GB",
+      artifact: { artifactId: "m" },
+      release: { releaseId: "rel_1.4.2" },
+    });
+  });
+
+  it("never picks between two Mac builds", () => {
+    const p = withView(
+      downloadsView("x", [
+        dlFile({ artifactId: "a", platform: "macos", arch: "arm64" }),
+        dlFile({ artifactId: "i", platform: "macos", arch: "x86_64" }),
+      ]),
+    );
+    expect(quickAction(p, MAC, ph)).toEqual({
+      kind: "link",
+      label: "Download for macOS",
+      href: "#/p/x/get",
+      icon: "downloads",
+    });
+  });
+
+  it("a phone gets its own store's page", () => {
+    const p = withView(
+      downloadsView("x", [dlFile({ artifactId: "m", platform: "macos" })], {
+        stores: [appStore, steam],
+      }),
+    );
+    expect(quickAction(p, PHONE, ph)).toEqual({
+      kind: "link",
+      label: "Get it on the App Store",
+      href: "https://store.example/app-store",
+      icon: "store",
+      external: true,
+    });
+    expect(p.stores.map((s) => s.kind)).toEqual(["app-store", "steam"]);
+  });
+
+  it("a phone without a store emails itself the desktop download", () => {
+    const p = withView(
+      downloadsView("x", [dlFile({ artifactId: "w", platform: "windows" })], {
+        recommend: null,
+        stores: [appStore],
+      }),
+    );
+    expect(quickAction(p, ANDROID, ph)).toEqual({
+      kind: "email",
+      label: "Email me the download",
+      platform: "windows",
+    });
+  });
+
+  it("a computer with no build for it opens a store that sells one, else the downloads", () => {
+    const linuxOnly = [dlFile({ artifactId: "l", platform: "linux" })];
+    expect(
+      quickAction(
+        withView(
+          downloadsView("x", linuxOnly, { recommend: null, stores: [steam] }),
+        ),
+        WIN,
+        ph,
+      ),
+    ).toMatchObject({ label: "Get it on Steam", icon: "store" });
+    expect(
+      quickAction(
+        withView(downloadsView("x", linuxOnly, { recommend: null })),
+        WIN,
+        ph,
+      ),
+    ).toMatchObject({ label: "See downloads", href: "#/p/x/get" });
+  });
+
+  it("a store that isn't live, or has no page, is never offered", () => {
+    const p = withView(
+      downloadsView("x", [], {
+        recommend: null,
+        stores: [
+          { ...appStore, live: false },
+          { ...appStore, id: "app-store:b", url: null },
+        ],
+      }),
+    );
+    expect(p.stores).toEqual([]);
+    expect(quickAction(p, PHONE, ph)).toMatchObject({ label: "View details" });
   });
 });

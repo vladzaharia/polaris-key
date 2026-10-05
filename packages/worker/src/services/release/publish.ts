@@ -320,9 +320,12 @@ async function handleUploads(ctx: ServiceContext): Promise<Response> {
   // A ticket also carries the F-Droid repository files `pkey feeds fdroid` uploads (P2b-05):
   // `distribution:feeds` buys one too. Only the submit (`release:publish`) ingests a release, and
   // only the feed register (`distribution:feeds`) registers feed files, each redeeming its own.
+  // So does `distribution:listing` (A-18d), for the listing assets `pkey listing assets` derived;
+  // only the listing register redeems that ticket.
   const holder = await requirePublisher(ctx, [
     "release:publish",
     "distribution:feeds",
+    "distribution:listing",
   ]);
   if (holder instanceof Response) return holder;
   const body = await readCiJson(req, MAX_UPLOADS_BODY_BYTES);

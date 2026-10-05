@@ -21,6 +21,7 @@ import type { TransportCommon } from "./transport.js";
 import { baPackage, baUpload } from "./transportAppleBa.js";
 import { padModules, type PadDelivery } from "./transportPlayPad.js";
 import { steamVdf } from "./transportSteam.js";
+import { cmdStorefront } from "./storefronts/command.js";
 
 /** The Action's inputs, in `action.yml` order. */
 export const ACTION_INPUTS = [
@@ -56,6 +57,17 @@ export const ACTION_INPUTS = [
   "steam-setlive",
   "asc-expect-resource",
   "transport-report",
+  "storefront",
+  "itch-platform",
+  "storefront-outlet",
+] as const;
+
+/** A-18h: the `storefront` input's steps, onto `pkey storefront …`. */
+export const ACTION_STOREFRONT_STEPS = [
+  "itch-push",
+  "snap-metadata",
+  "snap-upload",
+  "snap-upload-metadata",
 ] as const;
 
 /** P5-08: the `transport` input's steps, onto `pkey transport …`. */
@@ -194,6 +206,20 @@ export async function runAction(io: ActionIo): Promise<number> {
     const transport = input("transport");
     const given0 = (names: readonly (typeof ACTION_INPUTS)[number][]) =>
       names.filter((n) => input(n) !== undefined);
+    const storefront = input("storefront");
+    if (storefront !== undefined) {
+      if (transport !== undefined)
+        throw new Error(
+          "storefront and transport are separate steps: set one per step.",
+        );
+      await runStorefrontStep(io, input, given0, product, dir, storefront);
+      return 0;
+    }
+    const storefrontOnly = given0(["itch-platform", "storefront-outlet"]);
+    if (storefrontOnly.length)
+      throw new Error(
+        `${storefrontOnly.join(", ")} ${storefrontOnly.length === 1 ? "applies" : "apply"} only with the storefront input.`,
+      );
     if (transport !== undefined) {
       await runTransportStep(io, input, given0, product, dir, transport);
       return 0;
@@ -472,6 +498,114 @@ async function runTransportStep(
       });
     }
   }
+}
+
+/**
+ * A-18h: one CI-plane store step (`pkey storefront …`), through the store's command allow-list,
+ * reported back into the ledger. `dir` is the build (itch-push), the `.snap` or the directory
+ * holding exactly one (snap-upload, snap-upload-metadata), or snapcraft.yaml or its project
+ * directory (snap-metadata). Publish and transport inputs are refused, not ignored.
+ */
+async function runStorefrontStep(
+  io: ActionIo,
+  input: (name: (typeof ACTION_INPUTS)[number]) => string | undefined,
+  given: (names: readonly (typeof ACTION_INPUTS)[number][]) => string[],
+  product: string,
+  dir: string,
+  step: string,
+): Promise<void> {
+  if (!(ACTION_STOREFRONT_STEPS as readonly string[]).includes(step))
+    throw new Error(
+      `storefront must be one of ${ACTION_STOREFRONT_STEPS.join(", ")} (got ${JSON.stringify(step)}).`,
+    );
+  const wrong = given([
+    "deliverable",
+    "tag",
+    "source",
+    "meta",
+    "release-key",
+    "content-key",
+    "delegation",
+    "min-supported-seq",
+    "content-stamp",
+    "embedded",
+    "pins",
+    "out",
+    "bases",
+    "script-extensions",
+    "script-types",
+    "content-api",
+    "variant",
+    "transport-out",
+    "gradle-project",
+    "pad-delivery",
+    "steam-depot",
+    "steam-branch",
+    "steam-setlive",
+    "asc-expect-resource",
+  ]).filter((n) => !(n === "deliverable" && input(n) === "app"));
+  if (input("transport-report") === "false") wrong.push("transport-report");
+  if (wrong.length)
+    throw new Error(
+      `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to a storefront step (${step}).`,
+    );
+  if (step !== "itch-push" && input("itch-platform") !== undefined)
+    throw new Error("itch-platform applies only to itch-push.");
+  const dryRun = input("dry-run");
+  const flags: Record<string, string | boolean> = {
+    product,
+    ...(input("base-url") ? { "base-url": input("base-url")! } : {}),
+    ...(dryRun === "true" ? { "dry-run": true } : {}),
+    ...(input("storefront-outlet")
+      ? { outlet: input("storefront-outlet")! }
+      : {}),
+  };
+  let positional: string[];
+  switch (step) {
+    case "itch-push": {
+      const platform = input("itch-platform");
+      const version = input("version") ?? input("tag")?.replace(/^v/, "");
+      if (!platform)
+        throw new Error(
+          "itch-push needs itch-platform: windows, linux, mac or android.",
+        );
+      if (!version)
+        throw new Error("itch-push needs version: butler's --userversion.");
+      positional = ["itch", "push"];
+      Object.assign(flags, { dir, platform, version });
+      if (input("channel")) flags.channel = input("channel")!;
+      break;
+    }
+    case "snap-upload": {
+      const channel = input("channel");
+      if (!channel)
+        throw new Error(
+          "snap-upload needs channel: the release channel the outlet's channels map onto snap channels.",
+        );
+      positional = ["snap", "upload"];
+      Object.assign(flags, { snap: dir, channel });
+      break;
+    }
+    case "snap-upload-metadata":
+      positional = ["snap", "upload-metadata"];
+      flags.snap = dir;
+      break;
+    default:
+      positional = ["snap", "metadata"];
+      flags.yaml = dir;
+  }
+  const code = await cmdStorefront(
+    { positional, flags, rest: [] },
+    {
+      cwd: io.cwd,
+      env: io.env,
+      stdout: io.stdout,
+      stderr: io.stderr,
+      fetchImpl: io.fetchImpl,
+      sleep: io.sleep,
+    },
+  );
+  if (code !== 0) throw new Error(`storefront ${step} failed.`);
 }
 
 async function writeOutputs(

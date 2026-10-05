@@ -15,7 +15,9 @@ export const CI_TOKEN_PREFIX = "pkeyci_";
  * `DEFAULT_CI_SCOPES` (`core/publisher.ts`), so an operator grants it deliberately.
  * `distribution:feeds` (P2b-05) reads the F-Droid generator's inputs, registers the repository
  * files CI signed, and buys an upload ticket for them (P2-02's uploads route accepts it beside
- * `release:publish`); it is opt-in too.
+ * `release:publish`); it is opt-in too. `distribution:listing` (A-18d) buys an upload ticket for
+ * the listing assets `pkey listing assets` derived and registers them into `dist_listing_assets`;
+ * opt-in as well.
  */
 export const CI_SCOPES = [
   "release:publish",
@@ -24,6 +26,7 @@ export const CI_SCOPES = [
   "distribution:report",
   "distribution:rollout",
   "distribution:feeds",
+  "distribution:listing",
 ] as const;
 export type CiScope = (typeof CI_SCOPES)[number];
 

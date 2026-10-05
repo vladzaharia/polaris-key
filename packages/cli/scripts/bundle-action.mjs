@@ -113,6 +113,9 @@ async function bundle() {
     loader: { ".wasm": "binary" },
     absWorkingDir: pkgDir,
     entryPoints: ["src/bin/standalone.ts"],
+    // `pkey listing assets` (A-18d) loads the native sharp library on first use; the bundle runs
+    // where none is installed, so it stays external and that one command asks for it.
+    external: ["sharp"],
     bundle: true,
     platform: "node",
     format: "esm",

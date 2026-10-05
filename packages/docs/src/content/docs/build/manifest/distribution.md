@@ -108,7 +108,7 @@ optional. A bad value is `invalid_outlet_identity`.
 | `steam`                    | `appId` (numeric), `branches` (channel → Steam branch)                                                                                    |
 | `itch`                     | `target` (the butler `user/game` slug), `gameId` (numeric)                                                                                |
 | `flathub`                  | `appId` (a Flatpak id such as `gg.vlad.Diceroll`)                                                                                         |
-| `snap`                     | `name`                                                                                                                                    |
+| `snap`                     | `name`, `channels` (channel → snap channel, `[<track>/]<risk>[/<branch>]`)                                                                |
 | `winget`                   | `packageIdentifier` (such as `Vlad.Diceroll`)                                                                                             |
 | `web`                      | none                                                                                                                                      |
 
@@ -137,8 +137,13 @@ optional. A bad value is `invalid_outlet_identity`.
 - **`flights`** maps a declared channel to a Microsoft Store package flight, named by its
   Partner Center friendly name or its flight id. The non-flighted submission is always the
   `stable` channel, so `flights` names only the others (`{ beta: "Beta testers" }`).
-- **`tracks`, `branches` and `flights`** keys must be declared channels — `stable`, `beta`, a manual
-  channel, or one of `deliverables.app.channels` — otherwise `unknown_channel_ref`.
+- **`snap.channels`** maps a declared channel to the snap channel `snapcraft upload --release`
+  releases to (`{ stable: "latest/stable", beta: "beta" }`). The publish action's allow-list
+  admits no other channel, so a snap step for a channel without an entry is refused (see
+  [Storefront steps](/docs/build/ci/#storefront-steps-itchio-and-snap)).
+- **`tracks`, `branches`, `flights` and `channels`** keys must be declared channels — `stable`,
+  `beta`, a manual channel, or one of `deliverables.app.channels` — otherwise
+  `unknown_channel_ref`.
 - **`packageFamilyName`** is the MSIX `<Name>_<PublisherId>`, the publisher id being 13
   characters. The Microsoft Store and App Installer entries may differ: a Store-signed and a
   self-signed package can have different publisher ids.

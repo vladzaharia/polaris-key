@@ -347,6 +347,7 @@ describe("GET /update/<channel>/feed.jws", () => {
           releaseCatalog: () => null,
           delivery: () => null,
           outletCapabilities: async () => null,
+          licenseProvenance: () => null,
         },
       },
       "stable",

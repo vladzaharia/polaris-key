@@ -52,12 +52,14 @@ export const SECTION_LABEL: Record<ProductSection, string> = {
 };
 
 /**
- * The sections this product has. Cloud Sync (G26) and Package access (G13) have no data source
- * yet and are always absent; Help needs the developer's support links (G16).
+ * The sections this product has. Cloud Sync (G26) has no data source yet and is always absent;
+ * Package access (G13, F-21) shows when the selected licence's product has a private feed;
+ * Help needs the developer's support links (G16).
  */
 export function presentSections(
   p: LibraryProduct,
   releasesOn: boolean,
+  extra: { packageAccess?: boolean } = {},
 ): ProductSection[] {
   const set = new Set<ProductSection>();
   const accountBound = p.status.kind === "signedInApp";
@@ -67,6 +69,7 @@ export function presentSections(
   }
   set.add("license");
   if (!accountBound) set.add("devices");
+  if (extra.packageAccess) set.add("package");
   const pres = p.presentation;
   if (pres.supportUrl || pres.supportEmail || pres.website) set.add("help");
   return DESKTOP_ORDER.filter((s) => set.has(s));
