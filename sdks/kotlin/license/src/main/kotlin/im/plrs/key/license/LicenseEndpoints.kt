@@ -103,8 +103,9 @@ public sealed interface ActivationResult {
     public data class Refused(override val code: String, val status: Int, val message: String?) : ActivationResult
 
     /**
-     * Transport failure (`code` = `network`), a 5xx or an unreadable answer (`server-error`). [message] is
-     * for logs only: a kit shows copy for [code], never this text.
+     * Transport failure (`code` = `network`), a 5xx or an unreadable answer (`server-error`). Both are
+     * client-kind registry codes (`conformance/parity/errors.json`, `ErrorCode.network` and
+     * `ErrorCode.serverError`). [message] is for logs only: a kit shows copy for [code], never this text.
      */
     public data class Error(val message: String, override val code: String = ErrorCode.serverError, val status: Int? = null) : ActivationResult
 }

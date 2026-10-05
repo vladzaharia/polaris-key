@@ -161,9 +161,12 @@ client.identity.waitForSignIn(prompt)
   once `fetchCatalog()` has run, else against the document's JSON type (`invalid-options`);
   `clear(key)` and `clearAll()` remove them. They live in `local-config.json` beside the token
   store (on Android, the Keystore store's no-backup directory), or any `StateSlot` passed as
-  `ConfigClientOptions.localStore`. `setting(key)` is a live `StateFlow` of the key's effective
-  value and `changes` a `SharedFlow<ConfigChange>` of every change (a local override or a new
-  document). `fetchCatalog()` / `catalog` type the served catalog (label, description, schema,
+  `ConfigClientOptions.localStore`. This deliberately differs from the plan's Jetpack DataStore
+  (notes/SDK-PARITY-PASS.md §3.11, SP-K07): one small JSON file read whole and replaced
+  atomically keeps `:config` free of an Android dependency, the same on the JVM and Android, and
+  on Android the no-backup directory keeps overrides out of cloud backups, as the token store is.
+  `setting(key)` is a live `StateFlow` of the key's effective value and `changes` a
+  `SharedFlow<ConfigChange>` of every change (a local override or a new document). `fetchCatalog()` / `catalog` type the served catalog (label, description, schema,
   widget) for a settings screen.
 - **`client.events`**: one multi-subscriber `SharedFlow<PolarisEvent>`: `License` (a sync that
   changed the documents, an activation), `Config` (a key's value moved), `UpdateAvailable` (a
