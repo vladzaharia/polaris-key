@@ -3468,6 +3468,13 @@ is no new privilege level and no outbound call.
   → Licensing, which lists every incompatible declaration); it is confirmed (L1) and audited.
   The report route `GET /manage/api/platform/reserved-names` is read-only and returns catalog
   keys and product names, nothing secret.
+- **`IDENTITY_RESERVED_DISPLAY_NAMES` (PX-W13, `identity.reservedDisplayNames`) is a validation
+  severity too.** `warn` (the default) or `error` decides only whether a product or listing name
+  that uses a platform or store name (`reserved_display_name`) is accepted with a warning or
+  refused at link, resync, the deploy hook and console listing edits. A hostile session that sets
+  `warn` gains nothing on the sign-in card: the card's render-time check shows such a name as the
+  product slug in the neutral frame in both modes (see "Passthrough request metadata"). Setting
+  `error` can only make a product's next resync fail; it is confirmed (L1) and audited.
 - **Why nothing else may join it (AT-2).** Whoever takes the admin plane already reaches A2, A3,
   A5 and A6 through the API for as long as the session lasts. A runtime knob that _widens_ what a
   session can do (a longer session TTL, a raised rate limit, a looser `OIDC_ISSUER_ALLOWLIST`, a
@@ -4581,6 +4588,55 @@ sit behind the portal session; the claim also needs the CSRF header.
   `audit`, both with `source: discover`.
 - **Developers can withhold an offer without changing the policy** (`discover_enabled = 0`).
 
+### Passthrough request metadata (PX-W13)
+
+The sign-in card behind "<App> wants you to sign in" (docs/design/PORTAL.md §4.7, G28) shows the
+app's name, developer, icon and origin, and on a device-code sign-in the device's label and the
+user code. WIRE-CONTRACT-V4 §12.7 is the normative form; plans/PX-W13.md §6 is the long form. It
+closes S-16 §5.4 items 13 and 14 (app impersonation on the card, and spoofed device names).
+
+- **Spoofed app names.** `@polaris-key/manifest`'s `checkDisplayName` refuses `product.name`,
+  `listing.name` and `listing.developerName` text that holds a control, zero-width or bidi code
+  point or starts or ends with whitespace (`invalid_display_text`, always an error), and reports
+  a name that contains a reserved term (`reserved_display_name`). The terms are Polaris Key,
+  plrs, Apple, App Store, Google, Google Play, Steam, Valve, Epic Games, Microsoft, Xbox,
+  PlayStation, Nintendo and itch.io. A name is compared as a skeleton: NFKD with marks dropped,
+  lowercased, Cyrillic and Greek look-alikes and `0`, `1`, `rn`, `vv` folded, split on anything
+  that is not a letter or digit, and matched as whole words or as a multi-word term written as one
+  word. The same function runs at ingest (link, resync, deploy hook), on console listing edits,
+  and again when the card renders. A failing app name renders as the product slug with
+  `nameVerified: false`, and a failing developer name is dropped. The render-time check also
+  covers names written before the rule existed and names accepted in `warn` mode. The system
+  product `polaris-key` is exempt from the reserved check, never from the text check. Residual:
+  the confusable map is a heuristic. A look-alike outside it ("Stéäm" with an unlisted
+  homoglyph) reaches the card as written until the list grows, and the platform can add terms
+  later (`identity.reservedDisplayTerms`, registered for ST-04).
+- **Label injection.** A device reports its own label (`deviceName`), so the card frames it as
+  "reported by the device", never as a verified fact. §12.7.1 deletes bidi overrides, isolates and
+  zero-width characters and folds whitespace controls before the label is stored, in every SDK
+  and again in the Worker, and caps it at 64 code points; the legacy confirmation page escapes it
+  as HTML. A label can still say anything printable ("Your bank"); it is display data and no
+  decision reads it. Activation and registration store it only while the device row has none, so
+  a reported label can never overwrite the owner's rename. OS device names are personal data;
+  they are shown to the person, the licence owner and the console, as `devices.label` already
+  was.
+- **The request handle.** `rq_` and 128 random bits, stored under its peppered hash in the
+  single-use store for 10 minutes, and bound to the browser that created it by the
+  `__Host-pk_req` binder (HttpOnly, Secure, SameSite=Lax; its hash is in the record). A handle
+  leaked by a screenshot or a shared URL is useless in another browser: every refusal answers the
+  same `404 not_found`. The record holds the product, the kind, the label, the user code, the
+  origin and a flow reference, and nothing beyond the user code that the device already shows. It
+  holds neither the device code nor `state`. There is no public creation route. Residual: whoever
+  holds both the binder cookie and the handle sees the user code, which they could already see on
+  the confirmation page.
+- **Display-parameter spoofing.** The card's reads (`GET /api/signin/requests/:handle` and
+  `/consent`) and `GET /api/capabilities` read no display query parameter: `appName`, `name`,
+  `icon`, `developer`, `origin` and `device` are ignored, and a test pins it
+  (`packages/worker/test/passthrough.test.ts`). The origin shown is the product's registered one.
+- **App consent.** `GET …/consent` needs the account session and the binder. It writes nothing:
+  the licence line is a dry run, and `scope_hash` (migration 0074) is written by I-08's Continue.
+  `person` (the account's name and email) is shown only to that account's own browser.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The
@@ -4951,7 +5007,7 @@ is edited or its `MSSTORE_SPEC_PIN` re-dated (the docs-drift review: re-read eve
 re-classify every write), or a field joins a store's audit projection (A-17a, A-18a, A-18f); a platform store credential (A-16) is added, used
 without the product's platform pin matching at setup, token and open, cached in a way a hit can
 skip the pin, allowed to fall through from a mis-pinned own credential, or written or opened by a
-file outside its allowlists; the device trust level starts being carried in a signed document or token, an operation trusts `attested` without going through `trustRefusal`, the trust policy becomes writable by anything but the platform-admin `trust-policy` resource, the App Attest root stops being the pinned constant, or a path other than a token rotation keeps the level across a new device token (P6-02); or a new way to obtain a device token or licence without an
+file outside its allowlists; the sign-in card starts reading a display value from anywhere but the server-side client record, a passthrough request handle becomes creatable by a public route, readable without its binder, longer-lived than the sign-in flow, or holds a credential, a server decision starts reading the device label, or a term leaves `RESERVED_DISPLAY_TERMS` (PX-W13); the device trust level starts being carried in a signed document or token, an operation trusts `attested` without going through `trustRefusal`, the trust policy becomes writable by anything but the platform-admin `trust-policy` resource, the App Attest root stops being the pinned constant, or a path other than a token rotation keeps the level across a new device token (P6-02); or a new way to obtain a device token or licence without an
 operator-issued key is added, or a check on one is made conditional on product state (it must be
 folded into `mintIsPublic` or into the edge-mint approval's recorded state — `productWidening` in
 `core/edgeMintApproval.ts`, which the ingest sweep and the `0025_b` backfill follow); or, for

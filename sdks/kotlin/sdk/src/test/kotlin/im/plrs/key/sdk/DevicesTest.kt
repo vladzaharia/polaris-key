@@ -57,6 +57,8 @@ class DevicesTest {
                     core = CoreOptions(
                         productSlug = "djdl", version = "1.0.0", pinnedKeys = signer.trust, trustRefresh = false,
                         store = store, transport = transport, clock = { now },
+                        // PX-W13: a fixed device label, so request bodies do not depend on the host name.
+                        deviceName = "Test Device",
                     ),
                     license = LicenseClientOptions(fingerprint = false),
                     factsSource = { DeviceFacts(DeviceFacts.Os("linux"), DeviceFacts.Hardware(cpuCores = 4), DeviceFacts.Runtime("kotlin", "2.1")) },
@@ -146,7 +148,8 @@ class DevicesTest {
         assertEquals(TokenSource.register, client.core.tokenSource())
         val request = transport.requests().single()
         assertFalse("authorization" in request.headers)
-        assertNull(request.body) // fingerprinting is off here: no body at all
+        // Fingerprinting is off here: the device label (PX-W13 §8 Q2) is the whole body.
+        assertEquals("""{"deviceName":"Test Device"}""", request.body!!.toString(Charsets.UTF_8))
         val (closed, _, _) = client(token = null) { respond(403) }
         assertEquals(RegisterResult.RegistrationClosed, closed.register())
     }

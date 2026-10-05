@@ -132,8 +132,8 @@
       "status": "implemented"
     },
     "identity.devicelabel": {
-      "status": "planned",
-      "wp": "PX-W13"
+      "status": "implemented",
+      "note": "PX-W13: normalizeDeviceLabel over code points, CoreOptions.deviceName and defaultDeviceName (the JVM host name without .local/.lan/.home; on Android Settings.Global.DEVICE_NAME, else Build.MODEL, from the :android glue), on beginSignIn, activation and registration; SignInPrompt.deviceName is the echo, and PolarisSignIn shows it under the countdown."
     },
     "release.changelog": {
       "status": "implemented"

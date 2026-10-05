@@ -1,7 +1,7 @@
 // @pkey-feature core.discover core.sync core.cache license.activate license.enroll
 // @pkey-feature license.deactivate license.reregister devices.register devices.report
 // @pkey-feature config.schema release.changelog release.download
-// @pkey-feature identity.devicecode config.mint
+// @pkey-feature identity.devicecode identity.devicelabel config.mint
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk
 //
@@ -234,6 +234,7 @@ object KotlinReplay {
                         "verificationUriComplete" to JsonPrimitive(p.verificationUriComplete),
                         "expiresIn" to jsonInt(p.expiresIn),
                         "interval" to jsonInt(p.interval),
+                        "deviceName" to (p.deviceName?.let { JsonPrimitive(it) } ?: JsonNull),
                     ),
                 )
             }
@@ -334,6 +335,8 @@ object KotlinReplay {
                     version = installed?.get("version").stringValue ?: t.initial["version"].stringValue!!,
                     pinnedKeys = t.trust, store = store, transport = server, requestTimeoutSeconds = 0.0,
                     expectedServices = services, clock = { clock },
+                    // PX-W13: `initial.deviceName` stands in for the platform's device name; absent = none.
+                    deviceName = t.initial["deviceName"].stringValue ?: "",
                 ),
                 license = LicenseClientOptions(fingerprintSource = replayFingerprint),
                 update = u?.let {
