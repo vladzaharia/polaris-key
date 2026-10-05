@@ -261,10 +261,31 @@ class PolarisKeyClient:
         self._timer: Optional[threading.Thread] = None
 
     @classmethod
-    def create(cls, **opts: Any) -> "PolarisKeyClient":
+    def create(cls, *, auto_discover: Optional[bool] = None, **opts: Any) -> "PolarisKeyClient":
+        """Construct, :meth:`init` (no network) and, with ``auto_discover``, load the product's
+        discovery document so the sub-clients follow the services the product really runs.
+
+        ``auto_discover`` defaults to ``True`` when the host pins no ``expected_services`` (and
+        the client is not local-only): a client that was told nothing should learn the truth
+        rather than guess the suite default. Discovery is best-effort here: unreachable or
+        refused, the client keeps its offline answer (``expected_services``, else the default)
+        and :meth:`discover` can be called again later.
+        """
         c = cls(**opts)
         c.init()
+        if auto_discover is None:
+            auto_discover = opts.get("expected_services") is None and not opts.get("local_only")
+        if auto_discover:
+            c.try_discover()
         return c
+
+    def try_discover(self) -> Any:
+        """:meth:`discover`, but never raising: the result, or ``None`` when the request could
+        not be made (local-only, a transport failure)."""
+        try:
+            return self.discover()
+        except Exception:
+            return None
 
     # ── Lifecycle ───────────────────────────────────────────────────────────────────
     def init(self) -> None:

@@ -4,7 +4,7 @@ Core plus one sub-client per service, mirroring ``@polaris-key/node``::
 
     from polaris_key import PolarisKeyClient
 
-    client = PolarisKeyClient.create(product_slug="djdl", version="1.2.0", trust=PINS)
+    client = polaris_key.create(product_slug="djdl", version="1.2.0", trust=PINS)  # + discovery
     client.status()                      # the licence gate
     client.config.get_config("ui.theme") # layered settings
     client.devices.register()            # keyless device mint (§6)
@@ -36,6 +36,10 @@ from __future__ import annotations
 
 from ._version import DIST_NAME, SDK_NAME, SDK_VERSION, __version__
 from .client import DeviceInfo, PolarisKeyClient, SyncState
+
+#: ``polaris_key.create(**opts)`` — the one-call constructor: build, ``init()`` and (unless
+#: ``expected_services`` is pinned) discover. See :meth:`PolarisKeyClient.create`.
+create = PolarisKeyClient.create
 from .config.client import DEFAULT_ENV_PREFIX, ConfigClient
 from .config.mint import MintedToken
 from .identity.client import IdentityClient, SignInPoll, SignInPrompt, SignInResult
@@ -250,6 +254,7 @@ __all__ = [
     "canonical_arch",
     # facade
     "PolarisKeyClient",
+    "create",
     # supports() and typed "unsupported here" (P1b-10)
     "Support",
     "Supported",
