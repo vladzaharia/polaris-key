@@ -45,6 +45,9 @@ export interface TokenRecord {
   product: string;
   deviceId: string;
   licenseId: string;
+  /** I-05: a mirror of `devices.subject` (the pairwise subject signed in on the device). D1 is
+   *  the authority: `validateDeviceToken` always reads the device row. Absent = none. */
+  subject?: string;
 }
 
 export async function getTokenRecord(

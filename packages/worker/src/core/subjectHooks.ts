@@ -1,0 +1,252 @@
+/**
+ * Core's subject hooks (I-05; plans/I-04.md §6.2): the clearing hook for the device binding, the
+ * licence-ownership revocation hook, and the registry through which every store of account ×
+ * product data hears about merges and deletions.
+ *
+ * Identity calls these; Config (U-03) and Cloud Sync (U-05) register into the registry. Because
+ * all of it is Core, neither of them imports Identity and Identity imports neither (rule 6).
+ */
+
+import type { Db } from "../db/types.js";
+import type { Env } from "../env.js";
+import { revokeAllRegistryTokens } from "./registryTokens.js";
+import { mirrorTokenSubject } from "./accountSubjects.js";
+import { retireDeviceBinding, writeDeviceSubject } from "./devices.js";
+
+// ── The registry of account × product data ──────────────────────────────────────────────────
+
+/** What a hook gets besides its arguments. */
+export interface SubjectStoreContext {
+  db: Db;
+  env: Env;
+  now: number;
+}
+
+/**
+ * A store keyed by pairwise subject (managed config overrides, Cloud Sync data, later the layer 2
+ * app profile). Every such store registers once, at module load, under a stable name.
+ */
+export interface SubjectStore {
+  /** Re-key `from`'s data to `to` for one product (an account merge, D21). A collision (both
+   *  hold data) is the store's to resolve and must never silently overwrite (S-16 §5.1). */
+  merge(
+    ctx: SubjectStoreContext,
+    args: { product: string; from: string; to: string },
+  ): Promise<void>;
+  /** Delete the subject's data for one product (per-product removal, account deletion). Called
+   *  BEFORE the subject row goes, so the store can still resolve what it holds. */
+  delete(
+    ctx: SubjectStoreContext,
+    args: { product: string; subject: string },
+  ): Promise<void>;
+  /** The subject's data for one product, for a per-product export (optional until I-11). */
+  export?(
+    ctx: SubjectStoreContext,
+    args: { product: string; subject: string },
+  ): Promise<unknown>;
+}
+
+const STORES = new Map<string, SubjectStore>();
+
+/**
+ * Register a subject-keyed store. Names are unique: registering one twice is a programming error
+ * (two modules claiming one table), so it throws rather than silently replacing the first.
+ * U-02 adds the guard test that fails when a subject-keyed table has no registration.
+ */
+export function registerSubjectStore(name: string, store: SubjectStore): void {
+  if (STORES.has(name)) {
+    throw new Error(`subject store "${name}" is already registered`);
+  }
+  STORES.set(name, store);
+}
+
+/** Remove a registration (tests only: the registry is module state). */
+export function unregisterSubjectStore(name: string): void {
+  STORES.delete(name);
+}
+
+/** The registered store names, sorted (for the guard test and diagnostics). */
+export function subjectStoreNames(): string[] {
+  return [...STORES.keys()].sort();
+}
+
+/** Run every store's `merge` for one product, in name order. */
+export async function runSubjectMerge(
+  ctx: SubjectStoreContext,
+  args: { product: string; from: string; to: string },
+): Promise<void> {
+  for (const name of subjectStoreNames()) {
+    await STORES.get(name)!.merge(ctx, args);
+  }
+}
+
+/** Run every store's `delete` for one product, in name order. */
+export async function runSubjectDelete(
+  ctx: SubjectStoreContext,
+  args: { product: string; subject: string },
+): Promise<void> {
+  for (const name of subjectStoreNames()) {
+    await STORES.get(name)!.delete(ctx, args);
+  }
+}
+
+// ── The clearing hook ───────────────────────────────────────────────────────────────────────
+
+/**
+ * Why a binding is cleared. Plain licence DETACH is deliberately absent: detaching a licence from
+ * the account does not sign the device out (S-17 §5.8 item 2; corrects S-16 §5.1's table).
+ */
+export type ClearReason =
+  | "signout"
+  | "signout_everywhere"
+  | "account_disabled"
+  | "account_deleted"
+  | "product_removed"
+  | "relinked";
+
+/** Which devices a clear reaches. */
+export type ClearScope =
+  | { kind: "device"; product: string; deviceId: string }
+  | { kind: "subject"; product: string; subject: string }
+  | { kind: "account"; accountId: string }
+  | { kind: "license"; product: string; licenseId: string };
+
+interface BoundDevice {
+  product: string;
+  device_id: string;
+  token_hash: string | null;
+  license_id: string;
+  subject: string;
+  bound_by: string | null;
+  status: string;
+}
+
+async function boundDevices(db: Db, scope: ClearScope): Promise<BoundDevice[]> {
+  const cols =
+    "d.product, d.device_id, d.token_hash, d.license_id, d.subject, d.bound_by, d.status";
+  switch (scope.kind) {
+    case "device":
+      return db.all<BoundDevice>(
+        `SELECT ${cols} FROM devices d
+          WHERE d.product = ? AND d.device_id = ? AND d.subject IS NOT NULL`,
+        scope.product,
+        scope.deviceId,
+      );
+    case "subject":
+      // The subject itself and every alias that resolves to it (a device bound before a merge).
+      return db.all<BoundDevice>(
+        `SELECT ${cols} FROM devices d
+          WHERE d.product = ? AND d.subject IS NOT NULL
+            AND (d.subject = ? OR d.subject IN (
+              SELECT alias FROM account_product_subject_aliases WHERE product = ? AND subject = ?))`,
+        scope.product,
+        scope.subject,
+        scope.product,
+        scope.subject,
+      );
+    case "account":
+      return db.all<BoundDevice>(
+        `SELECT ${cols} FROM devices d
+           JOIN account_product_subjects s ON s.product = d.product
+          WHERE s.account_id = ? AND d.subject IS NOT NULL
+            AND (d.subject = s.subject OR d.subject IN (
+              SELECT alias FROM account_product_subject_aliases a
+               WHERE a.product = s.product AND a.subject = s.subject))`,
+        scope.accountId,
+      );
+    case "license":
+      return db.all<BoundDevice>(
+        `SELECT ${cols} FROM devices d
+          WHERE d.product = ? AND d.license_id = ? AND d.subject IS NOT NULL`,
+        scope.product,
+        scope.licenseId,
+      );
+  }
+}
+
+/**
+ * The clearing hook: drop the device binding (`devices.subject`) on every device in `scope`, and
+ * its KV mirror. Sign-out (and sign out everywhere) also RELEASES a device, deauthorizing it, when
+ * it was bound by the sign-in (`bound_by = 'signin'`) and runs a licence of the signed-out account
+ * (plans/I-04.md §8 Q3); every other device keeps its licence and token and only loses the
+ * binding. Answers how many bindings were cleared and which devices were released.
+ */
+export async function clearDeviceSubjects(
+  db: Db,
+  env: Env,
+  scope: ClearScope,
+  reason: ClearReason,
+): Promise<{ cleared: number; released: string[] }> {
+  const devices = await boundDevices(db, scope);
+  const released: string[] = [];
+  for (const d of devices) {
+    await writeDeviceSubject(db, d.product, d.device_id, null);
+    if (
+      (reason === "signout" || reason === "signout_everywhere") &&
+      d.bound_by === "signin" &&
+      d.status === "authorized" &&
+      d.license_id !== "" &&
+      (await licenseOwnedBySubjectAccount(db, d))
+    ) {
+      await retireDeviceBinding(env, db, d.product, d.device_id, d.token_hash);
+      released.push(`${d.product}:${d.device_id}`);
+      continue;
+    }
+    await mirrorTokenSubject(env, d.product, d.token_hash, null);
+  }
+  return { cleared: devices.length, released };
+}
+
+/** Does the device's licence belong to the account its (possibly aliased) subject names? */
+async function licenseOwnedBySubjectAccount(
+  db: Db,
+  d: BoundDevice,
+): Promise<boolean> {
+  const row = await db.first<{ one: number }>(
+    `SELECT 1 AS one
+       FROM licenses l
+       JOIN account_product_subjects s ON s.account_id = l.account_id AND s.product = l.product
+      WHERE l.product = ? AND l.id = ?
+        AND (s.subject = ? OR s.subject = (
+          SELECT subject FROM account_product_subject_aliases WHERE product = ? AND alias = ?))`,
+    d.product,
+    d.license_id,
+    d.subject,
+    d.product,
+    d.subject,
+  );
+  return row !== null;
+}
+
+// ── The licence-ownership hook ──────────────────────────────────────────────────────────────
+
+/** Why an account stopped owning a licence. */
+export type OwnershipEndReason = "detached" | "relinked" | "account_deleted";
+
+/**
+ * An account stopped owning a licence (its owner detached it, a developer relinked it, or the
+ * account was deleted). F-21: every live registry token that account minted bound to this licence
+ * is revoked, so a credential never outlives the ownership that justified it. I-11 extends this
+ * hook as its surfaces need; it is the one place the consequence of losing a licence is decided.
+ */
+export async function onLicenseOwnershipEnded(
+  db: Db,
+  _env: Env,
+  args: {
+    product: string;
+    licenseId: string;
+    accountId: string;
+    reason: OwnershipEndReason;
+    now: number;
+  },
+): Promise<{ revokedTokens: number }> {
+  const revokedTokens = await revokeAllRegistryTokens(
+    db,
+    args.product,
+    `portal:${args.accountId}`,
+    args.reason === "account_deleted" ? "account_deleted" : "link_removed",
+    args.now,
+    { licenseId: args.licenseId, portalAccountId: args.accountId },
+  );
+  return { revokedTokens };
+}
