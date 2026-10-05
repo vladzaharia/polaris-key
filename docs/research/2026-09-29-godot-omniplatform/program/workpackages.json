@@ -5394,7 +5394,7 @@
       "optional": false,
       "refs": ["design/PORTAL §4.13–4.15", "design/PORTAL §11.3 PX-08"],
       "brief": "wp/PX-08-library-api.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "PX-09",
@@ -5439,7 +5439,7 @@
         "design/PORTAL §11.3 PX-10"
       ],
       "brief": "wp/PX-10-focused-flows.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "PX-11",
@@ -5464,7 +5464,7 @@
         "design/PORTAL §12 Q-1"
       ],
       "brief": "wp/PX-11-package-access.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "PX-12",
