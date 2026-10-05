@@ -76,6 +76,7 @@ export { applyOverrides, type OverrideUpdate } from "../admin/lib/overrides.js";
 export {
   WriteChecks,
   catalogRepresentabilityResponse,
+  reservedNamesResponse,
 } from "../admin/lib/writeChecks.js";
 
 export {

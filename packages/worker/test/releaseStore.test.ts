@@ -52,6 +52,7 @@ import {
   linkLicense,
 } from "../src/services/identity/portal/repo.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
+import { withDefaultHead } from "./githubHead.js";
 
 const SLUG = "djdl";
 
@@ -183,7 +184,7 @@ function stubFetch(
     }
     return new Response("nope", { status: 404 });
   };
-  return { fetchImpl, listCalls: () => listCalls };
+  return { fetchImpl: withDefaultHead(fetchImpl), listCalls: () => listCalls };
 }
 
 async function seedLinkedProduct(db: SqliteDb): Promise<void> {

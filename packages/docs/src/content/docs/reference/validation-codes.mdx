@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 201 distinct emit sites.
+codes with their JSON-pointer paths. 203 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -23,6 +23,8 @@ the offending value, or the allowed set.
 | `duplicate_artifact_id` | error | release | `/release/deliverables/app/artifacts/${i}/id` | artifact id $\{entry.id\} is declared twice; each entry declares one build. |
 | `duplicate_profile_id` | error | product | `/licensing/profiles/${i}/id` | Profile ids must be unique. |
 | `duplicate_tier_id` | error | product | `/licensing/tiers/${i}/id` | Tier ids must be unique. |
+| `incompatible_reserved_name` | error | schema | `/entries/${decl.index}` | $\{decl.key\} is a reserved entitlement name the platform sets itself: $\{decl.problem\}. Incompatible reserved-name declarations are refused on this platform. |
+| `incompatible_reserved_name` | warning | schema | `/entries/${decl.index}` | $\{decl.key\} is a reserved entitlement name the platform sets itself: $\{decl.problem\}. This is a warning for now; it becomes an error when the platform switches licensing.reservedNames to error. |
 | `invalid_admin_group` | error | product | `/product/adminGroup` | product.adminGroup must be a plain group name (^[A-Za-z0-9][A-Za-z0-9 ._:@/-]\{0,127\}$). |
 | `invalid_allowed_host` | error | product | `/provisioning/${i}/allowedHosts` | allowedHosts entries must be a host, optionally with a port. |
 | `invalid_api_version` | error | product | `/apiVersion` | apiVersion must be pkey.dev/v1 when present. |
