@@ -68,6 +68,7 @@ import { IdentityClient } from "./identity/client.js";
 import { ReleaseClient } from "./release/client.js";
 import { CommerceClient } from "./commerce/client.js";
 import { DistributionClient } from "./distribution/client.js";
+import { PolarisEventEmitter } from "./core/events.js";
 import { UpdateClient, type UpdateClientOptions } from "./update/client.js";
 import {
   ensureActivated,
@@ -153,6 +154,8 @@ export class PolarisKeyClient {
   readonly identity: IdentityClient;
   readonly release: ReleaseClient;
   readonly update: UpdateClient;
+  /** What changed: license, config, updateAvailable, packs, store (§3.11). */
+  readonly events = new PolarisEventEmitter();
   /** The public download model (§3.8). */
   readonly distribution: DistributionClient;
   /** Store purchases to licence flags (§3.9). */
@@ -171,6 +174,9 @@ export class PolarisKeyClient {
   /** The token store's last `status()`, read at `init()` and before every report, so
    *  `supports()` can answer offline and synchronously. */
   private lastStoreStatus: StoreStatus | null = null;
+  /** The gate status `events.license` last reported. */
+  private lastStatus: LicenseState["status"] | null = null;
+  private refreshTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly capabilityContext: CapabilityContext;
 
   constructor(opts: PolarisKeyClientOptions & { localOnly?: boolean }) {
@@ -261,6 +267,15 @@ export class PolarisKeyClient {
     };
 
     this.pinnedServices = opts.expectedServices !== undefined;
+    // client.events (§3.11): config changes, pack progress and update offers forward here.
+    this.config.onConfigChange("*", (c) => this.events.safeEmit("config", c));
+    this.update.packs.on((p) => this.events.safeEmit("packs", p));
+    this.update.onUpdateAvailable = (check) =>
+      this.events.safeEmit("updateAvailable", check);
+    this.license.onDeactivated = async () => {
+      await this.identity.forget();
+      this.noteLicense();
+    };
     this.refreshIntervalSeconds = opts.refreshIntervalSeconds;
     this.onChange = opts.onChange;
 
@@ -309,6 +324,7 @@ export class PolarisKeyClient {
     await this.storeStatus();
     await this.tokens.load();
     await this.cache.load();
+    this.lastStatus = this.license.status().status;
     // Wire v4's update slices go through the same reload path: every committed feed and record
     // is re-verified against what this load trusts, and each channel's `seq` floor comes from
     // the feed that survives.
@@ -407,6 +423,7 @@ export class PolarisKeyClient {
   async sync(opts: SyncOptions = {}): Promise<SyncResult> {
     const before = this.cache.etag("license");
     const beforeConfig = this.cache.etag("config");
+    const beforeValues = this.config.snapshot();
     const result = await sync(
       {
         ctx: this.core,
@@ -425,6 +442,8 @@ export class PolarisKeyClient {
     if (this.onChange && result.applied && changed) {
       this.onChange(this.license.status());
     }
+    this.config.emitChanges(beforeValues);
+    this.noteLicense();
     return result;
   }
 
@@ -481,7 +500,20 @@ export class PolarisKeyClient {
    * Throws `PolarisError` carrying the §7 step that refused.
    */
   async importBundle(jws: string, now = nowSec()): Promise<ImportBundleResult> {
-    return importBundle(this.core, this.cache, jws, now);
+    const beforeValues = this.config.snapshot();
+    const r = await importBundle(this.core, this.cache, jws, now);
+    this.config.emitChanges(beforeValues);
+    this.noteLicense();
+    return r;
+  }
+
+  /** Emit `events.license` when the gate's status moved since it was last reported. */
+  private noteLicense(): void {
+    const state = this.license.status();
+    if (state.status === this.lastStatus) return;
+    const previous = this.lastStatus;
+    this.lastStatus = state.status;
+    this.events.safeEmit("license", { state, previous });
   }
 
   // ── Convenience passthroughs ──────────────────────────────────────────────────────────
@@ -507,6 +539,8 @@ export class PolarisKeyClient {
         status = null;
       }
     }
+    if (JSON.stringify(status) !== JSON.stringify(this.lastStoreStatus))
+      this.events.safeEmit("store", status);
     this.lastStoreStatus = status;
     return status;
   }
@@ -588,8 +622,54 @@ export class PolarisKeyClient {
     this.timer.unref?.();
   }
 
-  /** Stop the refresh timer. Safe to call more than once. */
+  /**
+   * The default refresh for a long-running host (SDK parity pass §3.11): sync every
+   * `intervalSeconds` (default 3600), at once after a wake (the timer fired much later than
+   * scheduled: the machine slept), and with backoff after a failed sync (30 s doubling up to the
+   * interval) so a host that comes back online syncs within a minute. Each sync honours the
+   * documents' ETags. Off unless called; `close()` stops it. The timer never holds the process
+   * open.
+   */
+  startRefresh(opts: { intervalSeconds?: number } = {}): void {
+    if (this.refreshTimer || this.core.localOnly) return;
+    const interval = Math.max(60, opts.intervalSeconds ?? 3600) * 1000;
+    let backoff = 30_000;
+    const schedule = (delay: number) => {
+      const due = Date.now() + delay;
+      this.refreshTimer = setTimeout(() => {
+        // Slept through the deadline by more than a minute: a wake.
+        const woke = Date.now() - due > 60_000;
+        void this.sync({ ...(woke ? { force: true } : {}) })
+          .then((r) => {
+            const docs = Object.values(r.documents).filter(
+              (d) => d && d.kind !== "skipped",
+            );
+            const failed =
+              docs.length > 0 && docs.every((d) => d!.kind === "error");
+            if (failed) {
+              schedule(Math.min(backoff, interval));
+              backoff = Math.min(backoff * 2, interval);
+            } else {
+              backoff = 30_000;
+              schedule(interval);
+            }
+          })
+          .catch(() => {
+            schedule(Math.min(backoff, interval));
+            backoff = Math.min(backoff * 2, interval);
+          });
+      }, delay);
+      this.refreshTimer.unref?.();
+    };
+    schedule(interval);
+  }
+
+  /** Stop the refresh timers. Safe to call more than once. */
   close(): void {
+    if (this.refreshTimer !== null) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
     if (this.timer === null) return;
     clearInterval(this.timer);
     this.timer = null;

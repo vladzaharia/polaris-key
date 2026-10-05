@@ -14,7 +14,11 @@
 
 import type { JSONValue } from "@polaris-key/protocol/core";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
-import type { ProductCatalog } from "@polaris-key/catalog";
+import { Catalog, type ProductCatalog } from "@polaris-key/catalog";
+import { join } from "node:path";
+import { PolarisError } from "@polaris-key/client-core";
+import { ErrorCode } from "../constants.generated.js";
+import { readJsonSync, writeJson } from "../core/jsonFile.js";
 import {
   listUserEntries,
   resolveSource,
@@ -43,10 +47,44 @@ export interface ConfigClientOptions {
   envPrefix?: string;
   /** Environment table to read overrides from (default `process.env`). */
   env?: Record<string, string | undefined>;
+  /** Persist `config.set()` values in `<stateDir>/local-config.json` (default true). With
+   *  false they live for this process only. */
+  persistLocal?: boolean;
+}
+
+/** One config change, as `onConfigChange` and `client.events` report it. */
+export interface ConfigChange {
+  key: string;
+  value: JSONValue | undefined;
+  previous: JSONValue | undefined;
+  source: ConfigSource;
+}
+
+/** A reactive handle on one key (`config.setting(key)`, SDK parity pass §3.11). */
+export interface ConfigSetting<T = JSONValue> {
+  readonly key: string;
+  get(fallback: T): T;
+  source(): ConfigSource;
+  /** Whether the key is locked by the operator (`enforced` or `hidden`). */
+  locked(): boolean;
+  set(value: T): Promise<void>;
+  clear(): Promise<void>;
+  /** Subscribe to this key's changes; returns the unsubscribe function. */
+  on(listener: (change: ConfigChange) => void): () => void;
 }
 
 export class ConfigClient {
-  private readonly localOverrides: Record<string, JSONValue>;
+  /** The host's `localOverrides`, then the persisted `config.set()` layer over them. */
+  private localOverrides: Record<string, JSONValue>;
+  private readonly hostOverrides: Record<string, JSONValue>;
+  private persisted: Record<string, JSONValue>;
+  private readonly localFile: string | null;
+  private readonly listeners = new Map<
+    string,
+    Set<(c: ConfigChange) => void>
+  >();
+  private catalog: Catalog | null = null;
+  private catalogTried = false;
   private readonly envPrefix: string;
   private readonly env: Record<string, string | undefined>;
   private readonly minted = new MintCache();
@@ -59,7 +97,19 @@ export class ConfigClient {
      *  to present and refuses with `unauthorized`, as a client holding no token does. */
     private readonly tokens?: TokenManager,
   ) {
-    this.localOverrides = opts.localOverrides ?? {};
+    this.hostOverrides = { ...(opts.localOverrides ?? {}) };
+    this.localFile =
+      opts.persistLocal === false
+        ? null
+        : join(ctx.dirs.state, "local-config.json");
+    const stored = this.localFile
+      ? readJsonSync<unknown>(this.localFile, {})
+      : {};
+    this.persisted =
+      stored && typeof stored === "object" && !Array.isArray(stored)
+        ? (stored as Record<string, JSONValue>)
+        : {};
+    this.localOverrides = { ...this.hostOverrides, ...this.persisted };
     this.envPrefix = opts.envPrefix ?? DEFAULT_ENV_PREFIX;
     this.env = opts.env ?? process.env;
   }
@@ -145,6 +195,143 @@ export class ConfigClient {
    */
   async mintToken(recipeId: string): Promise<MintedToken> {
     return mintToken(this.ctx, this.tokens, this.minted, recipeId);
+  }
+
+  // ── Local overrides (SDK parity pass §3.11, proposed id `config.local`) ───────────────
+
+  /** Whether `key` is locked by the operator: an `enforced` or `hidden` document entry. */
+  isLocked(key: string): boolean {
+    const e = this.doc?.config[key];
+    return e?.state === "enforced" || e?.state === "hidden";
+  }
+
+  /** Give the client the product catalog so `set()` validates values against it (the facade
+   *  loads it from `fetchSchema()`; a host with a bundled catalog passes it here). */
+  useCatalog(catalog: ProductCatalog | null): void {
+    this.catalog = catalog ? new Catalog(catalog) : null;
+    this.catalogTried = true;
+  }
+
+  /**
+   * Set a local override and persist it. Refuses `managed_by_admin` for a key the operator
+   * locked (the remote value would win anyway, and a settings screen must say so), and
+   * `bad_request` for a value the catalog's schema refuses (when a catalog is known).
+   */
+  async set(key: string, value: JSONValue): Promise<void> {
+    if (this.isLocked(key))
+      throw new PolarisError(
+        ErrorCode.managedByAdmin,
+        `${key} is managed by an administrator.`,
+      );
+    // The catalog is fetched once, on the first set, when the host gave none (best-effort:
+    // offline, the value is stored unvalidated and the signed document stays authoritative).
+    if (!this.catalogTried) {
+      this.catalogTried = true;
+      const fetched = await this.fetchSchema();
+      if (fetched) this.catalog = new Catalog(fetched);
+    }
+    const entry = this.catalog?.entryByKey(key);
+    if (entry) {
+      const r = this.catalog!.validateEntryValue(entry, value);
+      if (!r.ok)
+        throw new PolarisError(
+          ErrorCode.badRequest,
+          `${key}: ${r.errors.join("; ")}`,
+        );
+    }
+    await this.writeLocal(key, value);
+  }
+
+  /** Remove a local override (the key falls back to env, the remote default, the fallback). */
+  async clear(key: string): Promise<void> {
+    await this.writeLocal(key, undefined);
+  }
+
+  /** The persisted local overrides. */
+  localValues(): Record<string, JSONValue> {
+    return { ...this.persisted };
+  }
+
+  /** A reactive handle on one key. */
+  setting<T = JSONValue>(key: string): ConfigSetting<T> {
+    return {
+      key,
+      get: (fallback: T) => this.getConfig<T>(key, fallback),
+      source: () => this.getConfigSource(key),
+      locked: () => this.isLocked(key),
+      set: (value: T) => this.set(key, value as unknown as JSONValue),
+      clear: () => this.clear(key),
+      on: (listener) => this.onConfigChange(key, listener),
+    };
+  }
+
+  /** Subscribe to one key's changes, or every key's with `"*"`. Fired for a local set/clear
+   *  and for a sync that changed a resolved value. Returns the unsubscribe function. */
+  onConfigChange(
+    key: string,
+    listener: (change: ConfigChange) => void,
+  ): () => void {
+    let set = this.listeners.get(key);
+    if (!set) this.listeners.set(key, (set = new Set()));
+    set.add(listener);
+    return () => set!.delete(listener);
+  }
+
+  /** Every resolved value now (document keys plus local and host overrides). */
+  snapshot(): Record<string, JSONValue | undefined> {
+    const keys = new Set([
+      ...Object.keys(this.doc?.config ?? {}),
+      ...Object.keys(this.localOverrides),
+    ]);
+    const out: Record<string, JSONValue | undefined> = {};
+    for (const k of keys) out[k] = resolveValue(this.context(), k);
+    return out;
+  }
+
+  /** Emit a change for every key whose resolved value differs from `before` (the facade calls
+   *  it after a sync). Returns the changes. */
+  emitChanges(before: Record<string, JSONValue | undefined>): ConfigChange[] {
+    const after = this.snapshot();
+    const changes: ConfigChange[] = [];
+    for (const key of new Set([
+      ...Object.keys(before),
+      ...Object.keys(after),
+    ])) {
+      if (JSON.stringify(before[key]) === JSON.stringify(after[key])) continue;
+      changes.push({
+        key,
+        value: after[key],
+        previous: before[key],
+        source: this.getConfigSource(key),
+      });
+    }
+    for (const c of changes) this.emit(c);
+    return changes;
+  }
+
+  private emit(change: ConfigChange): void {
+    for (const k of [change.key, "*"])
+      for (const l of this.listeners.get(k) ?? []) {
+        try {
+          l(change);
+        } catch {
+          // A listener's failure is its own.
+        }
+      }
+  }
+
+  private async writeLocal(
+    key: string,
+    value: JSONValue | undefined,
+  ): Promise<void> {
+    const before = this.snapshot();
+    const next = { ...this.persisted };
+    if (value === undefined) delete next[key];
+    else next[key] = value;
+    if (this.localFile) await writeJson(this.localFile, next);
+    this.persisted = next;
+    this.localOverrides = { ...this.hostOverrides, ...next };
+    this.emitChanges(before);
   }
 
   /** Whether the product runs Config at all — the config-side twin of the license gate's

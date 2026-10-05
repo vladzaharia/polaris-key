@@ -69,7 +69,14 @@ export {
   type CopyEntry,
 } from "./core/copy.js";
 export {
+  PolarisEventEmitter,
+  type PolarisEventName,
+  type PolarisEvents,
+} from "./core/events.js";
+export {
   ConfigClient,
+  type ConfigChange,
+  type ConfigSetting,
   type ConfigClientOptions,
   type ConfigSource,
   type MintedToken,

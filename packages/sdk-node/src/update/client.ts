@@ -476,6 +476,8 @@ export class UpdateClient {
   readonly journal: UpdateJournal;
   /** The app boot guard (§3.15): slots in the state directory. */
   readonly guard: BootGuard;
+  /** Called when `decide()` offers a newer build (the facade emits `events.updateAvailable`). */
+  onUpdateAvailable: (check: UpdateCheck) => void = () => undefined;
   /** The releases this process already reported as offered. */
   private readonly offered = new Set<string>();
   private readonly cache?: CacheManager;
@@ -1015,6 +1017,7 @@ export class UpdateClient {
     // update_offered (§3.13): a decision that offers a newer build, once per release per run.
     const d = r.check.decision;
     if (d.action !== "none" && "release" in d) {
+      this.onUpdateAvailable(r.check);
       const release = d.release.version;
       if (!this.offered.has(release)) {
         this.offered.add(release);

@@ -74,6 +74,8 @@ export type LicenseAcquiredListener = (
 
 export class LicenseClient {
   private readonly fingerprintEnabled: boolean;
+  /** Called after `deactivate()` wiped the device (the facade emits `events.license`). */
+  onDeactivated: () => Promise<void> | void = () => undefined;
 
   constructor(
     private readonly ctx: CoreContext,
@@ -236,5 +238,6 @@ export class LicenseClient {
     }
     await this.tokens.clear();
     await this.cache.clear();
+    await Promise.resolve(this.onDeactivated()).catch(() => undefined);
   }
 }
