@@ -58,6 +58,7 @@ import type {
   LicenseDoc,
 } from "@polaris-key/protocol/license";
 import {
+  Arch,
   ERROR_CODE_VALUES,
   Platform,
   SdkId,
@@ -97,6 +98,10 @@ export interface SyncResult {
   blocked?: boolean;
   deviceCap?: boolean;
   documents: { license?: DocOutcome; config?: DocOutcome };
+  /** React only: set when the pass was skipped because the sync is backing off (SP-R02) after a
+   *  5xx, a 429 or a network failure; epoch seconds of the next allowed attempt. Nothing was
+   *  requested, and the adapter keeps projecting the cached documents. */
+  deferredUntil?: number;
 }
 
 export type RegisterResult =
@@ -219,6 +224,46 @@ export const MINT_REUSE_MARGIN_SECONDS = 30;
 export const MINT_ID = /^[a-z0-9-]+$/;
 /** RFC 8628 §3.5: an interval-less `slow_down` adds this to the current interval. */
 export const SLOW_DOWN_STEP_SECONDS = 5;
+/** Every request's deadline, as Node's `DEFAULT_REQUEST_TIMEOUT_MS`. */
+export const REQUEST_TIMEOUT_MS = 15_000;
+/** Sync backoff (SP-R02): the first retry waits about this long after a 5xx, a 429 or a
+ *  network failure, doubling per consecutive failure... */
+export const SYNC_BACKOFF_BASE_SECONDS = 30;
+/** ...up to this ceiling, which also caps a server's `Retry-After`. */
+export const SYNC_BACKOFF_MAX_SECONDS = 3600;
+
+/** The `Retry-After` header in seconds (delta-seconds or an HTTP date), or undefined. */
+export function parseRetryAfter(
+  value: string | null,
+  nowSeconds: number,
+): number | undefined {
+  if (value === null || value.trim() === "") return undefined;
+  const v = value.trim();
+  if (/^\d+$/.test(v)) return Number(v);
+  const at = Date.parse(v);
+  if (Number.isNaN(at)) return undefined;
+  return Math.max(0, Math.ceil(at / 1000 - nowSeconds));
+}
+
+/**
+ * Seconds to wait after the `failures`-th consecutive retryable failure: exponential from
+ * `SYNC_BACKOFF_BASE_SECONDS`, capped at `SYNC_BACKOFF_MAX_SECONDS`, with "equal jitter" (half
+ * fixed, half random) so a fleet of pages that failed together does not retry together. A
+ * server's `Retry-After` wins when it sent one (still capped).
+ */
+export function syncBackoffSeconds(
+  failures: number,
+  retryAfter: number | undefined,
+  random: () => number = Math.random,
+): number {
+  if (retryAfter !== undefined)
+    return Math.min(SYNC_BACKOFF_MAX_SECONDS, Math.max(0, retryAfter));
+  const exp = Math.min(
+    SYNC_BACKOFF_MAX_SECONDS,
+    SYNC_BACKOFF_BASE_SECONDS * 2 ** Math.max(0, failures - 1),
+  );
+  return Math.ceil(exp / 2 + random() * (exp / 2));
+}
 
 export interface BearerSessionOptions {
   baseUrl: string;
@@ -249,15 +294,22 @@ export interface BearerSessionOptions {
   outlet?: () => Record<string, JSONValue> | null;
   /** The gate status a report names. */
   gate?: () => string | null;
+  /** Jitter source for the sync backoff (tests). Defaults to `Math.random`. */
+  random?: () => number;
 }
 
 type DocumentResult =
   | { kind: "ok"; jws: string; etag: string | null }
   | { kind: "not-modified" }
   | { kind: "unauthorized" }
-  | { kind: "device-cap"; limit?: number; deviceCount?: number }
+  | {
+      kind: "device-cap";
+      limit?: number;
+      deviceCount?: number;
+      retryAfter?: number;
+    }
   | { kind: "blocked"; reason: BlockReason; allowedRange?: AllowedRange }
-  | { kind: "error"; status: number; message: string };
+  | { kind: "error"; status: number; message: string; retryAfter?: number };
 
 interface Held<T> {
   jws: string;
@@ -289,6 +341,12 @@ export class BearerSession {
   >();
   private readonly journal: UpdateEventEntry[] = [];
   private loaded: Promise<void> | null = null;
+  /** Consecutive sync passes that hit a 5xx, a 429 or a network failure (SP-R02). */
+  private syncFailures = 0;
+  /** Epoch seconds before which `sync()` does not touch the network. */
+  private syncNotBefore = 0;
+  /** The current pass's retryable failure, if any: the largest `Retry-After` seen. */
+  private passFailure: { retryAfter?: number } | null = null;
   readonly channel: string;
 
   constructor(private readonly opts: BearerSessionOptions) {
@@ -442,7 +500,7 @@ export class BearerSession {
       [HEADER_VERSION]: this.opts.version,
       [HEADER_CHANNEL]: this.channel,
       [HEADER_PLATFORM]: Platform.web,
-      [HEADER_ARCH]: "wasm32",
+      [HEADER_ARCH]: Arch.wasm32,
       [HEADER_SDK_NAME]: SdkId.react,
       [HEADER_SDK_VERSION]: SDK_VERSION,
       ...extra,
@@ -454,14 +512,28 @@ export class BearerSession {
   }
 
   private async send(path: string, init: RequestInit): Promise<Response> {
-    // Bearer mode never sends an ambient credential: no cookie, ever.
+    // Bearer mode never sends an ambient credential: no cookie, ever. Every request carries a
+    // deadline (Node's 15 s), so a hung connection fails like a dropped one instead of
+    // stalling the sync forever. Like `AbortSignal.timeout`, it also covers reading the body.
+    const deadline = new AbortController();
+    setTimeout(() => {
+      deadline.abort(
+        typeof DOMException === "function"
+          ? new DOMException("The request timed out.", "TimeoutError")
+          : new Error("The request timed out."),
+      );
+    }, REQUEST_TIMEOUT_MS);
     return this.opts.fetchImpl(this.url(path), {
       credentials: "omit",
+      signal: deadline.signal,
       ...init,
     });
   }
 
   private async setToken(token: string, source: TokenSource): Promise<void> {
+    // A token just arrived from the server, so it is reachable: drop any sync backoff.
+    this.syncFailures = 0;
+    this.syncNotBefore = 0;
     this.token = token;
     this.tokenSource = source;
     try {
@@ -667,10 +739,15 @@ export class BearerSession {
           limit?: number;
           deviceCount?: number;
         };
+        const retryAfter = parseRetryAfter(
+          res.headers.get("retry-after"),
+          this.opts.now(),
+        );
         return {
           kind: "device-cap",
           limit: b.limit,
           deviceCount: b.deviceCount,
+          ...(retryAfter !== undefined ? { retryAfter } : {}),
         };
       }
       case 403: {
@@ -693,13 +770,31 @@ export class BearerSession {
           jws: await res.text(),
           etag: res.headers.get("etag"),
         };
-      default:
+      default: {
+        const retryAfter = parseRetryAfter(
+          res.headers.get("retry-after"),
+          this.opts.now(),
+        );
         return {
           kind: "error",
           status: res.status,
           message: await res.text().catch(() => ""),
+          ...(retryAfter !== undefined ? { retryAfter } : {}),
         };
+      }
     }
+  }
+
+  /** Note a retryable failure (5xx, 429, network) for this pass's backoff decision. */
+  private noteRetryable(retryAfter: number | undefined): void {
+    const prev = this.passFailure?.retryAfter;
+    const worst =
+      retryAfter === undefined
+        ? prev
+        : prev === undefined
+          ? retryAfter
+          : Math.max(prev, retryAfter);
+    this.passFailure = worst === undefined ? {} : { retryAfter: worst };
   }
 
   /** Fetch, verify and install the trust manifest. Null when nothing acceptable arrived. */
@@ -756,6 +851,7 @@ export class BearerSession {
           return this.syncDocument(slice, force, false);
         return { kind: "unauthorized" };
       case "device-cap":
+        this.noteRetryable(res.retryAfter);
         return {
           kind: "device-cap",
           limit: res.limit,
@@ -803,6 +899,8 @@ export class BearerSession {
         return { kind: "applied" };
       }
       case "error":
+        if (res.status === 0 || res.status >= 500)
+          this.noteRetryable(res.retryAfter);
         return { kind: "error" };
     }
   }
@@ -814,6 +912,15 @@ export class BearerSession {
   async sync(opts: { force?: boolean } = {}): Promise<SyncResult> {
     await this.init();
     if (!this.token) return { applied: false, documents: {} };
+    // Backing off (SP-R02): no request until the next allowed time; the cached documents stay
+    // projected. A forced pass (an explicit user refresh) goes through.
+    if (opts.force !== true && this.opts.now() < this.syncNotBefore)
+      return {
+        applied: false,
+        documents: {},
+        deferredUntil: this.syncNotBefore,
+      };
+    this.passFailure = null;
     this.reacquireInFlight = null;
     this.reacquireAttempted = false;
     const trustJws = await this.refreshTrust().catch(() => null);
@@ -836,6 +943,23 @@ export class BearerSession {
     const healthy = outcomes.some(
       (o) => o.kind === "applied" || o.kind === "unchanged",
     );
+    // One backoff decision per pass: any retryable failure backs off further; a pass with none
+    // that reached the server resets the counter.
+    const failure = this.passFailure as { retryAfter?: number } | null;
+    this.passFailure = null;
+    if (failure) {
+      this.syncFailures += 1;
+      this.syncNotBefore =
+        this.opts.now() +
+        syncBackoffSeconds(
+          this.syncFailures,
+          failure.retryAfter,
+          this.opts.random,
+        );
+    } else if (healthy || unauthorized || blocked) {
+      this.syncFailures = 0;
+      this.syncNotBefore = 0;
+    }
     const patch: Partial<CacheRecordV3> = {};
     if (trustJws) patch.trustJws = trustJws;
     if (unauthorized) patch.lastSyncUnauthorized = true;
