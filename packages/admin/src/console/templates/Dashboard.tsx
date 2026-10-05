@@ -163,7 +163,8 @@ export function sortAttention(items: AttentionItem[]): AttentionItem[] {
 }
 
 /**
- * T1's attention list (ADMIN.md §3): only rendered when non-empty, at most `max` items with
+ * T1's attention list (ADMIN.md §3), drawn on the shared `Section` card metrics (radius, side
+ * padding, light elevation) so it lines up with the panels under it: only rendered when non-empty, at most `max` items with
  * "Show all n". Each item: a tone pill (icon and word), the object, a one-line reason and one
  * action.
  */
@@ -184,11 +185,11 @@ export function AttentionList({
   return (
     <section
       aria-labelledby={id}
-      className="rounded-lg border border-border bg-surface-raised"
+      className="rounded-xl border border-border bg-surface-raised light:shadow-elevation-1"
     >
       <div
         data-card-header=""
-        className="flex items-center justify-between border-b border-border px-4 py-2"
+        className="flex items-center justify-between border-b border-border px-5 py-2"
       >
         <h2 id={id} className="text-sm font-bold text-fg-strong">
           {title}
@@ -201,7 +202,7 @@ export function AttentionList({
         {shown.map((item) => (
           <li
             key={item.id}
-            className="flex flex-col items-start gap-2 px-4 py-2.5 sm:flex-row sm:items-center"
+            className="flex flex-col items-start gap-2 px-5 py-2.5 sm:flex-row sm:items-center"
           >
             <StatusPill tone={item.tone}>{TONE_WORD[item.tone]}</StatusPill>
             {/* The object never takes the reason's width: from 640 px it is capped at 40 % of the
@@ -243,7 +244,7 @@ export function AttentionList({
         ))}
       </ul>
       {sorted.length > max ? (
-        <div className="border-t border-border px-4 py-2">
+        <div className="border-t border-border px-5 py-2">
           <Button variant="link" size="sm" onClick={() => setAll((v) => !v)}>
             {all ? "Show fewer" : `Show all ${sorted.length}`}
           </Button>
