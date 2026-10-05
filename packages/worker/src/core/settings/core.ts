@@ -23,7 +23,7 @@ import {
  * Columns on Identity's `portal_product_settings` (migration 0074), beside `discover_enabled`,
  * which still forces `unlisted` until PS-11 (`core/storefront/polarisKeyListing.ts`).
  */
-const STOREFRONT_DOCS = "/docs/services/identity/portal/";
+const STOREFRONT_DOCS = "/docs/services/identity/portal/#polaris-key-listing";
 const STOREFRONT_READERS = [
   "core/storefront/polarisKeyListing.ts",
   "services/identity/portal/storefrontListing.ts",

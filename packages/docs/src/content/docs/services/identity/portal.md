@@ -328,6 +328,34 @@ product's Release service is off. The page saves the five switches and the linki
 `PATCH`; it never sends `branding`, which it shows as a read-out. **Offer on Discover** (the Discover section) saves
 with them.
 
+### Polaris Key listing
+
+Four more fields hold the product's listing in the Polaris Key library (PS-02, migration `0074`).
+They are the settings `storefront.polarisKey.listed`, `.audience`, `.offerPaths` and
+`.groupLabels`, all operator-owned (no manifest field sets them):
+
+| Field              | Values                                                                                                      | Default    |
+| ------------------ | ----------------------------------------------------------------------------------------------------------- | ---------- |
+| `storeListed`      | `auto`, `listed`, `unlisted`                                                                                | `auto`     |
+| `storeAudience`    | `eligible`, `everyone`                                                                                      | `eligible` |
+| `storeOfferPaths`  | `null` (every way) or a list of `group`, `auto_issue`, `open`, `store_owned`, `product_idp`, `email_domain` | `null`     |
+| `storeGroupLabels` | an object of group name to label (at most 40 characters, at most 100 groups)                                | `{}`       |
+
+- **`auto`** is today's Discover: the product is offered where auto-issue or a mapped group would
+  give it to the person. **`unlisted`** hides it in the portal while every policy, sign-in and
+  auto-issue keeps working. **`listed`** lets the other ways to obtain the product list it as well,
+  as those ways are built.
+- **`discoverEnabled`** and `storeListed` stay in step: `discoverEnabled: false` reads as
+  `unlisted`, setting `storeListed` sets `discoverEnabled` to match, and turning Discover back on
+  returns an `unlisted` product to `auto`. Products that had Discover off were moved to
+  `unlisted` by the migration.
+- **Widening the audience to `everyone`** shows the product to every signed-in person, the one
+  exception to never revealing a product a person cannot get. The `PATCH` needs
+  `"confirm": "storefront.polarisKey.audience"`, or it answers `400` with
+  `reason: "confirm_required"`.
+- **A change to any of the four** writes a `storefront.polarisKey.update` activity row naming what
+  changed, beside `portal.settings.update`.
+
 ## Supported browsers
 
 The portal's UI is built on Tailwind CSS v4, whose generated styles rely on modern CSS
