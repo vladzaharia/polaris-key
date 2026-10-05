@@ -2476,7 +2476,7 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [1.2, 1.7],
-      "deps": ["I-04", "I-07"],
+      "deps": ["I-04", "I-07", "I-09", "PX-W13", "I-26"],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -2493,7 +2493,8 @@
         "notes/S-16 §5.4 items 6, 7, 13",
         "notes/S-16 §8 I-08",
         "notes/S-17 §6 (I-08 gains a new wire row)",
-        "notes/S-17 §7.3 decision 19"
+        "notes/S-17 §7.3 decision 19",
+        "plans/I-04.md, Owner decision (2026-10-05): licence choice at sign-in"
       ],
       "brief": "wp/I-08-app-passthrough.md",
       "status": "todo",
@@ -2528,7 +2529,8 @@
         "notes/S-16 §10 D20 D24 D26",
         "notes/S-18 §5.5, §6.3 (identity settings as `product_settings` rows)",
         "notes/S-19 §7.5 steps 1–3 (anchorPolicy rank-first, inline until LX-10)",
-        "plans/I-09.md (approved 2026-10-05)"
+        "plans/I-09.md (approved 2026-10-05)",
+        "plans/I-04.md, Owner decision (2026-10-05): licence choice at sign-in"
       ],
       "brief": "wp/I-09-key-entry-attach.md",
       "status": "todo"
@@ -2580,7 +2582,8 @@
         "notes/S-16 §5.2 (SDK API)",
         "notes/S-16 §5.3",
         "notes/S-16 §7.1 (SDK estimate)",
-        "notes/S-16 §8 I-10a"
+        "notes/S-16 §8 I-10a",
+        "plans/I-04.md, Owner decision (2026-10-05): licence choice at sign-in"
       ],
       "brief": "wp/I-10a-sdk-identity-node-react-python.md",
       "status": "todo",
@@ -2611,7 +2614,8 @@
         "notes/S-16 §5.2 (SDK API)",
         "notes/S-16 §5.3",
         "notes/S-16 §7.1 (SDK estimate)",
-        "notes/S-16 §8 I-10b"
+        "notes/S-16 §8 I-10b",
+        "plans/I-04.md, Owner decision (2026-10-05): licence choice at sign-in"
       ],
       "brief": "wp/I-10b-sdk-identity-swift-kotlin-godot.md",
       "status": "todo",
@@ -2705,7 +2709,8 @@
         "notes/S-16 §5.1 (tenant-scoped links)",
         "notes/S-16 §5.3 (exchange, first native sign-in)",
         "notes/S-16 §5.4 items 2 and 16",
-        "notes/S-16 §8 I-13"
+        "notes/S-16 §8 I-13",
+        "plans/I-04.md, Owner decision (2026-10-05): licence choice at sign-in"
       ],
       "brief": "wp/I-13-exchange-endpoint.md",
       "status": "todo"
@@ -3047,7 +3052,8 @@
       "refs": [
         "plans/I-24.md §2, §3, §4, §6 and the client-core part of §5",
         "notes/S-16 §8 I-24",
-        "notes/S-19 §7.3.1"
+        "notes/S-19 §7.3.1",
+        "plans/I-04.md, Owner decision (2026-10-05): licence choice at sign-in"
       ],
       "brief": "wp/I-24a-named-user-seats-server.md",
       "status": "todo",
@@ -3095,6 +3101,26 @@
       "optional": true,
       "refs": ["notes/S-16 §2 J12", "notes/S-16 §8 I-25"],
       "brief": "wp/I-25-backend-assertion.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-26",
+      "title": "Legacy product-OIDC sign-in stops auto-issuing a second licence: on `provider: platform` products, a person whose Polaris Key account already holds a usable licence gets a server-rendered licence chooser instead of a new `sub`-keyed licence",
+      "phase": "I",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["I-05", "PX-10"],
+      "planMode": false,
+      "gates": ["rule-10", "threat-model", "workerd"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/I-04.md, Owner decision (2026-10-05): licence choice at sign-in (delegated decisions 1, 2, 13)",
+        "owner decision 2026-10-05 (Storytime duplicate auto-issue)"
+      ],
+      "brief": "wp/I-26-legacy-oidc-license-choice.md",
       "status": "todo"
     },
     {
@@ -5623,7 +5649,8 @@
         "design/PORTAL §4.7",
         "design/PORTAL §4.8",
         "design/PORTAL §4.9",
-        "design/PORTAL §11.3 PX-14"
+        "design/PORTAL §11.3 PX-14",
+        "plans/I-04.md, Owner decision (2026-10-05): licence choice at sign-in"
       ],
       "brief": "wp/PX-14-passthrough-header.md",
       "status": "todo"
@@ -5684,7 +5711,11 @@
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
-      "refs": ["design/PORTAL §4.17–4.19", "design/PORTAL §11.3 PX-17"],
+      "refs": [
+        "design/PORTAL §4.17–4.19",
+        "design/PORTAL §11.3 PX-17",
+        "plans/I-04.md, Owner decision (2026-10-05): licence choice at sign-in"
+      ],
       "brief": "wp/PX-17-activate-confirm.md",
       "status": "todo"
     },
@@ -6643,7 +6674,8 @@
       "refs": [
         "notes/S-19 §7.5",
         "notes/S-19 §9 LX-10",
-        "notes/S-19 §10.3 decisions 3, 10, 23"
+        "notes/S-19 §10.3 decisions 3, 10, 23",
+        "plans/I-04.md, Owner decision (2026-10-05): licence choice at sign-in"
       ],
       "brief": "wp/LX-10-anchor-choice.md",
       "status": "todo"

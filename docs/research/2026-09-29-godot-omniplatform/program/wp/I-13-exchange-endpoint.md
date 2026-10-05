@@ -18,6 +18,16 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 - **[`plans/PX-W13.md`](../plans/PX-W13.md):** §2.5: the request carries `deviceName` under §2.1 and the entry creates a `native` handle.
 
+## Owner decision (2026-10-05): licence choice at sign-in
+
+The owner decided on 2026-10-05 that every sign-in that binds a device asks the person which licence to use (**Choose a licence for this device**, with an inline **Replace a device** on full licences), never silently mints a second auto-issued licence, and treats the rank-first rule as the preselected default only. The verbatim decision, the card API and the delegated decisions are in [`plans/I-04.md`](../plans/I-04.md), "Owner decision (2026-10-05): licence choice at sign-in"; that section wins over this brief where they differ. **The device wire does not change** (`PROTOCOL_VERSION` 4, no corpus change).
+
+**Pre-decided for this plan.** When the person has candidates,
+`POST /<p>/identity/token` answers `200 {"status":"choose","choices":LicenseChoiceView}` instead
+of binding. A follow-up call carries `choice`, with an optional `replaceDeviceId`, and goes
+through I-08's `freeAccountDevice()`. The kits gain a native **LicenseChoice** component, with
+Replace, and the in-app device list. That plan names its transcripts and all six SDKs.
+
 ## Goal
 
 `POST /<p>/identity/token` exchanges a platform identity token (native Sign in with Apple and Google ID tokens first) for the activation response, through tenant-scoped links; a link not seen before answers `interstitial_required` with a login-card URL; all six SDKs gain `exchange`.

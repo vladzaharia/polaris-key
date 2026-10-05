@@ -509,6 +509,22 @@ to sign in", and "<Developer> · <where>":
   only when you continue to their app."), an opt-in checkbox "Add a passkey after this, so next time
   is one tap", **Create account and continue**, and the terms line naming both Polaris Key's terms
   and the developer's.
+- **Choose a licence for this device** (owner decision, 2026-10-05; EXPERIENCE.md §8
+  `LicenseChoiceStep`; contract in `plans/I-04.md`). It comes after authentication and before
+  Confirm, whenever the account holds a usable licence for the app, even a single one.
+  - **Rows.** Each row shows the tier, origin, "2 of 5 devices" and the expiry. The rank-first
+    rule only preselects a row; **Keep the licence this device uses** is preselected when the
+    device already runs on one.
+  - **Full licences** are disabled with "No free devices". They offer **Replace a device**, which
+    expands that licence's devices in place: least recent preselected, **Active now** marked, and
+    one confirm, "Replace Work laptop? It will need to sign in again.". They also offer **Free a
+    device** (§4.25, returning here).
+  - **No licence.** "A free <Tier> licence will be created for you" when the app auto-issues,
+    otherwise the purchase link and **Have a license key?**.
+  - **No silent second licence.** A second free licence is never minted silently. **Create a new
+    free licence** appears only when every licence is full and the app auto-issues.
+  - **Primary button.** It reads **Use this licence and continue**. When Confirm follows, its
+    licence line shows the chosen licence with **Change**.
 - **Confirm** (every first sign-in to an app, and whenever what it gets changes): the person row
   (avatar, name, email, **Not you?**), "Continue to Tidewater Studio as Mara?", and **what it
   gets** as a list: its license ("Your Tidewater Pro license · Lifetime · this Mac becomes device 3
@@ -532,7 +548,9 @@ to sign in", and "<Developer> · <where>":
   when you're done." then the §4.1 methods (Drift Kart ships only on Steam, so its provider row has
   one button: the one-button case), and "Didn't start this on
   a TV? Cancel it. Someone may be trying to use your account."
-- Signed in already: straight to the confirm step (§4.8) with the device name.
+- Signed in already: straight to **Choose a licence for this device** (§4.8), then the confirm step
+  with the device name. A full licence's **Replace a device** works here too, so the TV never needs a
+  trip to the portal.
 - Done: "Drift Kart is signed in on Living room TV · Look at your TV: it continues by itself", the
   person row with the method used, and **Sign the TV out** for the wrong account.
 
@@ -758,8 +776,12 @@ bucket (THREAT-MODEL: enumeration).
 
 <img src="portal/31-product-sync-mobile-dark.png" alt="Product page, phone" width="260">
 
-**Header:** back link to Library, the 320 px key-art banner (16:9, full-bleed on phones), the
-112 px icon overlapping its lower edge, the name as `h1`, "by <developer>", status pill and tier,
+**Header:** back link to Library, the key-art banner (the listing's 16:9 header: all of it,
+full-bleed, on phones; a centred 3:1 band capped at 416 px from 761 px; `object-fit: cover`, centred,
+as the library card's 16:9 crop is), the 112 px icon (80 on phones) in front of its lower edge,
+half over it, drawn edge to edge with no tile of ours (the developer's own shape is the frame; a
+full-bleed square icon gets only the store's corner mask; only the letter fallback is a tile); without a cover the icon stands beside the name, with no banner;
+the name as `h1`, "by <developer>", status pill and tier,
 and the **primary action** with an overflow menu (Copy link, Contact developer, Remove from
 library).
 
@@ -855,7 +877,7 @@ the new session appears in "Where you're signed in".
 
 ![Device limit flow](portal/35-device-limit-desktop-dark.png)
 
-Unchanged: minimal chrome with **Back to Orbit Survey without changes**; "Your license is on 2 of 2
+This flow is also the fallback behind the sign-in card's **Free a device** link (§4.8, 2026-10-05). Otherwise it is unchanged: minimal chrome with **Back to Orbit Survey without changes**; "Your license is on 2 of 2
 devices" with a full red meter; devices as radio cards with the least recently used preselected;
 consequences; **Remove Work laptop and continue**; then "Go back to Orbit Survey and press Try
 again".
@@ -1082,7 +1104,7 @@ New components live in `packages/admin/src/portal/components/` unless the consol
 | `LinkAccounts`                                                                                                                                              | Two proven account cards, consequences, join.                                                                                                                                                                                                                                                      |
 | `DeviceApproval`                                                                                                                                            | New-device side (QR, code, poll) and approving side (dialog with device details, deny/approve).                                                                                                                                                                                                    |
 | `ProductArt`                                                                                                                                                | `variant: "banner" \| "tile" \| "thumb" \| "icon"`; proxied art (G1) with the flat tint-and-icon / tint-and-letter fallback. No gradients.                                                                                                                                                         |
-| `LibraryTile`, `LibraryHero`, `LibraryList`, `AttentionShelf`, `LibraryToolbar`, `QuickAction`                                                              | As in the converged design: art with the status pill on a solid plate, icon overlapping, name, developer, meta, platform glyphs, note, outlined quick action and overflow; the one-product hero; the list on `ui/data-table`; the shelf; the URL-synced toolbar; quick-action resolution (§5.4).   |
+| `LibraryTile`, `LibraryHero`, `LibraryList`, `AttentionShelf`, `LibraryToolbar`, `QuickAction`                                                              | As in the converged design: 16:9 art, the status on a padded plate, icon overlapping, name, meta, platform glyphs, note, outlined quick action and overflow; the one-product hero; the list on `ui/data-table`; the shelf; the URL-synced toolbar; quick-action resolution (§5.4).                 |
 | `DiscoverTile`                                                                                                                                              | Art, icon, name, developer, offer terms, platforms, "why you can add it", **Add to library** → added state (green edge, **In your library**, **Open**).                                                                                                                                            |
 | `ActivateDialog`                                                                                                                                            | Steps enter → confirm (art header, product, tier, terms, key echo) → done; inline errors (§4.19); `prefill` and `fromProduct` props for the deep link. Mounted once in `PortalShell`, opened from anywhere.                                                                                        |
 | `JumpPalette`                                                                                                                                               | ⌘K (§4.27).                                                                                                                                                                                                                                                                                        |
