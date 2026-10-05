@@ -193,7 +193,12 @@ export interface FlowRuntime {
     c: FlowContext,
     op: StorefrontOp,
     input: Record<string, unknown>,
-    opts: { idempotencyKey: string; typedConfirmation: boolean },
+    opts: {
+      idempotencyKey: string;
+      typedConfirmation: boolean;
+      /** What the operator typed, already compared by the route (a store may compare again). */
+      confirm?: string;
+    },
   ): Promise<RunOutcome>;
   /** "Push listing" (S-15 §8.2): text and assets only, plain confirm, never a review submission. */
   pushListing?: {

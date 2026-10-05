@@ -74,6 +74,10 @@ export interface DistListingAssetRow {
   source: ListingSource;
   modified_at: number;
   modified_by: string;
+  /** A-18j (0072): the digest the operator accepted on the slot board; accepted iff = sha256. */
+  accepted_sha256?: string | null;
+  accepted_at?: number | null;
+  accepted_by?: string | null;
 }
 
 export interface DistListingNotesRow {

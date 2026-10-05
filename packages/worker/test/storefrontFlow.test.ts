@@ -45,7 +45,10 @@ const TEST_STORE = {
     ops: {
       connect: { mode: "api", plane: "worker", rules: [] },
       listApps: { mode: "api", plane: "worker", rules: [] },
-      identifiers: { mode: "unsupported", reason: "the store has no identifiers" },
+      identifiers: {
+        mode: "unsupported",
+        reason: "the store has no identifiers",
+      },
       createApp: {
         mode: "deep-link",
         link: "app-store.identifiers",
@@ -203,7 +206,12 @@ const fetchImpl = async (input: string | URL | Request): Promise<Response> => {
           .map((a) => ({
             type: "apps",
             id: a.id,
-            attributes: { name: a.name, bundleId: a.bundleId, sku: "S", primaryLocale: "en-US" },
+            attributes: {
+              name: a.name,
+              bundleId: a.bundleId,
+              sku: "S",
+              primaryLocale: "en-US",
+            },
           })),
         links: {},
       }),
@@ -323,9 +331,7 @@ describe("the view is built from declarations", () => {
     expect(a.connection.state).toBe("not-configured");
     expect(a.readOnly).toMatch(/no team connection/);
     expect(a.listingStore).toBe("app-store");
-    expect(
-      a.prerequisites.map((p: Loose) => [p.id, p.state]),
-    ).toEqual([
+    expect(a.prerequisites.map((p: Loose) => [p.id, p.state])).toEqual([
       ["connection", "unmet"],
       ["app", "unmet"],
       ["permissions", "unknown"],
@@ -399,7 +405,10 @@ describe("a deep-linked step's state", () => {
     });
     expect(first.status).toBe(200);
     expect(first.json).toMatchObject({ state: "pending", satisfied: false });
-    let rows = await listStoreOperations(db, { scope: "product", product: SLUG });
+    let rows = await listStoreOperations(db, {
+      scope: "product",
+      product: SLUG,
+    });
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       store: "test-store",
@@ -472,15 +481,15 @@ describe("a deep-linked step's state", () => {
     expect(
       (await admin("POST", "/test-store/steps/submit/check", {})).status,
     ).toBe(404);
-    expect((await admin("POST", "/test-store/steps/nope/check", {})).status).toBe(
-      404,
-    );
-    expect((await admin("POST", "/nope/steps/createApp/check", {})).status).toBe(
-      404,
-    );
-    expect((await admin("GET", "/test-store/steps/createApp/check")).status).toBe(
-      405,
-    );
+    expect(
+      (await admin("POST", "/test-store/steps/nope/check", {})).status,
+    ).toBe(404);
+    expect(
+      (await admin("POST", "/nope/steps/createApp/check", {})).status,
+    ).toBe(404);
+    expect(
+      (await admin("GET", "/test-store/steps/createApp/check")).status,
+    ).toBe(405);
   });
 });
 
@@ -605,7 +614,11 @@ describe("the App Store: the New-app wizard as the adapter's plan", () => {
     expect(miss.json).toMatchObject({ state: "pending", satisfied: false });
     expect(apple.requests[0]).toContain("filter%5BbundleId%5D=gg.acme.dice");
 
-    apple.apps.push({ id: "6000000001", name: "Acme Dice", bundleId: "gg.acme.dice" });
+    apple.apps.push({
+      id: "6000000001",
+      name: "Acme Dice",
+      bundleId: "gg.acme.dice",
+    });
     const hit = await admin("POST", "/app-store/steps/createApp/check", {});
     expect(hit.json).toMatchObject({
       state: "done",
@@ -632,7 +645,9 @@ describe("the App Store: the New-app wizard as the adapter's plan", () => {
     v = await admin("GET", "");
     a = store(v.json, "app-store");
     expect(a.app).toEqual({ id: "6000000001", name: null });
-    expect(a.prerequisites.find((p: Loose) => p.id === "app").state).toBe("met");
+    expect(a.prerequisites.find((p: Loose) => p.id === "app").state).toBe(
+      "met",
+    );
     expect(a.steps.find((s: Loose) => s.id === "createApp")).toMatchObject({
       state: "done",
       next: null,

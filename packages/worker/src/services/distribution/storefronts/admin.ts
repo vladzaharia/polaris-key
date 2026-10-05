@@ -55,6 +55,7 @@ import {
 } from "../../../core/storefront/adapter.js";
 import { readListing } from "../listing/store.js";
 import { flowStores } from "./index.js";
+import { handleSlotsAdmin } from "./slots.js";
 import {
   baseFacts,
   flowOp,
@@ -104,6 +105,8 @@ export async function handleStorefrontsAdmin(
 ): Promise<Response | null> {
   const { req, rest } = ctx;
   if (rest[0] !== "storefronts") return null;
+  // The slot board is the flow's, not a store's (no adapter is called `slots`).
+  if (rest[1] === "slots") return handleSlotsAdmin(ctx);
   if (rest.length === 1) {
     if (req.method !== "GET") return notAllowed();
     return view(ctx, stores);
@@ -206,6 +209,9 @@ async function run(
   const r = await runtime.runStep(c, op, input, {
     idempotencyKey: key,
     typedConfirmation: typed,
+    ...(typed && typeof body.confirm === "string"
+      ? { confirm: body.confirm.trim() }
+      : {}),
   });
   if (!r.ok) return refusal(r);
   return adminJson(r);
