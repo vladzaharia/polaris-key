@@ -1,16 +1,16 @@
 # LX-12 Licence and grant lifecycle: grant expiry, refund and chargeback states, `refundGraceHours`, `ended_reason`
 
-| Field       | Value                                                                                                  |
-| ----------- | ------------------------------------------------------------------------------------------------------ |
-| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only)           |
-| Size        | 0.4–0.55 engineer-weeks                                                                                |
-| Depends on  | [LX-08](LX-08-licensing-expand.md), [LX-06](LX-06-licensing-settings.md)                               |
-| Unblocks    | [LX-14](LX-14-console-licensing.md), [LX-18](LX-18-licensing-wire.md), [LX-23](LX-23-subscriptions.md) |
-| Role        | `pkey-implementer`                                                                                     |
-| Plan mode   | no                                                                                                     |
-| Gates       | D1 migration (replayable, scratch-SQLite rehearsal); THREAT-MODEL                                      |
-| Human input | none                                                                                                   |
-| Repo        | `vladzaharia/polaris-key`                                                                              |
+| Field       | Value                                                                                                                                         |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only)                                                  |
+| Size        | 0.4–0.55 engineer-weeks                                                                                                                       |
+| Depends on  | [LX-08](LX-08-licensing-expand.md), [LX-06](LX-06-licensing-settings.md)                                                                      |
+| Unblocks    | [LX-14](LX-14-console-licensing.md), [LX-18](LX-18-licensing-wire.md), [LX-23](LX-23-subscriptions.md), [CM-05](CM-05-checkout-fulfilment.md) |
+| Role        | `pkey-implementer`                                                                                                                            |
+| Plan mode   | no                                                                                                                                            |
+| Gates       | D1 migration (replayable, scratch-SQLite rehearsal); THREAT-MODEL                                                                             |
+| Human input | none                                                                                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                     |
 
 ## Goal
 

@@ -100,6 +100,34 @@ tier/license/device live at [The config catalog](/docs/services/config/catalog/)
 `ConfigEntry` type itself, reproduced verbatim, is at
 [ConfigEntry — the catalog item shape](/docs/reference/config-entry/).
 
+### Reserved entitlement names
+
+A `flag` is an entitlement, and the platform sets a few entitlements itself in every license
+document: `channels`, `deviceLimit`, `app.minVersion`, `app.maxVersion`, `license.tier` and
+`license.tierLabel`. Every name under `license.`, `app.` and `pkey.` is reserved for future system
+keys too. The platform's value always wins over a product's.
+
+A flag may still **declare** one of these names, to give it a label, a category, a narrower
+schema or a `userGrant` label (djdl declares `channels`, `deviceLimit` and both `app.*` keys).
+That declaration is valid as long as it is **compatible**:
+
+- its `schema.type` is the system key's type: `channels` an array of strings (`items` of type
+  `string`), `deviceLimit` an integer, the `app.*` and `license.*` keys strings;
+- the schema only narrows that type (`enum`, `const`, `pattern`, `minLength`/`maxLength`,
+  `minimum`/`maximum`, `uniqueItems`, `minItems`/`maxItems`, `format`, `multipleOf`) or annotates
+  it;
+- the entry carries only presentation fields besides `key`, `kind` and `schema`: `label`,
+  `category`, `description`, `default` (of the right type), `examples`, `ui`, `userGrant` and
+  `grantLabel`.
+
+Any other name under `license.` or `pkey.` has no compatible form. The validator reports an
+incompatible declaration as `incompatible_reserved_name`. It is a **warning** for now (`pkey
+validate` prints it and link and resync accept it); the platform setting
+[`LICENSING_RESERVED_NAMES`](/docs/admin/platform-settings/#the-runtime-settings) turns it into an
+error after a window of two minor releases or 60 days, whichever is later. Platform → Settings →
+Licensing lists every registered product with a reserved-name declaration and whether it is
+compatible.
+
 ## Enabled services: `modules` + `devices.registration`
 
 Polaris Key is seven opt-in services — **license, config, release, distribution, update,

@@ -4,6 +4,11 @@ import {
 } from "@polaris-key/catalog";
 import { type SecretDelivery } from "@polaris-key/protocol/config";
 import {
+  DEFAULT_RESERVED_NAMES_MODE,
+  reservedNameDeclarations,
+  type ReservedNamesMode,
+} from "./reservedNames.js";
+import {
   CHANNEL_ALIASES,
   CHANNEL_BETA,
   CHANNEL_DEV,
@@ -1267,10 +1272,20 @@ function registrationPolicy(productRoot: Record<string, unknown>): unknown {
  * resync always require the schema. Anything that means to answer "will this link?" (the CLI's
  * `pkey validate`, `parseManifest`) must call {@link validateIngestDocuments} instead.
  */
+/**
+ * Options the platform supplies at ingest. `reservedNames` is the severity of an incompatible
+ * reserved entitlement-name declaration (S-19 §7.4): the Worker passes its platform setting
+ * `LICENSING_RESERVED_NAMES`; anything else (the CLI, editors) gets the default, `warn`.
+ */
+export interface ValidationOptions {
+  reservedNames?: ReservedNamesMode;
+}
+
 export function validateManifestDocuments(
   manifest: ManifestDocuments,
+  opts: ValidationOptions = {},
 ): ValidationResult {
-  return validateDocuments(manifest, false);
+  return validateDocuments(manifest, false, opts);
 }
 
 /**
@@ -1281,6 +1296,7 @@ export function validateManifestDocuments(
  */
 export function validateIngestDocuments(
   manifest: IngestDocuments,
+  opts: ValidationOptions = {},
 ): ValidationResult {
   const product = manifest.product;
   if (product === undefined) {
@@ -1303,7 +1319,7 @@ export function validateIngestDocuments(
       requiredSecrets: [],
     };
   }
-  return validateDocuments({ ...manifest, product }, true);
+  return validateDocuments({ ...manifest, product }, true, opts);
 }
 
 /** True when the schema document is present; otherwise reports `missing_schema`. */
@@ -1322,6 +1338,7 @@ function requireSchema(errors: ValidationMessage[], schema: unknown): boolean {
 function validateDocuments(
   manifest: ManifestDocuments,
   schemaAlwaysRequired: boolean,
+  opts: ValidationOptions,
 ): ValidationResult {
   const errors: ValidationMessage[] = [];
   const warnings: ValidationMessage[] = [];
@@ -1456,6 +1473,35 @@ function validateDocuments(
           add(errors, "schema", "/entries", "invalid_catalog_shape", issue);
         }
       }
+    }
+  }
+
+  // S-19 §7.4 (LX-05): a flag named like a system key the Worker injects (`channels`,
+  // `deviceLimit`, `app.*`, `license.*`, `pkey.*`) is valid when compatible; an incompatible one
+  // is reported with the platform's severity, `warn` until LX-05b. Judged whatever the modules:
+  // flags are entitlements, and License reads them with Config off.
+  if (manifest.schema !== undefined) {
+    const mode = opts.reservedNames ?? DEFAULT_RESERVED_NAMES_MODE;
+    // Two literal emit sites (not one with a computed list) so the generated validation-codes
+    // page lists both severities; LX-05b deletes the warning branch.
+    for (const decl of reservedNameDeclarations(manifest.schema)) {
+      if (decl.compatible) continue;
+      if (mode === "error")
+        add(
+          errors,
+          "schema",
+          `/entries/${decl.index}`,
+          "incompatible_reserved_name",
+          `${decl.key} is a reserved entitlement name the platform sets itself: ${decl.problem}. Incompatible reserved-name declarations are refused on this platform.`,
+        );
+      else
+        add(
+          warnings,
+          "schema",
+          `/entries/${decl.index}`,
+          "incompatible_reserved_name",
+          `${decl.key} is a reserved entitlement name the platform sets itself: ${decl.problem}. This is a warning for now; it becomes an error when the platform switches licensing.reservedNames to error.`,
+        );
     }
   }
 
@@ -4083,6 +4129,7 @@ export type ManifestDocumentName = (typeof MANIFEST_DOCUMENTS)[number];
 
 export function parseManifest(
   files: Record<string, string>,
+  opts: ValidationOptions = {},
 ): ParseManifestResult {
   const errors: string[] = [];
   const docs: Record<string, unknown> = {};
@@ -4107,12 +4154,15 @@ export function parseManifest(
   if (!isRecord(docs.product))
     return { ok: false, errors: ["product: must be an object"] };
 
-  const validation = validateIngestDocuments({
-    product: docs.product,
-    schema: docs.schema,
-    release: docs.release,
-    distribution: docs.distribution,
-  });
+  const validation = validateIngestDocuments(
+    {
+      product: docs.product,
+      schema: docs.schema,
+      release: docs.release,
+      distribution: docs.distribution,
+    },
+    opts,
+  );
   if (!validation.ok)
     return { ok: false, errors: validation.errors.map(formatIngestError) };
 
@@ -5420,3 +5470,5 @@ export * from "./releaseKeys.js";
 export * from "./labels.js";
 // P5-08: the asset-pack ids and Play asset-pack names a pack id maps to on store transports.
 export * from "./transportIds.js";
+// S-19 §7.4 (LX-05): reserved entitlement names and what a compatible declaration is.
+export * from "./reservedNames.js";

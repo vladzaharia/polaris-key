@@ -87,6 +87,8 @@ const FAIL_MODE: Record<string, FailMode> = {
   authPollState: "closed",
   authDevicePoll: "closed",
   authDevicePollCode: "closed",
+  // I-26: the legacy sign-in's licence chooser, a step of the sign-in that binds a licence.
+  authChoose: "closed",
   adminLogin: "closed",
   adminCallback: "closed",
   portalLogin: "closed",

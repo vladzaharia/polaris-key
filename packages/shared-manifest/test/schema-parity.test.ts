@@ -746,6 +746,23 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (p(d).licensing.tiers[0].channels = ["Beta.2"]),
   },
   {
+    // S-19 §7.4 (LX-05): a flag declaring a system key with an incompatible type. A warning in
+    // the default mode (the platform's LICENSING_RESERVED_NAMES flips it to an error, LX-05b);
+    // the type of a key's values is beyond the schema document, so it accepts.
+    code: "incompatible_reserved_name",
+    file: "schema",
+    schema: "accepts",
+    mutate: (d) =>
+      (d.schema as any).entries.push({
+        key: "deviceLimit",
+        kind: "flag",
+        category: "Seats",
+        label: "Seats",
+        description: "A string where the platform sets an integer.",
+        schema: { type: "string" },
+      }),
+  },
+  {
     // P0-04: a manual channel a built-in takes over. A warning, so the schema accepts.
     code: "reserved_channel_name",
     file: "release",

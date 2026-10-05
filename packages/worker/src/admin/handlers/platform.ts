@@ -12,6 +12,10 @@
  *   GET/PATCH/DELETE /api/platform/settings[/:key]
  *                                 — the platform settings store and the read-only inventory
  *                                   (A-13, `platformSettings.ts`).
+ *   GET /api/platform/reserved-names
+ *                                 — the reserved entitlement names and the registered products
+ *                                   that declare one, compatible or not (LX-05,
+ *                                   `reservedNames.ts`).
  *   GET /api/platform/operations  — the self-reported Operations snapshot (A-14,
  *                                   `core/operations.ts`): binding probes, queue and DLQ
  *                                   backlog, cron runs, heartbeats, storage, indexes,
@@ -38,6 +42,7 @@ import {
   notFound,
 } from "../lib/respond.js";
 import { handlePlatformSettings } from "./platformSettings.js";
+import { handleReservedNames } from "./reservedNames.js";
 import {
   appliedMigrations,
   deployIdentity,
@@ -209,6 +214,9 @@ export async function handlePlatform(
       throw e;
     }
   }
+  // S-19 §7.4 (LX-05): the reserved entitlement-name report, read-only.
+  if (rest.length === 1 && rest[0] === "reserved-names")
+    return handleReservedNames(req, env, db);
   if (rest[0] === "settings") {
     try {
       return await handlePlatformSettings(

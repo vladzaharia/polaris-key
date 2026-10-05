@@ -47,7 +47,9 @@ import {
   nextSchemaVersion,
   parsePayload,
   readBody,
+  reservedNamesResponse,
 } from "../../../core/adminApi.js";
+import { reservedNamesMode } from "../../../core/reservedNames.js";
 import type { ConfigAdminContext } from "./index.js";
 
 /** At most this many keys per usage request (a review of a large removal batches its keys). */
@@ -105,6 +107,13 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
       entries: catalog.entries,
     });
     if (unrepresentable) return unrepresentable;
+    // S-19 §7.4 (LX-05): a flag declaring a system key incompatibly is refused only when the
+    // platform's reserved-names setting says error.
+    const reserved = reservedNamesResponse(
+      { entries: catalog.entries },
+      await reservedNamesMode(ctx.env, db),
+    );
+    if (reserved) return reserved;
     const active = await getActiveSchema(db, slug);
     if (body.expectedVersion !== undefined) {
       const expected = body.expectedVersion;

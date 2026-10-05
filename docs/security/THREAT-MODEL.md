@@ -2578,6 +2578,13 @@ the flag and the store, never a token.
   the account's own (`ownersteamid` = `steamid`: a Family Sharing borrower gets nothing) and not a
   timed trial.
 
+**Licence merges (LX-03).** When an identity sign-in retires an anonymous enrolled licence into
+the identity's licence, the retired licence's grants and purchases move to the survivor and its
+binding becomes an alias of the survivor (`dist_purchase_binding_aliases`, read before
+`dist_purchase_bindings`), in the same batch as the device move. A restore under the old binding
+therefore reaches the survivor, and "first licence wins" below then names the survivor. Nothing
+else writes an alias; see the R1-07 migrate bullet for the attach case.
+
 **Cross-licence claims.** Every purchase is bound before it is made: the licence's binding UUID
 (random, not the licence id, not PII) is handed to the store as Apple's `appAccountToken`, Play's
 `obfuscatedAccountId` or the Steam ticket identity. A claim grants only when the STORE's record
@@ -2776,16 +2783,38 @@ plain R1-07 poll, which authorizes one starter device on the victim's license th
   claim is offered (`attachable`) only while every authorized device on the starter's row,
   dormant ones included, fits the device limit the row will carry after the claim (the victim's
   mapped tier and provisioned overrides).
-- **Migrate** (the victim already has a license): `moveDevices` re-points _every_ device on the
-  starter's anonymous license at the victim's license, with `seat_no = NULL` and without
-  `authorizeDevice`. Bounded since P1-07 review: the attach is offered (`attachable`) only while
-  every authorized device on the starter's license (dormant ones too, since `moveDevices` moves
-  them and a moved dormant device comes back without claiming a seat) plus the seat-holding
-  devices on the victim's license fit the device limit the victim's license will carry after the
-  activation. The activation rewrites that license's tier and overrides to the victim's current
-  group-mapped tier and provisioning before the mint, so the bound is measured on that, not on
-  a larger tier the license still stores from an earlier sign-in or an admin `deviceLimit`
-  override the same write discards.
+- **Migrate** (the victim already has a license): the merge re-points _every_ device on the
+  starter's anonymous license at the victim's license, without `authorizeDevice`. Bounded since
+  P1-07 review: the attach is offered (`attachable`) only while every authorized device on the
+  starter's license (dormant ones too, since the merge moves them and a moved dormant device
+  comes back without claiming a seat) plus the seat-holding devices on the victim's license fit
+  the device limit the victim's license will carry after the activation. Since LX-02 (S-19 G7,
+  decision 12) the activation's sign-in write keeps that license's own `tier_id` and
+  `expires_at` and rewrites only the override keys the product's provisioning declares, so the
+  bound is measured on the stored tier plus the surgically merged overrides (an operator's
+  `deviceLimit` override survives and counts), not on a larger tier the victim's groups map to
+  now. The strict-fingerprint refusal below likewise reads the destination's stored tier on a
+  migrate, and the identity's mapped tier on a claim.
+  Since LX-03 the move itself is seat-checked against the same limit (`planDeviceMove`,
+  `repo.ts`): the destination's dormant seats are released, the move is refused
+  (`device-limit`, nothing written) when the moving devices plus the destination's seat-holders
+  exceed it, and every moved authorized device takes a free ordinal of the destination, so
+  `idx_devices_seat` arbitrates a concurrent activation (the merge batch then fails whole and is
+  planned again). The offer is no longer the only guard.
+- **What the migrate carries (LX-03).** The same batch moves the starter's store purchases onto
+  the victim's license (`core/licenseMerge.ts`: License re-keys `license_store_grants`,
+  Distribution re-keys `dist_purchases` and records the starter's purchase binding in
+  `dist_purchase_binding_aliases`, so it resolves to the victim's license). This gives the
+  starter nothing it did not already have: its devices are already on the victim's license and
+  see the victim's flags; the carried purchases add the starter's own flags to the victim's
+  license, a gift to the victim. A later purchase under the aliased binding grants the victim's
+  license, the residual the commerce bridge already accepts ("anyone who learns a licence's
+  binding can make a purchase that grants THAT licence"). The aliased binding cannot pull a
+  purchase off any other license: "first licence wins" still holds for every purchase not
+  recorded for the retired license, and the merge itself needs the claimable anonymous license
+  and a usable identity license as before. Without Core's merge collector on the request
+  (`ServiceContext.licenseMerge`, built by `dispatchService`) the migrate is refused rather than
+  run without carrying.
 - **On both arms**, then, the attach cannot take the victim past their device limit. It can
   still fill the victim's free seats with the starter's devices, so the victim's own next device
   then gets `device_limit` until the owner removes them. The bound is a read before the merge,
@@ -2801,10 +2830,13 @@ plain R1-07 poll, which authorizes one starter device on the victim's license th
 PoCs: `R8-oidc.test.ts` › `OPEN (R1-07 / R8-03, P1-07 claim)` and `OPEN (R1-07 / R8-03, P1-07
 migrate)` assert the gap; `P1-07 (R1-07 bound)`, `P1-07 (R1-07 bound, dormant devices)` and the three `P1-07 (R1-07 bound,
 claim)` / `P1-07 (R1-07 bound, migrate)` tests (dormant devices on a claim, the identity's tier
-rather than the enroll tier, the mapped tier rather than a stale stored one) assert the
-seat-limit refusal, and `P1-07
-(R1-07, claim on a strict tier)` and `P1-07 (R1-07, migrate on a strict tier)` assert that nothing
-merges when the mint would be refused. Binding the
+rather than the enroll tier, the destination's stored tier rather than a larger mapped one, an
+operator `deviceLimit` override that survives sign-in) assert the seat-limit refusal, and
+`P1-07 (R1-07, claim on a strict tier)`, `P1-07 (R1-07, migrate on a strict tier)` and `P1-07
+(R1-07, migrate onto a strict stored tier)` assert that nothing merges when the mint would be
+refused. `licenseMerge.test.ts` and `enroll.test.ts` (`LX-03: …`) assert the seat-checked
+move, the refusal in one piece, and that grants, purchases and the binding follow the merge.
+Binding the
 callback to the confirming browser (below) closes all of it, because the device-code holder is
 then again the person who signed in.
 
@@ -2825,6 +2857,44 @@ confirm. Fix direction, unowned: bind a `viaDeviceCode` flow's callback to the b
 confirmed it — e.g. a `__Host-` `SameSite=Lax` cookie set on the confirmation `303` and required
 by `handleAuthCallback` — which closes R1-07 for device-code flows and makes the `Origin: null`
 question moot.
+
+**The licence chooser's binder (I-26, 2026-10-05).** On a `provider: platform` product, a person
+whose Polaris Key account already owns a usable licence for the product is no longer auto-issued
+a second `sub`-keyed licence: the callback mints nothing and sends the browser to "Choose a
+licence for this device" (`/<p>/identity/auth/choose`). That page lists **purchased** licences,
+so under R1-07 it would hand the phisher a stronger prize than the free licence above: the
+victim, signing in through a forwarded authorize URL, could bind their paid licence to the
+starter's device. The chooser therefore applies the fix direction above, for this path only:
+
+- the browser that starts (`/auth/start`) or confirms (the device page's POST `303`) a platform
+  product's flow receives `__Host-pk_lcb` (HttpOnly, Secure, SameSite=Lax, Path=/, 600 s), and the
+  flow stores the cookie's peppered hash;
+- when the chooser would apply, `handleAuthCallback` requires that cookie. A browser without it
+  (the victim's, in R1-07) gets a generic "Start again on your device" page, the flow is dropped,
+  and **nothing is minted** — there is no fallback to the old auto-issue;
+- the chooser's `GET` and `POST` find the flow only through that cookie (the page and its URL
+  never carry `state`), each render carries a fresh single-use token, the `POST` must be
+  same-origin, and every choice is re-checked server-side (the licence is still the account's,
+  or the identity's own, and still takes this device). A choice is audited
+  (`identity.signin.license_chosen`);
+- **Replace a device** frees a seat with the portal's own `freeAccountDevice`: account ownership
+  (the account the verified `sub` is linked to, held server-side on the flow), the shared
+  `portalDeviceDisconnect` budget, the `portal.device.disconnect` audit row ("to sign in
+  <label>") and the security email to every verified address. Nothing is written before the
+  explicit "Replace and continue".
+
+Residual (open, owned by I-08 / PX-W13): the cookie binds the browser that _started or confirmed_
+the flow, not the person who owns the device. In the plain R1-07 pattern the starter confirms
+with curl and holds the cookie, so the victim's callback is refused. In the
+`verificationUriComplete` variant, though, the starter sends the victim the confirmation link:
+the victim confirms **in their own browser**, receives the binder, signs in, and is shown the
+chooser — and could bind one of their purchased licenses to the starter's device. The only speed
+bump is the device label, which the chooser and the confirmation page show (marked "Named by the
+device" on the chooser) but which is client-supplied `deviceName` text the starter chooses.
+Closing it needs the device-code holder and the browser bound together, which is I-08's login
+card with PX-W13's `__Host-pk_req` binder. Flows outside the trigger (no linked account, no
+usable license, `provider: custom`) keep the R1-07 behaviour described above. Pinned by
+`test/oidcLicenseChoice.test.ts` (› "I-26 browser binder").
 
 **Unchanged.** The legacy `/identity/auth/device/verify?device_code=` page stays for flows in
 flight across the deploy. Confirmation on both routes is one function: the Fetch Metadata /
@@ -3407,15 +3477,15 @@ privilege level.
 
 ### Platform settings and operations: the runtime settings store (A-13)
 
-A-13 makes four deploy settings editable from the console without a deploy, through
+A-13 makes four deploy settings (and, since LX-05, a fifth) editable from the console without a deploy, through
 `platform_settings` (migration 0056) and `GET`/`PATCH`/`DELETE /manage/api/platform/settings`
 behind the same gates as the rest of the Platform section (session, `PLATFORM_ADMIN_GROUP`, the
 per-subject limiter, CSRF on mutations, and `handlePlatform`'s second platform-admin check). There
 is no new privilege level and no outbound call.
 
 - **What is editable is a closed list in code.** `PLATFORM_SETTINGS` (`core/platformSettings.ts`)
-  declares `LAZY_DELTAS`, `LAZY_DELTA_MAX_BYTES`, `BLOB_GC_MODE` and `BLOB_GC_GRACE_DAYS`, and
-  nothing else: a D1 row with any other key is ignored, and a value outside an entry's validator
+  declares `LAZY_DELTAS`, `LAZY_DELTA_MAX_BYTES`, `BLOB_GC_MODE`, `BLOB_GC_GRACE_DAYS` and
+  `LICENSING_RESERVED_NAMES` (below), and nothing else: a D1 row with any other key is ignored, and a value outside an entry's validator
   is never applied (the resolver falls through to `[vars]` or the code default). Each is a
   background job's kill switch or tunable. The worst a hostile session can do with them is waste
   delta CPU (bounded by each product's daily cap and the 32 MiB ceiling, which the size cap can
@@ -3424,6 +3494,18 @@ is no new privilege level and no outbound call.
   180-day R2 age lock still bounds every deletion, and the collector deletes only unreferenced
   objects; see "Readiness holds, pack gates and the blob collector"). None changes what a device
   is offered or what is signed.
+- **`LICENSING_RESERVED_NAMES` (LX-05, S-19 §7.4) is a validation severity, not a gate.** It is
+  `warn` or `error` (`runtime` precedence, default `warn`) and decides only whether a product
+  catalog flag that declares a reserved entitlement name (`channels`, `deviceLimit`, `app.*`,
+  `license.*`, `pkey.*`) with an incompatible type is accepted with a warning or refused at link,
+  resync, the platform deploy hook and the console catalog writes. A hostile session that sets
+  `warn` gains nothing: the policy injection in `core/entitlements.ts` overwrites every system
+  key after the profile and override merge in both modes, so no declaration can change a seat
+  limit, a channel set or a version window a device is signed. Setting `error` can only make a
+  product's next resync fail (an availability nuisance the operator sees on Platform → Settings
+  → Licensing, which lists every incompatible declaration); it is confirmed (L1) and audited.
+  The report route `GET /manage/api/platform/reserved-names` is read-only and returns catalog
+  keys and product names, nothing secret.
 - **Why nothing else may join it (AT-2).** Whoever takes the admin plane already reaches A2, A3,
   A5 and A6 through the API for as long as the session lasts. A runtime knob that _widens_ what a
   session can do (a longer session TTL, a raised rate limit, a looser `OIDC_ISSUER_ALLOWLIST`, a
@@ -3450,13 +3532,58 @@ is no new privilege level and no outbound call.
 - **The inventory never reveals a secret.** `GET …/settings` reports deploy-time values that are
   not credentials (the environment, the admin group name, the IdP issuer and client id, the
   parsed issuer allowlist, the origins, the bucket, the account and GitHub App ids, kid names)
-  and every secret as `{ name, set }` only: never a value, a length, a prefix or a hash. It warns
+  and every secret as `{ name, set }` only: never a value, a length, a prefix or a hash. Since
+  ST-02 both lists are generated from the `@inventory var|secret` tags on `Env` (`env.ts` →
+  `platformInventory.generated.ts`) rather than hand-kept, so a new member cannot be left out,
+  and a member cannot be added untagged (`pnpm gen:platform-inventory -- --check`). The tag is
+  now what keeps a value out of the response: `test/platformInventory.test.ts` refuses a
+  credential-shaped name (`*_SECRET`, `*_KEY`, `*_KEYS`, `*_PEPPER`, `*PRIVATE_KEY`, the store
+  credentials, `PLATFORM_KEK`) tagged anything but `secret`. It warns
   when the console still borrows the platform IdP client (`ADMIN_OIDC_*` unset, I-03), when
   `PLATFORM_KEK_ID` is set, and when `PORTAL_SESSION_SECRET` is unset (the portal then signs with
   `ADMIN_SESSION_SECRET`).
 - **Propagation.** Each isolate caches the table for 30 s; the cron handler and the lazy-delta
   consumer re-read it at the start of each invocation. A setting that must take effect instantly
   does not belong in this store.
+
+### Platform settings and operations: the settings registry (ST-03, AT-2 amended)
+
+ST-03 adds one registry of every platform, product and service setting
+(`packages/worker/src/core/settings/`, notes/S-18 §4.2): Core's types and rules, the platform slice
+(`settings/platform.ts`), Core's product slice (`settings/core.ts`), and one slice per service
+contributed through its descriptor (`ServiceDescriptor.settings`), assembled once in `mount.ts`. It
+is data: it reads and writes no value and adds no route. A-13's four keys moved into the platform
+slice under registry keys (`deltas.lazy.mode`, `deltas.lazy.maxBytes`, `blobs.gc.mode`,
+`blobs.gc.graceDays`) with their old names as aliases; their `platform_settings` rows keep the old
+names and `PLATFORM_SETTINGS` is now derived from the slice, so the A-13 store, its route and every
+control above are unchanged. Entries registered ahead of the package that wires them carry
+`pending` and are not editable anywhere.
+
+The registry widens what the console will eventually be able to change (the resolver and generic
+API are ST-04 and ST-05), so AT-2 is amended here: one stolen admin session must not be able to
+widen access across the platform, or make itself permanent, through a setting.
+`test/settings-registry.test.ts` runs `checkRegistry` (`settings/rules.ts`) over the real
+composition root and refuses:
+
+- **at platform scope**, anything that names an origin, the privilege root, the admin IdP, a
+  security gate, key material, a session length, a rate limit, retention or a bucket (S-13 §8.2's
+  names, plus categories matched against every word of the key, its aliases and its `[vars]`
+  name), and any `securityWidening` entry;
+- **at product scope**, a security-widening setting (web origins, an OIDC issuer, trust policy,
+  redirect paths, a role map, access modes, the Sparkle key) that is not `critical` (reason
+  required), that `inherits` from platform (so one platform write cannot widen every product), or
+  whose widening direction needs less than L1; known keys and name patterns must carry the flag;
+- a product session length that could be lengthened: sessions are shorten-only, bounded `max` at
+  the code constant;
+- a `policy` bound on the restrictive side (an entry whose higher values widen access may only be
+  bounded `max` or locked);
+- a product entry that shares a key with a platform-only entry, or disagrees with the platform
+  default or bound it is linked to;
+- a slice that writes outside its own namespace or declares another owner (rule 6), and any
+  `accountMerge` (the account is not a settings scope, S-19 model OC).
+
+No new data is collected and nothing reaches a device: `wire` only labels which existing channel
+already carries a value.
 
 ### Self-reported operations (A-14)
 
@@ -3482,8 +3609,8 @@ credential and no outbound host.**
   dead-letter queue `pkey-deltas-dlq-<env>` as a producer so the Operations page can call
   `metrics()`; Cloudflare offers no read-only queue binding. A source check
   (`test/platformOperations.test.ts`) asserts no file calls `.send` or `.sendBatch` on it and
-  that only `env.ts`, `core/operations.ts` (which hands it straight to `queueStatus`) and the
-  binding-presence list name it. The residual risk, accepted: code running in the request Worker
+  that only `env.ts`, `core/operations.ts` (which hands it straight to `queueStatus`), the
+  binding-presence list and the generated platform inventory (ST-02, one data row) name it. The residual risk, accepted: code running in the request Worker
   could enqueue junk into a queue that has no consumer and whose messages expire after 4 days.
   It reaches no device and no signed document.
 - **Probes are bounded.** Each binding probe has a 3-second limit and is fault-isolated, so a
@@ -4543,6 +4670,25 @@ sit behind the portal session; the claim also needs the CSRF header.
   yet (an operator's own console edit, or a push killed before its post-write sweep) lasts until
   the next push or console edit drops the approval — the per-mint check refuses while it lasts,
   but anonymous enrolments or sign-ins it allows in the meantime are issued, and fall under (1).
+- **Which commit's `.pkey/` is applied, and the record of it (R6-05, ST-01a).** A push to ANY
+  branch touching `.pkey/` triggers a resync, but the push only triggers it: `resyncRepo` and
+  `linkRepo` ask GitHub for the DB-configured repository's default-branch head
+  (`GET /repos/{o}/{r}/commits/HEAD`, `Accept: application/vnd.github.sha`) and read every
+  document `?ref=<that sha>` (`services/release/manifestFetch.ts`). The ref is a value GitHub
+  just returned for the repository's own default branch, never the webhook's `after` nor anything
+  in a request, so branch protection and required review on `.pkey/` still bound what is applied;
+  pinning also removes the window in which a push landing between two Contents reads mixed
+  documents from two commits. A failed or malformed head answer fails the apply closed, with no
+  unpinned fallback. The webhook's `after` is still stored, as `product_sync_state.commit_sha`,
+  and shown only as "Triggered by push". Every apply (link, resync, and the system product's
+  deploy hook, which records the deploy's own `PKEY_GIT_SHA`) writes one
+  `product_manifest_snapshot` row in the apply's batch: the applied commit, a SHA-256 over the raw
+  documents and the parsed manifest. Manifests name secrets but never carry values, so the row
+  holds no secret material; it is latest-only and, like every product-scoped table, references
+  the product without `ON DELETE` (R11-01). The snapshot
+  records what was applied and never decides it. **Residual:** the backfill (ST-01c) may fetch at
+  the webhook-supplied `commit_sha` to corroborate an old row; that read is compare-only, never
+  applied, and the row it writes says so.
 - **The IdP is trusted for `groups`, and `groups` is the entire admin authorization decision.**
 
 ## 4. Adversaries
@@ -4568,7 +4714,7 @@ originating outside the trust boundary.
 | OIDC `groups`                   | **Platform admin authority**                                                      | The IdP              | Any IdP feature that lets a user influence group membership grants platform admin. A single claim string is the entire decision.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | OIDC `sub`                      | License identity                                                                  | The IdP              | Admin, portal and the product flow all require it non-empty (R8-05a); an ID token without `sub` is refused with a generic 401. Portal identities are keyed by (issuer, `sub`), never by `sub` alone (I-01).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | OIDC `email`                    | Portal license linking, cross-product                                             | The IdP              | Portal and the product flow both require `email_verified: true`; the product flow stores no email otherwise (R8-05b). Admins may still set `licenses.email` to any unverified string, and portal auto-linking trusts only emails the portal itself verified.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `.pkey/` manifest               | Tiers, OIDC issuer, artifact policy, admin group, binary name                     | A linked GitHub repo | Applied on webhook-triggered resync. The repo effectively writes its own security policy — except edge-mint recipes, which are inert until an operator approves them column for column and sign only with an operator-marked `edge-mint` secret. Its tag regexes are length-capped only: R10-09.                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `.pkey/` manifest               | Tiers, OIDC issuer, artifact policy, admin group, binary name                     | A linked GitHub repo | Applied on webhook-triggered resync, read at ONE commit: the default-branch head GitHub resolves from the DB-configured repo (R6-05: no webhook- or caller-supplied ref picks the content; ST-01a), recorded with that commit in `product_manifest_snapshot`. The repo effectively writes its own security policy — except edge-mint recipes, which are inert until an operator approves them column for column and sign only with an operator-marked `edge-mint` secret. Its tag regexes are length-capped only: R10-09.                                                                                                                                                                                                                                            |
 | `.pkey/distribution`            | Outlet store identities, listings, transports (`dist_outlets`, `dist_transports`) | A linked GitHub repo | Applied on resync by Distribution's ingest hook. Its root listing (`dist_listing`) is the portal's product presentation and the media proxy's source: display data only, and art is fetched only from GitHub-hosted https URLs, typed by magic number (PX-W1). Cannot express outlet capabilities (`capabilities_not_manifest_writable`); those are operator-owned, narrow-only and clamped on read (P2b-02). The `appleId` identity must equal the operator's pin on the `asc-api-key` (P5-02f), or the App Store Connect connector is inert; it can no longer pick the app the team key acts on ("Who picks the outlet's app"). Likewise the Play `packageName` must equal the pin on the `google-service-account` (P5-03), or the Google Play connector is inert. |
 | `web.origins` (`.pkey/product`) | Which browser origins may read a product's device-facing responses (CORS)         | A linked GitHub repo | Exact origins only (no wildcard, `null`, path or non-loopback `http`), capped at 16, re-checked when the row is read. Never `Allow-Credentials`, so a listed page gains nothing a non-browser client lacks. Applied in dispatch after the handler, so the edge cache stays origin-free. The console, portal, docs, webhook and cookie-bearing identity routes never answer CORS (R1-09).                                                                                                                                                                                                                                                                                                                                                                             |
 | `X-PKey-Version` header         | Version and channel gating                                                        | The client           | A `0.0.0-dev*` version skips the version window and channel checks only when the licence is granted `dev` or the product sets `allowDevBuilds`, which no caller sets today (R3-01). Otherwise the version implies a channel per WIRE-CONTRACT-V3 §5.1 and is gated like any build.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
@@ -4619,7 +4765,14 @@ Stated honestly, so nobody builds on a false assumption:
 
 **It does stop:** using the product with no license at all _against the server_; obtaining product
 secrets or edge-mint tokens without a valid device token; exceeding seat limits by ordinary,
-non-concurrent use; continuing to work after revocation _if the client contacts the server again_.
+non-concurrent use; continuing to work after revocation _if the client contacts the server again_;
+outliving a time-limited licence by signing in again. Until LX-02 (S-19 G7) an OIDC sign-in on an
+existing licence reset `expires_at` to `now + policy_expiry_days` and its tier to the first mapped
+group's, so a trial renewed on every sign-in, and replaced the whole `overrides_json`, so an
+operator's restriction (a `deviceLimit` cut, a revoked flag) was undone by the next sign-in. The
+sign-in write now sets only `name`, `email` and `groups_json` and rewrites only the override keys
+the product's provisioning declares, as a compare-and-set on the column it merged from (tests:
+`oidc.test.ts` › `OIDC sign-in on an existing licence (LX-02)`).
 
 **It does not stop casual license sharing.** This was claimed here in the first draft and it is
 wrong. A user can copy `~/.config/<product>/managed.json` to another machine, or simply hand-write
@@ -4691,6 +4844,11 @@ Obtain admin authority
 ├── Be granted `groups` by the IdP ───────► any IdP group-membership weakness
 └── XSS on the platform origin ───────────► unauthenticated raw-HTML endpoints without CSP
 ```
+
+Holding the admin plane must not let the session widen itself or every product at once through a
+setting: the settings registry keeps every widening knob deploy-time at platform scope, and product
+security settings are `critical`, at least L1 to widen, and never inherited from platform
+("Platform settings and operations: the settings registry", ST-03).
 
 ### AT-3 — Ship malicious code to every installed client
 
@@ -4860,7 +5018,12 @@ reporting a binding's resource id or any secret-derived value, a route updates o
 `PLATFORM_SETTINGS`, a setting's precedence changes from `ceiling` to `runtime`, a registry
 entry's bounds widen (`LAZY_DELTA_MAX_BYTES` above the measured 32 MiB ceiling, or a grace below
 one day), the settings inventory starts reporting anything about a secret beyond its presence,
+an `Env` member's `@inventory` tag changes from `secret` to `var` (ST-02),
 or a path reads one of the four settings from the raw `[vars]` instead of through the resolver;
+or, for the settings registry (ST-03), an entry is added or loses `pending`, an entry's ownership,
+`securityWidening`, `critical`, `inherits`, `policyBound` or confirm levels change, a rule in
+`core/settings/rules.ts` is relaxed or a name leaves its deny-list, or a slice is contributed by
+anything but a service descriptor;
 or, for self-reported operations (A-14), the `DELTA_DLQ` binding is used for anything but
 `metrics()`, a request path starts persisting free-text error capture, a job-run or heartbeat
 writer stores request data or an untruncated message, or the Operations route gains an outbound

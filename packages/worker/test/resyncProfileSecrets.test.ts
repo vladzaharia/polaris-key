@@ -41,6 +41,7 @@ import { linkRepo } from "../src/services/release/linkRepo.js";
 import { resyncRepo } from "../src/services/release/resync.js";
 import { manifestIngestFor } from "../src/core/registry.js";
 import { SERVICES } from "../src/mount.js";
+import { withDefaultHead } from "./githubHead.js";
 
 const SLUG = "acme";
 const ADMIN_SECRET = "test-admin-session-secret";
@@ -159,7 +160,8 @@ function pkey(product: string, opts: PushOptions = {}): FetchImpl {
     ".pkey/product.json": product,
     ".pkey/release.json": RELEASE_JSON,
   };
-  return async (input) => {
+  // ST-01a: the pinned manifest fetch asks for the default branch's head first.
+  return withDefaultHead(async (input) => {
     const url = String(input);
     if (url.includes("/installation"))
       return new Response(JSON.stringify({ id: 4242 }), { status: 200 });
@@ -183,7 +185,7 @@ function pkey(product: string, opts: PushOptions = {}): FetchImpl {
       return new Response("[]", { status: 200 });
     }
     return new Response("not found", { status: 404 });
-  };
+  });
 }
 
 function envFor(): Env {

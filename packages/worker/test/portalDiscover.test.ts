@@ -38,6 +38,7 @@ import {
   issuePortalSession,
 } from "../src/services/identity/portal/session.js";
 import {
+  discoverCount,
   discoverIdentity,
   discoverOffers,
 } from "../src/services/identity/portal/discover.js";
@@ -439,6 +440,84 @@ describe("GET /api/discover (G24)", () => {
     expect(library.products.map((p: { product: string }) => p.product)).toEqual(
       ["mossgarden"],
     );
+  });
+
+  it("never offers or counts a product the library holds, whatever route linked it; unowned ones still show", async () => {
+    const env = portalEnv();
+    const db = makeTestDb();
+    const who = await platformAccount(env, db);
+    // Every product here would auto-issue to the account; each is held by a different route.
+    const held: Array<
+      [string, string, string, "email" | "oidc" | "license-key" | "admin"]
+    > = [
+      // [product, licence, origin, how it was linked]
+      ["keyed", "lic_keyed", "admin", "license-key"],
+      // A store purchase, linked by the account's verified email.
+      ["bought", "lic_bought", "admin", "email"],
+      // An operator grant.
+      ["granted", "lic_granted", "admin", "admin"],
+      ["suspended", "lic_suspended", "admin", "license-key"],
+    ];
+    for (const [product, id, origin, via] of held) {
+      await freeProduct(db, product);
+      await db.run(
+        `INSERT INTO licenses (product, id, status, tier_id, origin, activated_at, modified_at)
+         VALUES (?, ?, ?, 'free', ?, ?, ?)`,
+        product,
+        id,
+        product === "suspended" ? "disabled" : "active",
+        origin,
+        NOW,
+        NOW,
+      );
+      await linkLicense(db, who.accountId, product, id, via, NOW);
+    }
+    // Free-added (minted by the product's own first sign-in, keyed by the platform subject) and
+    // floating: the per-request sweep links it, and it is still never an offer.
+    await freeProduct(db, "signedin");
+    const signedin = await loadProductPublic(db, "signedin");
+    await activateFromIdentity(
+      db,
+      signedin!,
+      (await discoverIdentity(env, db, who.accountId))!,
+      NOW,
+    );
+    // Two the account does not hold.
+    await freeProduct(db, "mossgarden");
+    await freeProduct(db, "tidewater");
+
+    const library = (await call(env, db, "GET", "/api/library", who)).body;
+    const inLibrary = library.products.map(
+      (p: { product: string }) => p.product,
+    );
+    expect(inLibrary.sort()).toEqual(
+      ["bought", "granted", "keyed", "signedin", "suspended"].sort(),
+    );
+    const offers = (await list(env, db, who)).body.offers.map(
+      (o: { product: string }) => o.product,
+    );
+    expect(offers).toEqual(["mossgarden", "tidewater"]);
+    expect(library.discoverCount).toBe(offers.length);
+    for (const slug of inLibrary) expect(offers).not.toContain(slug);
+
+    // Adding the last two from Discover empties it: the count is 0, never a held product.
+    await claim(env, db, who, "mossgarden");
+    await claim(env, db, who, "tidewater");
+    const after = (await call(env, db, "GET", "/api/library", who)).body;
+    expect(after.discoverCount).toBe(0);
+    expect((await list(env, db, who)).body.offers).toEqual([]);
+  });
+
+  it("the count skips the slugs the library answer lists, even past the held-licence check", async () => {
+    const env = portalEnv();
+    const db = makeTestDb();
+    await freeProduct(db, "mossgarden");
+    await freeProduct(db, "tidewater");
+    const who = await platformAccount(env, db);
+    expect(await discoverCount(env, db, who.accountId, NOW)).toBe(2);
+    expect(
+      await discoverCount(env, db, who.accountId, NOW, new Set(["tidewater"])),
+    ).toBe(1);
   });
 
   it("is GET only and needs a session", async () => {

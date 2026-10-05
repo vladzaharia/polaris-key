@@ -43,6 +43,7 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../src/admin/session.js";
+import { HEAD_SHA, withDefaultHead } from "./githubHead.js";
 
 // A throwaway 2048-bit RSA private key (PKCS#8 PEM) so the App-JWT signer actually runs; the
 // fetch stub then shortcuts the installation-token exchange. Never a prod key.
@@ -165,7 +166,7 @@ function stubFetch(files: Record<string, string>): {
     }
     return new Response("not found", { status: 404 });
   };
-  return { fetchImpl, calls };
+  return { fetchImpl: withDefaultHead(fetchImpl), calls };
 }
 
 // ── Manifest fixtures ────────────────────────────────────────────────────────
@@ -526,6 +527,76 @@ describe("linkRepo (GitHub-forward product creation)", () => {
   // unsupported keywords, or a `pattern` the validator will not compile — and it is reachable
   // from a repo webhook. The manifest parser only checks `schema.type`'s SHAPE, so this
   // fragment passes `parseManifest` and is caught only by the new screen.
+  // S-19 §7.4 (LX-05): an incompatible reserved entitlement-name declaration links with a
+  // warning by default and is refused once the platform's LICENSING_RESERVED_NAMES says error.
+  it("an incompatible reserved-name declaration links in warn mode and is refused in error mode", async () => {
+    const reserved = JSON.stringify({
+      schemaVersion: 1,
+      entries: [
+        {
+          key: "deviceLimit",
+          kind: "flag",
+          category: "Seats",
+          label: "Seats",
+          description: "",
+          schema: { type: "boolean" },
+        },
+      ],
+    });
+    const files = {
+      ".pkey/schema.json": reserved,
+      ".pkey/product.json": PRODUCT_JSON,
+      ".pkey/release.json": RELEASE_JSON,
+    };
+
+    const strict = envFor();
+    strict.LICENSING_RESERVED_NAMES = "error";
+    const db = makeTestDb();
+    const refused = await linkRepo(
+      strict,
+      db,
+      "acme-org/acme-app",
+      NOW,
+      stubFetch(files).fetchImpl,
+    );
+    expect(refused.ok).toBe(false);
+    if (refused.ok) return;
+    expect(refused.errors?.join("\n")).toContain(
+      "deviceLimit is a reserved entitlement name",
+    );
+    expect(
+      (await db.all<{ slug: string }>("SELECT * FROM products")).length,
+    ).toBe(0);
+
+    // Warn (the default): it links, and a strict resync then refuses the same catalog without
+    // replacing the active one.
+    const env = envFor();
+    expect(
+      (
+        await linkRepo(
+          env,
+          db,
+          "acme-org/acme-app",
+          NOW,
+          stubFetch(files).fetchImpl,
+        )
+      ).ok,
+    ).toBe(true);
+    const resync = await resyncRepo(
+      strict,
+      db,
+      "acme",
+      NOW + 1,
+      stubFetch(files).fetchImpl,
+    );
+    expect(resync.ok).toBe(false);
+    if (resync.ok) return;
+    expect(resync.errors?.join("\n")).toContain(
+      "deviceLimit is a reserved entitlement name",
+    );
+    expect((await getActiveSchema(db, "acme"))?.catalog_json).toBe(reserved);
+  });
+
   it("a catalog the admin API would reject is refused by linkRepo and resyncRepo too", async () => {
     const db = makeTestDb();
     const env = envFor();
@@ -1001,11 +1072,14 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         ],
       },
     ]);
-    // R6-05: the manifest is read from the DB-configured repo's default branch (the
-    // Contents API default), NEVER from a payload-supplied `after`/ref.
+    // R6-05: the manifest is read from the DB-configured repo's default branch, pinned to the
+    // head GitHub resolved for it (ST-01a), NEVER from a payload-supplied `after`/ref.
     const contents = calls.filter((url) => url.includes("/contents/"));
     expect(contents.length).toBeGreaterThan(0);
-    expect(contents.every((url) => !url.includes("ref="))).toBe(true);
+    expect(contents.every((url) => url.endsWith(`?ref=${HEAD_SHA}`))).toBe(
+      true,
+    );
+    expect(contents.some((url) => url.includes("abc123"))).toBe(false);
 
     const sync = await getProductSyncState(db, "acme");
     expect(sync).toMatchObject({
@@ -1053,7 +1127,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
     const linked = await linkRepo(env, db, "acme-org/acme-app", NOW, fetchImpl);
     expect(linked.ok).toBe(true);
 
-    const failingFetch: FetchImpl = async (input) => {
+    const failingFetch: FetchImpl = withDefaultHead(async (input) => {
       const url = String(input);
       if (url.includes("/access_tokens")) {
         return new Response(
@@ -1066,7 +1140,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       if (url.includes("/contents/"))
         return new Response("forbidden", { status: 403 });
       return new Response("not found", { status: 404 });
-    };
+    });
     const result = await resyncRepo(env, db, "acme", NOW + 1, failingFetch);
     expect(result.ok).toBe(false);
     if (result.ok) return;

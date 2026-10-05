@@ -2800,7 +2800,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "type": "object",
       "properties": {
         "key": {
-          "description": "Dotted identifier, unique within the catalog (e.g. run.concurrency).",
+          "description": "Dotted identifier, unique within the catalog (e.g. run.concurrency). On a flag, the names channels, deviceLimit, app.minVersion, app.maxVersion, license.tier and license.tierLabel, and every name under license., app. and pkey., are reserved entitlement names the platform sets itself: a declaration of one must match the system key's type (channels an array of strings, deviceLimit an integer, app.* and license.* strings) and may only narrow it. The validator reports an incompatible one (incompatible_reserved_name) as a warning or an error, as the platform's licensing.reservedNames setting says; this schema does not check it.",
           "type": "string",
           "pattern": "^[A-Za-z0-9._:-]{1,64}$"
         },
@@ -11573,6 +11573,170 @@ var BUILD_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 var DELEGATED_KID_PATTERN = /^pkd1-[0-9a-f]{64}$/;
 
 // ../shared-manifest/dist/index.js
+var DEFAULT_RESERVED_NAMES_MODE = "warn";
+var RESERVED_ENTITLEMENT_KEYS = [
+  {
+    key: "channels",
+    type: "string-array",
+    rule: "The union of the tier's and the license's channels."
+  },
+  {
+    key: "deviceLimit",
+    type: "integer",
+    rule: "The tier's device limit, else the license's, else the product default."
+  },
+  {
+    key: "app.minVersion",
+    type: "string",
+    rule: "The lower of the tier's and the license's minimum version."
+  },
+  {
+    key: "app.maxVersion",
+    type: "string",
+    rule: "The higher of the tier's and the license's maximum version."
+  },
+  {
+    key: "license.tier",
+    type: "string",
+    rule: "The license's tier id."
+  },
+  {
+    key: "license.tierLabel",
+    type: "string",
+    rule: "The license's tier label."
+  }
+];
+var RESERVED_ENTITLEMENT_PREFIXES = [
+  "license.",
+  "app.",
+  "pkey."
+];
+var BY_KEY = new Map(
+  RESERVED_ENTITLEMENT_KEYS.map((k) => [k.key, k])
+);
+function isReservedEntitlementName(key) {
+  return BY_KEY.has(key) || RESERVED_ENTITLEMENT_PREFIXES.some((p) => key.startsWith(p));
+}
+var ENTRY_FIELDS = /* @__PURE__ */ new Set([
+  "key",
+  "kind",
+  "schema",
+  "label",
+  "category",
+  "description",
+  "default",
+  "examples",
+  "ui",
+  "userGrant",
+  "grantLabel"
+]);
+var ANNOTATIONS = ["title", "description", "default", "examples", "$comment"];
+var STRING_KEYWORDS = /* @__PURE__ */ new Set([
+  "type",
+  ...ANNOTATIONS,
+  "enum",
+  "const",
+  "pattern",
+  "minLength",
+  "maxLength",
+  "format"
+]);
+var INTEGER_KEYWORDS = /* @__PURE__ */ new Set([
+  "type",
+  ...ANNOTATIONS,
+  "enum",
+  "const",
+  "minimum",
+  "maximum",
+  "exclusiveMinimum",
+  "exclusiveMaximum",
+  "multipleOf"
+]);
+var ARRAY_KEYWORDS = /* @__PURE__ */ new Set([
+  "type",
+  ...ANNOTATIONS,
+  "items",
+  "uniqueItems",
+  "minItems",
+  "maxItems"
+]);
+function isRecord(v) {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+function valueMatches(type, v) {
+  if (type === "string") return typeof v === "string";
+  if (type === "integer") return Number.isSafeInteger(v);
+  return Array.isArray(v) && v.every((x) => typeof x === "string");
+}
+var TYPE_WORDS = {
+  string: "a string",
+  integer: "an integer",
+  "string-array": "an array of strings"
+};
+function extraKeyword(schema, allowed) {
+  return Object.keys(schema).find((k) => !allowed.has(k));
+}
+function schemaProblem(type, schema, where = "schema") {
+  if (!isRecord(schema)) return `${where} must be an object`;
+  const want = type === "string" ? "string" : type === "integer" ? "integer" : "array";
+  if (schema.type !== want)
+    return `${where}.type must be "${want}" (the system key is ${TYPE_WORDS[type]})`;
+  const allowed = type === "string" ? STRING_KEYWORDS : type === "integer" ? INTEGER_KEYWORDS : ARRAY_KEYWORDS;
+  const extra = extraKeyword(schema, allowed);
+  if (extra !== void 0)
+    return `${where}.${extra} is not a narrowing keyword the system key allows`;
+  if (type === "string-array") {
+    const items = schemaProblem("string", schema.items, `${where}.items`);
+    if (items !== null) return items;
+  }
+  for (const k of ["enum", "examples"]) {
+    const list2 = schema[k];
+    if (list2 !== void 0) {
+      if (!Array.isArray(list2) || !list2.every((v) => valueMatches(type, v)))
+        return `${where}.${k} must list ${TYPE_WORDS[type]} values`;
+    }
+  }
+  for (const k of ["const", "default"]) {
+    if (schema[k] !== void 0 && !valueMatches(type, schema[k]))
+      return `${where}.${k} must be ${TYPE_WORDS[type]}`;
+  }
+  return null;
+}
+function requiredType(key) {
+  const known = BY_KEY.get(key);
+  if (known) return known.type;
+  if (key.startsWith("app.")) return "string";
+  return null;
+}
+function reservedNameProblem(entry) {
+  if (!isRecord(entry) || entry.kind !== "flag") return null;
+  const key = entry.key;
+  if (typeof key !== "string" || !isReservedEntitlementName(key)) return null;
+  const type = requiredType(key);
+  if (type === null) {
+    const prefix = RESERVED_ENTITLEMENT_PREFIXES.find((p) => key.startsWith(p));
+    return `the "${prefix}" prefix is reserved for future system keys; rename the flag`;
+  }
+  const field = Object.keys(entry).find((f) => !ENTRY_FIELDS.has(f));
+  if (field !== void 0)
+    return `${field} is not allowed on a reserved key, whose rule the platform fixes`;
+  const schema = schemaProblem(type, entry.schema);
+  if (schema !== null) return schema;
+  if (entry.default !== void 0 && !valueMatches(type, entry.default))
+    return `default must be ${TYPE_WORDS[type]}`;
+  return null;
+}
+function reservedNameDeclarations(catalog) {
+  const entries = isRecord(catalog) ? Array.isArray(catalog.entries) ? catalog.entries : Array.isArray(catalog.catalog) ? catalog.catalog : [] : [];
+  const out = [];
+  entries.forEach((entry, index) => {
+    if (!isRecord(entry) || entry.kind !== "flag" || typeof entry.key !== "string" || !isReservedEntitlementName(entry.key))
+      return;
+    const problem = reservedNameProblem(entry);
+    out.push({ index, key: entry.key, compatible: problem === null, problem });
+  });
+  return out;
+}
 var COLLECTION_RE = new RegExp(CLOUD_SYNC_COLLECTION_PATTERN);
 var CATALOG_MEMBERS = /* @__PURE__ */ new Set(["collections", "open", "saves", "migrations"]);
 var COLLECTION_MEMBERS = /* @__PURE__ */ new Set([
@@ -11610,7 +11774,7 @@ function validateCloudSync(errors, warnings, ctx) {
   let declaresSync = false;
   if (ctx.catalogChecked && ctx.entries) {
     for (const [i, raw] of ctx.entries.entries()) {
-      if (!isRecord(raw) || raw.user === void 0) continue;
+      if (!isRecord2(raw) || raw.user === void 0) continue;
       if (validateUserBlock(errors, raw, `/entries/${i}/user`)) {
         if (raw.user.sync !== "local")
           declaresSync = true;
@@ -11641,7 +11805,7 @@ function validateUserBlock(errors, entry, path25) {
     const where = issue.at === "schema" ? path25.replace(/\/user$/, "/schema") : issue.at === "user" ? path25 : `${path25}/${issue.at.slice("user.".length)}`;
     add(errors, "schema", where, issue.code, issue.message);
   }
-  return isRecord(entry.user) && isOneOf(entry.user.sync, USER_SETTING_SYNC_SCOPES) && !issues.some(
+  return isRecord2(entry.user) && isOneOf(entry.user.sync, USER_SETTING_SYNC_SCOPES) && !issues.some(
     (i) => i.code === "invalid_user_setting" && i.at !== "user.listed" && i.at !== "user.conflict"
   );
 }
@@ -11657,7 +11821,7 @@ function mergeMemberLimit(errors, schema, path25) {
 }
 function validateCatalogBlock(errors, block, flags, keys) {
   const base = "/cloudSync";
-  if (!isRecord(block)) {
+  if (!isRecord2(block)) {
     shape(errors, "schema", base, "cloudSync must be an object.");
     return;
   }
@@ -11704,7 +11868,7 @@ function validateCollections(errors, collections, base) {
   const names = [];
   for (const [i, raw] of collections.entries()) {
     const path25 = `${base}/${i}`;
-    if (!isRecord(raw)) {
+    if (!isRecord2(raw)) {
       shape(errors, "schema", path25, "A collection must be an object.");
       continue;
     }
@@ -11733,7 +11897,7 @@ function validateCollections(errors, collections, base) {
         "A collection's onAttach must be keepCloud, keepLocal, merge or prompt."
       );
     }
-    if (raw.schema !== void 0 && !isRecord(raw.schema)) {
+    if (raw.schema !== void 0 && !isRecord2(raw.schema)) {
       shape(
         errors,
         "schema",
@@ -11741,7 +11905,7 @@ function validateCollections(errors, collections, base) {
         "A collection's schema must be an object."
       );
     }
-    const schema = isRecord(raw.schema) ? raw.schema : {};
+    const schema = isRecord2(raw.schema) ? raw.schema : {};
     if (raw.conflict === "union" && !(schemaTypeIs(schema, ["array"]) && schema.uniqueItems === true)) {
       add(
         errors,
@@ -11797,7 +11961,7 @@ function namesOverlap(a, b) {
   return false;
 }
 function validateSaves(errors, saves, flags, path25) {
-  if (!isRecord(saves)) {
+  if (!isRecord2(saves)) {
     shape(errors, "schema", path25, "cloudSync.saves must be an object.");
     return;
   }
@@ -11830,9 +11994,9 @@ function validateSaves(errors, saves, flags, path25) {
   }
   if (saves.metadata !== void 0) {
     const md = saves.metadata;
-    if (!isRecord(md) || Object.keys(md).some(
+    if (!isRecord2(md) || Object.keys(md).some(
       (k) => !["schema", "playtimeField", "progressField"].includes(k)
-    ) || md.schema !== void 0 && !isRecord(md.schema) || md.playtimeField !== void 0 && typeof md.playtimeField !== "string" || md.progressField !== void 0 && typeof md.progressField !== "string") {
+    ) || md.schema !== void 0 && !isRecord2(md.schema) || md.playtimeField !== void 0 && typeof md.playtimeField !== "string" || md.progressField !== void 0 && typeof md.progressField !== "string") {
       shape(
         errors,
         "schema",
@@ -11843,7 +12007,7 @@ function validateSaves(errors, saves, flags, path25) {
   }
   if (saves.thumbnail !== void 0) {
     const t = saves.thumbnail;
-    if (!isRecord(t) || Object.keys(t).some((k) => k !== "maxBytes") || t.maxBytes !== void 0 && !nonNegativeInteger(t.maxBytes)) {
+    if (!isRecord2(t) || Object.keys(t).some((k) => k !== "maxBytes") || t.maxBytes !== void 0 && !nonNegativeInteger(t.maxBytes)) {
       shape(
         errors,
         "schema",
@@ -11854,7 +12018,7 @@ function validateSaves(errors, saves, flags, path25) {
   }
   if (saves.format !== void 0) {
     const f = saves.format;
-    if (!isRecord(f) || Object.keys(f).some((k) => k !== "refuseNewer") || f.refuseNewer !== void 0 && typeof f.refuseNewer !== "boolean") {
+    if (!isRecord2(f) || Object.keys(f).some((k) => k !== "refuseNewer") || f.refuseNewer !== void 0 && typeof f.refuseNewer !== "boolean") {
       shape(
         errors,
         "schema",
@@ -11865,7 +12029,7 @@ function validateSaves(errors, saves, flags, path25) {
   }
 }
 function validateMigration(errors, m, keys, path25) {
-  if (!isRecord(m)) {
+  if (!isRecord2(m)) {
     shape(errors, "schema", path25, "A migration must be an object.");
     return;
   }
@@ -11879,7 +12043,7 @@ function validateMigration(errors, m, keys, path25) {
     );
   }
   const rename = m.rename;
-  if (rename !== void 0 && (!isRecord(rename) || Object.values(rename).some((v) => typeof v !== "string"))) {
+  if (rename !== void 0 && (!isRecord2(rename) || Object.values(rename).some((v) => typeof v !== "string"))) {
     shape(
       errors,
       "schema",
@@ -11888,7 +12052,7 @@ function validateMigration(errors, m, keys, path25) {
     );
   }
   const mapValues = m.mapValues;
-  if (mapValues !== void 0 && (!isRecord(mapValues) || Object.values(mapValues).some((v) => !isRecord(v)))) {
+  if (mapValues !== void 0 && (!isRecord2(mapValues) || Object.values(mapValues).some((v) => !isRecord2(v)))) {
     shape(
       errors,
       "schema",
@@ -11906,7 +12070,7 @@ function validateMigration(errors, m, keys, path25) {
     );
   }
   const dropped = new Set(Array.isArray(drop) ? drop : []);
-  if (isRecord(rename)) {
+  if (isRecord2(rename)) {
     for (const [from, to] of Object.entries(rename)) {
       if (typeof to === "string" && !keys.has(to)) {
         add(
@@ -11931,7 +12095,7 @@ function validateMigration(errors, m, keys, path25) {
 }
 function validateProductBlock(errors, block, tierIds, flags) {
   const base = "/cloudSync";
-  if (!isRecord(block)) {
+  if (!isRecord2(block)) {
     shape(errors, "product", base, "cloudSync must be an object.");
     return;
   }
@@ -11939,7 +12103,7 @@ function validateProductBlock(errors, block, tierIds, flags) {
   let licensed = {};
   if (block.limits !== void 0) {
     const limits = block.limits;
-    if (!isRecord(limits)) {
+    if (!isRecord2(limits)) {
       shape(
         errors,
         "product",
@@ -11951,7 +12115,7 @@ function validateProductBlock(errors, block, tierIds, flags) {
       const extra = /* @__PURE__ */ new Set([...LIMIT_MEMBERS, "byTier", "byEntitlement"]);
       limitsBlock(errors, limits, `${base}/limits`, extra);
       if (limits.byTier !== void 0) {
-        if (!isRecord(limits.byTier)) {
+        if (!isRecord2(limits.byTier)) {
           shape(
             errors,
             "product",
@@ -11970,7 +12134,7 @@ function validateProductBlock(errors, block, tierIds, flags) {
                 `cloudSync.limits.byTier names ${tier}, which is not a declared tier.`
               );
             }
-            if (!isRecord(tierLimits)) {
+            if (!isRecord2(tierLimits)) {
               shape(
                 errors,
                 "product",
@@ -11996,7 +12160,7 @@ function validateProductBlock(errors, block, tierIds, flags) {
   if (block.unlicensed !== void 0) {
     const u = block.unlicensed;
     const path25 = `${base}/unlicensed`;
-    if (!isRecord(u)) {
+    if (!isRecord2(u)) {
       shape(errors, "product", path25, "cloudSync.unlicensed must be an object.");
     } else {
       unknownMembers(errors, "product", u, /* @__PURE__ */ new Set(["limits", "saves"]), path25);
@@ -12009,7 +12173,7 @@ function validateProductBlock(errors, block, tierIds, flags) {
         );
       }
       if (u.limits !== void 0) {
-        if (!isRecord(u.limits)) {
+        if (!isRecord2(u.limits)) {
           shape(
             errors,
             "product",
@@ -12031,7 +12195,7 @@ function validateProductBlock(errors, block, tierIds, flags) {
   if (block.writes !== void 0) {
     const w = block.writes;
     const path25 = `${base}/writes`;
-    if (!isRecord(w) || Object.keys(w).some((k) => k !== "requireLicense" && k !== "minTrust") || w.requireLicense !== void 0 && typeof w.requireLicense !== "boolean" || w.minTrust !== void 0 && w.minTrust !== null && !isOneOf(w.minTrust, CLOUD_SYNC_TRUST_LEVELS)) {
+    if (!isRecord2(w) || Object.keys(w).some((k) => k !== "requireLicense" && k !== "minTrust") || w.requireLicense !== void 0 && typeof w.requireLicense !== "boolean" || w.minTrust !== void 0 && w.minTrust !== null && !isOneOf(w.minTrust, CLOUD_SYNC_TRUST_LEVELS)) {
       shape(
         errors,
         "product",
@@ -12047,7 +12211,7 @@ function limitsBlock(errors, limits, path25, allowed) {
     ceilingCheck(errors, limits[member], ceiling, `${path25}/${member}`);
   }
   if (limits.saves !== void 0) {
-    if (!isRecord(limits.saves)) {
+    if (!isRecord2(limits.saves)) {
       shape(
         errors,
         "product",
@@ -12100,8 +12264,8 @@ function unlicensedWithinLicensed(errors, unlicensed, licensed, path25) {
       `${path25}/${member}`
     );
   }
-  if (isRecord(unlicensed.saves)) {
-    const ls = isRecord(licensed.saves) ? licensed.saves : {};
+  if (isRecord2(unlicensed.saves)) {
+    const ls = isRecord2(licensed.saves) ? licensed.saves : {};
     for (const { member } of CLOUD_SYNC_SAVE_LIMIT_MEMBERS) {
       const own = ls[member];
       over(
@@ -12125,7 +12289,7 @@ function over(errors, value, licensed, path25) {
   }
 }
 function byEntitlement(errors, raw, flags, path25) {
-  if (!isRecord(raw)) {
+  if (!isRecord2(raw)) {
     shape(
       errors,
       "product",
@@ -12158,7 +12322,7 @@ function byEntitlement(errors, raw, flags, path25) {
       );
       continue;
     }
-    const schema = isRecord(entry.schema) ? entry.schema : {};
+    const schema = isRecord2(entry.schema) ? entry.schema : {};
     const combine = entry.combine;
     if (!schemaTypeIs(schema, ["number", "integer"]) || combine !== void 0 && combine !== "max") {
       add(
@@ -12174,7 +12338,7 @@ function byEntitlement(errors, raw, flags, path25) {
 function flagEntries(entries) {
   const out = /* @__PURE__ */ new Map();
   for (const e of entries ?? []) {
-    if (isRecord(e) && e.kind === "flag" && typeof e.key === "string")
+    if (isRecord2(e) && e.kind === "flag" && typeof e.key === "string")
       out.set(e.key, e);
   }
   return out;
@@ -12182,7 +12346,7 @@ function flagEntries(entries) {
 function declaredKeys(entries) {
   const out = /* @__PURE__ */ new Set();
   for (const e of entries ?? []) {
-    if (isRecord(e) && typeof e.key === "string") out.add(e.key);
+    if (isRecord2(e) && typeof e.key === "string") out.add(e.key);
   }
   return out;
 }
@@ -12217,7 +12381,7 @@ function nonNegativeInteger(v) {
 function isOneOf(v, values) {
   return typeof v === "string" && values.includes(v);
 }
-function isRecord(v) {
+function isRecord2(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 function add(list2, file, path25, code, message) {
@@ -12613,7 +12777,7 @@ var MAX_SCOOP_ENTRIES = 16;
 var pattern = (re, what, max) => (v) => typeof v === "string" && re.test(v) && (max === void 0 || v.length <= max) ? null : `must be ${what}`;
 var numericId = (v) => typeof v === "number" && Number.isSafeInteger(v) && v > 0 || typeof v === "string" && NUMERIC_ID_PATTERN.test(v) ? null : "must be a positive integer or a string of decimal digits with no leading zero";
 var channelMap = (valueRe, what) => (v) => {
-  if (!isRecord2(v) || Object.keys(v).length > MAX_CHANNEL_MAP_ENTRIES)
+  if (!isRecord3(v) || Object.keys(v).length > MAX_CHANNEL_MAP_ENTRIES)
     return `must be an object of at most ${MAX_CHANNEL_MAP_ENTRIES} channel → ${what} entries`;
   for (const value of Object.values(v)) {
     if (typeof value !== "string" || !valueRe.test(value))
@@ -12714,7 +12878,7 @@ var UPDATE_SETTINGS_KEYS = [
 ];
 var updateSettingsCheck = (v) => {
   const shape2 = "must be { hoursBetweenUpdateChecks?: an integer 0-255, showPrompt?, updateBlocksActivation?, automaticBackgroundTask?: booleans }";
-  if (!isRecord2(v) || Object.keys(v).some((k) => !UPDATE_SETTINGS_KEYS.includes(k)))
+  if (!isRecord3(v) || Object.keys(v).some((k) => !UPDATE_SETTINGS_KEYS.includes(k)))
     return shape2;
   const hours = v.hoursBetweenUpdateChecks;
   if (hours !== void 0 && !(Number.isSafeInteger(hours) && hours >= 0 && hours <= 255))
@@ -12728,7 +12892,7 @@ var updateSettingsCheck = (v) => {
 var scoopPath = (v) => typeof v === "string" && SCOOP_PATH_PATTERN.test(v);
 var scoopCheck = (v) => {
   const shape2 = "must be { bin?: a relative path or a list of at most 16, shortcuts?: at most 16 [target, name] pairs }";
-  if (!isRecord2(v) || Object.keys(v).some((k) => k !== "bin" && k !== "shortcuts"))
+  if (!isRecord3(v) || Object.keys(v).some((k) => k !== "bin" && k !== "shortcuts"))
     return shape2;
   const bin = v.bin;
   if (bin !== void 0 && !scoopPath(bin) && !(Array.isArray(bin) && bin.length > 0 && bin.length <= MAX_SCOOP_ENTRIES && bin.every(scoopPath)))
@@ -12772,7 +12936,7 @@ function isListingUrl(v) {
   }
 }
 function listingProblem(raw) {
-  if (!isRecord2(raw)) return "must be an object";
+  if (!isRecord3(raw)) return "must be an object";
   for (const f of LISTING_TEXT_FIELDS) {
     const v = raw[f];
     if (v !== void 0 && (typeof v !== "string" || v.length > MAX_LISTING_TEXT || !LINE_RE.test(v)))
@@ -12795,7 +12959,7 @@ function listingProblem(raw) {
   return null;
 }
 function outletKindOf(id, entry) {
-  const kind = isRecord2(entry) ? entry.kind : void 0;
+  const kind = isRecord3(entry) ? entry.kind : void 0;
   if (isOutletKind(id)) return kind === void 0 || kind === id ? id : null;
   return isOutletKind(kind) ? kind : null;
 }
@@ -12810,7 +12974,7 @@ function transportAllowed(transport, kind) {
   return kinds === null || kinds.includes(kind);
 }
 function validateDistribution(errors, doc, ctx) {
-  if (!isRecord2(doc)) {
+  if (!isRecord3(doc)) {
     add2(
       errors,
       "distribution",
@@ -12841,7 +13005,7 @@ function validateDistribution(errors, doc, ctx) {
   const kinds = /* @__PURE__ */ new Map();
   const outlets = doc.outlets;
   if (outlets !== void 0) {
-    if (!isRecord2(outlets) || Object.keys(outlets).length > MAX_OUTLETS) {
+    if (!isRecord3(outlets) || Object.keys(outlets).length > MAX_OUTLETS) {
       add2(
         errors,
         "distribution",
@@ -12859,7 +13023,7 @@ function validateDistribution(errors, doc, ctx) {
   }
   const transports = doc.transports;
   if (transports !== void 0) {
-    if (!isRecord2(transports)) {
+    if (!isRecord3(transports)) {
       add2(
         errors,
         "distribution",
@@ -12895,7 +13059,7 @@ function validateOutlet(errors, id, entry, ctx, kinds) {
     );
     return;
   }
-  if (!isRecord2(entry)) {
+  if (!isRecord3(entry)) {
     add2(
       errors,
       "distribution",
@@ -13009,7 +13173,7 @@ function validateTransports(errors, transports, ctx, kinds) {
   }
   const checkMap = (path25, raw) => {
     if (raw === void 0) return;
-    if (!isRecord2(raw)) {
+    if (!isRecord3(raw)) {
       add2(
         errors,
         "distribution",
@@ -13053,7 +13217,7 @@ function validateTransports(errors, transports, ctx, kinds) {
   checkMap("/transports/packs", transports.packs);
   const deliverables = transports.deliverables;
   if (deliverables === void 0) return;
-  if (!isRecord2(deliverables)) {
+  if (!isRecord3(deliverables)) {
     add2(
       errors,
       "distribution",
@@ -13107,7 +13271,7 @@ function capabilityPaths(doc) {
 function normalizeDistribution(doc, deliverables = [
   { id: "app", kind: "app" }
 ]) {
-  const root = isRecord2(doc) ? doc : {};
+  const root = isRecord3(doc) ? doc : {};
   const outlets = [];
   if (doc === void 0 || root.outlets === void 0) {
     outlets.push({
@@ -13116,9 +13280,9 @@ function normalizeDistribution(doc, deliverables = [
       identity: {},
       listing: null
     });
-  } else if (isRecord2(root.outlets)) {
+  } else if (isRecord3(root.outlets)) {
     for (const [id, entry] of Object.entries(root.outlets)) {
-      if (!OUTLET_ID_PATTERN.test(id) || !isRecord2(entry)) continue;
+      if (!OUTLET_ID_PATTERN.test(id) || !isRecord3(entry)) continue;
       const kind = outletKindOf(id, entry);
       if (!kind) continue;
       outlets.push({
@@ -13131,10 +13295,10 @@ function normalizeDistribution(doc, deliverables = [
   }
   outlets.sort((a, b) => compare(a.id, b.id));
   const kinds = new Map(outlets.map((o) => [o.id, o.kind]));
-  const rawTransports = isRecord2(root.transports) ? root.transports : {};
+  const rawTransports = isRecord3(root.transports) ? root.transports : {};
   const transportMap = (raw) => {
     const out = {};
-    if (!isRecord2(raw)) return out;
+    if (!isRecord3(raw)) return out;
     for (const [outletId, t] of Object.entries(raw)) {
       const kind = kinds.get(outletId);
       if (kind && isTransport(t) && transportAllowed(t, kind))
@@ -13149,7 +13313,7 @@ function normalizeDistribution(doc, deliverables = [
     deliverables: {}
   };
   const known = new Map(deliverables.map((d) => [d.id, d.kind]));
-  if (isRecord2(rawTransports.deliverables)) {
+  if (isRecord3(rawTransports.deliverables)) {
     for (const [id, map] of Object.entries(rawTransports.deliverables)) {
       if (known.has(id) && known.get(id) !== "package")
         transports.deliverables[id] = transportMap(map);
@@ -13184,7 +13348,7 @@ function normalizeIdentity(kind, entry) {
     if (typeof value === "number") out[field] = String(value);
     else if (field === "scoop") out[field] = structuredCloneScoop(value);
     else if (Array.isArray(value)) out[field] = [...value];
-    else if (isRecord2(value)) out[field] = sortedRecord(value);
+    else if (isRecord3(value)) out[field] = sortedRecord(value);
     else out[field] = value;
   }
   return out;
@@ -13244,7 +13408,7 @@ function distributionOutletIds(dist, outletId) {
   );
   return sortedRecord(out);
 }
-function isRecord2(v) {
+function isRecord3(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 function compare(a, b) {
@@ -13281,7 +13445,7 @@ var MAX_VERSION_CODE = 21e8;
 function buildMetadataProblem(platform, m) {
   if (platform !== "ios" && platform !== "android")
     return "only ios and android builds carry metadata";
-  if (!isRecord3(m)) return "metadata must be an object";
+  if (!isRecord4(m)) return "metadata must be an object";
   const allowed = platform === "ios" ? [
     "bundleIdentifier",
     "version",
@@ -13308,13 +13472,13 @@ function buildMetadataProblem(platform, m) {
     if (m.minOSVersion !== void 0 && (typeof m.minOSVersion !== "string" || !MIN_OS_RE.test(m.minOSVersion)))
       return "minOSVersion must be at most 32 version characters";
     const p = m.appPermissions;
-    if (!isRecord3(p) || Object.keys(p).some((k) => k !== "entitlements" && k !== "privacy"))
+    if (!isRecord4(p) || Object.keys(p).some((k) => k !== "entitlements" && k !== "privacy"))
       return "appPermissions must be { entitlements, privacy }";
     const ents = p.entitlements;
     if (!Array.isArray(ents) || ents.length > MAX_ENTITLEMENTS || new Set(ents).size !== ents.length || !ents.every((e) => typeof e === "string" && ENTITLEMENT_RE.test(e)))
       return `appPermissions.entitlements must be at most ${MAX_ENTITLEMENTS} distinct entitlement keys`;
     const priv = p.privacy;
-    if (!isRecord3(priv) || Object.keys(priv).length > MAX_PRIVACY_KEYS || !Object.entries(priv).every(
+    if (!isRecord4(priv) || Object.keys(priv).length > MAX_PRIVACY_KEYS || !Object.entries(priv).every(
       ([k, v]) => PRIVACY_KEY_RE.test(k) && typeof v === "string" && codePoints(v) <= MAX_PRIVACY_TEXT && !v.includes("\0")
     ))
       return `appPermissions.privacy must map at most ${MAX_PRIVACY_KEYS} NS…UsageDescription keys to text`;
@@ -13420,7 +13584,7 @@ var RFC3339_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{
 var MAX_TITLE = 200;
 var MAX_NOTES = 2e4;
 var CONTROL_RE = /[\u0000-\u001f\u007f]/;
-function isRecord3(v) {
+function isRecord4(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 function oneOf2(list2, v) {
@@ -13442,7 +13606,7 @@ function isPackIdString(v) {
   return typeof v === "string" && v !== APP_DELIVERABLE_ID && v.length <= 64 && DELIVERABLE_RE.test(v);
 }
 function descriptorContentProblem(c) {
-  if (!isRecord3(c)) return "content must be an object";
+  if (!isRecord4(c)) return "content must be an object";
   if (!(Number.isSafeInteger(c.contentApi) && c.contentApi >= 1))
     return "content.contentApi must be an integer from 1 to 9007199254740991";
   const pins = c.pins;
@@ -13450,12 +13614,12 @@ function descriptorContentProblem(c) {
     return `content.pins must be an array of at most ${MAX_CONTENT_PINS} pins`;
   const pinned = /* @__PURE__ */ new Set();
   for (const pin of pins) {
-    if (!isRecord3(pin) || !isPackIdString(pin.pack))
+    if (!isRecord4(pin) || !isPackIdString(pin.pack))
       return "each pin is { pack: a pack id, release }";
     if (pinned.has(pin.pack)) return `${pin.pack} is pinned twice`;
     pinned.add(pin.pack);
     const r = pin.release;
-    if (!isRecord3(r) || typeof r.sha256 !== "string" || !SHA256_RE.test(r.sha256) || !(Number.isSafeInteger(r.seq) && r.seq >= 1) || typeof r.version !== "string" || !VERSION_RE.test(r.version))
+    if (!isRecord4(r) || typeof r.sha256 !== "string" || !SHA256_RE.test(r.sha256) || !(Number.isSafeInteger(r.seq) && r.seq >= 1) || typeof r.version !== "string" || !VERSION_RE.test(r.version))
       return `the pin of ${pin.pack} needs release { sha256, seq ≥ 1, version }`;
   }
   const expects = c.expects;
@@ -13463,7 +13627,7 @@ function descriptorContentProblem(c) {
     return `content.expects must be an array of at most ${MAX_CONTENT_PINS} entries`;
   const expected = /* @__PURE__ */ new Set();
   for (const e of expects) {
-    if (!isRecord3(e) || !isPackIdString(e.pack))
+    if (!isRecord4(e) || !isPackIdString(e.pack))
       return "each expects entry is { pack: a pack id, required, delivery }";
     if (expected.has(e.pack)) return `${e.pack} is expected twice`;
     expected.add(e.pack);
@@ -13478,14 +13642,14 @@ function descriptorContentProblem(c) {
       return `content.holds must be an array of at most ${MAX_CONTENT_PINS} holds`;
     const held = /* @__PURE__ */ new Set();
     for (const h of holds) {
-      if (!isRecord3(h) || !isPackIdString(h.pack))
+      if (!isRecord4(h) || !isPackIdString(h.pack))
         return "each hold is { pack: a pack id, release, reason? }";
       if (held.has(h.pack)) return `${h.pack} is held twice`;
       if (pinned.has(h.pack))
         return `${h.pack} is both pinned and held; a hold keeps a compatible pack, a pin fixes a pinned one`;
       held.add(h.pack);
       const r = h.release;
-      if (!isRecord3(r) || typeof r.sha256 !== "string" || !SHA256_RE.test(r.sha256) || !(Number.isSafeInteger(r.seq) && r.seq >= 1) || typeof r.version !== "string" || !VERSION_RE.test(r.version))
+      if (!isRecord4(r) || typeof r.sha256 !== "string" || !SHA256_RE.test(r.sha256) || !(Number.isSafeInteger(r.seq) && r.seq >= 1) || typeof r.version !== "string" || !VERSION_RE.test(r.version))
         return `the hold of ${h.pack} needs release { sha256, seq ≥ 1, version }`;
       if (h.reason !== void 0 && (typeof h.reason !== "string" || h.reason.length > MAX_HOLD_REASON))
         return `the hold of ${h.pack} has a reason of at most ${MAX_HOLD_REASON} characters`;
@@ -13493,7 +13657,7 @@ function descriptorContentProblem(c) {
   }
   if (c.packChannels !== void 0) {
     const map = c.packChannels;
-    if (!isRecord3(map) || Object.keys(map).length === 0 || Object.keys(map).length > MAX_PACK_CHANNEL_MAP || !Object.entries(map).every(
+    if (!isRecord4(map) || Object.keys(map).length === 0 || Object.keys(map).length > MAX_PACK_CHANNEL_MAP || !Object.entries(map).every(
       ([k, v]) => k.length <= 64 && k !== APP_DELIVERABLE_ID && PACK_CHANNELS_KEY_PATTERN.test(k) && isCanonicalChannelName(v)
     ))
       return `content.packChannels maps 1 to ${MAX_PACK_CHANNEL_MAP} pack ids or prefixes ending in .* to a canonical channel name`;
@@ -13520,7 +13684,7 @@ function versionFitsScheme(version, scheme) {
 function validateReleaseDescriptor(descriptor, manifest) {
   const errors = [];
   const err = (path25, code, message) => errors.push({ path: path25, code, message });
-  if (!isRecord3(descriptor)) {
+  if (!isRecord4(descriptor)) {
     err(
       "/",
       "invalid_descriptor",
@@ -13545,7 +13709,7 @@ function validateReleaseDescriptor(descriptor, manifest) {
   if (!serialized || new TextEncoder().encode(serialized).length > MAX_DESCRIPTOR_BYTES) {
     const contentBytes = jsonBytes(d.content);
     const metadataBytes = Array.isArray(d.builds) ? d.builds.reduce(
-      (n, b) => n + (isRecord3(b) ? jsonBytes(b.metadata) : 0),
+      (n, b) => n + (isRecord4(b) ? jsonBytes(b.metadata) : 0),
       0
     ) : 0;
     err(
@@ -13629,7 +13793,7 @@ function validateReleaseDescriptor(descriptor, manifest) {
   }
   if (d.provenance !== void 0) {
     const p = d.provenance;
-    if (!isRecord3(p) || p.commit !== void 0 && (typeof p.commit !== "string" || !COMMIT_RE.test(p.commit)) || p.workflowRun !== void 0 && !isHttpsUrl(p.workflowRun))
+    if (!isRecord4(p) || p.commit !== void 0 && (typeof p.commit !== "string" || !COMMIT_RE.test(p.commit)) || p.workflowRun !== void 0 && !isHttpsUrl(p.workflowRun))
       err(
         "/provenance",
         "invalid_descriptor_field",
@@ -13640,7 +13804,7 @@ function validateReleaseDescriptor(descriptor, manifest) {
   const buildIds = /* @__PURE__ */ new Set();
   const names = /* @__PURE__ */ new Set();
   for (const [bi, b] of builds.entries()) {
-    if (!isRecord3(b)) {
+    if (!isRecord4(b)) {
       err(
         `/builds/${bi}`,
         "invalid_descriptor_build",
@@ -13691,7 +13855,7 @@ function validateReleaseDescriptor(descriptor, manifest) {
         "invalid_descriptor_build",
         "minOS must be a string of at most 32 version characters."
       );
-    if (b.requires !== void 0 && !isRecord3(b.requires))
+    if (b.requires !== void 0 && !isRecord4(b.requires))
       err(
         `/builds/${bi}/requires`,
         "invalid_descriptor_build",
@@ -13717,7 +13881,7 @@ function validateReleaseDescriptor(descriptor, manifest) {
       continue;
     }
     for (const [ai, a] of b.artifacts.entries()) {
-      if (!isRecord3(a)) {
+      if (!isRecord4(a)) {
         err(
           `/builds/${bi}/artifacts/${ai}`,
           "invalid_descriptor_artifact",
@@ -13786,7 +13950,7 @@ function validateReleaseDescriptor(descriptor, manifest) {
         continue;
       }
       for (const [li, loc] of a.locations.entries()) {
-        if (!isRecord3(loc) || !oneOf2(LOCATION_PROVIDERS, loc.provider)) {
+        if (!isRecord4(loc) || !oneOf2(LOCATION_PROVIDERS, loc.provider)) {
           err(
             `/builds/${bi}/artifacts/${ai}/locations/${li}`,
             "invalid_artifact_location",
@@ -14059,7 +14223,7 @@ function validatePackageDescriptor(d, manifest, errors) {
     );
   if (d.provenance !== void 0) {
     const p = d.provenance;
-    if (!isRecord3(p) || p.commit !== void 0 && (typeof p.commit !== "string" || !COMMIT_RE.test(p.commit)) || p.workflowRun !== void 0 && !isHttpsUrl(p.workflowRun))
+    if (!isRecord4(p) || p.commit !== void 0 && (typeof p.commit !== "string" || !COMMIT_RE.test(p.commit)) || p.workflowRun !== void 0 && !isHttpsUrl(p.workflowRun))
       err(
         "/provenance",
         "invalid_descriptor_field",
@@ -14067,7 +14231,7 @@ function validatePackageDescriptor(d, manifest, errors) {
       );
   }
   const pkg = d.package;
-  if (!isRecord3(pkg)) {
+  if (!isRecord4(pkg)) {
     err(
       "/package",
       "invalid_descriptor",
@@ -14125,7 +14289,7 @@ function validatePackageDescriptor(d, manifest, errors) {
     const vocab = PACKAGE_FILE_TYPES[eco];
     for (const [i, f] of files.entries()) {
       const at = `/package/files/${i}`;
-      if (!isRecord3(f)) {
+      if (!isRecord4(f)) {
         err(at, "invalid_descriptor", "each file must be an object.");
         continue;
       }
@@ -14222,7 +14386,7 @@ function validatePackageDescriptor(d, manifest, errors) {
         continue;
       }
       for (const [li, loc] of f.locations.entries()) {
-        if (!isRecord3(loc) || loc.provider !== "r2" || Object.keys(loc).some((k) => k !== "provider" && k !== "key"))
+        if (!isRecord4(loc) || loc.provider !== "r2" || Object.keys(loc).some((k) => k !== "provider" && k !== "key"))
           err(
             `${at}/locations/${li}`,
             "invalid_descriptor",
@@ -14246,7 +14410,7 @@ function validatePackageDescriptor(d, manifest, errors) {
       );
   }
   const meta = pkg.metadata;
-  if (!isRecord3(meta))
+  if (!isRecord4(meta))
     err(
       "/package/metadata",
       "invalid_descriptor",
@@ -15353,11 +15517,11 @@ var DEFAULT_RELEASE_ACCESS2 = {
   artifacts: "public"
 };
 function normalizeModules(raw) {
-  if (!isRecord4(raw)) return [...DEFAULT_ENABLED];
+  if (!isRecord5(raw)) return [...DEFAULT_ENABLED];
   const enabled = /* @__PURE__ */ new Set();
   for (const module of MODULES) {
     const cfg = raw[module];
-    if (isRecord4(cfg) && cfg.enabled === true) {
+    if (isRecord5(cfg) && cfg.enabled === true) {
       for (const slug of MODULE_SERVICES[module]) enabled.add(slug);
     }
   }
@@ -15373,7 +15537,7 @@ function servicesFromModules(enabled) {
 function registrationPolicy(productRoot) {
   return asRecord(productRoot.devices).registration;
 }
-function validateIngestDocuments(manifest) {
+function validateIngestDocuments(manifest, opts = {}) {
   const product = manifest.product;
   if (product === void 0) {
     const errors = [];
@@ -15393,7 +15557,7 @@ function validateIngestDocuments(manifest) {
       requiredSecrets: []
     };
   }
-  return validateDocuments({ ...manifest, product }, true);
+  return validateDocuments({ ...manifest, product }, true, opts);
 }
 function requireSchema(errors, schema) {
   if (schema !== void 0) return true;
@@ -15406,7 +15570,7 @@ function requireSchema(errors, schema) {
   );
   return false;
 }
-function validateDocuments(manifest, schemaAlwaysRequired) {
+function validateDocuments(manifest, schemaAlwaysRequired, opts) {
   const errors = [];
   const warnings = [];
   const productRoot = manifest.product;
@@ -15521,10 +15685,32 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
       }
     }
   }
+  if (manifest.schema !== void 0) {
+    const mode = opts.reservedNames ?? DEFAULT_RESERVED_NAMES_MODE;
+    for (const decl of reservedNameDeclarations(manifest.schema)) {
+      if (decl.compatible) continue;
+      if (mode === "error")
+        add3(
+          errors,
+          "schema",
+          `/entries/${decl.index}`,
+          "incompatible_reserved_name",
+          `${decl.key} is a reserved entitlement name the platform sets itself: ${decl.problem}. Incompatible reserved-name declarations are refused on this platform.`
+        );
+      else
+        add3(
+          warnings,
+          "schema",
+          `/entries/${decl.index}`,
+          "incompatible_reserved_name",
+          `${decl.key} is a reserved entitlement name the platform sets itself: ${decl.problem}. This is a warning for now; it becomes an error when the platform switches licensing.reservedNames to error.`
+        );
+    }
+  }
   const profiles = arrayAt(productRoot, "profiles") ?? arrayAt(licensing, "profiles") ?? [];
   const profileIds = /* @__PURE__ */ new Set();
   for (const [i, raw] of profiles.entries()) {
-    if (!isRecord4(raw) || typeof raw.id !== "string" || !ID_RE.test(raw.id)) {
+    if (!isRecord5(raw) || typeof raw.id !== "string" || !ID_RE.test(raw.id)) {
       add3(
         errors,
         "product",
@@ -15564,7 +15750,7 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
       MAX_TEXT_LENGTH,
       "Profile description"
     );
-    if (record.payload !== void 0 && !isRecord4(record.payload)) {
+    if (record.payload !== void 0 && !isRecord5(record.payload)) {
       add3(
         errors,
         "product",
@@ -15577,7 +15763,7 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
   const tiers = arrayAt(productRoot, "tiers") ?? arrayAt(licensing, "tiers") ?? [];
   const tierIds = /* @__PURE__ */ new Set();
   for (const [i, raw] of tiers.entries()) {
-    if (!isRecord4(raw) || typeof raw.id !== "string" || !ID_RE.test(raw.id)) {
+    if (!isRecord5(raw) || typeof raw.id !== "string" || !ID_RE.test(raw.id)) {
       add3(
         errors,
         "product",
@@ -15715,7 +15901,7 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
     }
   }
   if (modules.includes("identity") || productRoot.oidc !== void 0) {
-    if (!isRecord4(productRoot.oidc)) {
+    if (!isRecord5(productRoot.oidc)) {
       add3(
         errors,
         "product",
@@ -15764,7 +15950,7 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
         CLIENT_ID_RE,
         "oidc.clientId must match ^[A-Za-z0-9][A-Za-z0-9._:@/~-]{0,255}$."
       );
-      if (isRecord4(oidc.groupRoleMap)) {
+      if (isRecord5(oidc.groupRoleMap)) {
         for (const group of Object.keys(oidc.groupRoleMap)) {
           if (!GROUP_NAME_RE.test(group)) {
             add3(
@@ -15944,7 +16130,7 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
         } else {
           for (const [i, raw] of relRoot.manualChannels.entries()) {
             const at = `/release/manualChannels/${i}`;
-            if (!isRecord4(raw)) {
+            if (!isRecord5(raw)) {
               add3(
                 errors,
                 "release",
@@ -16031,7 +16217,7 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
       );
       validatePublishing(errors, relRoot);
       validateReleaseKeys(errors, warnings, relRoot);
-      if (relRoot.access !== void 0 && !isRecord4(relRoot.access)) {
+      if (relRoot.access !== void 0 && !isRecord5(relRoot.access)) {
         add3(
           errors,
           "release",
@@ -16058,7 +16244,7 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
   }
   const provisioning = arrayAt(productRoot, "provisioning") ?? [];
   for (const [i, raw] of provisioning.entries()) {
-    if (!isRecord4(raw) || !stringAt(raw, "claim")) {
+    if (!isRecord5(raw) || !stringAt(raw, "claim")) {
       add3(
         errors,
         "product",
@@ -16067,7 +16253,7 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
         "Provisioning hooks require claim."
       );
     }
-    if (!isRecord4(raw)) continue;
+    if (!isRecord5(raw)) continue;
     constrained(
       errors,
       "product",
@@ -16134,7 +16320,7 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
   }
   const edgeMint = arrayAt(productRoot, "edgeMint") ?? arrayAt(asRecord(manifest.release), "edgeMint") ?? [];
   for (const [i, raw] of edgeMint.entries()) {
-    if (!isRecord4(raw) || !stringAt(raw, "id")) {
+    if (!isRecord5(raw) || !stringAt(raw, "id")) {
       add3(
         errors,
         "release",
@@ -16200,7 +16386,7 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
       );
     }
   }
-  if (productRoot.fingerprint !== void 0 && !isRecord4(productRoot.fingerprint)) {
+  if (productRoot.fingerprint !== void 0 && !isRecord5(productRoot.fingerprint)) {
     add3(
       errors,
       "product",
@@ -16229,7 +16415,7 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
     );
   }
   for (const [i, raw] of (arrayAt(fingerprint, "probes") ?? []).entries()) {
-    if (!isRecord4(raw)) continue;
+    if (!isRecord5(raw)) continue;
     constrained(
       errors,
       "product",
@@ -16260,7 +16446,7 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
       );
     }
   }
-  if (productRoot.autoIssue !== void 0 && !isRecord4(productRoot.autoIssue)) {
+  if (productRoot.autoIssue !== void 0 && !isRecord5(productRoot.autoIssue)) {
     add3(
       errors,
       "product",
@@ -16335,7 +16521,7 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
     const catalog = manifest.schema === void 0 ? null : normalizeCatalog(manifest.schema);
     validateCloudSync(errors, warnings, {
       entries: catalog ? catalog.entries : null,
-      catalogCloudSync: isRecord4(manifest.schema) ? manifest.schema.cloudSync : void 0,
+      catalogCloudSync: isRecord5(manifest.schema) ? manifest.schema.cloudSync : void 0,
       productCloudSync: productRoot.cloudSync,
       catalogChecked: catalog !== null && modules.includes("config"),
       tierIds,
@@ -16343,7 +16529,7 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
     });
   }
   for (const [i, item] of (arrayAt(secrets, "required") ?? []).entries()) {
-    const name = isRecord4(item) ? item.name : item;
+    const name = isRecord5(item) ? item.name : item;
     constrained(
       errors,
       "product",
@@ -16414,7 +16600,7 @@ function validateDocuments(manifest, schemaAlwaysRequired) {
       `devices.registration must be one of ${REGISTRATION_POLICIES.join(", ")}.`
     );
   }
-  if (productRoot.web !== void 0 && !isRecord4(productRoot.web)) {
+  if (productRoot.web !== void 0 && !isRecord5(productRoot.web)) {
     add3(
       errors,
       "product",
@@ -16504,7 +16690,7 @@ function distributionContext(relRoot) {
   const app = asRecord(declared[APP_DELIVERABLE_ID]);
   const artifactIds = /* @__PURE__ */ new Set();
   for (const entry of arrayAt(app, "artifacts") ?? []) {
-    if (isRecord4(entry) && typeof entry.id === "string")
+    if (isRecord5(entry) && typeof entry.id === "string")
       artifactIds.add(entry.id);
   }
   return {
@@ -16539,10 +16725,10 @@ function validatePublishing(errors, relRoot) {
     "invalid_trusted_publisher_workflow",
     "publishing.trustedPublisher must be an object with a workflow (.github/workflows/<file>.yml)."
   );
-  if (!isRecord4(relRoot.publishing)) return shape2();
+  if (!isRecord5(relRoot.publishing)) return shape2();
   const tp = relRoot.publishing.trustedPublisher;
   if (tp === void 0) return;
-  if (!isRecord4(tp)) return shape2();
+  if (!isRecord5(tp)) return shape2();
   if (typeof tp.workflow !== "string" || !TRUSTED_PUBLISHER_WORKFLOW_RE.test(tp.workflow)) {
     add3(
       errors,
@@ -16589,7 +16775,7 @@ function validateReleaseKeys(errors, warnings, relRoot) {
   const keys = [];
   for (const [i, entry] of raw.entries()) {
     const at = `/release/releaseKeys/${i}`;
-    if (!isRecord4(entry)) {
+    if (!isRecord5(entry)) {
       add3(
         errors,
         "release",
@@ -16662,7 +16848,7 @@ function knownChannelNames(relRoot, declared) {
   const known = new Set(BUILT_IN_CHANNELS);
   if (Array.isArray(relRoot.manualChannels)) {
     for (const m of relRoot.manualChannels) {
-      if (isRecord4(m) && typeof m.name === "string") known.add(m.name);
+      if (isRecord5(m) && typeof m.name === "string") known.add(m.name);
     }
   }
   for (const name of declared) known.add(name);
@@ -16671,7 +16857,7 @@ function knownChannelNames(relRoot, declared) {
 function validateDeliverables(errors, warnings, relRoot, flagKeys) {
   const raw = relRoot.deliverables;
   if (raw === void 0) return;
-  if (!isRecord4(raw)) {
+  if (!isRecord5(raw)) {
     add3(
       errors,
       "release",
@@ -16682,7 +16868,7 @@ function validateDeliverables(errors, warnings, relRoot, flagKeys) {
     return;
   }
   const packCount = Object.entries(raw).filter(
-    ([id, def]) => id !== APP_DELIVERABLE_ID && isRecord4(def) && def.kind === "pack"
+    ([id, def]) => id !== APP_DELIVERABLE_ID && isRecord5(def) && def.kind === "pack"
   ).length;
   const tooManyPacks = packCount > MAX_PACK_DELIVERABLES;
   if (tooManyPacks) {
@@ -16695,7 +16881,7 @@ function validateDeliverables(errors, warnings, relRoot, flagKeys) {
     );
   }
   const packageCount = Object.entries(raw).filter(
-    ([id, def]) => id !== APP_DELIVERABLE_ID && isRecord4(def) && def.kind === "package"
+    ([id, def]) => id !== APP_DELIVERABLE_ID && isRecord5(def) && def.kind === "package"
   ).length;
   const tooManyPackages = packageCount > MAX_PACKAGE_DELIVERABLES;
   if (tooManyPackages) {
@@ -16711,7 +16897,7 @@ function validateDeliverables(errors, warnings, relRoot, flagKeys) {
   const packIds = /* @__PURE__ */ new Set();
   const declaredPacks = /* @__PURE__ */ new Map();
   for (const [id, def] of Object.entries(raw))
-    if (id !== APP_DELIVERABLE_ID && isDeliverableId(id) && isRecord4(def) && def.kind === "pack")
+    if (id !== APP_DELIVERABLE_ID && isDeliverableId(id) && isRecord5(def) && def.kind === "pack")
       declaredPacks.set(id, def.binding ?? "pinned");
   for (const [id, def] of Object.entries(raw)) {
     if (!isDeliverableId(id)) {
@@ -16724,8 +16910,8 @@ function validateDeliverables(errors, warnings, relRoot, flagKeys) {
       );
       continue;
     }
-    const kind = isRecord4(def) ? def.kind : void 0;
-    if (!isRecord4(def) || !isOneOf2(kind, DELIVERABLE_KINDS)) {
+    const kind = isRecord5(def) ? def.kind : void 0;
+    if (!isRecord5(def) || !isOneOf2(kind, DELIVERABLE_KINDS)) {
       add3(
         errors,
         "release",
@@ -16767,7 +16953,7 @@ function validateDeliverables(errors, warnings, relRoot, flagKeys) {
     }
   }
   const app = raw[APP_DELIVERABLE_ID];
-  if (isRecord4(app) && app.kind === "app")
+  if (isRecord5(app) && app.kind === "app")
     validateAppDeliverable(errors, warnings, relRoot, app, packIds, raw);
   else if (packIds.size > 0) {
     add3(
@@ -16792,8 +16978,8 @@ function validatePackageDeliverable(errors, id, def) {
       );
   }
   const artifacts = def.artifacts;
-  if (!isRecord4(artifacts) || Object.keys(artifacts).length === 0 || Object.keys(artifacts).length > MAX_PACKAGE_ARTIFACT_ENTRIES || !Object.entries(artifacts).every(
-    ([k, v]) => ARTIFACT_ENTRY_ID_PATTERN.test(k) && isRecord4(v) && Object.keys(v).every((f) => f === "match") && isArtifactMatch(v.match)
+  if (!isRecord5(artifacts) || Object.keys(artifacts).length === 0 || Object.keys(artifacts).length > MAX_PACKAGE_ARTIFACT_ENTRIES || !Object.entries(artifacts).every(
+    ([k, v]) => ARTIFACT_ENTRY_ID_PATTERN.test(k) && isRecord5(v) && Object.keys(v).every((f) => f === "match") && isArtifactMatch(v.match)
   ))
     add3(
       errors,
@@ -16847,7 +17033,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
   }
   const provides = def.provides;
   if (provides !== void 0) {
-    const p = isRecord4(provides) ? provides : null;
+    const p = isRecord5(provides) ? provides : null;
     if (!p || // A typo (`requried`) must not silently leave a policy off.
     Object.keys(p).some((k) => k !== "required" && k !== "from") || p.required !== void 0 && typeof p.required !== "boolean" || p.from !== void 0 && (typeof p.from !== "string" || p.from.length > 256 || !PROVIDES_FILE_PATTERN.test(p.from)))
       add3(
@@ -16926,7 +17112,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
     );
   if (def.contentPolicy !== void 0) {
     const cp3 = def.contentPolicy;
-    if (!isRecord4(cp3) || cp3.dataOnly !== void 0 && cp3.dataOnly !== true)
+    if (!isRecord5(cp3) || cp3.dataOnly !== void 0 && cp3.dataOnly !== true)
       add3(
         errors,
         "release",
@@ -16944,7 +17130,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
       "a required pack is delivered as essential and carries no entitlement: the app cannot run without it, so nothing may withhold it."
     );
   const handler = def.handler;
-  if (handler !== void 0 && !isRecord4(handler)) {
+  if (handler !== void 0 && !isRecord5(handler)) {
     add3(
       errors,
       "release",
@@ -16952,7 +17138,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
       "invalid_pack_handler",
       "handler must be an object { mountOrder?, prefixes?, activation? }."
     );
-  } else if (isRecord4(handler)) {
+  } else if (isRecord5(handler)) {
     if (handler.mountOrder !== void 0 && !(Number.isSafeInteger(handler.mountOrder) && handler.mountOrder >= 0 && handler.mountOrder <= MAX_PACK_MOUNT_ORDER))
       add3(
         errors,
@@ -17000,7 +17186,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
   }
   const variants = def.variants;
   if (variants !== void 0) {
-    if (!isRecord4(variants)) {
+    if (!isRecord5(variants)) {
       add3(
         errors,
         "release",
@@ -17050,7 +17236,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
   }
   const requires = def.requires;
   if (requires !== void 0) {
-    if (!isRecord4(requires) || Object.keys(requires).some(
+    if (!isRecord5(requires) || Object.keys(requires).some(
       (k) => k !== "engine" && k !== "contentApi" && k !== "packs"
     ) || requires.engine !== void 0 && (typeof requires.engine !== "string" || !ENGINE_PATTERN.test(requires.engine)) || requires.contentApi !== void 0 && !isRangeMap(requires.contentApi, CONTENT_API_RANGE_PATTERN) || requires.packs !== void 0 && !isRangeMap(requires.packs, PACK_VERSION_RANGE_PATTERN))
       add3(
@@ -17079,7 +17265,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
       "standalone_with_content_api",
       "a standalone pack depends only on its type's format, never on the app's contentApi; drop requires.contentApi or make it compatible."
     );
-  if (isRecord4(req.contentApi)) {
+  if (isRecord5(req.contentApi)) {
     for (const key of Object.keys(req.contentApi))
       if (key !== APP_DELIVERABLE_ID)
         add3(
@@ -17090,7 +17276,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
           `requires.contentApi is keyed by app deliverable; ${key} is not one (the product's app deliverable is ${APP_DELIVERABLE_ID}).`
         );
   }
-  if (isRecord4(req.packs))
+  if (isRecord5(req.packs))
     for (const target of Object.keys(req.packs)) {
       const targetBinding = declaredPacks.get(target);
       if (target === id || targetBinding === void 0 || targetBinding !== "compatible" && targetBinding !== "standalone")
@@ -17142,7 +17328,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
       "invalid_pack_requires",
       `a ${type} pack declares requires.engine (godot-<major>.<minor>): a Godot pack mounts only into the engine version that exported it.`
     );
-  if (type === "l10n.table" && isRecord4(variants)) {
+  if (type === "l10n.table" && isRecord5(variants)) {
     const locales = variants.locale;
     if (Array.isArray(locales) && locales.some((l) => typeof l !== "string" || !BCP47_TAG_PATTERN.test(l)))
       add3(
@@ -17176,7 +17362,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
   if (patch !== void 0) {
     const p = asRecord(patch);
     const strategies = p.strategies;
-    if (!isRecord4(patch) || strategies !== void 0 && (!Array.isArray(strategies) || strategies.length === 0 || new Set(strategies).size !== strategies.length || !strategies.every((v) => isOneOf2(v, PACK_PATCH_STRATEGIES))) || p.deltaBases !== void 0 && !(Number.isSafeInteger(p.deltaBases) && p.deltaBases >= 0 && p.deltaBases <= MAX_PACK_DELTA_BASES))
+    if (!isRecord5(patch) || strategies !== void 0 && (!Array.isArray(strategies) || strategies.length === 0 || new Set(strategies).size !== strategies.length || !strategies.every((v) => isOneOf2(v, PACK_PATCH_STRATEGIES))) || p.deltaBases !== void 0 && !(Number.isSafeInteger(p.deltaBases) && p.deltaBases >= 0 && p.deltaBases <= MAX_PACK_DELTA_BASES))
       add3(
         errors,
         "release",
@@ -17186,7 +17372,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
       );
   }
   const versioning = def.versioning;
-  if (versioning !== void 0 && (!isRecord4(versioning) || versioning.scheme !== void 0 && !isOneOf2(versioning.scheme, VERSION_SCHEMES)))
+  if (versioning !== void 0 && (!isRecord5(versioning) || versioning.scheme !== void 0 && !isOneOf2(versioning.scheme, VERSION_SCHEMES)))
     add3(
       errors,
       "release",
@@ -17201,7 +17387,7 @@ function sortedRecord2(record) {
   );
 }
 function isRangeMap(value, pattern2) {
-  return isRecord4(value) && Object.keys(value).length > 0 && Object.keys(value).length <= MAX_PACK_DELIVERABLES && Object.entries(value).every(
+  return isRecord5(value) && Object.keys(value).length > 0 && Object.keys(value).length <= MAX_PACK_DELIVERABLES && Object.entries(value).every(
     ([k, v]) => isDeliverableId(k) && typeof v === "string" && pattern2.test(v)
   );
 }
@@ -17265,7 +17451,7 @@ function isAttachableList(value) {
 function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliverables) {
   const content = def.content;
   if (content !== void 0) {
-    if (!isRecord4(content) || !(Number.isSafeInteger(content.contentApi) && content.contentApi >= 1 && content.contentApi <= MAX_CONTENT_API) || content.holds !== void 0)
+    if (!isRecord5(content) || !(Number.isSafeInteger(content.contentApi) && content.contentApi >= 1 && content.contentApi <= MAX_CONTENT_API) || content.holds !== void 0)
       add3(
         errors,
         "release",
@@ -17273,9 +17459,9 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
         "invalid_app_content",
         `deliverables.app.content is { contentApi: an integer from 1 to ${MAX_CONTENT_API}, packChannels?, attachable? }; holds are chosen per app release at publish (the content stamp), never declared here.`
       );
-    const map = isRecord4(content) ? content.packChannels : void 0;
+    const map = isRecord5(content) ? content.packChannels : void 0;
     if (map !== void 0) {
-      if (!isRecord4(map) || Object.keys(map).length === 0 || Object.keys(map).length > MAX_PACK_CHANNEL_MAP || !Object.entries(map).every(
+      if (!isRecord5(map) || Object.keys(map).length === 0 || Object.keys(map).length > MAX_PACK_CHANNEL_MAP || !Object.entries(map).every(
         ([k, v]) => k.length <= MAX_DELIVERABLE_ID_LENGTH && PACK_CHANNELS_KEY_PATTERN.test(k) && k !== APP_DELIVERABLE_ID && isCanonicalChannelName(v)
       ))
         add3(
@@ -17307,7 +17493,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
             );
         }
     }
-    const attachable = isRecord4(content) ? content.attachable : void 0;
+    const attachable = isRecord5(content) ? content.attachable : void 0;
     if (attachable !== void 0 && !isAttachableList(attachable))
       add3(
         errors,
@@ -17326,7 +17512,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
     );
   }
   const versioning = def.versioning;
-  if (versioning !== void 0 && !isRecord4(versioning)) {
+  if (versioning !== void 0 && !isRecord5(versioning)) {
     add3(
       errors,
       "release",
@@ -17334,7 +17520,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
       "invalid_version_scheme",
       "deliverables.app.versioning must be an object."
     );
-  } else if (isRecord4(versioning)) {
+  } else if (isRecord5(versioning)) {
     if (versioning.scheme !== void 0 && !isOneOf2(versioning.scheme, VERSION_SCHEMES)) {
       add3(
         errors,
@@ -17399,7 +17585,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
   }
   const channels2 = def.channels;
   if (channels2 !== void 0) {
-    if (!isRecord4(channels2) || Object.keys(channels2).length > MAX_DELIVERABLE_CHANNELS) {
+    if (!isRecord5(channels2) || Object.keys(channels2).length > MAX_DELIVERABLE_CHANNELS) {
       add3(
         errors,
         "release",
@@ -17420,7 +17606,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
             `deliverables.app.channels names must be canonical (${CANONICAL_CHANNEL_PATTERN.source}, and not an alias such as ${CHANNEL_ALIAS_NAMES.join(" or ")}).`
           );
         }
-        if (!isRecord4(decl)) {
+        if (!isRecord5(decl)) {
           add3(
             errors,
             "release",
@@ -17489,7 +17675,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
   }
   const seen = /* @__PURE__ */ new Set();
   for (const [i, entry] of artifacts.entries()) {
-    if (!isRecord4(entry)) {
+    if (!isRecord5(entry)) {
       add3(
         errors,
         "release",
@@ -17626,7 +17812,7 @@ var MANIFEST_DOCUMENTS = [
   "release",
   "distribution"
 ];
-function parseManifest(files) {
+function parseManifest(files, opts = {}) {
   const errors = [];
   const docs = {};
   for (const name of MANIFEST_DOCUMENTS) {
@@ -17644,14 +17830,17 @@ function parseManifest(files) {
     for (const e of missing.errors) errors.push(formatIngestError(e));
   }
   if (errors.length) return { ok: false, errors };
-  if (!isRecord4(docs.product))
+  if (!isRecord5(docs.product))
     return { ok: false, errors: ["product: must be an object"] };
-  const validation = validateIngestDocuments({
-    product: docs.product,
-    schema: docs.schema,
-    release: docs.release,
-    distribution: docs.distribution
-  });
+  const validation = validateIngestDocuments(
+    {
+      product: docs.product,
+      schema: docs.schema,
+      release: docs.release,
+      distribution: docs.distribution
+    },
+    opts
+  );
   if (!validation.ok)
     return { ok: false, errors: validation.errors.map(formatIngestError) };
   const productRoot = docs.product;
@@ -17771,7 +17960,7 @@ function parseManifestPackageDeliverable(raw, id) {
       return null;
     }
   }
-  if (!isRecord4(def) || def.kind !== "package") return null;
+  if (!isRecord5(def) || def.kind !== "package") return null;
   if (!isPackageEcosystem(def.ecosystem)) return null;
   if (!isPackageName(def.ecosystem, def.name)) return null;
   if (PACKAGE_REFUSED_FIELDS.some((f) => def[f] !== void 0)) return null;
@@ -17806,7 +17995,7 @@ function normalizePackDeliverables(raw) {
   return out;
 }
 function normalizePackDeliverable(id, raw) {
-  if (!isRecord4(raw) || raw.kind !== "pack" || !isManifestPackType(raw.type))
+  if (!isRecord5(raw) || raw.kind !== "pack" || !isManifestPackType(raw.type))
     return null;
   const type = raw.type;
   const h = asRecord(raw.handler);
@@ -17867,7 +18056,7 @@ function normalizePackDeliverable(id, raw) {
     versioning: {
       scheme: isOneOf2(asRecord(raw.versioning).scheme, VERSION_SCHEMES) ? asRecord(raw.versioning).scheme : "semver"
     },
-    provides: isRecord4(raw.provides) ? {
+    provides: isRecord5(raw.provides) ? {
       required: raw.provides.required === true,
       from: typeof raw.provides.from === "string" && raw.provides.from.length <= 256 && PROVIDES_FILE_PATTERN.test(raw.provides.from) ? raw.provides.from : DEFAULT_PROVIDES_FILE
     } : null
@@ -17884,11 +18073,11 @@ function normalizeTrustedPublisher(raw) {
 }
 function normalizeAppDeliverable(raw) {
   const def = asRecord(raw)[APP_DELIVERABLE_ID];
-  if (!isRecord4(def) || def.kind !== "app") return null;
+  if (!isRecord5(def) || def.kind !== "app") return null;
   const versioning = asRecord(def.versioning);
   const channels2 = {};
   for (const [name, decl] of Object.entries(asRecord(def.channels))) {
-    if (!isCanonicalChannelName(name) || !isRecord4(decl)) continue;
+    if (!isCanonicalChannelName(name) || !isRecord5(decl)) continue;
     channels2[name] = {
       includes: (arrayAt(decl, "includes") ?? []).filter(
         isCanonicalChannelName
@@ -17897,7 +18086,7 @@ function normalizeAppDeliverable(raw) {
   }
   const artifacts = [];
   for (const entry of arrayAt(def, "artifacts") ?? []) {
-    if (!isRecord4(entry) || typeof entry.id !== "string" || !isOneOf2(entry.platform, RELEASE_PLATFORMS) || !isOneOf2(entry.arch, RELEASE_ARCHES) || typeof entry.format !== "string" || !isArtifactMatch(entry.match))
+    if (!isRecord5(entry) || typeof entry.id !== "string" || !isOneOf2(entry.platform, RELEASE_PLATFORMS) || !isOneOf2(entry.arch, RELEASE_ARCHES) || typeof entry.format !== "string" || !isArtifactMatch(entry.match))
       continue;
     const artifact = {
       id: entry.id,
@@ -17930,7 +18119,7 @@ function normalizeAppDeliverable(raw) {
   if (Number.isSafeInteger(contentApi) && contentApi >= 1) {
     app.content = { contentApi };
     const map = asRecord(def.content).packChannels;
-    if (isRecord4(map) && Object.keys(map).length > 0 && Object.entries(map).every(
+    if (isRecord5(map) && Object.keys(map).length > 0 && Object.entries(map).every(
       ([k, v]) => PACK_CHANNELS_KEY_PATTERN.test(k) && isCanonicalChannelName(v)
     ))
       app.content.packChannels = Object.fromEntries(
@@ -17947,7 +18136,7 @@ function normalizeManualChannels(raw) {
   if (!Array.isArray(raw)) return [];
   const out = [];
   for (const entry of raw) {
-    if (!isRecord4(entry)) continue;
+    if (!isRecord5(entry)) continue;
     const { name, regex } = entry;
     if (typeof name === "string" && CHANNEL_RE.test(name) && typeof regex === "string" && compileManualChannelRegex(regex) !== null) {
       out.push({ name, regex });
@@ -17960,7 +18149,7 @@ function normalizeIgnoreTags(raw) {
   return [...new Set(raw.filter(isIgnoreTag))].slice(0, MAX_IGNORE_TAGS);
 }
 function normalizeReleaseAccess(raw) {
-  if (!isRecord4(raw)) return { ...DEFAULT_RELEASE_ACCESS2 };
+  if (!isRecord5(raw)) return { ...DEFAULT_RELEASE_ACCESS2 };
   return {
     metadata: normalizeReleaseAccessValue(
       raw.metadata,
@@ -17977,7 +18166,7 @@ function normalizeReleaseAccessValue(raw, fallback) {
   return raw;
 }
 function normalizeArtifactPolicy(raw) {
-  if (!isRecord4(raw)) return null;
+  if (!isRecord5(raw)) return null;
   return {
     channels: arrayAt(raw, "channels")?.filter(isString) ?? [],
     architectures: arrayAt(raw, "architectures")?.filter(isString) ?? [],
@@ -17988,7 +18177,7 @@ function normalizeArtifactPolicy(raw) {
   };
 }
 function normalizeProfile(raw) {
-  if (!isRecord4(raw) || typeof raw.id !== "string" || raw.id.length === 0)
+  if (!isRecord5(raw) || typeof raw.id !== "string" || raw.id.length === 0)
     return null;
   const id = raw.id;
   return {
@@ -17999,7 +18188,7 @@ function normalizeProfile(raw) {
   };
 }
 function normalizeTier(raw) {
-  if (!isRecord4(raw) || typeof raw.id !== "string" || raw.id.length === 0)
+  if (!isRecord5(raw) || typeof raw.id !== "string" || raw.id.length === 0)
     return null;
   const id = raw.id;
   return {
@@ -18015,7 +18204,7 @@ function normalizeTier(raw) {
   };
 }
 function normalizeProbe(raw) {
-  if (!isRecord4(raw) || typeof raw.id !== "string" || raw.id.length === 0) {
+  if (!isRecord5(raw) || typeof raw.id !== "string" || raw.id.length === 0) {
     return null;
   }
   const probe = {
@@ -18028,7 +18217,7 @@ function normalizeProbe(raw) {
   return probe;
 }
 function normalizeFingerprint(raw) {
-  const record = isRecord4(raw) ? raw : {};
+  const record = isRecord5(raw) ? raw : {};
   return {
     // Fingerprinting is ON unless a product explicitly opts out.
     enabled: record.enabled === false ? false : true,
@@ -18037,7 +18226,7 @@ function normalizeFingerprint(raw) {
   };
 }
 function normalizeAutoIssue(raw) {
-  const record = isRecord4(raw) ? raw : {};
+  const record = isRecord5(raw) ? raw : {};
   const tierId = typeof record.tierId === "string" && record.tierId ? record.tierId : null;
   const mode = record.mode === void 0 ? "anonymous" : isOneOf2(record.mode, AUTO_ISSUE_MODE_VALUES) ? record.mode : null;
   return {
@@ -18051,7 +18240,7 @@ function normalizeAutoIssue(raw) {
   };
 }
 function normalizeProvisioning(raw) {
-  if (!isRecord4(raw) || typeof raw.claim !== "string" || raw.claim.length === 0) {
+  if (!isRecord5(raw) || typeof raw.claim !== "string" || raw.claim.length === 0) {
     return null;
   }
   const claim = raw.claim;
@@ -18065,7 +18254,7 @@ function normalizeProvisioning(raw) {
   };
 }
 function normalizeEdgeMint(raw) {
-  if (!isRecord4(raw) || typeof raw.id !== "string" || raw.id.length === 0)
+  if (!isRecord5(raw) || typeof raw.id !== "string" || raw.id.length === 0)
     return null;
   const id = raw.id;
   return {
@@ -18082,7 +18271,7 @@ function collectRequiredSecrets(secrets, product, release) {
   const names = /* @__PURE__ */ new Set();
   const required = arrayAt(secrets, "required") ?? [];
   for (const item of required) {
-    if (isRecord4(item) && typeof item.name === "string" && item.name) {
+    if (isRecord5(item) && typeof item.name === "string" && item.name) {
       names.add(item.name);
     } else if (typeof item === "string") names.add(item);
   }
@@ -18093,7 +18282,7 @@ function collectRequiredSecrets(secrets, product, release) {
     names.add(oidcSecret);
   const edgeMint = arrayAt(product, "edgeMint") ?? arrayAt(asRecord(release), "edgeMint") ?? [];
   for (const item of edgeMint) {
-    if (!isRecord4(item)) continue;
+    if (!isRecord5(item)) continue;
     const ref = item.signingKeySecret;
     if (typeof ref === "string" && ref) names.add(ref);
   }
@@ -18151,13 +18340,13 @@ function catalogFlagKeys(schema) {
   const out = /* @__PURE__ */ new Set();
   for (const e of normalizeCatalog(schema)?.entries ?? []) {
     const entry = e;
-    if (isRecord4(entry) && entry.kind === "flag" && typeof entry.key === "string")
+    if (isRecord5(entry) && entry.kind === "flag" && typeof entry.key === "string")
       out.add(entry.key);
   }
   return out;
 }
 function normalizeCatalog(parsed) {
-  if (!isRecord4(parsed)) return null;
+  if (!isRecord5(parsed)) return null;
   if (Array.isArray(parsed.entries)) return parsed;
   if (Array.isArray(parsed.catalog)) {
     return {
@@ -18174,7 +18363,7 @@ function validateCatalogShape(catalog) {
     issues.push("catalog.schemaVersion must be a non-negative integer.");
   }
   for (const [i, raw] of catalog.entries.entries()) {
-    if (!isRecord4(raw)) {
+    if (!isRecord5(raw)) {
       issues.push(`entries[${i}] must be an object.`);
       continue;
     }
@@ -18216,7 +18405,7 @@ function validateCatalogShape(catalog) {
       if (keys.has(entry.key)) issues.push(`entries[${i}].key is duplicated.`);
       keys.add(entry.key);
     }
-    if (!isRecord4(entry.schema)) {
+    if (!isRecord5(entry.schema)) {
       issues.push(`entries[${i}].schema must be an object.`);
       continue;
     }
@@ -18263,16 +18452,16 @@ function constrainedList(errors, file, values, path25, code, re, message) {
   }
 }
 function releaseRoot(value) {
-  if (!isRecord4(value)) return null;
-  return isRecord4(value.release) ? value.release : value;
+  if (!isRecord5(value)) return null;
+  return isRecord5(value.release) ? value.release : value;
 }
 function nestedProductDoc(p) {
-  return isRecord4(p.product) ? p.product : p;
+  return isRecord5(p.product) ? p.product : p;
 }
 function asRecord(v) {
-  return isRecord4(v) ? v : {};
+  return isRecord5(v) ? v : {};
 }
-function isRecord4(v) {
+function isRecord5(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 function arrayAt(v, key) {
@@ -18625,8 +18814,8 @@ async function errorDetail(res) {
     const trimmed2 = text.trim();
     return trimmed2 ? { message: clip(trimmed2) } : {};
   }
-  if (!isRecord5(parsed)) return {};
-  const nested = isRecord5(parsed.error) ? parsed.error : {};
+  if (!isRecord6(parsed)) return {};
+  const nested = isRecord6(parsed.error) ? parsed.error : {};
   const detail = {};
   const code = asString(parsed.code) ?? asString(nested.code);
   const message = asString(parsed.message) ?? asString(nested.message);
@@ -18646,7 +18835,7 @@ async function readJson(res, url) {
       `${url} answered ${res.status} with a body that is not JSON: ${clip(text.trim())}`
     );
   }
-  if (!isRecord5(parsed))
+  if (!isRecord6(parsed))
     throw new Error(
       `${url} answered ${res.status} with a non-object JSON body.`
     );
@@ -18677,7 +18866,7 @@ function asStrings(value) {
   const out = value.filter((item) => typeof item === "string");
   return out.length ? out : void 0;
 }
-function isRecord5(value) {
+function isRecord6(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
@@ -18730,7 +18919,7 @@ async function loadManifest(cwd) {
   const releaseFile = await findExisting(rootDir, RELEASE_FILES);
   const distributionFile = await findExisting(rootDir, DISTRIBUTION_FILES);
   const product = parseFile(productFile, await readFile(productFile, "utf8"));
-  if (!isRecord6(product))
+  if (!isRecord7(product))
     throw new Error(
       `${path2.relative(cwd, productFile)} must parse to an object.`
     );
@@ -18945,7 +19134,7 @@ function parseFile(file, raw) {
   if (file.endsWith(".json")) return JSON.parse(raw);
   return (0, import_yaml2.parse)(raw);
 }
-function isRecord6(value) {
+function isRecord7(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 function isProductModule(value) {

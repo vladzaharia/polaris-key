@@ -10,6 +10,10 @@
 > §6.10. Settings follow the S-18 hub and licensing follows S-19 (both owner-approved); EXPERIENCE.md
 > §0.8 reconciles its work packages with the `ST`, `LX` and `PX` packages.
 
+> **Sign-in is specified in [SIGN-IN.md](SIGN-IN.md) (2026-10-05).** It supersedes this document's
+> sign-in parts where they differ: §2.7's Sign in row, T8's Session expired row (the console now
+> renders "Your session ended" in place on the shared card, not a dialog) and §6.10.1.
+
 **Status:** draft for lead approval · **Scope:** `packages/admin` (operator console at `/manage`,
 customer portal at `/`) · **Builds on:** `@polaris-key/brand` and
 [BRAND.md](BRAND.md) (in progress on
@@ -294,13 +298,13 @@ re-scoped. A page is shown only when its section is shown, plus the conditions l
 that is not built yet carries `ready: false` in `nav.ts` and redirects to Deployment, with no
 "coming soon" copy:
 
-| Page                  | URL                            | Template       | Contents                                                                                                                                                                                                                                                                                                                                                                                     |
-| --------------------- | ------------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Settings**          | `#/platform/settings`          | T4             | Background jobs (the four runtime-editable settings: `LAZY_DELTAS`, `LAZY_DELTA_MAX_BYTES` lower-only, `BLOB_GC_MODE`, `BLOB_GC_GRACE_DAYS`, each with its source; ceiling precedence for kill switches), the read-only inventory, the KEK keyring (re-seal sweep, L3 "type reseal") and secrets presence. Needs A-13                                                                        |
-| **Deployment**        | `#/platform/deployment`        | T1 plus tables | The running build (tag, commit, Cloudflare version, protocol and discovery versions), deploy history (`platform_deploys`, keyset Load more), D1 migrations against the build's newest, required indexes, bindings (presence only), and **Platform activity** (`platform_audit`, A-12). Built in chunk 4                                                                                      |
-| **Operations**        | `#/platform/operations`        | T1             | Self-reported operations data (A-14), built in chunk 4P-3: a health state (Healthy, Degraded, Failed) per section, cron runs by step with recent history, heartbeats and staleness, queue and dead-letter backlog, D1 and R2 size, required indexes, connector aggregates; refreshes on an interval with a pause switch. Cloudflare analytics panels wait for A-15 and are absent until then |
-| **Store connections** | `#/platform/store-connections` | T2             | Instance-wide store connector state                                                                                                                                                                                                                                                                                                                                                          |
-| **Package feeds**     | `#/platform/feeds`             | T2 (S-12)      | S-12 owns the page and its API                                                                                                                                                                                                                                                                                                                                                               |
+| Page                  | URL                            | Template       | Contents                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| --------------------- | ------------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Settings**          | `#/platform/settings`          | T4             | Background jobs (the four runtime-editable job settings: `LAZY_DELTAS`, `LAZY_DELTA_MAX_BYTES` lower-only, `BLOB_GC_MODE`, `BLOB_GC_GRACE_DAYS`, each with its source; ceiling precedence for kill switches), Licensing (`LICENSING_RESERVED_NAMES` warn/error and the reserved-names list of registered products, LX-05), the read-only inventory, the KEK keyring (re-seal sweep, L3 "type reseal") and secrets presence. Needs A-13 |
+| **Deployment**        | `#/platform/deployment`        | T1 plus tables | The running build (tag, commit, Cloudflare version, protocol and discovery versions), deploy history (`platform_deploys`, keyset Load more), D1 migrations against the build's newest, required indexes, bindings (presence only), and **Platform activity** (`platform_audit`, A-12). Built in chunk 4                                                                                                                                |
+| **Operations**        | `#/platform/operations`        | T1             | Self-reported operations data (A-14), built in chunk 4P-3: a health state (Healthy, Degraded, Failed) per section, cron runs by step with recent history, heartbeats and staleness, queue and dead-letter backlog, D1 and R2 size, required indexes, connector aggregates; refreshes on an interval with a pause switch. Cloudflare analytics panels wait for A-15 and are absent until then                                           |
+| **Store connections** | `#/platform/store-connections` | T2             | Instance-wide store connector state                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **Package feeds**     | `#/platform/feeds`             | T2 (S-12)      | S-12 owns the page and its API                                                                                                                                                                                                                                                                                                                                                                                                         |
 
 **Rejected moves, so they stay rejected:**
 
@@ -658,13 +662,13 @@ result), create license (in a dialog, as steps).
 
 **For.** Not found, service off, unknown product, session expired, boot.
 
-| State               | Content                                                                                                                                                                                                                                                     |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Service off**     | `EmptyState kind="service-off"` in the service's accent and glyph: "The License service isn't enabled for DJDL." **Enable License** (goes to Services with the row focused and pre-toggled, unsaved) + docs                                                 |
-| **Not found**       | Names the missing thing ("No license `lic_123` in DJDL"), links to its collection and to the palette                                                                                                                                                        |
-| **Unknown product** | Lists the closest slugs (edit distance ≤ 2) + "All products"                                                                                                                                                                                                |
-| **Session expired** | A non-dismissible dialog over the current page: "Your session ended. Sign in again to continue; your unsaved changes stay in this tab." **Sign in** opens `/manage/login?returnTo=<current hash>` in the same tab after stashing drafts in `sessionStorage` |
-| **Boot**            | The brand mark (display cut, 48 px, gold bit), "Loading console…" in a live region; on failure an `ErrorState` with Retry and Sign in                                                                                                                       |
+| State               | Content                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Service off**     | `EmptyState kind="service-off"` in the service's accent and glyph: "The License service isn't enabled for DJDL." **Enable License** (goes to Services with the row focused and pre-toggled, unsaved) + docs                                                                                                                                                                                                  |
+| **Not found**       | Names the missing thing ("No license `lic_123` in DJDL"), links to its collection and to the palette                                                                                                                                                                                                                                                                                                         |
+| **Unknown product** | Lists the closest slugs (edit distance ≤ 2) + "All products"                                                                                                                                                                                                                                                                                                                                                 |
+| **Session expired** | **Superseded by SIGN-IN.md §3.12:** "Your session ended" renders in place on the shared card with the email chip and Continue. As first written: a non-dismissible dialog over the current page: "Your session ended. Sign in again to continue; your unsaved changes stay in this tab." **Sign in** opens `/manage/login?returnTo=<current hash>` in the same tab after stashing drafts in `sessionStorage` |
+| **Boot**            | The brand mark (display cut, 48 px, gold bit), "Loading console…" in a live region; on failure an `ErrorState` with Retry and Sign in                                                                                                                                                                                                                                                                        |
 
 ### 3.9 View → template map
 
@@ -1458,8 +1462,10 @@ Cell drawer (2.4.0 × Google Play) ───────────────
   (`setup.credentialSource`, `platformSource`) and the connectors section links the store
   connections docs. The platform Store connections page itself is A-16's (the Platform section).
 - **Access.** A pack's gate is a catalog-flag `Combobox` while Config is on, a text field
-  otherwise; the app's `entitled` describes Release's channel and version window (the app row's
-  `entitlement` is stored, not enforced, so it is not offered). `?deliverable=<pack>` focuses that
+  otherwise; the app's `entitled` describes Release's channel and version window. A pack's gate is
+  enforced (P4-05: pack blobs and registry reads require the flag); the app row's `entitlement`
+  is stored but never consulted, because app delivery under `entitled` is the window, so it is
+  not offered. `?deliverable=<pack>` focuses that
   pack's section (DLV-3).
 - **Update → Feed** saves metadata access, the compatibility window and the artifact policy as
   three forms (each its own PATCH with only its fields) and lists the endpoint URLs per channel;
@@ -1888,6 +1894,9 @@ activateAfter, retiredAt).
 ### 6.10 Customer portal
 
 #### 6.10.1 Sign in
+
+> **Superseded** by [SIGN-IN.md](SIGN-IN.md) §3.3–§3.4 (identifier-first card, email code and link,
+> provider row, passkeys). Kept for history.
 
 ```
 ┌──────────────── centered, max-w 26rem ────────────────┐
