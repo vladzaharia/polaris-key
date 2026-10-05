@@ -29,10 +29,21 @@ import { isFresh, type AccountContext, type AccountProof } from "./links.js";
 import { getAccountRow } from "./repo.js";
 
 export type MergeResult =
-  | { ok: true; products: Array<{ product: string; subject: string; alias: string | null }> }
+  | {
+      ok: true;
+      products: Array<{
+        product: string;
+        subject: string;
+        alias: string | null;
+      }>;
+    }
   | {
       ok: false;
-      reason: "step_up_required" | "same_account" | "not_found" | "account_disabled";
+      reason:
+        | "step_up_required"
+        | "same_account"
+        | "not_found"
+        | "account_disabled";
     };
 
 export async function mergeAccounts(
@@ -41,7 +52,8 @@ export async function mergeAccounts(
 ): Promise<MergeResult> {
   const { db, env, now } = ctx;
   const { survivor: sp, absorbed: ap } = args;
-  if (sp.accountId === ap.accountId) return { ok: false, reason: "same_account" };
+  if (sp.accountId === ap.accountId)
+    return { ok: false, reason: "same_account" };
   // Proof of BOTH, both fresh: one stale proof is no proof (S-16 §5.4 item 15).
   if (!isFresh(sp, now) || !isFresh(ap, now)) {
     return { ok: false, reason: "step_up_required" };
@@ -87,9 +99,16 @@ export async function mergeAccounts(
     }
   }
 
-  const products: Array<{ product: string; subject: string; alias: string | null }> = [];
+  const products: Array<{
+    product: string;
+    subject: string;
+    alias: string | null;
+  }> = [];
   const stmts: DbStatement[] = [
-    { sql: "UPDATE account_links SET account_id = ? WHERE account_id = ?", params: [S, A] },
+    {
+      sql: "UPDATE account_links SET account_id = ? WHERE account_id = ?",
+      params: [S, A],
+    },
     stmtMoveAccountLicenses(A, S),
   ];
   for (const row of absorbedSubjects) {
@@ -100,7 +119,11 @@ export async function mergeAccounts(
         sql: "UPDATE account_product_subjects SET account_id = ? WHERE account_id = ? AND product = ?",
         params: [S, A, row.product],
       });
-      products.push({ product: row.product, subject: row.subject, alias: null });
+      products.push({
+        product: row.product,
+        subject: row.subject,
+        alias: null,
+      });
       continue;
     }
     stmts.push(
@@ -123,7 +146,12 @@ export async function mergeAccounts(
         params: [to, row.product, row.subject],
       },
       stmtSubjectEvent(
-        { type: "subject.merged", product: row.product, subject: to, alias: row.subject },
+        {
+          type: "subject.merged",
+          product: row.product,
+          subject: to,
+          alias: row.subject,
+        },
         now,
       ),
     );
@@ -138,9 +166,18 @@ export async function mergeAccounts(
               FROM account_product_grants WHERE account_id = ?`,
       params: [S, A],
     },
-    { sql: "DELETE FROM account_product_grants WHERE account_id = ?", params: [A] },
-    { sql: "UPDATE account_sessions SET account_id = ? WHERE account_id = ?", params: [S, A] },
-    { sql: "UPDATE account_passkeys SET account_id = ? WHERE account_id = ?", params: [S, A] },
+    {
+      sql: "DELETE FROM account_product_grants WHERE account_id = ?",
+      params: [A],
+    },
+    {
+      sql: "UPDATE account_sessions SET account_id = ? WHERE account_id = ?",
+      params: [S, A],
+    },
+    {
+      sql: "UPDATE account_passkeys SET account_id = ? WHERE account_id = ?",
+      params: [S, A],
+    },
     {
       sql: "UPDATE registry_tokens SET portal_account_id = ? WHERE portal_account_id = ?",
       params: [S, A],
@@ -167,14 +204,29 @@ export async function mergeAccounts(
     { sql: "DELETE FROM accounts WHERE id = ?", params: [A] },
     // The pre-I-05 tables: the absorbed account's rows go (a rollback re-creates the survivor's
     // from the moved links and licences, scripts/rollback/0068_accounts.down.sql).
-    { sql: "DELETE FROM portal_account_identities WHERE account_id = ?", params: [A] },
-    { sql: "DELETE FROM portal_account_emails WHERE account_id = ?", params: [A] },
-    { sql: "DELETE FROM portal_license_links WHERE account_id = ?", params: [A] },
+    {
+      sql: "DELETE FROM portal_account_identities WHERE account_id = ?",
+      params: [A],
+    },
+    {
+      sql: "DELETE FROM portal_account_emails WHERE account_id = ?",
+      params: [A],
+    },
+    {
+      sql: "DELETE FROM portal_license_links WHERE account_id = ?",
+      params: [A],
+    },
     { sql: "DELETE FROM portal_accounts WHERE id = ?", params: [A] },
     {
       sql: `INSERT INTO portal_audit (id, account_id, at, action, product, target_kind, target_id, summary)
             VALUES (?, ?, ?, 'account.merge', NULL, 'account', ?, ?)`,
-      params: [randomId("paud"), S, now, A, "Joined another Polaris Key account into this one"],
+      params: [
+        randomId("paud"),
+        S,
+        now,
+        A,
+        "Joined another Polaris Key account into this one",
+      ],
     },
   );
   await db.batch(stmts);

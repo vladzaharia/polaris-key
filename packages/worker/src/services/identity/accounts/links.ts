@@ -85,11 +85,7 @@ export type LinkResult =
   | { ok: true; link: AccountLinkRow; already: boolean }
   | {
       ok: false;
-      error:
-        | "step_up_required"
-        | "link_conflict"
-        | "bad_request"
-        | "not_found";
+      error: "step_up_required" | "link_conflict" | "bad_request" | "not_found";
     };
 
 /**
@@ -205,7 +201,10 @@ export async function unlinkIdentity(
     proof.accountId,
     // The removed address hears about it too: it was a way in until a moment ago.
     link.kind === "email" ? link.subject : account?.primary_email,
-    signInMethodRemovedNotice({ method: methodLabel(link), origin: ctx.origin }),
+    signInMethodRemovedNotice({
+      method: methodLabel(link),
+      origin: ctx.origin,
+    }),
     now,
   );
   return { ok: true };

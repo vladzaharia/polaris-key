@@ -24,7 +24,9 @@ import { portalAudit } from "../portal/repo.js";
 import type { AccountContext } from "./links.js";
 
 /** The copy statements of migrations/0068_e, optionally narrowed to one account id. */
-function copyStatements(accountId: string | null): Array<{ sql: string; params: unknown[] }> {
+function copyStatements(
+  accountId: string | null,
+): Array<{ sql: string; params: unknown[] }> {
   const one = accountId !== null;
   const only = (col: string) => (one ? ` AND ${col} = ?` : "");
   const p = one ? [accountId] : [];
@@ -96,21 +98,29 @@ function copyStatements(accountId: string | null): Array<{ sql: string; params: 
 
 /** Copy every portal row the new tables lack (the scheduled catch-up). Idempotent. */
 export async function catchUpLegacyAccounts(db: Db): Promise<void> {
-  for (const s of copyStatements(null)) await db.run(s.sql, ...(s.params as string[]));
+  for (const s of copyStatements(null))
+    await db.run(s.sql, ...(s.params as string[]));
 }
 
 /**
  * Copy one portal account the new tables lack, with its methods and licence links. Answers
  * whether the account exists afterwards. Cheap when there is nothing to copy (primary-key reads).
  */
-export async function catchUpLegacyAccount(db: Db, accountId: string): Promise<boolean> {
+export async function catchUpLegacyAccount(
+  db: Db,
+  accountId: string,
+): Promise<boolean> {
   const legacy = await db.first<{ one: number }>(
     "SELECT 1 AS one FROM portal_accounts WHERE id = ?",
     accountId,
   );
   if (!legacy) return false;
-  for (const s of copyStatements(accountId)) await db.run(s.sql, ...(s.params as string[]));
-  const row = await db.first<{ one: number }>("SELECT 1 AS one FROM accounts WHERE id = ?", accountId);
+  for (const s of copyStatements(accountId))
+    await db.run(s.sql, ...(s.params as string[]));
+  const row = await db.first<{ one: number }>(
+    "SELECT 1 AS one FROM accounts WHERE id = ?",
+    accountId,
+  );
   return row !== null;
 }
 
@@ -123,7 +133,11 @@ export async function settleOwnershipConflicts(
   limit = 200,
 ): Promise<number> {
   const { db, env, now } = ctx;
-  const losers = await db.all<{ account_id: string; product: string; license_id: string }>(
+  const losers = await db.all<{
+    account_id: string;
+    product: string;
+    license_id: string;
+  }>(
     `SELECT l.account_id, l.product, l.license_id
        FROM portal_license_links l
        JOIN licenses x ON x.product = l.product AND x.id = l.license_id
@@ -146,7 +160,10 @@ export async function settleOwnershipConflicts(
       db,
       loser.account_id,
       null,
-      licenseLinkSupersededNotice({ productName: product?.name ?? null, origin: ctx.origin }),
+      licenseLinkSupersededNotice({
+        productName: product?.name ?? null,
+        origin: ctx.origin,
+      }),
       now,
     ).catch(() => 0);
     await portalAudit(db, {

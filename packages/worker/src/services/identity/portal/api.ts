@@ -1273,20 +1273,10 @@ export async function handlePortalDownload(
   if (!scope.portalAccountId) return notFound();
   const account = await getPortalAccount(db, scope.portalAccountId, now);
   if (!account || account.status !== "active") return notFound();
-  if (!(await hasLinkedProductLicense(db, account.id, row.product))
-  ) {
+  if (!(await hasLinkedProductLicense(db, account.id, row.product))) {
     return notFound();
   }
-  if (
-    !(await accountMayDownload(
-      db,
-      account.id,
-      gate,
-      mode,
-      facts,
-      now,
-    ))
-  ) {
+  if (!(await accountMayDownload(db, account.id, gate, mode, facts, now))) {
     return notFound();
   }
   // R9-05b: the conditional UPDATE IS the single-use gate. A concurrent redemption of the same

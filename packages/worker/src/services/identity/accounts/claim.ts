@@ -96,7 +96,12 @@ export type AttachResult =
  */
 export async function attachLicense(
   ctx: AccountContext,
-  args: { accountId: string; product: string; licenseId: string; via: AttachVia },
+  args: {
+    accountId: string;
+    product: string;
+    licenseId: string;
+    via: AttachVia;
+  },
 ): Promise<AttachResult> {
   const { db, now } = ctx;
   const license = await getLicense(db, args.product, args.licenseId);
@@ -117,9 +122,18 @@ export async function attachLicense(
     case "attachable":
       break;
   }
-  if (!(await attachLicenseAccount(db, args.product, args.licenseId, args.accountId, now))) {
+  if (
+    !(await attachLicenseAccount(
+      db,
+      args.product,
+      args.licenseId,
+      args.accountId,
+      now,
+    ))
+  ) {
     // Someone else's attach landed between the read and the write.
-    return (await licenseAccountId(db, args.product, args.licenseId)) === args.accountId
+    return (await licenseAccountId(db, args.product, args.licenseId)) ===
+      args.accountId
       ? {
           ok: true,
           attached: false,
@@ -156,7 +170,10 @@ async function notifyLicenseEmail(
     ctx.env,
     ctx.db,
     email,
-    licenseAttachedNotice({ productName: product?.name ?? null, origin: ctx.origin }),
+    licenseAttachedNotice({
+      productName: product?.name ?? null,
+      origin: ctx.origin,
+    }),
     ctx.now,
   ).catch(() => false);
 }
@@ -215,14 +232,25 @@ export async function reassignLicense(
     /** Who did it (`admin:<sub>`); recorded, never shown to the person. */
     actor: string;
   },
-): Promise<{ ok: true; previousAccountId: string | null } | { ok: false; reason: "not_found" | "conflict" }> {
+): Promise<
+  | { ok: true; previousAccountId: string | null }
+  | { ok: false; reason: "not_found" | "conflict" }
+> {
   const { db, env, now } = ctx;
   const license = await getLicense(db, args.product, args.licenseId);
   if (!license) return { ok: false, reason: "not_found" };
   const previous = license.account_id ?? null;
-  if (previous === args.toAccountId) return { ok: true, previousAccountId: previous };
+  if (previous === args.toAccountId)
+    return { ok: true, previousAccountId: previous };
   if (
-    !(await moveLicenseAccount(db, args.product, args.licenseId, previous, args.toAccountId, now))
+    !(await moveLicenseAccount(
+      db,
+      args.product,
+      args.licenseId,
+      previous,
+      args.toAccountId,
+      now,
+    ))
   ) {
     return { ok: false, reason: "conflict" };
   }
@@ -247,14 +275,19 @@ export async function reassignLicense(
       args.licenseId,
     );
   }
-  if (args.toAccountId) await subjectFor(db, args.toAccountId, args.product, now);
+  if (args.toAccountId)
+    await subjectFor(db, args.toAccountId, args.product, now);
   await portalAudit(db, {
     accountId: previous,
     action: "account.license.relink",
     product: args.product,
     targetKind: "license",
     targetId: args.licenseId,
-    summary: JSON.stringify({ from: previous, to: args.toAccountId, by: args.actor }),
+    summary: JSON.stringify({
+      from: previous,
+      to: args.toAccountId,
+      by: args.actor,
+    }),
     now,
   });
   return { ok: true, previousAccountId: previous };

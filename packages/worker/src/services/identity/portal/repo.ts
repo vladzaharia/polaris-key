@@ -147,7 +147,9 @@ export async function getPortalAccount(
   now?: number,
 ): Promise<PortalAccountRow | null> {
   const found =
-    now === undefined ? await getAccountRow(db, id) : await resolveAccount(db, id, now);
+    now === undefined
+      ? await getAccountRow(db, id)
+      : await resolveAccount(db, id, now);
   if (found) return found;
   if (await catchUpLegacyAccount(db, id)) return getAccountRow(db, id);
   return null;
@@ -1069,5 +1071,7 @@ export async function accountHasVerifiedEmail(
   accountId: string,
   email: string,
 ): Promise<boolean> {
-  return (await verifiedAccountEmails(db, accountId)).includes(normalizeEmail(email));
+  return (await verifiedAccountEmails(db, accountId)).includes(
+    normalizeEmail(email),
+  );
 }

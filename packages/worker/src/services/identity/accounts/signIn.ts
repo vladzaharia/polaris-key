@@ -86,7 +86,9 @@ export type SignInResult =
 /** The identity with its defaults applied, or `null` when it is unusable. */
 export function normalizeIdentity(
   identity: VerifiedIdentity,
-): (Required<Omit<VerifiedIdentity, "amr">> & { amr: readonly string[] }) | null {
+):
+  | (Required<Omit<VerifiedIdentity, "amr">> & { amr: readonly string[] })
+  | null {
   const issuerKey = identity.issuerKey.trim();
   const subject = identity.subject.trim();
   if (!issuerKey || !subject || !identity.kind) return null;
@@ -104,7 +106,9 @@ export function normalizeIdentity(
     kind: identity.kind,
     email,
     // An email method IS proof of its address; anything else carries the provider's assertion.
-    emailVerified: isEmailMethod ? true : Boolean(identity.emailVerified && email),
+    emailVerified: isEmailMethod
+      ? true
+      : Boolean(identity.emailVerified && email),
     displayName: identity.displayName?.trim() || null,
     amr: identity.amr ?? [],
   };
@@ -171,7 +175,11 @@ export async function signIn(
   if (id.email && id.emailVerified) {
     const other = await accountUsingEmail(db, id.email);
     if (other) {
-      return { status: "join_offer", existingAccountId: other, email: id.email };
+      return {
+        status: "join_offer",
+        existingAccountId: other,
+        email: id.email,
+      };
     }
   }
 

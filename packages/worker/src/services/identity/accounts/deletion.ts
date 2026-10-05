@@ -31,7 +31,11 @@ import type { AccountContext } from "./links.js";
 import { getAccountRow } from "./repo.js";
 
 /** Statements that end one (account, product) subject: its aliases, then the row itself. */
-function stmtsEndSubject(accountId: string, product: string, subject: string): DbStatement[] {
+function stmtsEndSubject(
+  accountId: string,
+  product: string,
+  subject: string,
+): DbStatement[] {
   return [
     {
       sql: "DELETE FROM account_product_subject_aliases WHERE product = ? AND subject = ?",
@@ -59,11 +63,22 @@ export async function removeProductData(
     args.accountId,
     args.product,
   );
-  const licenses = (await accountLicenses(db, args.accountId, args.product)).map((l) => l.id);
+  const licenses = (
+    await accountLicenses(db, args.accountId, args.product)
+  ).map((l) => l.id);
   const detached: string[] = [];
   if (args.alsoDetachLicenses) {
     for (const licenseId of licenses) {
-      if (await moveLicenseAccount(db, args.product, licenseId, args.accountId, null, now)) {
+      if (
+        await moveLicenseAccount(
+          db,
+          args.product,
+          licenseId,
+          args.accountId,
+          null,
+          now,
+        )
+      ) {
         detached.push(licenseId);
         await onLicenseOwnershipEnded(db, env, {
           product: args.product,
@@ -82,7 +97,10 @@ export async function removeProductData(
     }
   }
   if (!row) return { ok: detached.length > 0, detached };
-  await runSubjectDelete({ db, env, now }, { product: args.product, subject: row.subject });
+  await runSubjectDelete(
+    { db, env, now },
+    { product: args.product, subject: row.subject },
+  );
   await clearDeviceSubjects(
     db,
     env,
@@ -142,9 +160,17 @@ export async function deleteAccount(
   );
   const licenses = await accountLicenses(db, accountId);
   for (const s of subjects) {
-    await runSubjectDelete({ db, env, now }, { product: s.product, subject: s.subject });
+    await runSubjectDelete(
+      { db, env, now },
+      { product: s.product, subject: s.subject },
+    );
   }
-  await clearDeviceSubjects(db, env, { kind: "account", accountId }, "account_deleted");
+  await clearDeviceSubjects(
+    db,
+    env,
+    { kind: "account", accountId },
+    "account_deleted",
+  );
   for (const l of licenses) {
     await onLicenseOwnershipEnded(db, env, {
       product: l.product,
@@ -162,7 +188,9 @@ export async function deleteAccount(
           type: "subject.deleted",
           product: s.product,
           subject: s.subject,
-          licenseIds: licenses.filter((l) => l.product === s.product).map((l) => l.id),
+          licenseIds: licenses
+            .filter((l) => l.product === s.product)
+            .map((l) => l.id),
           detached: true,
         },
         now,
@@ -172,20 +200,44 @@ export async function deleteAccount(
   }
   stmts.push(
     stmtDetachAccountLicenses(accountId),
-    { sql: "DELETE FROM account_links WHERE account_id = ?", params: [accountId] },
-    { sql: "DELETE FROM account_product_grants WHERE account_id = ?", params: [accountId] },
-    { sql: "DELETE FROM account_sessions WHERE account_id = ?", params: [accountId] },
-    { sql: "DELETE FROM account_passkeys WHERE account_id = ?", params: [accountId] },
+    {
+      sql: "DELETE FROM account_links WHERE account_id = ?",
+      params: [accountId],
+    },
+    {
+      sql: "DELETE FROM account_product_grants WHERE account_id = ?",
+      params: [accountId],
+    },
+    {
+      sql: "DELETE FROM account_sessions WHERE account_id = ?",
+      params: [accountId],
+    },
+    {
+      sql: "DELETE FROM account_passkeys WHERE account_id = ?",
+      params: [accountId],
+    },
     { sql: "DELETE FROM accounts WHERE id = ?", params: [accountId] },
     {
       sql: `INSERT OR REPLACE INTO account_tombstones (id, email_hash, merged_into, deleted_at)
             VALUES (?, NULL, NULL, ?)`,
       params: [accountId, now],
     },
-    { sql: "DELETE FROM portal_account_emails WHERE account_id = ?", params: [accountId] },
-    { sql: "DELETE FROM portal_account_identities WHERE account_id = ?", params: [accountId] },
-    { sql: "DELETE FROM portal_license_links WHERE account_id = ?", params: [accountId] },
-    { sql: "DELETE FROM portal_audit WHERE account_id = ?", params: [accountId] },
+    {
+      sql: "DELETE FROM portal_account_emails WHERE account_id = ?",
+      params: [accountId],
+    },
+    {
+      sql: "DELETE FROM portal_account_identities WHERE account_id = ?",
+      params: [accountId],
+    },
+    {
+      sql: "DELETE FROM portal_license_links WHERE account_id = ?",
+      params: [accountId],
+    },
+    {
+      sql: "DELETE FROM portal_audit WHERE account_id = ?",
+      params: [accountId],
+    },
     { sql: "DELETE FROM portal_accounts WHERE id = ?", params: [accountId] },
     // F-21: every registry token this account minted, on every product, stops now.
     stmtRevokeAccountRegistryTokens(accountId, now),
@@ -218,7 +270,12 @@ export async function disableAccount(
     accountId,
   );
   if (changes === 0) return { ok: false };
-  await clearDeviceSubjects(db, env, { kind: "account", accountId }, "account_disabled");
+  await clearDeviceSubjects(
+    db,
+    env,
+    { kind: "account", accountId },
+    "account_disabled",
+  );
   await portalAudit(db, {
     accountId,
     action: "account.disable",

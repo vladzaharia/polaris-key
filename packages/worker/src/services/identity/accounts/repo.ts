@@ -70,10 +70,10 @@ export async function resolveAccount(
 ): Promise<AccountRow | null> {
   const row = await getAccountRow(db, id);
   if (row) return row;
-  const tomb = await db.first<{ merged_into: string | null; deleted_at: number }>(
-    "SELECT merged_into, deleted_at FROM account_tombstones WHERE id = ?",
-    id,
-  );
+  const tomb = await db.first<{
+    merged_into: string | null;
+    deleted_at: number;
+  }>("SELECT merged_into, deleted_at FROM account_tombstones WHERE id = ?", id);
   if (!tomb?.merged_into || now - tomb.deleted_at > MERGE_REDIRECT_SECONDS) {
     return null;
   }
@@ -246,7 +246,11 @@ export async function rekeyLegacyAccountLinks(
 export async function touchLink(
   db: Db,
   linkId: string,
-  input: { email: string | null; emailVerified: boolean; displayName: string | null },
+  input: {
+    email: string | null;
+    emailVerified: boolean;
+    displayName: string | null;
+  },
   now: number,
 ): Promise<void> {
   await db.run(
