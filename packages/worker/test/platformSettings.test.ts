@@ -117,12 +117,13 @@ function countingDb(inner: Db): { db: Db; count: () => number } {
 // ── The registry ─────────────────────────────────────────────────────────────────────────────
 
 describe("PLATFORM_SETTINGS", () => {
-  it("declares exactly the four background-job settings", () => {
+  it("declares exactly the four background-job settings and the reserved-names severity", () => {
     expect(PLATFORM_SETTINGS.map((d) => d.key).sort()).toEqual([
       "BLOB_GC_GRACE_DAYS",
       "BLOB_GC_MODE",
       "LAZY_DELTAS",
       "LAZY_DELTA_MAX_BYTES",
+      "LICENSING_RESERVED_NAMES",
     ]);
     // Kill switches are `ceiling`, tunables `runtime` (moving one is a THREAT-MODEL §9 trigger).
     expect(
@@ -132,7 +133,28 @@ describe("PLATFORM_SETTINGS", () => {
       BLOB_GC_MODE: "ceiling",
       LAZY_DELTA_MAX_BYTES: "runtime",
       BLOB_GC_GRACE_DAYS: "runtime",
+      LICENSING_RESERVED_NAMES: "runtime",
     });
+  });
+
+  it("the reserved-names severity is warn or error, warn by default (S-19 §7.4, LX-05)", () => {
+    const d = def("LICENSING_RESERVED_NAMES");
+    expect(d.kind).toBe("choice");
+    expect(d.area).toBe("licensing");
+    expect(d.defaultValue).toBe("warn");
+    expect(validateSettingValue(d, "warn")).toBe("warn");
+    expect(validateSettingValue(d, "error")).toBe("error");
+    expect(validateSettingValue(d, "Error")).toBeUndefined();
+    expect(validateSettingValue(d, "on")).toBeUndefined();
+    expect(resolveSetting(d, " ERROR ", undefined, true).value).toBe("error");
+    expect(resolveSetting(d, "strict", undefined, true)).toMatchObject({
+      value: "warn",
+      source: "default",
+    });
+    // An unreadable store is not a fail-safe "error": a runtime setting falls to [vars]/default.
+    expect(resolveSetting(d, undefined, undefined, false).value).toBe("warn");
+    expect(settingConfirmLevel(d, "warn", "error")).toBe("L1");
+    expect(settingConfirmLevel(d, "error", "warn")).toBe("L0");
   });
 
   it("never declares an origin, privilege root, IdP, gate, key, session, limit, retention or bucket (S-13 §8.2)", () => {
@@ -224,7 +246,7 @@ describe("PLATFORM_SETTINGS", () => {
     expect(
       settingConfirmLevel(def("LAZY_DELTA_MAX_BYTES"), 33_554_432, 2_097_152),
     ).toBe("L0");
-    // None of the four is L2+: the `{ confirm }` echo is reserved for future settings.
+    // None of the five is L2+: the `{ confirm }` echo is reserved for future settings.
     for (const d of PLATFORM_SETTINGS)
       expect(
         Object.values(d.confirm).every((l) => l === "L0" || l === "L1"),

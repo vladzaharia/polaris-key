@@ -32,6 +32,10 @@
  * Product-less, Core-owned, no outbound call.
  */
 
+import {
+  DEFAULT_RESERVED_NAMES_MODE,
+  type ReservedNamesMode,
+} from "@polaris-key/manifest";
 import type { Db, DbStatement } from "../db/types.js";
 
 /** How long an isolate trusts its copy of the table (notes/S-13 §6.3: "within 30 seconds"). */
@@ -51,7 +55,8 @@ export type PlatformSettingKey =
   | "LAZY_DELTAS"
   | "LAZY_DELTA_MAX_BYTES"
   | "BLOB_GC_MODE"
-  | "BLOB_GC_GRACE_DAYS";
+  | "BLOB_GC_GRACE_DAYS"
+  | "LICENSING_RESERVED_NAMES";
 
 /** The typed value each setting resolves to. */
 export interface PlatformSettingValues {
@@ -59,6 +64,7 @@ export interface PlatformSettingValues {
   LAZY_DELTA_MAX_BYTES: number;
   BLOB_GC_MODE: "on" | "off";
   BLOB_GC_GRACE_DAYS: number;
+  LICENSING_RESERVED_NAMES: ReservedNamesMode;
 }
 
 export type Precedence = "runtime" | "ceiling";
@@ -69,7 +75,7 @@ export type SettingScript = "main" | "deltas";
 
 interface BaseDef {
   key: PlatformSettingKey;
-  area: "background-jobs";
+  area: "background-jobs" | "licensing";
   label: string;
   description: string;
   /** The `[vars]` name read as the deploy-time value (the same name as the key today). */
@@ -100,7 +106,19 @@ export interface IntegerSettingDef extends BaseDef {
   confirm: { raise: ConfirmLevel; lower: ConfirmLevel };
 }
 
-export type PlatformSettingDef = SwitchSettingDef | IntegerSettingDef;
+/** One of a short, fixed list of string values (a segmented control in the console). */
+export interface ChoiceSettingDef extends BaseDef {
+  kind: "choice";
+  options: readonly { value: string; label: string }[];
+  defaultValue: string;
+  /** Confirm level for changing TO each value. */
+  confirm: Readonly<Record<string, ConfirmLevel>>;
+}
+
+export type PlatformSettingDef =
+  | SwitchSettingDef
+  | IntegerSettingDef
+  | ChoiceSettingDef;
 
 function positiveInteger(raw: string): number | undefined {
   const n = Number(raw.trim());
@@ -175,6 +193,30 @@ export const PLATFORM_SETTINGS: readonly PlatformSettingDef[] = [
     },
     confirm: { raise: "L0", lower: "L1" },
   },
+  {
+    // S-19 §7.4, decision 15 (`licensing.reservedNames`): how an incompatible declaration of a
+    // reserved entitlement name (`channels`, `deviceLimit`, `app.*`, `license.*`, `pkey.*`) is
+    // treated at manifest ingest and on console catalog writes. `warn` for the window (two minor
+    // releases or 60 days, whichever is later); LX-05b flips the default to `error`. Neither
+    // value changes what a device is signed: the Worker's policy injection still overwrites
+    // every system key after the merge.
+    key: "LICENSING_RESERVED_NAMES",
+    area: "licensing",
+    kind: "choice",
+    label: "Reserved entitlement names",
+    description:
+      "How a product catalog flag that declares a system key (channels, deviceLimit, app.*, license.*, pkey.*) with an incompatible type is treated: warn and accept it, or refuse the manifest or catalog.",
+    varName: "LICENSING_RESERVED_NAMES",
+    scripts: ["main"],
+    precedence: "runtime",
+    options: [
+      { value: "warn", label: "Warn" },
+      { value: "error", label: "Refuse" },
+    ],
+    defaultValue: DEFAULT_RESERVED_NAMES_MODE,
+    // Refusing can stop a product's next resync, so it is confirmed; relaxing is not.
+    confirm: { warn: "L0", error: "L1" },
+  },
 ];
 
 const BY_KEY: ReadonlyMap<string, PlatformSettingDef> = new Map(
@@ -193,6 +235,12 @@ function parseSwitch(raw: string): "on" | "off" | undefined {
   return v === "on" || v === "off" ? v : undefined;
 }
 
+function isChoice(def: ChoiceSettingDef, value: unknown): value is string {
+  return (
+    typeof value === "string" && def.options.some((o) => o.value === value)
+  );
+}
+
 /** Validates a stored or submitted value against the entry; `undefined` when it is not valid. */
 export function validateSettingValue(
   def: PlatformSettingDef,
@@ -200,6 +248,7 @@ export function validateSettingValue(
 ): string | number | undefined {
   if (def.kind === "switch")
     return value === "on" || value === "off" ? value : undefined;
+  if (def.kind === "choice") return isChoice(def, value) ? value : undefined;
   return typeof value === "number" &&
     Number.isSafeInteger(value) &&
     value >= def.min &&
@@ -213,6 +262,10 @@ function parseVarValue(
   raw: unknown,
 ): string | number | undefined {
   if (typeof raw !== "string") return undefined;
+  if (def.kind === "choice") {
+    const v = raw.trim().toLowerCase();
+    return isChoice(def, v) ? v : undefined;
+  }
   return def.kind === "switch" ? parseSwitch(raw) : def.parseVar(raw);
 }
 
@@ -225,6 +278,7 @@ export function settingConfirmLevel(
   if (before === after) return "L0";
   if (def.kind === "switch")
     return after === "on" ? def.confirm.on : def.confirm.off;
+  if (def.kind === "choice") return def.confirm[String(after)] ?? "L1";
   return Number(after) > Number(before) ? def.confirm.raise : def.confirm.lower;
 }
 

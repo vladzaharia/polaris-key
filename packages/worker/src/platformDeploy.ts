@@ -77,6 +77,7 @@ import {
   type SystemRepository,
 } from "./admin/systemProduct.js";
 import { MANIFEST_FILE_NAMES } from "./services/release/manifestFiles.js";
+import { reservedNamesMode } from "./core/reservedNames.js";
 
 export const DEPLOY_HOOK_PATH = "/webhooks/deploy";
 /** The one workflow whose runs may call the hook. */
@@ -224,7 +225,9 @@ export async function handleDeployHook(
       e instanceof Error ? e.message : "unreadable body",
     );
   }
-  const parsed = parseManifest(files);
+  const parsed = parseManifest(files, {
+    reservedNames: await reservedNamesMode(env, db),
+  });
   if (!parsed.ok)
     return refuse(
       400,

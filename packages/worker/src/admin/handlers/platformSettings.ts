@@ -263,6 +263,7 @@ function settingView(def: PlatformSettingDef, r: ResolvedSetting) {
     ...(def.kind === "integer"
       ? { unit: def.unit, min: def.min, max: def.max }
       : {}),
+    ...(def.kind === "choice" ? { options: def.options } : {}),
     scripts: def.scripts,
     precedence: def.precedence,
     default: def.defaultValue,
@@ -370,7 +371,9 @@ async function write(
       ErrorCode.BadRequest,
       def.kind === "switch"
         ? `${def.key} must be "on" or "off"`
-        : `${def.key} must be an integer from ${def.min} to ${def.max}`,
+        : def.kind === "choice"
+          ? `${def.key} must be one of ${def.options.map((o) => `"${o.value}"`).join(", ")}`
+          : `${def.key} must be an integer from ${def.min} to ${def.max}`,
       {
         reason: "invalid_value",
         ...(def.kind === "integer" ? { min: def.min, max: def.max } : {}),
