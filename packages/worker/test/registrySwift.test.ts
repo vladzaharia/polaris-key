@@ -894,4 +894,30 @@ describe("Swift registry routes (F-06)", () => {
     expect((await get(`${BASE}/acme/AcmeKit`)).status).toBe(200);
     expect(await r2.head(key)).not.toBeNull();
   });
+
+  // v0.8.19: the stable release stayed off the list for the whole feed-drift window, because the
+  // stored render predated the publish and no drain had run yet. Every document is stamp-checked
+  // against D1 on the read, as Maven's, npm's, PyPI's and Godot's are.
+  it("serves a version published after the last render without waiting for a drain", async () => {
+    await publishSwift("1.0.0-beta.1", "beta");
+    expect((await get(`${BASE}/acme/AcmeKit`)).status).toBe(200);
+    await publishSwift("1.0.0");
+    // No rerender(): the stored list and routing record predate 1.0.0.
+    const list = await get(`${BASE}/acme/AcmeKit`);
+    expect(list.status).toBe(200);
+    expect(list.headers.get("link")).toBe(
+      `<${PKG}${BASE}/acme/AcmeKit/1.0.0>; rel="latest-version"`,
+    );
+    expect(await list.json()).toEqual({
+      releases: { "1.0.0": {}, "1.0.0-beta.1": {} },
+    });
+    const meta = await get(`${BASE}/acme/AcmeKit/1.0.0`);
+    expect(meta.status).toBe(200);
+    expect(((await meta.json()) as { version: string }).version).toBe("1.0.0");
+    const manifest = await get(
+      `${BASE}/acme/AcmeKit/1.0.0/Package.swift`,
+      "application/vnd.swift.registry.v1+swift",
+    );
+    expect(manifest.status).toBe(200);
+  });
 });
