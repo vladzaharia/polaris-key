@@ -30,7 +30,7 @@
  * not a JWS and never reaches an SDK or the corpus (no wire change, §2).
  */
 
-import { PACKAGE_ECOSYSTEMS } from "@polaris-key/manifest";
+import { PACKAGE_ECOSYSTEMS, SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import type { Env } from "../env.js";
 import { secret } from "../env.js";
 import type { Db, DbStatement } from "../db/types.js";
@@ -272,6 +272,14 @@ export async function mintRegistryToken(
     fields.push("licenseId");
   if (fields.length)
     return refuse(422, "invalid_token", "invalid registry token", fields);
+  // The platform's own SDK feeds are published only by the deploy pipeline (F-10 owner ruling).
+  if (publish && input.product === SYSTEM_PRODUCT_SLUG)
+    return refuse(
+      422,
+      "system_feeds_pipeline_only",
+      "the platform's SDK feeds are published by the deploy pipeline only",
+      ["scopes"],
+    );
   if (binding === "license" && scopes.some((s) => s !== "read"))
     return refuse(
       422,

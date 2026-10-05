@@ -19,7 +19,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { crc32, deflateRawSync } from "node:zlib";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { parseManifest } from "@polaris-key/manifest";
+import { parseManifest, SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { NOW, seedLicenseWithKey } from "./seed.js";
@@ -372,6 +372,44 @@ describe("publish tokens (F-22)", () => {
       ok: false,
       refusal: "challenge",
     });
+  });
+});
+
+describe("the platform's own SDK feeds (F-10: pipeline only)", () => {
+  it("mints no publish token for the system product", async () => {
+    const input = {
+      product: SYSTEM_PRODUCT_SLUG,
+      label: "x",
+      binding: "owner" as const,
+      createdBy: "admin:t",
+    };
+    const res = await mintRegistryToken(
+      env,
+      db,
+      { ...input, scopes: ["publish"], ecosystems: ["npm"] },
+      NOW,
+    );
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.reason).toBe("system_feeds_pipeline_only");
+      expect(res.fields).toEqual(["scopes"]);
+    }
+  });
+
+  it("refuses every native publish to the system product, whatever the credential", async () => {
+    for (const eco of ["npm", "pypi", "swift", "maven"]) {
+      const res = await authorizeRegistryPublish(
+        env,
+        db,
+        new Request(`${PKG}/npm/${SYSTEM_PRODUCT_SLUG}/x`, {
+          method: "PUT",
+          headers: bearer(publishToken),
+        }),
+        { owner: SYSTEM_PRODUCT_SLUG, ecosystem: eco, ip: "203.0.113.9" },
+      );
+      expect(res).toMatchObject({ ok: false, refusal: "forbidden" });
+      if (!res.ok) expect(res.reason).toMatch(/deploy pipeline only/);
+    }
   });
 });
 

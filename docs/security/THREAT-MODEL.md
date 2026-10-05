@@ -1129,13 +1129,16 @@ render's keys and types are ones the host admits. A new feed that skips any of t
 which turns the review of a new ecosystem into reviewing its own protocol code rather than
 re-checking the shared gate.
 
-**Every route is built by `feedRoute`.** `registry/serve.ts` `feedRoute` is the only way to
-build a registry route: its handler runs the route's read-only lookup (`resolve`, e.g. a package
+**Every read route is built by `feedRoute`.** `registry/serve.ts` `feedRoute` is the only way to
+build a registry read route: its handler runs the route's read-only lookup (`resolve`, e.g. a package
 name to its deliverable), then `serveFeedRead` (the access ladder, then the Cache API, then the
 route's work), then an optional `finish` that sees every answer after the ladder (OCI's API
 version header, Swift's `Content-Version` and `Accept` checks). `test/registryHost.test.ts`
-requires the `feedRoute` mark on every `REGISTRY_ROUTES` entry, so a hand-written handler that
-skips the ladder fails the build. The mark stops accidents, not malice (a route could copy the
+requires one of three marks on every `REGISTRY_ROUTES` entry: `FEED_READ_ROUTE` (set by
+`feedRoute`) on every read route, `FEED_AUTH_ROUTE` on F-21's one credential route (`swift.login`,
+`POST`), and `FEED_PUBLISH_ROUTE` on F-22's four publish routes (`service: "release"`, one write
+method each); any other non-read route fails it, so a hand-written handler that skips the ladder
+fails the build. The mark stops accidents, not malice (a route could copy the
 symbol); review catches the rest.
 
 **How a package version gets in (F-03), and what keeps it out of everything else.**
@@ -1421,6 +1424,13 @@ that property for CI and bounds it everywhere else:
   a CI secret is a long-lived-ish secret again (at most 30 days); a leak can publish new versions
   (never replace one) under the owner's namespace until revoked, and every such version names the
   token on its package record and in the audit.
+- **Never on the platform's own feeds.** The system product's (`polaris-key`) SDK feeds are
+  published only by `publish-sdks.yml`, in lockstep with the server (F-10 owner ruling), because
+  versions are unique forever and one hand-published version would block the pipeline's next
+  publish of it: `mintRegistryToken` refuses a publish token for the system product
+  (`system_feeds_pipeline_only`), the console offers no publish option on the platform scope, and
+  `authorizeRegistryPublish` answers `403` to every native publish to it, whatever the credential
+  (a system-product `pkeyci_` with `release:publish` included).
 - **Everything else is refused before the body is read**: no credential, another owner's, a pull
   or URL token is the native `401`; a read-only, licence-bound or narrowed-away token, or a CI
   token without `release:publish`, is `403`. A licence holder can therefore never publish.

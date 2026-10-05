@@ -510,7 +510,11 @@ function MintDialog({
     () => data.limits.publishEcosystems ?? [],
     [data.limits.publishEcosystems],
   );
-  const canPublish = licenseId === undefined && publishEcosystems.length > 0;
+  // Never on the platform scope: the SDK feeds are published by the deploy pipeline only (F-10).
+  const canPublish =
+    scope.kind === "product" &&
+    licenseId === undefined &&
+    publishEcosystems.length > 0;
   React.useEffect(() => {
     setDays(
       publish

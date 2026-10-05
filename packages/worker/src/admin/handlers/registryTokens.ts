@@ -132,7 +132,9 @@ async function list(
       // F-22: publish tokens are shorter-lived and name their ecosystems.
       publishDefaultDays: REGISTRY_PUBLISH_TOKEN_DEFAULT_DAYS,
       publishMaxDays: REGISTRY_PUBLISH_TOKEN_MAX_DAYS,
-      publishEcosystems: REGISTRY_PUBLISH_ECOSYSTEMS,
+      // None on the platform scope: its SDK feeds are published by the deploy pipeline only.
+      publishEcosystems:
+        owner === SYSTEM_PRODUCT_SLUG ? [] : REGISTRY_PUBLISH_ECOSYSTEMS,
     },
   });
 }

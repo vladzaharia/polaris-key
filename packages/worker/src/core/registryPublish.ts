@@ -38,6 +38,7 @@ import {
   isRegistryToken,
   lookupRegistryCredential,
 } from "./registryTokens.js";
+import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import { CI_TOKEN_PREFIX } from "./ciVocabulary.js";
 
 /** Who published, as the audit and `release_packages.source_json` record it. */
@@ -86,6 +87,14 @@ export async function authorizeRegistryPublish(
   req: Request,
   input: PublishAuthInput,
 ): Promise<PublishAuthorization> {
+  // The platform's own SDK feeds are published only by the deploy pipeline, in lockstep with the
+  // server (F-10 owner ruling): a hand publish would take a version number forever.
+  if (input.owner === SYSTEM_PRODUCT_SLUG)
+    return {
+      ok: false,
+      refusal: "forbidden",
+      reason: `the ${SYSTEM_PRODUCT_SLUG} feeds are published by the deploy pipeline only`,
+    };
   const credential = extractFeedCredential(req);
   if (credential === null) return { ok: false, refusal: "challenge" };
   const token = credential.token;

@@ -640,6 +640,27 @@ describe("platform scope", () => {
     });
   });
 
+  it("tokens: no publish on the platform's SDK feeds (pipeline only, F-10)", async () => {
+    expect((await admin("POST", platform("/bootstrap"))).status).toBe(200);
+    const list = await (await admin("GET", platform("/tokens"))).json();
+    expect(list.limits.publishEcosystems).toEqual([]);
+    const res = await admin("POST", platform("/tokens"), {
+      label: "x",
+      binding: "owner",
+      scopes: ["publish"],
+      ecosystems: ["npm"],
+    });
+    expect(res.status).toBe(422);
+    expect(await res.json()).toMatchObject({
+      error: { reason: "system_feeds_pipeline_only" },
+    });
+    const read = await admin("POST", platform("/tokens"), {
+      label: "x",
+      binding: "owner",
+    });
+    expect(read.status).toBe(201);
+  });
+
   it("after the bootstrap: the system product's feeds, every owner, and its packages", async () => {
     expect((await admin("POST", platform("/bootstrap"))).status).toBe(200);
     await turnOnPackageFeeds();
