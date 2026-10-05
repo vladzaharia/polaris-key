@@ -7,9 +7,11 @@
  *     request does not carry it. A value over Apple's limit is refused with the limit and the
  *     length, never cut;
  *   - the preflight shows the model's Apple fit report (advisory: App Store Connect's own listing
- *     is what review sees until A-18m pushes the model).
+ *     is what review sees until the operator pushes the model with A-18m's `listing/text` and
+ *     `listing/screenshots`, `connectors/asc/listingPush.ts`).
  *
- * No gate change: the fields are the ones A-17a's rule table already allows.
+ * No gate change here: the fields are the ones A-17a's rule table already allows. A-18m widened
+ * the table for the rest of the listing (S-15 owner decision 1).
  */
 
 import type { Db } from "../../../core/platform.js";

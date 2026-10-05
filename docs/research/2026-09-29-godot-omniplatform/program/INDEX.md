@@ -232,7 +232,7 @@ keys, devices). _Optional_ work packages are off the required path.
 | [A-18i](wp/A-18i-pr-plane-generators.md)             | PR-plane storefront generators: winget, Homebrew tap, Scoop bucket and Flathub                                                          | A-18a, A-18b, A-18h        | implementer  | 1–2   | todo      |
 | [A-18j](wp/A-18j-console-storefronts.md)             | Console: Add to storefronts flow, Listing editor and Set up from Store connections                                                      | A-18a, A-18b, F-11         | implementer  | 2–3   | todo      |
 | [A-18k](wp/A-18k-storefront-live-verification.md) ✋ | Live verification of the storefront credentials and the [U] items of S-15                                                               | A-18a                      | spike-runner | 0.5–1 | blocked   |
-| [A-18m](wp/A-18m-apple-listing-push.md)              | Apple listing push: widen the App Store rule table to listing text and screenshot sets                                                  | A-18a, A-18b, A-18d, A-17d | implementer  | 1–2   | todo      |
+| [A-18m](wp/A-18m-apple-listing-push.md)              | Apple listing push: widen the App Store rule table to listing text and screenshot sets                                                  | A-18a, A-18b, A-18d, A-17d | implementer  | 1–2   | in-review |
 
 ## I: Identity: one Polaris Key account, then per-app identity (S-16)
 

@@ -57,7 +57,9 @@ or edit. The proposal is never stored or sent until you save it. The App Store g
 The App Store Connect Distribute flow reads these notes: given the release being distributed, an
 App Store version's What's New defaults to the release's store notes in that locale, and its
 promotional text to the listing's, each only when you do not type one. The preflight shows the
-listing's App Store fit. It is advisory until the listing itself is pushed to App Store Connect.
+listing's App Store fit. It is advisory: App Store Connect's own listing is what review sees until
+you push the listing's text and screenshots to it
+([Pushing the listing](/docs/services/distribution/app-store-connect/#pushing-the-listing)).
 
 ## Importing
 
