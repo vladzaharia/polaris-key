@@ -122,6 +122,43 @@ already merged the account tables, links and `licenses.account_id` this package 
 - **Short-lived.** I-08 deletes this page when PX-14 moves the device page onto the card, and the
   card keeps the rule.
 
+## Implementation notes (2026-10-05, corrections and lead decisions)
+
+Recorded by the implementer. The owner delegated open points to the lead; each is decided with
+the recommended option. Where the code disagreed with this brief, the code won.
+
+- **Inline Replace is IN (lead decision, amends delegated decision 13's second bullet).** The
+  lead's dispatch asked for the inline **Replace a device** on full rows, using a shared
+  `freeAccountDevice()` extracted from the portal's `handleDeviceDelete`
+  (`services/identity/portal/freeDevice.ts`): portal on, account ownership, the shared
+  `portalDeviceDisconnect` budget (charged after ownership; the 429 copy carries `retryAfter`,
+  the seconds left in the fixed window), `portal.device.disconnect` with "to sign in <label>",
+  and the security email. I-08 reuses the same function. The **Free a device** link stays.
+- **Free-device link (code correction).** PX-10's page reads the licence from `license=` and a
+  device label from `for=` (`FreeDevicePage.tsx`). The link is
+  `/#/p/<slug>/free-device?license=<licenseId>&for=<device label>`, opened in a new tab; there is
+  no `return=` (PX-10's allowlist only accepts the product's declared origins), so the page
+  says "then reload this page".
+- **Post/redirect/get.** The callback answers `303` to `GET /<p>/identity/auth/choose`; every
+  `POST` answers `303` back to it (or completes). The flow is found by the binder through a new
+  single-use kind `oidc-choice` (binder hash → `state`); the page carries only a single-use
+  token. A `return_to` flow's completion from the chooser answers `303` (a POST), not `302`.
+- **Binder scope.** The cookie is set only on `provider: platform` products' `/auth/start` 302
+  and device-confirmation 303 (`binderEligible` on the flow), so custom-IdP sign-ins are
+  byte-identical. Platform products outside the trigger gain only that `Set-Cookie`.
+- **Candidates.** The account's usable licences plus the identity's own unattached `sub`-keyed
+  licence (usable). A licence the signing-in device already holds a seat on counts as free; a
+  tier with fingerprint mode `strict` is listed **blocked** (the mint would refuse).
+- **Create a new free licence** additionally requires that the identity has no `sub`-keyed
+  licence yet (`activateFromIdentity` is idempotent on the subject and could not make a second).
+- **Origin labels** come from License's `licenseProvenance` hook ("Bought on Steam", "From the
+  developer", "Signed-in app", "Free"); display only.
+- **Primary copy** is "Use this licence" (this brief), not the card's "Use this licence and
+  continue" (decision 3 is the card's).
+- **Rate limit** of the chooser route: new bucket `authChoose`, 60/60 s per IP, fail-closed.
+- **Audit**: `identity.signin.license_chosen` (product audit, target the licence; `null` target
+  for Create) and its console verb.
+
 ## Steps
 
 1. Write the trigger query and a read-only `legacyLicenseChoices()` with unit tests: linked

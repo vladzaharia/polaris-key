@@ -2858,6 +2858,38 @@ confirmed it — e.g. a `__Host-` `SameSite=Lax` cookie set on the confirmation 
 by `handleAuthCallback` — which closes R1-07 for device-code flows and makes the `Origin: null`
 question moot.
 
+**The licence chooser's binder (I-26, 2026-10-05).** On a `provider: platform` product, a person
+whose Polaris Key account already owns a usable licence for the product is no longer auto-issued
+a second `sub`-keyed licence: the callback mints nothing and sends the browser to "Choose a
+licence for this device" (`/<p>/identity/auth/choose`). That page lists **purchased** licences,
+so under R1-07 it would hand the phisher a stronger prize than the free licence above: the
+victim, signing in through a forwarded authorize URL, could bind their paid licence to the
+starter's device. The chooser therefore applies the fix direction above, for this path only:
+
+- the browser that starts (`/auth/start`) or confirms (the device page's POST `303`) a platform
+  product's flow receives `__Host-pk_lcb` (HttpOnly, Secure, SameSite=Lax, Path=/, 600 s), and the
+  flow stores the cookie's peppered hash;
+- when the chooser would apply, `handleAuthCallback` requires that cookie. A browser without it
+  (the victim's, in R1-07) gets a generic "Start again on your device" page, the flow is dropped,
+  and **nothing is minted** — there is no fallback to the old auto-issue;
+- the chooser's `GET` and `POST` find the flow only through that cookie (the page and its URL
+  never carry `state`), each render carries a fresh single-use token, the `POST` must be
+  same-origin, and every choice is re-checked server-side (the licence is still the account's,
+  or the identity's own, and still takes this device). A choice is audited
+  (`identity.signin.license_chosen`);
+- **Replace a device** frees a seat with the portal's own `freeAccountDevice`: account ownership
+  (the account the verified `sub` is linked to, held server-side on the flow), the shared
+  `portalDeviceDisconnect` budget, the `portal.device.disconnect` audit row ("to sign in
+  <label>") and the security email to every verified address. Nothing is written before the
+  explicit "Replace and continue".
+
+Residual: the cookie binds the browser that _started or confirmed_ the flow. In the R1-07
+pattern the starter confirms with curl and holds the cookie, so the victim's callback is refused
+— closed for the chooser path. Flows outside the trigger (no linked account, no usable licence,
+`provider: custom`) keep the R1-07 behaviour described above until I-08 moves sign-in onto the
+login card with PX-W13's binder. Pinned by `test/oidcLicenseChoice.test.ts` (› "I-26 browser
+binder").
+
 **Unchanged.** The legacy `/identity/auth/device/verify?device_code=` page stays for flows in
 flight across the deploy. Confirmation on both routes is one function: the Fetch Metadata /
 `Origin` check above, a single-use CSRF token, and a `303` to the IdP with `no-referrer` and
