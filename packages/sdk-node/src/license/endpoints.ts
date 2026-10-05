@@ -9,11 +9,20 @@
 // `CoreContext.headers()` / `.deadline()`, so a new endpoint cannot ship without them (R4-08).
 
 import type { HardwareFingerprint } from "@polaris-key/protocol/core";
+import { readManageUrl } from "@polaris-key/client-core";
 import type { CoreContext, DocumentResult } from "../core/context.js";
 
 export type ActivationResult =
   | { kind: "ok"; token: string; schemaVersion: number }
-  | { kind: "device-limit"; limit?: number; deviceCount?: number }
+  /** Every seat is taken. `manageUrl` (PX-W8) is the customer-portal link that frees one,
+   *  present while the product's portal is on; add the app's return with `withManageReturn`
+   *  and, on an `/activate` link, the key with `withManageKey`. Never an auth failure. */
+  | {
+      kind: "device-limit";
+      limit?: number;
+      deviceCount?: number;
+      manageUrl?: string;
+    }
   | { kind: "unauthorized" }
   /** The tier requires a fingerprint this host could not produce. */
   | { kind: "fingerprint-required" }
@@ -84,10 +93,12 @@ async function activationLike(
     if (code === "fingerprint_required")
       return { kind: "fingerprint-required" };
     const nested = typeof b.error === "object" ? b.error : undefined;
+    const manageUrl = readManageUrl(b);
     return {
       kind: "device-limit",
       limit: b.limit ?? nested?.limit,
       deviceCount: b.deviceCount ?? nested?.deviceCount,
+      ...(manageUrl !== undefined ? { manageUrl } : {}),
     };
   }
   if (res.status === 401) return { kind: "unauthorized" };

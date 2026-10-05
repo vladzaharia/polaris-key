@@ -469,6 +469,7 @@ export const Feature = {
   licenseActivate: "license.activate",
   licenseEnroll: "license.enroll",
   licenseDeactivate: "license.deactivate",
+  licenseManage: "license.manage",
   licenseEntitlements: "license.entitlements",
   licenseChannels: "license.channels",
   licenseReregister: "license.reregister",
@@ -522,6 +523,7 @@ export const Feature = {
   packsTransportFlatpak: "packs.transport.flatpak",
   uiStages: "ui.stages",
   uiKit: "ui.kit",
+  uiKitManage: "ui.kit.manage",
   commerceReceipt: "commerce.receipt",
 } as const;
 export type Feature = (typeof Feature)[keyof typeof Feature];
@@ -542,6 +544,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "license.activate",
   "license.enroll",
   "license.deactivate",
+  "license.manage",
   "license.entitlements",
   "license.channels",
   "license.reregister",
@@ -595,6 +598,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "packs.transport.flatpak",
   "ui.stages",
   "ui.kit",
+  "ui.kit.manage",
   "commerce.receipt",
 ];
 
@@ -1370,6 +1374,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     ],
   },
   "license.deactivate": { status: "implemented", service: "license", na: [] },
+  "license.manage": { status: "implemented", service: "license", na: [] },
   "license.entitlements": { status: "implemented", service: "license", na: [] },
   "license.channels": { status: "implemented", service: "license", na: [] },
   "license.reregister": {
@@ -1530,9 +1535,10 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   },
   "ui.stages": { status: "implemented", service: "sdk", na: [] },
   "ui.kit": { status: "implemented", service: "sdk", na: [] },
+  "ui.kit.manage": { status: "implemented", service: "sdk", na: [] },
   "commerce.receipt": { status: "planned", service: "license", na: [] },
 };
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "488e6e553a9be4739daff354dac2079fbb46ca7d651d867490f1f19d28287f16";
+  "953ff8ad89af5d9bb73cb2a10e7f2af93c24700677b228bf412557e5b04a5bbd";

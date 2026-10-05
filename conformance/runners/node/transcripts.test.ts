@@ -4,6 +4,7 @@
 //
 // @pkey-feature core.discover core.sync core.cache license.activate license.enroll
 // @pkey-feature license.deactivate license.reregister devices.register devices.report
+// @pkey-feature license.manage
 // @pkey-feature config.schema release.changelog release.download
 // @pkey-feature identity.devicecode config.mint
 // @pkey-feature update.feed release.record update.decide
@@ -218,13 +219,16 @@ async function act(
       break;
     }
     case "activate":
-      out.result = (
-        await client.license.activateWithKey(String(step.args.key))
-      ).kind;
+    case "enroll": {
+      const r =
+        step.action === "activate"
+          ? await client.license.activateWithKey(String(step.args.key))
+          : await client.license.enroll();
+      out.result = r.kind;
+      // PX-W8: the refusal link, exactly as served; null when the result carries none.
+      if (r.kind === "device-limit") out.manageUrl = r.manageUrl ?? null;
       break;
-    case "enroll":
-      out.result = (await client.license.enroll()).kind;
-      break;
+    }
     case "register":
       out.result = (await client.devices.register()).kind;
       break;

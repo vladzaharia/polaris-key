@@ -230,6 +230,15 @@
       "allowedNa": []
     },
     {
+      "id": "license.manage",
+      "family": "license",
+      "title": "Refusal link: manageUrl on device-limit, withManageReturn, withManageKey",
+      "service": "license",
+      "proof": [{ "kind": "transcript" }, { "kind": "unit" }],
+      "allowedNa": [],
+      "note": "PX-W8 (WIRE-CONTRACT-V4 §5.3): the result of a device-limit activation or enrolment exposes the Worker's manageUrl, validated (https, no userinfo, at most 2048 characters); the helpers add the app's return= and, on an /activate link, the fragment #key=. Never an auth failure. I-10a and I-10b extend this to key-entry-limit."
+    },
+    {
       "id": "license.entitlements",
       "family": "license",
       "title": "Entitlements, profile, licence id",
@@ -1258,6 +1267,20 @@
           "runtime": "headless",
           "reason": "runtime",
           "why": "A headless SDK ships no UI toolkit; hosts render ui.stages themselves."
+        }
+      ]
+    },
+    {
+      "id": "ui.kit.manage",
+      "family": "ui",
+      "title": "Device-limit screen: Free up a device (button, or a QR on TV and console) and Try again",
+      "service": "sdk",
+      "proof": [{ "kind": "snapshot" }],
+      "allowedNa": [
+        {
+          "runtime": "headless",
+          "reason": "runtime",
+          "why": "A headless SDK ships no UI toolkit; hosts read manageUrl from the activation result (license.manage)."
         }
       ]
     },

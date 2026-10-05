@@ -54,6 +54,10 @@
     "license.deactivate": {
       "status": "implemented"
     },
+    "license.manage": {
+      "status": "implemented",
+      "note": "PX-W8: the device-limit result exposes manageUrl (validated), plus the return and key helpers."
+    },
     "license.entitlements": {
       "status": "implemented"
     },
@@ -371,6 +375,10 @@
     "ui.kit": {
       "status": "implemented",
       "note": "P1-10's v1 kit: PKeyBoot, gate, activation panel, sign-in dialog with QR, offline activation, settings panel, status banner, update prompt, entitlement badge and dev-menu section, pinned as structural snapshots and centred at five window sizes (suite_ui); a neutral default look over the game's theme, with opt-in Polaris Key branding and an optional Powered-by badge (PKeyOptions.ui_*, PKeyUiTheme; suite_brand). PKeyDeviceList is not in v1 (unowned; needs P1-05) and the pack progress UI is P4-08's."
+    },
+    "ui.kit.manage": {
+      "status": "implemented",
+      "note": "PX-W8: the activation panel shows Free up a device on device-limit, or a QR when a joypad is the only input (suite_ui)."
     },
     "commerce.receipt": {
       "status": "implemented",

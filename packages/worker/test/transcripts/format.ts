@@ -84,6 +84,8 @@
 //                   strategy fails, WIRE-CONTRACT-V4 §11.4)
 //   bytes           chunkRange on "ok": the returned body, as a string (fewer than `length`
 //                   bytes when the 206 was clipped at the end of the object)
+//   manageUrl       activate / enroll on "device-limit" (PX-W8): the refusal link the result
+//                   exposes, exactly as served, or null when the result carries none
 //   licenseStatus   the gate's status afterwards (client-core `licenseState`)
 //   tokenHeld       whether the client holds a device token afterwards
 //

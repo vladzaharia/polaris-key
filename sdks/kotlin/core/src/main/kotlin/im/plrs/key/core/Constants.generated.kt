@@ -471,6 +471,7 @@ public object Feature {
     public const val licenseActivate: String = "license.activate"
     public const val licenseEnroll: String = "license.enroll"
     public const val licenseDeactivate: String = "license.deactivate"
+    public const val licenseManage: String = "license.manage"
     public const val licenseEntitlements: String = "license.entitlements"
     public const val licenseChannels: String = "license.channels"
     public const val licenseReregister: String = "license.reregister"
@@ -524,6 +525,7 @@ public object Feature {
     public const val packsTransportFlatpak: String = "packs.transport.flatpak"
     public const val uiStages: String = "ui.stages"
     public const val uiKit: String = "ui.kit"
+    public const val uiKitManage: String = "ui.kit.manage"
     public const val commerceReceipt: String = "commerce.receipt"
 }
 
@@ -543,6 +545,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "license.activate",
     "license.enroll",
     "license.deactivate",
+    "license.manage",
     "license.entitlements",
     "license.channels",
     "license.reregister",
@@ -596,6 +599,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "packs.transport.flatpak",
     "ui.stages",
     "ui.kit",
+    "ui.kit.manage",
     "commerce.receipt",
 )
 
@@ -1302,6 +1306,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "license.activate" to CapabilityRow("implemented", "license", listOf()),
     "license.enroll" to CapabilityRow("implemented", "license", listOf()),
     "license.deactivate" to CapabilityRow("implemented", "license", listOf()),
+    "license.manage" to CapabilityRow("implemented", "license", listOf()),
     "license.entitlements" to CapabilityRow("implemented", "license", listOf()),
     "license.channels" to CapabilityRow("implemented", "license", listOf()),
     "license.reregister" to CapabilityRow("implemented", "license", listOf()),
@@ -1355,8 +1360,9 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "packs.transport.flatpak" to CapabilityRow("na", "distribution", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
     "ui.stages" to CapabilityRow("implemented", "sdk", listOf()),
     "ui.kit" to CapabilityRow("implemented", "sdk", listOf()),
+    "ui.kit.manage" to CapabilityRow("implemented", "sdk", listOf()),
     "commerce.receipt" to CapabilityRow("planned", "license", listOf()),
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "d7430e47fb7630468315e393921b7bc3cc5f325d0347a6d45d95501c7da02553"
+public const val CAPABILITY_DIGEST: String = "4773b197f6d3cbf713c95657a2b3e2d08547ef18a726f1b77e5547a82d11de64"

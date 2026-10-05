@@ -35,6 +35,10 @@
     "license.activate": { "status": "implemented" },
     "license.enroll": { "status": "implemented" },
     "license.deactivate": { "status": "implemented" },
+    "license.manage": {
+      "status": "implemented",
+      "note": "PX-W8: the device-limit result exposes manageUrl (validated), plus the return and key helpers."
+    },
     "license.entitlements": { "status": "implemented" },
     "license.channels": { "status": "implemented" },
     "license.reregister": { "status": "implemented" },
@@ -201,6 +205,11 @@
     },
     "ui.stages": { "status": "implemented" },
     "ui.kit": { "status": "na", "runtime": "headless", "reason": "runtime" },
+    "ui.kit.manage": {
+      "status": "na",
+      "runtime": "headless",
+      "reason": "runtime"
+    },
     "commerce.receipt": {
       "status": "planned",
       "unowned": true,

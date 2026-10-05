@@ -48,6 +48,10 @@
       "note": "New desktop-bridge N/A (P1b-01). On desktop the host's Node SDK enrols."
     },
     "license.deactivate": { "status": "implemented" },
+    "license.manage": {
+      "status": "implemented",
+      "note": "PX-W8: the device-limit result exposes manageUrl (validated), plus the return and key helpers."
+    },
     "license.entitlements": { "status": "implemented" },
     "license.channels": { "status": "implemented" },
     "license.reregister": {
@@ -254,6 +258,10 @@
     },
     "ui.stages": { "status": "implemented" },
     "ui.kit": { "status": "implemented" },
+    "ui.kit.manage": {
+      "status": "implemented",
+      "note": "PX-W8: LicenseGate and PolarisLogin show Free up a device on device-limit."
+    },
     "commerce.receipt": {
       "status": "planned",
       "unowned": true,

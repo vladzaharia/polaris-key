@@ -24,6 +24,10 @@
     "license.activate": { "status": "implemented" },
     "license.enroll": { "status": "implemented" },
     "license.deactivate": { "status": "implemented" },
+    "license.manage": {
+      "status": "implemented",
+      "note": "PX-W8: the device-limit result exposes manageUrl (validated), plus the return and key helpers."
+    },
     "license.entitlements": { "status": "implemented" },
     "license.channels": { "status": "implemented" },
     "license.reregister": { "status": "implemented" },
@@ -188,6 +192,10 @@
       "status": "planned",
       "unowned": true,
       "note": "PolarisLoginView only; no work package builds the rest of the Swift kit."
+    },
+    "ui.kit.manage": {
+      "status": "implemented",
+      "note": "PX-W8: PolarisLoginView shows Free up a device on device-limit (a button on macOS and iOS, a QR on tvOS)."
     },
     "commerce.receipt": {
       "status": "planned",

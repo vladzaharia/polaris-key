@@ -9,7 +9,7 @@ import {
 } from "./devices.js";
 import { discoveryCapabilities, discoveryFailure } from "./discovery.js";
 import { devicecodeExpired, devicecodeHappy } from "./identity.js";
-import { activateEnrollDeactivate } from "./license.js";
+import { activateEnrollDeactivate, licenseDeviceLimit } from "./license.js";
 import { configSchemaFetch } from "./catalog.js";
 import { releaseChangelog, releaseChangelogEntitled } from "./release.js";
 import { edgeMint } from "./mint.js";
@@ -24,6 +24,7 @@ export const SCENARIOS: Scenario[] = [
   syncEtag304,
   syncErrors,
   activateEnrollDeactivate,
+  licenseDeviceLimit,
   registerOpen,
   registerReregister401,
   telemetryReport,

@@ -594,6 +594,7 @@ class Feature:
     LICENSE_ACTIVATE: Final = "license.activate"
     LICENSE_ENROLL: Final = "license.enroll"
     LICENSE_DEACTIVATE: Final = "license.deactivate"
+    LICENSE_MANAGE: Final = "license.manage"
     LICENSE_ENTITLEMENTS: Final = "license.entitlements"
     LICENSE_CHANNELS: Final = "license.channels"
     LICENSE_REREGISTER: Final = "license.reregister"
@@ -647,6 +648,7 @@ class Feature:
     PACKS_TRANSPORT_FLATPAK: Final = "packs.transport.flatpak"
     UI_STAGES: Final = "ui.stages"
     UI_KIT: Final = "ui.kit"
+    UI_KIT_MANAGE: Final = "ui.kit.manage"
     COMMERCE_RECEIPT: Final = "commerce.receipt"
 
 
@@ -666,6 +668,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "license.activate",
     "license.enroll",
     "license.deactivate",
+    "license.manage",
     "license.entitlements",
     "license.channels",
     "license.reregister",
@@ -719,6 +722,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "packs.transport.flatpak",
     "ui.stages",
     "ui.kit",
+    "ui.kit.manage",
     "commerce.receipt",
 )
 
@@ -1566,6 +1570,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "license.activate": CapabilityRow("implemented", "license", ()),
         "license.enroll": CapabilityRow("implemented", "license", ()),
         "license.deactivate": CapabilityRow("implemented", "license", ()),
+        "license.manage": CapabilityRow("implemented", "license", ()),
         "license.entitlements": CapabilityRow("implemented", "license", ()),
         "license.channels": CapabilityRow("implemented", "license", ()),
         "license.reregister": CapabilityRow("implemented", "license", ()),
@@ -1619,9 +1624,10 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "packs.transport.flatpak": CapabilityRow("planned", "distribution", ()),
         "ui.stages": CapabilityRow("implemented", "sdk", ()),
         "ui.kit": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
+        "ui.kit.manage": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
         "commerce.receipt": CapabilityRow("planned", "license", ()),
     }
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "7f1bbda8fe6c6afc09c067a88532900ef065f17ca29d6037dcef95da98799056"
+CAPABILITY_DIGEST: Final[str] = "de1beee4f450caa851bb994992c62cfe97b0ddf8963c4ccda90e5cef2e4c211f"

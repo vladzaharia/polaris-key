@@ -72,7 +72,10 @@ function describeFailure(
         r.limit !== undefined
           ? ` (${r.deviceCount ?? "?"}/${r.limit} devices in use)`
           : "";
-      return fail(`device limit reached${detail}.`);
+      // PX-W8: the portal link that frees a seat, when the Worker sent one. Printed without
+      // the key: a terminal scrollback is a log.
+      const manage = r.manageUrl ? `\nFree up a device: ${r.manageUrl}` : "";
+      return fail(`device limit reached${detail}.${manage}`);
     }
     case "unauthorized":
       return fail("invalid or revoked credential.");

@@ -1,3 +1,4 @@
+// @pkey-feature license.manage
 // PX-W8: the refusal link helpers (WIRE-CONTRACT-V4 §5.3). Every SDK pins the same table, so
 // the links a host builds are byte-identical across languages.
 import { describe, expect, it } from "vitest";

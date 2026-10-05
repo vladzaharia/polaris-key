@@ -469,6 +469,7 @@ export const Feature = {
   licenseActivate: "license.activate",
   licenseEnroll: "license.enroll",
   licenseDeactivate: "license.deactivate",
+  licenseManage: "license.manage",
   licenseEntitlements: "license.entitlements",
   licenseChannels: "license.channels",
   licenseReregister: "license.reregister",
@@ -522,6 +523,7 @@ export const Feature = {
   packsTransportFlatpak: "packs.transport.flatpak",
   uiStages: "ui.stages",
   uiKit: "ui.kit",
+  uiKitManage: "ui.kit.manage",
   commerceReceipt: "commerce.receipt",
 } as const;
 export type Feature = (typeof Feature)[keyof typeof Feature];
@@ -542,6 +544,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "license.activate",
   "license.enroll",
   "license.deactivate",
+  "license.manage",
   "license.entitlements",
   "license.channels",
   "license.reregister",
@@ -595,6 +598,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "packs.transport.flatpak",
   "ui.stages",
   "ui.kit",
+  "ui.kit.manage",
   "commerce.receipt",
 ];
 
@@ -1360,6 +1364,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "license.activate": { status: "implemented", service: "license", na: [] },
   "license.enroll": { status: "implemented", service: "license", na: [] },
   "license.deactivate": { status: "implemented", service: "license", na: [] },
+  "license.manage": { status: "implemented", service: "license", na: [] },
   "license.entitlements": { status: "implemented", service: "license", na: [] },
   "license.channels": { status: "implemented", service: "license", na: [] },
   "license.reregister": { status: "implemented", service: "license", na: [] },
@@ -1453,9 +1458,14 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     service: "sdk",
     na: [{ runtime: "node", reason: "runtime" }],
   },
+  "ui.kit.manage": {
+    status: "na",
+    service: "sdk",
+    na: [{ runtime: "node", reason: "runtime" }],
+  },
   "commerce.receipt": { status: "planned", service: "license", na: [] },
 };
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "2d48e4d3b5df2512b8de34b2e130f808a546ea181e70b8eb00ef956d121474a3";
+  "bc619f252d35656ec9809363834ab1ae0cc9e73ad72ee55285caeb1d4b31a013";
