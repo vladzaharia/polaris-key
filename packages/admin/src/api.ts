@@ -2667,6 +2667,8 @@ export interface MintRegistryTokenBody {
   binding: "owner" | "license";
   licenseId?: string;
   presentation?: "header" | "url";
+  /** F-23: `["read", "publish"]` mints an owner-bound push token. */
+  scopes?: string[];
 }
 
 export interface MintedRegistryToken {
@@ -2732,10 +2734,12 @@ export interface FeedPackageVersion {
   stateMessage: string | null;
   publishedAt: number;
   source: {
-    kind: "oidc" | "static" | "console" | "unknown";
+    kind: "oidc" | "static" | "console" | "registry" | "unknown";
     publisher: string | null;
     runUrl: string | null;
     tokenId: string | null;
+    /** F-23: `oci-push` when the version came through `docker push`. */
+    via?: "oci-push" | null;
   };
   size: number;
   files: FeedPackageFile[];

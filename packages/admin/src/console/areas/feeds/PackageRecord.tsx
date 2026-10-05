@@ -203,6 +203,7 @@ const STATE_PILL: Record<
 
 function sourceLine(v: FeedPackageVersion): React.ReactNode {
   const s = v.source;
+  const via = s.via === "oci-push" ? " · docker push" : "";
   if (s.kind === "oidc")
     return (
       <>
@@ -220,6 +221,7 @@ function sourceLine(v: FeedPackageVersion): React.ReactNode {
             </a>
           </>
         ) : null}
+        {via}
       </>
     );
   if (s.kind === "static")
@@ -227,6 +229,15 @@ function sourceLine(v: FeedPackageVersion): React.ReactNode {
       <>
         CI token
         {s.tokenId ? <span className="font-mono"> {s.tokenId}</span> : null}
+        {via}
+      </>
+    );
+  if (s.kind === "registry")
+    return (
+      <>
+        Registry token
+        {s.tokenId ? <span className="font-mono"> {s.tokenId}</span> : null}
+        {via}
       </>
     );
   if (s.kind === "console") return "The console";

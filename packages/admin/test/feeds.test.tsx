@@ -175,6 +175,75 @@ describe("registry auth (F-21)", () => {
     );
   });
 
+  it("F-23: a push token is minted with publish, needs the OCI feed, and is offered for owner tokens only", async () => {
+    const minted = {
+      ok: true,
+      token: `pkeyr_${"p".repeat(43)}`,
+      view: {
+        ...(
+          feedRoutes()[
+            "/manage/api/products/djdl/distribution/feeds/tokens"
+          ] as { tokens: Record<string, unknown>[] }
+        ).tokens[0],
+        tokenId: "rtok_push",
+        label: "Pusher",
+        scopes: ["publish", "read"],
+        ecosystems: null,
+      },
+    };
+    const log = boot("#/p/djdl/distribution/feeds/tokens", {
+      extra: {
+        ...feedRoutes(),
+        ...product(true),
+        "POST /manage/api/products/djdl/distribution/feeds/tokens": minted,
+      },
+    });
+    await heading("Registry tokens");
+    await within(main()).findByRole("table", { name: "Registry tokens" });
+    await userEvent.click(
+      within(main()).getByRole("button", { name: /New token/ }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "New registry token",
+    });
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: /Label/ }),
+      "Pusher",
+    );
+    const push = within(dialog).getByRole("switch", { name: /Push images/ });
+    await userEvent.click(push);
+    // Narrowed to npm only: a push token needs the OCI feed.
+    await userEvent.click(
+      within(dialog).getByRole("checkbox", { name: /Every feed/ }),
+    );
+    await userEvent.click(
+      within(dialog).getByRole("checkbox", { name: /npm/ }),
+    );
+    expect(dialog.textContent).toContain("A push token needs the OCI feed.");
+    expect(
+      (
+        within(dialog).getByRole("button", {
+          name: "Create token",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    await userEvent.click(
+      within(dialog).getByRole("checkbox", { name: /OCI/ }),
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Create token" }),
+    );
+    await waitFor(() =>
+      expect(log.calls.find((c) => c.method === "POST")?.json).toEqual({
+        label: "Pusher",
+        binding: "owner",
+        expiresInDays: 90,
+        ecosystems: ["npm", "oci"],
+        scopes: ["read", "publish"],
+      }),
+    );
+  });
+
   it("revoking a token is L2", async () => {
     const log = boot("#/platform/feeds/tokens", {
       extra: {

@@ -142,6 +142,7 @@ function columns(withBinding: boolean): DataColumn<RegistryTokenDto>[] {
               <span className="truncate">{t.label}</span>
               <span className="font-mono text-xs text-fg-muted">
                 {t.tokenId} · …{t.hint}
+                {t.scopes.includes("publish") ? " · read and push" : ""}
               </span>
             </span>
           </span>
@@ -478,6 +479,7 @@ function MintDialog({
   const [everyFeed, setEveryFeed] = React.useState(true);
   const [picked, setPicked] = React.useState<FeedEcosystem[]>([]);
   const [godotUrl, setGodotUrl] = React.useState(false);
+  const [push, setPush] = React.useState(false);
   const [days, setDays] = React.useState<number | null>(
     data.limits.defaultDays,
   );
@@ -495,6 +497,7 @@ function MintDialog({
     setEveryFeed(true);
     setPicked([]);
     setGodotUrl(false);
+    setPush(false);
     setDays(data.limits.defaultDays);
     setBinding(licenseId ? "license" : "owner");
     setLicense(licenseId ?? null);
@@ -519,7 +522,20 @@ function MintDialog({
       : undefined;
   const licenseError =
     binding === "license" && !license ? "Choose a licence." : undefined;
-  const invalid = !!(daysError || labelError || feedsError || licenseError);
+  // F-23: a push token is owner-bound and header-presented, and must reach the OCI feed.
+  const canPush = binding === "owner" && !godotUrl;
+  const pushing = canPush && push;
+  const pushError =
+    pushing && !everyFeed && !picked.includes("oci")
+      ? "A push token needs the OCI feed."
+      : undefined;
+  const invalid = !!(
+    daysError ||
+    labelError ||
+    feedsError ||
+    licenseError ||
+    pushError
+  );
 
   const submit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -535,6 +551,7 @@ function MintDialog({
         ...(godotUrl
           ? { presentation: "url" as const }
           : { ecosystems: everyFeed ? null : picked }),
+        ...(pushing ? { scopes: ["read", "publish"] } : {}),
       });
       onMinted(res);
     } catch (err) {
@@ -552,7 +569,7 @@ function MintDialog({
       }}
       dismissible={!saving}
       title="New registry token"
-      description="Read access to this owner's feeds. Shown once; Polaris Key stores only its hash."
+      description="Access to this owner's feeds. Shown once; Polaris Key stores only its hash."
     >
       <form onSubmit={submit} noValidate>
         <DialogBody className="space-y-4">
@@ -652,6 +669,17 @@ function MintDialog({
                 <p className="text-xs text-danger">{feedsError}</p>
               ) : null}
             </fieldset>
+          ) : null}
+          {canPush ? (
+            <Switch
+              label="Push images"
+              description="docker push to this owner's OCI repositories, as well as read. A pushed version tag publishes a release."
+              checked={push}
+              onCheckedChange={setPush}
+            />
+          ) : null}
+          {pushError ? (
+            <p className="text-xs text-danger">{pushError}</p>
           ) : null}
           <FormField
             name="expiresInDays"
