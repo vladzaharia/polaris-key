@@ -29,13 +29,18 @@
 
 import { Catalog } from "@polaris-key/catalog";
 import { ErrorCode } from "../../../core/errors.js";
-import { getActiveSchema, insertSchema } from "../../../core/data.js";
+import { getActiveSchema } from "../../../core/data.js";
+import {
+  claimFacts,
+  claimsApply,
+  stmtClaim,
+  systemClaimRefusal,
+} from "../../../core/settingsClaims.js";
 import {
   catalogRepresentabilityResponse,
   adminJson,
   adminNotFound,
   audit,
-  deactivateSchemas,
   err,
   getSchemaVersion,
   listLicenses,
@@ -47,6 +52,7 @@ import {
   parsePayload,
   readBody,
   reservedNamesResponse,
+  stmtInsertSchema,
 } from "../../../core/adminApi.js";
 import { reservedNamesMode } from "../../../core/reservedNames.js";
 import type { ConfigAdminContext } from "./index.js";
@@ -135,18 +141,35 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
         );
       }
     }
+    // ST-01b: a console publish claims the whole catalog (`config.catalog`, one claimable unit)
+    // on a repo-linked product, so the next resync leaves it alone; the system product's catalog
+    // is manifest-authoritative and refused until ST-20.
+    const facts = await claimFacts(db, slug);
+    const refusal = facts ? systemClaimRefusal(facts) : null;
+    if (refusal)
+      return err(409, ErrorCode.BadRequest, refusal, {
+        reason: "manifest_authoritative",
+      });
     const version = await nextSchemaVersion(db, slug);
-    await deactivateSchemas(db, slug);
-    await insertSchema(db, {
-      product: slug,
-      catalog_version: version,
-      catalog_json: JSON.stringify({
-        schemaVersion: version,
-        entries: catalog.entries,
+    await db.batch([
+      {
+        sql: "UPDATE product_schema SET active = 0 WHERE product = ?",
+        params: [slug],
+      },
+      stmtInsertSchema({
+        product: slug,
+        catalog_version: version,
+        catalog_json: JSON.stringify({
+          schemaVersion: version,
+          entries: catalog.entries,
+        }),
+        active: 1,
+        created_at: now,
       }),
-      active: 1,
-      created_at: now,
-    });
+      ...(facts && claimsApply(facts)
+        ? [stmtClaim(slug, "config.catalog", session.sub, now)]
+        : []),
+    ]);
     await audit(
       db,
       slug,

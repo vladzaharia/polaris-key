@@ -23,6 +23,7 @@ import {
   countLicensesUsingProfile,
   deleteProfile,
   err,
+  isManagedSecretKey,
   listProfileReferences,
   listProfiles,
   loadCatalog,
@@ -53,6 +54,8 @@ export async function handleProfiles(
           description: p.description ?? undefined,
           modifiedBy: p.modified_by ?? undefined,
           modifiedAt: p.modified_at,
+          // ST-01b: who owns the row; a resync leaves `console` rows alone.
+          source: p.source ?? "manifest",
           usedBy: {
             tiers: refs.tiers.filter((t) => t.profile_id === p.id).length,
             licenses: refs.licenses.filter((l) => l.profile_id === p.id).length,
@@ -112,6 +115,7 @@ export async function handleProfiles(
       payload: redactPayload(parsePayload(row.payload_json), catalog),
       modifiedBy: row.modified_by ?? undefined,
       modifiedAt: row.modified_at,
+      source: row.source ?? "manifest",
       usedBy: {
         tiers: refs.tiers
           .filter((t) => t.profile_id === id)
@@ -188,12 +192,24 @@ export async function handleProfiles(
       return err(422, result.code, "validation failed", {
         fields: result.fields,
       });
-    await upsertProfile(db, {
-      ...row,
-      payload_json: JSON.stringify(result.payload),
-      modified_by: session.sub,
-      modified_at: now,
-    });
+    // ST-01b: editing a profile's values claims the row for the console, except a batch that only
+    // sets managed secrets — a manifest cannot express a secret value, and a resync carries those
+    // forward on a manifest row (R2), so they leave the row's owner as it was.
+    const secretsOnly =
+      updates.length > 0 &&
+      updates.every(
+        (u) => typeof u?.key === "string" && isManagedSecretKey(catalog, u.key),
+      );
+    await upsertProfile(
+      db,
+      {
+        ...row,
+        payload_json: JSON.stringify(result.payload),
+        modified_by: session.sub,
+        modified_at: now,
+      },
+      { claim: !secretsOnly },
+    );
     await audit(
       db,
       slug,

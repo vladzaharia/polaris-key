@@ -9,17 +9,23 @@
  * (new active schema version), the release block (channel/binary/marker/pub), and the OIDC +
  * tiers rows. The signing key, secrets, and edge-mint key material are NOT re-minted here, and
  * edge-mint APPROVALS are never written here (P0-12) — only orphaned ones are deleted.
+ *
+ * ST-01b (notes/S-18 §4.5, model C). Every check runs before the first write and every write goes
+ * in ONE `db.batch`, so a refused resync writes nothing. A setting the console has claimed
+ * (`product_settings`: the name, the licence defaults, the web origins, the catalog) is skipped;
+ * tiers and profiles are applied per row, leaving `console` rows alone; and each setting or row
+ * the batch changes gets its own `setting.resync` audit row.
  */
 
 import { Catalog } from "@polaris-key/catalog";
 import type { Db, DbStatement, Env } from "../../core/platform.js";
 import {
-  countLicensesUsingProfile,
+  auditValue,
+  claimedKeys,
   countLicensesUsingTier,
-  deactivateSchemas,
   getActiveSchema,
+  getManifestSnapshot,
   getProduct,
-  insertSchema,
   invalidateWidenedEdgeMintApprovals,
   isManagedSecretKey,
   isSealedEnvelope,
@@ -27,17 +33,26 @@ import {
   listTiers,
   nextSchemaVersion,
   parsePayload,
-  setAutoIssuePolicy,
-  setFingerprintPolicy,
-  setServices,
+  parseWebOrigins,
+  RESYNC_ACTOR,
+  stmtDeleteManifestProfile,
+  stmtDeleteManifestTier,
   stmtDeleteOrphanEdgeMintApprovals,
   stmtInsertEdgeMint,
   stmtInsertOidcConfig,
-  stmtInsertProfile,
   stmtInsertProvisioning,
+  stmtInsertSchema,
   stmtInsertTier,
+  stmtSetAutoIssuePolicy,
+  stmtSetFingerprintPolicy,
+  stmtSetServices,
+  stmtSettingAudit,
+  stmtUpsertManifestProfile,
+  stmtUpsertManifestTier,
+  type ClaimKey,
+  type TierRow,
 } from "../../core/ingest.js";
-import { getReleaseConfig } from "./config.js";
+import { getReleaseConfig, type ReleaseConfigRow } from "./config.js";
 import { parseManifest, type ManifestProfile } from "./manifest.js";
 import {
   discoverInstallation,
@@ -80,6 +95,12 @@ export type ResyncResult =
        * the resync itself applied) or stored sets. Absent otherwise.
        */
       packSets?: StoreOutcome;
+      /**
+       * ST-01b: what the console has claimed and this resync therefore left alone — setting keys
+       * (`core.name`, `config.catalog`, …) and console-owned rows (`tier:<id>`, `profile:<id>`).
+       * Absent when none.
+       */
+      claimed?: string[];
     }
   | { ok: false; error: string; errors?: string[] };
 
@@ -98,11 +119,10 @@ export type ResyncResult =
  * (`product_manifest_snapshot`, origin `resync`, `applied_sha` = that pinned commit).
  *
  * P0-12. Whatever the outcome, an edge-mint approval the product has WIDENED is deleted once the
- * manifest has been applied (`invalidateWidenedEdgeMintApprovals`): the writes below are not one
- * transaction, and a push refused half-way (a bad catalog, a tier still in use) — or one that
- * THROWS half-way (a D1 constraint in the final batch) — can already have written `services_json`
- * or `auto_issue_json`. The sweep therefore runs in a `finally`: a repo writer must not be able to
- * skip it by making the ingest fail after the widening writes. A `finally` does not run when the
+ * manifest has been applied (`invalidateWidenedEdgeMintApprovals`). Since ST-01b the apply is one
+ * batch, so a refused or throwing push writes none of `services_json`, `auto_issue_json` or
+ * `oidc_config`; the sweep still runs in a `finally`, so a repo writer can never skip it by making
+ * the ingest fail. A `finally` does not run when the
  * Worker is KILLED after those writes (CPU limit, a cancelled webhook), so this is not the
  * guarantee: every writer of an approval input sweeps BEFORE it writes — `applyRepoManifest`, and
  * the console's services and License-policy edits (`core/servicesAdmin.ts`,
@@ -121,8 +141,8 @@ export async function resyncRepo(
   try {
     result = await applyRepoManifest(env, db, slug, now, fetchImpl, ingest);
   } finally {
-    // Every manifest-owned input to an approval that this push got to write is written by now:
-    // `services_json` and `auto_issue_json` by the un-batched writes, `oidc_config` in the batch.
+    // Every manifest-owned input to an approval that this push wrote is written by now (all in
+    // the apply's one batch: `services_json`, `auto_issue_json`, `oidc_config`).
     // An approval this push widened is dropped here, audited as `config.mint.invalidate`, and its
     // recipe is `pending` until an operator re-approves it — a later push, or a console edit, that
     // reverts the widening cannot restore it. Runs on the throw path too.
@@ -226,8 +246,8 @@ async function applyRepoManifest(
   // products (e.g. `djdl`) store no issuer and never reach the gate; a push that TRIES to move
   // such a product to a custom issuer is a change from `""` and is gated like any other.
   //
-  // Deliberately BEFORE the first write: everything below this point is a sequence of
-  // un-batched `db.run`s, so refusing later would leave half a manifest applied.
+  // Deliberately BEFORE the first write, like every other check (ST-01b): nothing is written
+  // until the apply's one batch.
   const nextOidc =
     manifest.oidc?.provider === "custom" ? manifest.oidc : undefined;
   if (nextOidc) {
@@ -275,103 +295,24 @@ async function applyRepoManifest(
     }
   }
 
-  // P0-12 — an edge-mint approval the product has WIDENED (public without acknowledgement,
-  // License turned off, sign-in trust changed) is deleted by the ingest, not merely skipped by
-  // the mint, so that a revert cannot bring it back while credentials issued in between keep
-  // working. Swept once here, before the first write, against the state the previous ingest
-  // left — so a sweep that failed after that ingest's writes is caught before this push can
-  // revert them — and once more after the last write, in `resyncRepo`.
-  const droppedBefore = await invalidateWidenedEdgeMintApprovals(
-    db,
-    slug,
-    now,
-    "found widened at resync",
-  );
+  // ── ST-01b: every check before the first write ──────────────────────────────
+  //
+  // Everything from here to the batch reads and decides; nothing writes until `db.batch` below,
+  // so a refused resync — a bad catalog, an unsafe binary name, a dropped tier or profile still
+  // in use — leaves every row exactly as it was (S-18 §2.1: before ST-01b the tier and profile
+  // refusals ran after the product-row writes, and a refused resync was half-applied).
 
-  const updated: string[] = [];
-  const refused: { code: string; path: string; message: string }[] = [];
-
-  // `web_origins_json` (P0-05) rides with the product metadata: it is manifest-owned with no
-  // operator claim, so it is rewritten unconditionally, and dropping `web.origins` from
-  // `.pkey/product` clears it back to NULL (no origin allowed) rather than freezing the old list.
-  await db.run(
-    `UPDATE products SET name = ?,
-       default_max_offline_days = ?, default_device_limit = ?, admin_group = ?,
-       web_origins_json = ?, modified_at = ? WHERE slug = ?`,
-    manifest.product.name,
-    manifest.product.defaultMaxOfflineDays,
-    manifest.product.defaultDeviceLimit,
-    manifest.product.adminGroup,
-    serializeWebOrigins(manifest.webOrigins),
-    now,
-    slug,
-  );
-  // The compatibility window is operator-claimable (P0-01, 0022_a): once an operator sets it in
-  // `update/settings`, `compat_source = 'admin'` and this statement matches no row. The guard is
-  // the UPDATE's own WHERE clause — the same shape as `setServices` — not a read-then-write.
-  await db.run(
-    `UPDATE products SET compat_min = ?, compat_max = ?
-       WHERE slug = ? AND COALESCE(compat_source, 'manifest') = 'manifest'`,
-    manifest.product.compatMin,
-    manifest.product.compatMax,
-    slug,
-  );
-  updated.push("product");
-
-  // The fingerprint policy is manifest-owned only until an operator edits it live; after
-  // that `setFingerprintPolicy` skips the write, so a push can't clobber their change.
-  if (manifest.fingerprint) {
-    await setFingerprintPolicy(
-      db,
-      slug,
-      JSON.stringify(manifest.fingerprint),
-      "manifest",
-      now,
-    );
-    updated.push("fingerprint");
-  }
-
-  // Same ownership rule for the auto-issue policy: manifest-owned until an operator claims it.
-  if (manifest.autoIssue) {
-    await setAutoIssuePolicy(
-      db,
-      slug,
-      JSON.stringify(manifest.autoIssue),
-      "manifest",
-      now,
-    );
-    updated.push("autoIssue");
-  }
-
-  // Service enablement + the device-registration policy, under the same ownership rule once
-  // more. Unconditional (unlike the two above) because `services` is always present on a parsed
-  // manifest — a manifest that declares no `modules:` block still means something definite,
-  // namely the defaults. `registration` rides in the same value and is written only when the
-  // manifest declared it, so dropping the key from `.pkey/product` returns the product to the
-  // derived default rather than freezing whatever it last said. The `services_source = 'admin'`
-  // guard lives inside `setServices`, so a push cannot turn a service back on after an operator
-  // has turned it off live — nor re-open registration after one has closed it.
-  await setServices(
-    db,
-    slug,
-    serializeServices({
-      services: manifest.services,
-      ...(manifest.registration ? { registration: manifest.registration } : {}),
-    }),
-    "manifest",
-    now,
-  );
-  updated.push("services");
-
-  // ── schema: publish a new active version only when the catalog changed ──────
-  const nextCatalogJson = JSON.stringify(manifest.catalog);
-  const activeSchema = await getActiveSchema(db, slug);
-  const catalogChanged = activeSchema?.catalog_json !== nextCatalogJson;
   // The incoming catalog, built once: screened here when it changed, and asked by the profile
   // carry-forward below (R2) which keys are still managed secrets. Built INSIDE the try: the
   // manifest validator does not prove every entry is an object (a Config-off product's
   // `entries: [null]` gets through), and the constructor reads them. A throw here would escape
   // `resyncRepo` and, on a webhook, abort the whole per-product loop with no sync-state row.
+  const claims = await claimedKeys(db, slug, now);
+  const nextCatalogJson = JSON.stringify(manifest.catalog);
+  const activeSchema = await getActiveSchema(db, slug);
+  const catalogClaimed = claims.has("config.catalog");
+  const catalogChanged =
+    !catalogClaimed && activeSchema?.catalog_json !== nextCatalogJson;
   let incomingCatalog: Catalog;
   try {
     incomingCatalog = new Catalog(manifest.catalog as never);
@@ -385,82 +326,339 @@ async function applyRepoManifest(
       error: `invalid catalog in manifest: ${e instanceof Error ? e.message : "unknown error"}`,
     };
   }
+
+  // Defence in depth for R6-01 (the repo-name fallback bypasses the manifest boundary).
+  const rel = manifest.release;
+  const binaryName = rel ? rel.binaryName || repo : null;
+  if (rel && !isSafeBinaryName(binaryName!)) {
+    return {
+      ok: false,
+      error: `unsafe binary name ${JSON.stringify(binaryName)}; set release.binaryName to match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`,
+    };
+  }
+
+  // Tiers and profiles, per row (S-18 §4.5 item 3). A `manifest` row the manifest still declares
+  // is upserted; a `console` row (created or edited in the console) is never touched; a `manifest`
+  // row the manifest dropped is deleted only when nothing references it, and otherwise the whole
+  // resync is refused, before any write. A console row holding the id of a manifest row is
+  // skipped: a claim when the last applied manifest declared that id too, a conflict (reported)
+  // when the id is new to the manifest.
+  const previous = await getManifestSnapshot(db, slug);
+  const previousIds = snapshotRowIds(previous?.manifest_json);
+  const storedProfiles = await listProfiles(db, slug);
+  const storedTiers = await listTiers(db, slug);
+  const consoleProfiles = new Set(
+    storedProfiles.filter((p) => p.source === "console").map((p) => p.id),
+  );
+  const consoleTiers = new Set(
+    storedTiers.filter((t) => t.source === "console").map((t) => t.id),
+  );
+  const nextProfileIds = new Set(manifest.profiles.map((p) => p.id));
+  const nextTierIds = new Set(manifest.tiers.map((t) => t.id));
+  const refused: { code: string; path: string; message: string }[] = [];
+  const claimed: string[] = [];
+  const skip = (
+    kind: "tier" | "profile",
+    id: string,
+    owned: Set<string>,
+    before: Set<string>,
+  ): boolean => {
+    if (!owned.has(id)) return false;
+    if (before.has(id)) claimed.push(`${kind}:${id}`);
+    else
+      refused.push({
+        code: "console_row_conflict",
+        path: `/${kind === "tier" ? "tiers" : "profiles"}/${id}`,
+        message: `a ${kind} with id ${id} was created in the console; it is kept, and the manifest's ${kind} is not applied until one of them is renamed`,
+      });
+    return true;
+  };
+  const applyTiers = manifest.tiers.filter(
+    (t) => !skip("tier", t.id, consoleTiers, previousIds.tiers),
+  );
+  const applyProfiles = manifest.profiles.filter(
+    (p) => !skip("profile", p.id, consoleProfiles, previousIds.profiles),
+  );
+  const dropTiers = storedTiers.filter(
+    (t) => t.source !== "console" && !nextTierIds.has(t.id),
+  );
+  const dropProfiles = storedProfiles.filter(
+    (p) => p.source !== "console" && !nextProfileIds.has(p.id),
+  );
+  for (const tier of dropTiers) {
+    const refs = await countLicensesUsingTier(db, slug, tier.id);
+    if (refs > 0)
+      return {
+        ok: false,
+        error: `cannot remove tier ${tier.id}; ${refs} license(s) still reference it`,
+      };
+  }
+  // The tiers that survive this resync: the console's, plus the manifest's applied ones.
+  const survivingTierProfiles = [
+    ...storedTiers
+      .filter((t) => consoleTiers.has(t.id))
+      .map((t) => t.profile_id),
+    ...applyTiers.map((t) => t.profileId ?? null),
+  ];
+  for (const profile of dropProfiles) {
+    const refs =
+      (await countLicensesListingProfile(db, slug, profile.id)) +
+      survivingTierProfiles.filter((p) => p === profile.id).length;
+    if (refs > 0)
+      return {
+        ok: false,
+        error: `cannot remove profile ${profile.id}; ${refs} license(s) or tier(s) still reference it`,
+      };
+  }
+
+  // `releaseKeys` (P3-03): never a product signing key, current or retired. A refused set keeps
+  // the previous value — a partial set would drop a key CI may already sign with — and is
+  // reported, as the rest of the manifest is still applied.
+  const releaseKeys = rel
+    ? await releaseKeysForSync(db, slug, rel.releaseKeys)
+    : null;
+  if (releaseKeys && !releaseKeys.ok)
+    for (const r of releaseKeys.refused)
+      refused.push({
+        code: r.code,
+        path: "/release/releaseKeys",
+        message: r.message,
+      });
+
+  // P0-12 — an edge-mint approval the product has WIDENED (public without acknowledgement,
+  // License turned off, sign-in trust changed) is deleted by the ingest, not merely skipped by
+  // the mint, so that a revert cannot bring it back while credentials issued in between keep
+  // working. Swept once here, after the checks and before the batch, against the state the
+  // previous ingest left — so a sweep that failed after that ingest's writes is caught before
+  // this push can revert them — and once more after the batch, in `resyncRepo`.
+  const droppedBefore = await invalidateWidenedEdgeMintApprovals(
+    db,
+    slug,
+    now,
+    "found widened at resync",
+  );
+
+  // ── the writes: ONE batch ───────────────────────────────────────────────────
+  const updated: string[] = [];
+  const stmts: DbStatement[] = [];
+  const audits: DbStatement[] = [];
+  const auditSetting = (key: string, before: unknown, after: unknown): void => {
+    audits.push(
+      stmtSettingAudit(
+        slug,
+        now,
+        RESYNC_ACTOR,
+        "setting.resync",
+        "setting",
+        key,
+        `${key} set from the manifest${appliedSha ? ` at ${appliedSha.slice(0, 12)}` : ""}: ${auditValue(before)} → ${auditValue(after)}`,
+      ),
+    );
+  };
+
+  // The product row's manifest fields (S-18 §4.5 item 1). A field the console has claimed
+  // (`product_settings`, ST-01b) is skipped; `admin_group` is manifest-only and always follows
+  // the manifest (owner decision 1). `web_origins_json` (P0-05) keeps `omitClears`: dropping
+  // `web.origins` from `.pkey/product` clears it back to NULL (no origin allowed) rather than
+  // freezing the old list — unless the console has claimed it.
+  const nextOrigins = serializeWebOrigins(manifest.webOrigins);
+  const productFields: [string, ClaimKey | null, unknown, unknown][] = [
+    ["name", "core.name", product.name, manifest.product.name],
+    [
+      "default_max_offline_days",
+      "license.defaults.maxOfflineDays",
+      product.default_max_offline_days,
+      manifest.product.defaultMaxOfflineDays,
+    ],
+    [
+      "default_device_limit",
+      "license.defaults.deviceLimit",
+      product.default_device_limit,
+      manifest.product.defaultDeviceLimit,
+    ],
+    ["admin_group", null, product.admin_group, manifest.product.adminGroup],
+    [
+      "web_origins_json",
+      "core.web.origins",
+      product.web_origins_json ?? null,
+      nextOrigins,
+    ],
+  ];
+  const sets: string[] = [];
+  const setParams: (string | number | null)[] = [];
+  for (const [column, key, before, after] of productFields) {
+    if (key && claims.has(key)) {
+      claimed.push(key);
+      continue;
+    }
+    sets.push(`${column} = ?`);
+    setParams.push(after as string | number | null);
+    if (before !== after)
+      auditSetting(
+        key ?? "core.adminGroup",
+        column === "web_origins_json"
+          ? parseWebOrigins(before as string | null)
+          : before,
+        column === "web_origins_json" ? [...manifest.webOrigins] : after,
+      );
+  }
+  stmts.push({
+    sql: `UPDATE products SET ${[...sets, "modified_at = ?"].join(", ")} WHERE slug = ?`,
+    params: [...setParams, now, slug],
+  });
+  // The compatibility window is operator-claimable (P0-01, 0022_a): once an operator sets it in
+  // `update/settings`, `compat_source = 'admin'` and this statement matches no row. The guard is
+  // the UPDATE's own WHERE clause — the same shape as `setServices` — not a read-then-write.
+  stmts.push({
+    sql: `UPDATE products SET compat_min = ?, compat_max = ?
+            WHERE slug = ? AND COALESCE(compat_source, 'manifest') = 'manifest'`,
+    params: [manifest.product.compatMin, manifest.product.compatMax, slug],
+  });
+  updated.push("product");
+
+  // The fingerprint policy is manifest-owned only until an operator edits it live; after
+  // that the statement's guard skips the write, so a push can't clobber their change.
+  if (manifest.fingerprint) {
+    stmts.push(
+      stmtSetFingerprintPolicy(
+        slug,
+        JSON.stringify(manifest.fingerprint),
+        "manifest",
+        now,
+      ),
+    );
+    updated.push("fingerprint");
+  }
+
+  // Same ownership rule for the auto-issue policy: manifest-owned until an operator claims it.
+  if (manifest.autoIssue) {
+    stmts.push(
+      stmtSetAutoIssuePolicy(
+        slug,
+        JSON.stringify(manifest.autoIssue),
+        "manifest",
+        now,
+      ),
+    );
+    updated.push("autoIssue");
+  }
+
+  // Service enablement + the device-registration policy, under the same ownership rule once
+  // more. Unconditional (unlike the two above) because `services` is always present on a parsed
+  // manifest — a manifest that declares no `modules:` block still means something definite,
+  // namely the defaults. `registration` rides in the same value and is written only when the
+  // manifest declared it, so dropping the key from `.pkey/product` returns the product to the
+  // derived default rather than freezing whatever it last said. The `services_source = 'admin'`
+  // guard lives inside the statement, so a push cannot turn a service back on after an operator
+  // has turned it off live — nor re-open registration after one has closed it.
+  const manifestServicesJson = serializeServices({
+    services: manifest.services,
+    ...(manifest.registration ? { registration: manifest.registration } : {}),
+  });
+  stmts.push(stmtSetServices(slug, manifestServicesJson, "manifest", now));
+  updated.push("services");
+
+  // ── schema: publish a new active version only when the catalog changed ──────
+  // ...and the console has not claimed it (`config.catalog`, one claimable unit).
+  if (catalogClaimed) claimed.push("config.catalog");
   if (catalogChanged) {
     const version = await nextSchemaVersion(db, slug);
-    await deactivateSchemas(db, slug);
-    await insertSchema(db, {
-      product: slug,
-      catalog_version: version,
-      catalog_json: nextCatalogJson,
-      active: 1,
-      created_at: now,
-    });
+    stmts.push(
+      {
+        sql: "UPDATE product_schema SET active = 0 WHERE product = ?",
+        params: [slug],
+      },
+      stmtInsertSchema({
+        product: slug,
+        catalog_version: version,
+        catalog_json: nextCatalogJson,
+        active: 1,
+        created_at: now,
+      }),
+    );
+    audits.push(
+      stmtSettingAudit(
+        slug,
+        now,
+        RESYNC_ACTOR,
+        "setting.resync",
+        "setting",
+        "config.catalog",
+        `config.catalog published from the manifest as v${version}${appliedSha ? ` at ${appliedSha.slice(0, 12)}` : ""}`,
+      ),
+    );
     updated.push("schema");
   }
 
   // ── release_config: update the GitHub-distribution block in place ───────────
-  const rel = manifest.release;
+  // The row the truth store below reads is this batch's result, built here rather than re-read:
+  // the batch has not run yet.
+  let syncedCfg: ReleaseConfigRow = cfg;
   if (rel) {
-    // Defence in depth for R6-01 (the repo-name fallback bypasses the manifest boundary).
-    const binaryName = rel.binaryName || repo;
-    if (!isSafeBinaryName(binaryName)) {
-      return {
-        ok: false,
-        error: `unsafe binary name ${JSON.stringify(binaryName)}; set release.binaryName to match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`,
-      };
-    }
     // `artifact_policy_json` is the MANIFEST half of the artifact policy only. The operator half
     // (requireSparkleSignature, minimumSystemVersion) lives in `operator_policy_json`, which this
     // function never names — so rewriting this blob whole can no longer drop an operator's keys.
-    await db.run(
-      `UPDATE release_config SET channel_workflow = ?, beta_branch = ?, binary_name = ?,
-         sparkle_ed25519_pub = ?, summary_marker = ?, manual_channels_json = ?,
-         artifact_policy_json = ?, stable_tag_pattern = ?, ignore_tags_json = ?
-         WHERE product = ?`,
-      rel.channelWorkflow || null,
-      rel.betaBranch || "main",
-      binaryName,
-      rel.sparkleEd25519Pub || null,
-      rel.summaryMarker || "pkey:summary",
-      rel.manualChannels.length ? JSON.stringify(rel.manualChannels) : null,
-      rel.artifactPolicy ? JSON.stringify(rel.artifactPolicy) : null,
-      rel.stableTagPattern,
-      rel.ignoreTags.length ? JSON.stringify(rel.ignoreTags) : null,
-      slug,
-    );
-    // `releaseKeys` (P3-03): never a product signing key, current or retired. A refused set keeps
-    // the previous value — a partial set would drop a key CI may already sign with — and is
-    // reported, as the rest of the manifest is still applied.
-    const releaseKeys = await releaseKeysForSync(db, slug, rel.releaseKeys);
-    if (releaseKeys.ok) {
-      await db.run(
-        "UPDATE release_config SET release_keys_json = ? WHERE product = ?",
-        releaseKeys.json,
+    const block = {
+      channel_workflow: rel.channelWorkflow || null,
+      beta_branch: rel.betaBranch || "main",
+      binary_name: binaryName,
+      sparkle_ed25519_pub: rel.sparkleEd25519Pub || null,
+      summary_marker: rel.summaryMarker || "pkey:summary",
+      manual_channels_json: rel.manualChannels.length
+        ? JSON.stringify(rel.manualChannels)
+        : null,
+      artifact_policy_json: rel.artifactPolicy
+        ? JSON.stringify(rel.artifactPolicy)
+        : null,
+      stable_tag_pattern: rel.stableTagPattern,
+      ignore_tags_json: rel.ignoreTags.length
+        ? JSON.stringify(rel.ignoreTags)
+        : null,
+    };
+    stmts.push({
+      sql: `UPDATE release_config SET channel_workflow = ?, beta_branch = ?, binary_name = ?,
+              sparkle_ed25519_pub = ?, summary_marker = ?, manual_channels_json = ?,
+              artifact_policy_json = ?, stable_tag_pattern = ?, ignore_tags_json = ?
+              WHERE product = ?`,
+      params: [
+        block.channel_workflow,
+        block.beta_branch,
+        block.binary_name,
+        block.sparkle_ed25519_pub,
+        block.summary_marker,
+        block.manual_channels_json,
+        block.artifact_policy_json,
+        block.stable_tag_pattern,
+        block.ignore_tags_json,
         slug,
-      );
-    } else {
-      for (const r of releaseKeys.refused)
-        refused.push({
-          code: r.code,
-          path: "/release/releaseKeys",
-          message: r.message,
-        });
+      ],
+    });
+    syncedCfg = { ...syncedCfg, ...block };
+    if (releaseKeys?.ok) {
+      stmts.push({
+        sql: "UPDATE release_config SET release_keys_json = ? WHERE product = ?",
+        params: [releaseKeys.json, slug],
+      });
+      syncedCfg = { ...syncedCfg, release_keys_json: releaseKeys.json };
     }
     // The two access modes share ONE owner (`access_source`, 0022_b). Once an operator claims
     // them, this matches no row: a manifest cannot express `entitled`, so without the guard every
     // push would silently downgrade an entitled product to the manifest's mode (default public).
-    await db.run(
-      `UPDATE release_config SET metadata_access = ?, artifacts_access = ?
-         WHERE product = ? AND COALESCE(access_source, 'manifest') = 'manifest'`,
-      rel.access.metadata,
-      rel.access.artifacts,
-      slug,
-    );
+    stmts.push({
+      sql: `UPDATE release_config SET metadata_access = ?, artifacts_access = ?
+              WHERE product = ? AND COALESCE(access_source, 'manifest') = 'manifest'`,
+      params: [rel.access.metadata, rel.access.artifacts, slug],
+    });
+    if ((cfg.access_source ?? "manifest") === "manifest")
+      syncedCfg = {
+        ...syncedCfg,
+        metadata_access: rel.access.metadata,
+        artifacts_access: rel.access.artifacts,
+      };
     updated.push("release");
   }
 
   // ── manifest-owned rows: replace from the code-first source of truth ─────────
-  const stmts: DbStatement[] = [];
   stmts.push({
     sql: "DELETE FROM oidc_config WHERE product = ?",
     params: [slug],
@@ -480,61 +678,50 @@ async function applyRepoManifest(
   }
   updated.push("oidc");
 
-  const nextProfileIds = new Set(manifest.profiles.map((p) => p.id));
-  for (const profile of await listProfiles(db, slug)) {
-    if (!nextProfileIds.has(profile.id)) {
-      const refs = await countLicensesUsingProfile(db, slug, profile.id);
-      if (refs > 0)
-        return {
-          ok: false,
-          error: `cannot remove profile ${profile.id}; ${refs} license(s) still reference it`,
-        };
-    }
-  }
-  // Profiles are replaced from the manifest, with one carve-out: their SECRET VALUES. A manifest
-  // cannot express a secret value (a sealed envelope is minted by the console under
+  // Profiles, per row (above). One carve-out on the rows this resync owns: their SECRET VALUES. A
+  // manifest cannot express a secret value (a sealed envelope is minted by the console under
   // `PLATFORM_KEK`, and a plaintext secret has no place in a repo), so an operator sets one on a
-  // profile in the console, and without this every `.pkey/` push wiped it (R2). Each row's slot
-  // is reserved here with the manifest's payload, and `withStoredSecrets` fills the carried values
-  // in immediately before the batch (below), so a console edit made while this push was still
-  // reading GitHub is the one carried. A profile the manifest no longer lists goes, secrets and
-  // all.
+  // profile in the console without claiming it, and without this every `.pkey/` push wiped it
+  // (R2). Each row's slot is reserved here with the manifest's payload, and `withStoredSecrets`
+  // fills the carried values in immediately before the batch (below), so a console edit made
+  // while this push was still reading GitHub is the one carried. A dropped manifest profile goes,
+  // secrets and all.
   const profileSlots: { index: number; profile: ManifestProfile }[] = [];
-  stmts.push({ sql: "DELETE FROM profiles WHERE product = ?", params: [slug] });
-  for (const p of manifest.profiles) {
+  for (const p of dropProfiles) {
+    stmts.push(stmtDeleteManifestProfile(slug, p.id));
+    audits.push(rowAudit(slug, now, "profile", p.id, "removed"));
+  }
+  const storedProfileById = new Map(storedProfiles.map((p) => [p.id, p]));
+  for (const p of applyProfiles) {
     profileSlots.push({ index: stmts.length, profile: p });
     stmts.push(profileStatement(slug, p, p.payload, now));
   }
   updated.push("profiles");
 
-  const nextTierIds = new Set(manifest.tiers.map((t) => t.id));
-  for (const tier of await listTiers(db, slug)) {
-    if (!nextTierIds.has(tier.id)) {
-      const refs = await countLicensesUsingTier(db, slug, tier.id);
-      if (refs > 0)
-        return {
-          ok: false,
-          error: `cannot remove tier ${tier.id}; ${refs} license(s) still reference it`,
-        };
-    }
+  const storedTierById = new Map(storedTiers.map((t) => [t.id, t]));
+  for (const t of dropTiers) {
+    stmts.push(stmtDeleteManifestTier(slug, t.id));
+    audits.push(rowAudit(slug, now, "tier", t.id, "removed"));
   }
-  stmts.push({ sql: "DELETE FROM tiers WHERE product = ?", params: [slug] });
-  for (const t of manifest.tiers) {
-    stmts.push(
-      stmtInsertTier({
-        product: slug,
-        id: t.id,
-        label: t.label,
-        profileId: t.profileId ?? null,
-        policyExpiryDays: t.policyExpiryDays ?? null,
-        policyDeviceLimit: t.policyDeviceLimit ?? null,
-        policyFingerprint: t.policyFingerprint ?? null,
-        channels: t.channels,
-        minVersion: t.minVersion,
-        maxVersion: t.maxVersion,
-        modifiedAt: now,
-      }),
-    );
+  for (const t of applyTiers) {
+    const input = {
+      product: slug,
+      id: t.id,
+      label: t.label,
+      profileId: t.profileId ?? null,
+      policyExpiryDays: t.policyExpiryDays ?? null,
+      policyDeviceLimit: t.policyDeviceLimit ?? null,
+      policyFingerprint: t.policyFingerprint ?? null,
+      channels: t.channels,
+      minVersion: t.minVersion,
+      maxVersion: t.maxVersion,
+      modifiedAt: now,
+    };
+    stmts.push(stmtUpsertManifestTier(input));
+    const stored = storedTierById.get(t.id);
+    if (!stored) audits.push(rowAudit(slug, now, "tier", t.id, "added"));
+    else if (tierShape(stored) !== tierShape(stmtInsertTier(input).params))
+      audits.push(rowAudit(slug, now, "tier", t.id, "changed"));
   }
   updated.push("tiers");
 
@@ -614,13 +801,16 @@ async function applyRepoManifest(
   // ── the services' own manifest rows (P2b-02): Core's ingest pipeline ─────────
   //
   // Every ENABLED service's `manifestIngest` (Distribution's outlets and transports today), in
-  // this same batch. Enablement is the product's STORED set as `setServices` above left it — not
-  // the manifest's — so a service an operator turned off live does not have its rows rewritten by
-  // a push that still says on. Release never imports the services that answer (AGENTS rule 6):
-  // the pipeline is handed down from the composition root.
+  // this same batch. Enablement is the product's set as this batch leaves it — the stored set
+  // when an operator claimed it, the manifest's otherwise — so a service an operator turned off
+  // live does not have its rows rewritten by a push that still says on. Release never imports the
+  // services that answer (AGENTS rule 6): the pipeline is handed down from the composition root.
   if (ingest) {
-    const stored = await getProduct(db, slug);
-    const services = parseServices(stored?.services_json).services;
+    const servicesJson =
+      product.services_source === "admin"
+        ? product.services_json
+        : manifestServicesJson;
+    const services = parseServices(servicesJson).services;
     const serviceRows = ingest(manifest, slug, services, now);
     stmts.push(...serviceRows.statements);
     updated.push(...serviceRows.slugs);
@@ -633,11 +823,7 @@ async function applyRepoManifest(
   // manifest-owned rows so a resync is one transaction: a truth store that landed separately
   // could survive a failure that rolled the rest back, and the portal would then list releases
   // for a product whose tiers had not been updated.
-  //
-  // The row is re-read rather than reused, because the UPDATE above may just have changed the
-  // access modes the store records.
-  const syncedCfg = rel ? await getReleaseConfig(db, slug) : cfg;
-  if (syncedCfg) {
+  {
     // The map just parsed, not the persisted one: this batch is what persists it.
     const store = await releaseStoreSync(
       env,
@@ -667,18 +853,27 @@ async function applyRepoManifest(
     const stored = new Map(
       (await listProfiles(db, slug)).map((p) => [p.id, p.payload_json]),
     );
-    for (const { index, profile } of profileSlots)
-      stmts[index] = profileStatement(
-        slug,
-        profile,
-        withStoredSecrets(
-          profile.payload,
-          stored.get(profile.id),
-          incomingCatalog,
-        ),
-        now,
+    for (const { index, profile } of profileSlots) {
+      const payload = withStoredSecrets(
+        profile.payload,
+        stored.get(profile.id),
+        incomingCatalog,
       );
+      stmts[index] = profileStatement(slug, profile, payload, now);
+      const before = storedProfileById.get(profile.id);
+      if (!before)
+        audits.push(rowAudit(slug, now, "profile", profile.id, "added"));
+      else if (
+        before.name !== profile.name ||
+        (before.description ?? null) !== (profile.description ?? null) ||
+        before.payload_json !== JSON.stringify(payload)
+      )
+        audits.push(rowAudit(slug, now, "profile", profile.id, "changed"));
+    }
   }
+
+  // Per-field resync audit (S-18 §4.6): one row per setting or row this batch changes, in it.
+  stmts.push(...audits);
 
   // ST-01a: the manifest this batch applies, recorded IN the batch — the snapshot lands exactly
   // when the rows do. Not reported in `updated`: it is bookkeeping, not a manifest section.
@@ -694,23 +889,97 @@ async function applyRepoManifest(
   );
 
   let packSets: StoreOutcome | null = null;
-  if (stmts.length > 0) {
-    await db.batch(stmts);
-    // A resync can change the tag filter, the manual channels and the store: drop every cached
-    // resolution of this product (P2-05, `ghCache.ts`).
-    await bumpReleaseGeneration(env, slug, now);
-    // ...and may change a pack's binding or channels, or the store's app releases (P4-12). A
-    // failed resolution clears the sets and is answered; it never fails the resync.
-    if (rel) packSets = await resolveAndStore(db, slug, now);
-  }
+  await db.batch(stmts);
+  // A resync can change the tag filter, the manual channels and the store: drop every cached
+  // resolution of this product (P2-05, `ghCache.ts`).
+  await bumpReleaseGeneration(env, slug, now);
+  // ...and may change a pack's binding or channels, or the store's app releases (P4-12). A
+  // failed resolution clears the sets and is answered; it never fails the resync.
+  if (rel) packSets = await resolveAndStore(db, slug, now);
 
   if (droppedBefore.length > 0) updated.push("edgeMintApprovals");
   return {
     ok: true,
     updated,
     ...(refused.length > 0 ? { refused } : {}),
+    ...(claimed.length > 0 ? { claimed } : {}),
     ...(packSets && (!packSets.ok || packSets.sets > 0) ? { packSets } : {}),
   };
+}
+
+/** The tier and profile ids a stored snapshot declared (ST-01b: claim vs conflict). */
+function snapshotRowIds(json: string | undefined): {
+  tiers: Set<string>;
+  profiles: Set<string>;
+} {
+  const ids = (v: unknown): Set<string> =>
+    new Set(
+      Array.isArray(v)
+        ? v
+            .map((x) =>
+              x && typeof x === "object" ? (x as { id?: unknown }).id : null,
+            )
+            .filter((id): id is string => typeof id === "string")
+        : [],
+    );
+  if (!json) return { tiers: new Set(), profiles: new Set() };
+  try {
+    const m = JSON.parse(json) as { tiers?: unknown; profiles?: unknown };
+    return { tiers: ids(m.tiers), profiles: ids(m.profiles) };
+  } catch {
+    return { tiers: new Set(), profiles: new Set() };
+  }
+}
+
+/** Licences that list a profile directly (`license_profiles`), the referrer a tier is not. */
+async function countLicensesListingProfile(
+  db: Db,
+  product: string,
+  profileId: string,
+): Promise<number> {
+  const r = await db.first<{ n: number }>(
+    "SELECT COUNT(*) AS n FROM license_profiles WHERE product = ? AND profile_id = ?",
+    product,
+    profileId,
+  );
+  return r?.n ?? 0;
+}
+
+/** A comparable rendering of a tier's manifest-owned columns (stored row or insert params). */
+function tierShape(t: TierRow | DbStatement["params"]): string {
+  if (Array.isArray(t))
+    // stmtInsertTier's params: product, id, label, profile, expiry, limit, channels, min, max,
+    // fingerprint, modifiedAt.
+    return JSON.stringify(t.slice(2, 10));
+  return JSON.stringify([
+    t.label,
+    t.profile_id,
+    t.policy_expiry_days,
+    t.policy_device_limit,
+    t.channels_json,
+    t.min_version,
+    t.max_version,
+    t.policy_fingerprint ?? null,
+  ]);
+}
+
+/** The resync audit row for one tier or profile the batch adds, changes or removes. */
+function rowAudit(
+  product: string,
+  now: number,
+  kind: "tier" | "profile",
+  id: string,
+  what: "added" | "changed" | "removed",
+): DbStatement {
+  return stmtSettingAudit(
+    product,
+    now,
+    RESYNC_ACTOR,
+    "setting.resync",
+    kind,
+    id,
+    `${kind === "tier" ? "Tier" : "Profile"} ${id} ${what} by the manifest`,
+  );
 }
 
 /** One profile row of the resync's batch. */
@@ -720,7 +989,7 @@ function profileStatement(
   payload: Record<string, unknown>,
   now: number,
 ): DbStatement {
-  return stmtInsertProfile({
+  return stmtUpsertManifestProfile({
     product,
     id: profile.id,
     name: profile.name,

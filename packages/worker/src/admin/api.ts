@@ -14,7 +14,7 @@
  *
  * Per-product resources are grouped by the SERVICE that owns them (plan §R1, spec §4.2). What is
  * left at the top level here is core/platform — the things a product has whether or not it runs
- * any service: `secrets/*`, `outlet-credentials/*`, `ci-publisher`, `ci-tokens/*`, `keys/rotate`,
+ * any service: `secrets/*`, `outlet-credentials/*`, `claims/*`, `ci-publisher`, `ci-tokens/*`, `keys/rotate`,
  * `activity`, `services[/revert]`, `bundles`, `blob-gc[/bundles]`. Everything
  * else is dispatched into a `ServiceDescriptor.adminHandle` with the full remaining path:
  *
@@ -204,10 +204,12 @@ async function handleProductScoped(
   //   PUT  /products/<slug>/secrets/<name>
   //   POST /products/<slug>/keys/rotate
   //   GET|PUT|DELETE /products/<slug>/outlet-credentials[/<id>]   (P5-01)
+  //   DELETE /products/<slug>/claims/<key>   (ST-01b: Revert a console claim to the manifest)
   if (
     resource === "secrets" ||
     resource === "keys" ||
-    resource === "outlet-credentials"
+    resource === "outlet-credentials" ||
+    resource === "claims"
   ) {
     return handleProductScopedResource(
       req,

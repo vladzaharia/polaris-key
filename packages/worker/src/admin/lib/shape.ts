@@ -3,6 +3,7 @@
  * the active-catalog loader used for value validation + redaction.
  */
 
+import { listClaims } from "../../core/settingsClaims.js";
 import { Catalog } from "@polaris-key/catalog";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../env.js";
@@ -161,6 +162,7 @@ export async function productView(
   env: Env,
   db: Db,
   p: ProductRow,
+  now: number = Math.floor(Date.now() / 1000),
 ): Promise<Record<string, unknown>> {
   const activeKey = await loadPublicSigningKey(db, p.slug);
   const signingKid = activeKey?.kid ?? p.signing_kid;
@@ -233,6 +235,9 @@ export async function productView(
     defaultMaxOfflineDays: p.default_max_offline_days,
     defaultDeviceLimit: p.default_device_limit,
     adminGroup: p.admin_group,
+    // ST-01b: the column-backed settings the console has claimed from the manifest (the resync
+    // leaves these alone until a Revert). Empty for a product with no manifest to claim from.
+    claims: await listClaims(db, p.slug, now),
     createdAt: p.created_at,
     modifiedAt: p.modified_at,
   };

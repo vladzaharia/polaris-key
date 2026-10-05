@@ -352,13 +352,11 @@ describe("a profile secret set in the console survives a resync (R2)", () => {
     expect((await stored(ctx, "standard"))!.secrets![API_KEY]).toEqual(before);
   });
 
-  it("keeps a sealed value under a config key flagged secret, but not a plain config value", async () => {
+  it("keeps a sealed value under a config key flagged secret, and a secret-only edit leaves the manifest the owner", async () => {
     const ctx = await linked([
       { id: "standard", payload: baseUrl("https://a.example/v1") },
     ]);
     await setOnProfile(ctx, "standard", SECRET_CONFIG, "hunter2-proxy");
-    // A plain config value set in the console is NOT a secret: the manifest stays its owner.
-    await setOnProfile(ctx, "standard", BASE_URL, "https://console.example/v1");
     const sealed = (await stored(ctx, "standard"))!.config![SECRET_CONFIG]!;
     expect(isSealedEnvelope(sealed.value)).toBe(true);
 
@@ -368,7 +366,26 @@ describe("a profile secret set in the console survives a resync (R2)", () => {
 
     const after = (await stored(ctx, "standard"))!;
     expect(after.config![SECRET_CONFIG]).toEqual(sealed);
+    // Setting only a secret is not a claim (ST-01b): the manifest's new plain value applies.
     expect(after.config![BASE_URL]!.value).toBe("https://b.example/v1");
+  });
+
+  it("a plain config value set in the console claims the profile, which the resync then leaves alone (ST-01b)", async () => {
+    const ctx = await linked([
+      { id: "standard", payload: baseUrl("https://a.example/v1") },
+    ]);
+    await setOnProfile(ctx, "standard", SECRET_CONFIG, "hunter2-proxy");
+    // A plain config value is not a secret: setting it is a console edit, so it claims the row.
+    await setOnProfile(ctx, "standard", BASE_URL, "https://console.example/v1");
+    const sealed = (await stored(ctx, "standard"))!.config![SECRET_CONFIG]!;
+
+    await resync(ctx, [
+      { id: "standard", payload: baseUrl("https://b.example/v1") },
+    ]);
+
+    const after = (await stored(ctx, "standard"))!;
+    expect(after.config![SECRET_CONFIG]).toEqual(sealed);
+    expect(after.config![BASE_URL]!.value).toBe("https://console.example/v1");
   });
 
   it("keeps each profile's own secrets, on every surviving profile", async () => {

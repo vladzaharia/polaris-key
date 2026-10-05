@@ -24,10 +24,10 @@
 export {
   getActiveSchema,
   getProduct,
-  insertSchema,
   setAutoIssuePolicy,
   setFingerprintPolicy,
-  setServices,
+  stmtDeleteManifestProfile,
+  stmtDeleteManifestTier,
   stmtDeleteOrphanEdgeMintApprovals,
   stmtInsertEdgeMint,
   stmtInsertOidcConfig,
@@ -38,16 +38,20 @@ export {
   stmtInsertReleaseConfig,
   stmtInsertSchema,
   stmtInsertTier,
+  stmtSetAutoIssuePolicy,
+  stmtSetFingerprintPolicy,
+  stmtSetServices,
+  stmtUpsertManifestProfile,
+  stmtUpsertManifestTier,
   upsertProductSyncState,
   type ProductRow,
+  type TierRow,
 } from "../repo.js";
 
 export { invalidateWidenedEdgeMintApprovals } from "./edgeMintApproval.js";
 
 export {
-  countLicensesUsingProfile,
   countLicensesUsingTier,
-  deactivateSchemas,
   listProfiles,
   listTiers,
   nextSchemaVersion,
@@ -61,3 +65,15 @@ export {
   isManagedSecretKey,
   isSealedEnvelope,
 } from "../admin/lib/managedSecrets.js";
+
+// ST-01b: the resync skips the settings the console has claimed (`product_settings`), and writes
+// one audit row per setting it changes.
+export {
+  auditValue,
+  claimedKeys,
+  RESYNC_ACTOR,
+  stmtSettingAudit,
+  type ClaimKey,
+} from "./settingsClaims.js";
+export { getManifestSnapshot } from "./manifestSnapshot.js";
+export { parseWebOrigins } from "./cors.js";
