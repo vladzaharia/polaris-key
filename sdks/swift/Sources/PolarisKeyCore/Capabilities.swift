@@ -180,9 +180,17 @@ public struct Capabilities: Sendable {
 }
 
 extension Capabilities {
-    /// This SDK's detectors. The one conditional N/A in `parity.json` is `update.driver` on iOS
-    /// (`except ios:outlet`): iOS forbids self-update, so the SDK offers a store link only.
+    /// This SDK's detectors, one per conditional N/A in `parity.json`: `update.driver` on iOS
+    /// (`except ios:outlet`: iOS forbids self-update, so the SDK offers a store link only) and
+    /// `devices.attest` on iOS (`except ios:outlet`).
     public static let sdkDetectors: [String: CapabilityDetector] = [
+        // `devices.attest` on iOS (`except ios:outlet`): only an App Store or TestFlight install
+        // can attest, and a build carrying an embedded provisioning profile is neither.
+        capabilityDetectorKey(Feature.devicesAttest, UnsupportedReason.outlet): {
+            Foundation.Bundle.main.path(forResource: "embedded", ofType: "mobileprovision") == nil
+                ? nil
+                : "Only an App Store or TestFlight install can attest (this build carries a provisioning profile)."
+        },
         // Consulted only where the table declares the N/A (iOS), so it always answers.
         capabilityDetectorKey(Feature.updateDriver, UnsupportedReason.outlet): {
             "iOS apps update through their outlet (the App Store, TestFlight or an alternative marketplace); the SDK offers a store link only"

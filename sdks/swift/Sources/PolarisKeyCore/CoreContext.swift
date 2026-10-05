@@ -284,6 +284,9 @@ public actor CoreContext {
     /// Where the device report reads the active pack set's id (plans/P4-01.md §2.11): set by the
     /// packs facet (`update.packs`) when it is constructed; nil when no facet exists.
     private nonisolated let packSetIdSource = PackSetIdSource()
+    /// The attest-and-retry hook (notes/SDK-PARITY-PASS.md §3.10), set by the facade when this
+    /// runtime can attest.
+    private nonisolated let attestor = LockedValue<(@Sendable () async -> Bool)?>(nil)
 
     // ── Live state ───────────────────────────────────────────────────────────────────────
     private var deviceIdValue = ""
@@ -983,6 +986,21 @@ public actor CoreContext {
     /// interprets them.
     /// Register where `devices/report`'s `content.packSetId` comes from (the packs facet does this
     /// itself; a host never needs to). The latest registration wins.
+    /// Register how this client attests (`devices.attest()`), so a call refused with 403
+    /// `attestation_required` (edge-mint, gated delivery, a commerce claim) can attest ONCE and
+    /// retry ONCE. Unset — the default, and always on a runtime that cannot attest — the caller
+    /// gets the typed refusal.
+    public nonisolated func setAttestor(_ attest: (@Sendable () async -> Bool)?) {
+        attestor.set(attest)
+    }
+
+    /// Attest for a retry: true when an attestor is registered and it raised the device to
+    /// `attested`. The caller retries its request once on true and never loops.
+    public nonisolated func attestForRetry() async -> Bool {
+        guard let attest = attestor.current else { return false }
+        return await attest()
+    }
+
     public nonisolated func setPackSetIdSource(_ source: @escaping @Sendable () async -> String?) {
         packSetIdSource.set(source)
     }

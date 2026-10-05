@@ -131,8 +131,19 @@ public actor ConfigClient {
         let core = self.core
         let reacquire = self.reacquire
         let task = Task { () async throws -> MintedToken in
-            let (deviceToken, fresh) = try await MintEndpoint.mint(
-                core, recipeId: recipeId, reacquire: reacquire)
+            let deviceToken: String
+            let fresh: MintedToken
+            do {
+                (deviceToken, fresh) = try await MintEndpoint.mint(
+                    core, recipeId: recipeId, reacquire: reacquire)
+            } catch let error as PolarisError
+                where error.code == ErrorCode.attestationRequired
+            {
+                // §3.10: attest once, retry once; otherwise the typed refusal stands.
+                guard await core.attestForRetry() else { throw error }
+                (deviceToken, fresh) = try await MintEndpoint.mint(
+                    core, recipeId: recipeId, reacquire: reacquire)
+            }
             self.store(recipeId, deviceToken: deviceToken, token: fresh)
             return fresh
         }

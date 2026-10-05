@@ -138,6 +138,9 @@ let package = Package(
         .target(
             name: "PolarisKeyUpdate",
             dependencies: [
+                // The umbrella, so `import PolarisKeyUpdate` adds `client.update` and
+                // `client.packs` to `PolarisKeyClient` (the umbrella never links Sparkle).
+                "PolarisKey",
                 "PolarisKeyCore",
                 "PolarisKeyPacks",
                 // The one AppDistributor call lives in PolarisKeyPlatform (P5-05).
@@ -153,6 +156,9 @@ let package = Package(
             dependencies: [
                 "PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyConfig", "PolarisKeyIdentity",
                 "PolarisKeyRelease",
+                // Standalone and dependency-free: App Attest for `client.devices.attest()` and
+                // StoreKit 2 for `client.commerce.purchase(productID:)`.
+                "PolarisKeyPlatform",
             ],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
@@ -170,7 +176,8 @@ let package = Package(
             dependencies: [
                 "PolarisKey", "PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyConfig",
                 "PolarisKeyIdentity", "PolarisKeyUI", "PolarisKeyUpdate", "PolarisKeyRelease",
-                "PolarisKeyPacks", .product(name: "libzstd", package: "zstd"),
+                "PolarisKeyPacks", "PolarisKeyPlatform",
+                .product(name: "libzstd", package: "zstd"),
             ],
             // Bundle the SAME cross-language corpus (cases, gate-matrix, fingerprint, stage-matrix,
             // headers, config-matrix, and wire contract v4's update-matrix and outlet-matrix) the

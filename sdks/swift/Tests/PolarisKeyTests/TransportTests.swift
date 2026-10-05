@@ -282,7 +282,8 @@ final class TransportTests: XCTestCase {
         let cases: [(Int, String, ActivationResult)] = [
             (200, #"{"token":"pkeyt_x","schemaVersion":4}"#, .ok(token: "pkeyt_x", schemaVersion: 4)),
             (401, "{}", .unauthorized),
-            (404, "{}", .enrollDisabled),
+            // §3.1: an activation 404 without a code is not "enrolment disabled".
+            (404, "{}", .refused(code: "not_found", status: 404, message: nil)),
             (
                 403, #"{"error":"device_limit","limit":3,"deviceCount":5}"#,
                 .deviceLimit(limit: 3, deviceCount: 5)

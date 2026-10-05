@@ -7,68 +7,145 @@
     "tools/gen-mirrors.test.ts"
   ],
   "features": {
-    "core.verify": { "status": "implemented" },
-    "core.cache": { "status": "implemented" },
-    "core.bundle": { "status": "implemented" },
-    "core.discover": { "status": "implemented" },
-    "core.sync": { "status": "implemented" },
-    "core.local": { "status": "implemented" },
-    "core.headers": { "status": "implemented" },
-    "core.errors": { "status": "implemented" },
-    "core.caps": { "status": "implemented" },
+    "core.verify": {
+      "status": "implemented"
+    },
+    "core.cache": {
+      "status": "implemented"
+    },
+    "core.bundle": {
+      "status": "implemented"
+    },
+    "core.discover": {
+      "status": "implemented"
+    },
+    "core.sync": {
+      "status": "implemented"
+    },
+    "core.local": {
+      "status": "implemented"
+    },
+    "core.headers": {
+      "status": "implemented"
+    },
+    "core.errors": {
+      "status": "implemented"
+    },
+    "core.caps": {
+      "status": "implemented"
+    },
     "core.store": {
       "status": "implemented",
       "note": "macOS uses the data-protection keychain where entitled; an unentitled process (an unsigned CLI) keeps the file-based keychain and storeStatus() reports legacy-keychain."
     },
-    "license.gate": { "status": "implemented" },
-    "license.activate": { "status": "implemented" },
-    "license.enroll": { "status": "implemented" },
-    "license.deactivate": { "status": "implemented" },
-    "license.entitlements": { "status": "implemented" },
-    "license.channels": { "status": "implemented" },
-    "license.reregister": { "status": "implemented" },
+    "license.gate": {
+      "status": "implemented"
+    },
+    "license.activate": {
+      "status": "implemented"
+    },
+    "license.enroll": {
+      "status": "implemented"
+    },
+    "license.deactivate": {
+      "status": "implemented"
+    },
+    "license.entitlements": {
+      "status": "implemented"
+    },
+    "license.channels": {
+      "status": "implemented"
+    },
+    "license.reregister": {
+      "status": "implemented"
+    },
     "config.resolve": {
       "status": "implemented",
-      "note": "Member names compare by scalar value, but JSONValue keeps the first of two canonically equivalent names (WIRE-CONTRACT-V3 §10)."
+      "note": "Member names compare by scalar value, but JSONValue keeps the first of two canonically equivalent names (WIRE-CONTRACT-V3 \u00a710)."
     },
-    "config.list": { "status": "implemented" },
-    "config.secret": { "status": "implemented" },
-    "config.schema": { "status": "implemented" },
-    "config.mint": { "status": "implemented" },
+    "config.list": {
+      "status": "implemented"
+    },
+    "config.secret": {
+      "status": "implemented"
+    },
+    "config.schema": {
+      "status": "implemented"
+    },
+    "config.mint": {
+      "status": "implemented"
+    },
     "config.mirror": {
       "status": "implemented",
       "note": "The Swift mirror is rendered by tools/gen-mirrors.ts."
     },
-    "devices.fingerprint": { "status": "implemented" },
-    "devices.facts": { "status": "implemented" },
-    "devices.register": { "status": "implemented" },
-    "devices.manage": { "status": "implemented" },
-    "devices.report": { "status": "implemented" },
+    "devices.fingerprint": {
+      "status": "implemented"
+    },
+    "devices.facts": {
+      "status": "implemented"
+    },
+    "devices.register": {
+      "status": "implemented"
+    },
+    "devices.manage": {
+      "status": "implemented"
+    },
+    "devices.report": {
+      "status": "implemented"
+    },
     "devices.attest": {
-      "status": "planned",
-      "unowned": true,
-      "except": [{ "runtime": "macos", "reason": "runtime" }],
-      "note": "P6-02 adds DCAppAttestService (generate, attest, assert) to PolarisKeyPlatform for native hosts; no work package wires attestation into the Swift SDK client."
+      "status": "implemented",
+      "except": [
+        {
+          "runtime": "macos",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "ios",
+          "reason": "outlet"
+        }
+      ],
+      "note": "client.devices.attest() (PolarisKey/DevicesClient.swift): POST devices/attest/challenge, DCAppAttestService.attestKey over SHA-256(UTF-8(requestHash)) through PolarisKeyPlatform's AppAttestClient, POST devices/attest; the key id kept in the Keychain (account app_attest_key) and re-attested with a fresh key when a reinstall, migration or restore killed it. Registered as Core's attestor so a 403 attestation_required edge-mint or commerce claim attests once and retries once. Unsupported runtime on macOS and where App Attest does not run (the simulator); outlet on an iOS build with an embedded provisioning profile."
     },
     "identity.oidc": {
       "status": "planned",
       "unowned": true,
       "note": "Only through a host-supplied sign-in closure; no work package gives Swift its own browser sign-in."
     },
-    "identity.devicecode": { "status": "implemented" },
-    "release.changelog": { "status": "implemented" },
-    "release.download": { "status": "implemented" },
-    "release.record": { "status": "implemented" },
-    "update.check": { "status": "implemented" },
-    "update.feed": { "status": "implemented" },
-    "update.decide": { "status": "implemented" },
+    "identity.devicecode": {
+      "status": "implemented"
+    },
+    "release.changelog": {
+      "status": "implemented"
+    },
+    "release.download": {
+      "status": "implemented"
+    },
+    "release.record": {
+      "status": "implemented"
+    },
+    "update.check": {
+      "status": "implemented"
+    },
+    "update.feed": {
+      "status": "implemented"
+    },
+    "update.decide": {
+      "status": "implemented"
+    },
     "update.content": {
       "status": "implemented",
-      "note": "PolarisKeyCore's feedContent, holdsOf (stampHolds) and decideUpdate with UpdateContentInput (selectPackRows, the composition, prestage, contentBlock, packs; bootDecision gives required only for revoked required content); runUpdateCheck runs P4-13 §2.5 steps 10–14. ContentDecisionConformanceTests drives every feedContentCases and contentRows vector; UpdateClient.decide() builds the content input from update.packs."
+      "note": "PolarisKeyCore's feedContent, holdsOf (stampHolds) and decideUpdate with UpdateContentInput (selectPackRows, the composition, prestage, contentBlock, packs; bootDecision gives required only for revoked required content); runUpdateCheck runs P4-13 \u00a72.5 steps 10\u201314. ContentDecisionConformanceTests drives every feedContentCases and contentRows vector; UpdateClient.decide() builds the content input from update.packs."
     },
     "update.driver": {
       "status": "implemented",
-      "except": [{ "runtime": "ios", "reason": "outlet" }],
+      "except": [
+        {
+          "runtime": "ios",
+          "reason": "outlet"
+        }
+      ],
       "note": "Sparkle on macOS."
     },
     "update.bootguard": {
@@ -132,7 +209,9 @@
       "status": "implemented",
       "note": "update.packs.registerHandler (PackHandler: supports, check over a newly staged payload before the state commit -> pack-type-check-failed, activate with the installed payload, deactivate); files.tree, data.json and l10n.table built in (hot: versioned directory plus pointer swap); ml.model registered by the host; custom.* through registerHandler, under the same path rules."
     },
-    "packs.provides": { "status": "implemented" },
+    "packs.provides": {
+      "status": "implemented"
+    },
     "packs.type.godot.zip": {
       "status": "na",
       "runtime": ["macos", "ios"],
@@ -170,7 +249,12 @@
     "packs.transport.steam": {
       "status": "planned",
       "unowned": true,
-      "except": [{ "runtime": "ios", "reason": "runtime" }],
+      "except": [
+        {
+          "runtime": "ios",
+          "reason": "runtime"
+        }
+      ],
       "note": "P5-08 covers Godot only; macOS Swift apps have no Steam-depot transport owner."
     },
     "packs.transport.msix": {
@@ -183,16 +267,17 @@
       "runtime": ["macos", "ios"],
       "reason": "runtime"
     },
-    "ui.stages": { "status": "implemented" },
+    "ui.stages": {
+      "status": "implemented"
+    },
     "ui.kit": {
       "status": "planned",
       "unowned": true,
       "note": "PolarisLoginView only; no work package builds the rest of the Swift kit."
     },
     "commerce.receipt": {
-      "status": "planned",
-      "unowned": true,
-      "note": "P5-05's PolarisKeyPlatform target carries the StoreKit 2 client (signed JWS, appAccountToken, deduplicated Transaction.updates, finish on demand); P6-01 builds the Worker bridge and leaves the SDK side planned with no owner."
+      "status": "implemented",
+      "note": "client.commerce (PolarisKey/CommerceClient.swift): binding() and claim(store:payload:) with claimAppStore/claimSteam/claimPlay, a forced sync after a granted claim, attest-and-retry on attestation_required; purchase(productID:) runs binding, StoreKit 2 purchase(appAccountToken: bindingId), claim, finish only after the claim, sync; restore() and the Transaction.updates loop claim and finish after the claim. Without StoreKit purchase/restore answer the typed runtime N/A."
     }
   }
 }

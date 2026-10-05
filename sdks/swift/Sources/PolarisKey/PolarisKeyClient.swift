@@ -27,6 +27,7 @@ import PolarisKeyConfig
 import PolarisKeyCore
 import PolarisKeyIdentity
 import PolarisKeyLicense
+import PolarisKeyPlatform
 import PolarisKeyRelease
 
 public struct PolarisKeyClientOptions: Sendable {
@@ -39,19 +40,33 @@ public struct PolarisKeyClientOptions: Sendable {
     /// traffic and background wakeups to every already-shipped integration. Call `close()` to
     /// stop the timer.
     public let refreshIntervalSeconds: Double?
+    /// The pinned release-signing keys (`update.pinnedReleaseKeys`), for `client.update` (import
+    /// `PolarisKeyUpdate`) and its packs. `PolarisKeyClient.fromBundle()` reads them from
+    /// `PolarisKey.plist`.
+    public let pinnedReleaseKeys: TrustSet
+    /// App Attest seams for `client.devices.attest()`; the defaults are the system's.
+    public let attest: AttestOptions
+    /// StoreKit behind its seam, for `client.commerce`; nil uses StoreKit 2 where available.
+    public let storeClient: (any StoreClient)?
 
     public init(
         core: CoreOptions,
         license: LicenseClientOptions = LicenseClientOptions(),
         config: ConfigClientOptions = ConfigClientOptions(),
         probes: [ProbeDeclaration] = [],
-        refreshIntervalSeconds: Double? = nil
+        refreshIntervalSeconds: Double? = nil,
+        pinnedReleaseKeys: TrustSet = [:],
+        attest: AttestOptions = AttestOptions(),
+        storeClient: (any StoreClient)? = nil
     ) {
         self.core = core
         self.license = license
         self.config = config
         self.probes = probes
         self.refreshIntervalSeconds = refreshIntervalSeconds
+        self.pinnedReleaseKeys = pinnedReleaseKeys
+        self.attest = attest
+        self.storeClient = storeClient
     }
 
     /// The common case, spelled without nesting: one product, one version, one pin set.
@@ -69,8 +84,14 @@ public struct PolarisKeyClientOptions: Sendable {
         fingerprint: Bool = true,
         probes: [ProbeDeclaration] = [],
         refreshIntervalSeconds: Double? = nil,
-        requestTimeoutSeconds: Double = 15
+        requestTimeoutSeconds: Double = 15,
+        pinnedReleaseKeys: TrustSet = [:],
+        attest: AttestOptions = AttestOptions(),
+        storeClient: (any StoreClient)? = nil
     ) {
+        self.pinnedReleaseKeys = pinnedReleaseKeys
+        self.attest = attest
+        self.storeClient = storeClient
         self.core = CoreOptions(
             productSlug: productSlug, baseUrl: baseUrl, version: version, channel: channel,
             pinnedKeys: pinnedKeys, trustRefresh: trustRefresh, store: store,
@@ -110,11 +131,20 @@ public struct DeviceInfo: Sendable, Equatable {
     /// Epoch MILLIseconds.
     public let lastVerifiedAt: Int?
     public let label: String?
+    /// The server's view of the device (nil for this device offline).
+    public let platform: String?
+    public let appVersion: String?
+    /// Epoch seconds the server last saw the device.
+    public let lastSeen: Int?
 
     public init(
         id: String, current: Bool, status: LicenseStatus, licenseId: String? = nil,
-        profile: DocProfile? = nil, lastVerifiedAt: Int? = nil, label: String? = nil
+        profile: DocProfile? = nil, lastVerifiedAt: Int? = nil, label: String? = nil,
+        platform: String? = nil, appVersion: String? = nil, lastSeen: Int? = nil
     ) {
+        self.platform = platform
+        self.appVersion = appVersion
+        self.lastSeen = lastSeen
         self.id = id
         self.current = current
         self.status = status
@@ -135,6 +165,15 @@ public actor PolarisKeyClient {
     public nonisolated let release: ReleaseClient
     /// Device-code sign-in. Refuses with `service-unavailable` unless the product runs Identity.
     public nonisolated let identity: IdentityClient
+    /// The device roster and App Attest (`attest()`).
+    public nonisolated let devices: DevicesClient
+    /// Store purchases to licence flags: binding, claim, and the StoreKit one-calls.
+    public nonisolated let commerce: CommerceClient
+    /// The pinned release keys this client was built with (`client.update` reads them).
+    public nonisolated let pinnedReleaseKeys: TrustSet
+    /// Per-module state the other targets attach (`client.update` in PolarisKeyUpdate), keyed by
+    /// the attaching type. Internal plumbing for the SDK's own modules.
+    public nonisolated let attachments = LockedValue<[ObjectIdentifier: any Sendable]>([:])
 
     private let probes: [ProbeDeclaration]
     /// The capability engine `supports()` reads (P1b-10): the generated table, this build's
@@ -165,6 +204,14 @@ public actor PolarisKeyClient {
                 fingerprintEnabled: options.license.fingerprint)
         }
         self.release = ReleaseClient(core: core)
+        self.pinnedReleaseKeys = options.pinnedReleaseKeys
+        self.commerce = CommerceClient(
+            core: core, store: options.storeClient ?? defaultStoreClient()
+        ) {
+            await PolarisKeyClient.syncAfterAcquisition(
+                core: core, probes: options.probes, engine: engine,
+                fingerprintEnabled: options.license.fingerprint)
+        }
         self.probes = options.probes
         self.capabilityEngine = engine
         self.fingerprintEnabled = options.license.fingerprint
@@ -179,6 +226,13 @@ public actor PolarisKeyClient {
             await PolarisKeyClient.syncAfterAcquisition(
                 core: core, probes: options.probes, engine: engine,
                 fingerprintEnabled: options.license.fingerprint)
+        }
+        let devices = DevicesClient(core: core, license: license, attest: options.attest)
+        self.devices = devices
+        // §3.10: where attestation can run, an `attestation_required` refusal attests once and
+        // retries once. Elsewhere the caller gets the typed refusal.
+        if devices.attestSupport().isSupported {
+            core.setAttestor { await devices.attest().isAttested }
         }
     }
 
@@ -421,53 +475,21 @@ public actor PolarisKeyClient {
     }
 
     public func currentDevice() async -> DeviceInfo {
-        let cache = await core.cache()
-        return DeviceInfo(
-            id: await core.deviceId,
-            current: true,
-            status: await license.status().status,
-            licenseId: cache.license?.doc.licenseId,
-            profile: cache.license?.doc.profile,
-            lastVerifiedAt: cache.lastVerifiedAt)
+        await devices.current()
     }
 
-    /// The device roster, blended with this device's locally-derived state.
-    ///
-    /// Without a credential there is no roster to fetch, so the answer is THIS DEVICE ALONE —
-    /// which is the honest offline answer, not an error. The same is true in local-only mode.
+    /// The device roster (`devices.list()`).
     public func listDevices() async -> [DeviceInfo] {
-        let current = await currentDevice()
-        guard let roster = try? await core.listDevices(), !roster.isEmpty else {
-            return [current]
-        }
-        return roster.map { device in
-            let isCurrent = device.current ?? (device.id == current.id)
-            return DeviceInfo(
-                id: device.id,
-                current: isCurrent,
-                // Only THIS device's status is derived from a signature we checked; another
-                // device's is the server's opinion, and inventing a gate state for it would be
-                // reporting a decision we did not make.
-                status: isCurrent ? current.status : .ok,
-                licenseId: device.licenseId ?? (isCurrent ? current.licenseId : nil),
-                profile: isCurrent ? current.profile : nil,
-                lastVerifiedAt: isCurrent ? current.lastVerifiedAt : nil,
-                label: device.label)
-        }
+        await devices.list()
     }
 
     public func renameDevice(_ deviceId: String, label: String?) async throws {
-        try await core.renameDevice(deviceId, label: label)
+        try await devices.rename(deviceId, label: label)
     }
 
-    /// Deauthorizing THIS device is a full local deactivation; any other device is a roster
-    /// operation that needs a credential.
+    /// Deauthorizing THIS device is a full local deactivation (`devices.deauthorize`).
     public func deauthorizeDevice(_ deviceId: String) async throws {
-        if deviceId == (await core.deviceId) {
-            try await license.deactivate()
-            return
-        }
-        try await core.deauthorizeDevice(deviceId)
+        try await devices.deauthorize(deviceId)
     }
 
     /// The last persistence failure, for a host that wants to surface it.
@@ -556,7 +578,9 @@ extension PolarisKeyClient {
         return try await create(
             options: PolarisKeyClientOptions(
                 core: local, license: options.license, config: options.config,
-                probes: options.probes, refreshIntervalSeconds: nil))
+                probes: options.probes, refreshIntervalSeconds: nil,
+                pinnedReleaseKeys: options.pinnedReleaseKeys, attest: options.attest,
+                storeClient: options.storeClient))
     }
 
     /// A local-only client provisioned from an offline activation bundle in one step.

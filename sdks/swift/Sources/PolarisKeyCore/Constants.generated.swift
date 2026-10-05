@@ -1294,7 +1294,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "devices.register": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.manage": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.report": CapabilityRow(status: "implemented", service: "core", na: []),
-    "devices.attest": CapabilityRow(status: "planned", service: "core", na: [CapabilityNa(runtime: "macos", reason: "runtime")]),
+    "devices.attest": CapabilityRow(status: "implemented", service: "core", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "outlet")]),
     "identity.oidc": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.devicecode": CapabilityRow(status: "implemented", service: "identity", na: []),
     "release.changelog": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -1333,8 +1333,8 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "packs.transport.flatpak": CapabilityRow(status: "na", service: "distribution", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "ui.stages": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.kit": CapabilityRow(status: "planned", service: "sdk", na: []),
-    "commerce.receipt": CapabilityRow(status: "planned", service: "license", na: []),
+    "commerce.receipt": CapabilityRow(status: "implemented", service: "license", na: []),
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "f6904f8c6654e0055e1f2b307fde9220c3ac62ac7c7712470dc31823822178fe"
+public let CAPABILITY_DIGEST = "0f334bf7475f75767697319717363309254b59ad34d9613e36f2e231642aa219"
