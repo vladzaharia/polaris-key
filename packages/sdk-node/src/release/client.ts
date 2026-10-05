@@ -15,6 +15,17 @@ import { PolarisError } from "@polaris-key/client-core";
 import { ErrorCode, Feature } from "../constants.generated.js";
 import type { CoreContext } from "../core/context.js";
 import type { TokenManager } from "../core/token.js";
+import {
+  serviceEndpoint,
+  type ProductDiscoveryDocument,
+} from "../discovery.js";
+import type { UpdateClient } from "../update/client.js";
+import {
+  releaseFetch,
+  type FetchTarget,
+  type ReleaseFetchOptions,
+  type ReleaseFetchResult,
+} from "./fetch.js";
 
 /** One published release, as `GET /<p>/release/changelog` reports it. */
 export interface ChangelogEntry {
@@ -30,7 +41,39 @@ export class ReleaseClient {
   constructor(
     private readonly ctx: CoreContext,
     private readonly tokens: TokenManager,
+    private readonly discovery: () => ProductDiscoveryDocument | null = () =>
+      null,
+    private readonly update: () => UpdateClient | null = () => null,
   ) {}
+
+  /** A distribution endpoint from discovery, else Release's alias, else null. */
+  private endpoint(name: string): string | null {
+    const doc = this.discovery();
+    return (
+      serviceEndpoint(doc, "distribution", name) ??
+      serviceEndpoint(doc, "release", name)
+    );
+  }
+
+  /**
+   * Download one build to `opts.to` and verify it against its signed release record (SDK parity
+   * pass §3.6): resumable, bearer-authenticated on the control plane's origin, and never leaving
+   * a partial or unverified file at `to`. `target` is a `binary` decision, a record hash, or a
+   * verified record. Needs `update.pinnedReleaseKeys` for the record.
+   */
+  fetch(
+    target: FetchTarget,
+    opts: ReleaseFetchOptions,
+  ): Promise<ReleaseFetchResult> {
+    this.ctx.requireService("release", Feature.releaseDownload);
+    const update = this.update();
+    if (!update)
+      throw new PolarisError(
+        ErrorCode.notConfigured,
+        "release.fetch needs the update client; construct it through PolarisKeyClient.",
+      );
+    return releaseFetch(this.ctx, this.tokens, update, target, opts);
+  }
 
   /**
    * `GET /<p>/release/changelog` — the published release list, newest first.
@@ -45,13 +88,15 @@ export class ReleaseClient {
     return Array.isArray(body.entries) ? body.entries : [];
   }
 
-  /** The canonical install-script URL, for a host that wants to print it rather than run it. */
+  /** The canonical install-script URL, for a host that wants to print it rather than run it:
+   *  discovery's `distribution.endpoints.install` (else Release's), falling back to the built
+   *  path before discovery has loaded. */
   installUrl(): string {
     this.ctx.requireService("release", Feature.releaseDownload);
-    return this.ctx.url("release/install.sh");
+    return this.endpoint("install") ?? this.ctx.url("release/install.sh");
   }
 
-  /** `GET /<p>/release/dl/:version/:binary-:arch` — the artifact URL (`?checksum=sha256`
+  /** `GET <download>/:version/:binary-:arch` — the artifact URL (`?checksum=sha256`
    *  supported by the server). Built, not fetched: the caller streams it themselves. */
   downloadUrl(
     version: string,
@@ -61,10 +106,12 @@ export class ReleaseClient {
   ): string {
     this.ctx.requireService("release", Feature.releaseDownload);
     const name = `${binary}-${arch}${opts.dmg ? ".dmg" : ""}`;
+    // Discovery's `distribution.endpoints.download` (else Release's), else the built path.
+    const base = (
+      this.endpoint("download") ?? this.ctx.url("release/dl")
+    ).replace(/\/+$/, "");
     const url = new URL(
-      this.ctx.url(
-        `release/dl/${encodeURIComponent(version)}/${encodeURIComponent(name)}`,
-      ),
+      `${base}/${encodeURIComponent(version)}/${encodeURIComponent(name)}`,
     );
     if (opts.checksum) url.searchParams.set("checksum", "sha256");
     return url.toString();
@@ -107,3 +154,5 @@ export class ReleaseClient {
     return res;
   }
 }
+
+export type { FetchTarget, ReleaseFetchOptions, ReleaseFetchResult };

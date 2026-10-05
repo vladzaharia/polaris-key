@@ -54,6 +54,14 @@
     "./commerce": {
       "types": "./dist/commerce/index.d.ts",
       "default": "./dist/commerce/index.js"
+    },
+    "./distribution": {
+      "types": "./dist/distribution/client.d.ts",
+      "default": "./dist/distribution/client.js"
+    },
+    "./qr": {
+      "types": "./dist/qr/index.d.ts",
+      "default": "./dist/qr/index.js"
     }
   },
   "files": [

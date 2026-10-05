@@ -109,6 +109,22 @@ export {
 } from "./devices/facts.js";
 export { ReleaseClient, type ChangelogEntry } from "./release/client.js";
 export {
+  type FetchTarget,
+  type ReleaseFetchOptions,
+  type ReleaseFetchResult,
+} from "./release/fetch.js";
+export {
+  DistributionClient,
+  pickPlatform,
+  type DownloadAction,
+  type DownloadBuild,
+  type DownloadModel,
+  type DownloadPlatformGroup,
+  type ThisPlatform,
+} from "./distribution/client.js";
+// QR codes for device-code sign-in (§3.12).
+export { qr, encodeQr, qrRows, type QrCode } from "./qr/index.js";
+export {
   CommerceClient,
   type BindingResult,
   type ClaimResult,
@@ -124,6 +140,8 @@ export {
   type UpdateClientOptions,
   type UpdateDecideOptions,
   type VersionCheck,
+  type FeedKind,
+  type FeedUrl,
 } from "./update/client.js";
 // The boot stage machine (`ui.stages`, client-core) and the one-call boot over it (§3.4).
 export {

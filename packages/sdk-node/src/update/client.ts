@@ -89,6 +89,7 @@ import {
   type Arch,
   type Platform,
 } from "../constants.generated.js";
+import type { Unsupported } from "@polaris-key/client-core";
 import type { CacheManager } from "../core/cache.js";
 import type { CoreContext } from "../core/context.js";
 import type { TokenManager } from "../core/token.js";
@@ -99,9 +100,21 @@ import { UpdateJournal } from "./journal.js";
 import { BootGuard, type BootAttempt } from "./bootguard.js";
 import {
   appcastUrlFrom,
+  serviceEndpoint,
   updateEndpointsFrom,
   type ProductDiscoveryDocument,
 } from "../discovery.js";
+
+/** The native-updater feeds discovery publishes (§3.7). */
+export type FeedKind =
+  | "appcast"
+  | "winsparkle"
+  | "velopack"
+  | "appInstaller"
+  | "zsync";
+
+/** `update.feedUrl()`: the URL, or why there is none. */
+export type FeedUrl = { supported: true; url: string } | Unsupported;
 
 export interface VersionCheck {
   /** The newest version on the requested channel. */
@@ -622,6 +635,61 @@ export class UpdateClient {
     return appcastUrlFrom(doc, opts);
   }
 
+  /**
+   * The URL a native updater polls (SDK parity pass §3.7, proposed id `update.feeds`), expanded
+   * from discovery's `update.endpoints` templates: `appcast` (Sparkle; the channel sibling for a
+   * non-stable channel), `winsparkle`, `velopack` (needs `velopackChannel`, e.g. `win-x64`),
+   * `appInstaller` and `zsync` (needs `buildId`). Loads discovery when this session has not. A
+   * product that publishes no such template answers the typed `Unsupported` (`reason: product`).
+   */
+  async feedUrl(
+    kind: FeedKind,
+    opts: {
+      channel?: string;
+      velopackChannel?: string;
+      buildId?: string;
+      arch?: string;
+    } = {},
+  ): Promise<FeedUrl> {
+    await this.ensureDiscovery();
+    const doc = this.discovery();
+    const channel = opts.channel ?? this.ctx.channel;
+    const unsupported = (detail: string): FeedUrl => ({
+      supported: false,
+      feature: Feature.updateDriver,
+      reason: "product",
+      detail,
+    });
+    if (!doc) return unsupported("discovery could not be loaded");
+    if (kind === "appcast") {
+      const url = appcastUrlFrom(doc, {
+        channel,
+        ...(opts.arch ? { arch: opts.arch } : {}),
+      });
+      return url
+        ? { supported: true, url }
+        : unsupported("the product publishes no Sparkle appcast");
+    }
+    const template = serviceEndpoint(doc, "update", kind);
+    if (!template) return unsupported(`the product publishes no ${kind} feed`);
+    const values: Record<string, string> = { channel };
+    if (template.includes("{velopackChannel}")) {
+      if (!opts.velopackChannel)
+        return unsupported(
+          "velopack needs velopackChannel (win, osx-arm64, …)",
+        );
+      values.velopackChannel = opts.velopackChannel;
+    }
+    if (template.includes("{buildId}")) {
+      if (!opts.buildId) return unsupported("zsync needs the AppImage buildId");
+      values.buildId = opts.buildId;
+    }
+    return {
+      supported: true,
+      url: expand(template, this.ctx.baseUrl, values).toString(),
+    };
+  }
+
   // ── Wire v4 ───────────────────────────────────────────────────────────────────────────
 
   /**
@@ -680,6 +748,16 @@ export class UpdateClient {
       selector: version,
       buildId,
     }).toString();
+  }
+
+  /** Load discovery when this session has not (a no-op when it has, or cannot). */
+  async ensureDiscovery(): Promise<void> {
+    if (this.discovery() || !this.discoverNow) return;
+    try {
+      await this.discoverNow();
+    } catch (e) {
+      if (e instanceof PolarisError && e.code === ErrorCode.localOnly) throw e;
+    }
   }
 
   /**
