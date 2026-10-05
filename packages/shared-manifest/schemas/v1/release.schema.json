@@ -786,7 +786,7 @@
       }
     },
     "packageDeliverable": {
-      "description": "A package deliverable (F-03, plans/F-01.md §3.1): one package a package feed on pkg.plrs.im serves, in one ecosystem, under a name in that ecosystem's grammar (expressed below per ecosystem). Its artifacts map entry ids to the file-name globs pkey release publish packs. It takes none of the app's or a pack's fields. A product may declare packages without deliverables.app. The validator additionally requires, which JSON Schema does not express here: no two package deliverables share an ecosystem and a normalised name (PEP 503 for PyPI, case-insensitive for npm, Swift and Maven: package_name_collision), and at most 64 package deliverables (too_many_package_deliverables). Declaring a package never enables a feed: feed settings are operator-owned.",
+      "description": "A package deliverable (F-03, plans/F-01.md §3.1): one package a package feed on pkg.plrs.im serves, in one ecosystem, under a name in that ecosystem's grammar (expressed below per ecosystem). Its artifacts map entry ids to the file-name globs pkey release publish packs. It takes none of the app's or a pack's fields. A product may declare packages without deliverables.app. The validator additionally requires, which JSON Schema does not express here: no two package deliverables share an ecosystem and a normalised name (PEP 503 for PyPI, case-insensitive for npm, Swift and Maven, case-insensitive with '-' and '_' equal for Cargo: package_name_collision), and at most 64 package deliverables (too_many_package_deliverables). Declaring a package never enables a feed: feed settings are operator-owned.",
       "type": "object",
       "required": ["kind", "ecosystem", "name", "artifacts"],
       "properties": {
@@ -794,7 +794,7 @@
           "const": "package"
         },
         "ecosystem": {
-          "enum": ["npm", "pypi", "swift", "maven", "oci", "godot"]
+          "enum": ["npm", "pypi", "swift", "maven", "oci", "godot", "cargo"]
         },
         "name": {
           "type": "string",
@@ -953,6 +953,24 @@
             "properties": {
               "name": {
                 "pattern": "^[a-z0-9_]{1,64}$",
+                "maxLength": 64
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "ecosystem": {
+                "const": "cargo"
+              }
+            },
+            "required": ["ecosystem"]
+          },
+          "then": {
+            "properties": {
+              "name": {
+                "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$",
                 "maxLength": 64
               }
             }

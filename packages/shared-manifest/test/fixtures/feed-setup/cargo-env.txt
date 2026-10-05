@@ -1,0 +1,12 @@
+# Cargo: name the feed as a registry (.cargo/config.toml)
+# A sparse index (Cargo 1.68 and later). Nothing comes from it unless a dependency names it with registry =.
+[registries.acme]
+index = "sparse+https://pkg.plrs.im/cargo/acme/"
+
+# Cargo: the registry token
+# Cargo 1.74 and later send it on every request to a feed whose config.json says auth-required.
+export CARGO_REGISTRIES_ACME_TOKEN="$PKEY_REGISTRY_TOKEN"
+
+# Depend on the crate from this registry (Cargo.toml)
+[dependencies]
+acme-sdk = { version = "*", registry = "acme" }

@@ -1438,7 +1438,10 @@ function validatePackageDescriptor(
       `package.name must be a ${eco} package name.`,
     );
   if (typeof d.version === "string") {
-    if ((eco === "npm" || eco === "swift") && !SEMVER_RE.test(d.version))
+    if (
+      (eco === "npm" || eco === "swift" || eco === "cargo") &&
+      !SEMVER_RE.test(d.version)
+    )
       err(
         "/version",
         "invalid_descriptor",
@@ -1624,8 +1627,10 @@ function validatePackageDescriptor(
               : eco === "oci"
                 ? count("oci-manifest") + count("oci-index") >= 1 ||
                   "at least one oci-manifest or oci-index"
-                : (count("godot-zip") === 1 && count("godot-icon") <= 1) ||
-                  "exactly one godot-zip and at most one godot-icon";
+                : eco === "cargo"
+                  ? count("crate") === 1 || "exactly one crate"
+                  : (count("godot-zip") === 1 && count("godot-icon") <= 1) ||
+                    "exactly one godot-zip and at most one godot-icon";
     if (composition !== true && types.length === files.length)
       err(
         "/package/files",
