@@ -333,6 +333,8 @@ export async function handleReleaseAdmin(
     slug,
     updated: result.updated,
     ...(result.refused ? { refused: result.refused } : {}),
+    // ST-01b: what it left alone because the console claimed it.
+    ...(result.claimed ? { claimed: result.claimed } : {}),
     ...(result.packSets ? { packSets: result.packSets } : {}),
   });
 }

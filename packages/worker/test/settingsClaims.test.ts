@@ -342,6 +342,21 @@ describe("a console edit to a claimable field survives a following resync (ST-01
     expect(limit.summary).toMatch(/3 → 7/);
   });
 
+  it("the console's resync route answers what it kept as claimed", async () => {
+    const ctx = await linked();
+    await call(ctx, "PATCH", "", { name: "Mine" });
+    // The manual resync route fetches with the global fetch; serve it the stubbed GitHub.
+    const real = globalThis.fetch;
+    globalThis.fetch = github({ name: "Acme Two" }) as typeof fetch;
+    try {
+      const res = await call(ctx, "POST", "release/resync");
+      expect(res.status).toBe(200);
+      expect(res.json.claimed).toEqual(["core.name"]);
+    } finally {
+      globalThis.fetch = real;
+    }
+  });
+
   it("the product view lists the claims", async () => {
     const ctx = await linked();
     await call(ctx, "PATCH", "", { defaultDeviceLimit: 9, name: "Mine" });
