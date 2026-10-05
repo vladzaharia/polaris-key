@@ -76,8 +76,16 @@ export {
 } from "./components/LicenseGate.js";
 export {
   PolarisLogin,
+  openManageUrl,
   type PolarisLoginProps,
 } from "./components/PolarisLogin.js";
+// The refusal link (PX-W8): validate `manageUrl`, add the app's return URL or the key fragment.
+export {
+  isManageUrl,
+  readManageUrl,
+  withManageKey,
+  withManageReturn,
+} from "@polaris-key/client-core";
 export {
   PolarisLogout,
   type PolarisLogoutProps,

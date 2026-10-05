@@ -166,10 +166,15 @@ export const licenseDeviceLimit: Scenario = {
         entitlements: { deviceLimit: enforced(1) },
       });
       // Another device takes the only seat, outside the recording.
-      const occupied = await setup(world, "POST", `/${PRODUCT}/license/activate`, {
-        authorization: `Bearer ${key}`,
-        "x-pkey-device": OCCUPANT,
-      });
+      const occupied = await setup(
+        world,
+        "POST",
+        `/${PRODUCT}/license/activate`,
+        {
+          authorization: `Bearer ${key}`,
+          "x-pkey-device": OCCUPANT,
+        },
+      );
       expect(occupied.status).toBe(200);
 
       const r = new TranscriptRecorder({

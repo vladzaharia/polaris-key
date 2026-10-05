@@ -25,6 +25,7 @@ import {
 } from "../core/adapter.js";
 import { ErrorCode, Feature } from "../constants.generated.js";
 import type { CapabilityContext } from "@polaris-key/client-core";
+import { isManageUrl } from "@polaris-key/client-core";
 import { createStore, type Store } from "../core/store.js";
 import {
   PolarisError,
@@ -315,7 +316,17 @@ export class DesktopAdapter implements PolarisAdapter {
             : r.kind === "unauthorized"
               ? "That key was not accepted."
               : r.message;
-        throw new PolarisError("sign-in-failed", msg);
+        // PX-W8: forward the refusal link, re-validated here because the bridge is a
+        // process boundary.
+        throw new PolarisError(
+          "sign-in-failed",
+          msg,
+          r.kind === "device-limit" ? "device_limit" : undefined,
+          undefined,
+          r.kind === "device-limit" && isManageUrl(r.manageUrl)
+            ? r.manageUrl
+            : undefined,
+        );
       }
       this.apply(await this.bridge.getSyncState(), {
         busy: noBusy(),

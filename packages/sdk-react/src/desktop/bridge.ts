@@ -97,7 +97,13 @@ export type BridgeOidcPoll =
 /** The result of submitting a typed key (mirrors @polaris-key/node's ActivationResult). */
 export type BridgeActivation =
   | { kind: "ok" }
-  | { kind: "device-limit"; limit?: number; deviceCount?: number }
+  /** `manageUrl` (PX-W8): the portal link the host's Node SDK read off the refusal. */
+  | {
+      kind: "device-limit";
+      limit?: number;
+      deviceCount?: number;
+      manageUrl?: string;
+    }
   | { kind: "unauthorized" }
   | { kind: "error"; message: string };
 

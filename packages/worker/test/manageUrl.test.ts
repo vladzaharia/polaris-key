@@ -28,7 +28,11 @@ const LIMIT_ONE = {
   },
 };
 
-function activateReq(key: string, device: string, extra: Record<string, string> = {}) {
+function activateReq(
+  key: string,
+  device: string,
+  extra: Record<string, string> = {},
+) {
   return mkReq("POST", {
     authorization: `Bearer ${key}`,
     "x-pkey-device": device,
@@ -104,14 +108,23 @@ describe("buildManageUrl", () => {
     env = makeEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
   });
-  const req = mkReq("POST", { "x-pkey-platform": "macos", "x-pkey-arch": "arm64" });
+  const req = mkReq("POST", {
+    "x-pkey-platform": "macos",
+    "x-pkey-arch": "arm64",
+  });
 
   it("an attached licence opens the free-device flow", async () => {
     expect(
-      await buildManageUrl(env, db, req, { slug: "djdl" }, {
-        kind: "device_limit",
-        license: { id: "lic_1", account_id: "acct_x" },
-      }),
+      await buildManageUrl(
+        env,
+        db,
+        req,
+        { slug: "djdl" },
+        {
+          kind: "device_limit",
+          license: { id: "lic_1", account_id: "acct_x" },
+        },
+      ),
     ).toBe(
       "https://key.plrs.im/#/p/djdl/free-device?license=lic_1&for=macOS%20arm64",
     );
@@ -119,10 +132,16 @@ describe("buildManageUrl", () => {
 
   it("a floating licence opens activate, then free-device", async () => {
     expect(
-      await buildManageUrl(env, db, req, { slug: "djdl" }, {
-        kind: "device_limit",
-        license: { id: "lic_1", account_id: null },
-      }),
+      await buildManageUrl(
+        env,
+        db,
+        req,
+        { slug: "djdl" },
+        {
+          kind: "device_limit",
+          license: { id: "lic_1", account_id: null },
+        },
+      ),
     ).toBe(
       "https://key.plrs.im/activate?product=djdl&next=free-device&for=macOS%20arm64",
     );
@@ -130,17 +149,29 @@ describe("buildManageUrl", () => {
 
   it("the key-entry refusal opens activate", async () => {
     expect(
-      await buildManageUrl(env, db, req, { slug: "djdl" }, {
-        kind: "key_entry_limit",
-      }),
+      await buildManageUrl(
+        env,
+        db,
+        req,
+        { slug: "djdl" },
+        {
+          kind: "key_entry_limit",
+        },
+      ),
     ).toBe("https://key.plrs.im/activate?product=djdl");
   });
 
   it("never carries the account id, and drops `for` with no metadata", async () => {
-    const url = await buildManageUrl(env, db, mkReq("POST", {}), { slug: "djdl" }, {
-      kind: "device_limit",
-      license: { id: "lic_1", account_id: "acct_secret" },
-    });
+    const url = await buildManageUrl(
+      env,
+      db,
+      mkReq("POST", {}),
+      { slug: "djdl" },
+      {
+        kind: "device_limit",
+        license: { id: "lic_1", account_id: "acct_secret" },
+      },
+    );
     expect(url).toBe("https://key.plrs.im/#/p/djdl/free-device?license=lic_1");
     expect(url).not.toContain("acct_secret");
   });
@@ -148,17 +179,29 @@ describe("buildManageUrl", () => {
   it("is omitted while the portal is off", async () => {
     await setPortal(db, false);
     expect(
-      await buildManageUrl(env, db, req, { slug: "djdl" }, {
-        kind: "device_limit",
-        license: { id: "lic_1" },
-      }),
+      await buildManageUrl(
+        env,
+        db,
+        req,
+        { slug: "djdl" },
+        {
+          kind: "device_limit",
+          license: { id: "lic_1" },
+        },
+      ),
     ).toBeUndefined();
     await setPortal(db, true);
     expect(
-      await buildManageUrl(env, db, req, { slug: "djdl" }, {
-        kind: "device_limit",
-        license: { id: "lic_1" },
-      }),
+      await buildManageUrl(
+        env,
+        db,
+        req,
+        { slug: "djdl" },
+        {
+          kind: "device_limit",
+          license: { id: "lic_1" },
+        },
+      ),
     ).toBeDefined();
   });
 });
@@ -177,7 +220,8 @@ describe("device_limit carries manageUrl", () => {
   it("on activate, floating then attached, and not with the portal off", async () => {
     const { key, licenseId } = await seedLicenseWithKey(db, "djdl", LIMIT_ONE);
     expect(
-      (await handleActivate(activateReq(key, "dev-1"), env, db, product, NOW)).status,
+      (await handleActivate(activateReq(key, "dev-1"), env, db, product, NOW))
+        .status,
     ).toBe(200);
     const meta = { "x-pkey-platform": "linux", "x-pkey-arch": "x86_64" };
 
@@ -215,7 +259,13 @@ describe("device_limit carries manageUrl", () => {
     );
 
     await setPortal(db, false);
-    const off = await handleActivate(activateReq(key, "dev-2"), env, db, product, NOW);
+    const off = await handleActivate(
+      activateReq(key, "dev-2"),
+      env,
+      db,
+      product,
+      NOW,
+    );
     const offBody = (await off.json()) as Record<string, unknown>;
     expect(offBody.error).toBe("device_limit");
     expect("manageUrl" in offBody).toBe(false);
@@ -236,7 +286,8 @@ describe("device_limit carries manageUrl", () => {
   it("on session/license (the browser key entry)", async () => {
     const { key } = await seedLicenseWithKey(db, "djdl", LIMIT_ONE);
     expect(
-      (await handleActivate(activateReq(key, "dev-1"), env, db, product, NOW)).status,
+      (await handleActivate(activateReq(key, "dev-1"), env, db, product, NOW))
+        .status,
     ).toBe(200);
     const res = await handleBrowserSessionLicense(
       new Request("https://key.plrs.im/djdl/identity/session/license", {

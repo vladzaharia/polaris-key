@@ -30,7 +30,10 @@ import {
 } from "@polaris-key/protocol/license";
 import type { Db } from "../db/types.js";
 import type { Env } from "../env.js";
-import { normalizeArchHeader, normalizePlatformHeader } from "./clientMetadata.js";
+import {
+  normalizeArchHeader,
+  normalizePlatformHeader,
+} from "./clientMetadata.js";
 import { HEADER_ARCH, HEADER_PLATFORM } from "@polaris-key/protocol/core";
 
 export type ManageRefusal = "device_limit" | "key_entry_limit";
@@ -73,7 +76,10 @@ export function manageForLabel(req: Request): string | null {
   );
   const parts: string[] = [];
   if (platform) {
-    const named = Object.prototype.hasOwnProperty.call(PLATFORM_LABELS, platform)
+    const named = Object.prototype.hasOwnProperty.call(
+      PLATFORM_LABELS,
+      platform,
+    )
       ? PLATFORM_LABELS[platform]!
       : cleanLabelPart(platform);
     if (named) parts.push(named);

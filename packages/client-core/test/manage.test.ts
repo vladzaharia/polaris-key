@@ -68,7 +68,10 @@ describe("withManageReturn", () => {
 
   it("replaces an earlier return, and adds a query to a route without one", () => {
     expect(
-      withManageReturn("https://key.plrs.im/#/p/djdl/free-device?return=old", "new"),
+      withManageReturn(
+        "https://key.plrs.im/#/p/djdl/free-device?return=old",
+        "new",
+      ),
     ).toBe("https://key.plrs.im/#/p/djdl/free-device?return=new");
     expect(
       withManageReturn("https://key.plrs.im/#/p/djdl/free-device", "new"),

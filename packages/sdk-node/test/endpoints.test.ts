@@ -177,12 +177,24 @@ describe("activateWithKey — POST /<p>/license/activate", () => {
       "https://key.plrs.im/activate?product=djdl&next=free-device&for=Linux%20x86_64";
     for (const body of [
       { error: "device_limit", limit: 1, deviceCount: 1, manageUrl: url },
-      { error: { code: "device_limit", limit: 1, deviceCount: 1, manageUrl: url } },
+      {
+        error: {
+          code: "device_limit",
+          limit: 1,
+          deviceCount: 1,
+          manageUrl: url,
+        },
+      },
     ]) {
       const { impl } = fakeFetch([{ status: 403, json: body }]);
       expect(
         await activateWithKey(await makeCtx(impl), "pkey_djdl_AAA", null),
-      ).toEqual({ kind: "device-limit", limit: 1, deviceCount: 1, manageUrl: url });
+      ).toEqual({
+        kind: "device-limit",
+        limit: 1,
+        deviceCount: 1,
+        manageUrl: url,
+      });
     }
     const { impl } = fakeFetch([
       {

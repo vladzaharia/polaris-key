@@ -59,6 +59,7 @@ import {
   effectiveNow,
   highWaterMark,
   isValidHostOutlet,
+  readManageUrl,
   reloadFeeds,
   resolveUpdateOutlet,
   type DetectedOutlet,
@@ -732,6 +733,8 @@ export class BrowserAdapter implements PolarisAdapter {
       }
       if (res.status === 403) {
         let message = `activation ${res.status}`;
+        let wireCode: string | undefined;
+        let manageUrl: string | undefined;
         try {
           const body = (await res.json()) as {
             error?: string | { code?: string; message?: string };
@@ -739,6 +742,11 @@ export class BrowserAdapter implements PolarisAdapter {
           };
           const code =
             typeof body.error === "string" ? body.error : body.error?.code;
+          if (code === "device_limit") {
+            wireCode = code;
+            // PX-W8: the portal link that frees a seat, validated; absent from older Workers.
+            manageUrl = readManageUrl(body);
+          }
           message =
             code === "device_limit"
               ? "This license has reached its device limit."
@@ -750,7 +758,13 @@ export class BrowserAdapter implements PolarisAdapter {
         } catch {
           // Keep the generic message when the response is not JSON.
         }
-        throw new PolarisError("sign-in-failed", message);
+        throw new PolarisError(
+          "sign-in-failed",
+          message,
+          wireCode,
+          undefined,
+          manageUrl,
+        );
       }
       if (!res.ok) {
         throw new PolarisError("sign-in-failed", `activation ${res.status}`);
