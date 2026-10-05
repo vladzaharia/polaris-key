@@ -141,33 +141,47 @@ describe("client.events (§3.11)", () => {
 
 describe("startRefresh (§3.11)", () => {
   it("syncs on the interval, backs off after a failure, and close() stops it", async () => {
-    vi.useFakeTimers();
-    try {
-      let calls = 0;
-      let fail = true;
-      const { client } = await seededClient({
-        license: await signedLicense({}),
-        routes: {
-          "GET /djdl/license/document": () => {
-            calls += 1;
-            if (fail) throw new Error("offline");
-            return new Response("", { status: 304 });
-          },
-          "GET /djdl/config/document": () => new Response("", { status: 304 }),
-          "POST /djdl/devices/report": () => json({}),
+    let calls = 0;
+    let fail = true;
+    const { client } = await seededClient({
+      license: await signedLicense({}),
+      routes: {
+        "GET /djdl/license/document": () => {
+          calls += 1;
+          if (fail) throw new Error("offline");
+          return signedLicense({}, Math.floor(Date.now() / 1000) + calls).then(
+            (l) => new Response(l),
+          );
         },
-      });
-      client.startRefresh({ intervalSeconds: 600 });
-      await vi.advanceTimersByTimeAsync(600_000);
-      expect(calls).toBe(1);
-      fail = false;
-      await vi.advanceTimersByTimeAsync(30_000); // the first backoff step
-      expect(calls).toBe(2);
-      client.close();
-      await vi.advanceTimersByTimeAsync(3_600_000);
-      expect(calls).toBe(2);
-    } finally {
-      vi.useRealTimers();
-    }
+        "GET /djdl/config/document": () => new Response("", { status: 304 }),
+        "POST /djdl/devices/report": () => json({}),
+      },
+    });
+    const armed: { fn: () => void; ms: number }[] = [];
+    let clock = 0;
+    client.startRefresh({
+      intervalSeconds: 600,
+      timers: {
+        setTimeout: (fn, ms) => armed.push({ fn, ms }),
+        now: () => clock,
+      },
+    });
+    const fire = async () => {
+      const t = armed.shift()!;
+      clock += t.ms;
+      t.fn();
+      await vi.waitFor(() => expect(armed.length).toBe(1));
+      return t.ms;
+    };
+    expect(await fire()).toBe(600_000);
+    expect(calls).toBe(1);
+    expect(armed[0]!.ms).toBe(30_000); // the first backoff step
+    fail = false;
+    await fire();
+    expect(calls).toBe(2);
+    expect(armed[0]!.ms).toBe(600_000); // back to the interval
+    client.close();
+    armed.shift()!.fn();
+    expect(calls).toBe(2);
   });
 });

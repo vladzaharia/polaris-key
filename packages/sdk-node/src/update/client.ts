@@ -97,6 +97,7 @@ import type { TrustManager } from "../core/trust.js";
 import { readOutletSignals, type OutletReaderEnvironment } from "./outlet.js";
 import { PacksClient, type NodePacksOptions } from "../packs/client.js";
 import { UpdateJournal } from "./journal.js";
+import { loadBuildStamp } from "./stamp.js";
 import { BootGuard, type BootAttempt } from "./bootguard.js";
 import {
   appcastUrlFrom,
@@ -145,6 +146,9 @@ export interface UpdateClientOptions {
   /** The build stamp's outlet fields (P1-11), when the host ships one: `outlet`, `outletKind`,
    *  `outletSubkind`, and the product's `outletIds` that launcher signals must name. */
   stamp?: OutletStamp | null;
+  /** Load the build stamp (`.polaris_key/build.json`) when `stamp` is not given. Default true;
+   *  see update/stamp.ts for where it is looked for. */
+  autoStamp?: boolean;
   /** An outlet detection result the host computed itself. When it is absent and `outlet` is
    *  too, the client detects in-process (`detect`). */
   detected?: DetectedOutlet | null;
@@ -280,10 +284,11 @@ const optionalString = (v: unknown): boolean =>
  * bytes are also a trust pin.
  */
 function configure(
-  opts: UpdateClientOptions,
+  given: UpdateClientOptions,
   pinnedTrust: TrustSet,
 ): Configured {
-  if (!isPlainObject(opts)) throw invalid("update must be an options object.");
+  if (!isPlainObject(given)) throw invalid("update must be an options object.");
+  const opts = withStamp(given);
   const keys: unknown = opts.pinnedReleaseKeys ?? {};
   if (
     !isPlainObject(keys) ||
@@ -393,6 +398,44 @@ function configure(
     detected,
     methods: [...(methods as BinaryMethod[])],
     opts,
+  };
+}
+
+/** SP-N15: load the P1-11 build stamp when the host passed none (and named no outlet), and take
+ *  the build number and format from it when the host did not give them. */
+function withStamp(opts: UpdateClientOptions): UpdateClientOptions {
+  if (opts.stamp !== undefined || opts.autoStamp === false) return opts;
+  const env = opts.outletEnvironment;
+  const fs = env?.fs;
+  const stamp = loadBuildStamp({
+    ...(env?.env ? { env: env.env } : {}),
+    ...(env?.execPath ? { execPath: env.execPath } : {}),
+    ...(env && "scriptPath" in env
+      ? { scriptPath: env.scriptPath ?? null }
+      : {}),
+    ...(env ? { resourcesPath: null } : {}),
+    ...(fs
+      ? {
+          read: (p: string) => {
+            try {
+              return new TextDecoder().decode(fs.readFileSync(p));
+            } catch {
+              return null;
+            }
+          },
+        }
+      : {}),
+  });
+  if (!stamp) return opts;
+  return {
+    ...opts,
+    stamp: stamp as unknown as OutletStamp,
+    ...(opts.buildNumber === undefined && typeof stamp.build === "number"
+      ? { buildNumber: String(stamp.build) }
+      : {}),
+    ...(opts.format === undefined && typeof stamp.format === "string"
+      ? { format: stamp.format }
+      : {}),
   };
 }
 

@@ -189,6 +189,14 @@ export {
   type BootGuardOptions,
   type BootSlots,
 } from "./update/bootguard.js";
+// Server-side licence verification and crash tags (§2.1, §3.14).
+export {
+  crashTagsFor,
+  verifyLicenseDocument,
+  type CrashTags,
+  type VerifiedLicense,
+  type VerifyLicenseDocumentOptions,
+} from "./server.js";
 // The update-health journal (SDK parity pass §3.13, P6-03).
 export {
   MAX_UPDATE_EVENTS_PER_REPORT,
@@ -197,6 +205,14 @@ export {
   type UpdateEventInput,
 } from "./update/journal.js";
 export { type SnapshotExtras } from "./core/telemetry.js";
+// The build stamp and Windows SignatureKind (SP-N15), and version autoload (SP-N17).
+export {
+  loadBuildStamp,
+  readWindowsSignatureKind,
+  SIGNATURE_KINDS,
+  type BuildStamp,
+} from "./update/stamp.js";
+export { resolveAppVersion } from "./core/appVersion.js";
 // Outlet detection (plans/P3-01.md §2.9): this runtime's readers, and client-core's mapping.
 export {
   processOutletEnvironment,

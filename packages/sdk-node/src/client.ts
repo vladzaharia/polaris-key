@@ -69,6 +69,7 @@ import { ReleaseClient } from "./release/client.js";
 import { CommerceClient } from "./commerce/client.js";
 import { DistributionClient } from "./distribution/client.js";
 import { PolarisEventEmitter } from "./core/events.js";
+import { crashTagsFor, type CrashTags } from "./server.js";
 import { UpdateClient, type UpdateClientOptions } from "./update/client.js";
 import {
   ensureActivated,
@@ -516,6 +517,23 @@ export class PolarisKeyClient {
     this.events.safeEmit("license", { state, previous });
   }
 
+  /**
+   * The crash-reporter tags for this install (SDK parity pass §3.14): `release`
+   * (`app@<version>[+<build>]`), `environment` (the channel) and `pkey.outlet`. Pass them to a
+   * Sentry init as `release`, `environment` and a tag; the Worker's Sentry hook maps an alert on
+   * them to the staged rollout it came from.
+   */
+  crashTags(
+    opts: { deliverable?: string; build?: string | null } = {},
+  ): CrashTags {
+    return crashTagsFor({
+      version: this.core.version,
+      channel: this.core.channel,
+      outlet: this.update.outlet?.id ?? null,
+      ...opts,
+    });
+  }
+
   // ── Convenience passthroughs ──────────────────────────────────────────────────────────
   // Kept deliberately small. The suite's shape is `client.<service>.<verb>`; these exist only
   // for the calls a host makes before it knows which service it is talking to.
@@ -630,36 +648,55 @@ export class PolarisKeyClient {
    * documents' ETags. Off unless called; `close()` stops it. The timer never holds the process
    * open.
    */
-  startRefresh(opts: { intervalSeconds?: number } = {}): void {
+  startRefresh(
+    opts: {
+      intervalSeconds?: number;
+      /** Test seam: the timer and clock (default `setTimeout` and `Date.now`). */
+      timers?: {
+        setTimeout: (fn: () => void, ms: number) => unknown;
+        now: () => number;
+      };
+    } = {},
+  ): void {
     if (this.refreshTimer || this.core.localOnly) return;
     const interval = Math.max(60, opts.intervalSeconds ?? 3600) * 1000;
+    const now = opts.timers?.now ?? Date.now;
+    const arm =
+      opts.timers?.setTimeout ??
+      ((fn: () => void, ms: number) => {
+        const t = setTimeout(fn, ms);
+        t.unref?.();
+        return t;
+      });
     let backoff = 30_000;
-    const schedule = (delay: number) => {
-      const due = Date.now() + delay;
-      this.refreshTimer = setTimeout(() => {
-        // Slept through the deadline by more than a minute: a wake.
-        const woke = Date.now() - due > 60_000;
-        void this.sync({ ...(woke ? { force: true } : {}) })
-          .then((r) => {
-            const docs = Object.values(r.documents).filter(
-              (d) => d && d.kind !== "skipped",
-            );
-            const failed =
-              docs.length > 0 && docs.every((d) => d!.kind === "error");
-            if (failed) {
-              schedule(Math.min(backoff, interval));
-              backoff = Math.min(backoff * 2, interval);
-            } else {
+    const failed = (r: SyncResult): boolean => {
+      const docs = Object.values(r.documents).filter(
+        (d) => d && d.kind !== "skipped",
+      );
+      return docs.length > 0 && docs.every((d) => d!.kind === "error");
+    };
+    const schedule = (delay: number): void => {
+      const due = now() + delay;
+      this.refreshTimer = arm(() => {
+        if (this.refreshTimer === null) return;
+        // Slept through the deadline by more than a minute: a wake, so force past the ETags.
+        const woke = now() - due > 60_000;
+        void this.sync(woke ? { force: true } : {})
+          .then(
+            (r) => !failed(r),
+            () => false,
+          )
+          .then((ok) => {
+            if (this.refreshTimer === null) return;
+            if (ok) {
               backoff = 30_000;
               schedule(interval);
+            } else {
+              schedule(Math.min(backoff, interval));
+              backoff = Math.min(backoff * 2, interval);
             }
-          })
-          .catch(() => {
-            schedule(Math.min(backoff, interval));
-            backoff = Math.min(backoff * 2, interval);
           });
-      }, delay);
-      this.refreshTimer.unref?.();
+      }, delay) as ReturnType<typeof setTimeout>;
     };
     schedule(interval);
   }

@@ -94,7 +94,7 @@
     },
     "outlet.detect": {
       "status": "implemented",
-      "note": "client-core's detectOutlet over this process's signals (src/update/outlet.ts readOutletSignals: environment, executable and script path conventions, isSea, Electron's mas and windowsStore, product-named markers); the update client detects when the host names no outlet. Windows SignatureKind needs WinRT and is not read."
+      "note": "client-core's detectOutlet over this process's signals (src/update/outlet.ts readOutletSignals: environment, executable and script path conventions, isSea, Electron's mas and windowsStore, product-named markers); the update client detects when the host names no outlet. The P1-11 build stamp (.polaris_key/build.json) is autoloaded when the host passes none; Windows SignatureKind is read on request through PowerShell's WinRT projection (readWindowsSignatureKind, SP-N15)."
     },
     "packs.record": {
       "status": "implemented",
