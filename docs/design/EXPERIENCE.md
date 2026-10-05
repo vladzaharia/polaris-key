@@ -1154,7 +1154,7 @@ sign-in email carries the code first and the link second; the copy is §11.1's.
 | P1  | `LoginCard` (portal), `BootScreen` error (console), `renderBrandPage` (Worker) | One `AuthCard` + Worker twin                                             | SH 0.1                      |
 | P2  | Account header Sign out + account menu Sign out                                | Account menu only                                                        | SH 1.3                      |
 | P3  | Appearance section (RadioCards with hex swatches)                              | Theme row in the account menu and Account (`SegmentedControl`)           | SH 1.6, 1.11                |
-| P4  | Status in header pill + "Active" on License card + tier chip ×3                | One issue pill (when there is an issue); tier as text                    | PJ D                        |
+| P4  | Status in header pill + "Active" on License card + tier chip ×3                | One issue pill; tier as text, a neutral pill on the License card         | PJ D                        |
 | P5  | Three Download buttons for one Universal build                                 | Header lead + other platforms list + Change platform                     | PJ C                        |
 | P6  | `ErrorPanel` + `portalErrorCopy`                                               | `ErrorState` + `errorCopy` portal voice table                            | SH 1.8                      |
 | P7  | `SectionCard`, hand-made `<dl>`, tinted box, native `<select>`, raw `<input>`  | `Section`, `DescriptionList`, `Callout`, `Select`, `Input`               | SH 0.5                      |
@@ -1289,7 +1289,7 @@ Services delivery-chain pills and "License required"; Enrollment "License requir
 available", "In review", "Pending" and the legend; Health "Rolling out · 25 %"; Rollouts "Rolling
 out", "Yanked" (text); Channels "Pinned" and provenance chips (→ `SourceBadge`); Platform Keyring and
 Secrets "Set"/"Not set" (→ text, "Not set" in warning text only when required); portal "Active" on
-tiles, hero, header and License card; portal "Primary"; portal tier chips and "Included" chips; the gold plated "Signed" pill (→ glyph +
+tiles, hero, header and License card; portal "Primary"; portal tier chips (the License card keeps one neutral tier pill beside its device count, owner 2026-10-05, PORTAL.md §4.20) and "Included" chips; the gold plated "Signed" pill (→ glyph +
 text) and any "Just added" pill (→ ring + quiet text). Also: "Seat limit" is not an issue on its own;
 only a license that is refusing devices gets a pill.
 
