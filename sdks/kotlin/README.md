@@ -155,6 +155,24 @@ client.identity.waitForSignIn(prompt)
   (a `pkey-release+jws` against the keys the app pins; `:core`'s `verifyReleaseRecord`, which the
   update engine shares).
 
+## When every seat is taken
+
+A refused activation returns `ActivationResult.DeviceLimit(limit, deviceCount, manageUrl)`.
+`manageUrl` is the customer-portal link that frees a seat (WIRE-CONTRACT-V4 §5.3), present while
+the product's portal is on and already validated by `ManageLink.read`. It defaults to null, so the
+class stays source-compatible. It is never an auth failure.
+
+```kotlin
+val r = client.activate(key)
+if (r is ActivationResult.DeviceLimit && r.manageUrl != null) {
+    val link = ManageLink.withReturn(ManageLink.withKey(r.manageUrl!!, key), "myapp://activated")
+    // offer "Free up a device", opening `link`
+}
+```
+
+The Compose gate (`:ui`) does this for you: pass `returnUrl` to `PolarisGateState` and the
+activation screen shows **Free up a device** (a QR code on Android TV).
+
 ## Update and packs
 
 `client.update` is the update client and `client.packs` the pack facet (P6-08). The facade hands

@@ -18,6 +18,39 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 - **[`plans/PX-W8.md`](../plans/PX-W8.md):** approved on 2026-10-05 with every recommendation accepted: `manageUrl` on both refusals (Q1); the Worker emits no key, and the SDK may add `#key=` as a fragment (Q2); a floating licence links to `/activate?product=…&next=free-device` (Q3); the app's return URL travels as a client-side `return=` (Q4); sign-in seat refusals are left to LX-18 (Q5). Corrections: there is no signed-corpus impact; the portal is served at the root, so the paths are `/activate` and `/signin`; PX-10's `FreeDevicePage` already reads `for`, `return` and `license`; no `device_limit` transcript exists today. PX-W8 now executes its own plan, not I-04's.
 
+## Implementation notes (PX-W8, 2026-10-05)
+
+Corrections to the brief, found against the code (the code is the fact):
+
+- **No `errors.json` code and no signed corpus change.** `device_limit` already exists; its
+  description in `conformance/parity/errors.json` now mentions `manageUrl`. `gen:corpus -- --check`
+  is unchanged. The evidence is the new transcript `license-device-limit.json` (with its Swift and
+  Godot mirrors), replayed by all six SDKs, and the parity rows `license.manage` and
+  `ui.kit.manage`.
+- **Contract section.** I-09 has not opened §12, so the contract text is the standalone
+  **WIRE-CONTRACT-V4 §5.3 "Refusal links"**, as the plan allows.
+- **The Goal's link shapes are superseded by the plan.** The Worker never puts the key in the link
+  (`/activate?product=<slug>`, the SDK adds `#key=`), and a floating licence links to
+  `/activate?product=<slug>&next=free-device`.
+- **`key_entry_limit` is built, not emitted.** `core/manageUrl.ts` builds the `key_entry_limit`
+  link (`kind: "key_entry_limit"`), but no route emits that refusal until I-09 ships. The SDKs read
+  `manageUrl` from either envelope through one helper, so I-10a and I-10b only wire the outcome.
+
+Decisions taken by the lead (owner delegated; recommended option each time):
+
+- **Validation in SDKs without a URL parser** (Godot, Kotlin, Swift's helpers) uses one shared
+  rule: scheme `https` (or `http` to `localhost`, `127.0.0.1`, `[::1]`), a non-empty host, no
+  userinfo, no whitespace or control characters, at most 2048 characters. Every SDK repeats the
+  client-core table, so the links are byte-identical.
+- **Where the QR replaces the button.** Swift: tvOS. Kotlin: `UI_MODE_TYPE_TELEVISION`. Godot: a
+  runtime with no browser (not desktop, web or a phone OS), or a phone OS with no touchscreen and a
+  joypad connected (Android TV); `PKeyActivationPanel.manage_mode` overrides it.
+- **"Try again" is the existing Activate button.** The kits add only **Free up a device**; the
+  person frees a seat in the portal and presses Activate again. No new retry control.
+- **Swift `.deviceLimit` gains `manageURL: String? = nil`.** Construction stays source-compatible;
+  an exhaustive two-value pattern binding needs a third pattern (0.x, noted in the Swift README).
+- **UI kits get the functional link only** (lead instruction): the UK programme restyles the kits.
+
 ## Goal
 
 Apps receive a `manageUrl` on `device_limit` and on the key-entries refusal that opens `#/p/:product/free-device?for=…&return=…` or `/activate?key=…&product=…`, specified in I-04's contract and carried through `errors.json`, the corpus and transcripts, client-core, Node, React, Python, Swift, Godot, Kotlin and the SDK UI kits.
