@@ -172,6 +172,46 @@ final class EventsAndSignInTests: XCTestCase {
         XCTAssertNil(nobody)
     }
 
+    func testCurrentIsNilForAnAnonymousProfile() async throws {
+        let signer = TestSigner(kid: "anon-key")
+        let t = Int(Date().timeIntervalSince1970)
+        let store = InMemoryStore(deviceId: "dev")
+        await store.writeCache(
+            CacheRecord(docs: [
+                .license: signer.sign(
+                    Fixtures.license(
+                        licenseId: "lic_anon", issuedAt: t,
+                        profile: DocProfile(name: "", firstName: "", email: "", activatedAt: 0)))
+            ]))
+        let c = try await PolarisKeyClient.create(
+            options: PolarisKeyClientOptions(
+                productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
+                pinnedKeys: signer.trust, trustRefresh: false, store: store, transport: server.transport,
+                expectedServices: [.license, .identity], fingerprint: false))
+        let me = await c.identity.current()
+        XCTAssertNil(me)
+    }
+
+    func testCurrentMapsAnEmptyFieldToNil() async throws {
+        let signer = TestSigner(kid: "half-key")
+        let t = Int(Date().timeIntervalSince1970)
+        let store = InMemoryStore(deviceId: "dev")
+        await store.writeCache(
+            CacheRecord(docs: [
+                .license: signer.sign(
+                    Fixtures.license(
+                        licenseId: "lic_half", issuedAt: t,
+                        profile: DocProfile(name: "", firstName: "", email: "b@e.com", activatedAt: 0)))
+            ]))
+        let c = try await PolarisKeyClient.create(
+            options: PolarisKeyClientOptions(
+                productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
+                pinnedKeys: signer.trust, trustRefresh: false, store: store, transport: server.transport,
+                expectedServices: [.license, .identity], fingerprint: false))
+        let me = await c.identity.current()
+        XCTAssertEqual(me, CurrentIdentity(name: nil, email: "b@e.com", activatedAt: nil))
+    }
+
     func testAStandaloneIdentityClientRefusesSignOut() async throws {
         let core = try CoreContext(
             options: CoreOptions(

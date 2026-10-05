@@ -28,13 +28,14 @@ import PolarisKeyCore
 #endif
 
 /// The signed-in identity as the licence document states it (signed, so not spoofable locally).
+/// A value the profile leaves empty is nil, as in Godot's `identity.current()` and Python's.
 public struct CurrentIdentity: Sendable, Equatable {
-    public let name: String
-    public let email: String
-    /// Epoch seconds the licence was first activated.
-    public let activatedAt: Int
+    public let name: String?
+    public let email: String?
+    /// Epoch seconds the licence was first activated, or nil when the profile does not say.
+    public let activatedAt: Int?
 
-    public init(name: String, email: String, activatedAt: Int) {
+    public init(name: String?, email: String?, activatedAt: Int?) {
         self.name = name
         self.email = email
         self.activatedAt = activatedAt
@@ -79,10 +80,16 @@ extension IdentityClient {
         try await hook()
     }
 
-    /// The signed-in identity from the verified licence document, or nil.
+    /// The signed-in identity from the verified licence document, or nil when the device holds no
+    /// licence or its profile names no one. The server signs a profile on every licence; an
+    /// anonymous (keyless) enrolment's carries empty strings, which read as nil here.
     public func current() async -> CurrentIdentity? {
         guard let p = await core.cache().license?.doc.profile else { return nil }
-        return CurrentIdentity(name: p.name, email: p.email, activatedAt: p.activatedAt)
+        let name = p.name.isEmpty ? nil : p.name
+        let email = p.email.isEmpty ? nil : p.email
+        if name == nil && email == nil { return nil }
+        return CurrentIdentity(
+            name: name, email: email, activatedAt: p.activatedAt > 0 ? p.activatedAt : nil)
     }
 
     /// The facade installs its `deactivate()` here so `signOut()` releases the seat and emits.
