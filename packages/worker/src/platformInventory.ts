@@ -27,7 +27,8 @@ export type InventoryArea =
   | "email"
   | "keyring"
   | "stores"
-  | "jobs";
+  | "jobs"
+  | "licensing";
 
 export const INVENTORY_AREAS: readonly InventoryArea[] = [
   "deployment",
@@ -37,6 +38,7 @@ export const INVENTORY_AREAS: readonly InventoryArea[] = [
   "keyring",
   "stores",
   "jobs",
+  "licensing",
 ];
 
 export interface PlatformInventoryEntry {

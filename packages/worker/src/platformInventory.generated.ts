@@ -70,6 +70,13 @@ export const PLATFORM_INVENTORY: readonly PlatformInventoryEntry[] = [
     editable: "BLOB_GC_GRACE_DAYS",
   },
   {
+    name: "LICENSING_RESERVED_NAMES",
+    kind: "var",
+    area: "licensing",
+    optional: true,
+    editable: "LICENSING_RESERVED_NAMES",
+  },
+  {
     name: "LAZY_DELTAS",
     kind: "var",
     area: "jobs",

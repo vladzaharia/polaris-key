@@ -86,6 +86,8 @@ export interface Env {
    * declaration at manifest ingest and on console catalog writes. A `[vars]` value, unset in every
    * environment; read only through the platform settings store (`runtime`): a console value wins,
    * then this, then the code default `warn`.
+   * @inventory var licensing
+   * @editable LICENSING_RESERVED_NAMES
    */
   LICENSING_RESERVED_NAMES?: string;
   /**
