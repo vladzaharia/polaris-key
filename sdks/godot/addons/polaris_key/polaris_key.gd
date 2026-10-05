@@ -26,9 +26,9 @@ extends Node
 ## URL), `release` (PKeyRelease: the changelog, the install and download URLs) and `commerce`
 ## (PKeyCommerce, P6-01: the purchase binding, claiming a store purchase as a licence flag, and
 ## the App Store 3.1.3(b) outlet rule), `distribution` (PKeyDistribution: the public download
-## model) and `portal` (PKeyPortal: account, devices and download links). `crash_tags()` returns
-## the release/environment/outlet tags for a crash reporter. `config`, `identity`, `update`,
-## `release`, `commerce`, `distribution` and `portal` exist before `configure()`, so a signal
+## model). `crash_tags()` returns the release/environment/outlet tags for a crash reporter.
+## `config`, `identity`, `update`, `release`, `commerce` and `distribution` exist before
+## `configure()`, so a signal
 ## connected early survives it.
 
 const SDK_VERSION := "0.1.0"
@@ -69,9 +69,6 @@ var commerce := PKeyCommerce.new()
 ## Where the product can be got: the public download model (services/distribution.gd, SDK parity
 ## §3.8). Refuses until configure().
 var distribution := PKeyDistribution.new()
-## Links into the customer portal: account, devices, free a device, download (services/portal.gd,
-## SDK parity §3.5). "" until configure().
-var portal := PKeyPortal.new()
 
 ## The PKeyBoot view `boot()` made (on a CanvasLayer under this node), or null.
 var boot_view: Node = null
@@ -119,7 +116,6 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	commerce.attach(core, license)
 	commerce.on_claimed = func() -> void: await sync(true)
 	distribution.attach(core)
-	portal.attach(core)
 	identity.attach(core, self)
 	identity.on_acquired = func() -> PKeySyncResult: return await sync(true)
 	return PKeyResult.success()

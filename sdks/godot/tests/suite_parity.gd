@@ -1,7 +1,7 @@
 extends RefCounted
 # @pkey-feature release.download commerce.receipt
 # The SDK parity pass (notes/SDK-PARITY-PASS.md §5.6): the conveniences added on top of the wire
-# each SDK shares — portal links, crash tags, the public download model, the commerce one-calls
+# each SDK shares — crash tags, the public download model, the commerce one-calls
 # and the minimal sample project. Each group is a file under res://tests/parity/ with
 # `func run(t: PKeyTestContext) -> void` (it may await); the suite ends with a coverage check.
 

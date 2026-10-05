@@ -179,12 +179,11 @@ func _on_submit() -> void:
 	show_result(r)
 
 
-## The portal's "free a device" page for this device (SDK parity §3.5), or "" without a
-## configured SDK.
+## Where "Manage devices" goes on a device-limit refusal: only a link the server supplies
+## (`manageUrl`, PX-W8), never one built here (owner decision Q6). The Worker does not send one
+## yet, so this is "" and the button stays hidden.
 func manage_url() -> String:
-	if sdk == null or sdk.get("portal") == null:
-		return ""
-	return sdk.portal.url("free-device", {"for": PKeyIdentity.default_device_name()})
+	return ""
 
 
 func _on_manage() -> void:
