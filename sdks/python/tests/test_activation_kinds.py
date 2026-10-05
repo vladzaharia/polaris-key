@@ -68,13 +68,13 @@ def test_rate_limited_reads_retry_after() -> None:
     c.close()
 
 
-def test_a_transport_failure_is_a_network_error() -> None:
+def test_a_transport_failure_is_network() -> None:
     def boom(_r):
         raise httpx.ConnectError("down")
 
     c = make_client(boom)
     r = c.license.activate_with_key("k")
-    assert r.kind == "error" and r.code == "network-error" and r.status is None
+    assert r.kind == "error" and r.code == "network" and r.status is None
     c.close()
 
 

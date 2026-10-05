@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
+from ..constants_generated import ErrorCode
 from ..core.context import DocumentResult
 from ..core.errors import PolarisError
 
@@ -160,12 +161,13 @@ class ActivationRefused:
 
 @dataclass(frozen=True)
 class ActivationError:
-    """No usable answer: a transport failure (``code`` ``network-error``, ``status`` ``None``)
-    or a 5xx / malformed 200 (``server-error``, with the status)."""
+    """No usable answer: a transport failure (``code`` ``network``, ``status`` ``None``, as in
+    the other SDKs; SDK parity pass §3.1) or a 5xx / malformed 200 (``server-error``, with the
+    status)."""
 
     message: str
     kind: str = "error"
-    code: str = "network-error"
+    code: str = ErrorCode.NETWORK
     status: Optional[int] = None
 
 
@@ -186,7 +188,7 @@ ActivationResult = Union[
 ]
 
 #: The ``server-error`` code an ``ActivationError`` carries for a 5xx or an unusable 200.
-_SERVER_ERROR = "server-error"
+_SERVER_ERROR = ErrorCode.SERVER_ERROR
 
 
 def _wire_code(body: Dict[str, Any]) -> Optional[str]:
