@@ -109,7 +109,10 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
                 {l.name || "Unnamed license"}
               </span>
               {l.email ? (
-                <span className="truncate text-xs font-normal text-fg-muted">
+                <span
+                  className="truncate text-xs font-normal text-fg-muted"
+                  title={l.email}
+                >
                   {l.email}
                 </span>
               ) : null}
@@ -159,6 +162,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         // Never-expiring licenses sort after every dated one.
         accessorFn: (l) => l.expiresAt ?? Number.MAX_SAFE_INTEGER,
         meta: {
+          numeric: true,
           priority: 1,
           csv: (l) =>
             l.expiresAt == null

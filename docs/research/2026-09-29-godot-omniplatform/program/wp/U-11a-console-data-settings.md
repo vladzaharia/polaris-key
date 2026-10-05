@@ -12,6 +12,12 @@
 | Human input | none                                                                                                                                    |
 | Repo        | `vladzaharia/polaris-key`                                                                                                               |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/U-01.md`](../plans/U-01.md):** the registry hub area (S-18) for the Cloud Sync data settings.
+
 ## Goal
 
 The console's Users page (I-12) gains a Data tab for one pairwise subject: settings, account overrides, "what the app sees" (the effective values with sources), quota meters, and audit, with step-up for writes.

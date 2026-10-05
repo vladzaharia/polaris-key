@@ -12,6 +12,12 @@
 | Human input | none                                                                                                                                                                                     |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                |
 
+## Amendments from approved plans (2026-10-05)
+
+The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
+
+- **[`plans/PX-W8.md`](../plans/PX-W8.md):** `next=` from activate is carried by PX-17, because this package is done.
+
 ## Goal
 
 `#/p/:product/free-device?for=&return=` and `#/p/:product/download?platform=` render in minimal chrome (`FocusedFlow`) and return to the app only when the return URL matches a scheme or origin the product declares.

@@ -12,6 +12,41 @@
 
 # SDK parity pass: matrix, target experience and plan
 
+## Owner decisions (2026-10-05)
+
+The owner answered §8 on 2026-10-05. These answers win over the sections below where they differ.
+
+| §8  | Decision                                                                                                                                                                                                                                                                                                                               |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Q1  | **React bearer mode** when the page is cross-origin or inside Tauri, **cookie** when first-party (§3.17 as recommended). Cookie mode therefore stays long-term, which makes wire item W10 (sign the browser-session document) applicable: package SP-10.                                                                               |
+| Q2  | **Python UI is Qt plus the terminal.** No Tk kit for now (SP-P13 is not scheduled).                                                                                                                                                                                                                                                    |
+| Q3  | **Kotlin JVM desktop gets full parity:** a Compose Desktop kit, an OS keyring store and a desktop updater driver (SP-K12).                                                                                                                                                                                                             |
+| Q4  | **Canonical platform values `tvos`, `visionos` and `watchos`** (wire item W8, plan mode): package SP-08.                                                                                                                                                                                                                               |
+| Q5  | **CI builds and signs the Godot native plugins** (xcframework, AARs, GDExtensions, `pkey_win.dll`) with the existing signing identities, shipped as an optional addon package (SP-G10).                                                                                                                                                |
+| Q6  | **SDKs do not build portal URLs client-side.** They wait for the server-supplied `manageUrl` (PX-W8, wire item W2). §3.5's client-side builder and the `portal-links.json` URL corpus are dropped; `portal.links` covers server-supplied links only (`manageUrl`, `signInUrl` and discovery's `accountPortal`) and SP-00 redefines it. |
+| Q7  | **`commerce.receipt` is required on Node and Python.** This reverses LX-20's planned Python `allowedNa`; SP-00 changes the registry and the LX-20 brief is amended.                                                                                                                                                                    |
+| Q8  | **Swift keychain class `AfterFirstUnlockThisDeviceOnly` everywhere** (`KeychainStore` and `PolarisKeyPlatform` alike).                                                                                                                                                                                                                 |
+| Q9  | **Node `engines >= 22.12` is accepted.** Electron releases before 35 are out of scope.                                                                                                                                                                                                                                                 |
+| Q10 | **X-01 (C#/.NET) and X-02 (Tauri plugin) do not move up.** They stay optional.                                                                                                                                                                                                                                                         |
+
+**Plan mode.** SP-00 and the wire items W1–W12 (§6) are approved to proceed through plan mode, in
+the order of §7. Packages: SP-00 (registry and corpus plan), SP-08 (W8), SP-09 (W9) and SP-10
+(W10). The other wire items are existing packages; see the program README §8, phase SP.
+
+**Refusal links.** On the same day the owner fixed the link name: `manageUrl` on both `device_limit`
+and `key_entry_limit`, with `license_owned` keeping `signInUrl`. Portal paths are root paths
+(`/activate`, `/signin`). §6 W1 and §3.5 below are corrected to match.
+
+**UI-kit answers, recorded for reference.** The UI kit spec is updated separately.
+
+- Product presentation gains an optional **accent colour**. This is an all-languages change through
+  plan mode: package SP-11.
+- **Launch locales:** English, `de`, `fr`, `es`, `pt-BR`, `it`, `ja`, `ko` and `zh-Hans`. There is
+  no Arabic or other right-to-left locale yet.
+- **Apple floors** are raised to iOS 18 and macOS 15.
+- **Web components** are built on Lit 3.
+- The **UI kit build programme** is approved.
+
 ## 0. Summary
 
 **Where we are.** Every SDK agrees on the wire: the corpus, the transcripts and `parity:check`
@@ -302,8 +337,10 @@ existing `ui.stages` reducer (`stage-matrix.json`) end to end:
   `#/p/<slug>/download`).
 - **`returnTo` must match the portal's return allowlist.** When it does not, the helper drops it
   and does not fail.
-- **When PX-W8 lands (W2),** a server-supplied `manageUrl` or `portalUrl` overrides the built
+- **When PX-W8 lands (W2),** a server-supplied `manageUrl` overrides the built
   URL. Kits put a "Manage devices" button on `deviceLimit`.
+- **Superseded by the owner's Q6 answer (2026-10-05):** SDKs do not build portal URLs; they
+  surface the server's `manageUrl` only. The API and corpus above are not implemented.
 - **Proof:** a unit table of URL vectors in `conformance/corpus/v2/portal-links.json` (new,
   SP-00).
 - **Coupling:** owner question Q6.
@@ -945,7 +982,7 @@ column lists who must ship the client side.
 
 | #   | Item                                                                                                                                                      | Work packages                                        | SDKs that follow                                         | Client side once it lands                                                                                 |
 | --- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| W1  | `key_entry_limit` (+ `portalUrl`, `keyEntries`) and `license_owned` (+ `signInUrl`) on `/license/activate`; `POST /identity/attach`                       | I-09, I-10a, I-10b, PX-W9                            | all six + every kit                                      | two new §3.1 kinds (additive once the §3.1 fix ships), attach call, `Activation` states with QR/deep link |
+| W1  | `key_entry_limit` (+ `manageUrl`, `keyEntries`) and `license_owned` (+ `signInUrl`) on `/license/activate`; `POST /identity/attach`                       | I-09, I-10a, I-10b, PX-W9                            | all six + every kit                                      | two new §3.1 kinds (additive once the §3.1 fix ships), attach call, `Activation` states with QR/deep link |
 | W2  | `manageUrl` on `device_limit` and portal URL in discovery                                                                                                 | PX-W8, PX-17                                         | all six + every kit                                      | overrides §3.5 built URLs; "Manage devices" button                                                        |
 | W3  | Licence document v2: per-entry `expiresAt`, `licenseExpiresAt`, grants, 401 reasons, `not_entitled` reasons; `licenseId` change tolerance                 | LX-17, LX-18, LX-19                                  | all six                                                  | `entitlement(name)`, `grants()`, `licenseExpiresAt()`, `isEntitled` on expiry, badge "Trial N days"       |
 | W4  | Identity layer 1: passthrough sign-in, web redirect code exchange to a device token, native redirect token route (replaces `/auth/poll`), subject/account | I-08, I-10a, I-10b, I-13, I-15, PX-W13               | all six; React web gains cross-origin sign-in            | `signIn({redirect})`, `subject()`, `openAccount()`, Custom Tabs / ASWebAuthenticationSession / loopback   |

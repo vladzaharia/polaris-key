@@ -217,7 +217,8 @@ export function SettingsRow({
       ) : (
         <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
           <div className="min-w-0 flex-[1_1_16rem]">{labelBlock}</div>
-          <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2 text-right text-sm text-fg">
+          {/* Flush right, and so is every line of a value that wraps (a chain of pills). */}
+          <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2 text-right text-sm text-fg [&>:not(button)]:justify-end">
             {aside}
             {children}
           </div>
