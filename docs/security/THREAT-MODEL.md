@@ -4463,6 +4463,43 @@ rules and item 16's tenant-scoped lookup are enforced in the same code.
   not-yet-settled loser inline, so the scheduled catch-up (which copies a portal link onto a
   floating licence) can never hand it to that loser.
 
+### The Cloud Sync principal and the subject store registry (U-02)
+
+Cloud Sync (S-17) is the first service a device writes account data to, so a wrong principal is a
+cross-account or cross-tenant leak (S-17 §7.1 risk 1). U-02 adds Core's answer and the guard that
+keeps every subject-keyed store honest (plans/U-01.md §6.1).
+
+- **The principal is the binding, never the licence owner.** `resolveSyncPrincipal(device)`
+  (`core/accountSubjects.ts`) reads `devices.subject` from the D1 row `validateDeviceToken`
+  returned, never the KV mirror or anything the request carried, and checks it once against
+  `account_product_subjects`: an alias resolves to the survivor (D21), a deleted or malformed
+  subject and a device that is not authorized resolve to no principal (`account_required`). Owning
+  a device's licence does not make an account its principal; a key-activated device on an owned
+  licence, and every device on a floating licence, has none until someone signs in on it. Cloud
+  Sync code may not call `subjectFor`, `licenseOwnerSubject` or read an account id (a test scans
+  `core/syncAccess.ts` and `services/sync/`); `subjectFor` stays Config's owner fallback (U-03).
+- **One module for the licence question.** `syncAccess` (`core/syncAccess.ts`) answers
+  `requireLicense`, `requiresFlag` and the `byTier` tier from the anchor licence alone (`legacy`
+  mode) until LX-09 replaces its body with `resolveDeviceEntitlements`; it never reads the owner
+  pointer and its answer carries the pairwise subject only. A licence-less or unusable anchor
+  leaves the principal (reads stay allowed) with an empty entitlement set.
+- **No resurrected binding.** A re-bind without a sign-in (licence key, enrolment, registration)
+  keeps the binding only on a device that is authorized now and stays on the same licence. Before
+  U-02 a device id that once carried a sign-in, then was revoked or moved to another licence by
+  key, got the old account back as its principal. The browser session's logout now runs the
+  clearing hook (`signout`) before it deauthorizes the row.
+- **Every trigger clears it.** Sign-out, sign out everywhere, account disable and deletion,
+  per-product removal and a relink of the device's licence clear the binding (one test each); a
+  plain detach does not (S-17 §5.8 item 2). Residual: `POST /<p>/identity/signout` and the sign
+  out everywhere surface are I-09's and I-11's; until they land only the hook and the browser
+  logout exercise those reasons.
+- **The registry guard** (`test/subjectStores.test.ts`, S-17 §7.1 risk 8). Every D1 table with a
+  `subject` column is claimed by a registered store (`registerSubjectStore` with `tables`) or is
+  listed as Identity's own with its reason; every Durable Object class is claimed
+  (`durableObjects`) or listed as not named by subject; every store has `merge`, `delete` and
+  `export`; no claimed table has an `account_id` column. A store added without its hooks fails the
+  gate instead of leaving data behind after a merge or a deletion.
+
 ### Discover: free offers and "Add to library" (PX-W10)
 
 `GET /api/discover` lists the products whose licence policy would auto-issue to the signed-in

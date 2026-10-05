@@ -18,6 +18,40 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 - **[`plans/U-01.md`](../plans/U-01.md):** `syncAccess`, and the no-owner-fallback test (§2.1, §6.1).
 
+## Corrections and decisions recorded during implementation (2026-10-05)
+
+The code is the fact; these record where it differed from the text above, and the open questions
+decided with the recommended option (the owner delegated decisions to the lead).
+
+- **Already in I-05.** `subjectFor`, `resolveSubject`, `clearDeviceSubjects` with every Cloud Sync
+  reason (`signout`, `signout_everywhere`, `account_disabled`, `account_deleted`,
+  `product_removed`, `relinked`), and its callers for disable, deletion, per-product removal and
+  relink were merged with I-05. U-02 adds `resolveSyncPrincipal` (`core/accountSubjects.ts`),
+  `syncAccess` (new `core/syncAccess.ts`), a test per trigger, and the registry guard.
+- **Sign-out callers.** `POST /<p>/identity/signout` (I-09) and the sign out everywhere surface
+  (I-11) do not exist yet; the hook's `signout`/`signout_everywhere` cases are tested directly and
+  those packages call it. The existing browser-session logout (`/identity/auth/logout`) now runs
+  the hook before deauthorizing its device.
+- **Stale binding on re-bind (fixed).** `bindDevice`/`registerDeviceBinding` carried
+  `existing.subject` into every re-bind, so a key re-entry on a revoked device, or a move to another
+  licence by key, resurrected the old account as the principal. A re-bind without a sign-in now
+  keeps the binding only on a device that is authorized and stays on the same licence.
+- **`resolveSyncPrincipal` shape.** `(db, device) → {product, subject} | null`; a non-`authorized`
+  device or a malformed value resolves to `null` as well.
+- **`syncAccess` shape.** `(db, product, device, now) → {subject, anchorUsable, licensed,
+entitlements, topTier} | null` (`null` = no principal). `topTier` is the anchor's tier id
+  (`tiers.rank` does not exist before S-19's LX packages); `anchorUsable` is scoped as
+  `coreDeviceAllowed` (true when the License service is off).
+- **No-owner-fallback test.** The `licensing.entitlementHolder` setting does not exist yet (LX-\*);
+  `syncAccess` reads no holder setting, so the test covers an owned licence on a key-activated
+  device and another account signed in on the owner's device. LX-09 keeps the test when it swaps
+  the body.
+- **Guard mechanics.** `SubjectStore` gains optional `tables` and `durableObjects` declarations and
+  `subjectStores()`; the guard (`test/subjectStores.test.ts`) requires `merge`, `delete` and
+  `export` of every store (plan §6.1), classifies every table with a `subject`/`*_subject` column
+  and every `wrangler.toml` Durable Object class, and refuses an `account_id` column on a claimed
+  table. `export` stays optional in the type until I-11 calls it.
+
 ## Goal
 
 Core resolves a device to its Cloud Sync principal and an account to a product's subject without importing Identity: `resolveSyncPrincipal(device)` and `subjectFor(account, product)` exist over I-05's device binding, the one clearing hook covers Cloud Sync's cases, and the merge- and deletion-hook registry fails a test for any subject-keyed store without hooks.
