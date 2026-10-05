@@ -21,6 +21,8 @@ struct Transcript: Decodable, Sendable {
         var token: String?
         var version: String
         var services: [String]?
+        /// PX-W13: the platform's device name the SDK's default label comes from; absent = none.
+        var deviceName: String?
         /// The update client's state before the first `updateDecide` step (P3-03).
         var update: InitialUpdate?
     }

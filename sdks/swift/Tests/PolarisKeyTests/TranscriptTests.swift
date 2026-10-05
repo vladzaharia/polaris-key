@@ -1,7 +1,7 @@
 // @pkey-feature core.discover core.sync core.cache license.activate license.enroll
 // @pkey-feature license.deactivate license.reregister devices.register devices.report
 // @pkey-feature config.schema release.changelog release.download
-// @pkey-feature identity.devicecode config.mint
+// @pkey-feature identity.devicecode identity.devicelabel config.mint
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk
 //
@@ -121,6 +121,7 @@ enum SwiftReplay {
                 "verificationUriComplete": .string(p.verificationUriComplete),
                 "expiresIn": .int(p.expiresIn),
                 "interval": .int(p.interval),
+                "deviceName": p.deviceName.map { .string($0) } ?? .null,
             ])
         case "pollSignIn":
             guard let prompt = session.prompt else { throw ReplayError("pollSignIn before beginSignIn") }
@@ -283,7 +284,9 @@ enum SwiftReplay {
             pinnedKeys: t.trust, store: store, transport: ReplayTransport(server: server),
             requestTimeoutSeconds: 0,
             expectedServices: services?.compactMap(ServiceSlug.init(rawValue:)),
-            clock: { clock.now })
+            clock: { clock.now },
+            // PX-W13: `initial.deviceName` stands in for the platform's device name; absent = none.
+            deviceName: t.initial.deviceName ?? "")
         let client = try await PolarisKeyClient.create(options: PolarisKeyClientOptions(core: core))
         var update: UpdateClient?
         if let u {

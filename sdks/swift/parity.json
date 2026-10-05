@@ -114,8 +114,8 @@
       "status": "implemented"
     },
     "identity.devicelabel": {
-      "status": "planned",
-      "wp": "PX-W13"
+      "status": "implemented",
+      "note": "PX-W13: normalizeDeviceLabel over Unicode scalars, CoreOptions.deviceName and the platform default (macOS Host.current().localizedName, iOS-family UIDevice.current.name), on beginSignIn, activation and registration; SignInPrompt.deviceName is the Worker's echo. PolarisKeyUI has no device-code sign-in view to show it in (ui.kit is planned and unowned)."
     },
     "release.changelog": {
       "status": "implemented"

@@ -43,9 +43,11 @@ public enum LicenseEndpoints {
     public static func activate(
         _ core: CoreContext, key: String, fingerprint: HardwareFingerprint? = nil
     ) async -> ActivationResult {
+        // PX-W13 §8 Q2: the label seeds the device's name in the customer's and console's lists.
         await activationLike(
             core, url: core.endpoints.licenseActivate,
-            extra: ["authorization": "Bearer \(key)"], fingerprint: fingerprint)
+            extra: ["authorization": "Bearer \(key)"], fingerprint: fingerprint,
+            deviceName: await core.deviceLabel())
     }
 
     /// `POST /<p>/license/enroll` — obtain a licence with no key and no sign-in. Returns the
@@ -81,14 +83,15 @@ public enum LicenseEndpoints {
     /// The three mint/rotate endpoints share a response ladder, so they share a reader.
     private static func activationLike(
         _ core: CoreContext, url: URL, extra: [String: String],
-        fingerprint: HardwareFingerprint?
+        fingerprint: HardwareFingerprint?, deviceName: String? = nil
     ) async -> ActivationResult {
         var headers = extra
         var body: Data?
-        // The body is omitted entirely when there is no fingerprint, so a host that opted out
-        // sends a byte-identical request to one that has nothing to report.
-        if let fingerprint,
-            let encoded = try? JSONEncoder().encode(ActivationFingerprintBody(fingerprint))
+        // The body is omitted entirely when there is neither a fingerprint nor a label, so a host
+        // that opted out sends a byte-identical request to one that has nothing to report.
+        if fingerprint != nil || deviceName != nil,
+            let encoded = try? JSONEncoder().encode(
+                ActivationFingerprintBody(fingerprint, deviceName: deviceName))
         {
             headers["content-type"] = "application/json"
             body = encoded
@@ -188,16 +191,20 @@ private struct ForbiddenBody: Decodable {
     }
 }
 
-/// `{ "fingerprint": { "components": {...}, "hwid": "..." } }`
+/// `{ "fingerprint": { "components": {...}, "hwid": "..." }, "deviceName": "..." }`, each member
+/// omitted when absent (PX-W13 §8 Q2 adds the label, on activation only).
 private struct ActivationFingerprintBody: Encodable {
     struct Payload: Encodable {
         let components: [String: String]
         let hwid: String
     }
-    let fingerprint: Payload
+    let fingerprint: Payload?
+    let deviceName: String?
 
-    init(_ fingerprint: HardwareFingerprint) {
-        self.fingerprint = Payload(
-            components: fingerprint.components, hwid: fingerprint.hwid)
+    init(_ fingerprint: HardwareFingerprint?, deviceName: String? = nil) {
+        self.fingerprint = fingerprint.map {
+            Payload(components: $0.components, hwid: $0.hwid)
+        }
+        self.deviceName = deviceName
     }
 }
