@@ -34,6 +34,11 @@ import { ascRun, finishRun as finishAscRun } from "../connectors/asc/run.js";
 import { resolveAscSetup } from "../connectors/asc/setup.js";
 import { readPlayListing } from "../connectors/play/listing.js";
 import { PlayError } from "../connectors/play/client.js";
+import {
+  acquirePlayEditLease,
+  PlayEditLeaseHeld,
+  releasePlayEditLease,
+} from "../connectors/play/lease.js";
 import { finishRun as finishPlayRun, playRun } from "../connectors/play/run.js";
 import {
   isPinReason as isPlayPinReason,
@@ -128,6 +133,20 @@ export async function playSource(c: SourceContext): Promise<SourceOutcome> {
           "not_configured",
           "Google Play is not configured: declare a play or play-testing outlet with a packageName and tracks, and store a google-service-account credential pinned to that package",
         );
+  // The per-package edit lease (A-18e; S-15 §5.3), taken before any token is minted: the import's
+  // read-only edit must not be invalidated by, or invalidate, a poll, a control or a provisioning
+  // session. A held lease answers 409 and opens nothing; the operator retries.
+  const lease = await acquirePlayEditLease(c.db, {
+    packageName: setup.packageName,
+    purpose: "import",
+    actor: "connector:play-listing-import",
+  });
+  if ("held" in lease)
+    return fail(
+      409,
+      "edit_lease_held",
+      new PlayEditLeaseHeld(lease.purpose, lease.expiresAt).message,
+    );
   const run = playRun({
     env: c.env,
     db: c.db,
@@ -141,9 +160,6 @@ export async function playSource(c: SourceContext): Promise<SourceOutcome> {
   });
   let error: unknown = null;
   try {
-    // TODO(A-18e): acquire the per-package edit lease here (S-15 §5.3). Until it lands this is a
-    // direct edit, so a P5-03 poll tick or a control in the same seconds can invalidate it; the
-    // read then fails as `store_refused` and writes nothing, and the operator retries.
     return {
       ok: true,
       snapshot: await readPlayListing(run.publisher, setup.packageName),
@@ -154,7 +170,11 @@ export async function playSource(c: SourceContext): Promise<SourceOutcome> {
       return fail(vendorStatus(e.status), "store_refused", e.message);
     throw e;
   } finally {
-    await finishPlayRun(run, error);
+    try {
+      await finishPlayRun(run, error);
+    } finally {
+      await releasePlayEditLease(c.db, lease);
+    }
   }
 }
 

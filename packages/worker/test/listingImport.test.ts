@@ -47,6 +47,11 @@ import {
 } from "./msstoreFake.js";
 import { importRsaPublicKey, PLAY_PACKAGE, PlayFake } from "./playFake.js";
 import {
+  acquirePlayEditLease,
+  readPlayEditLease,
+  releasePlayEditLease,
+} from "../src/services/distribution/connectors/play/lease.js";
+import {
   CLIENT_EMAIL,
   PLAY_OUTLET_IDENTITY,
   playFixtures,
@@ -201,7 +206,14 @@ async function world(
     await importRsaPublicKey(keys.publicPem),
     CLIENT_EMAIL,
   );
-  w.play.listings = [
+  // A-18c's import reads A-18e's live listing state (`store`), which every new edit copies.
+  w.play.store.details = {
+    defaultLanguage: "en-US",
+    contactWebsite: "https://djdl.example",
+    contactEmail: "support@djdl.example",
+  };
+  w.play.store.listings.clear();
+  for (const l of [
     {
       language: "en-US",
       title: "djdl",
@@ -210,18 +222,17 @@ async function world(
       video: "https://www.youtube.com/watch?v=abc",
     },
     { language: "fr-FR", title: "djdl", shortDescription: "Vos sets DJ." },
-  ];
-  w.play.images = {
-    "en-US/phoneScreenshots": [
-      {
-        id: "img-1",
-        url: "https://play-lh.googleusercontent.com/one",
-        sha1: "da39a3ee5e6b4b0d3255bfef95601890afd80709",
-        sha256:
-          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      },
-    ],
-  };
+  ])
+    w.play.store.listings.set(l.language, l);
+  w.play.store.images.set("en-US/phoneScreenshots", [
+    {
+      id: "img-1",
+      url: "https://play-lh.googleusercontent.com/one",
+      sha1: "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+      sha256:
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    },
+  ]);
   if (opts.play !== false) {
     await addOutlet(w.db, "play", "play", PLAY_OUTLET_IDENTITY);
     const r = await putOutletCredential(w.env, w.db, {
@@ -529,6 +540,24 @@ describe("Google Play's readListing (a read-only edit, deleted)", () => {
     expect(w.play.calls().at(-1)).toMatch(/^DELETE edits\//);
     expect(await listingAudits(w)).toEqual([]);
   });
+
+  it("takes A-18e's edit lease: a held lease answers 409 and opens nothing; the lease is released after", async () => {
+    const w = await world({ ms: false, asc: false });
+    const held = await acquirePlayEditLease(w.db, {
+      packageName: PLAY_PACKAGE,
+      purpose: "poll",
+      actor: "connector:play",
+    });
+    const r = await call(w, { source: "play" });
+    expect(r.status).toBe(409);
+    expect(r.json.reason).toBe("edit_lease_held");
+    expect(w.play.calls()).toEqual([]);
+    expect(w.play.tokenRequests).toEqual([]);
+    if ("held" in held) throw new Error("expected to hold the lease");
+    await releasePlayEditLease(w.db, held);
+    expect((await call(w, { source: "play" })).status).toBe(200);
+    expect(await readPlayEditLease(w.db, PLAY_PACKAGE)).toBeNull();
+  });
 });
 
 describe("the Microsoft Store's readListing (P5-04's GET-only client)", () => {
@@ -806,7 +835,7 @@ describe("applying, precedence and provenance", () => {
       source: "godot",
       godot: { ...GODOT, name: "DJDL" },
     });
-    w.play.listings[0]!.title = "djdl for Android";
+    w.play.store.listings.get("en-US")!.title = "djdl for Android";
     const play = await call(w, { source: "play" });
     expect(change(play.json.import, "name")).toMatchObject({
       action: "replace",
@@ -816,7 +845,7 @@ describe("applying, precedence and provenance", () => {
       proposedSource: "play",
     });
     await importApplied(w, { source: "play" });
-    w.play.listings[0]!.title = "djdl: DJ sets";
+    w.play.store.listings.get("en-US")!.title = "djdl: DJ sets";
     const refreshed = await call(w, { source: "play" });
     expect(change(refreshed.json.import, "name")).toMatchObject({
       action: "replace",

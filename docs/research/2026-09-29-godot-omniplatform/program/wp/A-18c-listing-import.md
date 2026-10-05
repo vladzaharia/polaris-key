@@ -91,8 +91,10 @@ the manifest ([S-15 §7.2](../../notes/S-15-storefront-provisioning.md#72-where-
   lists them (`assets`) for A-18d to start from.
 - **Version and bundle ids have no model field**, so they are shown beside the outlets' identities
   (`identifiers`, with a match per outlet), not stored.
-- **Play edit lease:** A-18e has not landed, so the import opens a direct read-only edit with a
-  `TODO(A-18e)` at the call site (`listing/sources.ts` `playSource`).
+- **Play edit lease:** A-18e had not landed, so the import first opened a direct read-only edit
+  with a `TODO(A-18e)` at the call site. At integration (wave ISP) `playSource` takes A-18e's
+  `import` lease before any token is minted and releases it after; a held lease answers 409
+  `edit_lease_held`. Migration renumbered `0069_dist_listing_provenance.sql` at integration.
 - **Microsoft needs no client change:** the last published submission is already a GET of P5-04's
   client; a separate parser (`connectors/msstore/listing.ts`) reads its `listings`, leaving
   `parseSubmission` (and polling) untouched. Images are listed by file name only there, so they are

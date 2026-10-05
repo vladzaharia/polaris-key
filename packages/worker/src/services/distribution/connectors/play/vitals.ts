@@ -254,6 +254,12 @@ export async function runVitals(
   run: PlayRun,
   tracks: readonly PlayTrack[],
   settings: PlayVitalsSettings,
+  /**
+   * Renews the tick's edit lease (A-18e) before each halt opens and commits an edit; false when the
+   * lease was lost, and then that halt is not attempted (no trip marker: the next tick retries it).
+   * A slow tick (429 back-off plus the Reporting reads) must not commit over a newer holder's edit.
+   */
+  keepLease: () => Promise<boolean> = async () => true,
 ): Promise<VitalsOutcome> {
   if (!settings.enabled) return { ran: false, halted: 0 };
   const ctx = { db: run.db, product: run.product, now: run.now };
@@ -347,6 +353,12 @@ export async function runVitals(
   for (const r of readings) {
     if (r.trips.length === 0) continue;
     const reason = `${r.trips.join("; ")} in the last ${settings.windowHours} h (source: ${PLAY_VITALS_SOURCE})`;
+    if (!(await keepLease())) {
+      errors.push(
+        `vitals halt of ${r.track}: the edit lease was lost; retried next tick`,
+      );
+      continue;
+    }
     let result: ControlResult;
     try {
       result = await applyPlayControl(run, {

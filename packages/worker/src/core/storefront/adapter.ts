@@ -39,11 +39,12 @@ import type { ConfirmationPhrase } from "./confirm.js";
 import type { CompiledGate, GateRule } from "./gate.js";
 import type { ListingProfile } from "./listing.js";
 import { APP_STORE_ADAPTER } from "./stores/appStore.js";
+import { GOOGLE_PLAY_ADAPTER } from "./stores/googlePlay.js";
 
 export type { ListingProfile } from "./listing.js";
 
 /** The storefront adapters. Worker-internal ids; each maps onto existing outlet kinds. */
-export type StorefrontId = "app-store";
+export type StorefrontId = "app-store" | "google-play";
 
 /** The operations a storefront declares support for (S-15 §6.1). */
 export const STOREFRONT_OPS = [
@@ -148,6 +149,7 @@ export interface StorefrontRuntime<Ctx, PinnedCtx> {
 /** THE REGISTRY: one line per storefront. */
 export const STOREFRONT_ADAPTERS: readonly StorefrontAdapter[] = [
   APP_STORE_ADAPTER,
+  GOOGLE_PLAY_ADAPTER,
 ];
 
 /** An adapter by id, or null. */
