@@ -7512,7 +7512,7 @@
         "docs/design/BRAND.md §4, §7.1, §12"
       ],
       "brief": "wp/UK-01-brand-kit-tokens.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "UK-02",
@@ -8375,7 +8375,7 @@
         "docs/design/UI-KITS.md owner decisions (2026-10-05)"
       ],
       "brief": "wp/UK-40-kotlin-jvm-desktop.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "UK-41",

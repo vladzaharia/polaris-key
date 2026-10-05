@@ -499,15 +499,16 @@
       .mini .k-field .mono {
         font-size: 13px;
       }
+      /* accent: "core", resolved (§3.3): #9a5cff in dark, #7a2fff in light. */
       .p-core {
-        --kit-accent: #7a3df0;
-        --kit-accent-fg: #b688fe;
-        --kit-accent-subtle: #18132e;
-        --kit-focus: #9a5cff;
+        --kit-accent: #9051f3;
+        --kit-accent-fg: #c0a6ff;
+        --kit-accent-subtle: #17122d;
+        --kit-focus: #c0a6ff;
       }
       [data-theme="light"] .p-core {
         --kit-accent: #7a2fff;
-        --kit-accent-fg: #6a1fef;
+        --kit-accent-fg: #7321f6;
         --kit-accent-subtle: #eae4ff;
         --kit-focus: #7a2fff;
       }
@@ -534,10 +535,11 @@
           sans-serif;
         accent-color: #ea580c;
         --pk-font-sans: inherit;
-        --kit-accent: #c2410c;
-        --kit-accent-fg: #fb923c;
-        --kit-focus: #ea580c;
-        --kit-accent-subtle: #2a160b;
+        /* The host's accent-color, resolved for contrast (§3.3). */
+        --kit-accent: #cf4b00;
+        --kit-accent-fg: #ff9972;
+        --kit-focus: #ff9972;
+        --kit-accent-subtle: #1e1110;
         --kit-radius-card: 8px;
         --kit-radius-control: 6px;
         --kit-fill: Canvas;
@@ -547,7 +549,9 @@
         --kit-hairline: color-mix(in srgb, CanvasText 18%, Canvas);
       }
       [data-theme="light"] .p-native {
-        --kit-accent-fg: #c2410c;
+        --kit-accent-fg: #b03e00;
+        --kit-focus: #cf4b00;
+        --kit-accent-subtle: #f2e7e6;
         --pk-surface-raised: Canvas;
         --kit-fill: color-mix(in srgb, Canvas 96%, CanvasText);
       }
@@ -818,6 +822,167 @@
         height: 6px;
         border-radius: 3px;
         background: var(--kit-tonal-hover);
+      }
+
+      /* forced-colors (Windows contrast themes): the kit hands every colour to the system palette.
+         Simulated here with the "Night sky" (dark) and "Desert" (light) palettes, because a
+         screenshot cannot switch the OS theme. Ambient, shadows, tints and the accent go; borders
+         come back so every control keeps an edge; the product icon is an image and stays. */
+      .fc {
+        --fc-canvas: #000000;
+        --fc-text: #ffffff;
+        --fc-link: #75e9fc;
+        --fc-btnface: #000000;
+        --fc-btntext: #ffffff;
+        --fc-hi: #8ee3f0;
+        --fc-hitext: #000000;
+        --fc-gray: #a6a6a6;
+        --fc-err: #ffff00;
+        background: var(--fc-canvas);
+        color: var(--fc-text);
+        box-shadow: 0 0 0 1px var(--fc-text);
+      }
+      [data-theme="light"] .fc {
+        --fc-canvas: #fffaef;
+        --fc-text: #3d3d3d;
+        --fc-link: #1c5e75;
+        --fc-btnface: #fffaef;
+        --fc-btntext: #202020;
+        --fc-hi: #903909;
+        --fc-hitext: #fffaef;
+        --fc-gray: #676767;
+        --fc-err: #903909;
+      }
+      .fc .k-card {
+        background: var(--fc-canvas);
+        box-shadow: none;
+        border: 1px solid var(--fc-text);
+      }
+      .fc .k-h1,
+      .fc .k-label,
+      .fc .k-product {
+        color: var(--fc-text);
+      }
+      .fc .k-lede,
+      .fc .k-help,
+      .fc .tier {
+        color: var(--fc-text);
+      }
+      .fc .k-field {
+        background: var(--fc-canvas);
+        border: 1px solid var(--fc-text);
+        color: var(--fc-text);
+      }
+      .fc .k-field.invalid {
+        outline: 2px solid var(--fc-err);
+        outline-offset: 0;
+      }
+      .fc .k-error,
+      .fc .k-error .ic {
+        color: var(--fc-err);
+      }
+      .fc .k-btn {
+        background: var(--fc-btnface);
+        color: var(--fc-btntext);
+        border: 1px solid var(--fc-btntext);
+        box-shadow: none;
+      }
+      .fc .k-btn.primary {
+        background: var(--fc-hi);
+        color: var(--fc-hitext);
+        border-color: var(--fc-hi);
+      }
+      .fc .k-btn.focus-visible {
+        outline: 2px solid var(--fc-text);
+        outline-offset: 2px;
+      }
+      .fc .k-links a {
+        color: var(--fc-link);
+        text-decoration: underline;
+      }
+      .fc .k-iconbtn {
+        color: var(--fc-btntext);
+        background: transparent;
+        border: 1px solid var(--fc-btntext);
+      }
+      .fc .k-appicon::after {
+        display: none;
+      }
+      .fc .fc-note {
+        position: absolute;
+        right: 24px;
+        bottom: 20px;
+        font: 400 13px/18px var(--pk-font-sans);
+        color: var(--fc-gray);
+      }
+
+      /* The native preset at full screen: the host's type, Canvas neutrals, the host's accent
+         (resolved), the host's radii, no ambient and no product hero art behind the card. */
+      .nf {
+        font-family:
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+        background: color-mix(in srgb, Canvas 96%, CanvasText);
+        --pk-font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+        --kit-accent: #cf4b00;
+        --kit-accent-fg: #ff9972;
+        --kit-focus: #ff9972;
+        --kit-accent-subtle: #1e1110;
+        --kit-radius-card: 10px;
+        --kit-radius-control: 6px;
+        --kit-fill: color-mix(in srgb, Canvas 90%, CanvasText);
+        --pk-surface-page: color-mix(in srgb, Canvas 96%, CanvasText);
+        --pk-surface-raised: Canvas;
+        --pk-text-strong: CanvasText;
+        --pk-text-default: CanvasText;
+        --pk-text-muted: color-mix(in srgb, CanvasText 66%, Canvas);
+        --pk-text-subtle: color-mix(in srgb, CanvasText 55%, Canvas);
+        --kit-hairline: color-mix(in srgb, CanvasText 16%, Canvas);
+        color-scheme: dark;
+      }
+      [data-theme="light"] .nf {
+        --kit-accent-fg: #b03e00;
+        --kit-focus: #cf4b00;
+        --kit-accent-subtle: #f2e7e6;
+        color-scheme: light;
+      }
+      .nf .k-card {
+        box-shadow: 0 0 0 1px var(--kit-hairline);
+      }
+      .nf .k-h1,
+      .nf .display,
+      .nf .k-label,
+      .nf .k-btn,
+      .nf .k-product {
+        font-family: inherit;
+        font-weight: 600;
+      }
+      .nf .k-btn {
+        font-weight: 500;
+      }
+      .nf .hostbar {
+        position: absolute;
+        inset: 0 0 auto;
+        height: 52px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 20px;
+        border-bottom: 1px solid var(--kit-hairline);
+        background: Canvas;
+        font:
+          600 14px/1 system-ui,
+          sans-serif;
+        color: CanvasText;
+      }
+      .nf .hostbar .grow {
+        flex: 1;
+      }
+      .nf .hostbar span:not(.grow) {
+        font-weight: 400;
+        color: var(--pk-text-muted);
       }
     </style>
   </head>
@@ -1912,6 +2077,119 @@ pk-activate::part(primary) { border-radius: 999px; }</pre>
               <div class="frame" id="ck1"><span class="t">120 ms</span></div>
               <div class="frame" id="ck2"><span class="t">220 ms</span></div>
               <div class="frame" id="ck3"><span class="t">320 ms</span></div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 16. forced-colors -->
+      <figure>
+        <figcaption>
+          web · forced-colors (Windows contrast theme: Night sky in dark, Desert
+          in light) · 1440 × 900
+        </figcaption>
+        <div class="shot kit w1440 fc" data-shot="forced-colors">
+          <div class="center">
+            <div class="k-card flow">
+              <div class="k-product">
+                <span
+                  class="k-iconbtn tonal"
+                  data-icon="arrowLeft"
+                  data-size="18"
+                  style="margin-right: 4px"
+                ></span>
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="32"
+                  style="border-radius: 8px"
+                ></div>
+                <span>Tidewater Studio <span class="tier">· Pro</span></span>
+              </div>
+              <div style="display: grid; gap: 8px">
+                <h1 class="k-h1">Add your license</h1>
+                <p class="k-lede">
+                  Your key is in the purchase email from Harbor Audio.
+                </p>
+              </div>
+              <div>
+                <label class="k-label">License key</label>
+                <div class="k-field invalid">
+                  <span class="mono"
+                    ><span class="k-key"
+                      ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
+                      ><span>3WPLD</span></span
+                    ></span
+                  >
+                  <span
+                    class="k-iconbtn"
+                    data-icon="paste"
+                    data-size="18"
+                    aria-label="Paste"
+                  ></span>
+                </div>
+                <div class="k-error">
+                  <span data-icon="alert" data-size="16"></span>
+                  <span
+                    >This key is one character short. Check the email and paste
+                    it again.</span
+                  >
+                </div>
+              </div>
+              <div class="actions">
+                <button class="k-btn primary block focus-visible">
+                  Activate
+                </button>
+                <div class="k-links">
+                  <a>Where is my key?</a><a>Activate offline</a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <span class="fc-note"
+            >forced-colors: active · every colour is a system colour; the icon
+            is an image</span
+          >
+        </div>
+      </figure>
+
+      <!-- 17. Native preset, full screen -->
+      <figure>
+        <figcaption>
+          web · native preset at full screen (host font, Canvas neutrals, the
+          host's accent-color resolved, the host's radii, no ambient) · 1440 ×
+          900
+        </figcaption>
+        <div class="shot kit w1440 nf" data-shot="native-full">
+          <div class="hostbar">
+            <span class="grow" style="color: CanvasText; font-weight: 600"
+              >Harbor Cloud</span
+            ><span>Library</span><span>Account</span>
+          </div>
+          <div class="center" style="top: 52px">
+            <div class="k-card flow">
+              <div class="hero">
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="72"
+                ></div>
+                <h1 class="display">Welcome to Tidewater Studio</h1>
+                <span class="by">by Harbor Audio</span>
+                <p class="k-lede">Sign in or add your license to start.</p>
+              </div>
+              <span class="spacer"></span>
+              <div style="display: grid; gap: 20px">
+                <div class="actions">
+                  <button class="k-btn primary block">Sign in</button>
+                  <button class="k-btn secondary block">
+                    Use a license key
+                  </button>
+                </div>
+                <div class="k-links">
+                  <a>Start a 14-day trial</a><a>Activate offline</a>
+                </div>
+              </div>
             </div>
           </div>
         </div>
