@@ -119,7 +119,7 @@ The code is the fact where this brief and it disagreed:
 - [x] The conformance suite passes for Play, including never-list, typed confirmation and
       idempotency over every plan step.
 - [x] Every P5-03 and A-16 Play test passes unchanged.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 
