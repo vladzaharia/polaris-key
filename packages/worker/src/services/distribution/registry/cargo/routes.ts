@@ -163,6 +163,9 @@ const index: RegistryRoute = feedRoute<IndexState>({
       indexPath(name) !== ctx.params.path
     )
       return { kind: "absent" };
+    // Lower-case match only, with no `-`/`_` folding (ingest's crateNorm uses that folding only
+    // to refuse colliding names). This matches crates.io: the index file sits at the published
+    // spelling, and Cargo retries the `-`/`_` variants itself when a lookup misses.
     const crate = (await crates(ctx)).find(
       (d) => d.name.toLowerCase() === name,
     );
