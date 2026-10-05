@@ -193,12 +193,15 @@ export const syncErrors: Scenario = {
           await trust(s, PRODUCT);
           await setLicense("status", "disabled");
           expect((await document(s, PRODUCT, "license")).status).toBe(401);
-          // The config document authenticates the DEVICE only (D-08), so it is served while the
-          // licence is disabled — and, fetched in parallel, with the token held at the time.
+          // Re-enabled before the config document, which is fetched in parallel with the token
+          // held at the time. This step is the licence document's 401 ladder; on a product that
+          // runs License the config document now refuses a disabled licence outright
+          // (`403 license_unusable`, R1, pinned in `serviceRoutes.test.ts`), and the SDKs'
+          // handling of that answer has no transcript yet.
+          await setLicense("status", "active");
           const cfg = await document(s, PRODUCT, "config");
           expect(cfg.status).toBe(200);
           configEtag = etagOf(cfg);
-          await setLicense("status", "active");
           const rotated = await s.send({
             method: "POST",
             path: `/${PRODUCT}/license/token`,

@@ -10,10 +10,10 @@ sidebar:
 fused v2 document at `/<product>/config`; that route is gone rather than aliased, because a route
 that used to return a signed document must not quietly start returning half of one.
 
-## Authentication: a device token, and nothing else
+## Authentication: a device token, and a usable license when License is on
 
-The route calls `core.validateDeviceToken` and stops there — no license lookup, no usability
-check, no license-scoped guard of any kind:
+The route calls `core.validateDeviceToken`. On a product with License **off**, that is the
+whole check — no license lookup, no usability check:
 
 ```
 GET /<product>/config/document
@@ -22,11 +22,18 @@ Authorization: Bearer pkeyt_…
 
 This is the wire-level proof of D-08, service independence: a product can run Config with License
 **disabled**, its devices register and hold real `pkeyt_` tokens, and every one of them still gets
-a config document. Contrast this with [`GET /<product>/license/document`](/docs/services/license/document/),
-which calls `license.requireLicensedDevice` — the same token check, plus "and the license is
-usable". Config takes the Core-only answer outright; License adds the extra clause. See
-[the device principal](/docs/services/core/device-principal/) for exactly what
-`validateDeviceToken` checks.
+a config document. See [the device principal](/docs/services/core/device-principal/) for exactly
+what `validateDeviceToken` checks.
+
+On a product that **runs** License, the device's license must also be usable — active, and not
+past its expiry. The document carries the product's secrets, so a device whose license an
+operator disabled, or that expired, or that no longer exists gets `403 license_unusable` instead,
+and stops receiving them. The check runs before the ETag comparison, so such a device is never
+told its copy is current. The rule follows the enablement flag, not the presence of a license
+row, exactly like Core's `/devices` surfaces and the
+[edge-mint guard](/docs/services/config/edge-mint/). Compare
+[`GET /<product>/license/document`](/docs/services/license/document/), which calls
+`license.requireLicensedDevice` and answers an unusable license `401`.
 
 A missing or invalid token is `401 unauthorized`. Anything but `GET` is `405`.
 

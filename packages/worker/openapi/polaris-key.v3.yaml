@@ -1551,8 +1551,11 @@ paths:
       tags: [config]
       summary: The signed config document (pkey-config+jws)
       description: >
-        Device-token auth ONLY — no license required (D-08: a config-only product serves
-        signed settings to any registered device). Carries catalog schemaVersion + config +
+        Device-token auth. A product with License OFF needs no license at all (D-08: a
+        config-only product serves signed settings to any registered device); a product that
+        runs License also requires the device's license to be USABLE, and answers 403
+        `license_unusable` when it is disabled, expired or gone (R1) — before the ETag
+        comparison, so such a device never gets a 304. Carries catalog schemaVersion + config +
         secrets maps. No build gate. Strong per-doc ETag/304, independent of the license
         document's.
 
@@ -1589,6 +1592,19 @@ paths:
           headers:
             ETag: { $ref: "#/components/headers/ETag" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: >
+            The product runs License and the device's license is not usable (disabled,
+            expired, or no longer exists) — NESTED. Never answered by a product with License
+            off.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                licenseUnusable:
+                  summary: test/serviceRoutes.test.ts — the exact-equality assertion
+                  value:
+                    error: { code: license_unusable }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "500":
           description: The active catalog could not validate the payload — NESTED, fails closed.

@@ -166,6 +166,12 @@
       "description": "The product's active config catalog could not validate the payload, so no document is signed."
     },
     {
+      "code": "license_unusable",
+      "kind": "wire",
+      "service": "config",
+      "description": "403 from GET /<p>/config/document: the product runs License and the device's licence is disabled, expired or no longer exists, so no config document (and none of its secrets) is served. A product with License off never answers it."
+    },
+    {
       "code": "disabled",
       "kind": "wire",
       "service": "identity",

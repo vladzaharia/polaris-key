@@ -15,7 +15,8 @@
  * are load-bearing here:
  *
  *   1. authentication is `core.validateDeviceToken` — token → device, no licence involved
- *      (`services/license/auth.ts` documents the split);
+ *      (`services/license/auth.ts` documents the split) — and the licence is asked about only
+ *      when the product runs License (R1, below);
  *   2. the payload merge tolerates a null licence (`core/payload.ts` — the tier, licence
  *      profiles and licence overrides simply contribute no layer);
  *   3. NO BUILD GATE. Version/channel enforcement is a licence grant (D-20) and lives on
@@ -25,6 +26,17 @@
  * `graceUntil` still comes from the licence's `max_offline_days` when there is a licence, and
  * from the product default when there is not — the offline window is a property of the
  * DOCUMENT, and a config-only install is entitled to one.
+ *
+ * ── R1: A LICENSED PRODUCT'S SECRETS STOP WITH THE LICENCE ─────────────────────────────────
+ *
+ * The document carries the product's secrets. Taking Core's device-only answer for EVERY product
+ * meant a device whose licence an operator had disabled, or that had expired, kept receiving
+ * them — a rotated key included — for as long as its token lived. So when the product runs
+ * License, the licence must be usable (Core's `licenseUsable`, the predicate License itself
+ * applies), and otherwise the answer is `403 license_unusable`: before the ETag comparison, so
+ * such a device is never told its copy is current. The rule is scoped to the enablement flag,
+ * not to the presence of a licence row, exactly as Core's `/devices` surfaces and the edge-mint
+ * guard scope it: a product with License off is still served on the token alone.
  */
 
 import type { ConfigDoc } from "@polaris-key/protocol/config";
@@ -35,6 +47,7 @@ import type { Product } from "../../core/products.js";
 import { ErrorCode, methodNotAllowed, wireError } from "../../core/errors.js";
 import {
   deviceMetadata,
+  licenseUsable,
   touchDeviceMetadata,
   validateDeviceToken,
 } from "../../core/devices.js";
@@ -77,9 +90,12 @@ export async function handleConfigDocument(
 ): Promise<Response> {
   if (req.method !== "GET") return methodNotAllowed();
 
-  // Device authentication ONLY — see the D-08 note at the top of this file.
+  // Device authentication — see the D-08 note at the top of this file.
   const valid = await validateDeviceToken(env, db, product, bearer(req), now);
   if ("error" in valid) return wireError(401, ErrorCode.Unauthorized);
+  // ...plus a usable licence when the product runs License (R1, above).
+  if (product.services.license.enabled && !licenseUsable(valid.license, now))
+    return wireError(403, ErrorCode.LicenseUnusable);
 
   await touchDeviceMetadata(db, valid.device, deviceMetadata(req), now);
 

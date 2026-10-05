@@ -129,10 +129,10 @@ import { boundedPackInstalls, recordPackInstalls } from "./deltaDemand.js";
  *
  * Every surface that was license-gated before still is — `requireLicensedDevice` is what they
  * call, and it applies `licenseUsable` in exactly the position this function used to, so the
- * 401s are the same 401s for the same reasons. `GET /<p>/config/document` takes the core-only
- * answer outright; Core's own `/devices` and `/devices/report`, and the config service's
- * edge-mint guard, take it CONDITIONALLY — see `coreDeviceAllowed` below for the rule and why
- * it is scoped to the enablement flag rather than to the presence of a licence row.
+ * 401s are the same 401s for the same reasons. Core's own `/devices` and `/devices/report`, the
+ * config service's edge-mint guard and `GET /<p>/config/document` (R1, answered `403
+ * license_unusable` there) take it CONDITIONALLY — see `coreDeviceAllowed` below for the rule and
+ * why it is scoped to the enablement flag rather than to the presence of a licence row.
  */
 export interface ValidDeviceToken {
   tokenHash: string;

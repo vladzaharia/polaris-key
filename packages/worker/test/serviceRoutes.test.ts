@@ -316,6 +316,130 @@ describe("a config-only product (D-08)", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════
+// R1 — a LICENSED product's config document needs a usable licence
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+//
+// The config document carries the product's secrets. D-08 lets a product with License OFF serve
+// it on a device token alone, but the same rule used to apply to a licensed product too, so a
+// device whose licence an operator had disabled, or that had expired, kept receiving every secret
+// — a rotated one included — for as long as its token lived. The licence check is scoped to the
+// enablement flag, exactly as Core's own `/devices` surfaces and the edge-mint guard scope it.
+
+describe("a licensed product's config document (R1)", () => {
+  let db: SqliteDb;
+  let env: Env;
+  let product: Product;
+  let licenseId: string;
+  let headers: Record<string, string>;
+
+  beforeEach(async () => {
+    db = makeTestDb();
+    env = makeEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    product = (await loadProduct(env, db, "djdl"))!;
+    expect(product.services.license.enabled).toBe(true);
+    const seeded = await seedLicenseWithKey(db, "djdl");
+    licenseId = seeded.licenseId;
+    const activateRes = await handleActivate(
+      mkReq("POST", {
+        authorization: `Bearer ${seeded.key}`,
+        "x-pkey-device": "dev-1",
+      }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    expect(activateRes.status).toBe(200);
+    const { token } = (await activateRes.json()) as { token: string };
+    headers = { authorization: `Bearer ${token}` };
+  });
+
+  const configDocument = (extra: Record<string, string> = {}) =>
+    call(env, db, product, "/djdl/config/document", {
+      headers: { ...headers, ...extra },
+    });
+
+  async function expectRefused(res: Response): Promise<void> {
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: { code: "license_unusable" } });
+  }
+
+  it("serves the document while the licence is usable", async () => {
+    const res = await configDocument();
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("application/jwt");
+    const doc = await verifyConfigDoc(await res.text(), {
+      trust: TRUST,
+      expectedAud: "djdl",
+      deviceId: "dev-1",
+      now: NOW,
+    });
+    expect(doc).not.toBeNull();
+  });
+
+  it("refuses a disabled licence with 403 license_unusable, and never answers it a 304", async () => {
+    const ok = await configDocument();
+    expect(ok.status).toBe(200);
+    const etag = ok.headers.get("etag")!;
+
+    await db.run(
+      "UPDATE licenses SET status = 'disabled' WHERE product = 'djdl' AND id = ?",
+      licenseId,
+    );
+    await expectRefused(await configDocument());
+    // A conditional request is refused too: "unchanged" would tell the device its copy is
+    // still current.
+    await expectRefused(await configDocument({ "if-none-match": etag }));
+
+    // Re-enabling the licence restores the document.
+    await db.run(
+      "UPDATE licenses SET status = 'active' WHERE product = 'djdl' AND id = ?",
+      licenseId,
+    );
+    expect((await configDocument()).status).toBe(200);
+  });
+
+  it("refuses a licence past its expiry", async () => {
+    await db.run(
+      "UPDATE licenses SET expires_at = ? WHERE product = 'djdl' AND id = ?",
+      NOW - 1,
+      licenseId,
+    );
+    await expectRefused(await configDocument());
+  });
+
+  it("refuses a device whose licence no longer exists", async () => {
+    await db.run(
+      "DELETE FROM licenses WHERE product = 'djdl' AND id = ?",
+      licenseId,
+    );
+    await expectRefused(await configDocument());
+  });
+
+  it("still answers a bad token 401 before it asks about the licence", async () => {
+    const res = await call(env, db, product, "/djdl/config/document", {
+      headers: { authorization: "Bearer pkeyt_nope" },
+    });
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ error: { code: "unauthorized" } });
+  });
+
+  it("does not apply once the product turns License off (D-08)", async () => {
+    await db.run(
+      "UPDATE licenses SET status = 'disabled' WHERE product = 'djdl' AND id = ?",
+      licenseId,
+    );
+    await setServicesJson(db, "djdl", {
+      license: { enabled: false },
+      config: { enabled: true },
+    });
+    product = (await loadProduct(env, db, "djdl"))!;
+    expect((await configDocument()).status).toBe(200);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
 // The other direction: a license-only product still answers for grants.
 // ═══════════════════════════════════════════════════════════════════════════════════════════
 

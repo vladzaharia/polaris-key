@@ -14,8 +14,10 @@
  * service may not import a sibling (`test/boundaries.test.ts`). This module keeps License's own
  * call sites — `/license/{token,deauthorize,document}` — pointed at one definition.
  *
- * The ONLY surface that takes Core's unqualified answer is `GET /<p>/config/document`, which is
- * the whole point (§2.2).
+ * `GET /<p>/config/document` takes Core's unqualified answer only for a product with License
+ * off, which is the whole point (§2.2). For a licensed product it applies Core's
+ * `licenseUsable` itself and answers `403 license_unusable` (R1), so a disabled or expired
+ * licence stops receiving the document's secrets.
  */
 
 export { requireLicensedDevice } from "../../core/authz.js";
