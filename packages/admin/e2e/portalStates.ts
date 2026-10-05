@@ -359,6 +359,24 @@ export const SHIPPED: ShippedState[] = [
     ready: (p) => h1(p, "Nightfall"),
   },
   {
+    // No art at all: the letter tile alone beside the name, no banner.
+    section: "4.20",
+    id: "product-no-cover",
+    title: "Product page without cover art (Hollow Pines)",
+    scenario: "twelve",
+    path: "/#/p/hollow-pines",
+    ready: (p) => h1(p, "Hollow Pines"),
+  },
+  {
+    // Cover art and no icon: the letter tile in front of the cover.
+    section: "4.20",
+    id: "product-no-icon",
+    title: "Product page with a cover and no icon (Glyphsmith)",
+    scenario: "twelve",
+    path: "/#/p/glyphsmith",
+    ready: (p) => h1(p, "Glyphsmith"),
+  },
+  {
     section: "4.20",
     id: "product-package",
     title: "Product page with Package access (Tidewater Studio)",

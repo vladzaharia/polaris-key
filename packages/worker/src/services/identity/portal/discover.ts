@@ -83,6 +83,7 @@ import {
   getPlatformIdentity,
   linkLicense,
   listDiscoverCandidates,
+  listHeldProducts,
   portalIdentityIssuerKey,
   recordDiscoverClaim,
 } from "./repo.js";
@@ -223,12 +224,20 @@ async function evaluateOffer(
   };
 }
 
-/** Every offer for the account, in name order. Reads only: no row is written (G24). */
+/**
+ * Every offer for the account, in name order. Reads only: no row is written (G24).
+ *
+ * A product the account already holds is never an offer, whatever its policy would say: the held
+ * set is read once up front and those candidates are skipped before any evaluation, and
+ * `exclude` (the slugs the caller's library view lists) is skipped too, so the count beside the
+ * library can never name a product that library already shows.
+ */
 export async function discoverOffers(
   env: Env,
   db: Db,
   accountId: string,
   now: number,
+  exclude: ReadonlySet<string> = new Set(),
 ): Promise<
   Array<{
     product: ProductPublic;
@@ -238,22 +247,28 @@ export async function discoverOffers(
 > {
   const identity = await discoverIdentity(env, db, accountId);
   if (!identity) return [];
+  const held = await listHeldProducts(db, accountId);
   const offers = [];
   for (const slug of await listDiscoverCandidates(db)) {
+    if (held.has(slug) || exclude.has(slug)) continue;
     const verdict = await evaluateOffer(db, accountId, identity, slug, now);
     if (verdict.kind === "offer") offers.push(verdict);
   }
   return offers;
 }
 
-/** How many offers the account has: the Discover count in the nav (§4.16, `GET /api/library`). */
+/**
+ * How many offers the account has: the Discover count in the nav (§4.16, `GET /api/library`).
+ * `library` is the slugs that same response lists, none of which is ever counted.
+ */
 export async function discoverCount(
   env: Env,
   db: Db,
   accountId: string,
   now: number,
+  library: ReadonlySet<string> = new Set(),
 ): Promise<number> {
-  return (await discoverOffers(env, db, accountId, now)).length;
+  return (await discoverOffers(env, db, accountId, now, library)).length;
 }
 
 /** `GET /api/discover`. */

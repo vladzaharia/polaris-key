@@ -49,6 +49,7 @@ import {
 } from "../core/publisher.js";
 import { stmtInsertReleaseConfig } from "../repo.js";
 import { manifestDeliverableStatements } from "../services/release/deliverables.js";
+import { manifestSnapshotStatement } from "../core/manifestSnapshot.js";
 import { isSafeBinaryName } from "../services/release/install.js";
 import { stmtEnqueuePackageRender, RENDER_ALL } from "../core/registryQueue.js";
 import {
@@ -233,7 +234,9 @@ export function systemManifestProblem(
  *   - the manifest-owned trusted publisher, with the repository's numeric ids from `repo` (never
  *     from the manifest), and never over an operator's claim;
  *   - every ENABLED service's own manifest rows (`ingest`), by the product's STORED enablement, so
- *     a service an operator switched off is not rewritten.
+ *     a service an operator switched off is not rewritten;
+ *   - the manifest snapshot (ST-01a, `product_manifest_snapshot`, origin `deploy-hook`): the raw
+ *     documents the hook body carried and the deploy's commit (`PKEY_GIT_SHA`) as `applied_sha`.
  *
  * It never touches the services, `packageFeeds`, the feeds, the signing key or the catalog:
  * those are the bootstrap's (and then the operator's).
@@ -242,6 +245,12 @@ export async function linkSystemProduct(
   db: Db,
   manifest: ParsedManifest,
   repo: SystemRepository,
+  applied: {
+    /** The raw `.pkey/` documents `manifest` was parsed from, keyed by document name. */
+    files: Readonly<Record<string, string>>;
+    /** The deploy's commit (`PKEY_GIT_SHA`); `null` (or malformed) is stored as NULL. */
+    sha: string | null;
+  },
   now: number,
   ingest?: ManifestIngest,
 ): Promise<LinkSystemProduct> {
@@ -351,6 +360,16 @@ export async function linkSystemProduct(
     const services = parseServices(product.services_json).services;
     stmts.push(...ingest(manifest, slug, services, now).statements);
   }
+  stmts.push(
+    await manifestSnapshotStatement(
+      slug,
+      "deploy-hook",
+      applied.sha,
+      applied.files,
+      manifest,
+      now,
+    ),
+  );
   await db.batch(stmts);
   return {
     ok: true,

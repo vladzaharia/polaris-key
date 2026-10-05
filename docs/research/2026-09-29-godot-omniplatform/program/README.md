@@ -296,12 +296,21 @@ Phase SP (SDK parity pass) follows `notes/SDK-PARITY-PASS.md`, whose owner quest
 on 2026-10-05. Its ids use the two-letter prefix SP, which `check.mjs` accepts. Only the plan-mode
 items are in the graph so far: **SP-00** (the registry and corpus plan, note §5.0); **SP-08**,
 **SP-09** and **SP-10** (the wire items W8, W9 and W10 of note §6, numbered after them); and
-**SP-11** (the product presentation accent colour from the owner's UI-kit answers). The other wire
+**SP-11** (the product presentation accent colour, since dropped in favour of HA-04 and HA-11 to
+HA-14). The other wire
 items map onto existing packages (W1 I-09 and PX-W9, W2 PX-W8, W3 LX-17 to LX-19, W4 I-08, I-10a,
 I-10b, I-13, I-15 and PX-W13, W5 I-13, I-14, I-21 and I-22, W6 phase U, W7 LX-11, LX-20, LX-23 and
 LX-25, W11 I-24a, I-24b and LX-24, W12 LX-13, I-25 and U-16). The note's non-wire task list (SP-01
 to SP-03 and the per-SDK SP-N, SP-R, SP-P, SP-S, SP-K and SP-G tasks) becomes packages when the lead
-schedules its waves (note §7).
+schedules its waves (note §7). SP-K12 (Kotlin JVM desktop) is already in the graph as UK-40.
+
+Phase UK (UI kits) follows [`docs/design/UI-KITS.md`](../../../design/UI-KITS.md) §10, approved with
+the owner decisions of 2026-10-05. One package per kit, ordered must → should → could (could items
+are optional). UK-01 (tokens) and UK-02 (the plan for the copy catalog, UI fixtures and `ui.*`
+parity rows, executed by UK-02a and UK-02b) come first, then UK-15 (QA harness and modernity lint)
+and UK-16 (docs scaffold), then UK-03 (ui-core) and the kits. Kits read the product presentation
+only through HA-13/HA-14 via a seam, so they do not wait for them; UK-41 verifies it at the end of
+the must tier. UK-30 (Tk) is dropped.
 
 ---
 
