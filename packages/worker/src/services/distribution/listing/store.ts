@@ -35,6 +35,8 @@ export interface DistListingRow {
   tint: string | null;
   tint_dark: string | null;
   precedence_json: string | null;
+  /** `{<field>: <import source>}` (0068); NULL on a row written before the column existed. */
+  provenance_json: string | null;
   source: ListingSource;
   created_at: number;
   modified_at: number;
@@ -51,6 +53,8 @@ export interface DistListingLocaleRow {
   keywords_json: string | null;
   features_json: string | null;
   promotional_text: string | null;
+  /** `{<field>: <import source>}` (0068); NULL on a row written before the column existed. */
+  provenance_json: string | null;
   source: ListingSource;
   modified_at: number;
   modified_by: string;
@@ -164,6 +168,88 @@ export function precedenceOf(
     ? json<Record<string, PrecedenceSource[]>>(row.precedence_json)
     : undefined;
   return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+}
+
+/**
+ * Which import source wrote each field of a row (0068): a field with a value and no entry was
+ * typed by an operator. A row from before the column existed (NULL) reads as A-18b left it: an
+ * `import` row's values came from `.pkey/distribution` (`manifest`), an `admin` row's were typed.
+ */
+export function provenanceOf(
+  row: { provenance_json: string | null; source: ListingSource } | null,
+  present: Record<string, unknown>,
+): Record<string, PrecedenceSource> {
+  if (!row) return {};
+  if (row.provenance_json === null) {
+    if (row.source !== "import") return {};
+    const out: Record<string, PrecedenceSource> = {};
+    for (const [k, v] of Object.entries(flatPresent(present)))
+      if (v) out[k] = "manifest";
+    return out;
+  }
+  const v = json<Record<string, PrecedenceSource>>(row.provenance_json);
+  if (!v || typeof v !== "object" || Array.isArray(v)) return {};
+  const out: Record<string, PrecedenceSource> = {};
+  const flat = flatPresent(present);
+  // Only fields that still hold a value carry a source: a field cleared since has none.
+  for (const [k, s] of Object.entries(v))
+    if (typeof s === "string" && flat[k]) out[k] = s;
+  return out;
+}
+
+/** Field → whether it holds a value; the URLs flattened to `urls.<key>`. */
+function flatPresent(o: Record<string, unknown>): Record<string, boolean> {
+  const out: Record<string, boolean> = {};
+  for (const [k, v] of Object.entries(o)) {
+    if (k === "urls" && v && typeof v === "object" && !Array.isArray(v)) {
+      for (const [u, uv] of Object.entries(v as Record<string, unknown>))
+        out[`urls.${u}`] = typeof uv === "string" && uv !== "";
+      continue;
+    }
+    if (k === "defaultLocale") continue;
+    out[k] =
+      v !== undefined &&
+      v !== null &&
+      v !== "" &&
+      !(Array.isArray(v) && v.length === 0);
+  }
+  return out;
+}
+
+/** A field's value in a row's fields (`urls.<key>` reads inside `urls`). */
+function valueAt(o: Record<string, unknown>, k: string): unknown {
+  if (k.startsWith("urls.")) {
+    const u = o.urls;
+    return u && typeof u === "object" && !Array.isArray(u)
+      ? (u as Record<string, unknown>)[k.slice(5)]
+      : undefined;
+  }
+  return o[k];
+}
+
+/**
+ * The provenance an operator's edit leaves: a field the edit CHANGED loses its import source (it
+ * is the operator's now); a field it left alone, or re-sent unchanged, keeps it. `patch` is the
+ * edit as stored (`urls` is written whole, so a URL it omits is cleared).
+ */
+export function provenanceAfterEdit(
+  provenance: Record<string, PrecedenceSource>,
+  before: Record<string, unknown>,
+  patch: Record<string, unknown>,
+): Record<string, PrecedenceSource> {
+  const out: Record<string, PrecedenceSource> = {};
+  for (const [k, source] of Object.entries(provenance)) {
+    const field = k.startsWith("urls.") ? "urls" : k;
+    const after = Object.hasOwn(patch, field)
+      ? valueAt(patch, k)
+      : valueAt(before, k);
+    if (
+      JSON.stringify(after ?? null) ===
+      JSON.stringify(valueAt(before, k) ?? null)
+    )
+      out[k] = source;
+  }
+  return out;
 }
 
 export interface StoredListing {
@@ -322,6 +408,7 @@ function column(value: unknown, asJson: boolean): string | null {
 /**
  * The statement that creates the listing row if absent (with `defaultLocale`) and sets the given
  * app fields (validated). `precedence` undefined leaves it; null resets it to the default.
+ * `provenance` (the whole `{field: source}` map) undefined leaves it.
  */
 export function stmtUpsertListing(
   product: string,
@@ -331,6 +418,7 @@ export function stmtUpsertListing(
   actor: string,
   now: number,
   defaultLocale: string,
+  provenance?: Record<string, string>,
 ): DbStatement {
   const sets: string[] = [];
   const params: (string | number | null)[] = [];
@@ -364,6 +452,11 @@ export function stmtUpsertListing(
     vals.push(precedence === null ? null : JSON.stringify(precedence));
     sets.push("precedence_json = excluded.precedence_json");
   }
+  if (provenance !== undefined) {
+    cols.push("provenance_json");
+    vals.push(JSON.stringify(provenance));
+    sets.push("provenance_json = excluded.provenance_json");
+  }
   sets.push(
     "source = excluded.source",
     "modified_at = excluded.modified_at",
@@ -378,7 +471,7 @@ export function stmtUpsertListing(
   };
 }
 
-/** Upsert one locale's fields (validated); `null` clears a field. */
+/** Upsert one locale's fields (validated); `null` clears a field. `provenance` as above. */
 export function stmtUpsertLocale(
   product: string,
   locale: string,
@@ -386,6 +479,7 @@ export function stmtUpsertLocale(
   source: ListingSource,
   actor: string,
   now: number,
+  provenance?: Record<string, string>,
 ): DbStatement {
   const cols = ["product", "locale", "source", "modified_at", "modified_by"];
   const vals: (string | number | null)[] = [
@@ -401,6 +495,11 @@ export function stmtUpsertLocale(
     cols.push(c);
     vals.push(column(patch[k], JSON_LOCALE.has(k)));
     sets.push(`${c} = excluded.${c}`);
+  }
+  if (provenance !== undefined) {
+    cols.push("provenance_json");
+    vals.push(JSON.stringify(provenance));
+    sets.push("provenance_json = excluded.provenance_json");
   }
   sets.push(
     "source = excluded.source",

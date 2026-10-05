@@ -1,7 +1,7 @@
 /**
  * The plain-JSON body matcher (Google Play's androidpublisher, Microsoft's submission APIs;
- * notes/S-15 §6.2). No adapter uses it yet (A-18e and A-18f add the first rule tables); the
- * conformance suite and `test/storefront/matchers.test.ts` hold it to its contract now.
+ * notes/S-15 §6.2). Microsoft's rule table (`../rules/microsoftStore.ts`, A-18f) is the first user;
+ * `test/storefront/substrate.test.ts` and the conformance suite hold it to its contract.
  *
  * A rule declares the body's SHAPE: which top-level and nested keys may appear, which values a
  * key may take, and how long an array may be. Every key the body carries must be declared; a
@@ -22,7 +22,13 @@ export type JsonShape =
   | { kind: "number"; min?: number; max?: number }
   | { kind: "boolean" }
   | { kind: "object"; keys: Readonly<Record<string, JsonShape>> }
-  | { kind: "array"; items: JsonShape; max: number };
+  | { kind: "array"; items: JsonShape; max: number }
+  /**
+   * A dictionary whose keys are data, not names (Microsoft's listings by language, prices by
+   * market): every key must match `key` (a regex source, anchored here) and every value `values`;
+   * at most `max` entries (A-18f).
+   */
+  | { kind: "map"; key: string; values: JsonShape; max: number };
 
 export interface JsonRule extends GateRule {
   /** The body: always an object. */
@@ -64,6 +70,18 @@ function fits(
       if (value.length > shape.max) return "invalid_body";
       for (const item of value) {
         const r = fits(item, shape.items, depth + 1);
+        if (r) return r;
+      }
+      return null;
+    }
+    case "map": {
+      if (!isPlainObject(value)) return "invalid_body";
+      const entries = Object.entries(value);
+      if (entries.length > shape.max) return "invalid_body";
+      const key = new RegExp(`^(?:${shape.key})$`);
+      for (const [k, v] of entries) {
+        if (!key.test(k)) return "attribute_not_allowed";
+        const r = fits(v, shape.values, depth + 1);
         if (r) return r;
       }
       return null;

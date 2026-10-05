@@ -24,10 +24,28 @@
  *     message may end up in `outlet_credentials.last_error` and on the connector page.
  *
  * `fetchImpl` and `sleep` are injectable; the tests drive the clients against a fake Google.
+ *
+ * **The write gate (A-18e).** A client built with `gated: true` (every Android Publisher client
+ * the edits workflow uses: P5-03's poll and controls, A-16's lister, the storefront adapter) asks
+ * the Play gate (`core/storefront/rules/googlePlay.ts`) about EVERY request before its token thunk
+ * runs: a refused request throws `PlayWriteDenied` with no token minted and nothing sent. The one
+ * request a gated client sends without the gate is `discardEdit`, `edits.delete` of a throwaway
+ * edit (P5-03's discipline: never leave an edit open). It is a `DELETE`, which no gate rule may
+ * allow (owner rule: never delete), so it is a fixed method that can address nothing but
+ * `edits/<editId>`; it discards an uncommitted draft and removes nothing published. P6-01's
+ * purchase client (`commerce/play.ts`) is not gated: it reads purchases and acknowledges them,
+ * outside the storefront surface (the gate's `commerceRuntime` deny group).
  */
 
 import type { FetchImpl } from "../../../../core/outletTokens.js";
 import { isRedirect, readCappedText } from "../../../../core/readCapped.js";
+import { StoreVendorError } from "../../../../core/storefront/errors.js";
+import type { GateContext } from "../../../../core/storefront/gate.js";
+import {
+  checkPlayRequest,
+  PLAY_EDIT_SCOPE,
+  type PlayGateRequest,
+} from "../../../../core/storefront/rules/googlePlay.js";
 
 export type { FetchImpl };
 
@@ -51,14 +69,18 @@ export const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
 /** An Android package name: it becomes a URL segment, so it is checked here as well. */
 const PACKAGE_NAME = /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/;
 
-/** A failed Google call. The message is a status line this module composed. */
-export class PlayError extends Error {
+/**
+ * A failed Google call. The message is a status line this module composed. A `StoreVendorError`
+ * (A-18e) so the store ledger records it as the store's own answer (`vendor_status`; a 5xx or a
+ * network failure after a send is `ambiguous`), with no error token: the body is never read.
+ */
+export class PlayError extends StoreVendorError {
   constructor(
-    readonly status: number,
+    status: number,
     readonly method: string,
     readonly label: string,
   ) {
-    super(`Google Play ${method} ${label}: HTTP ${status}`);
+    super(status, null, `Google Play ${method} ${label}: HTTP ${status}`);
     this.name = "PlayError";
   }
 }
@@ -93,9 +115,23 @@ export interface GoogleApiClientOptions {
   sleep?: (ms: number) => Promise<void>;
   /** 429 retries per request. */
   maxRetries?: number;
+  /**
+   * Consult the Play write gate before every request (Android Publisher origin only). Every
+   * client of the edits workflow is gated; only P6-01's purchase client is not.
+   */
+  gated?: boolean;
+  /** Called once per request actually sent (retries included): the budget meter's spend. */
+  onSend?: () => Promise<void>;
 }
 
 type Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+
+/** Google custom methods a caller may append to its last segment. */
+export type GoogleCustomMethod =
+  | "commit"
+  | "validate"
+  | "query"
+  | "acknowledge";
 
 /**
  * One authenticated client for one Google API and one app. `request` takes the path BELOW the
@@ -122,10 +158,38 @@ export class GoogleApiClient {
     this.fetchImpl = opts.fetchImpl ?? ((u, i) => fetch(u, i));
     this.sleep = opts.sleep ?? realSleep;
     this.maxRetries = opts.maxRetries ?? 2;
+    if (opts.gated && opts.origin !== ANDROID_PUBLISHER_ORIGIN)
+      throw new Error("only the Android Publisher client is gated");
     this.prefix =
       opts.origin === ANDROID_PUBLISHER_ORIGIN
         ? `/androidpublisher/v3/applications/${opts.packageName}`
         : `/v1beta1/apps/${opts.packageName}`;
+  }
+
+  /** Whether this client consults the Play write gate. */
+  get gated(): boolean {
+    return this.opts.gated === true;
+  }
+
+  /**
+   * The gate's view of a request: the unencoded path (`/androidpublisher/v3/applications/<pkg>/…`)
+   * and, for a write, its query and body. Throws `PlayWriteDenied` before any token or byte.
+   */
+  private gate(
+    method: Method,
+    segments: readonly string[],
+    custom: GoogleCustomMethod | undefined,
+    req: PlayGateRequest,
+    ctx: GateContext | undefined,
+  ): void {
+    if (!this.opts.gated) return;
+    const path = `${this.prefix}/${segments.join("/")}${custom ? `:${custom}` : ""}`;
+    checkPlayRequest(
+      method,
+      path,
+      method === "GET" ? undefined : req,
+      ctx ?? {},
+    );
   }
 
   /**
@@ -136,12 +200,13 @@ export class GoogleApiClient {
   url(
     segments: readonly string[],
     query?: Record<string, string>,
-    custom?: "commit" | "query" | "acknowledge",
+    custom?: GoogleCustomMethod,
+    upload = false,
   ): URL {
     if (segments.length === 0) throw new Error("invalid Google Play path");
     const path = segments.map(encodeSegment).join("/");
     const url = new URL(
-      `${this.prefix}/${path}${custom ? `:${custom}` : ""}`,
+      `${upload ? "/upload" : ""}${this.prefix}/${path}${custom ? `:${custom}` : ""}`,
       this.opts.origin,
     );
     for (const [k, v] of Object.entries(query ?? {}))
@@ -166,17 +231,144 @@ export class GoogleApiClient {
     opts: {
       query?: Record<string, string>;
       body?: unknown;
-      custom?: "commit" | "query" | "acknowledge";
+      custom?: GoogleCustomMethod;
+      /** What the handler asserts to the gate (a gated client only; never sent). */
+      gate?: GateContext;
     } = {},
   ): Promise<Record<string, unknown> | null> {
-    const url = this.url(segments, opts.query, opts.custom);
+    // The gate first: a refusal mints no token and sends nothing.
+    this.gate(
+      method,
+      segments,
+      opts.custom,
+      {
+        ...(opts.query && Object.keys(opts.query).length
+          ? { query: opts.query }
+          : {}),
+        ...(opts.body !== undefined ? { json: opts.body } : {}),
+      },
+      opts.gate,
+    );
+    return this.send(method, segments, label, opts);
+  }
+
+  /**
+   * `request` by FULL path (`/androidpublisher/v3/…`, unencoded, a custom method on its last
+   * segment), for callers that hold a template-shaped path. The gate sees the path as given, before
+   * anything else; only then must it lie below this client's app.
+   */
+  async requestPath(
+    method: Method,
+    path: string,
+    label: string,
+    opts: {
+      query?: Record<string, string>;
+      body?: unknown;
+      gate?: GateContext;
+    } = {},
+  ): Promise<Record<string, unknown> | null> {
+    if (this.opts.gated)
+      checkPlayRequest(
+        method,
+        path,
+        method === "GET"
+          ? undefined
+          : {
+              ...(opts.query && Object.keys(opts.query).length
+                ? { query: opts.query }
+                : {}),
+              ...(opts.body !== undefined ? { json: opts.body } : {}),
+            },
+        opts.gate ?? {},
+      );
+    if (!path.startsWith(`${this.prefix}/`))
+      throw new Error("refusing a request outside Google Play");
+    const segments = path.slice(this.prefix.length + 1).split("/");
+    const last = segments[segments.length - 1]!;
+    const colon = last.lastIndexOf(":");
+    // Only a known custom method is one (a track id may hold a colon: `wear:beta`).
+    const suffix = colon > 0 ? last.slice(colon + 1) : "";
+    const custom = (
+      ["commit", "validate", "query", "acknowledge"] as const
+    ).find((c) => c === suffix);
+    if (custom) segments[segments.length - 1] = last.slice(0, colon);
+    return this.send(method, segments, label, {
+      ...opts,
+      ...(custom ? { custom } : {}),
+    });
+  }
+
+  /**
+   * `edits.delete` of a throwaway edit, outside the gate (see the file comment): a fixed method
+   * and a fixed path shape, best effort. Nothing published is removed; an edit already gone
+   * (invalidated, expired, committed) is not an error.
+   */
+  async discardEdit(editId: string): Promise<void> {
+    try {
+      await this.send("DELETE", ["edits", checkEdit(editId)], "edits.delete");
+    } catch (e) {
+      if (!(e instanceof PlayError)) throw e;
+    }
+  }
+
+  /**
+   * Upload one listing image's bytes (`edits.images.upload`, simple media upload). The gate sees
+   * the descriptor (type and size, from the blob store's record) before the token or a byte.
+   */
+  async upload(
+    segments: readonly string[],
+    label: string,
+    opts: {
+      query?: Record<string, string>;
+      contentType: string;
+      bytes: Uint8Array;
+      gate?: GateContext;
+    },
+  ): Promise<Record<string, unknown> | null> {
+    const query = { ...(opts.query ?? {}), uploadType: "media" };
+    this.gate(
+      "POST",
+      segments,
+      undefined,
+      {
+        query,
+        upload: { contentType: opts.contentType, size: opts.bytes.byteLength },
+      },
+      opts.gate,
+    );
+    return this.send("POST", segments, label, {
+      query,
+      raw: { contentType: opts.contentType, bytes: opts.bytes },
+      upload: true,
+    });
+  }
+
+  /** Send one request (with 429 retries), after the gate. */
+  private async send(
+    method: Method,
+    segments: readonly string[],
+    label: string,
+    opts: {
+      query?: Record<string, string>;
+      body?: unknown;
+      custom?: GoogleCustomMethod;
+      raw?: { contentType: string; bytes: Uint8Array };
+      upload?: boolean;
+    } = {},
+  ): Promise<Record<string, unknown> | null> {
+    const url = this.url(segments, opts.query, opts.custom, opts.upload);
     // Defence in depth: whatever built the URL, it must still be this API and this app.
     if (
       url.origin !== this.opts.origin ||
-      !url.pathname.startsWith(`${this.prefix}/`)
+      !url.pathname.startsWith(`${opts.upload ? "/upload" : ""}${this.prefix}/`)
     )
       throw new Error("refusing a request outside Google Play");
     const token = await this.bearer(method, label);
+    const contentType = opts.raw
+      ? opts.raw.contentType
+      : opts.body !== undefined
+        ? "application/json"
+        : null;
     const init: RequestInit = {
       method,
       // A redirect is a failure, never followed: the bearer token must not reach another URL.
@@ -184,14 +376,17 @@ export class GoogleApiClient {
       headers: {
         authorization: `Bearer ${token}`,
         accept: "application/json",
-        ...(opts.body !== undefined
-          ? { "content-type": "application/json" }
-          : {}),
+        ...(contentType ? { "content-type": contentType } : {}),
       },
-      ...(opts.body !== undefined ? { body: JSON.stringify(opts.body) } : {}),
+      ...(opts.raw
+        ? { body: opts.raw.bytes }
+        : opts.body !== undefined
+          ? { body: JSON.stringify(opts.body) }
+          : {}),
     };
     for (let attempt = 0; ; attempt++) {
       this.calls++;
+      await this.opts.onSend?.().catch(() => undefined);
       const res = await this.fetchImpl(url.toString(), init);
       if (res.status === 429 && attempt < this.maxRetries) {
         await res.body?.cancel();
@@ -244,7 +439,10 @@ export const CHANGES_IN_REVIEW_BEHAVIOR = "ERROR_IF_IN_REVIEW";
  * and a Console change or another commit invalidates them all.
  */
 export class PlayPublisher {
-  constructor(readonly api: GoogleApiClient) {}
+  constructor(readonly api: GoogleApiClient) {
+    // Every edits-workflow client is gated (A-18e): refuse to build one that is not.
+    if (!api.gated) throw new Error("the Play edits client must be gated");
+  }
 
   get calls(): number {
     return this.api.calls;
@@ -279,47 +477,74 @@ export class PlayPublisher {
     );
   }
 
-  /** `edits.tracks.patch`: replace one track's releases in the edit. */
+  /**
+   * `edits.tracks.patch`: replace one track's releases in the edit. `gate` is what the caller
+   * asserts (P5-03's controls: `PLAY_ROLLOUT_CONTROL`; a completed production release otherwise
+   * needs `typedConfirmation`).
+   */
   async patchTrack(
     editId: string,
     track: string,
     body: { track: string; releases: unknown[] },
+    gate: GateContext = {},
   ): Promise<unknown> {
     return this.api.request(
       "PATCH",
       ["edits", checkEdit(editId), "tracks", track],
       "edits.tracks.patch",
-      { body },
+      { body, gate },
     );
   }
 
-  /** `edits.commit` with `changesInReviewBehavior=ERROR_IF_IN_REVIEW`. */
-  async commitEdit(editId: string): Promise<void> {
+  /**
+   * `edits.commit` with `changesInReviewBehavior=ERROR_IF_IN_REVIEW` (and `changesNotSentForReview`
+   * when staging only). `gate` says what the edit holds (`PLAY_EDIT_SCOPE`); without a plain scope
+   * the gate requires `typedConfirmation`.
+   */
+  async commitEdit(
+    editId: string,
+    gate: GateContext = {},
+    opts: { changesNotSentForReview?: boolean } = {},
+  ): Promise<void> {
     await this.api.request(
       "POST",
       ["edits", checkEdit(editId)],
       "edits.commit",
       {
-        query: { changesInReviewBehavior: CHANGES_IN_REVIEW_BEHAVIOR },
+        query: {
+          changesInReviewBehavior: CHANGES_IN_REVIEW_BEHAVIOR,
+          ...(opts.changesNotSentForReview
+            ? { changesNotSentForReview: "true" }
+            : {}),
+        },
         custom: "commit",
+        gate,
       },
     );
   }
 
-  /** `edits.delete`, best effort: an edit that is already gone (invalidated, expired, committed)
-   *  is not an error — the point was only not to leave one open. */
+  /** `edits.validate`: Google's check of the edit, nothing changes. */
+  async validateEdit(editId: string): Promise<void> {
+    await this.api.request(
+      "POST",
+      ["edits", checkEdit(editId)],
+      "edits.validate",
+      { custom: "validate" },
+    );
+  }
+
+  /** `edits.delete`, best effort and outside the gate (`GoogleApiClient.discardEdit`): an edit that
+   *  is already gone (invalidated, expired, committed) is not an error — the point was only not to
+   *  leave one open. */
   async deleteEdit(editId: string): Promise<void> {
-    try {
-      await this.api.request(
-        "DELETE",
-        ["edits", checkEdit(editId)],
-        "edits.delete",
-      );
-    } catch (e) {
-      if (!(e instanceof PlayError)) throw e;
-    }
+    await this.api.discardEdit(editId);
   }
 }
+
+/** What P5-03's rollout controls assert to the gate (see `rules/googlePlay.ts`). */
+export const PLAY_ROLLOUT_CONTROL: GateContext = {
+  resourceState: PLAY_EDIT_SCOPE.rolloutControl,
+};
 
 function checkEdit(editId: string): string {
   if (!EDIT_ID.test(editId)) throw new Error("invalid Play edit id");

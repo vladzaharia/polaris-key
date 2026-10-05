@@ -312,6 +312,43 @@ describe("parseManifest and .pkey/distribution", () => {
     ]);
   });
 
+  it("reads a snap outlet's channels: declared channels onto snap channels (A-18h)", () => {
+    const ok = validateIngestDocuments({
+      product,
+      schema,
+      release,
+      distribution: {
+        outlets: {
+          snap: {
+            name: "dice",
+            channels: { stable: "latest/stable", beta: "beta/hotfix-1" },
+          },
+        },
+      },
+    });
+    expect(ok.errors).toEqual([]);
+    expect(
+      normalizeDistribution({
+        outlets: { snap: { name: "dice", channels: { beta: "edge" } } },
+      }).outlets[0]!.identity,
+    ).toEqual({ name: "dice", channels: { beta: "edge" } });
+    const bad = validateIngestDocuments({
+      product,
+      schema,
+      release,
+      distribution: {
+        outlets: {
+          snap: { name: "dice", channels: { stable: "production" } },
+          "snap-2": { kind: "snap", channels: { nightly: "edge" } },
+        },
+      },
+    });
+    expect(bad.errors.map((e) => [e.path, e.code])).toEqual([
+      ["/outlets/snap/channels", "invalid_outlet_identity"],
+      ["/outlets/snap-2/channels/nightly", "unknown_channel_ref"],
+    ]);
+  });
+
   it("refuses an oversized distribution document before parsing it", () => {
     const res = parse(`# ${"x".repeat(70 * 1024)}\n`);
     expect(res.ok).toBe(false);

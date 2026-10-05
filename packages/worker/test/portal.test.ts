@@ -639,9 +639,11 @@ describe("portal account erasure (DELETE /api/me)", () => {
     await seedProduct(db, "djdl");
     const { licenseId } = await seedLicenseWithKey(db, "djdl");
     const session = await portalSession(env, db);
+    // I-05: sign-in methods are `account_links` rows (the portal tables are the pre-I-05 copy).
     await db.run(
-      `INSERT INTO portal_account_identities (provider, subject, account_id, email, created_at, last_seen_at)
-       VALUES ('https://id.example', 'sub-1', ?, 'ada@example.com', ?, ?)`,
+      `INSERT INTO account_links (id, account_id, issuer_key, tenant_scope, subject, kind, email,
+         email_verified, created_at, last_used_at)
+       VALUES ('lnk_oidc', ?, 'https://id.example', '', 'sub-1', 'oidc', 'ada@example.com', 1, ?, ?)`,
       session.accountId,
       NOW,
       NOW,
@@ -676,6 +678,10 @@ describe("portal account erasure (DELETE /api/me)", () => {
     expect(res.headers.get("set-cookie")).toMatch(/Max-Age=0/);
 
     for (const [table, column] of [
+      ["accounts", "id"],
+      ["account_links", "account_id"],
+      ["account_product_subjects", "account_id"],
+      ["licenses", "account_id"],
       ["portal_accounts", "id"],
       ["portal_account_emails", "account_id"],
       ["portal_account_identities", "account_id"],
@@ -688,10 +694,13 @@ describe("portal account erasure (DELETE /api/me)", () => {
       expect(`${table}=${row?.n}`).toBe(`${table}=0`);
     }
     // The address itself is gone from the database, not merely unlinked.
-    const email = await db.first(
+    for (const sql of [
       "SELECT email FROM portal_account_emails WHERE email = 'ada@example.com'",
-    );
-    expect(email).toBeNull();
+      "SELECT email FROM account_links WHERE email = 'ada@example.com'",
+      "SELECT primary_email FROM accounts WHERE primary_email = 'ada@example.com'",
+    ]) {
+      expect(await db.first(sql)).toBeNull();
+    }
   });
 
   it("leaves the product's own license record alone — it is the tenant's data, not the account's", async () => {
@@ -803,7 +812,7 @@ describe("portal account erasure (DELETE /api/me)", () => {
     expect(res.status).toBe(403);
     expect(await res.json()).toMatchObject({ message: "csrf" });
     const account = await db.first(
-      "SELECT id FROM portal_accounts WHERE id = ?",
+      "SELECT id FROM accounts WHERE id = ?",
       session.accountId,
     );
     expect(account).toBeTruthy();
@@ -827,10 +836,7 @@ describe("portal account erasure (DELETE /api/me)", () => {
 
     expect(res.status).toBe(403);
     expect(
-      await db.first(
-        "SELECT id FROM portal_accounts WHERE id = ?",
-        session.accountId,
-      ),
+      await db.first("SELECT id FROM accounts WHERE id = ?", session.accountId),
     ).toBeTruthy();
   });
 

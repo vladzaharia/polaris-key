@@ -22,8 +22,12 @@
  *                  activation; a device past it is `dormant` and holds no seat.
  *   status         §5.3's precedence over what the Worker knows today: suspended (the developer
  *                  disabled the licence), expired, device limit reached, expires within 14 days,
- *                  active. The store-, Steam- and grace-dependent statuses arrive with the work
- *                  packages that own those facts (PX-W6, G8).
+ *                  active. The Steam-key and grace-dependent statuses arrive with the work
+ *                  packages that own those facts.
+ *   purchase       per licence on the product view only: where it came from (a store purchase,
+ *                  the developer, a sign-in, a free auto-issue) and its store grants, read through
+ *                  License's `licenseProvenance` hook (`purchase.ts`, PX-W6, G8); `null` with
+ *                  License off.
  *
  * A product the developer has the portal turned off for is absent from both, exactly as from
  * `GET /api/licenses`. Downloads, stores and feeds on the product view are PX-W2's (G2, G4).
@@ -40,6 +44,7 @@ import type { DeviceRow } from "../../../core/data.js";
 import type { PortalHooksFor } from "./api.js";
 import { entitlementView } from "./entitlements.js";
 import { mediaUrlFor } from "./media.js";
+import { purchasesFor } from "./purchase.js";
 import {
   getPortalProductSettings,
   listPortalLicenses,
@@ -204,14 +209,17 @@ async function groupedLicenses(
   return out;
 }
 
-/** When the account first got this product: its oldest licence link (for "Recently added"). */
+/**
+ * When the account first got this product (for "Recently added"): its first contact with the
+ * product, which is when the pairwise subject was created (I-05; a licence attach creates it).
+ */
 async function addedAt(
   db: Db,
   accountId: string,
   product: string,
 ): Promise<number | null> {
   const row = await db.first<{ at: number | null }>(
-    `SELECT MIN(created_at) AS at FROM portal_license_links
+    `SELECT created_at AS at FROM account_product_subjects
       WHERE account_id = ? AND product = ?`,
     accountId,
     product,
@@ -263,10 +271,18 @@ export async function productView(
   for (const row of rows)
     shaped.push(await shapeLicense(db, product, row, now));
   shaped.sort(compareLicenses);
+  const purchases = await purchasesFor(
+    db,
+    product,
+    shaped.map((l) => l.row.id),
+    hooksFor,
+    now,
+  );
   const licenses = [];
   for (const l of shaped) {
     licenses.push({
       ...licenseSummary(l),
+      purchase: purchases.get(l.row.id) ?? null,
       entitlements: await entitlementView(db, l.row, now),
       devices: l.devices
         .filter((d) => d.status === "authorized")
@@ -292,6 +308,11 @@ export async function productView(
     ),
     status: shaped[0]!.status,
     addedAt: await addedAt(db, accountId, slug),
+    // PX-10: where the portal's focused flows may send the person back to (`?return=`, §3.3):
+    // the product's exact declared browser origins (`web.origins`, P0-05). App schemes join
+    // when the manifest can declare them (S-16 I-15); until then a scheme return is refused and
+    // the flow ends on the product page.
+    returnTo: { origins: [...product.webOrigins], schemes: [] },
     licenses,
   };
 }

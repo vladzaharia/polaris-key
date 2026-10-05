@@ -417,7 +417,7 @@ export function previewError(
 ): string {
   const name = p.product?.name ?? fallbackName;
   switch (p.verdict) {
-    case "owned_elsewhere":
+    case "license_owned":
       return `This ${name} license is already in another Polaris Key account. A license never moves by its key.`;
     case "email_mismatch":
       return `${name} was bought with ${p.maskedEmail ?? "another email"}. It joins only the account with that email verified.`;
@@ -434,7 +434,7 @@ const UNKNOWN_KEY =
 /** The claim's refusals in the person's words (§4.19), never a toast. */
 export function claimError(err: unknown, name: string): string {
   if (err instanceof PortalApiError) {
-    if (err.code === "owned_elsewhere")
+    if (err.code === "license_owned")
       return `This ${name} license is already in another Polaris Key account. A license never moves by its key.`;
     if (err.code === "email_mismatch")
       return `${name} joins only the account with the license's email verified.`;

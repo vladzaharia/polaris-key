@@ -154,6 +154,11 @@ export interface ManifestOutletIdentity {
   gameId?: string;
   /** `snap`: the snap name. */
   name?: string;
+  /**
+   * `snap`: declared channel → the snap channel(s) `snapcraft upload --release` may release to,
+   * `[<track>/]<risk>[/<branch>]` (A-18h). The CI allow-list admits no other channel.
+   */
+  channels?: Record<string, string>;
   /** `winget`: the package identifier. */
   packageIdentifier?: string;
   /** `direct`: the platforms the direct download offers. */
@@ -212,7 +217,7 @@ export const OUTLET_IDENTITY_FIELDS: Readonly<
   steam: ["appId", "branches"],
   itch: ["target", "gameId"],
   flathub: ["appId"],
-  snap: ["name"],
+  snap: ["name", "channels"],
   winget: ["packageIdentifier"],
   web: [],
 };
@@ -239,6 +244,9 @@ const ITCH_TARGET_RE = /^[A-Za-z0-9_-]{1,64}\/[A-Za-z0-9_-]{1,64}$/;
 const FLATPAK_ID_RE = /^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$/;
 const MAX_FLATPAK_ID_LENGTH = 255;
 const SNAP_NAME_RE = /^[a-z0-9](?:-?[a-z0-9]){0,39}$/;
+/** A snap channel: `[<track>/]<risk>[/<branch>]` (A-18h; the CI allow-list's pattern). */
+const SNAP_CHANNEL_RE =
+  /^(?:[a-z0-9][a-z0-9.-]{0,63}\/)?(?:stable|candidate|beta|edge)(?:\/[a-z0-9][a-z0-9-]{0,63})?$/;
 const WINGET_ID_RE =
   /^[A-Za-z0-9][A-Za-z0-9-]{0,31}(\.[A-Za-z0-9][A-Za-z0-9-]{0,31}){1,7}$/;
 /** A Homebrew cask token: lower-case letters, digits, `-`, `.` and `@`. */
@@ -352,6 +360,11 @@ function fieldCheck(kind: OutletKind, field: OutletIdentityField): FieldCheck {
       return pattern(ITCH_TARGET_RE, "a butler user/game target");
     case "name":
       return pattern(SNAP_NAME_RE, "a snap name");
+    case "channels":
+      return channelMap(
+        SNAP_CHANNEL_RE,
+        "snap channel ([<track>/]<risk>[/<branch>], risk stable, candidate, beta or edge)",
+      );
     case "packageIdentifier":
       return pattern(WINGET_ID_RE, "a winget package identifier");
     case "platforms":
@@ -777,7 +790,12 @@ function validateOutlet(
         `outlets.${id}.artifact must name an id in .pkey/release deliverables.app.artifacts.`,
       );
     }
-    if (field === "tracks" || field === "branches" || field === "flights") {
+    if (
+      field === "tracks" ||
+      field === "branches" ||
+      field === "flights" ||
+      field === "channels"
+    ) {
       for (const channel of Object.keys(value as Record<string, unknown>)) {
         if (!ctx.channels.has(channel)) {
           add(

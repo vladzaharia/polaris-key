@@ -49,6 +49,7 @@ type PortalDraft = {
   releasesEnabled: boolean;
   keyReissueEnabled: boolean;
   claimByKey: boolean;
+  discoverEnabled: boolean;
   autoLink: AutoLink;
 };
 
@@ -68,6 +69,7 @@ function draftOf(s: PortalProductSettings): PortalDraft {
     releasesEnabled: s.releasesEnabled,
     keyReissueEnabled: s.keyReissueEnabled ?? false,
     claimByKey: s.claimByKey ?? false,
+    discoverEnabled: s.discoverEnabled ?? true,
     autoLink: autoLinkOf(s.autoLinkEnabled),
   };
 }
@@ -199,6 +201,7 @@ function PortalForm({
           releasesEnabled: draft.releasesEnabled,
           keyReissueEnabled: draft.keyReissueEnabled,
           claimByKey: draft.claimByKey,
+          discoverEnabled: draft.discoverEnabled,
           autoLinkEnabled: autoLinkSetting(draft.autoLink),
         });
       } catch (err) {
@@ -329,6 +332,19 @@ function PortalForm({
             "claimByKey",
             "Add by key without the purchase email",
             "Off: a license that carries an email joins only an account with that email verified. On: anyone holding the key can add it. A license already in an account never moves by its key either way.",
+            !portalOn,
+          )}
+        </SettingsSection>
+
+        <SettingsSection
+          id="portal-discover"
+          title="Discover"
+          description={portalOn ? undefined : PORTAL_OFF}
+        >
+          {toggle(
+            "discoverEnabled",
+            "Offer on Discover",
+            "Signed-in customers your auto-issue policy covers see this product on Discover and can add it to their library. Off hides the offer; the policy keeps issuing on sign-in.",
             !portalOn,
           )}
         </SettingsSection>

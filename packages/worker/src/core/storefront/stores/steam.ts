@@ -16,7 +16,8 @@
  *     `../listingProfiles.ts`) and its art the generated asset pack (A-18d's `pack:steam`), both
  *     served by Distribution's Steam storefront routes with the per-app checklist;
  *   - no build upload from the Worker: depots go up from the release workflow's steamcmd step
- *     (P5-08's VDFs; A-18h declares its command allow-list).
+ *     (P5-08's VDFs), whose command allow-list is A-18h's `STEAM_CI` (`../ciPlane.ts`), attached
+ *     here as the adapter's `ci`.
  *
  * NEVER (S-15 §4.3): users and permissions, app credits, pricing, branch or depot deletion. The
  * Web API has none of the first four for partners and the gate refuses every delete it does have;
@@ -31,6 +32,8 @@ import {
   STEAM_SPEC_PIN,
 } from "../rules/steam.js";
 import { STEAM_WRITE_DENIED } from "../rules/steamDenied.js";
+import { STEAM_CI } from "../ciPlane.js";
+import { CI_STEP_PROJECTION, ciOp } from "./ciShared.js";
 import {
   adapterListingProfile,
   STORE_LISTING_COLUMNS,
@@ -82,9 +85,9 @@ const OPS: Readonly<Record<StorefrontOp, Support>> = {
     "Steam DLC are apps created in Steamworks, and micro-transactions are payments, which the gate never reaches",
   ),
   testers: api(`POST ${STEAM_SET_LIVE}`),
-  uploadBuild: unsupported(
-    "depots go up from the release workflow's steamcmd step (P5-08's VDFs; A-18h's allow-list), never from the Worker (README decision 7)",
-  ),
+  // Depots go up from the release workflow's steamcmd step (P5-08's VDFs; A-18h's allow-list),
+  // never from the Worker (README decision 7).
+  uploadBuild: ciOp(STEAM_CI, "run-app-build"),
   notificationsUrl: unsupported(
     "Steam pushes no notifications; the Worker reads GetAppBuilds and GetAppBetas instead",
   ),
@@ -149,11 +152,14 @@ export const STEAM_ADAPTER: StorefrontAdapter = {
       "* /IPartnerFinancialsService/GetDetailedSales/v001/",
       "* /ISteamMicroTxn/GetReport/v5/",
     ],
-    ciTokens: ["delete", "remove", "refund", "users", "password"],
+    ciTokens: [...STEAM_CI.neverTokens],
   },
-  ci: null,
+  ci: STEAM_CI.list,
   listing: adapterListingProfile(STORE_LISTING_COLUMNS.steam),
   confirmation: { phrase: "app-name", label: "Steamworks" },
-  audit: { action: "steam", projection: PROJECTION },
+  audit: {
+    action: "steam",
+    projection: { ...PROJECTION, ...CI_STEP_PROJECTION },
+  },
 };
 

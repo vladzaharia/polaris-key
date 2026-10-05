@@ -94,7 +94,13 @@ export function LibraryList({
               <td className="hidden px-2 py-3 font-mono text-sm text-fg wide:table-cell">
                 {p.latestVersion ?? "–"}
               </td>
-              <td className="hidden px-2 py-3 text-sm text-fg wide:table-cell">
+              <td
+                className={
+                  p.status.kind === "deviceLimit"
+                    ? "hidden px-2 py-3 text-sm font-bold text-danger wide:table-cell"
+                    : "hidden px-2 py-3 text-sm text-fg wide:table-cell"
+                }
+              >
                 {p.status.kind === "signedInApp"
                   ? "Any device"
                   : p.seats

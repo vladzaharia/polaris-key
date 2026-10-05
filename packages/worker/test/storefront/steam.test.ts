@@ -461,7 +461,7 @@ describe("the Steam storefront admin surface", () => {
       testers: "api",
       release: "deep-link",
       writeListingText: "deep-link",
-      uploadBuild: "unsupported",
+      uploadBuild: "ci",
       pricing: "unsupported",
     });
     expect(v.setup).toMatchObject({ appId: APP, credentialSource: "platform", branches: { beta: "beta" } });

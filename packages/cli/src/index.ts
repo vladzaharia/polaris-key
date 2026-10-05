@@ -58,8 +58,10 @@ import { TRANSPORT_USAGE, type TransportCommon } from "./transport.js";
 import { baPackage, baUpload } from "./transportAppleBa.js";
 import { padModules, type PadDelivery } from "./transportPlayPad.js";
 import { steamVdf } from "./transportSteam.js";
+import { cmdStorefront } from "./storefronts/command.js";
 import { buildFdroidFeed, FEEDS_USAGE } from "./feeds.js";
 import { feedsSetup, FEEDS_SETUP_USAGE } from "./feedSetup.js";
+import { formatImport, listingImport, LISTING_USAGE } from "./listing.js";
 import { listingAssets, LISTING_ASSETS_USAGE } from "./listingAssets.js";
 import {
   generatedKeyText,
@@ -361,6 +363,25 @@ export {
   type SteamVdfResult,
 } from "./transportSteam.js";
 export {
+  formatImport,
+  listingImport,
+  LISTING_USAGE,
+  type ImportAnswer,
+  type ListingImportOptions,
+  type ListingImportResult,
+} from "./listing.js";
+export {
+  parseGodotConfig,
+  pngSize,
+  readGodotListing,
+  resolveResPath,
+  type GodotConfig,
+  type GodotIcon,
+  type GodotListing,
+  type GodotRead,
+  type GodotValue,
+} from "./godotProject.js";
+export {
   findDistributionFile,
   initManifest,
   loadManifest,
@@ -391,6 +412,8 @@ export interface CliIo {
 
 interface ParsedArgs {
   command: string;
+  /** Everything after a bare `--` (`pkey storefront exec … -- <argv>`), verbatim. */
+  rest: string[];
   flags: Record<string, string | boolean>;
   /** Every string value of a repeatable flag (`--pin a@1 --pin b@2`), in order. */
   multi: Record<string, string[]>;
@@ -443,6 +466,15 @@ export async function runPkey(argv: string[], io: CliIo = {}): Promise<number> {
         return await cmdListing(parsed, cwd, stdout, stderr, ci);
       case "transport":
         return await cmdTransport(parsed, cwd, stdout, stderr, ci);
+      case "storefront":
+        return await cmdStorefront(
+          {
+            positional: parsed.positional,
+            flags: parsed.flags,
+            rest: parsed.rest,
+          },
+          { cwd, stdout, stderr, ...ci },
+        );
       default:
         stderr.write(`Unknown command "${parsed.command}".\n\n${helpText()}`);
         return 2;
@@ -463,8 +495,13 @@ function parseArgs(argv: string[]): ParsedArgs {
     flags[key] = value;
     (multi[key] ??= []).push(value);
   };
+  let after: string[] = [];
   for (let i = 0; i < rest.length; i += 1) {
     const arg = rest[i]!;
+    if (arg === "--") {
+      after = rest.slice(i + 1);
+      break;
+    }
     if (!arg.startsWith("--")) {
       positional.push(arg);
       continue;
@@ -486,7 +523,7 @@ function parseArgs(argv: string[]): ParsedArgs {
       bare.add(rawKey);
     }
   }
-  return { command, flags, multi, bare, positional };
+  return { command, flags, multi, bare, positional, rest: after };
 }
 
 async function cmdInit(
@@ -1210,10 +1247,26 @@ async function cmdFeeds(
   return 0;
 }
 
-/**
- * `pkey listing assets` (A-18d, `listingAssets.ts`). `pkey listing import` (A-18c) joins it here.
- */
+/** `pkey listing import` (A-18c, `listing.ts`) and `pkey listing assets` (A-18d, `listingAssets.ts`). */
 async function cmdListing(
+  parsed: ParsedArgs,
+  cwd: string,
+  stdout: Pick<NodeJS.WriteStream, "write">,
+  stderr: Pick<NodeJS.WriteStream, "write">,
+  ci: CiIo,
+): Promise<number> {
+  switch (parsed.positional[0]) {
+    case "import":
+      return cmdListingImport(parsed, cwd, stdout, ci);
+    case "assets":
+      return cmdListingAssets(parsed, cwd, stdout, stderr, ci);
+    default:
+      throw new Error(`${LISTING_USAGE}\n${LISTING_ASSETS_USAGE}`);
+  }
+}
+
+/** `pkey listing assets` (A-18d, `listingAssets.ts`). */
+async function cmdListingAssets(
   parsed: ParsedArgs,
   cwd: string,
   stdout: Pick<NodeJS.WriteStream, "write">,
@@ -1401,6 +1454,49 @@ function titleize(slug: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+/**
+ * `pkey listing import --godot <project>` (A-18c): read the Godot project and import it into the
+ * product's shared listing — the diff first, written only with `--apply`. The cookie is read from
+ * the environment here, as `pkey bundle` does, so `listing.ts` never touches `process.env`.
+ */
+async function cmdListingImport(
+  parsed: ParsedArgs,
+  cwd: string,
+  stdout: Pick<NodeJS.WriteStream, "write">,
+  ci: CiIo,
+): Promise<number> {
+  const godot = flagString(parsed, "godot");
+  if (parsed.positional[0] !== "import" || !godot)
+    throw new Error(LISTING_USAGE);
+  const fields = flagString(parsed, "fields");
+  const result = await listingImport({
+    godot: path.resolve(cwd, godot),
+    product: flagString(parsed, "product"),
+    presets: parsed.multi["preset"] ?? [],
+    locale: flagString(parsed, "locale"),
+    overwrite: flagBool(parsed, "overwrite"),
+    apply: flagBool(parsed, "apply"),
+    ...(fields
+      ? {
+          fields: fields
+            .split(",")
+            .map((f) => f.trim())
+            .filter(Boolean),
+        }
+      : {}),
+    dryRun: flagBool(parsed, "dry-run"),
+    baseUrl: flagString(parsed, "base-url"),
+    cookie: (ci.env as Record<string, string | undefined>)[ADMIN_COOKIE_ENV],
+    ...(ci.fetchImpl ? { fetchImpl: ci.fetchImpl } : {}),
+  });
+  stdout.write(
+    flagBool(parsed, "json") || flagBool(parsed, "dry-run")
+      ? `${JSON.stringify(flagBool(parsed, "dry-run") ? result.upload : result, null, 2)}\n`
+      : `${formatImport(result)}\n`,
+  );
+  return 0;
+}
+
 function helpText(): string {
   return `pkey - Polaris Key platform CLI
 
@@ -1414,6 +1510,9 @@ Commands:
   pkey bundle --product slug --device id --grace-days n [--no-config] [--license id]
               [--base-url url] [--out file] [--force]
   pkey manifest schemas --out dir
+  pkey listing import --godot project --product slug [--preset name ...] [--locale code]
+              [--overwrite] [--apply [--fields a,b]] [--json] [--base-url url]
+  pkey listing import --godot project --dry-run [--preset name ...]
 
 CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
   pkey auth github-oidc --product slug [--base-url url]
@@ -1466,6 +1565,13 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
               [--delivery fast-follow|on-demand] [--default-texture fmt] [--variant key] [--no-report]
   pkey transport steam-depot vdf --deliverable packId --release v --from dir --depot id
               (--branch b | --channel c) [--setlive] [--app id] [--out dir] [--no-report]
+  pkey storefront itch push --platform windows|linux|mac|android --dir dir --version v
+              [--channel c] [--outlet id] [--dry-run] [--no-report]
+  pkey storefront snap metadata --yaml snapcraft.yaml [--dry-run]
+  pkey storefront snap upload --snap file.snap --channel c[,c...] [--outlet id] [--dry-run] [--no-report]
+  pkey storefront snap upload-metadata --snap file.snap [--dry-run] [--no-report]
+  pkey storefront exec store command --op operation [--outlet id] [--tool-path path] -- argv...
+  pkey storefront allow-list [--store s] [--json]
 
 pkey release publish matches the files under --dir against .pkey/release's
 deliverables.app.artifacts map (<file>.sig and <file>.sha256 ride along as sidecars), hashes
@@ -1563,6 +1669,19 @@ and records the asset pack's resource id in .pkey/asset-packs.json (commit it; a
 into any other resource is refused); play-pad modules writes com.android.asset-pack modules
 (a #tcf_ directory per texture variant) into a Godot Android Gradle build and patches it;
 steam-depot vdf writes a content-only SteamPipe build (SetLive on named branches only).
+
+pkey storefront runs a store's vendor CLI from CI, and only as a command its CI allow-list
+admits (pkey storefront allow-list prints them): itch push is butler push <dir>
+<user/game>:<platform[-channel]> --userversion <v>, the target from the itch outlet's identity
+(BUTLER_API_KEY in the environment); snap upload is snapcraft upload <snap> --release=<snap
+channels>, only the channels the snap outlet's channels map declares, and snap upload-metadata
+sends the summary, description and icon the snap carries, which snap metadata writes into
+snapcraft.yaml from the listing model before the build (SNAPCRAFT_STORE_CREDENTIALS, a scoped
+export-login). exec runs any other allow-listed command (steamcmd +run_app_build, whose script
+may set live only a named branch; msstore publish, refused while the console has a staged
+draft; BuildPatchTool -mode=UploadBinary). Each step is reported back to Polaris Key before and
+after it runs (distribution:report), so the store's ledger shows it beside console steps; a step
+already done in the same run is skipped. --dry-run checks and prints the command lines.
 
 pkey manifest schemas writes the .pkey/ JSON Schemas into a directory, for editors in a
 repository with no node_modules.

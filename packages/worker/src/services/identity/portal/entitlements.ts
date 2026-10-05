@@ -21,7 +21,7 @@ function parseJson<T>(value: string | null, fallback: T): T {
   }
 }
 
-async function visibleCatalogFlags(
+export async function visibleCatalogFlags(
   db: Db,
   product: string,
 ): Promise<Map<string, ConfigEntry>> {

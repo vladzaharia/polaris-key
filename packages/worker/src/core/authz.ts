@@ -52,6 +52,7 @@ import {
   countActiveDevices,
   getTier,
   seatActiveSince,
+  type DeviceBoundBy,
   type DeviceRow,
   type LicenseRow,
   type TierRow,
@@ -286,6 +287,11 @@ export async function authorizeDevice(
     sdkVersion?: string | null;
     /** Validated hardware components, when the client supplied any. */
     fingerprint?: PresentedFingerprint | null;
+    /** I-05: how this activation binds the device (`devices.bound_by`). */
+    boundBy?: DeviceBoundBy;
+    /** I-05: the pairwise subject of an ACCOUNT sign-in activating this device. Key entry, enrol
+     *  and every licence-only path never pass it (plans/I-04.md §6.2). */
+    subject?: string | null;
   } = {},
 ): Promise<{ token: string; device: DeviceRow } | AuthzError> {
   if (!licenseUsable(license, now)) return { error: "unauthorized" };
@@ -374,5 +380,7 @@ export async function authorizeDevice(
     mode,
     drift: reconciled.drift,
     metadata: opts,
+    ...(opts.boundBy ? { boundBy: opts.boundBy } : {}),
+    ...(opts.subject ? { subject: opts.subject } : {}),
   });
 }

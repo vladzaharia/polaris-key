@@ -19,7 +19,7 @@
  *     included (`forbidden`: personal data, team membership), plus, where a store needs it, the
  *     paths a read may take at all (`reads`: Steam's three read methods);
  *   - method and path-template match: a write passes only when a rule names its method and its
- *     template exactly (`{id}` stands for one plain segment);
+ *     template exactly (each `{name}` stands for one segment of the rule set's `placeholder`);
  *   - the body, through the rule set's matcher (`match/jsonapi.ts`, `json.ts`, `form.ts`,
  *     `multipart.ts`);
  *   - the confirmation levels `plain`, `typed`, `initial` and `typed-or-initial`: a rule marked
@@ -130,6 +130,12 @@ export interface GateRuleSet<R extends GateRule = GateRule> {
    * `POST` methods), so a read cannot stand in for a write the table refuses (A-18g).
    */
   readonly reads?: (path: string) => boolean;
+  /**
+   * What a template's `{name}` placeholder matches (a regex source with no anchors or groups that
+   * capture); `DEFAULT_PLACEHOLDER` when absent. Play's package names carry dots and its track
+   * ids spaces and colons (`wear:beta`), so its rule set widens it.
+   */
+  readonly placeholder?: string;
   /** The body matcher (method syntax: a rule set of a narrower rule type is still a rule set). */
   match(
     rule: R,
@@ -153,10 +159,27 @@ export function ruleId(rule: Pick<GateRule, "method" | "path">): string {
 /** One plain path segment: a resource type, a relationship name, or an id. */
 export const PATH_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 
-function templateRegex(template: string): RegExp {
+/** What one `{name}` placeholder matches by default: one plain segment (`PATH_SEGMENT`). */
+export const DEFAULT_PLACEHOLDER = "[A-Za-z0-9][A-Za-z0-9_-]{0,127}";
+
+/**
+ * A template's matcher. Every `{name}` (Apple's `{id}`, Google's `{packageName}`, `{editId}`…)
+ * stands for one segment of the rule set's `placeholder` shape; everything else is literal, a
+ * Google custom-method suffix included (`{editId}:commit`).
+ */
+function templateRegex(template: string, placeholder: string): RegExp {
   const body = template
     .split("/")
-    .map((s) => (s === "{id}" ? "[A-Za-z0-9][A-Za-z0-9_-]{0,127}" : s))
+    .map((seg) =>
+      seg
+        .split(/(\{[A-Za-z]+\})/)
+        .map((part) =>
+          /^\{[A-Za-z]+\}$/.test(part)
+            ? `(?:${placeholder})`
+            : part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        )
+        .join(""),
+    )
     .join("/");
   return new RegExp(`^${body}$`);
 }
@@ -224,7 +247,7 @@ export function compileGate<R extends GateRule>(
   }
   const compiled = set.allow.map((rule) => ({
     rule,
-    re: templateRegex(rule.path),
+    re: templateRegex(rule.path, set.placeholder ?? DEFAULT_PLACEHOLDER),
   }));
   const find = (method: string, path: string): R | null => {
     for (const { rule, re } of compiled)
