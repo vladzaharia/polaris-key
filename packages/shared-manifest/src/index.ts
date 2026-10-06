@@ -31,6 +31,7 @@ import {
   type VariantAxis,
 } from "@polaris-key/protocol/packs";
 import { parse as parseYaml } from "yaml";
+import { checkSpellings } from "./spellings.js";
 import {
   MAX_RELEASE_KEYS,
   RELEASE_KEY_KID_PATTERN,
@@ -1346,6 +1347,9 @@ function validateDocuments(
   const licensing = asRecord(productRoot.licensing);
   const oidc = asRecord(productRoot.oidc);
   const secrets = asRecord(productRoot.secrets);
+
+  // ST-19: duplicate spellings stay valid and keep today's precedence; they only warn.
+  checkSpellings(manifest, warnings);
 
   if (
     productRoot.apiVersion !== undefined &&
@@ -5497,3 +5501,5 @@ export * from "./labels.js";
 export * from "./transportIds.js";
 // S-19 §7.4 (LX-05): reserved entitlement names and what a compatible declaration is.
 export * from "./reservedNames.js";
+// ST-19: the duplicate manifest spellings, deprecated with warnings.
+export * from "./spellings.js";

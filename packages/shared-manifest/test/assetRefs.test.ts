@@ -193,7 +193,10 @@ describe("normalised refs carry their kind", () => {
 
 const SCHEMA = { schemaVersion: 1, entries: [] };
 const RELEASE = {
-  release: { ghOwner: "acme", ghRepo: "desktop", binaryName: "acme" },
+  release: {
+    provider: { type: "github", owner: "acme", repo: "desktop" },
+    binaryName: "acme",
+  },
 };
 
 const product = (extra: Record<string, unknown> = {}) => ({
@@ -312,6 +315,19 @@ describe("listing art", () => {
   });
 });
 
+/** The deprecated spellings `products/djdl/product.json` uses (rows 1–6 and 11), in table order. */
+const DJDL_PRODUCT_SPELLINGS = [
+  "/slug",
+  "/name",
+  "/adminGroup",
+  "/compatMin",
+  "/compatMax",
+  "/defaultDeviceLimit",
+  "/defaultMaxOfflineDays",
+  "/tiers",
+  "/release",
+];
+
 describe("DJDL's distribution document (vladzaharia/djdl 9ba79dd)", () => {
   const djdl = parseYaml(
     readFileSync(join(here, "fixtures", "djdl", "distribution.yaml"), "utf8"),
@@ -330,7 +346,14 @@ describe("DJDL's distribution document (vladzaharia/djdl 9ba79dd)", () => {
       distribution: djdl,
     });
     expect(res.errors).toEqual([]);
+    // The product fixture mirrors djdl's flat product.json, so ST-19's spelling warnings
+    // (plans/ST-19.md §3.3) come first; the distribution document adds only its two aliases.
     expect(res.warnings.map((w) => [w.file, w.path, w.code])).toEqual([
+      ...DJDL_PRODUCT_SPELLINGS.map((path) => [
+        "product",
+        path,
+        "deprecated_spelling",
+      ]),
       ["distribution", "/listing/iconUrl", "listing_url_field_deprecated"],
       ["distribution", "/listing/headerUrl", "listing_url_field_deprecated"],
     ]);

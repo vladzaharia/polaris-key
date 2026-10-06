@@ -44,8 +44,7 @@ const PRODUCT = { slug: "acme", name: "Acme" };
 
 const release = (access?: unknown): Record<string, unknown> => ({
   release: {
-    ghOwner: "acme",
-    ghRepo: "desktop",
+    provider: { type: "github", owner: "acme", repo: "desktop" },
     binaryName: "acme",
     ...(access === undefined ? {} : { access }),
   },
@@ -1460,7 +1459,7 @@ describe("channel names (P0-04, WIRE-CONTRACT-V3 §5.1)", () => {
     artifactChannels?: string[];
   }) => ({
     product: {
-      ...PRODUCT,
+      product: PRODUCT,
       licensing: {
         tiers: [
           {
@@ -1470,11 +1469,10 @@ describe("channel names (P0-04, WIRE-CONTRACT-V3 §5.1)", () => {
         ],
       },
     },
-    schema: { schemaVersion: 1, catalog: [] },
+    schema: { schemaVersion: 1, entries: [] },
     release: {
       release: {
-        ghOwner: "acme",
-        ghRepo: "desktop",
+        provider: { type: "github", owner: "acme", repo: "desktop" },
         binaryName: "acme",
         ...(opts.manual
           ? {
@@ -1872,7 +1870,7 @@ describe("deliverables and the artifact map (P2-04)", () => {
 
   it("a pack deliverable is validated and normalised with its v1 defaults (P4-02)", () => {
     const docs = (deliverables: Record<string, unknown>) => ({
-      product: { ...PRODUCT, modules: { releases: true } },
+      product: { product: PRODUCT, modules: { release: true } },
       schema: catalogWithSecretDelivery(),
       release: {
         release: { ...(release().release as object), deliverables },
