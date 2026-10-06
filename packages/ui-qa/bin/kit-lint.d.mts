@@ -25,3 +25,8 @@ export function record(
   root?: string,
   opts?: KitLintOptions,
 ): Array<{ kit: string; rule: string; file: string; count: number }>;
+export function relPosix(
+  root: string,
+  file: string,
+  p?: typeof import("node:path"),
+): string;

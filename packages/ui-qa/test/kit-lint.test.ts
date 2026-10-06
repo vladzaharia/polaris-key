@@ -1,8 +1,8 @@
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, resolve, win32 } from "node:path";
 import { describe, expect, it } from "vitest";
-import { lintKits, record, scan } from "../bin/kit-lint.mjs";
+import { lintKits, record, relPosix, scan } from "../bin/kit-lint.mjs";
 import { REPO_ROOT } from "../src/config.ts";
 
 const rules = JSON.parse(
@@ -63,6 +63,24 @@ function seededRoot(): string {
 }
 
 describe("the per-kit source lints (bin/kit-lint.mjs)", () => {
+  it("keys files by forward-slash paths on Windows, so theme excludes still match", () => {
+    const rel = relPosix(
+      "C:\\a\\repo",
+      "C:\\a\\repo\\sdks\\godot\\addons\\polaris_key\\ui\\theme\\pkey_ui_theme.gd",
+      win32,
+    );
+    expect(rel).toBe("sdks/godot/addons/polaris_key/ui/theme/pkey_ui_theme.gd");
+    const excludes = (
+      rules.rules as Array<{ id: string; exclude?: string[] }>
+    ).filter((r) => r.exclude?.includes("/ui/theme/"));
+    expect(excludes.map((r) => r.id).sort()).toEqual([
+      "godot-checkbox",
+      "godot-colour-literal",
+    ]);
+    for (const r of excludes)
+      expect(r.exclude!.some((x) => new RegExp(x).test(rel))).toBe(true);
+  });
+
   it("has a seed for every rule, and every seed fails its own rule", () => {
     expect(Object.keys(SEED).sort()).toEqual(
       rules.rules.map((r) => r.id).sort(),

@@ -10,7 +10,7 @@
 // clears its own. The run fails on a hit beyond the recorded count (new debt) and on a recorded
 // count above today's (stale debt: re-record with --record so the ledger only shrinks).
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { dirname, extname, join, relative, resolve } from "node:path";
+import path, { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -37,6 +37,14 @@ function walk(dir, exts, out) {
   return out;
 }
 
+/**
+ * A repo-relative path with forward slashes on every OS, so rule excludes ("/ui/theme/") and debt
+ * keys match on Windows too. `p` is injectable so the test can drive the win32 flavour.
+ */
+export function relPosix(root, file, p = path) {
+  return p.relative(root, file).split(p.sep).join("/");
+}
+
 /** Scan the kits; returns every hit (before the debt ledger is applied). */
 export function scan(root = DEFAULT_ROOT, kits = null, rulesFile = RULES) {
   const cfg = JSON.parse(readFileSync(resolve(root, rulesFile), "utf8"));
@@ -54,7 +62,7 @@ export function scan(root = DEFAULT_ROOT, kits = null, rulesFile = RULES) {
       for (const file of walk(resolve(root, rootDir), k.extensions, [])) {
         const text = readFileSync(file, "utf8");
         if (/GENERATED/.test(text.slice(0, 400))) continue;
-        const rel = relative(root, file);
+        const rel = relPosix(root, file);
         text.split("\n").forEach((line, i) => {
           for (const r of rules) {
             if (r.skip.some((x) => x.test(rel))) continue;
