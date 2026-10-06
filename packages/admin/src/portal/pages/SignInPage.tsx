@@ -357,7 +357,8 @@ function MethodsStep({
         <Title>{title}</Title>
         {lede ? <p className="text-fg-muted">{lede}</p> : null}
         {notice ? (
-          <p data-signin-notice className="text-sm text-fg">
+          // An alert, so the reason is announced along with the step change (WCAG 4.1.3).
+          <p data-signin-notice role="alert" className="text-sm text-fg">
             {notice}
           </p>
         ) : null}
@@ -537,6 +538,14 @@ function CodeStep({
     }
   };
 
+  /**
+   * The resend's button goes away (a countdown, or nothing at the cap) while this step stays, so
+   * focus moves to the code, the next thing to do, rather than falling to the page (§9 item 9).
+   */
+  const focusCode = (): void => {
+    document.getElementById(inputId)?.focus();
+  };
+
   const resend = async (): Promise<void> => {
     if (sending) return;
     setSending(true);
@@ -551,26 +560,39 @@ function CodeStep({
       });
       setCode("");
       setWait(resendDelay(out));
+      focusCode();
     } catch (err) {
       if (err instanceof PortalApiError && err.code === "signin_expired") {
         onExpired();
         return;
       }
-      if (err instanceof PortalApiError && err.status === 429) {
-        if (err.retryAfter !== undefined) {
-          // Too soon (or this address's minute is spent): the countdown says when.
-          setWait(Math.max(1, Math.ceil(err.retryAfter)));
-        } else {
-          // The per-flow cap: the code already sent is the one to use.
-          setCapped(true);
-          setStatus({
-            // signin.code.noMore (PX-W4; joins the §5.2 catalog with UK-02a)
-            text: "No more codes can be sent for this sign-in. The latest code still works.",
-            tone: "muted",
-          });
-        }
+      if (
+        err instanceof PortalApiError &&
+        err.status === 429 &&
+        err.retryAfter !== undefined
+      ) {
+        // Too soon (or this address's minute is spent): the countdown says when.
+        setWait(Math.max(1, Math.ceil(err.retryAfter)));
+        focusCode();
         return;
       }
+      if (
+        err instanceof PortalApiError &&
+        err.status === 429 &&
+        err.code === "rate_limited"
+      ) {
+        // The Worker's per-flow cap (its only 429 without a wait): the code already sent is the
+        // one to use.
+        setCapped(true);
+        setStatus({
+          // signin.code.noMore (PX-W4; joins the §5.2 catalog with UK-02a)
+          text: "No more codes can be sent for this sign-in. The latest code still works.",
+          tone: "muted",
+        });
+        focusCode();
+        return;
+      }
+      // Anything else, a bare 429 from the edge included: retry later, the link stays.
       setError(startErrorText(err));
     } finally {
       setSending(false);

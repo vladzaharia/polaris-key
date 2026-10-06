@@ -383,8 +383,52 @@ describe("races on the single-use store", () => {
     )[0]!.n;
     const newEmails = w.mail.length - 1;
     expect(sessions + newEmails).toBe(1);
-    expect([verified.status, resent.status].sort()).toEqual(
-      sessions === 1 ? [200, 429] : [200, 400],
+    if (sessions === 1) {
+      expect(verified.status).toBe(200);
+      // The losing resend lost the retirement (wait) or read the flow after it (expired).
+      expect([400, 429]).toContain(resent.status);
+    } else {
+      expect(resent.status).toBe(200);
+      expect(verified.status).toBe(400);
+    }
+  });
+
+  it("a verify that loses its flow to a racing resend leaves the resend's new cookie alone", async () => {
+    const w = await seededWorld();
+    const d = await started(w);
+    const code = lastCode(w, "ada@example.com");
+    // The resend retires the flow between the verify's read and its consume: wrap the store so the
+    // verify's consume of the flow is beaten by one other consume of it.
+    type Stub = {
+      fetch(input: string, init?: RequestInit): Promise<Response>;
+    };
+    type Ns = { idFromName(name: string): unknown; get(id: unknown): Stub };
+    const real = w.env.SINGLE_USE as unknown as Ns;
+    const racing: Ns = {
+      idFromName: (name) => real.idFromName(name),
+      get: (id) => {
+        const stub = real.get(id);
+        return {
+          fetch: async (input, init) => {
+            const op = JSON.parse(String(init?.body)) as {
+              op?: string;
+              key?: string;
+            };
+            if (op.op === "consume" && op.key?.startsWith("signin-flow:"))
+              await stub.fetch(input, init);
+            return stub.fetch(input, init);
+          },
+        };
+      },
+    };
+    w.env.SINGLE_USE = racing as unknown as typeof w.env.SINGLE_USE;
+    const res = await d.send("POST", VERIFY, { code }, { now: LATER });
+    w.env.SINGLE_USE = real as unknown as typeof w.env.SINGLE_USE;
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual(
+      expect.objectContaining({ error: "signin_expired" }),
     );
+    expect(res.headers.get("set-cookie")).toBeNull();
+    expect(d.jar.has(ACCOUNT_SESSION_COOKIE)).toBe(false);
   });
 });

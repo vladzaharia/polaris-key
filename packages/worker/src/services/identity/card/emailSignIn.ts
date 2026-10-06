@@ -464,8 +464,9 @@ export async function handleSigninEmailVerify(
       400,
     );
   }
-  // One completion only: of two racing verifications (or a code and a link), one wins.
-  if (!(await consumeArtefact(env, flow.ref))) return expired();
+  // One completion only: of two racing verifications (or a code and a link), one wins. A loser
+  // leaves the cookie alone: the winner may be a resend that just set the new flow's (PX-W4).
+  if (!(await consumeArtefact(env, flow.ref))) return expired([]);
   return completeEmailSignIn(req, env, db, flow.record, now, "json");
 }
 

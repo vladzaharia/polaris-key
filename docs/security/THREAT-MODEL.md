@@ -5454,7 +5454,10 @@ The login card is the one place a Polaris Key account's credentials are entered
   too many for this flow, expired) describe this browser's own flow and never the address. The
   flow is retired with an atomic consume before the new one opens, so the previous code and link
   die with it and two racing resends mail once. The flow cookie is `SameSite=Lax`, so a cross-site
-  `POST` arrives without it and resends nothing.
+  `POST` arrives without it and resends nothing. Each new code starts with a fresh 5 attempts, so
+  the per-code cap alone would allow 25 guesses per flow; I-02's recipient lockout bounds it
+  instead: 10 wrong attempts in an hour, across codes, stop new codes to that address for 15
+  minutes (answered like a send), so resending cannot buy more guesses than the lockout allows.
 - **Magic-link relay and prefetch (item 14).** A link and a code are bound to the browser that
   asked, by a host-only `__Host-pkey_signin` cookie naming the flow; the link's token is 192 bits
   and only its peppered hash is a store key. Opening the link (`GET`) consumes nothing, so a mail

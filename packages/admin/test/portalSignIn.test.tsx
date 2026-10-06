@@ -431,6 +431,10 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
         ),
       ).toBeTruthy();
       expect(screen.getByText(/^Send a new code in 0:4[3-5]$/)).toBeTruthy();
+      // The button became a countdown: focus is on the code, not lost to the page.
+      expect(document.activeElement).toBe(
+        screen.getByRole("textbox", { name: "6-digit code" }),
+      );
       expect(
         fetchedRequests().filter((r) =>
           r.startsWith("POST /api/signin/email/"),
@@ -473,6 +477,28 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
       expect(
         screen.queryByRole("button", { name: "Send a new code" }),
       ).toBeNull();
+      expect(document.activeElement).toBe(
+        screen.getByRole("textbox", { name: "6-digit code" }),
+      );
+    });
+
+    it("a bare 429 from the edge (no JSON) is a retry-later error, not the cap", async () => {
+      signedOut(CAPS_ALL, {
+        "POST /api/signin/email/start": { ok: true, resendIn: 0 },
+        "POST /api/signin/email/resend": { status: 429, body: undefined },
+      });
+      renderPortal();
+      await toCodeStep();
+      await userEvent.click(
+        screen.getByRole("button", { name: "Send a new code" }),
+      );
+      expect((await screen.findByRole("alert")).textContent).toBe(
+        "Too many codes. Try again in a few minutes.",
+      );
+      expect(screen.queryByText(/No more codes can be sent/)).toBeNull();
+      expect(
+        screen.getByRole("button", { name: "Send a new code" }),
+      ).toBeTruthy();
     });
 
     it("at the sign-in's limit, says no more codes can be sent and the latest still works", async () => {
@@ -501,9 +527,10 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
       ).toBeNull();
       expect(screen.queryByText(/Send a new code in/)).toBeNull();
       expect(screen.queryByRole("alert")).toBeNull();
-      expect(
+      // The button went away: focus is on the code that still works.
+      expect(document.activeElement).toBe(
         screen.getByRole("textbox", { name: "6-digit code" }),
-      ).toBeTruthy();
+      );
       expect(
         screen.getByRole("button", { name: "Use a different email" }),
       ).toBeTruthy();
@@ -535,11 +562,10 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
         (screen.getByRole("textbox", { name: "Email" }) as HTMLInputElement)
           .value,
       ).toBe("mara@fennick.studio");
-      expect(
-        screen.getByText(
-          "That sign-in has expired. Continue to get a new code.",
-        ),
-      ).toBeTruthy();
+      // The reason is announced with the step change (an alert), not only shown.
+      expect(screen.getByRole("alert").textContent).toBe(
+        "That sign-in has expired. Continue to get a new code.",
+      );
       expect(await axeViolations()).toEqual([]);
       // Continue starts a new sign-in for the kept address.
       await userEvent.click(screen.getByRole("button", { name: "Continue" }));

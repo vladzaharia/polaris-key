@@ -91,7 +91,9 @@ the last code (`429 rate_limited` with `retryAfter`), it shares the start's 8 a 
 address (also with `retryAfter`), and one flow sends at most 5 emails, its start included
 (`429 rate_limited` without `retryAfter`: no more codes for this sign-in, the latest still
 works). A browser without a live flow gets `400 signin_expired`, and the card goes back to the
-email step. The card's countdown reads `resendIn` from the start's and the resend's answer.
+email step. The card's countdown reads `resendIn` from the start's and the resend's answer. A
+resend whose send then fails (`503 email_unavailable` from the mail provider) has already retired
+the previous code and link, so the person starts again.
 
 The link's landing page consumes nothing, so a mail scanner or a link prefetcher cannot burn it;
 its button `POST`s the token back. In the browser that asked, that signs in. Anywhere else the
