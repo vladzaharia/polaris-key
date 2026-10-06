@@ -24,6 +24,17 @@
  * View Transition rules are unlayered, like the stylesheet they override.
  */
 
+/* ── 0. Tailwind's default transition on the tokens ──────────────────────────────────────────────
+ * A bare `transition-colors` (or `transition`, `transition-opacity`…) with no duration utility takes
+ * Tailwind's --default-transition-duration (150 ms) and curve, which reduced motion never collapses:
+ * the sidebar's links kept cross-fading under `prefers-reduced-motion` (found by MO-03's smoke
+ * suite). Pointed at the tokens, they ease colours at `micro` (S-23 §5) and become instant swaps
+ * with everything else. Unlayered, so it wins over Tailwind's theme layer. */
+:root {
+  --default-transition-duration: var(--pk-duration-micro);
+  --default-transition-timing-function: var(--pk-ease-standard);
+}
+
 /* ── 1. Keyframes ─────────────────────────────────────────────────────────────────────────────── */
 @keyframes pk-enter {
   from {
