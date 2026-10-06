@@ -114,7 +114,8 @@ export const MAX_SELECTORS = 4096;
  * cost 17.5 s outside it) still shows here. `steps` is every loop iteration at a work site (one
  * per constraint read, release scanned, candidate built or examined, range check, solver try and
  * row); `rangeChecks` the range answers asked for (memo hits included); `tries` the solver's
- * candidate tries; `levelRuns` the `computeLevels` runs. A test diffs them around a call. Plain
+ * candidate tries; `levelRuns` the `computeLevels` runs; `pruneProbes` the pruning pass's
+ * "does some candidate of T hold R" questions. A test diffs them around a call. Plain
  * increments: they never change what a resolution returns.
  */
 export const resolveWork = {
@@ -122,6 +123,7 @@ export const resolveWork = {
   rangeChecks: 0,
   tries: 0,
   levelRuns: 0,
+  pruneProbes: 0,
 };
 
 export const UNSATISFIED_REASONS = [
@@ -933,6 +935,7 @@ export class PackResolver {
     const supported = (target: string, range: string): boolean => {
       this.spend(1);
       resolveWork.steps++;
+      resolveWork.pruneProbes++;
       const memo = support.get(target);
       const hit = memo?.get(range);
       if (hit !== undefined) return hit;

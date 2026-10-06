@@ -156,15 +156,36 @@ const CLEAN_CATALOG = JSON.stringify({
   ],
 });
 
-/** Every migration in `migrations/`, in order, as one SQL text. Each file is closed with its own
- *  `;` line, so a file that ends without one cannot run into the next (an empty statement is a
- *  no-op to wrangler). */
+/** wrangler's own migration order (`compareMigrationPaths`): by the number before the first `_`,
+ *  parsed as `parseInt` parses it (so an unnumbered `00XX_` placeholder counts as 0), numbered
+ *  files first, then by name. */
+function byWranglerOrder(a: string, b: string): number {
+  const lead = (f: string) => parseInt(f.split("_")[0]!, 10);
+  const [x, y] = [lead(a), lead(b)];
+  if (x !== y) {
+    if (Number.isFinite(x) && Number.isFinite(y)) return x - y;
+    if (Number.isFinite(x)) return -1;
+    if (Number.isFinite(y)) return 1;
+  }
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/** Every migration in `migrations/`, in wrangler's order, as one SQL text. A file whose last
+ *  statement (ignoring trailing blank and `--` comment lines) lacks its `;` gets one, so it
+ *  cannot run into the next file; one that has it gets nothing, so no empty statement is made. */
 function allMigrations(): string {
   const dir = join(WORKER, "migrations");
   return readdirSync(dir)
-    .filter((f) => f.endsWith(".sql"))
-    .sort()
-    .map((f) => `${readFileSync(join(dir, f), "utf8")}\n;\n`)
+    .filter((f) => f.endsWith(".sql") && !f.startsWith("."))
+    .sort(byWranglerOrder)
+    .map((f) => {
+      const sql = readFileSync(join(dir, f), "utf8");
+      const lines = sql.split("\n");
+      while (lines.length && /^\s*(--.*)?$/.test(lines[lines.length - 1]!))
+        lines.pop();
+      const closed = (lines[lines.length - 1] ?? "").trimEnd().endsWith(";");
+      return `${sql}\n${closed ? "" : ";\n"}`;
+    })
     .join("");
 }
 

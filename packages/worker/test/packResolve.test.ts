@@ -176,12 +176,10 @@ function resolve(
 function workOf(fn: () => void): typeof resolveWork {
   const before = { ...resolveWork };
   fn();
-  return {
-    steps: resolveWork.steps - before.steps,
-    rangeChecks: resolveWork.rangeChecks - before.rangeChecks,
-    tries: resolveWork.tries - before.tries,
-    levelRuns: resolveWork.levelRuns - before.levelRuns,
-  };
+  const spent = { ...resolveWork };
+  for (const k of Object.keys(spent) as Array<keyof typeof resolveWork>)
+    spent[k] -= before[k];
+  return spent;
 }
 
 /** pack → version of a set. */
@@ -860,6 +858,13 @@ describe("bounds (review fix 1)", () => {
     }));
   };
 
+  it("the budget every counted bound below is measured against stays at 1,000,000 work units", () => {
+    // The bounds in this file scale with MAX_RESOLUTION_WORK, sized for about 150 ms on Node 22.
+    // Pinning it means raising the budget (say 50x) fails here, as the millisecond checks these
+    // bounds replaced would have.
+    expect(MAX_RESOLUTION_WORK).toBeLessThanOrEqual(1_000_000);
+  });
+
   it("MAX_SELECTORS distinct problems at the bound finish within the budget", () => {
     let sets: ResolvedSet[] = [];
     const work = workOf(() => ({ sets } = resolve([APP_15], coupled())));
@@ -913,13 +918,14 @@ describe("bounds (review fix 1)", () => {
 });
 
 describe("bounds, round 2", () => {
-  it("dependency pruning is charged: 64 packs × 200 releases × 63 dependencies refuse cleanly inside the budget", () => {
-    // Every pack requires the OLDEST release of every other: pruning examines whole domains.
+  /** 64 packs of `releases` releases, each requiring the OLDEST release of every other pack, so
+   *  pruning examines whole domains. */
+  const allRequireOldest = (releases: number): PackSpec[] => {
     const id = (i: number) => `p.p${String(i).padStart(2, "0")}`;
-    const packs: PackSpec[] = Array.from({ length: 64 }, (_, i) => ({
+    return Array.from({ length: 64 }, (_, i) => ({
       id: id(i),
       binding: "standalone" as const,
-      releases: Array.from({ length: 200 }, (_, n) => ({
+      releases: Array.from({ length: releases }, (_, n) => ({
         version: `1.${Math.floor(n / 50)}.${n % 50}`,
         seq: n + 1,
         packs: Object.fromEntries(
@@ -930,6 +936,10 @@ describe("bounds, round 2", () => {
         ),
       })),
     }));
+  };
+
+  it("64 packs × 200 releases × 63 dependencies refuse cleanly inside the budget (grouping and the stages spend it before pruning)", () => {
+    const packs = allRequireOldest(200);
     const heap0 = process.memoryUsage().heapUsed;
     const work = workOf(() =>
       expect(() => resolve([APP_15], packs)).toThrow(
@@ -938,11 +948,46 @@ describe("bounds, round 2", () => {
     );
     // About 35 ms on Node 22 (it was 17.5 s with pruning outside the budget). Counted work, not
     // time: every step at a work site stays inside the budget (about 911,000), so work that
-    // escaped the budget would show here however fast the machine. Note: the budget now runs out
-    // in grouping and the stages before pruning starts (no range check is asked), so this case
-    // no longer reaches pruning at all; a scenario that does is a separate fix.
+    // escaped the budget would show here however fast the machine. Reading every constraint and
+    // building every candidate spends the budget before pruning starts (no pruning probe), so
+    // the two cases below, with fewer releases, are the ones that reach pruning.
+    expect(work.pruneProbes).toBe(0);
     expect(work.steps).toBeLessThanOrEqual(MAX_RESOLUTION_WORK);
     expect((process.memoryUsage().heapUsed - heap0) / 1048576).toBeLessThan(64);
+  });
+
+  it("dependency pruning runs inside the budget: 64 packs × 30 releases × 63 dependencies resolve, every pack at its oldest release", () => {
+    let sets: ResolvedSet[] = [];
+    const work = workOf(
+      () => ({ sets } = resolve([APP_15], allRequireOldest(30))),
+    );
+    // Counted: pruning asked its "does some candidate of T hold R" question (once per candidate
+    // and dependency, 64 × 30 × 63 = 120,960), range checks ran, and every step stayed inside the
+    // budget (about 745,000).
+    expect(work.pruneProbes).toBeGreaterThan(0);
+    expect(work.rangeChecks).toBeGreaterThan(0);
+    expect(work.steps).toBeLessThanOrEqual(MAX_RESOLUTION_WORK);
+    expect(sets).toHaveLength(1);
+    expect(sets[0]!.unsatisfied).toEqual([]);
+    expect(sets[0]!.entries).toHaveLength(64);
+    expect(sets[0]!.entries.every((e) => e.version === "1.0.0")).toBe(true);
+  });
+
+  it("dependency pruning is charged: with 55 releases the budget runs out inside pruning, before the solver tries anything", () => {
+    const work = workOf(() =>
+      expect(() => resolve([APP_15], allRequireOldest(55))).toThrow(
+        String(MAX_RESOLUTION_WORK),
+      ),
+    );
+    // Grouping and the stages leave too little budget for the whole pruning pass (64 × 55 × 63 =
+    // 221,760 probes), so the refusal comes from pruning's own charges: it started, did not
+    // finish (about 88,000 probes), and no solver try ran. Pruning outside the budget would run
+    // to the end and hand the search to the solver. Budget runs out in pruning for 50 to 60
+    // releases today; 55 sits in the middle of that window.
+    expect(work.pruneProbes).toBeGreaterThan(0);
+    expect(work.pruneProbes).toBeLessThan(64 * 55 * 63);
+    expect(work.tries).toBe(0);
+    expect(work.steps).toBeLessThanOrEqual(MAX_RESOLUTION_WORK);
   });
 
   it("the live levels are computed once per channel, not per row: 500 app releases × 4,000 rows", () => {
