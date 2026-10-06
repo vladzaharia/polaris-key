@@ -21,6 +21,14 @@ runs a ``discover`` step, and records no discovery exchange in the step, has it 
 the Worker's standard templates (the fallback the Node and React replayers use), so the recording
 only has to hold the feed and record traffic.
 
+``activate`` / ``enroll`` report the ``ActivationResult``'s ``kind`` as ``result`` and, on a
+refusal, its wire ``code``. ``boot`` is ``client.boot(discover=True)``: its ``outcome`` is
+``bootOutcome``. ``releaseFetch`` is ``client.release.fetch`` of the build a release record built
+from the step's target names (``_release_fetch``; ``partial`` seeds the interrupted ``.part``).
+``downloadModel`` is ``client.distribution.download_model()`` with ``current`` from
+``this_platform`` at ``initial.platform``. ``initial.updateJournal`` seeds ``client.update_journal``,
+and ``report`` adds ``updatesPending``, the events still queued.
+
 ``chunkRange`` (P4-32, plans/P4-32.md §5) is ``chunk_range_fetch`` over the packs client's own
 object fetch (``client.update.packs._fetch_object``), against the blobs template the last
 discover returned. ``range`` is the fetch's status; ``bytes`` the body it returned, as a string.
@@ -32,12 +40,17 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature identity.devicecode config.mint
 # @pkey-feature update.feed release.record update.decide
 # @pkey-feature packs.apply.chunk commerce.receipt
+# @pkey-feature license.refusals ui.boot release.fetch release.distribution telemetry.updates
 
 from __future__ import annotations
 
 import copy
 import dataclasses
+import hashlib
 import json
+import os
+import shutil
+import tempfile
 import time
 from typing import Any, Dict, Optional
 
@@ -45,6 +58,8 @@ import httpx
 import pytest
 
 from polaris_key import PolarisError, PolarisKeyClient, StagedUpdate, UpdateClientOptions
+from polaris_key.constants_generated import ERROR_CODE_VALUES
+from polaris_key.core.models import ReleaseRecordDoc
 from polaris_key.core.store import CacheRecord
 from polaris_key.update.packs import chunk_range_fetch
 
@@ -167,16 +182,44 @@ def _act(
             for slice_, outcome in r.documents.items()
             if outcome.kind != "skipped"
         }
-    elif action == "activate":
-        out["result"] = client.license.activate_with_key(args["key"]).kind
-    elif action == "enroll":
-        out["result"] = client.license.enroll().kind
+    elif action in ("activate", "enroll"):
+        r = (
+            client.license.activate_with_key(args["key"])
+            if action == "activate"
+            else client.license.enroll()
+        )
+        out["result"] = r.kind
+        if r.kind != "ok":
+            out["code"] = r.code
+    elif action == "boot":
+        # The shell stage's discovery runs even though the host pinned its services
+        # (``initial.services``): the recording's boot loads discovery first.
+        out["bootOutcome"] = client.boot(discover=True).outcome
+    elif action == "releaseFetch":
+        out.update(_release_fetch(client, args, session))
+    elif action == "downloadModel":
+        model = client.distribution.download_model()
+        out["result"] = "ok"
+        out["platforms"] = [g.platform for g in model.platforms]
+        current = client.distribution.this_platform(model)
+        out["current"] = (
+            None
+            if current is None
+            else {
+                "platform": current.platform,
+                "label": current.label,
+                "primary": current.primary,
+                "actions": list(current.actions),
+                "builds": [dict(b) for b in current.builds],
+            }
+        )
     elif action == "register":
         out["result"] = client.devices.register().kind
     elif action == "deactivate":
         client.license.deactivate()
     elif action == "report":
         out["result"] = client.devices.report()
+        out["updatesPending"] = len(client.update_journal.events())
     elif action == "fetchSchema":
         out["catalog"] = client.config.fetch_schema()
     elif action == "changelog":
@@ -228,6 +271,69 @@ def _act(
     out["licenseStatus"] = client.status().status
     out["tokenHeld"] = store.token is not None
     return out
+
+
+def _release_fetch(
+    client: PolarisKeyClient, args: Dict[str, Any], session: Dict[str, Any]
+) -> Dict[str, Any]:
+    """``releaseFetch``: ``client.release.fetch`` of the build a verified release record names
+    (the record is built from the step's target), into a fresh directory. ``partial`` seeds the
+    interrupted download an earlier call would have left: the payload's first bytes in
+    ``<to>.part`` and, beside it, the validator that call stored (the build route's ETag, the
+    quoted SHA-256), so the SDK resumes with ``Range`` and ``If-Range``."""
+    record = ReleaseRecordDoc.from_dict(
+        {
+            "schemaVersion": 1,
+            "aud": client.core.product,
+            "deliverable": "app",
+            "kind": "app",
+            "version": args["version"],
+            "seq": 1,
+            "issuedAt": 1,
+            "builds": [
+                {
+                    "id": args["build"],
+                    "platform": args["platform"],
+                    "arch": args["arch"],
+                    "format": "tar.gz",
+                    "artifacts": [
+                        {
+                            "name": "payload",
+                            "role": "payload",
+                            "sha256": args["sha256"],
+                            "size": args["size"],
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+    directory = tempfile.mkdtemp(prefix="pkey-replay-")
+    session.setdefault("dirs", []).append(directory)
+    to = os.path.join(directory, "payload")
+    partial = args.get("partial")
+    if isinstance(partial, int) and partial > 0:
+        whole = session.get("payload")
+        assert isinstance(whole, bytes), "a partial releaseFetch needs an earlier whole fetch"
+        with open(to + ".part", "wb") as f:
+            f.write(whole[:partial])
+        with open(to + ".part.json", "w", encoding="utf-8") as f:
+            json.dump({"sha256": args["sha256"], "etag": f'"{args["sha256"]}"'}, f)
+    try:
+        got = client.release.fetch(record, to=to, build_id=args["build"])
+    except PolarisError as e:
+        return {
+            "result": "refused" if e.code in ERROR_CODE_VALUES else "error",
+            "code": e.code,
+        }
+    with open(got.path, "rb") as f:
+        data = f.read()
+    session["payload"] = data
+    return {
+        "result": "ok",
+        "size": len(data),
+        "sha256": hashlib.sha256(data).hexdigest(),
+    }
 
 
 def _standard_discovery(t: Dict[str, Any]) -> Dict[str, Any]:
@@ -315,6 +421,16 @@ def replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
     )
     client.devices.fingerprint = lambda: FINGERPRINT  # type: ignore[method-assign]
     client.init()
+    if t["initial"].get("platform") is not None:
+        # The device's canonical platform: what the host names in the update options.
+        client.distribution._platform = t["initial"]["platform"]
+    journal = t["initial"].get("updateJournal")
+    if journal is not None:
+        # The update journal the client holds before the first step, oldest first.
+        client.update_journal._file.update(
+            lambda _: {"events": copy.deepcopy(journal), "offered": None}
+        )
+        assert len(client.update_journal.events()) == len(journal)
     session: Dict[str, Any] = {}
     try:
         for i, _ in enumerate(t["steps"]):
@@ -329,6 +445,8 @@ def replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
                 )
     finally:
         client.close()
+        for d in session.get("dirs", []):
+            shutil.rmtree(d, ignore_errors=True)
 
 
 def test_the_transcript_set_is_present() -> None:

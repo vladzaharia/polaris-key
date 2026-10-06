@@ -1,3 +1,4 @@
+# @pkey-feature telemetry.updates
 # @pkey-feature devices.report
 """The update-health journal and the report's ``gate``, ``outlet``, ``updates`` and
 ``packInstalls`` keys (P6-03; SDK parity pass §3.13, SP-P03)."""

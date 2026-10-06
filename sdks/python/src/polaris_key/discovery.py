@@ -30,9 +30,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, Optional
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 
 from ._services import DEFAULT_ENABLED_SERVICES, SERVICE_SLUGS
+
+#: What ``encodeURIComponent`` leaves unescaped besides letters and digits.
+_URI_COMPONENT_SAFE = "-_.!~*'()"
 
 __all__ = [
     "SERVICE_SLUGS",
@@ -294,7 +297,7 @@ def appcast_url_from(
         # published endpoint is the stable feed, and a channel feed is its sibling.
         suffix = "/appcast.xml"
         if path.endswith(suffix):
-            path = path[: -len(suffix)] + f"/{channel}/appcast.xml"
+            path = path[: -len(suffix)] + f"/{quote(channel, safe=_URI_COMPONENT_SAFE)}/appcast.xml"
     query = dict(parse_qsl(parts.query, keep_blank_values=True))
     if arch:
         query["arch"] = arch
