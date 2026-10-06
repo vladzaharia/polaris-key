@@ -1,0 +1,51 @@
+---
+/**
+ * Every platform variant in the generated English table: the documented verb or casing a
+ * platform may use instead of the catalog's text (macOS title case, Godot's verbs).
+ */
+import {
+  KIT_COPY_EN,
+  KIT_COPY_VARIANTS,
+  PLATFORM_LABELS,
+} from "../../lib/kitCopy";
+
+const en = KIT_COPY_EN as Readonly<Record<string, string>>;
+const rows = Object.entries(KIT_COPY_VARIANTS)
+  .sort(([a], [b]) => a.localeCompare(b))
+  .flatMap(([key, variants]) =>
+    Object.entries(variants).map(([platform, text]) => ({
+      key,
+      text: en[key] ?? "",
+      platform: PLATFORM_LABELS[platform] ?? platform,
+      variant: text,
+    })),
+  );
+---
+
+<details class="pk-ui-variants">
+  <summary>All {rows.length} platform variants</summary>
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Key</th>
+        <th scope="col">English</th>
+        <th scope="col">Platform</th>
+        <th scope="col">Variant</th>
+      </tr>
+    </thead>
+    <tbody>
+      {
+        rows.map((row) => (
+          <tr>
+            <td>
+              <code>{row.key}</code>
+            </td>
+            <td>{row.text}</td>
+            <td>{row.platform}</td>
+            <td>{row.variant}</td>
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+</details>

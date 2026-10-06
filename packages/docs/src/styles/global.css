@@ -370,3 +370,90 @@ h6,
 .sl-link-card .icon {
   color: var(--pk-accent-fg);
 }
+
+/* ---- UI kits (build/ui/): baselines, catalog tables and placeholders -------------------------- */
+
+.pk-ui-muted {
+  color: var(--pk-text-muted);
+}
+
+.pk-ui-pending {
+  padding: var(--pk-space-3) var(--pk-space-4);
+  border: 1px solid var(--pk-border-subtle);
+  border-radius: var(--pk-radius-md);
+  background-color: var(--pk-surface-sunken);
+  color: var(--pk-text-muted);
+}
+
+.pk-ui-pending strong {
+  color: var(--pk-text-strong);
+  font-weight: var(--pk-font-weight-medium);
+}
+
+.sl-markdown-content .pk-ui-copy {
+  margin: 0;
+  padding-inline-start: 0;
+  list-style: none;
+}
+
+.sl-markdown-content .pk-ui-copy li + li {
+  margin-top: var(--pk-space-1);
+}
+
+.pk-ui-shots {
+  display: grid;
+  gap: var(--pk-space-8);
+}
+
+.sl-markdown-content .pk-ui-shot {
+  margin: 0;
+}
+
+.pk-ui-shot__title {
+  margin-bottom: var(--pk-space-3);
+  color: var(--pk-text-strong);
+  font-weight: var(--pk-font-weight-medium);
+}
+
+.pk-ui-shot__pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 17rem));
+  gap: var(--pk-space-4);
+}
+
+.sl-markdown-content .pk-ui-shot__pair > * {
+  margin: 0;
+}
+
+.sl-markdown-content a.pk-ui-shot__frame {
+  display: grid;
+  gap: var(--pk-space-2);
+  color: var(--pk-text-muted);
+  text-decoration: none;
+}
+
+.pk-ui-shot__frame img {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  border: 1px solid var(--pk-border-subtle);
+  border-radius: var(--pk-radius-md);
+}
+
+.pk-ui-shot__frame:hover img {
+  border-color: var(--pk-border-strong);
+}
+
+.pk-ui-shot__theme {
+  font-size: var(--pk-font-size-sm);
+}
+
+.pk-ui-shot__missing {
+  display: grid;
+  place-items: center;
+  min-block-size: 8rem;
+  border: 1px dashed var(--pk-border-subtle);
+  border-radius: var(--pk-radius-md);
+  color: var(--pk-text-muted);
+  font-size: var(--pk-font-size-sm);
+}

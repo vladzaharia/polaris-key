@@ -1,0 +1,48 @@
+---
+/**
+ * The placeholder a kit-tabbed block shows until the kit fills it: which kits the tab is for, and
+ * where each one's current docs are, when it has any. A kit replaces this element with its own
+ * content when it ships the part of the spec the tab covers.
+ */
+import { kitById } from "../../lib/uiKits";
+
+interface Props {
+  /** The kit ids (src/lib/uiKits.ts) this tab is for. */
+  kits: string[];
+  /** What the kit adds here, as a noun phrase: "this theme API". */
+  what: string;
+}
+
+const { what } = Astro.props;
+const kits = Astro.props.kits.map(kitById);
+const names = new Intl.ListFormat("en", {
+  style: "long",
+  type: "conjunction",
+}).format(kits.map((k) => k.label));
+const sentence =
+  kits.length > 1
+    ? `The ${names} kits fill this tab when they ship ${what}.`
+    : `The ${names} kit fills this tab when it ships ${what}.`;
+const current = kits.flatMap((k) =>
+  k.current === undefined ? [] : [k.current],
+);
+---
+
+<p class="pk-ui-pending">
+  <strong>Not filled yet.</strong>
+  {sentence}
+  {
+    current.length > 0 && (
+      <span>
+        Today's docs:{" "}
+        {current.map((c, i) => (
+          <>
+            {i > 0 && ", "}
+            <a href={c.href}>{c.label}</a>
+            {i === current.length - 1 && "."}
+          </>
+        ))}
+      </span>
+    )
+  }
+</p>
