@@ -453,29 +453,33 @@ describe("motion on: the Licenses table under the Worker's CSP", () => {
     });
   }
 
-  it("a new chip pops in; a removed one fades out, then leaves the DOM", async () => {
+  it("a new chip pops in; a removed one fades out, then leaves the DOM; the last one goes with its row", async () => {
     const page = await openLicenses();
     const tk = await tokens(page);
     await openStatusMenu(page);
     await takeLog(page);
     await page.getByRole("checkbox", { name: /^Disabled/ }).click();
-    const chip = page
-      .getByRole("button", { name: "Remove filter Status: Disabled" })
-      .locator("xpath=ancestor::li[1]");
-    await chip.waitFor();
+    await page.getByRole("checkbox", { name: /^Active/ }).click();
+    const chipOf = (label: string) =>
+      page
+        .getByRole("button", { name: `Remove filter Status: ${label}` })
+        .locator("xpath=ancestor::li[1]");
+    await chipOf("Active").waitFor();
     await atRest(page);
     const pop = (await takeLog(page)).filter(
       (e) => e.phase === "end" && e.tag === "li" && e.name === "pk-pop-in",
     );
-    expect(pop.map((e) => e.duration)).toEqual([tk.slow]);
+    expect(pop.map((e) => e.duration)).toEqual([tk.slow, tk.slow]);
 
     await page.keyboard.press("Escape");
     await atRest(page);
     await takeLog(page);
+    const disabled = chipOf("Disabled");
+    const handle = await disabled.elementHandle();
     await page
       .getByRole("button", { name: "Remove filter Status: Disabled" })
       .click();
-    await chip.waitFor({ state: "detached" });
+    await page.waitForFunction((el) => !el!.isConnected, handle);
     await atRest(page);
     const out = (await takeLog(page)).filter(
       (e) => e.phase === "end" && e.tag === "li" && e.name === "pk-fade-out",
@@ -484,6 +488,20 @@ describe("motion on: the Licenses table under the Worker's CSP", () => {
       out.map((e) => [e.duration, e.state, e.connected]),
       "the chip faded out while still in the DOM",
     ).toEqual([[tk.base, "closed", true]]);
+
+    // The last chip goes at once with its row, so the row never collapses after a list
+    // transition has captured the page.
+    await takeLog(page);
+    await page
+      .getByRole("button", { name: "Remove filter Status: Active" })
+      .click();
+    await page
+      .getByRole("list", { name: "Active filters" })
+      .waitFor({ state: "detached" });
+    await atRest(page);
+    expect(
+      (await takeLog(page)).filter((e) => e.name === "pk-fade-out"),
+    ).toEqual([]);
     expect(await running(page)).toEqual([]);
     expect(await violations(page)).toEqual([]);
     await page.context().close();

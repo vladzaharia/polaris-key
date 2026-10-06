@@ -143,8 +143,10 @@ interface ShownChip extends Chip {
 /**
  * The chips to draw (notes/S-23 §6.1; MO-09): a chip added after the bar mounted pops in; a
  * removed one stays where it was, inert, while it fades out, then goes. Chips present on the
- * first render (a URL with filters, Back) do not pop. Under reduced motion a removed chip goes at
- * once. Counts are never animated.
+ * first render (a URL with filters, Back) do not pop. When the last chip goes, the row goes with
+ * it at once: a row that collapsed only after the fade would move the table after a list
+ * transition had already captured it. Under reduced motion a removed chip goes at once. Counts
+ * are never animated.
  */
 function useChipPresence(chips: Chip[]): [ShownChip[], (key: string) => void] {
   const keys = chips.map((c) => c.key).join("\n");
@@ -157,16 +159,21 @@ function useChipPresence(chips: Chip[]): [ShownChip[], (key: string) => void] {
   >([]);
   if (prev.keys !== keys) {
     const now = new Set(chips.map((c) => c.key));
-    const gone = reducedMotion()
-      ? []
-      : prev.chips.flatMap((chip, index) =>
-          now.has(chip.key) ? [] : [{ chip, index }],
-        );
+    const gone =
+      reducedMotion() || now.size === 0
+        ? []
+        : prev.chips.flatMap((chip, index) =>
+            now.has(chip.key) ? [] : [{ chip, index }],
+          );
     setPrev({ keys, chips });
-    setLeaving((l) => [
-      ...l.filter((x) => !now.has(x.chip.key)),
-      ...gone.filter((g) => !l.some((x) => x.chip.key === g.chip.key)),
-    ]);
+    setLeaving((l) =>
+      now.size === 0
+        ? []
+        : [
+            ...l.filter((x) => !now.has(x.chip.key)),
+            ...gone.filter((g) => !l.some((x) => x.chip.key === g.chip.key)),
+          ],
+    );
     // A chip removed since the first render pops when it comes back.
     if ([...initial].some((k) => !now.has(k)))
       setInitial(new Set([...initial].filter((k) => now.has(k))));

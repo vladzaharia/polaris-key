@@ -530,14 +530,28 @@ describe("FilterBar chips", () => {
     expect(chip("suspended")).toBeTruthy();
   });
 
-  it("a removed chip goes at once under reduced motion", async () => {
-    html.dataset.motion = "reduce";
+  it("the last chip goes at once, so the row collapses with the filter", async () => {
     withExitAnimations();
     render(<Chips initial={["active"]} />);
     await userEvent.click(
       screen.getByRole("button", { name: "Remove filter Status: active" }),
     );
     expect(screen.queryByRole("list", { name: "Active filters" })).toBeNull();
+  });
+
+  it("a removed chip goes at once under reduced motion", async () => {
+    html.dataset.motion = "reduce";
+    withExitAnimations();
+    render(<Chips initial={["active", "suspended"]} />);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove filter Status: active" }),
+    );
+    expect(
+      screen.queryByRole("button", { name: "Remove filter Status: active" }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("list", { name: "Active filters" }).children.length,
+    ).toBe(1);
   });
 
   it("facet counts are plain text, never animated", async () => {
