@@ -13179,8 +13179,11 @@ paths:
       summary: One licence, with its holder, keys, devices and overrides
       description: >
         The licence record the console shows: the summary (with `holder`, LX-26) plus its keys (by
-        hash), devices, profiles, offline window, seat count and redacted overrides. Platform
-        admins only; admin session cookie. DELETE on this path is documented on the docs site.
+        hash), devices, profiles, offline window, seat count and redacted overrides, and (U-03)
+        `configOverrides`: where its config and secret overrides live (`phase`: `license`,
+        `notice`, `moving`, `moved`), whether an account owns it, the owner's subject and the
+        portal's Activate License link offered for a licence with none. Platform admins only;
+        admin session cookie. DELETE on this path is documented on the docs site.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
         - {
@@ -13261,6 +13264,465 @@ paths:
               schema: { $ref: "#/components/schemas/AdminError" }
         "422":
           description: "An unknown tier or profile, a bad `deviceLimit`, or a value a signed document cannot carry."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/license/licenses/{licenseId}/overrides:
+    put:
+      operationId: putAdminLicenseOverrides
+      tags: [admin]
+      summary: Edit a licence's own overrides (entitlements only from the override migration's run)
+      description: >
+        A batch of override updates, validated against the product's ACTIVE catalog
+        all-or-nothing; a catalog-declared secret is sealed under PLATFORM_KEK before it is stored
+        and never echoed. U-03 (notes/S-17 §5.12 step 4, decision 20): from the start of the
+        licence-override migration's run, config and secret keys are refused with `400
+        bad_request` naming the account override route (`accountOverrides.route`, `null` for a
+        licence with no account), and entitlement (`flag`) keys are still accepted, on owned and
+        floating licences alike. Before the run every kind is accepted, as before. Platform admins
+        only; admin session cookie and CSRF header.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - {
+            name: licenseId,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [updates]
+              properties:
+                updates:
+                  type: array
+                  items: { $ref: "#/components/schemas/AdminOverrideUpdate" }
+      responses:
+        "200":
+          description: Saved.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, id]
+                properties:
+                  ok: { type: boolean, const: true }
+                  id: { type: string }
+        "400":
+          description: "From the migration's run on: a config or secret key (`bad_request`, `fields`: the keys, `accountOverrides: { subject, route }`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product or licence.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: The product has no active catalog.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: "A value the catalog refuses (`bad_request` or `value_not_representable`, with `fields`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/users/{subject}/overrides:
+    get:
+      operationId: getAdminAccountOverrides
+      tags: [admin]
+      summary: One user's account overrides on a product
+      description: >
+        U-03 (notes/S-17 §5.12): the account override layer of one pairwise subject, the managed
+        config an operator sets for one account on one product. It reaches every device signed in
+        to that account on the product and, through the licence-owner line, licence-key devices of
+        licences the account owns; a floating licence gets none. Exists on every product, Identity
+        on or off (the account is platform-level). Secrets are listed by name only
+        (`configured`); a config key the catalog flags `secret` has its value blanked. An absorbed
+        subject answers `409 subject_merged` with `mergedInto`. Platform admins only; admin
+        session cookie.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - {
+            name: subject,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^ps_[A-Za-z0-9_-]{22}$" },
+          }
+      responses:
+        "200":
+          description: The layer.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminAccountOverrides" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product, or no user of this product has that subject.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: "The subject was merged into another (`subject_merged`, `mergedInto`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+    put:
+      operationId: putAdminAccountOverrides
+      tags: [admin]
+      summary: Edit one user's account overrides on a product
+      description: >
+        The licence editor's batch (`updates`), validated against the ACTIVE catalog
+        all-or-nothing, secrets sealed under PLATFORM_KEK and never echoed. A `flag` key is
+        refused (`422`, entitlement overrides stay on the licence, decision 20). The write is a
+        compare-and-set on the row the batch was computed from: an edit that landed in between
+        answers `409 conflict`. Clearing every key removes the row. Audited `user.overrides` with
+        key names only. Platform admins only; admin session cookie and CSRF header.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - {
+            name: subject,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^ps_[A-Za-z0-9_-]{22}$" },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [updates]
+              properties:
+                updates:
+                  type: array
+                  items: { $ref: "#/components/schemas/AdminOverrideUpdate" }
+            examples:
+              theme:
+                value:
+                  { updates: [{ key: theme, value: dark, state: enforced }] }
+      responses:
+        "200":
+          description: Saved.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, subject]
+                properties:
+                  ok: { type: boolean, const: true }
+                  subject: { type: string }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product, or no user of this product has that subject.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: "No active catalog (`bad_request`); the row changed meanwhile (`conflict`); the subject was merged (`subject_merged`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: "A `flag` key, or a value the catalog refuses (`fields`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/platform/override-migration:
+    get:
+      operationId: getAdminOverrideMigration
+      tags: [admin]
+      summary: The licence-override migration's state and inventory
+      description: >
+        U-03 (notes/S-17 §5.12 step 1, decision 21): the one platform-wide migration that moves
+        owned licences' config and secret overrides onto the owner's account overrides and drops
+        unowned licences'. Answers the phase (`idle`, `notice`, `running`, `completed`), the two
+        prerequisites (the login card, I-07, and the portal Library, I-11, flagged live in
+        production), the notice and its earliest run date, the run, and the daily inventory
+        (counts per product). With `product`, that product's licences carrying config or secret
+        overrides (key names only, never a value or an account id) and its live report row
+        count. Platform admins only; admin session cookie.
+      parameters:
+        - {
+            name: product,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+      responses:
+        "200":
+          description: The state.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [state]
+                properties:
+                  state:
+                    { $ref: "#/components/schemas/AdminOverrideMigrationState" }
+                  product:
+                    type: object
+                    additionalProperties: true
+                    properties:
+                      slug: { type: string }
+                      counts: { type: object, additionalProperties: true }
+                      licences:
+                        {
+                          type: array,
+                          items: { type: object, additionalProperties: true },
+                        }
+                      reportRows: { type: integer }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/platform/override-migration/prerequisites:
+    put:
+      operationId: putAdminOverrideMigrationPrerequisites
+      tags: [admin]
+      summary: Flag the login card and the Library live in production
+      description: >
+        Decision 21: the notice may not start until customers can act on it, so an operator
+        flags the login card (I-07) and the portal Library with Activate License (I-11) live in
+        production. Unflagging is refused once the notice has started (`409 notice_started`).
+        Audited in the platform activity log. Platform admins only; admin session cookie and CSRF
+        header.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                loginCard: { type: boolean }
+                library: { type: boolean }
+      responses:
+        "200":
+          description: Saved.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [state]
+                properties:
+                  state:
+                    { $ref: "#/components/schemas/AdminOverrideMigrationState" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "409":
+          description: "`notice_started`: withdraw the notice first."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: Neither member, or a member that is not a boolean.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/platform/override-migration/notice:
+    post:
+      operationId: startAdminOverrideMigrationNotice
+      tags: [admin]
+      summary: Start the 30-day notice
+      description: >
+        Starts the notice; the run is possible 30 days later (`runNotBefore`). Refused with `409
+        prerequisites_missing` (and `missing`) until both prerequisites are flagged: the guard is
+        the conditional write itself. Audited. Platform admins only; admin session cookie and
+        CSRF header.
+      responses:
+        "200":
+          description: Started.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [state]
+                properties:
+                  state:
+                    { $ref: "#/components/schemas/AdminOverrideMigrationState" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "409":
+          description: "`prerequisites_missing` (with `missing`), `notice_started` or `run_started`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+    delete:
+      operationId: withdrawAdminOverrideMigrationNotice
+      tags: [admin]
+      summary: Withdraw the notice (before the run)
+      description: >
+        Withdraws the notice; a later notice starts a fresh 30 days. Refused once the run has
+        started (`409 run_started`). Audited. Platform admins only; admin session cookie and CSRF
+        header.
+      responses:
+        "200":
+          description: Withdrawn.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [state]
+                properties:
+                  state:
+                    { $ref: "#/components/schemas/AdminOverrideMigrationState" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "409":
+          description: "`run_started`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/platform/override-migration/dry-run:
+    post:
+      operationId: dryRunAdminOverrideMigration
+      tags: [admin]
+      summary: The inventory and report the run would write, writing nothing
+      description: >
+        Plans the run for every product (or `product`) and answers the inventory and every report
+        row it would write. Writes nothing, not even an owner's pairwise subject (an owner with
+        none for the product is reported `subjectCreatedAtRun`), and reads no secret: secrets and
+        config keys the catalog flags `secret` are listed by name only. Platform admins only;
+        admin session cookie and CSRF header.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                product: { type: string }
+      responses:
+        "200":
+          description: The dry run.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [computedAt, inventory, report]
+                properties:
+                  computedAt: { type: integer }
+                  inventory:
+                    { $ref: "#/components/schemas/AdminOverrideInventory" }
+                  report:
+                    type: array
+                    items:
+                      { $ref: "#/components/schemas/AdminOverrideReportRow" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/platform/override-migration/run:
+    post:
+      operationId: runAdminOverrideMigration
+      tags: [admin]
+      summary: Start or continue the run (owner-scheduled; step-up)
+      description: >
+        Starts the run, or continues it: each call processes up to 25 products under a short
+        lease and answers `progress`; call again while `done` is false. From the first call,
+        `PUT …/licenses/{licenseId}/overrides` refuses config and secrets (step 4); from
+        completion, documents stop reading them from licences (step 5). Owned licences merge
+        into the owner's account overrides (several licences of one product collapse to the most
+        recently updated value, listed in the report); unowned licences' overrides are dropped
+        with an audit row each. Needs a sign-in from the last 5 minutes (`403
+        step_up_required`). Refused before the notice window ends (`409 notice_window`, with
+        `runNotBefore`). The production run is the owner's to schedule (RUNBOOK). Platform admins
+        only; admin session cookie and CSRF header.
+      responses:
+        "200":
+          description: Progress.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [progress, state]
+                properties:
+                  progress:
+                    type: object
+                    required:
+                      [runId, done, productsDone, productsRemaining, written]
+                    properties:
+                      runId: { type: string }
+                      done: { type: boolean }
+                      completedAt: { type: [integer, "null"] }
+                      productsDone: { type: array, items: { type: string } }
+                      productsRemaining:
+                        { type: array, items: { type: string } }
+                      written:
+                        type: object
+                        properties:
+                          moved: { type: integer }
+                          collapsed: { type: integer }
+                          dropped: { type: integer }
+                  state:
+                    { $ref: "#/components/schemas/AdminOverrideMigrationState" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403":
+          description: "Not a platform admin, a CSRF failure, or `step_up_required` (with `maxAgeSeconds`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: "`notice_not_started`, `notice_window` (with `runNotBefore`), `run_completed` or `run_in_progress`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/platform/override-migration/report:
+    get:
+      operationId: getAdminOverrideMigrationReport
+      tags: [admin]
+      summary: The migration report (90 days)
+      description: >
+        One row per licence the run touched (`moved`, `collapsed`, `dropped`), kept 90 days so an
+        operator can re-apply values by hand: the licence, the owner's subject, the licence's own
+        email, the key names, and non-secret config values (with each collapse's kept and lost
+        values). Secret values are never in it. `format=csv` answers a CSV attachment. Platform
+        admins only; admin session cookie.
+      parameters:
+        - {
+            name: product,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+        - {
+            name: format,
+            in: query,
+            required: false,
+            schema: { type: string, enum: [json, csv] },
+          }
+      responses:
+        "200":
+          description: The report.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [rows]
+                properties:
+                  rows:
+                    type: array
+                    items:
+                      { $ref: "#/components/schemas/AdminOverrideReportRow" }
+            text/csv:
+              schema: { type: string }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -15672,6 +16134,145 @@ components:
         maxVersion: { type: [string, "null"] }
         deviceLimit: { type: [integer, "null"], minimum: 1 }
         profiles: { type: array, items: { type: string } }
+    AdminOverrideUpdate:
+      type: object
+      description: >
+        One key of an override batch: a value (validated against the active catalog), a
+        management state, or neither with state `default` to clear the key.
+      required: [key]
+      properties:
+        key: { type: string }
+        state: { type: string, enum: [default, enforced, hidden] }
+        value: { description: Any JSON value. }
+    AdminAccountOverrides:
+      type: object
+      description: One subject's account override layer (U-03), redacted.
+      required:
+        [
+          subject,
+          configOn,
+          overrides,
+          updatedAt,
+          updatedBy,
+          licenseLayerRetired,
+        ]
+      properties:
+        subject: { type: string }
+        configOn:
+          { type: boolean, description: Whether the product runs Config. }
+        overrides:
+          type: object
+          required: [config, secrets]
+          properties:
+            config:
+              type: object
+              additionalProperties:
+                { $ref: "#/components/schemas/ManagedEntry" }
+            secrets:
+              type: object
+              additionalProperties:
+                type: object
+                required: [state, configured, updatedAt]
+                properties:
+                  state: { type: string }
+                  configured: { type: boolean }
+                  updatedAt: { type: integer }
+        updatedAt: { type: [integer, "null"] }
+        updatedBy:
+          type: [string, "null"]
+          description: "The operator's subject, or `migration`, `merge` or `signin`."
+        licenseLayerRetired:
+          type: boolean
+          description: Whether the override migration has completed (licences no longer deliver config and secrets).
+    AdminOverrideInventory:
+      type: object
+      required: [computedAt, products, totals]
+      properties:
+        computedAt: { type: integer }
+        products:
+          type: array
+          items:
+            type: object
+            required: [product, licences, owned, dropped, collapsingAccounts]
+            properties:
+              product: { type: string }
+              licences: { type: integer }
+              owned: { type: integer }
+              dropped: { type: integer }
+              collapsingAccounts: { type: integer }
+        totals:
+          type: object
+          properties:
+            licences: { type: integer }
+            owned: { type: integer }
+            dropped: { type: integer }
+    AdminOverrideMigrationState:
+      type: object
+      description: The licence-override migration's state (U-03).
+      required: [phase, prerequisites, notice, run]
+      additionalProperties: true
+      properties:
+        phase: { type: string, enum: [idle, notice, running, completed] }
+        noticeDays: { type: integer, const: 30 }
+        reportDays: { type: integer, const: 90 }
+        prerequisites:
+          type: object
+          properties:
+            loginCard: { type: object, additionalProperties: true }
+            library: { type: object, additionalProperties: true }
+        notice:
+          type: object
+          additionalProperties: true
+          properties:
+            startedAt: { type: [integer, "null"] }
+            runNotBefore: { type: [integer, "null"] }
+            runAllowed: { type: boolean }
+        run:
+          type: object
+          additionalProperties: true
+          properties:
+            id: { type: [string, "null"] }
+            startedAt: { type: [integer, "null"] }
+            completedAt: { type: [integer, "null"] }
+            productsDone: { type: array, items: { type: string } }
+        inventory:
+          oneOf:
+            - { type: "null" }
+            - { $ref: "#/components/schemas/AdminOverrideInventory" }
+    AdminOverrideReportRow:
+      type: object
+      description: >
+        One licence of the migration report. Never a secret value: secrets, and config keys the
+        catalog flags `secret`, are listed by name only.
+      required: [product, licenseId, outcome, subject, buyerEmail, keys, values]
+      additionalProperties: true
+      properties:
+        product: { type: string }
+        licenseId: { type: string }
+        outcome: { type: string, enum: [moved, collapsed, dropped] }
+        subject: { type: [string, "null"] }
+        buyerEmail: { type: [string, "null"] }
+        keys:
+          type: object
+          properties:
+            config: { type: array, items: { type: string } }
+            secrets: { type: array, items: { type: string } }
+        values:
+          type: object
+          properties:
+            config: { type: object, additionalProperties: true }
+            collapsed:
+              type: array
+              items:
+                type: object
+                required: [bucket, key, keptFrom]
+                properties:
+                  bucket: { type: string, enum: [config, secrets] }
+                  key: { type: string }
+                  keptFrom:
+                    { type: string, description: "A licence id, or `account`." }
+                  kept: { description: A non-secret value. }
+                  lost: { description: A non-secret value. }
     AdminSlugCheck:
       type: object
       required: [slug, status]

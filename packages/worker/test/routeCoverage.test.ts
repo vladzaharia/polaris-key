@@ -142,6 +142,13 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/github/repositories", ["get"]],
     // Home's product cards: one fact per service for every product (A-8, sliced).
     ["/manage/api/summary", ["get"]],
+    // U-03: the licence-override migration (notes/S-17 §5.12, decision 21).
+    ["/manage/api/platform/override-migration", ["get"]],
+    ["/manage/api/platform/override-migration/prerequisites", ["put"]],
+    ["/manage/api/platform/override-migration/notice", ["post", "delete"]],
+    ["/manage/api/platform/override-migration/dry-run", ["post"]],
+    ["/manage/api/platform/override-migration/run", ["post"]],
+    ["/manage/api/platform/override-migration/report", ["get"]],
   ],
   // `/manage/api/products[/…]` routes as its own kind (the product registry), narrative too.
   products: [
@@ -156,6 +163,16 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     [
       "/manage/api/products/{product}/license/licenses/{licenseId}",
       ["get", "patch"],
+    ],
+    // U-03: the licence override batch (entitlements only from the migration's run), and one
+    // user's account overrides under I-12's Users routes.
+    [
+      "/manage/api/products/{product}/license/licenses/{licenseId}/overrides",
+      ["put"],
+    ],
+    [
+      "/manage/api/products/{product}/users/{subject}/overrides",
+      ["get", "put"],
     ],
   ],
 };
@@ -698,6 +715,7 @@ function concrete(template: string): string {
     request: `rq_${"A".repeat(22)}`,
     licenseId: "lic_1",
     passkeyId: "A".repeat(43),
+    subject: `ps_${"A".repeat(22)}`,
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];

@@ -71,6 +71,9 @@ this page or fails the freshness gate.
 | `profiles` | 0001_init.sql | `product`, `id`, `name`, `description`, `payload_json`, `modified_by`, `modified_at`, `source (0086)` |
 | `edge_mint_config` | 0001_init.sql | `product`, `id`, `alg`, `signing_key_secret`, `kid`, `claims_template_json`, `ttl_seconds`, `auth_page_template`, `audience (0003)` |
 | `edge_mint_approvals` | 0025_b_edge_mint_approvals.sql | `product`, `id`, `alg`, `signing_key_secret`, `kid`, `claims_template_json`, `ttl_seconds`, `audience`, `open_registration_acknowledged`, `license_enabled`, `identity_enabled`, `oidc_provider`, `oidc_issuer`, `oidc_client_id`, `oidc_group_role_map_json`, `approved_at`, `approved_by` |
+| `account_overrides` | 00XX_account_overrides.sql | `product`, `subject`, `payload_json`, `updated_at`, `updated_by` |
+| `override_migration_report` | 00XX_account_overrides.sql | `product`, `run_id`, `license_id`, `outcome`, `subject`, `buyer_email`, `keys_json`, `values_json`, `created_at`, `expires_at` |
+| `override_migration` | 00XX_account_overrides.sql | `id`, `login_card_live_at`, `login_card_live_by`, `library_live_at`, `library_live_by`, `notice_started_at`, `notice_started_by`, `run_not_before`, `run_id`, `run_started_at`, `run_started_by`, `run_completed_at`, `products_done_json`, `run_lease_until`, `inventory_json`, `inventory_computed_at`, `columns_emptied_at`, `updated_at` |
 
 ## release
 

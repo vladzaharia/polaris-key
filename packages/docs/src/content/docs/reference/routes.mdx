@@ -16,11 +16,21 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | Method | Path | Service | Summary |
 | --- | --- | --- | --- |
 | GET | `/manage/api/github/repositories` | admin | The repositories the Polaris Key GitHub App can read |
+| POST | `/manage/api/platform/override-migration/dry-run` | admin | The inventory and report the run would write, writing nothing |
+| POST | `/manage/api/platform/override-migration/notice` | admin | Start the 30-day notice |
+| DELETE | `/manage/api/platform/override-migration/notice` | admin | Withdraw the notice (before the run) |
+| PUT | `/manage/api/platform/override-migration/prerequisites` | admin | Flag the login card and the Library live in production |
+| GET | `/manage/api/platform/override-migration/report` | admin | The migration report (90 days) |
+| POST | `/manage/api/platform/override-migration/run` | admin | Start or continue the run (owner-scheduled; step-up) |
+| GET | `/manage/api/platform/override-migration` | admin | The licence-override migration's state and inventory |
 | GET | `/manage/api/products/{product}/assets` | admin | The product's hosted assets, their sources and pull status |
+| PUT | `/manage/api/products/{product}/license/licenses/{licenseId}/overrides` | admin | Edit a licence's own overrides (entitlements only from the override migration's run) |
 | GET | `/manage/api/products/{product}/license/licenses/{licenseId}` | admin | One licence, with its holder, keys, devices and overrides |
 | PATCH | `/manage/api/products/{product}/license/licenses/{licenseId}` | admin | Change a licence's terms or holder |
 | GET | `/manage/api/products/{product}/license/licenses` | admin | The product's licences, each with its derived holder, optionally filtered by holder |
 | POST | `/manage/api/products/{product}/license/licenses` | admin | Create a licence and mint its first key (shown once) |
+| GET | `/manage/api/products/{product}/users/{subject}/overrides` | admin | One user's account overrides on a product |
+| PUT | `/manage/api/products/{product}/users/{subject}/overrides` | admin | Edit one user's account overrides on a product |
 | POST | `/manage/api/products/link-repo` | admin | Create a product from a repository's `.pkey/`, or dry-run it |
 | GET | `/manage/api/products/slug-check` | admin | Is a slug free for a new product |
 | GET | `/manage/api/products` | admin | Every registered product, as the console's registry, Home and switcher read it |
