@@ -703,6 +703,19 @@ describe("StatTile counts up on first load only", () => {
     expect(value.children.length).toBe(0);
   });
 
+  it("a number reads as formatCount draws it, while counting and after", () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) =>
+      frames.push(cb),
+    );
+    const { container } = render(<StatTile label="Seats" value={1284} />);
+    const value = container.querySelector("p.text-2xl")!;
+    expect(value.querySelector(".sr-only")!.textContent).toBe("1,284");
+    act(() => frames.shift()!(1000));
+    act(() => frames.shift()!(2000));
+    expect(value.textContent).toBe("1,284");
+  });
+
   it("shows any other value as it is, and every value at once under reduced motion", () => {
     const { container, rerender } = render(
       <StatTile label="Rate" value="0.4 %" />,

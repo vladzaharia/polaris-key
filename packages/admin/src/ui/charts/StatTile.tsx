@@ -145,11 +145,18 @@ export function StatTile({
           <div className={cn("flex items-end justify-between gap-3", fade)}>
             <p className="text-2xl font-bold tabular-nums text-fg-strong">
               {counting === null ? (
-                value
+                // A number reads as formatCount draws it, counting or not.
+                typeof value === "number" ? (
+                  formatCount(value)
+                ) : (
+                  value
+                )
               ) : (
                 <>
                   <span aria-hidden="true">{formatCount(counting)}</span>
-                  <span className="sr-only">{value}</span>
+                  <span className="sr-only">
+                    {typeof value === "number" ? formatCount(value) : value}
+                  </span>
                 </>
               )}
             </p>
