@@ -87,6 +87,12 @@ taken with the recommended option, as the lead delegated.
   front end: the user-settings rendering (`userPolicies` and the typed `UserSettingKey` /
   `USER_SETTINGS` in every language) moves into the CLI module, so `pkey mirror` emits it too, and
   `tools/gen-mirrors.ts` re-exports `userPolicies` for its test.
+  A fourth merge (main at 19dda5662, MO-01) regenerates `packages/brand/css/tokens.css` with
+  `gen:brand`, not by hand. Admin e2e on macOS: the portal `§4.20–4.22` visual baselines fail on
+  main too. Main's 357667065 re-recorded only the Linux portal baselines for the new licence-origin
+  line, so the darwin baselines are stale. U-04 touches neither the portal source nor those
+  baselines. Everything else in admin e2e passes; a lone run of four layout timeouts on
+  platform pages was a flake and passed when re-run.
 - **Known seams left to U-05** (decided: do not widen this package). The legacy
   `{schemaVersion, catalog:[…]}` schema form validates a top-level `cloudSync` but
   `normalizeCatalog` drops it; the admin-API product register (`schema` body) stores `entries`
