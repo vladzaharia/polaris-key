@@ -455,6 +455,25 @@ const TABLE_OWNERS = {
   ],
 };
 
+/**
+ * The column names a `CREATE TABLE` body declares, in order. Table constraints (`PRIMARY KEY`,
+ * `UNIQUE`, `FOREIGN KEY`, `CHECK`, `CONSTRAINT`) and comments are skipped. Each keyword is
+ * matched as a whole word, so a column whose name only starts with one (`checked_at`,
+ * `unique_hash`) is still a column.
+ */
+export function createTableColumns(body) {
+  return body
+    .split("\n")
+    .map((line) => line.trim().replace(/,$/, ""))
+    .filter(
+      (line) =>
+        line &&
+        !line.startsWith("--") &&
+        !/^(PRIMARY\s+KEY|UNIQUE|FOREIGN\s+KEY|CHECK|CONSTRAINT)\b/i.test(line),
+    )
+    .map((line) => line.split(/\s+/)[0]);
+}
+
 function dataModel() {
   const migrationsDir = join(repo, "packages", "worker", "migrations");
   const columns = new Map(); // table -> [column names]
@@ -473,17 +492,7 @@ function dataModel() {
     ];
     for (const m of statements) {
       if (m[1]) {
-        const cols = m[2]
-          .split("\n")
-          .map((line) => line.trim().replace(/,$/, ""))
-          .filter(
-            (line) =>
-              line &&
-              !line.startsWith("--") &&
-              !/^(PRIMARY KEY|UNIQUE|FOREIGN KEY|CHECK|CONSTRAINT)/i.test(line),
-          )
-          .map((line) => line.split(/\s+/)[0]);
-        columns.set(m[1], cols);
+        columns.set(m[1], createTableColumns(m[2]));
         if (!migrationOf.has(m[1])) migrationOf.set(m[1], file);
       } else if (m[3]) {
         if (columns.has(m[3]))

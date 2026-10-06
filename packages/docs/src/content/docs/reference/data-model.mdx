@@ -32,7 +32,7 @@ this page or fails the freshness gate.
 | `blob_objects` | 0026_blob_store.sql | `storage_key`, `sha256`, `size`, `kind`, `gated`, `verified_at`, `created_at`, `unreferenced_since (0048)`, `gc_claimed_at (0048)` |
 | `blob_refs` | 0026_blob_store.sql | `product`, `storage_key`, `ref_kind`, `ref_id`, `created_at` |
 | `blob_gc_log` | 0048_a_dist_readiness_blob_gc.sql | `id`, `at`, `action`, `storage_key`, `product`, `ref_kind`, `ref_id`, `size`, `detail` |
-| `hosted_assets` | 0078_hosted_assets.sql | `product`, `slot`, `locale`, `origin`, `source_kind`, `source_ref`, `source_etag`, `sha256`, `size`, `content_type`, `width`, `height`, `variants_json`, `status`, `error`, `modified_at`, `wanted_ref (0089)`, `pulled_ref (0089)`, `source_blob (0089)`, `attempts (0089)`, `next_attempt_at (0089)` |
+| `hosted_assets` | 0078_hosted_assets.sql | `product`, `slot`, `locale`, `origin`, `source_kind`, `source_ref`, `source_etag`, `sha256`, `size`, `content_type`, `width`, `height`, `variants_json`, `status`, `error`, `checked_at`, `modified_at`, `wanted_ref (0089)`, `pulled_ref (0089)`, `source_blob (0089)`, `attempts (0089)`, `next_attempt_at (0089)` |
 | `ci_publishers` | 0035_a_ci_publishing.sql | `product`, `provider`, `repository_id`, `repository_owner_id`, `repository`, `workflow`, `environment`, `scopes_json`, `source`, `created_at`, `modified_at`, `modified_by` |
 | `ci_tokens` | 0035_a_ci_publishing.sql | `product`, `token_hash`, `token_id`, `kind`, `scopes_json`, `subject`, `label`, `jti`, `issued_at`, `expires_at`, `revoked_at`, `created_by` |
 | `ci_upload_tickets` | 0035_a_ci_publishing.sql | `product`, `ticket_hash`, `ticket_id`, `token_hash`, `objects_json`, `issued_at`, `expires_at`, `redeemed_at` |
@@ -81,7 +81,7 @@ this page or fails the freshness gate.
 | `release_artifacts` | 0007_backend_contracts.sql | `product`, `release_id`, `artifact_id`, `name`, `kind`, `platform`, `arch`, `content_type`, `size_bytes`, `sha256`, `source_url`, `storage_key`, `sparkle_signature`, `access`, `metadata_json`, `created_at`, `build_id (0027)`, `role (0027)`, `locations_json (0027)` |
 | `release_channels` | 0007_backend_contracts.sql | `product`, `channel`, `release_id`, `policy_json`, `created_at`, `modified_at` |
 | `release_channel_floors` | 0023_release_resolution.sql | `product`, `channel`, `version`, `release_id`, `raised_at`, `lowered_by`, `lowered_at` |
-| `release_health` | 0007_backend_contracts.sql | `product`, `subject_kind`, `subject_id`, `status`, `details_json` |
+| `release_health` | 0007_backend_contracts.sql | `product`, `subject_kind`, `subject_id`, `status`, `checked_at`, `details_json` |
 | `release_download_tokens` | 0016_drop_dead_pii.sql (rebuilt 0016) | `product`, `token_hash`, `release_id`, `artifact_id`, `device_id`, `scope_json`, `expires_at`, `used_at`, `created_at`, `REFERENCES` |
 | `release_deliverables` | 0058_b_release_deliverables_kind.sql (rebuilt 0058) | `product`, `deliverable_id`, `kind`, `pack_type`, `def_json`, `def_source`, `created_at`, `modified_at`, `ecosystem`, `package_name` |
 | `release_builds` | 0027_a_release_model.sql | `product`, `release_id`, `build_id`, `platform`, `arch`, `format`, `build_number`, `variant_json`, `requires_json`, `min_os`, `created_at`, `modified_at`, `metadata_json (0043)`, `embeds_json (0045)`, `conflicts_json (0046)` |
