@@ -203,6 +203,10 @@ arrived. Publishing the catalog claims it the same way, with Revert in the catal
 badge. The admin group is read-only there: change it in `.pkey/product`. The system product
 follows the monorepo's `.pkey/` and refuses console claims.
 
+Every save is checked against the [settings reference](/docs/reference/settings/): the display
+name and the admin group are at most 200 characters, the device limit at most 1,000,000 and the
+offline grace 1 to 365 days, and a value outside answers 422 `invalid_value`.
+
 ### Linking a repository to an existing product
 
 A product created from nothing (or before its repository had a `.pkey/`) can be handed over to

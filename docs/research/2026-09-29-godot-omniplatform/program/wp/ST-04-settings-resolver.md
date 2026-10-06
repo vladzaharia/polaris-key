@@ -73,6 +73,14 @@ Each service resolves its own settings today with different precedence ([S-18 §
   link still applies the manifest) and its version stays 0. Keys claimed through a legacy marker
   (`services_source`, `access_source`, `compat_source`, the policy markers) keep their pre-ST-04
   behaviour on the system product; every row-claimed key there is refused until ST-20.
+- **The product PATCH now applies the registry specs.** A value outside an entry's value spec is
+  refused 422 `invalid_value`: the name and the admin group are at most 200 characters, the
+  device limit at most 1,000,000 (the offline grace keeps its 1–365 check). An empty PATCH (no
+  field) writes nothing: no `product.update` row, and `modified_at` is not bumped.
+- **Retention's author.** `writeSetting()` takes an optional `author` for the stored rows;
+  `setPruneRetention()` (the feed route's write) keeps the table's `admin:<sub>` spelling.
+- **Expired claims.** The write path reads an expired break-glass row (`expires_at` passed) as
+  no claim, version 0, exactly as the resolver does; a write over it restarts the version at 1.
 - **Not wired here.** `identity.reservedDisplayTerms` and `identity.displayNameApproved` stay
   `pending: { wp: "ST-04" }`: wiring them needs the manifest validator to take extra terms and
   an approval (a `shared-manifest` change), which is outside this scope. Proposed follow-up.
@@ -104,6 +112,24 @@ mise exec node@22 -- pnpm gen:transcripts -- --check
 ## Hand-off
 
 - ST-05, ST-11, ST-15, ST-16 and ST-24 build on the resolver and `writeSetting()`.
+- **ST-05** (follow-ups from ST-04's review):
+  - N5a: on a manual product a claimable or manifest key keeps no `product_settings` row, so its
+    version stays 0 and the strict API cannot detect a concurrent console edit of it; decide
+    whether such keys get a version row (it must not read as a claim when the product is linked
+    later).
+  - N5b: `WriteOptions.confirm` is one typed key per call, so a batch with two L2/L3 keys cannot
+    confirm both; take one confirmation per key.
+  - N6: the resolver sets `lockedBy: "platform"` whenever a bound exists, even when it did not
+    clamp; set it only when the bound changed the value (or rename it), and update the console.
+  - N7: the catalog publish stores the whole catalog in `after_json` (and the previous one in
+    `before_json` once decoded); cap or summarise rich values in the audit row.
+  - N9: a THREAT-MODEL note for `writeSetting()` as the one write path (what strict and
+    compatibility mode each enforce, the guard, and the A-13 route folded in).
+  - Fold A-13's platform-settings route into `writeSetting()` (strict), filling `origin` and
+    `setting_key` on its `platform_audit` rows.
+- **ST-20**: break-glass claims set `product_settings.expires_at` through a `writeSetting()`
+  option; a row-claimed key on the system product is refused (`manifest_authoritative`) until
+  then, and an expired claim already reads as none on both paths.
 
 The role agent sets `--set ST-04 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
