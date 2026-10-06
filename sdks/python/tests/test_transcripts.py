@@ -37,7 +37,7 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature core.discover core.sync core.cache license.activate license.enroll
 # @pkey-feature license.deactivate license.reregister devices.register devices.report
 # @pkey-feature config.schema release.changelog release.download
-# @pkey-feature identity.devicecode config.mint
+# @pkey-feature identity.devicecode identity.devicelabel config.mint
 # @pkey-feature update.feed release.record update.decide
 # @pkey-feature packs.apply.chunk commerce.receipt
 # @pkey-feature license.refusals ui.boot release.fetch release.distribution telemetry.updates
@@ -134,6 +134,7 @@ def _act(
             "verificationUriComplete": p.verificationUriComplete,
             "expiresIn": p.expiresIn,
             "interval": p.interval,
+            "deviceName": p.deviceName,
         }
     elif action == "pollSignIn":
         poll = client.identity.poll_sign_in(session["prompt"])
@@ -421,6 +422,8 @@ def replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
         store=store,
         client=httpx.Client(transport=httpx.MockTransport(transport)),
         request_timeout=None,
+        # PX-W13: `initial.deviceName` stands in for the platform's node name; absent = none.
+        device_name=t["initial"].get("deviceName", ""),
         **kwargs,
     )
     client.devices.fingerprint = lambda: FINGERPRINT  # type: ignore[method-assign]

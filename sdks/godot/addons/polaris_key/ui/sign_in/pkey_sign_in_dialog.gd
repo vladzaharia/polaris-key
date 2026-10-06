@@ -17,7 +17,8 @@ signal finished(result: PKeySignInResult)
 ## The player closed the dialog after it ended (or cancelled).
 signal closed()
 
-## Shown on the confirmation page as the anti-phishing cue; empty: the device's model or OS.
+## Shown on the sign-in page as the anti-phishing cue (WIRE-CONTRACT-V4 §12.7.1); empty: the
+## SDK's `PKeyOptions.device_name`, else the device's model or OS.
 @export var device_name := ""
 ## Hold at the signed-in identity for the player's acceptance (and offer the licence attach).
 @export var confirm_identity := false
@@ -37,6 +38,7 @@ var _instructions: Label
 var _code: Label
 var _qr: PKeyQrRect
 var _expires: Label
+var _device: Label
 var _open: Button
 var _copy: Button
 var _confirm_body: Label
@@ -61,6 +63,7 @@ func _build() -> void:
 	_qr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	box.add_child(_qr)
 	_expires = label(box, "Expires", "PKeyMuted")
+	_device = label(box, "DeviceLabel", "PKeyMuted")
 	var links := hbox(box, "Links")
 	links.alignment = BoxContainer.ALIGNMENT_CENTER
 	_open = button(links, "OpenBrowser", _on_open)
@@ -143,6 +146,8 @@ func _render() -> void:
 	_qr.text = prompt.verification_uri_complete if pending else ""
 	_qr.visible = pending and not _qr.encode_failed
 	show_text(_expires, t.text("sign_in_expires", PKeySignInController.clock(PKeySignInController.remaining(prompt, _now()))) if pending else "")
+	# The label the page will show, as the Worker stored it (the echo), so the player can match it.
+	show_text(_device, t.text("sign_in_device", prompt.device_name) if pending and prompt.device_name != "" else "")
 	_open.visible = pending and prompt.verification_uri_complete != ""
 	_open.text = t.text("sign_in_open_browser")
 	_copy.visible = _open.visible

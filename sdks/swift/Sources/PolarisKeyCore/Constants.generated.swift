@@ -512,6 +512,7 @@ public enum Feature {
     public static let devicesAttest = "devices.attest"
     public static let identityOidc = "identity.oidc"
     public static let identityDevicecode = "identity.devicecode"
+    public static let identityDevicelabel = "identity.devicelabel"
     public static let identityToggle = "identity.toggle"
     public static let releaseChangelog = "release.changelog"
     public static let releaseDownload = "release.download"
@@ -597,6 +598,7 @@ public let FEATURE_VALUES: [String] = [
     "devices.attest",
     "identity.oidc",
     "identity.devicecode",
+    "identity.devicelabel",
     "identity.toggle",
     "release.changelog",
     "release.download",
@@ -1171,6 +1173,9 @@ public let PLAN_MATRIX_VERSION = 2
 /// `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json.
 public let SYNC_SCENARIOS_VERSION = 1
 
+/// `deviceLabelVersion` of conformance/corpus/v2/device-label.json.
+public let DEVICE_LABEL_VERSION = 1
+
 /// `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
 public let CONTENT_CORPUS_VERSION = 2
 
@@ -1254,6 +1259,15 @@ public let MAX_CHUNK_INDEX_BYTES = 16777216
 
 /// Packs on the wire: `MAX_CHUNK_BYTES` (plans/P4-10.md §2.3, `@polaris-key/protocol/core`).
 public let MAX_CHUNK_BYTES = 4194304
+
+/// Identity passthrough: `DEVICE_LABEL_MAX_CODEPOINTS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
+public let DEVICE_LABEL_MAX_CODEPOINTS = 64
+
+/// Identity passthrough: `REQUEST_HANDLE_PATTERN` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
+public let REQUEST_HANDLE_PATTERN = "^rq_[A-Za-z0-9_-]{22}$"
+
+/// Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
+public let REQUEST_HANDLE_TTL_SECONDS = 600
 
 /// Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`).
 public let CHANNEL_ALIASES: [String: String] = [
@@ -1382,6 +1396,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "devices.attest": CapabilityRow(status: "implemented", service: "core", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "outlet")]),
     "identity.oidc": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.devicecode": CapabilityRow(status: "implemented", service: "identity", na: []),
+    "identity.devicelabel": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.toggle": CapabilityRow(status: "planned", service: "identity", na: []),
     "release.changelog": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.download": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -1430,4 +1445,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "7722b6ff479f46ec916388dba1fcd9008221e9a5ba5127bd79a6fc50a6395936"
+public let CAPABILITY_DIGEST = "c66de1254ff4784526a5de132556673dd0a4bc511efea71be43b7c5fdf8d7650"

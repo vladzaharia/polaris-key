@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 210 distinct emit sites.
+codes with their JSON-pointer paths. 221 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -66,6 +66,11 @@ the offending value, or the allowed set.
 | `invalid_deliverable_kind` | error | release | `/release/deliverables/${id}/kind` | each deliverable must be an object whose kind is one of $\{DELIVERABLE_KINDS.join(", ")\}. |
 | `invalid_deliverable_kind` | error | release | `/release/deliverables/${id}/kind` | the deliverable named $\{APP_DELIVERABLE_ID\} is the product's application (kind: app), and no other deliverable may be kind app. |
 | `invalid_device_limit` | error | product | `/licensing/tiers/${i}/policyDeviceLimit` | policyDeviceLimit must be a non-negative integer. |
+| `invalid_display_text` | error | distribution | `/listing/developerName` | listing.developerName must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace. |
+| `invalid_display_text` | error | distribution | `/listing/name` | listing.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace. |
+| `invalid_display_text` | error | distribution | `/outlets/${id}/listing/developerName` | outlets.$\{id\}.listing.developerName must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace. |
+| `invalid_display_text` | error | distribution | `/outlets/${id}/listing/name` | outlets.$\{id\}.listing.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace. |
+| `invalid_display_text` | error | product | `/product/name` | product.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace. |
 | `invalid_distribution` | error | distribution | `/` | the distribution document must be an object with outlets, transports and listing. |
 | `invalid_edge_mint_alg` | error | release | `/edgeMint/${i}/alg` | Edge mint alg must be ES256, RS256, or EdDSA. |
 | `invalid_edge_mint_audience` | error | release | `/edgeMint/${i}/audience` | Edge mint audience |
@@ -194,6 +199,12 @@ the offending value, or the allowed set.
 | `package_name_collision` | error | release | `/release/deliverables/${id}/name` | $\{id\} and $\{other\} declare the same $\{def.ecosystem as string\} package name (names compare case-insensitively, and PyPI names after PEP 503 normalisation). |
 | `release_key_reused` | error | release | `${at}/publicKey` | A release key must not be release.sparkleEd25519Pub: one key would sign both archive bytes and JWS signing inputs. |
 | `reserved_channel_name` | warning | release | `${at}/name` | This manual channel name is taken by a built-in channel (stable, latest, beta, pr, a PR number such as pr-42, or dev), so Release or the licence gate reads it as that channel (WIRE-CONTRACT-V3 §5.1). |
+| `reserved_display_name` | error | distribution | `/listing/developerName` | listing.developerName uses a reserved platform or store name; a developer may not present itself as one. Rename it, or ask the platform operator to approve it. |
+| `reserved_display_name` | warning | distribution | `/listing/developerName` | listing.developerName uses a reserved platform or store name; the sign-in card leaves the developer out instead. This becomes an error once the platform enforces reserved display names. |
+| `reserved_display_name` | error | distribution | `/listing/name` | listing.name uses a reserved platform or store name; an app may not present itself as one. Rename it, or ask the platform operator to approve it. |
+| `reserved_display_name` | warning | distribution | `/listing/name` | listing.name uses a reserved platform or store name; the sign-in card shows the product slug instead. This becomes an error once the platform enforces reserved display names. |
+| `reserved_display_name` | error | product | `/product/name` | product.name uses a reserved platform or store name (Polaris Key, Apple, Google Play, Steam and others); an app may not present itself as one. Rename it, or ask the platform operator to approve it. |
+| `reserved_display_name` | warning | product | `/product/name` | product.name uses a reserved platform or store name (Polaris Key, Apple, Google Play, Steam and others); the sign-in card shows the product slug instead. This becomes an error once the platform enforces reserved display names. |
 | `reserved_slug` | error | product | `/product/slug` | product.slug "$\{productSlug\}" collides with a reserved platform route. |
 | `standalone_with_content_api` | error | release | `${at}/requires/contentApi` | a standalone pack depends only on its type's format, never on the app's contentApi; drop requires.contentApi or make it compatible. |
 | `sync_requires_config` | error | product | `/modules/sync` | Cloud Sync syncs catalog config keys, so config must be enabled too. |

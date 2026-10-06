@@ -1,7 +1,7 @@
 {
   "transcriptVersion": 1,
   "id": "identity-disabled",
-  "description": "A product whose Identity service is off (WIRE-CONTRACT-V4 §12.7). The client starts out believing Identity is on (a discovery from before the toggle moved): beginSignIn() posts the device-code start and the Worker answers not_found — device and JSON routes never say 'identity is off' — which the client reports as service-unavailable (service-disabled in React), keeping every piece of state it holds. discover() then installs the real map, Identity off, and the next beginSignIn() fails the same way without sending a request. Licences still attach to accounts: activating a key of an account-owned licence works as on any product, and syncs.",
+  "description": "A product whose Identity service is off (WIRE-CONTRACT-V4 §12.8). The client starts out believing Identity is on (a discovery from before the toggle moved): beginSignIn() posts the device-code start and the Worker answers not_found — device and JSON routes never say 'identity is off' — which the client reports as service-unavailable (service-disabled in React), keeping every piece of state it holds. discover() then installs the real map, Identity off, and the next beginSignIn() fails the same way without sending a request. Licences still attach to accounts: activating a key of an account-owned licence works as on any product, and syncs.",
   "features": ["identity.toggle"],
   "requires": ["core.discover", "core.store", "license.activate"],
   "product": "djdl",

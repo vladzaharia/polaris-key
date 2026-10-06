@@ -512,6 +512,7 @@ export const Feature = {
   devicesAttest: "devices.attest",
   identityOidc: "identity.oidc",
   identityDevicecode: "identity.devicecode",
+  identityDevicelabel: "identity.devicelabel",
   identityToggle: "identity.toggle",
   releaseChangelog: "release.changelog",
   releaseDownload: "release.download",
@@ -598,6 +599,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "devices.attest",
   "identity.oidc",
   "identity.devicecode",
+  "identity.devicelabel",
   "identity.toggle",
   "release.changelog",
   "release.download",
@@ -1260,6 +1262,9 @@ export const PLAN_MATRIX_VERSION = 2;
 /** `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json. */
 export const SYNC_SCENARIOS_VERSION = 1;
 
+/** `deviceLabelVersion` of conformance/corpus/v2/device-label.json. */
+export const DEVICE_LABEL_VERSION = 1;
+
 /** `contentCorpusVersion` of conformance/corpus/v2/content/cases.json. */
 export const CONTENT_CORPUS_VERSION = 2;
 
@@ -1343,6 +1348,15 @@ export const MAX_CHUNK_INDEX_BYTES = 16777216;
 
 /** Packs on the wire: `MAX_CHUNK_BYTES` (plans/P4-10.md §2.3, `@polaris-key/protocol/core`). */
 export const MAX_CHUNK_BYTES = 4194304;
+
+/** Identity passthrough: `DEVICE_LABEL_MAX_CODEPOINTS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`). */
+export const DEVICE_LABEL_MAX_CODEPOINTS = 64;
+
+/** Identity passthrough: `REQUEST_HANDLE_PATTERN` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`). */
+export const REQUEST_HANDLE_PATTERN = "^rq_[A-Za-z0-9_-]{22}$";
+
+/** Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`). */
+export const REQUEST_HANDLE_TTL_SECONDS = 600;
 
 /** Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`). */
 export const CHANNEL_ALIASES = {
@@ -1468,6 +1482,11 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   },
   "identity.oidc": { status: "planned", service: "identity", na: [] },
   "identity.devicecode": { status: "implemented", service: "identity", na: [] },
+  "identity.devicelabel": {
+    status: "implemented",
+    service: "identity",
+    na: [],
+  },
   "identity.toggle": { status: "planned", service: "identity", na: [] },
   "release.changelog": { status: "implemented", service: "release", na: [] },
   "release.download": { status: "implemented", service: "release", na: [] },
@@ -1561,4 +1580,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "97b6b66b55cbdcf72d0e1248ea6bb8f0a233b303c73fb258c4b68b6b355aca4a";
+  "84b638a95e378c82317d8a08ffe4386303b4cfe54964e7ebc53bc6eef7cfbec9";

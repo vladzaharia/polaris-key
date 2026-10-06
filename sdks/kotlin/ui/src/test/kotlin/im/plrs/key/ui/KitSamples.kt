@@ -60,6 +60,7 @@ internal val samplePrompt = SignInPrompt(
     expiresIn = 600,
     interval = 5,
     expiresAt = NOW + 461,
+    deviceName = "Living room TV",
 )
 
 internal val sampleDevices = listOf(

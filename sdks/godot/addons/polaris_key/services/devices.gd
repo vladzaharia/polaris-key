@@ -124,6 +124,12 @@ func request_registration() -> PKeyResult:
 		return PKeyResult.failure(PKeyErrors.LOCAL_ONLY, "This client is local-only; registration is refused.", {"kind": "local-only", "status": 0, "answered": false})
 	var fp = await fingerprint()
 	var body = {"fingerprint": fp} if fp is Dictionary else null
+	# PX-W13 §8 Q2: the device label rides along, seeding the device's name in the lists.
+	var label := PKeyDeviceLabel.resolve("", core.options)
+	if label != "":
+		if body == null:
+			body = {}
+		body["deviceName"] = label
 	var r := await core.request("POST", "devices/register", body, false)
 	var status := _status(r)
 	if status == 0:

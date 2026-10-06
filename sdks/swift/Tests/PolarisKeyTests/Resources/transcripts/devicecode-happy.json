@@ -1,7 +1,7 @@
 {
   "transcriptVersion": 1,
   "id": "devicecode-happy",
-  "description": "Device-code sign-in (RFC 8628). beginSignIn() posts this device's id and name and hands the host the user code and both verification URIs (the complete one is the QR payload) — never the device code. pollSignIn() asks once per call: pending; a poll one second after the last is told to slow_down (429, with the interval); pending again at the interval. Between polls the player confirms the code on the user-code page and signs in at the (mocked) IdP. The next poll is ready, naming the signed-in identity for the device to show: the client stores the device token and runs the same forced sync activation does. The licence is the signed-in identity's own — the device-code callback merges nothing (P1-06), and without the opt-in the poll attaches nothing (P1-07).",
+  "description": "Device-code sign-in (RFC 8628). beginSignIn() posts this device's id and name and hands the host the user code, both verification URIs (the complete one is the QR payload) and the label the Worker echoed — never the device code. pollSignIn() asks once per call: pending; a poll one second after the last is told to slow_down (429, with the interval); pending again at the interval. Between polls the player confirms the code on the user-code page and signs in at the (mocked) IdP. The next poll is ready, naming the signed-in identity for the device to show: the client stores the device token and runs the same forced sync activation does. The licence is the signed-in identity's own — the device-code callback merges nothing (P1-06), and without the opt-in the poll attaches nothing (P1-07).",
   "features": ["identity.devicecode"],
   "requires": ["core.store", "core.sync"],
   "product": "djdl",
@@ -62,7 +62,8 @@
                 "verificationUriComplete": "https://key.plrs.im/djdl/identity/auth/device?user_code=VZBV-DJKF",
                 "expiresIn": 600,
                 "interval": 2,
-                "pollUrl": "https://key.plrs.im/djdl/identity/auth/device/poll"
+                "pollUrl": "https://key.plrs.im/djdl/identity/auth/device/poll",
+                "deviceName": "Living-room PC"
               }
             }
           }
@@ -74,7 +75,8 @@
           "verificationUri": "https://key.plrs.im/djdl/identity/auth/device",
           "verificationUriComplete": "https://key.plrs.im/djdl/identity/auth/device?user_code=VZBV-DJKF",
           "expiresIn": 600,
-          "interval": 2
+          "interval": 2,
+          "deviceName": "Living-room PC"
         },
         "tokenHeld": false
       }
@@ -262,7 +264,7 @@
               },
               "body": {
                 "status": "ready",
-                "token": "pkeyt_jkZh7Rjl49qxP_eZAa5XY5098-w-Bn8RnHoNcG5bEgk",
+                "token": "pkeyt_KYDukT-yQymse2k8fX94RCmQAippCyLAgActImJH_AM",
                 "schemaVersion": 1,
                 "identity": { "name": "Transcript Player" }
               }
@@ -311,9 +313,9 @@
               "headers": {
                 "cache-control": "no-store",
                 "content-type": "application/jwt",
-                "etag": "\"IVFH-Yxl12PIw3sZ_d_2dKnSyVIStSLGlqE2sZbHbNo\""
+                "etag": "\"bSAUUYeKhcdizf9EqONrF2SDpiyvmcQs4iv9dq0YE7Y\""
               },
-              "body": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6IlRSQU5TQ1JJUFRERVZJQ0UwMDAwMDAwMDAwMDAwMDAxIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDcsImV4cGlyZXNBdCI6MTcwMDAwMzYwNywiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwNywibGljZW5zZUlkIjoibGljX2c3a0k1MGxkMFQzUSIsInByb2ZpbGUiOnsibmFtZSI6IlRyYW5zY3JpcHQgUGxheWVyIiwiZmlyc3ROYW1lIjoiVHJhbnNjcmlwdCIsImVtYWlsIjoiIiwiYWN0aXZhdGVkQXQiOjE3MDAwMDAwMDd9LCJlbnRpdGxlbWVudHMiOnsibGljZW5zZS50aWVyIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6InBybyIsInVwZGF0ZWRBdCI6MTcwMDAwMDAwN30sImxpY2Vuc2UudGllckxhYmVsIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6InBybyIsInVwZGF0ZWRBdCI6MTcwMDAwMDAwN319fQ.EJgMT3T9pmSWoLdmV4x3va-RsQ2HuFGgKwPwrv4ZqGQNjUDpFbfRwvYUNZBYUZPiCtrYGAnUKlJudNc13tOgBg"
+              "body": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6IlRSQU5TQ1JJUFRERVZJQ0UwMDAwMDAwMDAwMDAwMDAxIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDcsImV4cGlyZXNBdCI6MTcwMDAwMzYwNywiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwNywibGljZW5zZUlkIjoibGljX2hvZVBwOFZBUkUxRCIsInByb2ZpbGUiOnsibmFtZSI6IlRyYW5zY3JpcHQgUGxheWVyIiwiZmlyc3ROYW1lIjoiVHJhbnNjcmlwdCIsImVtYWlsIjoiIiwiYWN0aXZhdGVkQXQiOjE3MDAwMDAwMDd9LCJlbnRpdGxlbWVudHMiOnsibGljZW5zZS50aWVyIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6InBybyIsInVwZGF0ZWRBdCI6MTcwMDAwMDAwN30sImxpY2Vuc2UudGllckxhYmVsIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6InBybyIsInVwZGF0ZWRBdCI6MTcwMDAwMDAwN319fQ.OcUswu5qV4mD-85nSEO7VHPVnrdbBXFw15s05uQ5ZB-Tpj-YQW-q-VnPxDNtwDeEatI-0boHg0gfQR6_J92dAg"
             }
           },
           {

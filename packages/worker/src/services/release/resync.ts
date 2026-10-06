@@ -92,6 +92,7 @@ import {
 import { randomId } from "../../core/platform.js";
 import { manifestSnapshotStatement } from "../../core/manifestSnapshot.js";
 import { reservedNamesMode } from "../../core/reservedNames.js";
+import { reservedDisplayNamesMode } from "../../core/reservedDisplayNames.js";
 
 export type ResyncResult =
   | {
@@ -1199,6 +1200,7 @@ export async function readLinkedManifest(
 
   const result = parseManifest(files, {
     reservedNames: await reservedNamesMode(env, db),
+    reservedDisplayNames: await reservedDisplayNamesMode(env, db),
   });
   if (!result.ok)
     return {

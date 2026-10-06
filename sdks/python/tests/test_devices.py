@@ -78,8 +78,8 @@ def test_register_sends_the_fingerprint_when_collection_is_on() -> None:
 
 
 def test_register_with_fingerprint_off_sends_no_body_at_all() -> None:
-    """A host that opted out sends a byte-identical request to one that has nothing to
-    report."""
+    """A host that opted out (of the fingerprint and, PX-W13, of the device label) sends a
+    byte-identical request to one that has nothing to report."""
     seen: Dict[str, Any] = {}
 
     def handler(r: httpx.Request) -> httpx.Response:
@@ -90,10 +90,29 @@ def test_register_with_fingerprint_off_sends_no_body_at_all() -> None:
             )
         return httpx.Response(404)
 
-    c = make_client(handler, fingerprint=False)
+    c = make_client(handler, fingerprint=False, device_name="")
     assert c.devices.register().kind == "ok"
     assert seen["body"] == b""
     assert c.devices.fingerprint() is None
+    c.close()
+
+
+def test_register_sends_the_device_label() -> None:
+    """PX-W13 §8 Q2: the label seeds the device's name; with the fingerprint off it is the
+    whole body."""
+    seen: Dict[str, Any] = {}
+
+    def handler(r: httpx.Request) -> httpx.Response:
+        if r.url.path == f"/{PRODUCT}/devices/register":
+            seen["body"] = r.content
+            return httpx.Response(
+                200, json={"token": TOKEN, "deviceId": r.headers["X-PKey-Device"]}
+            )
+        return httpx.Response(404)
+
+    c = make_client(handler, fingerprint=False, device_name=" Studio\tMac ")
+    assert c.devices.register().kind == "ok"
+    assert json.loads(seen["body"]) == {"deviceName": "Studio Mac"}
     c.close()
 
 

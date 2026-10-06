@@ -118,6 +118,8 @@ public data class PolarisCopy(
     val signInCodeDescription: String = "Sign-in code %1\$s",
     val signInOpenBrowser: String = "Open sign-in page",
     val signInExpiresIn: String = "Code expires in %1\$s",
+    /** PX-W13 (WIRE-CONTRACT-V4 §12.7.1): the device label the sign-in page will show. */
+    val signInDeviceLabel: String = "The sign-in page will show “%1\$s”",
     val signInWaiting: String = "Waiting for you to finish signing in…",
     val signInDone: String = "Signed in.",
     val signInExpired: String = "The code expired before sign-in finished.",

@@ -182,6 +182,7 @@ func prompt_fixture() -> PKeySignInPrompt:
 	p.expires_in = 600
 	p.interval = 5
 	p.expires_at = NOW + 125
+	p.device_name = "Living room TV"
 	return p
 
 

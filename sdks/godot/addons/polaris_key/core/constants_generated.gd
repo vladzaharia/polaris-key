@@ -362,6 +362,7 @@ class Feature:
 	const DEVICES_ATTEST := "devices.attest"
 	const IDENTITY_OIDC := "identity.oidc"
 	const IDENTITY_DEVICECODE := "identity.devicecode"
+	const IDENTITY_DEVICELABEL := "identity.devicelabel"
 	const IDENTITY_TOGGLE := "identity.toggle"
 	const RELEASE_CHANGELOG := "release.changelog"
 	const RELEASE_DOWNLOAD := "release.download"
@@ -410,7 +411,7 @@ class Feature:
 
 
 ## Every `Feature` value, in source order.
-const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "core.copy", "license.gate", "license.activate", "license.enroll", "license.deactivate", "license.manage", "license.entitlements", "license.channels", "license.reregister", "license.refusals", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "config.local", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "telemetry.updates", "devices.attest", "identity.oidc", "identity.devicecode", "identity.toggle", "release.changelog", "release.download", "release.record", "release.fetch", "release.distribution", "update.check", "update.feed", "update.feeds", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "crash.tags", "packs.record", "packs.revoke", "packs.delegation", "packs.delta.feed", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.boot", "ui.kit", "ui.kit.manage", "ui.cli", "commerce.receipt"]
+const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "core.copy", "license.gate", "license.activate", "license.enroll", "license.deactivate", "license.manage", "license.entitlements", "license.channels", "license.reregister", "license.refusals", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "config.local", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "telemetry.updates", "devices.attest", "identity.oidc", "identity.devicecode", "identity.devicelabel", "identity.toggle", "release.changelog", "release.download", "release.record", "release.fetch", "release.distribution", "update.check", "update.feed", "update.feeds", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "crash.tags", "packs.record", "packs.revoke", "packs.delegation", "packs.delta.feed", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.boot", "ui.kit", "ui.kit.manage", "ui.cli", "commerce.receipt"]
 
 
 ## Why a feature is unsupported here: the `supports()` reason enum (PARITY §2.2).
@@ -824,6 +825,9 @@ const PLAN_MATRIX_VERSION := 2
 ## `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json.
 const SYNC_SCENARIOS_VERSION := 1
 
+## `deviceLabelVersion` of conformance/corpus/v2/device-label.json.
+const DEVICE_LABEL_VERSION := 1
+
 ## `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
 const CONTENT_CORPUS_VERSION := 2
 
@@ -907,6 +911,15 @@ const MAX_CHUNK_INDEX_BYTES := 16777216
 
 ## Packs on the wire: `MAX_CHUNK_BYTES` (plans/P4-10.md §2.3, `@polaris-key/protocol/core`).
 const MAX_CHUNK_BYTES := 4194304
+
+## Identity passthrough: `DEVICE_LABEL_MAX_CODEPOINTS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
+const DEVICE_LABEL_MAX_CODEPOINTS := 64
+
+## Identity passthrough: `REQUEST_HANDLE_PATTERN` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
+const REQUEST_HANDLE_PATTERN := "^rq_[A-Za-z0-9_-]{22}$"
+
+## Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
+const REQUEST_HANDLE_TTL_SECONDS := 600
 
 ## Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`).
 const CHANNEL_ALIASES := {
@@ -1014,6 +1027,7 @@ static func capabilities() -> Dictionary:
 		"devices.attest": {"status": "implemented", "service": "core", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}, {"runtime": "ios", "reason": "outlet"}, {"runtime": "android", "reason": "outlet"}]},
 		"identity.oidc": {"status": "planned", "service": "identity", "na": []},
 		"identity.devicecode": {"status": "implemented", "service": "identity", "na": []},
+		"identity.devicelabel": {"status": "implemented", "service": "identity", "na": []},
 		"identity.toggle": {"status": "planned", "service": "identity", "na": []},
 		"release.changelog": {"status": "implemented", "service": "release", "na": []},
 		"release.download": {"status": "implemented", "service": "release", "na": []},
@@ -1062,4 +1076,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "76219da74f4dd20db24853fe6942f53d76a2c9302bd51a75b583d23f7e2ef62a"
+const CAPABILITY_DIGEST := "3f07eaea93694b5508fe5cc47cf7382a429504d36df892cdd818945a0266300d"

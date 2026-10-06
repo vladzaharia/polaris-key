@@ -98,6 +98,16 @@ export interface Env {
    */
   LICENSING_RESERVED_NAMES?: string;
   /**
+   * PX-W13 (plans/PX-W13.md §8 Q4, amended): `warn` or `error`, the severity of a reserved display
+   * name (`reserved_display_name`: an app or developer name that uses a platform or store name) at
+   * manifest ingest and on console listing claims. A `[vars]` value, unset in every environment;
+   * read only through the platform settings store (`runtime`): a console value wins, then this,
+   * then the code default `warn`. The lead flips it after the S-19 decision-15 window.
+   * @inventory var identity
+   * @editable IDENTITY_RESERVED_DISPLAY_NAMES
+   */
+  IDENTITY_RESERVED_DISPLAY_NAMES?: string;
+  /**
    * Lazy hot-pair deltas (P4-17, `core/deltaDemand.ts`, `services/release/packs/deltas/`): the
    * deployment's kill switch. On lets an opted-in product (`lazy_delta_settings`) count demand
    * and generate deltas. A `[vars]` value, read only through the platform settings store (A-13,

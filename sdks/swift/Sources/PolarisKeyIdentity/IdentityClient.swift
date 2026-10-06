@@ -43,10 +43,14 @@ public struct SignInPrompt: Sendable, Equatable {
     public let interval: Int
     /// When the code expires on THIS client's clock (epoch seconds).
     public let expiresAt: Int
+    /// The label the sign-in page shows (WIRE-CONTRACT-V4 §12.7.1): the Worker's echo, else (an
+    /// older Worker) the label sent; `nil` when there is none.
+    public let deviceName: String?
 
     public init(
         deviceCode: String, userCode: String, verificationUri: String,
-        verificationUriComplete: String, expiresIn: Int, interval: Int, expiresAt: Int
+        verificationUriComplete: String, expiresIn: Int, interval: Int, expiresAt: Int,
+        deviceName: String? = nil
     ) {
         self.deviceCode = deviceCode
         self.userCode = userCode
@@ -55,6 +59,7 @@ public struct SignInPrompt: Sendable, Equatable {
         self.expiresIn = expiresIn
         self.interval = interval
         self.expiresAt = expiresAt
+        self.deviceName = deviceName
     }
 }
 
@@ -63,7 +68,8 @@ extension SignInPrompt: CustomStringConvertible, CustomDebugStringConvertible, C
         "SignInPrompt(deviceCode: \(redactedCredential), userCode: \(userCode), "
             + "verificationUri: \(verificationUri), "
             + "verificationUriComplete: \(verificationUriComplete), expiresIn: \(expiresIn), "
-            + "interval: \(interval), expiresAt: \(expiresAt))"
+            + "interval: \(interval), expiresAt: \(expiresAt), "
+            + "deviceName: \(deviceName ?? "nil"))"
     }
     public var debugDescription: String { description }
     public var customMirror: Mirror {
@@ -73,7 +79,7 @@ extension SignInPrompt: CustomStringConvertible, CustomDebugStringConvertible, C
                 "deviceCode": redactedCredential, "userCode": userCode,
                 "verificationUri": verificationUri,
                 "verificationUriComplete": verificationUriComplete, "expiresIn": expiresIn,
-                "interval": interval, "expiresAt": expiresAt,
+                "interval": interval, "expiresAt": expiresAt, "deviceName": deviceName as Any,
             ], displayStyle: .struct)
     }
 }
@@ -203,9 +209,10 @@ public final class IdentityClient: Sendable {
     public func beginSignIn(deviceName: String? = nil) async throws -> SignInPrompt {
         try await core.requireService(.identity, feature: Feature.identityDevicecode)
         var body: [String: String] = ["deviceId": await core.deviceId]
-        if let name = deviceName?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
-            body["deviceName"] = name
-        }
+        // §12.7.1: the per-call name, else `CoreOptions.deviceName`, else the platform default,
+        // normalised exactly as the Worker will store it. `""` sends none.
+        let label = await core.deviceLabel(deviceName)
+        if let label { body["deviceName"] = label }
         let response = try await post("identity/auth/device/start", body)
         guard response.status == 200 else {
             throw PolarisError(
@@ -224,7 +231,9 @@ public final class IdentityClient: Sendable {
         return SignInPrompt(
             deviceCode: b.deviceCode, userCode: b.userCode, verificationUri: b.verificationUri,
             verificationUriComplete: b.verificationUriComplete, expiresIn: expiresIn,
-            interval: interval, expiresAt: await core.now() + expiresIn)
+            interval: interval, expiresAt: await core.now() + expiresIn,
+            // The echo is what the page shows; an older Worker sends none, so show what was sent.
+            deviceName: b.echoed ? b.deviceName : label)
     }
 
     /// Poll once. On `.ready` the token is stored and the post-acquisition sync has completed
@@ -398,6 +407,26 @@ private struct StartBody: Decodable {
     /// Doubles, so a fractional answer rounds up instead of failing to decode.
     let expiresIn: Double
     let interval: Double
+    /// PX-W13: the stored label; `echoed` is false when the member is absent (an older Worker).
+    let deviceName: String?
+    let echoed: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case deviceCode, userCode, verificationUri, verificationUriComplete, expiresIn, interval
+        case deviceName
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        deviceCode = try c.decode(String.self, forKey: .deviceCode)
+        userCode = try c.decode(String.self, forKey: .userCode)
+        verificationUri = try c.decode(String.self, forKey: .verificationUri)
+        verificationUriComplete = try c.decode(String.self, forKey: .verificationUriComplete)
+        expiresIn = try c.decode(Double.self, forKey: .expiresIn)
+        interval = try c.decode(Double.self, forKey: .interval)
+        echoed = c.contains(.deviceName)
+        deviceName = try? c.decodeIfPresent(String.self, forKey: .deviceName)
+    }
 }
 
 private struct PollBody: Decodable {

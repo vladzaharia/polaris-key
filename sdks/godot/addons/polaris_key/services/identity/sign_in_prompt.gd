@@ -35,6 +35,9 @@ var expires_at := 0.0
 ## (`sign_in_confirm`, then `accept_sign_in`), which also offers attaching this device's
 ## anonymous licence. Set by `begin_sign_in(device_name, confirm_identity)`.
 var confirm_identity := false
+## The label the sign-in page shows (WIRE-CONTRACT-V4 §12.7.1): the Worker's echo, else (an older
+## Worker) the label sent; "" when there is none. Show it under the code.
+var device_name := ""
 
 
 func _to_string() -> String:

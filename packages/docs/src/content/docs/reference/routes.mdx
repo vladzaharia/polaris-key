@@ -116,6 +116,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/api/signin/email/start` | portal | Identifier-first email start (a code and a magic link) |
 | POST | `/api/signin/email/verify` | portal | Redeem the emailed code in the browser that asked |
 | POST | `/api/signin/flow` | portal | The asking browser's poll after the link was confirmed elsewhere |
+| GET | `/api/signin/requests/{request}/consent` | portal | What the app gets if the signed-in person continues (app consent) |
+| GET | `/api/signin/requests/{request}` | portal | One app sign-in request, as the sign-in card renders it |
 | GET | `/media/{product}/{asset}` | portal | A product's listing art, served same-origin |
 | GET | `/media/avatar/{key}` | portal | A copied provider picture, served same-origin |
 | GET | `https://pkg.plrs.im/` | registry | The registry host's landing page (registry host only) |

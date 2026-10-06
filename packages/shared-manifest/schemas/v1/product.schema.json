@@ -11,7 +11,7 @@
     },
     "product": { "$ref": "#/$defs/productCore" },
     "slug": { "$ref": "#/$defs/slug" },
-    "name": { "$ref": "#/$defs/label" },
+    "name": { "$ref": "#/$defs/displayName" },
     "adminGroup": { "$ref": "#/$defs/groupName" },
     "compatMin": { "$ref": "#/$defs/semver" },
     "compatMax": { "$ref": "#/$defs/semver" },
@@ -322,6 +322,11 @@
       "maxLength": 200,
       "pattern": "^[^\\u0000-\\u001f\\u007f]*$"
     },
+    "displayName": {
+      "description": "A name the sign-in card shows: a label, with no control, zero-width or bidirectional-formatting character and no leading or trailing whitespace (invalid_display_text, PX-W13).",
+      "allOf": [{ "$ref": "#/$defs/label" }],
+      "pattern": "^(?!\\s)(?![\\s\\S]*\\s$)[^\\u0000-\\u001f\\u007f-\\u009f\\u061c\\u200b-\\u200f\\u202a-\\u202e\\u2060-\\u2064\\u2066-\\u2069\\ufeff]*$"
+    },
     "longText": {
       "description": "Longer human text: at most 2000 chars, no control characters.",
       "type": "string",
@@ -361,7 +366,7 @@
       "type": "object",
       "properties": {
         "slug": { "$ref": "#/$defs/slug" },
-        "name": { "$ref": "#/$defs/label" },
+        "name": { "$ref": "#/$defs/displayName" },
         "adminGroup": { "$ref": "#/$defs/groupName" },
         "compatMin": { "$ref": "#/$defs/semver" },
         "compatMax": { "$ref": "#/$defs/semver" },

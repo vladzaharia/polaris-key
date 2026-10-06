@@ -55,10 +55,16 @@ public data class SignInPrompt(
     val interval: Long,
     /** When the code expires on THIS client's clock (epoch seconds). */
     val expiresAt: Long,
+    /**
+     * The label the sign-in page shows (WIRE-CONTRACT-V4 §12.7.1): the Worker's echo, else (an
+     * older Worker) the label sent; null when there is none.
+     */
+    val deviceName: String? = null,
 ) {
     override fun toString(): String =
         "SignInPrompt(deviceCode=[redacted], userCode=$userCode, verificationUri=$verificationUri, " +
-            "verificationUriComplete=$verificationUriComplete, expiresIn=$expiresIn, interval=$interval, expiresAt=$expiresAt)"
+            "verificationUriComplete=$verificationUriComplete, expiresIn=$expiresIn, interval=$interval, expiresAt=$expiresAt, " +
+            "deviceName=$deviceName)"
 }
 
 /** One poll's answer. */
@@ -128,7 +134,10 @@ public class IdentityClient(
     public suspend fun beginSignIn(deviceName: String? = null): SignInPrompt {
         core.requireService(ServiceSlug.identity, Feature.identityDevicecode)
         val body = linkedMapOf<String, JsonElement>("deviceId" to JsonPrimitive(core.deviceId()))
-        deviceName?.trim()?.takeIf { it.isNotEmpty() }?.let { body["deviceName"] = JsonPrimitive(it) }
+        // §12.7.1: the per-call name, else `CoreOptions.deviceName`, else the platform default,
+        // normalised exactly as the Worker will store it. `""` sends none.
+        val label = core.deviceLabel(deviceName)
+        label?.let { body["deviceName"] = JsonPrimitive(it) }
         val response = post(core.endpoints.identityDeviceStart, JsonObject(body))
         if (response.status != 200) {
             throw PolarisException(
@@ -147,7 +156,9 @@ public class IdentityClient(
         ) {
             throw PolarisException(ErrorCode.badResponse, "device sign-in start answered without a complete prompt.")
         }
-        return SignInPrompt(deviceCode, userCode, uri, complete, expiresIn, interval, core.now() + expiresIn)
+        // The echo is what the page shows; an older Worker sends none, so show what was sent.
+        val echoed = if (b != null && b.containsKey("deviceName")) b["deviceName"].stringValue else label
+        return SignInPrompt(deviceCode, userCode, uri, complete, expiresIn, interval, core.now() + expiresIn, echoed)
     }
 
     /**

@@ -95,6 +95,8 @@ async function makeCtx(impl: typeof fetch): Promise<CoreContext> {
     trust: { pinnedKeys: {} },
     store: new InMemoryStore("djdl"),
     fetchImpl: impl,
+    // PX-W13: a fixed device label, so request bodies do not depend on the host name.
+    deviceName: "Test Device",
   });
   await ctx.init();
   return ctx;
@@ -141,8 +143,10 @@ describe("activateWithKey — POST /<p>/license/activate", () => {
     expect(headersOf(calls[0]!.init).get("content-type")).toBe(
       "application/json",
     );
+    // PX-W13 §8 Q2: the device label rides along on activation.
     expect(JSON.parse(String(calls[0]!.init.body))).toEqual({
       fingerprint: FINGERPRINT,
+      deviceName: "Test Device",
     });
   });
 

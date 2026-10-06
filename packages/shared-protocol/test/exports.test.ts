@@ -7,8 +7,8 @@ import { describe, expect, it } from "vitest";
 import * as barrel from "../src/index.js";
 import * as core from "../src/core.js";
 import * as distribution from "../src/distribution.js";
-import * as packs from "../src/packs.js";
 import * as identity from "../src/identity.js";
+import * as packs from "../src/packs.js";
 import * as release from "../src/release.js";
 import * as update from "../src/update.js";
 import { DEFAULT_RELEASE_ACCESS } from "../src/release.js";
@@ -292,5 +292,22 @@ describe("@polaris-key/protocol layout", () => {
     );
     const code: core.PolarisErrorCode = "identity_disabled";
     expect(code).toBe(identity.IDENTITY_DISABLED_ERROR_PARAM);
+  });
+
+  it("the /identity subpath (plans/PX-W13.md §2, WIRE-CONTRACT-V4 §12.7)", () => {
+    expect(identity.DEVICE_LABEL_MAX_CODEPOINTS).toBe(64);
+    expect(identity.REQUEST_HANDLE_PATTERN).toBe("^rq_[A-Za-z0-9_-]{22}$");
+    expect(identity.REQUEST_HANDLE_TTL_SECONDS).toBe(600);
+    expect(identity.DISPLAY_TEXT_STRIP).toContainEqual([0x202a, 0x202e]);
+    expect(identity.DISPLAY_TEXT_SPACE).toContainEqual([0x0009, 0x000d]);
+    // 16 random bytes are 22 base64url characters, and the handle is only ever matched whole.
+    expect(
+      new RegExp(identity.REQUEST_HANDLE_PATTERN).test(`rq_${"A".repeat(22)}`),
+    ).toBe(true);
+    expect(
+      new RegExp(identity.REQUEST_HANDLE_PATTERN).test(`rq_${"A".repeat(23)}`),
+    ).toBe(false);
+    // The subpath is not re-exported from the barrel: Identity's shapes are service-scoped.
+    expect("REQUEST_HANDLE_PATTERN" in barrel).toBe(false);
   });
 });

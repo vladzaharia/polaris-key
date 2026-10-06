@@ -137,6 +137,10 @@
     "identity.devicecode": {
       "status": "implemented"
     },
+    "identity.devicelabel": {
+      "status": "implemented",
+      "note": "PX-W13: the label (client-core normalizeDeviceLabel, the deviceName option, os.hostname() without .local/.lan/.home by default) on beginSignIn, activateWithKey and register; SignInPrompt.deviceName is the Worker's echo."
+    },
     "identity.toggle": {
       "status": "planned",
       "wp": "I-10a"

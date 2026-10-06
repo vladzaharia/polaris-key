@@ -205,8 +205,12 @@ class CoreContext:
         request_timeout: Optional[float] = DEFAULT_REQUEST_TIMEOUT_SECONDS,
         expected_services: Optional[Iterable[str]] = None,
         local_only: bool = False,
+        device_name: Optional[str] = None,
     ) -> None:
         self.product = product_slug
+        #: This device's label (WIRE-CONTRACT-V4 §12.7.1). ``None``: the platform default;
+        #: ``""``: send none.
+        self._device_name = device_name
         self._explicit_state_dir = state_dir is not None
         #: This product's config, data, cache and state directories (P1b-09). Every option
         #: is a BASE with ``<product>`` appended; resolved, never created.
@@ -257,6 +261,13 @@ class CoreContext:
         # JWSs at load, never read from an unsigned field, so there is nothing on disk to
         # edit in either direction (R4-04).
         self._floor = 0
+
+    def device_label(self, override: Optional[str] = None) -> Optional[str]:
+        """The label to send (§12.7.1): ``override``, else the ``device_name`` option, else
+        the platform default; ``None`` sends none."""
+        from .device_label import resolve_device_label
+
+        return resolve_device_label(override, self._device_name)
 
     def local_state_dir(self) -> Optional[str]:
         """Where the SDK's small unsigned state files go (the update-health journal, the boot

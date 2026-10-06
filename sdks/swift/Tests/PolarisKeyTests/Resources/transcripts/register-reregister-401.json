@@ -14,7 +14,8 @@
     "deviceId": "TRANSCRIPTDEVICE0000000000000001",
     "token": "pkeyt_CzuOzALh-mtOitSOsJ8BSCAEg9IDm7Iryvsl4UKzg0Q",
     "version": "1.0.0",
-    "services": ["config"]
+    "services": ["config"],
+    "deviceName": "Transcript Device"
   },
   "steps": [
     {
@@ -212,9 +213,12 @@
                 "content-type"
               ],
               "body": {
-                "json": { "fingerprint": { "components": {}, "hwid": "" } },
+                "json": {
+                  "fingerprint": { "components": {}, "hwid": "" },
+                  "deviceName": ""
+                },
                 "match": "shape",
-                "allowedKeys": ["fingerprint"]
+                "allowedKeys": ["fingerprint", "deviceName"]
               }
             },
             "response": {

@@ -25,9 +25,10 @@ import {
   document,
   etagOf,
   explicitReport,
+  LABELLED_FINGERPRINT,
+  LABELLED_FINGERPRINT_EXPECT,
   REPORT_ALLOWED_KEYS,
-  FINGERPRINT,
-  FINGERPRINT_EXPECT,
+  TRANSCRIPT_DEVICE_NAME,
   syncReport,
   T0,
   trust,
@@ -57,14 +58,19 @@ export const registerOpen: Scenario = {
       const r = new TranscriptRecorder({
         id: "register-open",
         description:
-          "Keyless registration under the open policy (a Config-only product, D-08). register() sends no credential, only the device id and a hashed fingerprint, and stores the token it gets back; it does not sync by itself. The next sync fetches the config document alone, and the gate reports not-applicable because the product runs no licence service.",
+          "Keyless registration under the open policy (a Config-only product, D-08). register() sends no credential, only the device id, a hashed fingerprint and the device label (PX-W13), and stores the token it gets back; it does not sync by itself. The next sync fetches the config document alone, and the gate reports not-applicable because the product runs no licence service.",
         features: ["devices.register"],
         requires: ["core.store"],
         product: PRODUCT,
         now: T0,
         world,
         pinned: pin,
-        initial: { deviceId: DEVICE, version: VERSION, services: ["config"] },
+        initial: {
+          deviceId: DEVICE,
+          version: VERSION,
+          services: ["config"],
+          deviceName: TRANSCRIPT_DEVICE_NAME,
+        },
       });
       await r.step(
         { action: "register" },
@@ -72,8 +78,8 @@ export const registerOpen: Scenario = {
           const res = await s.send({
             method: "POST",
             path: `/${PRODUCT}/devices/register`,
-            body: FINGERPRINT,
-            expectBody: FINGERPRINT_EXPECT,
+            body: LABELLED_FINGERPRINT,
+            expectBody: LABELLED_FINGERPRINT_EXPECT,
             capture: { token: "$.token" },
           });
           expect(res.status).toBe(200);
@@ -124,6 +130,7 @@ export const registerReregister401: Scenario = {
           token,
           version: VERSION,
           services: ["config"],
+          deviceName: TRANSCRIPT_DEVICE_NAME,
         },
       });
       let configEtag = "";
@@ -172,8 +179,8 @@ export const registerReregister401: Scenario = {
           const res = await s.send({
             method: "POST",
             path: `/${PRODUCT}/devices/register`,
-            body: FINGERPRINT,
-            expectBody: FINGERPRINT_EXPECT,
+            body: LABELLED_FINGERPRINT,
+            expectBody: LABELLED_FINGERPRINT_EXPECT,
             capture: { token: "$.token" },
           });
           expect(res.status).toBe(200);

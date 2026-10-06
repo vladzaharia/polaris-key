@@ -160,6 +160,18 @@ function reservedNames(over: Setting = {}): Setting {
   };
 }
 
+function reservedDisplayNames(over: Setting = {}): Setting {
+  return {
+    ...reservedNames(),
+    key: "IDENTITY_RESERVED_DISPLAY_NAMES",
+    area: "identity",
+    label: "Reserved display names",
+    description:
+      "How a product name or listing name that uses a platform or store name is treated.",
+    ...over,
+  };
+}
+
 const RESERVED = {
   mode: "warn",
   keys: [
@@ -203,7 +215,14 @@ const RESERVED = {
 
 function view(over: Record<string, unknown> = {}) {
   return {
-    settings: [lazyDeltas(), maxBytes(), gcMode(), grace(), reservedNames()],
+    settings: [
+      lazyDeltas(),
+      maxBytes(),
+      gcMode(),
+      grace(),
+      reservedNames(),
+      reservedDisplayNames(),
+    ],
     storeAvailable: true,
     propagationSeconds: 30,
     deployTime: [
@@ -429,6 +448,23 @@ describe("the Settings page in the Platform section", () => {
     const failed = await settingsPage();
     const alert = await within(failed).findByRole("alert");
     expect(within(alert).getByRole("button", { name: "Retry" })).toBeTruthy();
+  });
+});
+
+describe("Reserved display names (PX-W13)", () => {
+  it("is an editable row in Identity & access, not in Background jobs", async () => {
+    boot("#/platform/settings", { extra: routes() });
+    const identity = await section("Identity & access");
+    const group = within(identity).getByRole("radiogroup", {
+      name: "Reserved display names",
+    });
+    expect(
+      within(group)
+        .getByRole("radio", { name: "Warn" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    const jobs = await section("Background jobs");
+    expect(within(jobs).queryByText("Reserved display names")).toBeNull();
   });
 });
 

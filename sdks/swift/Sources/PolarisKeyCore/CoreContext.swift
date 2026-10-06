@@ -69,6 +69,9 @@ public struct CoreOptions: Sendable {
     public let cacheDir: URL?
     /// State BASE; `<product>` is appended. Default `<Application Support>/polaris-key/state`.
     public let stateDir: URL?
+    /// This device's label (WIRE-CONTRACT-V4 §12.7.1): what the sign-in page and the customer's
+    /// device list call it. `nil`: the platform default (`defaultDeviceName()`); `""`: send none.
+    public let deviceName: String?
     /// A keychain access group (`<TeamID>.<group>`) the token item is written to, so an app and
     /// its extensions share one credential (SP-S15). Nil: the app's default group.
     public let keychainAccessGroup: String?
@@ -94,6 +97,7 @@ public struct CoreOptions: Sendable {
         dataDir: URL? = nil,
         cacheDir: URL? = nil,
         stateDir: URL? = nil,
+        deviceName: String? = nil,
         keychainAccessGroup: String? = nil,
         appGroup: String? = nil
     ) {
@@ -114,6 +118,7 @@ public struct CoreOptions: Sendable {
         self.dataDir = dataDir
         self.cacheDir = cacheDir
         self.stateDir = stateDir
+        self.deviceName = deviceName
     }
 }
 
@@ -293,6 +298,8 @@ public actor CoreContext {
     private nonisolated let systemClockMillis: @Sendable () -> Int
 
     private let expectedServices: [ServiceSlug]?
+    /// `CoreOptions.deviceName` (§12.7.1).
+    private nonisolated let deviceNameOption: String?
     /// Where the device report reads the active pack set's id (plans/P4-01.md §2.11): set by the
     /// packs facet (`update.packs`) when it is constructed; nil when no facet exists.
     private nonisolated let packSetIdSource = PackSetIdSource()
@@ -362,6 +369,7 @@ public actor CoreContext {
         self.localOnly = transport is NoNetworkTransport
         self.requestTimeoutSeconds = options.requestTimeoutSeconds
         self.expectedServices = options.expectedServices
+        self.deviceNameOption = options.deviceName
         if let clock = options.clock {
             self.systemClock = clock
             self.systemClockMillis = { clock() * 1000 }
@@ -891,6 +899,12 @@ public actor CoreContext {
         }
     }
 
+    /// The label to send (§12.7.1): `override`, else `CoreOptions.deviceName`, else the platform
+    /// default; `nil` sends none.
+    public nonisolated func deviceLabel(_ override: String? = nil) async -> String? {
+        await resolveDeviceLabel(override: override, configured: deviceNameOption)
+    }
+
     // ── Device principal (§6) ────────────────────────────────────────────────────────────
     /// `POST /<p>/devices/register` — the keyless mint path.
     ///
@@ -918,8 +932,10 @@ public actor CoreContext {
     {
         var extra: [String: String] = [:]
         var body: Data?
-        if let fingerprint, let encoded = try? JSONEncoder().encode(
-            FingerprintBody(fingerprint: fingerprint))
+        // PX-W13 §8 Q2: the device label rides along, seeding the device's name in the lists.
+        let label = await deviceLabel()
+        if fingerprint != nil || label != nil, let encoded = try? JSONEncoder().encode(
+            FingerprintBody(fingerprint: fingerprint, deviceName: label))
         {
             extra["content-type"] = "application/json"
             body = encoded
@@ -1344,11 +1360,16 @@ struct FingerprintBody: Encodable {
         let components: [String: String]
         let hwid: String
     }
-    let fingerprint: Payload
+    /// Omitted (never `null`) when absent.
+    let fingerprint: Payload?
+    /// PX-W13 §8 Q2: the device label. Omitted when absent.
+    let deviceName: String?
 
-    init(fingerprint: HardwareFingerprint) {
-        self.fingerprint = Payload(
-            components: fingerprint.components, hwid: fingerprint.hwid)
+    init(fingerprint: HardwareFingerprint?, deviceName: String? = nil) {
+        self.fingerprint = fingerprint.map {
+            Payload(components: $0.components, hwid: $0.hwid)
+        }
+        self.deviceName = deviceName
     }
 }
 

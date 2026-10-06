@@ -1,6 +1,6 @@
 extends RefCounted
 # @pkey-feature core.discover core.sync core.cache config.schema config.mint devices.register devices.report
-# @pkey-feature license.activate license.enroll license.deactivate license.reregister identity.devicecode
+# @pkey-feature license.activate license.enroll license.deactivate license.reregister identity.devicecode identity.devicelabel
 # @pkey-feature release.changelog release.download update.feed release.record update.decide
 # @pkey-feature commerce.receipt
 # @pkey-feature packs.apply.chunk
@@ -96,6 +96,9 @@ static func replay(tr: Dictionary) -> Array:
 	var opts := PKeyTestFixtures.options(server.base_url(), store, clock, tr["product"], tr["trust"], tr["initial"]["version"])
 	if tr["initial"].get("services") is Array:
 		opts.expected_services = PackedStringArray(tr["initial"]["services"])
+	# PX-W13: `initial.deviceName` stands in for the platform's device name; absent = none.
+	opts.send_device_name = tr["initial"].get("deviceName") is String
+	opts.device_name = String(tr["initial"].get("deviceName", ""))
 	if tr["initial"].get("update") is Dictionary:
 		_configure_update(opts, store, tr["initial"]["update"])
 	var journal = tr["initial"].get("updateJournal")
@@ -219,6 +222,7 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 					"verificationUriComplete": prompt.verification_uri_complete,
 					"expiresIn": prompt.expires_in,
 					"interval": prompt.interval,
+					"deviceName": prompt.device_name if prompt.device_name != "" else null,
 				}
 			else:
 				out["result"] = String(prompt.code)

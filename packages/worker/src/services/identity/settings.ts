@@ -105,6 +105,29 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
       storage: { kind: "scalar" },
       pending: { wp: "ST-15" },
     }),
+    // PX-W13 (plans/PX-W13.md §8 Q4, as amended): the operator's approval of one product whose
+    // display name uses a reserved term (a third party's "Steam Deck Companion"). Operator-only
+    // and audited; read by the manifest rule and the card's render-time check once ST-04's
+    // resolver can read product settings.
+    setting({
+      key: "identity.displayNameApproved",
+      scope: "product",
+      service: "identity",
+      area: "identity.signIn",
+      label: "Approved display name",
+      description:
+        "Lets this product's name or developer name use a reserved platform or store name. Only the platform operator can set it; the sign-in card then shows the name instead of the product slug.",
+      keywords: ["reserved", "display name", "reserved_display_name"],
+      docs: "/docs/build/manifest/authoring/#display-names",
+      value: { kind: "boolean" },
+      defaultValue: false,
+      merge: "cascade",
+      ownership: "operator",
+      confirm: { on: "L1", off: "L0" },
+      visibleWhen: VISIBLE,
+      storage: { kind: "scalar" },
+      pending: { wp: "ST-04" },
+    }),
     // S-19 §7.5: kept beside the other S-19 settings' owner (LX-06) but in Identity's namespace,
     // because its manifest home is the `oidc:` block.
     setting({

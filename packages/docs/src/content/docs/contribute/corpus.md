@@ -71,7 +71,7 @@ silently stop matching a returning machine to its existing free-tier enrollment.
 
 ## What's in the corpus
 
-Ten files and the content corpus, one directory, so a runner can point at `corpus/v2/` and find everything it needs:
+Eleven files and the content corpus, one directory, so a runner can point at `corpus/v2/` and find everything it needs:
 
 | File                   | Contents                                                                                                                                                                                                                                                                              |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -85,6 +85,7 @@ Ten files and the content corpus, one directory, so a runner can point at `corpu
 | `outlet-matrix.json`   | WIRE-CONTRACT-V4 §11.2: outlet capability defaults and narrowing, the listing-URL prefixes, the detection signals and every detection row.                                                                                                                                            |
 | `plan-matrix.json`     | WIRE-CONTRACT-V4 §11.4: the install planner's rows, variant selection and target mapping (packs v1).                                                                                                                                                                                  |
 | `feed-url-matrix.json` | The app-updater feed URLs (`appcast`, `winsparkle`, `velopack`, `appInstaller`, `zsync`) expanded from discovery's `update.endpoints` templates, or `{unsupported: "product"}` when a template is missing (`plans/SP-00.md` D5).                                                      |
+| `device-label.json`    | WIRE-CONTRACT-V4 §12.7.1 (PX-W13): raw device labels and their normalised form, or none. Every SDK runs every row, and the Worker runs them through `/identity/auth/device/start`. Non-ASCII code points are written escaped; no row holds U+0000, which a Godot `String` cannot.     |
 | `content/`             | WIRE-CONTRACT-V4 §2.6: `content/cases.json` (path rules, the files index, the chunk index, full, delta, file and chunk apply, `packSetId`, the content stamp, `frameWindow`) over the committed blobs in `content/blobs/`. Source only, not mirrored.                                 |
 
 There is exactly one corpus: v1 was deleted when wire contract v2 shipped, so there is no
@@ -160,8 +161,8 @@ over it and needs a PR of its own with the guard deliberately relaxed. `.prettie
 
 `cases.json`, `gate-matrix.json`, `fingerprint.json`, `stage-matrix.json`, `headers.json`,
 `config-matrix.json`, `update-matrix.json`, `outlet-matrix.json`, `plan-matrix.json`,
-`feed-url-matrix.json`, `sync-scenarios.json`, `content/cases.json`, and both mirrors are all
-output.
+`feed-url-matrix.json`, `sync-scenarios.json`, `device-label.json`, `content/cases.json`, and both
+mirrors are all output.
 `pnpm gen:corpus -- --check` regenerates every one of them **in memory** and fails if any
 committed file differs — mirrors included. A red drift job means a wire-affecting change wasn't
 reflected in the corpus; regenerate and commit the result in the same PR:

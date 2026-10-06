@@ -113,6 +113,9 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/api/device-login/lookup", ["post"]],
     ["/api/device-login/approve", ["post"]],
     ["/api/device-login/{requestId}", ["get"]],
+    // PX-W13 (G28): the sign-in request the card renders, and its app-consent view.
+    ["/api/signin/requests/{request}", ["get"]],
+    ["/api/signin/requests/{request}/consent", ["get"]],
   ],
 };
 
@@ -581,6 +584,7 @@ function concrete(template: string): string {
     key: "0123456789abcdef0123456789abcdef",
     sessionId: "f".repeat(64),
     requestId: `dl_${"A".repeat(43)}`,
+    request: `rq_${"A".repeat(22)}`,
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];

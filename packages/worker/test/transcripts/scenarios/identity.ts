@@ -162,6 +162,8 @@ interface Started {
   verificationUriComplete: string;
   expiresIn: number;
   interval: number;
+  /** PX-W13 (§12.7.1): the stored label, echoed. */
+  deviceName: string | null;
 }
 
 /** What `beginSignIn` hands the host: everything it shows the player, never the device code
@@ -173,6 +175,7 @@ function promptOf(b: Started): JsonValue {
     verificationUriComplete: b.verificationUriComplete,
     expiresIn: b.expiresIn,
     interval: b.interval,
+    deviceName: b.deviceName,
   };
 }
 
@@ -198,7 +201,7 @@ export const devicecodeHappy: Scenario = {
       const r = new TranscriptRecorder({
         id: "devicecode-happy",
         description:
-          "Device-code sign-in (RFC 8628). beginSignIn() posts this device's id and name and hands the host the user code and both verification URIs (the complete one is the QR payload) — never the device code. pollSignIn() asks once per call: pending; a poll one second after the last is told to slow_down (429, with the interval); pending again at the interval. Between polls the player confirms the code on the user-code page and signs in at the (mocked) IdP. The next poll is ready, naming the signed-in identity for the device to show: the client stores the device token and runs the same forced sync activation does. The licence is the signed-in identity's own — the device-code callback merges nothing (P1-06), and without the opt-in the poll attaches nothing (P1-07).",
+          "Device-code sign-in (RFC 8628). beginSignIn() posts this device's id and name and hands the host the user code, both verification URIs (the complete one is the QR payload) and the label the Worker echoed — never the device code. pollSignIn() asks once per call: pending; a poll one second after the last is told to slow_down (429, with the interval); pending again at the interval. Between polls the player confirms the code on the user-code page and signs in at the (mocked) IdP. The next poll is ready, naming the signed-in identity for the device to show: the client stores the device token and runs the same forced sync activation does. The licence is the signed-in identity's own — the device-code callback merges nothing (P1-06), and without the opt-in the poll attaches nothing (P1-07).",
         features: ["identity.devicecode"],
         requires: ["core.store", "core.sync"],
         product: PRODUCT,
@@ -322,7 +325,7 @@ export const devicecodeExpired: Scenario = {
       const r = new TranscriptRecorder({
         id: "devicecode-expired",
         description:
-          "A device-code flow nobody completes. beginSignIn() with no device name posts the device id alone; one poll is pending. Ten minutes later the flow's records have lapsed and the Worker answers the next poll with timeout, which the client reports as expired, holding no token. waitForSignIn() on the same prompt then makes no request at all: the prompt's expiresIn has passed, and a client stops polling at expiry rather than asking a server that can only say timeout.",
+          "A device-code flow nobody completes. beginSignIn() with no device name, on a host with no platform device name, posts the device id alone, and the echoed label is null; one poll is pending. Ten minutes later the flow's records have lapsed and the Worker answers the next poll with timeout, which the client reports as expired, holding no token. waitForSignIn() on the same prompt then makes no request at all: the prompt's expiresIn has passed, and a client stops polling at expiry rather than asking a server that can only say timeout.",
         features: ["identity.devicecode"],
         requires: ["core.store"],
         product: PRODUCT,
@@ -424,7 +427,7 @@ export const identityDisabled: Scenario = {
       const r = new TranscriptRecorder({
         id: "identity-disabled",
         description:
-          "A product whose Identity service is off (WIRE-CONTRACT-V4 §12.7). The client starts out believing Identity is on (a discovery from before the toggle moved): beginSignIn() posts the device-code start and the Worker answers not_found — device and JSON routes never say 'identity is off' — which the client reports as service-unavailable (service-disabled in React), keeping every piece of state it holds. discover() then installs the real map, Identity off, and the next beginSignIn() fails the same way without sending a request. Licences still attach to accounts: activating a key of an account-owned licence works as on any product, and syncs.",
+          "A product whose Identity service is off (WIRE-CONTRACT-V4 §12.8). The client starts out believing Identity is on (a discovery from before the toggle moved): beginSignIn() posts the device-code start and the Worker answers not_found — device and JSON routes never say 'identity is off' — which the client reports as service-unavailable (service-disabled in React), keeping every piece of state it holds. discover() then installs the real map, Identity off, and the next beginSignIn() fails the same way without sending a request. Licences still attach to accounts: activating a key of an account-owned licence works as on any product, and syncs.",
         features: ["identity.toggle"],
         requires: ["core.discover", "core.store", "license.activate"],
         product: PRODUCT,
@@ -534,3 +537,80 @@ export const identityDisabled: Scenario = {
       return r.transcript();
     }),
 };
+
+/** A label carrying a right-to-left override, a tab and 70 code points (PX-W13, §12.7.1). */
+const RAW_LABEL = `Living room TV\u202egnp.exe\t${"x".repeat(70 - 23)}`;
+
+/** The two PX-W13 conversations: one begin each, so only the start is recorded. */
+function labelScenario(
+  id: string,
+  description: string,
+  args: Record<string, JsonValue>,
+  initialName: string | undefined,
+  sent: string,
+): Scenario {
+  return {
+    id,
+    record: () =>
+      pinned(id, async (pin) => {
+        const world = await identityWorld();
+        const r = new TranscriptRecorder({
+          id,
+          description,
+          features: ["identity.devicecode", "identity.devicelabel"],
+          requires: ["core.store"],
+          product: PRODUCT,
+          now: T0,
+          world,
+          pinned: pin,
+          initial: {
+            deviceId: DEVICE,
+            version: VERSION,
+            services: ["license", "config", "identity"],
+            ...(initialName !== undefined ? { deviceName: initialName } : {}),
+          },
+        });
+        const begun: Record<string, JsonValue> = {};
+        await r.step(
+          { action: "beginSignIn", args },
+          async (s) => {
+            const res = await s.send({
+              method: "POST",
+              path: START,
+              body: { deviceId: DEVICE, deviceName: sent },
+              expectBody: {
+                json: { deviceId: DEVICE, deviceName: sent },
+                match: "exact",
+              },
+            });
+            expect(res.status).toBe(200);
+            const started = (await res.json()) as Started;
+            // The Worker stores exactly what a conforming SDK sends.
+            expect(started.deviceName).toBe(sent);
+            Object.assign(begun, {
+              prompt: promptOf(started),
+              tokenHeld: false,
+            });
+          },
+          begun,
+        );
+        return r.transcript();
+      }),
+  };
+}
+
+export const devicecodeLabel: Scenario = labelScenario(
+  "devicecode-label",
+  "The device label (WIRE-CONTRACT-V4 §12.7.1). beginSignIn() is passed a raw name carrying a right-to-left override, a tab and 70 code points; the SDK normalises it before sending (the override deleted, the tab a space, cut to 64 code points), so the body holds exactly the normalised label, and the prompt's deviceName is the Worker's echo of it.",
+  { deviceName: RAW_LABEL },
+  undefined,
+  "Living room TVgnp.exe " + "x".repeat(64 - 22),
+);
+
+export const devicecodeDefault: Scenario = labelScenario(
+  "devicecode-default",
+  "The default device label (plans/PX-W13.md §2.1). beginSignIn() with no argument on a host whose platform device name is initial.deviceName: the SDK sends that name as the label, and the prompt's deviceName is the echo.",
+  {},
+  "Transcript Device",
+  "Transcript Device",
+);

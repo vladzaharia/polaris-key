@@ -333,6 +333,9 @@ export interface BrowserAdapterOptions {
   /** A hashed hardware fingerprint for bearer requests. A browser has none (the default);
    *  the seam exists for tests and for hosts (a kiosk shell) that do. */
   fingerprint?: () => HardwareFingerprint | null;
+  /** Bearer mode: this device's label (WIRE-CONTRACT-V4 §12.7.1), sent on registration,
+   *  activation and sign-in. A browser has no platform name, so none is sent by default. */
+  deviceName?: string;
   /** The page's own origin, for `auth: "auto"`. Defaults to `window.location.origin`. */
   pageOrigin?: string;
   /** Start loading at construction (default true). The Provider passes false and calls
@@ -532,6 +535,9 @@ export class BrowserAdapter implements PolarisAdapter {
         store: this.bearerStore,
         enabled: (slug) => this.capabilities[slug].enabled,
         ...(opts.fingerprint ? { fingerprint: opts.fingerprint } : {}),
+        ...(opts.deviceName !== undefined
+          ? { deviceName: opts.deviceName }
+          : {}),
         facts: () => browserFacts(),
         caps: () => this.caps(),
         outlet: () =>

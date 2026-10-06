@@ -90,6 +90,7 @@
     <string name="pkey_ui_sign_in_code_description">Sign-in code %1$s</string>
     <string name="pkey_ui_sign_in_open_browser">Open sign-in page</string>
     <string name="pkey_ui_sign_in_expires_in">Code expires in %1$s</string>
+    <string name="pkey_ui_sign_in_device_label">The sign-in page will show “%1$s”</string>
     <string name="pkey_ui_sign_in_waiting">Waiting for you to finish signing in…</string>
     <string name="pkey_ui_sign_in_done">Signed in.</string>
     <string name="pkey_ui_sign_in_expired">The code expired before sign-in finished.</string>

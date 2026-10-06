@@ -1,6 +1,6 @@
 # Polaris Wire Contract v4
 
-**Status:** Normative. Supersedes `WIRE-CONTRACT-V3.md`, the way v3 superseded v2. v3 remains the record; everything v3 said that v4 does not change is restated here, so this document can be read on its own. Amended for packs v1 by `plans/P4-01.md` (§2.5.1, §2.5.2, §2.6, §2.7, §3.7, §11.3, §11.4), inside v4: no new `typ`, no feed field, `PROTOCOL_VERSION` stays 4. Amended for chunk indexes by `plans/P4-10.md` (§2.5.1, §2.6, §3.1, §8, §9, §10, §11.4), also inside v4. Amended for content-key delegation by `plans/P4-19.md` (§1, §2, §2.4.1, §2.5, §2.5.3, §2.5.4, §2.8, §3.4, §3.5, §8, §9, §10), also inside v4: no new `typ`, claim, feed member or selector key.
+**Status:** Normative. Supersedes `WIRE-CONTRACT-V3.md`, the way v3 superseded v2. v3 remains the record; everything v3 said that v4 does not change is restated here, so this document can be read on its own. Amended for packs v1 by `plans/P4-01.md` (§2.5.1, §2.5.2, §2.6, §2.7, §3.7, §11.3, §11.4), inside v4: no new `typ`, no feed field, `PROTOCOL_VERSION` stays 4. Amended for chunk indexes by `plans/P4-10.md` (§2.5.1, §2.6, §3.1, §8, §9, §10, §11.4), also inside v4. Amended for content-key delegation by `plans/P4-19.md` (§1, §2, §2.4.1, §2.5, §2.5.3, §2.5.4, §2.8, §3.4, §3.5, §8, §9, §10), also inside v4: no new `typ`, claim, feed member or selector key. Amended for passthrough request metadata by `plans/PX-W13.md` (§5.4, §8, §12.7), also inside v4: no new `typ`, claim or signed shape, and `corpusVersion` stays 2.
 **PROTOCOL_VERSION:** `4` (`@polaris-key/protocol` `core.PROTOCOL_VERSION`).
 **Scope:** Everything that crosses the wire or the disk boundary between the Polaris Worker, the CI that signs releases, and the client SDKs (Node, React, Python, Swift, Godot, Kotlin): JWS envelope and its strictness, the six signed artifacts, trust distribution, the pinned release keys, device principal, offline bundles, verified cache, the monotonic clock floor and the feed `seq` floor. Server-internal behavior (D1 shapes, admin API) is out of scope except where it produces signed artifacts.
 **Conformance:** `conformance/corpus/v2/` pins every rule marked **[C]** byte-for-byte across all implementations, within the representation limits declared in §10. `pnpm gen:corpus -- --check` is the drift gate. The v4 plan is `docs/research/2026-09-29-godot-omniplatform/program/plans/P3-01.md`; its §2–§4 are the long form of §1–§4 and §11 here.
@@ -802,6 +802,16 @@ document, claim, header or error code changes, and `PROTOCOL_VERSION` stays 4.
 6. **Not an auth failure.** A client never wipes state, retries or opens the link on its own; it
    offers the link behind a user action (a button, or a QR code where a joypad is the only input).
 
+### 5.4 The device label is display data [C]
+
+Pinned by `device-label.json`.
+
+`deviceName` on `POST /<p>/identity/auth/device/start`, `POST /<p>/license/activate` and
+`POST /<p>/devices/register` is the device label (§12.7.1): what the sign-in page, the customer
+portal and the console call the device. No server decision reads it, and no signed document
+carries it. Every SDK normalises it before sending and the Worker normalises it again on receipt;
+neither ever rejects one.
+
 ## 6. Device principal
 
 - **Token:** `pkeyt_` + 43 base64url chars (256-bit). Hash-stored server-side; KV hot record `{product, deviceId, licenseId | null}` — `licenseId` is null for registered-without-license devices. `pkeyt_` tokens are rejected (pre-launch, no migration).
@@ -910,6 +920,8 @@ Amendment A1 (see the design spec) withdrew the interim `plrs` rebrand, so the v
 | Delta-menu limits        | `MAX_FEED_DELTAS` = 64 entries per feed; `MAX_FEED_DELTAS_PER_TARGET` = 4 per target payload (§2.4.2)                                                                                                                                        | —                                                         |
 | `packSetId`              | lowercase hex SHA-256 of the UTF-8 lines `<packId> <recordSha256>\n`, sorted by pack-id bytes; null for an invalid pack id, a release not 64 lowercase hex, or a pack listed twice (`plans/P4-01.md` §2.9)                                   | —                                                         |
 | Variant key              | a variant's `axis=value` pairs sorted by axis-name bytes, joined with `;`; the empty string for `{}` (`variantKey`)                                                                                                                          | —                                                         |
+| Request handle           | `rq_` + 22 base64url characters, `REQUEST_HANDLE_PATTERN` `^rq_[A-Za-z0-9_-]{22}$`; lives `REQUEST_HANDLE_TTL_SECONDS` = 600 (§12.7.2; `@polaris-key/protocol/identity`)                                                                     | —                                                         |
+| Device label             | `deviceName`, at most `DEVICE_LABEL_MAX_CODEPOINTS` = 64 code points after §12.7.1; display data only (§5.4)                                                                                                                                 | —                                                         |
 
 `pkey-config+jws` and `pkey-trust+jws` are the v2 type strings reused for v3's config document and trust manifest; the document _shapes_ changed in v3, the type strings did not.
 
@@ -1042,8 +1054,10 @@ Client behaviour beside the Cloud Sync routes (`plans/U-01.md` §2.3, §2.4, §4
 There is one Polaris Key account per person, platform-wide; it is never a per-product toggle. A
 product's `identity` service toggle gates only sign-in _through that product_
 (`plans/I-04.md` §2.1). Nothing in this section is signed and nothing here enters the licence
-document: `PROTOCOL_VERSION` stays 4. §12.2 to §12.6 are I-09's (key entry, the account
-contract) and are written when it lands.
+document: `PROTOCOL_VERSION` stays 4. §12.2 to §12.6 are reserved for I-08 (the passthrough
+sign-in, Continue, callback binding and `authorize`) and I-09 (key entry, the account contract,
+refusals) and are written when they land. §12.7 is PX-W13's passthrough request metadata and
+§12.8 is PX-W17's Identity-off behaviour.
 
 ### 12.1 What the toggle scopes
 
@@ -1057,7 +1071,82 @@ contract) and are written when it lands.
 A developer-facing surface names an account only by its pairwise subject for that product, never
 by the global account id (S-16 §5.1).
 
-### 12.7 A product with Identity off
+### 12.7 Passthrough request metadata
+
+These are the Identity service's browser-facing shapes: same-origin portal JSON and the device
+label the SDKs send. None of them is signed, and none changes a signed document. The types live
+in `@polaris-key/protocol/identity`. The long form is `plans/PX-W13.md` §2. The card behind
+"<App> wants you to sign in" (PORTAL.md §4.7, G28) must be trustworthy, so it reads the app's
+presentation from a server-side client record through an opaque request handle, never from
+display query parameters.
+
+#### 12.7.1 The device label [C]
+
+Pinned by `device-label.json` (`deviceLabelVersion` 1). The wire name is `deviceName`; the stored
+and rendered value is the device label. Each SDK applies these steps before sending, and the
+Worker applies them on receipt:
+
+1. Map U+0009–000D, U+0085, U+00A0, U+2028, U+2029 and U+3000 to U+0020.
+2. Delete U+0000–001F, U+007F–009F, U+061C, U+200B–200F, U+202A–202E, U+2060–2064, U+2066–2069
+   and U+FEFF. This removes bidi overrides and zero-width characters.
+3. Collapse runs of U+0020 to one, then trim.
+4. Keep at most 64 code points (`DEVICE_LABEL_MAX_CODEPOINTS`), counting code points rather than
+   UTF-16 units, and trim a trailing U+0020 the cut exposes.
+5. If the result is empty, the label is absent: the SDK omits the member, and the Worker stores
+   NULL.
+
+There is no Unicode normalisation step, because Godot has no normaliser. Nothing is rejected.
+No corpus row holds U+0000, because a Godot `String` cannot; the rule still deletes it.
+
+When the host passes no label, the SDK sends a platform default: Node `os.hostname()` and
+Python `platform.node()` without a trailing `.local`, `.lan` or `.home`; Swift
+`Host.current().localizedName` on macOS and `UIDevice.current.name` on the iOS family; Kotlin
+`Settings.Global.DEVICE_NAME`, else `Build.MODEL`, on Android and the JVM host name elsewhere;
+Godot the device model, else the OS name. React sends none: a browser has no device name. A host
+overrides the default in its configuration or per call, and opts out with an empty string (Godot:
+`PKeyOptions.send_device_name = false`).
+
+`POST /<p>/identity/auth/device/start` answers `deviceName`: the stored label, or `null`. An
+older Worker omits the member, and an SDK then shows the label it sent. `license/activate` and
+`devices/register` store the label only while the device row has none, so a console or portal
+rename always wins.
+
+#### 12.7.2 Client record and request handle
+
+- **Client record.** `{product, kind, appName, developerName, iconUrl, origins, services,
+nameVerified}`, with `kind` one of `web`, `native` and `device`. `appName` and
+  `developerName` come from the product's listing, `iconUrl` is the same-origin
+  `/media/<product>/icon`, `origins` are the registered `web.origins`, and `services` is
+  `{license, cloudSync}`. A render-time check of the display-name rules replaces a failing app
+  name with the product slug and sets `nameVerified: false`.
+- **Request handle.** `rq_` and 16 random bytes in base64url, stored under its peppered hash for
+  600 s, and bound to the browser that created it. The binder lives in the `__Host-pk_req` cookie
+  (HttpOnly, Secure, SameSite=Lax, Path=/), and its hash lives in the record. The record holds the
+  product, the kind, the label, the user code, the origin and a flow reference. The device-code
+  confirmation page creates handles. There is no public creation route.
+- **`GET /api/signin/requests/:handle`** answers `{request, client, deviceLabel, userCode,
+expiresAt}` to the binding browser, with `cache-control: no-store`. An unknown, expired or
+  unbound handle answers `404 not_found`, and so does a handle for a product whose Identity toggle
+  is off. No display query parameter is read: `appName`, `name`, `icon`, `developer`, `origin`
+  and `device` are all ignored.
+
+#### 12.7.3 App consent
+
+`GET /api/signin/requests/:handle/consent` needs the account session and the binder. It answers
+`{request, person, items, scopeHash, firstTime, changed}`:
+
+- `items` lists, in order:
+  - the licence line `{kind: "license", anchor, more}`. `anchor` is a dry-run choice that writes
+    nothing, and `more` is 0 under `licensing.entitlementModel: legacy`;
+  - `{kind: "cloudSync"}`, only when the product runs Cloud Sync;
+  - `{kind: "profile", claims: ["name", "picture", "email"]}`.
+- `scopeHash` is the lowercase hex SHA-256 of the canonical JSON `{"claims":[…],"services":[…],"v":1}`,
+  with both arrays sorted.
+- `firstTime` and `changed` compare `scopeHash` with `account_product_grants.scope_hash`. Only a
+  change of claims or services asks again. "App consent" is that table's name for the concept; it
+  is not S-19's grants.
+
+### 12.8 A product with Identity off
 
 1. Device and JSON routes under `/<p>/identity/*` answer the registry's nested
    `404 {"error":{"code":"not_found"}}`. An SDK reports it as `service-unavailable`

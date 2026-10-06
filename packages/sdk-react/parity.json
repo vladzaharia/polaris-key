@@ -186,6 +186,16 @@
       "status": "implemented",
       "note": "Desktop through the bridge (beginSignIn/pollSignIn, v4 adds the expiry, interval and identity). Web in bearer mode (SP-R02): POST /<p>/identity/auth/device/{start,poll} through adapter.beginSignIn(); devicecode-happy and devicecode-expired replay through it. A cookie-session page signs in by the OIDC redirect (identity.oidc)."
     },
+    "identity.devicelabel": {
+      "status": "implemented",
+      "except": [
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        }
+      ],
+      "note": "PX-W13: a browser has no platform device name, so by default it reports none (the card shows the registered origin); in bearer mode a host may name one (browserAdapter deviceName, or per call on beginSignIn), sent on registration, activation and sign-in. Through the desktop bridge the main process's Node SDK sends it; the corpus runs through client-core's normalizeDeviceLabel."
+    },
     "identity.toggle": {
       "status": "planned",
       "wp": "I-10a"

@@ -42,6 +42,13 @@ public data class CoreOptions @JvmOverloads constructor(
     val expectedServices: List<ServiceSlug>? = null,
     /** The system clock, epoch SECONDS; every claim check and gate comparison reads it. */
     val clock: (() -> Long)? = null,
+    /**
+     * This device's label (WIRE-CONTRACT-V4 §12.7.1): what the sign-in page and the customer's
+     * device list call it. Null: the platform default; `""`: send none.
+     */
+    val deviceName: String? = null,
+    /** The platform's own device name; null: the JVM host name (the Android glue supplies its own). */
+    val defaultDeviceName: (() -> String?)? = null,
 )
 
 /** The status taxonomy every signed-document GET collapses to (§5). */
@@ -175,6 +182,11 @@ public class CoreContext(options: CoreOptions) {
     /** True when the transport refuses to dial (§7.3). */
     public val localOnly: Boolean = transport === NoNetworkTransport
     private val expectedServices = options.expectedServices
+    private val deviceNameOption = options.deviceName
+    private val defaultDeviceNameHook: () -> String? = options.defaultDeviceName ?: ::jvmDefaultDeviceName
+
+    /** The label to send (§12.7.1): [override], else `CoreOptions.deviceName`, else the platform default; null sends none. */
+    public fun deviceLabel(override: String? = null): String? = resolveDeviceLabel(override, deviceNameOption, defaultDeviceNameHook)
     private val systemClock: () -> Long = options.clock ?: { System.currentTimeMillis() / 1000 }
     private val systemClockMillis: () -> Long =
         options.clock?.let { c -> { c() * 1000 } } ?: { System.currentTimeMillis() }

@@ -15,13 +15,14 @@ In the console this is **Platform → Settings** (`#/platform/settings`; `#/plat
 
 ## The runtime settings
 
-| Setting                    | What it does                                                                                        | Values                                     |
-| -------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| `LAZY_DELTAS`              | Turns lazy hot-pair deltas on or off, in both Worker scripts.                                       | `on` or `off` (default `off`)              |
-| `LAZY_DELTA_MAX_BYTES`     | The largest payload, on either side of a pair, the delta consumer will encode.                      | 1 MiB to 32 MiB, in bytes (default 32 MiB) |
-| `BLOB_GC_MODE`             | Turns the nightly blob collector on or off.                                                         | `on` or `off` (default `on`)               |
-| `BLOB_GC_GRACE_DAYS`       | How long an object stays unreferenced before the collector may delete it.                           | 1 to 365 days (default 30)                 |
-| `LICENSING_RESERVED_NAMES` | What happens to a catalog flag that declares a reserved entitlement name with an incompatible type. | `warn` or `error` (default `warn`)         |
+| Setting                           | What it does                                                                                        | Values                                     |
+| --------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `LAZY_DELTAS`                     | Turns lazy hot-pair deltas on or off, in both Worker scripts.                                       | `on` or `off` (default `off`)              |
+| `LAZY_DELTA_MAX_BYTES`            | The largest payload, on either side of a pair, the delta consumer will encode.                      | 1 MiB to 32 MiB, in bytes (default 32 MiB) |
+| `BLOB_GC_MODE`                    | Turns the nightly blob collector on or off.                                                         | `on` or `off` (default `on`)               |
+| `BLOB_GC_GRACE_DAYS`              | How long an object stays unreferenced before the collector may delete it.                           | 1 to 365 days (default 30)                 |
+| `LICENSING_RESERVED_NAMES`        | What happens to a catalog flag that declares a reserved entitlement name with an incompatible type. | `warn` or `error` (default `warn`)         |
+| `IDENTITY_RESERVED_DISPLAY_NAMES` | What happens to a product or listing name that uses a platform or store name.                       | `warn` or `error` (default `warn`)         |
 
 32 MiB is the measured ceiling of the delta consumer, so a runtime size cap can only lower it.
 "Lower" is measured against that 32 MiB ceiling, not against the deploy-time `LAZY_DELTA_MAX_BYTES`
@@ -39,6 +40,15 @@ system key's type and only narrows it (see
 console's catalog publish refuse it. The setting starts at `warn` for a window of two minor
 releases or 60 days, whichever is later, and then moves to `error`. Neither value changes what a
 device is signed: the platform's own value of a system key always wins.
+
+`IDENTITY_RESERVED_DISPLAY_NAMES` is `identity.reservedDisplayNames`. The sign-in card says
+"<App> wants you to sign in", so a product may not present itself as Polaris Key, Apple, the App
+Store, Google, Google Play, Steam, Valve, Epic Games, Microsoft, Xbox, PlayStation, Nintendo or
+itch.io (see [display names](/docs/build/manifest/authoring/#display-names)). With `warn`, such a
+`product.name`, `listing.name` or `listing.developerName` is accepted and reported; with `error`,
+link, resync and the console's listing edits refuse it. Either way the sign-in card shows the
+product slug in a neutral frame instead of a reserved name. The setting starts at `warn` for two
+minor releases or 60 days, whichever is later. It sits under Identity & access in the console.
 
 Nothing else can become a runtime setting. Origins, the platform admin group, the admin identity
 provider, the issuer allowlist, key material, session lengths, rate limits, retention periods and

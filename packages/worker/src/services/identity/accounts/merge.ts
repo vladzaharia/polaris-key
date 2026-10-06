@@ -158,11 +158,12 @@ export async function mergeAccounts(
     products.push({ product: row.product, subject: to, alias: row.subject });
   }
   stmts.push(
-    // Grants: the survivor's own consent wins where both gave one.
+    // Grants: the survivor's own consent wins where both gave one. The consented scope (PX-W13,
+    // `scope_hash`) moves with it, so a merge never re-asks for a consent already given.
     {
       sql: `INSERT OR IGNORE INTO account_product_grants
-              (account_id, product, claims_json, granted_at, modified_at)
-            SELECT ?, product, claims_json, granted_at, modified_at
+              (account_id, product, claims_json, granted_at, modified_at, scope_hash)
+            SELECT ?, product, claims_json, granted_at, modified_at, scope_hash
               FROM account_product_grants WHERE account_id = ?`,
       params: [S, A],
     },

@@ -84,6 +84,7 @@ __all__ = [
     "OUTLET_MATRIX_VERSION",
     "PLAN_MATRIX_VERSION",
     "SYNC_SCENARIOS_VERSION",
+    "DEVICE_LABEL_VERSION",
     "CONTENT_CORPUS_VERSION",
     "MAX_WIRE_INTEGER",
     "MAX_JSON_DEPTH",
@@ -112,6 +113,9 @@ __all__ = [
     "CHUNKS_FORMAT",
     "MAX_CHUNK_INDEX_BYTES",
     "MAX_CHUNK_BYTES",
+    "DEVICE_LABEL_MAX_CODEPOINTS",
+    "REQUEST_HANDLE_PATTERN",
+    "REQUEST_HANDLE_TTL_SECONDS",
     "CHANNEL_ALIASES",
     "CHANNEL_BETA",
     "CHANNEL_DEV",
@@ -640,6 +644,7 @@ class Feature:
     DEVICES_ATTEST: Final = "devices.attest"
     IDENTITY_OIDC: Final = "identity.oidc"
     IDENTITY_DEVICECODE: Final = "identity.devicecode"
+    IDENTITY_DEVICELABEL: Final = "identity.devicelabel"
     IDENTITY_TOGGLE: Final = "identity.toggle"
     RELEASE_CHANGELOG: Final = "release.changelog"
     RELEASE_DOWNLOAD: Final = "release.download"
@@ -725,6 +730,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "devices.attest",
     "identity.oidc",
     "identity.devicecode",
+    "identity.devicelabel",
     "identity.toggle",
     "release.changelog",
     "release.download",
@@ -1427,6 +1433,10 @@ PLAN_MATRIX_VERSION: Final[int] = 2
 SYNC_SCENARIOS_VERSION: Final[int] = 1
 
 
+#: `deviceLabelVersion` of conformance/corpus/v2/device-label.json.
+DEVICE_LABEL_VERSION: Final[int] = 1
+
+
 #: `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
 CONTENT_CORPUS_VERSION: Final[int] = 2
 
@@ -1537,6 +1547,18 @@ MAX_CHUNK_INDEX_BYTES: Final[int] = 16777216
 
 #: Packs on the wire: `MAX_CHUNK_BYTES` (plans/P4-10.md §2.3, `@polaris-key/protocol/core`).
 MAX_CHUNK_BYTES: Final[int] = 4194304
+
+
+#: Identity passthrough: `DEVICE_LABEL_MAX_CODEPOINTS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
+DEVICE_LABEL_MAX_CODEPOINTS: Final[int] = 64
+
+
+#: Identity passthrough: `REQUEST_HANDLE_PATTERN` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
+REQUEST_HANDLE_PATTERN: Final[str] = "^rq_[A-Za-z0-9_-]{22}$"
+
+
+#: Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
+REQUEST_HANDLE_TTL_SECONDS: Final[int] = 600
 
 
 #: Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`).
@@ -1676,6 +1698,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "devices.attest": CapabilityRow("na", "core", (CapabilityNa("python", "runtime"),)),
         "identity.oidc": CapabilityRow("planned", "identity", ()),
         "identity.devicecode": CapabilityRow("implemented", "identity", ()),
+        "identity.devicelabel": CapabilityRow("implemented", "identity", ()),
         "identity.toggle": CapabilityRow("planned", "identity", ()),
         "release.changelog": CapabilityRow("implemented", "release", ()),
         "release.download": CapabilityRow("implemented", "release", ()),
@@ -1725,4 +1748,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "5f28148bf77c8b1ebc813b96c7af0ea36510a21744cee67a413339de08e3cd5c"
+CAPABILITY_DIGEST: Final[str] = "408b1c794052c7b5833e43494fda5eff8495b3a8e25af7a4eed1ca1cca62efa2"

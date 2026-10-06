@@ -153,6 +153,9 @@ class PolarisKeyClient:
         request_timeout: Optional[float] = DEFAULT_REQUEST_TIMEOUT_SECONDS,
         expected_services: Optional[Iterable[str]] = None,
         local_only: bool = False,
+        # PX-W13 (WIRE-CONTRACT-V4 §12.7.1): this device's label; None = the platform's
+        # node name, "" = send none.
+        device_name: Optional[str] = None,
         # ── config service inputs (override layers) ──────────────────────────────────
         local_overrides: Optional[Mapping[str, Any]] = None,
         env_prefix: str = DEFAULT_ENV_PREFIX,
@@ -183,6 +186,7 @@ class PolarisKeyClient:
             request_timeout=request_timeout,
             expected_services=expected_services,
             local_only=local_only,
+            device_name=device_name,
         )
         self._trust = TrustManager(self.core)
         self._cache = CacheManager(self.core, self._trust)

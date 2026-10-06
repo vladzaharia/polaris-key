@@ -12,8 +12,10 @@ import {
 import { discoveryCapabilities, discoveryFailure } from "./discovery.js";
 import { distributionDownloadModel } from "./distribution.js";
 import {
+  devicecodeDefault,
   devicecodeExpired,
   devicecodeHappy,
+  devicecodeLabel,
   identityDisabled,
 } from "./identity.js";
 import {
@@ -50,6 +52,8 @@ export const SCENARIOS: Scenario[] = [
   devicecodeHappy,
   devicecodeExpired,
   identityDisabled,
+  devicecodeLabel,
+  devicecodeDefault,
   edgeMint,
   updateFeedRollback,
   updateRecordByHash,

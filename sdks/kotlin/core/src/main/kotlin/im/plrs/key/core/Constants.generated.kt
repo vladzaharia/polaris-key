@@ -514,6 +514,7 @@ public object Feature {
     public const val devicesAttest: String = "devices.attest"
     public const val identityOidc: String = "identity.oidc"
     public const val identityDevicecode: String = "identity.devicecode"
+    public const val identityDevicelabel: String = "identity.devicelabel"
     public const val identityToggle: String = "identity.toggle"
     public const val releaseChangelog: String = "release.changelog"
     public const val releaseDownload: String = "release.download"
@@ -599,6 +600,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "devices.attest",
     "identity.oidc",
     "identity.devicecode",
+    "identity.devicelabel",
     "identity.toggle",
     "release.changelog",
     "release.download",
@@ -1211,6 +1213,9 @@ public const val PLAN_MATRIX_VERSION: Int = 2
 /** `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json. */
 public const val SYNC_SCENARIOS_VERSION: Int = 1
 
+/** `deviceLabelVersion` of conformance/corpus/v2/device-label.json. */
+public const val DEVICE_LABEL_VERSION: Int = 1
+
 /** `contentCorpusVersion` of conformance/corpus/v2/content/cases.json. */
 public const val CONTENT_CORPUS_VERSION: Int = 2
 
@@ -1294,6 +1299,15 @@ public const val MAX_CHUNK_INDEX_BYTES: Int = 16777216
 
 /** Packs on the wire: `MAX_CHUNK_BYTES` (plans/P4-10.md §2.3, `@polaris-key/protocol/core`). */
 public const val MAX_CHUNK_BYTES: Int = 4194304
+
+/** Identity passthrough: `DEVICE_LABEL_MAX_CODEPOINTS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`). */
+public const val DEVICE_LABEL_MAX_CODEPOINTS: Int = 64
+
+/** Identity passthrough: `REQUEST_HANDLE_PATTERN` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`). */
+public const val REQUEST_HANDLE_PATTERN: String = "^rq_[A-Za-z0-9_-]{22}\$"
+
+/** Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`). */
+public const val REQUEST_HANDLE_TTL_SECONDS: Int = 600
 
 /** Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`). */
 public val CHANNEL_ALIASES: Map<String, String> = mapOf(
@@ -1404,6 +1418,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "devices.attest" to CapabilityRow("implemented", "core", listOf(CapabilityNa("jvm", "runtime"), CapabilityNa("android", "outlet"))),
     "identity.oidc" to CapabilityRow("planned", "identity", listOf()),
     "identity.devicecode" to CapabilityRow("implemented", "identity", listOf()),
+    "identity.devicelabel" to CapabilityRow("implemented", "identity", listOf()),
     "identity.toggle" to CapabilityRow("planned", "identity", listOf()),
     "release.changelog" to CapabilityRow("implemented", "release", listOf()),
     "release.download" to CapabilityRow("implemented", "release", listOf()),
@@ -1452,4 +1467,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "a846601e4e51cfefe8b5ebcf1f1fb65a9cb9dd0f070543572e8883f5a866df43"
+public const val CAPABILITY_DIGEST: String = "2a218d5c4d3edd79eb1a2384ecc616357b864e4b7fe9b28f9b24bb03f139c186"

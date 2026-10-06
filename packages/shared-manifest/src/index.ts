@@ -4,6 +4,11 @@ import {
 } from "@polaris-key/catalog";
 import { type SecretDelivery } from "@polaris-key/protocol/config";
 import {
+  DEFAULT_RESERVED_DISPLAY_NAMES_MODE,
+  checkDisplayName,
+  type ReservedDisplayNamesMode,
+} from "./displayName.js";
+import {
   DEFAULT_RESERVED_NAMES_MODE,
   reservedNameDeclarations,
   type ReservedNamesMode,
@@ -1279,6 +1284,11 @@ function registrationPolicy(productRoot: Record<string, unknown>): unknown {
  */
 export interface ValidationOptions {
   reservedNames?: ReservedNamesMode;
+  /**
+   * PX-W13 (plans/PX-W13.md §3, §8 Q4): the severity of a reserved display name. The Worker passes
+   * its platform setting `identity.reservedDisplayNames`; anything else gets the default, `warn`.
+   */
+  reservedDisplayNames?: ReservedDisplayNamesMode;
 }
 
 export function validateManifestDocuments(
@@ -2460,6 +2470,126 @@ function validateDocuments(
       tierIds,
       syncEnabled: modules.includes("sync"),
     });
+  }
+
+  // PX-W13 (plans/PX-W13.md §3): the names the sign-in card shows an app by. Text with a control,
+  // zero-width or bidi code point is always refused; a reserved name is reported with the
+  // platform's severity (`identity.reservedDisplayNames`, `warn` until the lead flips it). The
+  // system product may call itself Polaris Key. Every emit site is literal so the generated
+  // validation-codes page lists each field and severity.
+  {
+    const mode =
+      opts.reservedDisplayNames ?? DEFAULT_RESERVED_DISPLAY_NAMES_MODE;
+    const verdict = (v: unknown): null | "reserved" | "invalid" =>
+      typeof v === "string" && v !== ""
+        ? checkDisplayName(v, { slug: productSlug })
+        : null;
+    const listing = isRecord(manifest.distribution)
+      ? asRecord(manifest.distribution.listing)
+      : {};
+
+    const name = verdict(productNode.name);
+    if (name === "invalid")
+      add(
+        errors,
+        "product",
+        "/product/name",
+        "invalid_display_text",
+        "product.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.",
+      );
+    else if (name === "reserved" && mode === "error")
+      add(
+        errors,
+        "product",
+        "/product/name",
+        "reserved_display_name",
+        "product.name uses a reserved platform or store name (Polaris Key, Apple, Google Play, Steam and others); an app may not present itself as one. Rename it, or ask the platform operator to approve it.",
+      );
+    else if (name === "reserved")
+      add(
+        warnings,
+        "product",
+        "/product/name",
+        "reserved_display_name",
+        "product.name uses a reserved platform or store name (Polaris Key, Apple, Google Play, Steam and others); the sign-in card shows the product slug instead. This becomes an error once the platform enforces reserved display names.",
+      );
+
+    const listingName = verdict(listing.name);
+    if (listingName === "invalid")
+      add(
+        errors,
+        "distribution",
+        "/listing/name",
+        "invalid_display_text",
+        "listing.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.",
+      );
+    else if (listingName === "reserved" && mode === "error")
+      add(
+        errors,
+        "distribution",
+        "/listing/name",
+        "reserved_display_name",
+        "listing.name uses a reserved platform or store name; an app may not present itself as one. Rename it, or ask the platform operator to approve it.",
+      );
+    else if (listingName === "reserved")
+      add(
+        warnings,
+        "distribution",
+        "/listing/name",
+        "reserved_display_name",
+        "listing.name uses a reserved platform or store name; the sign-in card shows the product slug instead. This becomes an error once the platform enforces reserved display names.",
+      );
+
+    const developer = verdict(listing.developerName);
+    if (developer === "invalid")
+      add(
+        errors,
+        "distribution",
+        "/listing/developerName",
+        "invalid_display_text",
+        "listing.developerName must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.",
+      );
+    else if (developer === "reserved" && mode === "error")
+      add(
+        errors,
+        "distribution",
+        "/listing/developerName",
+        "reserved_display_name",
+        "listing.developerName uses a reserved platform or store name; a developer may not present itself as one. Rename it, or ask the platform operator to approve it.",
+      );
+    else if (developer === "reserved")
+      add(
+        warnings,
+        "distribution",
+        "/listing/developerName",
+        "reserved_display_name",
+        "listing.developerName uses a reserved platform or store name; the sign-in card leaves the developer out instead. This becomes an error once the platform enforces reserved display names.",
+      );
+
+    // A per-outlet listing is merged over the document's for store pages only, so it is held to
+    // the text rule but not judged as the app's name.
+    const outlets = isRecord(manifest.distribution)
+      ? asRecord(manifest.distribution.outlets)
+      : {};
+    for (const [id, entry] of Object.entries(outlets)) {
+      const l = isRecord(entry) ? asRecord(entry.listing) : {};
+      if (verdict(l.name) === "invalid")
+        add(
+          errors,
+          "distribution",
+          `/outlets/${id}/listing/name`,
+          "invalid_display_text",
+          `outlets.${id}.listing.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.`,
+        );
+      if (verdict(l.developerName) === "invalid")
+        add(
+          errors,
+          "distribution",
+          `/outlets/${id}/listing/developerName`,
+          "invalid_display_text",
+          `outlets.${id}.listing.developerName must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.`,
+        );
+    }
   }
 
   // Declared secret names are looked up in the product's sealed-secret store.
@@ -5551,3 +5681,5 @@ export * from "./labels.js";
 export * from "./transportIds.js";
 // S-19 §7.4 (LX-05): reserved entitlement names and what a compatible declaration is.
 export * from "./reservedNames.js";
+// PX-W13 (plans/PX-W13.md §3): display names on the sign-in card and the reserved-name check.
+export * from "./displayName.js";

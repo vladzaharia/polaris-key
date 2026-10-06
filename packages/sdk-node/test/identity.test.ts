@@ -164,6 +164,74 @@ describe("beginSignIn", () => {
   });
 });
 
+describe("the device label (WIRE-CONTRACT-V4 §12.7.1, PX-W13)", () => {
+  async function labelled(
+    deviceName: string | undefined,
+    echo: Record<string, unknown> = {},
+  ) {
+    const p = plane({ [START]: [started(echo)] });
+    const store = new InMemoryStore();
+    const c = new PolarisKeyClient({
+      productSlug: PRODUCT,
+      baseUrl: BASE_URL,
+      version: "1.0.0",
+      trust: { pinnedKeys: {} },
+      trustRefresh: false,
+      store,
+      fetchImpl: p.fetchImpl,
+      requestTimeoutMs: 0,
+      expectedServices: ["identity"],
+      devices: { fingerprint: false },
+      ...(deviceName !== undefined ? { deviceName } : {}),
+    });
+    await c.init();
+    return { p, c };
+  }
+
+  it("normalises a per-call name before sending it", async () => {
+    const { p, c } = await labelled(undefined);
+    await c.identity.beginSignIn({ deviceName: " Den\u202e\tPC " });
+    expect((p.calls[0]!.body as Record<string, unknown>).deviceName).toBe(
+      "Den PC",
+    );
+  });
+
+  it("sends the configured name when the call passes none", async () => {
+    const { p, c } = await labelled("Living room TV");
+    await c.identity.beginSignIn();
+    expect((p.calls[0]!.body as Record<string, unknown>).deviceName).toBe(
+      "Living room TV",
+    );
+  });
+
+  it("sends the hostname, without .local, by default", async () => {
+    const { p, c } = await labelled(undefined);
+    await c.identity.beginSignIn();
+    const sent = (p.calls[0]!.body as Record<string, unknown>).deviceName as
+      | string
+      | undefined;
+    expect(sent === undefined || !/\.(local|lan|home)$/i.test(sent)).toBe(true);
+  });
+
+  it("an empty name opts out, at either level", async () => {
+    const a = await labelled("");
+    await a.c.identity.beginSignIn();
+    expect(a.p.calls[0]!.body).not.toHaveProperty("deviceName");
+    const b = await labelled("Deck");
+    await b.c.identity.beginSignIn({ deviceName: "" });
+    expect(b.p.calls[0]!.body).not.toHaveProperty("deviceName");
+  });
+
+  it("the prompt carries the echo, else (an older Worker) the label sent", async () => {
+    const echoed = await labelled("Deck", { deviceName: "Deck" });
+    expect((await echoed.c.identity.beginSignIn()).deviceName).toBe("Deck");
+    const nulled = await labelled("", { deviceName: null });
+    expect((await nulled.c.identity.beginSignIn()).deviceName).toBeNull();
+    const old = await labelled("Deck");
+    expect((await old.c.identity.beginSignIn()).deviceName).toBe("Deck");
+  });
+});
+
 describe("waitForSignIn", () => {
   async function begin(answers: Record<string, Answer[]>) {
     const p = plane({ [START]: [started()], ...answers });
@@ -374,6 +442,7 @@ describe("pollSignIn", () => {
       expiresIn: 600,
       interval: 2,
       expiresAt: T0 + 600,
+      deviceName: null,
     };
     expect(await c.identity.pollSignIn(prompt)).toEqual({
       status: "slow-down",

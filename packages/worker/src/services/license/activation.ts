@@ -35,7 +35,7 @@ import {
 import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
 import {
   deviceMetadata,
-  readFingerprint,
+  readDeviceBody,
   rotateDeviceToken,
   shapeDevice,
 } from "../../core/devices.js";
@@ -167,7 +167,8 @@ async function activateWithKey(
     now,
     {
       ...deviceMetadata(req),
-      fingerprint: await readFingerprint(req),
+      // PX-W13 §8 Q2: the body carries the fingerprint and the device label.
+      ...(await readDeviceBody(req)),
       // I-05: key entry binds the device by key and NEVER sets the account binding.
       boundBy: "key",
       // UX-15: a refusal is logged after the answer, not before it.
