@@ -85,10 +85,14 @@ Each service resolves its own settings today with different precedence ([S-18 §
 
 ## Acceptance criteria
 
-- [ ] Resolver property tests cover every source and the policy clamp direction.
-- [ ] `gen:transcripts --check` is unchanged.
-- [ ] No handler writes a registry-backed column outside `writeSetting()` (test).
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] Resolver property tests cover every source and the policy clamp direction
+      (`test/settings-resolver.test.ts`, with A-13 parity and the loaders).
+- [x] `gen:transcripts --check` is unchanged.
+- [x] No handler writes a registry-backed column outside `writeSetting()` (test:
+      `test/settings-writes.test.ts`; discovery agreement: `test/settings-discovery.test.ts`).
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header. The
+      one red is record-deploy's migration-name check and `checkRepresentable`'s migration order
+      on the `00XX` placeholder; with the migration numbered, the test step is green too.
 
 ## Verify
 
