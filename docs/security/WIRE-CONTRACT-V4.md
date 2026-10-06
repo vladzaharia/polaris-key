@@ -1,6 +1,6 @@
 # Polaris Wire Contract v4
 
-**Status:** Normative. Supersedes `WIRE-CONTRACT-V3.md`, the way v3 superseded v2. v3 remains the record; everything v3 said that v4 does not change is restated here, so this document can be read on its own. Amended for packs v1 by `plans/P4-01.md` (§2.5.1, §2.5.2, §2.6, §2.7, §3.7, §11.3, §11.4), inside v4: no new `typ`, no feed field, `PROTOCOL_VERSION` stays 4. Amended for chunk indexes by `plans/P4-10.md` (§2.5.1, §2.6, §3.1, §8, §9, §10, §11.4), also inside v4. Amended for content-key delegation by `plans/P4-19.md` (§1, §2, §2.4.1, §2.5, §2.5.3, §2.5.4, §2.8, §3.4, §3.5, §8, §9, §10), also inside v4: no new `typ`, claim, feed member or selector key. Amended for passthrough request metadata by `plans/PX-W13.md` (§5.4, §8, §12.7), also inside v4: no new `typ`, claim or signed shape, and `corpusVersion` stays 2.
+**Status:** Normative. Supersedes `WIRE-CONTRACT-V3.md`, the way v3 superseded v2. v3 remains the record; everything v3 said that v4 does not change is restated here, so this document can be read on its own. Amended for packs v1 by `plans/P4-01.md` (§2.5.1, §2.5.2, §2.6, §2.7, §3.7, §11.3, §11.4), inside v4: no new `typ`, no feed field, `PROTOCOL_VERSION` stays 4. Amended for chunk indexes by `plans/P4-10.md` (§2.5.1, §2.6, §3.1, §8, §9, §10, §11.4), also inside v4. Amended for content-key delegation by `plans/P4-19.md` (§1, §2, §2.4.1, §2.5, §2.5.3, §2.5.4, §2.8, §3.4, §3.5, §8, §9, §10), also inside v4: no new `typ`, claim, feed member or selector key. Amended for passthrough request metadata by `plans/PX-W13.md` (§5.4, §8, §12.7), also inside v4: no new `typ`, claim or signed shape, and `corpusVersion` stays 2. Amended for key-entry counting by `plans/PX-W9.md` (§5.3, §12, §12.2), also inside v4: one unsigned refusal code, one unsigned response member and one portal route, no new `typ`, claim, header or signed shape, and the signed corpus is unchanged.
 **PROTOCOL_VERSION:** `4` (`@polaris-key/protocol` `core.PROTOCOL_VERSION`).
 **Scope:** Everything that crosses the wire or the disk boundary between the Polaris Worker, the CI that signs releases, and the client SDKs (Node, React, Python, Swift, Godot, Kotlin): JWS envelope and its strictness, the six signed artifacts, trust distribution, the pinned release keys, device principal, offline bundles, verified cache, the monotonic clock floor and the feed `seq` floor. Server-internal behavior (D1 shapes, admin API) is out of scope except where it produces signed artifacts.
 **Conformance:** `conformance/corpus/v2/` pins every rule marked **[C]** byte-for-byte across all implementations, within the representation limits declared in §10. `pnpm gen:corpus -- --check` is the drift gate. The v4 plan is `docs/research/2026-09-29-godot-omniplatform/program/plans/P3-01.md`; its §2–§4 are the long form of §1–§4 and §11 here.
@@ -781,7 +781,7 @@ document, claim, header or error code changes, and `PROTOCOL_VERSION` stays 4.
 | ----------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | `device_limit`    | `POST /<p>/license/activate`, `POST /<p>/license/enroll`, `POST /<p>/identity/session/license` | attached licence: `<portal>/#/p/<slug>/free-device?license=<id>[&for=<label>]`      |
 |                   |                                                                                                | floating licence: `<portal>/activate?product=<slug>&next=free-device[&for=<label>]` |
-| `key_entry_limit` | the Identity key-entry routes (I-09)                                                           | `<portal>/activate?product=<slug>`                                                  |
+| `key_entry_limit` | `POST /<p>/license/activate`, `POST /<p>/identity/session/license` (§12.2)                     | `<portal>/activate?product=<slug>`                                                  |
 
 1. **Shape.** `manageUrl` is an absolute `https` URL of at most `MANAGE_URL_MAX_LENGTH` (2048)
    characters on the portal origin: `CONSOLE_ORIGIN`, else the request's own origin. The body keeps
@@ -1063,10 +1063,11 @@ Client behaviour beside the Cloud Sync routes (`plans/U-01.md` §2.3, §2.4, §4
 There is one Polaris Key account per person, platform-wide; it is never a per-product toggle. A
 product's `identity` service toggle gates only sign-in _through that product_
 (`plans/I-04.md` §2.1). Nothing in this section is signed and nothing here enters the licence
-document: `PROTOCOL_VERSION` stays 4. §12.2 to §12.6 are reserved for I-08 (the passthrough
-sign-in, Continue, callback binding and `authorize`) and I-09 (key entry, the account contract,
-refusals) and are written when they land. §12.7 is PX-W13's passthrough request metadata and
-§12.8 is PX-W17's Identity-off behaviour.
+document: `PROTOCOL_VERSION` stays 4. §12.2 is PX-W9's key entry; I-09 inserts its step 3
+(`license_owned`). §12.3 to §12.6 are reserved for I-08 (the passthrough sign-in, Continue,
+callback binding and `authorize`) and I-09 (the account contract and its refusals) and are
+written when they land. §12.7 is PX-W13's passthrough request metadata and §12.8 is PX-W17's
+Identity-off behaviour.
 
 ### 12.1 What the toggle scopes
 
@@ -1079,6 +1080,75 @@ refusals) and are written when they land. §12.7 is PX-W13's passthrough request
 
 A developer-facing surface names an account only by its pairwise subject for that product, never
 by the global account id (S-16 §5.1).
+
+### 12.2 Key entry [C]
+
+Pinned by `keyentry-limit.json`, `keyentry-refusals-off.json` and `keyentry-identity-off.json`
+(transcripts). The long form is `plans/PX-W9.md`. Nothing here is signed and no signed document
+changes: `PROTOCOL_VERSION` stays 4.
+
+A **key entry** is a person typing a licence key to use it. On a product whose Identity toggle is
+on, the Worker counts key entries per licence and, past the product's limit, may refuse the key to
+a new device and point the person at an account instead (PORTAL §4.6).
+
+1. **Surfaces.** A key entry happens on one of three surfaces, on a product with Identity on:
+   - `app`: `POST /<p>/license/activate`;
+   - `browser`: `POST /<p>/identity/session/license`;
+   - `portal`: `POST /api/claim/license-key`, once the licence's attach to the account commits.
+2. **Enrolled.** A device is enrolled on a licence when the `devices` row for
+   `(product, device_id)` has that `license_id` and `status = 'authorized'`. A browser session's
+   device is `browser:<licenseId>`, so the `browser` surface counts at most once per enrolment.
+3. **Order on the two device routes.**
+   1. The rate limit, the key and the licence, unchanged.
+   2. An enrolled device is answered as before: never refused, never counted.
+   3. Reserved for I-09 (`license_owned`).
+   4. When `identity.keyEntryRefusals` is on, the licence is in no account (rule 6) and
+      `used ≥ limit`: the flat
+      `403 {"error":"key_entry_limit","message":…,"manageUrl":…,"keyEntries":{…}}`. `manageUrl`
+      is the §5.3 link, omitted while the product's customer portal is off. Nothing is written
+      but the refusal log.
+   5. Otherwise the device is authorised as before (seat, fingerprint, hardware). A new
+      authorisation that takes a seat records exactly one entry, in the same database batch as
+      the seat claim: a refused or failed authorisation records none, and of concurrent calls
+      from one device only one records.
+4. **Never counted:**
+   - a refused or failed attempt;
+   - an enrolled device entering the key again;
+   - token refresh (`license/token`), offline grace and every document fetch;
+   - `license/enroll`, store bindings and sign-in activation (OIDC, device code);
+   - choosing a licence at sign-in, and **Replace a device**;
+   - a portal claim of a licence the account already holds (`already_yours`), and a refused
+     claim;
+   - the signed-out key preview (rule 8).
+5. **The member** `keyEntries: {"used": n, "limit": n}`.
+   - `used` is the licence's count of recorded entries. It may exceed `limit`: after concurrent
+     entries at the last free one, after portal claims, and after a period with refusals off.
+   - `limit` is the product's effective `identity.keyEntry.limit`: an integer from 1 to 100,
+     default 10. There is no unlimited value while Identity is on.
+   - A client shows `max(0, limit − used)` entries left.
+   - It is present on every key-entry 2xx of an Identity-on product, an enrolled device's
+     included (`200` on `license/activate`, beside `token`; `201 {"ok":true,"keyEntries":…}` on
+     `session/license`), and on `key_entry_limit`. It is absent otherwise, and always absent
+     with Identity off.
+6. **Whom the limit applies to.** Every successful key entry is counted, whatever the licence's
+   holder. Step 4 refuses only a licence in no account (`licenses.account_id IS NULL`), floating
+   or assigned and waiting for its email. A licence in an account meets I-09's `license_owned`
+   first.
+7. **Not an auth failure.** A client never wipes state, retries or opens the link on its own: it
+   shows the refusal and offers the link behind a user action (§5.3 rule 6).
+8. **The portal.**
+   - `POST /api/activate/preview` (signed in) answers `keyEntries`, or `null`, where it answered
+     `entries: null`. The claim answers `keyEntries` beside the licence.
+   - The signed-out, read-only `POST /api/key/preview` answers
+     `{product, verdict, license, keyEntries, upgrade}`. `verdict` is `addable`,
+     `license_owned` (the key's licence is in an account, never whose) or `portal_off`.
+     `license` is `{tierName, term}` (`term`: `perpetual`, or the licence's end in epoch seconds)
+     or `null`. `upgrade` is `forced` only when the verdict is `addable`, refusals are on and
+     `used ≥ limit`, else `skippable`. It never answers an email, a masked email, a licence id,
+     devices or an account. A string that is not a licence key answers `422`, an unknown key
+     `401`, and the per-network budget (10 a minute) `429`.
+9. **Identity off.** Nothing is counted, nothing is refused and no member is sent. Entries
+   recorded earlier are kept and ignored.
 
 ### 12.7 Passthrough request metadata
 
