@@ -586,6 +586,13 @@ export const VARIANT_FORMAT = "image/webp";
 /** The binding's error code when the account's transformations are used up. */
 export const IMAGES_QUOTA_ERROR = 9422;
 
+/**
+ * The first back-off step of a slot's retry, a pull or a ladder (HA-05, re-exported by
+ * `core/hostedAssetPulls.ts`); it doubles per failure. Defined here because an ingest that leaves
+ * a new copy owing its ladder records that failure as the ladder's first attempt.
+ */
+export const PULL_BACKOFF_BASE_SECONDS = 15 * 60;
+
 /** One entry of `hosted_assets.variants_json`. */
 export interface HostedAssetVariant {
   w: number;
@@ -786,6 +793,16 @@ export function ladderOwedSql(p = ""): string {
     END)`;
 }
 
+/** Does a ready copy of `slot` at `width`, with `variants`, owe its ladder (`ladderOwedSql`)? */
+function owesLadder(
+  slot: string,
+  width: number | null,
+  variants: readonly HostedAssetVariant[],
+): boolean {
+  if (variants.length > 0 || variantFamily(slot) === null) return false;
+  return width === null || ladderWidths(slot, width).length > 0;
+}
+
 /** The stored original, read back and checked against its name; `null` when it cannot be. */
 async function readOriginal(
   bucket: R2Bucket,
@@ -872,23 +889,49 @@ export async function rebuildLadder(
     height: row.height,
   };
   if (dims.width === null) dims = knownDims(same) ?? dims;
-  let variants = await reusableLadder(ctx.db, product, slot, dims.width, same);
-  const source = variants.length > 0 ? "an identical copy" : "the stored copy";
-  if (variants.length === 0) {
-    const original = await readOriginal(bucket, sha256, row.size, cls.maxBytes);
-    if (!original) return "failed";
-    if (dims.width === null) dims = await imageInfo(ctx.env, original);
-    if (dims.width === null) return "failed";
-    if (ladderWidths(slot, dims.width).length > 0) {
-      variants = await buildLadder(
-        ctx,
-        bucket,
-        cls,
-        slot,
-        original,
+  // A failure keeps a width learned on the way (from the same bytes or `.info()`), on the same
+  // copy only, so the next retry neither asks the binding again nor re-reads for it.
+  const failed = async (): Promise<LadderOutcome> => {
+    if (row.width === null && dims.width !== null)
+      await ctx.db.run(
+        `UPDATE hosted_assets SET width = ?, height = ?
+          WHERE product = ? AND slot = ? AND locale = ? AND sha256 = ? AND width IS NULL`,
         dims.width,
+        dims.height,
+        product,
+        slot,
+        locale,
+        sha256,
       );
-      if (variants.length === 0) return "failed";
+    return "failed";
+  };
+  let variants: HostedAssetVariant[] = [];
+  let source = "the stored copy";
+  // A width already known to admit no rung needs no read and no build: record it ("none").
+  if (dims.width === null || ladderWidths(slot, dims.width).length > 0) {
+    variants = await reusableLadder(ctx.db, product, slot, dims.width, same);
+    if (variants.length > 0) source = "an identical copy";
+    else {
+      const original = await readOriginal(
+        bucket,
+        sha256,
+        row.size,
+        cls.maxBytes,
+      );
+      if (!original) return failed();
+      if (dims.width === null) dims = await imageInfo(ctx.env, original);
+      if (dims.width === null) return "failed";
+      if (ladderWidths(slot, dims.width).length > 0) {
+        variants = await buildLadder(
+          ctx,
+          bucket,
+          cls,
+          slot,
+          original,
+          dims.width,
+        );
+        if (variants.length === 0) return failed();
+      }
     }
   }
 
@@ -1107,12 +1150,16 @@ export async function ingest(
   const key = blobKey(stored.sha256);
   const refId = hostedAssetRefId(slot, locale);
   const keys = [key, ...variants.map((v) => blobKey(v.sha256))];
+  // A NEW copy (other bytes than the row held, whatever way in) starts with a clean back-off:
+  // none, or, when it owes its ladder while the binding is bound, this ingest as the ladder's
+  // first failed attempt (HA-05 retries it one step later). The same bytes keep the row's.
+  const owed = !!ctx.env.IMAGES && owesLadder(slot, stored.width, variants);
   await ctx.db.batch([
     {
       sql: `INSERT INTO hosted_assets (product, slot, locale, origin, source_kind, source_ref,
               source_etag, sha256, size, content_type, width, height, variants_json, status, error,
-              checked_at, modified_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ready', NULL, ?, ?)
+              checked_at, modified_at, attempts, next_attempt_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ready', NULL, ?, ?, ?, ?)
             ON CONFLICT(product, slot, locale) DO UPDATE SET
               origin = excluded.origin, source_kind = excluded.source_kind,
               source_ref = excluded.source_ref, source_etag = excluded.source_etag,
@@ -1120,7 +1167,11 @@ export async function ingest(
               content_type = excluded.content_type, width = excluded.width,
               height = excluded.height, variants_json = excluded.variants_json,
               status = 'ready', error = NULL, checked_at = excluded.checked_at,
-              modified_at = excluded.modified_at`,
+              modified_at = excluded.modified_at,
+              attempts = CASE WHEN hosted_assets.sha256 IS excluded.sha256
+                THEN hosted_assets.attempts ELSE excluded.attempts END,
+              next_attempt_at = CASE WHEN hosted_assets.sha256 IS excluded.sha256
+                THEN hosted_assets.next_attempt_at ELSE excluded.next_attempt_at END`,
       params: [
         product,
         slot,
@@ -1137,6 +1188,8 @@ export async function ingest(
         JSON.stringify(variants),
         ctx.now,
         ctx.now,
+        owed ? 1 : 0,
+        owed ? ctx.now + PULL_BACKOFF_BASE_SECONDS : null,
       ],
     },
     // The slot's refs are exactly the original and the variants in `variants_json`: a replaced

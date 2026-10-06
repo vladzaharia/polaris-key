@@ -66,12 +66,16 @@ This is the owner's "just pull the files". It also retires DJDL's public `djdl-a
   `processLadderRetry` → `rebuildLadder`, which reads the stored original back and builds only the
   ladder. The original is never pulled again.
 - **The same back-off and budget.** The retry uses `attempts` and `next_attempt_at` (an owed pull
-  and an owed ladder never share a row: the pull's ingest builds the ladder). A pull whose ingest
-  leaves the ladder owed counts as its first attempt (`attempts = 1`, next in 15 min); each failed
-  retry doubles the wait up to 24 h; a built ladder clears both. The re-check's 50 per run are
-  shared between pulls and ladder retries, oldest-due first.
+  and an owed ladder never share a row: the pull's ingest builds the ladder). Any ingest that
+  installs new bytes in the slot (a pull, a console upload, a CI push) starts a clean back-off:
+  none, or, when it leaves the ladder owed, that failure as the first attempt (`attempts = 1`,
+  next in 15 min); the same bytes keep the row's. Each failed retry doubles the wait up to 24 h;
+  a built ladder clears both. The re-check's 50 per run are shared between pulls and ladder
+  retries, oldest-due first.
 - **Never retried:** without the binding, for slots without a ladder family, or for a copy
-  narrower than its family's smallest rung (a retry that learns such a width records it).
+  narrower than its family's smallest rung. A retry records a width it learns, from the same
+  bytes or `.info()`, even when it then fails; a width already known to admit no rung settles the
+  copy without reading it.
 
 ## Design notes
 

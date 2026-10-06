@@ -9,6 +9,7 @@ import {
   HOSTED_ASSET_REF,
   HostedAssetError,
   IMAGES_QUOTA_ERROR,
+  PULL_BACKOFF_BASE_SECONDS,
   SLOT_CLASSES,
   VARIANT_LADDERS,
   getHostedAsset,
@@ -1130,6 +1131,122 @@ describe("rebuildLadder", () => {
       await expect(
         rebuildLadder(ctx, "djdl", slot, locale, h),
       ).rejects.toBeInstanceOf(HostedAssetError);
+  });
+  it("a width the same bytes already show to admit no rung needs no read and no call: none at once", async () => {
+    ctx.env = { BLOBS: asR2(r2) };
+    await ingest(ctx, "djdl", "presentation.icon", upload(PNG));
+    // listing.icon learns the width (48 px) from the binding; presentation.icon still has none.
+    ctx.env = { BLOBS: asR2(r2), IMAGES: stubImages({ width: 48 }) };
+    await ingest(ctx, "djdl", "listing.icon", upload(PNG));
+    expect(await getHostedAsset(db, "djdl", "listing.icon")).toMatchObject({
+      width: 48,
+    });
+    // Were the original read, its absence would fail the retry.
+    await asR2(r2).delete(blobKey(sha(PNG)));
+    const images = stubImages({ width: 999 });
+    ctx.env = { BLOBS: asR2(r2), IMAGES: images };
+    expect(
+      await rebuildLadder(ctx, "djdl", "presentation.icon", "", sha(PNG)),
+    ).toBe("none");
+    expect(images.infos).toBe(0);
+    expect(images.widths).toEqual([]);
+    expect(await getHostedAsset(db, "djdl", "presentation.icon")).toMatchObject(
+      { width: 48, height: 48, variants_json: "[]" },
+    );
+    expect(
+      await db.all(`SELECT slot FROM hosted_assets WHERE ${ladderOwedSql()}`),
+    ).toEqual([]);
+  });
+
+  it("keeps a width learned by .info() when the build then fails; the next retry does not ask again", async () => {
+    ctx.env = { BLOBS: asR2(r2) };
+    await ingest(ctx, "djdl", "presentation.icon", upload(PNG));
+    const failing = stubImages({
+      width: 512,
+      failAt: { n: 0, code: IMAGES_QUOTA_ERROR },
+    });
+    ctx.env = { BLOBS: asR2(r2), IMAGES: failing };
+    expect(
+      await rebuildLadder(ctx, "djdl", "presentation.icon", "", sha(PNG)),
+    ).toBe("failed");
+    expect(failing.infos).toBe(1);
+    expect(await getHostedAsset(db, "djdl", "presentation.icon")).toMatchObject(
+      { width: 512, height: 512, variants_json: "[]" },
+    );
+    const images = stubImages({ width: 512 });
+    ctx.env = { BLOBS: asR2(r2), IMAGES: images };
+    expect(
+      await rebuildLadder(ctx, "djdl", "presentation.icon", "", sha(PNG)),
+    ).toBe("built");
+    expect(images.infos).toBe(0);
+    expect(images.widths).toEqual([64, 128, 256, 512]);
+  });
+});
+
+describe("the back-off of a new copy", () => {
+  async function backoff(slot = "presentation.icon") {
+    return db.first<{ attempts: number; next_attempt_at: number | null }>(
+      "SELECT attempts, next_attempt_at FROM hosted_assets WHERE product = 'djdl' AND slot = ? AND locale = ''",
+      slot,
+    );
+  }
+  const aged = () =>
+    db.run(
+      "UPDATE hosted_assets SET attempts = 6, next_attempt_at = ? WHERE product = 'djdl'",
+      NOW + 86_400,
+    );
+  const quota = () =>
+    stubImages({ width: 512, failAt: { n: 0, code: IMAGES_QUOTA_ERROR } });
+
+  it("any way in that installs new bytes resets it; the same bytes keep the row's", async () => {
+    // A console upload whose ladder fails: that failure is the ladder's first attempt.
+    ctx.env = { BLOBS: asR2(r2), IMAGES: quota() };
+    await ingest(ctx, "djdl", "presentation.icon", upload(PNG));
+    expect(await backoff()).toEqual({
+      attempts: 1,
+      next_attempt_at: NOW + PULL_BACKOFF_BASE_SECONDS,
+    });
+
+    // The same bytes again (still failing): the copy is not new, so its back-off stands.
+    await aged();
+    await ingest(ctx, "djdl", "presentation.icon", upload(PNG));
+    expect(await backoff()).toEqual({
+      attempts: 6,
+      next_attempt_at: NOW + 86_400,
+    });
+
+    // New bytes by console upload, still owing a ladder: a clean back-off, one step out.
+    ctx.now = NOW + 1_000;
+    await ingest(ctx, "djdl", "presentation.icon", upload(PNG2));
+    expect(await backoff()).toEqual({
+      attempts: 1,
+      next_attempt_at: NOW + 1_000 + PULL_BACKOFF_BASE_SECONDS,
+    });
+
+    // New bytes by a CI push whose ladder is built: nothing owed, nothing held off.
+    await aged();
+    ctx.env = { BLOBS: asR2(r2), IMAGES: stubImages({ width: 512 }) };
+    await ingest(ctx, "djdl", "presentation.icon", {
+      ...upload(PNG),
+      origin: "ci",
+      sourceKind: "ci",
+    });
+    expect(await variantsOf("presentation.icon")).toHaveLength(4);
+    expect(await backoff()).toEqual({ attempts: 0, next_attempt_at: null });
+
+    // New bytes without the binding: a ladder is never owed, so nothing is held off either.
+    await aged();
+    ctx.env = { BLOBS: asR2(r2) };
+    await ingest(ctx, "djdl", "presentation.icon", upload(PNG2));
+    expect(await backoff()).toEqual({ attempts: 0, next_attempt_at: null });
+
+    // A slot without a ladder family never owes one, binding or not.
+    ctx.env = { BLOBS: asR2(r2), IMAGES: quota() };
+    await ingest(ctx, "djdl", "notes-image:0123456789abcdef", upload(PNG));
+    expect(await backoff("notes-image:0123456789abcdef")).toEqual({
+      attempts: 0,
+      next_attempt_at: null,
+    });
   });
 });
 

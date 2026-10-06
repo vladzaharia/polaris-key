@@ -5769,8 +5769,12 @@ which the main script consumes (notes/S-20 §6.3, §6.4). Code: `core/hostedAsse
   and a fresh SHA-256 of the bytes against the name, and transforms it as an ingest would. It
   grants no new original ref and touches no source: its only writes are the slot's own variant
   refs, the row's `variants_json` and dimensions, and an `assets.variants` audit row, in one batch
-  guarded on that same condition. Each retry costs one R2 read of at most the slot's cap and at
-  most one transformation per rung. The back-off is the pulls' (the ingest's failure counts as
+  guarded on that same condition (a width learned by `.info()` is recorded even when the build then
+  fails, on the same condition, so no retry asks again). Each retry costs one R2 read of at most
+  the slot's cap, one `.info()` call when the copy's width is still unknown, and at most one
+  transformation per rung; a width already known to admit no rung costs nothing and settles the
+  copy. A new copy installed in the slot by any ingest (a pull, a console upload, a CI push)
+  starts with a clean back-off. The back-off is the pulls' (the ingest's failure counts as
   the first attempt; 15 minutes doubling to 24 hours), and the 50-per-night budget is shared, so
   a month's exhausted transformations cost one failed attempt per owed slot per back-off step.
   Without the binding, for slots without a ladder family, and for a copy narrower than its

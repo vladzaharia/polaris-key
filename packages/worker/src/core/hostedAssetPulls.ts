@@ -58,6 +58,7 @@ import {
   ingest,
   isHostedAssetLocale,
   ladderOwedSql,
+  PULL_BACKOFF_BASE_SECONDS,
   rebuildLadder,
   variantFamily,
   type IngestContext,
@@ -66,8 +67,8 @@ import {
 } from "./hostedAssets.js";
 import { gitShaOrNull } from "./manifestSnapshot.js";
 
-/** The first back-off step after a failed pull; it doubles per failure. */
-export const PULL_BACKOFF_BASE_SECONDS = 15 * 60;
+/** The first back-off step after a failed pull or ladder retry; it doubles per failure. */
+export { PULL_BACKOFF_BASE_SECONDS } from "./hostedAssets.js";
 /** The back-off never exceeds a day. */
 export const PULL_BACKOFF_CAP_SECONDS = 24 * 60 * 60;
 /** How many owed pulls and ladder retries one nightly run enqueues, at most (one budget). */
@@ -740,8 +741,9 @@ export async function processAssetPull(
 
   const result = await ingest(ctx, msg.product, msg.slot, input);
   if (result.ok) {
-    // The pull is done. A copy left owing its ladder (the ingest's ladder failed) counts that
-    // failure as the ladder's first attempt: its retry waits one back-off step.
+    // The pull is done; its back-off is cleared. A copy left owing its ladder (the ingest's ladder
+    // failed) counts that failure as the ladder's first attempt, as `ingest` records for a new
+    // copy: its retry waits one back-off step. (This also settles the same bytes and a 304.)
     const owed = ctx.env.IMAGES ? ladderOwedSql() : "0";
     await db.batch([
       {
