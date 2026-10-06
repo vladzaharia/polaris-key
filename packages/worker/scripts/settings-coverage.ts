@@ -463,7 +463,11 @@ export const PENDING: readonly PendingEntry[] = [
   { target: "env:EMAIL_APPLE_RELAY", owner: "ST-09", note: "email.appleRelay" },
   // Operator-owned product objects the settings hub hosts.
   { target: "table:product_keys", owner: "ST-08", note: "core.keys" },
-  { target: "table:product_secrets", owner: "ST-08", note: "core.secrets" },
+  {
+    target: "table:product_secrets",
+    owner: "ST-08",
+    note: "core.secrets' storage (ST-19b registered the entry, names only)",
+  },
   {
     target: "table:release_channel_floors",
     owner: "ST-08",
@@ -475,43 +479,10 @@ export const PENDING: readonly PendingEntry[] = [
     note: "release.channelFloors (packs)",
   },
   { target: "column:release_pack_floors.source", owner: "ST-08" },
-  // Manifest-declared settings with no entry yet (ST-19 split them out to ST-19b, plans/ST-19.md
-  // Q1). The duplicate spellings ST-06 parked here left with ST-19: the generated NOT_A_SETTING
-  // row "Deprecated manifest spellings" covers them.
-  {
-    target: "table:provisioning_config",
-    owner: "ST-19b",
-    note: "identity.provisioning",
-  },
-  {
-    target: "table:dist_transports",
-    owner: "ST-19b",
-    note: "distribution.transports",
-  },
-  {
-    target: "manifest:product:devices",
-    owner: "ST-19b",
-    note: "core.registration",
-  },
-  {
-    target: "manifest:product:provisioning",
-    owner: "ST-19b",
-    note: "identity.provisioning",
-  },
-  {
-    target: "manifest:product:secrets",
-    owner: "ST-19b",
-    note: "core.secrets (names only)",
-  },
-  {
-    target: "manifest:distribution:transports",
-    owner: "ST-19b",
-    note: "distribution.transports",
-  },
 ];
 
 /** `PENDING.length`, written down: lower it with every removal; raising it needs a review. */
-export const PENDING_CEILING = 32;
+export const PENDING_CEILING = 26;
 
 export interface CoverageInputs {
   targets: readonly CoverageTarget[];
