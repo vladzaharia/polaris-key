@@ -36,6 +36,22 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 
 - Add the `signin.*` namespace of SIGN-IN.md §5.2 (incl. `signin.choice.devices`, `signin.choice.accountWide`, `signin.term.*`, `signin.consent.licenseLineAccount`) over `core.copy`; the portal `AuthCard`, the Worker's `renderAuthCard()` and the emails read it (D-41).
 
+## One sign-in form (2026-10-05): `plans/I-04.md` §G and SIGN-IN.md §3.17
+
+The owner decided on 2026-10-05 that every in-app sign-in step happens in **one form whose body
+morphs in place** (no stacked sheets), that the license is chosen **inside the app** when it can
+show it, that the presentation is configurable with native controls kept, that there are **two
+equal ways to integrate** (the hosted card, and the kit form with headless primitives), and that
+the web flow is one continuous, animated card. The wire is
+[`plans/I-04.md`](../plans/I-04.md) §G (a pending sign-in grant, `licenseChoice: "app" | "card"`);
+the experience is [`SIGN-IN.md`](../../../../design/SIGN-IN.md) §2.4, §3.17, §3.18, §4.16 and
+D-78–D-93. Where this brief differs, they win. **No device-wire version change**
+(`PROTOCOL_VERSION` 4, `DISCOVERY_VERSION` 2, `corpusVersion` 2; no corpus file). New UI copy uses
+the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {limit} devices" on
+every row, no "Account-wide"). For this package:
+
+- Add the new `signin.*` keys of SIGN-IN.md §5.2 (`signin.consent.licenseInApp`, `signin.return.signedInShort`, `signin.return.chooseInApp`, `signin.desktop.notifyChoose`, `signin.done.start`, `signin.replace.lede`, `signin.replace.openSystem`, `signin.menu.signIn`), and the O-17 vocabulary once `fix/drop-account-wide-label` lands.
+
 ## Goal
 
 One ICU catalog holds every kit string, every SDK gets its generated catalog in the launch locales, and the drift gate fails on a hand edit.
