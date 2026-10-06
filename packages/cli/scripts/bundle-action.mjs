@@ -13,9 +13,10 @@
  * their BUILT `dist/`, so run `pnpm build` first — plus the `.pkey/` JSON Schemas, inlined as
  * `__PKEY_EMBEDDED_SCHEMAS__` for `pkey manifest schemas`.
  *
- * Licences: the bundle inlines third-party code (yaml, ISC; the Zstandard decoder, BSD). Their
- * notices live in `actions/publish/THIRD_PARTY_NOTICES` and are also appended to the bundle as a
- * trailing legal comment, so the standalone `pkey.mjs` carries them without the Action directory.
+ * Licences: the bundle inlines third-party code (yaml, ISC; smol-toml, BSD-3-Clause; the Zstandard
+ * decoder, BSD). Their notices live in `actions/publish/THIRD_PARTY_NOTICES` and are also appended
+ * to the bundle as a trailing legal comment, so the standalone `pkey.mjs` carries them without the
+ * Action directory.
  * Any `/*!` or `@license` comments in bundled sources are kept at the end too (`legalComments`).
  */
 

@@ -902,27 +902,107 @@ export async function claimEnrolledLicense(
 }
 
 /**
- * Re-point every device of one license at another — the migrate arm of the merge table.
+ * Plan re-pointing every device of one license at another — the migrate arm of the merge table
+ * (LX-03, notes/S-19 §4.3 G6). Answers the statements, or `null` when the move would take the
+ * destination past `limit` (nothing is written but the dormant-seat release below).
  *
- * The seat ordinal is dropped in the same statement. `idx_devices_seat` is unique per
- * (product, license_id, seat_no), so carrying an ordinal across licenses makes the migrate
- * path throw a UNIQUE violation the moment the destination already holds that ordinal —
- * which, once `licenseCore.authorizeDevice` claims seats, is the ordinary case. The moved
- * device stays `authorized`, so `countActiveDevices` still counts it against the destination's
- * limit; it simply holds no ordinal until its next new authorization.
+ * The move is SEAT-CHECKED, the way `claimDeviceSeat` is, instead of dropping the ordinal:
+ *
+ *   - The destination's dormant seats are released first (`releaseDormantSeats`, as
+ *     `claimDeviceSeat` does), so what is left holding an ordinal there is occupying capacity.
+ *   - Every AUTHORIZED device on the source moves, dormant ones included, and each one counts:
+ *     a dormant device given no ordinal would come back through `validateDeviceToken` without
+ *     ever claiming a seat (THREAT-MODEL, R1-07). Moving `m` of them onto a destination with
+ *     `held` seat-holding devices (the same dormancy floor `authorizeDevice` counts with) is
+ *     refused when `limit <= 0` or `m + held > limit`.
+ *   - Each moved authorized device takes the lowest free ordinal of the destination, in the order
+ *     the devices first appeared. The ordinals are planned here and written by the caller's
+ *     batch, so `idx_devices_seat` is still the arbiter: a concurrent `claimDeviceSeat` that takes
+ *     a planned ordinal first makes the whole batch throw (and roll back), and the caller plans
+ *     again.
+ *   - A device that is not authorized moves without an ordinal (it holds no seat anywhere). An
+ *     authorized device that reaches the source after this read is left on it: it was never
+ *     seat-checked against the destination.
+ */
+export async function planDeviceMove(
+  db: Db,
+  product: string,
+  fromLicenseId: string,
+  toLicenseId: string,
+  limit: number,
+  now: number,
+): Promise<DbStatement[] | null> {
+  if (fromLicenseId === toLicenseId) return [];
+  await releaseDormantSeats(db, product, now, toLicenseId);
+  const moving = await db.all<{ device_id: string }>(
+    `SELECT device_id FROM devices
+      WHERE product = ? AND license_id = ? AND status = 'authorized'
+      ORDER BY first_seen ASC, device_id ASC`,
+    product,
+    fromLicenseId,
+  );
+  const held = await countActiveDevices(
+    db,
+    product,
+    toLicenseId,
+    seatActiveSince(now),
+  );
+  if (!Number.isFinite(limit) || limit <= 0 || moving.length + held > limit)
+    return null;
+  const taken = new Set(
+    (
+      await db.all<{ seat_no: number }>(
+        `SELECT seat_no FROM devices
+          WHERE product = ? AND license_id = ? AND status = 'authorized'
+            AND seat_no IS NOT NULL`,
+        product,
+        toLicenseId,
+      )
+    ).map((r) => r.seat_no),
+  );
+  const free: number[] = [];
+  for (let n = 1; n <= limit && free.length < moving.length; n++)
+    if (!taken.has(n)) free.push(n);
+  // `held` counts every seat-holder (the release above left none dormant), so `limit - held`
+  // ordinals are free and the check above makes that at least `moving.length`.
+  if (free.length < moving.length) return null;
+  return [
+    ...moving.map((d, i) => ({
+      sql: `UPDATE devices SET license_id = ?, seat_no = ?
+             WHERE product = ? AND device_id = ? AND license_id = ? AND status = 'authorized'`,
+      params: [toLicenseId, free[i]!, product, d.device_id, fromLicenseId],
+    })),
+    {
+      sql: `UPDATE devices SET license_id = ?, seat_no = NULL
+             WHERE product = ? AND license_id = ? AND status <> 'authorized'`,
+      params: [toLicenseId, product, fromLicenseId],
+    },
+  ];
+}
+
+/**
+ * {@link planDeviceMove}, applied in one batch. `false` (nothing moved) when the destination's
+ * seats would be exceeded. A batch that loses an ordinal to a concurrent activation throws.
  */
 export async function moveDevices(
   db: Db,
   product: string,
   fromLicenseId: string,
   toLicenseId: string,
-): Promise<void> {
-  await db.run(
-    "UPDATE devices SET license_id = ?, seat_no = NULL WHERE product = ? AND license_id = ?",
-    toLicenseId,
+  limit: number,
+  now: number,
+): Promise<boolean> {
+  const plan = await planDeviceMove(
+    db,
     product,
     fromLicenseId,
+    toLicenseId,
+    limit,
+    now,
   );
+  if (plan === null) return false;
+  if (plan.length > 0) await db.batch(plan);
+  return true;
 }
 
 export async function listLicenseProfiles(

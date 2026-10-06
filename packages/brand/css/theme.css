@@ -98,6 +98,8 @@
   --font-sans: var(--pk-font-sans);
   --font-mono: var(--pk-font-mono);
   --font-weight-normal: var(--pk-font-weight-regular);
+  --font-weight-medium: var(--pk-font-weight-medium);
+  --font-weight-semibold: var(--pk-font-weight-semibold);
   --font-weight-bold: var(--pk-font-weight-bold);
   --text-xs: var(--pk-font-size-xs);
   --text-xs--line-height: var(--pk-line-height-xs);

@@ -94,7 +94,10 @@ export const SWIFT_ADAPTER: FeedAdapter<"swift"> = defineFeedAdapter({
     // F-21: SwiftPM's login (Registry.md §4.1), a credential route.
     ["/swift/{owner}/login", ["post"], "swift.login"],
   ],
-  harness: { clients: ["swift", "swift-compat", "swift-linux"] },
+  harness: {
+    // F-22: swift-publish publishes natively (Release's route), then resolves back.
+    clients: ["swift", "swift-compat", "swift-linux", "swift-publish"],
+  },
 });
 
 /** The materialiser's view of the adapter. */

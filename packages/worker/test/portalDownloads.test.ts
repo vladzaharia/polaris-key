@@ -38,7 +38,11 @@ import { detectPlatform as coreDetect } from "../src/core/platformDetect.js";
 import { detectPlatform as pageDetect } from "../src/services/distribution/page/detect.js";
 import { rateLimitOk } from "../src/core/rateLimit.js";
 import type { Env } from "../src/env.js";
-import { handlePortalApi } from "./portalHarness.js";
+import {
+  handlePortalApi,
+  handlePortalDownload,
+  seedRepositoryVisibility,
+} from "./portalHarness.js";
 import { seedDeliveryAccess } from "./releaseSurface.js";
 import { NOW, seedLicenseWithKey } from "./seed.js";
 import {
@@ -127,15 +131,20 @@ async function ok(res: Response): Promise<PortalDownloads> {
   return (await res.json()) as PortalDownloads;
 }
 
-/** Give every Diceroll file a GitHub storage URL: a source the portal can hand a browser for a
- *  non-public deliverable (R2-only licensed bytes are PX-W3). */
-async function githubSources(w: World): Promise<void> {
+/** Give every Diceroll file a GitHub storage URL in a PUBLIC repository: a source the portal can
+ *  hand a browser for a non-public deliverable (this suite runs without `DOWNLOAD_TICKET_KEY`, so
+ *  the PX-W3 ticket path is off; a private repository's URLs answer a browser with GitHub's 404). */
+async function githubSources(
+  w: World,
+  visibility: "public" | "private" = "public",
+): Promise<void> {
   await w.db.run(
     `UPDATE release_artifacts
         SET source_url = 'https://objects.githubusercontent.com/diceroll/' || artifact_id
       WHERE product = ?`,
     SLUG,
   );
+  await seedRepositoryVisibility(w.env, w.db, SLUG, visibility);
 }
 
 // ── 1. The hook ──────────────────────────────────────────────────────────────────────────────
@@ -582,6 +591,189 @@ describe("GET /api/products/<p>/downloads", () => {
     );
     // Sanity: the bytes host stays the only non-GitHub redirect target.
     expect(BYTES).toMatch(/^https:/);
+  });
+});
+
+// ── 3. The mint agrees with the listing (production bug, 2026-10-05) ──────────────────────────
+//
+// The owner clicked "Download for macOS" on a product page and got "The download didn't start":
+// the mint answered 404 for a file the listing had offered. Two causes, both reproduced here:
+//
+//   - the composition root hands the portal `url.pathname`, still percent-encoded, and the SPA
+//     encodes each segment, so an R2 file's id `file:<name>` reached the mint as `file%3A<name>`
+//     and matched no row (Storytime 1.1.0 in production; the suites passed a decoded path);
+//   - a GitHub-located file in a PRIVATE repository (DJDL) was offered and minted, then
+//     redirected to a GitHub URL that answers an anonymous browser with 404.
+
+/** A Mac browser (Chrome: Safari's desktop UA also stands for an iPad). */
+const MAC_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
+
+/** The account's CSRF token (mutations need it). */
+async function csrfOf(w: World, p: Portal): Promise<string> {
+  const me = await handlePortalApi(
+    new Request(`${CONSOLE}/api/me`, { headers: { cookie: p.cookie } }),
+    w.env,
+    w.db,
+    "/api/me",
+    NOW,
+  );
+  return ((await me.json()) as { csrf: string }).csrf;
+}
+
+/** Mint the way production does: the SPA encodes every segment and the composition root passes
+ *  the request's `url.pathname` through unchanged (`dispatch.ts`). */
+async function mintAsBrowser(
+  w: World,
+  p: Portal,
+  releaseId: string,
+  artifactId: string,
+): Promise<Response> {
+  const enc = encodeURIComponent;
+  const url = new URL(
+    `${CONSOLE}/api/releases/${enc(SLUG)}/${enc(releaseId)}/artifacts/${enc(artifactId)}/token`,
+  );
+  return handlePortalApi(
+    new Request(url, {
+      method: "POST",
+      headers: { cookie: p.cookie, "x-pkey-portal-csrf": await csrfOf(w, p) },
+    }),
+    w.env,
+    w.db,
+    url.pathname,
+    NOW,
+  );
+}
+
+async function redeem(w: World, res: Response): Promise<Response> {
+  expect(res.status, await res.clone().text()).toBe(201);
+  const { url } = (await res.json()) as { url: string };
+  return handlePortalDownload(
+    new Request(`${CONSOLE}${url}`),
+    w.env,
+    w.db,
+    decodeURIComponent(url.replace("/download/", "")),
+    NOW,
+  );
+}
+
+describe("the token mint answers every file the listing offers", () => {
+  it("an R2 file whose id needs percent-encoding: minted from the raw pathname, redirected to the bytes host", async () => {
+    const w = await setup({ access: "public" });
+    const p = await account(w);
+    const body = await ok(await downloads(w, p, { ua: MAC_UA }));
+    const f = body.recommended!.files[0]!;
+    // The ids that broke: `app@1.2.0` and `file:Diceroll-1.2.0-macos.dmg` both encode.
+    expect(encodeURIComponent(f.releaseId)).not.toBe(f.releaseId);
+    expect(encodeURIComponent(f.artifactId)).not.toBe(f.artifactId);
+    expect(f.canDownload).toBe(true);
+    const redirect = await redeem(
+      w,
+      await mintAsBrowser(w, p, f.releaseId, f.artifactId),
+    );
+    expect(redirect.status).toBe(302);
+    expect(redirect.headers.get("location")).toBe(
+      `${BYTES}/${SLUG}/distribution/files/${encodeURIComponent(f.releaseId)}/${encodeURIComponent(f.name)}`,
+    );
+  });
+
+  it("a public file in a PRIVATE GitHub repository goes through the bytes host, never to GitHub", async () => {
+    const w = await setup({ access: "public" });
+    await githubSources(w, "private");
+    const p = await account(w);
+    const body = await ok(await downloads(w, p, { ua: MAC_UA }));
+    const f = body.recommended!.files[0]!;
+    expect(f.canDownload).toBe(true);
+    const redirect = await redeem(
+      w,
+      await mintAsBrowser(w, p, f.releaseId, f.artifactId),
+    );
+    expect(redirect.status).toBe(302);
+    const location = new URL(redirect.headers.get("location")!);
+    // Distribution streams the private asset with Release's installation token.
+    expect(location.origin).toBe(BYTES);
+  });
+
+  it("without download tickets, a licensed file in a PRIVATE GitHub repository is not_hosted in the listing and at the mint", async () => {
+    const w = await setup({ access: "licensed" });
+    await githubSources(w, "private");
+    const p = await account(w);
+    const body = await ok(await downloads(w, p, { ua: MAC_UA }));
+    const mac = body.platforms.find((x) => x.platform === "macos")!;
+    expect(mac.files.map((f) => [f.canDownload, f.reason])).toEqual([
+      [false, "not_hosted"],
+    ]);
+    expect(body.recommended).toBeNull();
+    const f = mac.files[0]!;
+    const refused = await mintAsBrowser(w, p, f.releaseId, f.artifactId);
+    expect(refused.status).toBe(409);
+    expect(await refused.json()).toMatchObject({ error: "not_hosted" });
+
+    // The same repository made public: offered, and the redirect is GitHub's own URL.
+    await githubSources(w, "public");
+    const open = await ok(await downloads(w, p, { ua: MAC_UA }));
+    const g = open.recommended!.files[0]!;
+    const redirect = await redeem(
+      w,
+      await mintAsBrowser(w, p, g.releaseId, g.artifactId),
+    );
+    expect(new URL(redirect.headers.get("location")!).hostname).toBe(
+      "objects.githubusercontent.com",
+    );
+  });
+
+  it("an owner is told why; a stranger gets the same 404 whether or not the file exists", async () => {
+    const w = await setup({ access: "licensed" });
+    await githubSources(w);
+    const owner = await account(w);
+    const body = await ok(await downloads(w, owner, { ua: MAC_UA }));
+    const f = body.recommended!.files[0]!;
+
+    // A file the owner's product no longer has: a specific 404.
+    const gone = await mintAsBrowser(w, owner, f.releaseId, "file:nope.dmg");
+    expect(gone.status).toBe(404);
+    expect(await gone.json()).toMatchObject({ error: "file_not_found" });
+
+    // The licence lapsed: the listing's reason code, not a generic refusal.
+    await w.db.run(
+      "UPDATE licenses SET expires_at = ? WHERE product = ? AND id = ?",
+      NOW - 1,
+      SLUG,
+      owner.licenseId,
+    );
+    const lapsed = await mintAsBrowser(w, owner, f.releaseId, f.artifactId);
+    expect(lapsed.status).toBe(403);
+    expect(await lapsed.json()).toMatchObject({ error: "license_inactive" });
+
+    // An account with no licence for the product learns nothing: real and made-up ids alike.
+    const stranger = await account(w, { id: "lic_other" }, false);
+    const real = await mintAsBrowser(w, stranger, f.releaseId, f.artifactId);
+    const fake = await mintAsBrowser(w, stranger, "app@9.9.9", "file:x.dmg");
+    expect(real.status).toBe(404);
+    expect(fake.status).toBe(404);
+    expect(await real.json()).toEqual(await fake.json());
+  });
+
+  it("a malformed percent-escape in the path is a 404, not a crash", async () => {
+    const w = await setup();
+    const p = await account(w);
+    const res = await handlePortalApi(
+      new Request(
+        `${CONSOLE}/api/releases/${SLUG}/x/artifacts/%E0%A4%A/token`,
+        {
+          method: "POST",
+          headers: {
+            cookie: p.cookie,
+            "x-pkey-portal-csrf": await csrfOf(w, p),
+          },
+        },
+      ),
+      w.env,
+      w.db,
+      `/api/releases/${SLUG}/x/artifacts/%E0%A4%A/token`,
+      NOW,
+    );
+    expect(res.status).toBe(404);
   });
 });
 

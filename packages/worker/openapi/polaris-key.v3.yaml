@@ -3177,8 +3177,14 @@ paths:
         (`pending` before the tool runs, then `done` or `failed`) and `exitCode`. The Worker
         re-checks the command against the store's allow-list and the outlet identity, then writes
         the step's `store_operations` row with `plane = ci`; a `pending` report of a step already
-        done in the same run answers `replayed: true` (CI skips the tool). Requires a `pkeyci_`
-        token with `distribution:report` (in the default CI grant). No CORS. Errors are LEGACY
+        done in the same run answers `replayed: true` (CI skips the tool). A PR-plane step (A-18i:
+        `store` `winget`, `homebrew`, `scoop` or `flathub`, `command` `pull-request` or `status`,
+        argv `<command> --repo <repo> …` for the pseudo-tool `github`) writes its row with
+        `plane = pr` and natural key `pr:<package>:<version>`; it adds `files` (each `{path,
+        sha256}`, every path one the store's PR plane allows), `pr` (`{number, url, state, merged,
+        labels}`, the URL on the argv's repository; required when done) and `existing` (the PR was
+        already open or merged), and the answer carries the verifier's `verdict`. Requires a
+        `pkeyci_` token with `distribution:report` (in the default CI grant). No CORS. Errors are LEGACY
         FLAT with a machine-readable `reason` (`unknown_outlet`, `unknown_release`,
         `unknown_build` 404; `invalid_state`, `unknown_purpose`, `invalid_fingerprint`,
         `invalid_body`, `command_not_allowed` 422; `too_many_observations` 409, past 64
@@ -3248,7 +3254,18 @@ paths:
                 store:
                   {
                     type: string,
-                    enum: [itch, snap, steam, msstore, epic],
+                    enum:
+                      [
+                        itch,
+                        snap,
+                        steam,
+                        msstore,
+                        epic,
+                        winget,
+                        homebrew,
+                        scoop,
+                        flathub,
+                      ],
                     description: "store-step only.",
                   }
                 op:
@@ -3279,6 +3296,32 @@ paths:
                   {
                     type: string,
                     description: "store-step only: the https URL of the CI run.",
+                  }
+                files:
+                  type: array
+                  maxItems: 64
+                  description: "PR-plane store-step only: the files the pull request wrote."
+                  items:
+                    type: object
+                    required: [path, sha256]
+                    properties:
+                      path: { type: string, maxLength: 512 }
+                      sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+                pr:
+                  type: object
+                  description: "PR-plane store-step only: the pull request opened, found or read."
+                  required: [number, url, state, merged, labels]
+                  properties:
+                    number: { type: integer, minimum: 1 }
+                    url: { type: string }
+                    state: { type: string, enum: [open, closed] }
+                    merged: { type: boolean }
+                    labels:
+                      { type: array, maxItems: 50, items: { type: string } }
+                existing:
+                  {
+                    type: boolean,
+                    description: "PR-plane store-step only: the PR for the package version was already open or merged.",
                   }
             examples:
               storeStep:
@@ -3354,8 +3397,20 @@ paths:
                           type: string,
                           enum: [pending, done, failed, ambiguous],
                         }
-                      plane: { type: string, const: ci }
+                      plane: { type: string, enum: [ci, pr] }
                       replayed: { type: boolean }
+                      verdict:
+                        {
+                          type: string,
+                          enum:
+                            [
+                              merged,
+                              closed,
+                              needs-author-feedback,
+                              validation-issue,
+                              in-review,
+                            ],
+                        }
                   availability:
                     type: object
                     properties:
@@ -3472,6 +3527,99 @@ paths:
                           app: { type: object }
                           locales: { type: object }
                       issues: { type: array, items: { type: object } }
+        "401": { $ref: "#/components/responses/CiUnauthorized" }
+        "403": { $ref: "#/components/responses/CiForbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /{product}/distribution/pr/{store}:
+    get:
+      operationId: ciPrInputs
+      tags: [distribution]
+      summary: A PR-plane generator's inputs (CI)
+      description: >
+        A-18i. Everything `pkey storefront <store> pr` needs to write one outlet's manifest for
+        the channel's newest release: the outlet and its identity; the release the channel serves
+        there (the storefront feeds' selection: version, date, and the builds of the store's
+        platform with their immutable HTTPS delivery URLs, SHA-256 and sizes); the listing
+        model's projection for the store's column (winget, Flathub) with the release's
+        per-locale store notes; the app-level listing fields (name, short description, website,
+        developer, copyright, `tint` and `tintDark`, content descriptors; `screenshots` holds
+        only hosted copies on the media host and is empty until that host serves them, never
+        the manifest listing's raw URLs); the public URLs a manifest points back at (`download.json`, the Scoop feed, the
+        Flathub checker feed); for Scoop, the feed's own manifest; and whether the outlet's
+        binaries update themselves. The not-found while the app's delivery access is not public
+        (a PR-plane manifest sends strangers to the bytes), and for an unknown store, channel or
+        outlet. Requires a `pkeyci_` token with `distribution:report` (in the default CI grant).
+        No CORS.
+      security: [{ ciToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: store
+          in: path
+          required: true
+          schema: { type: string, enum: [winget, homebrew, scoop, flathub] }
+        - name: channel
+          in: query
+          required: false
+          schema: { type: string, default: stable, maxLength: 64 }
+        - name: outlet
+          in: query
+          required: false
+          description: The outlet, when the product declares several of the store's kind.
+          schema: { type: string, maxLength: 64 }
+      responses:
+        "200":
+          description: The inputs.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, inputs]
+                properties:
+                  ok: { type: boolean, const: true }
+                  inputs:
+                    type: object
+                    required:
+                      [
+                        store,
+                        channel,
+                        product,
+                        outlet,
+                        release,
+                        notes,
+                        listing,
+                        app,
+                        links,
+                        selfUpdates,
+                      ]
+                    properties:
+                      store: { type: string }
+                      channel: { type: string }
+                      product: { type: object }
+                      outlet:
+                        type: object
+                        properties:
+                          id: { type: string }
+                          kind: { type: string }
+                          identity: { type: object }
+                      release:
+                        type: [object, "null"]
+                        properties:
+                          releaseId: { type: string }
+                          version: { type: string }
+                          publishedAt: { type: [integer, "null"] }
+                          builds: { type: array, items: { type: object } }
+                      notes: { type: [object, "null"] }
+                      listing: { type: [object, "null"] }
+                      app: { type: object }
+                      links:
+                        type: object
+                        properties:
+                          downloadJson: { type: string }
+                          scoopFeed: { type: string }
+                          flathubFeed: { type: string }
+                      scoop: { type: [object, "null"] }
+                      selfUpdates: { type: boolean }
         "401": { $ref: "#/components/responses/CiUnauthorized" }
         "403": { $ref: "#/components/responses/CiForbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -6345,7 +6493,10 @@ paths:
         allow-list or the request is a 400. An optional `return_to` marks this as the BROWSER
         flow (the callback will 302 back and set the cookie); omitting it marks the
         device/CLI flow (the callback renders the "you're signed in" page instead).
-        `return_to` must be same-origin. All errors are LEGACY FLAT.
+        `return_to` must be same-origin. On a `provider: platform` product the 302 also sets
+        the licence chooser's browser binder, `__Host-pk_lcb` (HttpOnly, Secure,
+        SameSite=Lax, Path=/, 600 s; I-26): only this browser may later choose a licence for
+        the flow (`authChoose`). All errors are LEGACY FLAT.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: return_to
@@ -6443,7 +6594,12 @@ paths:
         response you get depends on how the flow STARTED: a flow with `return_to` (browser)
         answers 302 to that URL with the session `Set-Cookie`; a flow without one (device/CLI)
         answers 200 with a static, script-free HTML page telling the user to close the tab —
-        the token is collected by polling, never by this response. All errors are LEGACY FLAT.
+        the token is collected by polling, never by this response. I-26: on a
+        `provider: platform` product, when the verified identity is linked to a Polaris Key
+        account that already owns a usable licence for the product, nothing is minted here:
+        a browser carrying the flow's binder (`__Host-pk_lcb`) is sent with a 303 to
+        `authChoosePage`'s page, and any other browser gets the 403 "Start again on your
+        device" page while the flow is dropped. All errors are LEGACY FLAT.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: code
@@ -6469,6 +6625,15 @@ paths:
                 signedIn:
                   summary: The page body, verbatim
                   value: '<!doctype html><meta charset=utf-8><title>Signed in</title><body style="font-family:system-ui;padding:3rem;text-align:center"><h1>You''re signed in</h1><p>You can close this tab and return to the app.</p>'
+        "303":
+          description: >
+            I-26: the licence chooser applies. Empty body; `cache-control: no-store`,
+            `referrer-policy: no-referrer`.
+          headers:
+            Location:
+              description: The chooser, `/<product>/identity/auth/choose`.
+              schema: { type: string, format: uri }
+              example: https://key.plrs.im/djdl/identity/auth/choose
         "302":
           description: >
             The BROWSER branch — the flow carried a `return_to`, so the session cookie is set
@@ -6506,8 +6671,14 @@ paths:
                       { error: unauthorized, message: license unavailable },
                   }
         "403":
-          description: The identity verified but is not entitled to this product — LEGACY FLAT.
+          description: >
+            The identity verified but is not entitled to this product — LEGACY FLAT. Or, I-26,
+            the licence chooser applies but this browser does not carry the flow's binder: the
+            branded HTML page "Start again on your device" (`text/html`), the flow dropped and
+            nothing minted.
           content:
+            text/html:
+              schema: { type: string }
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
@@ -6917,7 +7088,8 @@ paths:
         "303":
           description: >
             Confirmed. Empty body; the browser is sent to the IdP. `cache-control: no-store`,
-            `referrer-policy: no-referrer`.
+            `referrer-policy: no-referrer`. On a `provider: platform` product it also sets the
+            licence chooser's browser binder `__Host-pk_lcb` (I-26; see `authChoosePage`).
           headers:
             Location:
               description: The IdP authorize URL stored when the device flow started.
@@ -7050,7 +7222,8 @@ paths:
         "303":
           description: >
             Confirmed. Empty body; the browser is sent to the IdP. `cache-control: no-store`,
-            `referrer-policy: no-referrer`.
+            `referrer-policy: no-referrer`. On a `provider: platform` product it also sets the
+            licence chooser's browser binder `__Host-pk_lcb` (I-26; see `authChoosePage`).
           headers:
             Location:
               description: The IdP authorize URL stored when the device flow started.
@@ -7085,6 +7258,151 @@ paths:
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "429":
           description: 60 requests per 60 s per client IP — LEGACY FLAT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+              examples:
+                limited:
+                  { value: { error: rate_limited, message: too many requests } }
+  /{product}/identity/auth/choose:
+    parameters:
+      - { $ref: "#/components/parameters/Product" }
+    get:
+      operationId: authChoosePage
+      tags: [identity]
+      summary: The legacy sign-in's license chooser (I-26)
+      description: >
+        Where the callback sends a browser when the person's Polaris Key account already owns a
+        usable license for this `provider: platform` product (plans/I-04.md, owner decision
+        2026-10-05). Renders "Choose a license for this device": the product, the device label
+        (`deviceName`, or "This browser" for the redirect flow) and one radio row per candidate
+        license (the account's usable licenses, plus the identity's own unattached `sub`-keyed
+        license) with its tier, origin, its seat count ("1 of 3 devices", or "Account-wide · 2 of 2 devices" for a sign-in license) and expiry. The first free row in
+        rank-first order (no expiry, then the latest expiry, then the oldest) is preselected.
+        A full row is disabled ("No free devices") and offers **Replace a device** (its
+        seat-holding devices, the least recent preselected, when the account owns it and the
+        portal is on) and a **Free a device** link to the portal's focused flow. **Create a new
+        free license** appears only when the product's policy would auto-issue to this person,
+        they have no `sub`-keyed license yet, and every row is full. When a Replace is pending
+        the page is its confirmation instead ("Replace <device>?"). The page names no flow: the
+        browser binder cookie `__Host-pk_lcb` finds it, and each render carries a fresh
+        single-use `choice` token. Script-free, under the branded-page CSP, `cache-control:
+        no-store`, `referrer-policy: no-referrer`. Nothing on the device wire changes: the poll
+        answers `pending` until the choice is recorded.
+      responses:
+        "200":
+          description: "The chooser or the Replace confirmation. `text/html; charset=utf-8`."
+          content:
+            text/html:
+              schema: { type: string }
+              examples:
+                chooser:
+                  summary: Two licenses, one full (test/oidcLicenseChoice.test.ts)
+                  value: |
+                    <form method="post" action="https://key.plrs.im/djdl/identity/auth/choose">
+                      <input type="hidden" name="choice" value="Qm9sZC1jaG9pY2UtdG9rZW4">
+                      <label class="choice"><input type="radio" name="license" value="lic_std" checked> <span class="tag">Standard</span> 1 of 3 devices · From the developer · Lifetime</label>
+                      <label class="choice is-disabled"><input type="radio" name="license" value="lic_old" disabled> <span class="tag">Starter</span> Account-wide · 1 of 1 device · Lifetime · No free devices</label>
+                      <button class="button" type="submit" name="action" value="use">Use this license</button>
+                      <button class="button secondary" type="submit" name="action" value="cancel">Cancel</button>
+                    </form>
+        "403":
+          description: >
+            No binder, a binder for another flow, or a flow that expired or already finished:
+            the branded page "Start again on your device". `text/html`.
+          content:
+            text/html:
+              schema: { type: string }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: 60 requests per 60 s per client IP (fail-closed) — LEGACY FLAT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+              examples:
+                limited:
+                  { value: { error: rate_limited, message: too many requests } }
+    post:
+      operationId: authChoose
+      tags: [identity]
+      summary: Record a step of the license chooser, or the choice (I-26)
+      description: >
+        A same-origin form POST (Fetch Metadata, else no foreign `Origin`) from the browser that
+        holds the flow's binder, carrying the page's single-use `choice` token; a stale or
+        reused token changes nothing and is sent back to the GET. `action` is one of: `use`
+        with `license` (a free row's id, or `create` when offered), which records the choice;
+        `replace:<licenseId>` with `device:<licenseId>`, which stages a Replace and shows its
+        confirmation; `replace`, which frees that device exactly as the portal's
+        `DELETE /api/licenses/{product}/{licenseId}/devices/{deviceId}` does (ownership, the
+        shared `portalDeviceDisconnect` budget, the audit row and the security email) and then
+        records the choice; `back`; and `cancel`, which drops the flow. The server re-checks
+        every choice: the license must still be one of the account's (or the identity's own)
+        and still take this device. A recorded choice is audited
+        (`identity.signin.license_chosen`) and completes the flow: a device-code flow's poll
+        then reaches `ready` on the chosen license; a `return_to` flow gets its session and a
+        303 back; choosing the identity's own license, or a new one, runs the sign-in's
+        activation as before. Choosing never counts as a key entry and never moves a license
+        between accounts.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [choice, action]
+              properties:
+                choice:
+                  type: string
+                  description: The single-use token of the page being submitted.
+                action:
+                  type: string
+                  description: "`use`, `replace:<licenseId>`, `replace`, `back` or `cancel`."
+                license:
+                  type: string
+                  description: With `use`, a free row's license id, or `create`.
+              additionalProperties: { type: string }
+            examples:
+              use:
+                value:
+                  {
+                    choice: Qm9sZC1jaG9pY2UtdG9rZW4,
+                    action: use,
+                    license: lic_std,
+                  }
+      responses:
+        "200":
+          description: >
+            The choice was recorded on a flow with no `return_to` ("You're signed in"), or the
+            sign-in was cancelled. `text/html`; the binder is cleared.
+          content:
+            text/html:
+              schema: { type: string }
+        "303":
+          description: >
+            Back to the chooser (a step, a stale token, or a refusal with a one-line notice such
+            as "Too many device changes. Try again in 42 seconds."), or, for a `return_to` flow
+            whose choice was recorded, to that URL with the session cookie.
+          headers:
+            Location:
+              description: The chooser, or the flow's `return_to`.
+              schema: { type: string, format: uri }
+              example: https://key.plrs.im/djdl/identity/auth/choose
+        "403":
+          description: >
+            Cross-site, no binder, or no open chooser for it: the branded "Start again on your
+            device" page (`text/html`). Or the activation the identity's own license needs
+            refused — LEGACY FLAT `not entitled`.
+          content:
+            text/html:
+              schema: { type: string }
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+              examples:
+                notEntitled:
+                  { value: { error: forbidden, message: not entitled } }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: 60 requests per 60 s per client IP (fail-closed) — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -7671,6 +7989,63 @@ paths:
         "200":
           description: "`text/html; charset=utf-8`, `cache-control: public, max-age=3600`."
   # ── PyPI (F-05) ───────────────────────────────────────────────────────────────
+  /pypi/{owner}/legacy/:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    post:
+      operationId: pypiLegacyUpload
+      tags: [registry]
+      summary: twine upload, the legacy upload API (registry host only)
+      description: >
+        F-22. The upload API PyPI serves at `upload.pypi.org/legacy/`
+        (https://docs.pypi.org/api/upload/): `twine upload --repository-url
+        https://pkg.plrs.im/pypi/<owner>/legacy/`. One `multipart/form-data` request per file
+        (`:action=file_upload`, `protocol_version`, `name`, `version`, `filetype` `bdist_wheel` or
+        `sdist`, the digests and the file as `content`). The wheels and sdist of a version are
+        gathered and published as one package release once the uploads settle (ten seconds
+        after the last, or by the cron). The project must be a declared package; the filename
+        must name it and the version; `sha256_digest` and `md5_digest` must match. No PEP 658
+        metadata file is served for a twine upload (the Worker does not open the wheel).
+        Credential: HTTP Basic, `__token__` and a `pkeyr_` publish token naming pypi (or the
+        owner's `pkeyci_` with `release:publish`).
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [":action", name, version, filetype, content]
+      responses:
+        "200":
+          {
+            description: "The file is staged; the version publishes once the uploads settle.",
+          }
+        "400":
+          {
+            description: "Not a file upload, a mismatch, or an ingest refusal (`reason`).",
+          }
+        "401":
+          {
+            description: "No publish credential (the client's native challenge, `WWW-Authenticate: Basic`).",
+          }
+        "403":
+          {
+            description: "A valid credential of the owner that may not publish here (read-only, licence-bound, narrowed away, or a CI token without release:publish).",
+          }
+        "404":
+          { description: "The owner's feed of this ecosystem does not answer." }
+        "413": { description: "Over the 32 MiB native-publish request limit." }
+        "429":
+          {
+            description: "The registryPublish budget (per token, fail closed).",
+          }
+        "409":
+          {
+            description: "Another token is uploading this version, or a file of that name exists with other bytes.",
+          }
   /pypi/{owner}/simple/:
     servers:
       - url: https://pkg.plrs.im
@@ -7922,7 +8297,8 @@ paths:
         `WWW-Authenticate: Bearer realm="https://pkg.plrs.im/v2/token",service="pkg.plrs.im"`,
         as Docker Hub and GHCR answer; anonymous pull tokens keep public pulls working, and
         `docker login` checks its credentials at once. `/v2` answers the same. Any method other
-        than GET and HEAD under `/v2/` is 405 with OCI's error JSON (`UNSUPPORTED`).
+        than GET and HEAD under `/v2/` is 405 with OCI's error JSON (`UNSUPPORTED`), except the
+        push methods F-23 documents on `…/blobs/uploads/…` and `PUT …/manifests/{reference}`.
       responses:
         "200":
           description: The registry speaks OCI distribution v2.
@@ -7951,6 +8327,59 @@ paths:
     servers:
       - url: https://pkg.plrs.im
         description: The registry host (pkg-staging and pkg-dev in the other environments).
+    put:
+      operationId: npmPublish
+      tags: [registry]
+      summary: npm publish (registry host only)
+      description: >
+        F-22. `npm publish` (and pnpm, `yarn npm publish`, `bun publish`): libnpmpublish's
+        document, one version's `package.json` under `versions`, its dist-tag under
+        `dist-tags` and the tarball (base64) under `_attachments`
+        (https://github.com/npm/registry/blob/main/docs/REGISTRY-API.md). The name must be a
+        package deliverable the product declares in `.pkey/release`; the dist-tag is the release
+        channel (`latest` is `stable`); the tarball must match `dist.integrity` and
+        `dist.shasum`. The version is ingested as a package release exactly as
+        `pkey release publish` would ingest it (namespace, ceiling, unique forever). Credential:
+        a `pkeyr_` token with the `publish` scope naming npm, or the owner's `pkeyci_` with
+        `release:publish`, as `Authorization: Bearer`. Only a publish is accepted: deprecate,
+        unpublish and dist-tag commands are refused (`npm-unsupported-operation`).
+      parameters:
+        - $ref: "#/components/parameters/NpmOwner"
+        - name: escapedName
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [name, versions, _attachments] }
+      responses:
+        "200":
+          {
+            description: "The same version was already published from the same tarball.",
+          }
+        "201": { description: "Published (`{ok, id, rev}`)." }
+        "400":
+          {
+            description: "Not a publish, a mismatch, or an ingest refusal (`reason`).",
+          }
+        "401":
+          {
+            description: "No publish credential (the client's native challenge, `WWW-Authenticate: Basic`).",
+          }
+        "403":
+          {
+            description: "A valid credential of the owner that may not publish here (read-only, licence-bound, narrowed away, or a CI token without release:publish).",
+          }
+        "404":
+          { description: "The owner's feed of this ecosystem does not answer." }
+        "413": { description: "Over the 32 MiB native-publish request limit." }
+        "429":
+          {
+            description: "The registryPublish budget (per token, fail closed).",
+          }
+        "409": { description: "The version exists (`package-version-taken`)." }
     get:
       operationId: npmPackument
       tags: [registry]
@@ -8007,6 +8436,57 @@ paths:
     servers:
       - url: https://pkg.plrs.im
         description: The registry host (pkg-staging and pkg-dev in the other environments).
+    put:
+      operationId: npmPublishUnescaped
+      tags: [registry]
+      summary: npm publish (registry host only)
+      description: >
+        F-22. `npm publish` (and pnpm, `yarn npm publish`, `bun publish`): libnpmpublish's
+        document, one version's `package.json` under `versions`, its dist-tag under
+        `dist-tags` and the tarball (base64) under `_attachments`
+        (https://github.com/npm/registry/blob/main/docs/REGISTRY-API.md). The name must be a
+        package deliverable the product declares in `.pkey/release`; the dist-tag is the release
+        channel (`latest` is `stable`); the tarball must match `dist.integrity` and
+        `dist.shasum`. The version is ingested as a package release exactly as
+        `pkey release publish` would ingest it (namespace, ceiling, unique forever). Credential:
+        a `pkeyr_` token with the `publish` scope naming npm, or the owner's `pkeyci_` with
+        `release:publish`, as `Authorization: Bearer`. Only a publish is accepted: deprecate,
+        unpublish and dist-tag commands are refused (`npm-unsupported-operation`).
+      parameters:
+        - $ref: "#/components/parameters/NpmOwner"
+        - $ref: "#/components/parameters/NpmScope"
+        - $ref: "#/components/parameters/NpmName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [name, versions, _attachments] }
+      responses:
+        "200":
+          {
+            description: "The same version was already published from the same tarball.",
+          }
+        "201": { description: "Published (`{ok, id, rev}`)." }
+        "400":
+          {
+            description: "Not a publish, a mismatch, or an ingest refusal (`reason`).",
+          }
+        "401":
+          {
+            description: "No publish credential (the client's native challenge, `WWW-Authenticate: Basic`).",
+          }
+        "403":
+          {
+            description: "A valid credential of the owner that may not publish here (read-only, licence-bound, narrowed away, or a CI token without release:publish).",
+          }
+        "404":
+          { description: "The owner's feed of this ecosystem does not answer." }
+        "413": { description: "Over the 32 MiB native-publish request limit." }
+        "429":
+          {
+            description: "The registryPublish budget (per token, fail closed).",
+          }
+        "409": { description: "The version exists (`package-version-taken`)." }
     get:
       operationId: npmPackumentUnescaped
       tags: [registry]
@@ -8204,6 +8684,63 @@ paths:
     servers:
       - url: https://pkg.plrs.im
         description: The registry host (pkg-staging and pkg-dev in the other environments).
+    put:
+      operationId: swiftPublish
+      tags: [registry]
+      summary: swift package-registry publish (registry host only)
+      description: >
+        F-22, Registry.md §4.6 (SE-0292, SE-0391). `multipart/form-data` with the
+        `source-archive` (zip) and, for a signed release, `source-archive-signature` with
+        `X-Swift-Package-Signature-Format: cms-1.0.0`; `metadata` and `metadata-signature` are
+        accepted and not stored. The manifests the feed serves are read out of the archive (a
+        top-level or single-directory `Package.swift` and `Package@swift-*.swift`, bounded). The
+        release is ingested as `pkey release publish` would ingest it; a feed that requires
+        signing refuses an unsigned release (`swift-unsigned`). Every answer carries
+        `Content-Version: 1`; refusals are problem+json. Credential: a `pkeyr_` publish token
+        naming swift, or the owner's `pkeyci_` with `release:publish`, as `Authorization: Bearer`
+        (after `swift package-registry login`).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [source-archive]
+              properties:
+                source-archive: { type: string, format: binary }
+                source-archive-signature: { type: string, format: binary }
+                metadata: { type: string }
+                metadata-signature: { type: string, format: binary }
+      responses:
+        "201":
+          description: Published.
+          headers:
+            Content-Version: { schema: { type: string, const: "1" } }
+            Location: { schema: { type: string } }
+        "401":
+          {
+            description: "No publish credential (the client's native challenge, `WWW-Authenticate: Basic`).",
+          }
+        "403":
+          {
+            description: "A valid credential of the owner that may not publish here (read-only, licence-bound, narrowed away, or a CI token without release:publish).",
+          }
+        "404":
+          { description: "The owner's feed of this ecosystem does not answer." }
+        "413": { description: "Over the 32 MiB native-publish request limit." }
+        "429":
+          {
+            description: "The registryPublish budget (per token, fail closed).",
+          }
+        "409": { description: "The version exists (problem+json)." }
+        "415":
+          {
+            description: "Not multipart, or an Accept this registry does not speak.",
+          }
+        "422":
+          {
+            description: "A malformed archive or signature, or an ingest refusal (problem+json).",
+          }
     parameters:
       - { name: owner, in: path, required: true, schema: { type: string } }
       - { name: scope, in: path, required: true, schema: { type: string } }
@@ -8387,8 +8924,8 @@ paths:
         registry token (`pkeyr_`) or CI token (`pkeyci_`) of this owner, valid for Swift, whose
         licence (if licence-bound) is usable; 401 with `WWW-Authenticate: Basic` (problem+json)
         otherwise; the host's not-found when the owner's Swift feed does not answer. Counted in the
-        `registryLogin` budget (per IP, fail closed). Publishing (`PUT`, Registry.md §4.6) is 405
-        until F-22.
+        `registryLogin` budget (per IP, fail closed). Publishing (`PUT`, Registry.md §4.6) is
+        `PUT /swift/{owner}/{scope}/{name}/{version}` (F-22).
       responses:
         "200":
           {
@@ -8409,6 +8946,49 @@ paths:
     servers:
       - url: https://pkg.plrs.im
         description: The registry host (pkg-staging and pkg-dev in the other environments).
+    put:
+      operationId: mavenDeployMetadata
+      tags: [registry]
+      summary: Finish a Maven deploy (registry host only)
+      description: >
+        F-22. The artifact-level `maven-metadata.xml`, which Maven and Gradle upload after
+        every file of a version: it publishes the uploading token's open sessions of the
+        artifact as package releases. The uploaded document is discarded (the feed renders its
+        own, F-07). A publish that fails is answered here with its reason.
+      parameters:
+        - $ref: "#/components/parameters/MavenOwner"
+        - $ref: "#/components/parameters/MavenGroupPath"
+        - $ref: "#/components/parameters/MavenArtifactId"
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "201": { description: "Accepted (empty body)." }
+        "400":
+          {
+            description: "A path outside the layout, a snapshot, a checksum that disagrees, or an ingest refusal (`reason`).",
+          }
+        "401":
+          {
+            description: "No publish credential (the client's native challenge, `WWW-Authenticate: Basic`).",
+          }
+        "403":
+          {
+            description: "A valid credential of the owner that may not publish here (read-only, licence-bound, narrowed away, or a CI token without release:publish).",
+          }
+        "404":
+          { description: "The owner's feed of this ecosystem does not answer." }
+        "413": { description: "Over the 32 MiB native-publish request limit." }
+        "429":
+          {
+            description: "The registryPublish budget (per token, fail closed).",
+          }
+        "409":
+          {
+            description: "Another token is uploading this version, or the version exists.",
+          }
     get:
       operationId: mavenMetadata
       tags: [registry]
@@ -8461,6 +9041,48 @@ paths:
     servers:
       - url: https://pkg.plrs.im
         description: The registry host (pkg-staging and pkg-dev in the other environments).
+    put:
+      operationId: mavenDeployMetadataChecksum
+      tags: [registry]
+      summary: A checksum of an uploaded maven-metadata.xml (registry host only)
+      description: >
+        F-22. Accepted and discarded: the feed derives every sidecar of the metadata it
+        renders.
+      parameters:
+        - $ref: "#/components/parameters/MavenOwner"
+        - $ref: "#/components/parameters/MavenGroupPath"
+        - $ref: "#/components/parameters/MavenArtifactId"
+        - $ref: "#/components/parameters/MavenChecksum"
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "201": { description: "Accepted (empty body)." }
+        "400":
+          {
+            description: "A path outside the layout, a snapshot, a checksum that disagrees, or an ingest refusal (`reason`).",
+          }
+        "401":
+          {
+            description: "No publish credential (the client's native challenge, `WWW-Authenticate: Basic`).",
+          }
+        "403":
+          {
+            description: "A valid credential of the owner that may not publish here (read-only, licence-bound, narrowed away, or a CI token without release:publish).",
+          }
+        "404":
+          { description: "The owner's feed of this ecosystem does not answer." }
+        "413": { description: "Over the 32 MiB native-publish request limit." }
+        "429":
+          {
+            description: "The registryPublish budget (per token, fail closed).",
+          }
+        "409":
+          {
+            description: "Another token is uploading this version, or the version exists.",
+          }
     get:
       operationId: mavenMetadataChecksum
       tags: [registry]
@@ -8499,6 +9121,57 @@ paths:
     servers:
       - url: https://pkg.plrs.im
         description: The registry host (pkg-staging and pkg-dev in the other environments).
+    put:
+      operationId: mavenDeployFile
+      tags: [registry]
+      summary: Deploy a file of a Maven version (registry host only)
+      description: >
+        F-22. `mvn deploy` and Gradle's `maven-publish` PUT each file of a version
+        (`<artifactId>-<version>[-<classifier>].<extension>`); the files are gathered in the
+        version's upload session and published as one package release when the artifact's
+        `maven-metadata.xml` is PUT (or by the cron after ten idle minutes). A checksum sidecar
+        (`.md5`, `.sha1`, `.sha256`, `.sha512`) must agree with the file it names and is not
+        stored (the feed derives every sidecar); `.asc` is accepted and not stored. `-SNAPSHOT`
+        versions are refused (`maven-snapshot`). The coordinates must be a declared package's
+        `groupId:artifactId`, and a POM must name them. Credential: HTTP Basic with a `pkeyr_`
+        publish token naming maven (or the owner's `pkeyci_` with `release:publish`) as the
+        password; the 401 challenge lets Maven and Gradle send it.
+      parameters:
+        - $ref: "#/components/parameters/MavenOwner"
+        - $ref: "#/components/parameters/MavenGroupPath"
+        - $ref: "#/components/parameters/MavenArtifactId"
+        - { name: version, in: path, required: true, schema: { type: string } }
+        - { name: file, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "201": { description: "Accepted (empty body)." }
+        "400":
+          {
+            description: "A path outside the layout, a snapshot, a checksum that disagrees, or an ingest refusal (`reason`).",
+          }
+        "401":
+          {
+            description: "No publish credential (the client's native challenge, `WWW-Authenticate: Basic`).",
+          }
+        "403":
+          {
+            description: "A valid credential of the owner that may not publish here (read-only, licence-bound, narrowed away, or a CI token without release:publish).",
+          }
+        "404":
+          { description: "The owner's feed of this ecosystem does not answer." }
+        "413": { description: "Over the 32 MiB native-publish request limit." }
+        "429":
+          {
+            description: "The registryPublish budget (per token, fail closed).",
+          }
+        "409":
+          {
+            description: "Another token is uploading this version, or the version exists.",
+          }
     get:
       operationId: mavenFile
       tags: [registry]
@@ -8583,8 +9256,12 @@ paths:
         the registry host: `scope=repository:<owner>/<repository>:pull` (repeatable, at most four)
         names the owners. Grants pull per scope when the access ladder admits the caller: with no
         credential only public repositories (an anonymous token), with Basic
-        `__token__:<pkeyr_ or pkeyci_>` per the access mode. A scope is all or nothing. `push`,
-        `delete` and `registry:catalog:*` are refused. With no scope (`docker login`), a valid
+        `__token__:<pkeyr_ or pkeyci_>` per the access mode. A scope is all or nothing. F-23:
+        `pull,push` (or `push`) is granted only to a credential that may publish to that owner's
+        OCI feed (an owner-bound `pkeyr_` holding `publish`, or a `pkeyci_` holding
+        `release:publish`) and only for a declared package repository; anyone else asking for
+        `push` gets 401 (no credential) or 403 `DENIED`. `delete`, `*` and
+        `registry:catalog:*` are refused. With no scope (`docker login`), a valid
         credential gets a token granting nothing, and an invalid one 401. The pull token is
         opaque, lives 300 s and carries identity only: every OCI request re-runs the ladder.
         `cache-control: no-store`. Counted in the `registryOciToken` budget (per IP, fail closed).
@@ -8601,7 +9278,7 @@ paths:
             in: query,
             required: false,
             schema: { type: string },
-            description: "`repository:<owner>/<repository>:pull`, repeatable.",
+            description: "`repository:<owner>/<repository>:pull` (or `:pull,push`, F-23), repeatable.",
           }
       responses:
         "200":
@@ -8696,6 +9373,48 @@ paths:
           description: The feed is not public.
         "404":
           description: Unknown manifest, repository or owner.
+    put:
+      operationId: ociManifestPush
+      tags: [registry]
+      summary: Push an OCI manifest or image index (registry host only)
+      description: >
+        F-23. Pushing manifests
+        (https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pushing-manifests),
+        Release's route. Needs a Bearer token from `/v2/token` granting `push` on the repository
+        (else 401 with the challenge naming `pull,push`), a repository that is a declared package
+        deliverable with its feed enabled (else `NAME_UNKNOWN`), a `Content-Type` of one of the
+        four manifest types the host serves, and a body of at most 4 MiB whose `mediaType` (when
+        present) agrees. Every object it names must be one this owner holds, at the size declared
+        (`MANIFEST_BLOB_UNKNOWN`, `MANIFEST_INVALID`). By DIGEST the manifest is stored and held
+        and publishes nothing (an index's platform manifests). By TAG the tag is a version: the
+        image is published as a package release, the same rows a ticket publish writes, through
+        the same ingest and refusals (a version never moves: a taken version is 409 `DENIED`).
+        `latest`, `stable`, `beta`, `pr-<n>` and manual channel names are channel tags, moved by
+        `pkey release promote`, and refused (`TAG_INVALID`).
+      requestBody:
+        required: true
+        content:
+          application/vnd.oci.image.manifest.v1+json:
+            schema: { type: object }
+          application/vnd.oci.image.index.v1+json:
+            schema: { type: object }
+          application/vnd.docker.distribution.manifest.v2+json:
+            schema: { type: object }
+          application/vnd.docker.distribution.manifest.list.v2+json:
+            schema: { type: object }
+      responses:
+        "201":
+          description: Stored (and, by tag, published).
+          headers:
+            Location: { schema: { type: string } }
+            Docker-Content-Digest: { schema: { type: string } }
+        "400": { $ref: "#/components/responses/OciError" }
+        "401": { $ref: "#/components/responses/OciError" }
+        "403": { $ref: "#/components/responses/OciError" }
+        "404": { $ref: "#/components/responses/OciError" }
+        "409": { $ref: "#/components/responses/OciError" }
+        "413": { $ref: "#/components/responses/OciError" }
+        "429": { $ref: "#/components/responses/OciError" }
   /v2/{owner}/{repository}/blobs/{digest}:
     servers:
       - url: https://pkg.plrs.im
@@ -8751,6 +9470,179 @@ paths:
           description: The feed is not public.
         "404":
           description: Unknown blob, repository or owner.
+  # F-23: native `docker push`, the blob upload state machine over R2 multipart (Release's routes).
+  /v2/{owner}/{repository}/blobs/uploads/:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - { $ref: "#/components/parameters/OciOwner" }
+      - { $ref: "#/components/parameters/OciRepository" }
+    post:
+      operationId: ociUploadStart
+      tags: [registry]
+      summary: Start a blob upload, upload a blob whole, or mount one (registry host only)
+      description: >
+        F-23. Pushing blobs
+        (https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pushing-blobs).
+        Needs a Bearer token from `/v2/token` granting `push` on the repository (else 401 naming
+        `pull,push`). Plain: 202 with `Location` (`…/blobs/uploads/<uuid>`), `Range: 0-0`,
+        `Docker-Upload-UUID` and `OCI-Chunk-Min-Length: 5242880`. With `digest`, the body is the
+        whole blob: 201 with `Location` and `Docker-Content-Digest`, or `DIGEST_INVALID`. With
+        `mount` (and `from`), 201 when this owner already holds the object, else the plain 202.
+        A request carries at most 100 MB (the zone's body limit); each blob at most the feed's
+        per-blob ceiling (`SIZE_INVALID`, 413). Counted in `registryOciPush` (per push subject).
+      parameters:
+        - {
+            name: digest,
+            in: query,
+            required: false,
+            schema: { type: string, pattern: "^sha256:[0-9a-f]{64}$" },
+            description: "Monolithic upload: the body's digest.",
+          }
+        - {
+            name: mount,
+            in: query,
+            required: false,
+            schema: { type: string, pattern: "^sha256:[0-9a-f]{64}$" },
+            description: "Cross-repository mount: the object to hold.",
+          }
+        - {
+            name: from,
+            in: query,
+            required: false,
+            schema: { type: string },
+            description: "The repository the mounted object comes from (informational).",
+          }
+      requestBody:
+        required: false
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "201":
+          description: The blob is stored (monolithic) or mounted.
+          headers:
+            Location: { schema: { type: string } }
+            Docker-Content-Digest: { schema: { type: string } }
+        "202":
+          description: The upload is open.
+          headers:
+            Location: { schema: { type: string } }
+            Range: { schema: { type: string } }
+            Docker-Upload-UUID: { schema: { type: string } }
+            OCI-Chunk-Min-Length: { schema: { type: string } }
+        "400": { $ref: "#/components/responses/OciError" }
+        "401": { $ref: "#/components/responses/OciError" }
+        "404": { $ref: "#/components/responses/OciError" }
+        "413": { $ref: "#/components/responses/OciError" }
+        "429": { $ref: "#/components/responses/OciError" }
+  /v2/{owner}/{repository}/blobs/uploads/{uuid}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - { $ref: "#/components/parameters/OciOwner" }
+      - { $ref: "#/components/parameters/OciRepository" }
+      - name: uuid
+        in: path
+        required: true
+        description: The upload's id, from the `Location` of its start.
+        schema: { type: string, format: uuid }
+    get:
+      operationId: ociUploadStatus
+      tags: [registry]
+      summary: A blob upload's progress (registry host only)
+      description: >
+        F-23. 204 with `Location` and `Range: 0-<last byte received>`; `BLOB_UPLOAD_UNKNOWN`
+        for an unknown, expired (one day) or another repository's upload.
+      responses:
+        "204":
+          description: The upload's progress.
+          headers:
+            Location: { schema: { type: string } }
+            Range: { schema: { type: string } }
+        "401": { $ref: "#/components/responses/OciError" }
+        "404": { $ref: "#/components/responses/OciError" }
+    head:
+      operationId: ociUploadStatusHead
+      tags: [registry]
+      summary: A blob upload's progress, headers only (registry host only)
+      description: F-23. As `GET`.
+      responses:
+        "204": { description: The upload's progress. }
+        "401": { description: No push token. }
+        "404": { description: Unknown upload. }
+    patch:
+      operationId: ociUploadChunk
+      tags: [registry]
+      summary: Upload one chunk of a blob, in order (registry host only)
+      description: >
+        F-23. Chunks must arrive in order: with `Content-Range: <start>-<end>`, `start` must be
+        the bytes received so far and the range the body's length, else 416 with the current
+        `Range`. At most 100 MB per request. The chunks are fitted to R2's multipart rule (equal
+        parts of at least 5 MiB) server-side, so any chunk size works. 202 with `Location` and
+        `Range`.
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "202":
+          description: The chunk is stored.
+          headers:
+            Location: { schema: { type: string } }
+            Range: { schema: { type: string } }
+        "400": { $ref: "#/components/responses/OciError" }
+        "401": { $ref: "#/components/responses/OciError" }
+        "404": { $ref: "#/components/responses/OciError" }
+        "409": { $ref: "#/components/responses/OciError" }
+        "413": { $ref: "#/components/responses/OciError" }
+        "416": { $ref: "#/components/responses/OciError" }
+    put:
+      operationId: ociUploadFinish
+      tags: [registry]
+      summary: Finish a blob upload (registry host only)
+      description: >
+        F-23. `?digest=sha256:…` (required) closes the upload, with an optional last chunk as
+        the body. The bytes are verified against the digest before anything reaches the locked
+        blob store (`DIGEST_INVALID` otherwise, and the upload is gone), then held by the
+        repository's deliverable. 201 with `Location` (`…/blobs/<digest>`) and
+        `Docker-Content-Digest`.
+      parameters:
+        - {
+            name: digest,
+            in: query,
+            required: true,
+            schema: { type: string, pattern: "^sha256:[0-9a-f]{64}$" },
+          }
+      requestBody:
+        required: false
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "201":
+          description: The blob is stored.
+          headers:
+            Location: { schema: { type: string } }
+            Docker-Content-Digest: { schema: { type: string } }
+        "400": { $ref: "#/components/responses/OciError" }
+        "401": { $ref: "#/components/responses/OciError" }
+        "404": { $ref: "#/components/responses/OciError" }
+        "413": { $ref: "#/components/responses/OciError" }
+    delete:
+      operationId: ociUploadCancel
+      tags: [registry]
+      summary: Cancel a blob upload (registry host only)
+      description: >
+        F-23. Aborts the upload and drops its staged bytes (only the upload's own staging
+        objects; nothing stored is ever deleted). 204.
+      responses:
+        "204": { description: The upload is gone. }
+        "401": { $ref: "#/components/responses/OciError" }
+        "404": { $ref: "#/components/responses/OciError" }
   /v2/{owner}/{repository}/tags/list:
     servers:
       - url: https://pkg.plrs.im
@@ -9824,6 +10716,212 @@ paths:
   # G1, G5, G16) and Discover (PX-W10, G24, G25). The rest of the portal API stays narrative (see
   # the header); these are pinned here and in `test/routeCoverage.test.ts` (PORTAL_KIND_PATHS). Root paths on the
   # console host, never CORS: they share this origin with the portal session cookie.
+  /go/{owner}/{module}/@v/list:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: goList
+      tags: [registry]
+      summary: A Go module's versions, the proxy's @v/list (registry host only)
+      description: >
+        F-31. The module proxy protocol's version list (https://go.dev/ref/mod#goproxy-protocol)
+        for `GOPROXY=https://pkg.plrs.im/go/{owner}`: one `v<version>` per line, every version
+        that is not yanked, oldest publication first, rendered from Release's package state. A
+        release version is semver without Go's `v`, which the feed adds. Sent as
+        `application/octet-stream` (the go command reads bytes). `Cache-Control: public,
+        max-age=60, stale-while-revalidate=60` with a strong ETag of the body's SHA-256; a feed
+        that is not public answers 401 with `WWW-Authenticate: Basic` (the go command answers it
+        from `.netrc` or GOAUTH) and `private, no-store`. An unknown owner, a module path the feed
+        does not hold and a feed that is off answer the plain 404, which tells the go command to
+        try the next GOPROXY entry.
+      parameters:
+        - $ref: "#/components/parameters/GoOwner"
+        - $ref: "#/components/parameters/GoModule"
+      responses:
+        "200":
+          description: The version list.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "304": { description: Not modified (the ETag matched). }
+        "401":
+          {
+            description: The feed is not public,
+            and no valid registry token was presented.,
+          }
+        "404": { description: No such owner, feed or module. }
+    head:
+      operationId: goListHead
+      tags: [registry]
+      summary: A Go module's versions, headers only (registry host only)
+      description: F-31. As the GET, with no body.
+      parameters:
+        - $ref: "#/components/parameters/GoOwner"
+        - $ref: "#/components/parameters/GoModule"
+      responses:
+        "200": { description: The version list's headers. }
+        "404": { description: No such owner, feed or module. }
+  /go/{owner}/{module}/@latest:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: goLatest
+      tags: [registry]
+      summary: A Go module's latest version info, the proxy's @latest (registry host only)
+      description: >
+        F-31. `{"Version", "Time"}` of the `stable` channel's head
+        (https://go.dev/ref/mod#goproxy-protocol), the version the go command takes when the list
+        is empty. A yanked version is never `@latest`; while the stable channel serves nothing
+        listed, the answer is the 404. Same caching and refusals as `@v/list`.
+      parameters:
+        - $ref: "#/components/parameters/GoOwner"
+        - $ref: "#/components/parameters/GoModule"
+      responses:
+        "200":
+          description: The version info.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GoVersionInfo" }
+        "304": { description: Not modified (the ETag matched). }
+        "401": { description: The feed is not public. }
+        "404":
+          { description: No such owner, feed or module, or no stable version. }
+    head:
+      operationId: goLatestHead
+      tags: [registry]
+      summary: A Go module's latest version info, headers only (registry host only)
+      description: F-31. As the GET, with no body.
+      parameters:
+        - $ref: "#/components/parameters/GoOwner"
+        - $ref: "#/components/parameters/GoModule"
+      responses:
+        "200": { description: The version info's headers. }
+        "404":
+          { description: No such owner, feed or module, or no stable version. }
+  /go/{owner}/{module}/@v/{version}.info:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: goInfo
+      tags: [registry]
+      summary: A Go module version's info, or a channel's canonical version (registry host only)
+      description: >
+        F-31. `{"Version", "Time"}` of one version (https://go.dev/ref/mod#goproxy-protocol). A
+        canonical version (`v1.4.0`) answers for every published version, yanked ones included,
+        so a go.sum that pins one keeps building. A channel name (`beta`) answers with the
+        canonical version the channel serves, as a VCS proxy answers for a branch, so
+        `go get <module>@beta` resolves the channel. Same caching and refusals as `@v/list`.
+      parameters:
+        - $ref: "#/components/parameters/GoOwner"
+        - $ref: "#/components/parameters/GoModule"
+        - $ref: "#/components/parameters/GoVersion"
+      responses:
+        "200":
+          description: The version info.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GoVersionInfo" }
+        "304": { description: Not modified (the ETag matched). }
+        "401": { description: The feed is not public. }
+        "404": { description: No such owner, feed, module, version or channel. }
+    head:
+      operationId: goInfoHead
+      tags: [registry]
+      summary: A Go module version's info, headers only (registry host only)
+      description: F-31. As the GET, with no body.
+      parameters:
+        - $ref: "#/components/parameters/GoOwner"
+        - $ref: "#/components/parameters/GoModule"
+        - $ref: "#/components/parameters/GoVersion"
+      responses:
+        "200": { description: The version info's headers. }
+        "404": { description: No such owner, feed, module, version or channel. }
+  /go/{owner}/{module}/@v/{version}.mod:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: goMod
+      tags: [registry]
+      summary: A Go module version's go.mod (registry host only)
+      description: >
+        F-31. The version's own `go.mod`, byte for byte as its module zip holds it
+        (https://go.dev/ref/mod#goproxy-protocol); the publishing CLI split it out, so the Worker
+        never unzips. From the blob store by SHA-256: `ETag: "<sha256>"`, `Range` (206) and
+        `Cache-Control: public, max-age=31536000, immutable, no-transform`. Canonical versions
+        only (a channel name is the 404), yanked ones included. Sent as
+        `application/octet-stream` with `Content-Disposition: attachment`.
+      parameters:
+        - $ref: "#/components/parameters/GoOwner"
+        - $ref: "#/components/parameters/GoModule"
+        - $ref: "#/components/parameters/GoVersion"
+      responses:
+        "200":
+          description: The go.mod.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "206": { description: The requested range. }
+        "304": { description: Not modified (the ETag matched). }
+        "401": { description: The feed is not public. }
+        "404": { description: No such owner, feed, module or version. }
+        "416": { description: The range cannot be satisfied. }
+    head:
+      operationId: goModHead
+      tags: [registry]
+      summary: A Go module version's go.mod, headers only (registry host only)
+      description: F-31. As the GET, with no body (`Content-Length` is the file's size).
+      parameters:
+        - $ref: "#/components/parameters/GoOwner"
+        - $ref: "#/components/parameters/GoModule"
+        - $ref: "#/components/parameters/GoVersion"
+      responses:
+        "200": { description: The go.mod's headers. }
+        "404": { description: No such owner, feed, module or version. }
+  /go/{owner}/{module}/@v/{version}.zip:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    get:
+      operationId: goZip
+      tags: [registry]
+      summary: A Go module version's module zip (registry host only)
+      description: >
+        F-31. The version's module zip (https://go.dev/ref/mod#zip-files), every entry under
+        `<module>@<version>/`, as published. The go command checks it against go.sum (its `h1:`
+        hash, which the publishing CLI also recorded); GONOSUMDB keeps the feed's modules away
+        from the public checksum database. Same byte headers as `.mod`. Canonical versions only,
+        yanked ones included.
+      parameters:
+        - $ref: "#/components/parameters/GoOwner"
+        - $ref: "#/components/parameters/GoModule"
+        - $ref: "#/components/parameters/GoVersion"
+      responses:
+        "200":
+          description: The module zip.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "206": { description: The requested range. }
+        "304": { description: Not modified (the ETag matched). }
+        "401": { description: The feed is not public. }
+        "404": { description: No such owner, feed, module or version. }
+        "416": { description: The range cannot be satisfied. }
+    head:
+      operationId: goZipHead
+      tags: [registry]
+      summary: A Go module version's module zip, headers only (registry host only)
+      description: F-31. As the GET, with no body (`Content-Length` is the zip's size).
+      parameters:
+        - $ref: "#/components/parameters/GoOwner"
+        - $ref: "#/components/parameters/GoModule"
+        - $ref: "#/components/parameters/GoVersion"
+      responses:
+        "200": { description: The module zip's headers. }
+        "404": { description: No such owner, feed, module or version. }
   /api/library:
     get:
       operationId: getPortalLibrary
@@ -10814,6 +11912,364 @@ paths:
         "200": { description: Headers only. }
         "401": { description: Not a valid URL token for this owner. }
         "404": { $ref: "#/components/responses/NotFound" }
+  /cargo/{owner}/config.json:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          description: "The owner (product slug).",
+          schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+        }
+    get:
+      operationId: cargoConfig
+      tags: [registry]
+      summary: Cargo sparse-registry configuration (registry host only)
+      description: >
+        F-30. The `config.json` Cargo reads first from a sparse registry
+        (`index = "sparse+https://pkg.plrs.im/cargo/<owner>/"`). `dl` is the content-addressed
+        download template `…/files/{sha256-checksum}/{crate}-{version}.crate`. There is no
+        `api`: crates publish with `pkey release publish`, never Cargo's `crates/new`. A
+        non-public feed answers an anonymous request 401; Cargo (1.74 and later) retries with its
+        registry token as a bare `Authorization: <token>`, and the admitted answer carries
+        `auth-required: true`, so Cargo sends the token on every later request.
+      responses:
+        "200":
+          description: The configuration.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [dl]
+                properties:
+                  dl: { type: string }
+                  auth-required: { type: boolean }
+        "304": { description: "Not modified (`If-None-Match`)." }
+        "401":
+          {
+            description: "A non-public feed (`WWW-Authenticate: Basic`); Cargo retries with its registry token.",
+          }
+        "403": { description: "The token's licence is not usable." }
+        "404": { description: "The not-found (`no-store`)." }
+    head:
+      operationId: cargoConfigHead
+      tags: [registry]
+      summary: Cargo sparse-registry configuration, headers only (registry host only)
+      description: F-30. As `GET /cargo/{owner}/config.json`, with no body.
+      responses:
+        "200": { description: "The configuration's headers." }
+        "404": { description: "The not-found." }
+  /cargo/{owner}/1/{name}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          description: "The owner (product slug).",
+          schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+        }
+      - {
+          name: name,
+          in: path,
+          required: true,
+          description: "The crate's name in lower case.",
+          schema: { type: string },
+        }
+    get:
+      operationId: cargoIndex1
+      tags: [registry]
+      summary: Cargo sparse-index file, a one-character name under `1/` (registry host only)
+      description: >
+        F-30. One crate's index file in Cargo's sparse protocol (RFC 2789): JSON Lines, one line
+        per published version, oldest first, each with `name`, `vers`, `deps`, `cksum` (the
+        `.crate`'s SHA-256), `features`, `yanked` and `links`, plus `rust_version`, and
+        `features2` with `v: 2` when a feature uses the `dep:` or `?/` syntax. A yanked version
+        keeps its line with `yanked: true`. The path is the crate's name in lower case under
+        Cargo's prefix (a one-character name under `1/`); any other spelling, an unknown crate, a feed that is off and an
+        unknown owner all answer the same not-found, which Cargo reads as "no such crate".
+        Served as `application/json` with `ETag: "<sha256 of the body>"`.
+      responses:
+        "200":
+          description: The index file.
+          content:
+            application/json:
+              schema: { type: string }
+        "304": { description: "Not modified (`If-None-Match`)." }
+        "401":
+          {
+            description: "A non-public feed or crate (`WWW-Authenticate: Basic`); Cargo retries with its registry token.",
+          }
+        "403":
+          {
+            description: "The token's licence is not usable, or not entitled to this crate.",
+          }
+        "404": { description: "The not-found (`no-store`)." }
+    head:
+      operationId: cargoIndex1Head
+      tags: [registry]
+      summary: Cargo sparse-index file, a one-character name under `1/`, headers only (registry host only)
+      description: F-30. As `GET /cargo/{owner}/1/{name}`, with no body.
+      responses:
+        "200": { description: "The index file's headers." }
+        "404": { description: "The not-found." }
+  /cargo/{owner}/2/{name}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          description: "The owner (product slug).",
+          schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+        }
+      - {
+          name: name,
+          in: path,
+          required: true,
+          description: "The crate's name in lower case.",
+          schema: { type: string },
+        }
+    get:
+      operationId: cargoIndex2
+      tags: [registry]
+      summary: Cargo sparse-index file, a two-character name under `2/` (registry host only)
+      description: >
+        F-30. One crate's index file in Cargo's sparse protocol (RFC 2789): JSON Lines, one line
+        per published version, oldest first, each with `name`, `vers`, `deps`, `cksum` (the
+        `.crate`'s SHA-256), `features`, `yanked` and `links`, plus `rust_version`, and
+        `features2` with `v: 2` when a feature uses the `dep:` or `?/` syntax. A yanked version
+        keeps its line with `yanked: true`. The path is the crate's name in lower case under
+        Cargo's prefix (a two-character name under `2/`); any other spelling, an unknown crate, a feed that is off and an
+        unknown owner all answer the same not-found, which Cargo reads as "no such crate".
+        Served as `application/json` with `ETag: "<sha256 of the body>"`.
+      responses:
+        "200":
+          description: The index file.
+          content:
+            application/json:
+              schema: { type: string }
+        "304": { description: "Not modified (`If-None-Match`)." }
+        "401":
+          {
+            description: "A non-public feed or crate (`WWW-Authenticate: Basic`); Cargo retries with its registry token.",
+          }
+        "403":
+          {
+            description: "The token's licence is not usable, or not entitled to this crate.",
+          }
+        "404": { description: "The not-found (`no-store`)." }
+    head:
+      operationId: cargoIndex2Head
+      tags: [registry]
+      summary: Cargo sparse-index file, a two-character name under `2/`, headers only (registry host only)
+      description: F-30. As `GET /cargo/{owner}/2/{name}`, with no body.
+      responses:
+        "200": { description: "The index file's headers." }
+        "404": { description: "The not-found." }
+  /cargo/{owner}/3/{first}/{name}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          description: "The owner (product slug).",
+          schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+        }
+      - {
+          name: first,
+          in: path,
+          required: true,
+          description: "The name's first character.",
+          schema: { type: string },
+        }
+      - {
+          name: name,
+          in: path,
+          required: true,
+          description: "The crate's name in lower case.",
+          schema: { type: string },
+        }
+    get:
+      operationId: cargoIndex3
+      tags: [registry]
+      summary: Cargo sparse-index file, a three-character name under `3/<first character>/` (registry host only)
+      description: >
+        F-30. One crate's index file in Cargo's sparse protocol (RFC 2789): JSON Lines, one line
+        per published version, oldest first, each with `name`, `vers`, `deps`, `cksum` (the
+        `.crate`'s SHA-256), `features`, `yanked` and `links`, plus `rust_version`, and
+        `features2` with `v: 2` when a feature uses the `dep:` or `?/` syntax. A yanked version
+        keeps its line with `yanked: true`. The path is the crate's name in lower case under
+        Cargo's prefix (a three-character name under `3/<first character>/`); any other spelling, an unknown crate, a feed that is off and an
+        unknown owner all answer the same not-found, which Cargo reads as "no such crate".
+        Served as `application/json` with `ETag: "<sha256 of the body>"`.
+      responses:
+        "200":
+          description: The index file.
+          content:
+            application/json:
+              schema: { type: string }
+        "304": { description: "Not modified (`If-None-Match`)." }
+        "401":
+          {
+            description: "A non-public feed or crate (`WWW-Authenticate: Basic`); Cargo retries with its registry token.",
+          }
+        "403":
+          {
+            description: "The token's licence is not usable, or not entitled to this crate.",
+          }
+        "404": { description: "The not-found (`no-store`)." }
+    head:
+      operationId: cargoIndex3Head
+      tags: [registry]
+      summary: Cargo sparse-index file, a three-character name under `3/<first character>/`, headers only (registry host only)
+      description: F-30. As `GET /cargo/{owner}/3/{first}/{name}`, with no body.
+      responses:
+        "200": { description: "The index file's headers." }
+        "404": { description: "The not-found." }
+  /cargo/{owner}/{prefix1}/{prefix2}/{name}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          description: "The owner (product slug).",
+          schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+        }
+      - {
+          name: prefix1,
+          in: path,
+          required: true,
+          description: "The name's first two characters.",
+          schema: { type: string },
+        }
+      - {
+          name: prefix2,
+          in: path,
+          required: true,
+          description: "The name's third and fourth characters.",
+          schema: { type: string },
+        }
+      - {
+          name: name,
+          in: path,
+          required: true,
+          description: "The crate's name in lower case.",
+          schema: { type: string },
+        }
+    get:
+      operationId: cargoIndex
+      tags: [registry]
+      summary: Cargo sparse-index file, a longer name under `<characters 1-2>/<characters 3-4>/` (registry host only)
+      description: >
+        F-30. One crate's index file in Cargo's sparse protocol (RFC 2789): JSON Lines, one line
+        per published version, oldest first, each with `name`, `vers`, `deps`, `cksum` (the
+        `.crate`'s SHA-256), `features`, `yanked` and `links`, plus `rust_version`, and
+        `features2` with `v: 2` when a feature uses the `dep:` or `?/` syntax. A yanked version
+        keeps its line with `yanked: true`. The path is the crate's name in lower case under
+        Cargo's prefix (a longer name under `<characters 1-2>/<characters 3-4>/`); any other spelling, an unknown crate, a feed that is off and an
+        unknown owner all answer the same not-found, which Cargo reads as "no such crate".
+        Served as `application/json` with `ETag: "<sha256 of the body>"`.
+      responses:
+        "200":
+          description: The index file.
+          content:
+            application/json:
+              schema: { type: string }
+        "304": { description: "Not modified (`If-None-Match`)." }
+        "401":
+          {
+            description: "A non-public feed or crate (`WWW-Authenticate: Basic`); Cargo retries with its registry token.",
+          }
+        "403":
+          {
+            description: "The token's licence is not usable, or not entitled to this crate.",
+          }
+        "404": { description: "The not-found (`no-store`)." }
+    head:
+      operationId: cargoIndexHead
+      tags: [registry]
+      summary: Cargo sparse-index file, a longer name under `<characters 1-2>/<characters 3-4>/`, headers only (registry host only)
+      description: F-30. As `GET /cargo/{owner}/{prefix1}/{prefix2}/{name}`, with no body.
+      responses:
+        "200": { description: "The index file's headers." }
+        "404": { description: "The not-found." }
+  /cargo/{owner}/files/{sha256}/{file}:
+    servers:
+      - url: https://pkg.plrs.im
+        description: The registry host (pkg-staging and pkg-dev in the other environments).
+    parameters:
+      - {
+          name: owner,
+          in: path,
+          required: true,
+          description: "The owner (product slug).",
+          schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" },
+        }
+      - {
+          name: sha256,
+          in: path,
+          required: true,
+          description: "The crate's SHA-256 (lower-case hex), the index line's `cksum`.",
+          schema: { type: string, pattern: "^[0-9a-f]{64}$" },
+        }
+      - {
+          name: file,
+          in: path,
+          required: true,
+          description: "`<crate>-<version>.crate`, the crate's name as its index line spells it.",
+          schema: { type: string },
+        }
+    get:
+      operationId: cargoCrate
+      tags: [registry]
+      summary: Cargo crate download (registry host only)
+      description: >
+        F-30. The `dl` template's target: one version's `.crate`, named by its SHA-256, so the URL
+        is immutable. The hash, the crate name and the version must all match a published
+        version of the owner's crate, and the owner must hold the blob's reference; anything
+        else is the not-found. Served as `application/octet-stream` with `attachment`,
+        `ETag: "<sha256>"`, `Repr-Digest`, `Accept-Ranges: bytes` and, on a public feed,
+        `cache-control: public, max-age=31536000, immutable, no-transform`.
+      responses:
+        "200":
+          description: The bytes.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "206": { description: "A satisfiable `Range`." }
+        "304": { description: "Not modified (`If-None-Match`)." }
+        "401":
+          {
+            description: "A non-public feed or crate (`WWW-Authenticate: Basic`).",
+          }
+        "403":
+          {
+            description: "The token's licence is not usable, or not entitled to this crate.",
+          }
+        "404": { description: "The not-found (`no-store`)." }
+        "416": { description: "An unsatisfiable `Range`." }
+    head:
+      operationId: cargoCrateHead
+      tags: [registry]
+      summary: Cargo crate download, headers only (registry host only)
+      description: F-30. As `GET /cargo/{owner}/files/{sha256}/{file}`, with no body.
+      responses:
+        "200": { description: "The crate's headers." }
+        "404": { description: "The not-found." }
 components:
   securitySchemes:
     ciToken:
@@ -11014,6 +12470,28 @@ components:
       description: Forwarded to the artifact origin; a satisfiable range yields 206.
       schema: { type: string }
     # Maven feed (F-07)
+    GoOwner:
+      name: owner
+      in: path
+      required: true
+      description: The feed's owner, a product slug (the GOPROXY URL is `https://pkg.plrs.im/go/{owner}`).
+      schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" }
+    GoModule:
+      name: module
+      in: path
+      required: true
+      description: >
+        The module path, case-encoded as the go command sends it (`!x` for an upper-case `X`), and
+        spanning several path segments (`go.acme.dev/sdk/v2`).
+      schema: { type: string }
+    GoVersion:
+      name: version
+      in: path
+      required: true
+      description: >
+        A canonical version (`v1.4.0`, case-encoded like the module path), or, for `.info` only, a
+        channel name.
+      schema: { type: string }
     MavenOwner:
       name: owner
       in: path
@@ -11093,8 +12571,11 @@ components:
     OciError:
       description: >
         OCI's error JSON (distribution-spec "Error Codes"): `NAME_UNKNOWN`, `MANIFEST_UNKNOWN`,
-        `BLOB_UNKNOWN`, `UNAUTHORIZED` (401, with the Bearer challenge) or `UNSUPPORTED` (405),
-        `no-store`, with `Docker-Distribution-API-Version: registry/2.0`.
+        `BLOB_UNKNOWN`, `UNAUTHORIZED` (401, with the Bearer challenge) or `UNSUPPORTED` (405);
+        on F-23's push routes also `BLOB_UPLOAD_INVALID`, `BLOB_UPLOAD_UNKNOWN`, `DIGEST_INVALID`,
+        `MANIFEST_BLOB_UNKNOWN`, `MANIFEST_INVALID`, `SIZE_INVALID`, `TAG_INVALID`, `DENIED`,
+        `TOOMANYREQUESTS` and `UNAVAILABLE`. `no-store`, with
+        `Docker-Distribution-API-Version: registry/2.0`.
       content:
         application/json:
           schema:
@@ -11385,6 +12866,18 @@ components:
           examples:
             unauthorized: { value: { error: unauthorized } }
   schemas:
+    GoVersionInfo:
+      type: object
+      description: >
+        F-31. A Go module proxy's version info (https://go.dev/ref/mod#goproxy-protocol).
+      required: [Version, Time]
+      properties:
+        Version:
+          { type: string, description: "The canonical version, `v<semver>`." }
+        Time:
+          type: string
+          format: date-time
+          description: The version's publication time (RFC 3339, UTC, to the second).
     CompactJws:
       type: string
       description: A compact EdDSA JWS (header.payload.signature, base64url).
@@ -11703,7 +13196,8 @@ components:
           minimum: 0
           description: >
             How many products `GET /api/discover` offers this account (PX-W10): the Discover
-            count in the portal's nav.
+            count in the portal's nav. Never counts a product the account already holds, so
+            never one listed in `products`; `0` when there is nothing to add.
         products:
           type: array
           items:

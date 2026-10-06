@@ -38,7 +38,11 @@ import {
 import type { PortalDownloads } from "../src/services/identity/portal/downloads.js";
 import type { Env } from "../src/env.js";
 import { dispatch } from "../src/dispatch.js";
-import { handlePortalApi, handlePortalDownload } from "./portalHarness.js";
+import {
+  handlePortalApi,
+  handlePortalDownload,
+  seedRepositoryVisibility,
+} from "./portalHarness.js";
 import { NOW, makeEnv, seedLicenseWithKey } from "./seed.js";
 import { KvMock } from "./kvMock.js";
 import {
@@ -359,6 +363,34 @@ describe("licensed R2 downloads from the portal", () => {
     expect(url.searchParams.get("ticket")).toMatch(/^v1\./);
   });
 
+  it("private GitHub repository (Q7): a licensed file goes through the ticket, a public repo's to GitHub", async () => {
+    const w = await world("licensed");
+    await w.db.run(
+      `UPDATE release_artifacts
+          SET source_url = 'https://objects.githubusercontent.com/diceroll/' || artifact_id
+        WHERE product = ?`,
+      SLUG,
+    );
+    await seedRepositoryVisibility(w.env, w.db, SLUG, "private");
+    const p = await account(w);
+    const files = (await listing(w, p)).platforms.flatMap((x) => x.files);
+    expect(files.every((f) => f.canDownload && f.reason === null)).toBe(true);
+    // A private repository's URL would answer a browser with GitHub's 404, so the redirect is
+    // the bytes host (which streams the asset with Release's installation token) plus a ticket.
+    const url = await ticketedUrl(w, p);
+    expect(url.origin).toBe(BYTES);
+    expect(url.searchParams.get("ticket")).toMatch(/^v1\./);
+    expect((await fetchUrl(w, url)).status).toBe(200);
+
+    // The same repository made public: GitHub's own URL, no ticket.
+    await seedRepositoryVisibility(w.env, w.db, SLUG, "public");
+    const res = await redeem(w, await token(w, p));
+    expect(res.status).toBe(302);
+    expect(new URL(res.headers.get("location")!).hostname).toBe(
+      "objects.githubusercontent.com",
+    );
+  });
+
   it("bytes host: GET 200, Range 206 and HEAD, all private and forced to download", async () => {
     const w = await world("licensed");
     const p = await account(w);
@@ -432,6 +464,43 @@ describe("licensed R2 downloads from the portal", () => {
       WIN,
     );
     expect((await fetchUrl(w, url)).status).toBe(401);
+  });
+
+  it("two artifacts sharing a name in one release: the shadowed one's ticket fails closed", async () => {
+    const w = await world("licensed");
+    const p = await account(w);
+    const original = await artifactOf(w, "app@1.2.0", WIN);
+    // A second row with the same name and other bytes. The `files` route serves the first
+    // artifact (by id) with that name, so a ticket minted for this one binds a SHA-256 the bytes
+    // host never sees for that URL.
+    const dupId = `${original.artifact_id}~dup`;
+    await w.db.run(
+      `INSERT INTO release_artifacts
+         (product, release_id, artifact_id, name, kind, platform, arch, content_type,
+          size_bytes, sha256, source_url, storage_key, sparkle_signature, access,
+          metadata_json, created_at)
+       SELECT product, release_id, ?, name, kind, platform, arch, content_type,
+              size_bytes, ?, source_url, storage_key, sparkle_signature, access,
+              metadata_json, created_at
+         FROM release_artifacts
+        WHERE product = ? AND release_id = ? AND artifact_id = ?`,
+      dupId,
+      "f".repeat(64),
+      SLUG,
+      "app@1.2.0",
+      original.artifact_id,
+    );
+    const minted = await mint(w, p, "app@1.2.0", dupId);
+    expect(minted.status, await minted.clone().text()).toBe(201);
+    const { url: path } = (await minted.json()) as { url: string };
+    const res = await redeem(
+      w,
+      decodeURIComponent(path.replace(/^\/download\//, "")),
+    );
+    expect(res.status).toBe(302);
+    expect((await fetchUrl(w, res.headers.get("location")!)).status).toBe(401);
+    // The served artifact's own ticket still works.
+    expect((await fetchUrl(w, await ticketedUrl(w, p))).status).toBe(200);
   });
 
   it("entitled: the ticket answers where the wire answer would be 401 unauthorized", async () => {
@@ -540,7 +609,10 @@ describe("licensed R2 downloads from the portal", () => {
       );
       expect([...reasons]).toEqual(["not_hosted"]);
       const { artifact_id } = await artifactOf(w, "app@1.2.0", WIN);
-      expect((await mint(w, p, "app@1.2.0", artifact_id)).status).toBe(404);
+      // An owner is told why (the listing's reason code), and nothing is minted.
+      const refused = await mint(w, p, "app@1.2.0", artifact_id);
+      expect(refused.status).toBe(409);
+      expect(await refused.json()).toMatchObject({ error: "not_hosted" });
     }
   });
 

@@ -385,6 +385,8 @@ PKEY_ENVIRONMENT = "test"
 #   KEY_HASH_PEPPER, ADMIN_SESSION_SECRET, GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY,
 #   GITHUB_WEBHOOK_SECRET, PLATFORM_ADMIN_GROUP, PLATFORM_KEK,
 #   PLATFORM_OIDC_ISSUER, PLATFORM_OIDC_CLIENT_ID, PLATFORM_OIDC_CLIENT_SECRET.
+# The KEK keyring (rotation-capable; replaces PLATFORM_KEK, written in ONE `wrangler secret bulk`):
+#   PLATFORM_KEK_KEYS, PLATFORM_KEK_ACTIVE. PLATFORM_KEK_ID stays unset (src/env.ts says why).
 # Optional portal-specific secret:
 #   PORTAL_SESSION_SECRET (falls back to ADMIN_SESSION_SECRET when omitted).
 # Portal licensed downloads (PX-W3; optional, without it licensed R2-only files stay not_hosted):
@@ -392,9 +394,20 @@ PKEY_ENVIRONMENT = "test"
 # Console's own Pocket ID client (I-03; set all three in ONE `wrangler secret bulk`):
 #   ADMIN_OIDC_ISSUER, ADMIN_OIDC_CLIENT_ID, ADMIN_OIDC_CLIENT_SECRET. Until they are set the
 #   console signs in through PLATFORM_OIDC_*; the portal never reads them.
+# Manifest identity providers (R9-01; fails closed while unset): OIDC_ISSUER_ALLOWLIST.
+# The registry host's OCI pull tokens (F-21; /v2/token answers 503 while unset):
+#   REGISTRY_TOKEN_KEY, and REGISTRY_TOKEN_KEY_PREVIOUS during a rotation only.
+# Team store credentials and settings (A-16; optional, a console-managed value wins):
+#   PLATFORM_ASC_API_KEY, PLATFORM_APP_STORE_SERVER_KEY, PLATFORM_GOOGLE_SERVICE_ACCOUNT,
+#   PLATFORM_MS_PARTNER_CENTER, PLATFORM_STEAM_PUBLISHER_KEY; PLATFORM_APPLE_TEAM_ID (not secret).
 # Sign-in and account email (I-18, core/emailSender.ts, core/emailDelivery.ts):
 #   prod and staging bind Cloudflare Email Service as EMAIL. The display name is never
 #   configurable ("Polaris Key", or "<App> via Polaris Key" for passthrough); EMAIL_SENDER_ADDRESS
 #   picks the address (unset = noreply@plrs.im). PORTAL_EMAIL_FROM is still read for its address
 #   only, while EMAIL_SENDER_ADDRESS is unset.
+# Optional [vars] left unset here, each with a code default (src/env.ts): BLOB_GC_MODE,
+#   BLOB_GC_GRACE_DAYS, LAZY_DELTA_MAX_BYTES, LICENSING_RESERVED_NAMES (A-13: the console's
+#   Platform → Settings value wins), PLATFORM_DEPLOY_ENVIRONMENT (default production).
+# Injected at deploy by .github/workflows/deploy.yml (--var): PKEY_RELEASE_TAG, PKEY_GIT_SHA.
 # Product signing keys and product-scoped secrets are sealed in D1 through the admin API.
+# This block is checked against src/env.ts by `pnpm gen:platform-inventory -- --check` (ST-02).

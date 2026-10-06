@@ -654,7 +654,15 @@ describe("the DELTA_DLQ binding is used for metrics() only", () => {
       "admin/handlers/platform.ts", // the Deployment page's binding-presence list
       "core/operations.ts",
       "env.ts",
+      "platformInventory.generated.ts", // ST-02: the generated inventory, data only
     ]);
+    // The generated inventory names it once, as a string in a data row, and reads nothing.
+    const inventory = readFileSync(
+      join(SRC, "platformInventory.generated.ts"),
+      "utf8",
+    );
+    expect(inventory.match(/DELTA_DLQ/g)).toEqual(["DELTA_DLQ"]);
+    expect(inventory).toContain('name: "DELTA_DLQ"');
     // Where operations.ts reads it, it hands it straight to `queueStatus` (metrics only).
     const ops = readFileSync(join(SRC, "core", "operations.ts"), "utf8");
     expect(ops.match(/DELTA_DLQ/g)).toHaveLength(1);

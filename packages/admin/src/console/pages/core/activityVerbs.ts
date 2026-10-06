@@ -51,6 +51,7 @@ const VERBS: Record<string, string> = {
   "release.publish": "published release",
   "release.record": "recorded release",
   "license.merge": "merged license",
+  "identity.signin.license_chosen": "chose license to sign in a device",
   "license.tier": "changed the tier of license",
   "device.attest": "attested device",
   "device.attest.rejected": "rejected the attestation of device",

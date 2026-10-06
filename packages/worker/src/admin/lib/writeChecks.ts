@@ -20,9 +20,17 @@
  */
 
 import { catalogKeyIssue, representabilityIssue } from "@polaris-key/catalog";
-import { CHANNEL_RE, ID_RE, KID_RE, SEMVER_RE } from "@polaris-key/manifest";
+import {
+  CHANNEL_RE,
+  ID_RE,
+  KID_RE,
+  reservedNameMessage,
+  SEMVER_RE,
+  type ReservedNamesMode,
+} from "@polaris-key/manifest";
 import { MAX_WIRE_INTEGER } from "@polaris-key/protocol/core";
 import { ErrorCode } from "../../core/errors.js";
+import { incompatibleReservedNames } from "../../core/reservedNames.js";
 import { err } from "./respond.js";
 
 /** The offline-day range the bundle mint already enforces (`core/bundles.ts`). */
@@ -154,4 +162,23 @@ export function catalogRepresentabilityResponse(
   return bad.length > 0
     ? err(422, ErrorCode.BadRequest, "validation failed", { fields: bad })
     : null;
+}
+
+/**
+ * A whole catalog (manual create, catalog publish) under the platform's reserved-name severity
+ * (S-19 §7.4, LX-05): `null` in `warn` mode or when every reserved-name declaration is compatible;
+ * in `error` mode the `422` naming each incompatible entry. In `warn` mode the declaration is
+ * accepted here and listed on Platform → Settings → Licensing.
+ */
+export function reservedNamesResponse(
+  catalog: unknown,
+  mode: ReservedNamesMode,
+): Response | null {
+  if (mode !== "error") return null;
+  const bad = incompatibleReservedNames(catalog);
+  if (bad.length === 0) return null;
+  return err(422, ErrorCode.BadRequest, reservedNameMessage(bad[0]!, mode), {
+    reason: "incompatible_reserved_name",
+    fields: bad.map((d) => `catalog/entries/${d.index}/key`),
+  });
 }

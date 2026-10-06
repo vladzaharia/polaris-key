@@ -193,6 +193,12 @@ and writes the step into the store's operation ledger with `plane = ci`, so CI s
 the console's; refusals add `command_not_allowed`, `worker_draft_staged` and `step_conflict`. A
 store step changes no availability record: report `live` as above once the store shows it. See
 [Storefront steps](/docs/build/ci/#storefront-steps-itchio-and-snap).
+A pull-request step (`pkey storefront winget|homebrew|scoop|flathub pr` and `status`) is
+reported the same way with `plane = pr`: Polaris Key checks the repository against the outlet's
+identity and every file the pull request wrote against the store's paths, and records the files'
+SHA-256, the pull request and its verdict (`in-review`, `needs-author-feedback`,
+`validation-issue`, `merged`, `closed`). See
+[Pull-request steps](/docs/build/ci/#pull-request-steps-winget-homebrew-scoop-and-flathub).
 
 ## The key inventory
 
