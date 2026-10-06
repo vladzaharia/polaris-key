@@ -5,7 +5,7 @@
 | Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (SDK gaps)                                                                                                                           |
 | Size        | 1–1.5 engineer-weeks                                                                                                                                                                |
 | Depends on  | none                                                                                                                                                                                |
-| Unblocks    | [SP-15](SP-15-react-local-update-lifecycle.md)                                                                                                                                      |
+| Unblocks    | [SP-15](SP-15-react-local-update-lifecycle.md), [SP-31](SP-31-node-bridge-v4.md)                                                                                                    |
 | Role        | `pkey-sdk-porter`                                                                                                                                                                   |
 | Plan mode   | no                                                                                                                                                                                  |
 | Gates       | transcript replay (`boot-cold-register.json`, `release-fetch-gated.json`, `distribution-download-model.json`) and `feed-url-matrix.json`; `parity:check`; the generated parity page |

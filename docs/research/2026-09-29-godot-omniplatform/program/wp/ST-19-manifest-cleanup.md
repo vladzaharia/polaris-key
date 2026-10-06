@@ -36,6 +36,43 @@ Duplicate manifest spellings are deprecated with warnings, and a parity test kee
 
 - Turning warnings into errors (a later decision).
 
+## PENDING entries to remove
+
+ST-06 left a shrinking allow-list in `packages/worker/scripts/settings-coverage.ts`. Its "PENDING owners" decision ([ST-06](ST-06-settings-docs-coverage.md#design-notes)) assigns this package the 32 entries below. Give each one a home: register it in the settings registry (the note names the intended key, where there is one), or, for a duplicate spelling, register it as the alias or retirement the plan decides. Then delete it from `PENDING` and lower `PENDING_CEILING` by the same count. `checkCoverage` refuses an entry that is both pending and registered, so the two edits land together.
+
+- `table:ci_publishers` (`release.publishing.trustedPublisher`)
+- `column:ci_publishers.source`
+- `table:release_channel_policy` (`release.channelPolicy`)
+- `column:release_channel_policy.source`
+- `column:release_deliverables.def_source` (`release.deliverables`)
+- `table:provisioning_config` (`identity.provisioning`)
+- `table:dist_transports` (`distribution.transports`)
+- `manifest:product:product`: duplicate spelling, the `productCore` wrapper
+- `manifest:product:compatMax`: the second field of `release.compatWindow`
+- `manifest:product:defaultDeviceLimit`: duplicate spelling of `licensing.defaultDeviceLimit`
+- `manifest:product:defaultMaxOfflineDays`: duplicate spelling of `licensing.defaultMaxOfflineDays`
+- `manifest:product:devices` (`core.registration`)
+- `manifest:product:provisioning` (`identity.provisioning`)
+- `manifest:product:secrets` (`core.secrets`, names only)
+- `manifest:product:release`: the release document inlined
+- `manifest:schema:catalog`: duplicate spelling of `entries`
+- `manifest:release:release`: duplicate spelling, the wrapper
+- `manifest:release:provider` (`release.github`)
+- `manifest:release:ghOwner` (`release.github`)
+- `manifest:release:ghRepo` (`release.github`)
+- `manifest:release:binaryName`
+- `manifest:release:channelWorkflow`
+- `manifest:release:betaBranch`
+- `manifest:release:summaryMarker`
+- `manifest:release:manualChannels`
+- `manifest:release:stableTagPattern`
+- `manifest:release:ignoreTags`
+- `manifest:release:deliverables` (`release.deliverables`)
+- `manifest:release:edgeMint`
+- `manifest:release:publishing` (`release.publishing.trustedPublisher`)
+- `manifest:release:releaseKeys` (`release.keys`)
+- `manifest:distribution:transports` (`distribution.transports`)
+
 ## Design notes
 
 - Plan mode because it changes the manifest contract: the plan names every validator rule and mutation entry.
@@ -48,6 +85,7 @@ Duplicate manifest spellings are deprecated with warnings, and a parity test kee
 
 ## Acceptance criteria
 
+- [ ] Every `PENDING` entry listed under "PENDING entries to remove" is registered and gone from `settings-coverage.ts`, `PENDING_CEILING` is 32 lower, and `settings-coverage.test.ts` passes.
 - [ ] `pkey validate` warns on `djdl` and passes on the monorepo `.pkey/`.
 - [ ] Rule 9 entries exist for each warning.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.

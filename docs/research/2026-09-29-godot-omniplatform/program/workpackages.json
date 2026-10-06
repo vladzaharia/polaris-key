@@ -371,6 +371,26 @@
       "status": "done"
     },
     {
+      "id": "P0-14",
+      "title": "One product slug rule in `shared-manifest`: `SLUG_SHAPE` and the reserved admin route actions (`kek`, `link-repo`, `slug-check`) in the validator, the mutation table and the schema, used by manual create, link-repo and the slug check",
+      "phase": "P0",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.25, 0.5],
+      "deps": [],
+      "planMode": false,
+      "gates": ["rule-9", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "UX-72 (wp/UX-72-create-probes, merged a1e5a898e): packages/worker/src/services/release/linkRepo.ts SLUG_SHAPE, PRODUCT_ROUTE_ACTIONS",
+        "AGENTS.md rule 9"
+      ],
+      "brief": "wp/P0-14-slug-rule-shared-manifest.md",
+      "status": "todo"
+    },
+    {
       "id": "P1-01",
       "title": "Create `sdks/godot` from the prototype, with a corpus mirror and CI runner",
       "phase": "P1",
@@ -585,6 +605,27 @@
       "brief": "wp/P1-12-godot-release.md",
       "status": "in-review",
       "milestone": "Diceroll can adopt managed config, licensing and identity"
+    },
+    {
+      "id": "P1-13",
+      "title": "Godot timing tests that hold under any load: replace wall-clock ratio and frame-count checks with deterministic work counters",
+      "phase": "P1",
+      "lane": "godot",
+      "role": "pkey-godot-engineer",
+      "estimateWeeks": [0.25, 0.5],
+      "deps": [],
+      "planMode": false,
+      "gates": [],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "sdks/godot/tests/support/fixtures.gd fastest_ms",
+        "sdks/godot/tests/packs/test_pck.gd _scan_scaling, tests/core/test_json.gd, tests/core/test_offload.gd",
+        "CLAUDE.md Test budget"
+      ],
+      "brief": "wp/P1-13-godot-timing-tests.md",
+      "status": "todo"
     },
     {
       "id": "P1b-01",
@@ -7568,6 +7609,28 @@
         "sdks/godot/parity.json: packs.transport.msix, packs.transport.flatpak"
       ],
       "brief": "wp/SP-30-godot-msix-flatpak.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-31",
+      "title": "Node Electron host speaks PolarisBridge v4: `exposePolarisBridge` reports version 4 and answers every v4 `invoke` verb, sign-in field and activation kind over the Node client; `bridge.ts` documents the v4 contract",
+      "phase": "SP",
+      "stage": "SDK gaps",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.75, 1.25],
+      "deps": ["SP-12"],
+      "planMode": false,
+      "gates": ["docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/SDK-PARITY-PASS §5 (SP-N10, SP-R07) and §6 (bridge v4 contract)",
+        "packages/sdk-node/src/electron/protocol.ts DEFAULT_INVOKE_VERBS, POLARIS_BRIDGE_VERSION",
+        "packages/sdk-react/src/desktop/bridge.ts WHAT v4 ADDS"
+      ],
+      "brief": "wp/SP-31-node-bridge-v4.md",
       "status": "todo"
     },
     {

@@ -43,6 +43,16 @@ Product settings are spread over service pages today ([S-18 §2.6](../../notes/S
 
 - Search (→ ST-10); listing (→ ST-13); portal area (→ ST-14).
 
+## PENDING entries to remove
+
+ST-06 left a shrinking allow-list in `packages/worker/scripts/settings-coverage.ts`. Its "PENDING owners" decision ([ST-06](ST-06-settings-docs-coverage.md#design-notes)) assigns this package the 5 entries below. Register each one in the settings registry (the note names the intended key, where there is one), then delete it from `PENDING` and lower `PENDING_CEILING` by the same count. `checkCoverage` refuses an entry that is both pending and registered, so the two edits land together.
+
+- `table:product_keys` (`core.keys`)
+- `table:product_secrets` (`core.secrets`)
+- `table:release_channel_floors` (`release.channelFloors`)
+- `table:release_pack_floors` (`release.channelFloors`, packs)
+- `column:release_pack_floors.source`
+
 ## Design notes
 
 - U-11a's Cloud Sync section and I-12's sign-in settings land in the hub, so ST-08 precedes them.
@@ -55,6 +65,7 @@ Product settings are spread over service pages today ([S-18 §2.6](../../notes/S
 
 ## Acceptance criteria
 
+- [ ] Every `PENDING` entry listed under "PENDING entries to remove" is registered and gone from `settings-coverage.ts`, `PENDING_CEILING` is 5 lower, and `settings-coverage.test.ts` passes.
 - [ ] Old deep links redirect (e2e).
 - [ ] Console CSP parity passes.
 - [ ] The hub renders at phone width.
