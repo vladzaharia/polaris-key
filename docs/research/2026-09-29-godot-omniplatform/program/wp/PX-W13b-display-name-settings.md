@@ -1,16 +1,16 @@
 # PX-W13b Display-name policy settings: `identity.reservedDisplayTerms` (platform) and `identity.displayNameApproved` (product) wired into the reserved-name check and the shared-manifest validator (rule 9)
 
-| Field       | Value                                                                                                                   |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)                                                 |
-| Size        | 0.3–0.6 engineer-weeks                                                                                                  |
-| Depends on  | [PX-W13](PX-W13-passthrough-metadata.md), [ST-04](ST-04-settings-resolver.md), [LX-05b](LX-05b-reserved-names-error.md) |
-| Unblocks    | none                                                                                                                    |
-| Role        | `pkey-implementer`                                                                                                      |
-| Plan mode   | no                                                                                                                      |
-| Gates       | rule 9 (validator option, mutation table, JSON schema); THREAT-MODEL                                                    |
-| Human input | none                                                                                                                    |
-| Repo        | `vladzaharia/polaris-key`                                                                                               |
+| Field       | Value                                                                         |
+| ----------- | ----------------------------------------------------------------------------- |
+| Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)       |
+| Size        | 0.3–0.6 engineer-weeks                                                        |
+| Depends on  | [PX-W13](PX-W13-passthrough-metadata.md), [ST-04](ST-04-settings-resolver.md) |
+| Unblocks    | none                                                                          |
+| Role        | `pkey-implementer`                                                            |
+| Plan mode   | no                                                                            |
+| Gates       | rule 9 (validator option, mutation table, JSON schema); THREAT-MODEL          |
+| Human input | none                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                     |
 
 ## Goal
 

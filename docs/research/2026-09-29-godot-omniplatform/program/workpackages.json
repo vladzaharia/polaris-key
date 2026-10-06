@@ -5454,7 +5454,7 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [0.3, 0.6],
-      "deps": ["PX-W13", "ST-04", "LX-05b"],
+      "deps": ["PX-W13", "ST-04"],
       "planMode": false,
       "gates": ["rule-9", "threat-model"],
       "humanInputs": [],
