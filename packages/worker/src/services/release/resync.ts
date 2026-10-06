@@ -365,7 +365,9 @@ async function applyRepoManifest(
   let carryCatalog = incomingCatalog;
   if (catalogClaimed && activeSchema) {
     try {
-      carryCatalog = new Catalog(JSON.parse(activeSchema.catalog_json) as never);
+      carryCatalog = new Catalog(
+        JSON.parse(activeSchema.catalog_json) as never,
+      );
     } catch {
       carryCatalog = incomingCatalog;
     }
