@@ -5380,6 +5380,70 @@ methods, never behind a product's Identity toggle. S-16 §5.4 item 2 (broker con
   buckets (`portalProviderStart`, `portalProviderCallback`, `appleNotifications`), all failing
   closed.
 
+### Passkeys on key.plrs.im (I-16)
+
+Passkeys are an account sign-in method on the console host (`services/identity/passkeys/`, over
+`@simplewebauthn/server`; S-16 §5.4 items 7, 14 and 17; PORTAL.md §4.1, §4.26). Each passkey is
+an `account_passkeys` row (COSE public key, signature counter, transports, RP id, user handle)
+twinned with an `account_links` row (`issuer_key = 'passkey'`, subject = the credential id), so
+the link engine's rules (one account per method, the never-orphan guard, step-up, audit, notices,
+merge and deletion) apply to it unchanged.
+
+- **Phishing and look-alike origins (item 14).** The relying party is the console host
+  (`CONSOLE_ORIGIN`, `key.plrs.im`), and a ceremony is served only on that origin, so no other host
+  of ours can mint a challenge a key.plrs.im passkey would answer. Both verifications pin the exact
+  origin (`https://key.plrs.im`: no subdomain, no `http:`, no port) and the SHA-256 of the RP id in
+  the authenticator data, so an assertion a browser makes for a look-alike site is refused here
+  (tests for a sibling subdomain, the parent domain, `http:` and a foreign RP id). The browser
+  itself refuses to use a key.plrs.im passkey anywhere else, which is the phishing resistance;
+  the server checks make it independent of the browser.
+- **Replay (item 8's single-use rule).** A sign-in challenge is 32 random bytes in I-02's
+  single-use store for 5 minutes, named by a host-only `__Host-pkey_passkey` cookie (so it
+  completes only in the browser that asked) and TAKEN by an atomic consume before anything is
+  verified: an answer verifies at most once, a failed try needs a new challenge, and of two racing
+  submissions of one answer exactly one signs in (the workerd test races them on the real Durable
+  Object). An old answer to a new challenge fails the challenge comparison. A registration
+  challenge is bound to the account session that asked, consumed the same way. The account realm's
+  cookie rules cover the new cookie: the dispatcher strips it from every product route.
+- **What the assertion must prove.** User presence AND user verification (biometric or device
+  PIN) at registration and sign-in: a passkey is a whole sign-in, never a second factor. The user
+  handle must come back and equal the one the credential was created under (a discoverable sign-in
+  names no account up front). The signature must verify under the stored key. Algorithms: EdDSA,
+  ES256, RS256. No attestation is requested; a statement an authenticator sends anyway is still
+  verified. A passkey signs in only through its existing link (`signIn` with `linkedOnly`), so it
+  never creates an account, even in the instant after its method was removed.
+- **Cloned authenticators.** A signature counter that did not advance while either side is
+  non-zero refuses the sign-in (WebAuthn §7.2 step 22) and writes `account.passkey.counter_regressed`
+  to the account's audit trail. The library compares counters BEFORE it checks the signature, so
+  it is handed 0 and the same rule runs on the counter of an assertion whose signature is proven:
+  a forgery cannot plant a false clone alarm (a test). The counter update is a compare-and-set,
+  so of two assertions racing on one counter value at most one is accepted. Synced passkeys
+  report 0 and are unaffected; cloning them is the sync provider's account security.
+- **Enrolment and the account as a target (item 17; S-16 §5.1 recovery).** A passkey is added only
+  once the account has a verified primary email (so it is never the only way back in), only with
+  a sign-in no older than 5 minutes (re-checked when the answer arrives), is audited
+  (`account.link.add`) and emailed to every verified address, and an account holds at most 20.
+  Removal needs the same step-up and goes through `unlinkIdentity`, whose guard is inside the
+  DELETE, so the last sign-in method is never removed (`last_link`); the generic unlink also
+  deletes the passkey's WebAuthn material. A credential id is stored with a plain INSERT in one
+  batch with its link: an authenticator can choose its own ids, so a credential id another account
+  holds fails the batch (`link_conflict`) and can never overwrite that account's key.
+- **Correlation.** The WebAuthn user handle is 32 random bytes per account
+  (`accounts.passkey_user_handle`), never the account id and derived from nothing; the user name
+  the authenticator shows is the person's own primary email. One handle per account means one
+  "Polaris Key" entry per authenticator. Nothing about passkeys reaches a developer: they are
+  account methods, and a passkey sign-in on the card is the platform's, never a product's.
+- **Enumeration.** The sign-in challenge names no account (no credential list). Every failed
+  passkey sign-in answers one `401 unauthorized` body; `unknownCredential: true` says only that no
+  account holds that credential id (so the card can ask the browser to forget it), which reveals
+  nothing about any account. Both card routes share 30 requests a minute per client address and
+  fail closed; account changes are limited to 10 a minute per account.
+- **Residuals.** Whoever holds an unlocked device with a synced passkey, or the sync account
+  behind it, can sign in as the person: that is the authenticator's security, as for any passkey
+  site. Pocket ID passkeys (`rp_id = id.plrs.im`) cannot carry over; migrated users enrol again
+  (I-17). AAGUIDs are stored for display only and are not verified (no attestation); a malicious
+  authenticator can claim any model, which affects only the label the person sees.
+
 ### The console's Users page and the relink tool (I-12)
 
 Every product's console has a Users page (`/manage/api/products/<slug>/users…`,
