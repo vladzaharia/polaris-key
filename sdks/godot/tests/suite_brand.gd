@@ -117,7 +117,16 @@ func _kit(t: PKeyTestContext) -> void:
 		t.check("kit: %s is MSDF" % path.get_file(), font.multichannel_signed_distance_field)
 		var axes := font.get_supported_variation_list()
 		t.check("kit: %s has a weight axis" % path.get_file(), axes.has(TextServerManager.get_primary_interface().name_to_tag("weight")), str(axes))
+	# Each font's licence travels with it (SIL OFL 1.1): PKeyExportPlugin adds the .txt files to an
+	# export that carries the fonts, so these pass from the exported pack as well as the editor.
 	t.check("kit: the JetBrains Mono licence travels with it", FileAccess.get_file_as_string("res://addons/polaris_key/ui/theme/fonts/OFL-JetBrainsMono.txt").contains("JetBrains Mono"))
+	t.check("kit: the Rubik licence travels with it", FileAccess.get_file_as_string("res://addons/polaris_key/ui/theme/fonts/OFL.txt").contains("Rubik"))
+	t.check("kit: the Rubik notice travels with it", FileAccess.get_file_as_string("res://addons/polaris_key/ui/theme/fonts/FONT-NOTICE.txt").contains("Rubik"))
+	for path in [PKeyUiTheme.REGULAR_PATH, PKeyUiTheme.BOLD_PATH, PKeyKitTokens.RUBIK_VARIABLE_PATH, PKeyKitTokens.JETBRAINS_MONO_VARIABLE_PATH]:
+		var licences := PKeyUiTheme.font_licences(path)
+		t.check("kit: %s names its licence files" % path.get_file(), not licences.is_empty())
+		for licence in licences:
+			t.check("kit: %s ships beside %s" % [licence.get_file(), path.get_file()], PKeyUiTheme.is_font_licence(licence) and FileAccess.file_exists(licence))
 	_kit_matches_generator(t)
 
 
