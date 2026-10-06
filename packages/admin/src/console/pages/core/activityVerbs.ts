@@ -91,7 +91,7 @@ const VERBS: Record<string, string> = {
   "feed.retention.update": "changed the retention of package feeds",
   // HA-05, HA-06: hosted assets (the target is the slot, `<slot>@<locale>`).
   "assets.ingest": "hosted a copy of",
-  "assets.revert": "returned to the manifest the slot",
+  "assets.revert": "gave back to the manifest",
   "assets.delete": "deleted the hosted copy of",
   "assets.push": "pushed hosted assets from CI",
   "assets.variants": "built image sizes for",
