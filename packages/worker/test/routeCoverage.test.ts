@@ -114,6 +114,8 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // PX-W16 (G32, G33): Account → Profile and picture uploads.
     ["/api/me/profile", ["get", "patch"]],
     ["/api/me/profile/picture", ["post"]],
+    // PX-W9 (§12.2 rule 8): the login card's signed-out key preview.
+    ["/api/key/preview", ["post"]],
     // PX-W14 (G29): sign in with another device.
     ["/api/device-login/start", ["post"]],
     ["/api/device-login/lookup", ["post"]],
