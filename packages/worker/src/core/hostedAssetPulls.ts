@@ -836,10 +836,12 @@ export async function processLadderRetry(
  * without a queue binding.
  *
  * A due row the re-check cannot act on (an unreadable `wanted_ref`, a repo ref with no applied
- * commit to read it at) is read past, never counted: the budget is what is enqueued, so a few such
- * rows, always the oldest due, cannot crowd every ladder retry out of a run. They are not held
- * off either: a resync that brings the commit pulls at once (the planner waits out the back-off of
- * an unchanged ref). Reading is bounded by `RECHECK_MAX_PAGES` pages of `limit` rows.
+ * commit to read it at) is read past, never counted: the budget is what is enqueued, so such rows
+ * cannot crowd every ladder retry out of a run. Each is also held off as a failed pull is
+ * (`attempts` up, the next back-off step), so it sorts behind the rows that fell due before it
+ * rather than staying the oldest due and filling the pages of every run. The cost: a resync that
+ * brings the missing commit waits out that back-off (a day at most), as the planner does for any
+ * unchanged ref. Reading is bounded by `RECHECK_MAX_PAGES` pages of `limit` rows.
  */
 export async function recheckHostedAssets(
   env: Pick<Env, "HOSTED_ASSET_QUEUE" | "IMAGES">,
@@ -894,9 +896,18 @@ export async function recheckHostedAssets(
       }
       if (r.wanted_ref === null) continue;
       const ref = parseWantedRef(r.wanted_ref);
-      if (!ref || !isManifestAssetSlot(r.slot)) continue;
       const commit = gitShaOrNull(r.applied_sha);
-      if (ref.kind === "repo" && !commit) continue;
+      if (
+        !ref ||
+        !isManifestAssetSlot(r.slot) ||
+        (ref.kind === "repo" && !commit)
+      ) {
+        // Nothing to send: held off as a failed pull is, never counted against the budget.
+        statements.push(
+          stmtPullFailed(r.product, r.slot, r.wanted_ref, now, null),
+        );
+        continue;
+      }
       messages.push({
         v: 1,
         product: r.product,
@@ -910,9 +921,8 @@ export async function recheckHostedAssets(
     }
     if (messages.length >= limit || due.length < limit) break;
   }
-  if (messages.length === 0) return 0;
-  await enqueueAssetPulls(env, messages);
-  await db.batch(statements);
+  if (messages.length > 0) await enqueueAssetPulls(env, messages);
+  if (statements.length > 0) await db.batch(statements);
   return messages.length;
 }
 
