@@ -43,6 +43,9 @@ import { handleIdentityRoutes } from "./routes.js";
 import { handleIdentityAdmin } from "./admin.js";
 import { authorizeRegistration } from "./registration.js";
 import { IDENTITY_SETTINGS_SLICE } from "./settings.js";
+// LX-26: registers Identity's licence-holder hooks with Core (`core/licenseHolders.ts`) at load,
+// so License's creation path and every account-email verification reach them.
+import "./accounts/holders.js";
 
 export const identityService: ServiceDescriptor = {
   slug: "identity",

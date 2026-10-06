@@ -324,6 +324,7 @@ const TABLE_OWNERS = {
     "outlet_credentials",
     "devices",
     "license_refusals",
+    "license_auto_attach_blocks",
     "device_fingerprints",
     "device_facts",
     "audit",

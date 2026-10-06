@@ -176,11 +176,18 @@ export interface LicenseHolderFacts {
  * in an account": a licence with an email and no account is assigned and waiting, not floating.
  */
 export function isFloatingLicense(licence: LicenseHolderFacts): boolean {
-  const email = licence.email ?? null;
   return (
-    (licence.account_id ?? null) === null &&
-    (email === null || /^ *$/.test(email))
+    (licence.account_id ?? null) === null && licenseEmail(licence) === null
   );
+}
+
+/**
+ * The licence's own email as the holder rule reads it: `null` when there is none or it is empty or
+ * only spaces (SQLite's `TRIM(email) = ''`), else the stored value unchanged.
+ */
+export function licenseEmail(licence: LicenseHolderFacts): string | null {
+  const email = licence.email ?? null;
+  return email === null || /^ *$/.test(email) ? null : email;
 }
 
 /**

@@ -24,6 +24,7 @@ import {
   licenseAccountId,
   subjectFor,
 } from "../../../core/accountSubjects.js";
+import { notAutoAttachBlockedSql } from "../../../core/licenseHolders.js";
 import { catchUpLegacyAccount } from "../accounts/legacy.js";
 import { deleteAccount } from "../accounts/deletion.js";
 import { signIn, type SignInResult } from "../accounts/signIn.js";
@@ -410,9 +411,104 @@ export async function listVerifiedAccountEmails(
   return verifiedAccountEmails(db, accountId);
 }
 
+/** How an automatic attach found its licence: the account verified its email, or its `sub`. */
+export type AutoAttachVia = "email" | "oidc";
+
 /**
- * Attach every FLOATING licence this account can prove it owns (I-05: the owner pointer replaced
- * `portal_license_links`). An owned licence is never touched, whoever owns it.
+ * The `account.license.attach` row every attach writes (S-24 §7.4), automatic or not:
+ * `Attached a license (<via>)`. `attachLicense` (`accounts/claim.ts`) writes it for a key, device
+ * or creation-time attach, and the sweep below for an email or OIDC-subject match.
+ */
+export async function auditLicenseAttach(
+  db: Db,
+  input: {
+    accountId: string;
+    product: string;
+    licenseId: string;
+    via: string;
+    now: number;
+  },
+): Promise<void> {
+  await portalAudit(db, {
+    accountId: input.accountId,
+    action: "account.license.attach",
+    product: input.product,
+    targetKind: "license",
+    targetId: input.licenseId,
+    summary: `Attached a license (${input.via})`,
+    now: input.now,
+  });
+}
+
+/** One automatic attach: conditional on the licence still being unattached, then audited. */
+async function attachAutomatically(
+  db: Db,
+  accountId: string,
+  licence: { product: string; id: string },
+  via: AutoAttachVia,
+  now: number,
+): Promise<boolean> {
+  if (
+    !(await attachLicenseAccount(
+      db,
+      licence.product,
+      licence.id,
+      accountId,
+      now,
+    ))
+  )
+    return false;
+  await subjectFor(db, accountId, licence.product, now);
+  await auditLicenseAttach(db, {
+    accountId,
+    product: licence.product,
+    licenseId: licence.id,
+    via,
+    now,
+  });
+  return true;
+}
+
+/**
+ * The email half of the sweep for ONE address the account has verified (LX-26: the body of Core's
+ * `onAccountEmailVerified` hook, registered by `accounts/holders.ts`). Attaches every licence that
+ * names `email`, is in no account, belongs to a product whose auto-link resolves on (R5-01), and
+ * is not blocked for this account (S-24 D19: a licence removed from the library stays out).
+ * The caller guarantees the address is verified on the account. Answers how many joined.
+ *
+ * R11-08: an index SEARCH on `idx_licenses_email_lower`.
+ */
+export async function attachWaitingLicensesByEmail(
+  db: Db,
+  accountId: string,
+  email: string,
+  now: number,
+): Promise<number> {
+  const address = normalizeEmail(email);
+  if (!address) return 0;
+  const rows = await db.all<{ product: string; id: string }>(
+    `SELECT l.product AS product, l.id AS id
+       FROM licenses l
+       LEFT JOIN portal_product_settings s ON s.product = l.product
+       LEFT JOIN oidc_config o ON o.product = l.product
+      WHERE lower(l.email) = ? AND l.account_id IS NULL AND ${AUTO_LINK_ENABLED_SQL}
+        AND ${notAutoAttachBlockedSql("l")}`,
+    address,
+    accountId,
+  );
+  let attached = 0;
+  for (const licence of rows) {
+    if (await attachAutomatically(db, accountId, licence, "email", now))
+      attached++;
+  }
+  return attached;
+}
+
+/**
+ * Attach every licence this account can prove it owns and that is in no account (I-05: the owner
+ * pointer replaced `portal_license_links`). An owned licence is never touched, whoever owns it,
+ * and a licence the account removed from its library is never attached again automatically
+ * (LX-26, S-24 D19: `license_auto_attach_blocks`; the key still adds it back).
  *
  * Cross-product visibility is intentional (one account, every product the person holds a licence
  * for). What was NOT intentional was the join being a bare, unqualified equality on a
@@ -430,6 +526,9 @@ export async function listVerifiedAccountEmails(
  *   A licence's `sub` therefore joins an account only through an existing link (plans/I-04.md
  *   §6.1); legacy `sub`-only licences of custom-issuer products stay floating (§8 Q6).
  *
+ * The email half is the account-email hook's body (`attachWaitingLicensesByEmail`), run for every
+ * address the account verified; every attach is audited (`account.license.attach`).
+ *
  * R11-08: both queries are index SEARCHes (`idx_licenses_email_lower`, `idx_licenses_sub_global`).
  */
 export async function syncAccountLicenseLinks(
@@ -437,39 +536,29 @@ export async function syncAccountLicenseLinks(
   accountId: string,
   now: number,
 ): Promise<void> {
-  const matches: Array<{ product: string; id: string }> = [];
   for (const email of await verifiedAccountEmails(db, accountId)) {
-    matches.push(
-      ...(await db.all<{ product: string; id: string }>(
-        `SELECT l.product AS product, l.id AS id
-           FROM licenses l
-           LEFT JOIN portal_product_settings s ON s.product = l.product
-           LEFT JOIN oidc_config o ON o.product = l.product
-          WHERE lower(l.email) = ? AND l.account_id IS NULL AND ${AUTO_LINK_ENABLED_SQL}`,
-        email,
-      )),
-    );
+    await attachWaitingLicensesByEmail(db, accountId, email, now);
   }
   const subjects = await db.all<{ subject: string }>(
     "SELECT subject FROM account_links WHERE account_id = ? AND kind = 'oidc'",
     accountId,
   );
   for (const link of subjects) {
-    matches.push(
-      ...(await db.all<{ product: string; id: string }>(
-        `SELECT l.product AS product, l.id AS id
-           FROM licenses l
-           LEFT JOIN portal_product_settings s ON s.product = l.product
-           LEFT JOIN oidc_config o ON o.product = l.product
-          WHERE l.sub = ? AND l.account_id IS NULL
-            AND COALESCE(o.provider, 'platform') = 'platform'
-            AND ${AUTO_LINK_ENABLED_SQL}`,
-        link.subject,
-      )),
+    const rows = await db.all<{ product: string; id: string }>(
+      `SELECT l.product AS product, l.id AS id
+         FROM licenses l
+         LEFT JOIN portal_product_settings s ON s.product = l.product
+         LEFT JOIN oidc_config o ON o.product = l.product
+        WHERE l.sub = ? AND l.account_id IS NULL
+          AND COALESCE(o.provider, 'platform') = 'platform'
+          AND ${AUTO_LINK_ENABLED_SQL}
+          AND ${notAutoAttachBlockedSql("l")}`,
+      link.subject,
+      accountId,
     );
-  }
-  for (const license of matches) {
-    await linkLicense(db, accountId, license.product, license.id, "email", now);
+    for (const licence of rows) {
+      await attachAutomatically(db, accountId, licence, "oidc", now);
+    }
   }
 }
 

@@ -4,6 +4,13 @@
  * summary carries its deletion verdict (`deletion.ts`).
  * Creating a license mints its first key (returned ONCE). Override values validate against the
  * active catalog.
+ *
+ * LX-26 (notes/S-24 §5, §6.3): every licence read carries its derived `holder` (floating, or
+ * assigned in an account or waiting) and the list filters on it (`?holder=`). A licence created
+ * with an email, or given one by PATCH while floating, joins the account that verified that
+ * address in the same request (Core's `associateLicenseHolder`, implemented by Identity); the
+ * answer has the same shape whether or not one did (D4). Clearing an assigned licence's email is
+ * refused: making a licence floating is the relink tool's Make floating (LX-30, I-12).
  */
 
 import type { Db } from "../../../core/platform.js";
@@ -52,6 +59,15 @@ import {
   WriteChecks,
 } from "../../../core/adminApi.js";
 import { tierExpiresAt } from "../authz.js";
+import { licenseEmail } from "../../../core/accountSubjects.js";
+import {
+  associateLicenseHolder,
+  describeHolder,
+  HOLDER_FILTERS,
+  isHolderFilter,
+  licenseHolder,
+  type HolderFilter,
+} from "../../../core/licenseHolders.js";
 import {
   licenseDeviceLimit,
   licenseDeviceLimitInfo,
@@ -68,6 +84,35 @@ function parseChannels(raw: unknown): string | null {
   if (!Array.isArray(raw)) return null;
   const channels = raw.filter((c) => typeof c === "string") as string[];
   return JSON.stringify(channels);
+}
+
+/**
+ * LX-26: the email a create or PATCH body sets, trimmed. `undefined` = not set (absent, or not a
+ * string and not `null`); `null` = none (an explicit `null`, or empty after trimming).
+ */
+function bodyEmail(body: Record<string, unknown>): string | null | undefined {
+  if (!("email" in body)) return undefined;
+  if (body.email === null) return null;
+  if (typeof body.email !== "string") return undefined;
+  const trimmed = body.email.trim();
+  return trimmed === "" ? null : trimmed;
+}
+
+/** LX-26: the list's `?holder=` filter; `"invalid"` for a value outside `HOLDER_FILTERS`. */
+function holderQuery(req: Request): HolderFilter | null | "invalid" {
+  const raw = new URL(req.url).searchParams.get("holder");
+  if (raw === null || raw === "") return null;
+  return isHolderFilter(raw) ? raw : "invalid";
+}
+
+/** The context Core's licence-holder association needs, from this request. */
+function holderContext(ctx: LicenseAdminContext) {
+  return {
+    db: ctx.db,
+    env: ctx.env,
+    now: ctx.now,
+    origin: new URL(ctx.req.url).origin,
+  };
 }
 
 function parseProfiles(body: Record<string, unknown>): string[] {
@@ -168,7 +213,15 @@ export async function handleLicenses(
   // /licenses
   if (!id) {
     if (req.method === "GET") {
-      const rows = await listLicenses(db, slug);
+      const holder = holderQuery(req);
+      if (holder === "invalid")
+        return err(
+          400,
+          ErrorCode.BadRequest,
+          `holder must be one of ${HOLDER_FILTERS.join(", ")}`,
+          { fields: ["holder"] },
+        );
+      const rows = await listLicenses(db, slug, holder ? { holder } : {});
       const verdicts = await deletionVerdicts(ctx, rows);
       const licenses = await Promise.all(
         rows.map(async (r) => ({
@@ -209,13 +262,16 @@ export async function handleLicenses(
         typeof body.tier === "string"
           ? await getTier(db, slug, body.tier)
           : null;
+      // LX-26: an email makes the licence assigned (S-24 D1); none (absent, null or blank) makes
+      // it floating. Stored trimmed, so the email match and the holder rule read the same value.
+      const email = bodyEmail(body) ?? null;
       await insertLicense(db, {
         product: slug,
         id: licenseId,
         status: "active",
         sub: null,
         name: typeof body.name === "string" ? body.name : null,
-        email: typeof body.email === "string" ? body.email : null,
+        email,
         groups_json: null,
         tier_id: typeof body.tier === "string" ? body.tier : null,
         activated_at: now,
@@ -255,6 +311,13 @@ export async function handleLicenses(
         created_by: session.sub,
         last_used_at: null,
       });
+      // LX-26 (S-24 D3): association at creation, in the same request, when an account has
+      // verified the address. Identity runs the account lookup on every create with an email,
+      // whatever the outcome; the answer below has the same shape either way (D4).
+      if (email !== null)
+        await associateLicenseHolder(holderContext(ctx), slug, licenseId);
+      const row = await getLicense(db, slug, licenseId);
+      const holder = licenseHolder(row ?? { account_id: null, email });
       await audit(
         db,
         slug,
@@ -262,9 +325,8 @@ export async function handleLicenses(
         now,
         "license.create",
         { kind: "license", id: licenseId },
-        `Created license for ${body.email ?? body.name ?? licenseId}`,
+        `Created license for ${email ?? (typeof body.name === "string" && body.name ? body.name : licenseId)} (holder: ${describeHolder(holder)})`,
       );
-      const row = await getLicense(db, slug, licenseId);
       return adminJson(
         {
           licenseId,
@@ -346,6 +408,22 @@ export async function handleLicenses(
           "deviceLimit must be a positive integer or null",
           { fields: ["deviceLimit"] },
         );
+      // LX-26 (S-24 §6.3): setting an email on a floating licence assigns it; clearing the email
+      // of a licence that has one is refused, because that would make it floating (or drop a
+      // waiting holder) outside the relink tool's Make floating (I-12, LX-30). No new code.
+      const nextEmail = bodyEmail(body);
+      const currentEmail = licenseEmail(license);
+      if (nextEmail === null && currentEmail !== null)
+        return err(
+          400,
+          ErrorCode.BadRequest,
+          "an assigned license's email cannot be cleared; use Make floating to remove its holder",
+          { fields: ["email"] },
+        );
+      const emailChanged =
+        typeof nextEmail === "string" && nextEmail !== currentEmail;
+      const assigns =
+        emailChanged && licenseHolder(license).kind === "floating";
       const profiles = parseProfiles(body);
       const badRefs = await validateRefs(db, slug, {
         tier: body.tier,
@@ -394,7 +472,9 @@ export async function handleLicenses(
         id,
         {
           name: typeof body.name === "string" ? body.name : undefined,
-          email: typeof body.email === "string" ? body.email : undefined,
+          // A string sets it (trimmed); `null` and blank were refused above unless the licence has
+          // no email, where they change nothing.
+          email: typeof nextEmail === "string" ? nextEmail : undefined,
           expires_at: expiresAt,
           // A-3: `null` clears the license's own value, so the tier or product default applies.
           max_offline_days:
@@ -430,6 +510,22 @@ export async function handleLicenses(
       );
       if ("profiles" in body || "profile" in body)
         await setLicenseProfiles(db, slug, id, profiles);
+
+      if (assigns) {
+        await audit(
+          db,
+          slug,
+          session,
+          now,
+          "license.holder.assign",
+          { kind: "license", id },
+          `Assigned ${id} to ${nextEmail}`,
+        );
+      }
+      // S-24 D3: a licence that has an email and no account joins the account that verified the
+      // new address, if one did, as at creation. An in-account licence keeps its account.
+      if (emailChanged && (license.account_id ?? null) === null)
+        await associateLicenseHolder(holderContext(ctx), slug, id);
 
       if (changedTier) {
         await audit(

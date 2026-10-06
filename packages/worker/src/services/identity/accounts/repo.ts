@@ -198,6 +198,42 @@ export async function verifiedAccountEmails(
 }
 
 /**
+ * The ACTIVE accounts that verified `email`: the inverse of {@link verifiedAccountEmails}. The
+ * account holding it as an email sign-in method comes first (that link key is unique, so at most
+ * one), then any other account in id order. INTERNAL: for the licence association only (LX-26);
+ * nothing about it reaches a developer.
+ */
+export async function accountsVerifyingEmail(
+  db: Db,
+  email: string,
+): Promise<Array<{ accountId: string; emailMethod: boolean }>> {
+  const normalized = normalizeEmail(email);
+  if (!normalized) return [];
+  const rows = await db.all<{ account_id: string; method: number }>(
+    `SELECT v.account_id AS account_id, MAX(v.method) AS method
+       FROM (SELECT account_id,
+                    CASE WHEN issuer_key = ? AND tenant_scope = '' AND subject = ? THEN 1 ELSE 0 END
+                      AS method
+               FROM account_links
+              WHERE email = ? AND email_verified = 1
+             UNION ALL
+             SELECT id AS account_id, 0 AS method FROM accounts
+              WHERE primary_email = ? AND primary_email_verified_at IS NOT NULL) v
+       JOIN accounts a ON a.id = v.account_id AND a.status = 'active'
+      GROUP BY v.account_id
+      ORDER BY method DESC, v.account_id`,
+    EMAIL_ISSUER,
+    normalized,
+    normalized,
+    normalized,
+  );
+  return rows.map((r) => ({
+    accountId: r.account_id,
+    emailMethod: r.method === 1,
+  }));
+}
+
+/**
  * Which OTHER account already uses `email`: as an email sign-in method, or as its verified
  * primary email. The login card's join offer starts here (S-16 §5.1); nothing is ever attached on
  * this answer alone ("never by email match").

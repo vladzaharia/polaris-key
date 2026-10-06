@@ -133,6 +133,12 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/products/slug-check", ["get"]],
     // HA-05: the hosted-asset status read the console's Presentation page uses.
     ["/manage/api/products/{product}/assets", ["get"]],
+    // LX-26: the licence reads and writes that carry the derived holder (DELETE stays narrative).
+    ["/manage/api/products/{product}/license/licenses", ["get", "post"]],
+    [
+      "/manage/api/products/{product}/license/licenses/{licenseId}",
+      ["get", "patch"],
+    ],
   ],
 };
 
@@ -586,6 +592,7 @@ function concrete(template: string): string {
     sessionId: "f".repeat(64),
     requestId: `dl_${"A".repeat(43)}`,
     request: `rq_${"A".repeat(22)}`,
+    licenseId: "lic_1",
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];

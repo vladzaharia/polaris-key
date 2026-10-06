@@ -20,6 +20,7 @@
 
 import type { DbStatement } from "../../../core/platform.js";
 import { stmtMoveAccountLicenses } from "../../../core/accountSubjects.js";
+import { stmtsMoveAccountAutoAttachBlocks } from "../../../core/licenseHolders.js";
 import { runSubjectMerge } from "../../../core/subjectHooks.js";
 import { randomId } from "../../../core/platform.js";
 import { sendNotice, securityNoticeRecipients } from "../portal/email.js";
@@ -192,6 +193,8 @@ export async function mergeAccounts(
       sql: "UPDATE license_relinks SET to_account_id = ? WHERE to_account_id = ?",
       params: [S, A],
     },
+    // LX-26 (S-24 D19): a licence the absorbed account removed stays out of the survivor too.
+    ...stmtsMoveAccountAutoAttachBlocks(A, S),
     // Personal details fill in where the survivor has none.
     {
       sql: `UPDATE accounts SET

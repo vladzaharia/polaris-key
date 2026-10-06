@@ -13,6 +13,10 @@
  *   - A licence's `sub` alone never attaches it; it joins an account only through an existing
  *     link (plans/I-04.md §6.1). Legacy `sub`-only licences of custom-issuer products stay
  *     floating until I-17 or layer 2 (§8 Q6).
+ *   - LX-26 (S-24 D19): a licence that left an account (removed from the library, or moved away
+ *     by a developer) never rejoins it AUTOMATICALLY (`email`, `oidc`): Core's
+ *     `license_auto_attach_blocks` records the pair. An explicit act (`key`, `device`, a move back)
+ *     clears it. Another account is never blocked.
  *
  * Every attach creates the (account, product) pairwise subject: first contact.
  */
@@ -22,6 +26,12 @@ import {
   licenseAccountId,
   subjectFor,
 } from "../../../core/accountSubjects.js";
+import {
+  autoAttachBlocked,
+  runBlockStatement,
+  stmtBlockAutoAttach,
+  stmtUnblockAutoAttach,
+} from "../../../core/licenseHolders.js";
 import { getLicense, type LicenseRow } from "../../../core/data.js";
 import type { Db } from "../../../core/platform.js";
 import {
@@ -31,7 +41,11 @@ import {
 import { getProduct } from "../../../core/data.js";
 import { sendNotice } from "../portal/email.js";
 import { licenseAttachedNotice } from "../portal/notices.js";
-import { getPortalProductSettings, portalAudit } from "../portal/repo.js";
+import {
+  auditLicenseAttach,
+  getPortalProductSettings,
+  portalAudit,
+} from "../portal/repo.js";
 import { endLicenseLinks, moveLicenseOwnerEndingLinks } from "./legacy.js";
 import type { AccountContext } from "./links.js";
 import { normalizeEmail, verifiedAccountEmails } from "./repo.js";
@@ -42,16 +56,24 @@ export type AttachVia =
   | "key"
   /** The licence the device is enrolled on, after the confirm screen (I-09's attach). */
   | "device"
-  /** The licence's email is one this account verified (portal sync, auto-link products only). */
+  /** The licence's email is one this account verified (portal sync, the email hook, creation;
+   *  auto-link products only). */
   | "email"
   /** The licence's platform `sub` matches one of this account's OIDC links (portal sync). */
   | "oidc";
+
+/** The automatic vias: the ones a removed licence's auto-attach block refuses (S-24 D19). */
+function isAutomatic(via: AttachVia): boolean {
+  return via === "email" || via === "oidc";
+}
 
 export type AttachVerdict =
   | { kind: "attachable" }
   | { kind: "already_yours" }
   | { kind: "license_owned" }
   | { kind: "license_email_bound"; email: string }
+  /** LX-26: the licence left this account and may come back only by an explicit act. */
+  | { kind: "auto_attach_blocked" }
   | { kind: "not_found" };
 
 /**
@@ -68,6 +90,11 @@ export async function evaluateAttach(
   const owner = license.account_id ?? null;
   if (owner === accountId) return { kind: "already_yours" };
   if (owner !== null) return { kind: "license_owned" };
+  if (
+    isAutomatic(via) &&
+    (await autoAttachBlocked(db, license.product, license.id, accountId))
+  )
+    return { kind: "auto_attach_blocked" };
   const email = license.email?.trim();
   if (email && (via === "key" || via === "device")) {
     const settings = await getPortalProductSettings(db, license.product);
@@ -85,7 +112,11 @@ export type AttachResult =
   | { ok: true; subject: string; attached: boolean }
   | {
       ok: false;
-      reason: "license_owned" | "license_email_bound" | "not_found";
+      reason:
+        | "license_owned"
+        | "license_email_bound"
+        | "auto_attach_blocked"
+        | "not_found";
       email?: string;
     };
 
@@ -113,6 +144,8 @@ export async function attachLicense(
       return { ok: false, reason: "license_owned" };
     case "license_email_bound":
       return { ok: false, reason: "license_email_bound", email: verdict.email };
+    case "auto_attach_blocked":
+      return { ok: false, reason: "auto_attach_blocked" };
     case "already_yours":
       return {
         ok: true,
@@ -142,17 +175,47 @@ export async function attachLicense(
       : { ok: false, reason: "license_owned" };
   }
   const subject = await subjectFor(db, args.accountId, args.product, now);
-  await portalAudit(db, {
+  // The person chose to add it (a key, or the device's licence after the confirm screen): any
+  // earlier "keep it out of my library" no longer stands.
+  if (!isAutomatic(args.via))
+    await runBlockStatement(
+      db,
+      stmtUnblockAutoAttach(args.product, args.licenseId, args.accountId),
+    );
+  await auditLicenseAttach(db, {
     accountId: args.accountId,
-    action: "account.license.attach",
+    product: args.product,
+    licenseId: args.licenseId,
+    via: args.via,
+    now,
+  });
+  // For `email` this sends nothing: the address is one the account verified (S-16 rule below).
+  await notifyLicenseEmail(ctx, args.accountId, license!);
+  return { ok: true, subject, attached: true };
+}
+
+/**
+ * LX-26 (S-24 D19): keep the licence out of `accountId` until an explicit act brings it back, and
+ * audit it (`account.license.auto_attach_block`) in the account's own history.
+ */
+async function blockAutoAttach(
+  ctx: AccountContext,
+  args: { accountId: string; product: string; licenseId: string },
+): Promise<void> {
+  await runBlockStatement(
+    ctx.db,
+    stmtBlockAutoAttach(args.product, args.licenseId, args.accountId, ctx.now),
+  );
+  await portalAudit(ctx.db, {
+    accountId: args.accountId,
+    action: "account.license.auto_attach_block",
     product: args.product,
     targetKind: "license",
     targetId: args.licenseId,
-    summary: `Attached a license (${args.via})`,
-    now,
+    summary:
+      "This license will not be added to the library again automatically",
+    now: ctx.now,
   });
-  await notifyLicenseEmail(ctx, args.accountId, license!);
-  return { ok: true, subject, attached: true };
 }
 
 /** S-16: each attach notifies the licence's own email, unless it is one the account verified. */
@@ -179,9 +242,11 @@ async function notifyLicenseEmail(
 }
 
 /**
- * The owner detaches a licence: it becomes floating, the developer keeps its record, and every
- * registry token the account minted for it is revoked. Devices keep their binding: a plain detach
- * does not sign anyone out (S-17 §5.8 item 2).
+ * The owner detaches a licence: it leaves the account (the licence keeps its email, so it is
+ * assigned and waiting for ANOTHER account that verifies it), the developer keeps its record, and
+ * every registry token the account minted for it is revoked. LX-26: an auto-attach block keeps it
+ * out of THIS account (S-24 D19, H5); only the key adds it back. Devices keep their binding: a
+ * plain detach does not sign anyone out (S-17 §5.8 item 2).
  */
 export async function detachLicense(
   ctx: AccountContext,
@@ -210,6 +275,11 @@ export async function detachLicense(
     null,
   );
   if (!moved) return { ok: false };
+  await blockAutoAttach(ctx, {
+    accountId: args.accountId,
+    product: args.product,
+    licenseId: args.licenseId,
+  });
   await onLicenseOwnershipEnded(db, env, {
     product: args.product,
     licenseId: args.licenseId,
@@ -238,6 +308,11 @@ export async function detachLicense(
  * returned and audited, so passing it back as `toAccountId` undoes the move. Devices bound by the
  * previous owner's sign-in lose the binding (`relinked`); the previous owner's registry tokens for
  * the licence are revoked. I-12 owns the step-up, the reason, the notice and the 72-hour undo.
+ *
+ * LX-26 (S-24 D19): a move away from an account blocks automatic re-attach to it, so a licence
+ * moved off an account (or made floating) is not pulled back by that account's email; a move INTO
+ * an account lifts that account's block. So the undo, which moves the licence back, deletes the
+ * block the move created.
  */
 export async function reassignLicense(
   ctx: AccountContext,
@@ -304,8 +379,20 @@ export async function reassignLicense(
       now,
     });
   }
-  if (args.toAccountId)
+  if (previous) {
+    await blockAutoAttach(ctx, {
+      accountId: previous,
+      product: args.product,
+      licenseId: args.licenseId,
+    });
+  }
+  if (args.toAccountId) {
+    await runBlockStatement(
+      db,
+      stmtUnblockAutoAttach(args.product, args.licenseId, args.toAccountId),
+    );
     await subjectFor(db, args.toAccountId, args.product, now);
+  }
   await portalAudit(db, {
     accountId: previous,
     action: "account.license.relink",
