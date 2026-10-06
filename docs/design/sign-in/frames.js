@@ -139,17 +139,17 @@
     `<div class="meter" role="img" aria-label="${used} of ${limit} devices in use">${Array.from({ length: limit }, (_, i) => `<i class="${i < used ? "on" : ""}"></i>`).join("")}</div>`;
   // Full and blocked rows are not radios (SIGN-IN §3.14, D-45): a glyph sits where the radio would.
   // Row anatomy (SIGN-IN.md §3.6, O-11): title + tag; the tier as a neutral pill with the device
-  // counter, or "Account-wide · {used} of {limit} devices"; then "{origin} · {term}"; then the seat
-  // meter. Account-wide licenses stay device-limited (owner, 2026-10-05; SIGN-IN.md D-53), so
-  // they keep the counter and meter too. `hideCount` is the mixed rule (D-54): seat rows drop the
-  // counter and meter when the account also holds an Account-wide license for the product.
+  // counter "{used} of {limit} devices" for every license; then "{origin} · {term}" in plain words
+  // ("From signing in", "Steam key ending 3WPLDA", "From the App Store"); then the seat meter. No
+  // license is labelled by type: every license is account-bound (owner decision, 2026-10-05).
+  // `hideCount` is the mixed rule (D-54): key and seat rows drop the counter and meter when the
+  // account also holds a sign-in license for the product.
   const lic = ({
     name,
     tier,
     meta,
     used,
     limit,
-    accountWide,
     hideCount,
     noMeter,
     sel,
@@ -160,9 +160,8 @@
     act,
     extra,
   }) => {
-    const count = accountWide
-      ? `<span class="aw">${I.users}Account-wide · ${used} of ${limit} ${limit === 1 ? "device" : "devices"}</span>`
-      : limit && !hideCount
+    const count =
+      limit && !hideCount
         ? `<span>${used} of ${limit} ${limit === 1 ? "device" : "devices"}</span>`
         : "";
     const line2 =
@@ -285,8 +284,8 @@
       <h1>Choose a license for this device</h1>
       <p class="lede">Tidewater Studio will use it on Mara's MacBook Pro.</p>
       <div role="radiogroup" aria-label="Licenses for Tidewater Studio" style="display:flex;flex-direction:column;gap:10px">
-      ${lic({ name: "Tidewater Studio", tier: "Pro", meta: "Bought from Harbor Audio · Lifetime", used: 2, limit: 3, sel: true })}
-      ${lic({ name: "Tidewater Studio", tier: "Edu", meta: "Added with a key · Until 12 Jun 2027", used: 2, limit: 2, ...FULL })}
+      ${lic({ name: "Tidewater Studio", tier: "Pro", meta: "From Harbor Audio · Lifetime", used: 2, limit: 3, sel: true })}
+      ${lic({ name: "Tidewater Studio", tier: "Edu", meta: "Key ending 3WPLDA · Until 12 Jun 2027", used: 2, limit: 2, ...FULL })}
       </div>
       ${btn("primary", "Use this license and continue")}
       ${quiet(true)}`,
@@ -306,11 +305,11 @@
     body: `${person()}
       <h1>Choose a license for this device</h1>
       <div role="radiogroup" aria-label="Licenses for Tidewater Studio" style="display:flex;flex-direction:column;gap:10px">
-      ${lic({ name: "Tidewater Studio", tier: "Pro", meta: "Bought from Harbor Audio · Lifetime", used: 2, limit: 3 })}
+      ${lic({ name: "Tidewater Studio", tier: "Pro", meta: "From Harbor Audio · Lifetime", used: 2, limit: 3 })}
       ${lic({
         name: "Tidewater Studio",
         tier: "Edu",
-        meta: "Added with a key · Until 12 Jun 2027",
+        meta: "Key ending 3WPLDA · Until 12 Jun 2027",
         used: 2,
         limit: 2,
         full: true,
@@ -397,8 +396,8 @@
       <h1>Choose a license for this device</h1>
       <div class="notice warn">${I.warn}<span>Your licenses are on all their devices. Replace a device to use one here.</span></div>
       <div style="display:flex;flex-direction:column;gap:10px">
-      ${lic({ name: "Tidewater Studio", tier: "Pro", meta: "Bought from Harbor Audio · Lifetime", used: 3, limit: 3, ...FULL })}
-      ${lic({ name: "Tidewater Studio", tier: "Edu", meta: "Added with a key · Until 12 Jun 2027", used: 2, limit: 2, ...FULL })}
+      ${lic({ name: "Tidewater Studio", tier: "Pro", meta: "From Harbor Audio · Lifetime", used: 3, limit: 3, ...FULL })}
+      ${lic({ name: "Tidewater Studio", tier: "Edu", meta: "Key ending 3WPLDA · Until 12 Jun 2027", used: 2, limit: 2, ...FULL })}
       </div>
       ${btn("primary disabled", "Use this license and continue")}
       ${quiet(true)}`,
@@ -547,8 +546,8 @@
       <div class="who">Signed in as Mara Fennick · <span class="link">Not you?</span></div>
       <h1>Choose a license for this device</h1>
       <p class="lede">Saltwind will use it on Mara's iPhone.</p>
-      ${lic({ name: "Saltwind", tier: "Pro", meta: "Bought on the App Store · Yearly, until 2 Feb 2027", used: 1, limit: 3, sel: true })}
-      ${lic({ name: "Saltwind", tier: "Free", meta: "Created when you signed in", used: 2, limit: 2, full: true, tag: "No free devices", tagKind: "warn", act: `<div class="btn secondary inline">Replace a device</div>` })}
+      ${lic({ name: "Saltwind", tier: "Pro", meta: "From the App Store · Yearly, until 2 Feb 2027", used: 1, limit: 3, sel: true })}
+      ${lic({ name: "Saltwind", tier: "Free", meta: "From signing in · Lifetime", used: 2, limit: 2, full: true, tag: "No free devices", tagKind: "warn", act: `<div class="btn secondary inline">Replace a device</div>` })}
       <div style="flex:1"></div>
       ${btn("primary", "Use this license and continue")}
       <p class="small center">Polaris Key signs you in for Saltwind. Tern Works never sees your codes or passkeys.</p>`,
@@ -575,7 +574,7 @@
       <h1>Choose a license for this device</h1>
       <div class="notice warn">${I.warn}<span>Your licenses are on all their devices. Replace a device, or create a new free license.</span></div>
       <div role="radiogroup" aria-label="Licenses for Saltwind" style="display:flex;flex-direction:column;gap:10px">
-      ${lic({ name: "Saltwind", tier: "Free", meta: "Created when you signed in", used: 2, limit: 2, ...FULL })}
+      ${lic({ name: "Saltwind", tier: "Free", meta: "From signing in · Lifetime", used: 2, limit: 2, ...FULL })}
       ${lic({ name: "Create a new free license", tier: "Free", used: 1, limit: 2, noMeter: true, meta: "A separate license · created when you continue", tag: "New", tagKind: "new" })}
       </div>
       ${btn("primary disabled", "Use this license and continue")}
@@ -619,18 +618,18 @@
       <p class="lede">Drift Kart will use it on Living room TV.</p>
       <div role="radiogroup" aria-label="Licenses for Drift Kart" style="display:flex;flex-direction:column;gap:10px">
       ${lic({ name: "Keep the license this device uses", meta: "Drift Kart keeps running as it does now.", sel: true })}
-      ${lic({ name: "Drift Kart", tier: "Season Pass", meta: "Bought on Steam · Until 1 Mar 2027", used: 1, limit: 3 })}
+      ${lic({ name: "Drift Kart", tier: "Season Pass", meta: "Steam key ending 3WPLDA · Until 1 Mar 2027", used: 1, limit: 3 })}
       </div>
       ${btn("primary", "Use this license and continue")}
       ${quiet(false)}`,
     foot: footer("Drift Kart", "Pitlane Games"),
   });
 
-  // 22 A seat license and an Account-wide license for one product (owner vocabulary, O-11): the
-  // seat license hides its counter and meter (D-54); the Account-wide row reads
-  // "Account-wide · 2 of 3 devices" (D-53).
+  // 22 A key license and a sign-in license for one product (O-11): the key license hides its
+  // counter and meter (D-54); the sign-in row reads "2 of 3 devices", "From signing in · Lifetime".
+  // No license type label (owner decision, 2026-10-05).
   F({
-    id: "22-choice-account-wide",
+    id: "22-choice-sign-in",
     deskHead: appHeader({
       icon: "storytime",
       app: "Storytime",
@@ -650,8 +649,8 @@
       <h1>Choose a license for this device</h1>
       <p class="lede">Storytime will use it on Mara's iPad.</p>
       <div role="radiogroup" aria-label="Licenses for Storytime" style="display:flex;flex-direction:column;gap:10px">
-      ${lic({ name: "Storytime", tier: "Standard", meta: "Bought on the App Store · Lifetime", used: 1, limit: 5, hideCount: true, sel: true })}
-      ${lic({ name: "Storytime", tier: "Standard", accountWide: true, used: 2, limit: 3, meta: "Created when you signed in · Lifetime" })}
+      ${lic({ name: "Storytime", tier: "Standard", meta: "App Store key ending 7Q2MXA · Lifetime", used: 1, limit: 5, hideCount: true, sel: true })}
+      ${lic({ name: "Storytime", tier: "Standard", used: 2, limit: 3, meta: "From signing in · Lifetime" })}
       </div>
       ${btn("primary", "Use this license and continue")}
       ${quiet(false)}`,
@@ -768,8 +767,8 @@
         <h2>Choose a license for this device</h2>
         <p>Saltwind will use it on Mara's MacBook Pro.</p>
         <div role="radiogroup" aria-label="Licenses for Saltwind" class="dk-rows">
-        ${lic({ name: "Saltwind", tier: "Pro", meta: "Bought on the App Store · Yearly, until 2 Feb 2027", used: 1, limit: 3, sel: true })}
-        ${lic({ name: "Saltwind", tier: "Free", meta: "Created when you signed in · Lifetime", used: 2, limit: 2, full: true, tag: "No free devices", tagKind: "warn", act: `${db("secondary", "Replace a Device…", upRight)}<span class="hint">Opens Polaris Key in your browser</span>` })}
+        ${lic({ name: "Saltwind", tier: "Pro", meta: "From the App Store · Yearly, until 2 Feb 2027", used: 1, limit: 3, sel: true })}
+        ${lic({ name: "Saltwind", tier: "Free", meta: "From signing in · Lifetime", used: 2, limit: 2, full: true, tag: "No free devices", tagKind: "warn", act: `${db("secondary", "Replace a Device…", upRight)}<span class="hint">Opens Polaris Key in your browser</span>` })}
         </div>
         <div class="dk-foot"><span class="link">${I.key} Use a License Key Instead</span></div>
         <div class="dk-foot"><span class="sp"></span>${db("secondary", "Cancel")}${db("primary", "Use This License and Continue")}</div>`,
@@ -961,7 +960,7 @@
           ${lic({
             name: "Tidewater Studio",
             tier: "Edu",
-            meta: "Added with a key · Until 12 Jun 2027",
+            meta: "Key ending 3WPLDA · Until 12 Jun 2027",
             used: 2,
             limit: 2,
             full: true,

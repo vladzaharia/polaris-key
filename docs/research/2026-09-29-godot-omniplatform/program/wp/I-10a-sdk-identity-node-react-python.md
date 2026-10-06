@@ -50,7 +50,7 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 
 - Kit and SDK copy to `signin.*` (US "license"; `signin.key.owned` replaces "This licence belongs…"); "{n} key entries left", never "activations" (SIGN-IN.md D-01, D-25).
 - Native LicenseChoice on I-13's `choose` (React: `useLicenseChoice`), with the row anatomy of SIGN-IN.md §3.6; StatusScreen **signed-out** state and the sign-out confirm of §4.9; "Signed in · <Tier> license" after `ready`.
-- Replay `devicecode-account-wide.json` (I-04 §F.6) with no SDK change.
+- Replay `devicecode-sign-in.json` (I-04 §F.6) with no SDK change.
 
 ## Goal
 

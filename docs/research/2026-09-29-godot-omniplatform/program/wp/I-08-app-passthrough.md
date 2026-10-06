@@ -62,12 +62,12 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 **No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
 
 - **Two steps.** LicenseChoiceStep, then ConsentStep (first time or a scope change) showing the chosen license with **Change** (SIGN-IN.md §3.6, §3.8). With no Consent, **Use this license and continue** is the explicit Continue D22 requires.
-- **Card API per `plans/I-04.md` §C as amended by §F:** `LicenseChoice` gains `current` and `access` (`"seats" | "account"`, a display label; seats count as today, SIGN-IN.md D-53); `keep` is true only for a licence outside `choices`; `create` gains `access`; `getLicense` gains `keyEntry`. `ReplaceView` answers for an Account-wide licence like any other (it can be full).
+- **Card API per `plans/I-04.md` §C as amended by §F:** `LicenseChoice` gains `current` and `access` (`"seats" | "account"`, the fact behind the origin "From signing in" and the mixed rule, never a displayed type: owner decision 2026-10-05, no 'Account-wide' label; seats count as today, SIGN-IN.md D-53); `keep` is true only for a licence outside `choices`; `create` gains `access`; `getLicense` gains `keyEntry`. `ReplaceView` answers for a sign-in licence like any other (it can be full).
 - **Replace in one D1 batch** (§F.3): `freeAccountDevice()` (already extracted on the I-26 branch, `portal/freeDevice.ts`) returns its statements and the Continue appends the guarded seat claim; `signin.replace.racedAfterFree` only if the claim cannot join the batch. The device-replaced email is the `deviceRemovedNotice` variant of SIGN-IN.md §3.15.
 - **Cancel returns `access_denied`** on every surface (§F.8): redirect `error=access_denied`, device code denies the code. No new poll answer.
 - **The device-code `confirm`/attach** is offered only after **Keep** (unchanged rule, I-04 decision 4). Drop approval-by-QR from scope: PX-W14 owns it (SIGN-IN.md D-18). `verification_uri` is `<origin>/device`; `/tv` is an alias for TV and console screens (D-16).
 - **ReturnStep variants** per SIGN-IN.md §3.10; the Worker device-code pages (`renderDeviceEntry`, `renderDeviceConfirmation`, `signedInPage`) become the card with the app header (§3.13, with UX-43).
-- **Transcripts:** add `devicecode-account-wide.json` (I-04 §F.6) to §C's list; `gen:transcripts` writes the Swift and Godot mirrors.
+- **Transcripts:** add `devicecode-sign-in.json` (I-04 §F.6) to §C's list; `gen:transcripts` writes the Swift and Godot mirrors.
 - **THREAT-MODEL:** the ReplaceDevice row (fresh-session step-up, shared `portalDeviceDisconnect` budget, the confirm naming both devices, the notice). Retire I-26's page when the card ships, keeping its rule.
 
 ## Goal

@@ -19,7 +19,7 @@
 differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
 **No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
 
-- `LicenseChoice` UI fixtures: loading, many, one, current, keep, new, create, all-full, account-wide, mixed, replace-open, raced, none-keys, none-no-keys, none-replaceable (SIGN-IN.md §6.2).
+- `LicenseChoice` UI fixtures: loading, many, one, current, keep, new, create, all-full, sign-in, mixed, replace-open, raced, none-keys, none-no-keys, none-replaceable (SIGN-IN.md §6.2).
 
 ## Goal
 

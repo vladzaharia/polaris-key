@@ -14,13 +14,14 @@
 
 ## Goal
 
-An operator can raise or lower the device limit of one existing licence, seat or Account-wide, from
+An operator can raise or lower the device limit of one existing licence, from a key or from signing in, from
 the console and the admin API, clear it to inherit again, and always see the limit the Worker
 actually enforces and where it comes from.
 
 ## Why
 
-Owner decision (2026-10-05): account-wide licenses stay device-limited, and "an administrator can
+Owner decision (2026-10-05): sign-in licenses stay device-limited (and, the same day, no
+'Account-wide' label: every licence is account-bound; origin shown as plain words), and "an administrator can
 change the numbers as needed" (SIGN-IN.md D-53, `plans/I-04.md` §F.6). On `main` the console
 changes the number only for a whole product (Settings, "Default device limit") or a whole tier
 (TierForm, "Device limit"). For one licence the only routes are **Change tier** or a `deviceLimit`
@@ -70,7 +71,7 @@ temporary raise through seat-pack grants).
   are refused until the count is under 3." It never deauthorizes a device. The seat meter, the
   Effective policy row and the licences list show the effective limit with its source ("3 · set on
   this license", "5 · from Pro", "5 · product default"), replacing tier-else-product.
-- Works for every licence, including sign-in (Account-wide) licences; OIDC sign-in never resets the
+- Works for every licence, including sign-in licences; OIDC sign-in never resets the
   column (LX-02 already stops sign-in rewriting an existing licence's tier).
 
 **Out** (and where it belongs instead):

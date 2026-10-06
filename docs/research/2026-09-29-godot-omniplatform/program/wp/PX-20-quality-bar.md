@@ -19,7 +19,7 @@
 differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
 **No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
 
-- E2E covers every LicenseChoice state of SIGN-IN.md §6.2's conformance list (incl. account-wide and mixed) in both themes at 1440 and 390; axe and keyboard checks per §3.14 (no radio on full and blocked rows, Replace reachable by Tab, focus to the h1, one code input).
+- E2E covers every LicenseChoice state of SIGN-IN.md §6.2's conformance list (incl. sign-in and mixed) in both themes at 1440 and 390; axe and keyboard checks per §3.14 (no radio on full and blocked rows, Replace reachable by Tab, focus to the h1, one code input).
 
 ## Goal
 
