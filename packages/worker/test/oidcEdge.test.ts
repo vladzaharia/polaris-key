@@ -989,7 +989,7 @@ describe("the RFC 8628 user-code page", () => {
       expect(res.status).toBe(404);
       expectStaticHtmlHeaders(res);
       const html = await res.text();
-      expect(html).toContain("That code is not valid or has expired.");
+      expect(html).toContain("That code isn't valid or has expired.");
       expect(html).not.toMatch(/<script/i);
       pages.push(html);
     }

@@ -650,6 +650,7 @@ export async function handleDeviceLoginApprove(
       newDeviceSignInNotice({
         deviceLabel: record.device.label,
         location: record.location.label,
+        at: now,
         origin: new URL(req.url).origin,
       }),
       now,

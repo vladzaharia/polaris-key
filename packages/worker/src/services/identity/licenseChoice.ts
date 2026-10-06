@@ -14,11 +14,14 @@
  *            active account (`account_links`, kind `oidc`, the platform issuer), and that account
  *            owns at least one usable licence for the product (`licenses.account_id`,
  *            `licenseUsable`). Anything else signs in exactly as before.
- *   page     "Choose a licence for this device": one row per candidate, rank-first preselected
+ *   page     "Choose a license for this device": one row per candidate, rank-first preselected
  *            (no expiry first, then the latest expiry, then the oldest; I-09 §2.4), full rows
- *            disabled with **Replace a device** (the shared `freeAccountDevice`) and a
+ *            as labelled groups with no radio, offering **Replace a device** (the shared
+ *            `freeAccountDevice`) and a
  *            **Free a device** link to the portal's focused flow (PX-10), and **Create a new
- *            free licence** only when the policy would auto-issue and every row is full.
+ *            free license** only when the policy would auto-issue and every row is full.
+ *            Copy and row anatomy: docs/design/SIGN-IN.md §3.6, §3.7 and O-17 (`signin.choice.*`,
+ *            `signin.replace.*`).
  *   binder   the page answers only in the browser that started (`/auth/start`) or confirmed
  *            (the device page's POST) the flow: that browser holds `__Host-pk_lcb`, and the
  *            flow stores the cookie's hash. Without it the callback refuses and never falls
@@ -170,10 +173,11 @@ export interface ReplaceDevice {
 export interface LegacyChoiceRow {
   id: string;
   tierName: string;
-  /** Display only; never authorises anything. */
+  /** Display only; never authorises anything. Plain words ("From signing in", O-17). */
   origin: string;
-  /** A sign-in licence (origin `oidc`): shown as "Account-wide" beside its real seat count. */
-  accountWide: boolean;
+  /** A licence created by signing in (origin `oidc`). Display only: beside one, the other rows
+   *  hide their device counter (O-17). */
+  fromSignIn: boolean;
   seats: { used: number; limit: number };
   expiresAt: number | null;
   activatedAt: number;
@@ -192,24 +196,25 @@ export interface LegacyChoiceView {
   /** A row id, `"create"`, or `null` when nothing can be chosen. */
   preselected: string | null;
   /** Offered only when the policy auto-issues to this person and every row is full. */
-  create: { tierName: string | null } | null;
+  create: { tierName: string | null; limit: number } | null;
 }
 
 /** "Active now": seen in the last 10 minutes (owner decision §B). */
 export const ACTIVE_NOW_SECONDS = 600;
 
 const STORE_NAMES: Record<string, string> = {
-  "app-store": "App Store",
+  "app-store": "the App Store",
   play: "Google Play",
   steam: "Steam",
 };
 
+/** The origin in plain words on the meta line (O-17, D-90). */
 function originLabel(kind: PurchaseSourceKind, store: string | null): string {
   switch (kind) {
     case "store":
-      return `Bought on ${store ? (STORE_NAMES[store] ?? store) : "a store"}`;
+      return `From ${store ? (STORE_NAMES[store] ?? store) : "a store"}`;
     case "sign_in":
-      return "Account-wide";
+      return "From signing in";
     case "free":
       return "Free";
     default:
@@ -333,9 +338,9 @@ export async function legacyLicenseChoices(
     }
     rows.push({
       id: l.id,
-      tierName: tier?.label ?? (l.tier_id ? l.tier_id : "Standard"),
+      tierName: tier?.label ?? (l.tier_id ? l.tier_id : "License"),
       origin: originLabel(kind, source?.store ?? null),
-      accountWide: kind === "sign_in",
+      fromSignIn: kind === "sign_in",
       seats: { used, limit },
       expiresAt: l.expires_at,
       activatedAt: l.activated_at,
@@ -368,7 +373,32 @@ export async function legacyLicenseChoices(
     const tier = input.grantTierId
       ? await getTier(db, product.slug, input.grantTierId)
       : null;
-    create = { tierName: tier?.label ?? null };
+    // The limit the new licence would get: its tier resolved like any licence's, read-only.
+    const limit = await licenseDeviceLimit(
+      db,
+      product,
+      {
+        product: product.slug,
+        id: "",
+        status: "active",
+        sub: null,
+        name: null,
+        email: null,
+        groups_json: null,
+        tier_id: input.grantTierId ?? null,
+        activated_at: now,
+        expires_at: null,
+        max_offline_days: null,
+        overrides_json: null,
+        channels_json: null,
+        min_version: null,
+        max_version: null,
+        modified_by: null,
+        modified_at: now,
+      } satisfies LicenseRow,
+      now,
+    );
+    create = { tierName: tier?.label ?? null, limit };
   }
   const firstFree = rows.find((r) => r.state === "free");
   return {
@@ -389,10 +419,12 @@ function formatDay(epoch: number): string {
   });
 }
 
+/** `signin.choice.devices`: "{used} of {limit} devices". */
 function devicesText(seats: { used: number; limit: number }): string {
   return `${seats.used} of ${seats.limit} device${seats.limit === 1 ? "" : "s"}`;
 }
 
+/** `signin.replace.meta`'s "last used {when}". */
 function lastUsedText(at: number, now: number): string {
   if (now - at <= ACTIVE_NOW_SECONDS) return "active now";
   const days = Math.floor((now - at) / 86_400);
@@ -409,47 +441,78 @@ export type ChoiceNotice =
 function noticeHtml(notice: ChoiceNotice | null | undefined): string {
   if (!notice) return "";
   switch (notice.kind) {
-    case "rate_limited":
-      return `<p class="alert" role="alert">Too many device changes. Try again in ${Math.max(1, Math.floor(notice.retryAfter))} seconds.</p>`;
+    case "rate_limited": {
+      // signin.replace.rateLimited
+      const wait = Math.max(1, Math.floor(notice.retryAfter));
+      return `<p class="alert" role="alert">Too many device changes. Try again in ${wait} second${wait === 1 ? "" : "s"}.</p>`;
+    }
     case "unavailable":
-      return `<p class="alert" role="alert">That license can't take this device any more. Choose again.</p>`;
+      // signin.choice.raced
+      return `<p class="alert" role="alert">That seat was just taken. Choose again.</p>`;
   }
 }
 
-function meta(parts: string[]): string {
-  return `<span class="choice-meta">${parts.map(escapeHtml).join(" · ")}</span>`;
+function meta(parts: string[], id?: string): string {
+  return `<span class="choice-meta"${id ? ` id="${escapeHtml(id)}"` : ""}>${parts.map(escapeHtml).join(" · ")}</span>`;
 }
 
-function rowHtml(row: LegacyChoiceRow, checked: boolean, now: number): string {
-  const expiry =
-    row.expiresAt === null ? "Lifetime" : `Expires ${formatDay(row.expiresAt)}`;
-  const disabled = row.state !== "free";
-  const radio = `<input type="radio" name="license" value="${escapeHtml(row.id)}"${checked ? " checked" : ""}${disabled ? " disabled" : ""}>`;
+/** An id fragment safe in an attribute and unique per row. */
+function domId(prefix: string, id: string): string {
+  return `${prefix}-${id.replace(/[^A-Za-z0-9_-]/g, "_")}`;
+}
+
+/**
+ * One licence row (SIGN-IN.md §3.6, O-17): the title (the product name) and its tag, the tier
+ * pill with "{used} of {limit} devices", and the meta "{origin} · {term}". A free row is a native
+ * radio; a full or blocked row has no radio and is a labelled `role="group"` described by its tag
+ * or reason, never `aria-disabled`, so its **Replace a device** stays operable (§3.14, D-94).
+ */
+function rowHtml(
+  row: LegacyChoiceRow,
+  checked: boolean,
+  now: number,
+  ctx: { productName: string; hideCounter: boolean; thisDevice: string },
+): string {
+  const term =
+    row.expiresAt === null
+      ? "Lifetime" // signin.term.lifetime
+      : `Until ${formatDay(row.expiresAt)}`; // signin.term.until
+  const selectable = row.state === "free";
+  const titleId = domId("lic", row.id);
+  const noteId = domId("lic-note", row.id);
   const note =
     row.state === "full"
-      ? `<span class="choice-note">No free devices</span>`
-      : row.state === "blocked"
-        ? `<span class="choice-note">${escapeHtml(row.blockedReason ?? "Not available for this sign-in")}</span>`
-        : "";
-  const head =
-    `<label class="choice${disabled ? " is-disabled" : ""}">${radio}` +
-    `<span class="choice-body"><span class="choice-title tiered"><span class="tag">${escapeHtml(row.tierName)}</span>` +
-    `<span class="choice-seats">${escapeHtml(
-      row.accountWide
-        ? `Account-wide · ${devicesText(row.seats)}`
-        : devicesText(row.seats),
-    )}</span></span>` +
-    meta([...(row.accountWide ? [] : [row.origin]), expiry]) +
-    note +
-    `</span></label>`;
-  if (row.state !== "full") return `<li>${head}</li>`;
+      ? `<span class="tag" id="${noteId}">No free devices</span>` // signin.choice.tag.full
+      : "";
+  const reason =
+    row.state === "blocked"
+      ? `<span class="choice-note" id="${noteId}">${escapeHtml(row.blockedReason ?? "Not available for this sign-in")}</span>`
+      : "";
+  // A key or store licence hides its counter beside a sign-in licence (O-17); a full one keeps
+  // its "No free devices" tag.
+  const counter =
+    ctx.hideCounter && !row.fromSignIn
+      ? ""
+      : `<span class="choice-seats">${escapeHtml(devicesText(row.seats))}</span>`;
+  const body =
+    `<span class="choice-body">` +
+    `<span class="choice-title" id="${titleId}">${escapeHtml(ctx.productName)}${note}</span>` +
+    `<span class="choice-title tiered"><span class="tag">${escapeHtml(row.tierName)}</span>${counter}</span>` +
+    meta([row.origin, term]) + // signin.choice.meta
+    reason +
+    `</span>`;
+  if (selectable) {
+    const radio = `<input type="radio" name="license" value="${escapeHtml(row.id)}"${checked ? " checked" : ""}>`;
+    return `<li><label class="choice">${radio}${body}</label></li>`;
+  }
+  const head = `<div class="choice is-disabled">${body}</div>`;
   let replace = "";
-  if (row.replace && row.replace.length > 0) {
+  if (row.state === "full" && row.replace && row.replace.length > 0) {
     const devices = row.replace
       .map((d) => {
         const tags = [
-          d.leastRecent ? "Least recent" : null,
-          d.activeNow ? "Active now" : null,
+          d.leastRecent ? "Least recent" : null, // signin.replace.leastRecent
+          d.activeNow ? "Active now" : null, // signin.replace.activeNow
         ]
           .filter((t): t is string => t !== null)
           .map((t) => `<span class="tag">${t}</span>`)
@@ -466,16 +529,16 @@ function rowHtml(row: LegacyChoiceRow, checked: boolean, now: number): string {
       })
       .join("");
     replace =
-      `<details class="replace"><summary>Replace a device</summary>` +
-      `<p class="muted small">Sign out one of this license's devices to make room for this one.</p>` +
+      `<details class="replace"><summary>Replace a device</summary>` + // signin.replace.open
+      `<p class="muted small">Choose a device to sign out. ${escapeHtml(ctx.thisDevice)} takes its seat.</p>` + // signin.replace.lede
       devices +
-      `<button class="button secondary" type="submit" name="action" value="replace:${escapeHtml(row.id)}">Replace</button>` +
+      `<button class="button secondary" type="submit" name="action" value="replace:${escapeHtml(row.id)}">Replace…</button>` + // signin.replace.openSystem
       `</details>`;
   }
   const free = row.freeDeviceUrl
-    ? `<p class="small"><a href="${escapeHtml(row.freeDeviceUrl)}" target="_blank" rel="noopener noreferrer">Free a device</a> <span class="muted">in your account, then reload this page.</span></p>`
+    ? `<p class="small"><a href="${escapeHtml(row.freeDeviceUrl)}" target="_blank" rel="noopener noreferrer">Free a device</a></p>` // signin.choice.freeDevice
     : "";
-  return `<li>${head}${replace}${free}</li>`;
+  return `<li><div role="group" aria-labelledby="${titleId}" aria-describedby="${noteId}">${head}${replace}${free}</div></li>`;
 }
 
 /** The chooser's card body: the rows, the create row, the primary and Cancel. */
@@ -487,59 +550,99 @@ export function chooserBody(input: {
   view: LegacyChoiceView;
   notice?: ChoiceNotice | null;
   now: number;
-  /** The label is client-supplied (`deviceName`), so the page says where it came from. */
+  /** The label is client-supplied (`deviceName`), so the page says where it came from. Only the
+   *  device-code flow has one; the browser flow signs in "this browser". */
   namedByDevice?: boolean;
 }): string {
   const { view } = input;
+  const ctx = {
+    productName: input.productName,
+    hideCounter: view.rows.some((r) => r.fromSignIn),
+    thisDevice: input.namedByDevice ? input.deviceLabel : "This browser",
+  };
   const rows = view.rows
-    .map((r) => rowHtml(r, view.preselected === r.id, input.now))
+    .map((r) => rowHtml(r, view.preselected === r.id, input.now, ctx))
     .join("");
   const create = view.create
     ? `<li><label class="choice"><input type="radio" name="license" value="create"${view.preselected === "create" ? " checked" : ""}>` +
-      `<span class="choice-body"><span class="choice-title tiered">${view.create.tierName ? `<span class="tag">${escapeHtml(view.create.tierName)}</span>` : ""}<span class="choice-seats">Create a new free license</span></span>` +
-      meta(["A new free license for this device"]) +
+      `<span class="choice-body">` +
+      // signin.choice.create, signin.choice.tag.new
+      `<span class="choice-title">Create a new free license<span class="tag">New</span></span>` +
+      `<span class="choice-title tiered">${view.create.tierName ? `<span class="tag">${escapeHtml(view.create.tierName)}</span>` : ""}<span class="choice-seats">${escapeHtml(devicesText({ used: 1, limit: view.create.limit }))}</span></span>` +
+      meta(["A separate license", "created when you continue"]) + // signin.choice.createMeta
       `</span></label></li>`
     : "";
   const canContinue = view.preselected !== null;
+  const allFull =
+    view.rows.length > 0 && view.rows.every((r) => r.state === "full");
+  const replaceable = view.rows.some((r) => r.replace && r.replace.length > 0);
+  // signin.choice.allFull / allFullCreate, or noneReplaceable when no row offers Replace.
+  const fullNotice = !allFull
+    ? ""
+    : replaceable
+      ? `<p class="notice">${
+          view.create
+            ? "Your licenses are on all their devices. Replace a device, or create a new free license."
+            : "Your licenses are on all their devices. Replace a device to use one here."
+        }</p>`
+      : view.create
+        ? ""
+        : `<p class="notice">The developer manages devices for these licenses. Ask the developer to free one, or use another license.</p>`;
   const empty =
     view.rows.length === 0 && !view.create
-      ? `<p class="muted">None of your licenses can be used right now.</p>`
+      ? `<p class="notice">The developer manages devices for these licenses. Ask the developer to free one, or use another license.</p>` // signin.choice.noneReplaceable
       : "";
+  // signin.choice.lede / signin.choice.ledeBrowser
+  const lede = input.namedByDevice
+    ? `${input.productName} will use it on ${input.deviceLabel}.`
+    : `${input.productName} will use it in this browser.`;
   return (
-    `<p class="muted">Your account already has a ${escapeHtml(input.productName)} license. Choose the one this device should use.</p>` +
-    `<dl><dt>Device</dt><dd>${escapeHtml(input.deviceLabel)}` +
+    `<p class="muted">${escapeHtml(lede)}</p>` +
     (input.namedByDevice
-      ? `<span class="hint">Named by the device</span>`
+      ? `<dl><dt>Device</dt><dd>${escapeHtml(input.deviceLabel)}<span class="hint">Named by the device</span></dd></dl>`
       : "") +
-    `</dd></dl>` +
     noticeHtml(input.notice) +
+    fullNotice +
     `<form method="post" action="${escapeHtml(input.action)}">` +
     `<input type="hidden" name="choice" value="${escapeHtml(input.token)}">` +
-    `<fieldset class="choices"><legend class="sr-only">Licenses</legend><ul class="choices">${rows}${create}</ul></fieldset>` +
+    // signin.choice.group
+    `<fieldset class="choices"><legend class="sr-only">Licenses for ${escapeHtml(input.productName)}</legend><ul class="choices">${rows}${create}</ul></fieldset>` +
     empty +
     `<div class="actions stack">` +
     (canContinue
-      ? `<button class="button" type="submit" name="action" value="use">Use this license</button>`
+      ? `<button class="button" type="submit" name="action" value="use">Use this license and continue</button>` // signin.choice.continue
       : "") +
     `<button class="button secondary" type="submit" name="action" value="cancel" formnovalidate>Cancel</button>` +
     `</div></form>`
   );
 }
 
-/** The Replace confirmation: one device, one consequence, Replace and continue or Back. */
+/**
+ * The Replace confirmation (SIGN-IN.md §3.7): one device, one consequence naming both devices,
+ * the in-use warning when it is Active now, **Replace and continue** (the primary, not a danger
+ * button) or **Back**.
+ */
 export function replaceConfirmBody(input: {
   action: string;
   token: string;
   device: string;
-  tierName: string;
+  productName: string;
+  /** This installation, as the sentence names it ("this browser", "Steam Deck"). */
+  thisDevice: string;
+  activeNow: boolean;
 }): string {
+  const d = escapeHtml(input.device);
   return (
-    `<p>${escapeHtml(input.device)} will need to sign in again. This device takes its place on your ${escapeHtml(input.tierName)} license.</p>` +
+    // signin.replace.consequence
+    `<p>${d} signs out of ${escapeHtml(input.productName)} and ${escapeHtml(input.thisDevice)} takes its seat. ${d} can sign in again later if a seat is free. We'll email you about it.</p>` +
+    (input.activeNow
+      ? `<p class="alert" role="alert">${d} is in use right now.</p>` // signin.replace.inUse
+      : "") +
     `<form method="post" action="${escapeHtml(input.action)}">` +
     `<input type="hidden" name="choice" value="${escapeHtml(input.token)}">` +
     `<div class="actions stack">` +
-    `<button class="button danger" type="submit" name="action" value="replace">Replace and continue</button>` +
-    `<button class="button secondary" type="submit" name="action" value="back">Back</button>` +
+    `<button class="button" type="submit" name="action" value="replace">Replace and continue</button>` + // signin.replace.confirm
+    `<button class="button secondary" type="submit" name="action" value="back">Back</button>` + // signin.replace.back
     `</div></form>`
   );
 }

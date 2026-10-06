@@ -8,7 +8,7 @@ import {
   brandedHtmlSecurityHeaders,
   type Env,
 } from "../../../core/platform.js";
-import { renderBrandPage } from "../../../core/brandHtml.js";
+import { escapeHtml, renderBrandPage } from "../../../core/brandHtml.js";
 import { portalSecurityHeaders } from "../portal/headers.js";
 
 /** A JSON answer. `cookies` become separate `Set-Cookie` fields. */
@@ -39,6 +39,26 @@ export function cardRedirect(
   return new Response(null, { status: 302, headers });
 }
 
+/**
+ * The one way back from a Worker sign-in page (SIGN-IN.md §3.13): **Sign in again**, to the
+ * sign-in page or to a same-origin `href` the caller already checked. `// signin.again`
+ */
+export function signInAgainAction(href = "/"): string {
+  return `<p class="actions"><a class="button" href="${escapeHtml(href)}">Sign in again</a></p>`;
+}
+
+/**
+ * The wrong-code message (SIGN-IN.md §3.4): `signin.code.wrong`, plus `signin.code.triesLeft`
+ * when two or fewer tries are left, or `signin.code.tooMany` when none are.
+ */
+export function wrongCodeMessage(triesLeft: number): string {
+  if (triesLeft <= 0) return "Too many tries. Send a new code."; // signin.code.tooMany
+  const wrong = "That code isn't right. Check the email and try again."; // signin.code.wrong
+  if (triesLeft > 2) return wrong;
+  // signin.code.triesLeft
+  return `${wrong} ${triesLeft === 1 ? "1 try left." : `${triesLeft} tries left.`}`;
+}
+
 /** A branded, script-free page. `body` is TRUSTED markup: every value in it already escaped. */
 export function cardPage(
   status: number,
@@ -53,9 +73,10 @@ export function cardPage(
   );
   for (const c of cookies) headers.append("set-cookie", c);
   return new Response(
+    // No surface label beside the wordmark: sign-in pages carry no eyebrow (SIGN-IN.md §3.13,
+    // D-32).
     renderBrandPage({
       title: page.title,
-      surface: "account",
       heading: page.heading,
       body: page.body ?? "",
     }),

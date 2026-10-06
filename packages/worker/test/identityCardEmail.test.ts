@@ -196,16 +196,28 @@ describe("email code", () => {
     await d.send("POST", START, { email: "ada@example.com" });
     const code = lastCode(w, "ada@example.com");
     const wrong = code === "000000" ? "111111" : "000000";
+    const messages: string[] = [];
     for (let i = 0; i < EMAIL_CODE_MAX_ATTEMPTS; i++) {
       const res = await d.send("POST", VERIFY, { code: wrong });
       expect(res.status).toBe(400);
-      expect(await res.json()).toEqual(
+      const body = (await res.json()) as { message: string };
+      expect(body).toEqual(
         expect.objectContaining({
           error: "invalid_code",
           triesLeft: EMAIL_CODE_MAX_ATTEMPTS - 1 - i,
         }),
       );
+      messages.push(body.message);
     }
+    // SIGN-IN.md §3.4: the wrong-code copy, with the tries left once two or fewer remain.
+    expect(messages.slice(-3)).toEqual([
+      "That code isn't right. Check the email and try again. 2 tries left.",
+      "That code isn't right. Check the email and try again. 1 try left.",
+      "Too many tries. Send a new code.",
+    ]);
+    expect(messages[0]).toBe(
+      "That code isn't right. Check the email and try again.",
+    );
     expect((await d.send("POST", VERIFY, { code })).status).toBe(400);
     expect(d.jar.has(ACCOUNT_SESSION_COOKIE)).toBe(false);
   });
@@ -315,7 +327,7 @@ describe("magic link", () => {
     const html = await page.text();
     expect(html).toContain("Confirm sign-in");
     expect(html).toMatch(
-      /was requested at \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC from an unknown location/,
+      /Confirm sign-in, requested at \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC from an unknown location/,
     );
     expect(html).toContain("The device that asked signs in, not this one.");
 
