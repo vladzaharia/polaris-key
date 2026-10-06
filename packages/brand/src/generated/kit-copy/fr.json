@@ -542,6 +542,8 @@
   "core.codes.oidc_error.message": "Sign-in didn't finish. Try again.",
   "core.codes.unavailable.title": "Sign-in unavailable",
   "core.codes.unavailable.message": "Sign-in isn't available right now. Try again in a few minutes.",
+  "core.codes.identity_disabled.title": "Sign-in unavailable",
+  "core.codes.identity_disabled.message": "Sign-in through this app is turned off. Your installs and licenses keep working.",
   "core.codes.auth_method_disabled.title": "Sign-in method unavailable",
   "core.codes.auth_method_disabled.message": "That sign-in method is turned off. Choose another one.",
   "core.codes.email_not_configured.title": "Email sign-in unavailable",

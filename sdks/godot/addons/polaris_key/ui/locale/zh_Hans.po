@@ -3317,6 +3317,16 @@ msgstr "登录不可用"
 msgid "core.codes.unavailable.message"
 msgstr "登录目前不可用。请几分钟后重试。"
 
+#. Sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.identity_disabled.title"
+msgstr "登录不可用"
+
+#. Sign-in through this app is turned off. Your installs and licenses keep working.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.identity_disabled.message"
+msgstr "已关闭通过此应用登录。你的安装和许可证仍可正常使用。"
+
 #. Sign-in method unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.auth_method_disabled.title"

@@ -542,6 +542,8 @@
   "core.codes.oidc_error.message": "サインインが完了しませんでした。もう一度お試しください。",
   "core.codes.unavailable.title": "サインインを利用できません",
   "core.codes.unavailable.message": "現在サインインを利用できません。数分後にもう一度お試しください。",
+  "core.codes.identity_disabled.title": "サインインを利用できません",
+  "core.codes.identity_disabled.message": "このアプリからのサインインは無効になっています。インストールとライセンスは引き続き使用できます。",
   "core.codes.auth_method_disabled.title": "サインイン方法を利用できません",
   "core.codes.auth_method_disabled.message": "このサインイン方法は無効になっています。別の方法を選択してください。",
   "core.codes.email_not_configured.title": "メールでのサインインを利用できません",

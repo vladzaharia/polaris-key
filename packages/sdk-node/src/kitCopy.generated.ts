@@ -676,6 +676,9 @@ export const KIT_COPY: Readonly<
     "core.codes.unavailable.title": "Sign-in unavailable",
     "core.codes.unavailable.message":
       "Sign-in isn't available right now. Try again in a few minutes.",
+    "core.codes.identity_disabled.title": "Sign-in unavailable",
+    "core.codes.identity_disabled.message":
+      "Sign-in through this app is turned off. Your installs and licenses keep working.",
     "core.codes.auth_method_disabled.title": "Sign-in method unavailable",
     "core.codes.auth_method_disabled.message":
       "That sign-in method is turned off. Choose another one.",
@@ -1769,6 +1772,9 @@ export const KIT_COPY: Readonly<
     "core.codes.unavailable.title": "Anmeldung nicht verfügbar",
     "core.codes.unavailable.message":
       "Die Anmeldung ist derzeit nicht verfügbar. Versuchen Sie es in einigen Minuten erneut.",
+    "core.codes.identity_disabled.title": "Anmeldung nicht verfügbar",
+    "core.codes.identity_disabled.message":
+      "Die Anmeldung über diese App ist deaktiviert. Ihre Installationen und Lizenzen funktionieren weiterhin.",
     "core.codes.auth_method_disabled.title": "Anmeldemethode nicht verfügbar",
     "core.codes.auth_method_disabled.message":
       "Diese Anmeldemethode ist deaktiviert. Wählen Sie eine andere.",
@@ -2864,6 +2870,9 @@ export const KIT_COPY: Readonly<
     "core.codes.unavailable.title": "Sign-in unavailable",
     "core.codes.unavailable.message":
       "Sign-in isn't available right now. Try again in a few minutes.",
+    "core.codes.identity_disabled.title": "Sign-in unavailable",
+    "core.codes.identity_disabled.message":
+      "Sign-in through this app is turned off. Your installs and licenses keep working.",
     "core.codes.auth_method_disabled.title": "Sign-in method unavailable",
     "core.codes.auth_method_disabled.message":
       "That sign-in method is turned off. Choose another one.",
@@ -3940,6 +3949,9 @@ export const KIT_COPY: Readonly<
     "core.codes.unavailable.title": "Inicio de sesión no disponible",
     "core.codes.unavailable.message":
       "El inicio de sesión no está disponible en este momento. Vuelve a intentarlo en unos minutos.",
+    "core.codes.identity_disabled.title": "Inicio de sesión no disponible",
+    "core.codes.identity_disabled.message":
+      "El inicio de sesión desde esta app está desactivado. Tus instalaciones y licencias siguen funcionando.",
     "core.codes.auth_method_disabled.title":
       "Método de inicio de sesión no disponible",
     "core.codes.auth_method_disabled.message":
@@ -5023,6 +5035,9 @@ export const KIT_COPY: Readonly<
     "core.codes.unavailable.title": "Acesso indisponível",
     "core.codes.unavailable.message":
       "O acesso não está disponível agora. Tente novamente em alguns minutos.",
+    "core.codes.identity_disabled.title": "Acesso indisponível",
+    "core.codes.identity_disabled.message":
+      "O acesso por este app está desativado. Suas instalações e licenças continuam funcionando.",
     "core.codes.auth_method_disabled.title": "Método de acesso indisponível",
     "core.codes.auth_method_disabled.message":
       "Esse método de acesso está desativado. Escolha outro.",
@@ -6104,6 +6119,9 @@ export const KIT_COPY: Readonly<
     "core.codes.unavailable.title": "Accesso non disponibile",
     "core.codes.unavailable.message":
       "L'accesso non è disponibile al momento. Riprova tra qualche minuto.",
+    "core.codes.identity_disabled.title": "Accesso non disponibile",
+    "core.codes.identity_disabled.message":
+      "L'accesso tramite questa app è disattivato. Le tue installazioni e licenze continuano a funzionare.",
     "core.codes.auth_method_disabled.title":
       "Metodo di accesso non disponibile",
     "core.codes.auth_method_disabled.message":
@@ -7195,6 +7213,9 @@ export const KIT_COPY: Readonly<
     "core.codes.unavailable.title": "サインインを利用できません",
     "core.codes.unavailable.message":
       "現在サインインを利用できません。数分後にもう一度お試しください。",
+    "core.codes.identity_disabled.title": "サインインを利用できません",
+    "core.codes.identity_disabled.message":
+      "このアプリからのサインインは無効になっています。インストールとライセンスは引き続き使用できます。",
     "core.codes.auth_method_disabled.title": "サインイン方法を利用できません",
     "core.codes.auth_method_disabled.message":
       "このサインイン方法は無効になっています。別の方法を選択してください。",
@@ -8261,6 +8282,9 @@ export const KIT_COPY: Readonly<
     "core.codes.unavailable.title": "로그인 사용 불가",
     "core.codes.unavailable.message":
       "지금은 로그인을 사용할 수 없어요. 몇 분 후에 다시 시도하세요.",
+    "core.codes.identity_disabled.title": "로그인 사용 불가",
+    "core.codes.identity_disabled.message":
+      "이 앱을 통한 로그인이 꺼져 있어요. 설치와 라이선스는 계속 작동해요.",
     "core.codes.auth_method_disabled.title": "로그인 방법 사용 불가",
     "core.codes.auth_method_disabled.message":
       "해당 로그인 방법은 꺼져 있어요. 다른 방법을 선택하세요.",
@@ -9260,6 +9284,9 @@ export const KIT_COPY: Readonly<
     "core.codes.oidc_error.message": "登录未完成。请重试。",
     "core.codes.unavailable.title": "登录不可用",
     "core.codes.unavailable.message": "登录目前不可用。请几分钟后重试。",
+    "core.codes.identity_disabled.title": "登录不可用",
+    "core.codes.identity_disabled.message":
+      "已关闭通过此应用登录。你的安装和许可证仍可正常使用。",
     "core.codes.auth_method_disabled.title": "登录方式不可用",
     "core.codes.auth_method_disabled.message":
       "该登录方式已关闭。请选择其他方式。",

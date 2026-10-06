@@ -7,7 +7,7 @@ description: "Every platform, product and service setting in the settings regist
     Source of truth: the settings registry (packages/worker/src/core/settings/ and each service's
     settings.ts), emitted by packages/worker/scripts/gen-settings.ts. */}
 
-The settings registry describes every setting Polaris Key has: 43 entries (9 platform, 34 product, 0 entity), 15 of them registered ahead of the work package that wires them. This page is generated from the registry and checked against it in CI, so it cannot drift from it. An entry registered ahead of its work package is not offered in the console yet.
+The settings registry describes every setting Polaris Key has: 48 entries (9 platform, 39 product, 0 entity), 20 of them registered ahead of the work package that wires them. This page is generated from the registry and checked against it in CI, so it cannot drift from it. An entry registered ahead of its work package is not offered in the console yet.
 
 How to read the columns:
 
@@ -104,6 +104,16 @@ One value per product. A service's settings are product settings whose key start
 | `identity.oidc` | [OIDC sign-in](/docs/services/identity/oidc/): The identity provider products sign users in with: issuer, client and group-to-role map. Changing the issuer moves who can sign in, so it is manifest-only and passes the issuer allowlist. | structured (oidc (product.schema.json)) | unset | cascade | manifest | `product:oidc` | L2 on change | reason required; security-widening |
 | `identity.browserSessionDays` | [Browser session length](/docs/services/identity/sessions/): How long a product sign-in in the browser lasts. A product may shorten it, never lengthen it past the platform's 30 days. | integer 1–30 days | `30` | policy, bound: max | operator | — | L1 up, L0 down | registered ahead of ST-15 |
 | `identity.syncTierOnSignIn` | [Sync tier on sign-in](/docs/services/identity/oidc/): Whether a sign-in may move a licence to the tier the identity provider reports. Upgrade-only never lowers a tier. | one of `off`, `upgradeOnly` | `"off"` | cascade | claimable | `product:oidc.syncTierOnSignIn` | L1 on change | registered ahead of LX-06; reason required |
+
+### sync
+
+| Key | Setting | Value | Default | Merge | Ownership | Manifest | Confirm | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `cloudSync.limits` | [Per-person limits](/docs/services/sync/): How much Cloud Sync data one licensed person may keep on the product: total bytes, user-settings bytes, records, collection bytes and save slots. Never above the platform's per-person ceilings. | structured (cloudSyncLimits (product.schema.json), each byte limit at most CLOUD_SYNC_CEILINGS.perPerson (totalBytes 1141112832, settingsBytes 262144, collectionBytes 67108864, saves.maxBytes 1073741824)) | structured | cascade | claimable | `product:cloudSync.limits` | L1 on change | registered ahead of U-05 |
+| `cloudSync.limits.byTier` | [Limits by tier](/docs/services/sync/): Per-tier limits that replace the per-person limits for people whose highest-ranked contributing licence is on that tier. Each tier is held to the same ceilings. | structured (\{ \<tierId>: cloudSyncLimits (product.schema.json), each byte limit at most CLOUD_SYNC_CEILINGS.perPerson (totalBytes 1141112832, settingsBytes 262144, collectionBytes 67108864, saves.maxBytes 1073741824) \}) | `{}` | cascade | claimable | `product:cloudSync.limits.byTier` | L1 on change | registered ahead of U-05 |
+| `cloudSync.limits.byEntitlement` | [Limits by entitlement](/docs/services/sync/): The numeric catalog flags (combined by max) that raise a person's total bytes or save slots, so a purchase can grant more storage. | structured (cloudSync.limits.byEntitlement (product.schema.json): \{ totalBytes?, saveSlots? \} naming numeric flags with combine: max) | `{}` | cascade | claimable | `product:cloudSync.limits.byEntitlement` | L1 on change | registered ahead of U-05 |
+| `cloudSync.unlicensed` | [Unlicensed people](/docs/services/sync/): Limits for signed-in people with no usable licence, and whether they may use save slots. Never above the licensed limits. | structured (cloudSync.unlicensed (product.schema.json): \{ limits?: cloudSyncLimits (product.schema.json), each byte limit at most CLOUD_SYNC_CEILINGS.perPerson (totalBytes 1141112832, settingsBytes 262144, collectionBytes 67108864, saves.maxBytes 1073741824), saves?: boolean \}) | structured | cascade | claimable | `product:cloudSync.unlicensed` | L1 on change | registered ahead of U-05 |
+| `cloudSync.writes` | [Who may write](/docs/services/sync/): Whether a write needs a usable licence on the device, and the lowest device trust level that may write. Reads of one's own data are always allowed. | structured (cloudSync.writes (product.schema.json): \{ requireLicense?: boolean, minTrust?: basic \| attested \| null \}) | `{"requireLicense":false,"minTrust":null}` | cascade | claimable | `product:cloudSync.writes` | L1 on change | registered ahead of U-05; reason required; security-widening |
 
 ## Entity
 

@@ -542,6 +542,8 @@
   "core.codes.oidc_error.message": "L'accesso non è stato completato. Riprova.",
   "core.codes.unavailable.title": "Accesso non disponibile",
   "core.codes.unavailable.message": "L'accesso non è disponibile al momento. Riprova tra qualche minuto.",
+  "core.codes.identity_disabled.title": "Accesso non disponibile",
+  "core.codes.identity_disabled.message": "L'accesso tramite questa app è disattivato. Le tue installazioni e licenze continuano a funzionare.",
   "core.codes.auth_method_disabled.title": "Metodo di accesso non disponibile",
   "core.codes.auth_method_disabled.message": "Questo metodo di accesso è disattivato. Scegline un altro.",
   "core.codes.email_not_configured.title": "Accesso via email non disponibile",

@@ -542,6 +542,8 @@
   "core.codes.oidc_error.message": "El inicio de sesión no terminó. Vuelve a intentarlo.",
   "core.codes.unavailable.title": "Inicio de sesión no disponible",
   "core.codes.unavailable.message": "El inicio de sesión no está disponible en este momento. Vuelve a intentarlo en unos minutos.",
+  "core.codes.identity_disabled.title": "Inicio de sesión no disponible",
+  "core.codes.identity_disabled.message": "El inicio de sesión desde esta app está desactivado. Tus instalaciones y licencias siguen funcionando.",
   "core.codes.auth_method_disabled.title": "Método de inicio de sesión no disponible",
   "core.codes.auth_method_disabled.message": "Ese método de inicio de sesión está desactivado. Elige otro.",
   "core.codes.email_not_configured.title": "Inicio de sesión por correo no disponible",

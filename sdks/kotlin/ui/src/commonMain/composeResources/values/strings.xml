@@ -1242,6 +1242,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_unavailable_message">Sign-in isn't available right now. Try again in a few minutes.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_identity_disabled_title">Sign-in unavailable</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_identity_disabled_message">Sign-in through this app is turned off. Your installs and licenses keep working.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_title">Sign-in method unavailable</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_message">That sign-in method is turned off. Choose another one.</string>

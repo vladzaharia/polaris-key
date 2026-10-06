@@ -1252,6 +1252,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_unavailable_message">L'accesso non è disponibile al momento. Riprova tra qualche minuto.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_identity_disabled_title">Accesso non disponibile</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_identity_disabled_message">L'accesso tramite questa app è disattivato. Le tue installazioni e licenze continuano a funzionare.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_title">Metodo di accesso non disponibile</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_message">Questo metodo di accesso è disattivato. Scegline un altro.</string>

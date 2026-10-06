@@ -1232,6 +1232,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_unavailable_message">現在サインインを利用できません。数分後にもう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_identity_disabled_title">サインインを利用できません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_identity_disabled_message">このアプリからのサインインは無効になっています。インストールとライセンスは引き続き使用できます。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_title">サインイン方法を利用できません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_message">このサインイン方法は無効になっています。別の方法を選択してください。</string>

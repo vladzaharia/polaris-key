@@ -15091,6 +15091,126 @@
         }
       }
     },
+    "core.codes.identity_disabled.message": {
+      "comment": "Core copy (conformance/parity/copy.en.json, codes).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign-in through this app is turned off. Your installs and licenses keep working."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Anmeldung über diese App ist deaktiviert. Ihre Installationen und Lizenzen funktionieren weiterhin."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign-in through this app is turned off. Your installs and licenses keep working."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El inicio de sesión desde esta app está desactivado. Tus instalaciones y licencias siguen funcionando."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O acesso por este app está desativado. Suas instalações e licenças continuam funcionando."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'accesso tramite questa app è disattivato. Le tue installazioni e licenze continuano a funzionare."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このアプリからのサインインは無効になっています。インストールとライセンスは引き続き使用できます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 앱을 통한 로그인이 꺼져 있어요. 설치와 라이선스는 계속 작동해요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已关闭通过此应用登录。你的安装和许可证仍可正常使用。"
+          }
+        }
+      }
+    },
+    "core.codes.identity_disabled.title": {
+      "comment": "Core copy (conformance/parity/copy.en.json, codes).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign-in unavailable"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anmeldung nicht verfügbar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign-in unavailable"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inicio de sesión no disponible"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acesso indisponível"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accesso non disponibile"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サインインを利用できません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로그인 사용 불가"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录不可用"
+          }
+        }
+      }
+    },
     "core.codes.inner-doc-rejected.message": {
       "comment": "Core copy (conformance/parity/copy.en.json, codes).",
       "extractionState": "manual",

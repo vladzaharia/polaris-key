@@ -556,6 +556,8 @@ export type KitCopyKey =
   | "core.codes.oidc_error.message"
   | "core.codes.unavailable.title"
   | "core.codes.unavailable.message"
+  | "core.codes.identity_disabled.title"
+  | "core.codes.identity_disabled.message"
   | "core.codes.auth_method_disabled.title"
   | "core.codes.auth_method_disabled.message"
   | "core.codes.email_not_configured.title"

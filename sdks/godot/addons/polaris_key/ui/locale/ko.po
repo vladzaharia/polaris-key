@@ -3317,6 +3317,16 @@ msgstr "로그인 사용 불가"
 msgid "core.codes.unavailable.message"
 msgstr "지금은 로그인을 사용할 수 없어요. 몇 분 후에 다시 시도하세요."
 
+#. Sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.identity_disabled.title"
+msgstr "로그인 사용 불가"
+
+#. Sign-in through this app is turned off. Your installs and licenses keep working.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.identity_disabled.message"
+msgstr "이 앱을 통한 로그인이 꺼져 있어요. 설치와 라이선스는 계속 작동해요."
+
 #. Sign-in method unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.auth_method_disabled.title"

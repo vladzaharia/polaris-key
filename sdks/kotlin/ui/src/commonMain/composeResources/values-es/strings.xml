@@ -1252,6 +1252,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_unavailable_message">El inicio de sesión no está disponible en este momento. Vuelve a intentarlo en unos minutos.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_identity_disabled_title">Inicio de sesión no disponible</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_identity_disabled_message">El inicio de sesión desde esta app está desactivado. Tus instalaciones y licencias siguen funcionando.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_title">Método de inicio de sesión no disponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_message">Ese método de inicio de sesión está desactivado. Elige otro.</string>

@@ -3337,6 +3337,16 @@ msgstr "Accesso non disponibile"
 msgid "core.codes.unavailable.message"
 msgstr "L'accesso non è disponibile al momento. Riprova tra qualche minuto."
 
+#. Sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.identity_disabled.title"
+msgstr "Accesso non disponibile"
+
+#. Sign-in through this app is turned off. Your installs and licenses keep working.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.identity_disabled.message"
+msgstr "L'accesso tramite questa app è disattivato. Le tue installazioni e licenze continuano a funzionare."
+
 #. Sign-in method unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.auth_method_disabled.title"

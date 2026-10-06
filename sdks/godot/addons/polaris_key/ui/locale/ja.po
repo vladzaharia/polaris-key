@@ -3317,6 +3317,16 @@ msgstr "サインインを利用できません"
 msgid "core.codes.unavailable.message"
 msgstr "現在サインインを利用できません。数分後にもう一度お試しください。"
 
+#. Sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.identity_disabled.title"
+msgstr "サインインを利用できません"
+
+#. Sign-in through this app is turned off. Your installs and licenses keep working.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.identity_disabled.message"
+msgstr "このアプリからのサインインは無効になっています。インストールとライセンスは引き続き使用できます。"
+
 #. Sign-in method unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.auth_method_disabled.title"
