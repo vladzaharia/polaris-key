@@ -1,6 +1,45 @@
 # PX-W9 plan: key-entry counting (G21), revision 2
 
-> **Revision 2 (2026-10-06), awaiting the lead's answers to §8.** The owner approved revision 1 on
+## Decisions (delegated to the lead, 2026-10-06)
+
+**Revision 2 is approved by the lead under the owner's delegation. Every recommendation in §8 is
+accepted as written.**
+
+1. **Q1, the SDK split: PX-W9b.** A new package, PX-W9b, does §5:
+   - role `pkey-sdk-porter`, 0.8–1.2 weeks;
+   - deps PX-W9 and PX-W8, `planRef: PX-W9`.
+
+   I-10a and I-10b keep `license-owned`, attach and the refusal screen's **Sign in**, and gain
+   the dependency PX-W9b.
+
+2. **Q2, the limit before ST-04: a Core reader.** `keyEntryLimit()` in `core/keyEntries.ts` reads
+   the `product_settings` row and defaults to 10. ST-04 replaces its body with `resolveSetting()`,
+   and until then the product entry stays `pending: {wp: "ST-04"}`. PX-W9 does not depend on
+   ST-04.
+3. **Q3, the holder model: count every success.** Every successful entry counts, whatever the
+   holder. The limit (step 4) applies to any licence with no account (`account_id IS NULL`),
+   whether floating or assigned and waiting. Registry descriptions say "a licence that is in no
+   account".
+4. **Q4, the forced upgrade: both conditions.** `upgrade: "forced"` only when `used ≥ limit`
+   **and** `identity.keyEntryRefusals` is on. Otherwise it is `skippable`.
+5. **Q5, the signed-out preview: follows SIGN-IN.md §3.9.**
+   - It shows the tier name, the term and a generic `license_owned` ("in an account") verdict.
+   - It never shows an email, masked email, licence id or device list.
+   - `email_mismatch` stays a signed-in verdict.
+6. **Q6, pinning: a unit table.** client-core's `test/keyEntries.test.ts` table is repeated by
+   every SDK. The signed corpus is untouched.
+7. **Q7, per-licence override, reset and console: none in PX-W9.**
+   - There is no per-licence limit and no reset.
+   - The console's "Key entries" row goes to LX-30.
+   - A reset action stays a later request.
+
+**Effect.**
+
+- PX-W9b is registered in `workpackages.json` with its brief.
+- The PX-W9 brief is narrowed to §2–§4 and §6.
+- Each brief named under "Brief changes" carries a "Changed by plan PX-W9 (2026-10-06)" section.
+
+> **Revision 2 (2026-10-06), approved (see above).** The owner approved revision 1 on
 > 2026-10-05. Its decisions still bind and are restated in §0. This revision re-checks the plan
 > against `main` (`148439c4f`), now that PX-W8, PX-17, LX-26, ST-01b, ST-03 and ST-06 have landed.
 > It names the whole chain, from the contract through the errors, the copy, the transcripts and
@@ -273,7 +312,7 @@ The order is the parity order, and Godot may go first. Each SDK's licensing guid
 - **The portal SPA ships with the Worker.**
 - **Rollback.** The old Worker ignores the table, and entries made in that window are not counted, which is harmless.
 
-## 8. Open questions (the lead answers under the owner's delegation)
+## 8. Open questions (answered 2026-10-06: every recommendation accepted, see the top)
 
 1. **SDK split.** Revision 1 left the SDK half to I-10a and I-10b, which wait on I-08 and I-09. **Recommend** a new **PX-W9b**:
    - role `pkey-sdk-porter`, lane `sdk`, 0.8–1.2 weeks;
