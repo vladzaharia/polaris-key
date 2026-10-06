@@ -2016,7 +2016,7 @@ msgid "signin.choice.group"
 msgstr "Lizenzen für {product}"
 
 #. {origin} · {term}
-#. Choose a license for this device (SIGN-IN.md §3.6). Arguments: {origin} = where the license came from (one of the signin.origin.* strings); {term} = the license term (one of the signin.term.* strings).
+#. Choose a license for this device (SIGN-IN.md §3.6). Arguments: {origin} = where the license came from (one of the signin.choice.origin.* strings); {term} = the license term (one of the signin.term.* strings).
 msgid "signin.choice.meta"
 msgstr "{origin} · {term}"
 
@@ -2056,7 +2056,7 @@ msgstr "Über die Anmeldung"
 #. Key ending {last6}
 #. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {last6} = the license key's last six characters, shown as is.
 msgid "signin.choice.origin.key"
-msgstr "Schlüssel endet auf {last6}"
+msgstr "Schlüssel mit Endung {last6}"
 
 #. Added with a key
 #. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label).

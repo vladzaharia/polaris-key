@@ -270,9 +270,9 @@ export const SHIPPED: ShippedState[] = [
   },
   {
     section: "4.15",
-    id: "library-account-wide",
-    title: "Library with key and account-wide licences, list",
-    scenario: "accountWide",
+    id: "library-sign-in",
+    title: "Library with key and sign-in licences, list",
+    scenario: "signIn",
     path: "/#/?view=list",
     ready: (p) => h1(p, "Your library"),
   },
@@ -439,25 +439,26 @@ export const SHIPPED: ShippedState[] = [
     ready: (p) => h1(p, "Quill"),
   },
   {
-    // Account-wide: the Standard pill with "Account-wide · 1 of 5 devices", and its devices.
+    // A sign-in licence: the Standard pill with "1 of 5 devices", "From signing in", its devices.
     section: "4.20",
-    id: "product-account-wide",
-    title: "Product page, account-wide licence with its devices (Quill)",
-    scenario: "accountWide",
+    id: "product-sign-in",
+    title: "Product page, sign-in licence with its devices (Quill)",
+    scenario: "signIn",
     path: "/#/p/quill",
     ready: async (p) => {
       await h1(p, "Quill");
-      await p.getByText("Account-wide · 1 of 5 devices").waitFor();
+      await p.getByText("1 of 5 devices").first().waitFor();
+      await p.getByText("From signing in · Lifetime").waitFor();
       await p.getByText("Living room PC").first().waitFor();
     },
   },
   {
-    // Held by key and account-wide: the key licence drops its counter, keeps its devices.
+    // Held by a Steam key and by signing in: the key licence drops its counter, keeps its devices.
     section: "4.20",
     id: "product-both-key",
     title:
-      "Product page, key and account-wide licences, key selected (Drift Kart)",
-    scenario: "accountWide",
+      "Product page, Steam key and sign-in licences, key selected (Drift Kart)",
+    scenario: "signIn",
     path: "/#/p/drift-kart",
     ready: async (p) => {
       await h1(p, "Drift Kart");
@@ -470,14 +471,14 @@ export const SHIPPED: ShippedState[] = [
   },
   {
     section: "4.20",
-    id: "product-both-account-wide",
+    id: "product-both-sign-in",
     title:
-      "Product page, key and account-wide licences, account-wide selected (Drift Kart)",
-    scenario: "accountWide",
+      "Product page, Steam key and sign-in licences, sign-in selected (Drift Kart)",
+    scenario: "signIn",
     path: "/#/p/drift-kart?license=lic_drift-kart-acct",
     ready: async (p) => {
       await h1(p, "Drift Kart");
-      await p.getByText("Account-wide · 1 of 3 devices").waitFor();
+      await p.getByText("From signing in · Lifetime").waitFor();
     },
   },
   {

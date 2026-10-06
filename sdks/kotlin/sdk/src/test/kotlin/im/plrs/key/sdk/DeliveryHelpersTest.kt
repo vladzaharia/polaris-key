@@ -1,4 +1,4 @@
-// @pkey-feature release.download update.feed
+// @pkey-feature release.download update.feed release.fetch release.distribution update.feeds crash.tags
 //
 // The delivery helpers of the SDK parity pass (notes/SDK-PARITY-PASS.md §3.5–§3.8, §3.14): the
 // verified, resumable build download (discovery's builds template, the bearer and X-PKey headers,
@@ -67,9 +67,9 @@ class DeliveryHelpersTest {
         if (r.path != "/djdl/distribution/builds/1.4.0/linux-x64") return respond(404)
         calls[0]++
         if (failAfter != null && calls[0] > failAfter) throw PolarisException(ErrorCode.networkError, "reset")
-        val range = r.headers["range"]?.let { Regex("bytes=(\\d+)-(\\d+)").find(it) } ?: return PolarisResponse(200, payload, mapOf("etag" to "\"v1\""))
+        val range = r.headers["range"]?.let { Regex("bytes=(\\d+)-(\\d*)").find(it) } ?: return PolarisResponse(200, payload, mapOf("etag" to "\"v1\""))
         val start = range.groupValues[1].toInt()
-        val end = minOf(range.groupValues[2].toInt(), payload.size - 1)
+        val end = minOf(range.groupValues[2].toIntOrNull() ?: (payload.size - 1), payload.size - 1)
         return PolarisResponse(206, payload.copyOfRange(start, end + 1), mapOf("content-range" to "bytes $start-$end/${payload.size}", "etag" to "\"v1\""))
     }
 
@@ -164,6 +164,8 @@ class DeliveryHelpersTest {
         assertTrue(dest.readBytes().contentEquals(payload))
         assertEquals("bytes=8192-12287", seen.first().headers["range"])
         assertEquals("\"v1\"", seen.first().headers["if-range"])
+        // The last window is open-ended (release-fetch-gated.json's resume).
+        assertEquals("bytes=16384-", seen.last().headers["range"])
         dir.deleteRecursively()
         Unit
     }
@@ -203,7 +205,9 @@ class DeliveryHelpersTest {
         assertEquals("https://key.plrs.im/djdl/update/appcast.xml", c.update.appcastUrl())
         assertEquals("https://key.plrs.im/djdl/update/beta/appcast.xml", c.update.feedUrl(FeedKind.appcast, channel = "beta"))
         assertEquals("https://key.plrs.im/djdl/update/stable/velopack/releases.win-x64.json", c.update.feedUrl(FeedKind.velopack, velopackChannel = "win-x64"))
-        for (call in listOf<suspend () -> String>({ c.update.feedUrl(FeedKind.winsparkle) }, { c.update.feedUrl(FeedKind.velopack) })) {
+        // Without a velopackChannel: the feed directory Velopack's UpdateManager opens.
+        assertEquals("https://key.plrs.im/djdl/update/stable/velopack/", c.update.feedUrl(FeedKind.velopack))
+        for (call in listOf<suspend () -> String>({ c.update.feedUrl(FeedKind.winsparkle) }, { c.update.feedUrl(FeedKind.zsync, buildId = "linux-x64") })) {
             try {
                 call()
                 fail("expected the product N/A")

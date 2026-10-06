@@ -972,27 +972,33 @@ other {# devices}}`), never string concatenation (SW, KO).
 
 ### 4.8 Motion
 
-Durations come from the tokens: `fast` 120 ms, `base` 200 ms, `slow` 320 ms. **Sign-in's motion is
-SIGN-IN.md §3.18** (owner, 2026-10-05): the named patterns (morph, shared-element, enter, exit,
-stagger-list, expand, success, skeleton, press), the proposed `quick` (160 ms), `moderate`
-(260 ms) and `stagger` (30 ms) tokens, and its per-platform mapping table, which wins over the rows
-below for sign-in. Under reduced motion sign-in swaps steps instantly, with no opacity fade. S-23
-makes these the shared motion system, with the canonical tokens in `packages/brand`.
+Durations come from the tokens: `micro` 80 ms, `fast` 120 ms, `base` 200 ms, `moderate` 260 ms,
+`slow` 320 ms, `deliberate` 480 ms (and `shimmer` 1600 ms, the skeleton's period), with the
+distances `xs`–`xl` (2, 4, 8, 12, 24 px), the scales and the stagger (30 ms a step, at most 6) of
+BRAND.md §4.6. The shared motion system is
+[notes/S-23](../research/2026-09-29-godot-omniplatform/notes/S-23-motion-system.md), with the
+canonical tokens in `packages/brand` (generated into `KitTokens.Motion` in Swift, `Motion` in
+Kotlin and `DURATION_*_MS` / `MOTION_DISTANCE_*` in GDScript). **Sign-in's motion is SIGN-IN.md
+§3.18** (owner, 2026-10-05): the named patterns (morph, shared-element, enter, exit, stagger-list,
+expand, success, skeleton, press), the S-23 tokens (no `quick` step: exits use `fast`), and its
+per-platform mapping table, which wins over the rows below for sign-in. The web column names each
+row's S-23 pattern; the platform columns keep their native curves.
 
-| Change                     | Web / desktop webviews                                                                         | iOS / macOS                                                                                                     | Android                               | Godot                                                          | Qt Quick                     | Terminal                       |
-| -------------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------- | -------------------------------------------------------------- | ---------------------------- | ------------------------------ |
-| Step to step inside a flow | View Transition on the card: cross-fade plus an 8 px slide, `base`, `ease-standard`            | `.navigationTransition(.zoom)` where the icon persists; `matchedGeometryEffect` for the icon from gate to sheet | `AnimatedContent` with `MotionScheme` | 220 ms, `TRANS_BACK` / `EASE_OUT`, overshoot ≤ 1.04            | `Behavior` 200 ms `OutCubic` | Redraw in place                |
-| Sheet or dialog in         | `slow`, `ease-enter`, scale 0.98 → 1 and opacity, via `@starting-style`; scrim fades at `base` | system sheet springs (`.smooth(duration: 0.35)`); macOS sheets slide from the title bar                         | system bottom sheet                   | 280 ms rise of 24 px plus fade; exit 160 ms                    | 320 ms `OutCubic`            | n/a                            |
-| Press                      | scale 0.98, `fast`                                                                             | system                                                                                                          | shape morph (M3E)                     | 0.98 press; focus moves the ring, no scale on buttons in a row | scale 0.98                   | n/a                            |
-| Progress                   | width at `base`                                                                                | system                                                                                                          | wavy indicator                        | Tween                                                          | `NumberAnimation`            | Redraw at ≤ 10 Hz              |
-| Waiting                    | countdown ring drains linearly; 2 px shimmer                                                   | `ProgressView`                                                                                                  | `LoadingIndicator` inline             | countdown ring                                                 | countdown ring               | braille spinner, 80 ms a frame |
-| Success                    | one check draw, `slow`                                                                         | `.symbolEffect(.bounce)` once                                                                                   | one shape morph                       | one Tween                                                      | one check draw               | `✓` printed once               |
+| Change                     | Web / desktop webviews                                                                                               | iOS / macOS                                                                                                     | Android                               | Godot                                                          | Qt Quick                     | Terminal                       |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------- | -------------------------------------------------------------- | ---------------------------- | ------------------------------ |
+| Step to step inside a flow | **morph**: View Transition on the card: cross-fade plus an 8 px slide, `base`, `ease-standard`                       | `.navigationTransition(.zoom)` where the icon persists; `matchedGeometryEffect` for the icon from gate to sheet | `AnimatedContent` with `MotionScheme` | 220 ms, `TRANS_BACK` / `EASE_OUT`, overshoot ≤ 1.04            | `Behavior` 200 ms `OutCubic` | Redraw in place                |
+| Sheet or dialog in         | **enter** / **exit**: `slow`, `ease-enter`, scale 0.98 → 1 and opacity, via `@starting-style`; scrim fades at `base` | system sheet springs (`.smooth(duration: 0.35)`); macOS sheets slide from the title bar                         | system bottom sheet                   | 280 ms rise of 24 px plus fade; exit 160 ms                    | 320 ms `OutCubic`            | n/a                            |
+| Press                      | **press**: scale 0.98, `fast`                                                                                        | system                                                                                                          | shape morph (M3E)                     | 0.98 press; focus moves the ring, no scale on buttons in a row | scale 0.98                   | n/a                            |
+| Progress                   | **meter**: width at `base`                                                                                           | system                                                                                                          | wavy indicator                        | Tween                                                          | `NumberAnimation`            | Redraw at ≤ 10 Hz              |
+| Waiting                    | **skeleton**: countdown ring drains linearly; 2 px shimmer                                                           | `ProgressView`                                                                                                  | `LoadingIndicator` inline             | countdown ring                                                 | countdown ring               | braille spinner, 80 ms a frame |
+| Success                    | **success**: one check draw, `slow`                                                                                  | `.symbolEffect(.bounce)` once                                                                                   | one shape morph                       | one Tween                                                      | one check draw               | `✓` printed once               |
 
 The [motion board](ui-kits/shots/web-motion-dark.png) shows the web keyframes. `motion: "system"`
 follows `prefers-reduced-motion`, `accessibilityReduceMotion`,
 `Settings.Global.ANIMATOR_DURATION_SCALE` and a Godot `ui_reduce_motion` option. Reduced motion
-keeps only the opacity change, at `fast`; `"none"` removes it. The terminal never animates when
-stdout is not a TTY or `CI` is set. The star never animates (BRAND §7.5).
+swaps instantly (S-23 D3): every duration is 0, with no opacity fade; `"none"` is the same. The
+terminal never animates when stdout is not a TTY or `CI` is set. The star never animates (BRAND
+§7.5).
 
 ---
 

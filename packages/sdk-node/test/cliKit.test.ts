@@ -1,4 +1,4 @@
-// @pkey-feature identity.devicecode devices.manage config.list config.secret config.mint release.changelog update.check packs.state
+// @pkey-feature identity.devicecode devices.manage config.list config.secret config.mint release.changelog update.check packs.state ui.cli
 // SDK parity pass SP-N14: the full CLI kit. Each verb's core function gets one test; both
 // adapters build every verb from CLI_VERBS, so their command trees are compared verb for verb.
 

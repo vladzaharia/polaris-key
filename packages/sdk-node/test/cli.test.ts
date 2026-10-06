@@ -1,3 +1,4 @@
+// @pkey-feature ui.cli
 // The CLI command surface — `src/cli/commands.ts` plus the commander adapter.
 //
 // The commands are framework-agnostic and side-effect-free by construction: each takes plain
@@ -44,6 +45,7 @@ import {
   type PolarisKeyClientOptions,
 } from "../src/client.js";
 import { InMemoryStore } from "../src/core/store.js";
+import { COPY_ACTIVATION } from "../src/copy.generated.js";
 import {
   activate,
   deactivate,
@@ -225,7 +227,9 @@ describe("cli/commands — license verbs", () => {
       "k",
     );
     expect(limited.ok).toBe(false);
-    expect(limited.message).toContain("maximum number of devices");
+    // The activation table's sentence (core.copy), with the refusal's detail in it.
+    const limit = COPY_ACTIVATION["device-limit"]!.message;
+    expect(limited.message).toContain(limit.slice(0, -1));
     expect(limited.message).toContain("3/3");
     expect(limited.message).toContain("[device_limit]");
 
@@ -234,7 +238,7 @@ describe("cli/commands — license verbs", () => {
       "k",
     );
     expect(revoked.ok).toBe(false);
-    expect(revoked.message).toContain("not valid, or it was revoked");
+    expect(revoked.message).toContain(COPY_ACTIVATION.unauthorized!.message);
   });
 
   it("enroll mints keylessly and reports the gate", async () => {
@@ -248,7 +252,7 @@ describe("cli/commands — license verbs", () => {
   it("enroll on a product that never opted in says so (404 → enroll-disabled)", async () => {
     const r = await enroll(await makeClient(stubFetch({ enroll: 404 }).impl));
     expect(r.ok).toBe(false);
-    expect(r.message).toContain("does not offer a free licence without a key");
+    expect(r.message).toContain(COPY_ACTIVATION["enroll-disabled"]!.message);
     expect(r.message).toContain("[enroll_disabled]");
   });
 

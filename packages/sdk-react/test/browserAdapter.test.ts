@@ -258,7 +258,7 @@ describe("BrowserAdapter — submitKey", () => {
       code: "sign-in-failed",
       wireCode: "unauthorized",
       activation: { kind: "unauthorized", code: "unauthorized", status: 401 },
-      message: "That key was not accepted. Check it for typos and try again.",
+      message: "That license key wasn't accepted. Check it and try again.",
     });
     expect(adapter.snapshot().error.license?.code).toBe("sign-in-failed");
     // The identity slice is untouched — a bad key is not a broken sign-in service.
@@ -284,7 +284,7 @@ describe("BrowserAdapter — submitKey", () => {
     await expect(adapter.submitKey("k")).rejects.toMatchObject({
       wireCode: "device_limit",
       activation: { kind: "deviceLimit", limit: 3, deviceCount: 3 },
-      message: expect.stringMatching(/device limit/),
+      message: expect.stringMatching(/already on all its devices/),
     });
     adapter.dispose();
   });
@@ -312,7 +312,7 @@ describe("BrowserAdapter — an unknown 403 is never the device limit (SDK-PARIT
     await ready(adapter);
     const err = await adapter.submitKey("k").catch((e: unknown) => e);
     expect(err).toMatchObject({ wireCode: code, activation: { kind, code } });
-    expect((err as Error).message).not.toMatch(/device limit/);
+    expect((err as Error).message).not.toMatch(/all its devices/);
     adapter.dispose();
   });
 });

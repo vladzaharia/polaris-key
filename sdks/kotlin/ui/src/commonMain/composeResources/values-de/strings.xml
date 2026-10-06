@@ -739,7 +739,7 @@
     <string name="signin_choice_ledeNew">Sie haben noch keine Lizenz für %1$s. %2$s stellt Ihnen diese bereit.</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_choice_group">Lizenzen für %1$s</string>
-    <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {origin} = where the license came from (one of the signin.origin.* strings); {term} = the license term (one of the signin.term.* strings). Arguments: 1=origin, 2=term. -->
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {origin} = where the license came from (one of the signin.choice.origin.* strings); {term} = the license term (one of the signin.term.* strings). Arguments: 1=origin, 2=term. -->
     <string name="signin_choice_meta">%1$s · %2$s</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
     <plurals name="signin_choice_devices">
@@ -757,7 +757,7 @@
     <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
     <string name="signin_choice_origin_signIn">Über die Anmeldung</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {last6} = the license key's last six characters, shown as is. Arguments: 1=last6. -->
-    <string name="signin_choice_origin_key">Schlüssel endet auf %1$s</string>
+    <string name="signin_choice_origin_key">Schlüssel mit Endung %1$s</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
     <string name="signin_choice_origin_keyAdded">Mit einem Schlüssel hinzugefügt</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {store} = a store's name (Steam, App Store); {last6} = the license key's last six characters, shown as is. Arguments: 1=store, 2=last6. -->

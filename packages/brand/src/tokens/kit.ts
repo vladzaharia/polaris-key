@@ -308,6 +308,10 @@ export interface KitMotionStep {
   how: string;
 }
 
+/**
+ * The rows the native kits map (UI-KITS §4.8). The web row uses the S-23 pattern names instead
+ * (KIT_WEB_MOTION_PATTERNS): web motion is the shared system of notes/S-23 §6.
+ */
 export const KIT_MOTION_CHANGES = [
   "step",
   "sheetIn",
@@ -318,6 +322,21 @@ export const KIT_MOTION_CHANGES = [
   "success",
 ] as const;
 export type KitMotionChange = (typeof KIT_MOTION_CHANGES)[number];
+
+/**
+ * The web rows, by S-23 pattern name (notes/S-23 §6.1): enter (was sheetIn), exit (sheetOut),
+ * morph (step), press, meter (progress), skeleton (waiting), success.
+ */
+export const KIT_WEB_MOTION_PATTERNS = [
+  "enter",
+  "exit",
+  "morph",
+  "press",
+  "meter",
+  "skeleton",
+  "success",
+] as const;
+export type KitWebMotionPattern = (typeof KIT_WEB_MOTION_PATTERNS)[number];
 
 export const KIT_MOTION_PLATFORMS = [
   "web",
@@ -335,29 +354,27 @@ const m = (ms: number, easing: string, how: string): KitMotionStep => ({
   how,
 });
 
-export const KIT_MOTION: Record<
-  KitMotionPlatform,
+export const KIT_MOTION: {
+  web: Record<KitWebMotionPattern, KitMotionStep>;
+} & Record<
+  Exclude<KitMotionPlatform, "web">,
   Record<KitMotionChange, KitMotionStep>
 > = {
   web: {
-    step: m(
-      200,
-      "standard",
-      "View Transition on the card: cross-fade plus an 8 px slide",
-    ),
-    sheetIn: m(
+    enter: m(
       320,
       "enter",
       "scale 0.98 to 1 and opacity via @starting-style; scrim fades at base",
     ),
-    sheetOut: m(
+    exit: m(200, "exit", "opacity and scale 1 to 0.98; scrim fades at base"),
+    morph: m(
       200,
-      "exit",
-      "opacity and scale 1 to 0.98; scrim fades at base",
+      "standard",
+      "View Transition on the card: cross-fade plus an 8 px slide",
     ),
     press: m(120, "standard", "scale 0.98"),
-    progress: m(200, "standard", "width transition"),
-    waiting: m(0, "linear", "countdown ring drains linearly; 2 px shimmer"),
+    meter: m(200, "standard", "width transition"),
+    skeleton: m(0, "linear", "countdown ring drains linearly; 2 px shimmer"),
     success: m(320, "standard", "one check draw"),
   },
   apple: {
@@ -425,9 +442,9 @@ export const KIT_MOTION_MEASURES = {
   pressScale: 0.98,
   /** Sheet start scale. */
   sheetScale: 0.98,
-  /** Step slide distance (web, px). */
+  /** Step slide distance (web, px): MOTION.distance.md. */
   stepSlide: 8,
-  /** Sheet rise distance (Godot, px). */
+  /** Sheet rise distance (Godot, px): MOTION.distance.xl. */
   sheetRise: 24,
   /** Godot step overshoot ceiling. */
   overshoot: 1.04,

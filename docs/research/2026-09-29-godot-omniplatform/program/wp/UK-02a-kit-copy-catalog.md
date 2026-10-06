@@ -34,7 +34,7 @@ portal, the Worker pages and the kits all read (SIGN-IN.md §5.2, D-41).
 differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
 **No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
 
-- Add the `signin.*` namespace of SIGN-IN.md §5.2 (incl. `signin.choice.devices`, `signin.choice.accountWide`, `signin.term.*`, `signin.consent.licenseLineAccount`) over `core.copy`; the portal `AuthCard`, the Worker's `renderAuthCard()` and the emails read it (D-41).
+- Add the `signin.*` namespace of SIGN-IN.md §5.2 (incl. `signin.choice.devices`, `signin.choice.origin.*`, `signin.term.*`; no `signin.choice.accountWide`, `signin.consent.licenseLineAccount`, `signin.desktop.toastAccount` or `signin.cli.licenseAccount`: owner decision 2026-10-05, no 'Account-wide' label) over `core.copy`; the portal `AuthCard`, the Worker's `renderAuthCard()` and the emails read it (D-41).
 
 ## One sign-in form (2026-10-05): `plans/I-04.md` §G and SIGN-IN.md §3.17
 

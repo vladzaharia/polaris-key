@@ -326,7 +326,7 @@
     "signin.term.until": "Bis {date}",
     "signin.term.yearlyUntil": "Jährlich, bis {date}",
     "signin.choice.origin.signIn": "Über die Anmeldung",
-    "signin.choice.origin.key": "Schlüssel endet auf {last6}",
+    "signin.choice.origin.key": "Schlüssel mit Endung {last6}",
     "signin.choice.origin.keyAdded": "Mit einem Schlüssel hinzugefügt",
     "signin.choice.origin.storeKey": "{store}-Schlüssel endet auf {last6}",
     "signin.choice.origin.storeKeyAdded": "{store}-Schlüssel",

@@ -1,4 +1,4 @@
-// @pkey-feature license.entitlements license.channels license.activate license.enroll license.deactivate
+// @pkey-feature license.entitlements license.channels license.activate license.enroll license.deactivate license.refusals
 //
 // The licence client over a signed document it verified itself: entitlements, the profile and the
 // licence id are read off the VERIFIED licence document only; `entitledChannels()` is the
