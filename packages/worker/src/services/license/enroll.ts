@@ -44,6 +44,7 @@ import {
   shapeDevice,
 } from "../../core/devices.js";
 import { authorizeDevice, tierExpiresAt } from "./authz.js";
+import type { WaitUntil } from "../../core/refusals.js";
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 
 /**
@@ -148,6 +149,7 @@ export async function handleEnroll(
   db: Db,
   product: Product,
   now: number,
+  waitUntil?: WaitUntil,
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
 
@@ -246,7 +248,13 @@ export async function handleEnroll(
     license,
     deviceId,
     now,
-    { ...deviceMetadata(req), fingerprint, boundBy: "enroll" },
+    {
+      ...deviceMetadata(req),
+      fingerprint,
+      boundBy: "enroll",
+      // UX-15: a refusal is logged after the answer, not before it.
+      ...(waitUntil ? { waitUntil } : {}),
+    },
   );
   if ("error" in authorized)
     return authorizationError(

@@ -41,6 +41,7 @@ import {
 } from "../../core/devices.js";
 import { requireLicensedDevice } from "./auth.js";
 import { authorizeDevice, type AuthzError } from "./authz.js";
+import type { WaitUntil } from "../../core/refusals.js";
 import { buildManageUrl } from "../../core/manageUrl.js";
 
 /**
@@ -131,6 +132,7 @@ async function activateWithKey(
   db: Db,
   product: Product,
   now: number,
+  waitUntil?: WaitUntil,
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
   if (
@@ -168,6 +170,8 @@ async function activateWithKey(
       fingerprint: await readFingerprint(req),
       // I-05: key entry binds the device by key and NEVER sets the account binding.
       boundBy: "key",
+      // UX-15: a refusal is logged after the answer, not before it.
+      ...(waitUntil ? { waitUntil } : {}),
     },
   );
   if ("error" in authorized)
@@ -192,8 +196,9 @@ export async function handleActivate(
   db: Db,
   product: Product,
   now: number,
+  waitUntil?: WaitUntil,
 ): Promise<Response> {
-  return activateWithKey(req, env, db, product, now);
+  return activateWithKey(req, env, db, product, now, waitUntil);
 }
 
 /** POST /<product>/license/token — replace the current token for an already-authorized device.

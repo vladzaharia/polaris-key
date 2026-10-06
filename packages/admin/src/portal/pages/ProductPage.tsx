@@ -14,6 +14,7 @@ import {
   useCapabilities,
   useLicense,
   usePackageAccess,
+  useProduct,
 } from "../data.js";
 import { PackageAccessCard } from "../components/product/PackageAccessCard.js";
 import { consumeHeadingFocus } from "../focus.js";
@@ -23,7 +24,16 @@ import {
   tierLabel,
   type LibraryProduct,
 } from "../model/library.js";
-import { presentSections, SECTION_LABEL } from "../model/product.js";
+import {
+  presentSections,
+  readUaHints,
+  resolveDevice,
+  seatLimitFor,
+  SECTION_LABEL,
+  seatsFor,
+  showsDeviceCount,
+  withSeats,
+} from "../model/product.js";
 import {
   href,
   setParams,
@@ -102,7 +112,19 @@ function ProductBody({
   const selected =
     product.licenses.find((l) => l.id === requested) ?? product.best;
   const detail = useLicense(product.slug, selected.id);
+  // One device source (§0.6 P4): the seats the free-device flow reads too.
+  const view = useProduct(product.slug);
+  const seats = seatsFor(view.data, selected.id);
+  // One OS source (§0.6 P3): the header's action and Get it work from the same answer.
+  const here = React.useMemo(
+    () => resolveDevice(product.downloads, device, readUaHints()),
+    [product.downloads, device],
+  );
   const pkg = usePackageAccess(product.slug, selected.id);
+  // Per-licence seat limits (PX-W1) from the same product view; the library only carries the
+  // best licence's.
+  const seatLimit = seatLimitFor(product, view.data, selected.id);
+  const showCount = showsDeviceCount(product, selected);
   const sections = presentSections(product, releasesOn, {
     packageAccess: pkg.data?.available === true,
   });
@@ -163,11 +185,15 @@ function ProductBody({
     );
   };
 
-  const action = quickAction(product, device, (s) =>
+  const action = quickAction(product, here, (s) =>
     href.product(product.slug, s),
   );
+  const devicesDetail = detail.data ? withSeats(detail.data, seats) : undefined;
+  // The product view is the seat source; an older Worker without it keeps the licence detail.
+  const seatsPending = view.isPending && !view.error;
   const activeDevices =
-    detail.data?.devices.filter((d) => d.status === "authorized").length ??
+    seats?.inUse ??
+    devicesDetail?.devices.filter((d) => d.status === "authorized").length ??
     product.deviceCount;
   const labels: Partial<Record<ProductSection, string>> = {
     devices: `${SECTION_LABEL.devices} ${activeDevices}`,
@@ -196,7 +222,7 @@ function ProductBody({
           <div className="contents desk:flex desk:flex-col desk:gap-6">
             {has("get") ? (
               <div className="order-1">
-                <GetItPanel product={product} device={device} />
+                <GetItPanel product={product} device={here} />
               </div>
             ) : null}
             {has("new") ? (
@@ -224,7 +250,7 @@ function ProductBody({
             <div className="order-2">
               <LicenseCard
                 product={product}
-                detail={detail.data}
+                detail={devicesDetail}
                 loading={detail.isPending}
                 error={detail.error}
                 onRetry={retry}
@@ -232,6 +258,8 @@ function ProductBody({
                 onSelect={(id) =>
                   setParams({ license: id === product.best.id ? null : id })
                 }
+                seatLimit={seatLimit}
+                showDeviceCount={showCount}
               />
             </div>
             {has("devices") ? (
@@ -239,13 +267,10 @@ function ProductBody({
                 <DevicesCard
                   productName={product.name}
                   emailConfigured={caps.auth.magic}
-                  seatLimit={
-                    selected.id === product.best.id
-                      ? product.seats?.limit
-                      : null
-                  }
-                  detail={detail.data}
-                  loading={detail.isPending}
+                  seatLimit={seatLimit}
+                  showCount={showCount}
+                  detail={devicesDetail}
+                  loading={detail.isPending || seatsPending}
                   error={detail.error}
                   onRetry={retry}
                 />

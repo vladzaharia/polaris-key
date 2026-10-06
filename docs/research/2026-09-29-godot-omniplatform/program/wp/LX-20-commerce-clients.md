@@ -5,7 +5,7 @@
 | Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase C: the wire) |
 | Size        | 1–1.4 engineer-weeks                                                           |
 | Depends on  | [LX-11](LX-11-commerce-rework.md)                                              |
-| Unblocks    | none                                                                           |
+| Unblocks    | [CM-14](CM-14-device-checkout-wire.md)                                         |
 | Role        | `pkey-sdk-porter`                                                              |
 | Plan mode   | no                                                                             |
 | Gates       | all six SDKs (`parity:check`); macOS CI; Android CI                            |

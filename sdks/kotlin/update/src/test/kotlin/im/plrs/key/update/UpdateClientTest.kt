@@ -110,12 +110,15 @@ class UpdateClientTest {
     }
 
     @Test
-    fun theJvmInstallDriverIsTheTypedRuntimeNa() = runBlocking {
+    fun theDefaultDriverIsTheDesktopDriverOnTheJvm() = runBlocking {
         val c = core(ScriptedTransport { ScriptedTransport.respond(404) })
         val check = UpdateCheck("stable", UpdateDecision.None("up-to-date", false, false), UpdateCheck.FeedSource.network, UpdateCheck.RecordSource.none, emptyList())
+        // UK-40: left at the default marker, a JVM desktop installs through DesktopInstallDriver.
+        assertEquals(InstallResult.NothingToInstall, UpdateClient(c, UpdateClientOptions(pinnedReleaseKeys = release.trust)).install(check))
+        // The marker itself, called directly (an Android build without :android), is the typed N/A.
         try {
-            UpdateClient(c, UpdateClientOptions(pinnedReleaseKeys = release.trust)).install(check)
-            fail("the JVM has no installer")
+            JvmInstallDriver.install(check)
+            fail("the marker installs nothing")
         } catch (e: UnsupportedException) {
             assertEquals(UnsupportedReason.runtime, e.unsupported.reason)
             assertEquals("update.driver", e.unsupported.feature)

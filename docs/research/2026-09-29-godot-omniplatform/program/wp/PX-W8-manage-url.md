@@ -66,6 +66,15 @@ Decisions taken by the lead (owner delegated; recommended option each time):
   WIRE-CONTRACT-V4 §5.3 item 5, which also make PX-17 drop `#key=` with `history.replaceState`
   after reading it, since the browser keeps a fragment in its history.
 
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- `for=` carries the PX-W13 device label when known; the kit button is **Replace a device** (opens `manageUrl`) and the portal quick action **Free a device** (SIGN-IN.md D-49; `plans/PX-W8.md` alignment note).
+
 ## Goal
 
 Apps receive a `manageUrl` on `device_limit` and on the key-entries refusal that opens `#/p/:product/free-device?for=…&return=…` or `/activate?key=…&product=…`, specified in I-04's contract and carried through `errors.json`, the corpus and transcripts, client-core, Node, React, Python, Swift, Godot, Kotlin and the SDK UI kits.

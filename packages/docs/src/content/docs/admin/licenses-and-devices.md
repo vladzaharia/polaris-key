@@ -229,6 +229,28 @@ public OpenAPI spec, which covers only the client wire):
 The list returns `{ devices, nextCursor }`; pass `nextCursor` back as `cursor` until it is
 `null`. A license-free device has `licenseId: null`.
 
+## Refused activations
+
+Every time a device is turned away at activation, the Worker records it: the license, when, why,
+a short label for the device and a hash of its device id. The reasons are `device_limit` (every
+seat is taken), `hardware_mismatch` (the machine no longer matches its binding),
+`fingerprint_required` (a `strict` tier and no fingerprint) and `license_unusable` (disabled,
+expired or ended). The label is the device's own name when it has one, else its reported platform
+and architecture, else its User-Agent, held to 64 plain-text characters.
+
+The record is written after the device has its answer, so it never slows a refusal down and a
+failed write never changes one. Repeats from one device for one reason within a minute count once.
+Records are kept for 30 days; the nightly maintenance run deletes older ones.
+
+| Route                                      | Purpose                                                                                                                                  |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /manage/api/products/<slug>/refusals` | Recent refusals and the licenses refusing devices: `refusedSince` (epoch seconds, default 7 days ago), `licenseId`, `limit` (1-200, 50). |
+
+It returns `{ since, refusals, licenses }`. `refusals` is newest first, each
+`{ id, licenseId, at, reason, deviceLabel, deviceHash }`. `licenses` lists every license refused at
+least once since `since`, latest first, each `{ licenseId, count, devices, lastAt }`, where
+`devices` counts distinct devices. A `refusedSince` older than 30 days reads from 30 days ago.
+
 ## Fingerprint policy
 
 The **Enrollment** page has three sections.
