@@ -379,7 +379,7 @@ describe("portal flow conformance (UX-79)", () => {
         );
         await h1(o.page, "Your license is on 2 of 2 devices");
         const work = o.page.getByRole("radio", { name: /Work laptop/ });
-        expect(await work.innerText()).toMatch(/· least recent/);
+        expect(await work.innerText()).toMatch(/· least\srecent/);
         await o.page
           .getByRole("button", { name: "Remove Work laptop", exact: true })
           .waitFor();
