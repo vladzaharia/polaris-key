@@ -726,7 +726,7 @@ export const SHIPPED: ShippedState[] = [
         .click();
       await p.getByRole("menuitem", { name: "Remove from my library" }).click();
       await p
-        .getByRole("dialog", {
+        .getByRole("alertdialog", {
           name: "Remove this Tidewater Studio license from your library?",
         })
         .getByRole("button", { name: "Remove from my library" })

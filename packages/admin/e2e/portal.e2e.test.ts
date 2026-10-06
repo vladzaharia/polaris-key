@@ -797,7 +797,7 @@ describe("main flows", () => {
       await o.page
         .getByRole("menuitem", { name: "Remove from my library" })
         .click();
-      const dialog = o.page.getByRole("dialog", { name: dialogName });
+      const dialog = o.page.getByRole("alertdialog", { name: dialogName });
       await dialog.waitFor();
       return dialog;
     };

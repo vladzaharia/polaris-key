@@ -292,7 +292,21 @@ url96}}`; it does not change the profile until a `PATCH` puts it to use. An unus
   are the product's records, and the portal account is only a view onto them.
 - **`GET /api/licenses`** / **`GET /api/licenses/<product>/<licenseId>`** — every license linked
   to the account, across every product, with visible entitlements folded in; detail adds keys and
-  devices.
+  devices. Each license says how it reached the person as `origin`, which the license card words
+  as its **License source**: `key` (a key the person added to a license nobody was named for,
+  "Key ending …"), `store-key` (a key with an active store purchase, "Steam key ending …"),
+  `store` (a store purchase and no key, "From Steam"), `developer` (a license the developer
+  assigned to an email, even though it has a key, "From Little Fern"), or `signin` (issued by
+  signing in, "From signing in"). `originStore` names the store for the two store origins.
+- **`DELETE /api/licenses/<product>/<licenseId>`** — **Remove from my library**. The license
+  leaves the account: it keeps its email, so it waits for an account that verifies that address
+  (with no email it floats again, and anyone with the key can add it). An auto-attach block keeps
+  it out of _this_ account: no later visit, sign-in or verification adds it back; only adding its
+  key again does, and that lifts the block. The account's package tokens for it are revoked; its
+  devices keep running and keep their seats, and the ones this account signed in on lose Cloud
+  Sync for it. Audited (`account.license.detach`, `account.license.auto_attach_block`).
+  Ownership first, then 10 per minute in that product's shard; `404` for a license that is not in
+  the account and on a product whose portal is off.
 - **`GET /api/library`** — the account's library: one entry per product it holds a license for
   (portal-enabled products only), with the product's presentation from its `.pkey/distribution`
   root `listing` (name, developer, tint, website, support links; the product name and nulls
@@ -366,14 +380,14 @@ url96}}`; it does not change the profile until a `PATCH` puts it to use. An unus
   `{ "key": "pkey_…" }`; a string that is not exactly `pkey_<slug>_` plus 22 base64url characters
   is a `422`. Otherwise `200` with a `verdict`:
 
-  | `verdict`        | Also carries                                                       | Meaning                                                                                    |
-  | ---------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
-  | `addable`        | `license` (tier, label, status, expiry, device limit), `platforms` | The key can be added.                                                                      |
-  | `already_yours`  | the same, plus `license.id`                                        | Already in this account.                                                                   |
-  | `license_owned`  | nothing else                                                       | In another account; a license never moves by its key (named `owned_elsewhere` until I-05). |
-  | `email_mismatch` | `maskedEmail` (`m•••@proton.me`)                                   | Carries an email this account has not verified, and the product needs it.                  |
-  | `portal_off`     | nothing else                                                       | The product manages this license elsewhere (portal or key claim switched off).             |
-  | `unknown`        | nothing else                                                       | No such key (or it was replaced), or no such product.                                      |
+  | `verdict`        | Also carries                                                                               | Meaning                                                                                                                        |
+  | ---------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+  | `addable`        | `license` (tier, label, status, expiry, device limit), `platforms`, `devices`, `cloudSync` | The key can be added. `devices` counts the devices it is already on (they come with it); `cloudSync` says the product runs it. |
+  | `already_yours`  | the same, plus `license.id`                                                                | Already in this account.                                                                                                       |
+  | `license_owned`  | nothing else                                                                               | In another account; a license never moves by its key (named `owned_elsewhere` until I-05).                                     |
+  | `email_mismatch` | `maskedEmail` (`m•••@proton.me`)                                                           | Carries an email this account has not verified, and the product needs it.                                                      |
+  | `portal_off`     | nothing else                                                                               | The product manages this license elsewhere (portal or key claim switched off).                                                 |
+  | `unknown`        | nothing else                                                                               | No such key (or it was replaced), or no such product.                                                                          |
 
   Every answer carries `product` (`null` for `unknown`, so a guessed key never reveals whether a
   product exists; otherwise `slug`, `name`, `branding`; `developerName`, `iconUrl` and

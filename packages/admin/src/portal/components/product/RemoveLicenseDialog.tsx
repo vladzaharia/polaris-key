@@ -1,6 +1,5 @@
 import * as React from "react";
-import { Button } from "../../../ui/Button.js";
-import { Dialog, DialogBody, DialogFooter } from "../../../ui/Dialog.js";
+import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import type { PortalLicenseDetail, PortalLicenseSummary } from "../../api.js";
 import { useRemoveLicense } from "../../data.js";
 import { portalErrorCopy } from "../../errors.js";
@@ -9,9 +8,10 @@ import { licenseOptionLabel } from "../../model/product.js";
 
 /**
  * **Remove from my library** (docs/design/PORTAL.md §4.20's overflow menu; notes/S-24 §5.5, §10,
- * D19; PX-23): what removing does, then **Keep it** / **Remove from my library**. The Worker's
- * `DELETE /api/licenses/<p>/<id>` takes the licence out of the account and keeps it out: no later
- * visit or sign-in adds it back, only its key does.
+ * D19; PX-23), on the console's `ConfirmDialog` (danger: focus on **Keep it**, the least
+ * destructive action; the error inline). The Worker's `DELETE /api/licenses/<p>/<id>` takes the
+ * licence out of the account and keeps it out: no later visit or sign-in adds it back, only its
+ * key does.
  *
  * The consequences, in the person's words:
  * - its devices keep working (a removal signs nobody out and frees no seat);
@@ -57,16 +57,20 @@ export function RemoveLicenseDialog({
     store,
     developer: product.presentation.developer,
   });
-  const close = (next: boolean): void => {
-    if (!next) remove.reset();
-    onOpenChange(next);
-  };
-  const error = remove.error ? portalErrorCopy(remove.error) : null;
+  const consequences = [
+    "Its devices keep working.",
+    ...(cloudSync
+      ? ["The devices you signed in on stop syncing it with Cloud Sync."]
+      : []),
+    named
+      ? "It won't be in an account, and it won't come back to this account by itself. To add it again, use its key."
+      : "It won't be in an account: anyone with the key can add it, and it won't come back to this account by itself.",
+  ];
   return (
-    <Dialog
+    <ConfirmDialog
       open={open}
-      onOpenChange={close}
-      size="md"
+      onOpenChange={onOpenChange}
+      intent="danger"
       title={
         others > 0
           ? `Remove this ${product.name} license from your library?`
@@ -77,51 +81,14 @@ export function RemoveLicenseDialog({
           ? `${which}. ${others === 1 ? "Your other license stays." : `Your other ${others} licenses stay.`}`
           : undefined
       }
-    >
-      <DialogBody className="space-y-4">
-        <ul className="list-disc space-y-1.5 pl-5 text-sm text-fg">
-          <li>Its devices keep working.</li>
-          {cloudSync ? (
-            <li>
-              The devices you signed in on stop syncing it with Cloud Sync.
-            </li>
-          ) : null}
-          <li>
-            {named
-              ? "It won't be in an account, and it won't come back to this account by itself. To add it again, use its key."
-              : "It won't be in an account: anyone with the key can add it, and it won't come back to this account by itself."}
-          </li>
-        </ul>
-        {error ? (
-          <p role="alert" className="text-sm text-danger">
-            {error.title}. {error.description}
-          </p>
-        ) : null}
-      </DialogBody>
-      <DialogFooter>
-        <Button
-          variant="outline"
-          className="font-bold"
-          onClick={() => close(false)}
-        >
-          Keep it
-        </Button>
-        <Button
-          variant="danger"
-          className="font-bold"
-          loading={remove.isPending}
-          onClick={() =>
-            remove.mutate(license.id, {
-              onSuccess: () => {
-                onOpenChange(false);
-                onRemoved(others);
-              },
-            })
-          }
-        >
-          Remove from my library
-        </Button>
-      </DialogFooter>
-    </Dialog>
+      consequences={consequences}
+      cancelLabel="Keep it"
+      confirmLabel="Remove from my library"
+      describeError={portalErrorCopy}
+      onConfirm={async () => {
+        await remove.mutateAsync(license.id);
+        onRemoved(others);
+      }}
+    />
   );
 }

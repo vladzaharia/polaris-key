@@ -5162,6 +5162,11 @@ CSRF header like every other portal mutation.
   character and the domain of the licence's address (`m•••@proton.me`). Residual: the masked form
   confirms the domain of the buyer's address to whoever holds the key; the design accepts it so
   the buyer can recognise their own address.
+- **The device count (PX-23, 2026-10-06).** For an `addable` licence the preview also says how
+  many authorized devices it is already on (`devices`, a number) and whether the product runs
+  Cloud Sync (`cloudSync`), so Confirm can say the devices come with it. Never a device id, label
+  or platform, and nothing on a refusal. The key holder could learn the same count by activating
+  until the seat limit answers, so it adds no new disclosure.
 - **The preview cannot be a cheaper probe than the add.** Preview and claim are one rate bucket
   (`portalClaimKey`, 10 a minute per account and IP, charged before any lookup), and both act on one
   evaluator (`evaluateKeyClaim`), so the preview never promises an add the claim refuses.
@@ -5808,10 +5813,21 @@ keeps every subject-keyed store honest (plans/U-01.md §6.1).
   plain detach does not (S-17 §5.8 item 2), though the principal is hidden while the licence is
   floating (S-24). Residual: `POST /<p>/identity/signout` and the sign out everywhere surface are
   I-09's and I-11's; until they land only the hook and the browser logout exercise those reasons.
-  Residual: after a detach and a later first attach by another account, the device keeps the
-  first account's binding (attach is not a clearing trigger). It is hidden only while the licence
-  floats; once the second account owns the licence, the device's principal is the first account
-  until that person signs out or the device re-binds.
+- **Amended 2026-10-06 (PX-23; lead decision on S-24 D19): removed from a library, the licence is
+  floating for that account's devices.** "Remove from my library" (`detachLicense`) keeps the
+  licence's email, so the licence is assigned and waiting, not floating, and before this change the
+  removing account's signed-in devices kept their Cloud Sync principal. Now `resolveSyncPrincipal`
+  also reads LX-26's auto-attach block: while a block for the (licence, account behind the bound
+  subject) pair stands and the licence is not in that account, the device has no principal. Every
+  detach and every developer move away writes that block, so this also closes the earlier
+  residual (after a detach and a later first attach by another account, the device kept the first
+  account's principal; attach is not a clearing trigger): the first account's binding stays
+  hidden. The binding itself is kept (a removal signs nobody out); re-adding the key, or a move
+  back, lifts the block and the principal returns. A block for the account that holds the licence
+  again (a merge can leave one) is inert; a merge moves the absorbed account's blocks to the
+  survivor, and the merged device's binding follows. Other accounts' devices on the licence are
+  unaffected. Tests: `syncPrincipal.test.ts` (detach, re-add, another account, merge and the inert
+  block) and `portalFloatingKeys.test.ts` (through the portal route).
 - **The registry guard** (`test/subjectStores.test.ts`, S-17 §7.1 risk 8). Every D1 table with a
   `subject` column is claimed by a registered store (`registerSubjectStore` with `tables`) or is
   listed as Identity's own with its reason; every Durable Object class is claimed
@@ -6359,6 +6375,14 @@ whether it is in an account, never the account's details (D6).
   block is written BEFORE the owner pointer moves, so no sweep running between the two can
   re-attach the licence; a move that then fails removes a block it created. Tests
   cover each path.
+- **The portal route and Cloud Sync (PX-23, 2026-10-06).** `DELETE /api/licenses/<p>/<id>` is
+  the person's "Remove from my library": the portal session, the CSRF header, ownership checked
+  before a per-product rate limit (10 a minute), then `detachLicense`, so the route can only take
+  a licence out of the caller's own account and always writes the block. For that account's
+  devices the removed licence is then the same as floating: no Cloud Sync principal while the
+  block stands (U-02's amendment above), so a removal is not a way to keep syncing a licence one
+  no longer holds. The customer copy says "not in an account", never "floating" (S-24 D5): the
+  licence keeps its email.
 - **Clearing an assigned licence's email is refused** on the console PATCH (`400 bad_request`):
   removing a holder is the relink tool's Make floating (I-12, LX-30), which takes a step-up, a
   reason and has an undo, rather than an unaudited field edit.

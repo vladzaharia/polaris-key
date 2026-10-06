@@ -934,7 +934,7 @@ describe("licence origins and Remove from my library (PX-23)", () => {
     await userEvent.click(
       await screen.findByRole("menuitem", { name: "Remove from my library" }),
     );
-    return screen.findByRole("dialog", { name });
+    return screen.findByRole("alertdialog", { name });
   }
 
   it("a licence the developer assigned: not in an account, never back by itself; then the Library", async () => {
@@ -994,7 +994,7 @@ describe("licence origins and Remove from my library (PX-23)", () => {
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Keep it" }),
     );
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     expect(removed).toEqual([]);
   });
 
